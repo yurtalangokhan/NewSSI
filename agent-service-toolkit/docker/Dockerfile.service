@@ -1,0 +1,45 @@
+FROM python:3.12.3-slim
+
+WORKDIR /app
+
+ENV UV_PROJECT_ENVIRONMENT="/usr/local/"
+ENV UV_COMPILE_BYTECODE=1
+
+COPY pyproject.toml .
+COPY uv.lock .
+COPY uv.lock .
+RUN pip install uv
+
+# Install Docker CLI (required for PyAirbyte to run container-based connectors)
+RUN apt-get update && apt-get install -y docker.io && rm -rf /var/lib/apt/lists/*
+
+# Create directories for PyAirbyte:
+#   /airbyte/tmp   – temp files, shared with connector containers
+#   /airbyte/data  – project dir (connector mount points, venvs)
+#   /airbyte/cache – DuckDB read-result cache, registry cache
+RUN mkdir -p /airbyte/tmp /airbyte/data /airbyte/cache && \
+    chmod 777 /airbyte/tmp /airbyte/data /airbyte/cache
+
+# PyAirbyte environment overrides
+ENV AIRBYTE_TEMP_DIR=/airbyte/tmp
+ENV AIRBYTE_LOCAL_ROOT=/airbyte/tmp
+ENV AIRBYTE_PROJECT_DIR=/airbyte/data
+ENV AIRBYTE_CACHE_ROOT=/airbyte/cache
+ENV TMPDIR=/airbyte/tmp
+
+RUN uv sync --frozen --no-install-project --no-dev
+
+# Install PyAirbyte separately (has dependency conflicts with pydantic)
+# Using pip with --ignore-installed to bypass version conflicts
+RUN pip install --ignore-installed "airbyte>=0.17.0" 2>/dev/null || \
+    pip install "airbyte>=0.17.0" --no-deps && \
+    pip install airbyte-cdk duckdb pyarrow requests
+
+COPY src/agents/ ./agents/
+COPY src/core/ ./core/
+COPY src/memory/ ./memory/
+COPY src/schema/ ./schema/
+COPY src/service/ ./service/
+COPY src/run_service.py .
+
+CMD ["python", "run_service.py"]

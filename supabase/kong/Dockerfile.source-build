@@ -1,0 +1,94 @@
+# Kong Source Build Dockerfile
+# ===============================
+# Bu Dockerfile Kong'u Bazel kullanarak kaynak koddan build eder.
+# Build süresi: ~30-60 dakika (ilk build için)
+#
+# NOT: Kong build süreci karmaşıktır ve Bazel gerektirir.
+# Production için pre-built image kullanmanız önerilir.
+
+# Build Stage
+FROM ubuntu:22.04 AS builder
+
+# Build dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    git \
+    curl \
+    unzip \
+    libyaml-dev \
+    libssl-dev \
+    libpcre3-dev \
+    zlib1g-dev \
+    perl \
+    m4 \
+    wget \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Bazelisk
+RUN curl -Lo /usr/local/bin/bazel https://github.com/bazelbuild/bazelisk/releases/download/v1.19.0/bazelisk-linux-amd64 \
+    && chmod +x /usr/local/bin/bazel
+
+WORKDIR /kong
+
+# Copy Kong source
+COPY . .
+
+# Build Kong with Bazel
+RUN bazel build //build:kong --verbose_failures
+
+# Build deb package
+RUN bazel build --config release :kong_deb --verbose_failures
+
+# Runtime Stage
+FROM debian:bookworm-slim
+
+LABEL maintainer="Local Build"
+
+ARG KONG_PREFIX=/usr/local/kong
+ENV KONG_PREFIX=${KONG_PREFIX}
+
+# Install runtime dependencies
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        tzdata \
+        libpcre3 \
+        perl \
+        openssl \
+        libssl3 \
+        zlib1g \
+        libyaml-0-2 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy built Kong from builder
+COPY --from=builder /kong/bazel-bin/kong*.deb /tmp/kong.deb
+
+# Install Kong
+RUN dpkg -i /tmp/kong.deb || apt-get install -f -y \
+    && rm /tmp/kong.deb \
+    && mkdir -p ${KONG_PREFIX} \
+    && chown -R kong:0 ${KONG_PREFIX}
+
+# Set up symlinks
+RUN ln -sf /usr/local/openresty/bin/resty /usr/local/bin/resty \
+    && ln -sf /usr/local/openresty/luajit/bin/luajit /usr/local/bin/luajit \
+    && ln -sf /usr/local/openresty/luajit/bin/luajit /usr/local/bin/lua \
+    && ln -sf /usr/local/openresty/nginx/sbin/nginx /usr/local/bin/nginx
+
+# Verify installation
+RUN kong version
+
+# Copy entrypoint
+COPY build/dockerfiles/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+USER kong
+
+ENTRYPOINT ["/entrypoint.sh"]
+
+EXPOSE 8000 8443 8001 8444
+
+STOPSIGNAL SIGQUIT
+
+HEALTHCHECK --interval=60s --timeout=10s --retries=10 CMD kong-health
+
+CMD ["kong", "docker-start"]

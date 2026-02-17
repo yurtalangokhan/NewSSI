@@ -1,0 +1,215 @@
+- name: Execute tasks when (debpkg_mode or nixpkg_mode)
+  when:
+    - (debpkg_mode or nixpkg_mode)
+  block:
+    - name: System - apt update and apt upgrade
+      ansible.builtin.apt:
+        update_cache: true
+        upgrade: true
+      # SEE http://archive.vn/DKJjs#parameter-upgrade
+
+    - name: Install required security updates Ansible dependencies, security tools, and other useful things
+      ansible.builtin.apt:
+        cache_valid_time: 3600
+        pkg:
+          - acl
+          - bwm-ng
+          - fail2ban
+          - htop
+          - linux-libc-dev
+          - net-tools
+          - nftables
+          - ngrep
+          - sysstat
+          - tzdata
+          - vim
+        update_cache: true
+    # SEE https://github.com/georchestra/ansible/issues/55#issuecomment-588313638
+    # Without this, a similar error is faced
+
+    - name: Use nftables backend
+      community.general.alternatives:
+        name: "{{ alternatives['name'] }}"
+        path: "{{ alternatives['path'] }}"
+      loop:
+        - { name: 'iptables', path: '/usr/sbin/iptables-nft' }
+        - { name: 'ip6tables', path: '/usr/sbin/ip6tables-nft' }
+        - { name: 'arptables', path: '/usr/sbin/arptables-nft' }
+        - { name: 'ebtables', path: '/usr/sbin/ebtables-nft' }
+      loop_control:
+        loop_var: 'alternatives'
+
+    - name: restart ufw
+      ansible.builtin.systemd_service:
+        name: 'ufw'
+        state: 'restarted'
+
+    - name: Create Sysstat log directory
+      ansible.builtin.file:
+        path: '/var/log/sysstat'
+        state: 'directory'
+
+    - name: Configure sysstat
+      ansible.builtin.copy:
+        dest: "/etc/{{ sysstat_item }}/sysstat"
+        src: "files/{{ sysstat_item }}.sysstat"
+      loop:
+        - default
+        - sysstat
+      loop_control:
+        loop_var: 'sysstat_item'
+
+    - name: Adjust APT update intervals
+      ansible.builtin.copy:
+        dest: '/etc/apt/apt.conf.d/10periodic'
+        src: 'files/apt_periodic'
+
+    - name: Set local ssh policy
+      ansible.builtin.copy:
+        content: |
+          Match Address 127.0.0.1,::1
+            ForceCommand /bin/false
+            DisableForwarding yes
+            PermitTunnel no
+        dest: /etc/ssh/sshd_config.d/local.conf
+        mode: '0644'
+        owner: 'root'
+        group: 'root'
+
+- name: Install other useful tools
+  ansible.builtin.apt:
+    pkg:
+      - less
+    update_cache: true
+  when:
+    - qemu_mode is defined
+
+- name: Set the platform arch as a fact
+  ansible.builtin.set_fact:
+    platform: "{{ 'amd64' if ansible_facts['architecture'] == 'x86_64' else 'arm64' }}"
+  tags:
+    - update
+    - update-only
+  when:
+    - (debpkg_mode or nixpkg_mode or stage2_nix)
+
+- name: Execute more tasks when (debpkg_mode or nixpkg_mode)
+  when:
+    - (debpkg_mode or nixpkg_mode)
+  block:
+    - name: Custom systemd overrides for resolved
+      ansible.builtin.copy:
+        dest: '/etc/systemd/system/systemd-resolved.service.d/'
+        directory_mode: '0700'
+        group: 'root'
+        mode: '0644'
+        owner: 'root'
+        src: 'files/systemd-resolved.conf'
+
+    - name: System - Create services.slice
+      ansible.builtin.template:
+        dest: '/etc/systemd/system/services.slice'
+        src: 'files/services.slice.j2'
+
+    - name: System - systemd reload
+      ansible.builtin.systemd_service:
+        daemon_reload: true
+
+    - name: Configure journald and logind
+      ansible.builtin.copy:
+        dest: "/etc/systemd/{{ config_item }}.conf"
+        src: "files/{{ config_item }}.conf"
+      loop:
+        - journald
+        - logind
+      loop_control:
+        loop_var: 'config_item'
+
+    - name: reload systemd-journald
+      ansible.builtin.systemd_service:
+       name: "systemd-{{ config_item }}"
+       state: 'restarted'
+      loop:
+        - journald
+        - logind
+      loop_control:
+        loop_var: 'config_item'
+
+    - name: enable timestamps for shell history
+      ansible.builtin.copy:
+        content: |
+          export HISTTIMEFORMAT='%d/%m/%y %T '
+        dest: /etc/profile.d/09-history-timestamps.sh
+        mode: '0644'
+        owner: 'root'
+        group: 'root'
+
+    - name: configure systemd's pager
+      ansible.builtin.copy:
+        content: |
+          export SYSTEMD_LESS=FRXMK
+        dest: /etc/profile.d/10-systemd-pager.sh
+        mode: '0644'
+        owner: 'root'
+        group: 'root'
+
+    # Set Sysctl params specific to keepalives
+    - name: Set net.ipv4.tcp_keepalive_time=1800
+      ansible.builtin.sysctl:
+        name: 'net.ipv4.tcp_keepalive_time'
+        value: 1800
+        state: 'present'
+
+    - name: Set net.ipv4.tcp_keepalive_intvl=60
+      ansible.builtin.sysctl:
+        name: 'net.ipv4.tcp_keepalive_intvl'
+        value: 60
+        state: 'present'
+
+    # postgres_exporter runs on port 9187 and postgresT occasionlly chooses it as random srcport
+    - name: Set net.ipv4.ip_local_reserved_ports=9187
+      ansible.builtin.sysctl:
+        name: 'net.ipv4.ip_local_reserved_ports'
+        value: 9187
+        state: 'present'
+
+- name: Execute tasks when (debpkg_mode or nixpkg_mode)
+  when:
+    - (debpkg_mode or nixpkg_mode)
+  block:
+    # Set Sysctl params for restarting the OS on OOM after 10
+    - name: Set vm.panic_on_oom=1
+      ansible.builtin.sysctl:
+        name: 'vm.panic_on_oom'
+        reload: true
+        state: 'present'
+        value: '1'
+
+    - name: Set kernel.panic=10
+      ansible.builtin.sysctl:
+        name: 'kernel.panic'
+        reload: true
+        state: 'present'
+        value: '10'
+
+- name: set hosts file
+  ansible.builtin.copy:
+    content: |
+      127.0.0.1   localhost
+      ::1         localhost
+    dest: '/etc/hosts'
+    mode: '0644'
+    owner: 'root'
+    group: 'root'
+  when:
+    - (debpkg_mode or stage2_nix)
+
+- name: configure system
+  ansible.posix.sysctl:
+    name: 'net.core.somaxconn'
+    value: 16834
+
+- name: configure system
+  ansible.posix.sysctl:
+    name: 'net.ipv4.ip_local_port_range'
+    value: '1025 65000'

@@ -1,0 +1,12 @@
+{
+    "python_version": "3.12",
+    "dependencies": [
+        "./src"
+    ],
+    "graphs": {
+        "chatbot": "./src/agents/chatbot.py:chatbot",
+        "research-assistant": "./src/agents/research_assistant.py:research_assistant",
+        "rag-assistant": "./src/agents/rag_assistant.py:rag_assistant"
+    },
+    "env": "./.env"
+}

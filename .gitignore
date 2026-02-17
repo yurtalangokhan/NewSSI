@@ -1,0 +1,7 @@
+.vscode
+workspace
+.env
+__pycache__
+.next
+.turbo
+node_modules

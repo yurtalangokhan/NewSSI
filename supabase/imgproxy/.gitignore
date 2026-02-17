@@ -1,0 +1,13 @@
+*.swp
+imgproxy
+tmp/
+.tmp
+.vscode/
+
+.gitmodules
+docker-base
+docs/sitemap.txt
+.env
+.imgproxyrc
+.devcontainer/*
+k6/*.json

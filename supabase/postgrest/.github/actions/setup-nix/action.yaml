@@ -1,0 +1,26 @@
+name: Setup Nix
+
+description: Installs nix, sets up cachix and installs a subset of tooling.
+
+inputs:
+  authToken:
+    description: Token to pass to cachix
+  tools:
+    description: Tools to install with nix-env -iA <tools>
+
+runs:
+  using: composite
+  steps:
+    - uses: nixbuild/nix-quick-install-action@2c9db80fb984ceb1bcaa77cdda3fdf8cfba92035 # v34
+      with:
+        nix_conf: |-
+          always-allow-substitutes = true
+          max-jobs = auto
+    - uses: cachix/cachix-action@0fc020193b5a1fa3ac4575aa3a7d3aa6a35435ad # v16
+      with:
+        name: postgrest
+        authToken: ${{ inputs.authToken }}
+        skipPush: ${{ inputs.authToken == '' }}
+    - if: ${{ inputs.tools }}
+      run: nix-env -f default.nix -iA ${{ inputs.tools }}
+      shell: bash
