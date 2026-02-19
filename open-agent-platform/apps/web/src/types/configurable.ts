@@ -84,6 +84,16 @@ export type ConfigurableFieldRAGMetadata = {
    */
   label: string;
   type: "rag";
+  /**
+   * When true, only collections that have a knowledge graph built
+   * will be shown in the dropdown (used by graph-rag-assistant).
+   */
+  graph_only?: boolean;
+  /**
+   * When true, collections that have a knowledge graph built
+   * will be EXCLUDED from the dropdown (used by standard rag-assistant).
+   */
+  rag_only?: boolean;
   default?: {
     rag_url?: string;
     collections?: string[];

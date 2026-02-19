@@ -141,6 +141,8 @@ function configSchemaToRagConfig(
     ragField = {
       label: key,
       type: uiConfig.type,
+      graph_only: uiConfig.graph_only === true,
+      rag_only: uiConfig.rag_only === true,
       default: uiConfig.default,
     };
     break;

@@ -15,6 +15,13 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+# ============== Neo4j Configuration ==============
+
+NEO4J_URI = getattr(settings, "NEO4J_URI", None) or "bolt://neo4j:7687"
+NEO4J_USERNAME = getattr(settings, "NEO4J_USERNAME", None) or "neo4j"
+NEO4J_PASSWORD = getattr(settings, "NEO4J_PASSWORD", None) or "neo4j123"
+
+
 # ============== User Context Tool ==============
 
 @tool
@@ -186,4 +193,157 @@ def database_search_func(
 
 database_search: BaseTool = tool(database_search_func)
 database_search.name = "Database_Search"
+
+
+# ============== Graph Search Tool (Neo4j) ==============
+
+
+def _get_neo4j_driver():
+    """Get a Neo4j driver instance."""
+    from neo4j import GraphDatabase
+
+    return GraphDatabase.driver(
+        NEO4J_URI,
+        auth=(NEO4J_USERNAME, NEO4J_PASSWORD),
+    )
+
+
+def _graph_entity_search(query: str, collection_id: str, limit: int = 10) -> list[dict]:
+    """Search Neo4j for entities matching the query."""
+    driver = _get_neo4j_driver()
+    try:
+        with driver.session() as session:
+            result = session.run(
+                """
+                MATCH (n:Entity {collection_id: $cid})
+                WHERE toLower(n.name) CONTAINS toLower($q)
+                RETURN n.name AS name, n.label AS label
+                LIMIT $limit
+                """,
+                cid=collection_id,
+                q=query,
+                limit=limit,
+            )
+            return [dict(record) for record in result]
+    finally:
+        driver.close()
+
+
+def _graph_context_search(entity_names: list[str], collection_id: str, depth: int = 2) -> str:
+    """Get context (triples) around given entities from Neo4j."""
+    driver = _get_neo4j_driver()
+    lines: list[str] = []
+    try:
+        with driver.session() as session:
+            for name in entity_names:
+                result = session.run(
+                    f"""
+                    MATCH (n:Entity {{collection_id: $cid, name: $name}})
+                    OPTIONAL MATCH path = (n)-[*1..{depth}]-(m:Entity {{collection_id: $cid}})
+                    UNWIND relationships(path) AS r
+                    WITH DISTINCT startNode(r) AS s, type(r) AS rtype, endNode(r) AS t
+                    RETURN s.name AS src, rtype, t.name AS tgt
+                    LIMIT 50
+                    """,
+                    cid=collection_id,
+                    name=name,
+                )
+                for record in result:
+                    lines.append(f"{record['src']} --[{record['rtype']}]--> {record['tgt']}")
+    finally:
+        driver.close()
+
+    return "\n".join(lines) if lines else ""
+
+
+def _reciprocal_rank_fusion(
+    vector_results: list[str],
+    graph_results: list[str],
+    k: int = 60,
+    vector_weight: float = 0.5,
+    graph_weight: float = 0.5,
+) -> list[tuple[str, float]]:
+    """Combine results from two sources using RRF scoring."""
+    scores: dict[str, float] = {}
+    for rank, item in enumerate(vector_results):
+        scores[item] = scores.get(item, 0) + vector_weight / (k + rank + 1)
+    for rank, item in enumerate(graph_results):
+        scores[item] = scores.get(item, 0) + graph_weight / (k + rank + 1)
+    return sorted(scores.items(), key=lambda x: x[1], reverse=True)
+
+
+def graph_search_func(
+    query: str,
+    config: Annotated[RunnableConfig, InjectedToolArg],
+) -> str:
+    """Searches the knowledge graph for entities and their relationships.
+
+    Uses hybrid retrieval: combines vector similarity search with graph
+    traversal using Reciprocal Rank Fusion (RRF) scoring.
+
+    Args:
+        query (str): The search query to find information in the knowledge graph.
+    """
+    try:
+        configurable = config.get("configurable", {})
+        rag_config = configurable.get("rag_config", {})
+        collection_ids: List[str] = rag_config.get("collections", [])
+
+        if not collection_ids:
+            logger.warning("No collections configured for graph search.")
+            return "Error: No knowledge base collections are configured for this agent."
+
+        all_context_parts: list[str] = []
+
+        for collection_uuid in collection_ids:
+            try:
+                # --- 1. Vector Search (Cosine Similarity) ---
+                collection_name = get_collection_name_from_uuid(collection_uuid)
+                vector_store = load_vector_store(collection_name)
+                retriever = vector_store.as_retriever(search_kwargs={"k": 3})
+                vector_docs = retriever.invoke(query)
+                vector_texts = [doc.page_content for doc in vector_docs]
+
+                # --- 2. Graph Search (Entity + Context) ---
+                entities = _graph_entity_search(query, collection_uuid, limit=5)
+                entity_names = [e["name"] for e in entities]
+                graph_context = _graph_context_search(entity_names, collection_uuid)
+                graph_items = entity_names  # for RRF ranking
+
+                # --- 3. RRF Fusion ---
+                rrf_ranked = _reciprocal_rank_fusion(
+                    vector_texts, graph_items,
+                    vector_weight=0.5, graph_weight=0.5,
+                )
+
+                # --- 4. Build combined context ---
+                if vector_texts:
+                    all_context_parts.append("=== Vector Search Results ===")
+                    all_context_parts.extend(vector_texts[:3])
+
+                if graph_context:
+                    all_context_parts.append("\n=== Knowledge Graph Context ===")
+                    all_context_parts.append(graph_context)
+
+                if entities:
+                    all_context_parts.append("\n=== Discovered Entities ===")
+                    for e in entities[:5]:
+                        all_context_parts.append(f"- {e['name']} ({e.get('label', 'Entity')})")
+
+            except Exception as e:
+                logger.error(f"Error in graph search for collection {collection_uuid}: {e}")
+                continue
+
+        if not all_context_parts:
+            return "No relevant information found in the knowledge graph."
+
+        return "\n\n".join(all_context_parts)
+
+    except Exception as e:
+        logger.error(f"Error in graph search: {e}")
+        return f"Error searching knowledge graph: {str(e)}"
+
+
+graph_search: BaseTool = tool(graph_search_func)
+graph_search.name = "Graph_Search"
 

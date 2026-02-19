@@ -144,6 +144,11 @@ class Settings(BaseSettings):
     MONGO_PASSWORD: SecretStr | None = None
     MONGO_AUTH_SOURCE: str | None = None
 
+    # Neo4j
+    NEO4J_URI: str = "bolt://neo4j:7687"
+    NEO4J_USERNAME: str = "neo4j"
+    NEO4J_PASSWORD: str = "neo4j123"
+
     # Azure OpenAI Settings
     AZURE_OPENAI_API_KEY: SecretStr | None = None
     AZURE_OPENAI_ENDPOINT: str | None = None

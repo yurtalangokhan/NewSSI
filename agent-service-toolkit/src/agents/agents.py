@@ -8,6 +8,7 @@ from agents.chatbot import chatbot
 from agents.command_agent import command_agent
 from agents.configurable_mcp_agent import configurable_mcp_agent
 from agents.github_mcp_agent.github_mcp_agent import github_mcp_agent
+from agents.graph_rag_assistant import graph_rag_assistant
 from agents.interrupt_agent import interrupt_agent
 from agents.knowledge_base_agent import kb_agent
 from agents.langgraph_supervisor_agent import langgraph_supervisor_agent
@@ -41,6 +42,10 @@ agents: dict[str, Agent] = {
     "rag-assistant": Agent(
         description="A RAG assistant with access to information in a database.",
         graph_like=rag_assistant,
+    ),
+    "graph-rag-assistant": Agent(
+        description="A hybrid RAG assistant using vector search and Neo4j knowledge graph with RRF scoring.",
+        graph_like=graph_rag_assistant,
     ),
     "command-agent": Agent(description="A command agent.", graph_like=command_agent),
     "bg-task-agent": Agent(description="A background task agent.", graph_like=bg_task_agent),

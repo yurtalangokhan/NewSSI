@@ -153,13 +153,22 @@ async def get_assistant_schemas(assistant_id: str) -> Dict:
             "rag_config": {
                 "type": "object",
                 "title": "RAG Configuration",
-                "x_oap_ui_config": {"type": "rag"},
+                "x_oap_ui_config": {"type": "rag", "rag_only": True},
             },
             "llama_guard_enabled": {
                 "type": "boolean",
                 "title": "LlamaGuard Safety",
                 "default": True,
                 "x_oap_ui_config": {"type": "boolean"},
+            },
+        },
+        "graph-rag-assistant": {
+            "model": model_field,
+            "long_term_memory": long_term_memory_field,
+            "rag_config": {
+                "type": "object",
+                "title": "RAG Configuration",
+                "x_oap_ui_config": {"type": "rag", "graph_only": True},
             },
         },
         "command-agent": {

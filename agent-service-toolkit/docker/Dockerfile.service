@@ -33,7 +33,7 @@ RUN uv sync --frozen --no-install-project --no-dev
 # Using pip with --ignore-installed to bypass version conflicts
 RUN pip install --ignore-installed "airbyte>=0.17.0" 2>/dev/null || \
     pip install "airbyte>=0.17.0" --no-deps && \
-    pip install airbyte-cdk duckdb pyarrow requests
+    pip install airbyte-cdk duckdb pyarrow requests structlog
 
 COPY src/agents/ ./agents/
 COPY src/core/ ./core/

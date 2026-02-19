@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Wrench, Bot, MessageCircle, Brain } from "lucide-react";
 
-import { NavMain } from "./nav-main";
+import { NavMain, type NavItem } from "./nav-main";
 import { NavUser } from "./nav-user";
 import {
   Sidebar,
@@ -13,8 +13,7 @@ import {
 } from "@/components/ui/sidebar";
 import { SiteHeader } from "./sidebar-header";
 
-// This is sample data.
-const data = {
+const data: { navMain: NavItem[] } = {
   navMain: [
     {
       title: "Chat",
@@ -31,15 +30,16 @@ const data = {
       url: "/tools",
       icon: Wrench,
     },
-    // {
-    //   title: "Inbox",
-    //   url: "/inbox",
-    //   icon: Inbox,
-    // },
     {
       title: "RAG",
       url: "/rag",
       icon: Brain,
+      items: [
+        {
+          title: "Graph RAG",
+          url: "/rag/graph",
+        },
+      ],
     },
   ],
 };

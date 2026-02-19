@@ -15,6 +15,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { useConfigStore } from "@/features/chat/hooks/use-config-store";
 import { useRagContext } from "@/features/rag/providers/RAG";
+import { useAuthContext } from "@/providers/Auth";
 import { Check, ChevronsUpDown, AlertCircle, Plus, Trash2, GripVertical } from "lucide-react";
 import {
   Command,
@@ -420,17 +421,24 @@ export function ConfigFieldRAG({
   label,
   agentId,
   className,
+  graphOnly = false,
+  ragOnly = false,
   value: externalValue, // Rename to avoid conflict
   setValue: externalSetValue, // Rename to avoid conflict
 }: Pick<
   ConfigFieldProps,
   "id" | "label" | "agentId" | "className" | "value" | "setValue"
->) {
+> & { graphOnly?: boolean; ragOnly?: boolean }) {
   const { collections } = useRagContext();
+  const { session } = useAuthContext();
   const store = useConfigStore();
   const actualAgentId = `${agentId}:rag`;
   const [open, setOpen] = useState(false);
   const [dataSources, setDataSources] = useState<Array<{ id: string; name: string; type: string }>>([]);
+  const [graphCollectionIds, setGraphCollectionIds] = useState<Set<string>>(new Set());
+
+  // Whether we need to know which collections have graphs
+  const needsGraphIds = graphOnly;
 
   // Fetch data sources from agent API
   useEffect(() => {
@@ -452,6 +460,42 @@ export function ConfigFieldRAG({
     };
     fetchDataSources();
   }, []);
+
+  // Fetch graph collection IDs when we need to filter (graphOnly or ragOnly)
+  useEffect(() => {
+    if (!needsGraphIds) return;
+    const fetchGraphIds = async () => {
+      try {
+        const ragApiUrl = process.env.NEXT_PUBLIC_RAG_API_URL || "http://localhost:8083";
+        const headers: HeadersInit = {
+          "Content-Type": "application/json",
+        };
+        if (session?.accessToken) {
+          headers["Authorization"] = `Bearer ${session.accessToken}`;
+        }
+        const res = await fetch(`${ragApiUrl}/graph/collections`, { headers });
+        if (res.ok) {
+          const ids: string[] = await res.json();
+          setGraphCollectionIds(new Set(ids));
+        }
+      } catch (error) {
+        console.error("Failed to fetch graph collection IDs:", error);
+      }
+    };
+    fetchGraphIds();
+  }, [needsGraphIds, session?.accessToken]);
+
+  // Filter collections and data sources based on mode:
+  // - graphOnly: ONLY show collections WITH a knowledge graph
+  // - ragOnly: show ALL collections (a collection with a graph still has vector
+  //   embeddings and can be used for standard RAG)
+  // - neither: show all
+  const filteredCollections = graphOnly
+    ? collections.filter((c) => graphCollectionIds.has(c.uuid))
+    : collections;
+  const filteredDataSources = graphOnly
+    ? dataSources.filter((ds) => graphCollectionIds.has(ds.id))
+    : dataSources;
 
   const isExternallyManaged = externalSetValue !== undefined;
 
@@ -490,11 +534,11 @@ export function ConfigFieldRAG({
 
   const getCollectionNameFromId = (collectionId: string) => {
     // Check RAG collections first
-    const collection = collections.find((c) => c.uuid === collectionId);
+    const collection = filteredCollections.find((c) => c.uuid === collectionId);
     if (collection) return collection.name;
 
     // Then check data sources
-    const dataSource = dataSources.find((ds) => ds.id === collectionId);
+    const dataSource = filteredDataSources.find((ds) => ds.id === collectionId);
     if (dataSource) return `${dataSource.name} (${dataSource.type})`;
 
     return "Unknown Collection";
@@ -507,7 +551,7 @@ export function ConfigFieldRAG({
         htmlFor={id}
         className="text-sm font-medium"
       >
-        Selected Collections & Data Sources
+        {graphOnly ? "Graph Collections" : ragOnly ? "RAG Collections" : "Selected Collections & Data Sources"}
       </Label>
       <Popover
         open={open}
@@ -524,7 +568,11 @@ export function ConfigFieldRAG({
               ? selectedCollections.length > 1
                 ? `${selectedCollections.length} selected`
                 : getCollectionNameFromId(selectedCollections[0])
-              : "Select collections or data sources"}
+              : graphOnly
+                ? "Select graph collections"
+                : ragOnly
+                  ? "Select RAG collections"
+                  : "Select collections or data sources"}
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
@@ -536,9 +584,9 @@ export function ConfigFieldRAG({
             <CommandInput placeholder="Search..." />
             <CommandList>
               <CommandEmpty>No items found.</CommandEmpty>
-              {collections.length > 0 && (
+              {filteredCollections.length > 0 && (
                 <CommandGroup heading="RAG Collections">
-                  {collections.map((collection) => (
+                  {filteredCollections.map((collection) => (
                     <CommandItem
                       key={collection.uuid}
                       value={collection.uuid}
@@ -560,9 +608,9 @@ export function ConfigFieldRAG({
                   ))}
                 </CommandGroup>
               )}
-              {dataSources.length > 0 && (
+              {filteredDataSources.length > 0 && (
                 <CommandGroup heading="Data Sources">
-                  {dataSources.map((ds) => (
+                  {filteredDataSources.map((ds) => (
                     <CommandItem
                       key={ds.id}
                       value={ds.id}

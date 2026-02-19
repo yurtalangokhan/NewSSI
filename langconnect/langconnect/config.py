@@ -56,6 +56,11 @@ POSTGRES_DB = env("POSTGRES_DB", cast=str, default="langchain_test")
 # Read allowed origins from environment variable
 ALLOW_ORIGINS_JSON = env("ALLOW_ORIGINS", cast=str, default="")
 
+# Neo4j configuration
+NEO4J_URI = env("NEO4J_URI", cast=str, default="bolt://localhost:7687")
+NEO4J_USERNAME = env("NEO4J_USERNAME", cast=str, default="neo4j")
+NEO4J_PASSWORD = env("NEO4J_PASSWORD", cast=str, default="neo4j123")
+
 if ALLOW_ORIGINS_JSON:
     ALLOWED_ORIGINS = json.loads(ALLOW_ORIGINS_JSON.strip())
     print(f"ALLOW_ORIGINS environment variable set to: {ALLOW_ORIGINS_JSON}")

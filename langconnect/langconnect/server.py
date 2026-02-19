@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from langconnect.api import collections_router, documents_router
+from langconnect.api import collections_router, documents_router, graph_router
 from langconnect.config import ALLOWED_ORIGINS
 from langconnect.database.collections import CollectionsManager
 
@@ -26,7 +26,25 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Lifespan context manager for FastAPI application."""
     logger.info("App is starting up. Creating background worker...")
     await CollectionsManager.setup()
+
+    # Initialize Neo4j connection (best-effort – graph features degrade gracefully)
+    try:
+        from langconnect.database.graph_connection import get_neo4j_driver
+
+        await get_neo4j_driver()
+        logger.info("Neo4j connection established.")
+    except Exception:
+        logger.warning("Neo4j is not available – graph features will be disabled.")
+
     yield
+
+    # Shutdown
+    try:
+        from langconnect.database.graph_connection import close_neo4j_driver
+
+        await close_neo4j_driver()
+    except Exception:
+        pass
     logger.info("App is shutting down. Stopping background worker...")
 
 
@@ -49,6 +67,7 @@ APP.add_middleware(
 # Include API routers
 APP.include_router(collections_router)
 APP.include_router(documents_router)
+APP.include_router(graph_router)
 
 
 @APP.get("/health")

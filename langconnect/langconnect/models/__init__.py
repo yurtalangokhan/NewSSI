@@ -10,6 +10,22 @@ from langconnect.models.document import (
     SearchQuery,
     SearchResult,
 )
+from langconnect.models.graph import (
+    BuildProgress,
+    BuildStatus,
+    CypherQueryRequest,
+    ExtractedEntity,
+    ExtractedRelation,
+    ExtractionResult,
+    GraphBuildRequest,
+    GraphBuildResponse,
+    GraphData,
+    GraphEdge,
+    GraphNode,
+    GraphSearchQuery,
+    GraphSearchResult,
+    GraphStats,
+)
 
 __all__ = [
     "CollectionCreate",
@@ -20,4 +36,18 @@ __all__ = [
     "DocumentUpdate",
     "SearchQuery",
     "SearchResult",
+    "BuildProgress",
+    "BuildStatus",
+    "CypherQueryRequest",
+    "ExtractedEntity",
+    "ExtractedRelation",
+    "ExtractionResult",
+    "GraphBuildRequest",
+    "GraphBuildResponse",
+    "GraphData",
+    "GraphEdge",
+    "GraphNode",
+    "GraphSearchQuery",
+    "GraphSearchResult",
+    "GraphStats",
 ]

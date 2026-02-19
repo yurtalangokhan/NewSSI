@@ -28,6 +28,8 @@ dependencies = [
     "lxml>=5.4.0",
     "unstructured>=0.17.2",
     "supabase>=2.15.1",
+    "neo4j>=5.0",
+    "langchain-experimental>=0.3.0",
 ]
 
 [project.packages]

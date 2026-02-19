@@ -6,7 +6,8 @@
     "graphs": {
         "chatbot": "./src/agents/chatbot.py:chatbot",
         "research-assistant": "./src/agents/research_assistant.py:research_assistant",
-        "rag-assistant": "./src/agents/rag_assistant.py:rag_assistant"
+        "rag-assistant": "./src/agents/rag_assistant.py:rag_assistant",
+        "graph-rag-assistant": "./src/agents/graph_rag_assistant.py:graph_rag_assistant"
     },
     "env": "./.env"
 }

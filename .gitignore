@@ -5,3 +5,4 @@ __pycache__
 .next
 .turbo
 node_modules
+uv-lock-out

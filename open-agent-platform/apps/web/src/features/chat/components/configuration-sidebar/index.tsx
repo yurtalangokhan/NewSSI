@@ -453,6 +453,8 @@ export const ConfigurationSidebar = forwardRef<
                         id={ragConfigurations[0].label}
                         label={ragConfigurations[0].label}
                         agentId={agentId}
+                        graphOnly={ragConfigurations[0].graph_only}
+                        ragOnly={ragConfigurations[0].rag_only}
                       />
                     )}
                   </ConfigSection>

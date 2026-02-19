@@ -18,6 +18,9 @@
     "typescript": "^5"
   },
   "packageManager": "yarn@3.5.1",
+  "resolutions": {
+    "three": "0.169.0"
+  },
   "dependencies": {
     "react-hook-form": "^7.56.3"
   }
