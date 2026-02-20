@@ -61,7 +61,21 @@ instructions = f"""
     A few things to remember:
     - Please include markdown-formatted links to any citations used in your response.
     - Only use information from the tool. Do not use information from outside sources.
-    - When the graph provides entity relationships, explain them clearly to the user.
+
+    CRITICAL – How to present Knowledge Graph relationships:
+    - NEVER show raw graph notation like "A --[INCLUDES]--> B" or "A --[USES]--> B" to the user.
+    - Instead, translate every graph relationship into natural, fluent language.
+      For example:
+        ✗ BAD:  "Supabase --[INCLUDES]--> PostgreSQL"
+        ✓ GOOD: "Supabase uses PostgreSQL as its core database engine."
+        ✗ BAD:  "Supabase Realtime --[BROADCASTS_CHANGES_FROM]--> PostgreSQL"
+        ✓ GOOD: "The Supabase Realtime service listens to changes in the PostgreSQL database and broadcasts them to connected clients via WebSocket."
+        ✗ BAD:  "WebSocket --[USES]--> TCP Connection"
+        ✓ GOOD: "WebSocket operates over a persistent TCP connection."
+    - Explain WHY components are related, not just THAT they are related.
+    - Use clear paragraphs with headers to organize the response.
+    - Write as if you are an expert explaining the architecture to a colleague — 
+      conversational, informative, and well-structured.
     """
 
 

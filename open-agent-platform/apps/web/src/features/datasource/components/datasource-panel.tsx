@@ -4,7 +4,9 @@ import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CreateDataSourceDialog } from "./create-datasource-dialog";
+import { ScheduleDialog, ScheduleBadge } from "./schedule-dialog";
 import { useDataSources } from "@/hooks/use-datasources";
+import type { SyncSchedule } from "@/hooks/use-datasources";
 import {
     RefreshCw,
     Database,
@@ -16,7 +18,9 @@ import {
     AlertCircle,
     Sparkles,
     ChevronLeft,
-    ChevronRight
+    ChevronRight,
+    Timer,
+    GitGraph,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -55,10 +59,11 @@ export function DataSourcePanel() {
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
     const [syncingIds, setSyncingIds] = useState<Set<string>>(new Set());
-    const [syncProgress, setSyncProgress] = useState<Record<string, { status: string; progress: number }>>({});
+    const [syncProgress, setSyncProgress] = useState<Record<string, { status: string; progress: number; graph_update_status?: string; queue_position?: number }>>({});
     const [details, setDetails] = useState<any>(null);
     const [detailsLoading, setDetailsLoading] = useState(false);
     const [docPage, setDocPage] = useState(1);
+    const [selectedSchedule, setSelectedSchedule] = useState<SyncSchedule | null>(null);
     const pageSize = 10;
 
     // Load details when selection or page changes
@@ -66,10 +71,14 @@ export function DataSourcePanel() {
         if (selectedId) {
             setDetailsLoading(true);
             getDataSourceDetails(selectedId, docPage, pageSize)
-                .then(setDetails)
+                .then((detailsData) => {
+                    setDetails(detailsData);
+                    setSelectedSchedule(detailsData?.schedule || null);
+                })
                 .finally(() => setDetailsLoading(false));
         } else {
             setDetails(null);
+            setSelectedSchedule(null);
             setDocPage(1);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -81,10 +90,19 @@ export function DataSourcePanel() {
         if (status) {
             setSyncProgress(prev => ({
                 ...prev,
-                [id]: { status: status.sync_status, progress: status.sync_progress }
+                [id]: {
+                    status: status.sync_status,
+                    progress: status.sync_progress,
+                    graph_update_status: status.graph_update_status,
+                    queue_position: status.queue_position,
+                }
             }));
 
             if (status.sync_status === "completed" || status.sync_status === "error") {
+                // Keep polling briefly if graph is rebuilding
+                if (status.graph_update_status === "graph_rebuilding") {
+                    return;
+                }
                 setSyncingIds(prev => {
                     const next = new Set(prev);
                     next.delete(id);
@@ -114,6 +132,7 @@ export function DataSourcePanel() {
             await deleteDataSource(deleteConfirmId);
             if (selectedId === deleteConfirmId) {
                 setSelectedId(null);
+                setSelectedSchedule(null);
             }
             setDeleteConfirmId(null);
         }
@@ -189,6 +208,7 @@ export function DataSourcePanel() {
                                                                     ? `Synced: ${new Date(ds.last_synced_at).toLocaleDateString()}`
                                                                     : "Never synced"}
                                                             </span>
+                                                            <ScheduleBadge schedule={ds.schedule_summary} />
                                                         </div>
                                                     </div>
                                                     <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
@@ -223,7 +243,11 @@ export function DataSourcePanel() {
                                                     <div className="mt-2 space-y-1">
                                                         <div className="flex items-center justify-between text-xs">
                                                             <span className="capitalize text-muted-foreground">
-                                                                {progress.status}...
+                                                                {progress.graph_update_status === "graph_rebuilding"
+                                                                    ? "Rebuilding Graph RAG..."
+                                                                    : progress.queue_position != null && progress.queue_position > 0
+                                                                        ? `Queued (position ${progress.queue_position + 1})`
+                                                                        : `${progress.status}...`}
                                                             </span>
                                                             <span className="text-muted-foreground">
                                                                 {progress.progress}%
@@ -263,8 +287,9 @@ export function DataSourcePanel() {
                                 </CardHeader>
                                 <CardContent>
                                     <Tabs defaultValue="documents" className="w-full">
-                                        <TabsList className="grid w-full grid-cols-3">
+                                        <TabsList className="grid w-full grid-cols-4">
                                             <TabsTrigger value="documents">Documents ({details.document_count})</TabsTrigger>
+                                            <TabsTrigger value="schedule">Schedule</TabsTrigger>
                                             <TabsTrigger value="config">Configuration</TabsTrigger>
                                             <TabsTrigger value="status">Status</TabsTrigger>
                                         </TabsList>
@@ -367,6 +392,111 @@ export function DataSourcePanel() {
                                                             <ChevronRight className="h-4 w-4" />
                                                         </Button>
                                                     </div>
+                                                </div>
+                                            )}
+                                        </TabsContent>
+
+                                        {/* Schedule Tab */}
+                                        <TabsContent value="schedule" className="space-y-4 mt-4">
+                                            {selectedSchedule ? (
+                                                <div className="space-y-4">
+                                                    {/* Schedule Summary */}
+                                                    <div className="grid gap-3">
+                                                        <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                                                            <span className="text-sm font-medium flex items-center gap-2">
+                                                                <Timer className="h-4 w-4" />
+                                                                Status
+                                                            </span>
+                                                            <Badge variant={selectedSchedule.enabled ? "default" : "secondary"}>
+                                                                {selectedSchedule.enabled ? "Active" : "Paused"}
+                                                            </Badge>
+                                                        </div>
+                                                        <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                                                            <span className="text-sm font-medium">Frequency</span>
+                                                            <code className="text-xs bg-background px-2 py-1 rounded">
+                                                                {selectedSchedule.cron_expression}
+                                                            </code>
+                                                        </div>
+                                                        <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                                                            <span className="text-sm font-medium">Timezone</span>
+                                                            <span className="text-sm">{selectedSchedule.timezone}</span>
+                                                        </div>
+                                                        <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                                                            <span className="text-sm font-medium">Next Run</span>
+                                                            <span className="text-sm">
+                                                                {selectedSchedule.next_run_at
+                                                                    ? new Date(selectedSchedule.next_run_at).toLocaleString()
+                                                                    : "—"}
+                                                            </span>
+                                                        </div>
+                                                        <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                                                            <span className="text-sm font-medium">Last Run</span>
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-sm">
+                                                                    {selectedSchedule.last_run_at
+                                                                        ? new Date(selectedSchedule.last_run_at).toLocaleString()
+                                                                        : "Never"}
+                                                                </span>
+                                                                {selectedSchedule.last_run_status && (
+                                                                    <Badge variant={
+                                                                        selectedSchedule.last_run_status === "completed" ? "default" :
+                                                                            selectedSchedule.last_run_status === "error" ? "destructive" :
+                                                                                "secondary"
+                                                                    } className="text-xs">
+                                                                        {selectedSchedule.last_run_status}
+                                                                    </Badge>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                                                            <span className="text-sm font-medium flex items-center gap-2">
+                                                                <GitGraph className="h-4 w-4" />
+                                                                Graph RAG Update
+                                                            </span>
+                                                            <Badge variant={selectedSchedule.update_graph_rag ? "default" : "secondary"}>
+                                                                {selectedSchedule.update_graph_rag ? "Enabled" : "Disabled"}
+                                                            </Badge>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Edit / Delete buttons */}
+                                                    <div className="flex gap-2">
+                                                        <ScheduleDialog
+                                                            datasourceId={details.id}
+                                                            datasourceName={details.name}
+                                                            existingSchedule={selectedSchedule}
+                                                            graphRagAvailable={details.graph_rag_available}
+                                                            onScheduleChange={() => {
+                                                                getDataSourceDetails(details.id, docPage, pageSize).then((d) => {
+                                                                    if (d) {
+                                                                        setDetails(d);
+                                                                        setSelectedSchedule(d.schedule || null);
+                                                                    }
+                                                                });
+                                                                refresh();
+                                                            }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                                                    <Timer className="h-8 w-8 mb-2 opacity-50" />
+                                                    <p className="text-sm mb-1">No sync schedule configured</p>
+                                                    <p className="text-xs mb-4">Set up automatic periodic syncing</p>
+                                                    <ScheduleDialog
+                                                        datasourceId={details.id}
+                                                        datasourceName={details.name}
+                                                        graphRagAvailable={details.graph_rag_available}
+                                                        onScheduleChange={() => {
+                                                            getDataSourceDetails(details.id, docPage, pageSize).then((d) => {
+                                                                if (d) {
+                                                                    setDetails(d);
+                                                                    setSelectedSchedule(d.schedule || null);
+                                                                }
+                                                            });
+                                                            refresh();
+                                                        }}
+                                                    />
                                                 </div>
                                             )}
                                         </TabsContent>

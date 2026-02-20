@@ -917,10 +917,10 @@ async def stream_run(
 
                     serialized_chunk = _message_to_dict(chunk)
                     last_chunk_dict = serialized_chunk
-                    print(
-                        f"[DEBUG] event_generator: Sending message chunk: "
-                        f"type={serialized_chunk.get('type')}, id={serialized_chunk.get('id')}"
-                    )
+                    # print(
+                    #     f"[DEBUG] event_generator: Sending message chunk: "
+                    #     f"type={serialized_chunk.get('type')}, id={serialized_chunk.get('id')}"
+                    # )
 
                     # Accumulate AI content across chunks (same id = same message)
                     chunk_id = serialized_chunk.get("id")

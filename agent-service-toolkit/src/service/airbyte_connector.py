@@ -668,10 +668,28 @@ def extract_documents(
                         content_parts.append(f"{field}: {record_dict[field]}")
                 content = "\n".join(content_parts)
             else:
-                content = "\n".join(
-                    f"{k}: {v}" for k, v in record_dict.items() 
-                    if v is not None and not k.startswith("_")
-                )
+                # Prioritize semantic fields (title, content, description, text, name, summary)
+                # and exclude metadata-only fields that add noise to embeddings
+                PRIORITY_FIELDS = ["title", "name", "subject", "heading"]
+                CONTENT_FIELDS = ["content", "text", "body", "description", "summary", "abstract", "message"]
+                EXCLUDE_FIELDS = {"_id", "created_at", "updated_at", "source", "tags", "category", "id", "uuid", "_ab_cdc_cursor"}
+                
+                content_parts = []
+                # First: add priority fields (title etc.)
+                for field in PRIORITY_FIELDS:
+                    if field in record_dict and record_dict[field]:
+                        content_parts.append(f"{field}: {record_dict[field]}")
+                # Second: add content fields
+                for field in CONTENT_FIELDS:
+                    if field in record_dict and record_dict[field]:
+                        content_parts.append(f"{record_dict[field]}")
+                # Third: if no priority/content fields found, fall back to all fields
+                if not content_parts:
+                    content_parts = [
+                        f"{k}: {v}" for k, v in record_dict.items()
+                        if v is not None and not k.startswith("_") and k.lower() not in EXCLUDE_FIELDS
+                    ]
+                content = "\n".join(content_parts)
             
             if not content.strip():
                 continue

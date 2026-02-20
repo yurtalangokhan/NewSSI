@@ -40,6 +40,14 @@ export interface DataSource {
     document_count: number;
     created_at?: string;
     last_synced_at?: string;
+    schedule_summary?: {
+        cron_expression: string;
+        preset: string;
+        enabled: boolean;
+        update_graph_rag: boolean;
+        next_run_at?: string;
+        last_run_status?: string;
+    } | null;
 }
 
 export interface DataSourceDetails extends DataSource {
@@ -47,6 +55,56 @@ export interface DataSourceDetails extends DataSource {
     available_streams?: string[];
     sample_documents: Array<{ content: string; metadata: Record<string, any> }>;
     last_error?: string;
+    schedule?: SyncSchedule | null;
+    graph_rag_available: boolean;
+}
+
+export interface SyncSchedule {
+    id: string;
+    datasource_id: string;
+    cron_expression: string;
+    preset: string;
+    enabled: boolean;
+    update_graph_rag: boolean;
+    timezone: string;
+    next_run_at?: string;
+    last_run_at?: string;
+    last_run_status?: string;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface SyncScheduleInput {
+    cron_expression: string;
+    preset: string;
+    enabled: boolean;
+    update_graph_rag: boolean;
+    timezone: string;
+}
+
+export interface SyncScheduleListItem {
+    id: string;
+    datasource_id: string;
+    datasource_name?: string;
+    cron_expression: string;
+    preset: string;
+    enabled: boolean;
+    update_graph_rag: boolean;
+    next_run_at?: string;
+    last_run_status?: string;
+}
+
+export interface ScheduleRunStatus {
+    datasource_id: string;
+    sync_status: string;
+    sync_progress: number;
+    queue_position?: number;
+    scheduled: boolean;
+    next_run_at?: string;
+    last_run_at?: string;
+    last_run_status?: string;
+    update_graph_rag: boolean;
+    graph_update_status?: string;
 }
 
 export interface ConnectorCategory {
@@ -297,5 +355,215 @@ export function useDataSources() {
         getDataSourceDetails,
         getSyncStatus,
         refresh: fetchDataSources,
+    };
+}
+
+// ============================================================================
+// Schedule API (standalone functions – no auto-fetch)
+// ============================================================================
+
+export const scheduleApi = {
+    async create(
+        datasourceId: string,
+        input: SyncScheduleInput,
+    ): Promise<SyncSchedule | null> {
+        try {
+            const res = await fetch(
+                `${getApiUrl()}/datasources/${datasourceId}/schedule`,
+                {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(input),
+                },
+            );
+            if (res.status === 409) {
+                toast.error("Schedule already exists. Use edit to modify.");
+                return null;
+            }
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.detail || "Failed to create schedule");
+            }
+            const schedule = await res.json();
+            toast.success("Sync schedule created");
+            return schedule;
+        } catch (error: any) {
+            console.error(error);
+            toast.error(error.message || "Failed to create schedule");
+            return null;
+        }
+    },
+
+    async update(
+        datasourceId: string,
+        input: Partial<SyncScheduleInput>,
+    ): Promise<SyncSchedule | null> {
+        try {
+            const res = await fetch(
+                `${getApiUrl()}/datasources/${datasourceId}/schedule`,
+                {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(input),
+                },
+            );
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.detail || "Failed to update schedule");
+            }
+            const schedule = await res.json();
+            toast.success("Schedule updated");
+            return schedule;
+        } catch (error: any) {
+            console.error(error);
+            toast.error(error.message || "Failed to update schedule");
+            return null;
+        }
+    },
+
+    async remove(datasourceId: string): Promise<boolean> {
+        try {
+            const res = await fetch(
+                `${getApiUrl()}/datasources/${datasourceId}/schedule`,
+                { method: "DELETE" },
+            );
+            if (!res.ok) throw new Error("Failed to delete schedule");
+            toast.success("Schedule removed");
+            return true;
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to delete schedule");
+            return false;
+        }
+    },
+};
+
+// ============================================================================
+// Schedule Hooks (legacy – auto-fetches /schedules list)
+// ============================================================================
+
+export function useSyncSchedules() {
+    const [schedules, setSchedules] = useState<SyncScheduleListItem[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    const fetchSchedules = useCallback(async () => {
+        try {
+            const res = await fetch(`${getApiUrl()}/datasources/schedules`);
+            if (!res.ok) throw new Error("Failed to fetch schedules");
+            const data = await res.json();
+            setSchedules(data);
+        } catch (error) {
+            console.error(error);
+            setSchedules([]);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchSchedules();
+    }, [fetchSchedules]);
+
+    const createSchedule = async (
+        datasourceId: string,
+        input: SyncScheduleInput
+    ): Promise<SyncSchedule | null> => {
+        try {
+            const res = await fetch(`${getApiUrl()}/datasources/${datasourceId}/schedule`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(input),
+            });
+            if (res.status === 409) {
+                toast.error("Schedule already exists. Use edit to modify.");
+                return null;
+            }
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.detail || "Failed to create schedule");
+            }
+            const schedule = await res.json();
+            toast.success("Sync schedule created");
+            await fetchSchedules();
+            return schedule;
+        } catch (error: any) {
+            console.error(error);
+            toast.error(error.message || "Failed to create schedule");
+            return null;
+        }
+    };
+
+    const getSchedule = async (datasourceId: string): Promise<SyncSchedule | null> => {
+        try {
+            const res = await fetch(`${getApiUrl()}/datasources/${datasourceId}/schedule`);
+            if (res.status === 404) return null;
+            if (!res.ok) throw new Error("Failed to fetch schedule");
+            return await res.json();
+        } catch (error) {
+            console.error(error);
+            return null;
+        }
+    };
+
+    const updateSchedule = async (
+        datasourceId: string,
+        input: Partial<SyncScheduleInput>
+    ): Promise<SyncSchedule | null> => {
+        try {
+            const res = await fetch(`${getApiUrl()}/datasources/${datasourceId}/schedule`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(input),
+            });
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.detail || "Failed to update schedule");
+            }
+            const schedule = await res.json();
+            toast.success("Schedule updated");
+            await fetchSchedules();
+            return schedule;
+        } catch (error: any) {
+            console.error(error);
+            toast.error(error.message || "Failed to update schedule");
+            return null;
+        }
+    };
+
+    const deleteSchedule = async (datasourceId: string): Promise<boolean> => {
+        try {
+            const res = await fetch(`${getApiUrl()}/datasources/${datasourceId}/schedule`, {
+                method: "DELETE",
+            });
+            if (!res.ok) throw new Error("Failed to delete schedule");
+            toast.success("Schedule removed");
+            await fetchSchedules();
+            return true;
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to delete schedule");
+            return false;
+        }
+    };
+
+    const getScheduleStatus = async (datasourceId: string): Promise<ScheduleRunStatus | null> => {
+        try {
+            const res = await fetch(`${getApiUrl()}/datasources/${datasourceId}/schedule/status`);
+            if (!res.ok) return null;
+            return await res.json();
+        } catch {
+            return null;
+        }
+    };
+
+    return {
+        schedules,
+        loading,
+        createSchedule,
+        getSchedule,
+        updateSchedule,
+        deleteSchedule,
+        getScheduleStatus,
+        refresh: fetchSchedules,
     };
 }

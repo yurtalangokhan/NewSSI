@@ -4,15 +4,174 @@ import re
 import numexpr
 from langchain_chroma import Chroma
 from langchain_core.tools import BaseTool, tool, InjectedToolArg
-from langchain_openai import OpenAIEmbeddings
-from langchain_community.embeddings import OllamaEmbeddings
+from langchain_openai import OpenAIEmbeddings, ChatOpenAI
+from langchain_ollama import ChatOllama
+from langchain_ollama import OllamaEmbeddings
+from langchain_core.prompts import ChatPromptTemplate
 from core import settings
 from langchain_postgres import PGVector
 from langchain_core.runnables import RunnableConfig
+from pydantic import BaseModel, Field
 from typing import Annotated, List, Optional
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+# ============== LLM Entity Extraction (NER) ==============
+
+class ExtractedEntities(BaseModel):
+    """Entities extracted from user query for knowledge graph search."""
+
+    names: List[str] = Field(
+        default_factory=list,
+        description=(
+            "All named entities (persons, organizations, technologies, products, "
+            "concepts, locations, etc.) that appear in the text. "
+            "Return each entity as a short canonical name (e.g. 'Supabase', "
+            "'PostgreSQL', 'OAuth 2.0').  Do NOT return generic words."
+        ),
+    )
+
+
+_ENTITY_EXTRACTION_PROMPT = ChatPromptTemplate.from_messages(
+    [
+        (
+            "system",
+            "You are an expert Named Entity Recognition (NER) system. "
+            "Extract all meaningful named entities from the user's question. "
+            "Focus on: technology names, product names, people, organizations, "
+            "protocols, frameworks, services, and domain-specific concepts. "
+            "Return canonical short names only. Do NOT include generic words "
+            "like 'infrastructure', 'system', 'information', 'altyapı', etc.\n\n"
+            "You MUST respond with ONLY a JSON object in this exact format:\n"
+            '{{"names": ["Entity1", "Entity2"]}}\n\n'
+            "Example:\n"
+            'Input: "Supabase altyapısı hakkında bilgi ver"\n'
+            'Output: {{"names": ["Supabase"]}}\n\n'
+            'Input: "OAuth ve JWT kimlik doğrulama nasıl çalışır?"\n'
+            'Output: {{"names": ["OAuth", "JWT"]}}\n\n'
+            'Input: "PostgreSQL ile Neo4j arasındaki fark nedir?"\n'
+            'Output: {{"names": ["PostgreSQL", "Neo4j"]}}\n\n'
+            "Respond with ONLY the JSON, no explanation.",
+        ),
+        ("human", "{question}"),
+    ]
+)
+
+
+def _parse_entity_response(text: str) -> List[str]:
+    """Parse LLM response to extract entity names.
+
+    Handles both structured JSON output and plain text responses.
+    """
+    import json
+
+    text = text.strip()
+
+    # Try parsing as JSON first
+    try:
+        data = json.loads(text)
+        if isinstance(data, dict) and "names" in data:
+            return [n for n in data["names"] if isinstance(n, str) and len(n) >= 2]
+    except json.JSONDecodeError:
+        pass
+
+    # Try extracting JSON from within the text (LLM may add surrounding text)
+    json_match = re.search(r'\{[^}]*"names"\s*:\s*\[([^\]]*)\][^}]*\}', text)
+    if json_match:
+        try:
+            data = json.loads(json_match.group(0))
+            if isinstance(data, dict) and "names" in data:
+                return [n for n in data["names"] if isinstance(n, str) and len(n) >= 2]
+        except json.JSONDecodeError:
+            pass
+
+    # Last resort: extract quoted strings
+    quoted = re.findall(r'"([^"]{2,})"', text)
+    if quoted:
+        return quoted
+
+    return []
+
+
+def _get_entity_extraction_llm():
+    """Get a lightweight LLM for entity extraction.
+
+    Uses Ollama llama3.1:8b (local, fast, free) for NER entity extraction.
+    Falls back to GPT-4o-mini if Ollama is not available.
+    """
+    ollama_base_url = settings.OLLAMA_BASE_URL or "http://host.docker.internal:11434"
+    try:
+        return ChatOllama(
+            model="llama3.1:8b",
+            temperature=0,
+            base_url=ollama_base_url,
+        )
+    except Exception as e:
+        logger.warning("Ollama ChatOllama init failed (%s), trying OpenAI fallback", e)
+        if settings.OPENAI_API_KEY:
+            return ChatOpenAI(
+                model="gpt-4o-mini",
+                temperature=0,
+                api_key=settings.OPENAI_API_KEY.get_secret_value(),
+            )
+        raise RuntimeError("No LLM available for entity extraction") from e
+
+
+def _extract_entities(question: str) -> List[str]:
+    """Use LLM to extract named entities from a user question.
+
+    This is the industry-standard approach (Tomaz Bratanic / LangChain+Neo4j):
+    instead of doing naive string matching on the raw query, we first ask an
+    LLM to identify the meaningful entities, then search those in the graph.
+
+    Uses Ollama llama3.1:8b with robust JSON parsing (no structured output
+    dependency) so it works reliably with local models.
+
+    Example:
+        "Supabase altyapısı hakkında bilgi ver" → ["Supabase"]
+        "OAuth ve JWT kimlik doğrulama nasıl çalışır?" → ["OAuth", "JWT"]
+    """
+    try:
+        llm = _get_entity_extraction_llm()
+        chain = _ENTITY_EXTRACTION_PROMPT | llm
+        result = chain.invoke({"question": question})
+        # Extract text content from AIMessage
+        text = result.content if hasattr(result, "content") else str(result)
+        entities = _parse_entity_response(text)
+        logger.info("NER extracted entities from '%s': %s", question, entities)
+        print(f"[GRAPH_SEARCH] NER entities: {entities} (raw: {text[:200]})")
+        return entities
+    except Exception as e:
+        logger.warning("LLM entity extraction failed, falling back to token split: %s", e)
+        print(f"[GRAPH_SEARCH] NER failed ({e}), falling back to token split")
+        # Fallback: simple token splitting (previous approach)
+        return [t for t in question.split() if len(t) >= 3]
+
+
+def _remove_lucene_special_chars(text: str) -> str:
+    """Remove Lucene special characters from a search string."""
+    special_chars = r'[+\-!(){}\[\]^"~*?:\\/]'
+    return re.sub(special_chars, " ", text)
+
+
+def _generate_fulltext_query(entity: str) -> str:
+    """Generate a Neo4j full-text search query with fuzzy matching.
+
+    Appends ~2 (2 character edit distance) to each word for typo tolerance.
+    Words are combined with AND.
+
+    Example:
+        'Supabase' → 'Supabase~2'
+        'Edge Functions' → 'Edge~2 AND Functions~2'
+    """
+    cleaned = _remove_lucene_special_chars(entity)
+    words = [w for w in cleaned.split() if w]
+    if not words:
+        return ""
+    parts = [f"{w}~2" for w in words]
+    return " AND ".join(parts)
 
 
 # ============== Neo4j Configuration ==============
@@ -123,14 +282,13 @@ def get_collection_name_from_uuid(collection_uuid: str) -> str:
                 )
                 row = cur.fetchone()
                 if row:
-                    logger.info(f"Resolved collection UUID {collection_uuid} to name {row[0]}")
+                    print(f"[DB_SEARCH] Resolved collection UUID {collection_uuid} -> name='{row[0]}'")
                     return row[0]
                 else:
-                    # Maybe the collection_uuid is already the name
-                    logger.warning(f"Collection UUID {collection_uuid} not found, using as-is")
+                    print(f"[DB_SEARCH] WARNING: Collection UUID {collection_uuid} not found in DB, using as-is")
                     return collection_uuid
     except Exception as e:
-        logger.error(f"Error resolving collection UUID {collection_uuid}: {e}")
+        print(f"[DB_SEARCH] ERROR resolving collection UUID {collection_uuid}: {e}")
         return collection_uuid
 
 def load_vector_store(collection_name: str):
@@ -160,8 +318,10 @@ def database_search_func(
         rag_config = configurable.get("rag_config", {})
         collection_ids: List[str] = rag_config.get("collections", [])
         
+        print(f"[DB_SEARCH] Called with query='{query}', collection_ids={collection_ids}")
+        
         if not collection_ids:
-            logger.warning("No collections configured for this agent. Check rag_config.collections in agent config.")
+            print("[DB_SEARCH] WARNING: No collections configured!")
             return "Error: No knowledge base collections are configured for this agent."
         
         # Search across all configured collections
@@ -170,21 +330,29 @@ def database_search_func(
             try:
                 # Convert UUID to PGVector collection name
                 collection_name = get_collection_name_from_uuid(collection_uuid)
-                logger.info(f"Searching collection: {collection_uuid} -> {collection_name}")
+                print(f"[DB_SEARCH] Searching collection: {collection_uuid} -> '{collection_name}'")
                 vector_store = load_vector_store(collection_name)
-                retriever = vector_store.as_retriever(search_kwargs={"k": 3})
+                retriever = vector_store.as_retriever(search_kwargs={"k": 5})
                 documents = retriever.invoke(query)
                 all_documents.extend(documents)
-                logger.info(f"Found {len(documents)} documents in collection {collection_name}")
+                print(f"[DB_SEARCH] Found {len(documents)} documents in collection '{collection_name}'")
+                for i, doc in enumerate(documents):
+                    title = doc.metadata.get("title", "no-title")
+                    print(f"[DB_SEARCH]   doc[{i}]: title='{title}' | {doc.page_content[:200]}...")
             except Exception as e:
-                logger.error(f"Error searching collection {collection_uuid}: {e}")
+                print(f"[DB_SEARCH] ERROR searching collection {collection_uuid}: {e}")
+                import traceback
+                traceback.print_exc()
                 continue
         
         if not all_documents:
+            print("[DB_SEARCH] No documents found across all collections!")
             return "No relevant information found in the knowledge base."
         
         # Sort by relevance if needed and limit results
-        return format_contexts(all_documents[:5])
+        result = format_contexts(all_documents[:5])
+        print(f"[DB_SEARCH] Returning {len(all_documents[:5])} documents, total chars={len(result)}")
+        return result
         
     except Exception as e:
         logger.error(f"Error in database search: {e}")
@@ -208,23 +376,109 @@ def _get_neo4j_driver():
     )
 
 
-def _graph_entity_search(query: str, collection_id: str, limit: int = 10) -> list[dict]:
-    """Search Neo4j for entities matching the query."""
-    driver = _get_neo4j_driver()
+def _ensure_fulltext_index(driver) -> None:
+    """Create a Neo4j full-text index on Entity.name if it doesn't exist.
+
+    This is idempotent — safe to call on every search.
+    """
     try:
         with driver.session() as session:
-            result = session.run(
-                """
-                MATCH (n:Entity {collection_id: $cid})
-                WHERE toLower(n.name) CONTAINS toLower($q)
-                RETURN n.name AS name, n.label AS label
-                LIMIT $limit
-                """,
-                cid=collection_id,
-                q=query,
-                limit=limit,
+            session.run(
+                "CREATE FULLTEXT INDEX entity_name_fulltext IF NOT EXISTS "
+                "FOR (n:Entity) ON EACH [n.name]"
             )
-            return [dict(record) for record in result]
+    except Exception as e:
+        # Index might already exist or Neo4j version doesn't support IF NOT EXISTS
+        logger.debug("Full-text index creation note: %s", e)
+
+
+def _graph_entity_search(query: str, collection_id: str, limit: int = 10) -> list[dict]:
+    """Search Neo4j for entities matching the query using LLM NER + full-text fuzzy search.
+
+    Industry-standard approach (LangChain + Neo4j / Tomaz Bratanic):
+    1. LLM extracts named entities from the user's question
+    2. Each entity is searched via Neo4j full-text index with fuzzy matching (~2)
+    3. Results are filtered by collection_id and deduplicated
+
+    Falls back to token-based CONTAINS search if full-text index is unavailable.
+    """
+    # Step 1: LLM-based entity extraction
+    extracted_entities = _extract_entities(query)
+    if not extracted_entities:
+        logger.info("No entities extracted from query: '%s'", query)
+        return []
+
+    driver = _get_neo4j_driver()
+    try:
+        _ensure_fulltext_index(driver)
+
+        all_results: list[dict] = []
+        seen_names: set[str] = set()
+
+        with driver.session() as session:
+            for entity in extracted_entities:
+                ft_query = _generate_fulltext_query(entity)
+                if not ft_query:
+                    continue
+
+                try:
+                    # Step 2: Full-text fuzzy search with collection filter
+                    result = session.run(
+                        """
+                        CALL db.index.fulltext.queryNodes(
+                            'entity_name_fulltext', $ft_query, {limit: $search_limit}
+                        ) YIELD node, score
+                        WHERE node.collection_id = $cid
+                        RETURN node.name AS name, node.label AS label, score
+                        ORDER BY score DESC
+                        LIMIT $limit
+                        """,
+                        ft_query=ft_query,
+                        cid=collection_id,
+                        search_limit=limit * 3,  # fetch more, then filter
+                        limit=limit,
+                    )
+                    for record in result:
+                        name = record["name"]
+                        if name not in seen_names:
+                            seen_names.add(name)
+                            all_results.append({
+                                "name": name,
+                                "label": record.get("label", "Entity"),
+                                "score": record.get("score", 0),
+                                "matched_entity": entity,
+                            })
+                    print(f"[GRAPH_SEARCH] Fulltext '{ft_query}' → {len([r for r in all_results if r.get('matched_entity') == entity])} hits")
+
+                except Exception as ft_err:
+                    # Full-text index might not be available — fallback to CONTAINS
+                    logger.warning("Full-text search failed for '%s', using CONTAINS fallback: %s", entity, ft_err)
+                    print(f"[GRAPH_SEARCH] Fulltext failed, CONTAINS fallback for '{entity}'")
+                    result = session.run(
+                        """
+                        MATCH (n:Entity {collection_id: $cid})
+                        WHERE toLower(n.name) CONTAINS toLower($q)
+                        RETURN n.name AS name, n.label AS label
+                        LIMIT $limit
+                        """,
+                        cid=collection_id,
+                        q=entity,
+                        limit=limit,
+                    )
+                    for record in result:
+                        name = record["name"]
+                        if name not in seen_names:
+                            seen_names.add(name)
+                            all_results.append({
+                                "name": name,
+                                "label": record.get("label", "Entity"),
+                                "matched_entity": entity,
+                            })
+
+        # Sort by score (fulltext relevance) descending
+        all_results.sort(key=lambda x: x.get("score", 0), reverse=True)
+        print(f"[GRAPH_SEARCH] Total entities found: {len(all_results)} for query: '{query}'")
+        return all_results[:limit]
     finally:
         driver.close()
 
@@ -300,15 +554,16 @@ def graph_search_func(
                 # --- 1. Vector Search (Cosine Similarity) ---
                 collection_name = get_collection_name_from_uuid(collection_uuid)
                 vector_store = load_vector_store(collection_name)
-                retriever = vector_store.as_retriever(search_kwargs={"k": 3})
+                retriever = vector_store.as_retriever(search_kwargs={"k": 5})
                 vector_docs = retriever.invoke(query)
                 vector_texts = [doc.page_content for doc in vector_docs]
 
-                # --- 2. Graph Search (Entity + Context) ---
-                entities = _graph_entity_search(query, collection_uuid, limit=5)
+                # --- 2. Graph Search (LLM NER + Full-text Fuzzy + Context) ---
+                entities = _graph_entity_search(query, collection_uuid, limit=10)
                 entity_names = [e["name"] for e in entities]
                 graph_context = _graph_context_search(entity_names, collection_uuid)
                 graph_items = entity_names  # for RRF ranking
+                print(f"[GRAPH_SEARCH] Entities for RRF: {entity_names}")
 
                 # --- 3. RRF Fusion ---
                 rrf_ranked = _reciprocal_rank_fusion(
@@ -327,8 +582,14 @@ def graph_search_func(
 
                 if entities:
                     all_context_parts.append("\n=== Discovered Entities ===")
-                    for e in entities[:5]:
-                        all_context_parts.append(f"- {e['name']} ({e.get('label', 'Entity')})")
+                    for e in entities[:10]:
+                        matched = e.get('matched_entity', '')
+                        label = e.get('label', 'Entity')
+                        score = e.get('score', 0)
+                        if matched:
+                            all_context_parts.append(f"- {e['name']} ({label}) [matched: '{matched}', score: {score:.3f}]")
+                        else:
+                            all_context_parts.append(f"- {e['name']} ({label})")
 
             except Exception as e:
                 logger.error(f"Error in graph search for collection {collection_uuid}: {e}")

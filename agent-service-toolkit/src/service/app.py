@@ -23,6 +23,8 @@ from memory import initialize_database, initialize_store
 from memory.postgres import get_postgres_connection_string
 from service.checkpointer import set_global_checkpointer
 from service.langgraph_store import set_global_langgraph_store
+from service.sync_queue import get_sync_queue
+from service.sync_scheduler import get_sync_scheduler
 
 warnings.filterwarnings("ignore", category=LangChainBetaWarning)
 logger = logging.getLogger(__name__)
@@ -85,7 +87,17 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                 set_global_checkpointer(saver)
                 set_global_langgraph_store(langgraph_store)
 
+                # Start the sync queue worker and cron scheduler
+                sync_queue = get_sync_queue()
+                sync_queue.start()
+                sync_scheduler = get_sync_scheduler()
+                await sync_scheduler.start()
+
                 yield
+
+                # Shutdown scheduler & queue gracefully
+                await sync_scheduler.stop()
+                await sync_queue.stop()
 
             await store.close()
 
@@ -135,6 +147,7 @@ async def health_check():
 # =============================================================================
 
 from service.datasources import router as datasources_router  # noqa: E402
+from service.schedule_routes import router as schedule_router  # noqa: E402
 from service.agent_routes import router as agent_router  # noqa: E402
 from service.assistant_routes import router as assistant_router  # noqa: E402
 from service.assistant_schemas import router as assistant_schemas_router  # noqa: E402
@@ -143,6 +156,7 @@ from service.run_routes import router as run_router  # noqa: E402
 from service.proxy_routes import router as proxy_router  # noqa: E402
 
 app.include_router(datasources_router)
+app.include_router(schedule_router)
 app.include_router(agent_router)
 app.include_router(assistant_router)
 app.include_router(assistant_schemas_router)

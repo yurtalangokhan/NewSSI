@@ -17,6 +17,7 @@ from psycopg.rows import dict_row
 
 from service.store import get_store
 from service.ingestion import run_ingestion
+from service.sync_queue import SyncJob, get_sync_queue
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +54,7 @@ class DataSourceResponse(BaseModel):
     document_count: int = 0
     created_at: Optional[str] = None
     last_synced_at: Optional[str] = None
+    schedule_summary: Optional[Dict[str, Any]] = None
 
 
 class DataSourceDetails(BaseModel):
@@ -71,6 +73,8 @@ class DataSourceDetails(BaseModel):
     created_at: Optional[str] = None
     last_synced_at: Optional[str] = None
     last_error: Optional[str] = None
+    schedule: Optional[Dict[str, Any]] = None
+    graph_rag_available: bool = False
 
 
 class ConnectorInfo(BaseModel):
@@ -261,6 +265,28 @@ async def list_datasources():
             """)
             rows = await cur.fetchall()
             
+            # Fetch schedule summaries for all datasources
+            sched_map: Dict[str, Dict[str, Any]] = {}
+            try:
+                await cur.execute(
+                    "SELECT datasource_id, cron_expression, preset, enabled, "
+                    "update_graph_rag, next_run_at, last_run_status "
+                    "FROM sync_schedules"
+                )
+                for sr in await cur.fetchall():
+                    ds_id = str(sr["datasource_id"])
+                    nra = sr.get("next_run_at")
+                    sched_map[ds_id] = {
+                        "cron_expression": sr["cron_expression"],
+                        "preset": sr["preset"],
+                        "enabled": sr["enabled"],
+                        "update_graph_rag": sr["update_graph_rag"],
+                        "next_run_at": nra.isoformat() if hasattr(nra, "isoformat") else nra,
+                        "last_run_status": sr.get("last_run_status"),
+                    }
+            except Exception:
+                pass  # Table may not exist yet
+            
             results = []
             for row in rows:
                 # Parse cmetadata from text string
@@ -270,9 +296,10 @@ async def list_datasources():
                 except json.JSONDecodeError:
                     meta = {}
                 connector_type = meta.get("connector_type", "unknown")
+                ds_id = str(row["uuid"])
                 
                 results.append(DataSourceResponse(
-                    id=str(row["uuid"]),
+                    id=ds_id,
                     name=row["name"],
                     connector_type=connector_type,
                     connector_display_name=_format_connector_name(connector_type),
@@ -282,6 +309,7 @@ async def list_datasources():
                     document_count=row.get("doc_count", 0),
                     created_at=meta.get("created_at"),
                     last_synced_at=meta.get("last_synced_at"),
+                    schedule_summary=sched_map.get(ds_id),
                 ))
             
             return results
@@ -411,26 +439,57 @@ async def get_datasource_details(id: str, page: int = 1, page_size: int = 10):
             # Mask sensitive config
             masked_config = _mask_sensitive_config(meta.get("connector_config", {}))
             
-            return DataSourceDetails(
-                id=str(row["uuid"]),
-                name=row["name"],
-                connector_type=connector_type,
-                connector_display_name=_format_connector_name(connector_type),
-                config=masked_config,
-                streams=meta.get("streams"),
-                sync_status=meta.get("sync_status"),
-                sync_progress=meta.get("sync_progress"),
-                document_count=doc_count,
-                sample_documents=samples,
-                created_at=meta.get("created_at"),
-                last_synced_at=meta.get("last_synced_at"),
-                last_error=meta.get("last_error"),
-            )
+            # Fetch schedule for this datasource
+            schedule_data = None
+            try:
+                await cur.execute(
+                    "SELECT * FROM sync_schedules WHERE datasource_id = %s",
+                    (id,),
+                )
+                sched_row = await cur.fetchone()
+                if sched_row:
+                    schedule_data = {}
+                    for k, v in sched_row.items():
+                        if hasattr(v, "isoformat"):
+                            schedule_data[k] = v.isoformat()
+                        else:
+                            schedule_data[k] = v
+                    for f in ("id", "datasource_id"):
+                        if f in schedule_data and schedule_data[f] is not None:
+                            schedule_data[f] = str(schedule_data[f])
+            except Exception:
+                schedule_data = None
+
+        # Check Graph RAG service availability (outside cursor context)
+        from service.ingestion import is_graph_rag_available
+        graph_available = await is_graph_rag_available()
+
+        return DataSourceDetails(
+            id=str(row["uuid"]),
+            name=row["name"],
+            connector_type=connector_type,
+            connector_display_name=_format_connector_name(connector_type),
+            config=masked_config,
+            streams=meta.get("streams"),
+            sync_status=meta.get("sync_status"),
+            sync_progress=meta.get("sync_progress"),
+            document_count=doc_count,
+            sample_documents=samples,
+            created_at=meta.get("created_at"),
+            last_synced_at=meta.get("last_synced_at"),
+            last_error=meta.get("last_error"),
+            schedule=schedule_data,
+            graph_rag_available=graph_available,
+        )
 
 
 @router.post("/{id}/sync")
 async def sync_datasource(id: str, background_tasks: BackgroundTasks):
-    """Trigger synchronization for a data source."""
+    """Trigger synchronization for a data source.
+
+    The job is enqueued into the SyncQueueManager which executes
+    sync jobs sequentially to avoid deadlocks.
+    """
     store = get_store()
     if not store or not store.pool:
         raise HTTPException(status_code=503, detail="Database not initialized")
@@ -453,14 +512,37 @@ async def sync_datasource(id: str, background_tasks: BackgroundTasks):
                 "UPDATE langchain_pg_collection SET cmetadata = %s WHERE uuid = %s",
                 (json.dumps(meta), id)
             )
-    
-    background_tasks.add_task(run_ingestion, id)
+
+    # Check if there's a schedule with graph_rag_update enabled
+    update_graph = False
+    try:
+        from service.schedule_db import ScheduleDBManager
+        schedule = await ScheduleDBManager.get_by_datasource(id)
+        if schedule and schedule.get("update_graph_rag"):
+            update_graph = True
+    except Exception:
+        pass
+
+    # Enqueue through the sync queue for sequential execution
+    queue = get_sync_queue()
+    job = SyncJob(
+        datasource_id=id,
+        triggered_by="manual",
+        update_graph_rag=update_graph,
+    )
+    enqueued = await queue.enqueue(job)
+    if not enqueued:
+        return {"status": "Already syncing or queued", "id": id}
+
     return {"status": "Sync started", "id": id}
 
 
 @router.get("/{id}/status")
 async def get_sync_status(id: str):
-    """Get current sync status for real-time progress tracking."""
+    """Get current sync status for real-time progress tracking.
+
+    Includes queue position and next scheduled run if applicable.
+    """
     store = get_store()
     if not store or not store.pool:
         raise HTTPException(status_code=503, detail="Database not initialized")
@@ -476,18 +558,45 @@ async def get_sync_status(id: str):
                 raise HTTPException(status_code=404, detail="DataSource not found")
             
             meta = row.get("cmetadata", {})
-            return {
-                "id": id,
-                "sync_status": meta.get("sync_status", "idle"),
-                "sync_progress": meta.get("sync_progress", 0),
-                "last_synced_at": meta.get("last_synced_at"),
-                "last_error": meta.get("last_error"),
+
+    # Queue info
+    queue = get_sync_queue()
+    queue_position = queue.get_queue_position(id)
+    is_active = queue.is_active(id)
+
+    # Schedule info
+    schedule_info = None
+    try:
+        from service.schedule_db import ScheduleDBManager
+        schedule = await ScheduleDBManager.get_by_datasource(id)
+        if schedule:
+            schedule_info = {
+                "enabled": schedule.get("enabled", False),
+                "cron_expression": schedule.get("cron_expression"),
+                "next_run_at": schedule.get("next_run_at"),
+                "last_run_at": schedule.get("last_run_at"),
+                "last_run_status": schedule.get("last_run_status"),
+                "update_graph_rag": schedule.get("update_graph_rag", False),
             }
+    except Exception:
+        pass
+
+    return {
+        "id": id,
+        "sync_status": meta.get("sync_status", "idle"),
+        "sync_progress": meta.get("sync_progress", 0),
+        "last_synced_at": meta.get("last_synced_at"),
+        "last_error": meta.get("last_error"),
+        "graph_update_status": meta.get("graph_update_status"),
+        "queue_position": queue_position,
+        "is_active": is_active,
+        "schedule": schedule_info,
+    }
 
 
 @router.delete("/{id}")
 async def delete_datasource(id: str):
-    """Delete a data source and all its embeddings."""
+    """Delete a data source, its embeddings, and any associated schedule."""
     store = get_store()
     if not store or not store.pool:
         raise HTTPException(status_code=503, detail="Database not initialized")
@@ -508,11 +617,18 @@ async def delete_datasource(id: str):
                 (id,)
             )
             
-            # Delete collection
+            # Delete collection (FK CASCADE removes sync_schedules row)
             await cur.execute(
                 "DELETE FROM langchain_pg_collection WHERE uuid = %s",
                 (id,)
             )
+
+    # Remove from APScheduler if scheduled
+    try:
+        from service.sync_scheduler import get_sync_scheduler
+        get_sync_scheduler().remove_job(id)
+    except Exception:
+        pass
     
     logger.info(f"Deleted datasource {id}")
     return {"status": "deleted", "id": id}
