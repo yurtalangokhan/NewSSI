@@ -47,6 +47,10 @@ SOURCE_TYPE_LABELS: Dict[str, str] = {
     "unknown": "Other",
 }
 
+# Retry settings for connector operations (download / install / spec)
+_MAX_RETRIES = 5
+_RETRY_BASE_DELAY = 2  # seconds – linear backoff: 2, 4, 6, 8, 10
+
 # In-memory cache for registry data
 _registry_cache: Optional[Dict[str, str]] = None
 _registry_cache_time: float = 0
@@ -359,6 +363,38 @@ def _flatten_spec_properties(spec: Dict[str, Any]) -> Dict[str, Any]:
 
 
 
+def _get_source_with_retry(connector_name: str, **kwargs) -> Any:
+    """
+    Wrapper around ab.get_source that retries up to _MAX_RETRIES times
+    on transient failures (download errors, Docker pull timeouts, etc.).
+
+    Uses exponential back-off: 3 s, 6 s, 12 s, 24 s, 48 s.
+    """
+    last_exc: Optional[Exception] = None
+    for attempt in range(1, _MAX_RETRIES + 1):
+        try:
+            source = ab.get_source(connector_name, **kwargs)
+            if attempt > 1:
+                logger.info(
+                    f"ab.get_source('{connector_name}') succeeded on attempt {attempt}"
+                )
+            return source
+        except Exception as exc:
+            last_exc = exc
+            if attempt < _MAX_RETRIES:
+                delay = _RETRY_BASE_DELAY * attempt
+                logger.warning(
+                    f"ab.get_source('{connector_name}') failed (attempt {attempt}/{_MAX_RETRIES}): {exc}  "
+                    f"– retrying in {delay}s …"
+                )
+                time.sleep(delay)
+            else:
+                logger.error(
+                    f"ab.get_source('{connector_name}') failed after {_MAX_RETRIES} attempts: {exc}"
+                )
+    raise last_exc  # type: ignore[misc]
+
+
 def get_connector_spec(connector_name: str) -> ConnectorSpec:
     """
     Get the configuration specification for a connector.
@@ -380,7 +416,7 @@ def get_connector_spec(connector_name: str) -> ConnectorSpec:
 
     # --- Fetch from connector ---
     try:
-        source = ab.get_source(connector_name, config={}, install_if_missing=True)
+        source = _get_source_with_retry(connector_name, config={}, install_if_missing=True, docker_image=True)
         
         # Handle different PyAirbyte versions
         if hasattr(source, "config_spec"):
@@ -548,7 +584,7 @@ def validate_connector_config(connector_name: str, config: Dict[str, Any]) -> bo
         reconstructed_config = _reconstruct_config(connector_name, config)
         logger.info(f"Validating {connector_name} with config keys: {list(reconstructed_config.keys())}")
         
-        source = ab.get_source(connector_name, config=reconstructed_config, install_if_missing=True, docker_image=True, use_host_network=True)
+        source = _get_source_with_retry(connector_name, config=reconstructed_config, install_if_missing=True, docker_image=True, use_host_network=True)
         source.check()
         return True
     except Exception as e:
@@ -560,7 +596,7 @@ def get_available_streams(connector_name: str, config: Dict[str, Any]) -> List[s
     """Get list of available streams (tables/endpoints) from a source."""
     try:
         reconstructed_config = _reconstruct_config(connector_name, config)
-        source = ab.get_source(connector_name, config=reconstructed_config, install_if_missing=True, docker_image=True, use_host_network=True)
+        source = _get_source_with_retry(connector_name, config=reconstructed_config, install_if_missing=True, docker_image=True, use_host_network=True)
         source.check()
         return list(source.get_available_streams())
     except Exception as e:
@@ -585,7 +621,7 @@ def extract_data_from_source(
         List of dictionaries containing the extracted records.
     """
     reconstructed_config = _reconstruct_config(connector_name, config)
-    source = ab.get_source(
+    source = _get_source_with_retry(
         connector_name,
         config=reconstructed_config,
         install_if_missing=True,
@@ -635,7 +671,7 @@ def extract_documents(
     logger.info(f"Extracting documents from {connector_name}")
     
     reconstructed_config = _reconstruct_config(connector_name, config)
-    source = ab.get_source(
+    source = _get_source_with_retry(
         connector_name,
         config=reconstructed_config,
         install_if_missing=True,

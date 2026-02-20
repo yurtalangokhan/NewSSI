@@ -86,9 +86,41 @@ export function DocumentsCard({
   const handleFiles = (files: File[] | null) => {
     if (!files?.length) return;
 
-    const allowedTypes = ["application/pdf", "text/plain", "text/html"];
-    const filteredFiles = files.filter((file) =>
-      allowedTypes.includes(file.type),
+    const allowedTypes = [
+      "application/pdf",
+      "text/plain",
+      "text/html",
+      "text/markdown",
+      "text/csv",
+      "text/tab-separated-values",
+      "text/xml",
+      "text/rtf",
+      "application/json",
+      "application/xml",
+      "application/rtf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "application/vnd.ms-excel",
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      "application/xhtml+xml",
+      "message/rfc822",
+    ];
+
+    // 200 MB limit
+    const MAX_FILE_SIZE = 200 * 1024 * 1024;
+    const oversizedFiles = files.filter((f) => f.size > MAX_FILE_SIZE);
+    if (oversizedFiles.length > 0) {
+      const names = oversizedFiles.map((f) => f.name).join(", ");
+      toast.error(
+        `File(s) exceed 200 MB limit: ${names}`,
+        { richColors: true },
+      );
+    }
+
+    const filteredFiles = files.filter(
+      (file) =>
+        allowedTypes.includes(file.type) && file.size <= MAX_FILE_SIZE,
     );
 
     setStagedFiles((prevFiles) => [...prevFiles, ...filteredFiles]);
@@ -98,6 +130,8 @@ export function DocumentsCard({
     if (event.target.files) {
       handleFiles(Array.from(event.target.files));
     }
+    // Reset input so the same or a new file can be selected again
+    event.target.value = "";
   };
 
   const handleDragOver = (event: DragEvent<HTMLDivElement>) => {
@@ -118,7 +152,12 @@ export function DocumentsCard({
     setIsDragging(false);
 
     const files = event.dataTransfer.files;
-    const acceptedExtensions = [".pdf", ".txt", ".html"];
+    const acceptedExtensions = [
+      ".pdf", ".txt", ".html", ".htm", ".md", ".markdown",
+      ".csv", ".tsv", ".json", ".xml", ".xhtml",
+      ".doc", ".docx", ".xlsx", ".xls", ".pptx",
+      ".rtf", ".eml",
+    ];
     const supportedFiles: File[] = [];
     const unsupportedFiles: File[] = [];
 
@@ -136,7 +175,7 @@ export function DocumentsCard({
     if (unsupportedFiles.length > 0) {
       const unsupportedNames = unsupportedFiles.map((f) => f.name).join(", ");
       toast.error(
-        `Unsupported file types: ${unsupportedNames}. Please use PDF, TXT, or HTML.`,
+        `Unsupported file types: ${unsupportedNames}. Supported: PDF, TXT, HTML, MD, CSV, TSV, JSON, XML, DOC(X), XLS(X), PPTX, RTF, EML.`,
         { richColors: true },
       );
     }
@@ -268,7 +307,7 @@ export function DocumentsCard({
                   id="file-upload"
                   multiple
                   onChange={handleFileSelect}
-                  accept=".pdf,.txt,.html"
+                  accept=".pdf,.txt,.html,.htm,.md,.markdown,.csv,.tsv,.json,.xml,.xhtml,.doc,.docx,.xlsx,.xls,.pptx,.rtf,.eml"
                 />
                 <Label htmlFor="file-upload">
                   <Button
