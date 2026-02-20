@@ -190,7 +190,7 @@ export function GraphStatsCard({
   // ── Loading skeleton ──────────────────────────────────────────────
   if (loading) {
     return (
-      <Card>
+      <Card className="w-full">
         <CardHeader>
           <Skeleton className="h-6 w-32" />
         </CardHeader>

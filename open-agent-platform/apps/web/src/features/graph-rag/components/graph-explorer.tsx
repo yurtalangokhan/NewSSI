@@ -283,12 +283,12 @@ export function GraphExplorer({
 
   if (loading) {
     return (
-      <Card>
+      <Card className="flex w-full flex-col min-h-[560px]">
         <CardHeader>
           <Skeleton className="h-6 w-48" />
         </CardHeader>
-        <CardContent>
-          <Skeleton className="h-[500px] w-full rounded-lg" />
+        <CardContent className="flex-1">
+          <Skeleton className="h-full w-full rounded-lg" />
         </CardContent>
       </Card>
     );

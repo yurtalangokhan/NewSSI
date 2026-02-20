@@ -40,11 +40,11 @@ _SPEC_CACHE_DIR = _CACHE_DIR / "specs"
 
 # Display labels for sourceType values from the registry
 SOURCE_TYPE_LABELS: Dict[str, str] = {
-    "api": "🔌 API",
-    "database": "🗄️ Database",
-    "file": "📁 File",
-    "custom": "⚙️ Custom",
-    "unknown": "📦 Other",
+    "api": "API",
+    "database": "Database",
+    "file": "File",
+    "custom": "Custom",
+    "unknown": "Other",
 }
 
 # In-memory cache for registry data

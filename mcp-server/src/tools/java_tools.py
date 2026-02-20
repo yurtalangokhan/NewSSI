@@ -22,6 +22,7 @@ def normalize_code(code: str) -> str:
     code = code.replace('\\n', '\n')
     code = code.replace('\\t', '\t')
     code = code.replace('\\r', '\r')
+    code = code.replace('\\"', '"')
     return code
 
 
@@ -318,23 +319,27 @@ class JavaTools(BaseToolCategory):
                 return f"Error: File not found: {file_path}"
 
             try:
-                result = subprocess.run(
-                    ["javac", "-Xlint:all", "-d", "/dev/null", file_path],
-                    capture_output=True,
-                    text=True,
-                    timeout=30,
-                    cwd=WORKSPACE_DIR if os.path.exists(WORKSPACE_DIR) else None,
-                )
-
                 name = Path(file_path).name
-                if result.returncode == 0:
-                    warnings = result.stderr.strip() if result.stderr else ""
-                    if warnings:
-                        return f"✓ {name} is valid (with warnings):\n{warnings}"
-                    return f"✓ {name} – no syntax errors"
-                else:
-                    errors = result.stderr or result.stdout
-                    return f"✗ {name} has errors:\n{errors}"
+
+                with tempfile.TemporaryDirectory(
+                    dir=WORKSPACE_DIR if os.path.exists(WORKSPACE_DIR) else None
+                ) as tmp_dir:
+                    result = subprocess.run(
+                        ["javac", "-Xlint:all", "-d", tmp_dir, file_path],
+                        capture_output=True,
+                        text=True,
+                        timeout=30,
+                        cwd=WORKSPACE_DIR if os.path.exists(WORKSPACE_DIR) else None,
+                    )
+
+                    if result.returncode == 0:
+                        warnings = result.stderr.strip() if result.stderr else ""
+                        if warnings:
+                            return f"✓ {name} is valid (with warnings):\n{warnings}"
+                        return f"✓ {name} – no syntax errors"
+                    else:
+                        errors = result.stderr or result.stdout
+                        return f"✗ {name} has errors:\n{errors}"
 
             except FileNotFoundError:
                 return "Error: javac not found. JDK is required."

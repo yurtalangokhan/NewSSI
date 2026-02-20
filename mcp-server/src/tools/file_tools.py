@@ -84,6 +84,18 @@ def normalize_content(content: str) -> str:
                 result.append('\r')
                 i += 2
                 continue
+            elif nxt == '"':
+                result.append('"')
+                i += 2
+                continue
+            elif nxt == "'":
+                result.append("'")
+                i += 2
+                continue
+            elif nxt == '\\':
+                result.append('\\')
+                i += 2
+                continue
 
         # ----- default: copy character as-is -----
         result.append(content[i])

@@ -16,7 +16,7 @@ import { Label } from "@/components/ui/label";
 import { useConfigStore } from "@/features/chat/hooks/use-config-store";
 import { useRagContext } from "@/features/rag/providers/RAG";
 import { useAuthContext } from "@/providers/Auth";
-import { Check, ChevronsUpDown, AlertCircle, Plus, Trash2, GripVertical } from "lucide-react";
+import { Check, ChevronsUpDown, AlertCircle, Plus, Trash2, GripVertical, Loader2 } from "lucide-react";
 import {
   Command,
   CommandEmpty,
@@ -429,20 +429,26 @@ export function ConfigFieldRAG({
   ConfigFieldProps,
   "id" | "label" | "agentId" | "className" | "value" | "setValue"
 > & { graphOnly?: boolean; ragOnly?: boolean }) {
-  const { collections } = useRagContext();
+  const { collections, collectionsLoading } = useRagContext();
   const { session } = useAuthContext();
   const store = useConfigStore();
   const actualAgentId = `${agentId}:rag`;
   const [open, setOpen] = useState(false);
   const [dataSources, setDataSources] = useState<Array<{ id: string; name: string; type: string }>>([]);
+  const [loadingDataSources, setLoadingDataSources] = useState(true);
   const [graphCollectionIds, setGraphCollectionIds] = useState<Set<string>>(new Set());
+  const [loadingGraphIds, setLoadingGraphIds] = useState(false);
 
   // Whether we need to know which collections have graphs
   const needsGraphIds = graphOnly;
 
+  // Combined loading state – dropdown stays in loading until all sources are ready
+  const isLoading = collectionsLoading || loadingDataSources || (needsGraphIds && loadingGraphIds);
+
   // Fetch data sources from agent API
   useEffect(() => {
     const fetchDataSources = async () => {
+      setLoadingDataSources(true);
       try {
         const agentApiUrl = process.env.NEXT_PUBLIC_AGENT_API_URL || "http://localhost:8123";
         const res = await fetch(`${agentApiUrl}/datasources`);
@@ -456,6 +462,8 @@ export function ConfigFieldRAG({
         }
       } catch (error) {
         console.error("Failed to fetch data sources:", error);
+      } finally {
+        setLoadingDataSources(false);
       }
     };
     fetchDataSources();
@@ -464,6 +472,7 @@ export function ConfigFieldRAG({
   // Fetch graph collection IDs when we need to filter (graphOnly or ragOnly)
   useEffect(() => {
     if (!needsGraphIds) return;
+    setLoadingGraphIds(true);
     const fetchGraphIds = async () => {
       try {
         const ragApiUrl = process.env.NEXT_PUBLIC_RAG_API_URL || "http://localhost:8083";
@@ -480,6 +489,8 @@ export function ConfigFieldRAG({
         }
       } catch (error) {
         console.error("Failed to fetch graph collection IDs:", error);
+      } finally {
+        setLoadingGraphIds(false);
       }
     };
     fetchGraphIds();
@@ -562,9 +573,15 @@ export function ConfigFieldRAG({
             variant="outline"
             role="combobox"
             aria-expanded={open}
+            disabled={isLoading}
             className="w-full justify-between"
           >
-            {selectedCollections.length > 0
+            {isLoading ? (
+              <span className="flex items-center gap-2 text-muted-foreground">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                Loading collections...
+              </span>
+            ) : selectedCollections.length > 0
               ? selectedCollections.length > 1
                 ? `${selectedCollections.length} selected`
                 : getCollectionNameFromId(selectedCollections[0])
@@ -573,7 +590,7 @@ export function ConfigFieldRAG({
                 : ragOnly
                   ? "Select RAG collections"
                   : "Select collections or data sources"}
-            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            {!isLoading && <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />}
           </Button>
         </PopoverTrigger>
         <PopoverContent
