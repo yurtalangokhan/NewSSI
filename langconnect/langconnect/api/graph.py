@@ -18,6 +18,7 @@ from langconnect.auth import AuthenticatedUser, resolve_user
 from langconnect.database.graph_store import GraphStore
 from langconnect.models.graph import (
     BuildProgress,
+    ClusteredGraphData,
     CypherQueryRequest,
     GraphBuildRequest,
     GraphBuildResponse,
@@ -146,6 +147,81 @@ async def get_graph_data(
     return await store.get_graph_data(node_limit=node_limit, edge_limit=edge_limit)
 
 
+# ------------------------------------------------------------------
+# Scalable Visualization Endpoints
+# ------------------------------------------------------------------
+
+
+@router.get(
+    "/collections/{collection_id}/data/scalable",
+    response_model=ClusteredGraphData,
+)
+async def get_scalable_graph_data(
+    collection_id: str,
+    user: Annotated[AuthenticatedUser, Depends(resolve_user)],
+    mode: str = Query("auto", regex="^(auto|overview|expand|neighborhood|full)$"),
+    node_limit: int = Query(500, ge=1, le=5000),
+    edge_limit: int = Query(1000, ge=1, le=10000),
+    cluster_label: str | None = Query(None),
+    node_id: str | None = Query(None),
+    depth: int = Query(1, ge=1, le=3),
+):
+    """Scalable graph visualization endpoint.
+
+    Modes:
+        - auto: Automatically choose best mode based on graph size
+        - overview: Clustered supernodes for large graphs
+        - expand: Drill into a cluster (requires cluster_label)
+        - neighborhood: Ego graph around a node (requires node_id)
+        - full: All nodes sorted by importance
+    """
+    store = GraphStore(collection_id)
+    return await store.get_scalable_graph_data(
+        mode=mode,
+        node_limit=node_limit,
+        edge_limit=edge_limit,
+        cluster_label=cluster_label,
+        node_id=node_id,
+        depth=depth,
+    )
+
+
+@router.get(
+    "/collections/{collection_id}/neighborhood",
+    response_model=GraphData,
+)
+async def get_neighborhood(
+    collection_id: str,
+    user: Annotated[AuthenticatedUser, Depends(resolve_user)],
+    node_id: str = Query(...),
+    depth: int = Query(1, ge=1, le=3),
+    limit: int = Query(50, ge=1, le=500),
+):
+    """Get ego-graph (neighborhood) around a specific node."""
+    store = GraphStore(collection_id)
+    return await store.get_neighborhood(node_id=node_id, depth=depth, limit=limit)
+
+
+@router.get(
+    "/collections/{collection_id}/expand",
+    response_model=GraphData,
+)
+async def expand_cluster(
+    collection_id: str,
+    user: Annotated[AuthenticatedUser, Depends(resolve_user)],
+    label: str = Query(...),
+    node_limit: int = Query(200, ge=1, le=1000),
+    edge_limit: int = Query(500, ge=1, le=2000),
+):
+    """Expand a cluster to see individual nodes with the given label."""
+    store = GraphStore(collection_id)
+    return await store.expand_cluster(
+        cluster_label=label,
+        node_limit=node_limit,
+        edge_limit=edge_limit,
+    )
+
+
 @router.get("/collections/{collection_id}/stats", response_model=GraphStats)
 async def get_graph_stats(
     collection_id: str,
@@ -166,11 +242,12 @@ async def get_labels_paginated(
     page: int = Query(1, ge=1),
     page_size: int = Query(25, ge=1, le=100),
     search: str | None = Query(None),
+    scope_label: str | None = Query(None, description="Scope to neighbour labels of this label group"),
 ):
     """Return entity labels with counts (paginated, searchable)."""
     store = GraphStore(collection_id)
     return await store.get_labels_paginated(
-        page=page, page_size=page_size, search=search
+        page=page, page_size=page_size, search=search, scope_label=scope_label
     )
 
 
@@ -184,11 +261,12 @@ async def get_relationship_types_paginated(
     page: int = Query(1, ge=1),
     page_size: int = Query(25, ge=1, le=100),
     search: str | None = Query(None),
+    scope_label: str | None = Query(None, description="Scope to relationships involving this label group"),
 ):
     """Return relationship types with counts (paginated, searchable)."""
     store = GraphStore(collection_id)
     return await store.get_relationship_types_paginated(
-        page=page, page_size=page_size, search=search
+        page=page, page_size=page_size, search=search, scope_label=scope_label
     )
 
 
@@ -225,6 +303,21 @@ async def search_entities(
     """Search entities by name (full-text) in the knowledge graph."""
     store = GraphStore(collection_id)
     return await store.search_entities(q, limit=limit)
+
+
+@router.get("/collections/{collection_id}/search/entity-clusters")
+async def search_entity_clusters(
+    collection_id: str,
+    q: str = Query(..., min_length=1),
+    user: Annotated[AuthenticatedUser, Depends(resolve_user)] = None,
+):
+    """Return ``{label: count}`` for clusters that contain entities matching *q*.
+
+    This is a lightweight endpoint used by the clustered graph explorer to
+    highlight matching clusters without breaking them apart.
+    """
+    store = GraphStore(collection_id)
+    return await store.search_entity_clusters(q)
 
 
 # ------------------------------------------------------------------

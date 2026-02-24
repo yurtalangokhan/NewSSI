@@ -2,6 +2,10 @@
  * Graph statistics card – shows node/edge counts and paginated, searchable
  * label & relationship-type breakdowns.
  * Labels and relationship types are clickable multi-select filters.
+ *
+ * ALL search and pagination is handled server-side via the paginated API.
+ * When `scopeLabel` is provided the backend scopes results to the
+ * neighbour labels / relationship types of that label group.
  */
 
 "use client";
@@ -40,12 +44,15 @@ interface GraphStatsCardProps {
   selectedRelTypes?: Set<string>;
   onToggleLabel?: (label: string) => void;
   onToggleRelType?: (relType: string) => void;
+  /** Scope labels & rel-types to this label group (expand / sub-cluster). */
+  scopeLabel?: string;
   /** Paginated fetcher for entity labels */
   fetchLabelsPaginated?: (
     collectionId: string,
     page: number,
     pageSize: number,
     search?: string,
+    scopeLabel?: string,
   ) => Promise<PaginatedCounts | null>;
   /** Paginated fetcher for relationship types */
   fetchRelTypesPaginated?: (
@@ -53,6 +60,7 @@ interface GraphStatsCardProps {
     page: number,
     pageSize: number,
     search?: string,
+    scopeLabel?: string,
   ) => Promise<PaginatedCounts | null>;
 }
 
@@ -66,6 +74,7 @@ export function GraphStatsCard({
   selectedRelTypes,
   onToggleLabel,
   onToggleRelType,
+  scopeLabel,
   fetchLabelsPaginated,
   fetchRelTypesPaginated,
 }: GraphStatsCardProps) {
@@ -92,7 +101,7 @@ export function GraphStatsCard({
 
   // ── Fetch labels ──────────────────────────────────────────────────
   const loadLabels = useCallback(
-    async (page: number, search: string) => {
+    async (page: number, search: string, scope?: string) => {
       if (!collectionId || !fetchLabelsPaginated) return;
       setLabelsLoading(true);
       const data = await fetchLabelsPaginated(
@@ -100,6 +109,7 @@ export function GraphStatsCard({
         page,
         PAGE_SIZE,
         search || undefined,
+        scope || undefined,
       );
       setLabelsData(data);
       setLabelsLoading(false);
@@ -109,7 +119,7 @@ export function GraphStatsCard({
 
   // ── Fetch rel types ───────────────────────────────────────────────
   const loadRelTypes = useCallback(
-    async (page: number, search: string) => {
+    async (page: number, search: string, scope?: string) => {
       if (!collectionId || !fetchRelTypesPaginated) return;
       setRelLoading(true);
       const data = await fetchRelTypesPaginated(
@@ -117,6 +127,7 @@ export function GraphStatsCard({
         page,
         PAGE_SIZE,
         search || undefined,
+        scope || undefined,
       );
       setRelData(data);
       setRelLoading(false);
@@ -124,21 +135,21 @@ export function GraphStatsCard({
     [collectionId, fetchRelTypesPaginated],
   );
 
-  // ── Initial load when collection changes ──────────────────────────
+  // ── Reset and reload when collection or scope changes ─────────────
   useEffect(() => {
     if (!hasPaginatedApi) return;
     setLabelsPage(1);
     setLabelsSearch("");
     setRelPage(1);
     setRelSearch("");
-    loadLabels(1, "");
-    loadRelTypes(1, "");
-  }, [collectionId, hasPaginatedApi]);
+    loadLabels(1, "", scopeLabel);
+    loadRelTypes(1, "", scopeLabel);
+  }, [collectionId, scopeLabel, hasPaginatedApi]);
 
   // ── Re-fetch labels on page change ────────────────────────────────
   useEffect(() => {
     if (!hasPaginatedApi) return;
-    loadLabels(labelsPage, labelsSearch);
+    loadLabels(labelsPage, labelsSearch, scopeLabel);
   }, [labelsPage]);
 
   // ── Debounced search for labels ───────────────────────────────────
@@ -147,7 +158,7 @@ export function GraphStatsCard({
     clearTimeout(labelsDebounce.current);
     labelsDebounce.current = setTimeout(() => {
       setLabelsPage(1);
-      loadLabels(1, labelsSearch);
+      loadLabels(1, labelsSearch, scopeLabel);
     }, 300);
     return () => clearTimeout(labelsDebounce.current);
   }, [labelsSearch]);
@@ -155,7 +166,7 @@ export function GraphStatsCard({
   // ── Re-fetch rel types on page change ─────────────────────────────
   useEffect(() => {
     if (!hasPaginatedApi) return;
-    loadRelTypes(relPage, relSearch);
+    loadRelTypes(relPage, relSearch, scopeLabel);
   }, [relPage]);
 
   // ── Debounced search for rel types ────────────────────────────────
@@ -164,10 +175,34 @@ export function GraphStatsCard({
     clearTimeout(relDebounce.current);
     relDebounce.current = setTimeout(() => {
       setRelPage(1);
-      loadRelTypes(1, relSearch);
+      loadRelTypes(1, relSearch, scopeLabel);
     }, 300);
     return () => clearTimeout(relDebounce.current);
   }, [relSearch]);
+
+  // ── Data source: paginated API or flat stats fallback ─────────────
+  const labelItems =
+    hasPaginatedApi && stats
+      ? (labelsData?.items ?? [])
+      : stats
+        ? Object.entries(stats.label_counts).map(([name, count]) => ({
+            name,
+            count,
+          }))
+        : [];
+  const relItems =
+    hasPaginatedApi && stats
+      ? (relData?.items ?? [])
+      : stats
+        ? Object.entries(stats.relationship_type_counts).map(([name, count]) => ({
+            name,
+            count,
+          }))
+        : [];
+
+  // Show server-side paginated controls when using the paginated API
+  const showLabelsPagination = hasPaginatedApi;
+  const showRelsPagination = hasPaginatedApi;
 
   // ── Filtered counts (for header) ─────────────────────────────────
   const filteredNodeCount = useMemo(() => {
@@ -221,24 +256,15 @@ export function GraphStatsCard({
   const hasLabelFilter = selectedLabels && selectedLabels.size > 0;
   const hasRelFilter = selectedRelTypes && selectedRelTypes.size > 0;
 
-  // Decide data source: paginated API or flat stats fallback
-  const labelItems = hasPaginatedApi
-    ? (labelsData?.items ?? [])
-    : Object.entries(stats.label_counts).map(([name, count]) => ({
-        name,
-        count,
-      }));
-  const relItems = hasPaginatedApi
-    ? (relData?.items ?? [])
-    : Object.entries(stats.relationship_type_counts).map(([name, count]) => ({
-        name,
-        count,
-      }));
-
   return (
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-medium">Graph Statistics</CardTitle>
+        {scopeLabel && (
+          <CardDescription className="text-xs">
+            Scoped to <span className="font-medium">{scopeLabel}</span>
+          </CardDescription>
+        )}
         {(hasLabelFilter || hasRelFilter) && (
           <CardDescription className="text-xs">
             Filtering active — click badges to toggle
@@ -269,12 +295,12 @@ export function GraphStatsCard({
         </div>
 
         {/* ── Entity Labels ─────────────────────────────── */}
-        {labelItems.length > 0 || hasPaginatedApi ? (
+        {(labelItems.length > 0 || showLabelsPagination) && (
           <div>
             <div className="mb-2 flex items-center gap-1">
               <Tags className="h-3 w-3" />
               <span className="text-xs font-medium">Entity Labels</span>
-              {hasPaginatedApi && labelsData && (
+              {showLabelsPagination && labelsData && (
                 <span className="text-muted-foreground ml-auto text-[10px]">
                   {labelsData.total} total
                 </span>
@@ -282,7 +308,7 @@ export function GraphStatsCard({
             </div>
 
             {/* Search input */}
-            {hasPaginatedApi && (
+            {showLabelsPagination && (
               <div className="relative mb-2">
                 <Search className="text-muted-foreground absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2" />
                 <Input
@@ -323,43 +349,45 @@ export function GraphStatsCard({
             </div>
 
             {/* Pagination controls */}
-            {hasPaginatedApi && labelsData && labelsData.total > PAGE_SIZE && (
-              <div className="mt-2 flex items-center justify-between">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 px-2 text-xs"
-                  disabled={labelsPage <= 1}
-                  onClick={() => setLabelsPage((p) => Math.max(1, p - 1))}
-                >
-                  <ChevronLeft className="mr-1 h-3 w-3" />
-                  Prev
-                </Button>
-                <span className="text-muted-foreground text-[10px]">
-                  {labelsPage} / {Math.ceil(labelsData.total / PAGE_SIZE)}
-                </span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 px-2 text-xs"
-                  disabled={!labelsData.has_next}
-                  onClick={() => setLabelsPage((p) => p + 1)}
-                >
-                  Next
-                  <ChevronRight className="ml-1 h-3 w-3" />
-                </Button>
-              </div>
-            )}
+            {showLabelsPagination &&
+              labelsData &&
+              labelsData.total > PAGE_SIZE && (
+                <div className="mt-2 flex items-center justify-between">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-xs"
+                    disabled={labelsPage <= 1}
+                    onClick={() => setLabelsPage((p) => Math.max(1, p - 1))}
+                  >
+                    <ChevronLeft className="mr-1 h-3 w-3" />
+                    Prev
+                  </Button>
+                  <span className="text-muted-foreground text-[10px]">
+                    {labelsPage} / {Math.ceil(labelsData.total / PAGE_SIZE)}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-xs"
+                    disabled={!labelsData.has_next}
+                    onClick={() => setLabelsPage((p) => p + 1)}
+                  >
+                    Next
+                    <ChevronRight className="ml-1 h-3 w-3" />
+                  </Button>
+                </div>
+              )}
           </div>
-        ) : null}
+        )}
 
         {/* ── Relationship Types ────────────────────────── */}
-        {relItems.length > 0 || hasPaginatedApi ? (
+        {(relItems.length > 0 || showRelsPagination) && (
           <div>
             <div className="mb-2 flex items-center gap-1">
               <Waypoints className="h-3 w-3" />
               <span className="text-xs font-medium">Relationship Types</span>
-              {hasPaginatedApi && relData && (
+              {showRelsPagination && relData && (
                 <span className="text-muted-foreground ml-auto text-[10px]">
                   {relData.total} total
                 </span>
@@ -367,7 +395,7 @@ export function GraphStatsCard({
             </div>
 
             {/* Search input */}
-            {hasPaginatedApi && (
+            {showRelsPagination && (
               <div className="relative mb-2">
                 <Search className="text-muted-foreground absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2" />
                 <Input
@@ -408,35 +436,37 @@ export function GraphStatsCard({
             </div>
 
             {/* Pagination controls */}
-            {hasPaginatedApi && relData && relData.total > PAGE_SIZE && (
-              <div className="mt-2 flex items-center justify-between">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 px-2 text-xs"
-                  disabled={relPage <= 1}
-                  onClick={() => setRelPage((p) => Math.max(1, p - 1))}
-                >
-                  <ChevronLeft className="mr-1 h-3 w-3" />
-                  Prev
-                </Button>
-                <span className="text-muted-foreground text-[10px]">
-                  {relPage} / {Math.ceil(relData.total / PAGE_SIZE)}
-                </span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 px-2 text-xs"
-                  disabled={!relData.has_next}
-                  onClick={() => setRelPage((p) => p + 1)}
-                >
-                  Next
-                  <ChevronRight className="ml-1 h-3 w-3" />
-                </Button>
-              </div>
-            )}
+            {showRelsPagination &&
+              relData &&
+              relData.total > PAGE_SIZE && (
+                <div className="mt-2 flex items-center justify-between">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-xs"
+                    disabled={relPage <= 1}
+                    onClick={() => setRelPage((p) => Math.max(1, p - 1))}
+                  >
+                    <ChevronLeft className="mr-1 h-3 w-3" />
+                    Prev
+                  </Button>
+                  <span className="text-muted-foreground text-[10px]">
+                    {relPage} / {Math.ceil(relData.total / PAGE_SIZE)}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-xs"
+                    disabled={!relData.has_next}
+                    onClick={() => setRelPage((p) => p + 1)}
+                  >
+                    Next
+                    <ChevronRight className="ml-1 h-3 w-3" />
+                  </Button>
+                </div>
+              )}
           </div>
-        ) : null}
+        )}
       </CardContent>
     </Card>
   );

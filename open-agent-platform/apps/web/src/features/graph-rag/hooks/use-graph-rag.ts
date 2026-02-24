@@ -19,6 +19,8 @@ import type {
   GraphNode,
   GraphEdge,
   PaginatedCounts,
+  ClusteredGraphData,
+  GraphViewMode,
 } from "@/types/graph";
 
 // ============================================================================
@@ -88,8 +90,10 @@ export function useGraphCollectionIds() {
 export function useGraphData() {
   const { session } = useAuthContext();
   const [graphData, setGraphData] = useState<GraphData | null>(null);
+  const [scalableData, setScalableData] = useState<ClusteredGraphData | null>(null);
   const [stats, setStats] = useState<GraphStats | null>(null);
   const [loading, setLoading] = useState(false);
+  const [viewMode, setViewMode] = useState<GraphViewMode>("auto");
 
   const fetchGraphData = useCallback(
     async (
@@ -216,11 +220,13 @@ export function useGraphData() {
       page = 1,
       pageSize = 25,
       search?: string,
+      scopeLabel?: string,
     ): Promise<PaginatedCounts | null> => {
       if (!session?.accessToken) return null;
       try {
         let url = `${getGraphApiUrl()}/graph/collections/${collectionId}/stats/labels?page=${page}&page_size=${pageSize}`;
         if (search) url += `&search=${encodeURIComponent(search)}`;
+        if (scopeLabel) url += `&scope_label=${encodeURIComponent(scopeLabel)}`;
         const res = await fetch(url, {
           headers: authHeaders(session.accessToken),
         });
@@ -239,11 +245,13 @@ export function useGraphData() {
       page = 1,
       pageSize = 25,
       search?: string,
+      scopeLabel?: string,
     ): Promise<PaginatedCounts | null> => {
       if (!session?.accessToken) return null;
       try {
         let url = `${getGraphApiUrl()}/graph/collections/${collectionId}/stats/relationship-types?page=${page}&page_size=${pageSize}`;
         if (search) url += `&search=${encodeURIComponent(search)}`;
+        if (scopeLabel) url += `&scope_label=${encodeURIComponent(scopeLabel)}`;
         const res = await fetch(url, {
           headers: authHeaders(session.accessToken),
         });
@@ -256,11 +264,136 @@ export function useGraphData() {
     [session],
   );
 
+  // ---- Scalable Graph Data ----
+
+  const fetchScalableGraphData = useCallback(
+    async (
+      collectionId: string,
+      mode: GraphViewMode = "auto",
+      nodeLimit = 500,
+      edgeLimit = 1000,
+    ): Promise<ClusteredGraphData | null> => {
+      if (!session?.accessToken) return null;
+      setLoading(true);
+      try {
+        const params = new URLSearchParams({
+          mode,
+          node_limit: String(nodeLimit),
+          edge_limit: String(edgeLimit),
+        });
+        const res = await fetch(
+          `${getGraphApiUrl()}/graph/collections/${collectionId}/data/scalable?${params}`,
+          { headers: authHeaders(session.accessToken) },
+        );
+        if (!res.ok) throw new Error(`Failed: ${res.statusText}`);
+        const data: ClusteredGraphData = await res.json();
+        setScalableData(data);
+        setViewMode(data.mode as GraphViewMode);
+        return data;
+      } catch (error) {
+        console.error("Failed to fetch scalable graph data:", error);
+        toast.error("Failed to load scalable graph data");
+        return null;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [session],
+  );
+
+  const fetchNeighborhood = useCallback(
+    async (
+      collectionId: string,
+      nodeId: string,
+      depth = 1,
+      limit = 50,
+    ): Promise<GraphData | null> => {
+      if (!session?.accessToken) return null;
+      setLoading(true);
+      try {
+        const params = new URLSearchParams({
+          node_id: nodeId,
+          depth: String(depth),
+          limit: String(limit),
+        });
+        const res = await fetch(
+          `${getGraphApiUrl()}/graph/collections/${collectionId}/neighborhood?${params}`,
+          { headers: authHeaders(session.accessToken) },
+        );
+        if (!res.ok) throw new Error(`Failed: ${res.statusText}`);
+        const data: GraphData = await res.json();
+        setGraphData(data);
+        // Also update scalableData so activeData picks up the neighborhood view
+        setScalableData({
+          nodes: data.nodes,
+          edges: data.edges,
+          total_node_count: data.nodes.length,
+          total_edge_count: data.edges.length,
+          cluster_count: 0,
+          mode: "neighborhood",
+        });
+        setViewMode("neighborhood");
+        return data;
+      } catch (error) {
+        console.error("Failed to fetch neighborhood:", error);
+        toast.error("Failed to load neighborhood");
+        return null;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [session],
+  );
+
+  const expandCluster = useCallback(
+    async (
+      collectionId: string,
+      label: string,
+      nodeLimit = 200,
+      edgeLimit = 500,
+    ): Promise<ClusteredGraphData | null> => {
+      if (!session?.accessToken) return null;
+      setLoading(true);
+      try {
+        // Use the scalable endpoint with mode=expand so the backend can
+        // sub-cluster when the label group is too large.
+        const params = new URLSearchParams({
+          mode: "expand",
+          cluster_label: label,
+          node_limit: String(nodeLimit),
+          edge_limit: String(edgeLimit),
+        });
+        const res = await fetch(
+          `${getGraphApiUrl()}/graph/collections/${collectionId}/data/scalable?${params}`,
+          { headers: authHeaders(session.accessToken) },
+        );
+        if (!res.ok) throw new Error(`Failed: ${res.statusText}`);
+        const data: ClusteredGraphData = await res.json();
+        setScalableData(data);
+        setViewMode("expand");
+        return data;
+      } catch (error) {
+        console.error("Failed to expand cluster:", error);
+        toast.error("Failed to expand cluster");
+        return null;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [session],
+  );
+
   return {
     graphData,
+    scalableData,
     stats,
     loading,
+    viewMode,
+    setViewMode,
     fetchGraphData,
+    fetchScalableGraphData,
+    fetchNeighborhood,
+    expandCluster,
     fetchStats,
     fetchNodes,
     fetchEdges,
@@ -413,11 +546,32 @@ export function useGraphSearch() {
     [session],
   );
 
+  const searchEntityClusters = useCallback(
+    async (
+      collectionId: string,
+      q: string,
+    ): Promise<Record<string, number> | null> => {
+      if (!session?.accessToken) return null;
+      try {
+        const res = await fetch(
+          `${getGraphApiUrl()}/graph/collections/${collectionId}/search/entity-clusters?q=${encodeURIComponent(q)}`,
+          { headers: authHeaders(session.accessToken) },
+        );
+        if (!res.ok) return null;
+        return await res.json();
+      } catch {
+        return null;
+      }
+    },
+    [session],
+  );
+
   return {
     searchResults,
     searching,
     search,
     searchEntities,
+    searchEntityClusters,
     executeCypher,
     setSearchResults,
   };

@@ -36,6 +36,9 @@ def _sanitize_props(props: dict[str, Any]) -> dict[str, Any]:
 
 from langconnect.database.graph_connection import get_neo4j_driver
 from langconnect.models.graph import (
+    ClusterEdge,
+    ClusterNode,
+    ClusteredGraphData,
     GraphData,
     GraphEdge,
     GraphNode,
@@ -294,6 +297,922 @@ class GraphStore:
         return GraphData(nodes=nodes, edges=edges)
 
     # ------------------------------------------------------------------
+    # Scalable Visualization (Clustering / Overview / Expand)
+    # ------------------------------------------------------------------
+
+    async def get_graph_overview(
+        self,
+        *,
+        max_clusters: int = 200,
+        top_entities_per_cluster: int = 5,
+    ) -> ClusteredGraphData:
+        """Server-side clustered overview of the full graph.
+
+        Uses Neo4j's in-DB Louvain community detection (GDS plugin)
+        with fallback to label-based grouping when GDS is not available.
+        """
+        stats = await self.get_stats()
+
+        # If graph is small enough, return directly
+        if stats.node_count <= max_clusters:
+            data = await self.get_graph_data(
+                node_limit=stats.node_count,
+                edge_limit=stats.edge_count,
+            )
+            return ClusteredGraphData(
+                nodes=data.nodes,
+                edges=data.edges,
+                total_node_count=stats.node_count,
+                total_edge_count=stats.edge_count,
+                cluster_count=0,
+                mode="full",
+            )
+
+        # Try GDS Louvain, fallback to label-based grouping
+        try:
+            return await self._cluster_louvain(
+                max_clusters=max_clusters,
+                top_entities_per_cluster=top_entities_per_cluster,
+                stats=stats,
+            )
+        except Exception as exc:
+            logger.warning("GDS Louvain not available (%s), using label-based grouping", exc)
+            return await self._cluster_by_label(
+                max_clusters=max_clusters,
+                top_entities_per_cluster=top_entities_per_cluster,
+                stats=stats,
+            )
+
+    async def _cluster_louvain(
+        self,
+        *,
+        max_clusters: int,
+        top_entities_per_cluster: int,
+        stats: GraphStats,
+    ) -> ClusteredGraphData:
+        """Cluster via Neo4j GDS Louvain community detection."""
+        driver = await self._driver()
+        async with driver.session() as session:
+            # Project the subgraph into GDS
+            graph_name = f"viz_{self.collection_id[:12]}"
+            # Drop if exists
+            try:
+                await session.run(f"CALL gds.graph.drop('{graph_name}', false)")
+            except Exception:
+                pass
+
+            # Create projection
+            await session.run(
+                """
+                CALL gds.graph.project.cypher(
+                    $graph_name,
+                    'MATCH (n:Entity {collection_id: $cid}) RETURN id(n) AS id',
+                    'MATCH (a:Entity {collection_id: $cid})-[r]->(b:Entity {collection_id: $cid})
+                     RETURN id(a) AS source, id(b) AS target',
+                    {parameters: {cid: $cid}}
+                )
+                """,
+                graph_name=graph_name,
+                cid=self.collection_id,
+            )
+
+            # Run Louvain
+            louvain_result = await session.run(
+                """
+                CALL gds.louvain.stream($graph_name)
+                YIELD nodeId, communityId
+                WITH gds.util.asNode(nodeId) AS node, communityId
+                WHERE node.collection_id = $cid
+                RETURN elementId(node) AS id, node.name AS name,
+                       node.label AS label, communityId
+                """,
+                graph_name=graph_name,
+                cid=self.collection_id,
+            )
+
+            # Group nodes by community
+            communities: dict[int, list[dict]] = {}
+            async for record in louvain_result:
+                cid = record["communityId"]
+                if cid not in communities:
+                    communities[cid] = []
+                communities[cid].append({
+                    "id": record["id"],
+                    "name": record["name"],
+                    "label": record["label"] or "Entity",
+                })
+
+            # Clean up GDS projection
+            try:
+                await session.run(f"CALL gds.graph.drop('{graph_name}', false)")
+            except Exception:
+                pass
+
+        return self._build_clustered_response(
+            communities=communities,
+            max_clusters=max_clusters,
+            top_entities_per_cluster=top_entities_per_cluster,
+            stats=stats,
+        )
+
+    async def _cluster_by_label(
+        self,
+        *,
+        max_clusters: int,
+        top_entities_per_cluster: int,
+        stats: GraphStats,
+    ) -> ClusteredGraphData:
+        """Fallback clustering by entity label + degree-based importance."""
+        driver = await self._driver()
+        async with driver.session() as session:
+            # Get nodes with their degree (connection count)
+            result = await session.run(
+                """
+                MATCH (n:Entity {collection_id: $cid})
+                OPTIONAL MATCH (n)-[r]-()
+                WITH n, count(r) AS degree
+                RETURN elementId(n) AS id, n.name AS name,
+                       n.label AS label, degree
+                ORDER BY degree DESC
+                """,
+                cid=self.collection_id,
+            )
+
+            # Group by label
+            label_groups: dict[str, list[dict]] = {}
+            async for record in result:
+                lbl = record["label"] or "Entity"
+                if lbl not in label_groups:
+                    label_groups[lbl] = []
+                label_groups[lbl].append({
+                    "id": record["id"],
+                    "name": record["name"],
+                    "label": lbl,
+                    "degree": record["degree"],
+                })
+
+        # Convert label groups to community-like structure
+        communities: dict[int, list[dict]] = {}
+        comm_idx = 0
+
+        for lbl, nodes in label_groups.items():
+            # If a label group is too large, split it into sub-clusters
+            chunk_size = max(len(nodes) // max(1, max_clusters // len(label_groups)), 10)
+            for i in range(0, len(nodes), chunk_size):
+                communities[comm_idx] = nodes[i : i + chunk_size]
+                comm_idx += 1
+
+        return self._build_clustered_response(
+            communities=communities,
+            max_clusters=max_clusters,
+            top_entities_per_cluster=top_entities_per_cluster,
+            stats=stats,
+        )
+
+    def _build_clustered_response(
+        self,
+        *,
+        communities: dict[int, list[dict]],
+        max_clusters: int,
+        top_entities_per_cluster: int,
+        stats: GraphStats,
+    ) -> ClusteredGraphData:
+        """Build ClusteredGraphData from community assignments."""
+        # Sort communities by size (largest first), cap at max_clusters
+        sorted_comms = sorted(communities.items(), key=lambda x: len(x[1]), reverse=True)
+        if len(sorted_comms) > max_clusters:
+            sorted_comms = sorted_comms[:max_clusters]
+
+        # Build node-to-cluster mapping
+        node_to_cluster: dict[str, str] = {}
+        cluster_nodes: list[ClusterNode | GraphNode] = []
+
+        for idx, (comm_id, members) in enumerate(sorted_comms):
+            cluster_id = f"cluster_{idx}"
+
+            # Determine dominant label
+            label_freq: dict[str, int] = {}
+            for m in members:
+                label_freq[m["label"]] = label_freq.get(m["label"], 0) + 1
+            dominant_label = max(label_freq, key=label_freq.get)  # type: ignore
+
+            # Top entities by name (already sorted by degree in label-based)
+            top_names = [m["name"] for m in members[:top_entities_per_cluster]]
+
+            # Map individual nodes to this cluster
+            for m in members:
+                node_to_cluster[m["id"]] = cluster_id
+
+            if len(members) == 1:
+                # Single node → return as-is, not a cluster
+                m = members[0]
+                cluster_nodes.append(
+                    GraphNode(
+                        id=m["id"],
+                        label=m["label"],
+                        name=m["name"],
+                        properties={},
+                    )
+                )
+                node_to_cluster[m["id"]] = m["id"]
+            else:
+                display_name = f"{dominant_label} ({len(members)})"
+                cluster_nodes.append(
+                    ClusterNode(
+                        id=cluster_id,
+                        label=dominant_label,
+                        name=display_name,
+                        node_count=len(members),
+                        top_entities=top_names,
+                        properties={"community_id": comm_id, "label_counts": label_freq},
+                        is_cluster=True,
+                    )
+                )
+
+        # Build aggregated edges (we need to re-query edges)
+        # For now return nodes only; edges will be fetched in a follow-up
+        return ClusteredGraphData(
+            nodes=cluster_nodes,
+            edges=[],
+            total_node_count=stats.node_count,
+            total_edge_count=stats.edge_count,
+            cluster_count=len([n for n in cluster_nodes if isinstance(n, ClusterNode)]),
+            mode="overview",
+        )
+
+    @staticmethod
+    @staticmethod
+    def _build_sub_clusters(
+        label: str,
+        total_count: int,
+        chunk_size: int,
+        top_entities_per_chunk: int = 5,
+        entity_names: list[str] | None = None,
+    ) -> list[ClusterNode]:
+        """Build offset-based sub-cluster supernodes for a label.
+
+        Each sub-cluster encodes its offset in the ID so the backend can
+        serve the exact slice of nodes when clicked, preventing infinite
+        recursion.
+
+        IDs look like: ``subcluster__{label}__{skip}__{chunk_size}``
+        """
+        clusters: list[ClusterNode] = []
+        for offset in range(0, total_count, chunk_size):
+            actual_size = min(chunk_size, total_count - offset)
+            chunk_id = f"subcluster__{label}__{offset}__{chunk_size}"
+
+            # Pick top entity names for this chunk if available
+            top = []
+            if entity_names:
+                top = entity_names[offset : offset + top_entities_per_chunk]
+
+            clusters.append(
+                ClusterNode(
+                    id=chunk_id,
+                    label=label,
+                    name=f"{label} #{offset // chunk_size + 1} ({actual_size})",
+                    node_count=actual_size,
+                    top_entities=top,
+                    properties={"_skip": offset, "_limit": chunk_size},
+                    is_cluster=True,
+                )
+            )
+        return clusters
+
+    async def _count_label_nodes(self, label: str) -> int:
+        """Count how many Entity nodes have the given label in this collection."""
+        driver = await self._driver()
+        async with driver.session() as session:
+            result = await session.run(
+                """
+                MATCH (n:Entity {collection_id: $cid})
+                WHERE n.label = $label
+                RETURN count(n) AS cnt
+                """,
+                cid=self.collection_id,
+                label=label,
+            )
+            record = await result.single()
+            return record["cnt"] if record else 0
+
+    async def _count_label_edges(self, label: str) -> int:
+        """Count edges where both source and target have the given label."""
+        driver = await self._driver()
+        async with driver.session() as session:
+            result = await session.run(
+                """
+                MATCH (a:Entity {collection_id: $cid})-[r]->(b:Entity {collection_id: $cid})
+                WHERE a.label = $label AND b.label = $label
+                RETURN count(r) AS cnt
+                """,
+                cid=self.collection_id,
+                label=label,
+            )
+            record = await result.single()
+            return record["cnt"] if record else 0
+
+    async def _get_label_metadata(
+        self, label: str
+    ) -> tuple[dict[str, int], dict[str, int]]:
+        """Return (rel_type_counts, neighbor_label_counts) for a label group.
+
+        * rel_type_counts  – every relationship type involving nodes of this
+          label and how many edges of that type exist.
+        * neighbor_label_counts – for each label of *connected* nodes, how
+          many distinct neighbours exist (includes same-label connections).
+        """
+        driver = await self._driver()
+        async with driver.session() as session:
+            # Relationship types
+            rel_result = await session.run(
+                """
+                MATCH (a:Entity {collection_id: $cid})-[r]-(b:Entity {collection_id: $cid})
+                WHERE a.label = $label
+                RETURN type(r) AS rtype, count(r) AS cnt
+                """,
+                cid=self.collection_id,
+                label=label,
+            )
+            rel_type_counts: dict[str, int] = {}
+            async for record in rel_result:
+                rel_type_counts[record["rtype"]] = record["cnt"]
+
+            # Neighbour labels
+            label_result = await session.run(
+                """
+                MATCH (a:Entity {collection_id: $cid})-[]-(b:Entity {collection_id: $cid})
+                WHERE a.label = $label
+                RETURN b.label AS blabel, count(DISTINCT b) AS cnt
+                """,
+                cid=self.collection_id,
+                label=label,
+            )
+            neighbor_label_counts: dict[str, int] = {}
+            async for record in label_result:
+                neighbor_label_counts[record["blabel"] or "Entity"] = record["cnt"]
+
+            return rel_type_counts, neighbor_label_counts
+
+    async def _top_entity_names(self, label: str, limit: int = 100) -> list[str]:
+        """Fetch top entity names for a label, sorted by degree (descending)."""
+        driver = await self._driver()
+        async with driver.session() as session:
+            result = await session.run(
+                """
+                MATCH (n:Entity {collection_id: $cid})
+                WHERE n.label = $label
+                OPTIONAL MATCH (n)-[r]-()
+                WITH n, count(r) AS degree
+                ORDER BY degree DESC
+                LIMIT $limit
+                RETURN n.name AS name
+                """,
+                cid=self.collection_id,
+                label=label,
+                limit=limit,
+            )
+            return [record["name"] async for record in result]
+
+    async def _expand_cluster_slice(
+        self,
+        label: str,
+        *,
+        skip: int = 0,
+        limit: int = 200,
+        edge_limit: int = 500,
+    ) -> GraphData:
+        """Return a specific slice of nodes for a label (sorted by degree).
+
+        Used by sub-cluster drill-down so each chunk maps to an exact offset.
+        """
+        driver = await self._driver()
+        async with driver.session() as session:
+            node_result = await session.run(
+                """
+                MATCH (n:Entity {collection_id: $cid})
+                WHERE n.label = $label
+                OPTIONAL MATCH (n)-[r]-()
+                WITH n, count(r) AS degree
+                ORDER BY degree DESC
+                SKIP $skip
+                LIMIT $limit
+                RETURN elementId(n) AS id, n.label AS label,
+                       n.name AS name, properties(n) AS props
+                """,
+                cid=self.collection_id,
+                label=label,
+                skip=skip,
+                limit=limit,
+            )
+
+            nodes: list[GraphNode] = []
+            node_ids: set[str] = set()
+            async for record in node_result:
+                props = dict(record["props"])
+                props.pop("collection_id", None)
+                props.pop("name", None)
+                props.pop("label", None)
+                props = _sanitize_props(props)
+                nodes.append(
+                    GraphNode(
+                        id=record["id"],
+                        label=record["label"] or "Entity",
+                        name=record["name"],
+                        properties=props,
+                    )
+                )
+                node_ids.add(record["id"])
+
+            if not node_ids:
+                return GraphData(nodes=[], edges=[])
+
+            # Edges between the slice nodes
+            edge_result = await session.run(
+                """
+                MATCH (a:Entity {collection_id: $cid})-[r]->(b:Entity {collection_id: $cid})
+                WHERE elementId(a) IN $ids AND elementId(b) IN $ids
+                RETURN elementId(r) AS id, elementId(a) AS src,
+                       elementId(b) AS tgt, type(r) AS rtype,
+                       properties(r) AS props
+                LIMIT $elimit
+                """,
+                cid=self.collection_id,
+                ids=list(node_ids),
+                elimit=edge_limit,
+            )
+
+            edges: list[GraphEdge] = []
+            async for record in edge_result:
+                props = dict(record["props"]) if record["props"] else {}
+                props.pop("collection_id", None)
+                props = _sanitize_props(props)
+                edges.append(
+                    GraphEdge(
+                        id=record["id"],
+                        source=record["src"],
+                        target=record["tgt"],
+                        type=record["rtype"],
+                        properties=props,
+                    )
+                )
+
+            return GraphData(nodes=nodes, edges=edges)
+
+    async def get_graph_overview_with_edges(
+        self,
+        *,
+        max_clusters: int = 200,
+        top_entities_per_cluster: int = 5,
+    ) -> ClusteredGraphData:
+        """Full overview with aggregated inter-cluster edges."""
+        overview = await self.get_graph_overview(
+            max_clusters=max_clusters,
+            top_entities_per_cluster=top_entities_per_cluster,
+        )
+
+        if overview.mode == "full":
+            return overview
+
+        # Build reverse mapping: we need node→cluster
+        # Re-run a lightweight query to map nodes to clusters
+        driver = await self._driver()
+        async with driver.session() as session:
+            # Get all edges in collection
+            result = await session.run(
+                """
+                MATCH (a:Entity {collection_id: $cid})-[r]->(b:Entity {collection_id: $cid})
+                RETURN elementId(a) AS src, elementId(b) AS tgt, type(r) AS rtype
+                """,
+                cid=self.collection_id,
+            )
+
+            # Build node→cluster mapping from overview nodes
+            node_to_cluster: dict[str, str] = {}
+            for n in overview.nodes:
+                if isinstance(n, ClusterNode) and n.is_cluster:
+                    # We need to re-get members for this cluster
+                    pass
+                else:
+                    node_to_cluster[n.id] = n.id
+
+            # Aggregate edges between clusters
+            edge_agg: dict[tuple[str, str], dict[str, int]] = {}
+            async for record in result:
+                src_cluster = node_to_cluster.get(record["src"])
+                tgt_cluster = node_to_cluster.get(record["tgt"])
+                if not src_cluster or not tgt_cluster:
+                    continue
+                if src_cluster == tgt_cluster:
+                    continue
+                key = (min(src_cluster, tgt_cluster), max(src_cluster, tgt_cluster))
+                if key not in edge_agg:
+                    edge_agg[key] = {}
+                rtype = record["rtype"]
+                edge_agg[key][rtype] = edge_agg[key].get(rtype, 0) + 1
+
+            cluster_edges: list[ClusterEdge] = []
+            for (src, tgt), type_counts in edge_agg.items():
+                dominant_type = max(type_counts, key=type_counts.get)  # type: ignore
+                total_weight = sum(type_counts.values())
+                cluster_edges.append(
+                    ClusterEdge(
+                        id=f"ce_{src}_{tgt}",
+                        source=src,
+                        target=tgt,
+                        type=dominant_type,
+                        weight=total_weight,
+                        relationship_types=list(type_counts.keys()),
+                        properties={"type_counts": type_counts},
+                    )
+                )
+
+        overview.edges = cluster_edges
+        return overview
+
+    async def expand_cluster(
+        self,
+        cluster_label: str,
+        *,
+        node_limit: int = 200,
+        edge_limit: int = 500,
+    ) -> GraphData:
+        """Expand a cluster: return actual nodes with the given label."""
+        driver = await self._driver()
+        async with driver.session() as session:
+            # Get nodes in this cluster (by label)
+            node_result = await session.run(
+                """
+                MATCH (n:Entity {collection_id: $cid})
+                WHERE n.label = $label
+                OPTIONAL MATCH (n)-[r]-()
+                WITH n, count(r) AS degree
+                ORDER BY degree DESC
+                LIMIT $limit
+                RETURN elementId(n) AS id, n.label AS label,
+                       n.name AS name, properties(n) AS props
+                """,
+                cid=self.collection_id,
+                label=cluster_label,
+                limit=node_limit,
+            )
+
+            nodes: list[GraphNode] = []
+            node_ids: set[str] = set()
+            async for record in node_result:
+                props = dict(record["props"])
+                props.pop("collection_id", None)
+                props.pop("name", None)
+                props.pop("label", None)
+                props = _sanitize_props(props)
+                nodes.append(
+                    GraphNode(
+                        id=record["id"],
+                        label=record["label"] or "Entity",
+                        name=record["name"],
+                        properties=props,
+                    )
+                )
+                node_ids.add(record["id"])
+
+            if not node_ids:
+                return GraphData(nodes=[], edges=[])
+
+            # Get edges between these nodes
+            edge_result = await session.run(
+                """
+                MATCH (a:Entity {collection_id: $cid})-[r]->(b:Entity {collection_id: $cid})
+                WHERE elementId(a) IN $ids AND elementId(b) IN $ids
+                RETURN elementId(r) AS id, elementId(a) AS src,
+                       elementId(b) AS tgt, type(r) AS rtype,
+                       properties(r) AS props
+                LIMIT $limit
+                """,
+                cid=self.collection_id,
+                ids=list(node_ids),
+                limit=edge_limit,
+            )
+
+            edges: list[GraphEdge] = []
+            async for record in edge_result:
+                props = dict(record["props"])
+                props.pop("collection_id", None)
+                props = _sanitize_props(props)
+                edges.append(
+                    GraphEdge(
+                        id=record["id"],
+                        source=record["src"],
+                        target=record["tgt"],
+                        type=record["rtype"],
+                        properties=props,
+                    )
+                )
+
+        return GraphData(nodes=nodes, edges=edges)
+
+    async def get_neighborhood(
+        self,
+        node_id: str,
+        *,
+        depth: int = 1,
+        limit: int = 50,
+    ) -> GraphData:
+        """Get ego-graph (neighborhood) around a specific node."""
+        driver = await self._driver()
+        async with driver.session() as session:
+            # Get center node + neighbors
+            result = await session.run(
+                f"""
+                MATCH (center:Entity {{collection_id: $cid}})
+                WHERE elementId(center) = $node_id
+                OPTIONAL MATCH path = (center)-[*1..{depth}]-(neighbor:Entity {{collection_id: $cid}})
+                WITH center, collect(DISTINCT neighbor) AS neighbors
+                UNWIND ([center] + neighbors) AS n
+                WITH DISTINCT n
+                RETURN elementId(n) AS id, n.label AS label,
+                       n.name AS name, properties(n) AS props
+                LIMIT $limit
+                """,
+                cid=self.collection_id,
+                node_id=node_id,
+                limit=limit,
+            )
+
+            nodes: list[GraphNode] = []
+            node_ids: set[str] = set()
+            async for record in result:
+                props = dict(record["props"])
+                props.pop("collection_id", None)
+                props.pop("name", None)
+                props.pop("label", None)
+                props = _sanitize_props(props)
+                nodes.append(
+                    GraphNode(
+                        id=record["id"],
+                        label=record["label"] or "Entity",
+                        name=record["name"],
+                        properties=props,
+                    )
+                )
+                node_ids.add(record["id"])
+
+            if not node_ids:
+                return GraphData(nodes=[], edges=[])
+
+            # Get all edges between these nodes
+            edge_result = await session.run(
+                """
+                MATCH (a:Entity {collection_id: $cid})-[r]->(b:Entity {collection_id: $cid})
+                WHERE elementId(a) IN $ids AND elementId(b) IN $ids
+                RETURN elementId(r) AS id, elementId(a) AS src,
+                       elementId(b) AS tgt, type(r) AS rtype,
+                       properties(r) AS props
+                """,
+                cid=self.collection_id,
+                ids=list(node_ids),
+            )
+
+            edges: list[GraphEdge] = []
+            async for record in edge_result:
+                props = dict(record["props"])
+                props.pop("collection_id", None)
+                props = _sanitize_props(props)
+                edges.append(
+                    GraphEdge(
+                        id=record["id"],
+                        source=record["src"],
+                        target=record["tgt"],
+                        type=record["rtype"],
+                        properties=props,
+                    )
+                )
+
+        return GraphData(nodes=nodes, edges=edges)
+
+    async def get_important_nodes(
+        self,
+        *,
+        limit: int = 200,
+    ) -> list[GraphNode]:
+        """Get the most important nodes by degree centrality."""
+        driver = await self._driver()
+        async with driver.session() as session:
+            result = await session.run(
+                """
+                MATCH (n:Entity {collection_id: $cid})
+                OPTIONAL MATCH (n)-[r]-()
+                WITH n, count(r) AS degree
+                ORDER BY degree DESC
+                LIMIT $limit
+                RETURN elementId(n) AS id, n.label AS label,
+                       n.name AS name, properties(n) AS props, degree
+                """,
+                cid=self.collection_id,
+                limit=limit,
+            )
+            nodes: list[GraphNode] = []
+            async for record in result:
+                props = dict(record["props"])
+                props.pop("collection_id", None)
+                props.pop("name", None)
+                props.pop("label", None)
+                props["degree"] = record["degree"]
+                props = _sanitize_props(props)
+                nodes.append(
+                    GraphNode(
+                        id=record["id"],
+                        label=record["label"] or "Entity",
+                        name=record["name"],
+                        properties=props,
+                    )
+                )
+            return nodes
+
+    async def get_scalable_graph_data(
+        self,
+        *,
+        mode: str = "auto",
+        node_limit: int = 500,
+        edge_limit: int = 1000,
+        cluster_label: str | None = None,
+        node_id: str | None = None,
+        depth: int = 1,
+    ) -> ClusteredGraphData:
+        """Unified scalable graph endpoint.
+
+        Modes:
+            auto        - Choose best mode based on graph size
+            overview    - Clustered supernodes
+            expand      - Drill into a cluster
+            neighborhood - Ego graph around a node
+            full        - All nodes paginated (with importance sorting)
+        """
+        stats = await self.get_stats()
+
+        # Auto-select mode based on graph size
+        if mode == "auto":
+            if stats.node_count <= node_limit:
+                mode = "full"
+            else:
+                mode = "overview"
+
+        if mode == "overview":
+            return await self.get_graph_overview(max_clusters=node_limit)
+
+        elif mode == "expand" and cluster_label:
+            # ── Sub-cluster drill-down (offset-based) ──
+            # If the cluster_label is a sub-cluster ID, decode it and return
+            # that exact slice of nodes — no further sub-clustering.
+            if cluster_label.startswith("subcluster__"):
+                parts = cluster_label.split("__")
+                # subcluster__{label}__{skip}__{chunk_size}
+                if len(parts) == 4:
+                    real_label = parts[1]
+                    skip = int(parts[2])
+                    chunk = int(parts[3])
+                    data = await self._expand_cluster_slice(
+                        real_label, skip=skip, limit=chunk, edge_limit=edge_limit
+                    )
+                    # Attach label-group metadata so the frontend can
+                    # show neighbor labels & relationship types.
+                    rel_type_counts, neighbor_label_counts = (
+                        await self._get_label_metadata(real_label)
+                    )
+                    return ClusteredGraphData(
+                        nodes=data.nodes,
+                        edges=data.edges,
+                        total_node_count=stats.node_count,
+                        total_edge_count=stats.edge_count,
+                        cluster_count=0,
+                        mode="expand",
+                        scope_label=real_label,
+                        metadata={
+                            "neighbor_label_counts": neighbor_label_counts,
+                            "rel_type_counts": rel_type_counts,
+                        },
+                    )
+
+            # ── Regular label expand ──
+            label_count = await self._count_label_nodes(cluster_label)
+
+            if label_count > node_limit:
+                # Too many to show flat — produce offset-based sub-clusters
+                chunk_size = max(node_limit, 50)
+                # Fetch top entity names for preview
+                top_names = await self._top_entity_names(
+                    cluster_label, limit=label_count
+                )
+                sub_clusters = self._build_sub_clusters(
+                    label=cluster_label,
+                    total_count=label_count,
+                    chunk_size=chunk_size,
+                    top_entities_per_chunk=5,
+                    entity_names=top_names,
+                )
+                # Compute intra-label edge count so the frontend can
+                # display a meaningful "edges" number for this scope.
+                label_edge_count = await self._count_label_edges(cluster_label)
+
+                # Enrich sub-clusters with group-level metadata so the
+                # frontend can show neighbour labels & rel-type filters.
+                rel_type_counts, neighbor_label_counts = (
+                    await self._get_label_metadata(cluster_label)
+                )
+                for sc in sub_clusters:
+                    sc.properties["_rel_type_counts"] = rel_type_counts
+                    sc.properties["_neighbor_label_counts"] = neighbor_label_counts
+
+                return ClusteredGraphData(
+                    nodes=sub_clusters,
+                    edges=[],
+                    total_node_count=label_count,
+                    total_edge_count=label_edge_count,
+                    cluster_count=len(sub_clusters),
+                    mode="expand",
+                    scope_label=cluster_label,
+                )
+
+            # Small enough — return flat
+            data = await self.expand_cluster(
+                cluster_label, node_limit=node_limit, edge_limit=edge_limit
+            )
+            rel_type_counts_flat, neighbor_label_counts_flat = (
+                await self._get_label_metadata(cluster_label)
+            )
+            return ClusteredGraphData(
+                nodes=data.nodes,
+                edges=data.edges,
+                total_node_count=stats.node_count,
+                total_edge_count=stats.edge_count,
+                cluster_count=0,
+                mode="expand",
+                scope_label=cluster_label,
+                metadata={
+                    "neighbor_label_counts": neighbor_label_counts_flat,
+                    "rel_type_counts": rel_type_counts_flat,
+                },
+            )
+
+        elif mode == "neighborhood" and node_id:
+            data = await self.get_neighborhood(
+                node_id, depth=depth, limit=node_limit
+            )
+            return ClusteredGraphData(
+                nodes=data.nodes,
+                edges=data.edges,
+                total_node_count=stats.node_count,
+                total_edge_count=stats.edge_count,
+                cluster_count=0,
+                mode="neighborhood",
+            )
+
+        else:
+            # "full" mode — importance-sorted
+            important_nodes = await self.get_important_nodes(limit=node_limit)
+            node_ids = [n.id for n in important_nodes]
+
+            # Fetch edges between important nodes
+            edges: list[GraphEdge] = []
+            if node_ids:
+                driver = await self._driver()
+                async with driver.session() as session:
+                    edge_result = await session.run(
+                        """
+                        MATCH (a:Entity {collection_id: $cid})-[r]->(b:Entity {collection_id: $cid})
+                        WHERE elementId(a) IN $ids AND elementId(b) IN $ids
+                        RETURN elementId(r) AS id, elementId(a) AS src,
+                               elementId(b) AS tgt, type(r) AS rtype,
+                               properties(r) AS props
+                        LIMIT $limit
+                        """,
+                        cid=self.collection_id,
+                        ids=node_ids,
+                        limit=edge_limit,
+                    )
+                    async for record in edge_result:
+                        props = dict(record["props"])
+                        props.pop("collection_id", None)
+                        props = _sanitize_props(props)
+                        edges.append(
+                            GraphEdge(
+                                id=record["id"],
+                                source=record["src"],
+                                target=record["tgt"],
+                                type=record["rtype"],
+                                properties=props,
+                            )
+                        )
+
+            return ClusteredGraphData(
+                nodes=important_nodes,
+                edges=edges,
+                total_node_count=stats.node_count,
+                total_edge_count=stats.edge_count,
+                cluster_count=0,
+                mode="full",
+            )
+
+    # ------------------------------------------------------------------
     # Class-level helpers (no collection_id needed)
     # ------------------------------------------------------------------
 
@@ -362,18 +1281,38 @@ class GraphStore:
         page: int = 1,
         page_size: int = 25,
         search: str | None = None,
+        scope_label: str | None = None,
     ) -> PaginatedCounts:
-        """Return entity labels with counts, paginated and optionally filtered."""
+        """Return entity labels with counts, paginated and optionally filtered.
+
+        When *scope_label* is provided the results are scoped to the
+        **neighbour labels** of nodes carrying that label (i.e. which other
+        labels are connected to the given label group).  This is used by the
+        frontend when the user has drilled into a specific label cluster.
+        """
         driver = await self._driver()
         async with driver.session() as session:
-            result = await session.run(
-                """
-                MATCH (n:Entity {collection_id: $cid})
-                RETURN n.label AS label, count(*) AS cnt
-                ORDER BY cnt DESC, label
-                """,
-                cid=self.collection_id,
-            )
+            if scope_label:
+                # Scoped: neighbour labels of nodes with the given label
+                result = await session.run(
+                    """
+                    MATCH (a:Entity {collection_id: $cid})-[]-(b:Entity {collection_id: $cid})
+                    WHERE a.label = $scope_label
+                    RETURN b.label AS label, count(DISTINCT b) AS cnt
+                    ORDER BY cnt DESC, label
+                    """,
+                    cid=self.collection_id,
+                    scope_label=scope_label,
+                )
+            else:
+                result = await session.run(
+                    """
+                    MATCH (n:Entity {collection_id: $cid})
+                    RETURN n.label AS label, count(*) AS cnt
+                    ORDER BY cnt DESC, label
+                    """,
+                    cid=self.collection_id,
+                )
             all_items: list[dict[str, object]] = []
             async for record in result:
                 lbl = record["label"] or "Entity"
@@ -401,18 +1340,35 @@ class GraphStore:
         page: int = 1,
         page_size: int = 25,
         search: str | None = None,
+        scope_label: str | None = None,
     ) -> PaginatedCounts:
-        """Return relationship types with counts, paginated and optionally filtered."""
+        """Return relationship types with counts, paginated and optionally filtered.
+
+        When *scope_label* is provided, only relationships involving nodes
+        with that label are counted.
+        """
         driver = await self._driver()
         async with driver.session() as session:
-            result = await session.run(
-                """
-                MATCH (a:Entity {collection_id: $cid})-[r]->(b:Entity {collection_id: $cid})
-                RETURN type(r) AS rtype, count(*) AS cnt
-                ORDER BY cnt DESC, rtype
-                """,
-                cid=self.collection_id,
-            )
+            if scope_label:
+                result = await session.run(
+                    """
+                    MATCH (a:Entity {collection_id: $cid})-[r]-(b:Entity {collection_id: $cid})
+                    WHERE a.label = $scope_label
+                    RETURN type(r) AS rtype, count(r) AS cnt
+                    ORDER BY cnt DESC, rtype
+                    """,
+                    cid=self.collection_id,
+                    scope_label=scope_label,
+                )
+            else:
+                result = await session.run(
+                    """
+                    MATCH (a:Entity {collection_id: $cid})-[r]->(b:Entity {collection_id: $cid})
+                    RETURN type(r) AS rtype, count(*) AS cnt
+                    ORDER BY cnt DESC, rtype
+                    """,
+                    cid=self.collection_id,
+                )
             all_items: list[dict[str, object]] = []
             async for record in result:
                 rtype = record["rtype"]
@@ -664,6 +1620,35 @@ class GraphStore:
                     )
 
         return GraphData(nodes=nodes, edges=edges)
+
+    async def search_entity_clusters(
+        self,
+        query: str,
+    ) -> dict[str, int]:
+        """Return a mapping of entity-label → match-count for nodes whose name
+        matches *query* (case-insensitive CONTAINS).
+
+        This is a lightweight alternative to ``search_entities`` intended for
+        the clustered graph view: instead of returning the full nodes/edges it
+        only tells the caller *which clusters* contain matching entities and
+        how many.
+        """
+        driver = await self._driver()
+        async with driver.session() as session:
+            result = await session.run(
+                """
+                MATCH (n:Entity {collection_id: $cid})
+                WHERE toLower(n.name) CONTAINS toLower($q)
+                RETURN n.label AS label, count(n) AS cnt
+                """,
+                cid=self.collection_id,
+                q=query,
+            )
+            clusters: dict[str, int] = {}
+            async for record in result:
+                lbl = record["label"] or "Entity"
+                clusters[lbl] = record["cnt"]
+            return clusters
 
     async def get_entity_context(
         self,

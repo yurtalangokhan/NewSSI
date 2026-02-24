@@ -44,6 +44,69 @@ class GraphData(BaseModel):
 
 
 # =====================
+# Clustered / Scalable Graph
+# =====================
+
+
+class ClusterNode(BaseModel):
+    """A supernode representing a cluster of entities."""
+
+    id: str = Field(..., description="Cluster identifier (e.g. 'cluster_0').")
+    label: str = Field(..., description="Dominant label in this cluster.")
+    name: str = Field(..., description="Display name for the cluster.")
+    node_count: int = Field(0, description="Number of nodes in this cluster.")
+    top_entities: list[str] = Field(
+        default_factory=list,
+        description="Names of the most important entities in the cluster.",
+    )
+    properties: dict[str, Any] = Field(default_factory=dict)
+    is_cluster: bool = Field(True, description="Flag to identify supernode clusters.")
+
+
+class ClusterEdge(BaseModel):
+    """An aggregated edge between two clusters."""
+
+    id: str = Field(..., description="Aggregated edge identifier.")
+    source: str = Field(..., description="Source cluster id.")
+    target: str = Field(..., description="Target cluster id.")
+    type: str = Field("RELATED_TO", description="Dominant relationship type.")
+    weight: int = Field(1, description="Number of original edges bundled.")
+    relationship_types: list[str] = Field(
+        default_factory=list,
+        description="All relationship types in this bundle.",
+    )
+    properties: dict[str, Any] = Field(default_factory=dict)
+
+
+class ClusteredGraphData(BaseModel):
+    """Clustered graph data for scalable visualization."""
+
+    nodes: list[GraphNode | ClusterNode] = Field(default_factory=list)
+    edges: list[GraphEdge | ClusterEdge] = Field(default_factory=list)
+    total_node_count: int = Field(0, description="Total nodes in DB.")
+    total_edge_count: int = Field(0, description="Total edges in DB.")
+    cluster_count: int = Field(0, description="Number of clusters generated.")
+    mode: str = Field("overview", description="'overview' | 'expand' | 'neighborhood' | 'full'")
+    scope_label: str | None = Field(
+        None,
+        description="The label currently being viewed (expand/sub-cluster). "
+        "None for overview/full modes.",
+    )
+    metadata: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Optional metadata: neighbor_label_counts, rel_type_counts for the current scope.",
+    )
+
+
+class NeighborhoodRequest(BaseModel):
+    """Request for ego-graph around a specific node."""
+
+    node_id: str = Field(..., description="Element ID of the center node.")
+    depth: int = Field(1, ge=1, le=3, description="Hop depth.")
+    limit: int = Field(50, ge=1, le=500, description="Max neighbors to return.")
+
+
+# =====================
 # Graph Stats
 # =====================
 

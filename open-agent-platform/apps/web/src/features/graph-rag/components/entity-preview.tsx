@@ -17,6 +17,30 @@ import { X, ArrowRight, ArrowLeft, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { GraphNode, GraphEdge } from "@/types/graph";
 
+// ISO-8601 pattern: 2026-02-17T19:11:15.912000+00:00  or  2026-02-17T19:11:15Z
+const ISO_DATE_RE =
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/;
+
+/** Pretty-print a property value; normalises ISO dates to local readable form. */
+function formatPropertyValue(value: unknown): string {
+  if (value == null) return "";
+  if (typeof value === "object") return JSON.stringify(value);
+  const str = String(value);
+  if (ISO_DATE_RE.test(str)) {
+    const d = new Date(str);
+    if (!isNaN(d.getTime())) {
+      return d.toLocaleString("tr-TR", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    }
+  }
+  return str;
+}
+
 interface EntityPreviewProps {
   node: GraphNode | null;
   edges: GraphEdge[];
@@ -76,9 +100,7 @@ export function EntityPreview({
                         {key}
                       </span>
                       <span className="break-words">
-                        {typeof value === "object"
-                          ? JSON.stringify(value)
-                          : String(value)}
+                        {formatPropertyValue(value)}
                       </span>
                     </div>
                   ))}

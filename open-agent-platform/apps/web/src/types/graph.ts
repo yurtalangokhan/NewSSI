@@ -27,6 +27,63 @@ export interface GraphData {
 }
 
 // ============================================================================
+// Clustered / Scalable Graph Types
+// ============================================================================
+
+export interface ClusterNode {
+  id: string;
+  label: string;
+  name: string;
+  node_count: number;
+  top_entities: string[];
+  properties: Record<string, unknown>;
+  is_cluster: true;
+}
+
+export interface ClusterEdge {
+  id: string;
+  source: string;
+  target: string;
+  type: string;
+  weight: number;
+  relationship_types: string[];
+  properties: Record<string, unknown>;
+}
+
+export type ScalableNode = GraphNode | ClusterNode;
+export type ScalableEdge = GraphEdge | ClusterEdge;
+
+export function isClusterNode(node: ScalableNode): node is ClusterNode {
+  return "is_cluster" in node && node.is_cluster === true;
+}
+
+export function isClusterEdge(edge: ScalableEdge): edge is ClusterEdge {
+  return "weight" in edge && "relationship_types" in edge;
+}
+
+export type GraphViewMode =
+  | "auto"
+  | "overview"
+  | "expand"
+  | "neighborhood"
+  | "full";
+
+export interface ClusteredGraphData {
+  nodes: ScalableNode[];
+  edges: ScalableEdge[];
+  total_node_count: number;
+  total_edge_count: number;
+  cluster_count: number;
+  mode: GraphViewMode;
+  /** The label currently being viewed (expand / sub-cluster). Null for overview/full. */
+  scope_label?: string | null;
+  metadata?: {
+    neighbor_label_counts?: Record<string, number>;
+    rel_type_counts?: Record<string, number>;
+  };
+}
+
+// ============================================================================
 // Graph Stats
 // ============================================================================
 
@@ -148,6 +205,10 @@ export interface ForceGraphNode {
   val?: number;
   color?: string;
   properties?: Record<string, unknown>;
+  /** Cluster-specific fields */
+  isCluster?: boolean;
+  nodeCount?: number;
+  topEntities?: string[];
 }
 
 export interface ForceGraphLink {
@@ -155,6 +216,9 @@ export interface ForceGraphLink {
   target: string;
   type: string;
   color?: string;
+  /** Cluster edge fields */
+  weight?: number;
+  relationshipTypes?: string[];
 }
 
 export interface ForceGraphData {
