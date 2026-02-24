@@ -19,6 +19,7 @@ from langconnect.models.graph import (
     BuildProgress,
     BuildStatus,
     ExtractionResult,
+    GraphNode,
     GraphSearchResult,
 )
 from langconnect.services.entity_extractor import EntityExtractor
@@ -159,7 +160,7 @@ class GraphRAGService:
         return chunks
 
     # ------------------------------------------------------------------
-    # Hybrid Search (RRF + Cosine + BM25-style)
+    # Hybrid Search (RRF: Vector Cosine + Graph BM25)
     # ------------------------------------------------------------------
 
     async def hybrid_search(
@@ -167,35 +168,117 @@ class GraphRAGService:
         query: str,
         *,
         limit: int = 10,
-        vector_weight: float = 0.5,
-        graph_weight: float = 0.5,
+        vector_weight: float = 0.4,
+        graph_weight: float = 0.6,
     ) -> GraphSearchResult:
-        """Perform hybrid retrieval: vector similarity + graph traversal.
+        """Perform hybrid retrieval with **entity-centric RRF** fusion.
 
-        Uses Reciprocal Rank Fusion (RRF) to combine results from both
-        sources into a single ranked list.
+        Two retrieval signals:
+
+        1. **Vector (cosine)** — PGVector similarity on embedded chunks.
+        2. **Graph BM25** — Neo4j fulltext (Lucene) on entity names/labels.
+
+        RRF fusion is **entity-centric**: each entity receives an RRF
+        contribution from *both* signals when it appears in both:
+        - BM25 signal: entity rank → ``graph_weight / (k + rank + 1)``
+        - Vector signal: for each ranked chunk, any BM25-matched entity
+          whose name appears in the chunk content receives
+          ``vector_weight / (k + chunk_rank + 1)``.
+
+        Entities that appear in both signals accumulate a higher fused
+        score than those found by only one signal.
+
+        The final node list is **sorted by RRF score** and the overall
+        relevance score is derived from the best RRF score.
         """
         # Run both searches concurrently
         vector_task = asyncio.create_task(self._vector_search(query, limit=limit))
-        graph_task = asyncio.create_task(self._graph_search(query, limit=limit))
+        bm25_task = asyncio.create_task(self._graph_bm25_search(query, limit=limit))
 
-        vector_results, graph_results = await asyncio.gather(vector_task, graph_task)
+        vector_results, bm25_results = await asyncio.gather(vector_task, bm25_task)
 
-        # RRF fusion — used only for RANKING (not for the displayed score)
-        rrf_scores: dict[str, float] = {}
+        # ----- Entity-centric RRF fusion -----
         rrf_k = 60  # standard RRF constant
+        rrf_scores: dict[str, float] = {}
 
-        # Score vector results
+        # Lookup table: entity_name → {node, bm25_score}
+        entity_lookup: dict[str, dict] = {}
+        for hit in bm25_results:
+            entity_lookup[hit["node"].name] = hit
+
+        # Signal 1 — BM25: entities ranked by descending BM25 score
+        for rank, hit in enumerate(bm25_results):
+            name = hit["node"].name
+            rrf_scores[name] = rrf_scores.get(name, 0) + graph_weight / (rrf_k + rank + 1)
+
+        # Signal 2 — Vector: for each ranked chunk, find which
+        # BM25-matched entity names appear in the chunk text.
+        # Only the BEST (lowest) rank per entity is used to prevent
+        # common entities (e.g. "RAG") from accumulating unfair scores
+        # across many chunks.
+        entity_names_lower = {n.lower(): n for n in entity_lookup}
+        entity_best_vector_rank: dict[str, int] = {}  # name → best chunk rank
         for rank, item in enumerate(vector_results):
-            key = item.get("id", f"v_{rank}")
-            rrf_scores[key] = rrf_scores.get(key, 0) + vector_weight / (rrf_k + rank + 1)
+            content_lower = (item.get("content") or "").lower()
+            if not content_lower:
+                continue
+            for name_lower, name in entity_names_lower.items():
+                if name_lower in content_lower:
+                    if name not in entity_best_vector_rank or rank < entity_best_vector_rank[name]:
+                        entity_best_vector_rank[name] = rank
 
-        # Score graph results (entity names as keys)
-        for rank, node in enumerate(graph_results.nodes):
-            key = node.name
-            rrf_scores[key] = rrf_scores.get(key, 0) + graph_weight / (rrf_k + rank + 1)
+        for name, best_rank in entity_best_vector_rank.items():
+            rrf_scores[name] = rrf_scores.get(name, 0) + vector_weight / (rrf_k + best_rank + 1)
 
-        # Build combined context
+        # Sort entities by fused RRF score (descending)
+        sorted_entities = sorted(
+            rrf_scores.items(), key=lambda x: x[1], reverse=True
+        )
+
+        # Build ordered node list — attach rrf_score to properties
+        merged_nodes: list = []
+        seed_entity_names: list[str] = []
+        for name, score in sorted_entities[:limit]:
+            if name in entity_lookup:
+                node = entity_lookup[name]["node"]
+                merged_nodes.append(
+                    GraphNode(
+                        id=node.id,
+                        label=node.label,
+                        name=node.name,
+                        properties={
+                            **node.properties,
+                            "rrf_score": round(score, 6),
+                            "bm25_score": round(entity_lookup[name]["bm25_score"], 4),
+                        },
+                    )
+                )
+            seed_entity_names.append(name)
+
+        # Safety: include any BM25 entities missing from RRF (shouldn't
+        # happen, but guards against edge cases).
+        seen_names = {n.name for n in merged_nodes}
+        for hit in bm25_results:
+            n = hit["node"].name
+            if n not in seen_names and len(merged_nodes) < limit:
+                merged_nodes.append(hit["node"])
+                seed_entity_names.append(n)
+                seen_names.add(n)
+
+        # ----- Fetch edges connecting the RRF-ranked entities -----
+        matched_edges: list = []
+        if seed_entity_names:
+            try:
+                matched_edges = await self.graph_store.fetch_edges_for_nodes(
+                    seed_entity_names,
+                    limit=limit * 10,
+                )
+            except Exception:
+                logger.warning(
+                    "Edge fetch failed for %s", self.collection_id, exc_info=True
+                )
+
+        # ----- Build combined context (RRF-ranked order) -----
         context_parts: list[str] = []
 
         # Vector context (cosine similarity results)
@@ -206,28 +289,39 @@ class GraphRAGService:
                 if content:
                     context_parts.append(content)
 
-        # Graph context
-        if graph_results.nodes:
-            entity_names = [n.name for n in graph_results.nodes[:limit]]
-            graph_context = await self.graph_store.get_entity_context(entity_names)
+        # RRF-ranked entity summary
+        if sorted_entities:
+            context_parts.append("\n== RRF-Ranked Entities ==")
+            for rank, (name, score) in enumerate(sorted_entities[:limit], 1):
+                hit = entity_lookup.get(name)
+                label = hit["node"].label if hit else "?"
+                bm25 = hit["bm25_score"] if hit else 0
+                # Show both scores: one from BM25, one from fused RRF
+                in_vector = "✓" if name in entity_best_vector_rank else "–"
+                context_parts.append(
+                    f"  #{rank}  {label}: {name}  "
+                    f"(RRF={score:.4f}  BM25={bm25:.3f}  vec={in_vector})"
+                )
+
+        # Knowledge graph context — focused on seed entities
+        if seed_entity_names:
+            graph_context = await self.graph_store.get_entity_context_focused(
+                seed_entity_names[:limit],
+            )
             if graph_context:
                 context_parts.append("\n== Knowledge Graph Context ==")
                 context_parts.append(graph_context)
 
-        # Relevance score: use cosine similarity from vector search (true
-        # semantic relevance, 0-1) weighted with a graph-presence bonus.
-        # - vector_score: best cosine similarity from PGVector (0-1)
-        # - graph_bonus:  1.0 if graph found matching entities, else 0.0
-        # Final = vector_weight * vector_score + graph_weight * graph_bonus
-        best_vector_score = max(
-            (item.get("score", 0) for item in vector_results), default=0.0
-        )
-        graph_bonus = 1.0 if graph_results.nodes else 0.0
-        relevance = vector_weight * best_vector_score + graph_weight * graph_bonus
+        # ----- Overall relevance score from RRF -----
+        # Max possible single-entity RRF = both signals at rank 0:
+        #   vector_weight/(k+1) + graph_weight/(k+1) = 1/(k+1)
+        max_possible_rrf = 1.0 / (rrf_k + 1)
+        best_rrf = sorted_entities[0][1] if sorted_entities else 0.0
+        relevance = best_rrf / max_possible_rrf if max_possible_rrf > 0 else 0.0
 
         return GraphSearchResult(
-            nodes=graph_results.nodes[:limit],
-            edges=graph_results.edges,
+            nodes=merged_nodes,
+            edges=matched_edges,
             context="\n\n".join(context_parts),
             score=round(min(relevance, 1.0), 4),
         )
@@ -239,10 +333,16 @@ class GraphRAGService:
         limit: int = 5,
     ) -> list[dict[str, Any]]:
         """Cosine similarity search via PGVector."""
+        from fastapi.exceptions import HTTPException
+
         try:
+            # Use "internal-service" to bypass owner_id check.
+            # Datasource collections (created by agent-service) have no
+            # owner_id in metadata, so a user-scoped lookup returns 404.
+            # Auth is already enforced at the API endpoint layer.
             collection = Collection(
                 collection_id=self.collection_id,
-                user_id=self.user_id,
+                user_id="internal-service",
             )
             results = await collection.search(query, limit=limit)
             return [
@@ -253,16 +353,42 @@ class GraphRAGService:
                 }
                 for r in results
             ]
+        except HTTPException as exc:
+            if exc.status_code == 404:
+                # Expected for datasource-only collections that have a
+                # graph but no PGVector embeddings.  BM25 will still work.
+                logger.debug(
+                    "No vector collection found for %s — graph-only mode",
+                    self.collection_id,
+                )
+            else:
+                logger.warning(
+                    "Vector search HTTP error (%s) for %s",
+                    exc.status_code,
+                    self.collection_id,
+                )
+            return []
         except Exception:
             logger.exception("Vector search failed for %s", self.collection_id)
             return []
 
-    async def _graph_search(self, query: str, *, limit: int = 10):
-        """Entity-based search in Neo4j."""
-        try:
-            return await self.graph_store.search_entities(query, limit=limit)
-        except Exception:
-            logger.exception("Graph search failed for %s", self.collection_id)
-            from langconnect.models.graph import GraphData
+    async def _graph_bm25_search(
+        self,
+        query: str,
+        *,
+        limit: int = 10,
+    ) -> list[dict]:
+        """BM25-scored entity search via Neo4j fulltext index.
 
-            return GraphData(nodes=[], edges=[])
+        Falls back to an empty list if the fulltext index hasn't been
+        created yet (e.g. older graphs built before this feature).
+        """
+        try:
+            return await self.graph_store.search_entities_bm25(query, limit=limit)
+        except Exception:
+            logger.warning(
+                "BM25 graph search failed for %s (fulltext index may not exist yet)",
+                self.collection_id,
+                exc_info=True,
+            )
+            return []

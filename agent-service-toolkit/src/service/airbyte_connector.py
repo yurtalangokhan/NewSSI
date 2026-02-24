@@ -19,6 +19,8 @@ import json
 import logging
 import os
 import time
+from datetime import date, datetime
+from decimal import Decimal
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 from functools import lru_cache
@@ -37,6 +39,7 @@ AIRBYTE_REGISTRY_URL = "https://connectors.airbyte.com/files/registries/v0/oss_r
 _CACHE_DIR = Path(os.environ.get("AIRBYTE_CACHE_ROOT", "/airbyte/cache"))
 _REGISTRY_DISK_PATH = _CACHE_DIR / "registry_cache.json"
 _SPEC_CACHE_DIR = _CACHE_DIR / "specs"
+_ORIGINAL_SPEC_CACHE_DIR = _CACHE_DIR / "specs_original"  # unflattened originals
 
 # Display labels for sourceType values from the registry
 SOURCE_TYPE_LABELS: Dict[str, str] = {
@@ -275,90 +278,131 @@ def search_connectors(query: str) -> List[ConnectorInfo]:
     ]
 
 
+def _find_discriminator(option: Dict[str, Any]) -> tuple[Optional[str], Optional[str]]:
+    """
+    Find the discriminator field and its value inside a single oneOf option.
+
+    Airbyte uses two patterns:
+      1. ``{"const": "VALUE"}``  (e.g. MongoDB cluster_type)
+      2. ``{"enum": ["VALUE"]}`` with a single element (e.g. MySQL method, mode, tunnel_method)
+
+    Returns ``(field_name, discriminator_value)`` or ``(None, None)``.
+    """
+    for prop_key, prop_value in option.get("properties", {}).items():
+        if not isinstance(prop_value, dict):
+            continue
+        if "const" in prop_value:
+            return prop_key, prop_value["const"]
+        enum_vals = prop_value.get("enum")
+        if isinstance(enum_vals, list) and len(enum_vals) == 1:
+            return prop_key, enum_vals[0]
+    return None, None
+
+
 def _flatten_spec_properties(spec: Dict[str, Any]) -> Dict[str, Any]:
     """
     Flatten Airbyte oneOf specs to expose nested fields at root level.
-    
-    MongoDB v2 structure:
-    - database_config.oneOf[*].properties contains connection_string, databases, etc.
-    - We need to extract these to root level for UI to render them.
+
+    Goals:
+    * Extract fields from all oneOf variants so the UI can render them.
+    * Detect the discriminator field (``const`` **or** single-value ``enum``)
+      and expose it as a simple string/enum selector.
+    * Only mark fields from the **first (default) variant** as required –
+      fields from other variants are optional (they only apply when the user
+      picks that variant).
+    * Keep normal properties untouched.
     """
     all_properties: Dict[str, Any] = {}
     required: List[str] = list(spec.get("required", []))
-    
-    # Process each root property
+
     for key, prop_schema in spec.get("properties", {}).items():
         if not isinstance(prop_schema, dict):
             all_properties[key] = prop_schema
             continue
-        
-        # Check if this property has nested oneOf (like database_config)
+
+        # ---- oneOf property (e.g. database_config, tunnel_method, ssl_mode) ----
         if "oneOf" in prop_schema and prop_schema.get("type") == "object":
-            logger.info(f"[FLATTEN] Found nested oneOf in '{key}' with {len(prop_schema['oneOf'])} options")
-            
-            # Collect const values for selector enum
-            selector_values = []
-            selector_field = None
-            
-            # Extract all properties from all oneOf options
-            for i, option in enumerate(prop_schema["oneOf"]):
+            options = prop_schema["oneOf"]
+            logger.info(
+                "[FLATTEN] Found nested oneOf in '%s' with %d option(s)",
+                key, len(options),
+            )
+
+            selector_field: Optional[str] = None
+            selector_values: List[str] = []
+
+            for i, option in enumerate(options):
                 option_title = option.get("title", f"Option {i}")
                 option_props = option.get("properties", {})
                 option_required = option.get("required", [])
-                
-                logger.info(f"[FLATTEN] Processing option '{option_title}' with fields: {list(option_props.keys())}")
-                
+
+                disc_field, disc_value = _find_discriminator(option)
+                if disc_field:
+                    selector_field = disc_field
+                    if disc_value not in selector_values:
+                        selector_values.append(disc_value)
+
+                logger.info(
+                    "[FLATTEN]   option '%s': fields=%s disc=%s=%s",
+                    option_title, list(option_props.keys()), disc_field, disc_value,
+                )
+
                 for prop_key, prop_value in option_props.items():
                     if not isinstance(prop_value, dict):
                         continue
-                    
-                    # Find the selector field (has const)
-                    if "const" in prop_value:
-                        selector_field = prop_key
-                        if prop_value["const"] not in selector_values:
-                            selector_values.append(prop_value["const"])
-                        continue  # Don't add const fields as regular properties
-                    
-                    # Add property if not already present
+                    # Skip discriminator – we'll create a clean selector below
+                    if prop_key == selector_field:
+                        continue
                     if prop_key not in all_properties:
-                        prop_copy = dict(prop_value)
-                        all_properties[prop_key] = prop_copy
-                        logger.info(f"[FLATTEN] Extracted '{prop_key}' from nested oneOf")
-                
-                # Merge required
-                for req in option_required:
-                    if req not in required and req != selector_field:
-                        required.append(req)
-            
-            # Create selector field (e.g., cluster_type)
+                        all_properties[prop_key] = dict(prop_value)
+
+                # Only the FIRST (default) variant drives required fields.
+                # Other variants' fields are optional in the flattened view.
+                if i == 0:
+                    for req in option_required:
+                        if req not in required and req != selector_field:
+                            required.append(req)
+
+            # Expose the discriminator as a simple enum selector
             if selector_field and selector_values:
                 all_properties[selector_field] = {
                     "type": "string",
                     "title": prop_schema.get("title", key),
                     "description": prop_schema.get("description", ""),
                     "enum": selector_values,
+                    "default": selector_values[0],
                     "order": prop_schema.get("order", 0),
                     "group": prop_schema.get("group", "connection"),
                 }
+                # The discriminator itself is always required
                 if selector_field not in required:
                     required.append(selector_field)
-                logger.info(f"[FLATTEN] Created selector '{selector_field}' with enum: {selector_values}")
+                logger.info(
+                    "[FLATTEN] Created selector '%s' enum=%s default=%s",
+                    selector_field, selector_values, selector_values[0],
+                )
+
+            # If the parent key is in the spec-level required list,
+            # replace it with the selector field (parent was an object,
+            # now it's gone – the selector takes its place).
+            if key in required:
+                required.remove(key)
+                if selector_field and selector_field not in required:
+                    required.append(selector_field)
         else:
-            # Regular property, keep as-is
+            # Regular (non-oneOf) property – keep as-is
             all_properties[key] = prop_schema
-    
-    # Also add groups if present
-    result = {
+
+    result: Dict[str, Any] = {
         "type": "object",
         "properties": all_properties,
         "required": required,
     }
-    
     if "groups" in spec:
         result["groups"] = spec["groups"]
-    
-    logger.info(f"[FLATTEN] Final properties: {list(all_properties.keys())}")
-    
+
+    logger.info("[FLATTEN] Final properties: %s", list(all_properties.keys()))
+    logger.info("[FLATTEN] Final required:   %s", required)
     return result
 
 
@@ -463,6 +507,15 @@ def get_connector_spec(connector_name: str) -> ConnectorSpec:
         )
         if connection_spec and ("oneOf" in connection_spec or has_nested_oneof):
             logger.info(f"Flattening complex spec for {connector_name} (nested oneOf: {has_nested_oneof})")
+            # Save the ORIGINAL spec before flattening – needed by _reconstruct_config
+            try:
+                _ORIGINAL_SPEC_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+                (_ORIGINAL_SPEC_CACHE_DIR / f"{connector_name}.json").write_text(
+                    json.dumps(connection_spec)
+                )
+                logger.info(f"Cached original (unflattened) spec for {connector_name}")
+            except Exception as e:
+                logger.warning(f"Could not cache original spec for {connector_name}: {e}")
             connection_spec = _flatten_spec_properties(connection_spec)
 
         result = ConnectorSpec(
@@ -471,7 +524,7 @@ def get_connector_spec(connector_name: str) -> ConnectorSpec:
             documentation_url=getattr(source, "docs_url", None) or getattr(spec, "documentationUrl", None) if not isinstance(spec, dict) else spec.get("documentationUrl"),
         )
 
-        # Persist to disk cache
+        # Persist flattened spec to disk cache
         try:
             _SPEC_CACHE_DIR.mkdir(parents=True, exist_ok=True)
             spec_cache_file.write_text(result.model_dump_json())
@@ -487,49 +540,216 @@ def get_connector_spec(connector_name: str) -> ConnectorSpec:
 
 
 
+# ---------------------------------------------------------------------------
+# Generic spec-driven config reconstruction
+# ---------------------------------------------------------------------------
+
+def _load_original_spec(connector_name: str) -> Optional[Dict[str, Any]]:
+    """Load the original (unflattened) spec from the disk cache."""
+    path = _ORIGINAL_SPEC_CACHE_DIR / f"{connector_name}.json"
+    try:
+        if path.exists():
+            return json.loads(path.read_text())
+    except Exception as e:
+        logger.warning(f"Could not read original spec for {connector_name}: {e}")
+    return None
+
+
 def _reconstruct_config(connector_name: str, flat_config: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Reconstruct the original config structure from flattened UI config.
-    
-    MongoDB v2 expects:
-    {
-        "database_config": {
-            "cluster_type": "ATLAS_REPLICA_SET" or "SELF_MANAGED_REPLICA_SET",
-            "connection_string": "...",
-            "databases": ["db1", "db2"],  <- ARRAY not string!
-            "username": "...",
-            "password": "...",
-            "auth_source": "admin"  <- REQUIRED with default
-        }
-    }
-    
-    UI sends flat config with all fields at root level, and arrays as strings.
+    Reconstruct the nested config structure that the Airbyte connector expects
+    from the flat key/value pairs sent by the UI.
+
+    **How it works (generic, spec-driven)**:
+    1. Load the *original* (pre-flatten) JSON-Schema spec from disk.
+    2. Identify every root-level property whose schema is ``{type: object, oneOf: [...]}``.
+    3. For each such property, find the *discriminator field* (single-enum or const)
+       and look up its value in ``flat_config``.
+    4. Match the value to the correct oneOf variant, collect only the fields that
+       belong to that variant, and nest them under the parent key.
+    5. Remove the consumed fields from the root-level config.
+
+    Falls back to **connector-specific** fixups for MongoDB v2 when the original
+    spec is not available.
     """
-    if connector_name != "source-mongodb-v2":
-        return flat_config
-    
-    # Fields that belong inside database_config
+    original_spec = _load_original_spec(connector_name)
+
+    if original_spec is not None:
+        return _reconstruct_from_spec(original_spec, flat_config, connector_name)
+
+    # ------------------------------------------------------------------
+    # Fallback: legacy MongoDB-specific reconstruction
+    # ------------------------------------------------------------------
+    if connector_name == "source-mongodb-v2":
+        return _reconstruct_mongodb_config(flat_config)
+
+    return flat_config
+
+
+def _reconstruct_from_spec(
+    original_spec: Dict[str, Any],
+    flat_config: Dict[str, Any],
+    connector_name: str,
+) -> Dict[str, Any]:
+    """
+    Generic reconstruction using the original (unflattened) JSON-Schema.
+
+    For every root-level property that is a ``oneOf`` object:
+    * Determine which variant matches via the discriminator value.
+    * Collect flat-config fields that belong to that variant.
+    * Nest them under the parent property name.
+    * Inject defaults for any fields that the variant requires but the
+      user did not supply.
+    """
+    result = dict(flat_config)  # shallow copy
+    consumed_keys: set[str] = set()
+
+    for parent_key, prop_schema in original_spec.get("properties", {}).items():
+        if not isinstance(prop_schema, dict):
+            continue
+        if "oneOf" not in prop_schema or prop_schema.get("type") != "object":
+            continue
+
+        options = prop_schema["oneOf"]
+
+        # --- find discriminator field & its user-supplied value -----------
+        disc_field: Optional[str] = None
+        disc_values_by_option: Dict[int, str] = {}  # option-idx -> disc value
+
+        for i, opt in enumerate(options):
+            df, dv = _find_discriminator(opt)
+            if df:
+                disc_field = df
+                disc_values_by_option[i] = dv  # type: ignore[assignment]
+
+        if not disc_field:
+            logger.debug(
+                "[RECONSTRUCT] No discriminator found for '%s' – skipping", parent_key
+            )
+            continue
+
+        # What value did the user pick?  May come from flat_config or use default.
+        user_value = flat_config.get(disc_field)
+        if user_value is None:
+            # Fallback: first variant's default
+            user_value = disc_values_by_option.get(0)
+        if user_value is None:
+            continue
+
+        # --- find the matching variant ------------------------------------
+        matched_idx: Optional[int] = None
+        for idx, dv in disc_values_by_option.items():
+            if dv == user_value:
+                matched_idx = idx
+                break
+
+        if matched_idx is None:
+            # No exact match – take the first variant as default
+            matched_idx = 0
+            user_value = disc_values_by_option.get(0, user_value)
+
+        matched_option = options[matched_idx]
+        variant_props = matched_option.get("properties", {})
+
+        logger.info(
+            "[RECONSTRUCT] '%s' → variant %d (%s=%s), fields=%s",
+            parent_key, matched_idx, disc_field, user_value,
+            list(variant_props.keys()),
+        )
+
+        # --- collect fields for this variant ------------------------------
+        nested: Dict[str, Any] = {}
+        for field_name, field_schema in variant_props.items():
+            if not isinstance(field_schema, dict):
+                continue
+            if field_name in flat_config:
+                val = flat_config[field_name]
+                # Type coercion: arrays sent as comma-separated strings
+                if field_schema.get("type") == "array" and isinstance(val, str):
+                    val = [v.strip() for v in val.split(",") if v.strip()] if val.strip() else []
+                # Type coercion: integers
+                if field_schema.get("type") == "integer" and isinstance(val, str):
+                    try:
+                        val = int(val)
+                    except ValueError:
+                        pass
+                # Type coercion: booleans
+                if field_schema.get("type") == "boolean" and isinstance(val, str):
+                    val = val.lower() in ("true", "1", "yes")
+                nested[field_name] = val
+                consumed_keys.add(field_name)
+            elif "default" in field_schema:
+                nested[field_name] = field_schema["default"]
+            elif "const" in field_schema:
+                nested[field_name] = field_schema["const"]
+            elif "enum" in field_schema and len(field_schema["enum"]) == 1:
+                nested[field_name] = field_schema["enum"][0]
+
+        # Ensure discriminator is always present
+        if disc_field not in nested:
+            nested[disc_field] = user_value
+
+        result[parent_key] = nested
+
+    # Remove consumed keys from root level
+    for k in consumed_keys:
+        result.pop(k, None)
+    # Also remove the parent keys if they were strings (leftover from flat)
+    for parent_key, prop_schema in original_spec.get("properties", {}).items():
+        if isinstance(prop_schema, dict) and "oneOf" in prop_schema:
+            if parent_key in result and not isinstance(result[parent_key], dict):
+                result.pop(parent_key, None)
+
+    # --- MongoDB-specific fixups (array coercion, defaults) ---------------
+    if connector_name == "source-mongodb-v2":
+        result = _mongodb_post_fixup(result)
+
+    logger.info("[RECONSTRUCT] %s final keys: %s", connector_name, list(result.keys()))
+    return result
+
+
+# ---------------------------------------------------------------------------
+# MongoDB-specific helpers (kept for backward compat)
+# ---------------------------------------------------------------------------
+
+def _mongodb_post_fixup(config: Dict[str, Any]) -> Dict[str, Any]:
+    """Extra fixups for MongoDB v2 after generic reconstruction."""
+    db_config = config.get("database_config")
+    if isinstance(db_config, dict):
+        # databases must be a list
+        if "databases" in db_config:
+            val = db_config["databases"]
+            if isinstance(val, str):
+                db_config["databases"] = [v.strip() for v in val.split(",") if v.strip()] if val.strip() else []
+        # auth_source default
+        if not db_config.get("auth_source"):
+            db_config["auth_source"] = "admin"
+        # schema_enforced default
+        if "schema_enforced" not in db_config:
+            db_config["schema_enforced"] = True
+    # initial_waiting_seconds default
+    if "initial_waiting_seconds" not in config:
+        config["initial_waiting_seconds"] = 30
+    return config
+
+
+def _reconstruct_mongodb_config(flat_config: Dict[str, Any]) -> Dict[str, Any]:
+    """Legacy MongoDB-only reconstruction (fallback when no original spec)."""
     db_config_fields = [
         "cluster_type", "connection_string", "databases",
         "username", "password", "auth_source", "schema_enforced"
     ]
-    
     database_config: Dict[str, Any] = {}
     other_config: Dict[str, Any] = {}
-    
     for key, value in flat_config.items():
         if key in db_config_fields:
             database_config[key] = value
         else:
             other_config[key] = value
-    
-    # === TYPE COERCION AND DEFAULTS ===
-    
-    # 1. Convert databases from string to array
+    # databases: string -> array
     if "databases" in database_config:
         db_value = database_config["databases"]
         if isinstance(db_value, str):
-            # Parse comma-separated or single value
             if "," in db_value:
                 database_config["databases"] = [d.strip() for d in db_value.split(",") if d.strip()]
             elif db_value.strip():
@@ -538,39 +758,27 @@ def _reconstruct_config(connector_name: str, flat_config: Dict[str, Any]) -> Dic
                 database_config["databases"] = []
         elif not isinstance(db_value, list):
             database_config["databases"] = [str(db_value)] if db_value else []
-    
-    # 2. Ensure auth_source has default value
-    if "auth_source" not in database_config or not database_config["auth_source"]:
+    if not database_config.get("auth_source"):
         database_config["auth_source"] = "admin"
-    
-    # 3. Ensure schema_enforced has default value
     if "schema_enforced" not in database_config:
         database_config["schema_enforced"] = True
-    
-    # 4. Validate cluster_type value
     if "cluster_type" in database_config:
         ct = database_config["cluster_type"]
         valid_types = ["ATLAS_REPLICA_SET", "SELF_MANAGED_REPLICA_SET"]
         if ct not in valid_types:
-            # Try to match partial or lowercase
             ct_upper = ct.upper().replace(" ", "_").replace("-", "_")
-            if "ATLAS" in ct_upper:
-                database_config["cluster_type"] = "ATLAS_REPLICA_SET"
-            else:
-                database_config["cluster_type"] = "SELF_MANAGED_REPLICA_SET"
+            database_config["cluster_type"] = "ATLAS_REPLICA_SET" if "ATLAS" in ct_upper else "SELF_MANAGED_REPLICA_SET"
     else:
-        # Default to Atlas
         database_config["cluster_type"] = "ATLAS_REPLICA_SET"
-    
-    # 5. Set sensible defaults for timeouts
     if "initial_waiting_seconds" not in other_config:
         other_config["initial_waiting_seconds"] = 30
-        
     other_config["database_config"] = database_config
-    
-    logger.info(f"[RECONSTRUCT] MongoDB config: cluster_type={database_config.get('cluster_type')}, "
-                f"databases={database_config.get('databases')}, auth_source={database_config.get('auth_source')}")
-    
+    logger.info(
+        "[RECONSTRUCT] MongoDB config: cluster_type=%s, databases=%s, auth_source=%s",
+        database_config.get("cluster_type"),
+        database_config.get("databases"),
+        database_config.get("auth_source"),
+    )
     return other_config
 
 
@@ -647,6 +855,33 @@ def extract_data_from_source(
             records.append(record_dict)
     
     return records
+
+
+def _sanitize_metadata_value(value: Any) -> Any:
+    """Convert non-JSON-serializable values to safe types.
+
+    MySQL (and other connectors) may return ``date``, ``datetime``,
+    ``Decimal``, ``bytes`` etc. which the stdlib ``json`` module
+    cannot serialize.  This helper converts them to JSON-safe
+    primitives so that ``langchain_postgres`` can store them in
+    the ``cmetadata`` JSONB column.
+    """
+    if value is None:
+        return value
+    if isinstance(value, (str, int, float, bool)):
+        return value
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, date):
+        return value.isoformat()
+    if isinstance(value, Decimal):
+        return float(value)
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace")
+    if isinstance(value, (dict, list)):
+        return str(value)
+    # Fallback – stringify anything unexpected
+    return str(value)
 
 
 def extract_documents(
@@ -740,11 +975,7 @@ def extract_documents(
             # Add record fields to metadata for better display
             for k, v in record_dict.items():
                 if v is not None and not k.startswith("_"):
-                    # Convert complex types to string for metadata
-                    if isinstance(v, (dict, list)):
-                        doc_metadata[k] = str(v)
-                    else:
-                        doc_metadata[k] = v
+                    doc_metadata[k] = _sanitize_metadata_value(v)
             
             documents.append(Document(
                 page_content=content,

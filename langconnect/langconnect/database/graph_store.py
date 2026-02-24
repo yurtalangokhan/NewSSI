@@ -60,7 +60,12 @@ class GraphStore:
     # ------------------------------------------------------------------
 
     async def ensure_indexes(self) -> None:
-        """Create indexes for efficient lookups (idempotent)."""
+        """Create indexes for efficient lookups (idempotent).
+
+        Also creates a **fulltext** index (Lucene-backed) on Entity
+        nodes so that ``db.index.fulltext.queryNodes`` can perform
+        BM25-scored searches across entity names and labels.
+        """
         driver = await self._driver()
         async with driver.session() as session:
             # Composite index on (collection_id, name) for fast entity lookup
@@ -70,6 +75,32 @@ class GraphStore:
             await session.run(
                 "CREATE INDEX IF NOT EXISTS FOR (n:Entity) ON (n.collection_id)"
             )
+
+            # Fulltext (BM25) index on Entity name + label.
+            # Neo4j fulltext indexes are global; we filter by collection_id
+            # in the Cypher query that calls the index.
+            try:
+                await session.run(
+                    """
+                    CREATE FULLTEXT INDEX entity_fulltext IF NOT EXISTS
+                    FOR (n:Entity)
+                    ON EACH [n.name, n.label]
+                    OPTIONS {
+                        indexConfig: {
+                            `fulltext.analyzer`: 'standard-no-stop-words',
+                            `fulltext.eventually_consistent`: false
+                        }
+                    }
+                    """
+                )
+                logger.info(
+                    "Neo4j fulltext (BM25) index ensured for collection %s",
+                    self.collection_id,
+                )
+            except Exception as exc:
+                # Index may already exist with different config – not fatal
+                logger.warning("Fulltext index creation note: %s", exc)
+
             logger.info("Neo4j indexes ensured for collection %s", self.collection_id)
 
     # ------------------------------------------------------------------
@@ -407,6 +438,131 @@ class GraphStore:
     # Search
     # ------------------------------------------------------------------
 
+    async def search_entities_bm25(
+        self,
+        query: str,
+        *,
+        limit: int = 10,
+    ) -> list[dict[str, Any]]:
+        """BM25-scored fulltext search on entity name and label.
+
+        Uses Neo4j's built-in Lucene fulltext index which provides
+        real BM25 ranking.  Results are filtered to this collection.
+
+        Returns a list of dicts:
+            [{"node": GraphNode, "bm25_score": float}, ...]
+        sorted by descending BM25 score.
+        """
+        if not query or not query.strip():
+            return []
+
+        driver = await self._driver()
+
+        # Lucene query string – escape special characters and build
+        # a query that matches any token.  We also append a fuzzy
+        # suffix (~1) to tolerate minor typos.
+        safe_q = self._escape_lucene(query)
+        # Build multi-token OR query with optional fuzzy matching
+        tokens = safe_q.split()
+        lucene_query = " OR ".join(f"{t}~1" for t in tokens) if tokens else safe_q
+
+        results: list[dict[str, Any]] = []
+        async with driver.session() as session:
+            result = await session.run(
+                """
+                CALL db.index.fulltext.queryNodes(
+                    'entity_fulltext', $lucene_query, {limit: $max_results}
+                ) YIELD node, score
+                WHERE node.collection_id = $cid
+                RETURN elementId(node) AS id,
+                       node.label AS label,
+                       node.name  AS name,
+                       properties(node) AS props,
+                       score
+                ORDER BY score DESC
+                LIMIT $limit
+                """,
+                cid=self.collection_id,
+                lucene_query=lucene_query,
+                max_results=limit * 5,  # over-fetch before collection filter
+                limit=limit,
+            )
+            async for record in result:
+                props = dict(record["props"])
+                props.pop("collection_id", None)
+                props.pop("name", None)
+                props.pop("label", None)
+                props = _sanitize_props(props)
+                node = GraphNode(
+                    id=record["id"],
+                    label=record["label"] or "Entity",
+                    name=record["name"],
+                    properties=props,
+                )
+                results.append({"node": node, "bm25_score": float(record["score"])})
+
+        return results
+
+    @staticmethod
+    def _escape_lucene(text: str) -> str:
+        """Escape Lucene special characters in a query string."""
+        special = r'+-&|!(){}[]^"~*?:\/'
+        out: list[str] = []
+        for ch in text:
+            if ch in special:
+                out.append(f"\\{ch}")
+            else:
+                out.append(ch)
+        return "".join(out)
+
+    async def fetch_edges_for_nodes(
+        self,
+        node_names: list[str],
+        *,
+        limit: int = 100,
+    ) -> list[GraphEdge]:
+        """Fetch edges where at least one endpoint is in *node_names*.
+
+        This is used to populate the ``edges`` field in hybrid search
+        results so the UI can visualise the subgraph around the
+        BM25-matched entities.
+        """
+        if not node_names:
+            return []
+
+        driver = await self._driver()
+        async with driver.session() as session:
+            result = await session.run(
+                """
+                MATCH (a:Entity {collection_id: $cid})-[r]->(b:Entity {collection_id: $cid})
+                WHERE a.name IN $names OR b.name IN $names
+                RETURN elementId(r) AS id,
+                       elementId(a) AS src,
+                       elementId(b) AS tgt,
+                       type(r) AS rtype,
+                       properties(r) AS props
+                LIMIT $limit
+                """,
+                cid=self.collection_id,
+                names=node_names,
+                limit=limit,
+            )
+            edges: list[GraphEdge] = []
+            async for record in result:
+                props = dict(record["props"])
+                props.pop("collection_id", None)
+                props = _sanitize_props(props)
+                edges.append(
+                    GraphEdge(
+                        id=record["id"],
+                        source=record["src"],
+                        target=record["tgt"],
+                        type=record["rtype"],
+                        properties=props,
+                    )
+                )
+            return edges
+
     async def search_entities(
         self,
         query: str,
@@ -546,6 +702,80 @@ class GraphStore:
         if not lines:
             return ""
         return "Knowledge Graph Context:\n" + "\n".join(lines)
+
+    async def get_entity_context_focused(
+        self,
+        entity_names: list[str],
+        *,
+        max_direct: int = 30,
+        max_indirect: int = 20,
+    ) -> str:
+        """Focused context: only relationships that directly involve seed entities.
+
+        Unlike ``get_entity_context`` which recursively expands ALL
+        relationships of neighbours, this method returns:
+
+        - **Direct relationships** — where *both* endpoints are seed entities.
+        - **1-hop relationships** — where *exactly one* endpoint is a seed
+          entity and the other is any entity. These are capped at
+          ``max_indirect`` to prevent context explosion.
+
+        This avoids the "Barış Aslan → FastAPI" noise when the user
+        searched for "enterprise".
+        """
+        if not entity_names:
+            return ""
+
+        driver = await self._driver()
+        seed_set = set(entity_names)
+
+        direct_lines: list[str] = []
+        indirect_lines: list[str] = []
+        seen: set[str] = set()
+
+        async with driver.session() as session:
+            # Single Cypher query: find all relationships where at least
+            # one endpoint is one of the seed entities.
+            result = await session.run(
+                """
+                MATCH (a:Entity {collection_id: $cid})-[r]->(b:Entity {collection_id: $cid})
+                WHERE a.name IN $names OR b.name IN $names
+                RETURN a.name AS src, type(r) AS rtype, b.name AS tgt
+                LIMIT $max_total
+                """,
+                cid=self.collection_id,
+                names=entity_names,
+                max_total=max_direct + max_indirect + 20,  # over-fetch
+            )
+            async for record in result:
+                line = f"{record['src']} --[{record['rtype']}]--> {record['tgt']}"
+                if line in seen:
+                    continue
+                seen.add(line)
+
+                src_in = record["src"] in seed_set
+                tgt_in = record["tgt"] in seed_set
+
+                if src_in and tgt_in:
+                    # Both endpoints are seed entities — always include
+                    if len(direct_lines) < max_direct:
+                        direct_lines.append(line)
+                else:
+                    # One endpoint is a seed — include with limit
+                    if len(indirect_lines) < max_indirect:
+                        indirect_lines.append(line)
+
+        if not direct_lines and not indirect_lines:
+            return ""
+
+        parts: list[str] = ["Knowledge Graph Context:"]
+        if direct_lines:
+            parts.append("[Direct relationships]")
+            parts.extend(direct_lines)
+        if indirect_lines:
+            parts.append("[Related entities]")
+            parts.extend(indirect_lines)
+        return "\n".join(parts)
 
     # ------------------------------------------------------------------
     # Delete

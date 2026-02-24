@@ -1,8 +1,8 @@
 """Graph RAG Assistant – hybrid retrieval agent using vector + knowledge graph.
 
-Combines PGVector similarity search with Neo4j graph traversal using
-Reciprocal Rank Fusion (RRF) for ranking. Uses both `database_search`
-(vector) and `graph_search` (Neo4j) tools.
+Combines PGVector similarity search with Neo4j BM25 graph search using
+entity-centric Reciprocal Rank Fusion (RRF) for ranking.  All retrieval
+is handled by LangConnect's hybrid search API (POST /graph/search).
 """
 
 from datetime import datetime
@@ -44,14 +44,17 @@ instructions = f"""
     Today's date is {current_date}.
 
     You have access to the following search tool:
-    - **Graph_Search** – performs hybrid retrieval by combining vector similarity search
-      (cosine similarity on document embeddings) with knowledge graph traversal (Neo4j
-      entity and relationship search), then fuses results using Reciprocal Rank Fusion (RRF).
+    - **Graph_Search** – performs hybrid retrieval via LangConnect API, combining:
+      1. Vector similarity search (cosine on document embeddings)
+      2. BM25 graph search (Neo4j fulltext on entity names/labels)
+      Results are fused using entity-centric Reciprocal Rank Fusion (RRF).
       This gives you both relevant text passages AND entity/relationship context in a single call.
 
     Strategy for answering questions:
     - ALWAYS use Graph_Search for every user question that requires information lookup.
     - Graph_Search automatically combines vector search and graph search results.
+    - The response includes Vector Search Results, RRF-Ranked Entities, and
+      Knowledge Graph Context — use ALL of these sections to build your answer.
     - For questions about relationships, connections, or entities, the graph context
       in the results will be especially useful.
     - Always cite information from the tool. Do not make up information.
