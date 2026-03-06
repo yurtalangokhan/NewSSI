@@ -60,7 +60,6 @@ dependencies = [
     "ddgs>=9.9.1",
     "langchain-postgres",
     "neo4j>=5.0",
-    "apscheduler ~=3.10",
     "croniter ~=5.0",
 ]
 

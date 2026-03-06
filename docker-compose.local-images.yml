@@ -320,6 +320,7 @@ services:
       - ./supabase/volumes/db/_supabase.sql:/docker-entrypoint-initdb.d/migrations/97-_supabase.sql:Z
       - ./supabase/volumes/db/logs.sql:/docker-entrypoint-initdb.d/migrations/99-logs.sql:Z
       - ./supabase/volumes/db/pooler.sql:/docker-entrypoint-initdb.d/migrations/99-pooler.sql:Z
+      - ./supabase/volumes/db/airbyte-init.sh:/docker-entrypoint-initdb.d/init-scripts/97-airbyte.sh:Z
       - db-config:/etc/postgresql-custom
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "postgres", "-h", "localhost"]
@@ -339,6 +340,7 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXP: ${JWT_EXPIRY}
+      AIRBYTE_DB_PASSWORD: ${AIRBYTE_DB_PASSWORD:-airbyte_password}
     command:
       [
         "postgres",
@@ -370,17 +372,167 @@ services:
       LOGFLARE_PUBLIC_ACCESS_TOKEN: ${LOGFLARE_PUBLIC_ACCESS_TOKEN}
     command: ["--config", "/etc/vector/vector.yml"]
 
-  redis:
-    container_name: supabase-redis
-    image: redis:7-alpine
+  # redis:
+  #   container_name: supabase-redis
+  #   image: redis:7-alpine
+  #   restart: unless-stopped
+  #   ports:
+  #     - "6379:6379"
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 5s
+  #     timeout: 3s
+  #     retries: 5
+
+  # ==========================================================================
+  # Airbyte OSS Platform Services
+  # ==========================================================================
+
+  airbyte-bootloader:
+    container_name: airbyte-bootloader
+    image: airbyte/bootloader:${AIRBYTE_VERSION:-0.50.33}
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      AIRBYTE_VERSION: ${AIRBYTE_VERSION:-0.50.33}
+      DATABASE_URL: jdbc:postgresql://db:${POSTGRES_PORT}/airbyte
+      DATABASE_USER: airbyte
+      DATABASE_PASSWORD: ${AIRBYTE_DB_PASSWORD:-airbyte_password}
+      RUN_DATABASE_MIGRATION_ON_STARTUP: "true"
+      LOG_LEVEL: INFO
+
+  airbyte-temporal:
+    container_name: airbyte-temporal
+    image: airbyte/temporal:${AIRBYTE_VERSION:-0.50.33}
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      airbyte-bootloader:
+        condition: service_completed_successfully
+    volumes:
+      - ./supabase/volumes/temporal/dynamicconfig:/etc/temporal/config/dynamicconfig:ro
+    environment:
+      DB: postgresql
+      DB_PORT: ${POSTGRES_PORT}
+      POSTGRES_USER: airbyte
+      POSTGRES_PWD: ${AIRBYTE_DB_PASSWORD:-airbyte_password}
+      POSTGRES_SEEDS: db
+      DYNAMIC_CONFIG_FILE_PATH: /etc/temporal/config/dynamicconfig/development.yaml
+      LOG_LEVEL: INFO
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z $(hostname -i) 7233 || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  airbyte-server:
+    container_name: airbyte-server
+    image: airbyte/server:${AIRBYTE_VERSION:-0.50.33}
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      - "8001:8001"
+    depends_on:
+      db:
+        condition: service_healthy
+      airbyte-bootloader:
+        condition: service_completed_successfully
+      airbyte-temporal:
+        condition: service_healthy
+    volumes:
+      - airbyte-workspace:/tmp/workspace
+      - airbyte-data:/data/config
+      - /tmp/airbyte_local:/tmp/airbyte_local
+    environment:
+      AIRBYTE_VERSION: ${AIRBYTE_VERSION:-0.50.33}
+      AIRBYTE_ROLE: ${AIRBYTE_ROLE:-}
+      DATABASE_URL: jdbc:postgresql://db:${POSTGRES_PORT}/airbyte
+      DATABASE_USER: airbyte
+      DATABASE_PASSWORD: ${AIRBYTE_DB_PASSWORD:-airbyte_password}
+      TRACKING_STRATEGY: logging
+      TEMPORAL_HOST: airbyte-temporal:7233
+      INTERNAL_API_HOST: airbyte-server:8001
+      WEBAPP_URL: http://airbyte-webapp:8000
+      WORKER_ENVIRONMENT: docker
+      WORKSPACE_ROOT: /tmp/workspace
+      CONFIG_ROOT: /data/config
+      LOG_LEVEL: INFO
+      LOCAL_ROOT: /tmp/airbyte_local
+      DEPLOYMENT_MODE: OSS
+      SECRET_PERSISTENCE: NONE
+      CONFIGS_DATABASE_MINIMUM_FLYWAY_MIGRATION_VERSION: 0.35.15.001
+      JOBS_DATABASE_MINIMUM_FLYWAY_MIGRATION_VERSION: 0.29.15.001
+      MICRONAUT_ENVIRONMENTS: control-plane
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
+      test: ["CMD-SHELL", "curl -f http://localhost:8001/api/v1/health || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  airbyte-worker:
+    container_name: airbyte-worker
+    image: airbyte/worker:${AIRBYTE_VERSION:-0.50.33}
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      airbyte-server:
+        condition: service_healthy
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./docker-bin/docker:/usr/bin/docker:ro
+      - /tmp/airbyte_local:/tmp/airbyte_local
+      - airbyte-workspace:/tmp/workspace
+    environment:
+      AIRBYTE_VERSION: ${AIRBYTE_VERSION:-0.50.33}
+      DATABASE_URL: jdbc:postgresql://db:${POSTGRES_PORT}/airbyte
+      DATABASE_USER: airbyte
+      DATABASE_PASSWORD: ${AIRBYTE_DB_PASSWORD:-airbyte_password}
+      INTERNAL_API_HOST: airbyte-server:8001
+      TEMPORAL_HOST: airbyte-temporal:7233
+      WORKSPACE_ROOT: /tmp/workspace
+      WORKSPACE_DOCKER_MOUNT: langgraph-with-ui_airbyte-workspace
+      LOCAL_ROOT: /tmp/airbyte_local
+      LOCAL_DOCKER_MOUNT: /tmp/airbyte_local
+      DOCKER_NETWORK: langgraph-with-ui_default
+      LOG_LEVEL: INFO
+      WORKER_ENVIRONMENT: docker
+      DEPLOYMENT_MODE: OSS
+      SECRET_PERSISTENCE: NONE
+      MICRONAUT_ENVIRONMENTS: control-plane
+      CONFIG_ROOT: /data/config
+      MAX_SYNC_WORKERS: 5
+      MAX_CHECK_WORKERS: 5
+      MAX_DISCOVER_WORKERS: 5
+      MAX_SPEC_WORKERS: 5
+      MAX_NOTIFY_WORKERS: 5
+      SHOULD_RUN_NOTIFY_WORKFLOWS: "false"
+      SYNC_JOB_MAX_ATTEMPTS: 3
+      SYNC_JOB_MAX_TIMEOUT_DAYS: 3
+
+  airbyte-webapp:
+    container_name: airbyte-webapp
+    image: airbyte/webapp:${AIRBYTE_VERSION:-0.50.33}
+    restart: unless-stopped
+    ports:
+      - "8010:80"
+    depends_on:
+      airbyte-server:
+        condition: service_healthy
+    environment:
+      INTERNAL_API_HOST: airbyte-server:8001
+      CONNECTOR_BUILDER_API_HOST: airbyte-server:8001
+      AIRBYTE_VERSION: ${AIRBYTE_VERSION:-0.50.33}
+      TRACKING_STRATEGY: logging
+      KEYCLOAK_INTERNAL_HOST: localhost
+
+  # ==========================================================================
+  # Agent Service (thin Airbyte API proxy — no PyAirbyte, no Docker-in-Docker)
+  # ==========================================================================
 
   agent-service:
     container_name: agent-service
@@ -391,14 +543,13 @@ services:
     ports:
       - "8123:8080"
     volumes:
-      - ${DOCKER_SOCKET_LOCATION}:/var/run/docker.sock:ro,z
-      - /airbyte/tmp:/airbyte/tmp
-      - airbyte-data:/airbyte/data
-      - airbyte-cache:/airbyte/cache
+      - /tmp/airbyte_local:/tmp/airbyte_local:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
       db:
+        condition: service_healthy
+      airbyte-server:
         condition: service_healthy
     environment:
       # Database Configuration
@@ -417,15 +568,10 @@ services:
       LANGCHAIN_API_KEY: ${LANGSMITH_API_KEY:-}
       LANGCHAIN_PROJECT: agent-service
       MODE: dev
-      # PyAirbyte directories – persistent volumes keep data across rebuilds
-      AIRBYTE_PROJECT_DIR: /airbyte/data
-      AIRBYTE_CACHE_ROOT: /airbyte/cache
-      AIRBYTE_TEMP_DIR: /airbyte/tmp
-      AIRBYTE_LOCAL_ROOT: /airbyte/tmp
-      TMPDIR: /airbyte/tmp
-      TEMP: /airbyte/tmp
-      TMP: /airbyte/tmp
-      DOCKER_API_VERSION: "1.44"
+      # Airbyte OSS API Configuration
+      AIRBYTE_API_URL: http://airbyte-server:8001/api/v1
+      AIRBYTE_LOCAL_OUTPUT_PATH: /tmp/airbyte_local
+      AIRBYTE_SYNC_POLL_INTERVAL_SECONDS: ${AIRBYTE_SYNC_POLL_INTERVAL_SECONDS:-30}
       # Neo4j Configuration
       NEO4J_URI: bolt://neo4j:7687
       NEO4J_USERNAME: ${NEO4J_USERNAME:-neo4j}
@@ -472,10 +618,10 @@ services:
     image: mcp-server:local
     restart: unless-stopped
     ports:
-      - "8001:8001"
+      - "8002:8002"
     environment:
       MCP_HOST: "0.0.0.0"
-      MCP_PORT: "8001"
+      MCP_PORT: "8002"
     volumes:
       - ./workspace:/workspace
 
@@ -539,7 +685,7 @@ services:
       context: ./open-agent-platform
       dockerfile: Dockerfile
       args:
-        NEXT_PUBLIC_SUPABASE_URL: ${SUPABASE_PUBLIC_URL:-http://10.110.16.15:8000}
+        NEXT_PUBLIC_SUPABASE_URL: ${SUPABASE_PUBLIC_URL:-http://10.101.90.13:8000}
         NEXT_PUBLIC_SUPABASE_ANON_KEY: ${ANON_KEY}
         NEXT_PUBLIC_LANGGRAPH_API_URL: ${LANGGRAPH_API_URL:-http://localhost:8123}
         NEXT_PUBLIC_DEPLOYMENTS: '[{"id":"local-chatbot","deploymentUrl":"http://localhost:8123","tenantId":"local","name":"Local Chatbot","isDefault":true,"defaultGraphId":"chatbot"}]'
@@ -550,7 +696,7 @@ services:
       # Internal URL for server-side requests (Docker network)
       SUPABASE_INTERNAL_URL: http://kong:8000
       # Public URLs for client-side (browser)
-      NEXT_PUBLIC_SUPABASE_URL: ${SUPABASE_PUBLIC_URL:-http://10.110.16.15:8000}
+      NEXT_PUBLIC_SUPABASE_URL: ${SUPABASE_PUBLIC_URL:-http://10.101.90.13:8000}
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${ANON_KEY}
       NEXT_PUBLIC_LANGGRAPH_API_URL: ${LANGGRAPH_API_URL:-http://localhost:8123}
       # Deployment configuration - use chatbot graph from agent-service
@@ -641,8 +787,8 @@ services:
 
 volumes:
   db-config:
+  airbyte-workspace:
   airbyte-data:
-  airbyte-cache:
   neo4j-data:
   neo4j-logs:
   neo4j-plugins:

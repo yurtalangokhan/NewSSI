@@ -82,13 +82,23 @@ class ScheduleDBManager:
     # ---- helpers ---------------------------------------------------------
 
     @staticmethod
+    def _quartz_to_unix(cron_expr: str) -> str:
+        """Convert 6-field Quartz cron to 5-field unix cron for croniter."""
+        parts = cron_expr.strip().split()
+        if len(parts) == 6:
+            return " ".join(p.replace("?", "*") for p in parts[1:])
+        return cron_expr
+
+    @staticmethod
     def compute_next_run(cron_expr: str, tz_name: str = "UTC") -> datetime:
-        """Return the next fire-time for a cron expression."""
+        """Return the next fire-time for a Quartz cron expression."""
         import zoneinfo
 
         tz = zoneinfo.ZoneInfo(tz_name)
         base = datetime.now(tz)
-        cron = croniter(cron_expr, base)
+        # croniter only supports 5-field unix cron
+        unix_cron = ScheduleDBManager._quartz_to_unix(cron_expr)
+        cron = croniter(unix_cron, base)
         return cron.get_next(datetime).astimezone(timezone.utc)
 
     @staticmethod

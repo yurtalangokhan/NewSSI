@@ -50,15 +50,15 @@ interface PresetOption {
 }
 
 const PRESET_OPTIONS: PresetOption[] = [
-    { value: "every_5_min", label: "Every 5 minutes", description: "High frequency", cron: "*/5 * * * *" },
-    { value: "every_15_min", label: "Every 15 minutes", description: "Moderate frequency", cron: "*/15 * * * *" },
-    { value: "every_30_min", label: "Every 30 minutes", description: "Standard", cron: "*/30 * * * *" },
-    { value: "hourly", label: "Hourly", description: "Every hour at :00", cron: "0 * * * *" },
-    { value: "every_6_hours", label: "Every 6 hours", description: "4 times a day", cron: "0 */6 * * *" },
-    { value: "every_12_hours", label: "Every 12 hours", description: "Twice a day", cron: "0 */12 * * *" },
-    { value: "daily", label: "Daily", description: "Every day at midnight", cron: "0 0 * * *" },
-    { value: "weekly", label: "Weekly", description: "Every Monday at midnight", cron: "0 0 * * 1" },
-    { value: "monthly", label: "Monthly", description: "1st of every month", cron: "0 0 1 * *" },
+    { value: "every_5_min", label: "Every 5 minutes", description: "High frequency", cron: "0 */5 * * * ?" },
+    { value: "every_15_min", label: "Every 15 minutes", description: "Moderate frequency", cron: "0 */15 * * * ?" },
+    { value: "every_30_min", label: "Every 30 minutes", description: "Standard", cron: "0 */30 * * * ?" },
+    { value: "hourly", label: "Hourly", description: "Every hour at :00", cron: "0 0 * * * ?" },
+    { value: "every_6_hours", label: "Every 6 hours", description: "4 times a day", cron: "0 0 */6 * * ?" },
+    { value: "every_12_hours", label: "Every 12 hours", description: "Twice a day", cron: "0 0 */12 * * ?" },
+    { value: "daily", label: "Daily", description: "Every day at midnight", cron: "0 0 0 * * ?" },
+    { value: "weekly", label: "Weekly", description: "Every Monday at midnight", cron: "0 0 0 * * 1" },
+    { value: "monthly", label: "Monthly", description: "1st of every month", cron: "0 0 0 1 * ?" },
     { value: "custom", label: "Custom", description: "Enter cron expression", cron: "" },
 ];
 
@@ -79,15 +79,16 @@ const DAYS_OF_WEEK = [
 
 function describeCron(cron: string): string {
     const parts = cron.trim().split(/\s+/);
-    if (parts.length !== 5) return cron;
-    const [minute, hour, dom, month, dow] = parts;
+    // Accept 6-field Quartz cron: seconds minute hour dom month dow
+    if (parts.length !== 6) return cron;
+    const [_seconds, minute, hour, dom, month, dow] = parts;
 
     // Match common presets
     const preset = PRESET_OPTIONS.find((p) => p.cron === cron);
     if (preset && preset.value !== "custom") return preset.label;
 
-    // Specific days of week
-    if (dow !== "*" && dom === "*" && month === "*") {
+    // Specific days of week (dow is not wildcard/question)
+    if (dow !== "*" && dow !== "?" && dom === "*" && month === "*") {
         const dayNames: Record<string, string> = {
             "0": "Sunday", "1": "Monday", "2": "Tuesday", "3": "Wednesday",
             "4": "Thursday", "5": "Friday", "6": "Saturday",
@@ -98,7 +99,8 @@ function describeCron(cron: string): string {
     }
 
     // Specific time daily
-    if (dow === "*" && dom === "*" && month === "*" && !hour.includes("*") && !minute.includes("*")) {
+    const isDowWild = dow === "*" || dow === "?";
+    if (isDowWild && dom === "*" && month === "*" && !hour.includes("*") && !minute.includes("*")) {
         return `Daily at ${hour.padStart(2, "0")}:${minute.padStart(2, "0")}`;
     }
 
@@ -133,7 +135,7 @@ export function ScheduleDialog({
     // Form state
     const [preset, setPreset] = useState(existingSchedule?.preset || "daily");
     const [cronExpression, setCronExpression] = useState(
-        existingSchedule?.cron_expression || "0 0 * * *"
+        existingSchedule?.cron_expression || "0 0 0 * * ?"
     );
     const [enabled, setEnabled] = useState(existingSchedule?.enabled ?? true);
     const [updateGraphRag, setUpdateGraphRag] = useState(
@@ -153,7 +155,7 @@ export function ScheduleDialog({
     useEffect(() => {
         if (open) {
             setPreset(existingSchedule?.preset || "daily");
-            setCronExpression(existingSchedule?.cron_expression || "0 0 * * *");
+            setCronExpression(existingSchedule?.cron_expression || "0 0 0 * * ?");
             setEnabled(existingSchedule?.enabled ?? true);
             setUpdateGraphRag(existingSchedule?.update_graph_rag ?? false);
             setTimezone(existingSchedule?.timezone || "UTC");
@@ -171,11 +173,11 @@ export function ScheduleDialog({
     // Build cron from custom weekly picker
     const buildWeeklyCron = () => {
         const dow = selectedDays.sort().join(",");
-        setCronExpression(`${selectedMinute} ${selectedHour} * * ${dow}`);
+        setCronExpression(`0 ${selectedMinute} ${selectedHour} * * ${dow}`);
     };
 
     const buildTimeCron = () => {
-        setCronExpression(`${selectedMinute} ${selectedHour} * * *`);
+        setCronExpression(`0 ${selectedMinute} ${selectedHour} * * ?`);
     };
 
     const handleSave = async () => {
@@ -286,15 +288,15 @@ export function ScheduleDialog({
 
                                 {/* Raw cron expression */}
                                 <TabsContent value="expression" className="space-y-2 mt-3">
-                                    <Label>Cron Expression (5-field)</Label>
+                                    <Label>Cron Expression (Quartz 6-field)</Label>
                                     <Input
-                                        placeholder="*/15 * * * *"
+                                        placeholder="0 */15 * * * ?"
                                         value={cronExpression}
                                         onChange={(e) => setCronExpression(e.target.value)}
                                         className="font-mono"
                                     />
                                     <p className="text-xs text-muted-foreground">
-                                        Format: minute hour day-of-month month day-of-week
+                                        Format: seconds minute hour day-of-month month day-of-week
                                     </p>
                                 </TabsContent>
 

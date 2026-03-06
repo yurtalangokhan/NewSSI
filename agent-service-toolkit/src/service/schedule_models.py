@@ -29,17 +29,17 @@ class SchedulePreset(StrEnum):
     CUSTOM = "custom"
 
 
-# Map presets → standard 5-field cron expressions
+# Map presets → 6-field Quartz cron expressions (seconds min hour dom month dow)
 PRESET_CRON_MAP: dict[SchedulePreset, str] = {
-    SchedulePreset.EVERY_5_MIN: "*/5 * * * *",
-    SchedulePreset.EVERY_15_MIN: "*/15 * * * *",
-    SchedulePreset.EVERY_30_MIN: "*/30 * * * *",
-    SchedulePreset.HOURLY: "0 * * * *",
-    SchedulePreset.EVERY_6_HOURS: "0 */6 * * *",
-    SchedulePreset.EVERY_12_HOURS: "0 */12 * * *",
-    SchedulePreset.DAILY: "0 0 * * *",
-    SchedulePreset.WEEKLY: "0 0 * * 1",
-    SchedulePreset.MONTHLY: "0 0 1 * *",
+    SchedulePreset.EVERY_5_MIN: "0 */5 * * * ?",
+    SchedulePreset.EVERY_15_MIN: "0 */15 * * * ?",
+    SchedulePreset.EVERY_30_MIN: "0 */30 * * * ?",
+    SchedulePreset.HOURLY: "0 0 * * * ?",
+    SchedulePreset.EVERY_6_HOURS: "0 0 */6 * * ?",
+    SchedulePreset.EVERY_12_HOURS: "0 0 */12 * * ?",
+    SchedulePreset.DAILY: "0 0 0 * * ?",
+    SchedulePreset.WEEKLY: "0 0 0 * * 1",
+    SchedulePreset.MONTHLY: "0 0 0 1 * ?",
 }
 
 
@@ -54,10 +54,10 @@ class SyncScheduleInput(BaseModel):
     cron_expression: str = Field(
         ...,
         description=(
-            "Standard 5-field cron expression (minute hour dom month dow). "
+            "Quartz 6-field cron expression (seconds minute hour dom month dow). "
             "Ignored when preset != 'custom'."
         ),
-        examples=["*/15 * * * *", "0 0 * * 1"],
+        examples=["0 */15 * * * ?", "0 0 0 * * 1"],
     )
     preset: SchedulePreset = Field(
         SchedulePreset.CUSTOM,
@@ -73,11 +73,8 @@ class SyncScheduleInput(BaseModel):
     @field_validator("cron_expression")
     @classmethod
     def validate_cron(cls, v: str) -> str:
-        from croniter import croniter
-
         v = v.strip()
-        if not croniter.is_valid(v):
-            raise ValueError(f"Invalid cron expression: {v!r}")
+        _validate_quartz_cron(v)
         return v
 
 
@@ -95,12 +92,37 @@ class SyncScheduleUpdate(BaseModel):
     def validate_cron(cls, v: Optional[str]) -> Optional[str]:
         if v is None:
             return v
-        from croniter import croniter
-
         v = v.strip()
-        if not croniter.is_valid(v):
-            raise ValueError(f"Invalid cron expression: {v!r}")
+        _validate_quartz_cron(v)
         return v
+
+
+def _quartz_to_unix(cron_expr: str) -> str:
+    """Convert 6-field Quartz cron to 5-field unix cron for croniter.
+
+    Quartz:  seconds minute hour dom month dow
+    Unix:    minute hour dom month dow
+    """
+    parts = cron_expr.strip().split()
+    if len(parts) == 6:
+        # Drop leading seconds, replace '?' with '*'
+        return " ".join(p.replace("?", "*") for p in parts[1:])
+    return cron_expr
+
+
+def _validate_quartz_cron(v: str) -> None:
+    """Validate a 6-field Quartz cron expression."""
+    from croniter import croniter
+
+    parts = v.split()
+    if len(parts) != 6:
+        raise ValueError(
+            f"Expected 6-field Quartz cron (seconds min hour dom month dow), got {len(parts)} fields: {v!r}"
+        )
+    # Validate by converting to 5-field for croniter
+    unix_cron = _quartz_to_unix(v)
+    if not croniter.is_valid(unix_cron):
+        raise ValueError(f"Invalid cron expression: {v!r}")
 
 
 # ------------------------------------------------------------------

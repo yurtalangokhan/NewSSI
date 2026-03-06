@@ -107,13 +107,29 @@ async def run_ingestion(datasource_id: str, update_graph_rag: bool = False):
         
         try:
             from service.airbyte_connector import extract_documents_async
-            
-            logger.info(f"Extracting data from {connector_type}...")
+
+            # Look up Airbyte connection_id if the datasource has a mapping
+            connection_id = None
+            try:
+                async with store.pool.connection() as conn2:
+                    async with conn2.cursor(row_factory=dict_row) as cur2:
+                        await cur2.execute(
+                            "SELECT airbyte_connection_id FROM datasource_airbyte_mapping WHERE datasource_id = %s",
+                            (datasource_id,),
+                        )
+                        mapping = await cur2.fetchone()
+                        if mapping:
+                            connection_id = mapping["airbyte_connection_id"]
+            except Exception:
+                pass  # Table may not exist yet
+
+            logger.info(f"Extracting data from {connector_type} (connection_id={connection_id})...")
             docs = await extract_documents_async(
                 connector_type,
                 connector_config,
                 streams,
                 content_fields,
+                connection_id=connection_id,
             )
             
         except Exception as e:

@@ -24,7 +24,7 @@ from memory.postgres import get_postgres_connection_string
 from service.checkpointer import set_global_checkpointer
 from service.langgraph_store import set_global_langgraph_store
 from service.sync_queue import get_sync_queue
-from service.sync_scheduler import get_sync_scheduler
+from service.airbyte_sync_listener import get_sync_listener
 
 warnings.filterwarnings("ignore", category=LangChainBetaWarning)
 logger = logging.getLogger(__name__)
@@ -87,16 +87,21 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                 set_global_checkpointer(saver)
                 set_global_langgraph_store(langgraph_store)
 
-                # Start the sync queue worker and cron scheduler
+                # Start the sync queue worker and Airbyte sync listener
                 sync_queue = get_sync_queue()
                 sync_queue.start()
-                sync_scheduler = get_sync_scheduler()
-                await sync_scheduler.start()
+
+                # Ensure the mapping table exists
+                from service.airbyte_mapping_db import AirbyteMappingDB
+                await AirbyteMappingDB.ensure_table()
+
+                sync_listener = get_sync_listener()
+                sync_listener.start()
 
                 yield
 
-                # Shutdown scheduler & queue gracefully
-                await sync_scheduler.stop()
+                # Shutdown listener & queue gracefully
+                await sync_listener.stop()
                 await sync_queue.stop()
 
             await store.close()

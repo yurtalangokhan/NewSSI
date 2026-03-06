@@ -7,9 +7,9 @@ const MCP_TOKENS = process.env.MCP_TOKENS;
 let mcpServerUrl = process.env.NEXT_PUBLIC_MCP_SERVER_URL;
 // Fix Docker networking: When running on the server side (in Docker),
 // localhost refers to the container itself, not the host services.
-// Rewrite localhost:8001 -> mcp-server:8001
-if (typeof window === "undefined" && mcpServerUrl?.includes("localhost:8001")) {
-  mcpServerUrl = mcpServerUrl.replace("localhost:8001", "mcp-server:8001");
+// Rewrite localhost:8002 -> mcp-server:8002
+if (typeof window === "undefined" && mcpServerUrl?.includes("localhost:8002")) {
+  mcpServerUrl = mcpServerUrl.replace("localhost:8002", "mcp-server:8002");
 }
 
 const MCP_SERVER_URL = mcpServerUrl;

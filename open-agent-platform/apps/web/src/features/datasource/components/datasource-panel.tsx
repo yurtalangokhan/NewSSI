@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CreateDataSourceDialog } from "./create-datasource-dialog";
@@ -59,7 +60,7 @@ export function DataSourcePanel() {
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
     const [syncingIds, setSyncingIds] = useState<Set<string>>(new Set());
-    const [syncProgress, setSyncProgress] = useState<Record<string, { status: string; progress: number; graph_update_status?: string; queue_position?: number }>>({});
+    const [syncProgress, setSyncProgress] = useState<Record<string, { status: string; progress: number; graph_update_status?: string; queue_position?: number; last_error?: string }>>({});
     const [details, setDetails] = useState<any>(null);
     const [detailsLoading, setDetailsLoading] = useState(false);
     const [docPage, setDocPage] = useState(1);
@@ -95,6 +96,7 @@ export function DataSourcePanel() {
                     progress: status.sync_progress,
                     graph_update_status: status.graph_update_status,
                     queue_position: status.queue_position,
+                    last_error: status.last_error,
                 }
             }));
 
@@ -103,16 +105,31 @@ export function DataSourcePanel() {
                 if (status.graph_update_status === "graph_rebuilding") {
                     return;
                 }
+                // Show toast notification for completed/failed syncs
+                if (status.sync_status === "error") {
+                    toast.error("Sync failed", {
+                        description: status.last_error || "An unknown error occurred during sync.",
+                        duration: 8000,
+                    });
+                } else {
+                    toast.success("Sync completed successfully");
+                }
                 setSyncingIds(prev => {
                     const next = new Set(prev);
                     next.delete(id);
                     return next;
                 });
                 refresh();
+                // Re-fetch details if this datasource is currently selected
+                if (id === selectedId) {
+                    getDataSourceDetails(id, docPage, pageSize).then((d) => {
+                        if (d) setDetails(d);
+                    });
+                }
             }
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [selectedId, docPage]);
 
     useEffect(() => {
         const interval = setInterval(() => {
@@ -143,11 +160,12 @@ export function DataSourcePanel() {
         if (progress && progress.status !== "completed" && progress.status !== "error" && progress.status !== "idle") {
             return <Loader2 className="h-3 w-3 animate-spin text-blue-500" />;
         }
-        if (ds.sync_status === "completed") {
-            return <CheckCircle className="h-3 w-3 text-green-500" />;
-        }
-        if (ds.sync_status === "error") {
+        // Check both polled progress state and list-level sync_status
+        if (progress?.status === "error" || ds.sync_status === "error") {
             return <AlertTriangle className="h-3 w-3 text-red-500" />;
+        }
+        if (progress?.status === "completed" || ds.sync_status === "completed") {
+            return <CheckCircle className="h-3 w-3 text-green-500" />;
         }
         return null;
     };
@@ -254,6 +272,14 @@ export function DataSourcePanel() {
                                                             </span>
                                                         </div>
                                                         <Progress value={progress.progress} className="h-1" />
+                                                    </div>
+                                                )}
+                                                {/* Inline error from last sync */}
+                                                {!isSyncing && progress?.status === "error" && progress.last_error && (
+                                                    <div className="mt-2 p-2 rounded bg-destructive/10 border border-destructive/20">
+                                                        <p className="text-[11px] text-destructive line-clamp-2">
+                                                            {progress.last_error}
+                                                        </p>
                                                     </div>
                                                 )}
                                             </div>

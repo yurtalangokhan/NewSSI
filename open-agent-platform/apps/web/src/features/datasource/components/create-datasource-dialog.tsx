@@ -27,6 +27,7 @@ import {
     ChevronLeft,
 } from "lucide-react";
 import { useConnectors, useDataSources, ConnectorInfo, ConnectorSpec, StreamInfo } from "@/hooks/use-datasources";
+import { SchemaForm } from "./schema-form";
 
 interface CreateDataSourceDialogProps {
     onCreated?: () => void;
@@ -164,58 +165,6 @@ export function CreateDataSourceDialog({ onCreated }: CreateDataSourceDialogProp
         else if (step === "confirm") setStep("streams");
     }
 
-    // Render config field based on JSON Schema
-    function renderConfigField(key: string, schema: any) {
-        const value = configValues[key] ?? "";
-        const isRequired = connectorSpec?.connection_specification?.required?.includes(key);
-
-        // Determine field type
-        const type = schema.type;
-        const isSecret = schema.airbyte_secret || key.toLowerCase().includes("password") || key.toLowerCase().includes("secret");
-
-        return (
-            <div key={key} className="grid gap-2">
-                <Label htmlFor={key} className="flex items-center gap-1">
-                    {schema.title || key}
-                    {isRequired && <span className="text-red-500">*</span>}
-                </Label>
-                {schema.description && (
-                    <p className="text-xs text-muted-foreground">{schema.description}</p>
-                )}
-                {type === "boolean" ? (
-                    <Checkbox
-                        id={key}
-                        checked={!!value}
-                        onCheckedChange={(checked: boolean) => setConfigValues({ ...configValues, [key]: checked })}
-                    />
-                ) : schema.enum ? (
-                    <select
-                        id={key}
-                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                        value={value}
-                        onChange={(e) => setConfigValues({ ...configValues, [key]: e.target.value })}
-                    >
-                        <option value="">Select...</option>
-                        {schema.enum.map((opt: string) => (
-                            <option key={opt} value={opt}>{opt}</option>
-                        ))}
-                    </select>
-                ) : (
-                    <Input
-                        id={key}
-                        type={isSecret ? "password" : type === "integer" ? "number" : "text"}
-                        placeholder={schema.examples?.[0] || ""}
-                        value={value}
-                        onChange={(e) => setConfigValues({
-                            ...configValues,
-                            [key]: type === "integer" ? parseInt(e.target.value) || "" : e.target.value
-                        })}
-                    />
-                )}
-            </div>
-        );
-    }
-
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
@@ -302,9 +251,11 @@ export function CreateDataSourceDialog({ onCreated }: CreateDataSourceDialogProp
                             <>
                                 <ScrollArea className="h-[350px] pr-4">
                                     <div className="space-y-4">
-                                        {Object.entries(connectorSpec.connection_specification.properties || {}).map(
-                                            ([key, schema]: [string, any]) => renderConfigField(key, schema)
-                                        )}
+                                        <SchemaForm
+                                            schema={connectorSpec.connection_specification}
+                                            values={configValues}
+                                            onChange={setConfigValues}
+                                        />
                                     </div>
                                 </ScrollArea>
 

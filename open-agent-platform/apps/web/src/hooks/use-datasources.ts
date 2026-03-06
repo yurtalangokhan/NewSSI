@@ -9,11 +9,13 @@ export interface ConnectorInfo {
     name: string;
     display_name: string;
     category?: string;
+    source_definition_id?: string;
 }
 
 export interface ConnectorSpec {
     name: string;
     display_name: string;
+    source_definition_id?: string;
     connection_specification: Record<string, any>;
     documentation_url?: string;
 }
