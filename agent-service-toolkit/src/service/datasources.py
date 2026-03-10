@@ -11,9 +11,19 @@ from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Query
-from pydantic import BaseModel, Field
 from psycopg.rows import dict_row
 
+from service.schemas import (
+    AirbyteConnectorConfig,
+    DataSourceInput,
+    DataSourceUpdateInput,
+    DataSourceResponse,
+    ChunkInfo,
+    DataSourceDetails,
+    ConnectorInfoResponse,
+    ConnectorSpecResponse,
+    StreamInfo,
+)
 from service.store import get_store
 from service.ingestion import run_ingestion
 from service.sync_queue import SyncJob, get_sync_queue
@@ -23,114 +33,12 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/datasources", tags=["datasources"])
 
 
-# ============================================================================
-# Pydantic Models
-# ============================================================================
-
-class AirbyteConnectorConfig(BaseModel):
-    """Configuration for an Airbyte-based data source."""
-    connector_type: str = Field(..., description="Airbyte connector name, e.g., 'source-postgres'")
-    connector_config: Dict[str, Any] = Field(..., description="Connector-specific configuration (native nested JSON)")
-    streams: Optional[List[str]] = Field(None, description="Specific streams to sync, None = all")
-    content_fields: Optional[List[str]] = Field(None, description="Fields to include in document content")
-
-
-class DataSourceInput(BaseModel):
-    """Input for creating a new data source."""
-    name: str = Field(..., description="Human-readable name for the data source")
-    config: AirbyteConnectorConfig
-
-
-class DataSourceUpdateInput(BaseModel):
-    """Input for updating an existing data source."""
-    name: Optional[str] = Field(None, description="New human-readable name")
-    connector_config: Optional[Dict[str, Any]] = Field(None, description="Updated connector configuration (native nested JSON)")
-    streams: Optional[List[str]] = Field(None, description="Updated list of streams to sync")
-    sync_mode: Optional[str] = Field(None, description="Sync mode: full_refresh or incremental")
-    destination_sync_mode: Optional[str] = Field(None, description="Destination sync mode: overwrite or append")
-
-
 # Valid sync mode combinations (must match Airbyte webapp + destination spec)
 _VALID_SYNC_COMBOS = {
     ("full_refresh", "overwrite"),
     ("full_refresh", "append"),
     ("incremental", "append"),
 }
-
-
-class DataSourceResponse(BaseModel):
-    """Response model for a data source."""
-    id: str
-    name: str
-    connector_type: str
-    connector_display_name: str
-    streams: Optional[List[str]] = None
-    sync_status: Optional[str] = None
-    sync_progress: Optional[int] = None
-    document_count: int = 0
-    created_at: Optional[str] = None
-    last_synced_at: Optional[str] = None
-    schedule_summary: Optional[Dict[str, Any]] = None
-
-
-class ChunkInfo(BaseModel):
-    """Information about a single chunk in the vector store."""
-    content: str
-    char_count: int = 0
-    token_count: int = 0
-    word_count: int = 0
-    source: Optional[str] = None
-    stream: Optional[str] = None
-    connector_type: Optional[str] = None
-    metadata: Dict[str, Any] = {}
-
-
-class DataSourceDetails(BaseModel):
-    """Detailed information about a data source."""
-    id: str
-    name: str
-    connector_type: str
-    connector_display_name: str
-    config: Dict[str, Any]  # Masked sensitive fields
-    streams: Optional[List[str]] = None
-    available_streams: Optional[List[str]] = None
-    sync_status: Optional[str] = None
-    sync_progress: Optional[int] = None
-    document_count: int = 0
-    chunk_count: int = 0
-    chunks: List[ChunkInfo] = []
-    avg_chunk_tokens: Optional[int] = None
-    avg_chunk_chars: Optional[int] = None
-    sample_documents: List[Dict[str, Any]] = []  # Kept for backward compat
-    created_at: Optional[str] = None
-    last_synced_at: Optional[str] = None
-    last_error: Optional[str] = None
-    sync_mode: Optional[str] = None
-    destination_sync_mode: Optional[str] = None
-    schedule: Optional[Dict[str, Any]] = None
-    graph_rag_available: bool = False
-
-
-class ConnectorInfoResponse(BaseModel):
-    """Information about an available connector."""
-    name: str
-    display_name: str
-    source_definition_id: str
-    category: Optional[str] = None
-
-
-class ConnectorSpecResponse(BaseModel):
-    """Raw JSON Schema specification for a connector."""
-    name: str
-    display_name: str
-    source_definition_id: str
-    connection_specification: Dict[str, Any]
-    documentation_url: Optional[str] = None
-
-
-class StreamInfo(BaseModel):
-    """Information about an available stream."""
-    name: str
 
 
 # ============================================================================

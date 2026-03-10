@@ -26,36 +26,15 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from pydantic import BaseModel, Field
 from psycopg.rows import dict_row
 
+from service.schemas import BatchRequest, BatchResponse, SourcePreviewRequest
 from service.store import get_store
 from agents.tools import load_vector_store
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/ingest", tags=["ingestion"])
-
-
-# ============================================================================
-# Pydantic Models
-# ============================================================================
-
-class BatchRequest(BaseModel):
-    """A single batch of records from destination-embedding."""
-    datasource_id: str = Field(..., description="UUID of the target collection")
-    records: List[Dict[str, Any]] = Field(default_factory=list, description="Raw records from Airbyte source")
-    batch_index: int = Field(0, description="Sequential batch number (0-based)")
-    is_last_batch: bool = Field(False, description="True if this is the final batch in the sync")
-
-
-class BatchResponse(BaseModel):
-    """Response after processing a batch."""
-    status: str
-    batch_index: int
-    records_received: int
-    chunks_indexed: int
-    is_last_batch: bool
 
 
 # ============================================================================
@@ -276,12 +255,6 @@ async def ingest_batch(req: BatchRequest):
 # ============================================================================
 # Source Preview Endpoint (live query from original source)
 # ============================================================================
-
-class SourcePreviewRequest(BaseModel):
-    """Request to fetch sample data from the original source."""
-    datasource_id: str
-    stream: Optional[str] = None
-    limit: int = Field(20, ge=1, le=100)
 
 
 @router.post("/source-preview")

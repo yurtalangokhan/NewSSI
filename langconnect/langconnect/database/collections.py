@@ -12,25 +12,16 @@ import builtins
 import json
 import logging
 import uuid
-from typing import Any, NotRequired, Optional, TypedDict
+from typing import Any, Optional
 
 from fastapi import status
 from fastapi.exceptions import HTTPException
 from langchain_core.documents import Document
 
 from langconnect.database.connection import get_db_connection, get_vectorstore
+from langconnect.models.collection import CollectionDetails
 
 logger = logging.getLogger(__name__)
-
-
-class CollectionDetails(TypedDict):
-    """TypedDict for collection details."""
-
-    uuid: str
-    name: str
-    metadata: dict[str, Any]
-    # Temporary field used internally to workaround an issue with PGVector
-    table_id: NotRequired[str]
 
 
 class CollectionsManager:

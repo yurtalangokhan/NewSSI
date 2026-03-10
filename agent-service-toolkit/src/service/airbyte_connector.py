@@ -17,42 +17,12 @@ from decimal import Decimal
 from typing import Any, Dict, List, Optional
 
 from langchain_core.documents import Document
-from pydantic import BaseModel
 
 from service.airbyte_api_client import get_airbyte_client
 from service.airbyte_destination import get_destination_reader
+from service.schemas import ConnectorInfo, ConnectorSpec
 
 logger = logging.getLogger(__name__)
-
-
-# ---------------------------------------------------------------------------
-# Pydantic models
-# ---------------------------------------------------------------------------
-
-
-class ConnectorInfo(BaseModel):
-    """Information about an Airbyte connector."""
-
-    name: str
-    display_name: str
-    source_definition_id: str
-    category: Optional[str] = None
-    icon_url: Optional[str] = None
-    documentation_url: Optional[str] = None
-    is_available: bool = True
-
-
-class ConnectorSpec(BaseModel):
-    """Raw JSON Schema specification for a connector.
-
-    ``connection_specification`` contains the **raw** JSON Schema as
-    returned by the Airbyte API — **NO** flattening, **NO** transformation.
-    """
-
-    name: str
-    source_definition_id: str
-    connection_specification: Dict[str, Any]
-    documentation_url: Optional[str] = None
 
 
 # ---------------------------------------------------------------------------
