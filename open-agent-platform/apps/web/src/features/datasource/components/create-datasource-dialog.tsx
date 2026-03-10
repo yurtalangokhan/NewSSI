@@ -173,7 +173,7 @@ export function CreateDataSourceDialog({ onCreated }: CreateDataSourceDialogProp
                     Add Data Source
                 </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[700px] max-h-[85vh]">
+            <DialogContent className="sm:max-w-[700px] max-h-[90vh]">
                 <DialogHeader>
                     <DialogTitle>
                         {step === "connector" && "Select Connector"}
@@ -384,7 +384,7 @@ export function CreateDataSourceDialog({ onCreated }: CreateDataSourceDialogProp
                 <DialogFooter className="flex justify-between">
                     <div>
                         {step !== "connector" && (
-                            <Button variant="outline" onClick={handlePrevStep}>
+                            <Button variant="outline" onClick={handlePrevStep} disabled={loadingStreams}>
                                 <ChevronLeft className="h-4 w-4 mr-1" />
                                 Back
                             </Button>
@@ -403,6 +403,7 @@ export function CreateDataSourceDialog({ onCreated }: CreateDataSourceDialogProp
                             <Button
                                 onClick={handleNextStep}
                                 disabled={
+                                    loadingStreams ||
                                     (step === "connector" && !selectedConnector) ||
                                     (step === "config" && !validationResult?.valid)
                                 }

@@ -347,7 +347,9 @@ services:
         "-c",
         "config_file=/etc/postgresql/postgresql.conf",
         "-c",
-        "log_min_messages=fatal"
+        "log_min_messages=fatal",
+        "-c",
+        "max_connections=200"
       ]
 
   vector:
@@ -445,7 +447,6 @@ services:
     volumes:
       - airbyte-workspace:/tmp/workspace
       - airbyte-data:/data/config
-      - /tmp/airbyte_local:/tmp/airbyte_local
     environment:
       AIRBYTE_VERSION: ${AIRBYTE_VERSION:-0.50.33}
       AIRBYTE_ROLE: ${AIRBYTE_ROLE:-}
@@ -460,7 +461,6 @@ services:
       WORKSPACE_ROOT: /tmp/workspace
       CONFIG_ROOT: /data/config
       LOG_LEVEL: INFO
-      LOCAL_ROOT: /tmp/airbyte_local
       DEPLOYMENT_MODE: OSS
       SECRET_PERSISTENCE: NONE
       CONFIGS_DATABASE_MINIMUM_FLYWAY_MIGRATION_VERSION: 0.35.15.001
@@ -485,7 +485,6 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./docker-bin/docker:/usr/bin/docker:ro
-      - /tmp/airbyte_local:/tmp/airbyte_local
       - airbyte-workspace:/tmp/workspace
     environment:
       AIRBYTE_VERSION: ${AIRBYTE_VERSION:-0.50.33}
@@ -542,8 +541,6 @@ services:
     restart: unless-stopped
     ports:
       - "8123:8080"
-    volumes:
-      - /tmp/airbyte_local:/tmp/airbyte_local:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
@@ -570,8 +567,13 @@ services:
       MODE: dev
       # Airbyte OSS API Configuration
       AIRBYTE_API_URL: http://airbyte-server:8001/api/v1
-      AIRBYTE_LOCAL_OUTPUT_PATH: /tmp/airbyte_local
       AIRBYTE_SYNC_POLL_INTERVAL_SECONDS: ${AIRBYTE_SYNC_POLL_INTERVAL_SECONDS:-30}
+      # Custom destination-embedding config
+      AIRBYTE_DESTINATION_AGENT_URL: http://agent-service:8080
+      AIRBYTE_EMBED_BATCH_SIZE: ${AIRBYTE_EMBED_BATCH_SIZE:-200}
+      # LangConnect Configuration
+      LANGCONNECT_API_URL: http://langconnect-api:8080
+      LANGCONNECT_SERVICE_TOKEN: ${LANGCONNECT_SERVICE_TOKEN:-}
       # Neo4j Configuration
       NEO4J_URI: bolt://neo4j:7687
       NEO4J_USERNAME: ${NEO4J_USERNAME:-neo4j}
@@ -784,6 +786,20 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+  # Custom Airbyte destination — streams records via HTTP to agent-service
+  # for in-flight embedding.  No file I/O.
+  destination-embedding:
+    container_name: destination-embedding
+    build:
+      context: ./airbyte-destination-embedding
+      dockerfile: Dockerfile
+    image: airbyte/destination-embedding:latest
+    # This container is started by Airbyte worker on-demand during syncs.
+    # We build it here so the image is available locally; the container
+    # itself is NOT long-running.
+    profiles:
+      - build-only
 
 volumes:
   db-config:

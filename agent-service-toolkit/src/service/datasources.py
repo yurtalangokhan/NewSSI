@@ -41,6 +41,23 @@ class DataSourceInput(BaseModel):
     config: AirbyteConnectorConfig
 
 
+class DataSourceUpdateInput(BaseModel):
+    """Input for updating an existing data source."""
+    name: Optional[str] = Field(None, description="New human-readable name")
+    connector_config: Optional[Dict[str, Any]] = Field(None, description="Updated connector configuration (native nested JSON)")
+    streams: Optional[List[str]] = Field(None, description="Updated list of streams to sync")
+    sync_mode: Optional[str] = Field(None, description="Sync mode: full_refresh or incremental")
+    destination_sync_mode: Optional[str] = Field(None, description="Destination sync mode: overwrite or append")
+
+
+# Valid sync mode combinations (must match Airbyte webapp + destination spec)
+_VALID_SYNC_COMBOS = {
+    ("full_refresh", "overwrite"),
+    ("full_refresh", "append"),
+    ("incremental", "append"),
+}
+
+
 class DataSourceResponse(BaseModel):
     """Response model for a data source."""
     id: str
@@ -56,6 +73,18 @@ class DataSourceResponse(BaseModel):
     schedule_summary: Optional[Dict[str, Any]] = None
 
 
+class ChunkInfo(BaseModel):
+    """Information about a single chunk in the vector store."""
+    content: str
+    char_count: int = 0
+    token_count: int = 0
+    word_count: int = 0
+    source: Optional[str] = None
+    stream: Optional[str] = None
+    connector_type: Optional[str] = None
+    metadata: Dict[str, Any] = {}
+
+
 class DataSourceDetails(BaseModel):
     """Detailed information about a data source."""
     id: str
@@ -68,10 +97,16 @@ class DataSourceDetails(BaseModel):
     sync_status: Optional[str] = None
     sync_progress: Optional[int] = None
     document_count: int = 0
-    sample_documents: List[Dict[str, Any]] = []
+    chunk_count: int = 0
+    chunks: List[ChunkInfo] = []
+    avg_chunk_tokens: Optional[int] = None
+    avg_chunk_chars: Optional[int] = None
+    sample_documents: List[Dict[str, Any]] = []  # Kept for backward compat
     created_at: Optional[str] = None
     last_synced_at: Optional[str] = None
     last_error: Optional[str] = None
+    sync_mode: Optional[str] = None
+    destination_sync_mode: Optional[str] = None
     schedule: Optional[Dict[str, Any]] = None
     graph_rag_available: bool = False
 
@@ -369,9 +404,12 @@ async def create_datasource(input: DataSourceInput):
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to create Airbyte source: {e}")
 
-    # Get or create default destination
+    # Get or create custom embedding destination
+    collection_uuid = uuid4()
     try:
-        dest_id = await client.get_or_create_default_destination()
+        dest_id = await client.get_or_create_default_destination(
+            datasource_id=str(collection_uuid),
+        )
     except Exception as e:
         # Cleanup source on failure
         try:
@@ -413,12 +451,10 @@ async def create_datasource(input: DataSourceInput):
         raise HTTPException(status_code=500, detail=f"Failed to create connection: {e}")
 
     # Store in PG
-    collection_uuid = uuid4()
     now = datetime.now(timezone.utc).isoformat()
 
     meta = {
         "connector_type": input.config.connector_type,
-        "connector_config": input.config.connector_config,
         "streams": input.config.streams,
         "content_fields": input.config.content_fields,
         "created_at": now,
@@ -494,18 +530,25 @@ async def get_datasource_details(id: str, page: int = 1, page_size: int = 10):
             if not row:
                 raise HTTPException(status_code=404, detail="DataSource not found")
 
-            meta = row.get("cmetadata", {})
-            connector_type = meta.get("connector_type", "unknown")
+            col_meta = row.get("cmetadata", {})
+            connector_type = col_meta.get("connector_type", "unknown")
 
-            # Get document count
-            await cur.execute(
-                "SELECT COUNT(*) as count FROM langchain_pg_embedding WHERE collection_id = %s",
-                (id,)
-            )
-            count_row = await cur.fetchone()
-            doc_count = count_row["count"] if count_row else 0
+            # Read pre-computed chunk stats from cmetadata (written at sync finalize)
+            chunk_stats = col_meta.get("chunk_stats", {})
+            chunk_count = chunk_stats.get("chunk_count", 0)
+            avg_chars = chunk_stats.get("avg_chunk_chars", 0)
+            avg_tokens = chunk_stats.get("avg_chunk_tokens", 0)
 
-            # Get paginated documents
+            # If no pre-computed stats, fall back to a simple COUNT (lightweight)
+            if not chunk_count:
+                await cur.execute(
+                    "SELECT COUNT(*) as count FROM langchain_pg_embedding WHERE collection_id = %s",
+                    (id,)
+                )
+                count_row = await cur.fetchone()
+                chunk_count = count_row["count"] if count_row else 0
+
+            # Get paginated chunks (metadata already has char/token/word counts from ingestion)
             await cur.execute(
                 """SELECT document, cmetadata FROM langchain_pg_embedding
                    WHERE collection_id = %s
@@ -514,19 +557,52 @@ async def get_datasource_details(id: str, page: int = 1, page_size: int = 10):
                 (id, page_size, offset)
             )
             sample_rows = await cur.fetchall()
-            samples = []
+            chunks = []
+            samples = []  # backward compat
             for sr in sample_rows:
-                doc_text = sr["document"]
+                doc_text = sr["document"] or ""
+                emb_meta = sr.get("cmetadata", {}) or {}
+
+                chunks.append(ChunkInfo(
+                    content=doc_text[:500] + "..." if len(doc_text) > 500 else doc_text,
+                    char_count=emb_meta.get("char_count", len(doc_text)),
+                    token_count=emb_meta.get("token_count", max(len(doc_text.split()), int(len(doc_text) / 4))),
+                    word_count=emb_meta.get("word_count", len(doc_text.split())),
+                    source=emb_meta.get("source"),
+                    stream=emb_meta.get("stream"),
+                    connector_type=emb_meta.get("connector_type"),
+                    metadata=emb_meta,
+                ))
+                # backward compat
                 samples.append({
                     "content": doc_text[:500] + "..." if len(doc_text) > 500 else doc_text,
-                    "metadata": sr.get("cmetadata", {}),
+                    "metadata": emb_meta,
                 })
 
-            # Mask sensitive config
-            masked_config = _mask_sensitive_config(meta.get("connector_config", {}))
+            # Fetch config from Airbyte API (no longer stored locally)
+            masked_config: Dict[str, Any] = {}
+            airbyte_source_id: Optional[str] = None
+            try:
+                from service.airbyte_mapping_db import AirbyteMappingDB as _MappingDB
+                _mapping = await _MappingDB.get(id)
+                if _mapping:
+                    airbyte_source_id = _mapping.get("airbyte_source_id")
+                    from service.airbyte_api_client import get_airbyte_client as _get_client
+                    _client = _get_client()
+                    source_data = await _client.get_source(airbyte_source_id)
+                    raw_config = source_data.get("connectionConfiguration", {})
+                    masked_config = _mask_sensitive_config(raw_config)
+            except Exception as e:
+                logger.warning(f"Could not fetch config from Airbyte for {id}: {e}")
+                # Fallback: try legacy cmetadata (for old datasources not yet migrated)
+                legacy_config = col_meta.get("connector_config", {})
+                if legacy_config:
+                    masked_config = _mask_sensitive_config(legacy_config)
 
             # Fetch schedule from Airbyte connection
             schedule_data = None
+            sync_mode_val = None
+            dest_sync_mode_val = None
             try:
                 from service.airbyte_mapping_db import AirbyteMappingDB
                 mapping = await AirbyteMappingDB.get(id)
@@ -534,6 +610,15 @@ async def get_datasource_details(id: str, page: int = 1, page_size: int = 10):
                     from service.airbyte_api_client import get_airbyte_client
                     client = get_airbyte_client()
                     conn_data = await client.get_connection(mapping["airbyte_connection_id"])
+
+                    # Extract sync mode from first stream config
+                    sync_catalog = conn_data.get("syncCatalog", {})
+                    catalog_streams = sync_catalog.get("streams", [])
+                    if catalog_streams:
+                        first_config = catalog_streams[0].get("config", {})
+                        sync_mode_val = first_config.get("syncMode", "full_refresh")
+                        dest_sync_mode_val = first_config.get("destinationSyncMode", "overwrite")
+
                     sched = conn_data.get("scheduleData", {})
                     cron_data = sched.get("cron", {})
                     schedule_type = conn_data.get("scheduleType", "manual")
@@ -550,6 +635,17 @@ async def get_datasource_details(id: str, page: int = 1, page_size: int = 10):
                         except Exception:
                             pass
 
+                    # Fetch last job info from Airbyte
+                    last_run_at_val = None
+                    last_run_status_val = None
+                    try:
+                        from service.schedule_routes import _get_last_job_info
+                        last_run_at_val, last_run_status_val = await _get_last_job_info(
+                            mapping["airbyte_connection_id"]
+                        )
+                    except Exception:
+                        pass
+
                     if schedule_type == "cron":
                         now_str = datetime.now(timezone.utc).isoformat()
                         schedule_data = {
@@ -561,8 +657,8 @@ async def get_datasource_details(id: str, page: int = 1, page_size: int = 10):
                             "update_graph_rag": mapping.get("update_graph_rag", False),
                             "timezone": tz,
                             "next_run_at": next_run,
-                            "last_run_at": None,
-                            "last_run_status": None,
+                            "last_run_at": last_run_at_val,
+                            "last_run_status": last_run_status_val,
                             "created_at": mapping.get("created_at", now_str),
                             "updated_at": mapping.get("updated_at", now_str),
                         }
@@ -579,17 +675,175 @@ async def get_datasource_details(id: str, page: int = 1, page_size: int = 10):
         connector_type=connector_type,
         connector_display_name=_format_connector_name(connector_type),
         config=masked_config,
-        streams=meta.get("streams"),
-        sync_status=meta.get("sync_status"),
-        sync_progress=meta.get("sync_progress"),
-        document_count=doc_count,
+        streams=col_meta.get("streams"),
+        sync_status=col_meta.get("sync_status"),
+        sync_progress=col_meta.get("sync_progress"),
+        document_count=chunk_count,
+        chunk_count=chunk_count,
+        chunks=chunks,
+        avg_chunk_tokens=avg_tokens if avg_tokens else None,
+        avg_chunk_chars=avg_chars if avg_chars else None,
         sample_documents=samples,
-        created_at=meta.get("created_at"),
-        last_synced_at=meta.get("last_synced_at"),
-        last_error=meta.get("last_error"),
+        created_at=col_meta.get("created_at"),
+        last_synced_at=col_meta.get("last_synced_at"),
+        last_error=col_meta.get("last_error"),
+        sync_mode=sync_mode_val,
+        destination_sync_mode=dest_sync_mode_val,
         schedule=schedule_data,
         graph_rag_available=graph_available,
     )
+
+
+@router.put("/{id}", response_model=DataSourceDetails)
+async def update_datasource(id: str, input: DataSourceUpdateInput):
+    """Update a data source's name, configuration, streams, and/or sync mode.
+
+    Updates the Airbyte source config, connection streams/sync mode, and local metadata.
+    """
+    store = get_store()
+    if not store or not store.pool:
+        raise HTTPException(status_code=503, detail="Database not initialized")
+
+    # 1. Verify datasource exists
+    async with store.pool.connection() as conn:
+        async with conn.cursor(row_factory=dict_row) as cur:
+            await cur.execute(
+                "SELECT * FROM langchain_pg_collection WHERE uuid = %s",
+                (id,)
+            )
+            row = await cur.fetchone()
+            if not row:
+                raise HTTPException(status_code=404, detail="DataSource not found")
+
+            meta = row.get("cmetadata", {})
+
+    # 2. Get Airbyte mapping
+    from service.airbyte_mapping_db import AirbyteMappingDB
+    from service.airbyte_api_client import get_airbyte_client
+
+    mapping = await AirbyteMappingDB.get(id)
+    if not mapping:
+        raise HTTPException(status_code=400, detail="No Airbyte mapping found for this datasource")
+
+    client = get_airbyte_client()
+
+    # 3. Validate sync mode combination if provided
+    if input.sync_mode is not None or input.destination_sync_mode is not None:
+        sm = input.sync_mode or "full_refresh"
+        dm = input.destination_sync_mode or "overwrite"
+        if (sm, dm) not in _VALID_SYNC_COMBOS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid sync mode combination: {sm} | {dm}. "
+                       f"Valid combos: full_refresh|overwrite, full_refresh|append, incremental|append",
+            )
+
+    # 4. Update Airbyte source config if provided
+    if input.connector_config is not None:
+        try:
+            await client.update_source(
+                source_id=mapping["airbyte_source_id"],
+                config=input.connector_config,
+                name=input.name,
+            )
+        except Exception as e:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Failed to update Airbyte source: {e}",
+            )
+    elif input.name is not None:
+        # Update name only
+        try:
+            source_data = await client.get_source(mapping["airbyte_source_id"])
+            await client.update_source(
+                source_id=mapping["airbyte_source_id"],
+                config=source_data.get("connectionConfiguration", {}),
+                name=input.name,
+            )
+        except Exception as e:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Failed to update Airbyte source name: {e}",
+            )
+
+    # 5. Update connection streams and/or sync mode
+    conn_update_fields: Dict[str, Any] = {}
+
+    if input.streams is not None or input.sync_mode is not None or input.destination_sync_mode is not None:
+        try:
+            conn_data = await client.get_connection(mapping["airbyte_connection_id"])
+            sync_catalog = conn_data.get("syncCatalog", {})
+            catalog_streams = sync_catalog.get("streams", [])
+
+            # Filter streams if new list provided
+            if input.streams is not None:
+                # Re-discover to get fresh stream configs
+                schema = await client.discover_source_schema(mapping["airbyte_source_id"])
+                discovered_catalog = schema.get("catalog", {})
+                discovered_streams = discovered_catalog.get("streams", [])
+
+                catalog_streams = [
+                    s for s in discovered_streams
+                    if s.get("stream", {}).get("name") in input.streams
+                ]
+
+            # Update sync mode on all streams
+            effective_sync_mode = input.sync_mode or "full_refresh"
+            effective_dest_mode = input.destination_sync_mode or "overwrite"
+            for cs in catalog_streams:
+                if "config" not in cs:
+                    cs["config"] = {}
+                cs["config"]["syncMode"] = effective_sync_mode
+                cs["config"]["destinationSyncMode"] = effective_dest_mode
+                cs["config"]["selected"] = True
+
+            conn_update_fields["syncCatalog"] = {"streams": catalog_streams}
+        except Exception as e:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Failed to update connection streams: {e}",
+            )
+
+    if conn_update_fields:
+        try:
+            await client.update_connection(
+                connection_id=mapping["airbyte_connection_id"],
+                **conn_update_fields,
+            )
+        except Exception as e:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Failed to update Airbyte connection: {e}",
+            )
+
+    # 5. Update local PG metadata
+    updated = False
+    if input.name is not None:
+        meta["friendly_name"] = input.name
+        updated = True
+    # connector_config is NOT stored locally anymore — Airbyte is the single source of truth
+    if "connector_config" in meta:
+        del meta["connector_config"]  # Clean up legacy data
+        updated = True
+    if input.streams is not None:
+        meta["streams"] = input.streams
+        updated = True
+
+    async with store.pool.connection() as conn_db:
+        async with conn_db.cursor(row_factory=dict_row) as cur:
+            if updated:
+                await cur.execute(
+                    "UPDATE langchain_pg_collection SET cmetadata = %s WHERE uuid = %s",
+                    (json.dumps(meta), id)
+                )
+            if input.name is not None:
+                await cur.execute(
+                    "UPDATE langchain_pg_collection SET name = %s WHERE uuid = %s",
+                    (input.name, id)
+                )
+
+    # 6. Return updated details
+    return await get_datasource_details(id)
 
 
 @router.post("/{id}/sync")

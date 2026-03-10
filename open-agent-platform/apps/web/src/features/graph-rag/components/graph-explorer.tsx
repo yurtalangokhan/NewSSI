@@ -148,7 +148,7 @@ export function GraphExplorer({
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [dimensions, setDimensions] = useState({ width: 800, height: 500 });
+  const [dimensions, setDimensions] = useState({ width: 800, height: 700 });
   const [breadcrumbs, setBreadcrumbs] = useState<BreadcrumbItem[]>([]);
 
   // Server-side cluster search results: label → match count
@@ -481,7 +481,7 @@ export function GraphExplorer({
 
   if (loading) {
     return (
-      <Card className="flex w-full flex-col min-h-[560px]">
+      <Card className="flex w-full flex-col min-h-[700px]">
         <CardHeader>
           <Skeleton className="h-6 w-48" />
         </CardHeader>
@@ -507,7 +507,7 @@ export function GraphExplorer({
   }
 
   return (
-    <Card className={isFullscreen ? "fixed inset-4 z-50 pb-0 gap-2" : "flex w-full flex-col pb-0 gap-2 min-h-[560px]"}>
+    <Card className={isFullscreen ? "fixed inset-4 z-50 pb-0 gap-2" : "flex w-full flex-col pb-0 gap-2 min-h-[700px]"}>
       <CardHeader className="pb-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -622,7 +622,7 @@ export function GraphExplorer({
       </CardHeader>
 
       <CardContent
-        className={`relative overflow-hidden p-0 flex-1 ${isFullscreen ? "h-[calc(100vh-200px)]" : "min-h-[480px]"}`}
+        className={`relative overflow-hidden p-0 flex-1 ${isFullscreen ? "h-[calc(100vh-200px)]" : "min-h-[620px]"}`}
       >
         <div ref={containerRef} className="absolute inset-0">
 
