@@ -45,6 +45,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         await close_neo4j_driver()
     except Exception:
         pass
+
+    try:
+        from langconnect.database.postgres.engine import close_db_engine
+
+        await close_db_engine()
+    except Exception:
+        pass
+
     logger.info("App is shutting down. Stopping background worker...")
 
 
