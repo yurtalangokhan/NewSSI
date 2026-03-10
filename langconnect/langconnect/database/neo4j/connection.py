@@ -1,4 +1,10 @@
-"""Neo4j async driver connection management (singleton pattern)."""
+"""Neo4j async driver connection management (singleton pattern).
+
+Provides a single shared ``AsyncDriver`` instance for the entire application.
+Repositories obtain sessions from this driver to execute Cypher queries.
+"""
+
+from __future__ import annotations
 
 import logging
 
@@ -19,7 +25,6 @@ async def get_neo4j_driver() -> AsyncDriver:
             config.NEO4J_URI,
             auth=(config.NEO4J_USERNAME, config.NEO4J_PASSWORD),
         )
-        # Verify connectivity on first use
         try:
             await _driver.verify_connectivity()
             logger.info("Neo4j connection established to %s", config.NEO4J_URI)

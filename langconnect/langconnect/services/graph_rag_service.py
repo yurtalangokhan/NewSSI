@@ -14,7 +14,7 @@ from typing import Any
 
 from langconnect.database.collections import Collection, CollectionsManager
 from langconnect.database.connection import get_db_connection, get_vectorstore
-from langconnect.database.graph_store import GraphStore
+from langconnect.database.neo4j import GraphStore
 from langconnect.models.graph import (
     BuildProgress,
     BuildStatus,

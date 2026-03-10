@@ -15,7 +15,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 
 from langconnect.auth import AuthenticatedUser, resolve_user
-from langconnect.database.graph_store import GraphStore
+from langconnect.database.neo4j import GraphStore
 from langconnect.models.graph import (
     BuildProgress,
     ClusteredGraphData,
@@ -373,7 +373,7 @@ async def delete_graph(
 @router.get("/health")
 async def graph_health():
     """Check Neo4j connectivity."""
-    from langconnect.database.graph_connection import check_neo4j_health
+    from langconnect.database.neo4j.connection import check_neo4j_health
 
     healthy = await check_neo4j_health()
     if not healthy:
