@@ -81,7 +81,7 @@ class ConfigurableMCPAgent(LazyLoadingAgent):
         try:
             from langchain_mcp_adapters.client import MultiServerMCPClient
             
-            url = mcp_url or os.environ.get("MCP_SERVER_URL", "http://mcp-server:8001/mcp")
+            url = mcp_url or os.environ.get("MCP_SERVER_URL", "http://mcp-server:8002/mcp")
             
             client = MultiServerMCPClient(
                 connections={
@@ -176,7 +176,7 @@ class ConfigurableMCPAgent(LazyLoadingAgent):
         mcp_url = configurable.get("mcp_url")
         
         # Reload MCP tools if URL changed
-        if mcp_url and mcp_url != os.environ.get("MCP_SERVER_URL", "http://mcp-server:8001/mcp"):
+        if mcp_url and mcp_url != os.environ.get("MCP_SERVER_URL", "http://mcp-server:8002/mcp"):
             self._mcp_tools = {}
             await self._load_mcp_tools(mcp_url)
         
@@ -225,7 +225,7 @@ class ConfigurableMCPAgent(LazyLoadingAgent):
         mcp_url = configurable.get("mcp_url")
         
         # Reload MCP tools if URL changed
-        if mcp_url and mcp_url != os.environ.get("MCP_SERVER_URL", "http://mcp-server:8001/mcp"):
+        if mcp_url and mcp_url != os.environ.get("MCP_SERVER_URL", "http://mcp-server:8002/mcp"):
             self._mcp_tools = {}
             await self._load_mcp_tools(mcp_url)
         
@@ -283,7 +283,7 @@ class ConfigurableMCPAgent(LazyLoadingAgent):
         mcp_url = configurable.get("mcp_url")
         
         # Reload MCP tools if URL changed
-        if mcp_url and mcp_url != os.environ.get("MCP_SERVER_URL", "http://mcp-server:8001/mcp"):
+        if mcp_url and mcp_url != os.environ.get("MCP_SERVER_URL", "http://mcp-server:8002/mcp"):
             self._mcp_tools = {}
             await self._load_mcp_tools(mcp_url)
         

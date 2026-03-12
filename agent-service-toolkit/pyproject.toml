@@ -61,6 +61,9 @@ dependencies = [
     "langchain-postgres",
     "neo4j>=5.0",
     "croniter ~=5.0",
+    "sqlalchemy[asyncio] >=2.0",
+    "alembic >=1.13",
+    "asyncpg >=0.29",
 ]
 
 [dependency-groups]

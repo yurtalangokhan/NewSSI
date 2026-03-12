@@ -100,7 +100,7 @@ class DynamicPipelineSupervisor(LazyLoadingAgent):
         try:
             from langchain_mcp_adapters.client import MultiServerMCPClient
             
-            mcp_url = os.environ.get("MCP_SERVER_URL", "http://mcp-server:8001/mcp")
+            mcp_url = os.environ.get("MCP_SERVER_URL", "http://mcp-server:8002/mcp")
             
             client = MultiServerMCPClient(
                 connections={

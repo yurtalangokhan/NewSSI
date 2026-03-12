@@ -1,38 +1,36 @@
-"""Alembic environment configuration — async-aware.
+"""Alembic environment configuration.
 
-This env.py reads DB credentials from ``langconnect.config`` (which
-honours environment variables), so ``alembic.ini`` never contains
-real credentials.
+Reads DB credentials from ``core.settings`` (which honours environment
+variables), so ``alembic.ini`` never contains real credentials.
 
 Usage
 -----
 .. code-block:: bash
 
-   # inside the langconnect/ project root
+   # inside the agent-service-toolkit/ project root
    alembic upgrade head
    alembic revision --autogenerate -m "add foo table"
 """
 
 from __future__ import annotations
 
-import asyncio
 from logging.config import fileConfig
 
 from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
-from sqlalchemy.ext.asyncio import async_engine_from_config
 
 # ── Import the shared metadata so Alembic can diff models vs DB ──
-from langconnect.database.postgres.models import Base  # noqa: E402
-from langconnect.database.postgres.engine import _build_url  # noqa: E402
+from core.db.models import Base  # noqa: E402
+from core.db.engine import _build_url  # noqa: E402
 
 # Alembic Config object — gives access to alembic.ini values.
 config = context.config
 
-# Use a dedicated version table so langconnect migrations
-# don't collide with other projects sharing the same database.
-VERSION_TABLE = "alembic_version_langconnect"
+# Use a dedicated version table so agent-service migrations
+# don't collide with other projects sharing the same database
+# (e.g. langconnect).
+VERSION_TABLE = "alembic_version_agent"
 
 # Interpret the config file for Python logging.
 if config.config_file_name is not None:

@@ -106,7 +106,7 @@ class Settings(BaseSettings):
     # MCP Configuration
     GITHUB_PAT: SecretStr | None = None
     MCP_GITHUB_SERVER_URL: str = "https://api.githubcopilot.com/mcp/"
-    MCP_SERVER_URL: str = "http://mcp-server:8001/mcp"
+    MCP_SERVER_URL: str = "http://mcp-server:8002/mcp"
 
     LANGCHAIN_TRACING_V2: bool = False
     LANGCHAIN_PROJECT: str = "default"

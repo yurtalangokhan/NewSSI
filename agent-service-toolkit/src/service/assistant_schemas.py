@@ -228,9 +228,9 @@ async def get_assistant_schemas(assistant_id: str) -> Dict:
                 "description": "Select which MCP tools this agent can use.",
                 "x_oap_ui_config": {
                     "type": "mcp",
-                    "mcp_url": "http://mcp-server:8001/mcp",
+                    "mcp_url": "http://mcp-server:8002/mcp",
                     "default": {
-                        "url": "http://mcp-server:8001/mcp",
+                        "url": "http://mcp-server:8002/mcp",
                         "tools": [],
                     },
                 },
@@ -276,7 +276,7 @@ async def get_assistant_schemas(assistant_id: str) -> Dict:
                 "x_oap_ui_config": {
                     "type": "mcp",
                     "default": {
-                        "url": "http://mcp-server:8001/mcp",
+                        "url": "http://mcp-server:8002/mcp",
                         "tools": [],
                     },
                 },
@@ -315,7 +315,7 @@ async def get_assistant_schemas(assistant_id: str) -> Dict:
                 ),
                 "x_oap_ui_config": {
                     "type": "sub_agents_config",
-                    "mcp_url": "http://mcp-server:8001/mcp",
+                    "mcp_url": "http://mcp-server:8002/mcp",
                     "model_options": model_options,
                 },
             },
@@ -334,7 +334,7 @@ async def get_assistant_schemas(assistant_id: str) -> Dict:
                 ),
                 "x_oap_ui_config": {
                     "type": "pipeline_stages",
-                    "mcp_url": "http://mcp-server:8001/mcp",
+                    "mcp_url": "http://mcp-server:8002/mcp",
                     "model_options": model_options,
                 },
             },

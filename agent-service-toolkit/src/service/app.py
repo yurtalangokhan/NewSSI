@@ -19,8 +19,8 @@ from langfuse import Langfuse  # type: ignore[import-untyped]
 
 from agents import get_agent, get_all_agent_info, load_agent
 from core import settings
+from core.db.engine import close_db_engine, get_db_engine
 from memory import initialize_database, initialize_store
-from memory.postgres import get_postgres_connection_string
 from service.checkpointer import set_global_checkpointer
 from service.langgraph_store import set_global_langgraph_store
 from service.sync_queue import get_sync_queue
@@ -50,15 +50,18 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     store, and agents with async loading.
     """
     try:
-        from .store import PostgresStore, set_global_store
+        # Initialise the SQLAlchemy async engine (lazy singleton).
+        # This is the main database engine for the application's ORM tables
+        # (assistant, thread, sync_schedules, datasource_airbyte_mapping, etc.).
+        if settings.DATABASE_TYPE.value == "postgres":
+            _sa_engine = get_db_engine()
+            logger.info("SQLAlchemy async engine ready: %s", _sa_engine.url.database)
 
-        conn_str = get_postgres_connection_string()
-        store = PostgresStore(
-            conn_str,
-            min_size=settings.POSTGRES_MIN_CONNECTIONS_PER_POOL,
-            max_size=settings.POSTGRES_MAX_CONNECTIONS_PER_POOL,
-        )
-        await store.setup()
+        from .store import set_global_store
+
+        # Mark the global store as "ready" (backward compat flag for
+        # any code that still checks ``get_store()`` truthiness).
+        set_global_store(True)
 
         async with initialize_database() as saver:
             if hasattr(saver, "setup"):
@@ -83,7 +86,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                     # Set the LangGraph store (BaseStore) for long-term memory
                     agent.store = langgraph_store
 
-                set_global_store(store)
                 set_global_checkpointer(saver)
                 set_global_langgraph_store(langgraph_store)
 
@@ -91,9 +93,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                 sync_queue = get_sync_queue()
                 sync_queue.start()
 
-                # Ensure the mapping table exists
-                from service.airbyte_mapping_db import AirbyteMappingDB
-                await AirbyteMappingDB.ensure_table()
+                # Table creation is now managed by Alembic — no ensure_table() calls
 
                 sync_listener = get_sync_listener()
                 sync_listener.start()
@@ -104,7 +104,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                 await sync_listener.stop()
                 await sync_queue.stop()
 
-            await store.close()
+        # Dispose the SQLAlchemy async engine on shutdown
+        await close_db_engine()
 
     except Exception as e:
         logger.error(f"Error during database/store/agents initialization: {e}")

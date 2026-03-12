@@ -5,18 +5,14 @@ This module handles the background ingestion of data from Airbyte sources
 into the vector store for RAG operations.
 """
 import asyncio
-import json
 import logging
 import os
 import time
 from datetime import datetime, timezone
 
 import httpx
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from psycopg.rows import dict_row
 
-from service.store import get_store
-from agents.tools import load_vector_store
+from core.db import AirbyteMappingRepository, DatasourceRepository
 
 # LangConnect base URL for Graph RAG rebuild requests
 LANGCONNECT_BASE_URL = os.environ.get("LANGCONNECT_API_URL", "http://langconnect-api:8083")
@@ -80,23 +76,15 @@ async def run_ingestion(
     logger.info(f"Starting ingestion for datasource {datasource_id}")
 
     try:
-        store = get_store()
-        if not store or not store.pool:
-            logger.error("Store not initialized")
-            return
+        ds_repo = DatasourceRepository()
+        mapping_repo = AirbyteMappingRepository()
 
         # 1. Fetch configuration
-        async with store.pool.connection() as conn:
-            async with conn.cursor(row_factory=dict_row) as cur:
-                await cur.execute(
-                    "SELECT name, cmetadata FROM langchain_pg_collection WHERE uuid = %s",
-                    (datasource_id,),
-                )
-                row = await cur.fetchone()
-                if not row:
-                    logger.error(f"Datasource {datasource_id} not found")
-                    return
-                config = row["cmetadata"]
+        row = await ds_repo.get_collection(datasource_id)
+        if not row:
+            logger.error(f"Datasource {datasource_id} not found")
+            return
+        config = row.get("cmetadata", {})
 
         connector_type = config.get("connector_type")
         if not connector_type:
@@ -123,15 +111,9 @@ async def run_ingestion(
 
         connection_id = None
         try:
-            async with store.pool.connection() as conn2:
-                async with conn2.cursor(row_factory=dict_row) as cur2:
-                    await cur2.execute(
-                        "SELECT airbyte_connection_id FROM datasource_airbyte_mapping WHERE datasource_id = %s",
-                        (datasource_id,),
-                    )
-                    mapping = await cur2.fetchone()
-                    if mapping:
-                        connection_id = mapping["airbyte_connection_id"]
+            mapping = await mapping_repo.get(datasource_id)
+            if mapping:
+                connection_id = mapping["airbyte_connection_id"]
         except Exception:
             pass
 
@@ -185,8 +167,7 @@ async def run_ingestion(
 
         # Update mapping watermark
         try:
-            from service.airbyte_mapping_db import AirbyteMappingDB
-            await AirbyteMappingDB.update(datasource_id, last_processed_job_id=new_job_id)
+            await mapping_repo.update(datasource_id, last_processed_job_id=new_job_id)
         except Exception:
             pass
 
@@ -202,62 +183,37 @@ async def run_ingestion(
 async def update_sync_status(uuid_str: str, status: str, error_msg: str | None):
     """Update final sync status with timestamp."""
     now = datetime.now(timezone.utc).isoformat()
-    
-    store = get_store()
-    if not store or not store.pool:
-        logger.error("Store not initialized")
+
+    ds_repo = DatasourceRepository()
+    row = await ds_repo.get_collection(uuid_str)
+    if not row:
         return
-    
-    async with store.pool.connection() as conn:
-        async with conn.cursor(row_factory=dict_row) as cur:
-            await cur.execute(
-                "SELECT cmetadata FROM langchain_pg_collection WHERE uuid = %s",
-                (uuid_str,)
-            )
-            row = await cur.fetchone()
-            if not row:
-                return
-            
-            meta = row["cmetadata"]
-            meta["sync_status"] = status
-            meta["sync_progress"] = 100 if status == "completed" else 0
-            meta["last_synced_at"] = now
-            
-            if error_msg:
-                meta["last_error"] = error_msg
-            else:
-                meta.pop("last_error", None)
-            
-            await cur.execute(
-                "UPDATE langchain_pg_collection SET cmetadata = %s WHERE uuid = %s",
-                (json.dumps(meta), uuid_str)
-            )
+
+    meta = row.get("cmetadata", {})
+    meta["sync_status"] = status
+    meta["sync_progress"] = 100 if status == "completed" else 0
+    meta["last_synced_at"] = now
+
+    if error_msg:
+        meta["last_error"] = error_msg
+    else:
+        meta.pop("last_error", None)
+
+    await ds_repo.update_collection_metadata(uuid_str, meta)
 
 
 async def update_sync_progress(uuid_str: str, stage: str, progress: int):
     """Update sync progress for real-time tracking."""
-    store = get_store()
-    if not store or not store.pool:
+    ds_repo = DatasourceRepository()
+    row = await ds_repo.get_collection(uuid_str)
+    if not row:
         return
-    
-    async with store.pool.connection() as conn:
-        async with conn.cursor(row_factory=dict_row) as cur:
-            await cur.execute(
-                "SELECT cmetadata FROM langchain_pg_collection WHERE uuid = %s",
-                (uuid_str,)
-            )
-            row = await cur.fetchone()
-            if not row:
-                return
-            
-            meta = row["cmetadata"]
-            meta["sync_status"] = stage
-            meta["sync_progress"] = progress
-            
-            await cur.execute(
-                "UPDATE langchain_pg_collection SET cmetadata = %s WHERE uuid = %s",
-                (json.dumps(meta), uuid_str)
-            )
+
+    meta = row.get("cmetadata", {})
+    meta["sync_status"] = stage
+    meta["sync_progress"] = progress
+
+    await ds_repo.update_collection_metadata(uuid_str, meta)
 
 
 # ------------------------------------------------------------------
@@ -346,28 +302,16 @@ async def _update_graph_status(
     uuid_str: str, graph_status: str, error: str | None = None
 ) -> None:
     """Write graph_update_status into cmetadata for UI feedback."""
-    store = get_store()
-    if not store or not store.pool:
+    ds_repo = DatasourceRepository()
+    row = await ds_repo.get_collection(uuid_str)
+    if not row:
         return
 
-    async with store.pool.connection() as conn:
-        async with conn.cursor(row_factory=dict_row) as cur:
-            await cur.execute(
-                "SELECT cmetadata FROM langchain_pg_collection WHERE uuid = %s",
-                (uuid_str,),
-            )
-            row = await cur.fetchone()
-            if not row:
-                return
+    meta = row.get("cmetadata", {})
+    meta["graph_update_status"] = graph_status
+    if error:
+        meta["graph_update_error"] = error
+    else:
+        meta.pop("graph_update_error", None)
 
-            meta = row["cmetadata"]
-            meta["graph_update_status"] = graph_status
-            if error:
-                meta["graph_update_error"] = error
-            else:
-                meta.pop("graph_update_error", None)
-
-            await cur.execute(
-                "UPDATE langchain_pg_collection SET cmetadata = %s WHERE uuid = %s",
-                (json.dumps(meta), uuid_str),
-            )
+    await ds_repo.update_collection_metadata(uuid_str, meta)

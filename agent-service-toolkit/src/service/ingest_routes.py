@@ -20,16 +20,14 @@ Memory model:
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from psycopg.rows import dict_row
 
+from core.db import AirbyteMappingRepository, DatasourceRepository
 from service.schemas import BatchRequest, BatchResponse, SourcePreviewRequest
-from service.store import get_store
 from agents.tools import load_vector_store
 
 logger = logging.getLogger(__name__)
@@ -164,27 +162,19 @@ async def ingest_batch(req: BatchRequest):
     On ``is_last_batch == True``, sync status is marked completed and
     optional Graph RAG rebuild is triggered.
     """
-    store = get_store()
-    if not store or not store.pool:
-        raise HTTPException(status_code=503, detail="Store not initialized")
+    ds_repo = DatasourceRepository()
 
     datasource_id = req.datasource_id
 
     # ------------------------------------------------------------------
     # 1. Fetch collection config
     # ------------------------------------------------------------------
-    async with store.pool.connection() as conn:
-        async with conn.cursor(row_factory=dict_row) as cur:
-            await cur.execute(
-                "SELECT name, cmetadata FROM langchain_pg_collection WHERE uuid = %s",
-                (datasource_id,),
-            )
-            row = await cur.fetchone()
-            if not row:
-                raise HTTPException(status_code=404, detail=f"Datasource {datasource_id} not found")
+    row = await ds_repo.get_collection(datasource_id)
+    if not row:
+        raise HTTPException(status_code=404, detail=f"Datasource {datasource_id} not found")
 
-            collection_name = row["name"]
-            config = row["cmetadata"]
+    collection_name = row["name"]
+    config = row.get("cmetadata", {})
 
     connector_type = config.get("connector_type", "unknown")
     content_fields = config.get("content_fields")
@@ -193,12 +183,7 @@ async def ingest_batch(req: BatchRequest):
     # 2. First batch → clear old embeddings + set status
     # ------------------------------------------------------------------
     if req.batch_index == 0:
-        async with store.pool.connection() as conn:
-            async with conn.cursor() as cur:
-                await cur.execute(
-                    "DELETE FROM langchain_pg_embedding WHERE collection_id = %s",
-                    (datasource_id,),
-                )
+        await ds_repo.delete_embeddings(datasource_id)
         logger.info("Batch 0: cleared existing embeddings for %s", datasource_id)
         await _update_progress(datasource_id, "syncing", 10)
 
@@ -264,26 +249,18 @@ async def source_preview(req: SourcePreviewRequest):
     Used by the frontend documents tab to show raw source data
     without storing it locally.  Queries via Airbyte read API.
     """
-    store = get_store()
-    if not store or not store.pool:
-        raise HTTPException(status_code=503, detail="Store not initialized")
+    ds_repo = DatasourceRepository()
+    mapping_repo = AirbyteMappingRepository()
 
     # Fetch datasource config
-    async with store.pool.connection() as conn:
-        async with conn.cursor(row_factory=dict_row) as cur:
-            await cur.execute(
-                "SELECT cmetadata FROM langchain_pg_collection WHERE uuid = %s",
-                (req.datasource_id,),
-            )
-            row = await cur.fetchone()
-            if not row:
-                raise HTTPException(status_code=404, detail="Datasource not found")
-            config = row["cmetadata"]
+    row = await ds_repo.get_collection(req.datasource_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Datasource not found")
+    config = row.get("cmetadata", {})
 
     # Get the Airbyte source_id from the mapping
     try:
-        from service.airbyte_mapping_db import AirbyteMappingDB
-        mapping = await AirbyteMappingDB.get(req.datasource_id)
+        mapping = await mapping_repo.get(req.datasource_id)
         if not mapping:
             raise HTTPException(status_code=404, detail="No Airbyte mapping found")
     except HTTPException:
@@ -332,65 +309,40 @@ async def source_preview(req: SourcePreviewRequest):
 
 async def _update_progress(datasource_id: str, stage: str, progress: int) -> None:
     """Update sync progress in cmetadata."""
-    store = get_store()
-    if not store or not store.pool:
+    ds_repo = DatasourceRepository()
+    row = await ds_repo.get_collection(datasource_id)
+    if not row:
         return
-    async with store.pool.connection() as conn:
-        async with conn.cursor(row_factory=dict_row) as cur:
-            await cur.execute(
-                "SELECT cmetadata FROM langchain_pg_collection WHERE uuid = %s",
-                (datasource_id,),
-            )
-            row = await cur.fetchone()
-            if not row:
-                return
-            meta = row["cmetadata"]
-            meta["sync_status"] = stage
-            meta["sync_progress"] = progress
-            await cur.execute(
-                "UPDATE langchain_pg_collection SET cmetadata = %s WHERE uuid = %s",
-                (json.dumps(meta), datasource_id),
-            )
+    meta = row.get("cmetadata", {})
+    meta["sync_status"] = stage
+    meta["sync_progress"] = progress
+    await ds_repo.update_collection_metadata(datasource_id, meta)
 
 
 async def _finalize_sync(datasource_id: str) -> None:
     """Mark sync as completed, store chunk stats, optionally trigger Graph RAG."""
-    from datetime import datetime, timezone
     from service.ingestion import update_sync_status, _trigger_graph_rag_rebuild
+
+    ds_repo = DatasourceRepository()
+    mapping_repo = AirbyteMappingRepository()
 
     # Compute aggregate chunk stats and store in collection cmetadata
     try:
-        store = get_store()
-        if store and store.pool:
-            async with store.pool.connection() as conn:
-                async with conn.cursor(row_factory=dict_row) as cur:
-                    await cur.execute(
-                        """SELECT COUNT(*) as chunk_count,
-                                  COALESCE(AVG(LENGTH(document)), 0) as avg_chars
-                           FROM langchain_pg_embedding WHERE collection_id = %s""",
-                        (datasource_id,),
-                    )
-                    stats = await cur.fetchone()
-                    chunk_count = stats["chunk_count"] if stats else 0
-                    avg_chars = int(stats["avg_chars"]) if stats and stats["avg_chars"] else 0
-                    avg_tokens = max(1, int(avg_chars / 4)) if avg_chars else 0
+        stats = await ds_repo.get_embedding_stats(datasource_id)
+        chunk_count = stats["chunk_count"]
+        avg_chars = stats["avg_chunk_chars"]
+        avg_tokens = stats["avg_chunk_tokens"]
 
-                    await cur.execute(
-                        "SELECT cmetadata FROM langchain_pg_collection WHERE uuid = %s",
-                        (datasource_id,),
-                    )
-                    row = await cur.fetchone()
-                    if row:
-                        meta = row["cmetadata"]
-                        meta["chunk_stats"] = {
-                            "chunk_count": chunk_count,
-                            "avg_chunk_chars": avg_chars,
-                            "avg_chunk_tokens": avg_tokens,
-                        }
-                        await cur.execute(
-                            "UPDATE langchain_pg_collection SET cmetadata = %s WHERE uuid = %s",
-                            (json.dumps(meta), datasource_id),
-                        )
+        row = await ds_repo.get_collection(datasource_id)
+        if row:
+            meta = row.get("cmetadata", {})
+            meta["chunk_stats"] = {
+                "chunk_count": chunk_count,
+                "avg_chunk_chars": avg_chars,
+                "avg_chunk_tokens": avg_tokens,
+            }
+            await ds_repo.update_collection_metadata(datasource_id, meta)
+
         logger.info("Stored chunk stats for datasource %s: %d chunks, avg %d chars, avg %d tokens",
                     datasource_id, chunk_count, avg_chars, avg_tokens)
     except Exception:
@@ -401,8 +353,7 @@ async def _finalize_sync(datasource_id: str) -> None:
 
     # Check if Graph RAG rebuild is requested
     try:
-        from service.airbyte_mapping_db import AirbyteMappingDB
-        mapping = await AirbyteMappingDB.get(datasource_id)
+        mapping = await mapping_repo.get(datasource_id)
         if mapping and mapping.get("update_graph_rag"):
             await _trigger_graph_rag_rebuild(datasource_id)
     except Exception:

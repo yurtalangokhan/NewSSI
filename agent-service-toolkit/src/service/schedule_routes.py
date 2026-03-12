@@ -13,7 +13,6 @@ from typing import List, Optional
 
 from croniter import croniter
 from fastapi import APIRouter, HTTPException
-from psycopg.rows import dict_row
 
 from service.airbyte_api_client import get_airbyte_client
 from service.airbyte_mapping_db import AirbyteMappingDB
@@ -324,24 +323,15 @@ async def delete_schedule(datasource_id: str):
 @router.get("/{datasource_id}/schedule/status", response_model=ScheduleRunStatus)
 async def get_schedule_run_status(datasource_id: str):
     """Get combined sync + schedule status for real-time UI updates."""
-    from service.store import get_store
-    import json
+    from core.db import DatasourceRepository
 
-    store = get_store()
-    if not store or not store.pool:
-        raise HTTPException(status_code=503, detail="Database not initialized")
+    ds_repo = DatasourceRepository()
 
     # Fetch current sync status from cmetadata
-    async with store.pool.connection() as conn:
-        async with conn.cursor(row_factory=dict_row) as cur:
-            await cur.execute(
-                "SELECT cmetadata FROM langchain_pg_collection WHERE uuid = %s",
-                (datasource_id,),
-            )
-            row = await cur.fetchone()
-            if not row:
-                raise HTTPException(status_code=404, detail="DataSource not found")
-            meta = row.get("cmetadata", {})
+    row = await ds_repo.get_collection(datasource_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="DataSource not found")
+    meta = row.get("cmetadata", {})
 
     # Fetch schedule info
     mapping = await AirbyteMappingDB.get(datasource_id)

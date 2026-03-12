@@ -311,6 +311,8 @@ services:
     # Database uses Fedora-built local image
     image: supabase-db:local
     restart: unless-stopped
+    ports:
+      - 5434:5432
     volumes:
       - ./supabase/volumes/db/realtime.sql:/docker-entrypoint-initdb.d/migrations/99-realtime.sql:Z
       - ./supabase/volumes/db/webhooks.sql:/docker-entrypoint-initdb.d/init-scripts/98-webhooks.sql:Z
@@ -578,6 +580,8 @@ services:
       NEO4J_URI: bolt://neo4j:7687
       NEO4J_USERNAME: ${NEO4J_USERNAME:-neo4j}
       NEO4J_PASSWORD: ${NEO4J_PASSWORD:-neo4j123}
+      # MCP Server Configuration
+      MCP_SERVER_URL: http://mcp-server:8002/mcp
 
   langconnect-api:
     container_name: langconnect-api
@@ -746,8 +750,8 @@ services:
     hostname: neo4j
     restart: unless-stopped
     ports:
-      - "7474:7474"   # HTTP (Browser UI)
-      - "7687:7687"   # Bolt protocol
+      - "8484:7474"   # HTTP (Browser UI)
+      - "8697:7687"   # Bolt protocol
     volumes:
       - neo4j-data:/data
       - neo4j-logs:/logs
