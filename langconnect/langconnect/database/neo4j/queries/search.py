@@ -70,6 +70,20 @@ WHERE toLower(n.name) CONTAINS toLower($q)
 RETURN n.label AS label, count(n) AS cnt
 """
 
+SEARCH_SUBCLUSTERS = """
+MATCH (n:Entity {collection_id: $cid})
+WHERE n.label = $scope_label
+OPTIONAL MATCH (n)-[r]-()
+WITH n, count(r) AS degree
+ORDER BY degree DESC
+WITH collect(n) AS all_nodes
+UNWIND range(0, size(all_nodes)-1) AS i
+WITH all_nodes[i] AS n, i
+WHERE toLower(n.name) CONTAINS toLower($q)
+WITH toInteger(i / $chunk_size) * $chunk_size AS offset, count(n) AS cnt
+RETURN offset, cnt
+"""
+
 # ------------------------------------------------------------------
 # Entity context for RAG
 # ------------------------------------------------------------------

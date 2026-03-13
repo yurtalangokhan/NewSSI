@@ -16,6 +16,7 @@ from langconnect.database.neo4j.queries.stats import (
     NODE_COUNT_SCOPED,
     RELATIONSHIP_TYPE_COUNTS,
     RELATIONSHIP_TYPE_COUNTS_SCOPED,
+    RELATIONSHIP_TYPES_CHUNK_SCOPED,
     RELATIONSHIP_TYPES_PAGINATED_SCOPED,
     RELATIONSHIP_TYPES_PAGINATED_UNSCOPED,
     REL_TYPES_FILTERED_BY_LABELS,
@@ -202,15 +203,30 @@ class StatsRepository(Neo4jRepository):
         page_size: int = 25,
         search: str | None = None,
         scope_label: str | None = None,
+        scope_skip: int | None = None,
+        scope_limit: int | None = None,
         label_filter: list[str] | None = None,
     ) -> PaginatedCounts:
         """Return relationship types with counts (paginated, searchable).
+
+        When *scope_skip* and *scope_limit* are provided alongside
+        *scope_label*, counts are scoped to the specific chunk of nodes
+        (ordered by degree desc) rather than the entire label group.
 
         When *label_filter* is provided, only relationship types
         involving nodes with those labels are returned.
         """
         async with self._session() as session:
-            if label_filter:
+            if scope_label and scope_skip is not None and scope_limit is not None:
+                # Chunk-scoped: only edges within the node chunk
+                result = await session.run(
+                    RELATIONSHIP_TYPES_CHUNK_SCOPED,
+                    cid=self.cid,
+                    scope_label=scope_label,
+                    scope_skip=scope_skip,
+                    scope_end=scope_skip + scope_limit,
+                )
+            elif label_filter:
                 # Cross-filtered by labels
                 if scope_label:
                     result = await session.run(

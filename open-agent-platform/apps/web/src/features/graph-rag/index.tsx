@@ -138,6 +138,16 @@ export default function GraphRAGInterface() {
     ? scalableData!.edges.length
     : undefined;
 
+  // Chunk boundaries from metadata (sub-cluster drill-down).
+  // Passed to the stats card so relationship-type counts are scoped
+  // to the same node slice that the graph visualisation shows.
+  const scopeSkip = isDeepestExpand
+    ? (scalableData!.metadata?.scope_skip as number | undefined)
+    : undefined;
+  const scopeLimit = isDeepestExpand
+    ? (scalableData!.metadata?.scope_limit as number | undefined)
+    : undefined;
+
   // ── Scalable graph callbacks ──
   const handleClusterExpand = useCallback(
     (clusterLabel: string) => {
@@ -164,9 +174,11 @@ export default function GraphRAGInterface() {
   const handleSearchNodes = useCallback(
     async (query: string): Promise<Record<string, number> | null> => {
       if (!selectedCollectionId) return null;
-      return await searchEntityClusters(selectedCollectionId, query);
+      // Pass scopeLabel so that sub-cluster mode queries return chunk-specific counts
+      const currentScope = scalableData?.mode === "expand" && scalableData.cluster_count > 0 ? scalableData.scope_label : undefined;
+      return await searchEntityClusters(selectedCollectionId, query, currentScope || undefined);
     },
-    [selectedCollectionId, searchEntityClusters],
+    [selectedCollectionId, searchEntityClusters, scalableData?.mode, scalableData?.cluster_count, scalableData?.scope_label],
   );
 
   return (
@@ -285,6 +297,9 @@ export default function GraphRAGInterface() {
                   scopeLabel={scopeLabel}
                   visibleNodeCount={visibleNodeCount}
                   visibleEdgeCount={visibleEdgeCount}
+                  hideEntityLabels={!!scopeLabel}
+                  scopeSkip={scopeSkip}
+                  scopeLimit={scopeLimit}
                   fetchLabelsPaginated={fetchLabelsPaginated}
                   fetchRelTypesPaginated={fetchRelTypesPaginated}
                 />

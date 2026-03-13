@@ -219,6 +219,8 @@ class GraphStore:
         page_size: int = 25,
         search: str | None = None,
         scope_label: str | None = None,
+        scope_skip: int | None = None,
+        scope_limit: int | None = None,
         label_filter: list[str] | None = None,
     ) -> PaginatedCounts:
         return await self._stats.get_relationship_types_paginated(
@@ -226,6 +228,8 @@ class GraphStore:
             page_size=page_size,
             search=search,
             scope_label=scope_label,
+            scope_skip=scope_skip,
+            scope_limit=scope_limit,
             label_filter=label_filter,
         )
 
@@ -257,8 +261,10 @@ class GraphStore:
     ) -> GraphData:
         return await self._search.search_entities(query, limit=limit)
 
-    async def search_entity_clusters(self, query: str) -> dict[str, int]:
-        return await self._search.search_entity_clusters(query)
+    async def search_entity_clusters(
+        self, query: str, scope_label: str | None = None, chunk_size: int = 200
+    ) -> dict[str, int]:
+        return await self._search.search_entity_clusters(query, scope_label, chunk_size)
 
     async def get_entity_context(
         self,

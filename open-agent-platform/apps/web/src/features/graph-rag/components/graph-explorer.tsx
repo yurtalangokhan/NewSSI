@@ -254,7 +254,11 @@ export function GraphExplorer({
       // Edges that match the rel-type filter AND touch at least one
       // node with a selected label.
       filteredEdges = rawEdges.filter((e) => {
-        if (!relSet.has(e.type)) return false;
+        const typeMatches = isClusterEdge(e)
+          ? e.relationship_types.some((rt) => relSet.has(rt))
+          : relSet.has(e.type);
+        if (!typeMatches) return false;
+
         const srcNode = nodeMap.get(e.source);
         const tgtNode = nodeMap.get(e.target);
         return (
@@ -269,16 +273,38 @@ export function GraphExplorer({
         connectedIds.add(e.source);
         connectedIds.add(e.target);
       }
-      filteredNodes = rawNodes.filter((n) => connectedIds.has(n.id));
+      filteredNodes = rawNodes.filter((n) => {
+        if (connectedIds.has(n.id)) return true;
+        // Keep cluster nodes if their overall statistics show they participate in the selected relationships
+        if (isClusterNode(n) && n.properties?._rel_type_counts) {
+          const counts = n.properties._rel_type_counts as Record<string, number>;
+          const hasRel = Array.from(relSet).some((rt) => (counts[rt] || 0) > 0);
+          return hasRel && labelSet.has(n.label);
+        }
+        return false;
+      });
     } else if (hasRelFilter) {
       // Only relationship-type filter
-      filteredEdges = rawEdges.filter((e) => selectedRelTypes.has(e.type));
+      filteredEdges = rawEdges.filter((e) => {
+        if (isClusterEdge(e)) {
+          return e.relationship_types.some((rt) => selectedRelTypes.has(rt));
+        }
+        return selectedRelTypes.has(e.type);
+      });
       const connectedIds = new Set<string>();
       for (const e of filteredEdges) {
         connectedIds.add(e.source);
         connectedIds.add(e.target);
       }
-      filteredNodes = rawNodes.filter((n) => connectedIds.has(n.id));
+      filteredNodes = rawNodes.filter((n) => {
+        if (connectedIds.has(n.id)) return true;
+        // Keep cluster nodes if their overall statistics show they participate in the selected relationships
+        if (isClusterNode(n) && n.properties?._rel_type_counts) {
+          const counts = n.properties._rel_type_counts as Record<string, number>;
+          return Array.from(selectedRelTypes).some((rt) => (counts[rt] || 0) > 0);
+        }
+        return false;
+      });
     } else if (hasLabelFilter) {
       // Only label filter
       filteredNodes = rawNodes.filter((n) => selectedLabels.has(n.label));
@@ -394,7 +420,7 @@ export function GraphExplorer({
         n.label.toLowerCase().includes(q) ||
         (n.topEntities && n.topEntities.some((e) => e.toLowerCase().includes(q))) ||
         // Highlight clusters whose label appears in server search results
-        (n.isCluster && serverMatchedClusterLabels.has(n.label)),
+        (n.isCluster && (serverMatchedClusterLabels.has(n.label) || serverMatchedClusterLabels.has(n.id))),
     );
     const matchedIds = new Set(matchedNodes.map((n) => n.id));
     const connectedLinks = forceData.links.filter((l) => {
@@ -839,7 +865,16 @@ export function GraphExplorer({
             <p className="text-muted-foreground mt-1 text-[11px]">
               {serverMatchedClusterLabels.size} cluster matched (
               {Array.from(serverMatchedClusterLabels.entries())
-                .map(([label, count]) => `${label}: ${count}`)
+                .map(([key, count]) => {
+                  if (key.startsWith("subcluster__")) {
+                    const parts = key.split("__");
+                    const offset = parseInt(parts[2], 10);
+                    const limit = parseInt(parts[3], 10);
+                    const num = Math.floor(offset / limit) + 1;
+                    return `${parts[1]} #${num}: ${count}`;
+                  }
+                  return `${key}: ${count}`;
+                })
                 .join(", ")}
               ) — highlighted in red
             </p>
@@ -943,10 +978,22 @@ export function GraphExplorer({
                 ? "rgba(148,163,184,0.25)"
                 : isSelected ? SELECTED_COLOR : (node.color || "#6b7280");
               // Does this cluster match the server search?
-              const clusterMatchCount = node.isCluster
-                ? serverMatchedClusterLabels.get(node.label) ?? 0
-                : 0;
+              let clusterMatchCount = 0;
+              if (node.isCluster && serverMatchedClusterLabels) {
+                // If the key is present via cluster ID (e.g. subclusters), use it; otherwise fallback to label.
+                clusterMatchCount = serverMatchedClusterLabels.get(node.id) ?? serverMatchedClusterLabels.get(node.label) ?? 0;
+              }
+              let relMatchCount = 0;
+              if (node.isCluster && selectedRelTypes && selectedRelTypes.size > 0 && node.properties?._rel_type_counts) {
+                const counts = node.properties._rel_type_counts as Record<string, number>;
+                for (const rt of Array.from(selectedRelTypes)) {
+                  relMatchCount += (counts[rt] || 0);
+                }
+              }
               const isClusterMatch = clusterMatchCount > 0;
+              const isRelMatch = relMatchCount > 0;
+              const isHighlight = isClusterMatch || isRelMatch;
+              
               // Degree-based sizing for regular nodes
               const degree = degreeMap.get(node.id) || 0;
 
@@ -955,7 +1002,7 @@ export function GraphExplorer({
                 const size = Math.max(8, Math.min(24, Math.sqrt(node.nodeCount || 10) * 2.5));
 
                 // Glow ring for matching clusters
-                if (isClusterMatch) {
+                if (isHighlight) {
                   ctx.beginPath();
                   for (let i = 0; i < 6; i++) {
                     const angle = (Math.PI / 3) * i - Math.PI / 6;
@@ -966,7 +1013,7 @@ export function GraphExplorer({
                     else ctx.lineTo(px, py);
                   }
                   ctx.closePath();
-                  ctx.fillStyle = "rgba(239, 68, 68, 0.25)";
+                  ctx.fillStyle = isClusterMatch ? "rgba(239, 68, 68, 0.25)" : "rgba(59, 130, 246, 0.25)";
                   ctx.fill();
                 }
 
@@ -979,15 +1026,17 @@ export function GraphExplorer({
                   else ctx.lineTo(px, py);
                 }
                 ctx.closePath();
-                ctx.fillStyle = isClusterMatch ? "#dc2626" : CLUSTER_COLOR;
+                ctx.fillStyle = isClusterMatch ? "#dc2626" : isRelMatch ? "#2563eb" : CLUSTER_COLOR;
                 ctx.fill();
-                ctx.strokeStyle = isSelected ? SELECTED_COLOR : isClusterMatch ? "#ef4444" : CLUSTER_BORDER_COLOR;
-                ctx.lineWidth = isClusterMatch ? 3 / globalScale : 2 / globalScale;
+                ctx.strokeStyle = isSelected ? SELECTED_COLOR : isClusterMatch ? "#ef4444" : isRelMatch ? "#3b82f6" : CLUSTER_BORDER_COLOR;
+                ctx.lineWidth = isHighlight ? 3 / globalScale : 2 / globalScale;
                 ctx.stroke();
 
                 // Count badge (show match count if cluster matches)
                 const countText = isClusterMatch
                   ? `${clusterMatchCount}/${node.nodeCount}`
+                  : isRelMatch
+                  ? `${relMatchCount}/${node.nodeCount}`
                   : `${node.nodeCount}`;
                 const badgeFontSize = Math.max(8 / globalScale, 2);
                 ctx.font = `bold ${badgeFontSize}px Inter, sans-serif`;
@@ -1001,7 +1050,7 @@ export function GraphExplorer({
                   const labelFontSize = Math.max(10 / globalScale, 1.5);
                   ctx.font = `${labelFontSize}px Inter, sans-serif`;
                   ctx.textBaseline = "top";
-                  ctx.fillStyle = isClusterMatch ? "#dc2626" : "rgba(0,0,0,0.8)";
+                  ctx.fillStyle = isClusterMatch ? "#dc2626" : isRelMatch ? "#2563eb" : "rgba(0,0,0,0.8)";
                   ctx.fillText(node.name, node.x, node.y + size + 2);
                 }
               } else {

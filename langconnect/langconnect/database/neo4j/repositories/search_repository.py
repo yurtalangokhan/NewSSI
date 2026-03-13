@@ -13,6 +13,7 @@ from langconnect.database.neo4j.queries.search import (
     FETCH_NODES_BY_IDS,
     SEARCH_ENTITIES_CONTAINS,
     SEARCH_ENTITY_CLUSTERS,
+    SEARCH_SUBCLUSTERS,
     SEARCH_NEIGHBORHOOD_EDGES,
 )
 from langconnect.database.neo4j.repositories.base import Neo4jRepository
@@ -140,18 +141,38 @@ class SearchRepository(Neo4jRepository):
     # Entity cluster search (label → count)
     # ------------------------------------------------------------------
 
-    async def search_entity_clusters(self, query: str) -> dict[str, int]:
-        """Return ``{label: count}`` for clusters matching *query*."""
+    async def search_entity_clusters(
+        self, query: str, scope_label: str | None = None, chunk_size: int = 200
+    ) -> dict[str, int]:
+        """Return counts for clusters matching *query*.
+        If scope_label is provided, returns counts per sub-cluster chunk matching the expand logic.
+        """
         async with self._session() as session:
-            result = await session.run(
-                SEARCH_ENTITY_CLUSTERS,
-                cid=self.cid,
-                q=query,
-            )
-            clusters: dict[str, int] = {}
-            async for record in result:
-                clusters[record["label"] or "Entity"] = record["cnt"]
-            return clusters
+            if scope_label:
+                result = await session.run(
+                    SEARCH_SUBCLUSTERS,
+                    cid=self.cid,
+                    q=query,
+                    scope_label=scope_label,
+                    chunk_size=chunk_size,
+                )
+                clusters: dict[str, int] = {}
+                async for record in result:
+                    offset = record["offset"]
+                    cnt = record["cnt"]
+                    chunk_id = f"subcluster__{scope_label}__{offset}__{chunk_size}"
+                    clusters[chunk_id] = cnt
+                return clusters
+            else:
+                result = await session.run(
+                    SEARCH_ENTITY_CLUSTERS,
+                    cid=self.cid,
+                    q=query,
+                )
+                clusters: dict[str, int] = {}
+                async for record in result:
+                    clusters[record["label"] or "Entity"] = record["cnt"]
+                return clusters
 
     # ------------------------------------------------------------------
     # Entity context for RAG

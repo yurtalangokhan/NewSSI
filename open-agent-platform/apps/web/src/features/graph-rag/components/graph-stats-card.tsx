@@ -53,6 +53,12 @@ interface GraphStatsCardProps {
   visibleNodeCount?: number;
   /** Override edge count with actual visible data count (deep expand). */
   visibleEdgeCount?: number;
+  /** Hide entity labels section completely. */
+  hideEntityLabels?: boolean;
+  /** Chunk offset for sub-cluster drill-down (scopes rel-type stats to the node slice). */
+  scopeSkip?: number;
+  /** Chunk size for sub-cluster drill-down (scopes rel-type stats to the node slice). */
+  scopeLimit?: number;
   /** Paginated fetcher for entity labels */
   fetchLabelsPaginated?: (
     collectionId: string,
@@ -70,6 +76,8 @@ interface GraphStatsCardProps {
     search?: string,
     scopeLabel?: string,
     labelFilter?: string[],
+    scopeSkip?: number,
+    scopeLimit?: number,
   ) => Promise<PaginatedCounts | null>;
 }
 
@@ -86,6 +94,9 @@ export function GraphStatsCard({
   scopeLabel,
   visibleNodeCount,
   visibleEdgeCount,
+  hideEntityLabels,
+  scopeSkip,
+  scopeLimit,
   fetchLabelsPaginated,
   fetchRelTypesPaginated,
 }: GraphStatsCardProps) {
@@ -160,11 +171,13 @@ export function GraphStatsCard({
         search || undefined,
         scope || undefined,
         labelFilter,
+        scopeSkip,
+        scopeLimit,
       );
       setRelData(data);
       setRelLoading(false);
     },
-    [collectionId, fetchRelTypesPaginated],
+    [collectionId, fetchRelTypesPaginated, scopeSkip, scopeLimit],
   );
 
   // ── Reload labels when collection, scope, or rel-type filter changes
@@ -176,14 +189,14 @@ export function GraphStatsCard({
     return () => clearTimeout(labelsDebounce.current);
   }, [collectionId, scopeLabel, hasPaginatedApi, relTypeFilterKey]);
 
-  // ── Reload rel-types when collection, scope, or label filter changes
+  // ── Reload rel-types when collection, scope, chunk, or label filter changes
   useEffect(() => {
     if (!hasPaginatedApi) return;
     setRelPage(1);
     setRelSearch("");
     loadRelTypes(1, "", scopeLabel, labelFilterArr);
     return () => clearTimeout(relDebounce.current);
-  }, [collectionId, scopeLabel, hasPaginatedApi, labelFilterKey]);
+  }, [collectionId, scopeLabel, scopeSkip, scopeLimit, hasPaginatedApi, labelFilterKey]);
 
   // ── Page navigation handlers ──────────────────────────────────────
   const goToLabelsPage = useCallback(
@@ -312,7 +325,7 @@ export function GraphStatsCard({
         </div>
 
         {/* ── Entity Labels ─────────────────────────────── */}
-        {(labelItems.length > 0 || showLabelsPagination) && (
+        {!hideEntityLabels && (labelItems.length > 0 || showLabelsPagination) && (
           <div>
             <div className="mb-2 flex items-center gap-1">
               <Tags className="h-3 w-3" />

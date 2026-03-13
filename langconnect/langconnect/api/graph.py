@@ -286,6 +286,14 @@ async def get_relationship_types_paginated(
         None,
         description="Scope to relationships involving this label group",
     ),
+    scope_skip: int | None = Query(
+        None,
+        description="Chunk offset — scopes counts to a node slice within the label",
+    ),
+    scope_limit: int | None = Query(
+        None,
+        description="Chunk size — scopes counts to a node slice within the label",
+    ),
     label_filter: str | None = Query(
         None,
         description="Comma-separated entity labels to cross-filter relationship types by",
@@ -303,6 +311,8 @@ async def get_relationship_types_paginated(
         page_size=page_size,
         search=search,
         scope_label=scope_label,
+        scope_skip=scope_skip,
+        scope_limit=scope_limit,
         label_filter=labels,
     )
 
@@ -346,15 +356,17 @@ async def search_entities(
 async def search_entity_clusters(
     collection_id: str,
     q: str = Query(..., min_length=1),
+    scope_label: str | None = Query(None, description="If provided, returns counts for offset-based subclusters"),
+    chunk_size: int = Query(200, description="Chunk size for subclusters (should match node_limit of expand)"),
     user: Annotated[AuthenticatedUser, Depends(resolve_user)] = None,
 ):
-    """Return ``{label: count}`` for clusters that contain entities matching *q*.
+    """Return ``{label: count}`` or ``{chunk_id: count}`` for clusters that contain entities matching *q*.
 
     This is a lightweight endpoint used by the clustered graph explorer to
     highlight matching clusters without breaking them apart.
     """
     store = GraphStore(collection_id)
-    return await store.search_entity_clusters(q)
+    return await store.search_entity_clusters(q, scope_label, chunk_size)
 
 
 # ------------------------------------------------------------------

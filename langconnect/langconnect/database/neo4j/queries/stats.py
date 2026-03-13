@@ -27,14 +27,14 @@ RETURN type(r) AS rtype, count(*) AS cnt
 # ------------------------------------------------------------------
 
 LABEL_COUNTS_SCOPED = """
-MATCH (a:Entity {collection_id: $cid})-[]-(b:Entity {collection_id: $cid})
-WHERE a.label = $scope_label
-RETURN b.label AS label, count(DISTINCT b) AS cnt
+MATCH (n:Entity {collection_id: $cid})
+WHERE n.label = $scope_label
+RETURN n.label AS label, count(n) AS cnt
 """
 
 RELATIONSHIP_TYPE_COUNTS_SCOPED = """
-MATCH (a:Entity {collection_id: $cid})-[r]-(b:Entity {collection_id: $cid})
-WHERE a.label = $scope_label
+MATCH (a:Entity {collection_id: $cid})-[r]->(b:Entity {collection_id: $cid})
+WHERE a.label = $scope_label AND b.label = $scope_label
 RETURN type(r) AS rtype, count(r) AS cnt
 """
 
@@ -45,8 +45,8 @@ RETURN count(n) AS cnt
 """
 
 EDGE_COUNT_SCOPED = """
-MATCH (a:Entity {collection_id: $cid})-[r]-(b:Entity {collection_id: $cid})
-WHERE a.label = $scope_label
+MATCH (a:Entity {collection_id: $cid})-[r]->(b:Entity {collection_id: $cid})
+WHERE a.label = $scope_label AND b.label = $scope_label
 RETURN count(r) AS cnt
 """
 
@@ -55,9 +55,9 @@ RETURN count(r) AS cnt
 # ------------------------------------------------------------------
 
 LABELS_PAGINATED_SCOPED = """
-MATCH (a:Entity {collection_id: $cid})-[]-(b:Entity {collection_id: $cid})
-WHERE a.label = $scope_label
-RETURN b.label AS label, count(DISTINCT b) AS cnt
+MATCH (n:Entity {collection_id: $cid})
+WHERE n.label = $scope_label
+RETURN n.label AS label, count(n) AS cnt
 ORDER BY cnt DESC, label
 """
 
@@ -68,8 +68,8 @@ ORDER BY cnt DESC, label
 """
 
 RELATIONSHIP_TYPES_PAGINATED_SCOPED = """
-MATCH (a:Entity {collection_id: $cid})-[r]-(b:Entity {collection_id: $cid})
-WHERE a.label = $scope_label
+MATCH (a:Entity {collection_id: $cid})-[r]->(b:Entity {collection_id: $cid})
+WHERE a.label = $scope_label AND b.label = $scope_label
 RETURN type(r) AS rtype, count(r) AS cnt
 ORDER BY cnt DESC, rtype
 """
@@ -93,7 +93,7 @@ ORDER BY cnt DESC, label
 
 LABELS_SCOPED_FILTERED_BY_REL_TYPES = """
 MATCH (a:Entity {collection_id: $cid})-[r]-(b:Entity {collection_id: $cid})
-WHERE a.label = $scope_label AND type(r) IN $rel_types
+WHERE a.label = $scope_label AND b.label = $scope_label AND type(r) IN $rel_types
 RETURN b.label AS label, count(DISTINCT b) AS cnt
 ORDER BY cnt DESC, label
 """
@@ -110,8 +110,27 @@ ORDER BY cnt DESC, rtype
 """
 
 REL_TYPES_SCOPED_FILTERED_BY_LABELS = """
-MATCH (a:Entity {collection_id: $cid})-[r]-(b:Entity {collection_id: $cid})
-WHERE a.label = $scope_label AND b.label IN $labels
+MATCH (a:Entity {collection_id: $cid})-[r]->(b:Entity {collection_id: $cid})
+WHERE a.label = $scope_label AND b.label = $scope_label AND b.label IN $labels
+RETURN type(r) AS rtype, count(r) AS cnt
+ORDER BY cnt DESC, rtype
+"""
+
+# ------------------------------------------------------------------
+# Chunk-scoped queries (sub-cluster drill-down)
+# ------------------------------------------------------------------
+
+RELATIONSHIP_TYPES_CHUNK_SCOPED = """
+MATCH (n:Entity {collection_id: $cid})
+WHERE n.label = $scope_label
+OPTIONAL MATCH (n)-[r_deg]-()
+WITH n, count(r_deg) AS degree
+ORDER BY degree DESC
+WITH collect(n) AS all_nodes
+WITH all_nodes[$scope_skip..$scope_end] AS chunk_nodes
+UNWIND chunk_nodes AS a
+MATCH (a)-[r]->(b)
+WHERE b IN chunk_nodes
 RETURN type(r) AS rtype, count(r) AS cnt
 ORDER BY cnt DESC, rtype
 """

@@ -256,12 +256,16 @@ export function useGraphData() {
       search?: string,
       scopeLabel?: string,
       labelFilter?: string[],
+      scopeSkip?: number,
+      scopeLimit?: number,
     ): Promise<PaginatedCounts | null> => {
       if (!session?.accessToken) return null;
       try {
         let url = `${getGraphApiUrl()}/graph/collections/${collectionId}/stats/relationship-types?page=${page}&page_size=${pageSize}`;
         if (search) url += `&search=${encodeURIComponent(search)}`;
         if (scopeLabel) url += `&scope_label=${encodeURIComponent(scopeLabel)}`;
+        if (scopeSkip != null) url += `&scope_skip=${scopeSkip}`;
+        if (scopeLimit != null) url += `&scope_limit=${scopeLimit}`;
         if (labelFilter?.length)
           url += `&label_filter=${encodeURIComponent(labelFilter.join(","))}`;
         const res = await fetch(url, {
@@ -598,13 +602,15 @@ export function useGraphSearch() {
     async (
       collectionId: string,
       q: string,
+      scopeLabel?: string,
     ): Promise<Record<string, number> | null> => {
       if (!session?.accessToken) return null;
       try {
-        const res = await fetch(
-          `${getGraphApiUrl()}/graph/collections/${collectionId}/search/entity-clusters?q=${encodeURIComponent(q)}`,
-          { headers: authHeaders(session.accessToken) },
-        );
+        let url = `${getGraphApiUrl()}/graph/collections/${collectionId}/search/entity-clusters?q=${encodeURIComponent(q)}`;
+        if (scopeLabel) {
+          url += `&scope_label=${encodeURIComponent(scopeLabel)}`;
+        }
+        const res = await fetch(url, { headers: authHeaders(session.accessToken) });
         if (!res.ok) return null;
         return await res.json();
       } catch {

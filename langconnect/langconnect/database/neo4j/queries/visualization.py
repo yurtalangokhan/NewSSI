@@ -133,8 +133,8 @@ LIMIT $limit
 # ------------------------------------------------------------------
 
 LABEL_RELATIONSHIP_TYPES = """
-MATCH (a:Entity {collection_id: $cid})-[r]-(b:Entity {collection_id: $cid})
-WHERE a.label = $label
+MATCH (a:Entity {collection_id: $cid})-[r]->(b:Entity {collection_id: $cid})
+WHERE a.label = $label AND b.label = $label
 RETURN type(r) AS rtype, count(r) AS cnt
 """
 
@@ -164,4 +164,21 @@ COUNT_LABEL_EDGES = """
 MATCH (a:Entity {collection_id: $cid})-[r]->(b:Entity {collection_id: $cid})
 WHERE a.label = $label AND b.label = $label
 RETURN count(r) AS cnt
+"""
+
+CHUNKED_INTERNAL_REL_TYPES = """
+MATCH (n:Entity {collection_id: $cid})
+WHERE n.label = $label
+OPTIONAL MATCH (n)-[r_deg]-()
+WITH n, count(r_deg) AS degree
+ORDER BY degree DESC
+WITH collect(n) AS all_nodes
+WITH all_nodes, range(0, size(all_nodes)-1, $chunk_size) AS offsets
+UNWIND offsets AS offset
+WITH all_nodes[offset..offset + $chunk_size] AS chunk_nodes, offset
+UNWIND chunk_nodes AS a
+MATCH (a)-[r]->(b:Entity {collection_id: $cid})
+WHERE b.label = $label
+WITH offset, type(r) AS rtype, count(r) AS cnt
+RETURN offset, rtype, cnt
 """
