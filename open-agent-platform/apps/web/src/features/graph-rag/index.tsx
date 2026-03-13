@@ -21,8 +21,7 @@ import { useGraphData, useGraphCollectionIds, useGraphSearch } from "./hooks/use
 import { useRagContext } from "@/features/rag/providers/RAG";
 import { useDataSources } from "@/hooks/use-datasources";
 import { useAuthContext } from "@/providers/Auth";
-import type { GraphNode, GraphStats } from "@/types/graph";
-import { isClusterNode } from "@/types/graph";
+import type { GraphNode } from "@/types/graph";
 
 export default function GraphRAGInterface() {
   const { collections, getCollections, setCollections } = useRagContext();
@@ -120,79 +119,24 @@ export default function GraphRAGInterface() {
     setSelectedNode(node);
   }, []);
 
-  // ── View-level stats derived from scalableData ──
-  const viewStats: GraphStats | null = useMemo(() => {
-    if (!scalableData || !stats) return null;
-
-    // Sub-cluster drill-down: clusters exist but no real edges.
-    // The backend returns scoped total_node_count & total_edge_count
-    // for this label group, and embeds _rel_type_counts &
-    // _neighbor_label_counts in each cluster's properties.
-    if (scalableData.cluster_count > 0 && scalableData.edges.length === 0) {
-      const labelCounts: Record<string, number> = {};
-      let nodeCount = 0;
-      let relTypeCounts: Record<string, number> = {};
-      for (const n of scalableData.nodes) {
-        if (isClusterNode(n)) {
-          labelCounts[n.label] = (labelCounts[n.label] || 0) + n.node_count;
-          nodeCount += n.node_count;
-          // Extract group-level metadata from first cluster that has it
-          if (
-            Object.keys(relTypeCounts).length === 0 &&
-            n.properties._rel_type_counts
-          ) {
-            relTypeCounts = n.properties._rel_type_counts as Record<string, number>;
-          }
-        }
-      }
-      return {
-        collection_id: selectedCollectionId || "",
-        node_count: nodeCount,
-        edge_count: scalableData.total_edge_count,
-        label_counts: labelCounts,
-        relationship_type_counts: relTypeCounts,
-      };
-    }
-
-    // In overview / expand / neighborhood modes, compute stats from current view
-    if (
-      scalableData.mode === "overview" ||
-      scalableData.mode === "expand" ||
-      scalableData.mode === "neighborhood"
-    ) {
-      const labelCounts: Record<string, number> = {};
-      const relTypeCounts: Record<string, number> = {};
-      let nodeCount = 0;
-      for (const n of scalableData.nodes) {
-        if (isClusterNode(n)) {
-          labelCounts[n.label] = (labelCounts[n.label] || 0) + n.node_count;
-          nodeCount += n.node_count;
-        } else {
-          labelCounts[n.label] = (labelCounts[n.label] || 0) + 1;
-          nodeCount += 1;
-        }
-      }
-      for (const e of scalableData.edges) {
-        relTypeCounts[e.type] = (relTypeCounts[e.type] || 0) + 1;
-      }
-      return {
-        collection_id: selectedCollectionId || "",
-        node_count: nodeCount,
-        edge_count: scalableData.edges.length,
-        label_counts: labelCounts,
-        relationship_type_counts: relTypeCounts,
-      };
-    }
-    return null;
-  }, [scalableData, stats, selectedCollectionId]);
-
-  // Use view stats when available, fall back to global stats
-  const displayStats = viewStats || stats;
-
   // Derive scope_label from the scalable data response.
   // In expand / sub-cluster mode the backend returns scope_label;
   // in overview / full / neighborhood it is undefined (= show all).
   const scopeLabel = scalableData?.scope_label ?? undefined;
+
+  // At the deepest expand level (individual nodes, no sub-clusters)
+  // the backend stats are scoped to the entire label group.  Override
+  // node/edge counts with the actual visible data so the card shows
+  // the numbers matching what's on screen.
+  const isDeepestExpand =
+    scalableData?.mode === "expand" &&
+    scalableData?.cluster_count === 0;
+  const visibleNodeCount = isDeepestExpand
+    ? scalableData!.nodes.length
+    : undefined;
+  const visibleEdgeCount = isDeepestExpand
+    ? scalableData!.edges.length
+    : undefined;
 
   // ── Scalable graph callbacks ──
   const handleClusterExpand = useCallback(
@@ -277,16 +221,14 @@ export default function GraphRAGInterface() {
         </div>
 
         {/* Stats summary */}
-        {displayStats && selectedCollectionId && (
+        {stats && selectedCollectionId && (
           <div className="flex items-center gap-3 text-sm text-muted-foreground">
-            <span>{displayStats.node_count} nodes</span>
+            <span>{stats.node_count.toLocaleString()} nodes</span>
             <span>·</span>
-            <span>{displayStats.edge_count} edges</span>
-            <span>·</span>
-            <span>{Object.keys(displayStats.label_counts).length} labels</span>
-            {viewStats && stats && (
+            <span>{stats.edge_count.toLocaleString()} edges</span>
+            {scopeLabel && (
               <span className="text-xs opacity-60">
-                (total: {stats.node_count.toLocaleString()} nodes)
+                (scope: {scopeLabel})
               </span>
             )}
           </div>
@@ -331,15 +273,18 @@ export default function GraphRAGInterface() {
 
             {/* Side panel: stats with clickable filters */}
             <div className="lg:col-span-1">
-              {displayStats && (
+              {stats && (
                 <GraphStatsCard
-                  stats={displayStats}
+                  key={`stats-${selectedCollectionId}-${scopeLabel ?? 'all'}`}
+                  stats={stats}
                   collectionId={selectedCollectionId}
                   selectedLabels={selectedLabels}
                   selectedRelTypes={selectedRelTypes}
                   onToggleLabel={handleToggleLabel}
                   onToggleRelType={handleToggleRelType}
                   scopeLabel={scopeLabel}
+                  visibleNodeCount={visibleNodeCount}
+                  visibleEdgeCount={visibleEdgeCount}
                   fetchLabelsPaginated={fetchLabelsPaginated}
                   fetchRelTypesPaginated={fetchRelTypesPaginated}
                 />

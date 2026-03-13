@@ -5,13 +5,21 @@ from __future__ import annotations
 import logging
 
 from langconnect.database.neo4j.queries.stats import (
+    EDGE_COUNT_SCOPED,
+    LABELS_FILTERED_BY_REL_TYPES,
     LABELS_PAGINATED_SCOPED,
     LABELS_PAGINATED_UNSCOPED,
+    LABELS_SCOPED_FILTERED_BY_REL_TYPES,
     LABEL_COUNTS,
+    LABEL_COUNTS_SCOPED,
     LIST_GRAPH_COLLECTION_IDS,
+    NODE_COUNT_SCOPED,
     RELATIONSHIP_TYPE_COUNTS,
+    RELATIONSHIP_TYPE_COUNTS_SCOPED,
     RELATIONSHIP_TYPES_PAGINATED_SCOPED,
     RELATIONSHIP_TYPES_PAGINATED_UNSCOPED,
+    REL_TYPES_FILTERED_BY_LABELS,
+    REL_TYPES_SCOPED_FILTERED_BY_LABELS,
 )
 from langconnect.database.neo4j.repositories.base import Neo4jRepository
 from langconnect.models.graph import GraphStats, PaginatedCounts
@@ -45,28 +53,69 @@ class StatsRepository(Neo4jRepository):
     # Per-collection stats
     # ------------------------------------------------------------------
 
-    async def get_stats(self) -> GraphStats:
-        """Collect statistics about this collection's graph."""
-        async with self._session() as session:
-            # Node count + label breakdown
-            label_result = await session.run(LABEL_COUNTS, cid=self.cid)
-            label_counts: dict[str, int] = {}
-            node_count = 0
-            async for record in label_result:
-                lbl = record["label"] or "Entity"
-                cnt = record["cnt"]
-                label_counts[lbl] = cnt
-                node_count += cnt
+    async def get_stats(self, *, scope_label: str | None = None) -> GraphStats:
+        """Collect statistics about this collection's graph.
 
-            # Edge count + type breakdown
-            rel_result = await session.run(RELATIONSHIP_TYPE_COUNTS, cid=self.cid)
-            rel_counts: dict[str, int] = {}
-            edge_count = 0
-            async for record in rel_result:
-                rtype = record["rtype"]
-                cnt = record["cnt"]
-                rel_counts[rtype] = cnt
-                edge_count += cnt
+        When *scope_label* is provided, counts are scoped to that label
+        group: node_count = nodes with that label, edge_count = edges
+        involving that label, label_counts = neighbour labels,
+        relationship_type_counts = rel types involving that label.
+        """
+        async with self._session() as session:
+            if scope_label:
+                # Scoped node count
+                nc_result = await session.run(
+                    NODE_COUNT_SCOPED, cid=self.cid, scope_label=scope_label,
+                )
+                nc_record = await nc_result.single()
+                node_count = nc_record["cnt"] if nc_record else 0
+
+                # Scoped edge count
+                ec_result = await session.run(
+                    EDGE_COUNT_SCOPED, cid=self.cid, scope_label=scope_label,
+                )
+                ec_record = await ec_result.single()
+                edge_count = ec_record["cnt"] if ec_record else 0
+
+                # Scoped label breakdown (neighbour labels)
+                label_result = await session.run(
+                    LABEL_COUNTS_SCOPED, cid=self.cid, scope_label=scope_label,
+                )
+                label_counts: dict[str, int] = {}
+                async for record in label_result:
+                    lbl = record["label"] or "Entity"
+                    label_counts[lbl] = record["cnt"]
+
+                # Scoped relationship type breakdown
+                rel_result = await session.run(
+                    RELATIONSHIP_TYPE_COUNTS_SCOPED,
+                    cid=self.cid,
+                    scope_label=scope_label,
+                )
+                rel_counts: dict[str, int] = {}
+                async for record in rel_result:
+                    rel_counts[record["rtype"]] = record["cnt"]
+            else:
+                # Global stats
+                label_result = await session.run(LABEL_COUNTS, cid=self.cid)
+                label_counts = {}
+                node_count = 0
+                async for record in label_result:
+                    lbl = record["label"] or "Entity"
+                    cnt = record["cnt"]
+                    label_counts[lbl] = cnt
+                    node_count += cnt
+
+                rel_result = await session.run(
+                    RELATIONSHIP_TYPE_COUNTS, cid=self.cid,
+                )
+                rel_counts = {}
+                edge_count = 0
+                async for record in rel_result:
+                    rtype = record["rtype"]
+                    cnt = record["cnt"]
+                    rel_counts[rtype] = cnt
+                    edge_count += cnt
 
         return GraphStats(
             collection_id=self.cid,
@@ -87,10 +136,30 @@ class StatsRepository(Neo4jRepository):
         page_size: int = 25,
         search: str | None = None,
         scope_label: str | None = None,
+        rel_type_filter: list[str] | None = None,
     ) -> PaginatedCounts:
-        """Return entity labels with counts (paginated, searchable)."""
+        """Return entity labels with counts (paginated, searchable).
+
+        When *rel_type_filter* is provided, only labels of nodes
+        participating in those relationship types are returned.
+        """
         async with self._session() as session:
-            if scope_label:
+            if rel_type_filter:
+                # Cross-filtered by relationship types
+                if scope_label:
+                    result = await session.run(
+                        LABELS_SCOPED_FILTERED_BY_REL_TYPES,
+                        cid=self.cid,
+                        scope_label=scope_label,
+                        rel_types=rel_type_filter,
+                    )
+                else:
+                    result = await session.run(
+                        LABELS_FILTERED_BY_REL_TYPES,
+                        cid=self.cid,
+                        rel_types=rel_type_filter,
+                    )
+            elif scope_label:
                 result = await session.run(
                     LABELS_PAGINATED_SCOPED,
                     cid=self.cid,
@@ -133,10 +202,30 @@ class StatsRepository(Neo4jRepository):
         page_size: int = 25,
         search: str | None = None,
         scope_label: str | None = None,
+        label_filter: list[str] | None = None,
     ) -> PaginatedCounts:
-        """Return relationship types with counts (paginated, searchable)."""
+        """Return relationship types with counts (paginated, searchable).
+
+        When *label_filter* is provided, only relationship types
+        involving nodes with those labels are returned.
+        """
         async with self._session() as session:
-            if scope_label:
+            if label_filter:
+                # Cross-filtered by labels
+                if scope_label:
+                    result = await session.run(
+                        REL_TYPES_SCOPED_FILTERED_BY_LABELS,
+                        cid=self.cid,
+                        scope_label=scope_label,
+                        labels=label_filter,
+                    )
+                else:
+                    result = await session.run(
+                        REL_TYPES_FILTERED_BY_LABELS,
+                        cid=self.cid,
+                        labels=label_filter,
+                    )
+            elif scope_label:
                 result = await session.run(
                     RELATIONSHIP_TYPES_PAGINATED_SCOPED,
                     cid=self.cid,

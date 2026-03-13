@@ -55,3 +55,21 @@ export function getSupabaseClient() {
 
   return supabaseInstance;
 }
+
+/**
+ * Get a fresh access token from the Supabase session.
+ *
+ * The browser client's `getSession()` automatically refreshes
+ * the token if it is expired or about to expire, so this always
+ * returns a valid JWT (or `null` if unauthenticated).
+ *
+ * Use this instead of reading `session.accessToken` from React
+ * state in long-lived callbacks (polling, background fetches)
+ * where the closure might hold a stale token.
+ */
+export async function getAccessToken(): Promise<string | null> {
+  const client = getSupabaseClient();
+  const { data, error } = await client.auth.getSession();
+  if (error || !data.session) return null;
+  return data.session.access_token;
+}

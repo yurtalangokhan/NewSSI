@@ -21,6 +21,32 @@ from langconnect.models.graph import GraphData, GraphEdge, GraphNode
 logger = logging.getLogger(__name__)
 
 
+def _normalize_name(name: str) -> str:
+    """Normalise entity names for consistent Neo4j matching.
+
+    Strips whitespace, collapses inner whitespace, and applies Title Case
+    so that 'iran\'s missile arsenal' and 'Iran\'S Missile Arsenal' resolve
+    to the same node.
+    """
+    import re
+
+    name = name.strip()
+    name = re.sub(r"\s+", " ", name)
+    # Title-case but preserve apostrophe contractions:
+    # "Iran's" → "Iran's" not "Iran'S"
+    parts = name.split(" ")
+    normalised: list[str] = []
+    for part in parts:
+        if "'" in part:
+            # Capitalise only the first letter; lowercase after apostrophe
+            idx = part.index("'")
+            part = part[:idx].capitalize() + "'" + part[idx + 1:].lower()
+        else:
+            part = part.capitalize()
+        normalised.append(part)
+    return " ".join(normalised)
+
+
 class EntityRepository(Neo4jRepository):
     """CRUD operations for Entity nodes and their relationships."""
 
@@ -54,6 +80,7 @@ class EntityRepository(Neo4jRepository):
         properties: dict[str, Any] | None = None,
     ) -> str:
         """Create or merge a node. Returns the element id."""
+        name = _normalize_name(name)
         props = properties or {}
         async with self._session() as session:
             result = await session.run(
@@ -74,6 +101,8 @@ class EntityRepository(Neo4jRepository):
         properties: dict[str, Any] | None = None,
     ) -> str:
         """Create or merge an edge between two nodes. Returns the element id."""
+        source_name = _normalize_name(source_name)
+        target_name = _normalize_name(target_name)
         props = properties or {}
         safe_type = rel_type.upper().replace(" ", "_").replace("-", "_")
         query = UPSERT_EDGE_TEMPLATE.format(rel_type=safe_type)

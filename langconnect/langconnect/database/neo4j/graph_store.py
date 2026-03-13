@@ -192,8 +192,8 @@ class GraphStore:
     async def list_graph_collection_ids() -> list[str]:
         return await StatsRepository.list_graph_collection_ids()
 
-    async def get_stats(self) -> GraphStats:
-        return await self._stats.get_stats()
+    async def get_stats(self, *, scope_label: str | None = None) -> GraphStats:
+        return await self._stats.get_stats(scope_label=scope_label)
 
     async def get_labels_paginated(
         self,
@@ -202,12 +202,14 @@ class GraphStore:
         page_size: int = 25,
         search: str | None = None,
         scope_label: str | None = None,
+        rel_type_filter: list[str] | None = None,
     ) -> PaginatedCounts:
         return await self._stats.get_labels_paginated(
             page=page,
             page_size=page_size,
             search=search,
             scope_label=scope_label,
+            rel_type_filter=rel_type_filter,
         )
 
     async def get_relationship_types_paginated(
@@ -217,12 +219,14 @@ class GraphStore:
         page_size: int = 25,
         search: str | None = None,
         scope_label: str | None = None,
+        label_filter: list[str] | None = None,
     ) -> PaginatedCounts:
         return await self._stats.get_relationship_types_paginated(
             page=page,
             page_size=page_size,
             search=search,
             scope_label=scope_label,
+            label_filter=label_filter,
         )
 
     # ------------------------------------------------------------------
