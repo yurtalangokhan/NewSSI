@@ -136,6 +136,10 @@ class Collection:
             raise HTTPException(status_code=404, detail="Document not found")
         return result
 
+    async def get_chunks(self, file_id: str) -> list[dict[str, Any]]:
+        """Fetch all chunks associated with a file_id, verifying collection ownership."""
+        return await self._doc_repo.list_chunks_by_file_id(file_id)
+
     async def search(
         self, query: str, *, limit: int = 4
     ) -> builtins.list[dict[str, Any]]:

@@ -137,11 +137,12 @@ interface UseRagReturn {
     accessToken?: string,
   ) => Promise<Document[]>;
   deleteDocument: (id: string) => Promise<void>;
+  getDocumentChunks: (collectionId: string, documentId: string) => Promise<{ chunks: any[], stats: any }>;
   handleFileUpload: (
     files: FileList | null,
     collectionId: string,
   ) => Promise<void>;
-  handleTextUpload: (textInput: string, collectionId: string) => Promise<void>;
+  handleTextUpload: (textInput: string, collectionId: string, textName?: string) => Promise<void>;
 }
 
 /**
@@ -305,6 +306,28 @@ export function useRag(): UseRagReturn {
     [selectedCollection, session],
   );
 
+  const getDocumentChunks = useCallback(
+    async (collectionId: string, documentId: string) => {
+      if (!session?.accessToken) {
+        throw new Error("No session found");
+      }
+
+      const url = getApiUrlOrThrow();
+      url.pathname = `/collections/${collectionId}/documents/${documentId}/chunks`;
+
+      const response = await fetch(url.toString(), {
+        headers: {
+          Authorization: `Bearer ${session.accessToken}`,
+        },
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to fetch chunks: ${response.statusText}`);
+      }
+      return await response.json();
+    },
+    [session]
+  );
+
   const handleFileUpload = useCallback(
     async (files: FileList | null, collectionId: string) => {
       if (!session?.accessToken) {
@@ -345,7 +368,7 @@ export function useRag(): UseRagReturn {
   );
 
   const handleTextUpload = useCallback(
-    async (textInput: string, collectionId: string) => {
+    async (textInput: string, collectionId: string, textName?: string) => {
       if (!session?.accessToken) {
         toast.error("No session found", {
           richColors: true,
@@ -359,7 +382,8 @@ export function useRag(): UseRagReturn {
         return;
       }
       const textBlob = new Blob([textInput], { type: "text/plain" });
-      const fileName = `Text Document ${new Date().toISOString().slice(0, 19).replace("T", " ")}.txt`;
+      const defaultFileName = `Text Document ${new Date().toISOString().slice(0, 19).replace("T", " ")}.txt`;
+      const fileName = textName?.trim() ? `${textName.trim()}${textName.trim().endsWith('.txt') ? '' : '.txt'}` : defaultFileName;
       const textFile = new File([textBlob], fileName, { type: "text/plain" });
       const metadata = {
         name: fileName,
@@ -623,6 +647,7 @@ export function useRag(): UseRagReturn {
     setDocumentsLoading,
     listDocuments,
     deleteDocument,
+    getDocumentChunks,
     handleFileUpload,
     handleTextUpload,
   };

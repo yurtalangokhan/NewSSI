@@ -114,6 +114,32 @@ class DocumentRepository(BaseRepository):
             "metadata": self._parse_metadata(row.cmetadata),
         }
 
+    async def list_chunks_by_file_id(self, file_id: str) -> list[dict[str, Any]]:
+        """List all chunks for a specific file by its file_id."""
+        async with self._session() as session:
+            emb = aliased(PgEmbedding, name="e")
+            col = aliased(PgCollection, name="c")
+
+            stmt = (
+                select(emb)
+                .join(col, emb.collection_id == col.uuid)
+                .where(emb.cmetadata["file_id"].as_string() == file_id)
+                .where(col.cmetadata["owner_id"].as_string() == self.user_id)
+                .where(col.uuid == self.collection_id)
+                .order_by(emb.id)
+            )
+            result = await session.execute(stmt)
+            rows = result.scalars().all()
+
+        return [
+            {
+                "id": str(r.id),
+                "content": r.document,
+                "metadata": self._parse_metadata(r.cmetadata),
+            }
+            for r in rows
+        ]
+
     # ---- write ----------------------------------------------------------
 
     async def delete_by_file_id(self, file_id: str) -> int:

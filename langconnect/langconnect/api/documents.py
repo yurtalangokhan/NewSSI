@@ -145,6 +145,45 @@ async def documents_list(
     return await collection.list(limit=limit, offset=offset)
 
 
+@router.get(
+    "/collections/{collection_id}/documents/{document_id}/chunks",
+    response_model=dict[str, Any],
+)
+async def documents_list_chunks(
+    user: Annotated[AuthenticatedUser, Depends(resolve_user)],
+    collection_id: UUID,
+    document_id: str,
+):
+    """Lists all chunks and file stats for a specific document (file_id) in a collection."""
+    collection = Collection(
+        collection_id=str(collection_id),
+        user_id=user.identity,
+    )
+    chunks = await collection.get_chunks(file_id=document_id)
+    
+    # Fallbacks in case stats weren't saved in metadata for older chunks
+    total_chunks = len(chunks)
+    first_meta = chunks[0].get("metadata", {}) if chunks else {}
+    
+    stats = {
+        "total_chunks": first_meta.get("file_total_chunks", total_chunks),
+        "avg_chars": first_meta.get("file_avg_chars", 0),
+        "avg_tokens": first_meta.get("file_avg_tokens", 0),
+    }
+
+    # Re-calculate averages if not present in metadata (older docs)
+    if total_chunks > 0 and stats["avg_chars"] == 0:
+        total_chars = sum(len(c.get("content", "")) for c in chunks)
+        total_tokens = sum(c.get("metadata", {}).get("token_count", len(c.get("content", "")) // 4) for c in chunks)
+        stats["avg_chars"] = round(total_chars / total_chunks)
+        stats["avg_tokens"] = round(total_tokens / total_chunks)
+        
+    return {
+        "stats": stats,
+        "chunks": chunks
+    }
+
+
 @router.delete(
     "/collections/{collection_id}/documents/{document_id}",
     response_model=dict[str, bool],
