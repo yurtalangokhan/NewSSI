@@ -1,0 +1,256 @@
+# =============================================================================
+# Docker Compose - Infrastructure Services
+# 
+# Database, Neo4j, Airbyte, Redis, MongoDB, MySQL
+# Run with: docker compose -f docker-compose-services.yml up -d
+# =============================================================================
+
+name: agentic-ai-infrastructure
+
+services:
+
+  # ==========================================================================
+  # PostgreSQL - Main Database
+  # ==========================================================================
+
+  postgres:
+    container_name: postgres
+    image: postgres:16
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres123}
+      POSTGRES_DB: ${POSTGRES_DB:-agent_service}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ==========================================================================
+  # Neo4j - Knowledge Graph
+  # ==========================================================================
+
+  neo4j:
+    image: neo4j:5-community
+    container_name: neo4j
+    restart: unless-stopped
+    ports:
+      - "7474:7474"   # HTTP (Browser UI)
+      - "7687:7687"   # Bolt protocol
+    volumes:
+      - neo4j-data:/data
+      - neo4j-logs:/logs
+      - neo4j-plugins:/plugins
+    environment:
+      NEO4J_AUTH: ${NEO4J_USERNAME:-neo4j}/${NEO4J_PASSWORD:-neo4j123}
+      NEO4J_PLUGINS: '["apoc", "graph-data-science"]'
+      NEO4J_server_memory_heap_initial__size: 512m
+      NEO4J_server_memory_heap_max__size: 1G
+      NEO4J_server_memory_pagecache_size: 512m
+      NEO4J_dbms_security_procedures_unrestricted: apoc.*,gds.*
+      NEO4J_dbms_security_procedures_allowlist: apoc.*,gds.*
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:7474 || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  # ==========================================================================
+  # Airbyte - Data Connectors (6 containers)
+  # ==========================================================================
+
+  airbyte-bootloader:
+    container_name: airbyte-bootloader
+    image: airbyte/bootloader:${AIRBYTE_VERSION:-0.50.33}
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      AIRBYTE_VERSION: ${AIRBYTE_VERSION:-0.50.33}
+      DATABASE_URL: jdbc:postgresql://postgres:5432/airbyte
+      DATABASE_USER: airbyte
+      DATABASE_PASSWORD: ${AIRBYTE_DB_PASSWORD:-airbyte_password}
+      RUN_DATABASE_MIGRATION_ON_STARTUP: "true"
+      LOG_LEVEL: INFO
+
+  airbyte-temporal:
+    container_name: airbyte-temporal
+    image: airbyte/temporal:${AIRBYTE_VERSION:-0.50.33}
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      airbyte-bootloader:
+        condition: service_completed_successfully
+    environment:
+      DB: postgresql
+      DB_PORT: 5432
+      POSTGRES_USER: airbyte
+      POSTGRES_PWD: ${AIRBYTE_DB_PASSWORD:-airbyte_password}
+      POSTGRES_SEEDS: postgres
+      DYNAMIC_CONFIG_FILE_PATH: /etc/temporal/config/dynamicconfig/development.yaml
+      LOG_LEVEL: INFO
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z $(hostname -i) 7233 || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  airbyte-server:
+    container_name: airbyte-server
+    image: airbyte/server:${AIRBYTE_VERSION:-0.50.33}
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      airbyte-bootloader:
+        condition: service_completed_successfully
+      airbyte-temporal:
+        condition: service_healthy
+    volumes:
+      - airbyte-workspace:/tmp/workspace
+      - airbyte-data:/data/config
+      - /tmp/airbyte_local:/tmp/airbyte_local
+    environment:
+      AIRBYTE_VERSION: ${AIRBYTE_VERSION:-0.50.33}
+      DATABASE_URL: jdbc:postgresql://postgres:5432/airbyte
+      DATABASE_USER: airbyte
+      DATABASE_PASSWORD: ${AIRBYTE_DB_PASSWORD:-airbyte_password}
+      TRACKING_STRATEGY: logging
+      TEMPORAL_HOST: airbyte-temporal:7233
+      INTERNAL_API_HOST: airbyte-server:8001
+      WEBAPP_URL: http://airbyte-webapp:8000
+      WORKER_ENVIRONMENT: docker
+      WORKSPACE_ROOT: /tmp/workspace
+      CONFIG_ROOT: /data/config
+      LOG_LEVEL: INFO
+      LOCAL_ROOT: /tmp/airbyte_local
+      DEPLOYMENT_MODE: OSS
+      SECRET_PERSISTENCE: NONE
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8001/api/v1/health || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  airbyte-worker:
+    container_name: airbyte-worker
+    image: airbyte/worker:${AIRBYTE_VERSION:-0.50.33}
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      airbyte-server:
+        condition: service_healthy
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./docker-bin/docker:/usr/bin/docker:ro
+      - /tmp/airbyte_local:/tmp/airbyte_local
+      - airbyte-workspace:/tmp/workspace
+    environment:
+      AIRBYTE_VERSION: ${AIRBYTE_VERSION:-0.50.33}
+      DATABASE_URL: jdbc:postgresql://postgres:5432/airbyte
+      DATABASE_USER: airbyte
+      DATABASE_PASSWORD: ${AIRBYTE_DB_PASSWORD:-airbyte_password}
+      INTERNAL_API_HOST: airbyte-server:8001
+      TEMPORAL_HOST: airbyte-temporal:7233
+      WORKSPACE_ROOT: /tmp/workspace
+      LOCAL_ROOT: /tmp/airbyte_local
+      DOCKER_NETWORK: agentic-ai-infrastructure_default
+      LOG_LEVEL: INFO
+      WORKER_ENVIRONMENT: docker
+      DEPLOYMENT_MODE: OSS
+      SECRET_PERSISTENCE: NONE
+      MAX_SYNC_WORKERS: 5
+      MAX_CHECK_WORKERS: 5
+
+  airbyte-webapp:
+    container_name: airbyte-webapp
+    image: airbyte/webapp:${AIRBYTE_VERSION:-0.50.33}
+    restart: unless-stopped
+    ports:
+      - "8010:80"
+    depends_on:
+      airbyte-server:
+        condition: service_healthy
+    environment:
+      INTERNAL_API_HOST: airbyte-server:8001
+      CONNECTOR_BUILDER_API_HOST: airbyte-server:8001
+      AIRBYTE_VERSION: ${AIRBYTE_VERSION:-0.50.33}
+      TRACKING_STRATEGY: logging
+
+  # ==========================================================================
+  # Redis - Cache (optional, currently not used)
+  # ==========================================================================
+
+  # redis:
+  #   container_name: redis
+  #   image: redis:7-alpine
+  #   restart: unless-stopped
+  #   ports:
+  #     - "6379:6379"
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 5s
+  #     timeout: 3s
+  #     retries: 5
+
+  # ==========================================================================
+  # MongoDB - Document store (optional, for LangGraph checkpointing)
+  # ==========================================================================
+
+  # mongo:
+  #   image: mongo:7
+  #   container_name: mongo
+  #   ports:
+  #     - "27017:27017"
+  #   extra_hosts:
+  #     - "host.docker.internal:host-gateway"
+  #   environment:
+  #     - MONGO_INITDB_ROOT_USERNAME=admin
+  #     - MONGO_INITDB_ROOT_PASSWORD=admin123
+  #   command: >
+  #     bash -c "
+  #       openssl rand -base64 756 > /tmp/mongodb-keyfile &&
+  #       chmod 400 /tmp/mongodb-keyfile &&
+  #       chown 999:999 /tmp/mongodb-keyfile &&
+  #       exec /usr/local/bin/docker-entrypoint.sh mongod --replSet rs0 --bind_ip_all --keyFile /tmp/mongodb-keyfile
+  #     "
+
+  # ==========================================================================
+  # MySQL - Legacy data (optional)
+  # ==========================================================================
+
+  # mysql:
+  #   image: mysql:8.0
+  #   container_name: mysql
+  #   restart: unless-stopped
+  #   ports:
+  #     - "3306:3306"
+  #   volumes:
+  #     - mysql-data:/var/lib/mysql
+  #   environment:
+  #     MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-mysql_root_123}
+  #     MYSQL_DATABASE: ${MYSQL_DATABASE:-rag_testdb}
+  #     MYSQL_USER: ${MYSQL_USER:-raguser}
+  #     MYSQL_PASSWORD: ${MYSQL_PASSWORD:-ragpass123}
+  #   command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+
+volumes:
+  postgres-data:
+  neo4j-data:
+  neo4j-logs:
+  neo4j-plugins:
+  airbyte-workspace:
+  airbyte-data:
+  # mysql-data:

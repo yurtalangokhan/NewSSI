@@ -1,6 +1,6 @@
 .vscode
 workspace
-.env
+*env*
 __pycache__
 .next
 .turbo
