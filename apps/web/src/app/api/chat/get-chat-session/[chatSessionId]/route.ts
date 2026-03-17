@@ -1,9 +1,14 @@
 import { NextResponse } from 'next/server';
 
-export async function GET() {
-  return NextResponse.json({
-    chat_session_id: "test-session",
-    name: "Test Chat",
-    messages: [],
-  });
+const INTERNAL_URL = process.env.INTERNAL_URL || "http://localhost:8123";
+
+export async function GET(request: Request, { params }: { params: Promise<{ chatSessionId: string }> }) {
+  try {
+    const { chatSessionId } = await params;
+    const response = await fetch(`${INTERNAL_URL}/api/chat/get-chat-session/${chatSessionId}`);
+    const data = await response.json();
+    return NextResponse.json(data);
+  } catch (error) {
+    return NextResponse.json({ error: "Failed to fetch chat session" }, { status: 500 });
+  }
 }

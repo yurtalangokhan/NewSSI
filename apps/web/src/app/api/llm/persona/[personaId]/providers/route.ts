@@ -2,9 +2,10 @@ import { NextResponse } from 'next/server';
 
 const INTERNAL_URL = process.env.INTERNAL_URL || "http://localhost:8123";
 
-export async function GET() {
+export async function GET(request: Request, { params }: { params: Promise<{ personaId: string }> }) {
   try {
-    const response = await fetch(`${INTERNAL_URL}/admin/llm/provider`);
+    const { personaId } = await params;
+    const response = await fetch(`${INTERNAL_URL}/llm/persona/${personaId}/providers`);
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error) {

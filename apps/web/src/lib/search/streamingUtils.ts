@@ -1,5 +1,64 @@
 import { PacketType } from "@/app/app/services/lib";
 
+// Backend packet types from our agent-service
+interface BackendPacket {
+  type: string;
+  content?: any;
+}
+
+// Map backend packets to frontend PacketType
+function mapBackendToFrontend(packet: BackendPacket): { placement: any; obj: any } {
+  const defaultPlacement = { turn_index: 0, sub_turn_index: null };
+  
+  switch (packet.type) {
+    case "message":
+      // Full message - convert to message_start
+      return {
+        placement: defaultPlacement,
+        obj: {
+          type: "message_start",
+          content: packet.content?.content || "",
+          final_documents: null,
+        },
+      };
+    
+    case "token":
+      // Token chunk - convert to message_delta
+      return {
+        placement: defaultPlacement,
+        obj: {
+          type: "message_delta",
+          content: packet.content || "",
+        },
+      };
+    
+    case "error":
+      return {
+        placement: defaultPlacement,
+        obj: {
+          type: "error",
+          message: packet.content || "Unknown error",
+        },
+      };
+    
+    case "stop":
+      return {
+        placement: defaultPlacement,
+        obj: {
+          type: "stop",
+          stop_reason: "finished",
+        },
+      };
+    
+    default:
+      // Unknown packet type - return as-is wrapped
+      return {
+        placement: defaultPlacement,
+        obj: packet,
+      };
+  }
+}
+
 export async function* handleSSEStream<T extends PacketType>(
   streamingResponse: Response,
   signal?: AbortSignal
@@ -30,35 +89,28 @@ export async function* handleSSEStream<T extends PacketType>(
     for (const line of lines) {
       if (line.trim() === "") continue;
 
+      // Handle SSE format: "data: {...}"
+      let jsonLine = line;
+      if (line.startsWith("data: ")) {
+        jsonLine = line.slice(6); // Remove "data: " prefix
+      }
+
+      // Handle [DONE] marker
+      if (jsonLine === "[DONE]") {
+        yield {
+          placement: { turn_index: 0, sub_turn_index: null },
+          obj: { type: "stop", stop_reason: "finished" },
+        } as T;
+        continue;
+      }
+
       try {
-        const data = JSON.parse(line) as T;
-        yield data;
+        const backendPacket = JSON.parse(jsonLine) as BackendPacket;
+        const mappedPacket = mapBackendToFrontend(backendPacket);
+        yield mappedPacket as T;
       } catch (error) {
         console.error("Error parsing SSE data:", error);
-
-        // Detect JSON objects (ie. check if parseable json has been accumulated)
-        const jsonObjects = line.match(/\{[^{}]*\}/g);
-        if (jsonObjects) {
-          for (const jsonObj of jsonObjects) {
-            try {
-              const data = JSON.parse(jsonObj) as T;
-              yield data;
-            } catch (innerError) {
-              console.error("Error parsing extracted JSON:", innerError);
-            }
-          }
-        }
       }
-    }
-  }
-
-  // Process any remaining data in the buffer
-  if (buffer.trim() !== "") {
-    try {
-      const data = JSON.parse(buffer) as T;
-      yield data;
-    } catch (error) {
-      console.error("Error parsing remaining buffer:", error);
     }
   }
 }
