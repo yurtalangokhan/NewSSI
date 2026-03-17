@@ -1,5 +1,6 @@
 import { User } from "./types";
 import { AuthType } from "./constants";
+import { UrlBuilder, buildUrl } from "./utilsSS";
 
 export interface AuthTypeMetadata {
   authType: AuthType;
@@ -139,7 +140,7 @@ export const getCurrentUserSS = async (): Promise<User | null> => {
   };
 };
 
-export const processCookies = (cookies: ReadonlyRequestCookies): string => {
+export const processCookies = (cookies: { getAll(): { name: string; value: string }[] }): string => {
   let cookieString = cookies
     .getAll()
     .map((cookie) => `${cookie.name}=${cookie.value}`)

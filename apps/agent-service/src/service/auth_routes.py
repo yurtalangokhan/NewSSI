@@ -4,6 +4,7 @@ These are minimal implementations to allow the frontend to load.
 """
 
 import uuid
+from datetime import datetime
 from typing import Any, Optional
 from fastapi import APIRouter, Request, Response
 from fastapi.responses import StreamingResponse
@@ -12,6 +13,10 @@ from service.agent_routes import message_generator
 from schema.schema import StreamInput
 
 router = APIRouter(prefix="", tags=["auth"])
+
+# In-memory storage for chat sessions and messages
+chat_sessions: dict = {}
+chat_messages: dict = {}
 
 
 class User(BaseModel):
@@ -290,6 +295,12 @@ async def stop_chat_session(chat_session_id: str):
 @router.get("/api/chat/get-chat-session/{chat_session_id}")
 async def get_chat_session(chat_session_id: str):
     """Get chat session."""
+    if chat_session_id in chat_sessions:
+        messages = chat_messages.get(chat_session_id, [])
+        return {
+            "chat_session": chat_sessions[chat_session_id],
+            "messages": messages,
+        }
     return {
         "chat_session_id": chat_session_id,
         "name": "Chat",
@@ -480,9 +491,19 @@ async def upload_persona_image():
 @router.get("/api/chat/get-user-chat-sessions")
 async def get_user_chat_sessions():
     """Get user's chat sessions."""
+    sessions = []
+    for session_id, session_data in chat_sessions.items():
+        sessions.append(
+            {
+                "id": session_id,
+                "name": session_data.get("name", "New Chat"),
+                "created_at": session_data.get("created_at", datetime.now().isoformat()),
+                "last_updated": session_data.get("last_updated", datetime.now().isoformat()),
+            }
+        )
     return {
-        "sessions": [],
-        "chat_sessions": [],
+        "sessions": sessions,
+        "chat_sessions": sessions,
         "has_more": False,
     }
 
@@ -491,6 +512,13 @@ async def get_user_chat_sessions():
 async def create_chat_session():
     """Create a new chat session."""
     session_id = str(uuid.uuid4())
+    chat_sessions[session_id] = {
+        "id": session_id,
+        "name": "New Chat",
+        "created_at": datetime.now().isoformat(),
+        "last_updated": datetime.now().isoformat(),
+    }
+    chat_messages[session_id] = []
     return {
         "chat_session_id": session_id,
         "name": "New Chat",
@@ -509,19 +537,77 @@ class ChatMessageInput(BaseModel):
     llm_override: dict | None = None
     origin: str = "unknown"
     additional_context: str | None = None
+    message_id_to_resend: int | None = None
 
 
 @router.post("/api/chat/send-chat-message")
 async def send_chat_message(request: Request, message_input: ChatMessageInput):
     """Send chat message - proxies to /stream endpoint."""
+
+    message_id = str(uuid.uuid4())
+
+    if message_input.chat_session_id and message_input.chat_session_id not in chat_sessions:
+        chat_sessions[message_input.chat_session_id] = {
+            "id": message_input.chat_session_id,
+            "name": "New Chat",
+            "created_at": datetime.now().isoformat(),
+            "last_updated": datetime.now().isoformat(),
+        }
+        chat_messages[message_input.chat_session_id] = []
+
+    user_message = {
+        "message_id": message_id,
+        "message": message_input.message,
+        "role": "user",
+        "time_sent": datetime.now().isoformat(),
+        "message_type": "user",
+    }
+
+    if message_input.chat_session_id:
+        chat_messages.setdefault(message_input.chat_session_id, []).append(user_message)
+
     stream_input = StreamInput(
         message=message_input.message,
         thread_id=message_input.chat_session_id,
         agent_config=message_input.llm_override or {},
     )
 
+    async def generate_with_storage():
+        from service.agent_routes import message_generator
+
+        full_response = ""
+        assistant_message_id = str(uuid.uuid4())
+
+        async for chunk in message_generator(stream_input, "default", "dev-user"):
+            yield chunk
+            if isinstance(chunk, str) and "data:" in chunk:
+                try:
+                    import json
+
+                    data_str = chunk.replace("data:", "").strip()
+                    if data_str:
+                        data = json.loads(data_str)
+                        if data.get("type") == "message":
+                            content = data.get("message", {}).get("content", "")
+                            if content:
+                                full_response += content
+                        if "final" in data.get("type", "") or "done" in str(data):
+                            assistant_message = {
+                                "message_id": assistant_message_id,
+                                "message": full_response,
+                                "role": "assistant",
+                                "time_sent": datetime.now().isoformat(),
+                                "message_type": "assistant",
+                            }
+                            if message_input.chat_session_id:
+                                chat_messages.setdefault(message_input.chat_session_id, []).append(
+                                    assistant_message
+                                )
+                except:
+                    pass
+
     return StreamingResponse(
-        message_generator(stream_input, "default", "dev-user"),
+        generate_with_storage(),
         media_type="text/event-stream",
     )
 
