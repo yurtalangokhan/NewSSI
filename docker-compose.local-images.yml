@@ -805,6 +805,27 @@ services:
     profiles:
       - build-only
 
+  # ============================================
+  # Vanilla PostgreSQL (Original Image)
+  # ============================================
+  postgres-vanilla:
+    container_name: postgres-vanilla
+    image: postgres:15
+    restart: unless-stopped
+    ports:
+      - 5435:5432
+    volumes:
+      - postgres-vanilla-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      PGDATA: /var/lib/postgresql/data/postgresql.conf
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
 volumes:
   db-config:
   airbyte-workspace:
@@ -813,3 +834,4 @@ volumes:
   neo4j-logs:
   neo4j-plugins:
   mysql-data:
+  postgres-vanilla-data:
