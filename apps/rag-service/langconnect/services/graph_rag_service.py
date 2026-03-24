@@ -13,8 +13,9 @@ import logging
 from typing import Any
 
 from langconnect.database.collections import Collection, CollectionsManager
-from langconnect.database.connection import get_db_connection, get_vectorstore
-from langconnect.database.graph_store import GraphStore
+from langconnect.database.connection import get_vectorstore
+from langconnect.database.neo4j import GraphStore
+from langconnect.database.postgres.repositories.document_repo import DocumentRepository
 from langconnect.models.graph import (
     BuildProgress,
     BuildStatus,
@@ -122,42 +123,11 @@ class GraphRAGService:
 
     async def _fetch_all_chunks(self) -> list[dict[str, Any]]:
         """Fetch all document chunks from the PGVector collection."""
-        chunks: list[dict[str, Any]] = []
-        async with get_db_connection() as conn:
-            # Get the PGVector table name for this collection
-            row = await conn.fetchrow(
-                """
-                SELECT name FROM langchain_pg_collection WHERE uuid = $1
-                """,
-                self.collection_id,
-            )
-            if not row:
-                logger.warning("Collection %s not found in PGVector", self.collection_id)
-                return []
-
-            # Fetch all embedding documents
-            records = await conn.fetch(
-                """
-                SELECT id, document, cmetadata
-                FROM langchain_pg_embedding
-                WHERE collection_id = $1
-                ORDER BY id
-                """,
-                self.collection_id,
-            )
-            for r in records:
-                metadata = json.loads(r["cmetadata"]) if r["cmetadata"] else {}
-                chunks.append(
-                    {
-                        "id": str(r["id"]),
-                        "content": r["document"] or "",
-                        "metadata": metadata,
-                    }
-                )
-        logger.info(
-            "Fetched %d chunks from collection %s", len(chunks), self.collection_id
+        doc_repo = DocumentRepository(
+            collection_id=self.collection_id,
+            user_id=self.user_id,
         )
-        return chunks
+        return await doc_repo.fetch_all_chunks()
 
     # ------------------------------------------------------------------
     # Hybrid Search (RRF: Vector Cosine + Graph BM25)

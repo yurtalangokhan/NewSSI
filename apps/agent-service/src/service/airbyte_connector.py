@@ -17,42 +17,12 @@ from decimal import Decimal
 from typing import Any, Dict, List, Optional
 
 from langchain_core.documents import Document
-from pydantic import BaseModel
 
 from service.airbyte_api_client import get_airbyte_client
 from service.airbyte_destination import get_destination_reader
+from service.schemas import ConnectorInfo, ConnectorSpec
 
 logger = logging.getLogger(__name__)
-
-
-# ---------------------------------------------------------------------------
-# Pydantic models
-# ---------------------------------------------------------------------------
-
-
-class ConnectorInfo(BaseModel):
-    """Information about an Airbyte connector."""
-
-    name: str
-    display_name: str
-    source_definition_id: str
-    category: Optional[str] = None
-    icon_url: Optional[str] = None
-    documentation_url: Optional[str] = None
-    is_available: bool = True
-
-
-class ConnectorSpec(BaseModel):
-    """Raw JSON Schema specification for a connector.
-
-    ``connection_specification`` contains the **raw** JSON Schema as
-    returned by the Airbyte API — **NO** flattening, **NO** transformation.
-    """
-
-    name: str
-    source_definition_id: str
-    connection_specification: Dict[str, Any]
-    documentation_url: Optional[str] = None
 
 
 # ---------------------------------------------------------------------------
@@ -396,11 +366,17 @@ async def extract_documents_async(
     content_fields: Optional[List[str]] = None,
     source_id: Optional[str] = None,
     connection_id: Optional[str] = None,
+    job_id: Optional[int] = None,
 ) -> List[Document]:
     """Extract data via Airbyte sync and convert to LangChain Documents.
 
-    If ``connection_id`` is provided, triggers a sync on the existing
-    connection and reads output.  Otherwise creates a temporary
+    If ``job_id`` is provided together with ``connection_id``, the output
+    of an **already-completed** job is read directly — no new sync is
+    triggered.  This is the path used by ``AirbyteSyncListener`` to avoid
+    an infinite trigger loop.
+
+    If only ``connection_id`` is provided (no ``job_id``), a new sync is
+    triggered on the existing connection.  Otherwise creates a temporary
     source + connection, syncs, reads, and cleans up.
     """
     client = get_airbyte_client()
@@ -408,9 +384,20 @@ async def extract_documents_async(
 
     temp_source_id: Optional[str] = None
     temp_connection_id: Optional[str] = None
+    # True when the caller already knows the job completed (listener path).
+    _job_already_complete = False
 
     try:
-        if connection_id:
+        if connection_id and job_id:
+            # Job already completed (called from AirbyteSyncListener) –
+            # skip straight to reading the output.
+            _job_already_complete = True
+            logger.info(
+                "Reading output from already-completed Airbyte job %d "
+                "(connection %s) — no new sync triggered",
+                job_id, connection_id,
+            )
+        elif connection_id:
             job_data = await client.trigger_sync(connection_id)
             job_id = job_data.get("job", {}).get("id")
         else:
@@ -457,7 +444,13 @@ async def extract_documents_async(
         if not job_id:
             raise ValueError("No job ID returned from sync trigger")
 
-        result = await client.poll_job_until_complete(job_id)
+        # If the caller already knows the job succeeded (AirbyteSyncListener
+        # path), skip the expensive poll-until-complete loop.
+        if _job_already_complete:
+            # We were given an existing job_id — it's already complete.
+            result = await client.get_job(job_id)
+        else:
+            result = await client.poll_job_until_complete(job_id)
         job_info = result.get("job", result)
         job_status = job_info.get("status", "unknown")
 

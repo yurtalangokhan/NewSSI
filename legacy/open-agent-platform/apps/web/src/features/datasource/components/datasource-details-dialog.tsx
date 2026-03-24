@@ -12,6 +12,7 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Database, Sparkles, Clock, AlertCircle } from "lucide-react";
+import { ConfigTree } from "./config-tree";
 
 interface DataSourceDetailsDialogProps {
     dataSourceId: string | null;
@@ -56,7 +57,7 @@ export function DataSourceDetailsDialog({
                     <Tabs defaultValue="config" className="w-full">
                         <TabsList className="grid w-full grid-cols-3">
                             <TabsTrigger value="config">Configuration</TabsTrigger>
-                            <TabsTrigger value="documents">Documents ({details.document_count})</TabsTrigger>
+                            <TabsTrigger value="chunks">Chunks ({details.chunk_count ?? details.document_count})</TabsTrigger>
                             <TabsTrigger value="status">Status</TabsTrigger>
                         </TabsList>
 
@@ -87,64 +88,74 @@ export function DataSourceDetailsDialog({
                                 {details.config && Object.keys(details.config).length > 0 && (
                                     <div className="p-3 rounded-lg bg-muted/50">
                                         <span className="text-sm font-medium block mb-2">Configuration</span>
-                                        <div className="space-y-1">
-                                            {Object.entries(details.config).map(([key, value]) => (
-                                                <div key={key} className="flex justify-between text-xs">
-                                                    <span className="text-muted-foreground">{key}</span>
-                                                    <span className="font-mono">{String(value)}</span>
-                                                </div>
-                                            ))}
-                                        </div>
+                                        <ConfigTree data={details.config} />
                                     </div>
                                 )}
                             </div>
                         </TabsContent>
 
-                        <TabsContent value="documents" className="mt-4">
-                            <ScrollArea className="h-[300px]">
-                                {details.sample_documents?.length > 0 ? (
+                        <TabsContent value="chunks" className="mt-4">
+                            {/* Aggregate Stats */}
+                            {(details.chunk_count ?? details.document_count) > 0 && (
+                                <div className="grid grid-cols-3 gap-2 mb-3">
+                                    <div className="rounded-lg border bg-muted/30 p-2 text-center">
+                                        <p className="text-lg font-bold">{details.chunk_count ?? details.document_count}</p>
+                                        <p className="text-[10px] text-muted-foreground">Chunks</p>
+                                    </div>
+                                    <div className="rounded-lg border bg-muted/30 p-2 text-center">
+                                        <p className="text-lg font-bold">{details.avg_chunk_tokens ?? '—'}</p>
+                                        <p className="text-[10px] text-muted-foreground">Avg Tokens</p>
+                                    </div>
+                                    <div className="rounded-lg border bg-muted/30 p-2 text-center">
+                                        <p className="text-lg font-bold">{details.avg_chunk_chars ?? '—'}</p>
+                                        <p className="text-[10px] text-muted-foreground">Avg Chars</p>
+                                    </div>
+                                </div>
+                            )}
+                            <ScrollArea className="h-[240px]">
+                                {(details.chunks ?? details.sample_documents)?.length > 0 ? (
                                     <div className="rounded-md border">
                                         <table className="w-full text-sm">
                                             <thead>
                                                 <tr className="border-b bg-muted/50">
-                                                    <th className="h-10 px-4 text-left font-medium">#</th>
-                                                    <th className="h-10 px-4 text-left font-medium">Content</th>
-                                                    <th className="h-10 px-4 text-left font-medium">Source</th>
+                                                    <th className="h-10 px-3 text-left font-medium w-10">#</th>
+                                                    <th className="h-10 px-3 text-left font-medium">Content</th>
+                                                    <th className="h-10 px-3 text-right font-medium w-16">Tokens</th>
+                                                    <th className="h-10 px-3 text-right font-medium w-16">Chars</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {details.sample_documents.map((doc: any, i: number) => (
+                                                {(details.chunks ?? details.sample_documents).slice(0, 5).map((chunk: any, i: number) => (
                                                     <tr key={i} className="border-b last:border-0 hover:bg-muted/30">
-                                                        <td className="p-4 align-top text-muted-foreground w-12">
+                                                        <td className="p-3 align-top text-muted-foreground">
                                                             {i + 1}
                                                         </td>
-                                                        <td className="p-4 align-top">
-                                                            <p className="text-sm line-clamp-3 whitespace-pre-wrap">
-                                                                {doc.content}
+                                                        <td className="p-3 align-top">
+                                                            <p className="text-sm line-clamp-2 whitespace-pre-wrap">
+                                                                {chunk.content}
                                                             </p>
                                                         </td>
-                                                        <td className="p-4 align-top w-32">
-                                                            {doc.metadata?.source && (
-                                                                <Badge variant="outline" className="text-xs truncate max-w-[100px]">
-                                                                    {String(doc.metadata.source).split('/').pop()?.slice(0, 15)}
-                                                                </Badge>
-                                                            )}
+                                                        <td className="p-3 align-top text-right font-mono text-xs">
+                                                            {chunk.token_count?.toLocaleString() ?? '—'}
+                                                        </td>
+                                                        <td className="p-3 align-top text-right font-mono text-xs">
+                                                            {chunk.char_count?.toLocaleString() ?? '—'}
                                                         </td>
                                                     </tr>
                                                 ))}
                                             </tbody>
                                         </table>
-                                        {details.document_count > 5 && (
+                                        {(details.chunk_count ?? details.document_count) > 5 && (
                                             <div className="p-3 text-center text-sm text-muted-foreground border-t bg-muted/30">
-                                                Showing 5 of {details.document_count} documents
+                                                Showing 5 of {details.chunk_count ?? details.document_count} chunks
                                             </div>
                                         )}
                                     </div>
                                 ) : (
                                     <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
                                         <Sparkles className="h-8 w-8 mb-2 opacity-50" />
-                                        <p className="text-sm">No documents indexed yet</p>
-                                        <p className="text-xs">Sync this data source to index documents</p>
+                                        <p className="text-sm">No chunks indexed yet</p>
+                                        <p className="text-xs">Sync this data source to index chunks</p>
                                     </div>
                                 )}
                             </ScrollArea>

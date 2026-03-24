@@ -56,6 +56,7 @@ export function DocumentsCard({
   const itemsPerPage = 10;
 
   const [textInput, setTextInput] = useState("");
+  const [textName, setTextName] = useState("");
   const [stagedFiles, setStagedFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -231,8 +232,9 @@ export function DocumentsCard({
       const loadingToast = toast.loading("Uploading text document", {
         richColors: true,
       });
-      await handleDocumentTextUpload(textInput, selectedCollection.uuid);
+      await handleDocumentTextUpload(textInput, selectedCollection.uuid, textName);
       setTextInput("");
+      setTextName("");
       setIsUploading(false);
       toast.dismiss(loadingToast);
       toast.success("Text document uploaded successfully", {
@@ -355,6 +357,15 @@ export function DocumentsCard({
             </TabsContent>
             <TabsContent value="text">
               <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="text-name">Document Name (Optional)</Label>
+                  <Input
+                    id="text-name"
+                    placeholder="e.g., My Notes"
+                    value={textName}
+                    onChange={(e) => setTextName(e.target.value)}
+                  />
+                </div>
                 <Textarea
                   placeholder="Paste or type your text here..."
                   className="min-h-[150px]"

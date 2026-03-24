@@ -13,6 +13,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  forceCollide as d3ForceCollide,
+} from "d3-force-3d";
 import dynamic from "next/dynamic";
 import {
   Card,
@@ -145,11 +148,18 @@ export function GraphExplorer({
   const observerRef = useRef<ResizeObserver | null>(null);
   const [ForceGraph2D, setForceGraph2D] = useState<any>(null);
   const [is3D, setIs3D] = useState(false);
+  const [threeDKey, setThreeDKey] = useState(0); // increment to force 3D remount
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [dimensions, setDimensions] = useState({ width: 800, height: 500 });
+  const [dimensions, setDimensions] = useState({ width: 800, height: 700 });
   const [breadcrumbs, setBreadcrumbs] = useState<BreadcrumbItem[]>([]);
+
+  // ── Simulation settling — overlay while force layout stabilizes ──
+  const [settling, setSettling] = useState(true);
+  const settleTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const prevDataFingerprintRef = useRef("");
 
   // Server-side cluster search results: label → match count
   const [serverClusterMatches, setServerClusterMatches] = useState<Record<string, number> | null>(null);
@@ -161,8 +171,8 @@ export function GraphExplorer({
     return new Map(Object.entries(serverClusterMatches));
   }, [serverClusterMatches]);
 
-  // Determine which data source to use
-  const activeData = scalableData || graphData;
+  // Only use scalableData for visualization to prevent flashing normal nodes before clustered nodes load
+  const activeData = scalableData;
   const currentMode = scalableData?.mode || "full";
   const totalNodes = scalableData?.total_node_count ?? graphData?.nodes.length ?? 0;
   const totalEdges = scalableData?.total_edge_count ?? graphData?.edges.length ?? 0;
@@ -223,9 +233,90 @@ export function GraphExplorer({
     const hasLabelFilter = selectedLabels && selectedLabels.size > 0;
     const hasRelFilter = selectedRelTypes && selectedRelTypes.size > 0;
 
-    const filteredNodes = hasLabelFilter
-      ? rawNodes.filter((n) => selectedLabels.has(n.label))
-      : rawNodes;
+    // ── Build filtered node & edge sets ────────────────────────────
+    // When BOTH label and relationship-type filters are active we need
+    // a combined strategy:
+    //   1. Find edges whose type is in selectedRelTypes AND that touch
+    //      at least one node whose label is in selectedLabels.
+    //   2. Keep all nodes on both ends of those surviving edges.
+    // This ensures cross-label relationships (e.g. Person --WORKS_AT-->
+    // Organization) still render even when only one label is selected.
+
+    let filteredNodes: ScalableNode[];
+    let filteredEdges: ScalableEdge[];
+
+    if (hasLabelFilter && hasRelFilter) {
+      // Both filters active — combined approach
+      const labelSet = selectedLabels;
+      const relSet = selectedRelTypes;
+      const nodeMap = new Map(rawNodes.map((n) => [n.id, n]));
+
+      // Edges that match the rel-type filter AND touch at least one
+      // node with a selected label.
+      filteredEdges = rawEdges.filter((e) => {
+        const typeMatches = isClusterEdge(e)
+          ? e.relationship_types.some((rt) => relSet.has(rt))
+          : relSet.has(e.type);
+        if (!typeMatches) return false;
+
+        const srcNode = nodeMap.get(e.source);
+        const tgtNode = nodeMap.get(e.target);
+        return (
+          (srcNode && labelSet.has(srcNode.label)) ||
+          (tgtNode && labelSet.has(tgtNode.label))
+        );
+      });
+
+      // Nodes on either end of a surviving edge
+      const connectedIds = new Set<string>();
+      for (const e of filteredEdges) {
+        connectedIds.add(e.source);
+        connectedIds.add(e.target);
+      }
+      filteredNodes = rawNodes.filter((n) => {
+        if (connectedIds.has(n.id)) return true;
+        // Keep cluster nodes if their overall statistics show they participate in the selected relationships
+        if (isClusterNode(n) && n.properties?._rel_type_counts) {
+          const counts = n.properties._rel_type_counts as Record<string, number>;
+          const hasRel = Array.from(relSet).some((rt) => (counts[rt] || 0) > 0);
+          return hasRel && labelSet.has(n.label);
+        }
+        return false;
+      });
+    } else if (hasRelFilter) {
+      // Only relationship-type filter
+      filteredEdges = rawEdges.filter((e) => {
+        if (isClusterEdge(e)) {
+          return e.relationship_types.some((rt) => selectedRelTypes.has(rt));
+        }
+        return selectedRelTypes.has(e.type);
+      });
+      const connectedIds = new Set<string>();
+      for (const e of filteredEdges) {
+        connectedIds.add(e.source);
+        connectedIds.add(e.target);
+      }
+      filteredNodes = rawNodes.filter((n) => {
+        if (connectedIds.has(n.id)) return true;
+        // Keep cluster nodes if their overall statistics show they participate in the selected relationships
+        if (isClusterNode(n) && n.properties?._rel_type_counts) {
+          const counts = n.properties._rel_type_counts as Record<string, number>;
+          return Array.from(selectedRelTypes).some((rt) => (counts[rt] || 0) > 0);
+        }
+        return false;
+      });
+    } else if (hasLabelFilter) {
+      // Only label filter
+      filteredNodes = rawNodes.filter((n) => selectedLabels.has(n.label));
+      const nodeIds = new Set(filteredNodes.map((n) => n.id));
+      filteredEdges = rawEdges.filter(
+        (e) => nodeIds.has(e.source) && nodeIds.has(e.target),
+      );
+    } else {
+      // No filters
+      filteredNodes = rawNodes;
+      filteredEdges = rawEdges;
+    }
 
     const nodes: ForceGraphNode[] = filteredNodes.map((n) => {
       if (isClusterNode(n)) {
@@ -254,11 +345,6 @@ export function GraphExplorer({
       };
     });
 
-    const nodeIds = new Set(nodes.map((n) => n.id));
-    const filteredEdges = rawEdges
-      .filter((e) => nodeIds.has(e.source) && nodeIds.has(e.target))
-      .filter((e) => !hasRelFilter || selectedRelTypes.has(e.type));
-
     const links: ForceGraphLink[] = filteredEdges.map((e) => {
       if (isClusterEdge(e)) {
         return {
@@ -280,6 +366,25 @@ export function GraphExplorer({
 
     return { nodes, links };
   }, [activeData, selectedLabels, selectedRelTypes, currentMode]);
+
+  // ── Trigger settling overlay when graph data fundamentally changes ──
+  useEffect(() => {
+    const fp = `${scalableData?.mode}-${forceData.nodes.length}-${scalableData?.scope_label}`;
+    if (fp !== prevDataFingerprintRef.current && forceData.nodes.length > 0) {
+      prevDataFingerprintRef.current = fp;
+      setSettling(true);
+      clearTimeout(settleTimerRef.current);
+      // Safety timeout — show graph even if onEngineStop never fires
+      settleTimerRef.current = setTimeout(() => setSettling(false), 2500);
+    }
+    return () => clearTimeout(settleTimerRef.current);
+  }, [forceData, scalableData?.mode, scalableData?.scope_label]);
+
+  // Called when the force simulation finishes cooling down
+  const handleEngineStop = useCallback(() => {
+    clearTimeout(settleTimerRef.current);
+    setSettling(false);
+  }, []);
 
   // ── Debounced server-side cluster search ──
   // When the view contains cluster nodes, ask the server which clusters
@@ -315,7 +420,7 @@ export function GraphExplorer({
         n.label.toLowerCase().includes(q) ||
         (n.topEntities && n.topEntities.some((e) => e.toLowerCase().includes(q))) ||
         // Highlight clusters whose label appears in server search results
-        (n.isCluster && serverMatchedClusterLabels.has(n.label)),
+        (n.isCluster && (serverMatchedClusterLabels.has(n.label) || serverMatchedClusterLabels.has(n.id))),
     );
     const matchedIds = new Set(matchedNodes.map((n) => n.id));
     const connectedLinks = forceData.links.filter((l) => {
@@ -336,12 +441,129 @@ export function GraphExplorer({
     return { nodes: allRelevantNodes, links: connectedLinks };
   }, [forceData, searchQuery, serverMatchedClusterLabels]);
 
+  // ── Degree map — how many links each node has ──
+  const degreeMap = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const l of filteredData.links) {
+      const src = typeof l.source === "object" ? (l.source as any).id : l.source;
+      const tgt = typeof l.target === "object" ? (l.target as any).id : l.target;
+      map.set(src, (map.get(src) || 0) + 1);
+      map.set(tgt, (map.get(tgt) || 0) + 1);
+    }
+    return map;
+  }, [filteredData]);
+
+  // ── Parallel link detection — tiny offset so overlapping links separate ──
+  const parallelLinkMeta = useMemo(() => {
+    const pairCount = new Map<string, number>();
+    const pairIndex = new Map<string, number>();
+    // Count how many links share the same source-target pair
+    for (const l of filteredData.links) {
+      const src = typeof l.source === "object" ? (l.source as any).id : l.source;
+      const tgt = typeof l.target === "object" ? (l.target as any).id : l.target;
+      const key = src < tgt ? `${src}||${tgt}` : `${tgt}||${src}`;
+      pairCount.set(key, (pairCount.get(key) || 0) + 1);
+    }
+    // Assign per-link curvature (only for truly parallel edges)
+    const curvatures = new Map<number, number>();
+    filteredData.links.forEach((l, idx) => {
+      const src = typeof l.source === "object" ? (l.source as any).id : l.source;
+      const tgt = typeof l.target === "object" ? (l.target as any).id : l.target;
+      const key = src < tgt ? `${src}||${tgt}` : `${tgt}||${src}`;
+      const count = pairCount.get(key) || 1;
+      if (count <= 1) {
+        curvatures.set(idx, 0);
+      } else {
+        const i = pairIndex.get(key) || 0;
+        pairIndex.set(key, i + 1);
+        // Very subtle curvature so lines look almost straight but separate
+        const sign = i % 2 === 0 ? 1 : -1;
+        const magnitude = 0.04 + Math.floor(i / 2) * 0.04;
+        curvatures.set(idx, sign * magnitude);
+      }
+    });
+    return curvatures;
+  }, [filteredData]);
+
+  // ── Connected neighbours of the selected node ──
+  const selectedNeighborIds = useMemo(() => {
+    if (!selectedNodeId) return new Set<string>();
+    const ids = new Set<string>();
+    ids.add(selectedNodeId);
+    for (const l of filteredData.links) {
+      const src = typeof l.source === "object" ? (l.source as any).id : l.source;
+      const tgt = typeof l.target === "object" ? (l.target as any).id : l.target;
+      if (src === selectedNodeId) ids.add(tgt);
+      if (tgt === selectedNodeId) ids.add(src);
+    }
+    return ids;
+  }, [selectedNodeId, filteredData]);
+
   // ── Adaptive performance settings ──
   const nodeCount = filteredData.nodes.length;
+  const linkCount = filteredData.links.length;
   const enablePointer = nodeCount < POINTER_DISABLE_THRESHOLD;
   const cooldownTicks = nodeCount > FAST_COOLDOWN_THRESHOLD ? 50 : 100;
-  const warmupTicks = nodeCount > FAST_COOLDOWN_THRESHOLD ? 30 : 0;
+  const warmupTicks = nodeCount > FAST_COOLDOWN_THRESHOLD ? 80 : 120;
   const showLabels = nodeCount < HIDE_LABELS_THRESHOLD;
+  // Reduce visual density for graphs with many edges
+  const isDense = linkCount > nodeCount * 3;
+
+  // ── Configure d3 force simulation — anti-overlap ──
+  // Uses setTimeout to ensure the new force-graph component has mounted
+  // after a 2D↔3D toggle (fgRef.current is set after render).
+  useEffect(() => {
+    const applyForces = () => {
+      if (!fgRef.current) return;
+      const fg = fgRef.current;
+
+      // 1. Charge repulsion — stronger in 3D since depth compresses visually
+      const chargeStrength = is3D
+        ? (isDense ? -500 : -350)
+        : (isDense ? -300 : -180);
+      const distMax = is3D ? 800 : 500;
+      fg.d3Force("charge")?.strength(chargeStrength).distanceMax(distMax);
+
+      // 2. Link distance — longer in 3D so nodes don't overlap visually
+      const baseDist = is3D
+        ? (isDense ? 140 : 100)
+        : (isDense ? 80 : 55);
+      fg.d3Force("link")?.distance(baseDist);
+
+      // 3. Node collision force — bigger radius in 3D
+      const extraBuffer = is3D ? 8 : 0;
+      const collide = d3ForceCollide()
+        .radius((node: any) => {
+          // Skip link-midpoint virtual nodes — they use a separate collision
+          if (node.__linkMid) return (node.__linkMidR || 4) + (is3D ? 4 : 0);
+          if (node.isCluster) {
+            const size = Math.max(8, Math.min(24, Math.sqrt(node.nodeCount || 10) * 2.5));
+            return size + 10 + extraBuffer;
+          }
+          const deg = degreeMap.get(node.id) || 0;
+          const baseR = isDense ? 4 : 5;
+          const r = baseR + Math.min(4, Math.sqrt(deg) * 0.8);
+          return r + 12 + extraBuffer; // generous buffer to keep links away from nodes
+        })
+        .strength(1.0)
+        .iterations(5);
+      fg.d3Force("collide", collide);
+
+      // 4. Center gravity — keep graph compact
+      fg.d3Force("center")?.strength(1);
+
+      // 5. No radial
+      fg.d3Force("radial", null);
+
+      // Reheat simulation so new forces take effect
+      fg.d3ReheatSimulation?.();
+    };
+
+    // Immediate attempt + delayed retry for 2D↔3D toggle
+    applyForces();
+    const timer = setTimeout(applyForces, 200);
+    return () => clearTimeout(timer);
+  }, [isDense, filteredData, degreeMap, is3D]);
 
   const handleNodeClick = useCallback(
     (node: any) => {
@@ -349,6 +571,13 @@ export function GraphExplorer({
 
       // Cluster supernode → drill down
       if (node.isCluster && onClusterExpand) {
+        // Clear selection so expanded nodes don't appear dimmed
+        setSelectedNodeId(null);
+        setHoveredNodeId(null);
+        // Pause animation before data change to prevent tick crash in 3D
+        if (fgRef.current) {
+          try { fgRef.current.pauseAnimation?.(); } catch { /* noop */ }
+        }
         // Sub-clusters encode offset in the ID (subcluster__Label__skip__limit)
         // Top-level clusters use the label as identifier
         const expandId = typeof node.id === "string" && node.id.startsWith("subcluster__")
@@ -392,11 +621,29 @@ export function GraphExplorer({
     [onNodeClick, onClusterExpand, graphData, is3D],
   );
 
+  // Click on background → deselect node
+  const handleBackgroundClick = useCallback(() => {
+    setSelectedNodeId(null);
+  }, []);
+
+  // Hover → highlight connected links (no dimming)
+  const handleNodeHover = useCallback((node: any) => {
+    setHoveredNodeId(node ? node.id : null);
+  }, []);
+
   // Right-click → neighborhood exploration
   const handleNodeRightClick = useCallback(
     (node: any, event: MouseEvent) => {
       event.preventDefault();
       if (onNeighborhoodRequest && !node.isCluster) {
+        // Clear selection so neighborhood nodes don't appear dimmed
+        setSelectedNodeId(null);
+        setHoveredNodeId(null);
+        // Pause the 3D simulation before changing graph data to prevent
+        // "Cannot read properties of undefined (reading 'tick')" crash.
+        if (fgRef.current) {
+          try { fgRef.current.pauseAnimation?.(); } catch { /* noop */ }
+        }
         setBreadcrumbs((prev) => [
           ...prev,
           { label: node.label, displayName: node.name, mode: "neighborhood", nodeId: node.id },
@@ -410,6 +657,8 @@ export function GraphExplorer({
   // Navigate back to overview
   const handleBackToOverview = useCallback(() => {
     setBreadcrumbs([]);
+    setSelectedNodeId(null);
+    setHoveredNodeId(null);
     if (onBackToOverview) onBackToOverview();
   }, [onBackToOverview]);
 
@@ -420,6 +669,8 @@ export function GraphExplorer({
         handleBackToOverview();
         return;
       }
+      setSelectedNodeId(null);
+      setHoveredNodeId(null);
       const crumb = breadcrumbs[index];
       setBreadcrumbs((prev) => prev.slice(0, index + 1));
       if (crumb.mode === "expand" && onClusterExpand) {
@@ -476,12 +727,18 @@ export function GraphExplorer({
 
   const handleToggle3D = () => {
     fgRef.current = null;
-    setIs3D((prev) => !prev);
+    setSettling(true); // re-trigger settling for new renderer
+    clearTimeout(settleTimerRef.current);
+    settleTimerRef.current = setTimeout(() => setSettling(false), 2500);
+    setIs3D((prev) => {
+      if (!prev) setThreeDKey((k) => k + 1); // force fresh 3D mount
+      return !prev;
+    });
   };
 
   if (loading) {
     return (
-      <Card className="flex w-full flex-col min-h-[560px]">
+      <Card className="flex w-full flex-col min-h-[700px]">
         <CardHeader>
           <Skeleton className="h-6 w-48" />
         </CardHeader>
@@ -507,7 +764,7 @@ export function GraphExplorer({
   }
 
   return (
-    <Card className={isFullscreen ? "fixed inset-4 z-50 pb-0 gap-2" : "flex w-full flex-col pb-0 gap-2 min-h-[560px]"}>
+    <Card className={isFullscreen ? "fixed inset-4 z-50 pb-0 gap-2" : "flex w-full flex-col pb-0 gap-2 min-h-[700px]"}>
       <CardHeader className="pb-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -608,7 +865,16 @@ export function GraphExplorer({
             <p className="text-muted-foreground mt-1 text-[11px]">
               {serverMatchedClusterLabels.size} cluster matched (
               {Array.from(serverMatchedClusterLabels.entries())
-                .map(([label, count]) => `${label}: ${count}`)
+                .map(([key, count]) => {
+                  if (key.startsWith("subcluster__")) {
+                    const parts = key.split("__");
+                    const offset = parseInt(parts[2], 10);
+                    const limit = parseInt(parts[3], 10);
+                    const num = Math.floor(offset / limit) + 1;
+                    return `${parts[1]} #${num}: ${count}`;
+                  }
+                  return `${key}: ${count}`;
+                })
                 .join(", ")}
               ) — highlighted in red
             </p>
@@ -622,7 +888,7 @@ export function GraphExplorer({
       </CardHeader>
 
       <CardContent
-        className={`relative overflow-hidden p-0 flex-1 ${isFullscreen ? "h-[calc(100vh-200px)]" : "min-h-[480px]"}`}
+        className={`relative overflow-hidden p-0 flex-1 ${isFullscreen ? "h-[calc(100vh-200px)]" : "min-h-[620px]"}`}
       >
         <div ref={containerRef} className="absolute inset-0">
 
@@ -638,42 +904,105 @@ export function GraphExplorer({
                 ? `⬡ ${node.name} (${node.nodeCount} nodes)\nTop: ${(node.topEntities || []).slice(0, 3).join(", ")}`
                 : `${node.name} (${node.label})`
             }
-            nodeColor={(node: ForceGraphNode) =>
-              node.id === selectedNodeId ? SELECTED_COLOR : (node.color || "#6b7280")
-            }
+            nodeColor={(node: ForceGraphNode) => {
+              if (selectedNodeId && !selectedNeighborIds.has(node.id)) return "rgba(148,163,184,0.25)";
+              return node.id === selectedNodeId ? SELECTED_COLOR : (node.color || "#6b7280");
+            }}
             nodeRelSize={5}
             nodeVal={(node: ForceGraphNode) => node.val || 3}
-            linkDirectionalArrowLength={4}
-            linkDirectionalArrowRelPos={1}
             linkLabel={(link: ForceGraphLink) =>
               link.relationshipTypes
                 ? `${link.type} (${link.relationshipTypes.join(", ")})`
                 : link.type
             }
-            linkColor={(link: ForceGraphLink) => link.color || "#94a3b8"}
-            linkWidth={(link: ForceGraphLink) =>
-              link.weight ? Math.min(6, Math.max(1, Math.sqrt(link.weight))) : 1.5
-            }
             onNodeClick={handleNodeClick}
             onNodeRightClick={handleNodeRightClick}
+            onBackgroundClick={handleBackgroundClick}
+            onNodeHover={handleNodeHover}
             enablePointerInteraction={enablePointer}
             cooldownTicks={cooldownTicks}
             warmupTicks={warmupTicks}
+            onEngineStop={handleEngineStop}
+            d3AlphaDecay={0.02}
+            d3VelocityDecay={0.3}
+            linkCurvature={(link: any) => {
+              const idx = filteredData.links.indexOf(link);
+              return parallelLinkMeta.get(idx) ?? 0;
+            }}
+            linkDirectionalArrowLength={isDense ? 2.5 : 4}
+            linkDirectionalArrowRelPos={1}
+            linkWidth={(link: any) => {
+              const src = typeof link.source === "object" ? link.source.id : link.source;
+              const tgt = typeof link.target === "object" ? link.target.id : link.target;
+              // Click-selected: thick for connected, normal for rest
+              if (selectedNodeId) {
+                if (src === selectedNodeId || tgt === selectedNodeId) {
+                  return link.weight ? Math.min(8, Math.max(2.5, Math.sqrt(link.weight) * 1.5)) : 2.5;
+                }
+              }
+              // Hover: slightly thicker for connected links
+              if (hoveredNodeId && !selectedNodeId) {
+                if (src === hoveredNodeId || tgt === hoveredNodeId) {
+                  return 2;
+                }
+              }
+              return link.weight ? Math.min(6, Math.max(1, Math.sqrt(link.weight))) : (isDense ? 0.8 : 1.5);
+            }}
+            linkColor={(link: any) => {
+              const src = typeof link.source === "object" ? link.source.id : link.source;
+              const tgt = typeof link.target === "object" ? link.target.id : link.target;
+              // Click-selected: colored for connected, dimmed for rest
+              if (selectedNodeId) {
+                if (src === selectedNodeId || tgt === selectedNodeId) {
+                  const otherNodeId = src === selectedNodeId ? tgt : src;
+                  const otherNode = filteredData.nodes.find((n) => n.id === otherNodeId);
+                  return otherNode?.color || "#f59e0b";
+                }
+                return "rgba(148,163,184,0.15)";
+              }
+              // Hover: colored for connected links, everything else stays normal
+              if (hoveredNodeId) {
+                if (src === hoveredNodeId || tgt === hoveredNodeId) {
+                  const otherNodeId = src === hoveredNodeId ? tgt : src;
+                  const otherNode = filteredData.nodes.find((n) => n.id === otherNodeId);
+                  return otherNode?.color || "#f59e0b";
+                }
+              }
+              return isDense ? "rgba(148,163,184,0.35)" : (link.color || "#94a3b8");
+            }}
             nodeCanvasObject={(node: any, ctx: CanvasRenderingContext2D, globalScale: number) => {
               const isSelected = node.id === selectedNodeId;
-              const nodeColor = isSelected ? SELECTED_COLOR : (node.color || "#6b7280");
+              // When a node is selected, dim unrelated nodes
+              const isDimmed = selectedNodeId != null && !selectedNeighborIds.has(node.id);
+              const nodeColor = isDimmed
+                ? "rgba(148,163,184,0.25)"
+                : isSelected ? SELECTED_COLOR : (node.color || "#6b7280");
               // Does this cluster match the server search?
-              const clusterMatchCount = node.isCluster
-                ? serverMatchedClusterLabels.get(node.label) ?? 0
-                : 0;
+              let clusterMatchCount = 0;
+              if (node.isCluster && serverMatchedClusterLabels) {
+                // If the key is present via cluster ID (e.g. subclusters), use it; otherwise fallback to label.
+                clusterMatchCount = serverMatchedClusterLabels.get(node.id) ?? serverMatchedClusterLabels.get(node.label) ?? 0;
+              }
+              let relMatchCount = 0;
+              if (node.isCluster && selectedRelTypes && selectedRelTypes.size > 0 && node.properties?._rel_type_counts) {
+                const counts = node.properties._rel_type_counts as Record<string, number>;
+                for (const rt of Array.from(selectedRelTypes)) {
+                  relMatchCount += (counts[rt] || 0);
+                }
+              }
               const isClusterMatch = clusterMatchCount > 0;
+              const isRelMatch = relMatchCount > 0;
+              const isHighlight = isClusterMatch || isRelMatch;
+              
+              // Degree-based sizing for regular nodes
+              const degree = degreeMap.get(node.id) || 0;
 
               if (node.isCluster) {
                 // ── Hexagon for cluster supernodes ──
                 const size = Math.max(8, Math.min(24, Math.sqrt(node.nodeCount || 10) * 2.5));
 
                 // Glow ring for matching clusters
-                if (isClusterMatch) {
+                if (isHighlight) {
                   ctx.beginPath();
                   for (let i = 0; i < 6; i++) {
                     const angle = (Math.PI / 3) * i - Math.PI / 6;
@@ -684,7 +1013,7 @@ export function GraphExplorer({
                     else ctx.lineTo(px, py);
                   }
                   ctx.closePath();
-                  ctx.fillStyle = "rgba(239, 68, 68, 0.25)";
+                  ctx.fillStyle = isClusterMatch ? "rgba(239, 68, 68, 0.25)" : "rgba(59, 130, 246, 0.25)";
                   ctx.fill();
                 }
 
@@ -697,15 +1026,17 @@ export function GraphExplorer({
                   else ctx.lineTo(px, py);
                 }
                 ctx.closePath();
-                ctx.fillStyle = isClusterMatch ? "#dc2626" : CLUSTER_COLOR;
+                ctx.fillStyle = isClusterMatch ? "#dc2626" : isRelMatch ? "#2563eb" : CLUSTER_COLOR;
                 ctx.fill();
-                ctx.strokeStyle = isSelected ? SELECTED_COLOR : isClusterMatch ? "#ef4444" : CLUSTER_BORDER_COLOR;
-                ctx.lineWidth = isClusterMatch ? 3 / globalScale : 2 / globalScale;
+                ctx.strokeStyle = isSelected ? SELECTED_COLOR : isClusterMatch ? "#ef4444" : isRelMatch ? "#3b82f6" : CLUSTER_BORDER_COLOR;
+                ctx.lineWidth = isHighlight ? 3 / globalScale : 2 / globalScale;
                 ctx.stroke();
 
                 // Count badge (show match count if cluster matches)
                 const countText = isClusterMatch
                   ? `${clusterMatchCount}/${node.nodeCount}`
+                  : isRelMatch
+                  ? `${relMatchCount}/${node.nodeCount}`
                   : `${node.nodeCount}`;
                 const badgeFontSize = Math.max(8 / globalScale, 2);
                 ctx.font = `bold ${badgeFontSize}px Inter, sans-serif`;
@@ -715,16 +1046,18 @@ export function GraphExplorer({
                 ctx.fillText(countText, node.x, node.y);
 
                 // Label below hexagon
-                if (showLabels && globalScale > LABEL_ZOOM_THRESHOLD) {
+                if (showLabels && globalScale > LABEL_ZOOM_THRESHOLD && !isDimmed) {
                   const labelFontSize = Math.max(10 / globalScale, 1.5);
                   ctx.font = `${labelFontSize}px Inter, sans-serif`;
                   ctx.textBaseline = "top";
-                  ctx.fillStyle = isClusterMatch ? "#dc2626" : "rgba(0,0,0,0.8)";
+                  ctx.fillStyle = isClusterMatch ? "#dc2626" : isRelMatch ? "#2563eb" : "rgba(0,0,0,0.8)";
                   ctx.fillText(node.name, node.x, node.y + size + 2);
                 }
               } else {
                 // ── Circle for regular nodes ──
-                const radius = 5;
+                // Degree-based sizing: hub nodes are slightly larger
+                const baseRadius = isDense ? 4 : 5;
+                const radius = baseRadius + Math.min(4, Math.sqrt(degree) * 0.8);
 
                 ctx.beginPath();
                 ctx.arc(node.x, node.y, radius, 0, 2 * Math.PI);
@@ -738,13 +1071,13 @@ export function GraphExplorer({
                 }
 
                 // Label (LoD: only when zoomed in enough)
-                if (showLabels && globalScale > LABEL_ZOOM_THRESHOLD) {
+                if (showLabels && globalScale > LABEL_ZOOM_THRESHOLD && !isDimmed) {
                   const fontSize = Math.max(10 / globalScale, 1.5);
                   ctx.font = `${fontSize}px Inter, sans-serif`;
                   ctx.textAlign = "center";
                   ctx.textBaseline = "top";
                   ctx.fillStyle = "rgba(0,0,0,0.8)";
-                  ctx.fillText(node.name, node.x, node.y + 7);
+                  ctx.fillText(node.name, node.x, node.y + radius + 2);
                 }
               }
             }}
@@ -755,6 +1088,7 @@ export function GraphExplorer({
         {/* ── 3D Renderer ── */}
         {is3D && (
           <ForceGraph3DLazy
+            key={`3d-${threeDKey}`}
             ref={fgRef}
             graphData={filteredData}
             width={dimensions.width}
@@ -764,23 +1098,68 @@ export function GraphExplorer({
                 ? `⬡ ${node.name} (${node.nodeCount} nodes)`
                 : `${node.name} (${node.label})`
             }
-            nodeColor={(node: ForceGraphNode) =>
-              node.id === selectedNodeId ? SELECTED_COLOR : (node.color || "#6b7280")
-            }
             nodeRelSize={5}
-            nodeVal={(node: ForceGraphNode) => node.val || 3}
-            linkDirectionalArrowLength={4}
+            nodeVal={(node: ForceGraphNode) => {
+              const deg = degreeMap.get(node.id) || 0;
+              const base = node.val || 3;
+              return base + Math.min(4, Math.sqrt(deg) * 0.8);
+            }}
+            linkDirectionalArrowLength={isDense ? 2.5 : 4}
             linkDirectionalArrowRelPos={1}
+            linkCurvature={(link: any) => {
+              const idx = filteredData.links.indexOf(link);
+              return parallelLinkMeta.get(idx) ?? 0;
+            }}
             linkLabel={(link: ForceGraphLink) => link.type}
-            linkColor={(link: ForceGraphLink) => link.color || "#94a3b8"}
-            linkWidth={(link: ForceGraphLink) =>
-              link.weight ? Math.min(6, Math.max(1, Math.sqrt(link.weight))) : 1.5
-            }
+            linkColor={(link: any) => {
+              const src = typeof link.source === "object" ? link.source.id : link.source;
+              const tgt = typeof link.target === "object" ? link.target.id : link.target;
+              if (selectedNodeId) {
+                if (src === selectedNodeId || tgt === selectedNodeId) {
+                  const otherNodeId = src === selectedNodeId ? tgt : src;
+                  const otherNode = filteredData.nodes.find((n) => n.id === otherNodeId);
+                  return otherNode?.color || "#f59e0b";
+                }
+                return "rgba(148,163,184,0.15)";
+              }
+              if (hoveredNodeId) {
+                if (src === hoveredNodeId || tgt === hoveredNodeId) {
+                  const otherNodeId = src === hoveredNodeId ? tgt : src;
+                  const otherNode = filteredData.nodes.find((n) => n.id === otherNodeId);
+                  return otherNode?.color || "#f59e0b";
+                }
+              }
+              return isDense ? "rgba(148,163,184,0.35)" : (link.color || "#94a3b8");
+            }}
+            linkWidth={(link: any) => {
+              const src = typeof link.source === "object" ? link.source.id : link.source;
+              const tgt = typeof link.target === "object" ? link.target.id : link.target;
+              if (selectedNodeId) {
+                if (src === selectedNodeId || tgt === selectedNodeId) {
+                  return link.weight ? Math.min(8, Math.max(2.5, Math.sqrt(link.weight) * 1.5)) : 2.5;
+                }
+              }
+              if (hoveredNodeId && !selectedNodeId) {
+                if (src === hoveredNodeId || tgt === hoveredNodeId) {
+                  return 2;
+                }
+              }
+              return link.weight ? Math.min(6, Math.max(1, Math.sqrt(link.weight))) : (isDense ? 0.8 : 1.5);
+            }}
+            nodeColor={(node: ForceGraphNode) => {
+              if (selectedNodeId && !selectedNeighborIds.has(node.id)) return "rgba(148,163,184,0.25)";
+              return node.id === selectedNodeId ? SELECTED_COLOR : (node.color || "#6b7280");
+            }}
             onNodeClick={handleNodeClick}
             onNodeRightClick={handleNodeRightClick}
+            onBackgroundClick={handleBackgroundClick}
+            onNodeHover={handleNodeHover}
             enablePointerInteraction={enablePointer}
             cooldownTicks={cooldownTicks}
             warmupTicks={warmupTicks}
+            onEngineStop={handleEngineStop}
+            d3AlphaDecay={0.02}
+            d3VelocityDecay={0.3}
             backgroundColor="rgba(0,0,0,0)"
           />
         )}
@@ -792,12 +1171,24 @@ export function GraphExplorer({
           </div>
         )}
 
+        {/* Settling overlay — covers graph while force simulation stabilizes */}
+        <div
+          className={`absolute inset-0 z-10 flex items-center justify-center bg-background/80 backdrop-blur-sm transition-opacity duration-500 ${
+            settling ? "opacity-100" : "opacity-0 pointer-events-none"
+          }`}
+        >
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            <span className="text-sm">Settling layout…</span>
+          </div>
+        </div>
+
         {/* Interaction hints */}
         <div className="absolute bottom-2 left-2 text-[10px] text-muted-foreground opacity-60 pointer-events-none select-none">
           {currentMode === "overview" && "Click cluster to expand · Right-click node for neighborhood"}
-          {currentMode === "expand" && "Viewing cluster contents · Right-click node for neighborhood"}
+          {currentMode === "expand" && "Viewing cluster contents · Right-click for neighborhood"}
           {currentMode === "neighborhood" && "Ego-graph view · Click nodes to explore"}
-          {currentMode === "full" && forceData.nodes.length > 200 && "Large graph — zoom to see labels"}
+          {currentMode === "full" && forceData.nodes.length > 200 && "Large graph — zoom to see labels · Right-click for neighborhood"}
         </div>
         </div>
       </CardContent>

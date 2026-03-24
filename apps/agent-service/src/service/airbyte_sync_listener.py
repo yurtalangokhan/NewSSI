@@ -1,11 +1,15 @@
 """
-Airbyte Sync Listener — post-sync ingestion trigger.
+Airbyte Sync Listener — post-sync bookkeeping.
 
 A background ``asyncio.Task`` that polls the Airbyte API for completed
-sync jobs and triggers the ingestion pipeline (chunk → embed → PGVector →
-optional Graph RAG).
+sync jobs and updates the watermark (``last_processed_job_id``).
 
-This replaces the old APScheduler-based ``sync_scheduler.py``.
+With the streaming architecture, embedding happens **during** sync via
+the custom ``destination-embedding`` connector → ``/ingest/batch``.
+The listener only needs to:
+1. Detect newly completed jobs.
+2. Update the watermark so the same job isn't processed twice.
+3. Optionally trigger a Graph RAG rebuild.
 """
 
 from __future__ import annotations
@@ -21,7 +25,7 @@ POLL_INTERVAL = int(os.environ.get("AIRBYTE_SYNC_POLL_INTERVAL_SECONDS", "30"))
 
 
 class AirbyteSyncListener:
-    """Polls Airbyte for completed sync jobs and runs ingestion."""
+    """Polls Airbyte for completed sync jobs and updates watermarks."""
 
     def __init__(self) -> None:
         self._task: Optional[asyncio.Task] = None
@@ -151,10 +155,23 @@ class AirbyteSyncListener:
         job_id: int,
         update_graph_rag: bool,
     ) -> None:
-        """Read Airbyte output and run the ingestion pipeline."""
-        from service.ingestion import run_ingestion
+        """Update sync status and optionally trigger Graph RAG rebuild.
 
-        await run_ingestion(datasource_id, update_graph_rag=update_graph_rag)
+        With the streaming architecture, data has **already** been embedded
+        during the sync by ``destination-embedding`` → ``/ingest/batch``.
+        There is no post-sync extraction/embedding step.
+        """
+        from service.ingestion import update_sync_status, _trigger_graph_rag_rebuild
+
+        await update_sync_status(datasource_id, "completed", None)
+
+        if update_graph_rag:
+            try:
+                await _trigger_graph_rag_rebuild(datasource_id)
+            except Exception:
+                logger.exception(
+                    "Graph RAG rebuild failed for datasource %s", datasource_id
+                )
 
 
 # ------------------------------------------------------------------

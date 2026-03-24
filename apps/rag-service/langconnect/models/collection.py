@@ -1,7 +1,23 @@
 import datetime
-from typing import Any
+from typing import Any, NotRequired, TypedDict
 
 from pydantic import BaseModel, Field
+
+
+# =====================
+# Collection TypedDicts
+# =====================
+
+
+class CollectionDetails(TypedDict):
+    """TypedDict for collection details."""
+
+    uuid: str
+    name: str
+    metadata: dict[str, Any]
+    # Temporary field used internally to workaround an issue with PGVector
+    table_id: NotRequired[str]
+
 
 # =====================
 # Collection Schemas

@@ -15,7 +15,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 
 from langconnect.auth import AuthenticatedUser, resolve_user
-from langconnect.database.graph_store import GraphStore
+from langconnect.database.neo4j import GraphStore
 from langconnect.models.graph import (
     BuildProgress,
     ClusteredGraphData,
@@ -82,15 +82,20 @@ async def build_graph(
     )
 
 
-@router.get("/build/{collection_id}/status", response_model=BuildProgress)
+@router.get("/build/{collection_id}/status", response_model=BuildProgress | None)
 async def get_build_status(
     collection_id: str,
     user: Annotated[AuthenticatedUser, Depends(resolve_user)],
 ):
-    """Get the current build progress for a collection."""
+    """Get the current build progress for a collection.
+
+    Returns ``null`` when no build has ever been started for this
+    collection, so the frontend can distinguish "never built" from
+    "pending".
+    """
     progress = get_build_progress(collection_id)
     if progress is None:
-        return BuildProgress(collection_id=collection_id, status="pending")
+        return None
     return progress
 
 
@@ -226,10 +231,13 @@ async def expand_cluster(
 async def get_graph_stats(
     collection_id: str,
     user: Annotated[AuthenticatedUser, Depends(resolve_user)],
+    scope_label: str | None = Query(
+        None, description="Scope stats to this label group",
+    ),
 ):
     """Get statistics about the knowledge graph for a collection."""
     store = GraphStore(collection_id)
-    return await store.get_stats()
+    return await store.get_stats(scope_label=scope_label)
 
 
 @router.get(
@@ -243,11 +251,24 @@ async def get_labels_paginated(
     page_size: int = Query(25, ge=1, le=100),
     search: str | None = Query(None),
     scope_label: str | None = Query(None, description="Scope to neighbour labels of this label group"),
+    rel_type_filter: str | None = Query(
+        None,
+        description="Comma-separated relationship types to cross-filter labels by",
+    ),
 ):
     """Return entity labels with counts (paginated, searchable)."""
     store = GraphStore(collection_id)
+    rel_types = (
+        [t.strip() for t in rel_type_filter.split(",") if t.strip()]
+        if rel_type_filter
+        else None
+    )
     return await store.get_labels_paginated(
-        page=page, page_size=page_size, search=search, scope_label=scope_label
+        page=page,
+        page_size=page_size,
+        search=search,
+        scope_label=scope_label,
+        rel_type_filter=rel_types,
     )
 
 
@@ -261,12 +282,38 @@ async def get_relationship_types_paginated(
     page: int = Query(1, ge=1),
     page_size: int = Query(25, ge=1, le=100),
     search: str | None = Query(None),
-    scope_label: str | None = Query(None, description="Scope to relationships involving this label group"),
+    scope_label: str | None = Query(
+        None,
+        description="Scope to relationships involving this label group",
+    ),
+    scope_skip: int | None = Query(
+        None,
+        description="Chunk offset — scopes counts to a node slice within the label",
+    ),
+    scope_limit: int | None = Query(
+        None,
+        description="Chunk size — scopes counts to a node slice within the label",
+    ),
+    label_filter: str | None = Query(
+        None,
+        description="Comma-separated entity labels to cross-filter relationship types by",
+    ),
 ):
     """Return relationship types with counts (paginated, searchable)."""
     store = GraphStore(collection_id)
+    labels = (
+        [l.strip() for l in label_filter.split(",") if l.strip()]
+        if label_filter
+        else None
+    )
     return await store.get_relationship_types_paginated(
-        page=page, page_size=page_size, search=search, scope_label=scope_label
+        page=page,
+        page_size=page_size,
+        search=search,
+        scope_label=scope_label,
+        scope_skip=scope_skip,
+        scope_limit=scope_limit,
+        label_filter=labels,
     )
 
 
@@ -309,15 +356,17 @@ async def search_entities(
 async def search_entity_clusters(
     collection_id: str,
     q: str = Query(..., min_length=1),
+    scope_label: str | None = Query(None, description="If provided, returns counts for offset-based subclusters"),
+    chunk_size: int = Query(200, description="Chunk size for subclusters (should match node_limit of expand)"),
     user: Annotated[AuthenticatedUser, Depends(resolve_user)] = None,
 ):
-    """Return ``{label: count}`` for clusters that contain entities matching *q*.
+    """Return ``{label: count}`` or ``{chunk_id: count}`` for clusters that contain entities matching *q*.
 
     This is a lightweight endpoint used by the clustered graph explorer to
     highlight matching clusters without breaking them apart.
     """
     store = GraphStore(collection_id)
-    return await store.search_entity_clusters(q)
+    return await store.search_entity_clusters(q, scope_label, chunk_size)
 
 
 # ------------------------------------------------------------------
@@ -373,7 +422,7 @@ async def delete_graph(
 @router.get("/health")
 async def graph_health():
     """Check Neo4j connectivity."""
-    from langconnect.database.graph_connection import check_neo4j_health
+    from langconnect.database.neo4j.connection import check_neo4j_health
 
     healthy = await check_neo4j_health()
     if not healthy:

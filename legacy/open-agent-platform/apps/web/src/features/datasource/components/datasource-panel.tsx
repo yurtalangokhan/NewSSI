@@ -5,7 +5,9 @@ import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CreateDataSourceDialog } from "./create-datasource-dialog";
+import { EditDataSourceDialog } from "./edit-datasource-dialog";
 import { ScheduleDialog, ScheduleBadge } from "./schedule-dialog";
+import { ConfigTree } from "./config-tree";
 import { useDataSources } from "@/hooks/use-datasources";
 import type { SyncSchedule } from "@/hooks/use-datasources";
 import {
@@ -306,94 +308,105 @@ export function DataSourcePanel() {
                         ) : details ? (
                             <>
                                 <CardHeader className="pb-2">
-                                    <CardTitle className="flex items-center gap-2 text-lg">
-                                        <Database className="h-5 w-5" />
-                                        {details.name}
+                                    <CardTitle className="flex items-center justify-between text-lg">
+                                        <div className="flex items-center gap-2">
+                                            <Database className="h-5 w-5" />
+                                            {details.name}
+                                        </div>
+                                        <EditDataSourceDialog
+                                            details={details}
+                                            onUpdated={(updated) => {
+                                                setDetails(updated);
+                                                refresh();
+                                            }}
+                                        />
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <Tabs defaultValue="documents" className="w-full">
+                                    <Tabs defaultValue="chunks" className="w-full">
                                         <TabsList className="grid w-full grid-cols-4">
-                                            <TabsTrigger value="documents">Documents ({details.document_count})</TabsTrigger>
+                                            <TabsTrigger value="chunks">Chunks ({details.chunk_count ?? details.document_count})</TabsTrigger>
                                             <TabsTrigger value="schedule">Schedule</TabsTrigger>
                                             <TabsTrigger value="config">Configuration</TabsTrigger>
                                             <TabsTrigger value="status">Status</TabsTrigger>
                                         </TabsList>
 
-                                        {/* Documents Tab with Table */}
-                                        <TabsContent value="documents" className="mt-4">
-                                            <ScrollArea className="h-[350px]">
-                                                {details.sample_documents?.length > 0 ? (
+                                        {/* Chunks Tab */}
+                                        <TabsContent value="chunks" className="mt-4">
+                                            {/* Aggregate Stats Bar */}
+                                            {(details.chunk_count ?? details.document_count) > 0 && (
+                                                <div className="grid grid-cols-3 gap-3 mb-4">
+                                                    <div className="rounded-lg border bg-muted/30 p-3 text-center">
+                                                        <p className="text-2xl font-bold">{details.chunk_count ?? details.document_count}</p>
+                                                        <p className="text-xs text-muted-foreground">Total Chunks</p>
+                                                    </div>
+                                                    <div className="rounded-lg border bg-muted/30 p-3 text-center">
+                                                        <p className="text-2xl font-bold">{details.avg_chunk_tokens ?? '—'}</p>
+                                                        <p className="text-xs text-muted-foreground">Avg Tokens</p>
+                                                    </div>
+                                                    <div className="rounded-lg border bg-muted/30 p-3 text-center">
+                                                        <p className="text-2xl font-bold">{details.avg_chunk_chars ?? '—'}</p>
+                                                        <p className="text-xs text-muted-foreground">Avg Characters</p>
+                                                    </div>
+                                                </div>
+                                            )}
+                                            <ScrollArea className="h-[290px]">
+                                                {(details.chunks ?? details.sample_documents)?.length > 0 ? (
                                                     <Table>
                                                         <TableHeader>
                                                             <TableRow>
-                                                                <TableHead className="w-[150px]">Title</TableHead>
-                                                                <TableHead className="w-[120px]">Source</TableHead>
-                                                                <TableHead>Content Preview</TableHead>
+                                                                <TableHead className="w-[50px]">#</TableHead>
+                                                                <TableHead>Content</TableHead>
+                                                                <TableHead className="w-[80px] text-right">Tokens</TableHead>
+                                                                <TableHead className="w-[80px] text-right">Chars</TableHead>
+                                                                <TableHead className="w-[80px] text-right">Words</TableHead>
+                                                                <TableHead className="w-[100px]">Source</TableHead>
                                                             </TableRow>
                                                         </TableHeader>
                                                         <TableBody>
-                                                            {details.sample_documents.map((doc: any, i: number) => {
-                                                                // Parse content if needed to extract title/source
-                                                                const parseContentField = (content: string, field: string): string | null => {
-                                                                    const lines = content.split('\n');
-                                                                    for (const line of lines) {
-                                                                        if (line.toLowerCase().startsWith(`${field}:`)) {
-                                                                            return line.substring(field.length + 1).trim();
-                                                                        }
-                                                                    }
-                                                                    return null;
-                                                                };
-                                                                
-                                                                // Try to get title/source from metadata first, then from content
-                                                                const title = doc.metadata?.title 
-                                                                    || parseContentField(doc.content, 'title') 
-                                                                    || doc.metadata?.name 
-                                                                    || '-';
-                                                                const docSource = doc.metadata?.source 
-                                                                    || parseContentField(doc.content, 'source') 
-                                                                    || doc.metadata?.stream 
-                                                                    || '-';
-                                                                
-                                                                // Get a clean content preview (remove parsed fields)
-                                                                const contentPreview = doc.content
-                                                                    .split('\n')
-                                                                    .filter((line: string) => !line.toLowerCase().startsWith('title:') && !line.toLowerCase().startsWith('source:'))
-                                                                    .join('\n')
-                                                                    .trim()
-                                                                    .substring(0, 200);
-                                                                
-                                                                return (
-                                                                    <TableRow key={i}>
-                                                                        <TableCell className="font-medium align-top">
-                                                                            {title}
-                                                                        </TableCell>
-                                                                        <TableCell className="font-mono text-xs align-top">
-                                                                            {docSource}
-                                                                        </TableCell>
-                                                                        <TableCell className="align-top">
-                                                                            <p className="text-sm text-muted-foreground line-clamp-2 whitespace-pre-wrap">
-                                                                                {contentPreview}{contentPreview.length >= 200 ? '...' : ''}
-                                                                            </p>
-                                                                        </TableCell>
-                                                                    </TableRow>
-                                                                );
-                                                            })}
+                                                            {(details.chunks ?? []).map((chunk: any, i: number) => (
+                                                                <TableRow key={i}>
+                                                                    <TableCell className="text-muted-foreground align-top">
+                                                                        {((docPage - 1) * pageSize) + i + 1}
+                                                                    </TableCell>
+                                                                    <TableCell className="align-top max-w-[300px]">
+                                                                        <p className="text-sm text-muted-foreground line-clamp-2 whitespace-pre-wrap">
+                                                                            {chunk.content}
+                                                                        </p>
+                                                                    </TableCell>
+                                                                    <TableCell className="text-right align-top font-mono text-xs">
+                                                                        {chunk.token_count?.toLocaleString()}
+                                                                    </TableCell>
+                                                                    <TableCell className="text-right align-top font-mono text-xs">
+                                                                        {chunk.char_count?.toLocaleString()}
+                                                                    </TableCell>
+                                                                    <TableCell className="text-right align-top font-mono text-xs">
+                                                                        {chunk.word_count?.toLocaleString()}
+                                                                    </TableCell>
+                                                                    <TableCell className="align-top">
+                                                                        {chunk.stream && (
+                                                                            <Badge variant="outline" className="text-[10px] truncate max-w-[90px]">
+                                                                                {chunk.stream}
+                                                                            </Badge>
+                                                                        )}
+                                                                    </TableCell>
+                                                                </TableRow>
+                                                            ))}
                                                         </TableBody>
                                                     </Table>
                                                 ) : (
                                                     <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                                                         <Sparkles className="h-8 w-8 mb-2 opacity-50" />
-                                                        <p className="text-sm">No documents indexed yet</p>
-                                                        <p className="text-xs">Sync this data source to index documents</p>
+                                                        <p className="text-sm">No chunks indexed yet</p>
+                                                        <p className="text-xs">Sync this data source to index chunks</p>
                                                     </div>
                                                 )}
                                             </ScrollArea>
                                             {/* Pagination Controls */}
-                                            {details.document_count > 0 && (
+                                            {(details.chunk_count ?? details.document_count) > 0 && (
                                                 <div className="flex items-center justify-between border-t pt-3 mt-3">
                                                     <p className="text-sm text-muted-foreground">
-                                                        Showing {((docPage - 1) * pageSize) + 1} - {Math.min(docPage * pageSize, details.document_count)} of {details.document_count}
+                                                        Showing {((docPage - 1) * pageSize) + 1} - {Math.min(docPage * pageSize, details.chunk_count ?? details.document_count)} of {details.chunk_count ?? details.document_count} chunks
                                                     </p>
                                                     <div className="flex items-center gap-2">
                                                         <Button
@@ -406,13 +419,13 @@ export function DataSourcePanel() {
                                                             Previous
                                                         </Button>
                                                         <span className="text-sm text-muted-foreground px-2">
-                                                            Page {docPage} of {Math.ceil(details.document_count / pageSize)}
+                                                            Page {docPage} of {Math.ceil((details.chunk_count ?? details.document_count) / pageSize)}
                                                         </span>
                                                         <Button
                                                             variant="outline"
                                                             size="sm"
                                                             onClick={() => setDocPage(p => p + 1)}
-                                                            disabled={docPage >= Math.ceil(details.document_count / pageSize)}
+                                                            disabled={docPage >= Math.ceil((details.chunk_count ?? details.document_count) / pageSize)}
                                                         >
                                                             Next
                                                             <ChevronRight className="h-4 w-4" />
@@ -540,6 +553,14 @@ export function DataSourcePanel() {
                                                         {details.connector_type}
                                                     </code>
                                                 </div>
+                                                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                                                    <span className="text-sm font-medium">Sync Mode</span>
+                                                    <Badge variant="secondary">
+                                                        {details.sync_mode === "incremental" ? "Incremental" : "Full Refresh"}
+                                                        {" | "}
+                                                        {details.destination_sync_mode === "append" ? "Append" : "Overwrite"}
+                                                    </Badge>
+                                                </div>
                                                 {details.streams && details.streams.length > 0 && (
                                                     <div className="p-3 rounded-lg bg-muted/50">
                                                         <span className="text-sm font-medium block mb-2">Synced Streams</span>
@@ -555,14 +576,7 @@ export function DataSourcePanel() {
                                                 {details.config && Object.keys(details.config).length > 0 && (
                                                     <div className="p-3 rounded-lg bg-muted/50">
                                                         <span className="text-sm font-medium block mb-2">Configuration</span>
-                                                        <div className="space-y-1">
-                                                            {Object.entries(details.config).map(([key, value]) => (
-                                                                <div key={key} className="flex justify-between text-xs">
-                                                                    <span className="text-muted-foreground">{key}</span>
-                                                                    <span className="font-mono">{String(value)}</span>
-                                                                </div>
-                                                            ))}
-                                                        </div>
+                                                        <ConfigTree data={details.config} />
                                                     </div>
                                                 )}
                                             </div>

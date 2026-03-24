@@ -24,7 +24,7 @@ router = APIRouter(dependencies=[Depends(verify_bearer)])
 @router.get("/mcp/tools")
 async def get_mcp_tools(
     url: str = Query(
-        default="http://mcp-server:8001/mcp",
+        default="http://mcp-server:8002/mcp",
         description="MCP Server URL",
     ),
 ) -> Dict:

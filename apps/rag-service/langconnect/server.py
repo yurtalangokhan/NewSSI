@@ -29,7 +29,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # Initialize Neo4j connection (best-effort – graph features degrade gracefully)
     try:
-        from langconnect.database.graph_connection import get_neo4j_driver
+        from langconnect.database.neo4j.connection import get_neo4j_driver
 
         await get_neo4j_driver()
         logger.info("Neo4j connection established.")
@@ -40,11 +40,19 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # Shutdown
     try:
-        from langconnect.database.graph_connection import close_neo4j_driver
+        from langconnect.database.neo4j.connection import close_neo4j_driver
 
         await close_neo4j_driver()
     except Exception:
         pass
+
+    try:
+        from langconnect.database.postgres.engine import close_db_engine
+
+        await close_db_engine()
+    except Exception:
+        pass
+
     logger.info("App is shutting down. Stopping background worker...")
 
 

@@ -242,14 +242,40 @@ async def process_document(
     # Split documents
     split_docs = TEXT_SPLITTER.split_documents(docs)
 
-    # Add the generated file_id to all split documents' metadata
+    import math
+
+    # Add the generated file_id and chunk stats to all split documents' metadata
+    total_chunks = len(split_docs)
+    total_chars = 0
+    total_tokens = 0
+    
+    # First pass to calculate totals
+    for split_doc in split_docs:
+        content_len = len(split_doc.page_content)
+        tokens = math.ceil(content_len / 4)
+        total_chars += content_len
+        total_tokens += tokens
+
+    avg_chars = round(total_chars / total_chunks) if total_chunks > 0 else 0
+    avg_tokens = round(total_tokens / total_chunks) if total_chunks > 0 else 0
+
     for split_doc in split_docs:
         if not hasattr(split_doc, "metadata") or not isinstance(
             split_doc.metadata, dict
         ):
             split_doc.metadata = {}  # Initialize if it doesn't exist
-        split_doc.metadata["file_id"] = str(
-            file_id
-        )  # Store as string for compatibility
+        
+        # Identity
+        split_doc.metadata["file_id"] = str(file_id)  # Store as string for compatibility
+        
+        # Individual chunk stats
+        content_len = len(split_doc.page_content)
+        split_doc.metadata["char_count"] = content_len
+        split_doc.metadata["token_count"] = math.ceil(content_len / 4)
+
+        # File aggregated stats
+        split_doc.metadata["file_total_chunks"] = total_chunks
+        split_doc.metadata["file_avg_chars"] = avg_chars
+        split_doc.metadata["file_avg_tokens"] = avg_tokens
 
     return split_docs

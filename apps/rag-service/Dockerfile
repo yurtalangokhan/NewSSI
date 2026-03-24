@@ -11,9 +11,9 @@ COPY . .
 # Install build dependencies and runtime dependencies
 RUN apt-get update && \
     apt-get install -y --no-install-recommends gcc python3-dev libpq-dev && \
-    pip install --no-cache-dir pip -U && \
-    pip install --no-cache-dir hatch && \
-    pip install --no-cache-dir '.[dev]' && \
+    pip install pip -U && \
+    pip install hatch && \
+    pip install '.[dev]' && \
     # Purge build-only dependencies
     apt-get purge -y --auto-remove gcc python3-dev && \
     apt-get clean && \

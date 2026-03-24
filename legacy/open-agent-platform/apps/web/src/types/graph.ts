@@ -80,6 +80,8 @@ export interface ClusteredGraphData {
   metadata?: {
     neighbor_label_counts?: Record<string, number>;
     rel_type_counts?: Record<string, number>;
+    scope_skip?: number;
+    scope_limit?: number;
   };
 }
 

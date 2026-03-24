@@ -52,13 +52,38 @@ export interface DataSource {
     } | null;
 }
 
+export interface ChunkInfo {
+    content: string;
+    char_count: number;
+    token_count: number;
+    word_count: number;
+    source?: string;
+    stream?: string;
+    connector_type?: string;
+    metadata: Record<string, any>;
+}
+
 export interface DataSourceDetails extends DataSource {
     config: Record<string, any>;
     available_streams?: string[];
+    chunk_count: number;
+    chunks: ChunkInfo[];
+    avg_chunk_tokens?: number;
+    avg_chunk_chars?: number;
     sample_documents: Array<{ content: string; metadata: Record<string, any> }>;
     last_error?: string;
+    sync_mode?: string;
+    destination_sync_mode?: string;
     schedule?: SyncSchedule | null;
     graph_rag_available: boolean;
+}
+
+export interface DataSourceUpdateInput {
+    name?: string;
+    connector_config?: Record<string, any>;
+    streams?: string[];
+    sync_mode?: string;
+    destination_sync_mode?: string;
 }
 
 export interface SyncSchedule {
@@ -326,6 +351,32 @@ export function useDataSources() {
         }
     };
 
+    const updateDataSource = async (
+        id: string,
+        input: DataSourceUpdateInput
+    ): Promise<DataSourceDetails | null> => {
+        try {
+            const res = await fetch(`${getApiUrl()}/datasources/${id}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(input),
+            });
+            if (!res.ok) {
+                const error = await res.json();
+                throw new Error(error.detail || "Failed to update data source");
+            }
+            const updated = await res.json();
+            // Refresh list
+            await fetchDataSources();
+            toast.success("Data source updated successfully");
+            return updated;
+        } catch (error: any) {
+            console.error(error);
+            toast.error(error.message || "Failed to update data source");
+            return null;
+        }
+    };
+
     const getDataSourceDetails = async (id: string, page: number = 1, pageSize: number = 10): Promise<DataSourceDetails | null> => {
         try {
             const res = await fetch(`${getApiUrl()}/datasources/${id}/details?page=${page}&page_size=${pageSize}`);
@@ -352,6 +403,7 @@ export function useDataSources() {
         dataSources,
         loading,
         createDataSource,
+        updateDataSource,
         syncDataSource,
         deleteDataSource,
         getDataSourceDetails,

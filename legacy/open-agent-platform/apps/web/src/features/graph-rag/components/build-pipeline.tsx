@@ -130,13 +130,6 @@ export function BuildPipeline({ onBuildComplete }: BuildPipelineProps) {
   const selectedHasGraph =
     selectedCollectionId !== "" && graphCollectionIds.has(selectedCollectionId);
 
-  // Clean up polling on unmount
-  useEffect(() => {
-    return () => {
-      if (pollingRef.current) clearInterval(pollingRef.current);
-    };
-  }, []);
-
   // Start polling when build is in progress
   const startPolling = useCallback(
     (collectionId: string) => {
@@ -158,6 +151,48 @@ export function BuildPipeline({ onBuildComplete }: BuildPipelineProps) {
     },
     [pollBuildStatus, fetchStats, fetchGraphCollectionIds, onBuildComplete],
   );
+
+  // Clean up polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+    };
+  }, []);
+
+  // ── Resume polling when collection changes (page re-enter) ────────
+  // If the user left the page while a build was running, re-entering
+  // should pick up the current backend state and resume polling.
+  // Also shows completed/failed state from a previous build.
+  useEffect(() => {
+    if (!selectedCollectionId) return;
+
+    let cancelled = false;
+
+    (async () => {
+      const progress = await pollBuildStatus(selectedCollectionId);
+      if (cancelled) return;
+      if (
+        progress &&
+        (progress.status === "pending" ||
+          progress.status === "extracting" ||
+          progress.status === "building")
+      ) {
+        // Build is still active — resume polling
+        startPolling(selectedCollectionId);
+      }
+      // If completed or failed, pollBuildStatus already set the
+      // buildProgress state, so the progress card will appear.
+    })();
+
+    return () => {
+      cancelled = true;
+      // Stop any polling when the collection changes
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+        pollingRef.current = null;
+      }
+    };
+  }, [selectedCollectionId, pollBuildStatus, startPolling]);
 
   const handleStartBuild = async () => {
     if (!selectedCollectionId) return;

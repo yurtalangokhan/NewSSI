@@ -1,0 +1,48 @@
+{
+  "documentationUrl": "https://github.com/agenticai/destination-embedding",
+  "supportsIncremental": true,
+  "supportsNormalization": false,
+  "supportsDBT": false,
+  "supported_destination_sync_modes": ["overwrite", "append"],
+  "connectionSpecification": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Embedding API Destination Spec",
+    "type": "object",
+    "required": ["agent_service_url", "datasource_id"],
+    "additionalProperties": false,
+    "properties": {
+      "agent_service_url": {
+        "type": "string",
+        "title": "Agent Service URL",
+        "description": "Internal HTTP URL of the agent-service batch ingestion endpoint.",
+        "default": "http://agent-service:8080",
+        "examples": ["http://agent-service:8080"],
+        "order": 0
+      },
+      "datasource_id": {
+        "type": "string",
+        "title": "Datasource ID",
+        "description": "UUID of the datasource collection in langchain_pg_collection.",
+        "order": 1
+      },
+      "batch_size": {
+        "type": "integer",
+        "title": "Batch Size",
+        "description": "Number of records to buffer before sending a batch. Lower = less RAM, higher = fewer HTTP calls.",
+        "default": 200,
+        "minimum": 1,
+        "maximum": 5000,
+        "order": 2
+      },
+      "request_timeout_seconds": {
+        "type": "integer",
+        "title": "Request Timeout (seconds)",
+        "description": "HTTP timeout for each batch POST to agent-service.",
+        "default": 120,
+        "minimum": 10,
+        "maximum": 600,
+        "order": 3
+      }
+    }
+  }
+}

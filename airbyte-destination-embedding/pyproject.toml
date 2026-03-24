@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "destination-embedding"
+version = "0.1.0"
+description = "Custom Airbyte destination that streams records to agent-service for embedding"
+requires-python = ">=3.10"
+dependencies = [
+    "requests>=2.28",
+]
+
+[project.scripts]
+destination-embedding = "destination_embedding.destination:main"
+
+[tool.setuptools.packages.find]
+include = ["destination_embedding*"]

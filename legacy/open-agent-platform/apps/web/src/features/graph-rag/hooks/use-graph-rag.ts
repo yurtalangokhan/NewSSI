@@ -6,6 +6,7 @@
 import { useState, useCallback } from "react";
 import { toast } from "sonner";
 import { useAuthContext } from "@/providers/Auth";
+import { getAccessToken } from "@/lib/auth/supabase-client";
 import type {
   GraphData,
   GraphStats,
@@ -102,7 +103,8 @@ export function useGraphData() {
       edgeLimit = 500,
     ): Promise<GraphData | null> => {
       if (!session?.accessToken) return null;
-      setLoading(true);
+      // Background fetch for entity preview — does NOT touch the shared loading
+      // state so it won't prematurely dismiss the loading skeleton.
       try {
         const res = await fetch(
           `${getGraphApiUrl()}/graph/collections/${collectionId}/data?node_limit=${nodeLimit}&edge_limit=${edgeLimit}`,
@@ -116,21 +118,25 @@ export function useGraphData() {
         console.error("Failed to fetch graph data:", error);
         toast.error("Failed to load graph data");
         return null;
-      } finally {
-        setLoading(false);
       }
     },
     [session],
   );
 
   const fetchStats = useCallback(
-    async (collectionId: string): Promise<GraphStats | null> => {
+    async (
+      collectionId: string,
+      scopeLabel?: string,
+    ): Promise<GraphStats | null> => {
       if (!session?.accessToken) return null;
       try {
-        const res = await fetch(
-          `${getGraphApiUrl()}/graph/collections/${collectionId}/stats`,
-          { headers: authHeaders(session.accessToken) },
-        );
+        let url = `${getGraphApiUrl()}/graph/collections/${collectionId}/stats`;
+        if (scopeLabel) {
+          url += `?scope_label=${encodeURIComponent(scopeLabel)}`;
+        }
+        const res = await fetch(url, {
+          headers: authHeaders(session.accessToken),
+        });
         if (!res.ok) throw new Error(`Failed: ${res.statusText}`);
         const data: GraphStats = await res.json();
         setStats(data);
@@ -221,12 +227,15 @@ export function useGraphData() {
       pageSize = 25,
       search?: string,
       scopeLabel?: string,
+      relTypeFilter?: string[],
     ): Promise<PaginatedCounts | null> => {
       if (!session?.accessToken) return null;
       try {
         let url = `${getGraphApiUrl()}/graph/collections/${collectionId}/stats/labels?page=${page}&page_size=${pageSize}`;
         if (search) url += `&search=${encodeURIComponent(search)}`;
         if (scopeLabel) url += `&scope_label=${encodeURIComponent(scopeLabel)}`;
+        if (relTypeFilter?.length)
+          url += `&rel_type_filter=${encodeURIComponent(relTypeFilter.join(","))}`;
         const res = await fetch(url, {
           headers: authHeaders(session.accessToken),
         });
@@ -246,12 +255,19 @@ export function useGraphData() {
       pageSize = 25,
       search?: string,
       scopeLabel?: string,
+      labelFilter?: string[],
+      scopeSkip?: number,
+      scopeLimit?: number,
     ): Promise<PaginatedCounts | null> => {
       if (!session?.accessToken) return null;
       try {
         let url = `${getGraphApiUrl()}/graph/collections/${collectionId}/stats/relationship-types?page=${page}&page_size=${pageSize}`;
         if (search) url += `&search=${encodeURIComponent(search)}`;
         if (scopeLabel) url += `&scope_label=${encodeURIComponent(scopeLabel)}`;
+        if (scopeSkip != null) url += `&scope_skip=${scopeSkip}`;
+        if (scopeLimit != null) url += `&scope_limit=${scopeLimit}`;
+        if (labelFilter?.length)
+          url += `&label_filter=${encodeURIComponent(labelFilter.join(","))}`;
         const res = await fetch(url, {
           headers: authHeaders(session.accessToken),
         });
@@ -289,6 +305,17 @@ export function useGraphData() {
         const data: ClusteredGraphData = await res.json();
         setScalableData(data);
         setViewMode(data.mode as GraphViewMode);
+        // Re-fetch stats: scoped if expand, global otherwise
+        const statsScope = data.scope_label
+          ? `?scope_label=${encodeURIComponent(data.scope_label)}`
+          : "";
+        fetch(
+          `${getGraphApiUrl()}/graph/collections/${collectionId}/stats${statsScope}`,
+          { headers: authHeaders(session.accessToken) },
+        )
+          .then((r) => (r.ok ? r.json() : null))
+          .then((s) => { if (s) setStats(s); })
+          .catch(() => {});
         return data;
       } catch (error) {
         console.error("Failed to fetch scalable graph data:", error);
@@ -309,6 +336,7 @@ export function useGraphData() {
       limit = 50,
     ): Promise<GraphData | null> => {
       if (!session?.accessToken) return null;
+      setScalableData(null); // clear stale data immediately
       setLoading(true);
       try {
         const params = new URLSearchParams({
@@ -333,6 +361,14 @@ export function useGraphData() {
           mode: "neighborhood",
         });
         setViewMode("neighborhood");
+        // Re-fetch global stats for neighborhood view
+        fetch(
+          `${getGraphApiUrl()}/graph/collections/${collectionId}/stats`,
+          { headers: authHeaders(session.accessToken) },
+        )
+          .then((r) => (r.ok ? r.json() : null))
+          .then((s) => { if (s) setStats(s); })
+          .catch(() => {});
         return data;
       } catch (error) {
         console.error("Failed to fetch neighborhood:", error);
@@ -371,6 +407,14 @@ export function useGraphData() {
         const data: ClusteredGraphData = await res.json();
         setScalableData(data);
         setViewMode("expand");
+        // Re-fetch stats scoped to the expanded label so counts/labels match
+        if (data.scope_label) {
+          const statsUrl = `${getGraphApiUrl()}/graph/collections/${collectionId}/stats?scope_label=${encodeURIComponent(data.scope_label)}`;
+          fetch(statsUrl, { headers: authHeaders(session.accessToken) })
+            .then((r) => (r.ok ? r.json() : null))
+            .then((s) => { if (s) setStats(s); })
+            .catch(() => {});
+        }
         return data;
       } catch (error) {
         console.error("Failed to expand cluster:", error);
@@ -441,21 +485,29 @@ export function useGraphBuild() {
 
   const pollBuildStatus = useCallback(
     async (collectionId: string): Promise<BuildProgress | null> => {
-      if (!session?.accessToken) return null;
+      // Always fetch a fresh token via Supabase's getSession() which
+      // auto-refreshes expired JWTs.  This avoids the stale-closure
+      // problem where a long-running polling loop holds an expired token.
+      const token = await getAccessToken();
+      if (!token) return null;
       try {
         const res = await fetch(
           `${getGraphApiUrl()}/graph/build/${collectionId}/status`,
-          { headers: authHeaders(session.accessToken) },
+          { headers: authHeaders(token) },
         );
         if (!res.ok) return null;
-        const data: BuildProgress = await res.json();
+        // Backend returns null (JSON null) when no build has ever
+        // been started for this collection.
+        const text = await res.text();
+        if (!text || text === "null") return null;
+        const data: BuildProgress = JSON.parse(text);
         setBuildProgress(data);
         return data;
       } catch {
         return null;
       }
     },
-    [session],
+    [],
   );
 
   return {
@@ -550,13 +602,15 @@ export function useGraphSearch() {
     async (
       collectionId: string,
       q: string,
+      scopeLabel?: string,
     ): Promise<Record<string, number> | null> => {
       if (!session?.accessToken) return null;
       try {
-        const res = await fetch(
-          `${getGraphApiUrl()}/graph/collections/${collectionId}/search/entity-clusters?q=${encodeURIComponent(q)}`,
-          { headers: authHeaders(session.accessToken) },
-        );
+        let url = `${getGraphApiUrl()}/graph/collections/${collectionId}/search/entity-clusters?q=${encodeURIComponent(q)}`;
+        if (scopeLabel) {
+          url += `&scope_label=${encodeURIComponent(scopeLabel)}`;
+        }
+        const res = await fetch(url, { headers: authHeaders(session.accessToken) });
         if (!res.ok) return null;
         return await res.json();
       } catch {

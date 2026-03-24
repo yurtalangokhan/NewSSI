@@ -6,6 +6,9 @@
  * ALL search and pagination is handled server-side via the paginated API.
  * When `scopeLabel` is provided the backend scopes results to the
  * neighbour labels / relationship types of that label group.
+ *
+ * **Cross-filtering**: selecting relationship types re-fetches labels
+ * (only labels of nodes participating in those rel types) and vice-versa.
  */
 
 "use client";
@@ -46,6 +49,16 @@ interface GraphStatsCardProps {
   onToggleRelType?: (relType: string) => void;
   /** Scope labels & rel-types to this label group (expand / sub-cluster). */
   scopeLabel?: string;
+  /** Override node count with actual visible data count (deep expand). */
+  visibleNodeCount?: number;
+  /** Override edge count with actual visible data count (deep expand). */
+  visibleEdgeCount?: number;
+  /** Hide entity labels section completely. */
+  hideEntityLabels?: boolean;
+  /** Chunk offset for sub-cluster drill-down (scopes rel-type stats to the node slice). */
+  scopeSkip?: number;
+  /** Chunk size for sub-cluster drill-down (scopes rel-type stats to the node slice). */
+  scopeLimit?: number;
   /** Paginated fetcher for entity labels */
   fetchLabelsPaginated?: (
     collectionId: string,
@@ -53,6 +66,7 @@ interface GraphStatsCardProps {
     pageSize: number,
     search?: string,
     scopeLabel?: string,
+    relTypeFilter?: string[],
   ) => Promise<PaginatedCounts | null>;
   /** Paginated fetcher for relationship types */
   fetchRelTypesPaginated?: (
@@ -61,6 +75,9 @@ interface GraphStatsCardProps {
     pageSize: number,
     search?: string,
     scopeLabel?: string,
+    labelFilter?: string[],
+    scopeSkip?: number,
+    scopeLimit?: number,
   ) => Promise<PaginatedCounts | null>;
 }
 
@@ -75,6 +92,11 @@ export function GraphStatsCard({
   onToggleLabel,
   onToggleRelType,
   scopeLabel,
+  visibleNodeCount,
+  visibleEdgeCount,
+  hideEntityLabels,
+  scopeSkip,
+  scopeLimit,
   fetchLabelsPaginated,
   fetchRelTypesPaginated,
 }: GraphStatsCardProps) {
@@ -99,9 +121,28 @@ export function GraphStatsCard({
     fetchRelTypesPaginated
   );
 
+  // ── Cross-filter arrays (stable via serialised key) ───────────────
+  const relTypeFilterArr = useMemo(
+    () =>
+      selectedRelTypes && selectedRelTypes.size > 0
+        ? Array.from(selectedRelTypes).sort()
+        : undefined,
+    [selectedRelTypes],
+  );
+  const labelFilterArr = useMemo(
+    () =>
+      selectedLabels && selectedLabels.size > 0
+        ? Array.from(selectedLabels).sort()
+        : undefined,
+    [selectedLabels],
+  );
+  // Serialised keys for effect dependencies (Set is not stable)
+  const relTypeFilterKey = relTypeFilterArr?.join(",") ?? "";
+  const labelFilterKey = labelFilterArr?.join(",") ?? "";
+
   // ── Fetch labels ──────────────────────────────────────────────────
   const loadLabels = useCallback(
-    async (page: number, search: string, scope?: string) => {
+    async (page: number, search: string, scope?: string, relTypeFilter?: string[]) => {
       if (!collectionId || !fetchLabelsPaginated) return;
       setLabelsLoading(true);
       const data = await fetchLabelsPaginated(
@@ -110,6 +151,7 @@ export function GraphStatsCard({
         PAGE_SIZE,
         search || undefined,
         scope || undefined,
+        relTypeFilter,
       );
       setLabelsData(data);
       setLabelsLoading(false);
@@ -119,7 +161,7 @@ export function GraphStatsCard({
 
   // ── Fetch rel types ───────────────────────────────────────────────
   const loadRelTypes = useCallback(
-    async (page: number, search: string, scope?: string) => {
+    async (page: number, search: string, scope?: string, labelFilter?: string[]) => {
       if (!collectionId || !fetchRelTypesPaginated) return;
       setRelLoading(true);
       const data = await fetchRelTypesPaginated(
@@ -128,99 +170,83 @@ export function GraphStatsCard({
         PAGE_SIZE,
         search || undefined,
         scope || undefined,
+        labelFilter,
+        scopeSkip,
+        scopeLimit,
       );
       setRelData(data);
       setRelLoading(false);
     },
-    [collectionId, fetchRelTypesPaginated],
+    [collectionId, fetchRelTypesPaginated, scopeSkip, scopeLimit],
   );
 
-  // ── Reset and reload when collection or scope changes ─────────────
+  // ── Reload labels when collection, scope, or rel-type filter changes
   useEffect(() => {
     if (!hasPaginatedApi) return;
     setLabelsPage(1);
     setLabelsSearch("");
+    loadLabels(1, "", scopeLabel, relTypeFilterArr);
+    return () => clearTimeout(labelsDebounce.current);
+  }, [collectionId, scopeLabel, hasPaginatedApi, relTypeFilterKey]);
+
+  // ── Reload rel-types when collection, scope, chunk, or label filter changes
+  useEffect(() => {
+    if (!hasPaginatedApi) return;
     setRelPage(1);
     setRelSearch("");
-    loadLabels(1, "", scopeLabel);
-    loadRelTypes(1, "", scopeLabel);
-  }, [collectionId, scopeLabel, hasPaginatedApi]);
-
-  // ── Re-fetch labels on page change ────────────────────────────────
-  useEffect(() => {
-    if (!hasPaginatedApi) return;
-    loadLabels(labelsPage, labelsSearch, scopeLabel);
-  }, [labelsPage]);
-
-  // ── Debounced search for labels ───────────────────────────────────
-  useEffect(() => {
-    if (!hasPaginatedApi) return;
-    clearTimeout(labelsDebounce.current);
-    labelsDebounce.current = setTimeout(() => {
-      setLabelsPage(1);
-      loadLabels(1, labelsSearch, scopeLabel);
-    }, 300);
-    return () => clearTimeout(labelsDebounce.current);
-  }, [labelsSearch]);
-
-  // ── Re-fetch rel types on page change ─────────────────────────────
-  useEffect(() => {
-    if (!hasPaginatedApi) return;
-    loadRelTypes(relPage, relSearch, scopeLabel);
-  }, [relPage]);
-
-  // ── Debounced search for rel types ────────────────────────────────
-  useEffect(() => {
-    if (!hasPaginatedApi) return;
-    clearTimeout(relDebounce.current);
-    relDebounce.current = setTimeout(() => {
-      setRelPage(1);
-      loadRelTypes(1, relSearch, scopeLabel);
-    }, 300);
+    loadRelTypes(1, "", scopeLabel, labelFilterArr);
     return () => clearTimeout(relDebounce.current);
-  }, [relSearch]);
+  }, [collectionId, scopeLabel, scopeSkip, scopeLimit, hasPaginatedApi, labelFilterKey]);
 
-  // ── Data source: paginated API or flat stats fallback ─────────────
-  const labelItems =
-    hasPaginatedApi && stats
-      ? (labelsData?.items ?? [])
-      : stats
-        ? Object.entries(stats.label_counts).map(([name, count]) => ({
-            name,
-            count,
-          }))
-        : [];
-  const relItems =
-    hasPaginatedApi && stats
-      ? (relData?.items ?? [])
-      : stats
-        ? Object.entries(stats.relationship_type_counts).map(([name, count]) => ({
-            name,
-            count,
-          }))
-        : [];
+  // ── Page navigation handlers ──────────────────────────────────────
+  const goToLabelsPage = useCallback(
+    (page: number) => {
+      setLabelsPage(page);
+      loadLabels(page, labelsSearch, scopeLabel, relTypeFilterArr);
+    },
+    [loadLabels, labelsSearch, scopeLabel, relTypeFilterArr],
+  );
+
+  const goToRelPage = useCallback(
+    (page: number) => {
+      setRelPage(page);
+      loadRelTypes(page, relSearch, scopeLabel, labelFilterArr);
+    },
+    [loadRelTypes, relSearch, scopeLabel, labelFilterArr],
+  );
+
+  // ── Debounced search handlers ─────────────────────────────────────
+  const handleLabelsSearchChange = useCallback(
+    (value: string) => {
+      setLabelsSearch(value);
+      clearTimeout(labelsDebounce.current);
+      labelsDebounce.current = setTimeout(() => {
+        setLabelsPage(1);
+        loadLabels(1, value, scopeLabel, relTypeFilterArr);
+      }, 300);
+    },
+    [loadLabels, scopeLabel, relTypeFilterArr],
+  );
+
+  const handleRelSearchChange = useCallback(
+    (value: string) => {
+      setRelSearch(value);
+      clearTimeout(relDebounce.current);
+      relDebounce.current = setTimeout(() => {
+        setRelPage(1);
+        loadRelTypes(1, value, scopeLabel, labelFilterArr);
+      }, 300);
+    },
+    [loadRelTypes, scopeLabel, labelFilterArr],
+  );
+
+  // ── Data source: always from paginated backend API ────────────────
+  const labelItems = labelsData?.items ?? [];
+  const relItems = relData?.items ?? [];
 
   // Show server-side paginated controls when using the paginated API
   const showLabelsPagination = hasPaginatedApi;
   const showRelsPagination = hasPaginatedApi;
-
-  // ── Filtered counts (for header) ─────────────────────────────────
-  const filteredNodeCount = useMemo(() => {
-    if (!stats) return 0;
-    if (!selectedLabels || selectedLabels.size === 0) return stats.node_count;
-    return Object.entries(stats.label_counts)
-      .filter(([label]) => selectedLabels.has(label))
-      .reduce((sum, [, count]) => sum + count, 0);
-  }, [stats, selectedLabels]);
-
-  const filteredEdgeCount = useMemo(() => {
-    if (!stats) return 0;
-    if (!selectedRelTypes || selectedRelTypes.size === 0)
-      return stats.edge_count;
-    return Object.entries(stats.relationship_type_counts)
-      .filter(([type]) => selectedRelTypes.has(type))
-      .reduce((sum, [, count]) => sum + count, 0);
-  }, [stats, selectedRelTypes]);
 
   // ── Loading skeleton ──────────────────────────────────────────────
   if (loading) {
@@ -277,25 +303,29 @@ export function GraphStatsCard({
           <div className="flex items-center gap-2">
             <CircleDot className="text-primary h-4 w-4" />
             <div>
-              <p className="text-2xl font-bold">{filteredNodeCount}</p>
+              <p className="text-2xl font-bold">
+                {(visibleNodeCount ?? stats.node_count).toLocaleString()}
+              </p>
               <p className="text-muted-foreground text-xs">
-                Nodes{hasLabelFilter ? " (filtered)" : ""}
+                Nodes{hasLabelFilter ? ` (${selectedLabels!.size} label filter)` : ""}
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <GitBranch className="text-primary h-4 w-4" />
             <div>
-              <p className="text-2xl font-bold">{filteredEdgeCount}</p>
+              <p className="text-2xl font-bold">
+                {(visibleEdgeCount ?? stats.edge_count).toLocaleString()}
+              </p>
               <p className="text-muted-foreground text-xs">
-                Edges{hasRelFilter ? " (filtered)" : ""}
+                Edges{hasRelFilter ? ` (${selectedRelTypes!.size} type filter)` : ""}
               </p>
             </div>
           </div>
         </div>
 
         {/* ── Entity Labels ─────────────────────────────── */}
-        {(labelItems.length > 0 || showLabelsPagination) && (
+        {!hideEntityLabels && (labelItems.length > 0 || showLabelsPagination) && (
           <div>
             <div className="mb-2 flex items-center gap-1">
               <Tags className="h-3 w-3" />
@@ -314,7 +344,7 @@ export function GraphStatsCard({
                 <Input
                   placeholder="Search labels..."
                   value={labelsSearch}
-                  onChange={(e) => setLabelsSearch(e.target.value)}
+                  onChange={(e) => handleLabelsSearchChange(e.target.value)}
                   className="h-7 pl-7 text-xs"
                 />
               </div>
@@ -358,7 +388,7 @@ export function GraphStatsCard({
                     size="sm"
                     className="h-6 px-2 text-xs"
                     disabled={labelsPage <= 1}
-                    onClick={() => setLabelsPage((p) => Math.max(1, p - 1))}
+                    onClick={() => goToLabelsPage(Math.max(1, labelsPage - 1))}
                   >
                     <ChevronLeft className="mr-1 h-3 w-3" />
                     Prev
@@ -371,7 +401,7 @@ export function GraphStatsCard({
                     size="sm"
                     className="h-6 px-2 text-xs"
                     disabled={!labelsData.has_next}
-                    onClick={() => setLabelsPage((p) => p + 1)}
+                    onClick={() => goToLabelsPage(labelsPage + 1)}
                   >
                     Next
                     <ChevronRight className="ml-1 h-3 w-3" />
@@ -401,7 +431,7 @@ export function GraphStatsCard({
                 <Input
                   placeholder="Search relationship types..."
                   value={relSearch}
-                  onChange={(e) => setRelSearch(e.target.value)}
+                  onChange={(e) => handleRelSearchChange(e.target.value)}
                   className="h-7 pl-7 text-xs"
                 />
               </div>
@@ -445,7 +475,7 @@ export function GraphStatsCard({
                     size="sm"
                     className="h-6 px-2 text-xs"
                     disabled={relPage <= 1}
-                    onClick={() => setRelPage((p) => Math.max(1, p - 1))}
+                    onClick={() => goToRelPage(Math.max(1, relPage - 1))}
                   >
                     <ChevronLeft className="mr-1 h-3 w-3" />
                     Prev
@@ -458,7 +488,7 @@ export function GraphStatsCard({
                     size="sm"
                     className="h-6 px-2 text-xs"
                     disabled={!relData.has_next}
-                    onClick={() => setRelPage((p) => p + 1)}
+                    onClick={() => goToRelPage(relPage + 1)}
                   >
                     Next
                     <ChevronRight className="ml-1 h-3 w-3" />

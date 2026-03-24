@@ -56,6 +56,44 @@ class EntityExtractor:
         self.allowed_relationships = allowed_relationships
         self._transformer = None
 
+    # Extra instructions injected into LLMGraphTransformer's prompt to
+    # improve extraction quality – especially with smaller models.
+    _ADDITIONAL_INSTRUCTIONS: str = (
+        "\n## Additional Extraction Rules\n"
+        "### Entity Name Normalization\n"
+        "- Always use **Title Case** for entity names "
+        "(e.g. 'Barack Obama', 'European Union', 'Nuclear Deal').\n"
+        "- For possessives and contractions, capitalise only the first "
+        "letter after the apostrophe (e.g. \"Iran's\" NOT \"Iran'S\").\n"
+        "- Strip leading/trailing whitespace and collapse multiple "
+        "spaces into one.\n"
+        "- Use the **full canonical name** of an entity, not "
+        "abbreviations or acronyms, unless the acronym is the most "
+        "widely recognised form (e.g. 'NATO', 'UNESCO').\n"
+        "\n"
+        "### Coreference Resolution\n"
+        "- If the same real-world entity is mentioned with different "
+        "surface forms (e.g. 'U.S.', 'United States', 'America'), "
+        "always map them to a **single canonical name** — use the "
+        "most complete and formal version.\n"
+        "- Resolve pronouns ('he', 'she', 'they', 'it') back to the "
+        "named entity they refer to. Do NOT create a node for a "
+        "pronoun.\n"
+        "- Titles and honorifics should be dropped from the entity ID "
+        "but can appear in the description "
+        "(e.g. use 'Ali Khamenei' not 'Ayatollah Ali Khamenei' as "
+        "the node name; mention the title in the description).\n"
+        "\n"
+        "### Conceptual & Abstract Entities\n"
+        "- Do NOT skip abstract or conceptual entities. Terms like "
+        "'Nuclear Deal', 'Regime Change', 'Ceasefire', 'Sanctions', "
+        "'Military Alliance' are valid and important nodes.\n"
+        "- If a relationship references an entity that you have not "
+        "listed as a node, you MUST add that entity as a node first.\n"
+        "- Every source and target of a relationship MUST exist in "
+        "your nodes list — no dangling references.\n"
+    )
+
     def _get_transformer(self):
         """Lazy-load the LLMGraphTransformer."""
         if self._transformer is None:
@@ -64,7 +102,10 @@ class EntityExtractor:
             )
 
             llm = _get_llm()
-            kwargs: dict[str, Any] = {"llm": llm}
+            kwargs: dict[str, Any] = {
+                "llm": llm,
+                "additional_instructions": self._ADDITIONAL_INSTRUCTIONS,
+            }
             if self.allowed_nodes:
                 kwargs["allowed_nodes"] = self.allowed_nodes
             if self.allowed_relationships:
@@ -116,6 +157,26 @@ class EntityExtractor:
                         )
                     )
             for rel in graph_doc.relationships:
+                # Ensure source and target nodes exist in entity list;
+                # LLMGraphTransformer sometimes omits them from the
+                # nodes list while still referencing them in edges.
+                for node_ref in (rel.source, rel.target):
+                    ref_type = node_ref.type if hasattr(node_ref, "type") else "Entity"
+                    key = f"{node_ref.id}:{ref_type}"
+                    if key not in seen_entities:
+                        seen_entities.add(key)
+                        entities.append(
+                            ExtractedEntity(
+                                name=str(node_ref.id),
+                                label=ref_type,
+                                properties={},
+                            )
+                        )
+                        logger.debug(
+                            "Auto-added missing node from relationship: %s (%s)",
+                            node_ref.id,
+                            ref_type,
+                        )
                 relations.append(
                     ExtractedRelation(
                         source=str(rel.source.id),

@@ -13,7 +13,6 @@ from typing import List, Optional
 
 from croniter import croniter
 from fastapi import APIRouter, HTTPException
-from psycopg.rows import dict_row
 
 from service.airbyte_api_client import get_airbyte_client
 from service.airbyte_mapping_db import AirbyteMappingDB
@@ -60,13 +59,36 @@ def _compute_next_run(cron_expr: str, tz_name: str = "UTC") -> Optional[str]:
         return None
 
 
+async def _get_last_job_info(connection_id: str) -> tuple[Optional[str], Optional[str]]:
+    """Fetch the most recent completed/failed sync job for a connection.
+
+    Returns ``(last_run_at_iso, last_run_status)``.
+    Airbyte job timestamps are Unix epoch seconds.
+    """
+    try:
+        client = get_airbyte_client()
+        jobs = await client.list_jobs(connection_id, limit=1)
+        if jobs:
+            job = jobs[0].get("job", jobs[0])
+            status = job.get("status", "")
+            updated_at = job.get("updatedAt") or job.get("createdAt")
+            if updated_at is not None:
+                ts = datetime.utcfromtimestamp(int(updated_at)).isoformat() + "Z"
+                return ts, status
+    except Exception:
+        logger.debug("Could not fetch last job for connection %s", connection_id)
+    return None, None
+
+
 async def _get_connection_schedule(mapping: dict) -> dict:
     """Fetch schedule info from Airbyte connection.
 
-    Returns the cron expression in its native Quartz 6-field format.
+    Returns the cron expression in its native Quartz 6-field format,
+    together with last_run_at / last_run_status from the most recent job.
     """
     client = get_airbyte_client()
-    conn_data = await client.get_connection(mapping["airbyte_connection_id"])
+    conn_id = mapping["airbyte_connection_id"]
+    conn_data = await client.get_connection(conn_id)
 
     sched = conn_data.get("scheduleData", {})
     cron_data = sched.get("cron", {})
@@ -78,12 +100,16 @@ async def _get_connection_schedule(mapping: dict) -> dict:
     # itself is active, not that scheduling is on; scheduleType is the real indicator)
     enabled = schedule_type == "cron"
 
+    last_run_at, last_run_status = await _get_last_job_info(conn_id)
+
     return {
         "cron_expression": cron_expr,
         "timezone": tz,
         "enabled": enabled,
         "update_graph_rag": mapping.get("update_graph_rag", False),
         "schedule_type": schedule_type,
+        "last_run_at": last_run_at,
+        "last_run_status": last_run_status,
     }
 
 
@@ -104,8 +130,8 @@ def _build_response(
         update_graph_rag=sched_info.get("update_graph_rag", False),
         timezone=tz,
         next_run_at=_compute_next_run(cron_expr, tz) if cron_expr else None,
-        last_run_at=None,
-        last_run_status=None,
+        last_run_at=sched_info.get("last_run_at"),
+        last_run_status=sched_info.get("last_run_status"),
         created_at=mapping.get("created_at", ""),
         updated_at=mapping.get("updated_at", ""),
     )
@@ -142,7 +168,7 @@ async def list_all_schedules():
                     enabled=sched_info.get("enabled", False),
                     update_graph_rag=sched_info.get("update_graph_rag", False),
                     next_run_at=_compute_next_run(cron_expr, tz),
-                    last_run_status=None,
+                    last_run_status=sched_info.get("last_run_status"),
                 )
             )
         except Exception:
@@ -297,30 +323,23 @@ async def delete_schedule(datasource_id: str):
 @router.get("/{datasource_id}/schedule/status", response_model=ScheduleRunStatus)
 async def get_schedule_run_status(datasource_id: str):
     """Get combined sync + schedule status for real-time UI updates."""
-    from service.store import get_store
-    import json
+    from core.db import DatasourceRepository
 
-    store = get_store()
-    if not store or not store.pool:
-        raise HTTPException(status_code=503, detail="Database not initialized")
+    ds_repo = DatasourceRepository()
 
     # Fetch current sync status from cmetadata
-    async with store.pool.connection() as conn:
-        async with conn.cursor(row_factory=dict_row) as cur:
-            await cur.execute(
-                "SELECT cmetadata FROM langchain_pg_collection WHERE uuid = %s",
-                (datasource_id,),
-            )
-            row = await cur.fetchone()
-            if not row:
-                raise HTTPException(status_code=404, detail="DataSource not found")
-            meta = row.get("cmetadata", {})
+    row = await ds_repo.get_collection(datasource_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="DataSource not found")
+    meta = row.get("cmetadata", {})
 
     # Fetch schedule info
     mapping = await AirbyteMappingDB.get(datasource_id)
     scheduled = False
     next_run = None
     update_graph = False
+    last_run_at = None
+    last_run_status = None
 
     if mapping:
         try:
@@ -330,6 +349,8 @@ async def get_schedule_run_status(datasource_id: str):
             tz = sched_info.get("timezone", "UTC")
             next_run = _compute_next_run(cron_expr, tz) if cron_expr else None
             update_graph = sched_info.get("update_graph_rag", False)
+            last_run_at = sched_info.get("last_run_at")
+            last_run_status = sched_info.get("last_run_status")
         except Exception:
             pass
 
@@ -344,8 +365,8 @@ async def get_schedule_run_status(datasource_id: str):
         queue_position=queue_pos,
         scheduled=scheduled,
         next_run_at=next_run,
-        last_run_at=None,
-        last_run_status=None,
+        last_run_at=last_run_at,
+        last_run_status=last_run_status,
         update_graph_rag=update_graph,
         graph_update_status=meta.get("graph_update_status"),
     )

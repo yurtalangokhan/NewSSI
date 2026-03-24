@@ -5,18 +5,14 @@ This module handles the background ingestion of data from Airbyte sources
 into the vector store for RAG operations.
 """
 import asyncio
-import json
 import logging
 import os
 import time
 from datetime import datetime, timezone
 
 import httpx
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from psycopg.rows import dict_row
 
-from service.store import get_store
-from agents.tools import load_vector_store
+from core.db import AirbyteMappingRepository, DatasourceRepository
 
 # LangConnect base URL for Graph RAG rebuild requests
 LANGCONNECT_BASE_URL = os.environ.get("LANGCONNECT_API_URL", "http://langconnect-api:8083")
@@ -56,142 +52,129 @@ async def is_graph_rag_available() -> bool:
     return available
 
 
-async def run_ingestion(datasource_id: str, update_graph_rag: bool = False):
+async def run_ingestion(
+    datasource_id: str,
+    update_graph_rag: bool = False,
+    job_id: int | None = None,
+):
     """
-    Background task to ingest data from an Airbyte source.
-    
-    Workflow:
-    1. Fetch config from database
-    2. Extract data using PyAirbyte
-    3. Split into chunks
-    4. Index into vector store
-    5. (Optional) Trigger Graph RAG rebuild via LangConnect
+    Trigger an Airbyte sync for a datasource.
+
+    With the streaming architecture, the custom ``destination-embedding``
+    connector POSTs record batches directly to ``/ingest/batch`` during
+    the sync.  Embedding happens *during* sync — not after.
+
+    This function only needs to:
+    1. Set initial sync status
+    2. Trigger the Airbyte sync via API
+    3. Poll until the sync job completes (destination-embedding handles data)
+    4. The ``/ingest/batch`` endpoint marks completion on the last batch
+
+    If ``job_id`` is provided the sync already completed (listener path) —
+    the destination-embedding already sent all batches, so we just verify.
     """
     logger.info(f"Starting ingestion for datasource {datasource_id}")
-    
+
     try:
+        ds_repo = DatasourceRepository()
+        mapping_repo = AirbyteMappingRepository()
+
         # 1. Fetch configuration
-        store = get_store()
-        if not store or not store.pool:
-            logger.error("Store not initialized")
+        row = await ds_repo.get_collection(datasource_id)
+        if not row:
+            logger.error(f"Datasource {datasource_id} not found")
             return
-        
-        async with store.pool.connection() as conn:
-            async with conn.cursor(row_factory=dict_row) as cur:
-                await cur.execute(
-                    "SELECT name, cmetadata FROM langchain_pg_collection WHERE uuid = %s",
-                    (datasource_id,)
-                )
-                row = await cur.fetchone()
-                if not row:
-                    logger.error(f"Datasource {datasource_id} not found")
-                    return
-                
-                collection_name = row["name"]
-                config = row["cmetadata"]
-                logger.info(f"Loaded config for {datasource_id}")
-        
-        # 2. Update status - Fetching
-        await update_sync_progress(datasource_id, "fetching", 10)
-        
-        # 3. Extract documents using PyAirbyte
+        config = row.get("cmetadata", {})
+
         connector_type = config.get("connector_type")
-        connector_config = config.get("connector_config", {})
-        streams = config.get("streams")
-        content_fields = config.get("content_fields")
-        
         if not connector_type:
-            logger.error(f"No connector_type in config for {datasource_id}")
-            await update_sync_status(datasource_id, "error", "Missing connector_type in configuration")
+            await update_sync_status(datasource_id, "error", "Missing connector_type")
             return
-        
-        try:
-            from service.airbyte_connector import extract_documents_async
 
-            # Look up Airbyte connection_id if the datasource has a mapping
-            connection_id = None
-            try:
-                async with store.pool.connection() as conn2:
-                    async with conn2.cursor(row_factory=dict_row) as cur2:
-                        await cur2.execute(
-                            "SELECT airbyte_connection_id FROM datasource_airbyte_mapping WHERE datasource_id = %s",
-                            (datasource_id,),
-                        )
-                        mapping = await cur2.fetchone()
-                        if mapping:
-                            connection_id = mapping["airbyte_connection_id"]
-            except Exception:
-                pass  # Table may not exist yet
-
-            logger.info(f"Extracting data from {connector_type} (connection_id={connection_id})...")
-            docs = await extract_documents_async(
-                connector_type,
-                connector_config,
-                streams,
-                content_fields,
-                connection_id=connection_id,
+        # 2. If job_id is provided, the sync already completed and
+        #    destination-embedding already streamed all batches to /ingest/batch.
+        #    Just update the mapping watermark — nothing else to do.
+        if job_id:
+            logger.info(
+                "Job %d already completed for %s — destination-embedding "
+                "handled all batches during sync",
+                job_id, datasource_id,
             )
-            
-        except Exception as e:
-            logger.error(f"Failed to extract data for {datasource_id}: {e}")
-            await update_sync_status(datasource_id, "error", str(e))
+            # Optionally trigger Graph RAG rebuild
+            if update_graph_rag:
+                await _trigger_graph_rag_rebuild(datasource_id)
             return
-        
-        logger.info(f"Extracted {len(docs)} documents from {connector_type}")
-        await update_sync_progress(datasource_id, "fetching", 30)
-        
-        if not docs:
-            logger.warning("No documents found to index")
-            await update_sync_status(datasource_id, "completed", "No documents found")
-            return
-        
-        # 4. Split documents
-        await update_sync_progress(datasource_id, "splitting", 40)
-        
-        text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=1000,
-            chunk_overlap=200,
-        )
-        splits = text_splitter.split_documents(docs)
-        
-        # Enrich metadata
-        for doc in splits:
-            doc.metadata["datasource"] = datasource_id
-            doc.metadata["connector_type"] = connector_type
-        
-        logger.info(f"Split into {len(splits)} chunks")
-        await update_sync_progress(datasource_id, "splitting", 50)
-        
-        # 5. Clear existing embeddings for this datasource
-        await update_sync_progress(datasource_id, "indexing", 55)
-        
-        async with store.pool.connection() as conn:
-            async with conn.cursor() as cur:
-                await cur.execute(
-                    "DELETE FROM langchain_pg_embedding WHERE collection_id = %s",
-                    (datasource_id,)
-                )
-                logger.info(f"Cleared existing embeddings for {datasource_id}")
-        
-        # 6. Index into vector store
-        await update_sync_progress(datasource_id, "indexing", 60)
-        
-        vector_store = load_vector_store(collection_name)
-        
-        # Run indexing in thread to avoid blocking
-        await asyncio.to_thread(vector_store.add_documents, splits)
-        
-        logger.info(f"Indexed {len(splits)} chunks for {datasource_id}")
-        await update_sync_progress(datasource_id, "indexing", 95)
-        
-        # 7. Mark sync completed
-        await update_sync_status(datasource_id, "completed", None)
-        logger.info(f"Ingestion completed for {datasource_id}")
 
-        # 8. Optionally trigger Graph RAG rebuild
+        # 3. Manual sync trigger — kick off Airbyte sync, destination-embedding
+        #    will POST batches to /ingest/batch as records flow.
+        await update_sync_progress(datasource_id, "syncing", 5)
+
+        connection_id = None
+        try:
+            mapping = await mapping_repo.get(datasource_id)
+            if mapping:
+                connection_id = mapping["airbyte_connection_id"]
+        except Exception:
+            pass
+
+        if not connection_id:
+            await update_sync_status(datasource_id, "error", "No Airbyte connection found")
+            return
+
+        from service.airbyte_api_client import get_airbyte_client
+        client = get_airbyte_client()
+
+        # Trigger the sync — destination-embedding streams batches in real-time
+        job_data = await client.trigger_sync(connection_id)
+        new_job_id = job_data.get("job", {}).get("id")
+        if not new_job_id:
+            await update_sync_status(datasource_id, "error", "No job ID returned")
+            return
+
+        logger.info("Airbyte sync job %d triggered for %s", new_job_id, datasource_id)
+        await update_sync_progress(datasource_id, "syncing", 10)
+
+        # 4. Poll until sync completes (embedding happens during sync via /ingest/batch)
+        result = await client.poll_job_until_complete(new_job_id)
+        job_info = result.get("job", result)
+        job_status = job_info.get("status", "unknown")
+
+        if job_status != "succeeded":
+            failure_detail = ""
+            try:
+                attempts = result.get("attempts", [])
+                if attempts:
+                    last = attempts[-1].get("attempt", {})
+                    failures = last.get("failureSummary", {}).get("failures", [])
+                    if failures:
+                        messages = [
+                            f.get("failureOrigin", "") + ": " +
+                            f.get("externalMessage", f.get("internalMessage", ""))
+                            for f in failures
+                        ]
+                        failure_detail = "; ".join(m for m in messages if m.strip(" :"))
+            except Exception:
+                pass
+            error_msg = f"Airbyte sync failed: {job_status}"
+            if failure_detail:
+                error_msg += f" — {failure_detail}"
+            await update_sync_status(datasource_id, "error", error_msg)
+            return
+
+        # Sync succeeded — destination-embedding already sent all batches
+        # and /ingest/batch marked completion on is_last_batch=True.
+        logger.info("Airbyte sync job %d succeeded for %s", new_job_id, datasource_id)
+
+        # Update mapping watermark
+        try:
+            await mapping_repo.update(datasource_id, last_processed_job_id=new_job_id)
+        except Exception:
+            pass
+
+        # Optionally trigger Graph RAG
         if update_graph_rag:
             await _trigger_graph_rag_rebuild(datasource_id)
-        
+
     except Exception as e:
         logger.exception(f"Unhandled error in ingestion for {datasource_id}")
         await update_sync_status(datasource_id, "error", str(e))
@@ -200,62 +183,37 @@ async def run_ingestion(datasource_id: str, update_graph_rag: bool = False):
 async def update_sync_status(uuid_str: str, status: str, error_msg: str | None):
     """Update final sync status with timestamp."""
     now = datetime.now(timezone.utc).isoformat()
-    
-    store = get_store()
-    if not store or not store.pool:
-        logger.error("Store not initialized")
+
+    ds_repo = DatasourceRepository()
+    row = await ds_repo.get_collection(uuid_str)
+    if not row:
         return
-    
-    async with store.pool.connection() as conn:
-        async with conn.cursor(row_factory=dict_row) as cur:
-            await cur.execute(
-                "SELECT cmetadata FROM langchain_pg_collection WHERE uuid = %s",
-                (uuid_str,)
-            )
-            row = await cur.fetchone()
-            if not row:
-                return
-            
-            meta = row["cmetadata"]
-            meta["sync_status"] = status
-            meta["sync_progress"] = 100 if status == "completed" else 0
-            meta["last_synced_at"] = now
-            
-            if error_msg:
-                meta["last_error"] = error_msg
-            else:
-                meta.pop("last_error", None)
-            
-            await cur.execute(
-                "UPDATE langchain_pg_collection SET cmetadata = %s WHERE uuid = %s",
-                (json.dumps(meta), uuid_str)
-            )
+
+    meta = row.get("cmetadata", {})
+    meta["sync_status"] = status
+    meta["sync_progress"] = 100 if status == "completed" else 0
+    meta["last_synced_at"] = now
+
+    if error_msg:
+        meta["last_error"] = error_msg
+    else:
+        meta.pop("last_error", None)
+
+    await ds_repo.update_collection_metadata(uuid_str, meta)
 
 
 async def update_sync_progress(uuid_str: str, stage: str, progress: int):
     """Update sync progress for real-time tracking."""
-    store = get_store()
-    if not store or not store.pool:
+    ds_repo = DatasourceRepository()
+    row = await ds_repo.get_collection(uuid_str)
+    if not row:
         return
-    
-    async with store.pool.connection() as conn:
-        async with conn.cursor(row_factory=dict_row) as cur:
-            await cur.execute(
-                "SELECT cmetadata FROM langchain_pg_collection WHERE uuid = %s",
-                (uuid_str,)
-            )
-            row = await cur.fetchone()
-            if not row:
-                return
-            
-            meta = row["cmetadata"]
-            meta["sync_status"] = stage
-            meta["sync_progress"] = progress
-            
-            await cur.execute(
-                "UPDATE langchain_pg_collection SET cmetadata = %s WHERE uuid = %s",
-                (json.dumps(meta), uuid_str)
-            )
+
+    meta = row.get("cmetadata", {})
+    meta["sync_status"] = stage
+    meta["sync_progress"] = progress
+
+    await ds_repo.update_collection_metadata(uuid_str, meta)
 
 
 # ------------------------------------------------------------------
@@ -344,28 +302,16 @@ async def _update_graph_status(
     uuid_str: str, graph_status: str, error: str | None = None
 ) -> None:
     """Write graph_update_status into cmetadata for UI feedback."""
-    store = get_store()
-    if not store or not store.pool:
+    ds_repo = DatasourceRepository()
+    row = await ds_repo.get_collection(uuid_str)
+    if not row:
         return
 
-    async with store.pool.connection() as conn:
-        async with conn.cursor(row_factory=dict_row) as cur:
-            await cur.execute(
-                "SELECT cmetadata FROM langchain_pg_collection WHERE uuid = %s",
-                (uuid_str,),
-            )
-            row = await cur.fetchone()
-            if not row:
-                return
+    meta = row.get("cmetadata", {})
+    meta["graph_update_status"] = graph_status
+    if error:
+        meta["graph_update_error"] = error
+    else:
+        meta.pop("graph_update_error", None)
 
-            meta = row["cmetadata"]
-            meta["graph_update_status"] = graph_status
-            if error:
-                meta["graph_update_error"] = error
-            else:
-                meta.pop("graph_update_error", None)
-
-            await cur.execute(
-                "UPDATE langchain_pg_collection SET cmetadata = %s WHERE uuid = %s",
-                (json.dumps(meta), uuid_str),
-            )
+    await ds_repo.update_collection_metadata(uuid_str, meta)

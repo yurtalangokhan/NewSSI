@@ -206,6 +206,21 @@ class AirbyteAPIClient:
             timeout=120.0,
         )
 
+    async def update_source(
+        self,
+        source_id: str,
+        config: dict[str, Any],
+        name: str | None = None,
+    ) -> dict[str, Any]:
+        """Update a source's configuration and/or name."""
+        payload: dict[str, Any] = {
+            "sourceId": source_id,
+            "connectionConfiguration": config,
+        }
+        if name is not None:
+            payload["name"] = name
+        return await self._post("/sources/update", payload)
+
     async def delete_source(self, source_id: str) -> None:
         """Delete a source."""
         await self._post("/sources/delete", {"sourceId": source_id})
@@ -252,44 +267,57 @@ class AirbyteAPIClient:
         )
         return data.get("destinationDefinitions", [])
 
-    async def get_or_create_default_destination(self) -> str:
-        """Ensure a default local-json destination exists, return its ID.
+    async def get_or_create_default_destination(
+        self,
+        datasource_id: str = "",
+    ) -> str:
+        """Ensure the custom ``destination-embedding`` exists, return its ID.
 
-        Called during datasource creation.  Creates once, reuses for all
-        connections thereafter.
+        The custom destination streams records directly to agent-service's
+        ``/ingest/batch`` endpoint during sync — zero disk I/O.
+
+        ``datasource_id`` is baked into the destination config so the
+        destination connector knows which collection to target.
         """
+        # Reuse existing destination for this datasource if it already exists
+        dest_name = f"agent-embedding-{datasource_id[:8]}" if datasource_id else "agent-embedding-default"
         destinations = await self.list_destinations()
         for dest in destinations:
-            if dest.get("name") == "agent-service-local-json":
-                logger.info("Reusing existing default destination: %s", dest["destinationId"])
+            if dest.get("name") == dest_name:
+                logger.info("Reusing existing embedding destination: %s", dest["destinationId"])
                 return dest["destinationId"]
 
-        # Find the Local JSON destination definition
+        # Find the custom destination-embedding definition
         definitions = await self.list_destination_definitions()
-        local_json_def = None
+        embedding_def = None
         for defn in definitions:
             docker_repo = defn.get("dockerRepository", "")
-            if "destination-local-json" in docker_repo:
-                local_json_def = defn
+            if "destination-embedding" in docker_repo:
+                embedding_def = defn
                 break
 
-        if not local_json_def:
+        if not embedding_def:
             raise AirbyteAPIError(
                 404,
-                "Local JSON destination definition not found in Airbyte. "
-                "Ensure Airbyte OSS is properly initialized.",
+                "destination-embedding definition not found in Airbyte. "
+                "Run: docker build -t airbyte/destination-embedding:latest "
+                "./airbyte-destination-embedding and register the custom connector.",
             )
 
-        # destination_path is relative to /local inside the connector container.
-        # /local is mapped to LOCAL_ROOT on the worker (/tmp/airbyte_local on host).
-        # Use "/" so files land directly in /tmp/airbyte_local/<stream>.jsonl,
-        # NOT /tmp/airbyte_local/tmp/airbyte_local/<stream>.jsonl (double nesting).
-        dest = await self.create_destination(
-            name="agent-service-local-json",
-            destination_definition_id=local_json_def["destinationDefinitionId"],
-            config={"destination_path": "/"},
+        agent_service_url = os.environ.get(
+            "AIRBYTE_DESTINATION_AGENT_URL", "http://agent-service:8080"
         )
-        logger.info("Created default local-json destination: %s", dest["destinationId"])
+        dest = await self.create_destination(
+            name=dest_name,
+            destination_definition_id=embedding_def["destinationDefinitionId"],
+            config={
+                "agent_service_url": agent_service_url,
+                "datasource_id": datasource_id,
+                "batch_size": int(os.environ.get("AIRBYTE_EMBED_BATCH_SIZE", "200")),
+                "request_timeout_seconds": 120,
+            },
+        )
+        logger.info("Created embedding destination %s for datasource %s", dest["destinationId"], datasource_id)
         return dest["destinationId"]
 
     # ---- connections -----------------------------------------------------
