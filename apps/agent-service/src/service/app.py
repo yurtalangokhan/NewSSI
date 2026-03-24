@@ -165,6 +165,7 @@ from service.thread_routes import router as thread_router  # noqa: E402
 from service.run_routes import router as run_router  # noqa: E402
 from service.proxy_routes import router as proxy_router  # noqa: E402
 from service.ingest_routes import router as ingest_router  # noqa: E402
+from service.auth_routes import router as auth_router  # noqa: E402
 
 app.include_router(datasources_router)
 app.include_router(schedule_router)
@@ -175,3 +176,4 @@ app.include_router(thread_router)
 app.include_router(run_router)
 app.include_router(proxy_router)
 app.include_router(ingest_router)
+app.include_router(auth_router)
