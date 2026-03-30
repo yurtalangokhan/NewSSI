@@ -312,6 +312,9 @@ function addPacketToGroup(
 function processPacket(state: ProcessorState, packet: Packet): void {
   if (!packet) return;
 
+  // Debug logging
+  console.log('[packetProcessor] Processing packet:', packet.obj.type, 'content:', typeof packet.obj.content === 'string' ? packet.obj.content.substring(0, 50) : 'N/A');
+
   // Handle TopLevelBranching packets - these tell us how many parallel branches to expect
   if (packet.obj.type === PacketType.TOP_LEVEL_BRANCHING) {
     handleTopLevelBranching(state, packet);
@@ -345,9 +348,11 @@ function processPacket(state: ProcessorState, packet: Packet): void {
   if (isFirstPacket) {
     if (isToolPacket(packet, false)) {
       state.toolGroupKeys.add(groupKey);
+      console.log('[packetProcessor] Added to toolGroupKeys:', groupKey);
     }
     if (isDisplayPacket(packet)) {
       state.displayGroupKeys.add(groupKey);
+      console.log('[packetProcessor] Added to displayGroupKeys:', groupKey);
     }
   }
 
@@ -368,6 +373,9 @@ function processPacket(state: ProcessorState, packet: Packet): void {
   handleStreamingStatusPacket(state, packet);
   handleStopPacket(state, packet);
   handleToolAfterMessagePacket(state, packet);
+  
+  // Debug logging for state
+  console.log('[packetProcessor] After processing - toolGroups:', state.toolGroups.length, 'displayGroups:', state.potentialDisplayGroups.length, 'finalAnswerComing:', state.finalAnswerComing);
 }
 
 export function processPackets(

@@ -87,7 +87,7 @@ async def invoke(
     api_key = request.headers.get("x-api-key")
     user_id = extract_user_id_from_token(api_key) if api_key else None
 
-    _, stored_config = get_graph_and_config(agent_id)
+    _, stored_config = await get_graph_and_config(agent_id)
     if stored_config:
         final_config = stored_config.copy()
         if user_input.agent_config:
@@ -133,7 +133,11 @@ async def message_generator(
 
     This is the workhorse method for the /stream endpoint.
     """
-    _, stored_config = get_graph_and_config(agent_id)
+    import logging
+
+    logger = logging.getLogger(__name__)
+
+    _, stored_config = await get_graph_and_config(agent_id)
     if stored_config:
         final_config = stored_config.copy()
         if user_input.agent_config:
@@ -141,6 +145,12 @@ async def message_generator(
         user_input.agent_config = final_config
 
     agent = await get_configured_agent(agent_id, user_input.agent_config or {})
+
+    # Debug: Log checkpointer status
+    logger.info(
+        f"[message_generator] Agent type: {type(agent)}, has_checkpointer: {agent.checkpointer is not None if hasattr(agent, 'checkpointer') else 'N/A'}"
+    )
+
     kwargs, run_id = await _handle_input(user_input, agent, user_id)
 
     try:

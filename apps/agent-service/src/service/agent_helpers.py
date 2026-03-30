@@ -37,7 +37,7 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 
 
-def get_graph_and_config(agent_id: str) -> tuple[str, dict]:
+async def get_graph_and_config(agent_id: str) -> tuple[str, dict]:
     """Helper to get graph_id and config, resolving stored assistants."""
     from .store import get_assistant_from_store
 
@@ -45,7 +45,7 @@ def get_graph_and_config(agent_id: str) -> tuple[str, dict]:
     graph_id = agent_id  # Default to agent_id as graph_id
 
     try:
-        stored = get_assistant_from_store(agent_id)
+        stored = await get_assistant_from_store(agent_id)
         if stored:
             graph_id = stored.get("graph_id", agent_id)
             config = stored.get("config", {})
@@ -72,7 +72,7 @@ async def get_configured_agent(agent_id: str, agent_config: dict) -> AgentGraph:
     from agents.lazy_agent import LazyLoadingAgent
 
     # Resolve stored assistants to their graph_id
-    graph_id, stored_config = get_graph_and_config(agent_id)
+    graph_id, stored_config = await get_graph_and_config(agent_id)
 
     # Merge configs (agent_config takes precedence)
     merged_config = {**stored_config, **agent_config}
@@ -206,15 +206,46 @@ async def _handle_input(
     ]
 
     from service.utils import convert_input_messages
+    from langchain_core.messages import HumanMessage, BaseMessage
 
     input: Command | dict[str, Any]
     if interrupted_tasks:
         input = Command(resume=user_input.message or "")
     elif user_input.messages:
+        # Use messages provided directly
         lc_messages = convert_input_messages(user_input.messages)
         input = {"messages": lc_messages}
     elif user_input.message is not None:
-        input = {"messages": [HumanMessage(content=user_input.message)]}
+        # Fetch existing messages from checkpointer and append new message
+        try:
+            current_state = await agent.aget_state(config=config)
+            existing_messages = current_state.values.get("messages", [])
+            logger.info(f"Found {len(existing_messages)} existing messages in checkpointer")
+
+            # Convert existing messages to HumanMessage/AIMessage if needed
+            history_messages: list[BaseMessage] = []
+            for msg in existing_messages:
+                if isinstance(msg, BaseMessage):
+                    history_messages.append(msg)
+                elif isinstance(msg, dict):
+                    # Handle dict format from checkpoint
+                    msg_type = msg.get("type", "human")
+                    msg_content = msg.get("content", "")
+                    if msg_type == "human":
+                        history_messages.append(HumanMessage(content=msg_content))
+                    elif msg_type in ("ai", "assistant"):
+                        from langchain_core.messages import AIMessage
+
+                        history_messages.append(AIMessage(content=msg_content))
+
+            # Append new message
+            history_messages.append(HumanMessage(content=user_input.message))
+            input = {"messages": history_messages}
+            logger.info(f"Total messages including history: {len(history_messages)}")
+        except Exception as e:
+            logger.warning(f"Failed to fetch existing messages from checkpointer: {e}")
+            # Fall back to just the new message
+            input = {"messages": [HumanMessage(content=user_input.message)]}
     else:
         raise HTTPException(
             status_code=400, detail="One of 'message' or 'messages' must be provided."

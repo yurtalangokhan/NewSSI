@@ -705,6 +705,7 @@ export default function useChatController({
             return parentId === SYSTEM_MESSAGE_ID ? null : parentId;
           })(),
           chatSessionId: currChatSessionId,
+          personaId: liveAgent?.id,
           filters: buildFilters(
             filterManager.selectedSources,
             filterManager.selectedDocumentSets,
@@ -824,43 +825,52 @@ export default function useChatController({
                 updateCanContinue(true, frozenSessionId);
               }
             } else if (Object.hasOwn(packet, "obj")) {
-              packets.push(packet as Packet);
-              packetsVersion++;
+               packets.push(packet as Packet);
+               packetsVersion++;
+               
+               // Debug: log packet type
+               const packetObj = (packet as Packet).obj;
+               if (packetObj?.type === 'message_delta' || packetObj?.type === 'message_start') {
+                 console.log('[ChatController] Received packet:', packetObj.type, 'content:', String(packetObj?.content || '').substring(0, 50));
+               }
 
-              // Check if the packet contains document information
-              const packetObj = (packet as Packet).obj;
-
-              if (packetObj.type === "citation_info") {
-                // Individual citation packet from backend streaming
-                const citationInfo = packetObj as {
-                  type: "citation_info";
-                  citation_number: number;
-                  document_id: string;
-                };
-                // Incrementally build citations map
-                citations = {
-                  ...(citations || {}),
-                  [citationInfo.citation_number]: citationInfo.document_id,
-                };
-              } else if (packetObj.type === "message_start") {
-                const messageStart = packetObj as MessageStart;
-                if (messageStart.final_documents) {
-                  documents = messageStart.final_documents;
-                  updateSelectedNodeForDocDisplay(
-                    frozenSessionId,
-                    initialAgentNode.nodeId
-                  );
+                if (packetObj.type === "citation_info") {
+                  const citationInfo = packetObj as {
+                    type: "citation_info";
+                    citation_number: number;
+                    document_id: string;
+                  };
+                  citations = {
+                    ...(citations || {}),
+                    [citationInfo.citation_number]: citationInfo.document_id,
+                  };
+                 } else if (packetObj.type === "message_delta") {
+                   const content = (packetObj as any).content;
+                   if (typeof content === "string") {
+                     answer += content;
+                   }
+                 } else if (packetObj.type === "message_start") {
+                   const messageStart = packetObj as MessageStart;
+                   if (messageStart.final_documents) {
+                    documents = messageStart.final_documents;
+                    updateSelectedNodeForDocDisplay(
+                      frozenSessionId,
+                      initialAgentNode.nodeId
+                    );
+                  }
                 }
-              }
-            } else {
-              console.warn("Unknown packet:", JSON.stringify(packet));
-            }
+              } else {
+               console.warn("Unknown packet:", JSON.stringify(packet));
+             }
 
             // on initial message send, we insert a dummy system message
             // set this as the parent here if no parent is set
             parentMessage =
               parentMessage || currentMessageTreeLocal?.get(SYSTEM_NODE_ID)!;
 
+            // Debug: log packets being passed to message tree
+            console.log('[ChatController] Updating message tree with packets:', packets.length);
+            
             currentMessageTreeLocal = upsertToCompleteMessageTree({
               messages: [
                 {
@@ -1089,7 +1099,7 @@ export default function useChatController({
     return currentMessageHistory
       .filter((message) => message.type === "user")
       .some((message) =>
-        message.files.some((file) => file.type === ChatFileType.IMAGE)
+        (message.files || []).some((file) => file.type === ChatFileType.IMAGE)
       );
   }, [currentMessageHistory]);
 

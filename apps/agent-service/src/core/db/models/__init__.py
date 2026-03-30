@@ -17,10 +17,13 @@ Tables managed here
 - ``langchain_pg_embedding``     — Document embeddings / chunks
 - ``sync_schedules``             — Cron-based sync schedule definitions
 - ``datasource_airbyte_mapping`` — Local → Airbyte ID mapping with job watermark
+- ``persona``                   — Custom agent/persona configurations
 
 .. note::
    LangGraph checkpoint / store tables are **not** managed here — they
    are handled internally by ``langgraph-checkpoint-postgres``.
+
+   Chat sessions are now managed via Thread-based storage in the LangGraph store.
 """
 
 from core.db.models.base import Base
@@ -29,6 +32,7 @@ from core.db.models.thread import ThreadModel
 from core.db.models.collection import PgCollection, PgEmbedding
 from core.db.models.schedule import SyncScheduleModel
 from core.db.models.airbyte_mapping import AirbyteMappingModel
+from core.db.models.persona import PersonaModel
 
 __all__ = [
     "Base",
@@ -38,4 +42,5 @@ __all__ = [
     "PgEmbedding",
     "SyncScheduleModel",
     "AirbyteMappingModel",
+    "PersonaModel",
 ]

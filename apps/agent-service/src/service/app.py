@@ -86,6 +86,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
                     agent = get_agent(a.key)
                     agent.checkpointer = saver
+                    logger.info(
+                        f"[APP STARTUP] Set checkpointer on agent '{a.key}': {type(agent)}, has_checkpointer={agent.checkpointer is not None}"
+                    )
                     # Set the LangGraph store (BaseStore) for long-term memory
                     agent.store = langgraph_store
 

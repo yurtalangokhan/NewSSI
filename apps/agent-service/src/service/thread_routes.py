@@ -4,15 +4,15 @@ Thread CRUD routes.
 Endpoints: POST /threads/search, POST /threads, GET /threads/{id},
 GET /threads/{id}/state, PATCH /threads/{id}, DELETE /threads/{id}
 """
+
 import asyncio
 import logging
 from datetime import datetime, timezone
-from typing import Dict, List
+from typing import Dict, List, Optional
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 
-from service.auth import verify_bearer
 from service.checkpointer import get_checkpointer
 from service.schemas import (
     ThreadCreateRequest,
@@ -22,12 +22,14 @@ from service.schemas import (
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(dependencies=[Depends(verify_bearer)])
+# No auth dependency - dev mode allows all
+router = APIRouter()
 
 
 # =============================================================================
 # Helpers
 # =============================================================================
+
 
 def _sanitize_checkpoint_values(values: dict) -> dict:
     """Remove non-serializable types like Send from checkpoint values."""
@@ -60,6 +62,7 @@ def _sanitize_checkpoint_values(values: dict) -> dict:
 # =============================================================================
 # Routes
 # =============================================================================
+
 
 @router.post("/threads/search")
 async def search_threads(

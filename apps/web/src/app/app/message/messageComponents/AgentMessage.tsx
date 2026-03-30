@@ -38,6 +38,8 @@ export interface AgentMessageProps {
   parentMessage?: Message | null;
   // Duration in seconds for processing this message (agent messages only)
   processingDurationSeconds?: number;
+  // Final message text - used as fallback when packets are empty (for historical messages)
+  finalMessageText?: string;
 }
 
 // TODO: Consider more robust comparisons:
@@ -65,7 +67,8 @@ function arePropsEqual(
     prev.parentMessage?.messageId === next.parentMessage?.messageId &&
     prev.llmManager?.isLoadingProviders ===
       next.llmManager?.isLoadingProviders &&
-    prev.processingDurationSeconds === next.processingDurationSeconds
+    prev.processingDurationSeconds === next.processingDurationSeconds &&
+    prev.finalMessageText === next.finalMessageText
     // Skip: chatState.regenerate, chatState.setPresentingDocument,
     //       most of llmManager, onMessageSelection (function/object props)
   );
@@ -83,9 +86,52 @@ const AgentMessage = React.memo(function AgentMessage({
   onRegenerate,
   parentMessage,
   processingDurationSeconds,
+  finalMessageText,
 }: AgentMessageProps) {
   const markdownRef = useRef<HTMLDivElement>(null);
   const finalAnswerRef = useRef<HTMLDivElement>(null);
+
+  // Debug: log packets info
+  console.log('[AgentMessage] rawPackets:', rawPackets?.length || 0, 'packetCount:', rawPackets?.length || 0);
+
+  // If packets are empty but we have finalMessageText (historical message), 
+  // create synthetic packets for rendering
+  const effectivePackets = useMemo((): Packet[] => {
+    if (rawPackets.length > 0) {
+      return rawPackets;
+    }
+    if (finalMessageText && finalMessageText.length > 0) {
+      // Create synthetic MESSAGE_START + MESSAGE_DELTA + STOP packets
+      // Using 'as any' to bypass strict typing for synthetic packets
+      return [
+        {
+          placement: { turn_index: 0, sub_turn_index: null },
+          obj: {
+            id: `historical-${nodeId}`,
+            type: "message_start",
+            content: finalMessageText,
+            final_documents: null,
+          },
+        } as unknown as Packet,
+        {
+          placement: { turn_index: 0, sub_turn_index: null },
+          obj: {
+            type: "message_delta",
+            content: finalMessageText,
+          },
+        } as unknown as Packet,
+        // Include STOP packet to mark completion
+        {
+          placement: { turn_index: 0, sub_turn_index: null },
+          obj: {
+            type: "stop",
+            stop_reason: "finished",
+          },
+        } as unknown as Packet,
+      ];
+    }
+    return rawPackets;
+  }, [rawPackets, finalMessageText]);
 
   // Process streaming packets: returns data and callbacks
   // Hook handles all state internally, exposes clean API
@@ -105,7 +151,7 @@ const AgentMessage = React.memo(function AgentMessage({
     onRenderComplete,
     finalAnswerComing,
     toolProcessingDuration,
-  } = usePacketProcessor(rawPackets, nodeId);
+  } = usePacketProcessor(effectivePackets, nodeId);
 
   // Apply pacing delays between different tool types for smoother visual transitions
   const { pacedTurnGroups, pacedDisplayGroups, pacedFinalAnswerComing } =
@@ -202,7 +248,7 @@ const AgentMessage = React.memo(function AgentMessage({
                     onRenderComplete();
                   }
                 }}
-                animate={false}
+                animate={!stopPacketSeen}
                 stopPacketSeen={stopPacketSeen}
                 stopReason={stopReason}
               >

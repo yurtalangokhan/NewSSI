@@ -18,6 +18,7 @@ from core.db.repositories.thread_repo import ThreadRepository
 from core.db.repositories.datasource_repo import DatasourceRepository
 from core.db.repositories.schedule_repo import ScheduleRepository
 from core.db.repositories.airbyte_mapping_repo import AirbyteMappingRepository
+from core.db.repositories.persona_repo import PersonaRepository
 
 __all__ = [
     "BaseRepository",
@@ -26,4 +27,5 @@ __all__ = [
     "DatasourceRepository",
     "ScheduleRepository",
     "AirbyteMappingRepository",
+    "PersonaRepository",
 ]

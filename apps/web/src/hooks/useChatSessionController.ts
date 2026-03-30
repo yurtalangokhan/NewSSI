@@ -184,6 +184,18 @@ export default function useChatSessionController({
 
       const session = await response.json();
       const chatSession = session as BackendChatSession;
+      
+      // Debug logging
+      console.log('[ChatSessionController] Fetched chat session:', {
+        chatSessionId: chatSession.chat_session_id,
+        messageCount: chatSession.messages?.length || 0,
+        messages: chatSession.messages?.map((m: any) => ({
+          type: m.message_type,
+          content: m.message?.substring(0, 100),
+          contentLen: m.message?.length
+        }))
+      });
+      
       setSelectedAgentFromId(chatSession.persona_id);
 
       // Ensure the current session is set to the actual session ID from the response
@@ -197,6 +209,18 @@ export default function useChatSessionController({
         chatSession.packets
       );
       const newMessageHistory = getLatestMessageChain(newMessageMap);
+      
+      // Debug logging
+      console.log('[ChatSessionController] Processed message history:', {
+        messageCount: newMessageHistory.length,
+        messages: newMessageHistory.map((m: any) => ({
+          nodeId: m.nodeId,
+          type: m.type,
+          content: m.message?.substring(0, 100),
+          contentLen: m.message?.length,
+          packetsLen: m.packets?.length || 0
+        }))
+      });
 
       // Update message history except for edge where where
       // last message is an error and we're on a new chat.

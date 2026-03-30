@@ -56,8 +56,10 @@ export function isActualToolCallPacket(packet: Packet): boolean {
 }
 
 export function isDisplayPacket(packet: Packet) {
+  // Include MESSAGE_DELTA so tokens without MESSAGE_START still get displayed
   return (
     packet.obj.type === PacketType.MESSAGE_START ||
+    packet.obj.type === PacketType.MESSAGE_DELTA ||
     packet.obj.type === PacketType.IMAGE_GENERATION_TOOL_START
   );
 }
@@ -91,16 +93,49 @@ export function isFinalAnswerComplete(packets: Packet[]) {
   );
 
   if (!messageStartPacket) {
+    // No MESSAGE_START yet - check if we have MESSAGE_DELTA packets indicating content is coming
+    // This handles the case where backend sends tokens directly without MESSAGE_START
+    const hasMessageDelta = packets.some(
+      (packet) => packet.obj.type === PacketType.MESSAGE_DELTA
+    );
+    if (hasMessageDelta) {
+      console.log('[isFinalAnswerComplete] No MESSAGE_START but has MESSAGE_DELTA, returning true');
+      return true;
+    }
+    console.log('[isFinalAnswerComplete] No MESSAGE_START found, returning false');
     return false;
   }
 
-  // Check if there's a corresponding SECTION_END or ERROR with the same turn_index
-  return packets.some(
+  // Check if there's a corresponding SECTION_END, ERROR, or STOP with the same turn_index
+  // STOP packets indicate the stream has completed
+  const hasStop = packets.some(
     (packet) =>
       (packet.obj.type === PacketType.SECTION_END ||
-        packet.obj.type === PacketType.ERROR) &&
+        packet.obj.type === PacketType.ERROR ||
+        packet.obj.type === PacketType.STOP) &&
       packet.placement.turn_index === messageStartPacket.placement.turn_index
   );
+  
+  if (hasStop) {
+    console.log('[isFinalAnswerComplete] hasStop found, returning true');
+    return true;
+  }
+
+  // No SECTION_END/ERROR/STOP yet - check if we have MESSAGE_DELTA packets indicating content is streaming
+  // This handles the case where backend sends MESSAGE_START + MESSAGE_DELTA without SECTION_END/STOP
+  const hasMessageDelta = packets.some(
+    (packet) =>
+      packet.obj.type === PacketType.MESSAGE_DELTA &&
+      packet.placement.turn_index === messageStartPacket.placement.turn_index
+  );
+  
+  if (hasMessageDelta) {
+    console.log('[isFinalAnswerComplete] has MESSAGE_DELTA, returning true');
+    return true;
+  }
+
+  console.log('[isFinalAnswerComplete] No stop packet or delta found, returning false');
+  return false;
 }
 
 export function groupPacketsByTurnIndex(

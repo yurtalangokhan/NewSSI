@@ -120,6 +120,7 @@ export interface ToolCallFinalResult {
 export interface ChatSession {
   id: string;
   name: string;
+  description?: string;  // Optional - returned by some endpoints
   persona_id: number;
   time_created: string;
   time_updated: string;

@@ -4,14 +4,12 @@ const INTERNAL_URL = process.env.INTERNAL_URL || "http://localhost:8123";
 
 export async function GET(request: Request) {
   try {
-    const { searchParams } = new URL(request.url);
-    const queryString = searchParams.toString();
-    const url = `${INTERNAL_URL}/api/chat/get-user-chat-sessions${queryString ? '?' + queryString : ''}`;
-    
-    const response = await fetch(url);
+    // Proxy to backend which calls LangGraph's /threads/search
+    const response = await fetch(`${INTERNAL_URL}/api/chat/get-user-chat-sessions`);
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error) {
+    console.error('Failed to fetch chat sessions:', error);
     return NextResponse.json({ sessions: [], chat_sessions: [], has_more: false }, { status: 200 });
   }
 }

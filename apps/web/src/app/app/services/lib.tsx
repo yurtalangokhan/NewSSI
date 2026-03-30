@@ -129,6 +129,8 @@ export interface SendMessageParams {
   // Additional context injected into the LLM call but not stored/shown in chat.
   // Used e.g. by Chrome extension "Read this tab" feature.
   additionalContext?: string;
+  // Persona/agent ID for routing to specific agent
+  personaId?: number;
 }
 
 export async function* sendMessage({
@@ -146,11 +148,13 @@ export async function* sendMessage({
   temperature,
   origin,
   additionalContext,
+  personaId,
 }: SendMessageParams): AsyncGenerator<PacketType, void, unknown> {
   // Build payload for new send-chat-message API
   const payload = {
     message: message,
     chat_session_id: chatSessionId,
+    persona_id: personaId ?? null,
     parent_message_id: parentMessageId,
     file_descriptors: fileDescriptors,
     internal_search_filters: filters,
@@ -300,13 +304,18 @@ export async function getAvailableContextTokens(
 }
 
 export function processRawChatHistory(
-  rawMessages: BackendMessage[],
+  rawMessages: BackendMessage[] | undefined,
   packets: Packet[][]
 ): Map<number, Message> {
   const messages: Map<number, Message> = new Map();
   const parentMessageChildrenMap: Map<number, number[]> = new Map();
 
   let agentMessageInd = 0;
+
+  // Handle undefined or empty messages
+  if (!rawMessages || !Array.isArray(rawMessages)) {
+    return messages;
+  }
 
   rawMessages.forEach((messageInfo, _ind) => {
     const packetsForMessage = packets[agentMessageInd];

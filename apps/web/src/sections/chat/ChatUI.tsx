@@ -148,6 +148,13 @@ const ChatUI = React.memo(
                 </div>
               );
             } else if (message.type === "assistant") {
+              // Debug logging for troubleshooting
+              console.log('[ChatUI] Rendering assistant message:', {
+                nodeId: message.nodeId,
+                messagePreview: message.message?.substring(0, 50),
+                packetsCount: message.packets?.length || 0,
+              });
+
               if ((error || loadError) && i === messages.length - 1) {
                 return (
                   <div key={`error-${message.nodeId}`} className="p-4">
@@ -195,6 +202,7 @@ const ChatUI = React.memo(
                     processingDurationSeconds={
                       message.processingDurationSeconds
                     }
+                    finalMessageText={message.message}
                   />
                 </div>
               );

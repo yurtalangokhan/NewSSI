@@ -12,23 +12,59 @@ function mapBackendToFrontend(packet: BackendPacket): { placement: any; obj: any
   
   switch (packet.type) {
     case "message":
-      // Full message - convert to message_start
+      // Full message - could be ai message or tool message
+      // Extract content from nested structure
+      let messageContent = "";
+      const content = packet.content;
+      if (typeof content === "string") {
+        messageContent = content;
+      } else if (typeof content === "object" && content !== null) {
+        // Handle LangChain message format: {type: "ai", content: "...", tool_calls: [...]}
+        if (content.content !== undefined) {
+          if (typeof content.content === "string") {
+            messageContent = content.content;
+          } else if (Array.isArray(content.content)) {
+            // Handle array format [{type: "text", text: "..."}]
+            for (const item of content.content) {
+              if (typeof item === "object" && item?.type === "text") {
+                messageContent = item.text || "";
+                break;
+              }
+            }
+          }
+        }
+      }
+      
       return {
         placement: defaultPlacement,
         obj: {
           type: "message_start",
-          content: packet.content?.content || "",
+          content: messageContent,
           final_documents: null,
         },
       };
     
     case "token":
       // Token chunk - convert to message_delta
+      // Extract token content from potentially nested structure
+      let tokenContent = "";
+      const tokenData = packet.content;
+      if (typeof tokenData === "string") {
+        tokenContent = tokenData;
+      } else if (typeof tokenData === "object" && tokenData !== null) {
+        // Handle nested token format
+        if (tokenData.text) {
+          tokenContent = tokenData.text;
+        } else if (tokenData.content) {
+          tokenContent = typeof tokenData.content === "string" ? tokenData.content : "";
+        }
+      }
+      
       return {
         placement: defaultPlacement,
         obj: {
           type: "message_delta",
-          content: packet.content || "",
+          content: tokenContent,
         },
       };
     
@@ -66,51 +102,59 @@ export async function* handleSSEStream<T extends PacketType>(
   const reader = streamingResponse.body?.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
+  
   if (signal) {
     signal.addEventListener("abort", () => {
-      console.log("aborting");
       reader?.cancel();
     });
   }
-  while (true) {
-    const rawChunk = await reader?.read();
-    if (!rawChunk) {
-      throw new Error("Unable to process chunk");
-    }
-    const { done, value } = rawChunk;
-    if (done) {
-      break;
-    }
-
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split("\n");
-    buffer = lines.pop() || "";
-
-    for (const line of lines) {
-      if (line.trim() === "") continue;
-
-      // Handle SSE format: "data: {...}"
-      let jsonLine = line;
-      if (line.startsWith("data: ")) {
-        jsonLine = line.slice(6); // Remove "data: " prefix
+  
+  if (!reader) {
+    throw new Error("No reader available for stream");
+  }
+  
+  try {
+    while (true) {
+      const rawChunk = await reader.read();
+      if (rawChunk.done) {
+        break;
       }
+      
+      const { value } = rawChunk;
+      if (!value) continue;
+      
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
 
-      // Handle [DONE] marker
-      if (jsonLine === "[DONE]") {
-        yield {
-          placement: { turn_index: 0, sub_turn_index: null },
-          obj: { type: "stop", stop_reason: "finished" },
-        } as T;
-        continue;
-      }
+      for (const line of lines) {
+        if (line.trim() === "") continue;
 
-      try {
-        const backendPacket = JSON.parse(jsonLine) as BackendPacket;
-        const mappedPacket = mapBackendToFrontend(backendPacket);
-        yield mappedPacket as T;
-      } catch (error) {
-        console.error("Error parsing SSE data:", error);
+        const trimmedLine = line.trim();
+        if (trimmedLine === "data: [DONE]" || trimmedLine === "[DONE]" || trimmedLine === "data:") {
+          yield {
+            placement: { turn_index: 0, sub_turn_index: null },
+            obj: { type: "stop", stop_reason: "finished" },
+          } as T;
+          continue;
+        }
+
+        let jsonLine = line;
+        if (line.startsWith("data: ")) {
+          jsonLine = line.slice(6);
+        }
+
+        try {
+          const backendPacket = JSON.parse(jsonLine) as BackendPacket;
+          const mappedPacket = mapBackendToFrontend(backendPacket);
+          yield mappedPacket as T;
+        } catch (error) {
+          console.error("Error parsing SSE data:", error);
+        }
       }
     }
+  } catch (error) {
+    console.error('Stream error:', error);
+    throw error;
   }
 }
