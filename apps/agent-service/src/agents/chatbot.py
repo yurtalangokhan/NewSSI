@@ -1,4 +1,4 @@
-from langchain_core.messages import BaseMessage, SystemMessage
+from langchain_core.messages import SystemMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, MessagesState, StateGraph
 from langgraph.store.base import BaseStore
@@ -30,9 +30,9 @@ async def call_model(state: MessagesState, config: RunnableConfig, *, store: Bas
             memory_context = build_memory_context(memories)
             if memory_context:
                 messages = [SystemMessage(content=memory_context)] + list(messages)
-                print(f"[CHATBOT_MEMORY] Injected memory context into messages")
+                print("[CHATBOT_MEMORY] Injected memory context into messages")
             else:
-                print(f"[CHATBOT_MEMORY] No memory context to inject (empty)")
+                print("[CHATBOT_MEMORY] No memory context to inject (empty)")
         except Exception as e:
             print(f"[CHATBOT_MEMORY] ERROR during recall: {e}")
             import traceback
@@ -45,11 +45,11 @@ async def call_model(state: MessagesState, config: RunnableConfig, *, store: Bas
     # Long-term memory: extract and save new facts
     if long_term_memory and store and user_id:
         try:
-            print(f"[CHATBOT_MEMORY] Starting memory extraction...")
+            print("[CHATBOT_MEMORY] Starting memory extraction...")
             await extract_and_save_memories(
                 store, user_id, list(state["messages"]) + [response], model, memories
             )
-            print(f"[CHATBOT_MEMORY] Memory extraction completed")
+            print("[CHATBOT_MEMORY] Memory extraction completed")
         except Exception as e:
             print(f"[CHATBOT_MEMORY] ERROR during extraction: {e}")
             import traceback

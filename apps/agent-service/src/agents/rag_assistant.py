@@ -11,6 +11,7 @@ from langchain_core.runnables import (
 from langgraph.graph import END, MessagesState, StateGraph
 from langgraph.managed import RemainingSteps
 from langgraph.prebuilt import ToolNode
+from langgraph.store.base import BaseStore
 
 from agents.llama_guard import LlamaGuard, LlamaGuardOutput, SafetyAssessment
 from agents.tools import database_search
@@ -20,7 +21,6 @@ from memory.long_term import (
     extract_and_save_memories,
     recall_memories,
 )
-from langgraph.store.base import BaseStore
 
 
 class AgentState(MessagesState, total=False):

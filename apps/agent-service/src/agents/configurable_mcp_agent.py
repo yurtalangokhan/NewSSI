@@ -5,7 +5,7 @@ A simple agent that allows users to configure system prompt and select MCP tools
 
 import logging
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from langchain_core.messages import SystemMessage
 from langchain_core.runnables import RunnableConfig
@@ -35,8 +35,8 @@ class ConfigurableMCPAgent(LazyLoadingAgent):
     
     def __init__(self) -> None:
         super().__init__()
-        self._default_graph: Optional[CompiledStateGraph] = None
-        self._mcp_tools: Dict[str, BaseTool] = {}
+        self._default_graph: CompiledStateGraph | None = None
+        self._mcp_tools: dict[str, BaseTool] = {}
     
     @property
     def name(self) -> str:
@@ -76,7 +76,7 @@ class ConfigurableMCPAgent(LazyLoadingAgent):
             self._loaded = True
             logger.warning("Using fallback graph without MCP tools")
     
-    async def _load_mcp_tools(self, mcp_url: Optional[str] = None) -> None:
+    async def _load_mcp_tools(self, mcp_url: str | None = None) -> None:
         """Load tools from MCP server."""
         try:
             from langchain_mcp_adapters.client import MultiServerMCPClient
@@ -107,9 +107,9 @@ class ConfigurableMCPAgent(LazyLoadingAgent):
     def _create_agent_graph(
         self,
         system_prompt: str,
-        mcp_tool_names: List[str],
-        model_name: Optional[str] = None,
-        checkpointer: Optional[Any] = None,
+        mcp_tool_names: list[str],
+        model_name: str | None = None,
+        checkpointer: Any | None = None,
     ) -> CompiledStateGraph:
         """
         Create an agent graph with the specified configuration.
@@ -147,8 +147,8 @@ class ConfigurableMCPAgent(LazyLoadingAgent):
     async def ainvoke(
         self, 
         input: Any, 
-        config: Optional[RunnableConfig] = None,
-        checkpointer: Optional[Any] = None,
+        config: RunnableConfig | None = None,
+        checkpointer: Any | None = None,
         **kwargs: Any
     ) -> Any:
         """
@@ -199,8 +199,8 @@ class ConfigurableMCPAgent(LazyLoadingAgent):
     async def astream(
         self, 
         input: Any, 
-        config: Optional[RunnableConfig] = None,
-        checkpointer: Optional[Any] = None,
+        config: RunnableConfig | None = None,
+        checkpointer: Any | None = None,
         **kwargs: Any
     ):
         """
@@ -256,9 +256,9 @@ class ConfigurableMCPAgent(LazyLoadingAgent):
     async def astream_events(
         self, 
         input: Any, 
-        config: Optional[RunnableConfig] = None,
+        config: RunnableConfig | None = None,
         version: str = "v2",
-        checkpointer: Optional[Any] = None,
+        checkpointer: Any | None = None,
         **kwargs: Any
     ):
         """
@@ -307,7 +307,8 @@ class ConfigurableMCPAgent(LazyLoadingAgent):
             try:
                 store = self._get_langgraph_store()
                 if store:
-                    from core import get_model, settings as core_settings
+                    from core import get_model
+                    from core import settings as core_settings
                     model = get_model(configurable.get("model", core_settings.DEFAULT_MODEL))
                     from memory.long_term import extract_and_save_memories
                     await extract_and_save_memories(

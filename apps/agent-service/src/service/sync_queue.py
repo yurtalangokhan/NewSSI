@@ -18,7 +18,6 @@ from __future__ import annotations
 import asyncio
 import logging
 from dataclasses import dataclass, field
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -37,8 +36,8 @@ class SyncJob:
     update_graph_rag: bool = False
     # Filled in by the queue manager so callers can ``await`` completion.
     _done_event: asyncio.Event = field(default_factory=asyncio.Event, repr=False)
-    result_status: Optional[str] = None
-    result_error: Optional[str] = None
+    result_status: str | None = None
+    result_error: str | None = None
 
 
 # ------------------------------------------------------------------
@@ -52,8 +51,8 @@ class SyncQueueManager:
     def __init__(self, max_queue_size: int = 100) -> None:
         self._queue: asyncio.Queue[SyncJob] = asyncio.Queue(maxsize=max_queue_size)
         self._ds_locks: dict[str, asyncio.Lock] = {}
-        self._active_job: Optional[SyncJob] = None
-        self._worker_task: Optional[asyncio.Task] = None
+        self._active_job: SyncJob | None = None
+        self._worker_task: asyncio.Task | None = None
         self._running = False
         # Public snapshot so the status endpoint can report queue position
         self._pending_ids: list[str] = []
@@ -107,7 +106,7 @@ class SyncQueueManager:
             logger.error("Sync queue is full – rejecting job for %s", ds_id)
             return False
 
-    def get_queue_position(self, datasource_id: str) -> Optional[int]:
+    def get_queue_position(self, datasource_id: str) -> int | None:
         """Return 0-based position in the pending list, or None if not queued."""
         try:
             return self._pending_ids.index(datasource_id)
@@ -129,7 +128,7 @@ class SyncQueueManager:
         while self._running:
             try:
                 job: SyncJob | None = await asyncio.wait_for(self._queue.get(), timeout=1.0)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 continue
 
             if job is None:
@@ -176,7 +175,7 @@ class SyncQueueManager:
 # Singleton
 # ------------------------------------------------------------------
 
-_INSTANCE: Optional[SyncQueueManager] = None
+_INSTANCE: SyncQueueManager | None = None
 
 
 def get_sync_queue() -> SyncQueueManager:

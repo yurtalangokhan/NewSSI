@@ -8,7 +8,7 @@ import from, avoiding circular dependencies.
 """
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -18,10 +18,9 @@ from langchain_core.runnables import RunnableConfig
 from langfuse.langchain import CallbackHandler  # type: ignore[import-untyped]
 from langgraph.types import Command
 
-from agents import AgentGraph, get_all_agent_info
+from agents import AgentGraph
 from core import settings
-from schema import StreamInput, UserInput
-from service.auth import extract_user_id_from_token
+from schema import UserInput
 
 __all__ = [
     "get_graph_and_config",
@@ -150,10 +149,10 @@ async def _handle_input(
 
     # Ensure thread exists in store for tracking history
     try:
-        from .store import get_thread_from_store, add_thread
+        from .store import add_thread, get_thread_from_store
 
         if not await get_thread_from_store(thread_id):
-            now = datetime.now(timezone.utc).isoformat()
+            now = datetime.now(UTC).isoformat()
             await add_thread(
                 {
                     "thread_id": thread_id,
@@ -205,8 +204,9 @@ async def _handle_input(
         task for task in state.tasks if hasattr(task, "interrupts") and task.interrupts
     ]
 
+    from langchain_core.messages import BaseMessage
+
     from service.utils import convert_input_messages
-    from langchain_core.messages import HumanMessage, BaseMessage
 
     input: Command | dict[str, Any]
     if interrupted_tasks:

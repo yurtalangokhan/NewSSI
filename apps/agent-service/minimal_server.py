@@ -4,19 +4,17 @@ Provides endpoints needed by the frontend for LLM, agents, and chat.
 Run with: python minimal_server.py
 """
 
-import os
 import json
+import os
 import uuid
-import asyncio
 from datetime import datetime
-from typing import Optional
 
 import httpx
-from fastapi import FastAPI, Response, Request
+import uvicorn
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-import uvicorn
 
 app = FastAPI(title="Agentic AI Backend (Ollama)")
 
@@ -55,7 +53,7 @@ class User(BaseModel):
         "chat_background": None,
         "default_app_mode": "AUTO",
     }
-    team_name: Optional[str] = None
+    team_name: str | None = None
     is_anonymous_user: bool = False
     password_configured: bool = True
 
@@ -74,7 +72,7 @@ class Settings(BaseModel):
     auto_scroll: bool = True
     application_status: str = "active"
     gpu_enabled: bool = False
-    maximum_chat_retention_days: Optional[str] = None
+    maximum_chat_retention_days: str | None = None
     notifications: list = []
     needs_reindexing: bool = False
     anonymous_user_enabled: bool = False

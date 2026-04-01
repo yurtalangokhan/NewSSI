@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import delete, select, update
@@ -70,7 +70,7 @@ class AirbyteMappingRepository(BaseRepository):
         update_graph_rag: bool = False,
     ) -> dict[str, Any]:
         """Insert or upsert a mapping row and return it."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         async with self._session() as session:
             stmt = (
                 pg_insert(AirbyteMappingModel)
@@ -119,7 +119,7 @@ class AirbyteMappingRepository(BaseRepository):
         if not updates:
             return await self.get(datasource_id)
 
-        updates["updated_at"] = datetime.now(timezone.utc)
+        updates["updated_at"] = datetime.now(UTC)
 
         async with self._session() as session:
             stmt = (

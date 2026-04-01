@@ -20,12 +20,12 @@ from langfuse import Langfuse  # type: ignore[import-untyped]
 
 from agents import get_agent, get_all_agent_info, load_agent
 from core import settings
-from core.db.engine import close_db_engine, get_db_engine
+from core.db import close_db_engine, get_db_engine
 from memory import initialize_database, initialize_store
+from service.airbyte_sync_listener import get_sync_listener
 from service.checkpointer import set_global_checkpointer
 from service.langgraph_store import set_global_langgraph_store
 from service.sync_queue import get_sync_queue
-from service.airbyte_sync_listener import get_sync_listener
 
 warnings.filterwarnings("ignore", category=LangChainBetaWarning)
 logger = logging.getLogger(__name__)
@@ -53,24 +53,18 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     store, and agents with async loading.
     """
     try:
-        # Initialise the SQLAlchemy async engine (lazy singleton).
-        # This is the main database engine for the application's ORM tables
-        # (assistant, thread, sync_schedules, datasource_airbyte_mapping, etc.).
         if settings.DATABASE_TYPE.value == "postgres":
             _sa_engine = get_db_engine()
             logger.info("SQLAlchemy async engine ready: %s", _sa_engine.url.database)
 
-        from .store import set_global_store
+        from service.store import set_global_store
 
-        # Mark the global store as "ready" (backward compat flag for
-        # any code that still checks ``get_store()`` truthiness).
         set_global_store(True)
 
         async with initialize_database() as saver:
             if hasattr(saver, "setup"):
                 await saver.setup()
 
-            # Initialize the LangGraph store for cross-thread long-term memory
             async with initialize_store() as langgraph_store:
                 if hasattr(langgraph_store, "setup"):
                     await langgraph_store.setup()
@@ -89,28 +83,22 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                     logger.info(
                         f"[APP STARTUP] Set checkpointer on agent '{a.key}': {type(agent)}, has_checkpointer={agent.checkpointer is not None}"
                     )
-                    # Set the LangGraph store (BaseStore) for long-term memory
                     agent.store = langgraph_store
 
                 set_global_checkpointer(saver)
                 set_global_langgraph_store(langgraph_store)
 
-                # Start the sync queue worker and Airbyte sync listener
                 sync_queue = get_sync_queue()
                 sync_queue.start()
-
-                # Table creation is now managed by Alembic — no ensure_table() calls
 
                 sync_listener = get_sync_listener()
                 sync_listener.start()
 
                 yield
 
-                # Shutdown listener & queue gracefully
                 await sync_listener.stop()
                 await sync_queue.stop()
 
-        # Dispose the SQLAlchemy async engine on shutdown
         await close_db_engine()
 
     except Exception as e:
@@ -156,19 +144,19 @@ async def health_check():
 
 
 # =============================================================================
-# Include routers
+# Include routers (legacy routes - kept for backward compatibility)
 # =============================================================================
 
-from service.datasources import router as datasources_router  # noqa: E402
-from service.schedule_routes import router as schedule_router  # noqa: E402
 from service.agent_routes import router as agent_router  # noqa: E402
 from service.assistant_routes import router as assistant_router  # noqa: E402
 from service.assistant_schemas import router as assistant_schemas_router  # noqa: E402
-from service.thread_routes import router as thread_router  # noqa: E402
-from service.run_routes import router as run_router  # noqa: E402
-from service.proxy_routes import router as proxy_router  # noqa: E402
-from service.ingest_routes import router as ingest_router  # noqa: E402
 from service.auth_routes import router as auth_router  # noqa: E402
+from service.datasources import router as datasources_router  # noqa: E402
+from service.ingest_routes import router as ingest_router  # noqa: E402
+from service.proxy_routes import router as proxy_router  # noqa: E402
+from service.run_routes import router as run_router  # noqa: E402
+from service.schedule_routes import router as schedule_router  # noqa: E402
+from service.thread_routes import router as thread_router  # noqa: E402
 
 app.include_router(datasources_router)
 app.include_router(schedule_router)
@@ -180,3 +168,15 @@ app.include_router(run_router)
 app.include_router(proxy_router)
 app.include_router(ingest_router)
 app.include_router(auth_router)
+
+# =============================================================================
+# Include routers (new modular routes)
+# =============================================================================
+
+from api.routes.agents import router as new_agents_router  # noqa: E402
+from api.routes.assistants import router as new_assistants_router  # noqa: E402
+from api.routes.threads import router as new_threads_router  # noqa: E402
+
+app.include_router(new_agents_router)
+app.include_router(new_assistants_router)
+app.include_router(new_threads_router)

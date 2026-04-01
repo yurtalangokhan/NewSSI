@@ -3,10 +3,10 @@ Minimal FastAPI server that provides the endpoints needed by the Onyx frontend.
 This is a simplified backend for development purposes.
 """
 
+
 from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import Optional, List
 
 app = FastAPI(title="Agentic AI Backend")
 
@@ -40,7 +40,7 @@ class User(BaseModel):
         "chat_background": None,
         "default_app_mode": "AUTO",
     }
-    team_name: Optional[str] = None
+    team_name: str | None = None
     is_anonymous_user: bool = False
     password_configured: bool = True
 
@@ -59,8 +59,8 @@ class Settings(BaseModel):
     auto_scroll: bool = True
     application_status: str = "active"
     gpu_enabled: bool = False
-    maximum_chat_retention_days: Optional[str] = None
-    notifications: List = []
+    maximum_chat_retention_days: str | None = None
+    notifications: list = []
     needs_reindexing: bool = False
     anonymous_user_enabled: bool = True
     invite_only_enabled: bool = False

@@ -14,7 +14,7 @@ from __future__ import annotations
 import logging
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from langchain_core.documents import Document
 
@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 
-_SPECIAL_NAMES: Dict[str, str] = {
+_SPECIAL_NAMES: dict[str, str] = {
     "postgres": "PostgreSQL",
     "mysql": "MySQL",
     "mongodb-v2": "MongoDB",
@@ -50,7 +50,7 @@ def _format_connector_name(connector_name: str) -> str:
     return short.replace("-", " ").title()
 
 
-def _infer_category(definition: Dict[str, Any]) -> str:
+def _infer_category(definition: dict[str, Any]) -> str:
     """Best-effort category inference from Airbyte source definition."""
     source_type = definition.get("sourceType", "")
     if source_type:
@@ -71,12 +71,12 @@ def _infer_category(definition: Dict[str, Any]) -> str:
 # ---------------------------------------------------------------------------
 
 
-async def discover_connectors() -> List[ConnectorInfo]:
+async def discover_connectors() -> list[ConnectorInfo]:
     """List all available Airbyte source connectors from the platform."""
     client = get_airbyte_client()
     definitions = await client.list_source_definitions()
 
-    results: List[ConnectorInfo] = []
+    results: list[ConnectorInfo] = []
     for defn in definitions:
         name = defn.get("name", "")
         docker_repo = defn.get("dockerRepository", "")
@@ -97,17 +97,17 @@ async def discover_connectors() -> List[ConnectorInfo]:
     return results
 
 
-async def get_connectors_by_category() -> Dict[str, List[ConnectorInfo]]:
+async def get_connectors_by_category() -> dict[str, list[ConnectorInfo]]:
     """Get connectors organized by category."""
     connectors = await discover_connectors()
-    by_cat: Dict[str, List[ConnectorInfo]] = {}
+    by_cat: dict[str, list[ConnectorInfo]] = {}
     for c in connectors:
         cat = c.category or "other"
         by_cat.setdefault(cat, []).append(c)
     return by_cat
 
 
-async def get_connector_categories() -> List[str]:
+async def get_connector_categories() -> list[str]:
     """Get sorted list of unique categories."""
     by_cat = await get_connectors_by_category()
     cats = sorted(by_cat.keys())
@@ -118,7 +118,7 @@ async def get_connector_categories() -> List[str]:
     return cats
 
 
-async def get_category_labels() -> Dict[str, str]:
+async def get_category_labels() -> dict[str, str]:
     """Return category -> display label mapping."""
     labels = {
         "api": "API",
@@ -132,7 +132,7 @@ async def get_category_labels() -> Dict[str, str]:
     return {cat: labels.get(cat, cat.title()) for cat in cats}
 
 
-async def search_connectors(query: str) -> List[ConnectorInfo]:
+async def search_connectors(query: str) -> list[ConnectorInfo]:
     """Search connectors by name."""
     connectors = await discover_connectors()
     q = query.lower()
@@ -143,7 +143,7 @@ async def search_connectors(query: str) -> List[ConnectorInfo]:
     ]
 
 
-async def find_connector_by_name(connector_name: str) -> Optional[ConnectorInfo]:
+async def find_connector_by_name(connector_name: str) -> ConnectorInfo | None:
     """Find a connector by its short name (e.g. 'source-postgres')."""
     connectors = await discover_connectors()
     for c in connectors:
@@ -189,7 +189,7 @@ async def get_connector_spec(connector_name: str) -> ConnectorSpec:
 
 async def validate_connector_config(
     connector_name: str,
-    config: Dict[str, Any],
+    config: dict[str, Any],
 ) -> bool:
     """Validate connector config by creating a temp source and testing.
 
@@ -233,8 +233,8 @@ async def validate_connector_config(
 
 async def get_available_streams(
     connector_name: str,
-    config: Dict[str, Any],
-) -> List[str]:
+    config: dict[str, Any],
+) -> list[str]:
     """Discover available streams for a connector with given config."""
     connector = await find_connector_by_name(connector_name)
     if not connector:
@@ -290,17 +290,17 @@ def _sanitize_metadata_value(value: Any) -> Any:
 
 
 def records_to_documents(
-    records: List[Dict[str, Any]],
+    records: list[dict[str, Any]],
     connector_name: str,
-    content_fields: Optional[List[str]] = None,
-) -> List[Document]:
+    content_fields: list[str] | None = None,
+) -> list[Document]:
     """Convert raw records to LangChain Documents.
 
     This logic is extracted so both the sync listener and manual sync
     paths can reuse it.  It is identical to the old extract_documents()
     conversion logic.
     """
-    documents: List[Document] = []
+    documents: list[Document] = []
 
     for record in records:
         stream_name = record.pop("_stream", "unknown")
@@ -343,7 +343,7 @@ def records_to_documents(
         if not content.strip():
             continue
 
-        doc_metadata: Dict[str, Any] = {
+        doc_metadata: dict[str, Any] = {
             "source": f"airbyte:{connector_name}",
             "stream": stream_name,
             "connector_type": connector_name,
@@ -361,13 +361,13 @@ def records_to_documents(
 
 async def extract_documents_async(
     connector_name: str,
-    config: Dict[str, Any],
-    streams: Optional[List[str]] = None,
-    content_fields: Optional[List[str]] = None,
-    source_id: Optional[str] = None,
-    connection_id: Optional[str] = None,
-    job_id: Optional[int] = None,
-) -> List[Document]:
+    config: dict[str, Any],
+    streams: list[str] | None = None,
+    content_fields: list[str] | None = None,
+    source_id: str | None = None,
+    connection_id: str | None = None,
+    job_id: int | None = None,
+) -> list[Document]:
     """Extract data via Airbyte sync and convert to LangChain Documents.
 
     If ``job_id`` is provided together with ``connection_id``, the output
@@ -382,8 +382,8 @@ async def extract_documents_async(
     client = get_airbyte_client()
     reader = get_destination_reader()
 
-    temp_source_id: Optional[str] = None
-    temp_connection_id: Optional[str] = None
+    temp_source_id: str | None = None
+    temp_connection_id: str | None = None
     # True when the caller already knows the job completed (listener path).
     _job_already_complete = False
 

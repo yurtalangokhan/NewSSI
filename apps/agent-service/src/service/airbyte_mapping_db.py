@@ -13,7 +13,7 @@ signatures) so that existing callers continue to work unchanged.
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from core.db import AirbyteMappingRepository
 
@@ -52,7 +52,7 @@ class AirbyteMappingDB:
         )
 
     @staticmethod
-    async def get(datasource_id: str) -> Optional[dict[str, Any]]:
+    async def get(datasource_id: str) -> dict[str, Any] | None:
         """Return the mapping for a datasource."""
         return await _repo().get(datasource_id)
 
@@ -62,7 +62,7 @@ class AirbyteMappingDB:
         return await _repo().list_all()
 
     @staticmethod
-    async def update(datasource_id: str, **fields: Any) -> Optional[dict[str, Any]]:
+    async def update(datasource_id: str, **fields: Any) -> dict[str, Any] | None:
         """Update fields on a mapping row."""
         return await _repo().update(datasource_id, **fields)
 

@@ -13,11 +13,10 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
-from langchain_core.messages import AIMessage, AIMessageChunk, AnyMessage
+from langchain_core.messages import AIMessage, AIMessageChunk, AnyMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
-from langfuse import Langfuse  # type: ignore[import-untyped]
-from langsmith import Client as LangsmithClient
 from langgraph.types import Interrupt
+from langsmith import Client as LangsmithClient
 
 from agents import DEFAULT_AGENT, AgentGraph, get_agent, get_all_agent_info
 from core import settings
@@ -31,14 +30,13 @@ from schema import (
     StreamInput,
     UserInput,
 )
+from service.agent_helpers import _handle_input, get_configured_agent, get_graph_and_config
 from service.auth import extract_user_id_from_token, verify_bearer
-from service.agent_helpers import get_graph_and_config, get_configured_agent, _handle_input
 from service.utils import (
     convert_message_content_to_string,
     langchain_to_chat_message,
     remove_tool_calls,
 )
-from langchain_core.messages import ToolMessage
 
 logger = logging.getLogger(__name__)
 

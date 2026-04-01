@@ -2,7 +2,6 @@
 
 import logging
 from datetime import datetime
-from typing import List, Optional
 
 from langchain.agents import create_agent
 from langchain_core.tools import BaseTool
@@ -32,7 +31,7 @@ class CommandAgent(LazyLoadingAgent):
     
     def __init__(self) -> None:
         super().__init__()
-        self._mcp_tools: List[BaseTool] = []
+        self._mcp_tools: list[BaseTool] = []
         self._mcp_client: MultiServerMCPClient | None = None
 
     async def load(self) -> None:

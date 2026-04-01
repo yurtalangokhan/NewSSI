@@ -7,11 +7,10 @@ GET /threads/{id}/state, PATCH /threads/{id}, DELETE /threads/{id}
 
 import asyncio
 import logging
-from datetime import datetime, timezone
-from typing import Dict, List, Optional
 import uuid
+from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, HTTPException
 
 from service.checkpointer import get_checkpointer
 from service.schemas import (
@@ -67,7 +66,7 @@ def _sanitize_checkpoint_values(values: dict) -> dict:
 @router.post("/threads/search")
 async def search_threads(
     request: ThreadSearchRequest = ThreadSearchRequest(),
-) -> List[Dict]:
+) -> list[dict]:
     """Search / List threads."""
     from .store import list_threads_from_store
 
@@ -93,12 +92,12 @@ async def search_threads(
 
 
 @router.post("/threads")
-async def create_thread(request: ThreadCreateRequest) -> Dict:
+async def create_thread(request: ThreadCreateRequest) -> dict:
     """Create a new thread."""
     from .store import add_thread, get_thread_from_store
 
     thread_id = request.thread_id or str(uuid.uuid4())
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
 
     existing = await get_thread_from_store(thread_id)
     if existing:
@@ -116,7 +115,7 @@ async def create_thread(request: ThreadCreateRequest) -> Dict:
 
 
 @router.get("/threads/{thread_id}")
-async def get_thread(thread_id: str) -> Dict:
+async def get_thread(thread_id: str) -> dict:
     """Get a thread."""
     from .store import get_thread_from_store
 
@@ -127,7 +126,7 @@ async def get_thread(thread_id: str) -> Dict:
 
 
 @router.get("/threads/{thread_id}/state")
-async def get_thread_state(thread_id: str) -> Dict:
+async def get_thread_state(thread_id: str) -> dict:
     """
     Get thread state including messages.
     Compatible with @langchain/langgraph-sdk client.threads.getState()
@@ -198,7 +197,7 @@ async def get_thread_state(thread_id: str) -> Dict:
 
 
 @router.patch("/threads/{thread_id}")
-async def update_thread(thread_id: str, request: ThreadUpdateRequest) -> Dict:
+async def update_thread(thread_id: str, request: ThreadUpdateRequest) -> dict:
     """Update a thread."""
     from .store import update_thread_in_store
 
@@ -209,7 +208,7 @@ async def update_thread(thread_id: str, request: ThreadUpdateRequest) -> Dict:
 
 
 @router.delete("/threads/{thread_id}")
-async def delete_thread(thread_id: str) -> Dict:
+async def delete_thread(thread_id: str) -> dict:
     """Delete a thread."""
     from .store import delete_thread_from_store
 

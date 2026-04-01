@@ -13,8 +13,8 @@ that existing callers continue to work unchanged.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
-from typing import Any, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 from croniter import croniter
 
@@ -56,7 +56,7 @@ class ScheduleDBManager:
         base = datetime.now(tz)
         unix_cron = ScheduleDBManager._quartz_to_unix(cron_expr)
         cron = croniter(unix_cron, base)
-        return cron.get_next(datetime).astimezone(timezone.utc)
+        return cron.get_next(datetime).astimezone(UTC)
 
     # ---- CRUD ------------------------------------------------------------
 
@@ -82,12 +82,12 @@ class ScheduleDBManager:
         )
 
     @staticmethod
-    async def get_by_datasource(datasource_id: str) -> Optional[dict[str, Any]]:
+    async def get_by_datasource(datasource_id: str) -> dict[str, Any] | None:
         """Return the schedule for a datasource (at most one per constraint)."""
         return await _repo().get_by_datasource(datasource_id)
 
     @staticmethod
-    async def get_by_id(schedule_id: str) -> Optional[dict[str, Any]]:
+    async def get_by_id(schedule_id: str) -> dict[str, Any] | None:
         """Return a schedule by its own ID."""
         return await _repo().get_by_id(schedule_id)
 
@@ -105,7 +105,7 @@ class ScheduleDBManager:
     async def update(
         datasource_id: str,
         **fields: Any,
-    ) -> Optional[dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """Update fields on the schedule belonging to *datasource_id*."""
         return await _repo().update(datasource_id, **fields)
 
@@ -118,14 +118,14 @@ class ScheduleDBManager:
     async def mark_run_complete(
         datasource_id: str,
         status: str,
-        error: Optional[str] = None,
+        error: str | None = None,
     ) -> None:
         """After a scheduled run finishes, update last_run_* and recompute next_run_at."""
         schedule = await _repo().get_by_datasource(datasource_id)
         if not schedule:
             return
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         next_run = (
             ScheduleDBManager.compute_next_run(
                 schedule["cron_expression"], schedule.get("timezone", "UTC")

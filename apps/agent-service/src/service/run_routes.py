@@ -14,25 +14,22 @@ import json
 import logging
 import traceback
 import uuid as uuid_module
-from datetime import datetime, timezone
-from typing import Any, Dict, List
+from datetime import UTC, datetime
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
 from agents import get_agent_or_lazy, get_all_agent_info
-from core import settings
 from service.active_runs import (
+    cancel_run,
+    get_run_context,
     register_run,
     unregister_run,
-    cancel_run,
-    cancel_all_for_thread,
-    is_cancelled,
-    get_run_context,
 )
 from service.auth import extract_user_id_from_token, verify_bearer
 from service.checkpointer import get_checkpointer
-from service.schemas import RunCreate, RunCancel, ThreadHistoryRequest, ThreadState
+from service.schemas import RunCancel, RunCreate, ThreadHistoryRequest, ThreadState
 from service.utils import convert_input_messages
 
 logger = logging.getLogger(__name__)
@@ -63,8 +60,9 @@ async def _force_close_llm_connection(config: dict | None = None) -> None:
     been closed (or is being closed) by a concurrent call, we skip it.
     """
     try:
-        from core import get_model, settings
         import httpx as _httpx
+
+        from core import get_model, settings
 
         model_name = settings.DEFAULT_MODEL
         if config and config.get("configurable", {}).get("model"):
@@ -383,7 +381,7 @@ def _message_to_dict(msg, uuid_module_ref=uuid_module) -> dict:
     return msg_dict
 
 
-def _serialize_message_for_sdk(msg) -> Dict:
+def _serialize_message_for_sdk(msg) -> dict:
     """Convert a LangChain message to SDK-compatible format (used by thread history)."""
     if isinstance(msg, dict):
         result = dict(msg)
@@ -500,7 +498,7 @@ async def stream_run(
 
     # Update / create thread metadata with assistant_id
     try:
-        from .store import update_thread_in_store, get_thread_from_store, add_thread
+        from .store import add_thread, get_thread_from_store, update_thread_in_store
 
         existing_thread = await get_thread_from_store(thread_id)
         if existing_thread:
@@ -512,7 +510,7 @@ async def stream_run(
                     f"Updated thread {thread_id} metadata with assistant_id {request.assistant_id}"
                 )
         else:
-            now = datetime.now(timezone.utc).isoformat()
+            now = datetime.now(UTC).isoformat()
             new_thread = {
                 "thread_id": thread_id,
                 "created_at": now,
@@ -731,7 +729,7 @@ async def stream_run(
                 while True:
                     try:
                         msg_type, msg_data = await asyncio.wait_for(event_queue.get(), timeout=0.5)
-                    except asyncio.TimeoutError:
+                    except TimeoutError:
                         # Check for cancel/disconnect while waiting
                         if _check_cancelled() or await request_obj.is_disconnected():
                             if not cancel_event.is_set():
@@ -929,7 +927,7 @@ async def stream_run(
                 while True:
                     try:
                         msg_type, msg_data = await asyncio.wait_for(event_queue.get(), timeout=0.5)
-                    except asyncio.TimeoutError:
+                    except TimeoutError:
                         if _check_cancelled() or await request_obj.is_disconnected():
                             if not cancel_event.is_set():
                                 cancel_event.set()
@@ -1170,7 +1168,7 @@ async def cancel_run_endpoint(
 async def get_thread_history(
     thread_id: str,
     request: ThreadHistoryRequest,
-) -> List[ThreadState]:
+) -> list[ThreadState]:
     """Get thread history specific checkpointer states."""
     saver = get_checkpointer()
     if not saver:

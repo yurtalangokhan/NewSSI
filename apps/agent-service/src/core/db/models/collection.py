@@ -42,7 +42,7 @@ class PgCollection(Base):
     )
 
     # Relationship — one collection → one schedule (optional)
-    schedule: Mapped["SyncScheduleModel | None"] = relationship(
+    schedule: Mapped[SyncScheduleModel | None] = relationship(
         "SyncScheduleModel",
         back_populates="datasource",
         uselist=False,
@@ -51,7 +51,7 @@ class PgCollection(Base):
     )
 
     # Relationship — one collection → one airbyte mapping (optional)
-    airbyte_mapping: Mapped["AirbyteMappingModel | None"] = relationship(
+    airbyte_mapping: Mapped[AirbyteMappingModel | None] = relationship(
         "AirbyteMappingModel",
         back_populates="datasource",
         uselist=False,

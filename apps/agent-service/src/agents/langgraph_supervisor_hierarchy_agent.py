@@ -8,11 +8,10 @@ import hashlib
 import json as json_module
 import logging
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import SystemMessage
 from langchain_core.runnables import RunnableConfig
-from langgraph.graph import StateGraph, START, END
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.prebuilt import create_react_agent
 from langgraph.pregel import Pregel
@@ -56,10 +55,10 @@ class DynamicPipelineSupervisor(LazyLoadingAgent):
     
     def __init__(self) -> None:
         super().__init__()
-        self._default_graph: Optional[CompiledStateGraph | Pregel] = None
-        self._mcp_tools: Dict[str, Any] = {}
+        self._default_graph: CompiledStateGraph | Pregel | None = None
+        self._mcp_tools: dict[str, Any] = {}
         self._mcp_cleanup = None
-        self._graph_cache: Dict[str, CompiledStateGraph | Pregel] = {}
+        self._graph_cache: dict[str, CompiledStateGraph | Pregel] = {}
     
     @property
     def name(self) -> str:
@@ -147,9 +146,9 @@ class DynamicPipelineSupervisor(LazyLoadingAgent):
     
     def _pipeline_cache_key(
         self,
-        stages: List[Dict[str, Any]],
-        model_name: Optional[str] = None,
-        checkpointer: Optional[Any] = None,
+        stages: list[dict[str, Any]],
+        model_name: str | None = None,
+        checkpointer: Any | None = None,
     ) -> str:
         """Generate a stable cache key from pipeline configuration.
 
@@ -177,11 +176,11 @@ class DynamicPipelineSupervisor(LazyLoadingAgent):
 
     def _create_pipeline_graph(
         self,
-        stages: List[Dict[str, Any]],
-        model_name: Optional[str] = None,
+        stages: list[dict[str, Any]],
+        model_name: str | None = None,
         retry_count: int = 2,
         on_error: str = "abort",
-        checkpointer: Optional[Any] = None,
+        checkpointer: Any | None = None,
     ) -> CompiledStateGraph | Pregel:
         """
         Create a pipeline graph with the specified stages.
@@ -291,8 +290,8 @@ CRITICAL INSTRUCTIONS:
         if checkpointer is None:
             from langgraph.checkpoint.memory import MemorySaver
             checkpointer = MemorySaver()
-            logger.info(f"[PIPELINE] Compiling graph with MemorySaver checkpointer (fallback)")
-            print(f"[PIPELINE] Compiling graph with MemorySaver checkpointer (fallback)")
+            logger.info("[PIPELINE] Compiling graph with MemorySaver checkpointer (fallback)")
+            print("[PIPELINE] Compiling graph with MemorySaver checkpointer (fallback)")
         else:
             logger.info(f"[PIPELINE] Compiling graph with provided checkpointer: {type(checkpointer).__name__}")
             print(f"[PIPELINE] Compiling graph with provided checkpointer: {type(checkpointer).__name__}")
@@ -367,8 +366,8 @@ IMPORTANT:
     
     def create_configured_graph(
         self,
-        pipeline_stages: List[Dict[str, Any]],
-        model_name: Optional[str] = None,
+        pipeline_stages: list[dict[str, Any]],
+        model_name: str | None = None,
         retry_count: int = 2,
         on_error: str = "abort"
     ) -> CompiledStateGraph | Pregel:
@@ -394,7 +393,7 @@ IMPORTANT:
             on_error=on_error
         )
     
-    def get_available_mcp_tools(self) -> List[str]:
+    def get_available_mcp_tools(self) -> list[str]:
         """Get list of available MCP tool names."""
         return list(self._mcp_tools.keys())
     
@@ -406,8 +405,8 @@ IMPORTANT:
     async def ainvoke(
         self,
         input: Any,
-        config: Optional[RunnableConfig] = None,
-        checkpointer: Optional[Any] = None,
+        config: RunnableConfig | None = None,
+        checkpointer: Any | None = None,
         **kwargs: Any
     ) -> Any:
         """
@@ -445,8 +444,8 @@ IMPORTANT:
     async def astream(
         self,
         input: Any,
-        config: Optional[RunnableConfig] = None,
-        checkpointer: Optional[Any] = None,
+        config: RunnableConfig | None = None,
+        checkpointer: Any | None = None,
         **kwargs: Any
     ):
         """
@@ -487,12 +486,12 @@ IMPORTANT:
                 model_name=model_name,
                 checkpointer=checkpointer,
             )
-            logger.info(f"[PIPELINE] Graph created, starting astream...")
+            logger.info("[PIPELINE] Graph created, starting astream...")
             async for chunk in graph.astream(input, config=config, **kwargs):
                 collected_output = chunk
                 yield chunk
         else:
-            logger.info(f"[PIPELINE] No pipeline_stages, using default graph")
+            logger.info("[PIPELINE] No pipeline_stages, using default graph")
             async for chunk in self._graph.astream(input, config=config, **kwargs):
                 collected_output = chunk
                 yield chunk
@@ -506,8 +505,8 @@ IMPORTANT:
     async def astream_events(
         self,
         input: Any,
-        config: Optional[RunnableConfig] = None,
-        checkpointer: Optional[Any] = None,
+        config: RunnableConfig | None = None,
+        checkpointer: Any | None = None,
         version: str = "v2",
         **kwargs: Any
     ):
@@ -552,7 +551,8 @@ IMPORTANT:
             try:
                 store = self._get_langgraph_store()
                 if store:
-                    from core import get_model, settings as core_settings
+                    from core import get_model
+                    from core import settings as core_settings
                     model = get_model(configurable.get("model", core_settings.DEFAULT_MODEL))
                     from memory.long_term import extract_and_save_memories
                     await extract_and_save_memories(

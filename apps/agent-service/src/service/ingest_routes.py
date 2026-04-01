@@ -21,14 +21,14 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastapi import APIRouter, HTTPException
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
+from agents.tools import load_vector_store
 from core.db import AirbyteMappingRepository, DatasourceRepository
 from service.schemas import BatchRequest, BatchResponse, SourcePreviewRequest
-from agents.tools import load_vector_store
 
 logger = logging.getLogger(__name__)
 
@@ -61,9 +61,9 @@ def _sanitize_metadata_value(value: Any) -> Any:
 
 
 def _records_to_documents(
-    records: List[Dict[str, Any]],
+    records: list[dict[str, Any]],
     connector_type: str,
-    content_fields: Optional[List[str]] = None,
+    content_fields: list[str] | None = None,
 ):
     """Convert raw records to LangChain Documents — same logic as airbyte_connector."""
     from langchain_core.documents import Document
@@ -110,7 +110,7 @@ def _records_to_documents(
         if not content.strip():
             continue
 
-        doc_metadata: Dict[str, Any] = {
+        doc_metadata: dict[str, Any] = {
             "source": f"airbyte:{connector_type}",
             "stream": stream_name,
             "connector_type": connector_type,
@@ -321,7 +321,7 @@ async def _update_progress(datasource_id: str, stage: str, progress: int) -> Non
 
 async def _finalize_sync(datasource_id: str) -> None:
     """Mark sync as completed, store chunk stats, optionally trigger Graph RAG."""
-    from service.ingestion import update_sync_status, _trigger_graph_rag_rebuild
+    from service.ingestion import _trigger_graph_rag_rebuild, update_sync_status
 
     ds_repo = DatasourceRepository()
     mapping_repo = AirbyteMappingRepository()

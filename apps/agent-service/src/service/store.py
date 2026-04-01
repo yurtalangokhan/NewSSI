@@ -16,7 +16,6 @@ repositories directly from ``core.db``.
 """
 
 import logging
-from typing import Dict, List, Optional
 
 from core.db import AssistantRepository, ThreadRepository
 
@@ -78,24 +77,24 @@ def _thread_repo() -> ThreadRepository:
 # Assistant wrapper functions
 # ------------------------------------------------------------------
 
-async def load_assistants_store_async() -> Dict[str, Dict]:
+async def load_assistants_store_async() -> dict[str, dict]:
     assistants = await _assistant_repo().list_assistants()
     return {a["assistant_id"]: a for a in assistants}
 
 
-async def save_assistant_async(assistant: Dict):
+async def save_assistant_async(assistant: dict):
     await _assistant_repo().save_assistant(assistant)
 
 
-async def get_assistant_from_store(assistant_id: str) -> Optional[Dict]:
+async def get_assistant_from_store(assistant_id: str) -> dict | None:
     return await _assistant_repo().get_assistant(assistant_id)
 
 
-async def list_assistants_from_store() -> List[Dict]:
+async def list_assistants_from_store() -> list[dict]:
     return await _assistant_repo().list_assistants()
 
 
-async def update_assistant_in_store(assistant_id: str, updates: Dict) -> Optional[Dict]:
+async def update_assistant_in_store(assistant_id: str, updates: dict) -> dict | None:
     return await _assistant_repo().update_assistant(assistant_id, updates)
 
 
@@ -107,23 +106,23 @@ async def delete_assistant_from_store(assistant_id: str) -> bool:
 # Thread wrapper functions
 # ------------------------------------------------------------------
 
-async def add_thread(thread: Dict):
+async def add_thread(thread: dict):
     await _thread_repo().add_thread(thread)
 
 
-async def get_thread_from_store(thread_id: str) -> Optional[Dict]:
+async def get_thread_from_store(thread_id: str) -> dict | None:
     return await _thread_repo().get_thread(thread_id)
 
 
 async def list_threads_from_store(
-    limit: int = 100, offset: int = 0, metadata: Optional[Dict] = None
-) -> List[Dict]:
+    limit: int = 100, offset: int = 0, metadata: dict | None = None
+) -> list[dict]:
     return await _thread_repo().list_threads(
         limit=limit, offset=offset, metadata_filter=metadata
     )
 
 
-async def update_thread_in_store(thread_id: str, updates: Dict) -> Optional[Dict]:
+async def update_thread_in_store(thread_id: str, updates: dict) -> dict | None:
     return await _thread_repo().update_thread(thread_id, updates)
 
 

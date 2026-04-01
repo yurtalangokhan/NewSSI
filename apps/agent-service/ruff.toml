@@ -1,0 +1,52 @@
+# Ruff configuration
+# https://docs.astral.sh/ruff/settings/
+
+line-length = 100
+target-version = "py311"
+
+# Exclude patterns
+exclude = [
+    ".git",
+    ".venv",
+    "venv",
+    "__pycache__",
+    ".pytest_cache",
+    ".mypy_cache",
+    ".ruff_cache",
+    "*.egg-info",
+    "dist",
+    "build",
+    "*.pyc",
+    "*.pyo",
+    # Migration files
+    "src/core/db/migrations/versions/*.py",
+    # Generated files
+    "media/*",
+    # Private credentials
+    "privatecredentials/*",
+]
+
+[lint]
+# Enable import sorting and unused variables
+extend-select = ["I", "U"]
+
+# Per-file ignores
+[lint.per-file-ignores]
+"tests/*" = [
+    "ARG001",  # Unused function argument
+    "ARG002",  # Unused method argument
+    "ARG003",  # Unused class method argument
+    "ARG004",  # Unused decorator argument
+    "ARG005",  # Unused lambda argument
+    "ANN",     # pytest fixtures don't need annotations
+    "A",       # pytest unused import
+    "C901",    # complex functions in tests
+    "PLR0913", # too many arguments
+    "PLR2004", # false positives in tests
+]
+"tests/conftest.py" = ["ANN", "ARG"]
+"src/streamlit_app.py" = ["ANN"]
+"scripts/*" = ["ANN", "ARG"]
+
+# Ignore specific rules globally
+ignore = ["E501", "D104", "D100"]

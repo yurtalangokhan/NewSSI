@@ -9,6 +9,7 @@ from langchain_core.runnables import RunnableConfig, RunnableLambda, RunnableSer
 from langchain_core.runnables.base import RunnableSequence
 from langgraph.graph import END, MessagesState, StateGraph
 from langgraph.managed import RemainingSteps
+from langgraph.store.base import BaseStore
 
 from core import get_model, settings
 from memory.long_term import (
@@ -16,7 +17,6 @@ from memory.long_term import (
     extract_and_save_memories,
     recall_memories,
 )
-from langgraph.store.base import BaseStore
 
 logger = logging.getLogger(__name__)
 

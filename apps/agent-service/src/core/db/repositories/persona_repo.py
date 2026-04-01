@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import delete, select, update
@@ -105,7 +105,7 @@ class PersonaRepository(BaseRepository):
         **extra: Any,
     ) -> dict[str, Any]:
         """Insert a new persona and return it."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         async with self._session() as session:
             stmt = (
                 pg_insert(PersonaModel)
@@ -149,7 +149,7 @@ class PersonaRepository(BaseRepository):
         if not updates:
             return await self.get(persona_id)
 
-        updates["time_updated"] = datetime.now(timezone.utc)
+        updates["time_updated"] = datetime.now(UTC)
 
         async with self._session() as session:
             stmt = (

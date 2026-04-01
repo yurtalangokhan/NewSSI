@@ -6,8 +6,7 @@ POST /assistants, PUT|PATCH /assistants/{id}, DELETE /assistants/{id}
 """
 import logging
 import uuid
-from datetime import datetime, timezone
-from typing import Dict, List
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -28,9 +27,9 @@ router = APIRouter(dependencies=[Depends(verify_bearer)])
 # Helpers
 # =============================================================================
 
-def agent_to_assistant(agent_id: str, agent_description: str) -> Dict:
+def agent_to_assistant(agent_id: str, agent_description: str) -> dict:
     """Convert an agent to LangGraph Assistant format."""
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
     return {
         "assistant_id": agent_id,
         "graph_id": agent_id,
@@ -53,7 +52,7 @@ def agent_to_assistant(agent_id: str, agent_description: str) -> Dict:
 @router.post("/assistants/search")
 async def search_assistants(
     request: AssistantSearchRequest = AssistantSearchRequest(),
-) -> List[Dict]:
+) -> list[dict]:
     """
     Search for assistants. Returns all available agents as assistants.
     Compatible with @langchain/langgraph-sdk client.assistants.search()
@@ -61,7 +60,7 @@ async def search_assistants(
     from .store import list_assistants_from_store
 
     all_agents = get_all_agent_info()
-    assistants: list[Dict] = []
+    assistants: list[dict] = []
 
     for agent_info in all_agents:
         if request.graph_id and agent_info.key != request.graph_id:
@@ -93,7 +92,7 @@ async def search_assistants(
 
 
 @router.get("/assistants/{assistant_id}")
-async def get_assistant(assistant_id: str) -> Dict:
+async def get_assistant(assistant_id: str) -> dict:
     """
     Get a specific assistant by ID.
     Compatible with @langchain/langgraph-sdk client.assistants.get()
@@ -113,7 +112,7 @@ async def get_assistant(assistant_id: str) -> Dict:
 
 
 @router.post("/assistants")
-async def create_assistant(request: AssistantCreateRequest) -> Dict:
+async def create_assistant(request: AssistantCreateRequest) -> dict:
     """
     Create a new assistant.
     Compatible with @langchain/langgraph-sdk client.assistants.create()
@@ -126,7 +125,7 @@ async def create_assistant(request: AssistantCreateRequest) -> Dict:
     if not agent_exists:
         raise HTTPException(status_code=404, detail=f"Graph {request.graph_id} not found")
 
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
     assistant_id = str(uuid.uuid4())
     name = request.name or f"{request.graph_id}-{assistant_id[:8]}"
 
@@ -147,7 +146,7 @@ async def create_assistant(request: AssistantCreateRequest) -> Dict:
 
 @router.put("/assistants/{assistant_id}")
 @router.patch("/assistants/{assistant_id}")
-async def update_assistant(assistant_id: str, request: AssistantUpdateRequest) -> Dict:
+async def update_assistant(assistant_id: str, request: AssistantUpdateRequest) -> dict:
     """
     Update an assistant.
     Compatible with @langchain/langgraph-sdk client.assistants.update()
@@ -175,7 +174,7 @@ async def update_assistant(assistant_id: str, request: AssistantUpdateRequest) -
 
 
 @router.delete("/assistants/{assistant_id}")
-async def delete_assistant(assistant_id: str) -> Dict:
+async def delete_assistant(assistant_id: str) -> dict:
     """
     Delete an assistant.
     Compatible with @langchain/langgraph-sdk client.assistants.delete()

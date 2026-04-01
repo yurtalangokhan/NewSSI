@@ -11,8 +11,6 @@ from typing import Annotated
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from core import settings
-
 __all__ = ["verify_bearer", "extract_user_id_from_token", "verify_api_key"]
 
 logger = logging.getLogger(__name__)

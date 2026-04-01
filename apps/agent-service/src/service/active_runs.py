@@ -14,12 +14,12 @@ partial messages into the checkpoint.
 import asyncio
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 # (thread_id, run_id) → asyncio.Event (set = cancelled)
-_active_runs: Dict[Tuple[str, str], asyncio.Event] = {}
+_active_runs: dict[tuple[str, str], asyncio.Event] = {}
 
 
 @dataclass
@@ -27,13 +27,13 @@ class RunContext:
     """Mutable bag of state shared between the streaming generator and the
     finally-block / cancel endpoint so partial messages can be persisted."""
     agent: Any = None
-    config: Optional[dict] = None
-    all_messages: List[dict] = field(default_factory=list)
+    config: dict | None = None
+    all_messages: list[dict] = field(default_factory=list)
     checkpointer: Any = None
-    agent_task: Optional[asyncio.Task] = None
+    agent_task: asyncio.Task | None = None
 
 
-_run_contexts: Dict[Tuple[str, str], RunContext] = {}
+_run_contexts: dict[tuple[str, str], RunContext] = {}
 
 
 def register_run(thread_id: str, run_id: str) -> asyncio.Event:
@@ -45,7 +45,7 @@ def register_run(thread_id: str, run_id: str) -> asyncio.Event:
     return cancel_event
 
 
-def get_run_context(thread_id: str, run_id: str) -> Optional[RunContext]:
+def get_run_context(thread_id: str, run_id: str) -> RunContext | None:
     """Return the RunContext for an active run, or None."""
     return _run_contexts.get((thread_id, run_id))
 
@@ -67,8 +67,9 @@ def cancel_run(thread_id: str, run_id: str) -> bool:
     # stream to Ollama so it immediately stops generating tokens.
     if ctx and ctx.config:
         try:
-            from service.run_routes import _force_close_llm_connection
             import asyncio as _aio
+
+            from service.run_routes import _force_close_llm_connection
             _aio.ensure_future(_force_close_llm_connection(ctx.config))
             print(f"[cancel_run] Scheduled _force_close_llm_connection for run {run_id}")
         except Exception as exc:

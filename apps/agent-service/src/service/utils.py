@@ -1,10 +1,9 @@
 import base64
 import io
-import re
 import logging
+import re
 from typing import Any
 
-from pypdf import PdfReader
 from langchain_core.messages import (
     AIMessage,
     BaseMessage,
@@ -14,6 +13,7 @@ from langchain_core.messages import (
 from langchain_core.messages import (
     ChatMessage as LangchainChatMessage,
 )
+from pypdf import PdfReader
 
 from schema import ChatMessage
 

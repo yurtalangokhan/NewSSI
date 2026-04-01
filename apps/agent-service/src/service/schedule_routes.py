@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime
-from typing import List, Optional
 
 from croniter import croniter
 from fastapi import APIRouter, HTTPException
@@ -45,7 +44,7 @@ def _quartz_to_unix(cron_expr: str) -> str:
     return cron_expr
 
 
-def _compute_next_run(cron_expr: str, tz_name: str = "UTC") -> Optional[str]:
+def _compute_next_run(cron_expr: str, tz_name: str = "UTC") -> str | None:
     """Compute next run time from a Quartz cron expression using croniter."""
     try:
         import zoneinfo
@@ -59,7 +58,7 @@ def _compute_next_run(cron_expr: str, tz_name: str = "UTC") -> Optional[str]:
         return None
 
 
-async def _get_last_job_info(connection_id: str) -> tuple[Optional[str], Optional[str]]:
+async def _get_last_job_info(connection_id: str) -> tuple[str | None, str | None]:
     """Fetch the most recent completed/failed sync job for a connection.
 
     Returns ``(last_run_at_iso, last_run_status)``.
@@ -142,14 +141,14 @@ def _build_response(
 # ------------------------------------------------------------------
 
 
-@router.get("/schedules", response_model=List[SyncScheduleListItem])
+@router.get("/schedules", response_model=list[SyncScheduleListItem])
 async def list_all_schedules():
     """Return every sync schedule across all datasources."""
     mappings = await AirbyteMappingDB.list_all()
     if not mappings:
         return []
 
-    items: List[SyncScheduleListItem] = []
+    items: list[SyncScheduleListItem] = []
     for mapping in mappings:
         try:
             sched_info = await _get_connection_schedule(mapping)

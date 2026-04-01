@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import delete, select, cast
-from sqlalchemy.dialects.postgresql import insert as pg_insert, JSONB
+from sqlalchemy import cast, delete, select
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from core.db.models.thread import ThreadModel
 from core.db.repositories.base import BaseRepository
@@ -21,7 +22,7 @@ def _ensure_datetime(val: Any) -> datetime:
         return val
     if isinstance(val, str):
         return datetime.fromisoformat(val)
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class ThreadRepository(BaseRepository):
@@ -89,7 +90,7 @@ class ThreadRepository(BaseRepository):
 
         Returns the saved row as a dict.
         """
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         values = {
             "thread_id": thread["thread_id"],
             "metadata_": thread.get("metadata", {}),
@@ -135,7 +136,7 @@ class ThreadRepository(BaseRepository):
         if "status" in updates:
             current["status"] = updates["status"]
 
-        current["updated_at"] = datetime.now(timezone.utc).isoformat()
+        current["updated_at"] = datetime.now(UTC).isoformat()
         return await self.add_thread(current)
 
     async def delete_thread(self, thread_id: str) -> bool:

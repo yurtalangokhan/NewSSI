@@ -5,26 +5,26 @@ Integrates with backend agents and uses PostgreSQL for persistence.
 
 import json
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Request, Response
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from agents import get_all_agent_info, DEFAULT_AGENT
+from agents import DEFAULT_AGENT, get_all_agent_info
 from core import settings
 from schema.schema import StreamInput
 from service.agent_routes import message_generator
 from service.checkpointer import get_checkpointer
+from service.persona_db import PersonaDB
 from service.store import (
     add_thread,
+    delete_thread_from_store,
     get_thread_from_store,
     list_threads_from_store,
     update_thread_in_store,
-    delete_thread_from_store,
 )
-from service.persona_db import PersonaDB
 
 router = APIRouter(prefix="", tags=["auth"])
 
@@ -275,7 +275,7 @@ async def create_chat_session():
 
     try:
         session_id = str(uuid.uuid4())
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
 
         # Create thread in LangGraph store (single source of truth)
         await add_thread(
@@ -684,7 +684,7 @@ async def send_chat_message(request: Request, message_input: ChatMessageInput):
     try:
         thread = await get_thread_from_store(session_id)
         if not thread:
-            now = datetime.now(timezone.utc).isoformat()
+            now = datetime.now(UTC).isoformat()
             await add_thread(
                 {
                     "thread_id": session_id,
@@ -1191,7 +1191,7 @@ async def delete_all_chat_sessions():
     logger = logging.getLogger(__name__)
 
     try:
-        from service.store import list_threads_from_store, delete_thread_from_store
+        from service.store import delete_thread_from_store, list_threads_from_store
 
         # Get all threads
         threads = await list_threads_from_store(limit=1000, offset=0)

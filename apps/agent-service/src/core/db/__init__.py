@@ -12,11 +12,11 @@ from core.db.engine import (
     get_session_factory,
 )
 from core.db.repositories import (
+    AirbyteMappingRepository,
     AssistantRepository,
-    ThreadRepository,
     DatasourceRepository,
     ScheduleRepository,
-    AirbyteMappingRepository,
+    ThreadRepository,
 )
 
 __all__ = [

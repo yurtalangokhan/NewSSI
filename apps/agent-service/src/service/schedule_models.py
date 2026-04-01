@@ -7,9 +7,7 @@ and the database row representation.
 
 from __future__ import annotations
 
-from datetime import datetime
 from enum import StrEnum
-from typing import Optional
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -81,15 +79,15 @@ class SyncScheduleInput(BaseModel):
 class SyncScheduleUpdate(BaseModel):
     """Partial update – every field is optional."""
 
-    cron_expression: Optional[str] = None
-    preset: Optional[SchedulePreset] = None
-    enabled: Optional[bool] = None
-    update_graph_rag: Optional[bool] = None
-    timezone: Optional[str] = None
+    cron_expression: str | None = None
+    preset: SchedulePreset | None = None
+    enabled: bool | None = None
+    update_graph_rag: bool | None = None
+    timezone: str | None = None
 
     @field_validator("cron_expression")
     @classmethod
-    def validate_cron(cls, v: Optional[str]) -> Optional[str]:
+    def validate_cron(cls, v: str | None) -> str | None:
         if v is None:
             return v
         v = v.strip()
@@ -140,9 +138,9 @@ class SyncScheduleResponse(BaseModel):
     enabled: bool
     update_graph_rag: bool
     timezone: str
-    next_run_at: Optional[str] = None
-    last_run_at: Optional[str] = None
-    last_run_status: Optional[str] = None
+    next_run_at: str | None = None
+    last_run_at: str | None = None
+    last_run_status: str | None = None
     created_at: str
     updated_at: str
 
@@ -152,13 +150,13 @@ class SyncScheduleListItem(BaseModel):
 
     id: str
     datasource_id: str
-    datasource_name: Optional[str] = None
+    datasource_name: str | None = None
     cron_expression: str
     preset: str
     enabled: bool
     update_graph_rag: bool
-    next_run_at: Optional[str] = None
-    last_run_status: Optional[str] = None
+    next_run_at: str | None = None
+    last_run_status: str | None = None
 
 
 class ScheduleRunStatus(BaseModel):
@@ -167,10 +165,10 @@ class ScheduleRunStatus(BaseModel):
     datasource_id: str
     sync_status: str
     sync_progress: int = 0
-    queue_position: Optional[int] = None
+    queue_position: int | None = None
     scheduled: bool = False
-    next_run_at: Optional[str] = None
-    last_run_at: Optional[str] = None
-    last_run_status: Optional[str] = None
+    next_run_at: str | None = None
+    last_run_at: str | None = None
+    last_run_status: str | None = None
     update_graph_rag: bool = False
-    graph_update_status: Optional[str] = None
+    graph_update_status: str | None = None

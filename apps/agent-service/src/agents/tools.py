@@ -2,16 +2,16 @@ import logging
 import math
 import os
 import re
+from typing import Annotated
 
 import numexpr
-from langchain_chroma import Chroma
-from langchain_core.tools import BaseTool, tool, InjectedToolArg
-from langchain_openai import OpenAIEmbeddings
-from langchain_ollama import OllamaEmbeddings
-from core import settings
-from langchain_postgres import PGVector
 from langchain_core.runnables import RunnableConfig
-from typing import Annotated, List, Optional
+from langchain_core.tools import BaseTool, InjectedToolArg, tool
+from langchain_ollama import OllamaEmbeddings
+from langchain_openai import OpenAIEmbeddings
+from langchain_postgres import PGVector
+
+from core import settings
 
 logger = logging.getLogger(__name__)
 
@@ -151,7 +151,7 @@ def database_search_func(
         # Get collection IDs from agent config
         configurable = config.get("configurable", {})
         rag_config = configurable.get("rag_config", {})
-        collection_ids: List[str] = rag_config.get("collections", [])
+        collection_ids: list[str] = rag_config.get("collections", [])
         
         print(f"[DB_SEARCH] Called with query='{query}', collection_ids={collection_ids}")
         
@@ -222,7 +222,7 @@ def graph_search_func(
     try:
         configurable = config.get("configurable", {})
         rag_config = configurable.get("rag_config", {})
-        collection_ids: List[str] = rag_config.get("collections", [])
+        collection_ids: list[str] = rag_config.get("collections", [])
 
         if not collection_ids:
             logger.warning("No collections configured for graph search.")

@@ -2,7 +2,7 @@
 
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, Optional
+from typing import Any
 
 from langchain_core.messages import SystemMessage
 from langchain_core.runnables import RunnableConfig
@@ -70,7 +70,7 @@ class LazyLoadingAgent(ABC):
     async def _inject_memory_into_input(
         self,
         input: Any,
-        config: Optional[RunnableConfig] = None,
+        config: RunnableConfig | None = None,
     ) -> tuple[Any, dict, str | None]:
         """
         If long_term_memory is enabled, recall memories and prepend context
@@ -105,7 +105,7 @@ class LazyLoadingAgent(ABC):
         original_messages: list,
         memories: dict,
         user_id: str | None,
-        config: Optional[RunnableConfig] = None,
+        config: RunnableConfig | None = None,
     ) -> None:
         """
         If long_term_memory is enabled, extract and save new facts from the output.
@@ -134,7 +134,7 @@ class LazyLoadingAgent(ABC):
     async def ainvoke(
         self,
         input: Any,
-        config: Optional[RunnableConfig] = None,
+        config: RunnableConfig | None = None,
         **kwargs: Any
     ) -> Any:
         """
@@ -161,7 +161,7 @@ class LazyLoadingAgent(ABC):
     async def astream(
         self,
         input: Any,
-        config: Optional[RunnableConfig] = None,
+        config: RunnableConfig | None = None,
         **kwargs: Any
     ):
         """
@@ -192,7 +192,7 @@ class LazyLoadingAgent(ABC):
     async def astream_events(
         self,
         input: Any,
-        config: Optional[RunnableConfig] = None,
+        config: RunnableConfig | None = None,
         version: str = "v2",
         **kwargs: Any
     ):

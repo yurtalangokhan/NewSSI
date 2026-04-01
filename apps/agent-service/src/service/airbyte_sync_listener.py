@@ -17,7 +17,6 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +27,7 @@ class AirbyteSyncListener:
     """Polls Airbyte for completed sync jobs and updates watermarks."""
 
     def __init__(self) -> None:
-        self._task: Optional[asyncio.Task] = None
+        self._task: asyncio.Task | None = None
         self._running = False
 
     # ---- lifecycle -------------------------------------------------------
@@ -75,8 +74,8 @@ class AirbyteSyncListener:
 
     async def _poll_once(self) -> None:
         """Single poll cycle: check all mapped datasources for new completed jobs."""
-        from service.airbyte_mapping_db import AirbyteMappingDB
         from service.airbyte_api_client import get_airbyte_client
+        from service.airbyte_mapping_db import AirbyteMappingDB
 
         mappings = await AirbyteMappingDB.list_all()
         if not mappings:
@@ -161,7 +160,7 @@ class AirbyteSyncListener:
         during the sync by ``destination-embedding`` → ``/ingest/batch``.
         There is no post-sync extraction/embedding step.
         """
-        from service.ingestion import update_sync_status, _trigger_graph_rag_rebuild
+        from service.ingestion import _trigger_graph_rag_rebuild, update_sync_status
 
         await update_sync_status(datasource_id, "completed", None)
 
@@ -178,7 +177,7 @@ class AirbyteSyncListener:
 # Singleton
 # ------------------------------------------------------------------
 
-_INSTANCE: Optional[AirbyteSyncListener] = None
+_INSTANCE: AirbyteSyncListener | None = None
 
 
 def get_sync_listener() -> AirbyteSyncListener:

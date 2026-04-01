@@ -4,26 +4,23 @@ Data Sources API Routes.
 REST API endpoints for managing data sources using Airbyte OSS connectors.
 All connector management is delegated to the Airbyte platform via REST API.
 """
-from datetime import datetime, timezone
 import logging
-from typing import Any, Dict, List, Optional
+from datetime import UTC, datetime
+from typing import Any
 from uuid import uuid4
 
-from fastapi import APIRouter, HTTPException, BackgroundTasks, Query
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
 
 from core.db import AirbyteMappingRepository, DatasourceRepository
 from service.schemas import (
-    AirbyteConnectorConfig,
-    DataSourceInput,
-    DataSourceUpdateInput,
-    DataSourceResponse,
     ChunkInfo,
-    DataSourceDetails,
-    ConnectorInfoResponse,
     ConnectorSpecResponse,
+    DataSourceDetails,
+    DataSourceInput,
+    DataSourceResponse,
+    DataSourceUpdateInput,
     StreamInfo,
 )
-from service.ingestion import run_ingestion
 from service.sync_queue import SyncJob, get_sync_queue
 
 logger = logging.getLogger(__name__)
@@ -43,17 +40,17 @@ _VALID_SYNC_COMBOS = {
 # Connector Discovery Endpoints
 # ============================================================================
 
-@router.get("/connectors", response_model=Dict[str, Any])
+@router.get("/connectors", response_model=dict[str, Any])
 async def list_connectors(
-    category: Optional[str] = Query(None, description="Filter by category"),
-    search: Optional[str] = Query(None, description="Search by name"),
+    category: str | None = Query(None, description="Filter by category"),
+    search: str | None = Query(None, description="Search by name"),
 ):
     """List all available Airbyte source connectors."""
     from service.airbyte_connector import (
+        get_category_labels,
+        get_connector_categories,
         get_connectors_by_category,
         search_connectors,
-        get_connector_categories,
-        get_category_labels,
     )
 
     try:
@@ -98,7 +95,7 @@ async def get_connector_specification(connector_name: str):
     Returns the native connectionSpecification — NO flattening.
     The frontend renders it via the recursive SchemaForm.
     """
-    from service.airbyte_connector import get_connector_spec, _format_connector_name
+    from service.airbyte_connector import _format_connector_name, get_connector_spec
 
     try:
         spec = await get_connector_spec(connector_name)
@@ -119,7 +116,7 @@ async def get_connector_specification(connector_name: str):
 @router.post("/connectors/{connector_name}/validate")
 async def validate_connector_configuration(
     connector_name: str,
-    config: Dict[str, Any],
+    config: dict[str, Any],
 ):
     """Validate a connector configuration by testing the connection.
 
@@ -137,10 +134,10 @@ async def validate_connector_configuration(
         return {"valid": False, "message": str(e)}
 
 
-@router.post("/connectors/{connector_name}/streams", response_model=List[StreamInfo])
+@router.post("/connectors/{connector_name}/streams", response_model=list[StreamInfo])
 async def get_connector_streams(
     connector_name: str,
-    config: Dict[str, Any],
+    config: dict[str, Any],
 ):
     """Get available streams for a configured connector."""
     from service.airbyte_connector import get_available_streams
@@ -165,7 +162,7 @@ def _format_connector_name(name: str) -> str:
     return fmt(name)
 
 
-def _mask_sensitive_config(config: Dict[str, Any]) -> Dict[str, Any]:
+def _mask_sensitive_config(config: dict[str, Any]) -> dict[str, Any]:
     """Mask sensitive fields in configuration."""
     sensitive_keys = ["password", "api_key", "secret", "token", "credentials", "private_key"]
     masked = {}
@@ -181,7 +178,7 @@ def _mask_sensitive_config(config: Dict[str, Any]) -> Dict[str, Any]:
     return masked
 
 
-@router.get("", response_model=List[DataSourceResponse])
+@router.get("", response_model=list[DataSourceResponse])
 async def list_datasources():
     """List all configured data sources."""
     ds_repo = DatasourceRepository()
@@ -190,7 +187,7 @@ async def list_datasources():
     rows = await ds_repo.list_datasource_collections()
 
     # Build a mapping lookup: datasource_id → {connection_id, update_graph_rag}
-    mapping_map: Dict[str, Dict[str, Any]] = {}
+    mapping_map: dict[str, dict[str, Any]] = {}
     try:
         all_mappings = await mapping_repo.list_all()
         for m in all_mappings:
@@ -265,8 +262,8 @@ async def create_datasource(input: DataSourceInput):
     """
     ds_repo = DatasourceRepository()
 
-    from service.airbyte_connector import find_connector_by_name
     from service.airbyte_api_client import get_airbyte_client
+    from service.airbyte_connector import find_connector_by_name
 
     connector = await find_connector_by_name(input.config.connector_type)
     if not connector:
@@ -335,7 +332,7 @@ async def create_datasource(input: DataSourceInput):
         raise HTTPException(status_code=500, detail=f"Failed to create connection: {e}")
 
     # Store in PG
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
 
     meta = {
         "connector_type": input.config.connector_type,
@@ -442,8 +439,8 @@ async def get_datasource_details(id: str, page: int = 1, page_size: int = 10):
         })
 
     # Fetch config from Airbyte API (no longer stored locally)
-    masked_config: Dict[str, Any] = {}
-    airbyte_source_id: Optional[str] = None
+    masked_config: dict[str, Any] = {}
+    airbyte_source_id: str | None = None
     try:
         from service.airbyte_mapping_db import AirbyteMappingDB as _MappingDB
         _mapping = await _MappingDB.get(id)
@@ -509,7 +506,7 @@ async def get_datasource_details(id: str, page: int = 1, page_size: int = 10):
                 pass
 
             if schedule_type == "cron":
-                now_str = datetime.now(timezone.utc).isoformat()
+                now_str = datetime.now(UTC).isoformat()
                 schedule_data = {
                     "id": id,
                     "datasource_id": id,
@@ -572,8 +569,8 @@ async def update_datasource(id: str, input: DataSourceUpdateInput):
     meta = row.get("cmetadata", {})
 
     # 2. Get Airbyte mapping
-    from service.airbyte_mapping_db import AirbyteMappingDB
     from service.airbyte_api_client import get_airbyte_client
+    from service.airbyte_mapping_db import AirbyteMappingDB
 
     mapping = await AirbyteMappingDB.get(id)
     if not mapping:
@@ -621,7 +618,7 @@ async def update_datasource(id: str, input: DataSourceUpdateInput):
             )
 
     # 5. Update connection streams and/or sync mode
-    conn_update_fields: Dict[str, Any] = {}
+    conn_update_fields: dict[str, Any] = {}
 
     if input.streams is not None or input.sync_mode is not None or input.destination_sync_mode is not None:
         try:
@@ -803,8 +800,8 @@ async def delete_datasource(id: str):
 
     # Clean up Airbyte objects
     try:
-        from service.airbyte_mapping_db import AirbyteMappingDB
         from service.airbyte_api_client import get_airbyte_client
+        from service.airbyte_mapping_db import AirbyteMappingDB
 
         mapping = await AirbyteMappingDB.get(id)
         if mapping:

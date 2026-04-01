@@ -8,7 +8,6 @@ Endpoints:
 """
 import logging
 import os
-from typing import Dict
 
 import httpx
 from fastapi import APIRouter, Depends, Query
@@ -27,7 +26,7 @@ async def get_mcp_tools(
         default="http://mcp-server:8002/mcp",
         description="MCP Server URL",
     ),
-) -> Dict:
+) -> dict:
     """
     Get list of available MCP tools from the specified MCP server.
     Used by the UI to populate tool selection for pipeline stages.
@@ -61,7 +60,7 @@ async def get_mcp_tools(
 
 
 @router.get("/ollama/models")
-async def get_ollama_models() -> Dict:
+async def get_ollama_models() -> dict:
     """
     Get list of available Ollama models.
     Fetches from Ollama API at OLLAMA_BASE_URL.
@@ -91,7 +90,7 @@ async def get_ollama_models() -> Dict:
 
 
 @router.get("/rag/collections")
-async def get_rag_collections() -> Dict:
+async def get_rag_collections() -> dict:
     """Proxy endpoint to get RAG collections from langconnect-api."""
     rag_api_url = os.environ.get("RAG_API_URL", "http://langconnect-api:8080")
 

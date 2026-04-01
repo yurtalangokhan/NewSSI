@@ -9,7 +9,6 @@ The ~310-line GRAPH_SCHEMAS dict lives here so it does not bloat
 other modules.
 """
 import logging
-from typing import Dict
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException
@@ -48,7 +47,7 @@ async def _get_ollama_models() -> list[str]:
 # =============================================================================
 
 @router.get("/assistants/{assistant_id}/schemas")
-async def get_assistant_schemas(assistant_id: str) -> Dict:
+async def get_assistant_schemas(assistant_id: str) -> dict:
     """
     Get schemas for an assistant's configuration.
     Returns graph-specific config schemas with x_oap_ui_config metadata

@@ -8,7 +8,7 @@ import asyncio
 import logging
 import os
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import httpx
 
@@ -182,7 +182,7 @@ async def run_ingestion(
 
 async def update_sync_status(uuid_str: str, status: str, error_msg: str | None):
     """Update final sync status with timestamp."""
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
 
     ds_repo = DatasourceRepository()
     row = await ds_repo.get_collection(uuid_str)

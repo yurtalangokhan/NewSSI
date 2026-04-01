@@ -27,10 +27,9 @@ Architecture decisions:
       to avoid duplicates while allowing updates.
 """
 
-import hashlib
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
@@ -115,7 +114,7 @@ async def save_memories(
             key=FACTS_KEY,
             value={
                 "facts": merged,
-                "updated_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(UTC).isoformat(),
             },
         )
         logger.info(
@@ -257,6 +256,6 @@ async def extract_and_save_memories(
                 await save_memories(store, user_id, new_facts)
 
     except json.JSONDecodeError:
-        logger.debug(f"[LongTermMemory] Could not parse extraction response as JSON")
+        logger.debug("[LongTermMemory] Could not parse extraction response as JSON")
     except Exception as e:
         logger.warning(f"[LongTermMemory] Memory extraction failed for user {user_id}: {e}")

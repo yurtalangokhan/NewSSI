@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import logging
 import uuid as _uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from core.db.models.assistant import AssistantModel
@@ -22,7 +22,7 @@ def _ensure_datetime(val: Any) -> datetime:
         return val
     if isinstance(val, str):
         return datetime.fromisoformat(val)
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class AssistantRepository(BaseRepository):
@@ -84,7 +84,7 @@ class AssistantRepository(BaseRepository):
 
         Returns the saved row as a dict.
         """
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         values = {
             "assistant_id": assistant["assistant_id"],
             "graph_id": assistant["graph_id"],
@@ -135,7 +135,7 @@ class AssistantRepository(BaseRepository):
         if "name" in updates:
             current["name"] = updates["name"]
 
-        current["updated_at"] = datetime.now(timezone.utc).isoformat()
+        current["updated_at"] = datetime.now(UTC).isoformat()
         return await self.save_assistant(current)
 
     async def delete_assistant(self, assistant_id: str) -> bool:

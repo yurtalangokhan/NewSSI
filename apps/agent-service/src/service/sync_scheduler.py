@@ -22,8 +22,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -93,7 +92,7 @@ class SyncScheduler:
         # -- register each schedule (error-isolated) -----------------------
         loaded = 0
         missed_ds_ids: list[tuple[str, bool]] = []  # (datasource_id, update_graph_rag)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         for sched in schedules:
             try:
@@ -108,7 +107,7 @@ class SyncScheduler:
                     else:
                         next_dt = raw_next
                     if next_dt.tzinfo is None:
-                        next_dt = next_dt.replace(tzinfo=timezone.utc)
+                        next_dt = next_dt.replace(tzinfo=UTC)
                     if next_dt < now:
                         missed_ds_ids.append(
                             (sched["datasource_id"], sched.get("update_graph_rag", False))
@@ -309,7 +308,7 @@ async def _on_cron_trigger(datasource_id: str, update_graph_rag: bool) -> None:
 # Singleton
 # ------------------------------------------------------------------
 
-_INSTANCE: Optional[SyncScheduler] = None
+_INSTANCE: SyncScheduler | None = None
 
 
 def get_sync_scheduler() -> SyncScheduler:

@@ -73,7 +73,7 @@ class SyncScheduleModel(Base):
     )
 
     # Back-reference
-    datasource: Mapped["PgCollection | None"] = relationship(
+    datasource: Mapped[PgCollection | None] = relationship(
         "PgCollection",
         back_populates="schedule",
     )

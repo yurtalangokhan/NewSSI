@@ -6,7 +6,7 @@ Each sub-agent is defined with a name, system prompt, and MCP tools.
 
 import logging
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from langchain_core.messages import SystemMessage
 from langchain_core.runnables import RunnableConfig
@@ -55,8 +55,8 @@ class DynamicFlatSupervisor(LazyLoadingAgent):
     
     def __init__(self) -> None:
         super().__init__()
-        self._default_graph: Optional[CompiledStateGraph | Pregel] = None
-        self._mcp_tools: Dict[str, Any] = {}
+        self._default_graph: CompiledStateGraph | Pregel | None = None
+        self._mcp_tools: dict[str, Any] = {}
     
     @property
     def name(self) -> str:
@@ -150,10 +150,10 @@ class DynamicFlatSupervisor(LazyLoadingAgent):
     
     def _create_supervisor_graph(
         self,
-        sub_agents_config: List[Dict[str, Any]],
-        supervisor_prompt: Optional[str] = None,
-        model_name: Optional[str] = None,
-        checkpointer: Optional[Any] = None,
+        sub_agents_config: list[dict[str, Any]],
+        supervisor_prompt: str | None = None,
+        model_name: str | None = None,
+        checkpointer: Any | None = None,
     ) -> CompiledStateGraph | Pregel:
         """
         Create a supervisor graph with the specified sub-agents.
@@ -280,9 +280,9 @@ Analyze the user's request and delegate to the most appropriate agent(s). You ca
     
     def create_configured_graph(
         self,
-        sub_agents_config: List[Dict[str, Any]],
-        supervisor_prompt: Optional[str] = None,
-        model_name: Optional[str] = None,
+        sub_agents_config: list[dict[str, Any]],
+        supervisor_prompt: str | None = None,
+        model_name: str | None = None,
     ) -> CompiledStateGraph | Pregel:
         """
         Create a supervisor graph with the specified sub-agents.
@@ -316,7 +316,7 @@ Analyze the user's request and delegate to the most appropriate agent(s). You ca
     async def ainvoke(
         self,
         input: Any,
-        config: Optional[RunnableConfig] = None,
+        config: RunnableConfig | None = None,
         **kwargs: Any
     ) -> Any:
         """
@@ -359,8 +359,8 @@ Analyze the user's request and delegate to the most appropriate agent(s). You ca
     async def astream(
         self,
         input: Any,
-        config: Optional[RunnableConfig] = None,
-        checkpointer: Optional[Any] = None,
+        config: RunnableConfig | None = None,
+        checkpointer: Any | None = None,
         **kwargs: Any
     ):
         """
@@ -401,13 +401,13 @@ Analyze the user's request and delegate to the most appropriate agent(s). You ca
                 model_name=model_name,
                 checkpointer=checkpointer,
             )
-            print(f"[SUPERVISOR] Graph created, starting astream...")
+            print("[SUPERVISOR] Graph created, starting astream...")
             print(f"[SUPERVISOR] astream kwargs: {kwargs}")
             async for chunk in graph.astream(input, config=config, **kwargs):
                 collected_output = chunk
                 yield chunk
         else:
-            print(f"[SUPERVISOR] No sub_agents_config, using default graph")
+            print("[SUPERVISOR] No sub_agents_config, using default graph")
             # Use default graph
             async for chunk in self._graph.astream(input, config=config, **kwargs):
                 collected_output = chunk
@@ -422,9 +422,9 @@ Analyze the user's request and delegate to the most appropriate agent(s). You ca
     async def astream_events(
         self,
         input: Any,
-        config: Optional[RunnableConfig] = None,
+        config: RunnableConfig | None = None,
         version: str = "v2",
-        checkpointer: Optional[Any] = None,
+        checkpointer: Any | None = None,
         **kwargs: Any
     ):
         """
@@ -466,7 +466,8 @@ Analyze the user's request and delegate to the most appropriate agent(s). You ca
             try:
                 store = self._get_langgraph_store()
                 if store:
-                    from core import get_model, settings as core_settings
+                    from core import get_model
+                    from core import settings as core_settings
                     model = get_model(configurable.get("model", core_settings.DEFAULT_MODEL))
                     from memory.long_term import extract_and_save_memories
                     await extract_and_save_memories(
