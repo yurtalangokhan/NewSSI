@@ -92,7 +92,8 @@ run-service:
 	@echo "$(GREEN)Starting FastAPI service...$(RESET)"
 	@echo "$(YELLOW)API available at: http://localhost:8080$(RESET)"
 	@echo "$(YELLOW)API docs at: http://localhost:8080/redoc$(RESET)"
-	cd $(PROJECT_DIR) && $(PYTHON) src/run_service.py
+	@echo "$(YELLOW)NOTE: Using FAKE_MODEL for development$(RESET)"
+	cd $(PROJECT_DIR) && PYTHONPATH=$(PROJECT_DIR)/src $(PYTHON) src/run_service.py
 
 run-streamlit:
 	@echo "$(GREEN)Starting Streamlit app...$(RESET)"

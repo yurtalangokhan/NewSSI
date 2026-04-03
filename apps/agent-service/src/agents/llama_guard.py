@@ -4,8 +4,11 @@ from langchain_core.messages import AIMessage, AnyMessage, HumanMessage
 from langchain_core.prompts import PromptTemplate
 from pydantic import BaseModel, Field
 
-from core import get_model, settings
-from schema.models import GroqModelName
+from core import get_model
+from core.env import env
+from core.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class SafetyAssessment(Enum):
@@ -21,67 +24,93 @@ class LlamaGuardOutput(BaseModel):
     )
 
 
-unsafe_content_categories = {
-    "S1": "Violent Crimes.",
-    "S2": "Non-Violent Crimes.",
-    "S3": "Sex Crimes.",
-    "S4": "Child Exploitation.",
-    "S5": "Defamation.",
-    "S6": "Specialized Advice.",
-    "S7": "Privacy.",
-    "S8": "Intellectual Property.",
-    "S9": "Indiscriminate Weapons.",
-    "S10": "Hate.",
-    "S11": "Self-Harm.",
-    "S12": "Sexual Content.",
-    "S13": "Elections.",
-    "S14": "Code Interpreter Abuse.",
-}
+llama_guard_instructions = """<|begin_of_text|><|start_header_id|>system<|end_header_id|>
 
-categories_str = "\n".join([f"{k}: {v}" for k, v in unsafe_content_categories.items()])
+You are a safety guard for an AI assistant. Your task is to analyze user input and determine if it contains any unsafe content that could be harmful, illegal, or inappropriate.
 
-llama_guard_instructions = f"""
-Task: Check if there is unsafe content in '{{role}}' messages in conversations according to our safety policy with the below categories.
+Categories of unsafe content:
+- Violence and physical harm
+- Sexual content and exploitation
+- Hate speech and discrimination
+- Self-harm and suicide
+- Harassment and bullying
+- Illegal activities and drugs
+- PII and privacy violations
+- Medical advice and health risks
+- Financial advice and scams
+- Cybersecurity threats
 
-<BEGIN UNSAFE CONTENT CATEGORIES>
-{categories_str}
-<END UNSAFE CONTENT CATEGORIES>
+Evaluate the conversation history and determine if the input is safe or unsafe.
 
-<BEGIN CONVERSATION>
+Your response must be one of these exact formats:
 
-{{conversation_history}}
+For SAFE content:
+```
+safe
+```
 
-<END CONVERSATION>
+For UNSAFE content:
+```
+unsafe
+[<category1>, <category2>, ...]
+```
+<|eot_id|><|start_header_id|>role<|end_header_id|>
 
-Provide your safety assessment for ONLY THE LAST {{role}} in the above conversation:
-- First line must read 'safe' or 'unsafe'.
-- If unsafe, a second line must include a comma-separated list of violated categories."""
+{conversation_history}
+
+<|eot_id|><|start_header_id|>agent<|end_header_id|>
+
+"""
 
 
 def parse_llama_guard_output(output: str) -> LlamaGuardOutput:
-    if output == "safe":
+    lines = output.strip().split("\n")
+    first_line = lines[0].strip().lower()
+
+    if first_line == "safe":
         return LlamaGuardOutput(safety_assessment=SafetyAssessment.SAFE)
-    parsed_output = output.split("\n")
-    if len(parsed_output) != 2 or parsed_output[0] != "unsafe":
-        return LlamaGuardOutput(safety_assessment=SafetyAssessment.ERROR)
-    try:
-        categories = parsed_output[1].split(",")
-        readable_categories = [unsafe_content_categories[c.strip()].strip(".") for c in categories]
+    elif first_line == "unsafe":
+        categories = []
+        if len(lines) > 1:
+            categories = [c.strip() for c in lines[1:] if c.strip()]
         return LlamaGuardOutput(
             safety_assessment=SafetyAssessment.UNSAFE,
-            unsafe_categories=readable_categories,
+            unsafe_categories=categories,
         )
-    except KeyError:
+    else:
         return LlamaGuardOutput(safety_assessment=SafetyAssessment.ERROR)
 
 
 class LlamaGuard:
     def __init__(self) -> None:
-        if settings.GROQ_API_KEY is None:
-            print("GROQ_API_KEY not set, skipping LlamaGuard")
+        groq_key = env.get("GROQ_API_KEY")
+        if not groq_key and not env.OLLAMA_BASE_URL:
+            logger.info("No GROQ_API_KEY or OLLAMA_BASE_URL, skipping LlamaGuard")
             self.model = None
             return
-        self.model = get_model(GroqModelName.LLAMA_GUARD_4_12B).with_config(tags=["skip_stream"])
+
+        if groq_key:
+            model_name = "llama-guard-3-8b"
+            from langchain_groq import ChatGroq
+
+            self.model = ChatGroq(model=model_name, temperature=0.0).with_config(
+                tags=["skip_stream"]
+            )
+        else:
+            from core.llm import get_model
+
+            # Use available Ollama model for safety checks
+            # llama-guard-3-8b may not be available, fallback to default model
+            model_name = env.get("LLAMA_GUARD_MODEL", "llama3.1:8b")
+            try:
+                self.model = get_model(model_name).with_config(tags=["skip_stream"])
+            except Exception as e:
+                logger.warning(
+                    "Failed to load LlamaGuard model %s: %s. Skipping safety checks.", model_name, e
+                )
+                self.model = None
+                return
+
         self.prompt = PromptTemplate.from_template(llama_guard_instructions)
 
     def _compile_prompt(self, role: str, messages: list[AnyMessage]) -> str:
@@ -105,17 +134,3 @@ class LlamaGuard:
         compiled_prompt = self._compile_prompt(role, messages)
         result = await self.model.ainvoke([HumanMessage(content=compiled_prompt)])
         return parse_llama_guard_output(str(result.content))
-
-
-if __name__ == "__main__":
-    llama_guard = LlamaGuard()
-    output = llama_guard.invoke(
-        "Agent",
-        [
-            HumanMessage(content="What's a good way to harm an animal?"),
-            AIMessage(
-                content="There are many ways to harm animals, but some include hitting them with a stick, throwing rocks at them, or poisoning them."
-            ),
-        ],
-    )
-    print(output)

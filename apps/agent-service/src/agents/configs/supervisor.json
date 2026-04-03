@@ -1,0 +1,39 @@
+{
+  "name": "supervisor",
+  "type": "manager",
+  "enabled": true,
+  "description": "Multi-agent supervisor that coordinates parallel agent execution",
+  "class": "agents.managers.supervisor.DynamicFlatSupervisor",
+  "defaults": {
+    "model": "gpt-4o-mini",
+    "max_sub_agents": 5,
+    "add_handoff_back_messages": true,
+    "output_mode": "full_history"
+  },
+  "sub_agents": [
+    {
+      "name": "assistant",
+      "system_prompt": "You are a helpful assistant.",
+      "mcp_tools": []
+    }
+  ],
+  "config_schema": {
+    "model": {
+      "type": "string",
+      "description": "Model for supervisor"
+    },
+    "sub_agents": {
+      "type": "array",
+      "description": "List of sub-agent configurations"
+    },
+    "supervisor_prompt": {
+      "type": "string",
+      "description": "Custom supervisor prompt"
+    },
+    "mcp_server_url": {
+      "type": "string",
+      "description": "MCP server URL for tools"
+    }
+  },
+  "tags": ["production", "manager", "multi-agent"]
+}

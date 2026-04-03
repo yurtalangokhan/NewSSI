@@ -43,7 +43,7 @@ def get_postgres_connection_string() -> str:
         raise ValueError("POSTGRES_PASSWORD is not set")
     return (
         f"postgresql://{settings.POSTGRES_USER}:"
-        f"{settings.POSTGRES_PASSWORD.get_secret_value()}@"
+        f"{settings.POSTGRES_PASSWORD}@"
         f"{settings.POSTGRES_HOST}:{settings.POSTGRES_PORT}/"
         f"{settings.POSTGRES_DB}"
     )

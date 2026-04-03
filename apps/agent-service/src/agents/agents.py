@@ -16,7 +16,10 @@ from agents.langgraph_supervisor_hierarchy_agent import langgraph_supervisor_hie
 from agents.lazy_agent import LazyLoadingAgent
 from agents.rag_assistant import rag_assistant
 from agents.research_assistant import research_assistant
+from core.logger import get_logger
 from schema import AgentInfo
+
+logger = get_logger(__name__)
 
 DEFAULT_AGENT = "research-assistant"
 
@@ -33,7 +36,57 @@ class Agent:
     graph_like: AgentGraphLike
 
 
-agents: dict[str, Agent] = {
+def _load_config_agents() -> dict[str, Agent]:
+    """Load agents from JSON config files (non-breaking, adds extra agents)."""
+    config_agents = {}
+    try:
+        from agents.configs import load_agent_configs
+
+        configs = load_agent_configs()
+
+        for config in configs:
+            name = config.get("name")
+            if not name:  # Skip if no name
+                continue
+
+            description = config.get("description", "Config-based agent")
+
+            # Get the manager classes from new structure
+            agent_type = config.get("type", "manager")
+
+            if agent_type == "manager":
+                from agents.managers import get_supervisor, get_pipeline
+
+                if "pipeline" in name.lower():
+                    config_agents[name] = Agent(
+                        description=description,
+                        graph_like=get_pipeline(config),
+                    )
+                else:
+                    config_agents[name] = Agent(
+                        description=description,
+                        graph_like=get_supervisor(config),
+                    )
+            else:
+                # For basic agents, could be added later
+                config_agents[name] = Agent(
+                    description=description,
+                    graph_like=chatbot,  # Fallback to chatbot
+                )
+
+        if config_agents:
+            logger.info(
+                "Loaded %d config-based agents: %s", len(config_agents), list(config_agents.keys())
+            )
+
+    except Exception as e:
+        logger.warning("Config loading skipped: %s", e)
+
+    return config_agents
+
+
+# Base hardcoded agents (these are the actual implementations)
+_base_agents: dict[str, Agent] = {
     "chatbot": Agent(description="A simple chatbot.", graph_like=chatbot),
     "research-assistant": Agent(
         description="A research assistant with web search and calculator.",
@@ -73,6 +126,10 @@ agents: dict[str, Agent] = {
     ),
 }
 
+# Combine base agents with config-loaded agents
+_config_agents = _load_config_agents()
+agents = {**_base_agents, **_config_agents}
+
 
 async def load_agent(agent_id: str) -> None:
     """Load lazy agents if needed."""
@@ -102,15 +159,15 @@ def get_agent_or_lazy(agent_id: str) -> AgentGraphLike:
     """
     if agent_id not in agents:
         raise KeyError(f"Agent {agent_id} not found")
-    
+
     agent_graph = agents[agent_id].graph_like
-    
+
     # If it's a lazy loading agent, return the instance (not the graph)
     if isinstance(agent_graph, LazyLoadingAgent):
         if not agent_graph._loaded:
             raise RuntimeError(f"Agent {agent_id} not loaded. Call load() first.")
         return agent_graph
-    
+
     # Otherwise return the graph directly
     return agent_graph
 

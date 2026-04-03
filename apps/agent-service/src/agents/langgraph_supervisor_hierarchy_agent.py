@@ -6,7 +6,6 @@ Supports dynamic stage configuration with MCP tools per stage.
 
 import hashlib
 import json as json_module
-import logging
 import os
 from typing import Any
 
@@ -19,8 +18,9 @@ from langgraph_supervisor import create_supervisor
 
 from agents.lazy_agent import LazyLoadingAgent
 from core import get_model, settings
+from core.logger import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # Default stage prompts for common use cases
 DEFAULT_STAGE_PROMPTS = {
@@ -32,18 +32,14 @@ DEFAULT_STAGE_PROMPTS = {
 
 # Default pipeline configuration
 DEFAULT_PIPELINE_STAGES = [
-    {
-        "name": "enricher",
-        "system_prompt": DEFAULT_STAGE_PROMPTS["enricher"],
-        "mcp_tools": []
-    }
+    {"name": "enricher", "system_prompt": DEFAULT_STAGE_PROMPTS["enricher"], "mcp_tools": []}
 ]
 
 
 class DynamicPipelineSupervisor(LazyLoadingAgent):
     """
     A dynamic pipeline supervisor that executes stages sequentially.
-    
+
     Configuration (via agent_config):
         - pipeline_stages: List of stage configurations
             - name: Stage name (used as node identifier)
@@ -52,55 +48,56 @@ class DynamicPipelineSupervisor(LazyLoadingAgent):
         - retry_count: Number of retries on stage failure (default: 2)
         - on_error: Error handling strategy ('abort' or 'skip', default: 'abort')
     """
-    
+
     def __init__(self) -> None:
         super().__init__()
         self._default_graph: CompiledStateGraph | Pregel | None = None
         self._mcp_tools: dict[str, Any] = {}
         self._mcp_cleanup = None
         self._graph_cache: dict[str, CompiledStateGraph | Pregel] = {}
-    
+
     @property
     def name(self) -> str:
         return "langgraph-supervisor-hierarchy-agent"
-    
+
     @property
     def description(self) -> str:
         return "A dynamic pipeline supervisor that executes stages sequentially with MCP tools"
-    
+
     async def load(self) -> None:
         """Create a default graph and load MCP tools."""
         if self._loaded:
             return
-        
+
         try:
             # Try to load MCP tools
             await self._load_mcp_tools()
-            
+
             # Create default graph with a single stage
             self._default_graph = self._create_pipeline_graph(DEFAULT_PIPELINE_STAGES)
             self._graph = self._default_graph
             self._loaded = True
-            
-            logger.info(f"Dynamic Pipeline Supervisor initialized with {len(self._mcp_tools)} MCP tools available")
-            print(f"Dynamic Pipeline Supervisor initialized with {len(self._mcp_tools)} MCP tools available")
-            
+
+            logger.info(
+                "Dynamic Pipeline Supervisor initialized with %s MCP tools available",
+                len(self._mcp_tools),
+            )
+
         except Exception as e:
-            logger.error(f"Failed to initialize Dynamic Pipeline Supervisor: {e}")
-            print(f"Failed to initialize Dynamic Pipeline Supervisor: {e}")
+            logger.error("Failed to initialize Dynamic Pipeline Supervisor: %s", e)
             # Create a minimal fallback graph
             self._default_graph = self._create_fallback_graph()
             self._graph = self._default_graph
             self._loaded = True
             logger.warning("Using fallback graph without MCP tools")
-    
+
     async def _load_mcp_tools(self) -> None:
         """Load tools from MCP server."""
         try:
             from langchain_mcp_adapters.client import MultiServerMCPClient
-            
+
             mcp_url = os.environ.get("MCP_SERVER_URL", "http://mcp-server:8002/mcp")
-            
+
             client = MultiServerMCPClient(
                 connections={
                     "mcp-tools": {
@@ -109,31 +106,31 @@ class DynamicPipelineSupervisor(LazyLoadingAgent):
                     }
                 }
             )
-            
+
             # New API: directly call get_tools() without context manager
             tools = await client.get_tools()
-            
+
             # Store tools by name for easy lookup
             for tool in tools:
                 self._mcp_tools[tool.name] = tool
-            
-            logger.info(f"Loaded {len(tools)} MCP tools: {list(self._mcp_tools.keys())}")
-            
+
+            logger.info("Loaded %s MCP tools for pipeline", len(self._mcp_tools))
+
         except Exception as e:
-            logger.warning(f"Could not load MCP tools: {e}")
+            logger.warning("Failed to load MCP tools: %s", e)
             self._mcp_tools = {}
-    
+
     def _create_fallback_graph(self) -> CompiledStateGraph:
         """Create a minimal fallback graph."""
         model = get_model(settings.DEFAULT_MODEL)
-        
+
         agent = create_react_agent(
             model=model,
             tools=[],
             name="fallback-agent",
             prompt="You are a helpful assistant. MCP tools are not available.",
         )
-        
+
         workflow = create_supervisor(
             [agent],
             model=model,
@@ -141,9 +138,9 @@ class DynamicPipelineSupervisor(LazyLoadingAgent):
             add_handoff_back_messages=True,
             output_mode="full_history",
         )
-        
+
         return workflow.compile()
-    
+
     def _pipeline_cache_key(
         self,
         stages: list[dict[str, Any]],
@@ -191,7 +188,7 @@ class DynamicPipelineSupervisor(LazyLoadingAgent):
         checkpoint system because each compilation assigns new UUIDs to
         sub-graph nodes; reusing the graph keeps the namespace UUIDs
         stable and allows message history to accumulate correctly.
-        
+
         Args:
             stages: List of stage configurations, each with:
                 - name: Stage identifier
@@ -204,7 +201,7 @@ class DynamicPipelineSupervisor(LazyLoadingAgent):
             retry_count: Number of retries per stage
             on_error: Error handling ('abort' or 'skip')
             checkpointer: Optional checkpointer for persistence
-        
+
         Returns:
             Compiled pipeline graph
         """
@@ -214,50 +211,46 @@ class DynamicPipelineSupervisor(LazyLoadingAgent):
         # ── Cache lookup ──────────────────────────────────────────────
         cache_key = self._pipeline_cache_key(stages, model_name, checkpointer)
         if cache_key in self._graph_cache:
-            logger.info(
-                f"[PIPELINE] Reusing cached graph (key={cache_key[:12]})"
-            )
-            print(f"[PIPELINE] Reusing cached graph for given configuration (key={cache_key[:12]})")
+            logger.info("PIPELINE Reusing cached graph (key=%s)", cache_key[:12])
             return self._graph_cache[cache_key]
-        
+
         supervisor_model_name = model_name or settings.DEFAULT_MODEL
         supervisor_model = get_model(supervisor_model_name)
-        logger.info(f"[PIPELINE] Supervisor model: {supervisor_model_name}")
-        print(f"[PIPELINE] Supervisor model: {supervisor_model_name}")
-        
+
         # Create agents for each stage
         stage_agents = []
-        
+
         for stage_config in stages:
             stage_name = stage_config.get("name", f"stage_{len(stage_agents)}")
             system_prompt = stage_config.get("system_prompt", f"You are the {stage_name} agent.")
             mcp_tool_names = stage_config.get("mcp_tools", [])
-            
+
             # Per-stage model: use stage-specific model if provided, otherwise fall back to supervisor model
             stage_model_name = stage_config.get("model") or supervisor_model_name
             stage_model = get_model(stage_model_name)
-            
+
             if stage_config.get("model"):
                 logger.info(
-                    f"[PIPELINE] Stage '{stage_name}': using custom model '{stage_model_name}' "
-                    f"(overrides supervisor model '{supervisor_model_name}')"
+                    "[PIPELINE] Stage '%s': using custom model '%s' (overrides supervisor model '%s')",
+                    stage_name,
+                    stage_model_name,
+                    supervisor_model_name,
                 )
-                print(f"[PIPELINE] Stage '{stage_name}': using model '{stage_model_name}' (overrides supervisor model '{supervisor_model_name}')")
             else:
                 logger.info(
-                    f"[PIPELINE] Stage '{stage_name}': using supervisor model '{supervisor_model_name}' (no override)"
+                    "[PIPELINE] Stage '%s': using supervisor model '%s' (no override)",
+                    stage_name,
+                    supervisor_model_name,
                 )
-                print(f"[PIPELINE] Stage '{stage_name}': using model '{stage_model_name}' with no override")
-            
+
             # Get requested MCP tools
             stage_tools = []
             for tool_name in mcp_tool_names:
                 if tool_name in self._mcp_tools:
                     stage_tools.append(self._mcp_tools[tool_name])
                 else:
-                    logger.warning(f"MCP tool '{tool_name}' not found for stage '{stage_name}'")
-                    print(f"Warning: MCP tool '{tool_name}' not found for stage '{stage_name}'")
-            
+                    logger.warning("MCP tool '%s' not found for stage '%s'", tool_name, stage_name)
+
             # Enhance system prompt with tool usage instructions
             tool_names_str = ", ".join(mcp_tool_names) if mcp_tool_names else "none"
             enhanced_system_prompt = f"""{system_prompt}
@@ -269,7 +262,7 @@ CRITICAL INSTRUCTIONS:
 - If asked to search or verify information, you MUST use web_search to find real sources.
 - Always base your responses on actual tool results, not assumptions.
 - If a tool fails, report the error instead of making up information."""
-            
+
             # Create the stage agent with its own model
             agent = create_react_agent(
                 model=stage_model,
@@ -277,29 +270,28 @@ CRITICAL INSTRUCTIONS:
                 name=f"stage-{stage_name}",
                 prompt=SystemMessage(content=enhanced_system_prompt),
             )
-            
+
             # Wrap with stage identification (no skip_stream for visibility)
-            wrapped_agent = agent.with_config(
-                run_name=f"sub-agent-{stage_name}",
-                tags=[]
-            )
-            
+            wrapped_agent = agent.with_config(run_name=f"sub-agent-{stage_name}", tags=[])
+
             stage_agents.append((stage_name, wrapped_agent))
-        
+
         # Use provided checkpointer or create a MemorySaver fallback
         if checkpointer is None:
             from langgraph.checkpoint.memory import MemorySaver
+
             checkpointer = MemorySaver()
-            logger.info("[PIPELINE] Compiling graph with MemorySaver checkpointer (fallback)")
-            print("[PIPELINE] Compiling graph with MemorySaver checkpointer (fallback)")
         else:
-            logger.info(f"[PIPELINE] Compiling graph with provided checkpointer: {type(checkpointer).__name__}")
-            print(f"[PIPELINE] Compiling graph with provided checkpointer: {type(checkpointer).__name__}")
-        
+            logger.info(
+                f"[PIPELINE] Compiling graph with provided checkpointer: {type(checkpointer).__name__}"
+            )
+            logger.info(
+                "PIPELINE Compiling graph with provided checkpointer: {type(checkpointer).__name__}"
+            )
 
         # Extract just the agents from the tuples (drop the wrapped_agent, use original)
         agents_only = [agent for (stage_name, agent) in stage_agents]
-        
+
         # Build agent descriptions for supervisor prompt
         agent_descriptions = []
         for stage_config in stages:
@@ -307,10 +299,12 @@ CRITICAL INSTRUCTIONS:
             mcp_tool_names = stage_config.get("mcp_tools", [])
             tool_list = ", ".join(mcp_tool_names) if mcp_tool_names else "no tools"
             agent_descriptions.append(f"- stage-{stage_name}: (tools: {tool_list})")
-        
+
         # Build stage list for the prompt
-        stage_list = "\n".join([f"{i+1}. stage-{name}" for i, (name, _) in enumerate(stage_agents)])
-        
+        stage_list = "\n".join(
+            [f"{i + 1}. stage-{name}" for i, (name, _) in enumerate(stage_agents)]
+        )
+
         # Create a single flat supervisor that manages all stage agents
         # This is similar to how langgraph_supervisor_agent works
         main_prompt = f"""You are a pipeline supervisor coordinating a sequential workflow of specialized agents.
@@ -331,9 +325,7 @@ IMPORTANT:
 - Always delegate to the appropriate stage agent - do NOT answer directly
 - Each agent MUST use their tools to complete tasks
 - Wait for each stage to complete before moving to the next"""
-        
-        logger.info(f"[PIPELINE] Creating flat supervisor with {len(agents_only)} stage agents")
-        
+
         workflow = create_supervisor(
             agents_only,
             model=supervisor_model,
@@ -341,10 +333,10 @@ IMPORTANT:
             add_handoff_back_messages=True,
             output_mode="full_history",
         )
-        
+
         compiled = workflow.compile(checkpointer=checkpointer)
         self._graph_cache[cache_key] = compiled
-        
+
         # Log model summary for all stages
         model_summary = []
         for stage_config in stages:
@@ -352,28 +344,29 @@ IMPORTANT:
             smodel = stage_config.get("model") or supervisor_model_name
             model_summary.append(f"{sname}={smodel}")
         logger.info(
-            f"[PIPELINE] Graph created (key={cache_key[:12]}). "
-            f"Supervisor={supervisor_model_name}, Stages: {', '.join(model_summary)}"
+            "[PIPELINE] Graph created (key=%s). Supervisor=%s, Stages: %s",
+            cache_key[:12],
+            supervisor_model_name,
+            ", ".join(model_summary),
         )
-        print(f"[PIPELINE] Graph created with configuration (key={cache_key[:12]}). Supervisor={supervisor_model_name}, Stages: {', '.join(model_summary)}")
         return compiled
-    
+
     def get_graph(self) -> CompiledStateGraph | Pregel:
         """Return the default graph."""
         if not self._loaded:
             raise RuntimeError("Agent not loaded. Call load() first.")
         return self._graph
-    
+
     def create_configured_graph(
         self,
         pipeline_stages: list[dict[str, Any]],
         model_name: str | None = None,
         retry_count: int = 2,
-        on_error: str = "abort"
+        on_error: str = "abort",
     ) -> CompiledStateGraph | Pregel:
         """
         Create a pipeline graph with the specified configuration.
-        
+
         Args:
             pipeline_stages: List of stage configs, each with:
                 - name: Stage identifier
@@ -382,32 +375,29 @@ IMPORTANT:
             model_name: Optional model override
             retry_count: Retries per stage (default: 2)
             on_error: Error strategy ('abort' or 'skip')
-        
+
         Returns:
             Compiled pipeline graph
         """
         return self._create_pipeline_graph(
-            pipeline_stages,
-            model_name=model_name,
-            retry_count=retry_count,
-            on_error=on_error
+            pipeline_stages, model_name=model_name, retry_count=retry_count, on_error=on_error
         )
-    
+
     def get_available_mcp_tools(self) -> list[str]:
         """Get list of available MCP tool names."""
         return list(self._mcp_tools.keys())
-    
+
     async def ensure_loaded(self) -> None:
         """Ensure the agent is loaded."""
         if not self._loaded:
             await self.load()
-    
+
     async def ainvoke(
         self,
         input: Any,
         config: RunnableConfig | None = None,
         checkpointer: Any | None = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> Any:
         """
         Async invoke with dynamic configuration support.
@@ -421,13 +411,12 @@ IMPORTANT:
 
         # Inject memory context
         input, memories, user_id = await self._inject_memory_into_input(input, config)
-        
+
         configurable = (config or {}).get("configurable", {})
         pipeline_stages = configurable.get("pipeline_stages", [])
         model_name = configurable.get("model")
-        
+
         if pipeline_stages:
-            logger.info(f"[PIPELINE] Creating custom graph with {len(pipeline_stages)} stages")
             graph = self._create_pipeline_graph(
                 stages=pipeline_stages,
                 model_name=model_name,
@@ -440,13 +429,13 @@ IMPORTANT:
         # Save memories from output
         await self._save_memory_from_output(result, original_messages, memories, user_id, config)
         return result
-    
+
     async def astream(
         self,
         input: Any,
         config: RunnableConfig | None = None,
         checkpointer: Any | None = None,
-        **kwargs: Any
+        **kwargs: Any,
     ):
         """
         Async stream with dynamic configuration support.
@@ -460,38 +449,34 @@ IMPORTANT:
 
         # Inject memory context
         input, memories, user_id = await self._inject_memory_into_input(input, config)
-        
-        configurable = (config or {}).get("configurable", {})
-        
-        logger.info(f"[PIPELINE] astream called with configurable keys: {list(configurable.keys())}")
-        print(f"[PIPELINE] astream called with configurable keys: {list(configurable.keys())}")
-        logger.info(f"[PIPELINE] astream checkpointer provided: {checkpointer is not None}")
-        print(f"[PIPELINE] astream checkpointer provided: {checkpointer is not None}")
-        
 
+        configurable = (config or {}).get("configurable", {})
+
+        logger.info(
+            f"[PIPELINE] astream called with configurable keys: {list(configurable.keys())}"
+        )
         pipeline_stages = configurable.get("pipeline_stages", [])
         model_name = configurable.get("model")
-        
-        logger.info(f"[PIPELINE] pipeline_stages count: {len(pipeline_stages)}")
-        print(f"[PIPELINE] pipeline_stages count: {len(pipeline_stages)}")
-        
+
         collected_output = None
         if pipeline_stages:
-            logger.info(f"[PIPELINE] Creating custom graph with {len(pipeline_stages)} stages")
             for i, stage in enumerate(pipeline_stages):
-                logger.info(f"[PIPELINE] Stage {i}: name={stage.get('name')}, tools={stage.get('mcp_tools', [])}")
-            
+                logger.info(
+                    "[PIPELINE] Stage %s: name=%s, tools=%s",
+                    i,
+                    stage.get("name"),
+                    stage.get("mcp_tools", []),
+                )
+
             graph = self._create_pipeline_graph(
                 stages=pipeline_stages,
                 model_name=model_name,
                 checkpointer=checkpointer,
             )
-            logger.info("[PIPELINE] Graph created, starting astream...")
             async for chunk in graph.astream(input, config=config, **kwargs):
                 collected_output = chunk
                 yield chunk
         else:
-            logger.info("[PIPELINE] No pipeline_stages, using default graph")
             async for chunk in self._graph.astream(input, config=config, **kwargs):
                 collected_output = chunk
                 yield chunk
@@ -501,14 +486,14 @@ IMPORTANT:
             await self._save_memory_from_output(
                 collected_output, original_messages, memories, user_id, config
             )
-    
+
     async def astream_events(
         self,
         input: Any,
         config: RunnableConfig | None = None,
         checkpointer: Any | None = None,
         version: str = "v2",
-        **kwargs: Any
+        **kwargs: Any,
     ):
         """
         Async stream events with dynamic configuration support.
@@ -522,28 +507,33 @@ IMPORTANT:
 
         # Inject memory context
         input, memories, user_id = await self._inject_memory_into_input(input, config)
-        
+
         configurable = (config or {}).get("configurable", {})
-        
-        logger.info(f"[PIPELINE] astream_events called with configurable keys: {list(configurable.keys())}")
-        print(f"[PIPELINE] astream_events called with configurable keys: {list(configurable.keys())}")
-        
+
+        logger.info(
+            f"[PIPELINE] astream_events called with configurable keys: {list(configurable.keys())}"
+        )
+        logger.info(
+            "PIPELINE astream_events called with configurable keys: {list(configurable.keys())}"
+        )
+
         pipeline_stages = configurable.get("pipeline_stages", [])
         model_name = configurable.get("model")
-        
+
         if pipeline_stages:
-            logger.info(f"[PIPELINE] Creating custom graph with {len(pipeline_stages)} stages")
             graph = self._create_pipeline_graph(
                 stages=pipeline_stages,
                 model_name=model_name,
                 checkpointer=checkpointer,
             )
-            async for event in graph.astream_events(input, config=config, version=version, **kwargs):
+            async for event in graph.astream_events(
+                input, config=config, version=version, **kwargs
+            ):
                 yield event
         else:
-            logger.info("[PIPELINE] No pipeline_stages, using default graph")
-            print("[PIPELINE] No pipeline_stages, using default graph")
-            async for event in self._graph.astream_events(input, config=config, version=version, **kwargs):
+            async for event in self._graph.astream_events(
+                input, config=config, version=version, **kwargs
+            ):
                 yield event
 
         # Save memories after streaming completes
@@ -553,21 +543,23 @@ IMPORTANT:
                 if store:
                     from core import get_model
                     from core import settings as core_settings
+
                     model = get_model(configurable.get("model", core_settings.DEFAULT_MODEL))
                     from memory.long_term import extract_and_save_memories
+
                     await extract_and_save_memories(
                         store, user_id, original_messages, model, memories
                     )
             except Exception as e:
-                logger.warning(f"[Pipeline] Memory save after stream_events failed: {e}")
-    
+                logger.warning("Failed to save memories: %s", e)
+
     async def cleanup(self) -> None:
         """Cleanup MCP connections."""
         if self._mcp_cleanup:
             try:
                 await self._mcp_cleanup()
             except Exception as e:
-                logger.error(f"Error during MCP cleanup: {e}")
+                logger.error("error")
 
 
 # Create singleton instance

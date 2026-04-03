@@ -14,6 +14,7 @@ from langgraph.store.base import BaseStore
 from agents.llama_guard import LlamaGuard, LlamaGuardOutput, SafetyAssessment
 from agents.tools import calculator
 from core import get_model, settings
+from core.env import env
 from memory.long_term import (
     build_memory_context,
     extract_and_save_memories,
@@ -36,10 +37,8 @@ tools = [web_search, calculator]
 
 # Add weather tool if API key is set
 # Register for an API key at https://openweathermap.org/api/
-if settings.OPENWEATHERMAP_API_KEY:
-    wrapper = OpenWeatherMapAPIWrapper(
-        openweathermap_api_key=settings.OPENWEATHERMAP_API_KEY.get_secret_value()
-    )
+if env.OPENWEATHERMAP_API_KEY:
+    wrapper = OpenWeatherMapAPIWrapper(openweathermap_api_key=env.OPENWEATHERMAP_API_KEY)
     tools.append(OpenWeatherMapQueryRun(name="Weather", api_wrapper=wrapper))
 
 current_date = datetime.now().strftime("%B %d, %Y")
@@ -91,7 +90,9 @@ async def acall_model(state: AgentState, config: RunnableConfig, *, store: BaseS
             enhanced_instructions = instructions + memory_context
             bound_model = m.bind_tools(tools)
             preprocessor = RunnableLambda(
-                lambda state, ei=enhanced_instructions: [SystemMessage(content=ei)] + state["messages"],
+                lambda state, ei=enhanced_instructions: (
+                    [SystemMessage(content=ei)] + state["messages"]
+                ),
                 name="StateModifier",
             )
             model_runnable = preprocessor | bound_model

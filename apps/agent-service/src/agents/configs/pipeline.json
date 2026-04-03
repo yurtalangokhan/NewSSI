@@ -1,0 +1,44 @@
+{
+  "name": "pipeline",
+  "type": "manager",
+  "enabled": true,
+  "description": "Sequential pipeline supervisor with configurable stages",
+  "class": "agents.managers.pipeline.DynamicPipelineSupervisor",
+  "defaults": {
+    "model": "gpt-4o-mini",
+    "retry_count": 2,
+    "on_error": "abort"
+  },
+  "stages": [
+    {
+      "name": "enricher",
+      "system_prompt": "You are a project enricher. Analyze input and expand with details.",
+      "mcp_tools": []
+    }
+  ],
+  "config_schema": {
+    "model": {
+      "type": "string",
+      "description": "Model for pipeline stages"
+    },
+    "stages": {
+      "type": "array",
+      "description": "Pipeline stage configurations"
+    },
+    "retry_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of retries on failure"
+    },
+    "on_error": {
+      "type": "string",
+      "enum": ["abort", "skip"],
+      "description": "Error handling strategy"
+    },
+    "mcp_server_url": {
+      "type": "string",
+      "description": "MCP server URL"
+    }
+  },
+  "tags": ["production", "manager", "pipeline"]
+}

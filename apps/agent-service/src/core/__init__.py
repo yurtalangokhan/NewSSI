@@ -3,9 +3,8 @@
 This module re-exports core modules.
 """
 
-# Re-export settings
-# Re-export get_model
 from core.llm import get_model
+from core.logger import configure_logging, get_logger
 from core.settings import settings
 
-__all__ = ["settings", "get_model"]
+__all__ = ["settings", "get_model", "get_logger", "configure_logging"]
