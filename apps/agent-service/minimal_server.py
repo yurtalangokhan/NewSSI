@@ -28,6 +28,7 @@ app.add_middleware(
 
 OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "llama3.2")
 OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
+TOOLS_SERVICE_URL = os.environ.get("TOOLS_SERVICE_URL", "http://localhost:8002/mcp")
 
 chat_sessions = {}
 chat_messages = {}
@@ -585,6 +586,64 @@ async def get_user_assistant_preferences_api():
 @app.get("/api/user/files/recent")
 async def get_recent_files_api():
     return []
+
+
+# MCP Endpoints
+@app.get("/api/mcp/servers")
+async def get_mcp_servers():
+    """Return MCP servers - currently just the tools-service."""
+    return {
+        "mcp_servers": [
+            {
+                "id": 1,
+                "name": "tools-service",
+                "description": "Built-in tools from tools-service",
+                "server_url": TOOLS_SERVICE_URL,
+                "transport": "streamable_http",
+            }
+        ]
+    }
+
+
+@app.get("/proxy/mcp/tools-builtin")
+async def get_builtin_mcp_tools():
+    """Get list of available MCP tools from the built-in tools-service."""
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            response = await client.get(f"{TOOLS_SERVICE_URL}/tools")
+            if response.status_code == 200:
+                data = response.json()
+                tools = data.get("tools", [])
+                return {
+                    "tools": [
+                        {
+                            "name": tool.get("name", ""),
+                            "description": tool.get("description", ""),
+                            "input_schema": tool.get("input_schema", {}),
+                        }
+                        for tool in tools
+                    ]
+                }
+    except Exception as e:
+        print(f"Error fetching built-in tools: {e}")
+
+    # Return sample tools if tools-service is not available
+    return {
+        "tools": [
+            {
+                "name": "calculator",
+                "description": "Perform mathematical calculations",
+                "input_schema": {},
+            },
+            {"name": "current_time", "description": "Get the current time", "input_schema": {}},
+            {
+                "name": "web_search",
+                "description": "Search the web for information",
+                "input_schema": {},
+            },
+            {"name": "file_reader", "description": "Read content from files", "input_schema": {}},
+        ]
+    }
 
 
 if __name__ == "__main__":

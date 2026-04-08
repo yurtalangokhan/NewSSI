@@ -31,22 +31,15 @@ const connectors_items = () => [
 const document_management_items = () => [
   sidebarItem(ADMIN_PATHS.DOCUMENT_SETS),
   sidebarItem(ADMIN_PATHS.DOCUMENT_EXPLORER),
-  sidebarItem(ADMIN_PATHS.DOCUMENT_FEEDBACK),
 ];
 
 const custom_agents_items = (isCurator: boolean, enableEnterprise: boolean) => {
   const items = [sidebarItem(ADMIN_PATHS.AGENTS)];
 
-  if (!isCurator) {
-    items.push(
-      sidebarItem(ADMIN_PATHS.SLACK_BOTS),
-      sidebarItem(ADMIN_PATHS.DISCORD_BOTS)
-    );
-  }
+  if (!isCurator) {}
 
   items.push(
-    sidebarItem(ADMIN_PATHS.MCP_ACTIONS),
-    sidebarItem(ADMIN_PATHS.OPENAPI_ACTIONS)
+    sidebarItem(ADMIN_PATHS.MCP_ACTIONS)
   );
 
   if (enableEnterprise) {
@@ -124,7 +117,6 @@ const collections = (
               sidebarItem(ADMIN_PATHS.USERS),
               ...(enableEnterprise ? [sidebarItem(ADMIN_PATHS.GROUPS)] : []),
               sidebarItem(ADMIN_PATHS.API_KEYS),
-              sidebarItem(ADMIN_PATHS.TOKEN_RATE_LIMITS),
             ],
           },
           ...(enableEnterprise
@@ -147,13 +139,6 @@ const collections = (
             name: "Settings",
             items: [
               ...(enableEnterprise ? [sidebarItem(ADMIN_PATHS.THEME)] : []),
-              // Always show billing/upgrade - community users need access to upgrade
-              {
-                ...sidebarItem(ADMIN_PATHS.BILLING),
-                ...(hasSubscription
-                  ? {}
-                  : { name: "Upgrade Plan", icon: SvgArrowUpCircle }),
-              },
               ...(settings?.settings.opensearch_indexing_enabled
                 ? [sidebarItem(ADMIN_PATHS.INDEX_MIGRATION)]
                 : []),

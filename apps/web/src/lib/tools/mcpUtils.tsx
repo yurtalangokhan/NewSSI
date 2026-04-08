@@ -9,11 +9,12 @@ import { SvgServer } from "@opal/icons";
  * Leverages the existing SOURCE_METADATA_MAP for connector icons.
  */
 export function getActionIcon(
-  serverUrl: string,
-  serverName: string
+  serverUrl: string | undefined,
+  serverName: string | undefined
 ): React.FunctionComponent<IconProps> {
-  const url = serverUrl.toLowerCase();
-  const name = serverName.toLowerCase();
+  // Handle undefined/null inputs
+  const url = (serverUrl || "").toLowerCase();
+  const name = (serverName || "").toLowerCase();
 
   for (const [sourceKey, metadata] of Object.entries(SOURCE_METADATA_MAP)) {
     const keyword = sourceKey.toLowerCase();

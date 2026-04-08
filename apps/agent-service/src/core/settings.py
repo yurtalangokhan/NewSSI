@@ -58,6 +58,7 @@ class Settings(BaseSettings):
     COMPATIBLE_BASE_URL: str | None = None
 
     MCP_SERVER_URL: str = "http://localhost:8002/mcp"
+    TOOLS_SERVICE_URL: str = "http://localhost:8002/mcp"
     GITHUB_PAT: str | None = None
 
     LANGFUSE_TRACING: bool = False

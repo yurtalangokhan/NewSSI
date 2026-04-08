@@ -313,7 +313,7 @@ function processPacket(state: ProcessorState, packet: Packet): void {
   if (!packet) return;
 
   // Debug logging
-  console.log('[packetProcessor] Processing packet:', packet.obj.type, 'content:', typeof packet.obj.content === 'string' ? packet.obj.content.substring(0, 50) : 'N/A');
+  console.log('[packetProcessor] Processing packet:', packet.obj.type, 'content:', 'content' in packet.obj && typeof packet.obj.content === 'string' ? packet.obj.content.substring(0, 50) : 'N/A');
 
   // Handle TopLevelBranching packets - these tell us how many parallel branches to expect
   if (packet.obj.type === PacketType.TOP_LEVEL_BRANCHING) {

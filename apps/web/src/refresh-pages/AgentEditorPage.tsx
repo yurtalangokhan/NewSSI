@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import * as SettingsLayouts from "@/layouts/settings-layouts";
 import * as GeneralLayouts from "@/layouts/general-layouts";
@@ -11,6 +11,8 @@ import { Formik, Form, FieldArray } from "formik";
 import * as Yup from "yup";
 import InputTypeInField from "@/refresh-components/form/InputTypeInField";
 import InputTextAreaField from "@/refresh-components/form/InputTextAreaField";
+import InputSelectField from "@/refresh-components/form/InputSelectField";
+import InputSelect from "@/refresh-components/inputs/InputSelect";
 import InputTypeInElementField from "@/refresh-components/form/InputTypeInElementField";
 import InputDatePickerField from "@/refresh-components/form/InputDatePickerField";
 import Message from "@/refresh-components/messages/Message";
@@ -73,6 +75,7 @@ import {
 import useMcpServersForAgentEditor from "@/hooks/useMcpServersForAgentEditor";
 import useOpenApiTools from "@/hooks/useOpenApiTools";
 import { useAvailableTools } from "@/hooks/useAvailableTools";
+import useBuiltInTools from "@/hooks/useBuiltInTools";
 import * as ActionsLayouts from "@/layouts/actions-layouts";
 import * as ExpandableCard from "@/layouts/expandable-card-layouts";
 import { getActionIcon } from "@/lib/tools/mcpUtils";
@@ -509,6 +512,10 @@ export default function AgentEditorPage({
   // - code-interpreter
   const { tools: availableTools, isLoading: isToolsLoading } =
     useAvailableTools();
+  
+  // Fetch built-in tools from tools-service MCP
+  const { tools: builtInTools, isLoading: isBuiltInToolsLoading } =
+    useBuiltInTools();
   const searchTool = availableTools?.find(
     (t) => t.in_code_tool_id === SEARCH_TOOL_ID
   );
@@ -545,6 +552,20 @@ export default function AgentEditorPage({
     return { server, tools: serverTools, isLoading: false };
   });
 
+  const allMcpTools = useMemo(() => {
+    return mcpServersWithTools.flatMap(({ tools }) => tools);
+  }, [mcpServersWithTools]);
+
+  // Transform built-in tools for the form
+  const allBuiltInTools = useMemo(() => {
+    return builtInTools.map((tool) => ({
+      name: tool.name,
+      description: tool.description,
+      isAvailable: true,
+      isEnabled: false,
+    }));
+  }, [builtInTools]);
+
   const initialValues = {
     // General
     icon_name: existingAgent?.icon_name ?? null,
@@ -552,12 +573,84 @@ export default function AgentEditorPage({
     remove_image: false,
     name: existingAgent?.name ?? "",
     description: existingAgent?.description ?? "",
+    
+    // Base Agent Selection (only for custom agents - not built-in)
+    base_agent: existingAgent?.base_agent ?? "chatbot",
 
     // Prompts
     instructions: existingAgent?.system_prompt ?? "",
     starter_messages: Array.from(
       { length: STARTER_MESSAGES_EXAMPLES.length },
       (_, i) => existingAgent?.starter_messages?.[i]?.message ?? ""
+    ),
+
+    // Knowledge - enabled if agent has any knowledge sources attached
+    enable_knowledge:
+      (existingAgent?.document_sets?.length ?? 0) > 0 ||
+      (existingAgent?.hierarchy_nodes?.length ?? 0) > 0 ||
+      (existingAgent?.attached_documents?.length ?? 0) > 0 ||
+      (existingAgent?.user_file_ids?.length ?? 0) > 0,
+    document_set_ids: existingAgent?.document_sets?.map((ds) => ds.id) ?? [],
+    // Individual document IDs from hierarchy browsing
+    document_ids: existingAgent?.attached_documents?.map((doc) => doc.id) ?? [],
+    // Hierarchy node IDs (folders/spaces/channels) for scoped search
+    hierarchy_node_ids:
+      existingAgent?.hierarchy_nodes?.map((node) => node.id) ?? [],
+    user_file_ids: existingAgent?.user_file_ids ?? [],
+    // Selected sources for the new knowledge UI - derived from document sets
+    selected_sources: [] as ValidSources[],
+
+    // Advanced
+    llm_model_provider_override:
+      existingAgent?.llm_model_provider_override ?? null,
+    llm_model_version_override:
+      existingAgent?.llm_model_version_override ?? null,
+    knowledge_cutoff_date: existingAgent?.search_start_date
+      ? new Date(existingAgent.search_start_date)
+      : null,
+    replace_base_system_prompt:
+      existingAgent?.replace_base_system_prompt ?? false,
+    reminders: existingAgent?.task_prompt ?? "",
+    // For new agents, default to false for optional tools to avoid
+    // "Tool not available" errors when the tool isn't configured.
+    // For existing agents, preserve the current tool configuration.
+    image_generation:
+      !!imageGenTool &&
+      (existingAgent?.tools?.some(
+        (tool) => tool.in_code_tool_id === IMAGE_GENERATION_TOOL_ID
+      ) ??
+        false),
+    web_search:
+      !!webSearchTool &&
+      (existingAgent?.tools?.some(
+        (tool) => tool.in_code_tool_id === WEB_SEARCH_TOOL_ID
+      ) ??
+        false),
+    open_url:
+      !!openURLTool &&
+      (existingAgent?.tools?.some(
+        (tool) => tool.in_code_tool_id === OPEN_URL_TOOL_ID
+      ) ??
+        false),
+    code_interpreter:
+      !!codeInterpreterTool &&
+      (existingAgent?.tools?.some(
+        (tool) => tool.in_code_tool_id === PYTHON_TOOL_ID
+      ) ??
+        false),
+    // MCP tools - dynamically add fields for each tool (from MCP servers)
+    ...Object.fromEntries(
+      allMcpTools.map((tool) => [
+        `mcp_tool_${tool.name}`,
+        existingAgent?.mcp_tools?.includes(tool.name) ?? false,
+      ])
+    ),
+    // Built-in tools from tools-service - dynamically add fields for each tool
+    ...Object.fromEntries(
+      allBuiltInTools.map((tool) => [
+        `builtin_tool_${tool.name}`,
+        existingAgent?.mcp_tools?.includes(tool.name) ?? false,
+      ])
     ),
 
     // Knowledge - enabled if agent has any knowledge sources attached
@@ -671,6 +764,9 @@ export default function AgentEditorPage({
       )
       .optional(),
 
+    // Base Agent (only for custom agents)
+    base_agent: Yup.string().oneOf(["chatbot", "configurable-mcp-agent"]),
+
     // Prompts
     instructions: Yup.string().optional(),
     starter_messages: Yup.array().of(
@@ -695,20 +791,25 @@ export default function AgentEditorPage({
     replace_base_system_prompt: Yup.boolean(),
     reminders: Yup.string().optional(),
 
-    // MCP servers - dynamically add validation for each server with nested tool validation
+    // Built-in tools
+    image_generation: Yup.boolean().optional(),
+    web_search: Yup.boolean().optional(),
+    open_url: Yup.boolean().optional(),
+    code_interpreter: Yup.boolean().optional(),
+
+    // MCP tools (from external MCP servers)
     ...Object.fromEntries(
-      mcpServers.map((server) => [
-        `mcp_server_${server.id}`,
-        Yup.object(), // Allow any nested tool fields as booleans
-      ])
+      allMcpTools.map((tool) => [`mcp_tool_${tool.name}`, Yup.boolean().optional()])
     ),
 
-    // OpenAPI tools - add boolean validation for each tool
+    // Built-in tools from tools-service
     ...Object.fromEntries(
-      openApiTools.map((openApiTool) => [
-        `openapi_tool_${openApiTool.id}`,
-        Yup.boolean(),
-      ])
+      allBuiltInTools.map((tool) => [`builtin_tool_${tool.name}`, Yup.boolean().optional()])
+    ),
+
+    // OpenAPI tools
+    ...Object.fromEntries(
+      openApiTools.map((tool) => [`openapi_tool_${tool.id}`, Yup.boolean().optional()])
     ),
   });
 
@@ -778,6 +879,25 @@ export default function AgentEditorPage({
         }
       });
 
+      // Collect enabled MCP tool names (for backend - separate from tool_ids)
+      const enabledMcpToolNames: string[] = [];
+      if (values.base_agent === "configurable-mcp-agent") {
+        allMcpTools.forEach((tool) => {
+          if ((values as any)[`mcp_tool_${tool.name}`] === true) {
+            enabledMcpToolNames.push(tool.name);
+          }
+        });
+      }
+
+      // Collect enabled built-in tools from tools-service
+      if (values.base_agent === "configurable-mcp-agent") {
+        allBuiltInTools.forEach((tool) => {
+          if ((values as any)[`builtin_tool_${tool.name}`] === true) {
+            enabledMcpToolNames.push(tool.name);
+          }
+        });
+      }
+
       // Build submission data
       const submissionData: PersonaUpsertParameters = {
         name: values.name,
@@ -811,6 +931,10 @@ export default function AgentEditorPage({
         replace_base_system_prompt: values.replace_base_system_prompt,
         task_prompt: values.reminders || "",
         datetime_aware: false,
+        
+        // Base agent and MCP tools for custom agents
+        base_agent: values.base_agent || "chatbot",
+        mcp_tools: enabledMcpToolNames,
       };
 
       // Call API
@@ -1140,6 +1264,27 @@ export default function AgentEditorPage({
                               placeholder="What does this agent do?"
                             />
                           </InputLayouts.Vertical>
+
+                          <InputLayouts.Vertical
+                            name="base_agent"
+                            title="Base Agent"
+                            description="Choose the base agent type for this custom agent."
+                          >
+                            <InputSelectField
+                              name="base_agent"
+                              placeholder="Select base agent"
+                            >
+                              <InputSelect.Trigger placeholder="Select base agent" />
+                              <InputSelect.Content>
+                                <InputSelect.Item value="chatbot">
+                                  Chatbot - Simple conversational agent
+                                </InputSelect.Item>
+                                <InputSelect.Item value="configurable-mcp-agent">
+                                  Configurable MCP Agent - With MCP tool support
+                                </InputSelect.Item>
+                              </InputSelect.Content>
+                            </InputSelectField>
+                          </InputLayouts.Vertical>
                         </GeneralLayouts.Section>
 
                         <GeneralLayouts.Section width="fit">
@@ -1314,19 +1459,53 @@ export default function AgentEditorPage({
                                 <Separator noPadding className="py-1" />
                               )}
 
-                              {/* MCP tools */}
-                              {mcpServersWithTools.length > 0 && (
+                              {/* MCP tools (from external MCP servers) - only show when configurable-mcp-agent is selected */}
+                              {values.base_agent === "configurable-mcp-agent" && allMcpTools.length > 0 && (
                                 <GeneralLayouts.Section gap={0.5}>
-                                  {mcpServersWithTools.map(
-                                    ({ server, tools, isLoading }) => (
-                                      <MCPServerCard
-                                        key={server.id}
-                                        server={server}
-                                        tools={tools}
-                                        isLoading={isLoading}
-                                      />
-                                    )
-                                  )}
+                                  <Text base>External MCP Tools</Text>
+                                  {allMcpTools.map((tool) => (
+                                    <Card
+                                      key={tool.name}
+                                      variant={tool.isAvailable ? undefined : "disabled"}
+                                    >
+                                      <InputLayouts.Horizontal
+                                        name={`mcp_tool_${tool.name}`}
+                                        title={tool.display_name || tool.name}
+                                        description={tool.description}
+                                        disabled={!tool.isAvailable}
+                                      >
+                                        <SwitchField
+                                          name={`mcp_tool_${tool.name}`}
+                                          disabled={!tool.isAvailable}
+                                        />
+                                      </InputLayouts.Horizontal>
+                                    </Card>
+                                  ))}
+                                </GeneralLayouts.Section>
+                              )}
+
+                              {/* Built-in tools from tools-service - only show when configurable-mcp-agent is selected */}
+                              {values.base_agent === "configurable-mcp-agent" && allBuiltInTools.length > 0 && (
+                                <GeneralLayouts.Section gap={0.5}>
+                                  <Text base>Tools Service</Text>
+                                  {allBuiltInTools.map((tool) => (
+                                    <Card
+                                      key={tool.name}
+                                      variant={tool.isAvailable ? undefined : "disabled"}
+                                    >
+                                      <InputLayouts.Horizontal
+                                        name={`builtin_tool_${tool.name}`}
+                                        title={tool.name}
+                                        description={tool.description}
+                                        disabled={!tool.isAvailable}
+                                      >
+                                        <SwitchField
+                                          name={`builtin_tool_${tool.name}`}
+                                          disabled={!tool.isAvailable}
+                                        />
+                                      </InputLayouts.Horizontal>
+                                    </Card>
+                                  ))}
                                 </GeneralLayouts.Section>
                               )}
 

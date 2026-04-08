@@ -66,16 +66,6 @@ def cancel_run(thread_id: str, run_id: str) -> bool:
         return False
     cancel_event.set()
     ctx = _run_contexts.get((thread_id, run_id))
-    if ctx and ctx.config:
-        try:
-            import asyncio as _aio
-
-            from routes.RunRoute import _force_close_llm_connection
-
-            _aio.ensure_future(_force_close_llm_connection(ctx.config))
-            logger.info("Scheduled _force_close_llm_connection for run %s", run_id)
-        except Exception as exc:
-            logger.warning("cancel_run _force_close error (ignored): %s", exc)
     if ctx and ctx.agent_task and not ctx.agent_task.done():
         ctx.agent_task.cancel()
         logger.info("Cancelled agent_task for run %s on thread %s", run_id, thread_id)

@@ -28,6 +28,7 @@ import {
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
 import useMcpServers from "@/hooks/useMcpServers";
+import BuiltInToolsSection from "./BuiltInToolsSection";
 
 export default function MCPPageContent() {
   // Data fetching
@@ -486,53 +487,59 @@ export default function MCPPageContent() {
         />
       )}
 
-      <div className="flex-shrink-0 mb-4">
-        <Actionbar
-          hasActions={isLoading || mcpServers.length > 0}
-          searchQuery={searchQuery}
-          onSearchQueryChange={setSearchQuery}
-          onAddAction={handleAddServer}
-          buttonText="Add MCP Server"
-          barText="Connect MCP server to add custom actions."
-        />
-      </div>
+      <div className="flex flex-col h-full">
+        <div className="flex-shrink-0 mb-4">
+          <Actionbar
+            hasActions={isLoading || mcpServers.length > 0}
+            searchQuery={searchQuery}
+            onSearchQueryChange={setSearchQuery}
+            onAddAction={handleAddServer}
+            buttonText="Add MCP Server"
+            barText="Connect MCP server to add custom actions."
+          />
+        </div>
 
-      <div className="flex-1 overflow-y-auto min-h-0">
-        <div className="flex flex-col gap-4 w-full pb-4">
-          {isLoading ? (
-            <>
-              <ActionCardSkeleton />
-              <ActionCardSkeleton />
-            </>
-          ) : (
-            filteredServers.map((server) => {
-              const status = getActionStatusForServer(server);
+        <div className="flex-1 overflow-y-auto min-h-0">
+          <div className="flex flex-col gap-4 w-full pb-4">
+            {/* MCP Servers Section */}
+            {isLoading ? (
+              <>
+                <ActionCardSkeleton />
+                <ActionCardSkeleton />
+              </>
+            ) : (
+              filteredServers.map((server) => {
+                const status = getActionStatusForServer(server);
 
-              return (
-                <MCPActionCard
-                  key={server.id}
-                  serverId={server.id}
-                  server={server}
-                  title={server.name}
-                  description={server.description || server.server_url}
-                  logo={getActionIcon(server.server_url, server.name)}
-                  status={status}
-                  toolCount={server.tool_count}
-                  initialExpanded={server.id === serverToExpand}
-                  onDisconnect={() => handleDisconnect(server.id)}
-                  onManage={() => handleManage(server.id)}
-                  onEdit={() => handleEdit(server.id)}
-                  onDelete={() => handleDelete(server.id)}
-                  onAuthenticate={() => handleAuthenticate(server.id)}
-                  onReconnect={() => handleReconnect(server.id)}
-                  onRename={handleRenameServer}
-                  onToolToggle={handleToolToggle}
-                  onRefreshTools={handleRefreshTools}
-                  onUpdateToolsStatus={handleUpdateToolsStatus}
-                />
-              );
-            })
-          )}
+                return (
+                  <MCPActionCard
+                    key={server.id}
+                    serverId={server.id}
+                    server={server}
+                    title={server.name}
+                    description={server.description || server.server_url}
+                    logo={getActionIcon(server.server_url, server.name)}
+                    status={status}
+                    toolCount={server.tool_count}
+                    initialExpanded={server.id === serverToExpand}
+                    onDisconnect={() => handleDisconnect(server.id)}
+                    onManage={() => handleManage(server.id)}
+                    onEdit={() => handleEdit(server.id)}
+                    onDelete={() => handleDelete(server.id)}
+                    onAuthenticate={() => handleAuthenticate(server.id)}
+                    onReconnect={() => handleReconnect(server.id)}
+                    onRename={handleRenameServer}
+                    onToolToggle={handleToolToggle}
+                    onRefreshTools={handleRefreshTools}
+                    onUpdateToolsStatus={handleUpdateToolsStatus}
+                  />
+                );
+              })
+            )}
+
+            {/* Built-in Tools Section */}
+            <BuiltInToolsSection />
+          </div>
         </div>
       </div>
 

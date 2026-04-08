@@ -36,6 +36,8 @@ class PersonaRepository(BaseRepository):
             "user_id": row.user_id,
             "is_builtin": row.is_builtin,
             "builtin_key": row.builtin_key,
+            "base_agent": row.base_agent,
+            "mcp_tools": row.mcp_tools,
             "time_created": row.time_created.isoformat() if row.time_created else None,
             "time_updated": row.time_updated.isoformat() if row.time_updated else None,
         }
@@ -144,6 +146,8 @@ class PersonaRepository(BaseRepository):
             "llm_model_version_override",
             "starter_messages",
             "labels",
+            "base_agent",
+            "mcp_tools",
         }
         updates = {k: v for k, v in fields.items() if k in allowed}
         if not updates:

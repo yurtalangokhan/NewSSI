@@ -12,23 +12,21 @@ from datetime import UTC, datetime
 
 from fastapi import APIRouter, HTTPException
 
+from controller import ThreadController, get_thread_controller
 from service.CheckpointerService import get_checkpointer
 from service.Schemas import (
     ThreadCreateRequest,
     ThreadSearchRequest,
     ThreadUpdateRequest,
 )
-from service.StoreService import (
-    list_threads_from_store,
-    add_thread,
-    get_thread_from_store,
-    update_thread_in_store,
-    delete_thread_from_store,
-)
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/threads", tags=["threads"])
+
+
+def _get_controller() -> ThreadController:
+    return get_thread_controller()
 
 
 # =============================================================================
@@ -74,9 +72,8 @@ async def search_threads(
     request: ThreadSearchRequest = ThreadSearchRequest(),
 ) -> list[dict]:
     """Search / List threads."""
-    from service.StoreService import list_threads_from_store
-
-    threads = await list_threads_from_store(request.limit, request.offset, request.metadata)
+    ctrl = _get_controller()
+    threads = await ctrl.list_threads(request.limit, request.offset, request.metadata)
 
     saver = get_checkpointer()
     if not saver:
@@ -100,32 +97,16 @@ async def search_threads(
 @router.post("")
 async def create_thread(request: ThreadCreateRequest) -> dict:
     """Create a new thread."""
-    from service.StoreService import add_thread, get_thread_from_store
-
-    thread_id = request.thread_id or str(uuid.uuid4())
-    now = datetime.now(UTC).isoformat()
-
-    existing = await get_thread_from_store(thread_id)
-    if existing:
-        return existing
-
-    thread = {
-        "thread_id": thread_id,
-        "created_at": now,
-        "updated_at": now,
-        "metadata": request.metadata or {},
-        "status": "idle",
-    }
-    await add_thread(thread)
-    return thread
+    return await _get_controller().create_thread(
+        thread_id=request.thread_id,
+        metadata=request.metadata,
+    )
 
 
 @router.get("/{thread_id}")
 async def get_thread(thread_id: str) -> dict:
     """Get a thread."""
-    from service.StoreService import get_thread_from_store
-
-    t = await get_thread_from_store(thread_id)
+    t = await _get_controller().get_thread(thread_id)
     if not t:
         raise HTTPException(status_code=404, detail="Thread not found")
     return t
@@ -137,77 +118,13 @@ async def get_thread_state(thread_id: str) -> dict:
     Get thread state including messages.
     Compatible with @langchain/langgraph-sdk client.threads.getState()
     """
-    saver = get_checkpointer()
-    empty_state = {
-        "values": {"messages": []},
-        "next": [],
-        "checkpoint": None,
-        "metadata": {},
-        "created_at": None,
-        "parent_config": None,
-    }
-
-    if not saver:
-        return empty_state
-
-    try:
-        config = {"configurable": {"thread_id": thread_id}}
-        checkpoint_tuple = await saver.aget_tuple(config)
-
-        if not checkpoint_tuple or not checkpoint_tuple.checkpoint:
-            return empty_state
-
-        raw_values = checkpoint_tuple.checkpoint.get("channel_values", {})
-        values = _sanitize_checkpoint_values(raw_values)
-
-        # Convert messages to serializable format
-        if "messages" in values:
-            serialized_messages: list = []
-            for msg in values.get("messages", []):
-                if hasattr(msg, "dict"):
-                    serialized_messages.append(msg.dict())
-                elif hasattr(msg, "model_dump"):
-                    serialized_messages.append(msg.model_dump())
-                elif isinstance(msg, dict):
-                    serialized_messages.append(msg)
-                else:
-                    try:
-                        serialized_messages.append(
-                            {
-                                "type": getattr(msg, "type", "unknown"),
-                                "content": getattr(msg, "content", str(msg)),
-                                "id": getattr(msg, "id", None),
-                                "name": getattr(msg, "name", None),
-                            }
-                        )
-                    except Exception:
-                        serialized_messages.append({"content": str(msg)})
-            values["messages"] = serialized_messages
-
-        return {
-            "values": values,
-            "next": [],
-            "checkpoint": {
-                "thread_id": thread_id,
-                "checkpoint_id": checkpoint_tuple.checkpoint.get("id"),
-            },
-            "metadata": checkpoint_tuple.metadata,
-            "created_at": (
-                checkpoint_tuple.metadata.get("created_at") if checkpoint_tuple.metadata else None
-            ),
-            "parent_config": checkpoint_tuple.parent_config,
-        }
-    except Exception as e:
-        logger.error(f"Error getting state for thread {thread_id}: {e}")
-        return {**empty_state, "error": str(e)}
+    return await _get_controller().get_thread_state(thread_id)
 
 
 @router.patch("/{thread_id}")
 async def update_thread(thread_id: str, request: ThreadUpdateRequest) -> dict:
     """Update a thread."""
-    from service.StoreService import update_thread_in_store
-
-    t = await update_thread_in_store(thread_id, {"metadata": request.metadata})
+    t = await _get_controller().update_thread(thread_id, request.metadata)
     if not t:
         raise HTTPException(status_code=404, detail="Thread not found")
     return t
@@ -216,8 +133,6 @@ async def update_thread(thread_id: str, request: ThreadUpdateRequest) -> dict:
 @router.delete("/{thread_id}")
 async def delete_thread(thread_id: str) -> dict:
     """Delete a thread."""
-    from service.StoreService import delete_thread_from_store
-
-    if await delete_thread_from_store(thread_id):
+    if await _get_controller().delete_thread(thread_id):
         return {"status": "ok"}
     raise HTTPException(status_code=404, detail="Thread not found")

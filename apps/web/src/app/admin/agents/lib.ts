@@ -27,6 +27,8 @@ interface PersonaUpsertRequest {
   label_ids: number[] | null;
   user_file_ids: string[] | null;
   replace_base_system_prompt: boolean;
+  base_agent: string | null;
+  mcp_tools: string[];
   // Hierarchy nodes (folders, spaces, channels) for scoped search
   hierarchy_node_ids: number[];
   // Individual documents for scoped search
@@ -59,6 +61,10 @@ export interface PersonaUpsertParameters {
   hierarchy_node_ids?: number[];
   // Individual documents for scoped search
   document_ids?: string[];
+  // Base agent selection (chatbot, configurable-mcp-agent)
+  base_agent?: string | null;
+  // MCP tool names to bind to the agent
+  mcp_tools?: string[];
 }
 
 function buildPersonaUpsertRequest({
@@ -85,6 +91,8 @@ function buildPersonaUpsertRequest({
   starter_messages,
   label_ids,
   replace_base_system_prompt,
+  base_agent,
+  mcp_tools,
 }: PersonaUpsertParameters): PersonaUpsertRequest {
   return {
     name,
@@ -111,6 +119,8 @@ function buildPersonaUpsertRequest({
     replace_base_system_prompt,
     hierarchy_node_ids: hierarchy_node_ids ?? [],
     document_ids: document_ids ?? [],
+    base_agent: base_agent ?? null,
+    mcp_tools: mcp_tools ?? [],
   };
 }
 

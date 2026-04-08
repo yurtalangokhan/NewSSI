@@ -211,3 +211,59 @@ export async function upsertMCPServer(serverData: {
     return { data: null, error: `Error creating MCP server: ${error}` };
   }
 }
+
+export interface BuiltInTool {
+  name: string;
+  description: string;
+  input_schema: Record<string, any>;
+}
+
+export interface BuiltInToolsResponse {
+  tools: BuiltInTool[];
+  error?: string;
+}
+
+export interface ToolExecuteResponse {
+  result: any;
+  error?: string;
+}
+
+/**
+ * Get list of available tools from the built-in tools-service
+ */
+export async function getBuiltInTools(): Promise<BuiltInToolsResponse> {
+  const response = await fetch("/api/proxy/mcp/tools-builtin");
+  
+  if (!response.ok) {
+    const errorText = await response.text();
+    return { tools: [], error: errorText || "Failed to fetch built-in tools" };
+  }
+
+  return await response.json();
+}
+
+/**
+ * Execute a tool on the built-in tools-service
+ */
+export async function executeBuiltInTool(
+  toolName: string,
+  arguments_: Record<string, any> = {}
+): Promise<ToolExecuteResponse> {
+  const response = await fetch("/api/proxy/mcp/execute", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      tool_name: toolName,
+      arguments: arguments_,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    return { result: null, error: errorText || "Failed to execute tool" };
+  }
+
+  return await response.json();
+}

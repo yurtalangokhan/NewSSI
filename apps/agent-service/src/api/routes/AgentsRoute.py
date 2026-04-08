@@ -16,7 +16,6 @@ from fastapi.responses import StreamingResponse
 from langchain_core.messages import AIMessage, AIMessageChunk, AnyMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.types import Interrupt
-from langsmith import Client as LangsmithClient
 
 from agents import DEFAULT_AGENT, AgentGraph, get_agent, get_all_agent_info
 from service.AssistantAgentService import AssistantAgentService
@@ -51,13 +50,22 @@ router = APIRouter(prefix="/agents", tags=["agents"], dependencies=[Depends(veri
 
 @router.get("/info")
 async def info() -> ServiceMetadata:
-    models = list(settings.AVAILABLE_MODELS)
-    models.sort()
+    from core.providers.registry import provider_registry
+
+    provider_registry.initialize()
+    all_models = await provider_registry.get_model_names()
+    all_models.sort()
+
+    # Determine default model
+    default_model = settings.DEFAULT_MODEL or None
+    if not default_model and all_models:
+        default_model = all_models[0]
+
     return ServiceMetadata(
         agents=get_all_agent_info(),
-        models=models,
+        models=all_models,
         default_agent=DEFAULT_AGENT,
-        default_model=settings.DEFAULT_MODEL,
+        default_model=default_model or "fake",
     )
 
 
@@ -317,18 +325,18 @@ async def stream(
 # =============================================================================
 
 
-@router.post("/feedback")
-async def feedback(feedback: Feedback) -> FeedbackResponse:
-    """Record feedback for a run to LangSmith."""
-    client = LangsmithClient()
-    kwargs = feedback.kwargs or {}
-    client.create_feedback(
-        run_id=feedback.run_id,
-        key=feedback.key,
-        score=feedback.score,
-        **kwargs,
-    )
-    return FeedbackResponse()
+# @router.post("/feedback")
+# async def feedback(feedback: Feedback) -> FeedbackResponse:
+#     """Record feedback for a run to LangSmith."""
+#     client = LangsmithClient()
+#     kwargs = feedback.kwargs or {}
+#     client.create_feedback(
+#         run_id=feedback.run_id,
+#         key=feedback.key,
+#         score=feedback.score,
+#         **kwargs,
+#     )
+#     return FeedbackResponse()
 
 
 @router.post("/history")

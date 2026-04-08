@@ -13,9 +13,7 @@ export function refreshDocumentSets() {
 export function useDocumentSets(getEditable: boolean = false) {
   const url = getEditable ? GET_EDITABLE_DOCUMENT_SETS_URL : DOCUMENT_SETS_URL;
 
-  const swrResponse = useSWR<DocumentSetSummary[]>(url, errorHandlingFetcher, {
-    refreshInterval: 5000, // 5 seconds
-  });
+  const swrResponse = useSWR<DocumentSetSummary[]>(url, errorHandlingFetcher);
 
   return {
     ...swrResponse,

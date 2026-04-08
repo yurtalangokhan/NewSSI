@@ -10,7 +10,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from service.AssistantAgentService import AssistantAgentService
+from controller import AgentController, get_agent_controller
 from service.AuthService import verify_bearer
 from service.Schemas import (
     AssistantCreateRequest,
@@ -48,8 +48,8 @@ def agent_to_assistant(agent_id: str, agent_description: str) -> dict:
     }
 
 
-def _get_service() -> AssistantAgentService:
-    return AssistantAgentService.get_instance()
+def _get_controller() -> AgentController:
+    return get_agent_controller()
 
 
 # =============================================================================
@@ -65,9 +65,9 @@ async def search_assistants(
     Search for assistants. Returns all available agents as assistants.
     Compatible with @langchain/langgraph-sdk client.assistants.search()
     """
-    service = _get_service()
+    ctrl = _get_controller()
 
-    all_agents = service.list_agents()
+    all_agents = ctrl.list_agents()
     assistants: list[dict] = []
 
     for agent_info in all_agents:
@@ -75,7 +75,7 @@ async def search_assistants(
             continue
         assistants.append(agent_to_assistant(agent_info["key"], agent_info.get("description", "")))
 
-    stored = await service.list_assistants()
+    stored = await ctrl.list_assistants()
     for assistant in stored:
         if request.graph_id and assistant.get("graph_id") != request.graph_id:
             continue
@@ -105,13 +105,13 @@ async def get_assistant(assistant_id: str) -> dict:
     Get a specific assistant by ID.
     Compatible with @langchain/langgraph-sdk client.assistants.get()
     """
-    service = _get_service()
+    ctrl = _get_controller()
 
-    stored = await service.get_assistant(assistant_id)
+    stored = await ctrl.get_assistant(assistant_id)
     if stored:
         return stored
 
-    all_agents = service.list_agents()
+    all_agents = ctrl.list_agents()
     for agent_info in all_agents:
         if agent_info.get("key") == assistant_id:
             return agent_to_assistant(agent_info["key"], agent_info.get("description", ""))
@@ -125,15 +125,15 @@ async def create_assistant(request: AssistantCreateRequest) -> dict:
     Create a new assistant.
     Compatible with @langchain/langgraph-sdk client.assistants.create()
     """
-    service = _get_service()
+    ctrl = _get_controller()
 
-    all_agents = service.list_agents()
+    all_agents = ctrl.list_agents()
     agent_exists = any(a.get("key") == request.graph_id for a in all_agents)
 
     if not agent_exists:
         raise HTTPException(status_code=404, detail=f"Graph {request.graph_id} not found")
 
-    return await service.create_assistant(
+    return await ctrl.create_assistant(
         graph_id=request.graph_id,
         name=request.name,
         config=request.config,
@@ -148,7 +148,7 @@ async def update_assistant(assistant_id: str, request: AssistantUpdateRequest) -
     Update an assistant.
     Compatible with @langchain/langgraph-sdk client.assistants.update()
     """
-    service = _get_service()
+    ctrl = _get_controller()
 
     updates: dict = {}
     if request.name:
@@ -158,11 +158,11 @@ async def update_assistant(assistant_id: str, request: AssistantUpdateRequest) -
     if request.metadata:
         updates["metadata"] = request.metadata
 
-    updated = await service.update_assistant(assistant_id, updates)
+    updated = await ctrl.update_assistant(assistant_id, updates)
     if updated:
         return updated
 
-    all_agents = service.list_agents()
+    all_agents = ctrl.list_agents()
     for agent_info in all_agents:
         if agent_info.get("key") == assistant_id:
             raise HTTPException(status_code=403, detail="Cannot update system templates")
@@ -176,13 +176,13 @@ async def delete_assistant(assistant_id: str) -> dict:
     Delete an assistant.
     Compatible with @langchain/langgraph-sdk client.assistants.delete()
     """
-    service = _get_service()
+    ctrl = _get_controller()
 
-    deleted = await service.delete_assistant(assistant_id)
+    deleted = await ctrl.delete_assistant(assistant_id)
     if deleted:
         return {"status": "ok", "assistant_id": assistant_id}
 
-    all_agents = service.list_agents()
+    all_agents = ctrl.list_agents()
     for agent_info in all_agents:
         if agent_info.get("key") == assistant_id:
             return {

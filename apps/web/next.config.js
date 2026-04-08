@@ -77,6 +77,7 @@ const nextConfig = {
     ];
   },
   async rewrites() {
+    const backendUrl = process.env.INTERNAL_URL || "http://localhost:8080";
     return [
       {
         source: "/ph_ingest/static/:path*",
@@ -88,23 +89,29 @@ const nextConfig = {
           process.env.NEXT_PUBLIC_POSTHOG_HOST || "https://us.i.posthog.com"
         }/:path*`,
       },
+      // Proxy all /api/* requests to the backend (except those handled by Next.js API routes)
+      // This allows backend endpoints to be accessed from the frontend
       {
-        source: "/api/docs/:path*", // catch /api/docs and /api/docs/...
-        destination: `${
-          process.env.INTERNAL_URL || "http://localhost:8080"
-        }/docs/:path*`,
+        source: "/api/:path*",
+        destination: `${backendUrl}/api/:path*`,
+      },
+      // For auth routes without /api prefix
+      {
+        source: "/auth/:path*",
+        destination: `${backendUrl}/auth/:path*`,
+      },
+      // OpenAPI documentation
+      {
+        source: "/api/docs/:path*",
+        destination: `${backendUrl}/docs/:path*`,
       },
       {
-        source: "/api/docs", // if you also need the exact /api/docs
-        destination: `${
-          process.env.INTERNAL_URL || "http://localhost:8080"
-        }/docs`,
+        source: "/api/docs",
+        destination: `${backendUrl}/docs`,
       },
       {
         source: "/openapi.json",
-        destination: `${
-          process.env.INTERNAL_URL || "http://localhost:8080"
-        }/openapi.json`,
+        destination: `${backendUrl}/openapi.json`,
       },
     ];
   },

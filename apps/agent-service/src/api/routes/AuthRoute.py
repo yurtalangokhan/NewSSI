@@ -13,7 +13,9 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from agents import DEFAULT_AGENT, get_all_agent_info
+from controller import AuthController, get_auth_controller
 from core import settings
+from core.env import env
 from schema.schema import StreamInput
 from api.routes.AgentsRoute import message_generator
 from service.CheckpointerService import get_checkpointer
@@ -27,6 +29,11 @@ from service.StoreService import (
 )
 
 router = APIRouter(tags=["auth"])
+
+
+def _get_controller() -> AuthController:
+    """Get the singleton AuthController instance."""
+    return get_auth_controller()
 
 # Agent to persona_id mapping
 AGENT_TO_PERSONA_ID: dict[str, int] = {
@@ -143,10 +150,36 @@ async def get_current_user() -> User:
 
 
 @router.post("/auth/login")
-async def login(response: Response):
-    """Login endpoint - returns success in dev mode."""
-    response.set_cookie("session", "dev-session", httponly=True, samesite="lax")
-    return {"success": True, "user_id": "dev-user-1"}
+async def login(request: Request, response: Response):
+    """Login endpoint - accepts username and password form data."""
+    try:
+        # Handle form data or JSON
+        content_type = request.headers.get("content-type", "")
+        
+        if "application/x-www-form-urlencoded" in content_type:
+            body = await request.form()
+            username = body.get("username", "")
+            password = body.get("password", "")
+        else:
+            body = await request.json()
+            username = body.get("username", "")
+            password = body.get("password", "")
+        
+        # In dev mode, accept any credentials
+        if username and password:
+            response.set_cookie("session", "dev-session", httponly=True, samesite="lax")
+            return {
+                "success": True,
+                "user_id": "dev-user-1",
+                "email": f"{username}@example.com"
+            }
+        else:
+            response.status_code = 400
+            return {"success": False, "error": "Missing credentials"}
+    except Exception as e:
+        logger.error(f"Login error: {e}")
+        response.status_code = 500
+        return {"success": False, "error": str(e)}
 
 
 @router.post("/auth/logout")
@@ -186,122 +219,15 @@ async def get_chat_sessions():
     Fetches from LangGraph's thread store and enriches with message content.
     Compatible with the frontend's expected format.
     """
-    import logging
-
-    logger = logging.getLogger(__name__)
-
-    try:
-        from service.StoreService import list_threads_from_store
-
-        # Fetch all threads
-        threads = await list_threads_from_store(limit=100, offset=0)
-
-        if not threads:
-            return {
-                "sessions": [],
-                "chat_sessions": [],
-                "has_more": False,
-            }
-
-        # Enrich threads with first message content from checkpoint
-        checkpointer = get_checkpointer()
-
-        sessions = []
-        for thread in threads:
-            thread_id = thread.get("thread_id", "")
-            metadata = thread.get("metadata", {}) or {}
-            session_name = metadata.get("name", "New Chat")
-
-            # Try to get first message from checkpoint if name is "New Chat"
-            if session_name == "New Chat" and checkpointer and thread_id:
-                try:
-                    config = {"configurable": {"thread_id": thread_id}}
-                    checkpoint_tuple = await checkpointer.aget_tuple(config)
-                    if checkpoint_tuple and checkpoint_tuple.checkpoint:
-                        values = checkpoint_tuple.checkpoint.get("channel_values", {})
-                        messages = values.get("messages", [])
-
-                        for msg in messages:
-                            msg_type = getattr(msg, "type", None) or msg.get("type", "")
-                            if msg_type in ("human", "user"):
-                                content = getattr(msg, "content", "") or msg.get("content", "")
-                                if isinstance(content, list):
-                                    for c in content:
-                                        if isinstance(c, dict) and c.get("type") == "text":
-                                            session_name = c.get("text", "New Chat")[:50]
-                                            break
-                                elif isinstance(content, str) and content:
-                                    session_name = content[:50]
-                                break
-                except Exception as e:
-                    logger.warning(f"Failed to get session name for {thread_id}: {e}")
-
-            sessions.append(
-                {
-                    "id": thread_id,
-                    "name": session_name or "New Chat",
-                    "description": session_name or "New Chat",
-                    "persona_id": metadata.get("persona_id", 0),
-                    "time_created": thread.get("created_at"),
-                    "time_updated": thread.get("updated_at"),
-                    "shared_status": "private",
-                    "current_alternate_model": None,
-                    "current_temperature_override": None,
-                }
-            )
-
-        # Sort by most recent first
-        sessions.sort(key=lambda s: s.get("time_updated") or "", reverse=True)
-
-        return {
-            "sessions": sessions,
-            "chat_sessions": sessions,
-            "has_more": False,
-        }
-    except Exception as e:
-        logger.error(f"Failed to get chat sessions: {e}")
-        import traceback
-
-        traceback.print_exc()
-        return {"sessions": [], "chat_sessions": [], "has_more": False}
+    ctrl = _get_controller()
+    return await ctrl.get_chat_sessions()
 
 
 @router.post("/api/chat/create-chat-session")
 async def create_chat_session():
     """Create a new chat session using Thread-based storage."""
-    import logging
-
-    logger = logging.getLogger(__name__)
-
-    try:
-        session_id = str(uuid.uuid4())
-        now = datetime.now(UTC).isoformat()
-
-        # Create thread in LangGraph store (single source of truth)
-        await add_thread(
-            {
-                "thread_id": session_id,
-                "created_at": now,
-                "updated_at": now,
-                "metadata": {
-                    "user_id": USER_ID,
-                    "name": "New Chat",
-                    "source": "create-chat-session",
-                },
-            }
-        )
-        logger.info(f"Created thread {session_id} in LangGraph store")
-
-        return {
-            "chat_session_id": session_id,
-            "name": "New Chat",
-        }
-    except Exception as e:
-        logger.error(f"Failed to create chat session: {e}")
-        import traceback
-
-        traceback.print_exc()
-        return {"chat_session_id": str(uuid.uuid4()), "name": "New Chat"}
+    ctrl = _get_controller()
+    return await ctrl.create_chat_session()
 
 
 @router.get("/api/chat/get-chat-session/{chat_session_id}")
@@ -311,157 +237,8 @@ async def get_chat_session(chat_session_id: str):
 
     Uses Thread-based storage as the single source of truth.
     """
-    import logging
-
-    logger = logging.getLogger(__name__)
-    logger.info(f"[get-chat-session] Starting for {chat_session_id}")
-
-    try:
-        # Get thread metadata from store
-        thread = await get_thread_from_store(chat_session_id)
-        logger.info(f"[get-chat-session] Thread: {thread}")
-
-        if not thread:
-            return {
-                "chat_session_id": chat_session_id,
-                "description": "Chat",
-                "persona_id": 0,
-                "persona_name": "",
-                "messages": [],
-                "time_created": None,
-                "time_updated": None,
-                "shared_status": "private",
-                "current_temperature_override": None,
-                "current_alternate_model": None,
-                "owner_name": None,
-                "packets": [],
-            }
-
-        thread_metadata = thread.get("metadata", {}) if thread else {}
-
-        # Get messages from LangGraph checkpointer
-        messages = []
-        checkpointer = get_checkpointer()
-        logger.info(f"[get-chat-session] Checkpointer: {type(checkpointer)}")
-
-        if checkpointer:
-            try:
-                config = {"configurable": {"thread_id": chat_session_id}}
-                checkpoint_tuple = await checkpointer.aget_tuple(config)
-
-                if checkpoint_tuple and checkpoint_tuple.checkpoint:
-                    raw_values = checkpoint_tuple.checkpoint.get("channel_values", {})
-                    langgraph_messages = raw_values.get("messages", [])
-                    logger.info(
-                        f"[get-chat-session] Found {len(langgraph_messages)} messages in checkpoint"
-                    )
-
-                    # Convert LangGraph messages to frontend-compatible format
-                    for idx, msg in enumerate(langgraph_messages):
-                        msg_type = "user"
-                        msg_content = ""
-
-                        # Determine message type
-                        if hasattr(msg, "type"):
-                            msg_type = "assistant" if msg.type in ("ai", "tool") else "user"
-                        elif isinstance(msg, dict):
-                            msg_type = "assistant" if msg.get("type") in ("ai", "tool") else "user"
-
-                        # Extract content
-                        if hasattr(msg, "content"):
-                            content = msg.content
-                        elif isinstance(msg, dict):
-                            content = msg.get("content", "")
-                        else:
-                            content = ""
-
-                        # Parse content
-                        if isinstance(content, str):
-                            msg_content = content
-                        elif isinstance(content, list):
-                            for c in content:
-                                if isinstance(c, dict):
-                                    if c.get("type") == "text":
-                                        msg_content = c.get("text", "")
-                                        break
-                                elif isinstance(c, str):
-                                    msg_content = c
-                                    break
-                        elif isinstance(content, dict):
-                            msg_content = content.get("text", "") or str(content)
-
-                        # Calculate parent/child relationships
-                        parent_msg_id = idx if idx > 0 else None
-                        latest_child_id = idx + 2 if idx < len(langgraph_messages) - 1 else None
-
-                        messages.append(
-                            {
-                                "message_id": idx + 1,
-                                "message_type": msg_type,
-                                "research_type": None,
-                                "parent_message": parent_msg_id,
-                                "latest_child_message": latest_child_id,
-                                "message": msg_content,
-                                "rephrased_query": None,
-                                "context_docs": None,
-                                "time_sent": None,
-                                "overridden_model": None,
-                                "alternate_assistant_id": thread_metadata.get("persona_id"),
-                                "chat_session_id": chat_session_id,
-                                "citations": None,
-                                "files": [],  # Required field - empty array by default
-                                "tool_call": None,
-                                "current_feedback": None,
-                                "processing_duration_seconds": None,
-                                "sub_questions": [],
-                                "comments": None,
-                                "parentMessageId": parent_msg_id,
-                                "refined_answer_improvement": None,
-                                "is_agentic": None,
-                            }
-                        )
-
-            except Exception as e:
-                logger.error(f"[get-chat-session] Failed to get messages from checkpointer: {e}")
-
-        # Get session name from metadata or first message
-        session_name = thread_metadata.get("name", "New Chat")
-        if session_name == "New Chat" and messages:
-            for msg in messages:
-                if msg["message_type"] in ("user", "human") and msg["message"]:
-                    session_name = msg["message"][:50]
-                    break
-
-        return {
-            "chat_session_id": chat_session_id,
-            "description": session_name,
-            "persona_id": thread_metadata.get("persona_id", 0),
-            "persona_name": "",
-            "messages": messages,
-            "time_created": thread.get("created_at") if thread else None,
-            "time_updated": thread.get("updated_at") if thread else None,
-            "shared_status": "private",
-            "current_temperature_override": None,
-            "current_alternate_model": None,
-            "owner_name": None,
-            "packets": [],
-        }
-    except Exception as e:
-        logger.error(f"[get-chat-session] Error: {e}", exc_info=True)
-        return {
-            "chat_session_id": chat_session_id,
-            "description": "Chat",
-            "persona_id": 0,
-            "persona_name": "",
-            "messages": [],
-            "time_created": None,
-            "time_updated": None,
-            "shared_status": "private",
-            "current_temperature_override": None,
-            "current_alternate_model": None,
-            "owner_name": None,
-            "packets": [],
-        }
+    ctrl = _get_controller()
+    return await ctrl.get_chat_session(chat_session_id)
 
 
 @router.post("/api/chat/delete-chat-session/{chat_session_id}")
@@ -637,7 +414,9 @@ async def get_session_files(session_id: str):
 
 
 class ChatMessageInput(BaseModel):
-    message: str
+    model_config = {"extra": "allow"}
+
+    message: str | None = None
     chat_session_id: str | None = None
     persona_id: int | None = None
     parent_message_id: str | None = None
@@ -653,20 +432,47 @@ class ChatMessageInput(BaseModel):
 
 
 @router.post("/api/chat/send-chat-message")
-async def send_chat_message(request: Request, message_input: ChatMessageInput):
+async def send_chat_message(request: Request):
     """
     Send chat message with streaming response.
 
     This endpoint uses Thread-based storage as the single source of truth:
     1. Creates/updates thread in LangGraph store
     2. Streams the AI response
+
+    Uses raw JSON parsing to avoid Pydantic validation issues with old sessions.
     """
     import logging
 
     logger = logging.getLogger(__name__)
 
+    # Parse body manually - bypass Pydantic validation
+    try:
+        body = await request.json()
+    except Exception as e:
+        logger.error(f"Failed to parse request body: {e}")
+        return StreamingResponse(
+            iter([b"data: {'type': 'error', 'content': 'Invalid JSON'}\n\n"]),
+            media_type="text/event-stream",
+        )
+
+    # Extract fields with defaults - handle any edge cases
+    message = body.get("message") if body.get("message") is not None else ""
+    chat_session_id = body.get("chat_session_id")
+    persona_id = body.get("persona_id")
+    parent_message_id = body.get("parent_message_id")
+    file_descriptors = body.get("file_descriptors", [])
+    internal_search_filters = body.get("internal_search_filters", {})
+    deep_research = body.get("deep_research", False)
+    allowed_tool_ids = body.get("allowed_tool_ids", [])
+    forced_tool_id = body.get("forced_tool_id")
+    llm_override = body.get("llm_override")
+    origin = body.get("origin", "unknown")
+    additional_context = body.get("additional_context")
+    message_id_to_resend = body.get("message_id_to_resend")
+
     # Generate new session_id if not provided or invalid
-    session_id = message_input.chat_session_id
+    session_id = chat_session_id
     if not session_id:
         session_id = str(uuid.uuid4())
         logger.info(f"Generated new session_id: {session_id}")
@@ -678,7 +484,7 @@ async def send_chat_message(request: Request, message_input: ChatMessageInput):
         session_id = str(uuid.uuid4())
         logger.warning(f"Invalid session_id provided, generated new: {session_id}")
 
-    session_name = _truncate_name(message_input.message)
+    session_name = _truncate_name(message or "New Chat")
 
     # Ensure thread exists in LangGraph store (single source of truth)
     try:
@@ -693,7 +499,7 @@ async def send_chat_message(request: Request, message_input: ChatMessageInput):
                     "metadata": {
                         "user_id": USER_ID,
                         "name": session_name,
-                        "persona_id": message_input.persona_id,
+                        "persona_id": persona_id,
                     },
                 }
             )
@@ -705,11 +511,8 @@ async def send_chat_message(request: Request, message_input: ChatMessageInput):
             if metadata.get("name") in (None, "", "New Chat"):
                 metadata["name"] = session_name
                 needs_update = True
-            if (
-                message_input.persona_id is not None
-                and metadata.get("persona_id") != message_input.persona_id
-            ):
-                metadata["persona_id"] = message_input.persona_id
+            if persona_id is not None and metadata.get("persona_id") != persona_id:
+                metadata["persona_id"] = persona_id
                 needs_update = True
             if needs_update:
                 await update_thread_in_store(session_id, {"metadata": metadata})
@@ -719,13 +522,13 @@ async def send_chat_message(request: Request, message_input: ChatMessageInput):
 
     # Determine which agent to use
     agent_key = DEFAULT_AGENT
-    if message_input.persona_id is not None:
-        agent_key = PERSONA_ID_TO_AGENT.get(message_input.persona_id, DEFAULT_AGENT)
+    if persona_id is not None:
+        agent_key = PERSONA_ID_TO_AGENT.get(persona_id, DEFAULT_AGENT)
 
     stream_input = StreamInput(
-        message=message_input.message,
+        message=message or "",
         thread_id=session_id,
-        agent_config=message_input.llm_override or {},
+        agent_config=llm_override or {},
     )
 
     async def generate_stream():
@@ -811,6 +614,8 @@ async def get_personas():
                     "builtin_persona": False,
                     "labels": persona.get("labels", []),
                     "owner": {"id": persona.get("user_id", USER_ID), "email": "dev@local.dev"},
+                    "base_agent": persona.get("base_agent"),
+                    "mcp_tools": persona.get("mcp_tools", []),
                 }
             )
     except Exception:
@@ -844,6 +649,10 @@ class PersonaUpsertRequest(BaseModel):
     replace_base_system_prompt: bool = False
     hierarchy_node_ids: list = []
     document_ids: list = []
+    # For custom agents: which base agent to use (chatbot, configurable-mcp-agent)
+    base_agent: str | None = None
+    # For custom agents: list of MCP tool names to bind
+    mcp_tools: list[str] = []
 
 
 @router.post("/api/persona")
@@ -863,6 +672,8 @@ async def create_persona(request: PersonaUpsertRequest):
             llm_model_version_override=request.llm_model_version_override,
             starter_messages=request.starter_messages,
             labels=request.label_ids,
+            base_agent=request.base_agent,
+            mcp_tools=request.mcp_tools if request.mcp_tools else [],
         )
         return {
             "id": persona["id"],
@@ -878,6 +689,8 @@ async def create_persona(request: PersonaUpsertRequest):
             "builtin_persona": False,
             "labels": persona.get("labels", []),
             "owner": {"id": USER_ID, "email": "dev@local.dev"},
+            "base_agent": persona.get("base_agent"),
+            "mcp_tools": persona.get("mcp_tools", []),
         }
     except Exception as e:
         return {"error": str(e)}, 500
@@ -887,6 +700,11 @@ async def create_persona(request: PersonaUpsertRequest):
 async def update_persona(persona_id: int, request: PersonaUpsertRequest):
     """Update an existing persona/agent."""
     try:
+        # Check if it's a built-in persona - prevent updates to core fields
+        existing = await PersonaDB.get(persona_id)
+        if existing and existing.get("is_builtin"):
+            return {"error": "Cannot update built-in agents"}, 403
+
         persona = await PersonaDB.update(
             persona_id,
             name=request.name,
@@ -899,6 +717,8 @@ async def update_persona(persona_id: int, request: PersonaUpsertRequest):
             llm_model_version_override=request.llm_model_version_override,
             starter_messages=request.starter_messages,
             labels=request.label_ids,
+            base_agent=request.base_agent,
+            mcp_tools=request.mcp_tools if request.mcp_tools else [],
         )
         if persona:
             return {
@@ -915,6 +735,8 @@ async def update_persona(persona_id: int, request: PersonaUpsertRequest):
                 "builtin_persona": False,
                 "labels": persona.get("labels", []),
                 "owner": {"id": USER_ID, "email": "dev@local.dev"},
+                "base_agent": persona.get("base_agent"),
+                "mcp_tools": persona.get("mcp_tools", []),
             }
         return {"error": "Persona not found"}, 404
     except Exception as e:
@@ -923,11 +745,14 @@ async def update_persona(persona_id: int, request: PersonaUpsertRequest):
 
 @router.delete("/api/persona/{persona_id}")
 async def delete_persona(persona_id: int):
-    """Delete a persona/agent."""
+    """Delete a persona/agent. Cannot delete built-in agents."""
     try:
+        persona = await PersonaDB.get(persona_id)
+        if persona and persona.get("is_builtin"):
+            return {"error": "Cannot delete built-in agents"}, 403
         await PersonaDB.delete(persona_id)
-    except Exception:
-        pass
+    except Exception as e:
+        return {"error": str(e)}, 500
     return {"success": True}
 
 
@@ -944,8 +769,48 @@ async def upload_persona_image():
 
 @router.get("/api/llm/provider")
 async def get_llm_provider():
-    """Return LLM provider."""
-    return {"providers": [], "selected_provider": None}
+    """Return LLM provider with dynamically discovered models."""
+    from core.providers.registry import provider_registry
+
+    provider_registry.initialize()
+    provider_infos = await provider_registry.get_provider_infos()
+
+    providers = []
+    for i, info in enumerate(provider_infos):
+        model_configs = [
+            {
+                "name": m.name,
+                "is_visible": m.is_visible,
+                "max_input_tokens": m.max_input_tokens,
+                "supports_image_input": m.supports_image_input,
+                "supports_reasoning": m.supports_reasoning,
+            }
+            for m in info.models
+        ]
+        providers.append(
+            {
+                "id": i + 1,
+                "name": info.name,
+                "provider": info.provider_type,
+                "provider_display_name": info.display_name,
+                "model_configurations": model_configs,
+            }
+        )
+
+    # Determine default model
+    default_model = env.DEFAULT_MODEL or None
+    if not default_model and provider_infos:
+        for info in provider_infos:
+            if info.is_available and info.models:
+                default_model = info.models[0].name
+                break
+
+    return {
+        "providers": providers,
+        "selected_provider": providers[0]["name"] if providers else None,
+        "default_text": default_model,
+        "default_vision": None,
+    }
 
 
 @router.get("/api/user/assistant/preferences")
@@ -956,19 +821,27 @@ async def get_user_assistant_preferences():
 
 @router.get("/api/admin/llm/built-in/options")
 async def get_llm_built_in_options():
-    """Return built-in LLM options."""
-    models = list(settings.AVAILABLE_MODELS)
-    model_configs = []
-    for model in models:
-        model_configs.append(
-            {
-                "name": model,
-                "is_visible": True,
-                "max_input_tokens": None,
-                "supports_image_input": False,
-                "supports_reasoning": False,
-            }
-        )
+    """Return built-in LLM options from available providers."""
+    from core.providers.registry import provider_registry
+
+    provider_registry.initialize()
+    provider_infos = await provider_registry.get_provider_infos()
+
+    result = []
+    for info in provider_infos:
+        for model in info.models:
+            result.append(
+                {
+                    "name": model.name,
+                    "is_visible": model.is_visible,
+                    "max_input_tokens": model.max_input_tokens,
+                    "supports_image_input": model.supports_image_input,
+                    "supports_reasoning": model.supports_reasoning,
+                    "provider": info.name,
+                }
+            )
+
+    return result
 
     return [
         {
@@ -1056,29 +929,32 @@ async def get_document_sets():
 
 @router.get("/admin/llm/provider")
 async def get_admin_llm_provider():
-    """Get LLM provider info."""
-    models = list(settings.AVAILABLE_MODELS)
-    model_configs = []
-    for model in models:
-        model_configs.append(
-            {
-                "name": model,
-                "is_visible": True,
-                "max_input_tokens": None,
-                "supports_image_input": False,
-                "supports_reasoning": False,
-            }
-        )
+    """Get LLM provider info with dynamically discovered models."""
+    from core.providers.registry import provider_registry
 
-    return {
-        "providers": [
+    provider_registry.initialize()
+    provider_infos = await provider_registry.get_provider_infos()
+
+    providers = []
+    for i, info in enumerate(provider_infos):
+        model_configs = [
             {
-                "id": 1,
-                "name": "ollama",
-                "provider": "ollama",
-                "provider_display_name": "Ollama",
+                "name": m.name,
+                "is_visible": m.is_visible,
+                "max_input_tokens": m.max_input_tokens,
+                "supports_image_input": m.supports_image_input,
+                "supports_reasoning": m.supports_reasoning,
+            }
+            for m in info.models
+        ]
+        providers.append(
+            {
+                "id": i + 1,
+                "name": info.name,
+                "provider": info.provider_type,
+                "provider_display_name": info.display_name,
                 "api_key": None,
-                "api_base": None,
+                "api_base": info.base_url,
                 "api_version": None,
                 "custom_config": {},
                 "is_public": True,
@@ -1088,8 +964,20 @@ async def get_admin_llm_provider():
                 "deployment_name": None,
                 "model_configurations": model_configs,
             }
-        ],
-        "selected_provider": "ollama",
+        )
+
+    # Determine default model
+    default_model = env.DEFAULT_MODEL or None
+    if not default_model and provider_infos:
+        for info in provider_infos:
+            if info.is_available and info.models:
+                default_model = info.models[0].name
+                break
+
+    return {
+        "providers": providers,
+        "selected_provider": providers[0]["name"] if providers else None,
+        "default_model": default_model,
     }
 
 
@@ -1107,9 +995,12 @@ async def set_default_llm():
 
 @router.get("/api/admin/llm/ollama/available-models")
 async def get_ollama_models():
-    """Get available Ollama models."""
-    models = list(settings.AVAILABLE_MODELS)
-    return [{"name": m, "display_name": m} for m in models]
+    """Get available Ollama models from the actual Ollama server."""
+    from core.providers.ollama import OllamaProvider
+
+    provider = OllamaProvider()
+    models = await provider.get_available_models()
+    return [{"name": m.name, "display_name": m.display_name} for m in models]
 
 
 @router.put("/api/admin/llm/provider")
@@ -1126,31 +1017,46 @@ async def create_llm_provider():
 
 @router.get("/llm/persona/{persona_id}/providers")
 async def get_persona_providers(persona_id: int):
-    """Get providers for a specific persona."""
-    models = list(settings.AVAILABLE_MODELS)
-    model_configs = []
-    for model in models:
-        model_configs.append(
+    """Get providers for a specific persona with dynamically discovered models."""
+    from core.providers.registry import provider_registry
+
+    provider_registry.initialize()
+    provider_infos = await provider_registry.get_provider_infos()
+
+    providers = []
+    for i, info in enumerate(provider_infos):
+        model_configs = [
             {
-                "name": model,
-                "is_visible": True,
-                "max_input_tokens": None,
-                "supports_image_input": False,
-                "supports_reasoning": False,
+                "name": m.name,
+                "is_visible": m.is_visible,
+                "max_input_tokens": m.max_input_tokens,
+                "supports_image_input": m.supports_image_input,
+                "supports_reasoning": m.supports_reasoning,
+            }
+            for m in info.models
+        ]
+        providers.append(
+            {
+                "id": i + 1,
+                "name": info.name,
+                "provider": info.provider_type,
+                "provider_display_name": info.display_name,
+                "model_configurations": model_configs,
             }
         )
 
+    # Determine default model
+    default_model = env.DEFAULT_MODEL or None
+    if not default_model and provider_infos:
+        for info in provider_infos:
+            if info.is_available and info.models:
+                default_model = info.models[0].name
+                break
+
     return {
-        "providers": [
-            {
-                "id": 1,
-                "name": "ollama",
-                "provider": "ollama",
-                "provider_display_name": "Ollama",
-                "model_configurations": model_configs,
-            }
-        ],
-        "selected_provider": settings.DEFAULT_MODEL,
+        "providers": providers,
+        "selected_provider": providers[0]["name"] if providers else None,
+        "default_model": default_model,
     }
 
 
@@ -1257,3 +1163,40 @@ async def rename_chat_session_v2(request: Request):
     except Exception as e:
         logger.error(f"Failed to rename chat session: {e}")
         return {"success": False, "error": str(e)}
+
+
+# =============================================================================
+# MCP Administration Endpoints
+# =============================================================================
+
+
+@router.get("/api/admin/mcp/servers")
+async def get_mcp_servers():
+    """Get configured MCP servers."""
+    import os
+    from datetime import datetime
+
+    # Get MCP servers configuration from environment or defaults
+    mcp_servers = []
+
+    # Check for tools service MCP server
+    tools_service_url = os.getenv("TOOLS_SERVICE_URL", "http://localhost:8003")
+    if tools_service_url:
+        mcp_servers.append(
+            {
+                "id": 1,
+                "name": "Built-in Tools",
+                "description": "Built-in tools service",
+                "server_url": tools_service_url,
+                "owner": "system",
+                "is_authenticated": True,
+                "status": "CONNECTED",
+                "tool_count": 0,
+                "last_refreshed_at": datetime.now().isoformat(),
+            }
+        )
+
+    # Check for other configured MCP servers
+    # Add more MCP servers as needed
+
+    return {"mcp_servers": mcp_servers}

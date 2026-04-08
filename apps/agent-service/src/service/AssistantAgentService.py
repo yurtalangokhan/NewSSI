@@ -121,12 +121,47 @@ class AssistantAgentService:
         """
         Resolve agent ID to graph ID and config.
 
+        Handles:
+        - Direct agent ID (e.g., "chatbot", "configurable-mcp-agent")
+        - Persona ID (numeric string) - loads base_agent and mcp_tools from persona
+        - Assistant ID (UUID) - loads from assistant table
+
         Returns:
             Tuple of (graph_id, config)
         """
         config: dict = {}
         graph_id = agent_id
 
+        # Check if agent_id is a persona ID (numeric)
+        if agent_id.isdigit():
+            from service.PersonaRepository import PersonaDB
+
+            try:
+                persona = await PersonaDB.get(int(agent_id))
+                if persona and not persona.get("is_builtin"):
+                    # Custom persona - use base_agent and mcp_tools
+                    base_agent = persona.get("base_agent")
+                    mcp_tools = persona.get("mcp_tools", [])
+
+                    if base_agent:
+                        graph_id = base_agent
+
+                    if mcp_tools:
+                        config["mcp_tools"] = mcp_tools
+
+                    # Also include system_prompt from persona
+                    system_prompt = persona.get("system_prompt")
+                    if system_prompt:
+                        config["system_prompt"] = system_prompt
+
+                    logger.info(
+                        f"Loaded persona config: base_agent={graph_id}, mcp_tools={mcp_tools}"
+                    )
+                    return graph_id, config
+            except Exception as e:
+                logger.warning(f"Could not load persona {agent_id}: {e}")
+
+        # Check for assistant in database
         try:
             stored = await self.get_assistant(agent_id)
             if stored:
@@ -212,6 +247,19 @@ class AssistantAgentService:
                         model_name=model_name,
                         retry_count=retry_count,
                         on_error=on_error,
+                    )
+
+            # Handle mcp_tools for custom agents (configurable-mcp-agent pattern)
+            if hasattr(graph_like, "create_configured_graph") and "mcp_tools" in merged_config:
+                mcp_tools = merged_config.get("mcp_tools", [])
+                system_prompt = merged_config.get("system_prompt")
+                model_name = merged_config.get("model")
+
+                if mcp_tools or system_prompt:
+                    return graph_like.create_configured_graph(
+                        mcp_tools=mcp_tools,
+                        system_prompt=system_prompt,
+                        model_name=model_name,
                     )
 
             graph = graph_like.get_graph()

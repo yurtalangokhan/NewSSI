@@ -12,6 +12,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
 
+from controller import DataController, get_data_controller
 from core.db import AirbyteMappingRepository, DatasourceRepository
 from service.Schemas import (
     ChunkInfo,
@@ -27,6 +28,10 @@ from service.SyncQueueService import SyncJob, get_sync_queue
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/datasources", tags=["datasources"])
+
+
+def _get_controller() -> DataController:
+    return get_data_controller()
 
 
 # Valid sync mode combinations (must match Airbyte webapp + destination spec)
@@ -158,105 +163,12 @@ async def get_connector_streams(
 # ============================================================================
 
 
-def _format_connector_name(name: str) -> str:
-    """Convert connector name to display format."""
-    from service.AirbyteConnectorService import _format_connector_name as fmt
-
-    return fmt(name)
-
-
-def _mask_sensitive_config(config: dict[str, Any]) -> dict[str, Any]:
-    """Mask sensitive fields in configuration."""
-    sensitive_keys = ["password", "api_key", "secret", "token", "credentials", "private_key"]
-    masked = {}
-
-    for key, value in config.items():
-        if any(s in key.lower() for s in sensitive_keys):
-            masked[key] = "****"
-        elif isinstance(value, dict):
-            masked[key] = _mask_sensitive_config(value)
-        else:
-            masked[key] = value
-
-    return masked
-
-
 @router.get("", response_model=list[DataSourceResponse])
 async def list_datasources():
     """List all configured data sources."""
-    ds_repo = DatasourceRepository()
-    mapping_repo = AirbyteMappingRepository()
+    rows = await _get_controller().list_datasources()
 
-    rows = await ds_repo.list_datasource_collections()
-
-    # Build a mapping lookup: datasource_id → {connection_id, update_graph_rag}
-    mapping_map: dict[str, dict[str, Any]] = {}
-    try:
-        all_mappings = await mapping_repo.list_all()
-        for m in all_mappings:
-            mapping_map[m["datasource_id"]] = {
-                "connection_id": m["airbyte_connection_id"],
-                "update_graph_rag": m["update_graph_rag"],
-            }
-    except Exception:
-        pass
-
-    results = []
-    for row in rows:
-        meta = row.get("cmetadata", {})
-        connector_type = meta.get("connector_type", "unknown")
-        ds_id = str(row["uuid"])
-
-        # Build schedule summary from Airbyte connection if mapped
-        schedule_summary = None
-        mapping = mapping_map.get(ds_id)
-        if mapping:
-            try:
-                from service.AirbyteApiClientService import get_airbyte_client
-
-                client = get_airbyte_client()
-                conn_data = await client.get_connection(mapping["connection_id"])
-                sched = conn_data.get("scheduleData", {})
-                cron_data = sched.get("cron", {})
-                schedule_type = conn_data.get("scheduleType", "manual")
-                if schedule_type == "cron" and cron_data:
-                    cron_expr = cron_data.get("cronExpression", "")
-                    tz = cron_data.get("cronTimeZone", "UTC")
-                    next_run = None
-                    if cron_expr:
-                        try:
-                            from routes.ScheduleRoute import _compute_next_run
-
-                            next_run = _compute_next_run(cron_expr, tz)
-                        except Exception:
-                            pass
-                    schedule_summary = {
-                        "cron_expression": cron_expr,
-                        "preset": "custom",
-                        "enabled": True,
-                        "update_graph_rag": mapping.get("update_graph_rag", False),
-                        "next_run_at": next_run,
-                    }
-            except Exception:
-                pass
-
-        results.append(
-            DataSourceResponse(
-                id=ds_id,
-                name=row["name"],
-                connector_type=connector_type,
-                connector_display_name=_format_connector_name(connector_type),
-                streams=meta.get("streams"),
-                sync_status=meta.get("sync_status"),
-                sync_progress=meta.get("sync_progress"),
-                document_count=row.get("doc_count", 0),
-                created_at=meta.get("created_at"),
-                last_synced_at=meta.get("last_synced_at"),
-                schedule_summary=schedule_summary,
-            )
-        )
-
-    return results
+    return [DataSourceResponse(**ds) for ds in rows]
 
 
 @router.post("", response_model=DataSourceResponse)

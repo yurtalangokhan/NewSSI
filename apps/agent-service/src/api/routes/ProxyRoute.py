@@ -3,22 +3,30 @@ Proxy routes for external services.
 
 Endpoints:
   GET /mcp/tools    — list MCP tools from the MCP server
+  GET /mcp/tools-builtin — list tools from built-in tools-service
+  POST /mcp/execute — execute a tool on the MCP server
   GET /ollama/models — list available Ollama models
   GET /rag/collections — list RAG collections from langconnect-api
 """
 
 import logging
 import os
+from typing import Any
 
-import httpx
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Body, Depends, Query
 
+from controller import ProxyController, get_proxy_controller
 from core import settings
 from service.AuthService import verify_bearer
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/proxy", tags=["proxy"], dependencies=[Depends(verify_bearer)])
+router = APIRouter(prefix="/api/proxy", tags=["proxy"], dependencies=[Depends(verify_bearer)])
+
+
+def _get_controller() -> ProxyController:
+    """Get the singleton ProxyController instance."""
+    return get_proxy_controller()
 
 
 @router.get("/mcp/tools")
@@ -32,32 +40,8 @@ async def get_mcp_tools(
     Get list of available MCP tools from the specified MCP server.
     Used by the UI to populate tool selection for pipeline stages.
     """
-    try:
-        from langchain_mcp_adapters.client import MultiServerMCPClient
-
-        client = MultiServerMCPClient(
-            connections={
-                "mcp-tools": {
-                    "transport": "streamable_http",
-                    "url": url,
-                }
-            }
-        )
-
-        tools = await client.get_tools()
-
-        return {
-            "tools": [
-                {
-                    "name": tool.name,
-                    "description": getattr(tool, "description", "") or "",
-                }
-                for tool in tools
-            ]
-        }
-    except Exception as e:
-        logger.error(f"Failed to fetch MCP tools: {e}")
-        return {"tools": [], "error": str(e)}
+    ctrl = _get_controller()
+    return await ctrl.get_mcp_tools(url)
 
 
 @router.get("/ollama/models")
@@ -67,41 +51,40 @@ async def get_ollama_models() -> dict:
     Fetches from Ollama API at OLLAMA_BASE_URL.
     """
     ollama_url = settings.OLLAMA_BASE_URL or "http://localhost:11434"
-
-    try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            response = await client.get(f"{ollama_url}/api/tags")
-            if response.status_code == 200:
-                data = response.json()
-                models = [m["name"] for m in data.get("models", [])]
-                return {"models": models, "default": settings.OLLAMA_MODEL}
-            else:
-                return {
-                    "models": [settings.OLLAMA_MODEL],
-                    "default": settings.OLLAMA_MODEL,
-                    "error": "Could not fetch models",
-                }
-    except Exception as e:
-        logger.warning(f"Could not fetch Ollama models: {e}")
-        return {
-            "models": [settings.OLLAMA_MODEL],
-            "default": settings.OLLAMA_MODEL,
-            "error": str(e),
-        }
+    ctrl = _get_controller()
+    return await ctrl.get_ollama_models(ollama_url, settings.OLLAMA_MODEL)
 
 
 @router.get("/rag/collections")
 async def get_rag_collections() -> dict:
     """Proxy endpoint to get RAG collections from langconnect-api."""
     rag_api_url = os.environ.get("RAG_API_URL", "http://langconnect-api:8080")
+    ctrl = _get_controller()
+    return await ctrl.get_rag_collections(rag_api_url)
 
-    try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            response = await client.get(f"{rag_api_url}/collections")
-            if response.status_code == 200:
-                return response.json()
-            else:
-                return {"collections": [], "error": f"Status {response.status_code}"}
-    except Exception as e:
-        logger.warning(f"Could not fetch RAG collections: {e}")
-        return {"collections": [], "error": str(e)}
+
+@router.get("/mcp/tools-builtin")
+async def get_builtin_mcp_tools() -> dict:
+    """
+    Get list of available MCP tools from the built-in tools-service.
+    Uses TOOLS_SERVICE_URL from settings (default: http://localhost:8002/mcp).
+    """
+    tools_service_url = getattr(settings, "TOOLS_SERVICE_URL", None) or settings.MCP_SERVER_URL
+    ctrl = _get_controller()
+    return await ctrl.get_builtin_mcp_tools(tools_service_url)
+
+
+@router.post("/mcp/execute")
+async def execute_mcp_tool(
+    tool_name: str = Body(..., description="Name of the tool to execute"),
+    arguments: dict = Body(default={}, description="Arguments to pass to the tool"),
+    url: str = Query(
+        default="http://localhost:8002/mcp",
+        description="MCP Server URL",
+    ),
+) -> dict:
+    """
+    Execute a tool on the MCP server and return the result.
+    """
+    ctrl = _get_controller()
+    return await ctrl.execute_mcp_tool(tool_name, arguments, url)

@@ -169,3 +169,11 @@ export interface OAuthTokenStatus {
   expires_at: number | null;
   is_expired: boolean;
 }
+
+export interface BuiltInTool {
+  name: string;
+  description: string;
+  input_schema: Record<string, any>;
+  category?: string;
+  categoryLabel?: string;
+}

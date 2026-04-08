@@ -13,9 +13,9 @@ logger = get_logger(__name__)
 import logging as _stdlib_logging
 
 logger_stdlib = _stdlib_logging.getLogger(__name__)
-from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID, uuid4
+from datetime import UTC, datetime
 
 from fastapi import HTTPException
 from langchain_core.messages import HumanMessage
@@ -42,12 +42,40 @@ logger = get_logger(__name__)
 
 
 async def get_graph_and_config(agent_id: str) -> tuple[str, dict]:
-    """Helper to get graph_id and config, resolving stored assistants."""
+    """Helper to get graph_id and config, resolving stored assistants and personas."""
     from service.StoreService import get_assistant_from_store
 
     config: dict = {}
     graph_id = agent_id  # Default to agent_id as graph_id
 
+    # Check if agent_id is a persona ID (numeric) - for custom agents
+    if agent_id.isdigit():
+        from service.PersonaRepository import PersonaDB
+
+        try:
+            persona = await PersonaDB.get(int(agent_id))
+            if persona and not persona.get("is_builtin"):
+                # Custom persona - use base_agent and mcp_tools
+                base_agent = persona.get("base_agent")
+                mcp_tools = persona.get("mcp_tools", [])
+
+                if base_agent:
+                    graph_id = base_agent
+
+                if mcp_tools:
+                    config["mcp_tools"] = mcp_tools
+
+                # Also include system_prompt from persona
+                system_prompt = persona.get("system_prompt")
+                if system_prompt:
+                    config["system_prompt"] = system_prompt
+
+                logger.info(f"Loaded persona config: base_agent={graph_id}, mcp_tools={mcp_tools}")
+                return graph_id, config
+        except Exception as e:
+            logger.warning(f"Could not load persona {agent_id}: {e}")
+
+    # Check for assistant in database
     try:
         stored = await get_assistant_from_store(agent_id)
         if stored:
@@ -121,6 +149,19 @@ async def get_configured_agent(agent_id: str, agent_config: dict) -> AgentGraph:
                     model_name=model_name,
                     retry_count=retry_count,
                     on_error=on_error,
+                )
+
+        # Handle mcp_tools for custom agents (configurable-mcp-agent pattern)
+        if hasattr(graph_like, "create_configured_graph") and "mcp_tools" in merged_config:
+            mcp_tools = merged_config.get("mcp_tools", [])
+            system_prompt = merged_config.get("system_prompt")
+            model_name = merged_config.get("model")
+
+            if mcp_tools or system_prompt:
+                return graph_like.create_configured_graph(
+                    mcp_tools=mcp_tools,
+                    system_prompt=system_prompt,
+                    model_name=model_name,
                 )
 
         # Return default graph
@@ -204,8 +245,10 @@ async def _handle_input(
         callbacks.append(langfuse_handler)
 
     if user_input.agent_config:
+        logger.info(f"agent_config keys: {list(user_input.agent_config.keys())}")
         reserved_keys = {"thread_id", "user_id", "model"}
         if overlap := reserved_keys & user_input.agent_config.keys():
+            logger.warning(f"agent_config contains reserved keys: {overlap}")
             raise HTTPException(
                 status_code=422,
                 detail=f"agent_config contains reserved keys: {overlap}",
@@ -215,6 +258,7 @@ async def _handle_input(
         if "model_version" in agent_cfg and "model" not in agent_cfg:
             agent_cfg["model"] = agent_cfg.pop("model_version")
             logger.info(f"Mapped model_version to model: {agent_cfg['model']}")
+        logger.info(f"Updated agent_config: {list(agent_cfg.keys())}")
         configurable.update(agent_cfg)
 
     config = RunnableConfig(
