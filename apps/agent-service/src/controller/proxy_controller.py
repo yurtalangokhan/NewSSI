@@ -66,41 +66,41 @@ class ProxyController(BaseController):
             def serialize_input_schema(schema: Any) -> dict[str, Any]:
                 """Safely serialize input_schema to JSON-compatible dict."""
                 import inspect
-                
+
                 if schema is None:
                     return {}
                 # If it's already a dict, return it
                 if isinstance(schema, dict):
                     return schema
-                
+
                 # Check if it's a class vs instance
                 is_class = inspect.isclass(schema)
-                
+
                 # If it's a Pydantic model class, use model_json_schema()
                 if is_class and hasattr(schema, "model_json_schema"):
                     try:
                         return schema.model_json_schema()
                     except Exception:
                         pass
-                
+
                 # If it's a Pydantic model instance, use model_dump()
                 if not is_class and hasattr(schema, "model_dump"):
                     try:
                         return schema.model_dump()
                     except Exception:
                         pass
-                
+
                 # Try dict() for older Pydantic versions
                 if hasattr(schema, "dict"):
                     try:
                         return schema.dict()
                     except Exception:
                         pass
-                
+
                 # If it has __dict__, use that
                 if hasattr(schema, "__dict__"):
                     return dict(schema.__dict__)
-                
+
                 # Last resort: try to JSON serialize it
                 try:
                     return json.loads(json.dumps(schema, default=str))
@@ -112,13 +112,15 @@ class ProxyController(BaseController):
                     {
                         "name": tool.name,
                         "description": getattr(tool, "description", "") or "",
-                        "input_schema": serialize_input_schema(getattr(tool, "input_schema", None)),
+                        # Note: MCP SDK uses camelCase 'inputSchema', not snake_case
+                        "input_schema": serialize_input_schema(getattr(tool, "inputSchema", None)),
                     }
                     for tool in tools
                 ]
             }
         except Exception as e:
             import logging
+
             logger = logging.getLogger(__name__)
             logger.error(f"Error fetching builtin MCP tools: {e}")
             return {"tools": [], "error": str(e)}

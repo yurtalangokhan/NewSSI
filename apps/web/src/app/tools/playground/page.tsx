@@ -6,6 +6,13 @@ import { Badge } from "@/components/ui/badge";
 import Button from "@/refresh-components/buttons/Button";
 import { Input } from "@/components/ui/input";
 import InputTextArea from "@/refresh-components/inputs/InputTextArea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Loader2, ArrowLeft, Search } from "lucide-react";
 import { toast } from "@/hooks/useToast";
 import { cn } from "@/lib/utils";
@@ -554,15 +561,44 @@ export default function ToolsPlaygroundPage() {
             <div className="text-sm font-semibold text-gray-900">Tool selector</div>
             <p className="text-sm text-gray-500">Choose a tool or search for one to open the playground.</p>
           </div>
-          <div className="relative w-full max-w-sm">
-            <Search className="absolute left-3 top-3 size-4 text-gray-400" />
-            <Input
-              type="text"
-              placeholder="Search tools..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <div className="relative w-full sm:w-64">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-400" />
+              <Input
+                type="text"
+                placeholder="Search tools..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            {toolsWithCategory.length > 0 && (
+              <Select
+                value={toolName}
+                onValueChange={(value) => {
+                  const tool = toolsWithCategory.find((t) => t.name === value);
+                  if (tool) {
+                    handleSelectTool(tool);
+                  }
+                }}
+              >
+                <SelectTrigger className="w-full sm:w-64">
+                  <SelectValue placeholder="Select a tool..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.keys(groupedTools).map((category) => (
+                    <SelectItem key={category} value={category} disabled className="font-medium">
+                      {categoryLabelMap[category] || _.startCase(category)}
+                    </SelectItem>
+                  ))}
+                  {filteredTools.map((tool) => (
+                    <SelectItem key={tool.name} value={tool.name}>
+                      {tool.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
         </div>
       </div>

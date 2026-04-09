@@ -79,12 +79,18 @@ async def execute_mcp_tool(
     tool_name: str = Body(..., description="Name of the tool to execute"),
     arguments: dict = Body(default={}, description="Arguments to pass to the tool"),
     url: str = Query(
-        default="http://localhost:8002/mcp",
-        description="MCP Server URL",
+        default=None,
+        description="MCP Server URL (optional, defaults to TOOLS_SERVICE_URL)",
     ),
 ) -> dict:
     """
     Execute a tool on the MCP server and return the result.
+    Uses TOOLS_SERVICE_URL from settings if no URL is provided.
     """
+    # Use TOOLS_SERVICE_URL as default if no URL provided
+    if url is None:
+        tools_service_url = getattr(settings, "TOOLS_SERVICE_URL", None) or settings.MCP_SERVER_URL
+        url = tools_service_url
+
     ctrl = _get_controller()
     return await ctrl.execute_mcp_tool(tool_name, arguments, url)
