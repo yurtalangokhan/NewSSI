@@ -8,6 +8,7 @@ plus the ``message_generator`` streaming helper.
 import inspect
 import json
 import logging
+import re
 from collections.abc import AsyncGenerator
 from typing import Any
 
@@ -242,6 +243,16 @@ async def message_generator(
                     yield f"data: {json.dumps({'type': 'custom_tool_delta', 'tool_name': tool_name, 'response_type': 'tool_result', 'data': chat_message.content})}\n\n"
                     continue
 
+                # Strip <think>/<thinking> tags from AI responses
+                if chat_message.type == "ai" and chat_message.content:
+                    cleaned = re.sub(r"<think>.*?</think>", "", chat_message.content, flags=re.DOTALL)
+                    cleaned = re.sub(r"<thinking>.*?</thinking>", "", cleaned, flags=re.DOTALL)
+                    cleaned = re.sub(r"<think>(?:(?!</think>).)*$", "", cleaned, flags=re.DOTALL)
+                    cleaned = re.sub(r"<thinking>(?:(?!</thinking>).)*$", "", cleaned, flags=re.DOTALL)
+                    chat_message.content = cleaned.strip()
+                    if not chat_message.content:
+                        continue
+
                 yield f"data: {json.dumps({'type': 'message', 'content': chat_message.model_dump()})}\n\n"
 
             if stream_mode == "messages":
@@ -254,7 +265,14 @@ async def message_generator(
                     continue
                 content = remove_tool_calls(msg.content)
                 if content:
-                    yield f"data: {json.dumps({'type': 'token', 'content': convert_message_content_to_string(content)})}\n\n"
+                    token_str = convert_message_content_to_string(content)
+                    # Strip <think>/<thinking> tags from streaming tokens
+                    token_str = re.sub(r"<think>.*?</think>", "", token_str, flags=re.DOTALL)
+                    token_str = re.sub(r"<thinking>.*?</thinking>", "", token_str, flags=re.DOTALL)
+                    token_str = re.sub(r"<think>(?:(?!</think>).)*$", "", token_str, flags=re.DOTALL)
+                    token_str = re.sub(r"<thinking>(?:(?!</thinking>).)*$", "", token_str, flags=re.DOTALL)
+                    if token_str.strip():
+                        yield f"data: {json.dumps({'type': 'token', 'content': token_str})}\n\n"
     except Exception as e:
         import traceback
 
