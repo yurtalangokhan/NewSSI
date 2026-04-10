@@ -30,8 +30,42 @@ class PersonaDB:
 
     @staticmethod
     async def ensure_table() -> None:
-        """No-op — table creation is managed by Alembic migrations."""
-        logger.info("persona table managed by Alembic – skipping ensure_table")
+        """Create the persona table if it does not exist yet.
+
+        This is a safety net for environments where Alembic migrations
+        have not been run (e.g. fresh dev setup). It is idempotent.
+        """
+        from sqlalchemy import text
+        from core.db.engine import get_db_engine
+
+        engine = get_db_engine()
+        async with engine.begin() as conn:
+            await conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS persona (
+                    id                          SERIAL PRIMARY KEY,
+                    name                        TEXT NOT NULL,
+                    description                 TEXT NOT NULL DEFAULT '',
+                    system_prompt               TEXT NOT NULL DEFAULT '',
+                    task_prompt                 TEXT NOT NULL DEFAULT '',
+                    datetime_aware              BOOLEAN NOT NULL DEFAULT TRUE,
+                    is_public                   BOOLEAN NOT NULL DEFAULT TRUE,
+                    llm_model_provider_override TEXT,
+                    llm_model_version_override  TEXT,
+                    starter_messages            JSONB,
+                    labels                      JSONB,
+                    user_id                     TEXT NOT NULL DEFAULT 'dev-user',
+                    is_builtin                  BOOLEAN NOT NULL DEFAULT FALSE,
+                    builtin_key                 TEXT,
+                    base_agent                  TEXT,
+                    mcp_tools                   JSONB,
+                    time_created                TIMESTAMPTZ NOT NULL DEFAULT now(),
+                    time_updated                TIMESTAMPTZ NOT NULL DEFAULT now()
+                )
+            """))
+            await conn.execute(text(
+                "CREATE INDEX IF NOT EXISTS idx_persona_user_id ON persona (user_id)"
+            ))
+        logger.info("persona table ready")
 
     @staticmethod
     async def create(

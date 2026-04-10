@@ -76,6 +76,12 @@ import useMcpServersForAgentEditor from "@/hooks/useMcpServersForAgentEditor";
 import useOpenApiTools from "@/hooks/useOpenApiTools";
 import { useAvailableTools } from "@/hooks/useAvailableTools";
 import useBuiltInTools from "@/hooks/useBuiltInTools";
+import {
+  parseToolCategory,
+  groupToolsByCategory,
+  buildCategoryLabelMap,
+} from "@/lib/tools/builtInToolUtils";
+import _ from "lodash";
 import * as ActionsLayouts from "@/layouts/actions-layouts";
 import * as ExpandableCard from "@/layouts/expandable-card-layouts";
 import { getActionIcon } from "@/lib/tools/mcpUtils";
@@ -556,15 +562,46 @@ export default function AgentEditorPage({
     return mcpServersWithTools.flatMap(({ tools }) => tools);
   }, [mcpServersWithTools]);
 
-  // Transform built-in tools for the form
+  // Transform built-in tools for the form (parse and clean category tags)
   const allBuiltInTools = useMemo(() => {
-    return builtInTools.map((tool) => ({
-      name: tool.name,
-      description: tool.description,
-      isAvailable: true,
-      isEnabled: false,
-    }));
+    return builtInTools.map((tool) => {
+      const parsed = parseToolCategory({
+        name: tool.name,
+        description: tool.description || "",
+        input_schema: tool.input_schema || {},
+      });
+      return {
+        name: tool.name,
+        description: parsed.description,
+        category: parsed.category,
+        categoryLabel: parsed.categoryLabel,
+        isAvailable: true,
+        isEnabled: false,
+      };
+    });
   }, [builtInTools]);
+
+  const builtInToolsByCategory = useMemo(
+    () => groupToolsByCategory(allBuiltInTools),
+    [allBuiltInTools]
+  );
+
+  const builtInCategoryLabelMap = useMemo(
+    () => buildCategoryLabelMap(allBuiltInTools),
+    [allBuiltInTools]
+  );
+
+  const sortedBuiltInCategories = useMemo(
+    () =>
+      Object.keys(builtInToolsByCategory).sort((a, b) => {
+        if (a === "other") return 1;
+        if (b === "other") return -1;
+        return (builtInCategoryLabelMap[a] || _.startCase(a)).localeCompare(
+          builtInCategoryLabelMap[b] || _.startCase(b)
+        );
+      }),
+    [builtInToolsByCategory, builtInCategoryLabelMap]
+  );
 
   const initialValues = {
     // General
@@ -1462,7 +1499,7 @@ export default function AgentEditorPage({
                               {/* MCP tools (from external MCP servers) - only show when configurable-mcp-agent is selected */}
                               {values.base_agent === "configurable-mcp-agent" && allMcpTools.length > 0 && (
                                 <GeneralLayouts.Section gap={0.5}>
-                                  <Text base>External MCP Tools</Text>
+                                  <Text mainUiBody>External MCP Tools</Text>
                                   {allMcpTools.map((tool) => (
                                     <Card
                                       key={tool.name}
@@ -1487,25 +1524,34 @@ export default function AgentEditorPage({
                               {/* Built-in tools from tools-service - only show when configurable-mcp-agent is selected */}
                               {values.base_agent === "configurable-mcp-agent" && allBuiltInTools.length > 0 && (
                                 <GeneralLayouts.Section gap={0.5}>
-                                  <Text base>Tools Service</Text>
-                                  {allBuiltInTools.map((tool) => (
-                                    <Card
-                                      key={tool.name}
-                                      variant={tool.isAvailable ? undefined : "disabled"}
-                                    >
-                                      <InputLayouts.Horizontal
-                                        name={`builtin_tool_${tool.name}`}
-                                        title={tool.name}
-                                        description={tool.description}
-                                        disabled={!tool.isAvailable}
-                                      >
-                                        <SwitchField
-                                          name={`builtin_tool_${tool.name}`}
-                                          disabled={!tool.isAvailable}
-                                        />
-                                      </InputLayouts.Horizontal>
-                                    </Card>
-                                  ))}
+                                  <Text mainUiBody>Tools Service</Text>
+                                  <div className="max-h-96 overflow-y-auto space-y-4 pr-1">
+                                    {sortedBuiltInCategories.map((category) => (
+                                      <div key={category}>
+                                        <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500 px-1">
+                                          {builtInCategoryLabelMap[category] || _.startCase(category)}
+                                        </div>
+                                        {builtInToolsByCategory[category].map((tool) => (
+                                          <Card
+                                            key={tool.name}
+                                            variant={tool.isAvailable ? undefined : "disabled"}
+                                          >
+                                            <InputLayouts.Horizontal
+                                              name={`builtin_tool_${tool.name}`}
+                                              title={_.startCase(tool.name)}
+                                              description={tool.description}
+                                              disabled={!tool.isAvailable}
+                                            >
+                                              <SwitchField
+                                                name={`builtin_tool_${tool.name}`}
+                                                disabled={!tool.isAvailable}
+                                              />
+                                            </InputLayouts.Horizontal>
+                                          </Card>
+                                        ))}
+                                      </div>
+                                    ))}
+                                  </div>
                                 </GeneralLayouts.Section>
                               )}
 

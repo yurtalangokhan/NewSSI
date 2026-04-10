@@ -7,7 +7,6 @@ from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import delete, select, update
-from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from core.db.models.persona import PersonaModel
 from core.db.repositories.base import BaseRepository
@@ -109,25 +108,23 @@ class PersonaRepository(BaseRepository):
         """Insert a new persona and return it."""
         now = datetime.now(UTC)
         async with self._session() as session:
-            stmt = (
-                pg_insert(PersonaModel)
-                .values(
-                    name=name,
-                    description=description,
-                    system_prompt=system_prompt,
-                    task_prompt=task_prompt,
-                    user_id=user_id,
-                    is_builtin=is_builtin,
-                    builtin_key=builtin_key,
-                    time_created=now,
-                    time_updated=now,
-                    **extra,
-                )
-                .returning(PersonaModel)
+            row = PersonaModel(
+                name=name,
+                description=description,
+                system_prompt=system_prompt,
+                task_prompt=task_prompt,
+                user_id=user_id,
+                is_builtin=is_builtin,
+                builtin_key=builtin_key,
+                time_created=now,
+                time_updated=now,
+                **extra,
             )
-            result = await session.execute(stmt)
-            row = result.scalar_one()
-        return self._to_dict(row)
+            session.add(row)
+            await session.flush()
+            # Eagerly load all columns before the session closes
+            result = self._to_dict(row)
+        return result
 
     async def update(
         self,
@@ -160,13 +157,9 @@ class PersonaRepository(BaseRepository):
                 update(PersonaModel)
                 .where(PersonaModel.id == persona_id)
                 .values(**updates)
-                .returning(PersonaModel)
             )
-            result = await session.execute(stmt)
-            row = result.scalar_one_or_none()
-        if row is None:
-            return None
-        return self._to_dict(row)
+            await session.execute(stmt)
+        return await self.get(persona_id)
 
     async def delete(self, persona_id: int) -> bool:
         """Delete a persona. Returns True if removed."""

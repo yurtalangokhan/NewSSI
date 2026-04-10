@@ -213,13 +213,6 @@ async def _handle_input(
     # Priority: 1) api_key_user_id from token, 2) user_input.user_id, 3) generate new UUID
     user_id = api_key_user_id or user_input.user_id or str(uuid4())
 
-    if api_key_user_id:
-        logger.info(f"Using user_id from Supabase token: {user_id}")
-    elif user_input.user_id:
-        logger.info(f"Using user_id from request body: {user_id}")
-    else:
-        logger.info(f"Generated new user_id: {user_id}")
-
     # Get model from thread metadata if not provided in user_input
     selected_model = user_input.model
     if selected_model is None and thread_id:
@@ -230,14 +223,12 @@ async def _handle_input(
             if thread:
                 metadata = thread.get("metadata", {}) or {}
                 selected_model = metadata.get("current_alternate_model")
-                logger.info(f"Using model from thread metadata: {selected_model}")
         except Exception as e:
             logger.warning(f"Failed to get model from thread metadata: {e}")
 
     configurable: dict[str, Any] = {"thread_id": thread_id, "user_id": user_id}
     if selected_model is not None:
         configurable["model"] = selected_model
-        logger.info(f"Using model: {selected_model}")
 
     callbacks: list[Any] = []
     if settings.LANGFUSE_TRACING:
@@ -245,8 +236,9 @@ async def _handle_input(
         callbacks.append(langfuse_handler)
 
     if user_input.agent_config:
-        logger.info(f"agent_config keys: {list(user_input.agent_config.keys())}")
-        reserved_keys = {"thread_id", "user_id", "model"}
+        # Only thread_id and user_id are truly reserved (security critical).
+        # 'model' is intentionally allowed — it will be placed into configurable below.
+        reserved_keys = {"thread_id", "user_id"}
         if overlap := reserved_keys & user_input.agent_config.keys():
             logger.warning(f"agent_config contains reserved keys: {overlap}")
             raise HTTPException(
@@ -257,8 +249,11 @@ async def _handle_input(
         agent_cfg = user_input.agent_config.copy()
         if "model_version" in agent_cfg and "model" not in agent_cfg:
             agent_cfg["model"] = agent_cfg.pop("model_version")
-            logger.info(f"Mapped model_version to model: {agent_cfg['model']}")
-        logger.info(f"Updated agent_config: {list(agent_cfg.keys())}")
+        # Strip non-configurable keys sent by the frontend (temperature, model_provider, etc.)
+        # but keep 'model', 'system_prompt', 'mcp_tools' and other agent-relevant keys
+        non_configurable_keys = {"temperature", "model_provider"}
+        for k in non_configurable_keys:
+            agent_cfg.pop(k, None)
         configurable.update(agent_cfg)
 
     config = RunnableConfig(
@@ -268,10 +263,14 @@ async def _handle_input(
     )
 
     # Check for interrupts that need to be resumed
-    state = await agent.aget_state(config=config)
-    interrupted_tasks = [
-        task for task in state.tasks if hasattr(task, "interrupts") and task.interrupts
-    ]
+    interrupted_tasks = []
+    try:
+        state = await agent.aget_state(config=config)
+        interrupted_tasks = [
+            task for task in state.tasks if hasattr(task, "interrupts") and task.interrupts
+        ]
+    except Exception as e:
+        logger.warning(f"aget_state failed (no checkpointer?): {e} — treating as fresh conversation")
 
     from langchain_core.messages import BaseMessage
 
@@ -289,7 +288,6 @@ async def _handle_input(
         try:
             current_state = await agent.aget_state(config=config)
             existing_messages = current_state.values.get("messages", [])
-            logger.info(f"Found {len(existing_messages)} existing messages in checkpointer")
 
             # Convert existing messages to HumanMessage/AIMessage if needed
             history_messages: list[BaseMessage] = []
@@ -310,7 +308,6 @@ async def _handle_input(
             # Append new message
             history_messages.append(HumanMessage(content=user_input.message))
             input = {"messages": history_messages}
-            logger.info(f"Total messages including history: {len(history_messages)}")
         except Exception as e:
             logger.warning(f"Failed to fetch existing messages from checkpointer: {e}")
             # Fall back to just the new message

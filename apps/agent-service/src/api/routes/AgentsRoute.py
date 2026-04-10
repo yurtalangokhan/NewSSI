@@ -145,12 +145,6 @@ async def message_generator(
 
     logger = logging.getLogger(__name__)
 
-    logger.info(
-        "[message_generator] Starting for agent_id=%s, message=%s",
-        agent_id,
-        user_input.message[:50] if user_input.message else "None",
-    )
-
     service = AssistantAgentService.get_instance()
     _, stored_config = await service.get_graph_and_config(agent_id)
     if stored_config:
@@ -161,26 +155,13 @@ async def message_generator(
 
     agent = await service.get_configured_agent(agent_id, user_input.agent_config or {})
 
-    # Debug: Log checkpointer status
-    logger.info(
-        "[message_generator] Agent type: %s, has_checkpointer: %s",
-        type(agent).__name__,
-        agent.checkpointer is not None if hasattr(agent, "checkpointer") else "N/A",
-    )
-
     kwargs, run_id = await _handle_input(user_input, agent, user_id)
-    logger.info("[message_generator] Input kwargs keys: %s", list(kwargs.keys()))
 
     try:
-        logger.info("[message_generator] Calling agent.astream()...")
         async for stream_event in agent.astream(
             **kwargs, stream_mode=["updates", "messages", "custom"], subgraphs=True
         ):
-            logger.info(
-                "[message_generator] Received stream_event type: %s", type(stream_event).__name__
-            )
             if not isinstance(stream_event, tuple):
-                logger.info("[message_generator] Skipping non-tuple event")
                 continue
 
             if len(stream_event) == 3:
@@ -248,6 +229,19 @@ async def message_generator(
 
                 if chat_message.type == "human" and chat_message.content == user_input.message:
                     continue
+
+                # Emit tool call lifecycle packets for frontend timeline
+                # Skip the regular 'message' yield for tool-related messages
+                # so they only appear in the timeline, not duplicated in chat
+                if chat_message.type == "ai" and chat_message.tool_calls:
+                    for tc in chat_message.tool_calls:
+                        yield f"data: {json.dumps({'type': 'custom_tool_start', 'tool_name': tc.get('name', 'tool')})}\n\n"
+                    continue
+                elif chat_message.type == "tool":
+                    tool_name = getattr(message, "name", "") or ""
+                    yield f"data: {json.dumps({'type': 'custom_tool_delta', 'tool_name': tool_name, 'response_type': 'tool_result', 'data': chat_message.content})}\n\n"
+                    continue
+
                 yield f"data: {json.dumps({'type': 'message', 'content': chat_message.model_dump()})}\n\n"
 
             if stream_mode == "messages":
@@ -267,7 +261,6 @@ async def message_generator(
         logger.error("Error in message generator: %s\n%s", e, traceback.format_exc())
         yield f"data: {json.dumps({'type': 'error', 'content': 'Internal server error'})}\n\n"
     finally:
-        logger.info("[message_generator] Finished")
         yield "data: [DONE]\n\n"
 
 
