@@ -9,11 +9,13 @@ import InputTextArea from "@/refresh-components/inputs/InputTextArea";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, ArrowLeft, Search } from "lucide-react";
+import { Loader2, ArrowLeft } from "lucide-react";
 import { toast } from "@/hooks/useToast";
 import { cn } from "@/lib/utils";
 import { BuiltInTool } from "@/lib/tools/interfaces";
@@ -29,6 +31,7 @@ import {
   ToolWithCategory,
 } from "@/lib/tools/builtInToolUtils";
 import _ from "lodash";
+
 
 function getDefaultValueForSchema(schema: any): any {
   if (!schema) return null;
@@ -117,14 +120,28 @@ function normalizeSchema(schema: any): any {
   return schema;
 }
 
+function isFieldEmpty(value: any): boolean {
+  if (value === null || value === undefined) return true;
+  if (typeof value === "string") return value.trim() === "";
+  if (Array.isArray(value)) return value.length === 0;
+  return false;
+}
+
+function getMissingRequiredFields(schema: any, values: Record<string, any>): string[] {
+  if (!schema?.required || !schema?.properties) return [];
+  return schema.required.filter((field: string) => isFieldEmpty(values[field]));
+}
+
 function SchemaForm({
   schema,
   values,
   onChange,
+  fieldErrors = {},
 }: {
   schema: Record<string, any>;
   values: Record<string, any>;
   onChange: (values: Record<string, any>) => void;
+  fieldErrors?: Record<string, string>;
 }) {
   const [formValues, setFormValues] = useState<Record<string, any>>(
     initializeFormValues(schema, values),
@@ -150,6 +167,7 @@ function SchemaForm({
         const isRequired = schema.required?.includes(name);
         const label = property.title || name;
         const description = property.description;
+        const errorMsg = fieldErrors[name];
 
         return (
           <div key={name} className="space-y-2">
@@ -170,11 +188,16 @@ function SchemaForm({
             {description && (
               <p className="text-xs text-gray-500">{description}</p>
             )}
-            {renderField(
-              [name],
-              property,
-              formValues[name],
-              (value: any) => handleChange([name], value),
+            <div className={cn(errorMsg && "ring-1 ring-red-400 rounded-md")}>
+              {renderField(
+                [name],
+                property,
+                formValues[name],
+                (value: any) => handleChange([name], value),
+              )}
+            </div>
+            {errorMsg && (
+              <p className="text-xs text-red-500">{errorMsg}</p>
             )}
           </div>
         );
@@ -416,7 +439,7 @@ function ResponseViewer({
   return (
     <div className="space-y-3">
       <div className="text-sm font-semibold text-emerald-700">Result</div>
-      <pre className="max-h-[60vh] overflow-auto rounded-lg bg-gray-100 p-4 text-sm">
+      <pre className="max-h-[60vh] overflow-auto rounded-lg bg-gray-100 p-4 text-sm whitespace-pre-wrap break-words">
         {typeof response === "string"
           ? response
           : JSON.stringify(response, null, 2)}
@@ -433,8 +456,8 @@ export default function ToolsPlaygroundPage() {
   const [tools, setTools] = useState<BuiltInTool[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
   const [inputValues, setInputValues] = useState<Record<string, any>>({});
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [response, setResponse] = useState<any>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [runError, setRunError] = useState<string | null>(null);
@@ -467,25 +490,26 @@ export default function ToolsPlaygroundPage() {
     [tools]
   );
 
-  const filteredTools = useMemo(() => {
-    if (!searchQuery.trim()) return toolsWithCategory;
-    const query = searchQuery.toLowerCase();
-    return toolsWithCategory.filter(
-      (tool) =>
-        tool.name.toLowerCase().includes(query) ||
-        tool.description?.toLowerCase().includes(query) ||
-        tool.category?.toLowerCase().includes(query)
-    );
-  }, [toolsWithCategory, searchQuery]);
-
   const groupedTools = useMemo(
-    () => groupToolsByCategory(filteredTools),
-    [filteredTools]
+    () => groupToolsByCategory(toolsWithCategory),
+    [toolsWithCategory]
   );
 
   const categoryLabelMap = useMemo(
-    () => buildCategoryLabelMap(filteredTools),
-    [filteredTools]
+    () => buildCategoryLabelMap(toolsWithCategory),
+    [toolsWithCategory]
+  );
+
+  const sortedCategories = useMemo(
+    () =>
+      Object.keys(groupedTools).sort((a, b) => {
+        if (a === "other") return 1;
+        if (b === "other") return -1;
+        const labelA = categoryLabelMap[a] || _.startCase(a);
+        const labelB = categoryLabelMap[b] || _.startCase(b);
+        return labelA.localeCompare(labelB);
+      }),
+    [groupedTools, categoryLabelMap]
   );
 
   const selectedTool = useMemo(
@@ -499,13 +523,43 @@ export default function ToolsPlaygroundPage() {
       setResponse(null);
       setRunError(null);
       setInputValues({});
+      setFieldErrors({});
       router.push(`/tools/playground?tool=${encodeURIComponent(tool.name)}`);
     },
     [router]
   );
 
+  const handleInputChange = useCallback(
+    (values: Record<string, any>) => {
+      setInputValues(values);
+      // Clear errors for fields that now have a value
+      setFieldErrors((prev) => {
+        const next = { ...prev };
+        Object.keys(next).forEach((field) => {
+          if (!isFieldEmpty(values[field])) delete next[field];
+        });
+        return next;
+      });
+    },
+    []
+  );
+
   const handleRunTool = useCallback(async () => {
     if (!selectedTool) return;
+
+    // Validate required fields
+    const schema = normalizeSchema(selectedTool.input_schema);
+    const missing = getMissingRequiredFields(schema, inputValues);
+    if (missing.length > 0) {
+      const errors: Record<string, string> = {};
+      missing.forEach((field) => {
+        errors[field] = "This field is required";
+      });
+      setFieldErrors(errors);
+      return;
+    }
+
+    setFieldErrors({});
     setIsRunning(true);
     setResponse(null);
     setRunError(null);
@@ -528,14 +582,16 @@ export default function ToolsPlaygroundPage() {
     }
   }, [inputValues, selectedTool]);
 
-  const pageTitle = selectedTool ? `${selectedTool.name} Playground` : "Tools Playground";
+  const pageTitle = selectedTool ? `${_.startCase(selectedTool.name)} Playground` : "Tools Playground";
 
   return (
     <div className="space-y-6 p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <Button secondary onClick={() => router.back()} className="px-3 py-2 text-sm">
-            <ArrowLeft className="size-4 mr-2" /> Back
+            <span className="flex items-center gap-1.5">
+              <ArrowLeft className="size-4" /> Back
+            </span>
           </Button>
           <h1 className="mt-3 text-2xl font-bold">{pageTitle}</h1>
           <p className="mt-1 text-sm text-gray-600">
@@ -545,9 +601,9 @@ export default function ToolsPlaygroundPage() {
         {selectedTool && (
           <Button onClick={handleRunTool} disabled={isRunning}>
             {isRunning ? (
-              <>
-                <Loader2 className="size-4 animate-spin mr-2" /> Running...
-              </>
+              <span className="flex items-center gap-1.5">
+                <Loader2 className="size-4 animate-spin" /> Running...
+              </span>
             ) : (
               "Run Tool"
             )}
@@ -559,47 +615,37 @@ export default function ToolsPlaygroundPage() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <div className="text-sm font-semibold text-gray-900">Tool selector</div>
-            <p className="text-sm text-gray-500">Choose a tool or search for one to open the playground.</p>
+            <p className="text-sm text-gray-500">Choose a tool to open the playground.</p>
           </div>
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            <div className="relative w-full sm:w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-400" />
-              <Input
-                type="text"
-                placeholder="Search tools..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            {toolsWithCategory.length > 0 && (
-              <Select
-                value={toolName}
-                onValueChange={(value) => {
-                  const tool = toolsWithCategory.find((t) => t.name === value);
-                  if (tool) {
-                    handleSelectTool(tool);
-                  }
-                }}
-              >
-                <SelectTrigger className="w-full sm:w-64">
-                  <SelectValue placeholder="Select a tool..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.keys(groupedTools).map((category) => (
-                    <SelectItem key={category} value={category} disabled className="font-medium">
+          {toolsWithCategory.length > 0 && (
+            <Select
+              value={toolName}
+              onValueChange={(value) => {
+                const tool = toolsWithCategory.find((t) => t.name === value);
+                if (tool) {
+                  handleSelectTool(tool);
+                }
+              }}
+            >
+              <SelectTrigger className="w-full sm:w-72">
+                <SelectValue placeholder="Select a tool..." />
+              </SelectTrigger>
+              <SelectContent>
+                {sortedCategories.map((category) => (
+                  <SelectGroup key={category}>
+                    <SelectLabel>
                       {categoryLabelMap[category] || _.startCase(category)}
-                    </SelectItem>
-                  ))}
-                  {filteredTools.map((tool) => (
-                    <SelectItem key={tool.name} value={tool.name}>
-                      {tool.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          </div>
+                    </SelectLabel>
+                    {groupedTools[category].map((tool) => (
+                      <SelectItem key={tool.name} value={tool.name}>
+                        {_.startCase(tool.name)}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
       </div>
 
@@ -616,7 +662,7 @@ export default function ToolsPlaygroundPage() {
         <div className="grid gap-6 lg:grid-cols-[minmax(360px,1fr)_minmax(420px,560px)]">
           <div className="rounded-lg border border-gray-200 bg-white p-6">
             <div className="mb-4 space-y-2">
-              <div className="text-sm font-semibold text-gray-900">{selectedTool.name}</div>
+              <div className="text-sm font-semibold text-gray-900">{_.startCase(selectedTool.name)}</div>
               <p className="text-sm text-gray-600">{selectedTool.description}</p>
             </div>
             <div className="space-y-6">
@@ -625,7 +671,8 @@ export default function ToolsPlaygroundPage() {
                 <SchemaForm
                   schema={normalizeSchema(selectedTool.input_schema)}
                   values={inputValues}
-                  onChange={setInputValues}
+                  onChange={handleInputChange}
+                  fieldErrors={fieldErrors}
                 />
               </div>
               {runError && (
@@ -663,7 +710,7 @@ export default function ToolsPlaygroundPage() {
                   <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                     {toolsInCategory.map((tool) => (
                       <div key={tool.name} className="rounded-lg border border-gray-200 p-4">
-                        <div className="mb-2 text-sm font-semibold text-gray-900">{tool.name}</div>
+                        <div className="mb-2 text-sm font-semibold text-gray-900">{_.startCase(tool.name)}</div>
                         <p className="mb-4 text-sm text-gray-600 line-clamp-3">{tool.description}</p>
                         <Button
                           secondary

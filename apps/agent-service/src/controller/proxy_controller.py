@@ -31,7 +31,6 @@ class ProxyController(BaseController):
                     }
                 }
             )
-
             tools = await client.get_tools()
 
             return {
@@ -52,6 +51,50 @@ class ProxyController(BaseController):
             from langchain_mcp_adapters.client import MultiServerMCPClient
             import json
 
+            def serialize_input_schema(schema: Any) -> dict[str, Any]:
+                """Safely serialize input_schema to JSON-compatible dict."""
+                import inspect
+
+                if schema is None:
+                    return {}
+                if isinstance(schema, dict):
+                    return schema
+
+                is_class = inspect.isclass(schema)
+
+                if is_class and hasattr(schema, "model_json_schema"):
+                    try:
+                        return schema.model_json_schema()
+                    except Exception:
+                        pass
+
+                if not is_class and hasattr(schema, "model_dump"):
+                    try:
+                        return schema.model_dump()
+                    except Exception:
+                        pass
+
+                if hasattr(schema, "dict"):
+                    try:
+                        return schema.dict()
+                    except Exception:
+                        pass
+
+                if hasattr(schema, "__dict__"):
+                    return dict(schema.__dict__)
+
+                try:
+                    return json.loads(json.dumps(schema, default=str))
+                except Exception:
+                    return {}
+
+            def get_tool_schema(tool: Any) -> dict[str, Any]:
+                schema = getattr(tool, "inputSchema", None)
+                if schema is not None:
+                    return serialize_input_schema(schema)
+                args_schema = getattr(tool, "args_schema", None)
+                return serialize_input_schema(args_schema)
+
             client = MultiServerMCPClient(
                 connections={
                     "tools-service": {
@@ -60,60 +103,13 @@ class ProxyController(BaseController):
                     }
                 }
             )
-
             tools = await client.get_tools()
-
-            def serialize_input_schema(schema: Any) -> dict[str, Any]:
-                """Safely serialize input_schema to JSON-compatible dict."""
-                import inspect
-
-                if schema is None:
-                    return {}
-                # If it's already a dict, return it
-                if isinstance(schema, dict):
-                    return schema
-
-                # Check if it's a class vs instance
-                is_class = inspect.isclass(schema)
-
-                # If it's a Pydantic model class, use model_json_schema()
-                if is_class and hasattr(schema, "model_json_schema"):
-                    try:
-                        return schema.model_json_schema()
-                    except Exception:
-                        pass
-
-                # If it's a Pydantic model instance, use model_dump()
-                if not is_class and hasattr(schema, "model_dump"):
-                    try:
-                        return schema.model_dump()
-                    except Exception:
-                        pass
-
-                # Try dict() for older Pydantic versions
-                if hasattr(schema, "dict"):
-                    try:
-                        return schema.dict()
-                    except Exception:
-                        pass
-
-                # If it has __dict__, use that
-                if hasattr(schema, "__dict__"):
-                    return dict(schema.__dict__)
-
-                # Last resort: try to JSON serialize it
-                try:
-                    return json.loads(json.dumps(schema, default=str))
-                except Exception:
-                    return {}
-
             return {
                 "tools": [
                     {
                         "name": tool.name,
                         "description": getattr(tool, "description", "") or "",
-                        # Note: MCP SDK uses camelCase 'inputSchema', not snake_case
-                        "input_schema": serialize_input_schema(getattr(tool, "inputSchema", None)),
+                        "input_schema": get_tool_schema(tool),
                     }
                     for tool in tools
                 ]
@@ -143,14 +139,13 @@ class ProxyController(BaseController):
                     }
                 }
             )
-
             tools = await client.get_tools()
 
             tool = next((t for t in tools if t.name == tool_name), None)
             if not tool:
                 return {"error": f"Tool '{tool_name}' not found", "result": None}
 
-            result = await client.arun(tool_name, arguments)
+            result = await tool.ainvoke(arguments)
 
             return {"result": result, "error": None}
         except Exception as e:

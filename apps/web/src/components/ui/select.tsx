@@ -99,6 +99,20 @@ const SelectContent = React.forwardRef<
 ));
 SelectContent.displayName = SelectPrimitive.Content.displayName;
 
+const SelectGroup = SelectPrimitive.Group;
+
+const SelectLabel = React.forwardRef<
+  React.ElementRef<typeof SelectPrimitive.Label>,
+  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Label>
+>(({ className, ...props }, ref) => (
+  <SelectPrimitive.Label
+    ref={ref}
+    className={cn("py-1.5 pl-3 pr-2 text-xs font-semibold text-gray-500 uppercase tracking-wider", className)}
+    {...props}
+  />
+));
+SelectLabel.displayName = SelectPrimitive.Label.displayName;
+
 const SelectItem = React.forwardRef<
   React.ComponentRef<typeof SelectPrimitive.Item>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Item> & {
@@ -145,6 +159,8 @@ export {
   SelectValue,
   SelectTrigger,
   SelectContent,
+  SelectGroup,
+  SelectLabel,
   SelectItem,
   SelectScrollUpButton,
   SelectScrollDownButton,

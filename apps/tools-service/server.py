@@ -10,6 +10,23 @@ from pathlib import Path
 
 from fastmcp import FastMCP
 
+# Suppress WinError 10054 (connection reset by peer) on Windows.
+# This is a known asyncio ProactorEventLoop issue when HTTP/SSE clients
+# disconnect — the socket is already closed by the time the server tries
+# to shut it down, which is harmless but noisy.
+if sys.platform == "win32":
+    import asyncio.proactor_events as _pe
+
+    _orig_call_connection_lost = _pe._ProactorBasePipeTransport._call_connection_lost
+
+    def _patched_call_connection_lost(self, exc):
+        try:
+            _orig_call_connection_lost(self, exc)
+        except (ConnectionResetError, OSError):
+            pass
+
+    _pe._ProactorBasePipeTransport._call_connection_lost = _patched_call_connection_lost
+
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
 
