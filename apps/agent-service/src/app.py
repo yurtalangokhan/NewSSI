@@ -27,6 +27,8 @@ from service.AirbyteSyncListenerService import get_sync_listener
 from service.CheckpointerService import set_global_checkpointer
 from service.LangGraphStoreService import set_global_langgraph_store
 from service.SyncQueueService import get_sync_queue
+from service.MCPProviderService import MCPProviderService
+from core import settings as core_settings
 
 warnings.filterwarnings("ignore", category=LangChainBetaWarning)
 configure_logging()
@@ -89,6 +91,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
                 set_global_checkpointer(saver)
                 set_global_langgraph_store(langgraph_store)
+
+                mcp_service = MCPProviderService.get_instance()
+                mcp_url = str(core_settings.TOOLS_SERVICE_URL)
+                await mcp_service.initialize_builtin(mcp_url)
+                logger.info(f"MCP Provider initialized: {mcp_url}")
 
                 sync_queue = get_sync_queue()
                 sync_queue.start()
@@ -172,3 +179,14 @@ app.include_router(proxy_router)
 app.include_router(run_router)
 app.include_router(datasources_router)
 app.include_router(assistant_schemas_router)
+
+try:
+    from api.routes.MCPProvidersRoute import router as mcp_providers_router
+    from api.routes.MCPToolsRoute import router as mcp_tools_router
+    from api.routes.AgentToolsRoute import router as agent_tools_router
+
+    app.include_router(mcp_providers_router)
+    app.include_router(mcp_tools_router)
+    app.include_router(agent_tools_router)
+except ImportError as e:
+    logger.warning(f"Some MCP routes not available: {e}")

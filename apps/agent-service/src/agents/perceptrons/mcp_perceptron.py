@@ -17,12 +17,18 @@ class MCPPerceptron(Perceptron):
 
     MCP (Model Context Protocol) servers provide dynamic tools
     that can be loaded at runtime.
+
+    Supports loading from:
+    1. MCP servers directly (via langchain_mcp_adapters)
+    2. Database cache (via MCPProviderService)
     """
 
     def __init__(
         self,
         mcp_servers: list[dict[str, str]] | None = None,
         config: dict[str, Any] | None = None,
+        use_database_tools: bool = False,
+        agent_id: int | None = None,
     ):
         """
         Initialize MCP perceptron.
@@ -31,19 +37,26 @@ class MCPPerceptron(Perceptron):
             mcp_servers: List of MCP server configs
                 [{"name": "server1", "url": "http://localhost:8000/mcp"}]
             config: Additional configuration
+            use_database_tools: Load tools from database cache
+            agent_id: Load tools for specific agent from database
         """
         super().__init__(config)
         self._mcp_servers = mcp_servers or []
         self._mcp_client: Any = None
+        self._use_database_tools = use_database_tools
+        self._agent_id = agent_id
 
     @property
     def perceptron_type(self) -> str:
         return "mcp"
 
     async def load(self) -> None:
-        """Load tools from MCP servers."""
+        """Load tools from MCP servers or database cache."""
+        if self._use_database_tools and self._agent_id:
+            await self._load_from_database()
+            return
+
         if not self._mcp_servers:
-            # Try default server from settings
             mcp_url = os.environ.get("MCP_SERVER_URL", "http://mcp-server:8002/mcp")
             self._mcp_servers = [{"name": "default", "url": mcp_url}]
 
@@ -71,6 +84,53 @@ class MCPPerceptron(Perceptron):
         except Exception as e:
             logger.warning(f"Failed to load MCP tools: {e}")
             self._mcp_client = None
+
+    async def _load_from_database(self) -> None:
+        """Load tools from database cache."""
+        try:
+            from service.AgentToolsService import AgentToolsService
+            from service.MCPToolService import MCPToolService
+
+            if self._agent_id:
+                tool_service = AgentToolsService.get_instance()
+                agent_tools = await tool_service.get_tools_for_agent(self._agent_id)
+                for tool in agent_tools:
+                    await self._convert_tool_to_langchain(tool)
+                logger.info(
+                    f"Loaded {len(agent_tools)} tools from database for agent {self._agent_id}"
+                )
+            else:
+                tool_service = MCPToolService.get_instance()
+                all_tools = await tool_service.list_tools()
+                for tool in all_tools:
+                    await self._convert_tool_to_langchain(tool)
+                logger.info(f"Loaded {len(all_tools)} tools from database")
+        except Exception as e:
+            logger.warning(f"Failed to load tools from database: {e}")
+
+    async def _convert_tool_to_langchain(self, tool_def: dict[str, Any]) -> None:
+        """Convert database tool to LangChain tool."""
+        try:
+            from langchain_core.tools import tool
+
+            name = tool_def.get("name", "")
+            description = tool_def.get("description", "")
+            input_schema = tool_def.get("input_schema", {})
+
+            if not name:
+                return
+
+            @tool(
+                name=name,
+                description=description,
+                args_schema=type("ToolInput", (), input_schema) if input_schema else None,
+            )
+            async def tool_func(**kwargs):
+                return {"tool": name, "input": kwargs, "status": "not implemented"}
+
+            self._tools[name] = tool_func
+        except Exception as e:
+            logger.warning(f"Failed to convert tool {tool_def.get('name')}: {e}")
 
     async def perceive(
         self,
