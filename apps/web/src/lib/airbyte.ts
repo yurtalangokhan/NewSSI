@@ -121,6 +121,17 @@ export interface SyncStatusResponse {
   };
 }
 
+export interface SyncAttempt {
+  id: string;
+  status: "succeeded" | "failed" | "cancelled" | "running" | "pending" | "incomplete" | "unknown";
+  created_at?: number;
+  updated_at?: number;
+  duration_seconds?: number;
+  bytes_synced?: number;
+  records_synced?: number;
+  error_message?: string | null;
+}
+
 export interface CreateDatasourceInput {
   name: string;
   config: {
@@ -190,6 +201,15 @@ export function useDatasourceStatus(id: string | null, active: boolean) {
   );
 
   return { status: data ?? null, isLoading, error, mutate };
+}
+
+export function useDatasourceSyncHistory(id: string | null, open: boolean) {
+  const { data, error, isLoading, mutate } = useSWR<SyncAttempt[]>(
+    open && id ? `/datasources/${id}/sync-history` : null,
+    errorHandlingFetcher
+  );
+
+  return { attempts: data ?? [], isLoading, error, mutate };
 }
 
 export function useDatasourceSchedule(id: string | null) {

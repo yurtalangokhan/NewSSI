@@ -759,6 +759,65 @@ async def get_sync_status(id: str):
     }
 
 
+@router.get("/{id}/sync-history")
+async def get_sync_history(id: str, limit: int = Query(20, ge=1, le=100)):
+    """Return recent sync job history for a data source from Airbyte."""
+    from service.AirbyteMappingRepository import AirbyteMappingDB
+    from service.AirbyteApiClientService import get_airbyte_client
+
+    mapping = await AirbyteMappingDB.get(id)
+    if not mapping:
+        raise HTTPException(status_code=404, detail="No Airbyte mapping found for this datasource")
+
+    try:
+        client = get_airbyte_client()
+        jobs = await client.list_jobs(
+            config_id=mapping["airbyte_connection_id"],
+            config_types=["sync"],
+            limit=limit,
+        )
+    except Exception as e:
+        logger.error(f"Failed to fetch sync history for {id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+    results = []
+    for entry in jobs:
+        job = entry.get("job", entry)
+        attempts = entry.get("attempts", [])
+        # Aggregate bytes/records across attempts
+        bytes_synced = sum(
+            a.get("bytesSynced", 0) or 0 for a in attempts
+        )
+        records_synced = sum(
+            a.get("recordsSynced", 0) or 0 for a in attempts
+        )
+        created_at = job.get("createdAt")
+        updated_at = job.get("updatedAt")
+        duration = None
+        if created_at and updated_at:
+            try:
+                duration = int(updated_at) - int(created_at)
+            except Exception:
+                pass
+
+        results.append({
+            "id": str(job.get("id", "")),
+            "status": job.get("status", "unknown"),
+            "created_at": created_at,
+            "updated_at": updated_at,
+            "duration_seconds": duration,
+            "bytes_synced": bytes_synced,
+            "records_synced": records_synced,
+            "error_message": next(
+                (a.get("failureSummary", {}).get("failures", [{}])[0].get("internalMessage", "")
+                 for a in attempts if a.get("failureSummary")),
+                None,
+            ),
+        })
+
+    return results
+
+
 @router.delete("/{id}")
 async def delete_datasource(id: str):
     """Delete a data source, its embeddings, and Airbyte objects."""

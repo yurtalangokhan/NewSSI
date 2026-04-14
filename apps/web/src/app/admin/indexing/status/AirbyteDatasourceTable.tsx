@@ -36,9 +36,11 @@ import { toast } from "@/hooks/useToast";
 import { timeAgo } from "@/lib/time";
 import {
   AirbyteDatasource,
+  SyncAttempt,
   SyncStatus,
   useDatasourceStatus,
   useDatasourceSchedule,
+  useDatasourceSyncHistory,
   syncDatasource,
   deleteDatasource,
   updateDatasource,
@@ -56,6 +58,16 @@ function StatusBadge({ status }: { status?: SyncStatus }) {
     return <Badge variant="in_progress">Syncing</Badge>;
   if (status === "completed") return <Badge variant="success">Completed</Badge>;
   if (status === "error") return <Badge variant="destructive">Error</Badge>;
+  return <Badge variant="secondary">{status}</Badge>;
+}
+
+function SyncHistoryStatusBadge({ status }: { status: SyncAttempt["status"] }) {
+  if (status === "succeeded") return <Badge variant="success">Succeeded</Badge>;
+  if (status === "failed") return <Badge variant="destructive">Failed</Badge>;
+  if (status === "cancelled") return <Badge variant="secondary">Cancelled</Badge>;
+  if (status === "running") return <Badge variant="in_progress">Running</Badge>;
+  if (status === "pending" || status === "incomplete")
+    return <Badge variant="in_progress">{status.charAt(0).toUpperCase() + status.slice(1)}</Badge>;
   return <Badge variant="secondary">{status}</Badge>;
 }
 
@@ -157,7 +169,7 @@ function describeCron(cron: string): string {
 
 // ── Manage Dialog (name + streams + schedule) ────────────────────────────────
 
-type ManageTab = "general" | "schedule";
+type ManageTab = "general" | "schedule" | "history";
 type CustomMode = "expression" | "weekly" | "time";
 
 function ManageDialog({
@@ -182,6 +194,8 @@ function ManageDialog({
 
   // ── schedule
   const { schedule } = useDatasourceSchedule(open ? datasource.id : null);
+  // ── history
+  const { attempts, isLoading: historyLoading } = useDatasourceSyncHistory(datasource.id, open && tab === "history");
   const [schedEnabled, setSchedEnabled] = useState(false);
   const [preset, setPreset] = useState("daily");
   const [cron, setCron] = useState("0 0 0 * * ?");
@@ -315,7 +329,7 @@ function ManageDialog({
 
         {/* Tab bar */}
         <div className="flex gap-1 border-b border-border shrink-0">
-          {(["general", "schedule"] as ManageTab[]).map((t) => (
+          {(["general", "schedule", "history"] as ManageTab[]).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -333,7 +347,7 @@ function ManageDialog({
                     <span className="ml-1 inline-flex h-1.5 w-1.5 rounded-full bg-blue-500" />
                   )}
                 </span>
-              ) : "General"}
+              ) : t === "history" ? "Indexing History" : "General"}
             </button>
           ))}
         </div>
@@ -584,6 +598,68 @@ function ManageDialog({
           </div>
         )}
 
+        {/* ── Tab: History ── */}
+        {tab === "history" && (
+          <div className="flex-1 overflow-y-auto py-4">
+            {historyLoading && (
+              <Text as="p" secondaryBody className="text-center py-8">Loading…</Text>
+            )}
+            {!historyLoading && attempts.length === 0 && (
+              <Text as="p" secondaryBody textLight05 className="text-center py-8">
+                No sync history found.
+              </Text>
+            )}
+            {!historyLoading && attempts.length > 0 && (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Time</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Records</TableHead>
+                    <TableHead>Duration</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {attempts.map((attempt) => (
+                    <TableRow key={attempt.id}>
+                      <TableCell className="text-xs whitespace-nowrap">
+                        {attempt.created_at
+                          ? new Date(attempt.created_at * 1000).toLocaleString()
+                          : "-"}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1.5">
+                          <SyncHistoryStatusBadge status={attempt.status} />
+                          {attempt.error_message && (
+                            <SimpleTooltip
+                              tooltip={attempt.error_message}
+                              side="top"
+                            >
+                              <span className="cursor-help text-destructive text-xs leading-none">
+                                ⚠
+                              </span>
+                            </SimpleTooltip>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {attempt.records_synced != null ? attempt.records_synced.toLocaleString() : "-"}
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {attempt.duration_seconds != null
+                          ? attempt.duration_seconds >= 60
+                            ? `${Math.floor(attempt.duration_seconds / 60)}m ${attempt.duration_seconds % 60}s`
+                            : `${attempt.duration_seconds}s`
+                          : "-"}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </div>
+        )}
+
         <div className="flex items-center justify-between pt-4 border-t border-border shrink-0">
           {/* Remove schedule button (only in schedule tab, if exists) */}
           <div>
@@ -598,16 +674,20 @@ function ManageDialog({
             )}
           </div>
           <div className="flex gap-2">
-            <ButtonRefresh onClick={() => onOpenChange(false)}>Cancel</ButtonRefresh>
-            <ButtonRefresh
-              primary
-              onClick={tab === "general" ? handleSaveGeneral : handleSaveSchedule}
-              disabled={tab === "general" ? savingGeneral : (savingSchedule || !cron.trim())}
-            >
-              {tab === "general"
-                ? savingGeneral ? "Saving…" : "Save Changes"
-                : savingSchedule ? "Saving…" : schedule ? "Update Schedule" : "Create Schedule"}
+            <ButtonRefresh onClick={() => onOpenChange(false)}>
+              {tab === "history" ? "Close" : "Cancel"}
             </ButtonRefresh>
+            {tab !== "history" && (
+              <ButtonRefresh
+                primary
+                onClick={tab === "general" ? handleSaveGeneral : handleSaveSchedule}
+                disabled={tab === "general" ? savingGeneral : (savingSchedule || !cron.trim())}
+              >
+                {tab === "general"
+                  ? savingGeneral ? "Saving…" : "Save Changes"
+                  : savingSchedule ? "Saving…" : schedule ? "Update Schedule" : "Create Schedule"}
+              </ButtonRefresh>
+            )}
           </div>
         </div>
       </DialogContent>
