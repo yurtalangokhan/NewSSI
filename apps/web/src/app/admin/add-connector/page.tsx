@@ -1,250 +1,136 @@
 "use client";
 import * as SettingsLayouts from "@/layouts/settings-layouts";
-import { SourceCategory, SourceMetadata } from "@/lib/search/interfaces";
-import { listSourceMetadata } from "@/lib/sources";
 import Button from "@/refresh-components/buttons/Button";
-import {
-  useCallback,
-  useContext,
-  useDeferredValue,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { useFederatedConnectors } from "@/lib/hooks";
-import {
-  FederatedConnectorDetail,
-  federatedSourceToRegularSource,
-  ValidSources,
-} from "@/lib/types";
-import useSWR from "swr";
-import { errorHandlingFetcher } from "@/lib/fetcher";
-import { buildSimilarCredentialInfoURL } from "@/app/admin/connector/[ccPairId]/lib";
-import { Credential } from "@/lib/connectors/credentials";
-import { SettingsContext } from "@/providers/SettingsProvider";
-import SourceTile from "@/components/SourceTile";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
 import Text from "@/refresh-components/texts/Text";
 import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
-function SourceTileTooltipWrapper({
-  sourceMetadata,
-  preSelect,
-  federatedConnectors,
-  slackCredentials,
-}: {
-  sourceMetadata: SourceMetadata;
-  preSelect?: boolean;
-  federatedConnectors?: FederatedConnectorDetail[];
-  slackCredentials?: Credential<any>[];
-}) {
-  // Check if there's already a federated connector for this source
-  const existingFederatedConnector = useMemo(() => {
-    if (!sourceMetadata.federated || !federatedConnectors) {
-      return null;
+import {
+  useCallback,
+  useDeferredValue,
+  useMemo,
+  useRef,
+  useEffect,
+  useState,
+} from "react";
+import { useAirbyteConnectors, AirbyteConnector } from "@/lib/airbyte";
+import { useRouter } from "next/navigation";
+
+// ── Connector tile ──────────────────────────────────────────────────────────
+
+function connectorIconSrc(connector: AirbyteConnector): string | null {
+  if (connector.icon_url) {
+    // Raw SVG string → encode as data URL
+    if (connector.icon_url.trimStart().startsWith("<svg")) {
+      return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(connector.icon_url)}`;
     }
-
-    return federatedConnectors.find(
-      (connector) =>
-        federatedSourceToRegularSource(connector.source) ===
-        sourceMetadata.internalName
-    );
-  }, [sourceMetadata, federatedConnectors]);
-
-  // For Slack specifically, check if there are existing non-federated credentials
-  const isSlackTile = sourceMetadata.internalName === ValidSources.Slack;
-  const hasExistingSlackCredentials = useMemo(() => {
-    return isSlackTile && slackCredentials && slackCredentials.length > 0;
-  }, [isSlackTile, slackCredentials]);
-
-  // Determine the URL to navigate to
-  const navigationUrl = useMemo(() => {
-    // If there's an existing federated connector, route to edit it
-    if (existingFederatedConnector) {
-      return `/admin/federated/${existingFederatedConnector.id}`;
-    }
-
-    // For all other sources (including Slack), use the regular admin URL
-    return sourceMetadata.adminUrl;
-  }, [existingFederatedConnector, sourceMetadata]);
-
-  // Compute whether to hide the tooltip
-  const shouldHideTooltip =
-    !existingFederatedConnector &&
-    !hasExistingSlackCredentials &&
-    !sourceMetadata.federated;
-
-  // If tooltip should be hidden, just render the tile as a component
-  if (shouldHideTooltip) {
-    return (
-      <SourceTile
-        sourceMetadata={sourceMetadata}
-        preSelect={preSelect}
-        navigationUrl={navigationUrl}
-        hasExistingSlackCredentials={!!hasExistingSlackCredentials}
-      />
-    );
+    return connector.icon_url;
   }
+  if (connector.icon) return connector.icon;
+  return null;
+}
 
+function ConnectorTile({
+  connector,
+  preSelect,
+  onClick,
+}: {
+  connector: AirbyteConnector;
+  preSelect?: boolean;
+  onClick: (c: AirbyteConnector) => void;
+}) {
+  const iconSrc = connectorIconSrc(connector);
   return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <div>
-            <SourceTile
-              sourceMetadata={sourceMetadata}
-              preSelect={preSelect}
-              navigationUrl={navigationUrl}
-              hasExistingSlackCredentials={!!hasExistingSlackCredentials}
-            />
-          </div>
-        </TooltipTrigger>
-        <TooltipContent side="top" className="max-w-sm">
-          {existingFederatedConnector ? (
-            <Text as="p" textLight05 secondaryBody>
-              <strong>Federated connector already configured.</strong> Click to
-              edit the existing connector.
-            </Text>
-          ) : hasExistingSlackCredentials ? (
-            <Text as="p" textLight05 secondaryBody>
-              <strong>Existing Slack credentials found.</strong> Click to manage
-              your Slack connector.
-            </Text>
-          ) : null}
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <button
+      onClick={() => onClick(connector)}
+      className={`flex flex-col items-center gap-2 rounded-lg border p-4 w-36 text-center transition-colors hover:bg-background-tint-01 ${
+        preSelect ? "border-blue-500 bg-background-tint-01" : "border-border"
+      }`}
+    >
+      {iconSrc ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={iconSrc}
+          alt=""
+          className="h-8 w-8 shrink-0 object-contain"
+        />
+      ) : (
+        <span className="h-8 w-8 shrink-0 rounded bg-background-tint-02 flex items-center justify-center text-sm font-bold text-text-02">
+          {connector.display_name[0]}
+        </span>
+      )}
+      <Text as="span" secondaryBody className="text-xs leading-tight line-clamp-2 text-center">
+        {connector.display_name}
+      </Text>
+    </button>
   );
 }
 
+// ── Page ───────────────────────────────────────────────────────────────────
+
 export default function Page() {
   const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.ADD_CONNECTOR]!;
-  const sources = useMemo(() => listSourceMetadata(), []);
+  const router = useRouter();
 
   const [rawSearchTerm, setSearchTerm] = useState("");
   const searchTerm = useDeferredValue(rawSearchTerm);
 
-  const { data: federatedConnectors } = useFederatedConnectors();
-  const settings = useContext(SettingsContext);
-
-  // Fetch Slack credentials to determine navigation behavior
-  const { data: slackCredentials } = useSWR<Credential<any>[]>(
-    buildSimilarCredentialInfoURL(ValidSources.Slack),
-    errorHandlingFetcher
-  );
-
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (searchInputRef.current) {
-      searchInputRef.current.focus();
-    }
+    searchInputRef.current?.focus();
   }, []);
 
-  const filterSources = useCallback(
-    (sources: SourceMetadata[]) => {
-      if (!searchTerm) return sources;
-      const lowerSearchTerm = searchTerm.toLowerCase();
-      return sources.filter(
-        (source) =>
-          source.displayName.toLowerCase().includes(lowerSearchTerm) ||
-          source.category.toLowerCase().includes(lowerSearchTerm)
-      );
-    },
-    [searchTerm]
+  const { data: connectorsData, isLoading, error } = useAirbyteConnectors(
+    searchTerm || undefined
   );
 
-  const popularSources = useMemo(() => {
-    const filtered = filterSources(sources);
-    return sources.filter(
-      (source) =>
-        source.isPopular &&
-        (filtered.includes(source) ||
-          source.displayName.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
-  }, [sources, filterSources, searchTerm]);
-
-  const categorizedSources = useMemo(() => {
-    const filtered = filterSources(sources);
-    const categories = Object.values(SourceCategory).reduce(
-      (acc, category) => {
-        acc[category] = sources.filter(
-          (source) =>
-            source.category === category &&
-            (filtered.includes(source) ||
-              category.toLowerCase().includes(searchTerm.toLowerCase()))
-        );
-        return acc;
-      },
-      {} as Record<SourceCategory, SourceMetadata[]>
-    );
-    // Filter out the "Other" category if show_extra_connectors is false
-    if (settings?.settings?.show_extra_connectors === false) {
-      const filteredCategories = Object.entries(categories).filter(
-        ([category]) => category !== SourceCategory.Other
-      );
-      return Object.fromEntries(filteredCategories) as Record<
-        SourceCategory,
-        SourceMetadata[]
-      >;
+  // When searching, we get a flat list; otherwise grouped by category
+  const byCategory = useMemo<Record<string, AirbyteConnector[]>>(() => {
+    if (!connectorsData) return {};
+    if (connectorsData.connectors) {
+      // search result — put everything under a virtual "Results" category
+      return connectorsData.connectors.length > 0 ? { Results: connectorsData.connectors } : {};
     }
-    return categories;
-  }, [
-    sources,
-    filterSources,
-    searchTerm,
-    settings?.settings?.show_extra_connectors,
-  ]);
+    return connectorsData.by_category ?? {};
+  }, [connectorsData]);
 
-  // When searching, dedupe Popular against whatever is already in results
-  const resultIds = useMemo(() => {
-    if (!searchTerm) return new Set<string>();
-    return new Set(
-      Object.values(categorizedSources)
-        .flat()
-        .map((s) => s.internalName)
-    );
-  }, [categorizedSources, searchTerm]);
+  const categories = useMemo<string[]>(() => {
+    if (!connectorsData) return [];
+    // For search results use the virtual key; otherwise use API-provided order
+    if (connectorsData.connectors !== undefined) {
+      return connectorsData.connectors.length > 0 ? ["Results"] : [];
+    }
+    return connectorsData.categories ?? Object.keys(byCategory);
+  }, [connectorsData, byCategory]);
 
-  const dedupedPopular = useMemo(() => {
-    if (!searchTerm) return popularSources;
-    return popularSources.filter((s) => !resultIds.has(s.internalName));
-  }, [popularSources, resultIds, searchTerm]);
+  const categoryLabels = useMemo<Record<string, string>>(() => {
+    if (!connectorsData) return {};
+    return connectorsData.category_labels ?? {};
+  }, [connectorsData]);
 
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      const filteredCategories = Object.entries(categorizedSources).filter(
-        ([_, sources]) => sources.length > 0
-      );
-      if (
-        filteredCategories.length > 0 &&
-        filteredCategories[0] !== undefined &&
-        filteredCategories[0][1].length > 0
-      ) {
-        const firstSource = filteredCategories[0][1][0];
-        if (firstSource) {
-          // Check if this source has an existing federated connector
-          const existingFederatedConnector =
-            firstSource.federated && federatedConnectors
-              ? federatedConnectors.find(
-                  (connector) =>
-                    connector.source === `federated_${firstSource.internalName}`
-                )
-              : null;
+  const handleConnectorClick = useCallback((connector: AirbyteConnector) => {
+    // connector.name is e.g. "source-postgres" → route slug is "source-postgres"
+    // replace underscores with hyphens to match route convention
+    const slug = connector.name.replace(/_/g, "-");
+    router.push(`/admin/connectors/${slug}`);
+  }, [router]);
 
-          const url = existingFederatedConnector
-            ? `/admin/federated/${existingFederatedConnector.id}`
-            : firstSource.adminUrl;
+  // First result for keyboard Enter shortcut
+  const firstConnector = useMemo<AirbyteConnector | null>(() => {
+    for (const cat of categories) {
+      const list = byCategory[cat];
+      if (list && list.length > 0) return list[0]!;
+    }
+    return null;
+  }, [categories, byCategory]);
 
-          window.open(url, "_self");
-        }
-      }
+  // Only show "no results" when we actually have a response with empty data
+  const hasLoadedWithNoResults =
+    !isLoading && connectorsData !== null && categories.length === 0;
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && firstConnector) {
+      handleConnectorClick(firstConnector);
     }
   };
 
@@ -263,57 +149,65 @@ export default function Page() {
       <SettingsLayouts.Body>
         <InputTypeIn
           type="text"
-          placeholder="Search Connectors"
+          placeholder="Search connectors…"
           ref={searchInputRef}
-          value={rawSearchTerm} // keep the input bound to immediate state
-          onChange={(event) => setSearchTerm(event.target.value)}
-          onKeyDown={handleKeyPress}
+          value={rawSearchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          onKeyDown={handleKeyDown}
           className="w-96 flex-none"
         />
 
-        {dedupedPopular.length > 0 && (
+        {isLoading ? (
           <div className="pt-8">
-            <Text as="p" headingH3>
-              Popular
+            <Text as="p" secondaryBody textLight05>
+              Loading connectors…
             </Text>
-            <div className="flex flex-wrap gap-4 p-4">
-              {dedupedPopular.map((source) => (
-                <SourceTileTooltipWrapper
-                  preSelect={false}
-                  key={source.internalName}
-                  sourceMetadata={source}
-                  federatedConnectors={federatedConnectors}
-                  slackCredentials={slackCredentials}
-                />
-              ))}
-            </div>
           </div>
-        )}
+        ) : error ? (
+          <div className="pt-12 text-center">
+            <Text as="p" secondaryBody textLight05>
+              Could not load connectors. Make sure agent-service is running.
+            </Text>
+          </div>
+        ) : (
+          <>
+            {categories
+              .filter((cat) => (byCategory[cat]?.length ?? 0) > 0)
+              .map((cat, categoryInd) => (
+                <div key={cat} className="pt-8">
+                  <Text as="p" headingH3>
+                    {searchTerm
+                      ? "Results"
+                      : (categoryLabels[cat] ?? cat.charAt(0).toUpperCase() + cat.slice(1))}
+                  </Text>
+                  <div className="flex flex-wrap gap-4 p-4">
+                    {(byCategory[cat] ?? []).map((connector, sourceInd) => (
+                      <ConnectorTile
+                        key={connector.name}
+                        connector={connector}
+                        preSelect={
+                          (searchTerm?.length ?? 0) > 0 &&
+                          categoryInd === 0 &&
+                          sourceInd === 0
+                        }
+                        onClick={handleConnectorClick}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
 
-        {Object.entries(categorizedSources)
-          .filter(([_, sources]) => sources.length > 0)
-          .map(([category, sources], categoryInd) => (
-            <div key={category} className="pt-8">
-              <Text as="p" headingH3>
-                {category}
-              </Text>
-              <div className="flex flex-wrap gap-4 p-4">
-                {sources.map((source, sourceInd) => (
-                  <SourceTileTooltipWrapper
-                    preSelect={
-                      (searchTerm?.length ?? 0) > 0 &&
-                      categoryInd == 0 &&
-                      sourceInd == 0
-                    }
-                    key={source.internalName}
-                    sourceMetadata={source}
-                    federatedConnectors={federatedConnectors}
-                    slackCredentials={slackCredentials}
-                  />
-                ))}
+            {hasLoadedWithNoResults && (
+              <div className="pt-12 text-center">
+                <Text as="p" secondaryBody textLight05>
+                  {searchTerm
+                    ? `No connectors found for "${searchTerm}"`
+                    : "No connectors available."}
+                </Text>
               </div>
-            </div>
-          ))}
+            )}
+          </>
+        )}
       </SettingsLayouts.Body>
     </SettingsLayouts.Root>
   );

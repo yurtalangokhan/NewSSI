@@ -1,13 +1,8 @@
-import { ConfigurableSources } from "@/lib/types";
-import ConnectorWrapper from "./ConnectorWrapper";
+import AirbyteConnectorPage from "./AirbyteConnectorPage";
 
 export default async function Page(props: {
   params: Promise<{ connector: string }>;
 }) {
   const params = await props.params;
-  return (
-    <ConnectorWrapper
-      connector={params.connector.replace("-", "_") as ConfigurableSources}
-    />
-  );
+  return <AirbyteConnectorPage connectorName={params.connector} />;
 }

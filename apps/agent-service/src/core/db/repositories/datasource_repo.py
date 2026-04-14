@@ -84,6 +84,20 @@ class DatasourceRepository(BaseRepository):
             "cmetadata": self._parse_metadata(row.cmetadata),
         }
 
+    async def get_collection_by_name(self, name: str) -> dict[str, Any] | None:
+        """Fetch a single collection by name."""
+        async with self._session() as session:
+            stmt = select(PgCollection).where(PgCollection.name == name)
+            result = await session.execute(stmt)
+            row = result.scalar_one_or_none()
+        if row is None:
+            return None
+        return {
+            "uuid": str(row.uuid),
+            "name": row.name,
+            "cmetadata": self._parse_metadata(row.cmetadata),
+        }
+
     # ---- collection writes ----------------------------------------------
 
     async def create_collection(

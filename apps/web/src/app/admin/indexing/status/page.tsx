@@ -1,207 +1,26 @@
 "use client";
 
-import { CCPairIndexingStatusTable } from "./CCPairIndexingStatusTable";
-import { SearchAndFilterControls } from "./SearchAndFilterControls";
+import { useCallback, useMemo, useState } from "react";
 import * as SettingsLayouts from "@/layouts/settings-layouts";
-import Link from "next/link";
 import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
-import Text from "@/components/ui/text";
-import { useConnectorIndexingStatusWithPagination } from "@/lib/hooks";
 import { useToastFromQuery } from "@/hooks/useToast";
 import Button from "@/refresh-components/buttons/Button";
-import { useState, useRef, useMemo, RefObject } from "react";
-import { FilterOptions } from "./FilterComponent";
-import { ValidSources } from "@/lib/types";
-import Cookies from "js-cookie";
-import { TOGGLED_CONNECTORS_COOKIE_NAME } from "@/lib/constants";
-import { ConnectorStaggeredSkeleton } from "./ConnectorRowSkeleton";
-import { IndexingStatusRequest } from "@/lib/types";
-
-function Main() {
-  // State for filter management
-  const [filterOptions, setFilterOptions] = useState<FilterOptions>({
-    accessType: null,
-    docsCountFilter: {
-      operator: null,
-      value: null,
-    },
-    lastStatus: null,
-  });
-
-  // State for search
-  const [searchQuery, setSearchQuery] = useState<string>("");
-
-  // State for collapse/expand functionality
-  const [connectorsToggled, setConnectorsToggled] = useState<
-    Record<ValidSources, boolean>
-  >(() => {
-    const savedState = Cookies.get(TOGGLED_CONNECTORS_COOKIE_NAME);
-    return savedState ? JSON.parse(savedState) : {};
-  });
-
-  // Reference to the FilterComponent for resetting its state
-  const filterComponentRef = useRef<{
-    resetFilters: () => void;
-  }>(null);
-
-  // Convert filter options to API request format
-  const request: IndexingStatusRequest = useMemo(() => {
-    return {
-      secondary_index: false,
-      access_type_filters: filterOptions.accessType || [],
-      last_status_filters: filterOptions.lastStatus || [],
-      docs_count_operator: filterOptions.docsCountFilter.operator,
-      docs_count_value: filterOptions.docsCountFilter.value,
-      name_filter: searchQuery,
-    };
-  }, [filterOptions, searchQuery]);
-
-  // Use the paginated hook with filter request and 30-second refresh
-  const {
-    data: ccPairsIndexingStatuses,
-    isLoading: isLoadingCcPairsIndexingStatuses,
-    error: ccPairsIndexingStatusesError,
-    handlePageChange,
-    sourcePages,
-    sourceLoadingStates,
-    resetPagination,
-  } = useConnectorIndexingStatusWithPagination(request, 30000);
-
-  // Check if filters are active
-  const hasActiveFilters = useMemo(() => {
-    return (
-      (filterOptions.accessType && filterOptions.accessType.length > 0) ||
-      (filterOptions.lastStatus && filterOptions.lastStatus.length > 0) ||
-      filterOptions.docsCountFilter.operator !== null
-    );
-  }, [filterOptions]);
-
-  // Handle filter changes
-  const handleFilterChange = (newFilterOptions: FilterOptions) => {
-    setFilterOptions(newFilterOptions);
-    // Reset pagination when filters change
-    resetPagination();
-  };
-
-  // Toggle source expand/collapse functions
-  const toggleSource = (
-    source: ValidSources,
-    toggled: boolean | null = null
-  ) => {
-    const newConnectorsToggled = {
-      ...connectorsToggled,
-      [source]: toggled == null ? !connectorsToggled[source] : toggled,
-    };
-    setConnectorsToggled(newConnectorsToggled);
-    Cookies.set(
-      TOGGLED_CONNECTORS_COOKIE_NAME,
-      JSON.stringify(newConnectorsToggled)
-    );
-  };
-
-  const expandAll = () => {
-    if (!ccPairsIndexingStatuses) return;
-    const newConnectorsToggled = { ...connectorsToggled };
-    ccPairsIndexingStatuses.forEach((ccPairStatus) => {
-      newConnectorsToggled[ccPairStatus.source] = true;
-    });
-    setConnectorsToggled(newConnectorsToggled);
-    Cookies.set(
-      TOGGLED_CONNECTORS_COOKIE_NAME,
-      JSON.stringify(newConnectorsToggled)
-    );
-  };
-
-  const collapseAll = () => {
-    if (!ccPairsIndexingStatuses) return;
-    const newConnectorsToggled = { ...connectorsToggled };
-    ccPairsIndexingStatuses.forEach((ccPairStatus) => {
-      newConnectorsToggled[ccPairStatus.source] = false;
-    });
-    setConnectorsToggled(newConnectorsToggled);
-    Cookies.set(
-      TOGGLED_CONNECTORS_COOKIE_NAME,
-      JSON.stringify(newConnectorsToggled)
-    );
-  };
-
-  // Check if any sources are expanded
-  const hasExpandedSources =
-    ccPairsIndexingStatuses?.some(
-      (ccPairStatus) => connectorsToggled[ccPairStatus.source]
-    ) || false;
-
-  // Handler functions for the search and filter controls
-  const handleClearFilters = () => {
-    if (filterComponentRef.current) {
-      filterComponentRef.current.resetFilters();
-      setFilterOptions({
-        accessType: null,
-        docsCountFilter: {
-          operator: null,
-          value: null,
-        },
-        lastStatus: null,
-      });
-    }
-  };
-
-  if (ccPairsIndexingStatusesError) {
-    return (
-      <div className="text-error">
-        {ccPairsIndexingStatusesError?.info?.detail ||
-          "Error loading indexing status."}
-      </div>
-    );
-  }
-
-  return (
-    <div>
-      {/* Search bar and controls */}
-      <SearchAndFilterControls
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        hasExpandedSources={hasExpandedSources}
-        onExpandAll={expandAll}
-        onCollapseAll={collapseAll}
-        filterOptions={filterOptions}
-        onFilterChange={handleFilterChange}
-        resetPagination={resetPagination}
-        onClearFilters={handleClearFilters}
-        hasActiveFilters={hasActiveFilters}
-        filterComponentRef={
-          filterComponentRef as RefObject<{ resetFilters: () => void }>
-        }
-      />
-
-      {/* Table component */}
-      {isLoadingCcPairsIndexingStatuses ? (
-        <div className="mt-12">
-          <ConnectorStaggeredSkeleton rowCount={8} standalone={true} />
-        </div>
-      ) : !ccPairsIndexingStatuses || ccPairsIndexingStatuses.length === 0 ? (
-        <Text className="mt-12">
-          It looks like you don&apos;t have any connectors setup yet. Visit the{" "}
-          <Link className="text-link" href="/admin/add-connector">
-            Add Connector
-          </Link>{" "}
-          page to get started!
-        </Text>
-      ) : (
-        <CCPairIndexingStatusTable
-          ccPairsIndexingStatuses={ccPairsIndexingStatuses}
-          connectorsToggled={connectorsToggled}
-          toggleSource={toggleSource}
-          onPageChange={handlePageChange}
-          sourceLoadingStates={sourceLoadingStates}
-        />
-      )}
-    </div>
-  );
-}
+import { useAirbyteDatasources } from "@/lib/airbyte";
+import {
+  AirbyteDatasourceTable,
+  AirbyteDatasourceGroup,
+} from "./AirbyteDatasourceTable";
+import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
+import { FiChevronDown, FiChevronRight } from "react-icons/fi";
+import Text from "@/refresh-components/texts/Text";
 
 export default function Status() {
   const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.INDEXING_STATUS]!;
+  const { datasources, isLoading, mutate } = useAirbyteDatasources();
+  const [search, setSearch] = useState("");
+  const [toggledGroups, setToggledGroups] = useState<Record<string, boolean>>(
+    {}
+  );
 
   useToastFromQuery({
     "connector-created": {
@@ -214,6 +33,44 @@ export default function Status() {
     },
   });
 
+  const groups = useMemo<AirbyteDatasourceGroup[]>(() => {
+    const all = datasources ?? [];
+    const filtered = search.trim()
+      ? all.filter(
+          (d) =>
+            d.name.toLowerCase().includes(search.toLowerCase()) ||
+            d.connector_display_name.toLowerCase().includes(search.toLowerCase())
+        )
+      : all;
+
+    const byType: Record<string, AirbyteDatasourceGroup> = {};
+    for (const ds of filtered) {
+      if (!byType[ds.connector_type]) {
+        byType[ds.connector_type] = {
+          connector_type: ds.connector_type,
+          connector_display_name: ds.connector_display_name,
+          datasources: [],
+        };
+      }
+      byType[ds.connector_type]!.datasources.push(ds);
+    }
+    return Object.values(byType);
+  }, [datasources, search]);
+
+  const handleToggle = useCallback((key: string) => {
+    setToggledGroups((prev) => ({ ...prev, [key]: !prev[key] }));
+  }, []);
+
+  const expandAll = useCallback(() => {
+    const next: Record<string, boolean> = {};
+    groups.forEach((g) => (next[g.connector_type] = true));
+    setToggledGroups(next);
+  }, [groups]);
+
+  const collapseAll = useCallback(() => {
+    setToggledGroups({});
+  }, []);
+
   return (
     <SettingsLayouts.Root width="full">
       <SettingsLayouts.Header
@@ -225,7 +82,52 @@ export default function Status() {
         separator
       />
       <SettingsLayouts.Body>
-        <Main />
+        {/* Search + expand/collapse controls */}
+        <div className="flex items-center gap-3 mb-4">
+          <div className="flex-1 max-w-sm">
+            <InputTypeIn
+              type="search"
+              placeholder="Search data sources…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <button
+            onClick={expandAll}
+            className="flex items-center gap-1 text-sm text-link hover:underline"
+          >
+            <FiChevronDown size={16} />
+            <Text as="span" secondaryBody>Expand All</Text>
+          </button>
+          <button
+            onClick={collapseAll}
+            className="flex items-center gap-1 text-sm text-link hover:underline"
+          >
+            <FiChevronRight size={16} />
+            <Text as="span" secondaryBody>Collapse All</Text>
+          </button>
+        </div>
+
+        {isLoading && (
+          <Text as="p" secondaryBody className="text-center py-8">
+            Loading…
+          </Text>
+        )}
+
+        {!isLoading && groups.length === 0 && (
+          <Text as="p" secondaryBody className="text-center py-8">
+            No data sources found. <a href="/admin/add-connector" className="text-link underline">Add a connector</a> to get started.
+          </Text>
+        )}
+
+        {!isLoading && groups.length > 0 && (
+          <AirbyteDatasourceTable
+            groups={groups}
+            toggledGroups={toggledGroups}
+            onToggle={handleToggle}
+            onMutate={mutate}
+          />
+        )}
       </SettingsLayouts.Body>
     </SettingsLayouts.Root>
   );

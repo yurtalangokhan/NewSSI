@@ -89,6 +89,11 @@ const nextConfig = {
           process.env.NEXT_PUBLIC_POSTHOG_HOST || "https://us.i.posthog.com"
         }/:path*`,
       },
+      // Proxy datasources/* directly to agent-service (no /api prefix)
+      {
+        source: "/datasources/:path*",
+        destination: `${backendUrl}/datasources/:path*`,
+      },
       // Proxy all /api/* requests to the backend (except those handled by Next.js API routes)
       // This allows backend endpoints to be accessed from the frontend
       {

@@ -182,7 +182,15 @@ async def create_datasource(input: DataSourceInput):
     ds_repo = DatasourceRepository()
 
     from service.AirbyteApiClientService import get_airbyte_client
-    from service.AirbyteConnectorService import find_connector_by_name
+    from service.AirbyteConnectorService import _format_connector_name, find_connector_by_name
+
+    # Check for duplicate name before creating any Airbyte resources
+    existing = await ds_repo.get_collection_by_name(input.name)
+    if existing:
+        raise HTTPException(
+            status_code=409,
+            detail=f"A data source named '{input.name}' already exists. Please choose a different name.",
+        )
 
     connector = await find_connector_by_name(input.config.connector_type)
     if not connector:
@@ -262,11 +270,25 @@ async def create_datasource(input: DataSourceInput):
         "friendly_name": input.name,
     }
 
-    row = await ds_repo.create_collection(
-        collection_uuid=str(collection_uuid),
-        name=input.name,
-        cmetadata=meta,
-    )
+    try:
+        row = await ds_repo.create_collection(
+            collection_uuid=str(collection_uuid),
+            name=input.name,
+            cmetadata=meta,
+        )
+    except Exception as db_err:
+        # Clean up Airbyte resources since PG insert failed
+        try:
+            await client.delete_source(source_id)
+        except Exception:
+            pass
+        err_msg = str(db_err)
+        if "UniqueViolation" in err_msg or "duplicate key" in err_msg.lower():
+            raise HTTPException(
+                status_code=409,
+                detail=f"A data source named '{input.name}' already exists. Please choose a different name.",
+            )
+        raise HTTPException(status_code=500, detail="Failed to create collection")
     if not row:
         raise HTTPException(status_code=500, detail="Failed to create collection")
 
