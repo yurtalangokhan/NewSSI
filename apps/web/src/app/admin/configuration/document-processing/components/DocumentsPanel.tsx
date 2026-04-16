@@ -85,9 +85,17 @@ function ChunkViewer({
             key={chunk.id}
             className="rounded-08 border border-border-01 bg-background-neutral-01 p-3"
           >
-            <Text as="p" mainContentMuted text03 className="mb-1 font-mono text-[10px]">
-              Chunk {idx + 1}
-            </Text>
+            <div className="flex items-center gap-3 mb-1">
+              <Text as="p" mainContentMuted text03 className="font-mono text-[10px]">
+                Chunk {idx + 1}
+              </Text>
+              {chunk.metadata?.char_count != null && (
+                <StatBadge label="Chars" value={chunk.metadata.char_count as number} />
+              )}
+              {chunk.metadata?.token_count != null && (
+                <StatBadge label="Tokens" value={chunk.metadata.token_count as number} />
+              )}
+            </div>
             <Text
               as="p"
               mainContentBody

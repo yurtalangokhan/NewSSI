@@ -658,7 +658,8 @@ const TabsTrigger = React.forwardRef<
           variant === "pill" && [
             "data-[state=inactive]:bg-background-tint-00",
             "data-[state=inactive]:text-text-03",
-          ]
+          ],
+          "data-[disabled]:opacity-40 data-[disabled]:cursor-not-allowed"
         )}
         {...props}
       >

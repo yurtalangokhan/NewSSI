@@ -125,20 +125,136 @@ export interface GraphSearchInput {
   graph_weight?: number;
 }
 
+// ---- Flat graph types (used by search results and entity preview) ----
+
+export interface GraphNode {
+  id: string;
+  label: string;
+  name: string;
+  properties: Record<string, unknown>;
+}
+
+export interface GraphEdge {
+  id: string;
+  source: string;
+  target: string;
+  type: string;
+  properties: Record<string, unknown>;
+}
+
+export interface GraphData {
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+}
+
+// ---- Scalable / clustered graph types ----
+
+export interface ClusterNode {
+  id: string;
+  label: string;
+  name: string;
+  node_count: number;
+  top_entities: string[];
+  properties: Record<string, unknown>;
+  is_cluster: true;
+}
+
+export interface ClusterEdge {
+  id: string;
+  source: string;
+  target: string;
+  type: string;
+  weight: number;
+  relationship_types: string[];
+  properties: Record<string, unknown>;
+}
+
+export type ScalableNode = GraphNode | ClusterNode;
+export type ScalableEdge = GraphEdge | ClusterEdge;
+
+export type GraphViewMode =
+  | "auto"
+  | "overview"
+  | "expand"
+  | "neighborhood"
+  | "full";
+
+export interface ClusteredGraphData {
+  nodes: ScalableNode[];
+  edges: ScalableEdge[];
+  total_node_count: number;
+  total_edge_count: number;
+  cluster_count: number;
+  mode: GraphViewMode;
+  scope_label?: string | null;
+  metadata?: {
+    neighbor_label_counts?: Record<string, number>;
+    rel_type_counts?: Record<string, number>;
+    scope_skip?: number;
+    scope_limit?: number;
+  };
+}
+
+// ---- Force-graph rendering types ----
+
+export interface ForceGraphNode {
+  id: string;
+  name: string;
+  label: string;
+  val?: number;
+  color?: string;
+  properties?: Record<string, unknown>;
+  isCluster?: boolean;
+  nodeCount?: number;
+  topEntities?: string[];
+}
+
+export interface ForceGraphLink {
+  // react-force-graph mutates source/target to objects after init
+  source: string | ForceGraphNode;
+  target: string | ForceGraphNode;
+  type: string;
+  color?: string;
+  weight?: number;
+  relationshipTypes?: string[];
+}
+
+export interface ForceGraphData {
+  nodes: ForceGraphNode[];
+  links: ForceGraphLink[];
+}
+
+// ---- Paginated counts (for stats/labels filter panel) ----
+
+export interface PaginatedCountItem {
+  name: string;
+  count: number;
+}
+
+export interface PaginatedCounts {
+  items: PaginatedCountItem[];
+  total: number;
+  page: number;
+  page_size: number;
+  has_next: boolean;
+}
+
+// ---- Type guards ----
+
+export function isClusterNode(n: ScalableNode): n is ClusterNode {
+  return (n as ClusterNode).is_cluster === true;
+}
+
+export function isClusterEdge(e: ScalableEdge): e is ClusterEdge {
+  return (
+    typeof (e as ClusterEdge).weight === "number" &&
+    Array.isArray((e as ClusterEdge).relationship_types)
+  );
+}
+
 export interface GraphSearchResult {
-  nodes: Array<{
-    id: string;
-    label: string;
-    name: string;
-    properties: Record<string, unknown>;
-  }>;
-  edges: Array<{
-    id: string;
-    source: string;
-    target: string;
-    type: string;
-    properties: Record<string, unknown>;
-  }>;
+  nodes: GraphNode[];
+  edges: GraphEdge[];
   context: string;
   score: number;
 }
@@ -371,5 +487,123 @@ export async function checkGraphHealth(): Promise<{ status: string }> {
   if (!res.ok) {
     throw new Error("Graph service is unavailable");
   }
+  return res.json();
+}
+
+// ============================================================================
+// API Functions — Graph Visualization
+// ============================================================================
+
+export async function fetchScalableGraphData(
+  collectionId: string,
+  params: {
+    mode?: string;
+    nodeLimit?: number;
+    edgeLimit?: number;
+    clusterLabel?: string;
+    nodeId?: string;
+    depth?: number;
+  } = {}
+): Promise<ClusteredGraphData> {
+  const query = new URLSearchParams({
+    mode: params.mode ?? "auto",
+    node_limit: String(params.nodeLimit ?? 500),
+    edge_limit: String(params.edgeLimit ?? 1000),
+  });
+  if (params.clusterLabel) query.set("cluster_label", params.clusterLabel);
+  if (params.nodeId) query.set("node_id", params.nodeId);
+  if (params.depth != null) query.set("depth", String(params.depth));
+  const res = await fetch(
+    `${RAG}/graph/collections/${collectionId}/data/scalable?${query}`
+  );
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.detail || "Failed to fetch graph data");
+  }
+  return res.json();
+}
+
+export async function fetchFlatGraphData(
+  collectionId: string,
+  params: { nodeLimit?: number; edgeLimit?: number } = {}
+): Promise<GraphData> {
+  const query = new URLSearchParams({
+    node_limit: String(params.nodeLimit ?? 200),
+    edge_limit: String(params.edgeLimit ?? 500),
+  });
+  const res = await fetch(
+    `${RAG}/graph/collections/${collectionId}/data?${query}`
+  );
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.detail || "Failed to fetch flat graph data");
+  }
+  return res.json();
+}
+
+export async function fetchGraphLabelsPaginated(
+  collectionId: string,
+  params: {
+    page?: number;
+    pageSize?: number;
+    search?: string;
+    scopeLabel?: string;
+    relTypeFilter?: string[];
+  } = {}
+): Promise<PaginatedCounts> {
+  const query = new URLSearchParams({
+    page: String(params.page ?? 1),
+    page_size: String(params.pageSize ?? 25),
+  });
+  if (params.search) query.set("search", params.search);
+  if (params.scopeLabel) query.set("scope_label", params.scopeLabel);
+  params.relTypeFilter?.forEach((rt) => query.append("rel_type_filter", rt));
+  const res = await fetch(
+    `${RAG}/graph/collections/${collectionId}/stats/labels?${query}`
+  );
+  if (!res.ok) throw new Error("Failed to fetch labels");
+  return res.json();
+}
+
+export async function fetchGraphRelTypesPaginated(
+  collectionId: string,
+  params: {
+    page?: number;
+    pageSize?: number;
+    search?: string;
+    scopeLabel?: string;
+    labelFilter?: string[];
+    scopeSkip?: number;
+    scopeLimit?: number;
+  } = {}
+): Promise<PaginatedCounts> {
+  const query = new URLSearchParams({
+    page: String(params.page ?? 1),
+    page_size: String(params.pageSize ?? 25),
+  });
+  if (params.search) query.set("search", params.search);
+  if (params.scopeLabel) query.set("scope_label", params.scopeLabel);
+  params.labelFilter?.forEach((l) => query.append("label_filter", l));
+  if (params.scopeSkip != null) query.set("scope_skip", String(params.scopeSkip));
+  if (params.scopeLimit != null)
+    query.set("scope_limit", String(params.scopeLimit));
+  const res = await fetch(
+    `${RAG}/graph/collections/${collectionId}/stats/relationship-types?${query}`
+  );
+  if (!res.ok) throw new Error("Failed to fetch relationship types");
+  return res.json();
+}
+
+export async function searchGraphEntityClusters(
+  collectionId: string,
+  q: string,
+  scopeLabel?: string
+): Promise<Record<string, number>> {
+  const params = new URLSearchParams({ q });
+  if (scopeLabel) params.set("scope_label", scopeLabel);
+  const res = await fetch(
+    `${RAG}/graph/collections/${collectionId}/search/entity-clusters?${params}`
+  );
+  if (!res.ok) throw new Error("Failed to search entity clusters");
   return res.json();
 }

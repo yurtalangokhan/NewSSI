@@ -1,0 +1,318 @@
+"use client";
+
+import { useState, useEffect, useMemo } from "react";
+import CardSection from "@/components/admin/CardSection";
+import Button from "@/refresh-components/buttons/Button";
+import Text from "@/refresh-components/texts/Text";
+import {
+  useGraphBuildStatus,
+  useGraphCollections,
+  buildGraph,
+  deleteGraph,
+  type GraphBuildStatus,
+  type GraphBuildStatusResponse,
+} from "@/lib/langconnect";
+import { toast } from "@/hooks/useToast";
+import { SvgActivity, SvgTrash, SvgAlertTriangle } from "@opal/icons";
+import { cn } from "@/lib/utils";
+
+function StatusBadge({ status }: { status: GraphBuildStatus }) {
+  const config: Record<GraphBuildStatus, { label: string; className: string }> =
+    {
+      pending: {
+        label: "Pending",
+        className:
+          "border-border-01 bg-background-neutral-01 text-text-03",
+      },
+      extracting: {
+        label: "Extracting",
+        className:
+          "border-status-warning-03 bg-status-warning-01 text-status-warning-06",
+      },
+      building: {
+        label: "Building",
+        className:
+          "border-status-info-03 bg-status-info-01 text-status-info-06",
+      },
+      completed: {
+        label: "Completed",
+        className:
+          "border-status-success-03 bg-status-success-01 text-status-success-06",
+      },
+      failed: {
+        label: "Failed",
+        className:
+          "border-status-error-03 bg-status-error-01 text-status-error-06",
+      },
+    };
+  const { label, className } = config[status];
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border",
+        className
+      )}
+    >
+      {label}
+    </span>
+  );
+}
+
+function StatCounter({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="flex flex-col items-center gap-1 rounded-08 border border-border-01 bg-background-neutral-01 px-4 py-3">
+      <Text
+        as="p"
+        mainUiAction
+        text04
+        className="text-lg font-semibold tabular-nums"
+      >
+        {value.toLocaleString()}
+      </Text>
+      <Text as="p" mainContentMuted text03 className="text-xs text-center">
+        {label}
+      </Text>
+    </div>
+  );
+}
+
+interface GraphBuildPanelProps {
+  collectionId: string | null;
+  onBuildComplete?: () => void;
+}
+
+export default function GraphBuildPanel({
+  collectionId,
+  onBuildComplete,
+}: GraphBuildPanelProps) {
+  const [pollActive, setPollActive] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const {
+    graphCollections,
+    mutate: mutateGraphCollections,
+  } = useGraphCollections();
+
+  const graphCollectionSet = useMemo(
+    () => new Set(graphCollections),
+    [graphCollections]
+  );
+
+  const selectedHasGraph = !!collectionId && graphCollectionSet.has(collectionId);
+
+  const { status } = useGraphBuildStatus(collectionId, pollActive);
+
+  const currentStatus = status?.status;
+
+  const computedPercent =
+    status && status.total_chunks > 0
+      ? Math.round((status.processed_chunks / status.total_chunks) * 100)
+      : (status?.progress_percent ?? 0);
+
+  const inProgress =
+    currentStatus === "pending" ||
+    currentStatus === "extracting" ||
+    currentStatus === "building";
+
+  useEffect(() => {
+    if (inProgress) {
+      setPollActive(true);
+    } else if (currentStatus === "completed" || currentStatus === "failed") {
+      setPollActive(false);
+      setIsSubmitting(false);
+      if (currentStatus === "completed") {
+        mutateGraphCollections();
+        onBuildComplete?.();
+      }
+    }
+  }, [currentStatus, inProgress, onBuildComplete, mutateGraphCollections]);
+
+  // Auto-resume polling when collection is selected (e.g. after page refresh)
+  useEffect(() => {
+    if (!collectionId) {
+      setPollActive(false);
+      setIsSubmitting(false);
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/rag/graph/build/${collectionId}/status`);
+        if (!res.ok || cancelled) return;
+        const data: GraphBuildStatusResponse = await res.json();
+        if (cancelled) return;
+        if (
+          data.status === "pending" ||
+          data.status === "extracting" ||
+          data.status === "building"
+        ) {
+          setPollActive(true);
+        }
+      } catch {
+        // No active build — nothing to resume
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [collectionId]);
+
+  const handleBuild = async () => {
+    if (!collectionId) return;
+    setIsSubmitting(true);
+    setPollActive(true);
+    try {
+      await buildGraph({ collection_id: collectionId });
+      toast.success("Graph build started.");
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : "Failed to start graph build"
+      );
+      setIsSubmitting(false);
+      setPollActive(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!collectionId) return;
+    if (
+      !window.confirm(
+        "Delete the knowledge graph for this collection? This cannot be undone."
+      )
+    )
+      return;
+    setIsDeleting(true);
+    try {
+      await deleteGraph(collectionId);
+      toast.success("Graph deleted.");
+      setPollActive(false);
+      mutateGraphCollections();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to delete graph");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  return (
+    <CardSection className="flex flex-col gap-4">
+      <div className="flex flex-col gap-1">
+        <Text as="p" headingH3 text05>
+          Build Graph
+        </Text>
+        <Text as="p" mainContentBody text04 className="leading-relaxed">
+          Extract entities and relationships from your documents using an LLM to
+          build a knowledge graph. This process analyses each document chunk.
+        </Text>
+      </div>
+
+      {!collectionId ? (
+        <Text as="p" mainContentMuted text03 className="text-sm">
+          Select a collection above to build or manage its knowledge graph.
+        </Text>
+      ) : (
+        <>
+          {/* Warning for already-built collections */}
+          {selectedHasGraph && !inProgress && (
+            <div className="flex items-start gap-2 rounded-08 border border-status-warning-03 bg-status-warning-01 p-3">
+              <SvgAlertTriangle className="h-4 w-4 shrink-0 stroke-status-warning-06 mt-0.5" />
+              <div className="flex flex-col gap-0.5">
+                <Text
+                  as="p"
+                  mainUiAction
+                  text04
+                  className="text-xs font-medium text-status-warning-07"
+                >
+                  This collection already has a knowledge graph.
+                </Text>
+                <Text
+                  as="p"
+                  mainContentMuted
+                  text03
+                  className="text-xs text-status-warning-06"
+                >
+                  Building again will delete all existing nodes and relationships,
+                  then create a new graph from scratch.
+                </Text>
+              </div>
+            </div>
+          )}
+
+          {status && (inProgress || currentStatus === "completed") && (
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <Text as="p" mainContentMuted text03 className="text-xs font-medium uppercase tracking-wide">
+                  Progress
+                </Text>
+                <StatusBadge status={status.status} />
+              </div>
+
+              {inProgress && (
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between">
+                    <Text as="p" mainContentMuted text03 className="text-xs">
+                      Completion
+                    </Text>
+                    <Text
+                      as="p"
+                      mainUiAction
+                      text04
+                      className="text-xs font-semibold tabular-nums"
+                    >
+                      {computedPercent.toFixed(0)}%
+                    </Text>
+                  </div>
+                  <div className="w-full bg-background-neutral-01 rounded-full h-2 border border-border-01 overflow-hidden">
+                    <div
+                      className="bg-theme-primary-04 h-2 rounded-full transition-all duration-500"
+                      style={{ width: `${computedPercent}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-4 gap-3">
+                <StatCounter label="Chunks" value={status.total_chunks} />
+                <StatCounter label="Processed" value={status.processed_chunks} />
+                <StatCounter label="Entities" value={status.extracted_entities} />
+                <StatCounter label="Relations" value={status.extracted_relations} />
+              </div>
+            </div>
+          )}
+
+          {currentStatus === "failed" && status?.error && (
+            <Text
+              as="p"
+              mainContentBody
+              text04
+              className="text-status-error-06 text-sm"
+            >
+              Error: {status.error}
+            </Text>
+          )}
+
+          <div className="flex items-center gap-2 pt-1">
+            <Button
+              leftIcon={SvgActivity}
+              onClick={handleBuild}
+              disabled={inProgress || isSubmitting}
+            >
+              {inProgress ? "Building…" : selectedHasGraph ? "Rebuild Graph" : "Build Graph"}
+            </Button>
+            <Button
+              danger
+              leftIcon={SvgTrash}
+              onClick={handleDelete}
+              disabled={isDeleting || inProgress || !selectedHasGraph}
+            >
+              Delete Graph
+            </Button>
+          </div>
+        </>
+      )}
+    </CardSection>
+  );
+}
