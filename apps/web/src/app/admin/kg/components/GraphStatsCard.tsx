@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import CardSection from "@/components/admin/CardSection";
 import Text from "@/refresh-components/texts/Text";
 import {
@@ -10,6 +10,7 @@ import {
 } from "@/lib/langconnect";
 import { cn } from "@/lib/utils";
 import { ThreeDotsLoader } from "@/components/Loading";
+import { snakeToHumanReadable, useDebounce } from "@/app/admin/kg/utils";
 
 const PAGE_SIZE = 10;
 
@@ -47,7 +48,7 @@ function FilterBadge({
           : "border-border-01 bg-background-tint-00 hover:bg-background-neutral-01 text-text-04"
       )}
     >
-      <span className="truncate capitalize">{name.replace(/_/g, " ")}</span>
+      <span className="truncate capitalize">{snakeToHumanReadable(name)}</span>
       <span
         className={cn(
           "shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums",
@@ -82,8 +83,6 @@ export default function GraphStatsCard({
   const [relPage, setRelPage] = useState(1);
   const [labelsSearch, setLabelsSearch] = useState("");
   const [relSearch, setRelSearch] = useState("");
-  const labelsDebounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const relDebounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const relTypeFilter = Array.from(selectedRelTypes);
   const labelFilter = Array.from(selectedLabels);
@@ -149,28 +148,36 @@ export default function GraphStatsCard({
     loadRelTypes(1, "");
   }, [loadRelTypes]);
 
+  const debouncedLoadLabels = useDebounce(
+    useCallback((value: string) => {
+      setLabelPage(1);
+      loadLabels(1, value);
+    }, [loadLabels]),
+    300
+  );
+
   const handleLabelsSearchChange = useCallback(
     (value: string) => {
       setLabelsSearch(value);
-      clearTimeout(labelsDebounceRef.current);
-      labelsDebounceRef.current = setTimeout(() => {
-        setLabelPage(1);
-        loadLabels(1, value);
-      }, 300);
+      debouncedLoadLabels(value);
     },
-    [loadLabels]
+    [debouncedLoadLabels]
+  );
+
+  const debouncedLoadRelTypes = useDebounce(
+    useCallback((value: string) => {
+      setRelPage(1);
+      loadRelTypes(1, value);
+    }, [loadRelTypes]),
+    300
   );
 
   const handleRelSearchChange = useCallback(
     (value: string) => {
       setRelSearch(value);
-      clearTimeout(relDebounceRef.current);
-      relDebounceRef.current = setTimeout(() => {
-        setRelPage(1);
-        loadRelTypes(1, value);
-      }, 300);
+      debouncedLoadRelTypes(value);
     },
-    [loadRelTypes]
+    [debouncedLoadRelTypes]
   );
 
   if (!collectionId) return null;

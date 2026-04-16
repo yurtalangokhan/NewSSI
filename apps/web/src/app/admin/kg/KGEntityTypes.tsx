@@ -11,22 +11,7 @@ import Button from "@/refresh-components/buttons/Button";
 import Text from "@/refresh-components/texts/Text";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
 import { cn } from "@/lib/utils";
-
-// Utility: Convert capitalized snake case to human readable case
-function snakeToHumanReadable(str: string): string {
-  return (
-    str
-      .toLowerCase()
-      .replace(/_/g, " ")
-      .replace(/\b\w/g, (match) => match.toUpperCase())
-      // # TODO (@raunakab)
-      // Special case to replace all instances of "Pr" with "PR".
-      // This is a *dumb* implementation. If there exists a string that starts with "Pr" (e.g., "Prompt"),
-      // then this line will stupidly convert it to "PRompt".
-      // Fix this later (or if this becomes a problem lol).
-      .replace("Pr", "PR")
-  );
-}
+import { snakeToHumanReadable } from "@/app/admin/kg/utils";
 
 // Custom Header Component
 function TableHeader() {

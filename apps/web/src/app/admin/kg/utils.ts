@@ -1,3 +1,4 @@
+import { useCallback, useRef } from "react";
 import { useUser } from "@/providers/UserProvider";
 import { errorHandlingFetcher } from "@/lib/fetcher";
 import useSWR from "swr";
@@ -26,4 +27,35 @@ export function sanitizeKGConfig(raw: KGConfigRaw): KGConfig {
     ...raw,
     coverage_start,
   };
+}
+
+/**
+ * Convert snake_case or SCREAMING_SNAKE_CASE to human-readable Title Case.
+ * e.g. "source_name" → "Source Name", "PR_review" → "PR Review"
+ */
+export function snakeToHumanReadable(str: string): string {
+  return str
+    .toLowerCase()
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (match) => match.toUpperCase())
+    .replace("Pr", "PR");
+}
+
+/**
+ * Returns a stable debounced version of the given callback.
+ * The returned function delays invocation by `delay` ms; rapid calls reset the timer.
+ */
+export function useDebounce<T extends unknown[]>(
+  fn: (...args: T) => void,
+  delay: number
+): (...args: T) => void {
+  const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  return useCallback(
+    (...args: T) => {
+      clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => fn(...args), delay);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [fn, delay]
+  );
 }

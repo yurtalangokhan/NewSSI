@@ -15,7 +15,7 @@ function formatPropertyValue(value: unknown): string {
   if (ISO_DATE_RE.test(str)) {
     const d = new Date(str);
     if (!isNaN(d.getTime())) {
-      return d.toLocaleString("tr-TR", {
+      return d.toLocaleString(undefined, {
         year: "numeric",
         month: "2-digit",
         day: "2-digit",

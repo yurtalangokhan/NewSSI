@@ -23,18 +23,19 @@ import {
 } from "@opal/icons";
 import { cn } from "@/lib/utils";
 import { ThreeDotsLoader } from "@/components/Loading";
-import type {
-  GraphNode,
-  ClusteredGraphData,
-  GraphData,
-  ScalableNode,
-  ScalableEdge,
-  ForceGraphNode,
-  ForceGraphLink,
-  ForceGraphData,
+import {
+  isClusterNode,
+  isClusterEdge,
+  searchGraphEntityClusters,
+  type GraphNode,
+  type ClusteredGraphData,
+  type GraphData,
+  type ScalableNode,
+  type ScalableEdge,
+  type ForceGraphNode,
+  type ForceGraphLink,
+  type ForceGraphData,
 } from "@/lib/langconnect";
-import { isClusterNode, isClusterEdge } from "@/lib/langconnect";
-import { searchGraphEntityClusters } from "@/lib/langconnect";
 
 // Lazy-load 3D renderer — Three.js uses WebGL constants at import time which
 // crashes in Node/SSR. next/dynamic with ssr:false ensures browser-only eval.

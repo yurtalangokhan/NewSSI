@@ -9,13 +9,12 @@ import {
   searchGraph,
   type GraphSearchResult,
   type GraphSearchInput,
+  type SearchType,
 } from "@/lib/langconnect";
 import { toast } from "@/hooks/useToast";
 import { SvgSearch } from "@opal/icons";
 import { cn } from "@/lib/utils";
 import { ThreeDotsLoader } from "@/components/Loading";
-
-type SearchType = "entity" | "cypher" | "hybrid";
 
 const SEARCH_TYPES: {
   value: SearchType;

@@ -9,6 +9,7 @@ import {
   useGraphCollections,
   buildGraph,
   deleteGraph,
+  fetchGraphBuildStatus,
   type GraphBuildStatus,
   type GraphBuildStatusResponse,
 } from "@/lib/langconnect";
@@ -139,9 +140,7 @@ export default function GraphBuildPanel({
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch(`/api/rag/graph/build/${collectionId}/status`);
-        if (!res.ok || cancelled) return;
-        const data: GraphBuildStatusResponse = await res.json();
+        const data = await fetchGraphBuildStatus(collectionId);
         if (cancelled) return;
         if (
           data.status === "pending" ||

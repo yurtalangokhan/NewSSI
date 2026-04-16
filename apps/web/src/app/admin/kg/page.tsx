@@ -8,13 +8,17 @@ import CardSection from "@/components/admin/CardSection";
 import Text from "@/refresh-components/texts/Text";
 import Tabs from "@/refresh-components/Tabs";
 import { useIsKGExposed } from "@/app/admin/kg/utils";
-import { useCollections, useGraphCollections } from "@/lib/langconnect";
 import {
+  useCollections,
+  useGraphCollections,
   fetchScalableGraphData,
   fetchFlatGraphData,
+  isClusterNode,
+  isClusterEdge,
   type ClusteredGraphData,
   type GraphData,
   type GraphNode,
+  type GraphEdge,
 } from "@/lib/langconnect";
 import { useAirbyteDatasources } from "@/lib/airbyte";
 import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
@@ -172,61 +176,39 @@ function ExplorerTab({
     }
   }
 
-  const handleClusterExpand = useCallback(
-    async (clusterLabel: string) => {
+  // Shared: set loading, clear selection/filters, fetch scalable data, update state.
+  const loadScalable = useCallback(
+    async (params?: Parameters<typeof fetchScalableGraphData>[1]) => {
       if (!collectionId) return;
       setExplorerLoading(true);
       setSelectedLabels(new Set());
       setSelectedRelTypes(new Set());
       setSelectedNode(null);
       try {
-        const data = await fetchScalableGraphData(collectionId, {
-          mode: "expand",
-          clusterLabel,
-          nodeLimit: 200,
-          edgeLimit: 500,
-        });
+        const data = await fetchScalableGraphData(collectionId, params);
         setScalableData(data);
       } catch { /* ignore */ } finally {
         setExplorerLoading(false);
       }
     },
     [collectionId]
+  );
+
+  const handleClusterExpand = useCallback(
+    (clusterLabel: string) =>
+      loadScalable({ mode: "expand", clusterLabel, nodeLimit: 200, edgeLimit: 500 }),
+    [loadScalable]
   );
 
   const handleNeighborhoodRequest = useCallback(
-    async (nodeId: string) => {
-      if (!collectionId) return;
-      setExplorerLoading(true);
-      setSelectedLabels(new Set());
-      setSelectedRelTypes(new Set());
-      setSelectedNode(null);
-      try {
-        const data = await fetchScalableGraphData(collectionId, {
-          mode: "neighborhood",
-          nodeId,
-        });
-        setScalableData(data);
-      } catch { /* ignore */ } finally {
-        setExplorerLoading(false);
-      }
-    },
-    [collectionId]
+    (nodeId: string) => loadScalable({ mode: "neighborhood", nodeId }),
+    [loadScalable]
   );
 
-  const handleBackToOverview = useCallback(async () => {
-    if (!collectionId) return;
-    setExplorerLoading(true);
-    setSelectedLabels(new Set());
-    setSelectedRelTypes(new Set());
-    setSelectedNode(null);
-    try {
-      const data = await fetchScalableGraphData(collectionId);
-      setScalableData(data);
-    } catch { /* ignore */ } finally {
-      setExplorerLoading(false);
-    }
-  }, [collectionId]);
+  const handleBackToOverview = useCallback(
+    () => loadScalable(),
+    [loadScalable]
+  );
 
   const handleToggleLabel = useCallback((label: string) => {
     setSelectedLabels((prev) => {
@@ -305,11 +287,11 @@ function ExplorerTab({
           scalableData &&
           scalableData.mode !== "overview" &&
           scalableData.nodes.some((n) => n.id === selectedNode.id);
-        const previewNodes = useScalable
-          ? (scalableData!.nodes.filter((n) => !("is_cluster" in n && n.is_cluster)) as import("@/lib/langconnect").GraphNode[])
+        const previewNodes: GraphNode[] = useScalable
+          ? scalableData!.nodes.filter((n): n is GraphNode => !isClusterNode(n))
           : (graphData?.nodes ?? []);
-        const previewEdges = useScalable
-          ? (scalableData!.edges.filter((e) => !("weight" in e && Array.isArray((e as any).relationship_types))) as import("@/lib/langconnect").GraphEdge[])
+        const previewEdges: GraphEdge[] = useScalable
+          ? scalableData!.edges.filter((e): e is GraphEdge => !isClusterEdge(e))
           : (graphData?.edges ?? []);
         if (!previewNodes.length && !graphData) return null;
         return (

@@ -116,11 +116,13 @@ export interface GraphBuildInput {
   relationship_types?: string[];
 }
 
+export type SearchType = "entity" | "cypher" | "hybrid";
+
 export interface GraphSearchInput {
   query: string;
   collection_id: string;
   limit?: number;
-  search_type?: "entity" | "cypher" | "hybrid";
+  search_type?: SearchType;
   vector_weight?: number;
   graph_weight?: number;
 }
@@ -465,6 +467,17 @@ export async function deleteGraph(collectionId: string): Promise<void> {
     const err = await res.json().catch(() => ({}));
     throw new Error(err?.detail || "Failed to delete graph");
   }
+}
+
+export async function fetchGraphBuildStatus(
+  collectionId: string
+): Promise<GraphBuildStatusResponse> {
+  const res = await fetch(`${RAG}/graph/build/${collectionId}/status`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.detail || "Failed to fetch build status");
+  }
+  return res.json();
 }
 
 export async function searchGraph(
