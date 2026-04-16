@@ -78,47 +78,57 @@ const nextConfig = {
   },
   async rewrites() {
     const backendUrl = process.env.INTERNAL_URL || "http://localhost:8080";
-    return [
-      {
-        source: "/ph_ingest/static/:path*",
-        destination: "https://us-assets.i.posthog.com/static/:path*",
-      },
-      {
-        source: "/ph_ingest/:path*",
-        destination: `${
-          process.env.NEXT_PUBLIC_POSTHOG_HOST || "https://us.i.posthog.com"
-        }/:path*`,
-      },
-      // Proxy datasources/* directly to agent-service (no /api prefix)
-      {
-        source: "/datasources/:path*",
-        destination: `${backendUrl}/datasources/:path*`,
-      },
-      // Proxy all /api/* requests to the backend (except those handled by Next.js API routes)
-      // This allows backend endpoints to be accessed from the frontend
-      {
-        source: "/api/:path*",
-        destination: `${backendUrl}/api/:path*`,
-      },
-      // For auth routes without /api prefix
-      {
-        source: "/auth/:path*",
-        destination: `${backendUrl}/auth/:path*`,
-      },
-      // OpenAPI documentation
-      {
-        source: "/api/docs/:path*",
-        destination: `${backendUrl}/docs/:path*`,
-      },
-      {
-        source: "/api/docs",
-        destination: `${backendUrl}/docs`,
-      },
-      {
-        source: "/openapi.json",
-        destination: `${backendUrl}/openapi.json`,
-      },
-    ];
+    return {
+      // beforeFiles: checked before any filesystem/API routes
+      beforeFiles: [],
+      // afterFiles: checked after filesystem routes but before dynamic routes
+      afterFiles: [
+        {
+          source: "/ph_ingest/static/:path*",
+          destination: "https://us-assets.i.posthog.com/static/:path*",
+        },
+        {
+          source: "/ph_ingest/:path*",
+          destination: `${
+            process.env.NEXT_PUBLIC_POSTHOG_HOST || "https://us.i.posthog.com"
+          }/:path*`,
+        },
+        // Proxy datasources/* directly to agent-service (no /api prefix)
+        {
+          source: "/datasources/:path*",
+          destination: `${backendUrl}/datasources/:path*`,
+        },
+        // For auth routes without /api prefix
+        {
+          source: "/auth/:path*",
+          destination: `${backendUrl}/auth/:path*`,
+        },
+      ],
+      // fallback: only matched if NO filesystem/API route matches.
+      // This ensures /api/rag/* is handled by app/api/rag/[...path]/route.ts
+      // (which proxies to LANGCONNECT_URL) and NOT forwarded to the backend.
+      fallback: [
+        // OpenAPI documentation
+        {
+          source: "/api/docs/:path*",
+          destination: `${backendUrl}/docs/:path*`,
+        },
+        {
+          source: "/api/docs",
+          destination: `${backendUrl}/docs`,
+        },
+        {
+          source: "/openapi.json",
+          destination: `${backendUrl}/openapi.json`,
+        },
+        // Proxy all remaining /api/* requests to the backend.
+        // /api/rag/* will NOT reach here because the filesystem route matches first.
+        {
+          source: "/api/:path*",
+          destination: `${backendUrl}/api/:path*`,
+        },
+      ],
+    };
   },
   async redirects() {
     return [

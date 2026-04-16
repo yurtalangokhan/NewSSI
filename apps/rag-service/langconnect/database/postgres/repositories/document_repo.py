@@ -82,7 +82,7 @@ class DocumentRepository(BaseRepository):
 
         return [
             {
-                "id": r.id,
+                "id": self._parse_metadata(r.cmetadata).get("file_id") or str(r.id),
                 "content": r.document,
                 "metadata": self._parse_metadata(r.cmetadata),
                 "collection_id": str(self.collection_id),
