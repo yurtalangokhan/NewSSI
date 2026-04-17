@@ -354,6 +354,14 @@ function processPacket(state: ProcessorState, packet: Packet): void {
       state.displayGroupKeys.add(groupKey);
       console.log('[packetProcessor] Added to displayGroupKeys:', groupKey);
     }
+  } else if (isActualToolCallPacket(packet) && state.displayGroupKeys.has(groupKey)) {
+    // A tool-call packet arrived in a group that was initially classified as display
+    // (e.g. pre-tool reasoning text streamed before the model issued a tool call).
+    // Reclassify: move from display → tool so the pre-tool text is shown as part of
+    // the "Thought for some time" section instead of as a separate message bubble.
+    state.displayGroupKeys.delete(groupKey);
+    state.toolGroupKeys.add(groupKey);
+    console.log('[packetProcessor] Reclassified group from display → tool:', groupKey);
   }
 
   // Track image generation for header display (regardless of group position)

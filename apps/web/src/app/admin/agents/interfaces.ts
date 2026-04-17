@@ -77,6 +77,10 @@ export interface Persona extends MinimalPersonaSnapshot {
 
   base_agent?: string;
   mcp_tools?: string[];
+  rag_config?: {
+    document_processing: string[];
+    knowledge_graph: string[];
+  };
 }
 
 export interface FullPersona extends Persona {

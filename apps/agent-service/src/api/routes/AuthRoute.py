@@ -531,6 +531,12 @@ async def send_chat_message(request: Request):
                 agent_config["mcp_tools"] = custom_persona["mcp_tools"]
             if custom_persona.get("llm_model_version_override"):
                 agent_config.setdefault("model", custom_persona["llm_model_version_override"])
+            # Inject rag_config so RAG tools can read collection IDs at invoke time
+            if custom_persona.get("rag_config"):
+                agent_config["rag_config"] = custom_persona["rag_config"]
+                # Ensure the agent key can handle rag_config (configurable-mcp-agent does)
+                if agent_key not in ("configurable-mcp-agent",):
+                    agent_key = "configurable-mcp-agent"
         else:
             # Built-in persona id → built-in agent key
             agent_key = PERSONA_ID_TO_AGENT.get(persona_id, DEFAULT_AGENT)
@@ -633,6 +639,7 @@ async def get_personas():
                     "owner": {"id": persona.get("user_id", USER_ID), "email": "dev@local.dev"},
                     "base_agent": persona.get("base_agent"),
                     "mcp_tools": persona.get("mcp_tools", []),
+                    "rag_config": persona.get("rag_config"),
                 }
             )
     except Exception:
@@ -670,6 +677,8 @@ class PersonaUpsertRequest(BaseModel):
     base_agent: str | None = None
     # For custom agents: list of MCP tool names to bind
     mcp_tools: list[str] = []
+    # RAG configuration: {"document_processing": [...uuids], "knowledge_graph": [...uuids]}
+    rag_config: dict | None = None
 
 
 @router.post("/api/persona")
@@ -691,6 +700,7 @@ async def create_persona(request: PersonaUpsertRequest):
             labels=request.label_ids,
             base_agent=request.base_agent,
             mcp_tools=request.mcp_tools if request.mcp_tools else [],
+            rag_config=request.rag_config,
         )
         return {
             "id": persona["id"],
@@ -708,6 +718,7 @@ async def create_persona(request: PersonaUpsertRequest):
             "owner": {"id": USER_ID, "email": "dev@local.dev"},
             "base_agent": persona.get("base_agent"),
             "mcp_tools": persona.get("mcp_tools", []),
+            "rag_config": persona.get("rag_config"),
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -735,6 +746,7 @@ async def update_persona(persona_id: int, request: PersonaUpsertRequest):
             labels=request.label_ids,
             base_agent=request.base_agent,
             mcp_tools=request.mcp_tools if request.mcp_tools else [],
+            rag_config=request.rag_config,
         )
         if not persona:
             raise HTTPException(status_code=404, detail="Persona not found")
@@ -754,6 +766,7 @@ async def update_persona(persona_id: int, request: PersonaUpsertRequest):
             "owner": {"id": USER_ID, "email": "dev@local.dev"},
             "base_agent": persona.get("base_agent"),
             "mcp_tools": persona.get("mcp_tools", []),
+            "rag_config": persona.get("rag_config"),
         }
     except HTTPException:
         raise

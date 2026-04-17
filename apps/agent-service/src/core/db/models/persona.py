@@ -85,6 +85,8 @@ class PersonaModel(Base):
     base_agent: Mapped[str | None] = mapped_column(Text, nullable=True)
     # For custom agents: list of MCP tool names to bind
     mcp_tools: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    # RAG configuration: {"document_processing": [...uuids], "knowledge_graph": [...uuids]}
+    rag_config: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     time_created: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
