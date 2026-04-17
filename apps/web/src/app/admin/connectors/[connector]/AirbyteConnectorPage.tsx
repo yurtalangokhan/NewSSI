@@ -120,8 +120,9 @@ export default function AirbyteConnectorPage({
   }, [connectorName, config, datasourceName, selectedStreams, router]);
 
   return (
-    <div className="flex justify-center w-full h-full">
+    <div className="flex justify-center w-full min-h-full">
       {/* Sidebar */}
+      <div className="sticky top-0 self-start flex-shrink-0 h-screen">
       <StepSidebar
         buttonName="Add Connector"
         buttonIcon={SvgSettings}
@@ -164,6 +165,7 @@ export default function AirbyteConnectorPage({
           })}
         </div>
       </StepSidebar>
+      </div>
 
       {/* Main content */}
       <div className="mt-12 w-full max-w-3xl mx-auto">

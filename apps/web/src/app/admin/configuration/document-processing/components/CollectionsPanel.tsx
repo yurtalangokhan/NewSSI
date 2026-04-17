@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import CardSection from "@/components/admin/CardSection";
 import Button from "@/refresh-components/buttons/Button";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
@@ -13,6 +13,7 @@ import {
   createCollection,
   deleteCollection,
 } from "@/lib/langconnect";
+import { useAirbyteDatasources } from "@/lib/airbyte";
 import { SvgHardDrive, SvgPlus, SvgTrash } from "@opal/icons";
 
 interface CollectionsPanelProps {
@@ -24,7 +25,18 @@ export default function CollectionsPanel({
   selectedCollectionId,
   onCollectionSelect,
 }: CollectionsPanelProps) {
-  const { collections, isLoading, mutate } = useCollections();
+  const { collections: allCollections, isLoading: collectionsLoading, mutate } = useCollections();
+  const { datasources, isLoading: dsLoading } = useAirbyteDatasources();
+  const isLoading = collectionsLoading || dsLoading;
+
+  const datasourceIds = useMemo(
+    () => new Set(datasources.map((ds) => ds.id)),
+    [datasources]
+  );
+  const collections = useMemo(
+    () => allCollections.filter((c) => !datasourceIds.has(c.uuid)),
+    [allCollections, datasourceIds]
+  );
   const [isCreating, setIsCreating] = useState(false);
   const [newName, setNewName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);

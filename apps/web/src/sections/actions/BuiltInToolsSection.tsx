@@ -33,7 +33,7 @@ function ToolCard({
   onTest: (tool: ToolWithCategory) => void;
 }) {
   return (
-    <div className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
+    <div className="border border-border-01 rounded-lg p-4 hover:bg-background-tint-00 transition-colors">
       <div className="flex items-center justify-between gap-2 mb-2">
         <h3 className="font-medium truncate">{_.startCase(tool.name)}</h3>
         {tool.category && (
@@ -42,12 +42,12 @@ function ToolCard({
           </Badge>
         )}
       </div>
-      <p className="text-sm text-gray-600 line-clamp-2 mb-3">
+      <p className="text-sm text-text-03 line-clamp-2 mb-3">
         {tool.description || "No description"}
       </p>
       <button
         onClick={() => onTest(tool)}
-        className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+        className="text-sm text-theme-primary-04 hover:text-theme-primary-05 font-medium"
       >
         Test Tool →
       </button>
@@ -57,13 +57,13 @@ function ToolCard({
 
 function ToolCardSkeleton() {
   return (
-    <div className="border rounded-lg p-4 animate-pulse">
+    <div className="border border-border-01 rounded-lg p-4 animate-pulse">
       <div className="flex items-center justify-between gap-2 mb-2">
-        <div className="h-5 w-32 bg-gray-200 rounded" />
-        <div className="h-5 w-16 bg-gray-200 rounded" />
+        <div className="h-5 w-32 bg-background-neutral-02 rounded" />
+        <div className="h-5 w-16 bg-background-neutral-02 rounded" />
       </div>
-      <div className="h-4 w-full bg-gray-200 rounded mb-2" />
-      <div className="h-4 w-3/4 bg-gray-200 rounded" />
+      <div className="h-4 w-full bg-background-neutral-02 rounded mb-2" />
+      <div className="h-4 w-3/4 bg-background-neutral-02 rounded" />
     </div>
   );
 }
@@ -150,7 +150,7 @@ export default function BuiltInToolsSection({
           <Badge variant="outline">{tools.length}</Badge>
         </div>
         <div className="relative w-64">
-          <Search className="absolute left-2.5 top-2.5 size-4 text-gray-500" />
+          <Search className="absolute left-2.5 top-2.5 size-4 text-text-03" />
           <Input
             type="text"
             placeholder="Search tools..."
@@ -169,11 +169,11 @@ export default function BuiltInToolsSection({
       )}
 
       {error && !isLoading && (
-        <div className="text-center py-8 text-red-600">{error}</div>
+        <div className="text-center py-8 text-status-error-06">{error}</div>
       )}
 
       {!isLoading && !error && tools.length === 0 && (
-        <div className="text-center py-12 text-gray-500">
+        <div className="text-center py-12 text-text-03">
           <Wrench className="size-8 mx-auto mb-2 opacity-50" />
           <p>No built-in tools available yet</p>
           <p className="text-sm mt-1">Tools will appear here once the tools-service is configured</p>
@@ -184,7 +184,7 @@ export default function BuiltInToolsSection({
         <div className="flex-1 overflow-y-auto">
           {sortedCategories.map((category) => (
             <Collapsible key={category} defaultOpen={true}>
-              <CollapsibleTrigger className="group flex w-full items-center gap-2 rounded-md px-2 py-2 hover:bg-slate-100 text-left">
+              <CollapsibleTrigger className="group flex w-full items-center gap-2 rounded-md px-2 py-2 hover:bg-background-neutral-00 text-left">
                 <ChevronDown className="size-4 transition-transform group-data-[state=closed]:-rotate-90" />
                 <span className="text-base font-semibold">
                   {categoryLabelMap[category] || category}

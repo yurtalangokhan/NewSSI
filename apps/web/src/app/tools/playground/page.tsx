@@ -2,20 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Badge } from "@/components/ui/badge";
 import Button from "@/refresh-components/buttons/Button";
-import { Input } from "@/components/ui/input";
+import IconButton from "@/refresh-components/buttons/IconButton";
+import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
 import InputTextArea from "@/refresh-components/inputs/InputTextArea";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Loader2, ArrowLeft } from "lucide-react";
+import InputSelect from "@/refresh-components/inputs/InputSelect";
+import Switch from "@/refresh-components/inputs/Switch";
+import Text from "@/refresh-components/texts/Text";
+import { ThreeDotsLoader } from "@/components/Loading";
+import { SvgArrowLeft } from "@opal/icons";
 import { toast } from "@/hooks/useToast";
 import { cn } from "@/lib/utils";
 import { BuiltInTool } from "@/lib/tools/interfaces";
@@ -158,7 +153,7 @@ function SchemaForm({
   }, [schema, values]);
 
   if (!schema || !schema.properties || Object.keys(schema.properties).length === 0) {
-    return <div className="text-gray-500">No input parameters required</div>;
+    return <Text as="p" text03 mainContentBody>No input parameters required</Text>;
   }
 
   return (
@@ -175,20 +170,20 @@ function SchemaForm({
               <label
                 htmlFor={name}
                 className={cn(
-                  "text-sm font-medium",
-                  isRequired && "after:ml-0.5 after:text-red-500 after:content-['*']",
+                  "text-sm font-medium text-text-04",
+                  isRequired && "after:ml-0.5 after:text-status-error-05 after:content-['*']",
                 )}
               >
                 {_.startCase(label)}
               </label>
               {isRequired && (
-                <span className="text-xs text-gray-500">Required</span>
+                <Text as="span" text03 secondaryBody className="text-xs">Required</Text>
               )}
             </div>
             {description && (
-              <p className="text-xs text-gray-500">{description}</p>
+              <Text as="p" text03 secondaryBody className="text-xs">{description}</Text>
             )}
-            <div className={cn(errorMsg && "ring-1 ring-red-400 rounded-md")}>
+            <div className={cn(errorMsg && "ring-1 ring-status-error-04 rounded-md")}>
               {renderField(
                 [name],
                 property,
@@ -197,7 +192,7 @@ function SchemaForm({
               )}
             </div>
             {errorMsg && (
-              <p className="text-xs text-red-500">{errorMsg}</p>
+              <Text as="p" className="text-xs text-status-error-05">{errorMsg}</Text>
             )}
           </div>
         );
@@ -219,7 +214,7 @@ function renderField(
     return (
       <select
         id={fieldId}
-        className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
+        className="w-full rounded-08 border border-border-01 bg-background-tint-00 px-3 py-2 text-sm text-text-04 focus:outline-none focus:ring-1 focus:ring-theme-primary-04"
         value={value || ""}
         onChange={(e) => onChange(e.target.value)}
       >
@@ -235,12 +230,12 @@ function renderField(
 
   if (property.type === "object" || property.properties) {
     return (
-      <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+      <div className="rounded-lg border border-border-01 bg-background-tint-00 p-4">
         <div className="mb-3 flex items-center justify-between gap-2">
           <div>
-            <div className="text-sm font-medium">{_.startCase(label)}</div>
+            <Text as="p" mainUiAction text04 className="text-sm font-medium">{_.startCase(label)}</Text>
             {property.description && (
-              <p className="text-xs text-gray-500">{property.description}</p>
+              <Text as="p" text03 secondaryBody className="text-xs">{property.description}</Text>
             )}
           </div>
         </div>
@@ -260,10 +255,10 @@ function renderField(
         {items.map((item: any, index: number) => (
           <div
             key={`${fieldId}-${index}`}
-            className="rounded-lg border border-gray-200 bg-white p-4"
+            className="rounded-lg border border-border-01 bg-background-neutral-00 p-4"
           >
             <div className="mb-2 flex items-center justify-between gap-2">
-              <div className="text-sm font-medium">Item {index + 1}</div>
+              <Text as="p" text04 mainUiAction className="text-sm font-medium">Item {index + 1}</Text>
               <Button
                 secondary
                 size="md"
@@ -319,11 +314,12 @@ function renderField(
     }
 
     return (
-      <Input
+      <InputTypeIn
         id={fieldId}
         value={value || ""}
         onChange={(e) => onChange(e.target.value)}
         placeholder={property.example || `Enter ${_.startCase(label)}`}
+        showClearButton={false}
       />
     );
   }
@@ -332,7 +328,7 @@ function renderField(
     if (property.minimum !== undefined && property.maximum !== undefined) {
       return (
         <div className="space-y-2">
-          <Input
+          <InputTypeIn
             id={fieldId}
             type="number"
             value={value ?? ""}
@@ -341,8 +337,9 @@ function renderField(
             max={property.maximum}
             step={property.type === "integer" ? 1 : 0.1}
             placeholder={property.example || `Enter ${_.startCase(label)}`}
+            showClearButton={false}
           />
-          <div className="flex justify-between text-xs text-gray-500">
+          <div className="flex justify-between text-xs text-text-03">
             <span>{property.minimum}</span>
             <span>{value !== undefined ? value : "-"}</span>
             <span>{property.maximum}</span>
@@ -352,7 +349,7 @@ function renderField(
     }
 
     return (
-      <Input
+      <InputTypeIn
         id={fieldId}
         type="number"
         value={value ?? ""}
@@ -361,6 +358,7 @@ function renderField(
         max={property.maximum}
         step={property.type === "integer" ? 1 : 0.1}
         placeholder={property.example || `Enter ${_.startCase(label)}`}
+        showClearButton={false}
       />
     );
   }
@@ -368,13 +366,12 @@ function renderField(
   if (property.type === "boolean") {
     return (
       <div className="flex items-center gap-2">
-        <input
-          id={fieldId}
-          type="checkbox"
+        <Switch
           checked={!!value}
-          onChange={(e) => onChange(e.target.checked)}
+          onCheckedChange={onChange}
+          aria-label={`toggle-${fieldId}`}
         />
-        <span>{value ? "Enabled" : "Disabled"}</span>
+        <Text as="span" text03 mainUiBody>{value ? "Enabled" : "Disabled"}</Text>
       </div>
     );
   }
@@ -394,9 +391,9 @@ function renderField(
         placeholder={`Enter JSON for ${_.startCase(label)}`}
         rows={6}
       />
-      <p className="text-xs text-gray-500">
+      <Text as="p" text03 secondaryBody className="text-xs">
         Unsupported field type. You can enter raw JSON here.
-      </p>
+      </Text>
     </div>
   );
 }
@@ -413,33 +410,32 @@ function ResponseViewer({
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <Loader2 className="size-6 animate-spin mr-2" />
-        <span>Executing tool...</span>
+        <ThreeDotsLoader />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">
-        <p className="font-semibold">Error</p>
-        <p className="text-sm">{error}</p>
+      <div className="rounded-lg border border-status-error-03 bg-status-error-01 p-4 text-status-error-06">
+        <Text as="p" className="font-semibold text-status-error-06">Error</Text>
+        <Text as="p" className="text-sm text-status-error-06">{error}</Text>
       </div>
     );
   }
 
   if (!response) {
     return (
-      <div className="text-center py-8 text-gray-500">
-        Run the tool to see results
+      <div className="text-center py-8">
+        <Text as="p" text03 mainContentMuted>Run the tool to see results</Text>
       </div>
     );
   }
 
   return (
     <div className="space-y-3">
-      <div className="text-sm font-semibold text-emerald-700">Result</div>
-      <pre className="max-h-[60vh] overflow-auto rounded-lg bg-gray-100 p-4 text-sm whitespace-pre-wrap break-words">
+      <Text as="p" className="text-sm font-semibold text-status-success-06">Result</Text>
+      <pre className="max-h-[60vh] overflow-auto rounded-lg bg-background-neutral-01 p-4 text-sm whitespace-pre-wrap break-words text-text-04">
         {typeof response === "string"
           ? response
           : JSON.stringify(response, null, 2)}
@@ -534,7 +530,6 @@ export default function ToolsPlaygroundPage() {
   const handleInputChange = useCallback(
     (values: Record<string, any>) => {
       setInputValues(values);
-      // Clear errors for fields that now have a value
       setFieldErrors((prev) => {
         const next = { ...prev };
         Object.keys(next).forEach((field) => {
@@ -549,7 +544,6 @@ export default function ToolsPlaygroundPage() {
   const handleRunTool = useCallback(async () => {
     if (!selectedTool) return;
 
-    // Validate required fields
     const schema = normalizeSchema(selectedTool.input_schema);
     const missing = getMissingRequiredFields(schema, inputValues);
     if (missing.length > 0) {
@@ -590,86 +584,78 @@ export default function ToolsPlaygroundPage() {
     <div className="space-y-6 p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <Button secondary onClick={() => router.back()} className="px-3 py-2 text-sm">
-            <span className="flex items-center gap-1.5">
-              <ArrowLeft className="size-4" /> Back
-            </span>
-          </Button>
-          <h1 className="mt-3 text-2xl font-bold">{pageTitle}</h1>
-          <p className="mt-1 text-sm text-gray-600">
+          <IconButton
+            icon={SvgArrowLeft}
+            onClick={() => router.back()}
+            tooltip="Back"
+            aria-label="Back"
+          />
+          <h1 className="mt-3 text-2xl font-bold text-text-05">{pageTitle}</h1>
+          <Text as="p" text03 mainContentBody className="mt-1 text-sm">
             Run built-in MCP tools with custom input and inspect the raw result.
-          </p>
+          </Text>
         </div>
         {selectedTool && (
-          <Button onClick={handleRunTool} disabled={isRunning}>
-            {isRunning ? (
-              <span className="flex items-center gap-1.5">
-                <Loader2 className="size-4 animate-spin" /> Running...
-              </span>
-            ) : (
-              "Run Tool"
-            )}
+          <Button primary onClick={handleRunTool} disabled={isRunning}>
+            {isRunning ? "Running..." : "Run Tool"}
           </Button>
         )}
       </div>
 
-      <div className="rounded-lg border border-gray-200 bg-white p-4">
+      <div className="rounded-lg border border-border-01 bg-background-neutral-00 p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <div className="text-sm font-semibold text-gray-900">Tool selector</div>
-            <p className="text-sm text-gray-500">Choose a tool to open the playground.</p>
+            <Text as="p" text05 className="text-sm font-semibold">Tool selector</Text>
+            <Text as="p" text03 mainContentBody className="text-sm">Choose a tool to open the playground.</Text>
           </div>
           {toolsWithCategory.length > 0 && (
-            <Select
+            <InputSelect
               value={toolName}
               onValueChange={(value) => {
                 const tool = toolsWithCategory.find((t) => t.name === value);
-                if (tool) {
-                  handleSelectTool(tool);
-                }
+                if (tool) handleSelectTool(tool);
               }}
             >
-              <SelectTrigger className="w-full sm:w-72">
-                <SelectValue placeholder="Select a tool..." />
-              </SelectTrigger>
-              <SelectContent>
+              <div className="w-full sm:w-72">
+                <InputSelect.Trigger placeholder="Select a tool..." />
+              </div>
+              <InputSelect.Content>
                 {sortedCategories.map((category) => (
-                  <SelectGroup key={category}>
-                    <SelectLabel>
+                  <InputSelect.Group key={category}>
+                    <InputSelect.Label>
                       {categoryLabelMap[category] || _.startCase(category)}
-                    </SelectLabel>
+                    </InputSelect.Label>
                     {(groupedTools[category] ?? []).map((tool) => (
-                      <SelectItem key={tool.name} value={tool.name}>
+                      <InputSelect.Item key={tool.name} value={tool.name}>
                         {_.startCase(tool.name)}
-                      </SelectItem>
+                      </InputSelect.Item>
                     ))}
-                  </SelectGroup>
+                  </InputSelect.Group>
                 ))}
-              </SelectContent>
-            </Select>
+              </InputSelect.Content>
+            </InputSelect>
           )}
         </div>
       </div>
 
       {isLoading ? (
         <div className="flex items-center justify-center py-14">
-          <Loader2 className="size-6 animate-spin mr-2" />
-          <span>Loading tools...</span>
+          <ThreeDotsLoader />
         </div>
       ) : error ? (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">
+        <div className="rounded-lg border border-status-error-03 bg-status-error-01 p-4 text-status-error-06">
           {error}
         </div>
       ) : selectedTool ? (
         <div className="grid gap-6 lg:grid-cols-[minmax(360px,1fr)_minmax(420px,560px)]">
-          <div className="rounded-lg border border-gray-200 bg-white p-6">
+          <div className="rounded-lg border border-border-01 bg-background-neutral-00 p-6">
             <div className="mb-4 space-y-2">
-              <div className="text-sm font-semibold text-gray-900">{_.startCase(selectedTool.name)}</div>
-              <p className="text-sm text-gray-600">{selectedTool.description}</p>
+              <Text as="p" text05 className="text-sm font-semibold">{_.startCase(selectedTool.name)}</Text>
+              <Text as="p" text03 mainContentBody className="text-sm">{selectedTool.description}</Text>
             </div>
             <div className="space-y-6">
               <div>
-                <div className="mb-3 text-sm font-semibold">Input</div>
+                <Text as="p" text04 mainUiAction className="mb-3 text-sm font-semibold">Input</Text>
                 <SchemaForm
                   schema={normalizeSchema(selectedTool.input_schema)}
                   values={inputValues}
@@ -678,42 +664,44 @@ export default function ToolsPlaygroundPage() {
                 />
               </div>
               {runError && (
-                <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">
-                  {runError}
+                <div className="rounded-lg border border-status-error-03 bg-status-error-01 p-4">
+                  <Text as="p" className="text-status-error-06">{runError}</Text>
                 </div>
               )}
             </div>
           </div>
-          <div className="rounded-lg border border-gray-200 bg-white p-6">
-            <div className="mb-4 text-sm font-semibold text-gray-900">Response</div>
+          <div className="rounded-lg border border-border-01 bg-background-neutral-00 p-6">
+            <Text as="p" text05 className="mb-4 text-sm font-semibold">Response</Text>
             <ResponseViewer response={response} isLoading={isRunning} error={runError} />
           </div>
         </div>
       ) : (
         <div className="space-y-6">
           {filteredTools.length === 0 ? (
-            <div className="rounded-lg border border-gray-200 bg-white p-6 text-center text-gray-600">
-              No tools match your search.
+            <div className="rounded-lg border border-border-01 bg-background-neutral-00 p-6 text-center">
+              <Text as="p" text03 mainContentBody>No tools match your search.</Text>
             </div>
           ) : (
             Object.keys(groupedTools).map((category) => {
               const toolsInCategory = groupedTools[category] ?? [];
               return (
-                <div key={category} className="rounded-lg border border-gray-200 bg-white p-4">
+                <div key={category} className="rounded-lg border border-border-01 bg-background-neutral-00 p-4">
                   <div className="mb-3 flex items-center justify-between">
                     <div>
-                      <div className="text-sm font-semibold text-gray-900">
+                      <Text as="p" text05 className="text-sm font-semibold">
                         {categoryLabelMap[category] || _.startCase(category)}
-                      </div>
-                      <div className="text-xs text-gray-500">{toolsInCategory.length} tools</div>
+                      </Text>
+                      <Text as="p" text03 secondaryBody className="text-xs">{toolsInCategory.length} tools</Text>
                     </div>
-                    <Badge variant="secondary">{toolsInCategory.length}</Badge>
+                    <span className="rounded-full border border-border-01 px-2 py-0.5 text-xs text-text-03">
+                      {toolsInCategory.length}
+                    </span>
                   </div>
                   <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                     {toolsInCategory.map((tool) => (
-                      <div key={tool.name} className="rounded-lg border border-gray-200 p-4">
-                        <div className="mb-2 text-sm font-semibold text-gray-900">{_.startCase(tool.name)}</div>
-                        <p className="mb-4 text-sm text-gray-600 line-clamp-3">{tool.description}</p>
+                      <div key={tool.name} className="rounded-lg border border-border-01 bg-background-tint-00 p-4">
+                        <Text as="p" text04 mainUiAction className="mb-2 text-sm font-semibold">{_.startCase(tool.name)}</Text>
+                        <Text as="p" text03 mainContentBody className="mb-4 text-sm line-clamp-3">{tool.description}</Text>
                         <Button
                           secondary
                           onClick={() => handleSelectTool(tool)}

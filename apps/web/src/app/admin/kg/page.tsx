@@ -30,6 +30,7 @@ import EntityPreview from "@/app/admin/kg/components/EntityPreview";
 import { ThreeDotsLoader } from "@/components/Loading";
 import { SvgActivity, SvgSearch, SvgNetworkGraph } from "@opal/icons";
 import { cn } from "@/lib/utils";
+import InputSelect from "@/refresh-components/inputs/InputSelect";
 
 const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.KNOWLEDGE_GRAPH]!;
 
@@ -38,13 +39,21 @@ const COLLECTION_REQUIRED_TABS = new Set(["explorer", "search"]);
 
 // ── Collection selector ────────────────────────────────────────────────────
 
+function NoGraphBadge() {
+  return (
+    <span className="ml-1.5 inline-flex items-center rounded-04 border border-status-warning-03 bg-status-warning-01 px-1.5 py-0.5 text-[10px] font-medium leading-none text-status-warning-06">
+      No graph
+    </span>
+  );
+}
+
 function CollectionSelector({
   selectedId,
   onSelect,
   highlight,
 }: {
   selectedId: string | null;
-  onSelect: (id: string | null) => void;
+  onSelect: (id: string | null, hasGraph: boolean) => void;
   highlight?: boolean;
 }) {
   const { collections, isLoading: collectionsLoading } = useCollections();
@@ -58,25 +67,32 @@ function CollectionSelector({
     [graphCollections]
   );
 
-  const allSources = useMemo(() => {
-    const map = new Map<
-      string,
-      { id: string; name: string; isDataSource: boolean }
-    >();
-    for (const c of collections) {
-      map.set(c.uuid, { id: c.uuid, name: c.name, isDataSource: false });
-    }
-    for (const ds of datasources) {
-      if (!map.has(ds.id)) {
-        map.set(ds.id, { id: ds.id, name: ds.name, isDataSource: true });
-      } else {
-        map.set(ds.id, { ...map.get(ds.id)!, isDataSource: true });
-      }
-    }
-    return Array.from(map.values());
-  }, [collections, datasources]);
+  // Datasource IDs — used to separate pure RAG collections from datasource-backed ones
+  const datasourceIdSet = useMemo(
+    () => new Set(datasources.map((ds) => ds.id)),
+    [datasources]
+  );
 
-  const hasUnbuilt = allSources.some((s) => !graphCollectionSet.has(s.id));
+  // Pure RAG collections (not backed by a datasource)
+  const ragCollections = useMemo(
+    () => collections.filter((c) => !datasourceIdSet.has(c.uuid)),
+    [collections, datasourceIdSet]
+  );
+
+  // Datasources merged with any matching collection entry for display name
+  const datasourceItems = useMemo(() => {
+    const collectionNameMap = new Map(collections.map((c) => [c.uuid, c.name]));
+    return datasources.map((ds) => ({
+      id: ds.id,
+      // Prefer the datasource's own name; fall back to collection name if set
+      name: ds.name || collectionNameMap.get(ds.id) || ds.connector_display_name || "Unnamed",
+      hasGraph: graphCollectionSet.has(ds.id),
+    }));
+  }, [datasources, collections, graphCollectionSet]);
+
+  const hasUnbuilt =
+    ragCollections.some((c) => !graphCollectionSet.has(c.uuid)) ||
+    datasourceItems.some((ds) => !ds.hasGraph);
 
   if (isLoading) {
     return (
@@ -95,35 +111,60 @@ function CollectionSelector({
         Select a collection with a built knowledge graph to explore and run
         graph searches.
       </Text>
-      <select
-        className={cn(
-          "w-full max-w-sm rounded-08 border px-3 py-2 text-sm text-text-04 focus:outline-none transition-all duration-300",
-          highlight
-            ? "border-status-error-04 ring-2 ring-status-error-04 bg-status-error-01"
-            : "border-border-01 bg-background-tint-00 focus:ring-1 focus:ring-theme-primary-04"
-        )}
-        value={selectedId ?? ""}
-        onChange={(e) => onSelect(e.target.value || null)}
-      >
-        <option value="">— Select a collection —</option>
-        {allSources.map((s) => {
-          const hasGraph = graphCollectionSet.has(s.id);
-          return (
-            <option key={s.id} value={s.id} disabled={!hasGraph}>
-              {s.name}{s.isDataSource ? " [data source]" : ""}
-            </option>
-          );
-        })}
-      </select>
+      <div className="w-full max-w-sm">
+        <InputSelect
+          value={selectedId ?? ""}
+          onValueChange={(id) => {
+            const val = id || null;
+            onSelect(val, val ? graphCollectionSet.has(val) : false);
+          }}
+          error={highlight}
+        >
+          <InputSelect.Trigger placeholder="— Select a collection —" />
+          <InputSelect.Content>
+            {ragCollections.length > 0 && (
+              <InputSelect.Group>
+                <InputSelect.Label>Collections</InputSelect.Label>
+                {ragCollections.map((c) => {
+                  const hasGraph = graphCollectionSet.has(c.uuid);
+                  return (
+                    <InputSelect.Item key={c.uuid} value={c.uuid}>
+                      <span className="flex items-center">
+                        {c.name}
+                        {!hasGraph && <NoGraphBadge />}
+                      </span>
+                    </InputSelect.Item>
+                  );
+                })}
+              </InputSelect.Group>
+            )}
+            {datasourceItems.length > 0 && (
+              <InputSelect.Group>
+                <InputSelect.Label>Data Sources</InputSelect.Label>
+                {datasourceItems.map((ds) => (
+                  <InputSelect.Item key={ds.id} value={ds.id}>
+                    <span className="flex items-center">
+                      {ds.name}
+                      {!ds.hasGraph && <NoGraphBadge />}
+                    </span>
+                  </InputSelect.Item>
+                ))}
+              </InputSelect.Group>
+            )}
+          </InputSelect.Content>
+        </InputSelect>
+      </div>
       {highlight && (
         <Text as="p" className="text-xs text-status-error-06 font-medium">
-          Please select a collection to use this tab.
+          {!selectedId
+            ? "Please select a collection to use this tab."
+            : "This collection has no built graph. Go to the Build tab to build one first."}
         </Text>
       )}
       {!highlight && hasUnbuilt && (
         <Text as="p" mainContentMuted text03 className="text-xs">
-          Collections without a built graph are disabled. Go to the{" "}
-          <strong>Build</strong> tab to build a graph.
+          Items marked <span className="inline-flex items-center rounded-04 border border-status-warning-03 bg-status-warning-01 px-1 text-[10px] font-medium text-status-warning-06">No graph</span> need a graph built first. Select one and go to the{" "}
+          <strong>Build</strong> tab.
         </Text>
       )}
     </CardSection>
@@ -318,6 +359,7 @@ function Main({
   onTabChange: (tab: string) => void;
 }) {
   const [collectionId, setCollectionId] = useState<string | null>(null);
+  const [selectedHasGraph, setSelectedHasGraph] = useState(false);
   const [selectorHighlight, setSelectorHighlight] = useState(false);
   const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
@@ -327,8 +369,9 @@ function Main({
     highlightTimerRef.current = setTimeout(() => setSelectorHighlight(false), 1800);
   }, []);
 
-  const handleCollectionSelect = useCallback((id: string | null) => {
+  const handleCollectionSelect = useCallback((id: string | null, hasGraph: boolean) => {
     setCollectionId(id);
+    setSelectedHasGraph(hasGraph);
     if (id) {
       setSelectorHighlight(false);
       clearTimeout(highlightTimerRef.current);
@@ -337,14 +380,14 @@ function Main({
 
   const handleTabChange = useCallback(
     (value: string) => {
-      // Block restricted tabs when no collection is selected
-      if (COLLECTION_REQUIRED_TABS.has(value) && !collectionId) {
+      // Block restricted tabs when no collection selected or collection has no graph
+      if (COLLECTION_REQUIRED_TABS.has(value) && (!collectionId || !selectedHasGraph)) {
         triggerCollectionRequired();
         return;
       }
       onTabChange(value);
     },
-    [collectionId, triggerCollectionRequired, onTabChange]
+    [collectionId, selectedHasGraph, triggerCollectionRequired, onTabChange]
   );
 
   const handleBuildComplete = useCallback(
@@ -380,8 +423,8 @@ function Main({
           <Tabs.Trigger
             value="explorer"
             icon={SvgNetworkGraph}
-            disabled={!collectionId}
-            onClick={() => !collectionId && triggerCollectionRequired()}
+            disabled={!collectionId || !selectedHasGraph}
+            onClick={() => (!collectionId || !selectedHasGraph) && triggerCollectionRequired()}
           >
             Graph Explorer
           </Tabs.Trigger>
@@ -391,8 +434,8 @@ function Main({
           <Tabs.Trigger
             value="search"
             icon={SvgSearch}
-            disabled={!collectionId}
-            onClick={() => !collectionId && triggerCollectionRequired()}
+            disabled={!collectionId || !selectedHasGraph}
+            onClick={() => (!collectionId || !selectedHasGraph) && triggerCollectionRequired()}
           >
             Search
           </Tabs.Trigger>
