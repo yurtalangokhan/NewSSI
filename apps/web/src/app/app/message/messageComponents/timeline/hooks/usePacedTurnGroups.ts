@@ -133,6 +133,16 @@ export function usePacedTurnGroups(
     state.revealedStepKeys.size === 0 &&
     toolTurnGroups.length > 0;
 
+  // For messages with no tool steps, mark pacing complete synchronously so
+  // MessageTextRenderer mounts on the FIRST render — before the stop packet
+  // arrives. Without this, the useEffect delay causes the renderer to mount
+  // only after the stop packet is present, which sets animate=false and
+  // disables the streaming animation entirely.
+  const hasAnyToolSteps = toolTurnGroups.some(tg => tg.steps.length > 0);
+  if (!hasAnyToolSteps && !state.toolPacingComplete && !shouldBypassPacing) {
+    state.toolPacingComplete = true;
+  }
+
   // Handle revealing the next pending step
   // Reveals ONE step per timer fire, always with delay between steps
   const revealNextPendingStep = useCallback(() => {

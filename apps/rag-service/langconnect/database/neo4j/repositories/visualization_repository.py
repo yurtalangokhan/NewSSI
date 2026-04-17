@@ -7,6 +7,7 @@ from typing import Any
 
 from langconnect.database.neo4j.queries.visualization import (
     ALL_COLLECTION_EDGES,
+    ALL_LABEL_COUNTS,
     CLUSTER_BY_LABEL,
     COUNT_LABEL_EDGES,
     COUNT_LABEL_NODES,
@@ -264,6 +265,21 @@ class VisualizationRepository(Neo4jRepository):
         for n in overview.nodes:
             if isinstance(n, ClusterNode) and n.is_cluster:
                 n.properties["_rel_type_counts"] = cluster_rel_counts.get(n.id, {})
+
+        # Patch node_count on each cluster with the real Neo4j label count so
+        # the overview badge matches what the user sees after expanding.
+        async with self._session() as session:
+            lc_result = await session.run(ALL_LABEL_COUNTS, cid=self.cid)
+            real_counts: dict[str, int] = {}
+            async for record in lc_result:
+                real_counts[record["label"]] = record["cnt"]
+
+        for n in overview.nodes:
+            if isinstance(n, ClusterNode) and n.is_cluster:
+                real = real_counts.get(n.label)
+                if real is not None and real != n.node_count:
+                    n.node_count = real
+                    n.name = f"{n.label} ({real})"
 
         # Do not return the inter-cluster edges in the UI, just the counts in node properties
         overview.edges = []
@@ -699,20 +715,28 @@ class VisualizationRepository(Neo4jRepository):
         stats: GraphStats,
     ) -> ClusteredGraphData:
         """Build ClusteredGraphData from community assignments."""
-        sorted_comms = sorted(
-            communities.items(), key=lambda x: len(x[1]), reverse=True
-        )
-        if len(sorted_comms) > max_clusters:
-            sorted_comms = sorted_comms[:max_clusters]
+        # Merge ALL communities by dominant label first so every node is
+        # counted before any truncation happens.  Truncating before the merge
+        # caused the overview count to be lower than the true Neo4j count.
+        label_merged: dict[str, list[dict]] = {}
+        for _comm_id, members in communities.items():
+            lfreq: dict[str, int] = {}
+            for m in members:
+                lfreq[m["label"]] = lfreq.get(m["label"], 0) + 1
+            dom = max(lfreq, key=lfreq.get)  # type: ignore[arg-type]
+            label_merged.setdefault(dom, []).extend(members)
+
+        merged_comms = sorted(label_merged.items(), key=lambda x: len(x[1]), reverse=True)
+        if len(merged_comms) > max_clusters:
+            merged_comms = merged_comms[:max_clusters]
 
         cluster_nodes: list[ClusterNode | GraphNode] = []
-        for idx, (comm_id, members) in enumerate(sorted_comms):
+        for idx, (dominant_label, members) in enumerate(merged_comms):
             cluster_id = f"cluster_{idx}"
 
             label_freq: dict[str, int] = {}
             for m in members:
                 label_freq[m["label"]] = label_freq.get(m["label"], 0) + 1
-            dominant_label = max(label_freq, key=label_freq.get)  # type: ignore[arg-type]
 
             top_names = [m["name"] for m in members[:top_entities_per_cluster]]
 
@@ -736,7 +760,7 @@ class VisualizationRepository(Neo4jRepository):
                         node_count=len(members),
                         top_entities=top_names,
                         properties={
-                            "community_id": comm_id,
+                            "community_id": idx,
                             "label_counts": label_freq,
                             "_member_ids": [m["id"] for m in members],
                         },

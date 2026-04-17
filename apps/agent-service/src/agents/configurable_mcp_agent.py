@@ -81,7 +81,7 @@ class ConfigurableMCPAgent(LazyLoadingAgent):
         try:
             from langchain_mcp_adapters.client import MultiServerMCPClient
             
-            url = mcp_url or settings.MCP_SERVER_URL
+            url = mcp_url or getattr(settings, "TOOLS_SERVICE_URL", None) or settings.MCP_SERVER_URL
             
             client = MultiServerMCPClient(
                 connections={

@@ -573,6 +573,7 @@ export default function AgentEditorPage({
       return {
         name: tool.name,
         description: parsed.description,
+        input_schema: parsed.input_schema,
         category: parsed.category,
         categoryLabel: parsed.categoryLabel,
         isAvailable: true,
@@ -582,7 +583,7 @@ export default function AgentEditorPage({
   }, [builtInTools]);
 
   const builtInToolsByCategory = useMemo(
-    () => groupToolsByCategory(allBuiltInTools),
+    () => groupToolsByCategory(allBuiltInTools) as Record<string, (typeof allBuiltInTools[number])[]>,
     [allBuiltInTools]
   );
 
@@ -1476,7 +1477,7 @@ export default function AgentEditorPage({
                                         <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500 px-1">
                                           {builtInCategoryLabelMap[category] || _.startCase(category)}
                                         </div>
-                                        {builtInToolsByCategory[category].map((tool) => (
+                                        {(builtInToolsByCategory[category] ?? []).map((tool) => (
                                           <Card
                                             key={tool.name}
                                             variant={tool.isAvailable ? undefined : "disabled"}

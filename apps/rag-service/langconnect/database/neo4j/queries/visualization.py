@@ -160,6 +160,11 @@ WHERE n.label = $label
 RETURN count(n) AS cnt
 """
 
+ALL_LABEL_COUNTS = """
+MATCH (n:Entity {collection_id: $cid})
+RETURN coalesce(n.label, 'Entity') AS label, count(n) AS cnt
+"""
+
 COUNT_LABEL_EDGES = """
 MATCH (a:Entity {collection_id: $cid})-[r]->(b:Entity {collection_id: $cid})
 WHERE a.label = $label AND b.label = $label
