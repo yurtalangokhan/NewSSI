@@ -190,12 +190,12 @@ export default function BuiltInToolsSection({
                   {categoryLabelMap[category] || category}
                 </span>
                 <Badge variant="secondary" className="ml-1 text-xs">
-                  {groupedTools[category].length}
+                  {(groupedTools[category] ?? []).length}
                 </Badge>
               </CollapsibleTrigger>
               <CollapsibleContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 px-2 pb-4 pt-2">
-                  {groupedTools[category].map((tool) => (
+                  {(groupedTools[category] ?? []).map((tool) => (
                     <ToolCard
                       key={tool.name}
                       tool={tool}

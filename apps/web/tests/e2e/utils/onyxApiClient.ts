@@ -672,7 +672,7 @@ export class OnyxApiClient {
   }
 
   async listMcpServers(): Promise<any[]> {
-    const response = await this.get(`/admin/mcp/servers`);
+    const response = await this.get(`/api/admin/mcp/servers`);
     const data = await this.handleResponse<{ mcp_servers: any[] }>(
       response,
       "Failed to list MCP servers"

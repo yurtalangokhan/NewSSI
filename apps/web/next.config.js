@@ -93,11 +93,6 @@ const nextConfig = {
             process.env.NEXT_PUBLIC_POSTHOG_HOST || "https://us.i.posthog.com"
           }/:path*`,
         },
-        // Proxy datasources/* directly to agent-service (no /api prefix)
-        {
-          source: "/datasources/:path*",
-          destination: `${backendUrl}/datasources/:path*`,
-        },
         // For auth routes without /api prefix
         {
           source: "/auth/:path*",

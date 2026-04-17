@@ -512,6 +512,8 @@ export default function ToolsPlaygroundPage() {
     [groupedTools, categoryLabelMap]
   );
 
+  const filteredTools = toolsWithCategory;
+
   const selectedTool = useMemo(
     () =>
       toolsWithCategory.find((tool) => tool.name === toolName) ?? null,
@@ -636,7 +638,7 @@ export default function ToolsPlaygroundPage() {
                     <SelectLabel>
                       {categoryLabelMap[category] || _.startCase(category)}
                     </SelectLabel>
-                    {groupedTools[category].map((tool) => (
+                    {(groupedTools[category] ?? []).map((tool) => (
                       <SelectItem key={tool.name} value={tool.name}>
                         {_.startCase(tool.name)}
                       </SelectItem>

@@ -6,7 +6,6 @@
 **/*.pyo
 **/*.pyd
 .Python
-env
 venv
 .venv
 *.db

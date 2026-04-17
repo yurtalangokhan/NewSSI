@@ -74,6 +74,9 @@ export interface Persona extends MinimalPersonaSnapshot {
   replace_base_system_prompt: boolean;
   task_prompt: string | null;
   datetime_aware: boolean;
+
+  base_agent?: string;
+  mcp_tools?: string[];
 }
 
 export interface FullPersona extends Persona {

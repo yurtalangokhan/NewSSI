@@ -14,13 +14,13 @@ services:
   # ==========================================================================
 
   agent-service:
-    container_name: agent-service
+    container_name: agent-service-rf
     build:
       context: ../apps/agent-service
       dockerfile: docker/Dockerfile.service
     restart: unless-stopped
     ports:
-      - "8123:8080"
+      - "8125:8080"
     volumes:
       - /tmp/airbyte_local:/tmp/airbyte_local:ro
     extra_hosts:
@@ -53,13 +53,13 @@ services:
       AIRBYTE_SYNC_POLL_INTERVAL_SECONDS: ${AIRBYTE_SYNC_POLL_INTERVAL_SECONDS:-30}
       
       # Neo4j Configuration
-      NEO4J_URI: ${NEO4J_URI:-bolt://host.docker.internal:7687}
+      NEO4J_URI: ${NEO4J_URI:-bolt://host.docker.internal:8697}
       NEO4J_USERNAME: ${NEO4J_USERNAME:-neo4j}
       NEO4J_PASSWORD: ${NEO4J_PASSWORD:-neo4j123}
 
       # MCP Server Configuration
-      MCP_SERVER_URL: ${MCP_SERVER_URL:-http://tools-service:8002/mcp}
-      TOOLS_SERVICE_URL: ${TOOLS_SERVICE_URL:-http://tools-service:8002/mcp}
+      MCP_SERVER_URL: ${MCP_SERVER_URL:-http://tools-service:8003/mcp}
+      TOOLS_SERVICE_URL: ${TOOLS_SERVICE_URL:-http://tools-service:8003/mcp}
       
       # Auth
       AUTH_SECRET: ${AUTH_SECRET:-}
@@ -69,14 +69,14 @@ services:
   # ==========================================================================
 
   rag-service:
-    container_name: rag-service
+    container_name: rag-service-rf
     build:
       context: ../apps/rag-service
       dockerfile: Dockerfile
     image: rag-service:local
     restart: unless-stopped
     ports:
-      - "8083:8080"
+      - "8084:8080"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     environment:
@@ -96,7 +96,7 @@ services:
       OLLAMA_EMBED_MODEL: ${OLLAMA_EMBED_MODEL:-nomic-embed-text}
       
       # Neo4j Configuration
-      NEO4J_URI: ${NEO4J_URI:-bolt://host.docker.internal:7687}
+      NEO4J_URI: ${NEO4J_URI:-bolt://host.docker.internal:8697}
       NEO4J_USERNAME: ${NEO4J_USERNAME:-neo4j}
       NEO4J_PASSWORD: ${NEO4J_PASSWORD:-neo4j123}
 
@@ -105,17 +105,17 @@ services:
   # ==========================================================================
 
   tools-service:
-    container_name: tools-service
+    container_name: tools-service-rf
     build:
       context: ../apps/tools-service
       dockerfile: Dockerfile
     image: tools-service:local
     restart: unless-stopped
     ports:
-      - "8002:8002"
+      - "8003:8003"
     environment:
       MCP_HOST: "0.0.0.0"
-      MCP_PORT: "8002"
+      MCP_PORT: "8003"
     volumes:
       - ./workspace:/workspace
 
@@ -124,23 +124,29 @@ services:
   # ==========================================================================
 
   web:
-    container_name: web
+    container_name: web-rf
     build:
       context: ../apps/web
       dockerfile: Dockerfile
+      args:
+        INTERNAL_URL: ${INTERNAL_URL:-http://agent-service:8080}
     image: web:local
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "8126:3000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       # Backend URLs
       INTERNAL_URL: ${INTERNAL_URL:-http://agent-service:8080}
       AGENT_SERVICE_URL: ${AGENT_SERVICE_URL:-http://agent-service:8080}
       LANGCONNECT_URL: ${LANGCONNECT_URL:-http://rag-service:8080}
-      MCP_INTERNAL_URL: ${MCP_INTERNAL_URL:-http://tools-service:8002}
-      MCP_SERVER_URL: ${MCP_SERVER_URL:-http://tools-service:8002}
+      MCP_INTERNAL_URL: ${MCP_INTERNAL_URL:-http://tools-service:8003}
+      MCP_SERVER_URL: ${MCP_SERVER_URL:-http://tools-service:8003}
       OLLAMA_URL: ${OLLAMA_URL:-http://host.docker.internal:11434}
-      WEB_DOMAIN: ${WEB_DOMAIN:-http://localhost:3000}
+      WEB_DOMAIN: ${WEB_DOMAIN:-http://localhost:8126}
+      NODE_ENV: ${NODE_ENV:-development}
+      OVERRIDE_API_PRODUCTION: ${OVERRIDE_API_PRODUCTION:-true}
       
       # Auth
       AUTH_TYPE: basic
@@ -156,5 +162,5 @@ services:
       EE_ENABLED: "false"
     depends_on:
       - agent-service
-      - rag-service
-      - tools-service
+      # - rag-service
+      # - tools-service

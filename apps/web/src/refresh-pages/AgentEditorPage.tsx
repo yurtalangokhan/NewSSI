@@ -653,60 +653,6 @@ export default function AgentEditorPage({
       ])
     ),
 
-    // Knowledge - enabled if agent has any knowledge sources attached
-    enable_knowledge:
-      (existingAgent?.document_sets?.length ?? 0) > 0 ||
-      (existingAgent?.hierarchy_nodes?.length ?? 0) > 0 ||
-      (existingAgent?.attached_documents?.length ?? 0) > 0 ||
-      (existingAgent?.user_file_ids?.length ?? 0) > 0,
-    document_set_ids: existingAgent?.document_sets?.map((ds) => ds.id) ?? [],
-    // Individual document IDs from hierarchy browsing
-    document_ids: existingAgent?.attached_documents?.map((doc) => doc.id) ?? [],
-    // Hierarchy node IDs (folders/spaces/channels) for scoped search
-    hierarchy_node_ids:
-      existingAgent?.hierarchy_nodes?.map((node) => node.id) ?? [],
-    user_file_ids: existingAgent?.user_file_ids ?? [],
-    // Selected sources for the new knowledge UI - derived from document sets
-    selected_sources: [] as ValidSources[],
-
-    // Advanced
-    llm_model_provider_override:
-      existingAgent?.llm_model_provider_override ?? null,
-    llm_model_version_override:
-      existingAgent?.llm_model_version_override ?? null,
-    knowledge_cutoff_date: existingAgent?.search_start_date
-      ? new Date(existingAgent.search_start_date)
-      : null,
-    replace_base_system_prompt:
-      existingAgent?.replace_base_system_prompt ?? false,
-    reminders: existingAgent?.task_prompt ?? "",
-    // For new agents, default to false for optional tools to avoid
-    // "Tool not available" errors when the tool isn't configured.
-    // For existing agents, preserve the current tool configuration.
-    image_generation:
-      !!imageGenTool &&
-      (existingAgent?.tools?.some(
-        (tool) => tool.in_code_tool_id === IMAGE_GENERATION_TOOL_ID
-      ) ??
-        false),
-    web_search:
-      !!webSearchTool &&
-      (existingAgent?.tools?.some(
-        (tool) => tool.in_code_tool_id === WEB_SEARCH_TOOL_ID
-      ) ??
-        false),
-    open_url:
-      !!openURLTool &&
-      (existingAgent?.tools?.some(
-        (tool) => tool.in_code_tool_id === OPEN_URL_TOOL_ID
-      ) ??
-        false),
-    code_interpreter:
-      !!codeInterpreterTool &&
-      (existingAgent?.tools?.some(
-        (tool) => tool.in_code_tool_id === PYTHON_TOOL_ID
-      ) ??
-        false),
     // MCP servers - dynamically add fields for each server with nested tool fields
     ...Object.fromEntries(
       mcpServersWithTools.map(({ server, tools }) => {
@@ -1272,7 +1218,6 @@ export default function AgentEditorPage({
                           >
                             <InputSelectField
                               name="base_agent"
-                              placeholder="Select base agent"
                             >
                               <InputSelect.Trigger placeholder="Select base agent" />
                               <InputSelect.Content>
@@ -1462,7 +1407,7 @@ export default function AgentEditorPage({
                               {/* MCP tools (from external MCP servers) - only show when configurable-mcp-agent is selected */}
                               {values.base_agent === "configurable-mcp-agent" && allMcpTools.length > 0 && (
                                 <GeneralLayouts.Section gap={0.5}>
-                                  <Text base>External MCP Tools</Text>
+                                  <Text>External MCP Tools</Text>
                                   {allMcpTools.map((tool) => (
                                     <Card
                                       key={tool.name}
@@ -1470,7 +1415,7 @@ export default function AgentEditorPage({
                                     >
                                       <InputLayouts.Horizontal
                                         name={`mcp_tool_${tool.name}`}
-                                        title={tool.display_name || tool.name}
+                                        title={tool.name}
                                         description={tool.description}
                                         disabled={!tool.isAvailable}
                                       >
@@ -1487,7 +1432,7 @@ export default function AgentEditorPage({
                               {/* Built-in tools from tools-service - only show when configurable-mcp-agent is selected */}
                               {values.base_agent === "configurable-mcp-agent" && allBuiltInTools.length > 0 && (
                                 <GeneralLayouts.Section gap={0.5}>
-                                  <Text base>Tools Service</Text>
+                                  <Text>Tools Service</Text>
                                   {allBuiltInTools.map((tool) => (
                                     <Card
                                       key={tool.name}

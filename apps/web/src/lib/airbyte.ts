@@ -164,8 +164,8 @@ export interface SyncScheduleInput {
 
 export function useAirbyteConnectors(search?: string) {
   const url = search
-    ? `/datasources/connectors?search=${encodeURIComponent(search)}`
-    : "/datasources/connectors";
+    ? `/api/agent/datasources/connectors?search=${encodeURIComponent(search)}`
+    : "/api/agent/datasources/connectors";
 
   const { data, error, isLoading, mutate } =
     useSWR<AirbyteConnectorsResponse>(url, errorHandlingFetcher);
@@ -180,7 +180,7 @@ export function useAirbyteConnectors(search?: string) {
 
 export function useAirbyteDatasources() {
   const { data, error, isLoading, mutate } = useSWR<AirbyteDatasource[]>(
-    "/datasources",
+    "/api/agent/datasources",
     errorHandlingFetcher,
     { refreshInterval: 30_000 }
   );
@@ -195,7 +195,7 @@ export function useAirbyteDatasources() {
 
 export function useDatasourceStatus(id: string | null, active: boolean) {
   const { data, error, isLoading, mutate } = useSWR<SyncStatusResponse>(
-    active && id ? `/datasources/${id}/status` : null,
+    active && id ? `/api/agent/datasources/${id}/status` : null,
     errorHandlingFetcher,
     { refreshInterval: 2_000 }
   );
@@ -205,7 +205,7 @@ export function useDatasourceStatus(id: string | null, active: boolean) {
 
 export function useDatasourceSyncHistory(id: string | null, open: boolean) {
   const { data, error, isLoading, mutate } = useSWR<SyncAttempt[]>(
-    open && id ? `/datasources/${id}/sync-history` : null,
+    open && id ? `/api/agent/datasources/${id}/sync-history` : null,
     errorHandlingFetcher
   );
 
@@ -214,7 +214,7 @@ export function useDatasourceSyncHistory(id: string | null, open: boolean) {
 
 export function useDatasourceSchedule(id: string | null) {
   const { data, error, isLoading, mutate } = useSWR<ScheduleInfo>(
-    id ? `/datasources/${id}/schedule` : null,
+    id ? `/api/agent/datasources/${id}/schedule` : null,
     errorHandlingFetcher
   );
 
@@ -229,7 +229,7 @@ export async function fetchConnectorSpec(
   connectorName: string
 ): Promise<ConnectorSpec> {
   const res = await fetch(
-    `/datasources/connectors/${encodeURIComponent(connectorName)}/spec`
+    `/api/agent/datasources/connectors/${encodeURIComponent(connectorName)}/spec`
   );
   if (!res.ok) {
     throw new Error(`Failed to fetch spec for ${connectorName}`);
@@ -242,7 +242,7 @@ export async function validateConnectorConfig(
   config: Record<string, unknown>
 ): Promise<{ valid: boolean; message: string }> {
   const res = await fetch(
-    `/datasources/connectors/${encodeURIComponent(connectorName)}/validate`,
+    `/api/agent/datasources/connectors/${encodeURIComponent(connectorName)}/validate`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -257,7 +257,7 @@ export async function fetchConnectorStreams(
   config: Record<string, unknown>
 ): Promise<StreamInfo[]> {
   const res = await fetch(
-    `/datasources/connectors/${encodeURIComponent(connectorName)}/streams`,
+    `/api/agent/datasources/connectors/${encodeURIComponent(connectorName)}/streams`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -281,7 +281,7 @@ export class DatasourceConflictError extends Error {
 export async function createDatasource(
   input: CreateDatasourceInput
 ): Promise<AirbyteDatasource> {
-  const res = await fetch("/datasources", {
+  const res = await fetch("/api/agent/datasources", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
@@ -302,7 +302,7 @@ export async function updateDatasource(
   id: string,
   input: UpdateDatasourceInput
 ): Promise<DataSourceDetails> {
-  const res = await fetch(`/datasources/${id}`, {
+  const res = await fetch(`/api/agent/datasources/${id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
@@ -315,7 +315,7 @@ export async function updateDatasource(
 }
 
 export async function deleteDatasource(id: string): Promise<void> {
-  const res = await fetch(`/datasources/${id}`, {
+  const res = await fetch(`/api/agent/datasources/${id}`, {
     method: "DELETE",
   });
   if (!res.ok) {
@@ -325,7 +325,7 @@ export async function deleteDatasource(id: string): Promise<void> {
 }
 
 export async function syncDatasource(id: string): Promise<void> {
-  const res = await fetch(`/datasources/${id}/sync`, {
+  const res = await fetch(`/api/agent/datasources/${id}/sync`, {
     method: "POST",
   });
   if (!res.ok) {
@@ -339,7 +339,7 @@ export async function createSchedule(
   input: SyncScheduleInput
 ): Promise<ScheduleInfo> {
   const res = await fetch(
-    `/datasources/${datasourceId}/schedule`,
+    `/api/agent/datasources/${datasourceId}/schedule`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -358,7 +358,7 @@ export async function updateSchedule(
   input: Partial<SyncScheduleInput>
 ): Promise<ScheduleInfo> {
   const res = await fetch(
-    `/datasources/${datasourceId}/schedule`,
+    `/api/agent/datasources/${datasourceId}/schedule`,
     {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -374,7 +374,7 @@ export async function updateSchedule(
 
 export async function deleteSchedule(datasourceId: string): Promise<void> {
   const res = await fetch(
-    `/datasources/${datasourceId}/schedule`,
+    `/api/agent/datasources/${datasourceId}/schedule`,
     { method: "DELETE" }
   );
   if (!res.ok) {

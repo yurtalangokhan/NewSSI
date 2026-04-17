@@ -13,10 +13,15 @@ RUN pip install uv
 RUN uv lock && uv sync --frozen --no-install-project --no-dev
 
 COPY src/agents/ ./agents/
+COPY src/api/ ./api/
+COPY src/client/ ./client/
+COPY src/controller/ ./controller/
 COPY src/core/ ./core/
+COPY src/domain/ ./domain/
 COPY src/memory/ ./memory/
 COPY src/schema/ ./schema/
 COPY src/service/ ./service/
+COPY src/app.py .
 COPY src/run_service.py .
 COPY alembic.ini .
 # Symlink so alembic.ini's "src/core/..." path resolves inside /app/

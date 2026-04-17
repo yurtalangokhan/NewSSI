@@ -77,7 +77,7 @@ async function handleRequest(request: NextRequest, path: string[]) {
   }
 
   try {
-    const backendUrl = new URL(`${INTERNAL_URL}/${path.join("/")}`);
+    const backendUrl = new URL(`${INTERNAL_URL}/api/${path.join("/")}`);
 
     // Get the URL parameters from the request
     const urlParams = new URLSearchParams(request.url.split("?")[1]);

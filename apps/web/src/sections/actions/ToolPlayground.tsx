@@ -24,7 +24,6 @@ import { Loader2, Play, AlertCircle, CheckCircle } from "lucide-react";
 import { ToolWithCategory } from "@/lib/tools/builtInToolUtils";
 import { executeBuiltInTool, ToolExecuteResponse } from "@/lib/tools/mcpService";
 import { toast } from "@/hooks/useToast";
-import { cn } from "@/lib/utils";
 import _ from "lodash";
 
 interface ToolPlaygroundProps {
@@ -70,9 +69,6 @@ function SchemaForm({
             <div className="flex items-center justify-between">
               <Label
                 name={name}
-                className={cn(
-                  isRequired && "after:ml-0.5 after:text-red-500 after:content-['*']"
-                )}
               >
                 {_.startCase(label)}
               </Label>
