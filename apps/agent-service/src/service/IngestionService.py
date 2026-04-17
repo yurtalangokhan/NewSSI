@@ -121,7 +121,7 @@ async def run_ingestion(
             await update_sync_status(datasource_id, "error", "No Airbyte connection found")
             return
 
-        from service.airbyte_api_client import get_airbyte_client
+        from service.AirbyteApiClientService import get_airbyte_client
         client = get_airbyte_client()
 
         # Trigger the sync — destination-embedding streams batches in real-time
