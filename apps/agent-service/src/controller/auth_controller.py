@@ -1,6 +1,7 @@
 """Auth controller - handles authentication, chat sessions, personas, and user preferences."""
 
 import logging
+import re
 from typing import Any
 
 from controller.base import BaseController
@@ -180,6 +181,7 @@ class AuthController(BaseController):
             thread_metadata = thread.get("metadata", {}) if thread else {}
 
             messages = []
+            packets_2d: list[list[dict]] = []
             checkpointer = get_checkpointer()
 
             if checkpointer:
@@ -191,48 +193,150 @@ class AuthController(BaseController):
                         raw_values = checkpoint_tuple.checkpoint.get("channel_values", {})
                         langgraph_messages = raw_values.get("messages", [])
 
-                        for idx, msg in enumerate(langgraph_messages):
-                            msg_type = "user"
-                            msg_content = ""
+                        # Helper to strip <think>...</think> tags from content
+                        def _strip_think_tags(text: str) -> str:
+                            if not text:
+                                return text
+                            result = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
+                            result = re.sub(r"<thinking>.*?</thinking>", "", result, flags=re.DOTALL)
+                            # Also strip incomplete opening tags at the end
+                            result = re.sub(r"<think>(?:(?!</think>).)*$", "", result, flags=re.DOTALL)
+                            result = re.sub(r"<thinking>(?:(?!</thinking>).)*$", "", result, flags=re.DOTALL)
+                            return result.strip()
 
-                            if hasattr(msg, "type"):
-                                msg_type = "assistant" if msg.type in ("ai", "tool") else "user"
-                            elif isinstance(msg, dict):
-                                msg_type = (
-                                    "assistant" if msg.get("type") in ("ai", "tool") else "user"
-                                )
-
+                        # Helper to extract text content from various message formats
+                        def _extract_content(msg) -> str:
                             if hasattr(msg, "content"):
                                 content = msg.content
                             elif isinstance(msg, dict):
                                 content = msg.get("content", "")
                             else:
-                                content = ""
-
+                                return ""
                             if isinstance(content, str):
-                                msg_content = content
+                                return content
                             elif isinstance(content, list):
                                 for c in content:
-                                    if isinstance(c, dict):
-                                        if c.get("type") == "text":
-                                            msg_content = c.get("text", "")
-                                            break
+                                    if isinstance(c, dict) and c.get("type") == "text":
+                                        return c.get("text", "")
                                     elif isinstance(c, str):
-                                        msg_content = c
-                                        break
+                                        return c
                             elif isinstance(content, dict):
-                                msg_content = content.get("text", "") or str(content)
+                                return content.get("text", "") or str(content)
+                            return ""
 
-                            parent_msg_id = idx if idx > 0 else None
-                            latest_child_id = idx + 2 if idx < len(langgraph_messages) - 1 else None
+                        # First pass: collect tool call info per AI message for packet reconstruction
+                        # pending_tool_packets collects packets for the current assistant turn
+                        pending_tool_packets: list[dict] = []
+                        msg_idx = 0  # sequential message id counter
+
+                        for raw_msg in langgraph_messages:
+                            raw_type = getattr(raw_msg, "type", None)
+                            if raw_type is None and isinstance(raw_msg, dict):
+                                raw_type = raw_msg.get("type", "")
+
+                            # --- Tool messages: add delta packet, skip as visible message ---
+                            if raw_type == "tool":
+                                tool_name = getattr(raw_msg, "name", "") or ""
+                                tool_content = _extract_content(raw_msg)
+                                pending_tool_packets.append({
+                                    "placement": {"turn_index": 0, "sub_turn_index": None},
+                                    "obj": {
+                                        "type": "custom_tool_delta",
+                                        "tool_name": tool_name,
+                                        "response_type": "tool_result",
+                                        "data": tool_content,
+                                    },
+                                })
+                                continue
+
+                            # --- AI messages ---
+                            if raw_type == "ai":
+                                tool_calls = getattr(raw_msg, "tool_calls", None) or []
+                                msg_content = _strip_think_tags(_extract_content(raw_msg))
+
+                                if tool_calls and not msg_content:
+                                    # AI message that only has tool_calls (no final answer)
+                                    # → emit custom_tool_start packets, skip as visible message
+                                    for tc in tool_calls:
+                                        tc_name = tc.get("name", "tool") if isinstance(tc, dict) else getattr(tc, "name", "tool")
+                                        pending_tool_packets.append({
+                                            "placement": {"turn_index": 0, "sub_turn_index": None},
+                                            "obj": {
+                                                "type": "custom_tool_start",
+                                                "tool_name": tc_name,
+                                            },
+                                        })
+                                    continue
+
+                                # AI message with actual content (final answer)
+                                # Flush pending tool packets for this assistant turn
+                                # and bump turn_index for the display packets
+                                turn_packets = []
+                                if pending_tool_packets:
+                                    turn_packets.extend(pending_tool_packets)
+                                    pending_tool_packets = []
+                                # Add display packets with a different turn_index
+                                display_turn = 1 if turn_packets else 0
+                                turn_packets.append({
+                                    "placement": {"turn_index": display_turn, "sub_turn_index": None},
+                                    "obj": {
+                                        "type": "message_start",
+                                        "content": msg_content,
+                                        "final_documents": None,
+                                    },
+                                })
+                                turn_packets.append({
+                                    "placement": {"turn_index": display_turn, "sub_turn_index": None},
+                                    "obj": {
+                                        "type": "stop",
+                                        "stop_reason": "finished",
+                                    },
+                                })
+                                packets_2d.append(turn_packets)
+
+                                parent_msg_id = msg_idx if msg_idx > 0 else None
+                                msg_idx += 1
+
+                                messages.append(
+                                    {
+                                        "message_id": msg_idx,
+                                        "message_type": "assistant",
+                                        "research_type": None,
+                                        "parent_message": parent_msg_id,
+                                        "latest_child_message": None,
+                                        "message": msg_content,
+                                        "rephrased_query": None,
+                                        "context_docs": None,
+                                        "time_sent": None,
+                                        "overridden_model": None,
+                                        "alternate_assistant_id": thread_metadata.get("persona_id"),
+                                        "chat_session_id": chat_session_id,
+                                        "citations": None,
+                                        "files": [],
+                                        "tool_call": None,
+                                        "current_feedback": None,
+                                        "processing_duration_seconds": None,
+                                        "sub_questions": [],
+                                        "comments": None,
+                                        "parentMessageId": parent_msg_id,
+                                        "refined_answer_improvement": None,
+                                        "is_agentic": None,
+                                    }
+                                )
+                                continue
+
+                            # --- Human messages ---
+                            msg_content = _strip_think_tags(_extract_content(raw_msg))
+                            parent_msg_id = msg_idx if msg_idx > 0 else None
+                            msg_idx += 1
 
                             messages.append(
                                 {
-                                    "message_id": idx + 1,
-                                    "message_type": msg_type,
+                                    "message_id": msg_idx,
+                                    "message_type": "user",
                                     "research_type": None,
                                     "parent_message": parent_msg_id,
-                                    "latest_child_message": latest_child_id,
+                                    "latest_child_message": None,
                                     "message": msg_content,
                                     "rephrased_query": None,
                                     "context_docs": None,
@@ -252,6 +356,10 @@ class AuthController(BaseController):
                                     "is_agentic": None,
                                 }
                             )
+
+                        # Fix latest_child_message links
+                        for i in range(len(messages) - 1):
+                            messages[i]["latest_child_message"] = messages[i + 1]["message_id"]
 
                 except Exception as e:
                     logger.error(f"Failed to get messages from checkpointer: {e}")
@@ -275,7 +383,7 @@ class AuthController(BaseController):
                 "current_temperature_override": None,
                 "current_alternate_model": None,
                 "owner_name": None,
-                "packets": [],
+                "packets": packets_2d,
             }
         except Exception as e:
             logger.error(f"Error getting chat session: {e}")

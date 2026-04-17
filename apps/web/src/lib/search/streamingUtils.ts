@@ -85,6 +85,17 @@ function mapBackendToFrontend(packet: BackendPacket): { placement: any; obj: any
           stop_reason: "finished",
         },
       };
+
+    // Tool lifecycle packets — pass through directly for AgentTimeline
+    case "custom_tool_start":
+    case "custom_tool_delta":
+    case "search_tool_start":
+    case "search_tool_queries_delta":
+    case "search_tool_documents_delta":
+      return {
+        placement: defaultPlacement,
+        obj: packet,
+      };
     
     default:
       // Unknown packet type - return as-is wrapped
@@ -95,6 +106,12 @@ function mapBackendToFrontend(packet: BackendPacket): { placement: any; obj: any
   }
 }
 
+// Packet types that represent tool lifecycle events (shown in timeline)
+const TOOL_PACKET_TYPES = new Set([
+  "custom_tool_start", "custom_tool_delta",
+  "search_tool_start", "search_tool_queries_delta", "search_tool_documents_delta",
+]);
+
 export async function* handleSSEStream<T extends PacketType>(
   streamingResponse: Response,
   signal?: AbortSignal
@@ -102,6 +119,12 @@ export async function* handleSSEStream<T extends PacketType>(
   const reader = streamingResponse.body?.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
+
+  // Track turn_index so tool packets and message packets land in separate groups.
+  // The frontend packetProcessor classifies an entire group by its *first* packet,
+  // so tool packets must have a different turn_index than message/display packets.
+  let turnIndex = 0;
+  let sawToolPackets = false;
   
   if (signal) {
     signal.addEventListener("abort", () => {
@@ -133,7 +156,7 @@ export async function* handleSSEStream<T extends PacketType>(
         const trimmedLine = line.trim();
         if (trimmedLine === "data: [DONE]" || trimmedLine === "[DONE]" || trimmedLine === "data:") {
           yield {
-            placement: { turn_index: 0, sub_turn_index: null },
+            placement: { turn_index: turnIndex, sub_turn_index: null },
             obj: { type: "stop", stop_reason: "finished" },
           } as T;
           continue;
@@ -146,7 +169,19 @@ export async function* handleSSEStream<T extends PacketType>(
 
         try {
           const backendPacket = JSON.parse(jsonLine) as BackendPacket;
+
+          // Advance turn_index when transitioning from tool → non-tool packets
+          // so they end up in separate groups for the packetProcessor.
+          const isToolPkt = TOOL_PACKET_TYPES.has(backendPacket.type);
+          if (isToolPkt) {
+            sawToolPackets = true;
+          } else if (sawToolPackets) {
+            turnIndex++;
+            sawToolPackets = false;
+          }
+
           const mappedPacket = mapBackendToFrontend(backendPacket);
+          mappedPacket.placement.turn_index = turnIndex;
           yield mappedPacket as T;
         } catch (error) {
           console.error("Error parsing SSE data:", error);

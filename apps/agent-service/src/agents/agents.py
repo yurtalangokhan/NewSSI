@@ -3,31 +3,19 @@ from dataclasses import dataclass
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.pregel import Pregel
 
-from agents.bg_task_agent.bg_task_agent import bg_task_agent
 from agents.chatbot import chatbot
-from agents.command_agent import command_agent
 from agents.configurable_mcp_agent import configurable_mcp_agent
-from agents.github_mcp_agent.github_mcp_agent import github_mcp_agent
-from agents.graph_rag_assistant import graph_rag_assistant
-from agents.interrupt_agent import interrupt_agent
-from agents.knowledge_base_agent import kb_agent
-from agents.langgraph_supervisor_agent import langgraph_supervisor_agent
-from agents.langgraph_supervisor_hierarchy_agent import langgraph_supervisor_hierarchy_agent
 from agents.lazy_agent import LazyLoadingAgent
-from agents.rag_assistant import rag_assistant
-from agents.research_assistant import research_assistant
 from core.logger import get_logger
 from schema import AgentInfo
 
 logger = get_logger(__name__)
 
-DEFAULT_AGENT = "research-assistant"
+DEFAULT_AGENT = "chatbot"
 
 # Type alias to handle LangGraph's different agent patterns
-# - @entrypoint functions return Pregel
-# - StateGraph().compile() returns CompiledStateGraph
-AgentGraph = CompiledStateGraph | Pregel  # What get_agent() returns (always loaded)
-AgentGraphLike = CompiledStateGraph | Pregel | LazyLoadingAgent  # What can be stored in registry
+AgentGraph = CompiledStateGraph | Pregel
+AgentGraphLike = CompiledStateGraph | Pregel | LazyLoadingAgent
 
 
 @dataclass
@@ -36,99 +24,16 @@ class Agent:
     graph_like: AgentGraphLike
 
 
-def _load_config_agents() -> dict[str, Agent]:
-    """Load agents from JSON config files (non-breaking, adds extra agents)."""
-    config_agents = {}
-    try:
-        from agents.configs import load_agent_configs
-
-        configs = load_agent_configs()
-
-        for config in configs:
-            name = config.get("name")
-            if not name:  # Skip if no name
-                continue
-
-            description = config.get("description", "Config-based agent")
-
-            # Get the manager classes from new structure
-            agent_type = config.get("type", "manager")
-
-            if agent_type == "manager":
-                from agents.managers import get_supervisor, get_pipeline
-
-                if "pipeline" in name.lower():
-                    config_agents[name] = Agent(
-                        description=description,
-                        graph_like=get_pipeline(config),
-                    )
-                else:
-                    config_agents[name] = Agent(
-                        description=description,
-                        graph_like=get_supervisor(config),
-                    )
-            else:
-                # For basic agents, could be added later
-                config_agents[name] = Agent(
-                    description=description,
-                    graph_like=chatbot,  # Fallback to chatbot
-                )
-
-        if config_agents:
-            logger.info(
-                "Loaded %d config-based agents: %s", len(config_agents), list(config_agents.keys())
-            )
-
-    except Exception as e:
-        logger.warning("Config loading skipped: %s", e)
-
-    return config_agents
-
-
-# Base hardcoded agents (these are the actual implementations)
-_base_agents: dict[str, Agent] = {
-    "chatbot": Agent(description="A simple chatbot.", graph_like=chatbot),
-    "research-assistant": Agent(
-        description="A research assistant with web search and calculator.",
-        graph_like=research_assistant,
+agents: dict[str, Agent] = {
+    "chatbot": Agent(
+        description="A simple chatbot that uses the default model.",
+        graph_like=chatbot,
     ),
-    "rag-assistant": Agent(
-        description="A RAG assistant with access to information in a database.",
-        graph_like=rag_assistant,
-    ),
-    "graph-rag-assistant": Agent(
-        description="A hybrid RAG assistant using vector search and Neo4j knowledge graph with RRF scoring.",
-        graph_like=graph_rag_assistant,
-    ),
-    "command-agent": Agent(description="A command agent.", graph_like=command_agent),
-    "bg-task-agent": Agent(description="A background task agent.", graph_like=bg_task_agent),
     "configurable-mcp-agent": Agent(
         description="A configurable agent with custom system prompt and MCP tool selection.",
         graph_like=configurable_mcp_agent,
     ),
-    "langgraph-supervisor-agent": Agent(
-        description="A langgraph supervisor agent", graph_like=langgraph_supervisor_agent
-    ),
-    "langgraph-supervisor-hierarchy-agent": Agent(
-        description="A langgraph supervisor agent with a nested hierarchy of agents",
-        graph_like=langgraph_supervisor_hierarchy_agent,
-    ),
-    "interrupt-agent": Agent(
-        description="An agent the uses interrupts.", graph_like=interrupt_agent
-    ),
-    "knowledge-base-agent": Agent(
-        description="A retrieval-augmented generation agent using Amazon Bedrock Knowledge Base",
-        graph_like=kb_agent,
-    ),
-    "github-mcp-agent": Agent(
-        description="A GitHub agent with MCP tools for repository management and development workflows.",
-        graph_like=github_mcp_agent,
-    ),
 }
-
-# Combine base agents with config-loaded agents
-_config_agents = _load_config_agents()
-agents = {**_base_agents, **_config_agents}
 
 
 async def load_agent(agent_id: str) -> None:

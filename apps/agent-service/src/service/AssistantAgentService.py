@@ -262,11 +262,10 @@ class AssistantAgentService:
                         model_name=model_name,
                     )
 
-            graph = graph_like.get_graph()
-            # Set checkpointer on the compiled graph
-            if checkpointer:
-                graph.checkpointer = checkpointer
-            return graph
+            # For LazyLoadingAgents that handle configurable via their own astream()
+            # (e.g. ConfigurableMCPAgent), return the agent itself so its astream()
+            # is called and it can read mcp_tools/system_prompt from the RunnableConfig.
+            return graph_like
 
         # For non-lazy agents, ensure checkpointer is set
         if checkpointer and hasattr(graph_like, "checkpointer"):

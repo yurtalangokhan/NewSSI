@@ -59,6 +59,11 @@ class LazyLoadingAgent(ABC):
             raise RuntimeError("Agent graph not created during load().")
         return self._graph
 
+    async def aget_state(self, config=None, **kwargs):
+        """Delegate aget_state to the underlying compiled graph."""
+        await self.ensure_loaded()
+        return await self._graph.aget_state(config=config, **kwargs)
+
     def _get_langgraph_store(self):
         """Get the global LangGraph store for long-term memory."""
         try:

@@ -8,7 +8,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from fastapi import APIRouter, Request, Response
+from fastapi import APIRouter, HTTPException, Request, Response
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
@@ -35,20 +35,10 @@ def _get_controller() -> AuthController:
     """Get the singleton AuthController instance."""
     return get_auth_controller()
 
-# Agent to persona_id mapping
+# Built-in agent to fixed persona_id mapping (these are not stored in DB)
 AGENT_TO_PERSONA_ID: dict[str, int] = {
     "chatbot": 0,
-    "research-assistant": 1,
-    "rag-assistant": 2,
-    "graph-rag-assistant": 3,
-    "command-agent": 4,
-    "bg-task-agent": 5,
-    "configurable-mcp-agent": 6,
-    "langgraph-supervisor-agent": 7,
-    "langgraph-supervisor-hierarchy-agent": 8,
-    "interrupt-agent": 9,
-    "knowledge-base-agent": 10,
-    "github-mcp-agent": 11,
+    "configurable-mcp-agent": 1,
 }
 
 PERSONA_ID_TO_AGENT: dict[int, str] = {v: k for k, v in AGENT_TO_PERSONA_ID.items()}
@@ -520,15 +510,35 @@ async def send_chat_message(request: Request):
     except Exception as e:
         logger.warning(f"Failed to manage thread in store: {e}")
 
-    # Determine which agent to use
+    # Determine which agent to use and build agent config from persona
     agent_key = DEFAULT_AGENT
+    agent_config: dict = dict(llm_override or {})
+
     if persona_id is not None:
-        agent_key = PERSONA_ID_TO_AGENT.get(persona_id, DEFAULT_AGENT)
+        # Check custom personas first (DB), then fall back to built-in mapping
+        try:
+            custom_persona = await PersonaDB.get(persona_id)
+        except Exception:
+            custom_persona = None
+
+        if custom_persona and not custom_persona.get("is_builtin"):
+            # Custom persona: route to its base_agent and inject persona config
+            agent_key = custom_persona.get("base_agent") or DEFAULT_AGENT
+            # Pass system_prompt and mcp_tools so the agent can configure itself
+            if custom_persona.get("system_prompt"):
+                agent_config["system_prompt"] = custom_persona["system_prompt"]
+            if custom_persona.get("mcp_tools"):
+                agent_config["mcp_tools"] = custom_persona["mcp_tools"]
+            if custom_persona.get("llm_model_version_override"):
+                agent_config.setdefault("model", custom_persona["llm_model_version_override"])
+        else:
+            # Built-in persona id → built-in agent key
+            agent_key = PERSONA_ID_TO_AGENT.get(persona_id, DEFAULT_AGENT)
 
     stream_input = StreamInput(
         message=message or "",
         thread_id=session_id,
-        agent_config=llm_override or {},
+        agent_config=agent_config,
     )
 
     async def generate_stream():
@@ -572,16 +582,21 @@ async def send_chat_message(request: Request):
 async def get_personas():
     """Get all personas/agents - built-in agents + custom from DB."""
     personas = []
-    agents = get_all_agent_info()
 
-    # Built-in agents
-    for i, agent in enumerate(agents):
-        persona_id = AGENT_TO_PERSONA_ID.get(agent.key, i)
+    # Built-in agents (only the two we expose)
+    builtin_display = {
+        "chatbot": "Chatbot",
+        "configurable-mcp-agent": "Configurable MCP Agent",
+    }
+    for agent_key, display_name in builtin_display.items():
+        persona_id = AGENT_TO_PERSONA_ID[agent_key]
+        from agents.agents import agents as all_agents
+        description = all_agents[agent_key].description if agent_key in all_agents else ""
         personas.append(
             {
                 "id": persona_id,
-                "name": agent.key.replace("-", " ").title(),
-                "description": agent.description,
+                "name": display_name,
+                "description": description,
                 "tools": [],
                 "starter_messages": None,
                 "document_sets": [],
@@ -592,6 +607,8 @@ async def get_personas():
                 "builtin_persona": True,
                 "labels": [],
                 "owner": {"id": "system", "email": "System"},
+                "base_agent": agent_key,
+                "mcp_tools": [],
             }
         )
 
@@ -693,17 +710,16 @@ async def create_persona(request: PersonaUpsertRequest):
             "mcp_tools": persona.get("mcp_tools", []),
         }
     except Exception as e:
-        return {"error": str(e)}, 500
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.patch("/api/persona/{persona_id}")
 async def update_persona(persona_id: int, request: PersonaUpsertRequest):
     """Update an existing persona/agent."""
     try:
-        # Check if it's a built-in persona - prevent updates to core fields
         existing = await PersonaDB.get(persona_id)
         if existing and existing.get("is_builtin"):
-            return {"error": "Cannot update built-in agents"}, 403
+            raise HTTPException(status_code=403, detail="Cannot update built-in agents")
 
         persona = await PersonaDB.update(
             persona_id,
@@ -720,27 +736,29 @@ async def update_persona(persona_id: int, request: PersonaUpsertRequest):
             base_agent=request.base_agent,
             mcp_tools=request.mcp_tools if request.mcp_tools else [],
         )
-        if persona:
-            return {
-                "id": persona["id"],
-                "name": persona["name"],
-                "description": persona["description"],
-                "tools": [],
-                "starter_messages": persona.get("starter_messages"),
-                "document_sets": [],
-                "is_public": persona.get("is_public", True),
-                "is_visible": True,
-                "display_priority": None,
-                "featured": False,
-                "builtin_persona": False,
-                "labels": persona.get("labels", []),
-                "owner": {"id": USER_ID, "email": "dev@local.dev"},
-                "base_agent": persona.get("base_agent"),
-                "mcp_tools": persona.get("mcp_tools", []),
-            }
-        return {"error": "Persona not found"}, 404
+        if not persona:
+            raise HTTPException(status_code=404, detail="Persona not found")
+        return {
+            "id": persona["id"],
+            "name": persona["name"],
+            "description": persona["description"],
+            "tools": [],
+            "starter_messages": persona.get("starter_messages"),
+            "document_sets": [],
+            "is_public": persona.get("is_public", True),
+            "is_visible": True,
+            "display_priority": None,
+            "featured": False,
+            "builtin_persona": False,
+            "labels": persona.get("labels", []),
+            "owner": {"id": USER_ID, "email": "dev@local.dev"},
+            "base_agent": persona.get("base_agent"),
+            "mcp_tools": persona.get("mcp_tools", []),
+        }
+    except HTTPException:
+        raise
     except Exception as e:
-        return {"error": str(e)}, 500
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.delete("/api/persona/{persona_id}")
@@ -749,10 +767,12 @@ async def delete_persona(persona_id: int):
     try:
         persona = await PersonaDB.get(persona_id)
         if persona and persona.get("is_builtin"):
-            return {"error": "Cannot delete built-in agents"}, 403
+            raise HTTPException(status_code=403, detail="Cannot delete built-in agents")
         await PersonaDB.delete(persona_id)
+    except HTTPException:
+        raise
     except Exception as e:
-        return {"error": str(e)}, 500
+        raise HTTPException(status_code=500, detail=str(e))
     return {"success": True}
 
 
@@ -765,6 +785,12 @@ async def upload_persona_image():
 # =============================================================================
 # LLM/Admin Endpoints
 # =============================================================================
+
+
+@router.get("/api/llm/persona/{persona_id}/providers")
+async def get_persona_llm_providers(persona_id: int):
+    """Return LLM providers for a specific persona."""
+    return await get_llm_provider()
 
 
 @router.get("/api/llm/provider")

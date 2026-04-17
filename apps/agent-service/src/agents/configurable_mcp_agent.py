@@ -81,7 +81,7 @@ class ConfigurableMCPAgent(LazyLoadingAgent):
         try:
             from langchain_mcp_adapters.client import MultiServerMCPClient
             
-            url = mcp_url or os.environ.get("MCP_SERVER_URL", "http://mcp-server:8002/mcp")
+            url = mcp_url or settings.MCP_SERVER_URL
             
             client = MultiServerMCPClient(
                 connections={
@@ -131,7 +131,7 @@ class ConfigurableMCPAgent(LazyLoadingAgent):
             if tool_name in self._mcp_tools:
                 agent_tools.append(self._mcp_tools[tool_name])
             else:
-                logger.warning(f"MCP tool '{tool_name}' not found")
+                logger.warning(f"Tool '{tool_name}' not found in MCP cache")
         
         # Create the agent
         agent = create_react_agent(
@@ -176,9 +176,14 @@ class ConfigurableMCPAgent(LazyLoadingAgent):
         mcp_url = configurable.get("mcp_url")
         
         # Reload MCP tools if URL changed
-        if mcp_url and mcp_url != os.environ.get("MCP_SERVER_URL", "http://mcp-server:8002/mcp"):
+        if mcp_url and mcp_url != settings.MCP_SERVER_URL:
             self._mcp_tools = {}
             await self._load_mcp_tools(mcp_url)
+        
+        # Resolve checkpointer: prefer explicit param, then instance-level, then graph-level
+        effective_checkpointer = checkpointer or getattr(self, '_checkpointer', None) or (
+            self._graph.checkpointer if self._graph and hasattr(self._graph, 'checkpointer') else None
+        )
         
         # If custom configuration provided, create a custom graph
         if system_prompt != DEFAULT_SYSTEM_PROMPT or mcp_tool_names:
@@ -186,7 +191,7 @@ class ConfigurableMCPAgent(LazyLoadingAgent):
                 system_prompt=system_prompt,
                 mcp_tool_names=mcp_tool_names,
                 model_name=model_name,
-                checkpointer=checkpointer,
+                checkpointer=effective_checkpointer,
             )
             result = await graph.ainvoke(input, config=config, **kwargs)
         else:
@@ -225,9 +230,19 @@ class ConfigurableMCPAgent(LazyLoadingAgent):
         mcp_url = configurable.get("mcp_url")
         
         # Reload MCP tools if URL changed
-        if mcp_url and mcp_url != os.environ.get("MCP_SERVER_URL", "http://mcp-server:8002/mcp"):
+        if mcp_url and mcp_url != settings.MCP_SERVER_URL:
             self._mcp_tools = {}
             await self._load_mcp_tools(mcp_url)
+        
+        # If tools are requested but not in cache, retry loading
+        if mcp_tool_names and not any(t in self._mcp_tools for t in mcp_tool_names):
+            logger.warning(f"Tools {mcp_tool_names} not in cache, retrying load...")
+            await self._load_mcp_tools(mcp_url)
+        
+        # Resolve checkpointer
+        effective_checkpointer = checkpointer or getattr(self, '_checkpointer', None) or (
+            self._graph.checkpointer if self._graph and hasattr(self._graph, 'checkpointer') else None
+        )
         
         # If custom configuration provided, create a custom graph
         collected_output = None
@@ -236,7 +251,7 @@ class ConfigurableMCPAgent(LazyLoadingAgent):
                 system_prompt=system_prompt,
                 mcp_tool_names=mcp_tool_names,
                 model_name=model_name,
-                checkpointer=checkpointer,
+                checkpointer=effective_checkpointer,
             )
             async for chunk in graph.astream(input, config=config, **kwargs):
                 collected_output = chunk
@@ -283,9 +298,14 @@ class ConfigurableMCPAgent(LazyLoadingAgent):
         mcp_url = configurable.get("mcp_url")
         
         # Reload MCP tools if URL changed
-        if mcp_url and mcp_url != os.environ.get("MCP_SERVER_URL", "http://mcp-server:8002/mcp"):
+        if mcp_url and mcp_url != settings.MCP_SERVER_URL:
             self._mcp_tools = {}
             await self._load_mcp_tools(mcp_url)
+        
+        # Resolve checkpointer: prefer explicit param, then instance-level, then graph-level
+        effective_checkpointer = checkpointer or getattr(self, '_checkpointer', None) or (
+            self._graph.checkpointer if self._graph and hasattr(self._graph, 'checkpointer') else None
+        )
         
         # If custom configuration provided, create a custom graph
         if system_prompt != DEFAULT_SYSTEM_PROMPT or mcp_tool_names:
@@ -293,7 +313,7 @@ class ConfigurableMCPAgent(LazyLoadingAgent):
                 system_prompt=system_prompt,
                 mcp_tool_names=mcp_tool_names,
                 model_name=model_name,
-                checkpointer=checkpointer,
+                checkpointer=effective_checkpointer,
             )
             async for event in graph.astream_events(input, config=config, version=version, **kwargs):
                 yield event
