@@ -493,6 +493,15 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
     []
   );
 
+  const handleSwitchAgent = useCallback(
+    (agent: (typeof agents)[0]) => {
+      const params = new URLSearchParams();
+      params.set(SEARCH_PARAM_NAMES.PERSONA_ID, String(agent.id));
+      router.push(`/app?${params.toString()}`);
+    },
+    [router]
+  );
+
   const handleAppInputBarSubmit = useCallback(
     async (message: string) => {
       // If we're in an existing chat session, always use chat mode
@@ -849,6 +858,8 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
                         }
                         availableContextTokens={availableContextTokens}
                         selectedAgent={selectedAgent || liveAgent}
+                        agents={agents}
+                        onSwitchAgent={handleSwitchAgent}
                         handleFileUpload={handleMessageSpecificFileUpload}
                         setPresentingDocument={setPresentingDocument}
                         // Intentionally enabled during name-only onboarding (showOnboarding=false)

@@ -2,6 +2,20 @@ import { NextResponse } from 'next/server';
 
 const INTERNAL_URL = process.env.INTERNAL_URL || "http://localhost:8123";
 
+export async function GET(request: Request, { params }: { params: Promise<{ personaId: string }> }) {
+  try {
+    const { personaId } = await params;
+    const response = await fetch(`${INTERNAL_URL}/api/persona/${personaId}`);
+    if (!response.ok) {
+      return NextResponse.json({ error: "Persona not found" }, { status: response.status });
+    }
+    const data = await response.json();
+    return NextResponse.json(data);
+  } catch (error) {
+    return NextResponse.json({ error: "Failed to fetch persona" }, { status: 500 });
+  }
+}
+
 export async function PATCH(request: Request, { params }: { params: Promise<{ personaId: string }> }) {
   try {
     const { personaId } = await params;

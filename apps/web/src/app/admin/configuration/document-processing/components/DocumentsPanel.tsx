@@ -89,6 +89,9 @@ function ChunkViewer({
               <Text as="p" mainContentMuted text03 className="font-mono text-[10px]">
                 Chunk {idx + 1}
               </Text>
+              <Text as="p" mainContentMuted text03 className="font-mono text-[10px] opacity-60" title={chunk.id}>
+                ID: {chunk.id}
+              </Text>
               {chunk.metadata?.char_count != null && (
                 <StatBadge label="Chars" value={chunk.metadata.char_count as number} />
               )}
@@ -217,9 +220,10 @@ function DocumentRow({
 
 interface DocumentsPanelProps {
   collectionId: string | null;
+  readOnly?: boolean;
 }
 
-export default function DocumentsPanel({ collectionId }: DocumentsPanelProps) {
+export default function DocumentsPanel({ collectionId, readOnly = false }: DocumentsPanelProps) {
   const { documents, isLoading, mutate } = useDocuments(collectionId);
   const [isUploading, setIsUploading] = useState(false);
   const [isDragActive, setIsDragActive] = useState(false);
@@ -256,76 +260,77 @@ export default function DocumentsPanel({ collectionId }: DocumentsPanelProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Upload dropzone */}
-      <CardSection className="flex flex-col gap-3">
-        <Text as="p" headingH3 text05 className="border-b border-border-01 pb-2">
-          Upload Documents
-        </Text>
-        <Text as="p" mainContentBody text04 className="leading-relaxed">
-          Supported formats: PDF, DOCX, PPTX, CSV, XLSX, TXT, MD, HTML, JSON,
-          RTF. Max 200 MB per file.
-        </Text>
+      {/* Upload dropzone - hidden for datasource (read-only) collections */}
+      {!readOnly && (
+        <CardSection className="flex flex-col gap-3">
+          <Text as="p" headingH3 text05 className="border-b border-border-01 pb-2">
+            Upload Documents
+          </Text>
+          <Text as="p" mainContentBody text04 className="leading-relaxed">
+            Supported formats: PDF, DOCX, PPTX, CSV, XLSX, TXT, MD, HTML, JSON,
+            RTF. Max 200 MB per file.
+          </Text>
 
-        <Dropzone
-          onDrop={handleDrop}
-          onDragEnter={() => setIsDragActive(true)}
-          onDragLeave={() => setIsDragActive(false)}
-          accept={ACCEPTED_TYPES}
-          maxSize={MAX_SIZE_BYTES}
-          multiple
-          disabled={isUploading}
-          onDropRejected={(rejections) => {
-            const reason = rejections[0]?.errors[0]?.message ?? "File rejected";
-            toast.error(reason);
-          }}
-        >
-          {({ getRootProps, getInputProps }) => (
-            <div
-              {...getRootProps()}
-              className={cn(
-                "flex flex-col items-center justify-center gap-3",
-                "rounded-08 border-2 border-dashed",
-                "px-6 py-10 cursor-pointer transition-colors",
-                isDragActive
-                  ? "border-action-primary bg-background-neutral-02"
-                  : "border-border-01 bg-background-neutral-01 hover:border-action-primary hover:bg-background-neutral-02",
-                isUploading && "opacity-60 cursor-not-allowed"
-              )}
-            >
-              <input {...getInputProps()} />
-              {isUploading ? (
-                <>
-                  <ThreeDotsLoader />
-                  <Text as="p" mainContentMuted text03>
-                    Uploading and processing…
-                  </Text>
-                </>
-              ) : (
-                <>
-                  <SvgUploadCloud
-                    className={cn(
-                      "h-8 w-8 transition-colors",
-                      isDragActive ? "stroke-action-primary" : "stroke-text-03"
-                    )}
-                    aria-hidden
-                  />
-                  <div className="text-center">
-                    <Text as="p" mainUiAction text04>
-                      {isDragActive
-                        ? "Drop files here"
-                        : "Drag & drop files here, or click to select"}
+          <Dropzone
+            onDrop={handleDrop}
+            onDragEnter={() => setIsDragActive(true)}
+            onDragLeave={() => setIsDragActive(false)}
+            accept={ACCEPTED_TYPES}
+            maxSize={MAX_SIZE_BYTES}
+            multiple
+            disabled={isUploading}
+            onDropRejected={(rejections) => {
+              const reason = rejections[0]?.errors[0]?.message ?? "File rejected";
+              toast.error(reason);
+            }}
+          >
+            {({ getRootProps, getInputProps }) => (
+              <div
+                {...getRootProps()}
+                className={cn(
+                  "flex flex-col items-center justify-center gap-3",
+                  "rounded-08 border-2 border-dashed",
+                  "px-6 py-10 cursor-pointer transition-colors",
+                  isDragActive
+                    ? "border-action-primary bg-background-neutral-02"
+                    : "border-border-01 bg-background-neutral-01 hover:border-action-primary hover:bg-background-neutral-02",
+                  isUploading && "opacity-60 cursor-not-allowed"
+                )}
+              >
+                <input {...getInputProps()} />
+                {isUploading ? (
+                  <>
+                    <ThreeDotsLoader />
+                    <Text as="p" mainContentMuted text03>
+                      Uploading and processing…
                     </Text>
-                    <Text as="p" mainContentMuted text03 className="mt-1 text-xs">
-                      PDF, DOCX, PPTX, CSV, XLSX, TXT, MD, HTML, JSON, RTF · Up to 200 MB each
-                    </Text>
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-        </Dropzone>
-      </CardSection>
-
+                  </>
+                ) : (
+                  <>
+                    <SvgUploadCloud
+                      className={cn(
+                        "h-8 w-8 transition-colors",
+                        isDragActive ? "stroke-action-primary" : "stroke-text-03"
+                      )}
+                      aria-hidden
+                    />
+                    <div className="text-center">
+                      <Text as="p" mainUiAction text04>
+                        {isDragActive
+                          ? "Drop files here"
+                          : "Drag & drop files here, or click to select"}
+                      </Text>
+                      <Text as="p" mainContentMuted text03 className="mt-1 text-xs">
+                        PDF, DOCX, PPTX, CSV, XLSX, TXT, MD, HTML, JSON, RTF · Up to 200 MB each
+                      </Text>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </Dropzone>
+        </CardSection>
+      )}
       {/* Document list */}
       <CardSection className="flex flex-col gap-3">
         <Text as="p" headingH3 text05 className="border-b border-border-01 pb-2">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import CardSection from "@/components/admin/CardSection";
 import Button from "@/refresh-components/buttons/Button";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
@@ -18,7 +18,7 @@ import { SvgHardDrive, SvgPlus, SvgTrash } from "@opal/icons";
 
 interface CollectionsPanelProps {
   selectedCollectionId: string | null;
-  onCollectionSelect: (id: string | null) => void;
+  onCollectionSelect: (id: string | null, isDatasource?: boolean) => void;
 }
 
 export default function CollectionsPanel({
@@ -33,9 +33,10 @@ export default function CollectionsPanel({
     () => new Set(datasources.map((ds) => ds.id)),
     [datasources]
   );
-  const collections = useMemo(
-    () => allCollections.filter((c) => !datasourceIds.has(c.uuid)),
-    [allCollections, datasourceIds]
+  const collections = allCollections;
+  const isDatasourceCollection = useCallback(
+    (uuid: string) => datasourceIds.has(uuid),
+    [datasourceIds]
   );
   const [isCreating, setIsCreating] = useState(false);
   const [newName, setNewName] = useState("");
@@ -45,6 +46,9 @@ export default function CollectionsPanel({
   const selectedCollection = collections.find(
     (c) => c.uuid === selectedCollectionId
   );
+  const selectedIsDatasource = selectedCollectionId
+    ? isDatasourceCollection(selectedCollectionId)
+    : false;
 
   async function handleCreate() {
     const name = newName.trim();
@@ -113,13 +117,20 @@ export default function CollectionsPanel({
               ) : (
                 <InputSelect
                   value={selectedCollectionId ?? ""}
-                  onValueChange={(v) => onCollectionSelect(v || null)}
+                  onValueChange={(v) =>
+                    onCollectionSelect(v || null, v ? isDatasourceCollection(v) : undefined)
+                  }
                 >
                   <InputSelect.Trigger placeholder="Select a collection..." />
                   <InputSelect.Content>
                     {collections.map((c) => (
                       <InputSelect.Item key={c.uuid} value={c.uuid}>
                         {c.name}
+                        {isDatasourceCollection(c.uuid) && (
+                          <span className="ml-2 text-[10px] font-medium uppercase tracking-wide text-text-03 bg-background-neutral-02 border border-border-01 rounded px-1 py-0.5">
+                            Datasource
+                          </span>
+                        )}
                       </InputSelect.Item>
                     ))}
                   </InputSelect.Content>
@@ -181,6 +192,11 @@ export default function CollectionsPanel({
               <Text as="p" mainContentMuted text03 className="font-mono text-xs">
                 {selectedCollection.uuid}
               </Text>
+              {selectedIsDatasource && (
+                <Text as="span" mainContentMuted text03 className="text-xs italic ml-auto">
+                  Read-only datasource collection
+                </Text>
+              )}
             </div>
           )}
         </div>

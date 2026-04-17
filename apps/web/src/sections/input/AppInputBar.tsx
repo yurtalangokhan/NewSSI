@@ -52,8 +52,10 @@ import {
   SvgX,
 } from "@opal/icons";
 import { Button, OpenButton } from "@opal/components";
-import Popover from "@/refresh-components/Popover";
+import Popover, { PopoverMenu } from "@/refresh-components/Popover";
 import SimpleLoader from "@/refresh-components/loaders/SimpleLoader";
+import AgentAvatar from "@/refresh-components/avatars/AgentAvatar";
+import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
 import { useQueryController } from "@/providers/QueryControllerProvider";
 import { Section } from "@/layouts/general-layouts";
 import Spacer from "@/refresh-components/Spacer";
@@ -101,6 +103,78 @@ export function SourceChip({
   );
 }
 
+// ---------------------------------------------------------------------------
+// AgentSelectorPopover
+// ---------------------------------------------------------------------------
+
+function AgentSelectorPopover({
+  selectedAgent,
+  agents,
+  onSwitchAgent,
+  disabled,
+}: {
+  selectedAgent: MinimalPersonaSnapshot;
+  agents: MinimalPersonaSnapshot[];
+  onSwitchAgent: (agent: MinimalPersonaSnapshot) => void;
+  disabled?: boolean;
+}) {
+  const [open, setOpen] = React.useState(false);
+  const [searchQuery, setSearchQuery] = React.useState("");
+
+  const filteredAgents = React.useMemo(() => {
+    if (!searchQuery.trim()) return agents;
+    const q = searchQuery.toLowerCase();
+    return agents.filter(
+      (a) =>
+        a.name.toLowerCase().includes(q) ||
+        a.description?.toLowerCase().includes(q)
+    );
+  }, [agents, searchQuery]);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <Popover.Trigger asChild disabled={disabled}>
+        <OpenButton
+          icon={(props: React.SVGProps<SVGSVGElement>) => (
+            <AgentAvatar agent={selectedAgent} size={16} {...(props as any)} />
+          )}
+          disabled={disabled}
+        >
+          {selectedAgent.name}
+        </OpenButton>
+      </Popover.Trigger>
+      <Popover.Content side="top" align="end" width="xl">
+        <InputTypeIn
+          leftSearchIcon
+          variant="internal"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search agents..."
+        />
+        <PopoverMenu>
+          {filteredAgents.filter((a) => a.id !== 0).map((agent) => (
+            <LineItem
+              key={agent.id}
+              selected={agent.id === selectedAgent.id}
+              icon={(props: React.SVGProps<SVGSVGElement>) => (
+                <AgentAvatar agent={agent} size={16} {...(props as any)} />
+              )}
+              onClick={() => {
+                if (agent.id !== selectedAgent.id) {
+                  onSwitchAgent(agent);
+                }
+                setOpen(false);
+              }}
+            >
+              {agent.name}
+            </LineItem>
+          ))}
+        </PopoverMenu>
+      </Popover.Content>
+    </Popover>
+  );
+}
+
 export interface AppInputBarHandle {
   reset: () => void;
   focus: () => void;
@@ -119,6 +193,8 @@ export interface AppInputBarProps {
 
   // agents
   selectedAgent: MinimalPersonaSnapshot | undefined;
+  agents?: MinimalPersonaSnapshot[];
+  onSwitchAgent?: (agent: MinimalPersonaSnapshot) => void;
 
   toggleDocumentSidebar: () => void;
   handleFileUpload: (files: File[]) => void;
@@ -150,6 +226,8 @@ const AppInputBar = React.memo(
     availableContextTokens,
     // agents
     selectedAgent,
+    agents,
+    onSwitchAgent,
 
     handleFileUpload,
     llmManager,
@@ -786,16 +864,25 @@ const AppInputBar = React.memo(
 
               {/* Bottom right controls */}
               <div className="flex flex-row items-center gap-1">
-                {/* LLM popover - loads when ready */}
+                {/* LLM popover or Agent selector - loads when ready */}
                 <div
                   data-testid="AppInputBar/llm-popover-trigger"
                   className={cn(controlsLoading && "invisible")}
                 >
-                  <LLMPopover
-                    llmManager={llmManager}
-                    requiresImageInput={hasImageFiles}
-                    disabled={disabled}
-                  />
+                  {selectedAgent && selectedAgent.id !== 0 && agents && agents.length > 0 && onSwitchAgent ? (
+                    <AgentSelectorPopover
+                      selectedAgent={selectedAgent}
+                      agents={agents}
+                      onSwitchAgent={onSwitchAgent}
+                      disabled={disabled}
+                    />
+                  ) : (
+                    <LLMPopover
+                      llmManager={llmManager}
+                      requiresImageInput={hasImageFiles}
+                      disabled={disabled}
+                    />
+                  )}
                 </div>
 
                 {/* Submit button */}

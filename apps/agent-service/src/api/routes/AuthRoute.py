@@ -724,6 +724,44 @@ async def create_persona(request: PersonaUpsertRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/api/persona/{persona_id}")
+async def get_persona(persona_id: int):
+    """Get a single persona/agent by ID."""
+    try:
+        persona = await PersonaDB.get(persona_id)
+        if not persona:
+            raise HTTPException(status_code=404, detail="Persona not found")
+        return {
+            "id": persona["id"],
+            "name": persona["name"],
+            "description": persona["description"],
+            "system_prompt": persona.get("system_prompt", ""),
+            "task_prompt": persona.get("task_prompt", ""),
+            "tools": [],
+            "starter_messages": persona.get("starter_messages"),
+            "document_sets": [],
+            "is_public": persona.get("is_public", True),
+            "is_visible": True,
+            "display_priority": None,
+            "featured": False,
+            "builtin_persona": persona.get("is_builtin", False),
+            "labels": persona.get("labels", []),
+            "owner": {"id": persona.get("user_id", USER_ID), "email": "dev@local.dev"},
+            "base_agent": persona.get("base_agent"),
+            "mcp_tools": persona.get("mcp_tools", []),
+            "rag_config": persona.get("rag_config"),
+            "llm_model_provider_override": persona.get("llm_model_provider_override"),
+            "llm_model_version_override": persona.get("llm_model_version_override"),
+            "users": [],
+            "groups": [],
+            "user_file_ids": [],
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.patch("/api/persona/{persona_id}")
 async def update_persona(persona_id: int, request: PersonaUpsertRequest):
     """Update an existing persona/agent."""
