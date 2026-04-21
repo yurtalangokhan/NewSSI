@@ -64,6 +64,9 @@ services:
       # Auth
       AUTH_SECRET: ${AUTH_SECRET:-}
 
+      # LangConnect (RAG Service)
+      LANGCONNECT_API_URL: ${LANGCONNECT_API_URL:-http://rag-service:8080}
+
   # ==========================================================================
   # RAG Service - Graph RAG API
   # ==========================================================================

@@ -156,7 +156,10 @@ def database_search_func(query: str, config: Annotated[RunnableConfig, InjectedT
         # Get collection IDs from agent config
         configurable = config.get("configurable", {})
         rag_config = configurable.get("rag_config", {})
-        collection_ids: list[str] = rag_config.get("collections", [])
+        # Prefer rag_config.document_processing; fall back to legacy rag_config.collections
+        collection_ids: list[str] = (
+            rag_config.get("document_processing") or rag_config.get("collections", [])
+        )
 
         logger.debug(
             "Database search called with query='%s', collection_ids=%s", query, collection_ids
@@ -229,7 +232,10 @@ def graph_search_func(
     try:
         configurable = config.get("configurable", {})
         rag_config = configurable.get("rag_config", {})
-        collection_ids: list[str] = rag_config.get("collections", [])
+        # Prefer rag_config.knowledge_graph; fall back to legacy rag_config.collections
+        collection_ids: list[str] = (
+            rag_config.get("knowledge_graph") or rag_config.get("collections", [])
+        )
 
         if not collection_ids:
             logger.warning("No collections configured for graph search.")

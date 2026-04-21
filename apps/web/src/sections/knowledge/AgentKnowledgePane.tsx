@@ -1,13 +1,6 @@
 "use client";
 
-import React, {
-  useState,
-  useMemo,
-  useRef,
-  memo,
-  useCallback,
-  useEffect,
-} from "react";
+import React, { useState, useMemo, memo, useCallback, useEffect } from "react";
 import * as GeneralLayouts from "@/layouts/general-layouts";
 import { Content } from "@opal/layouts";
 import * as TableLayouts from "@/layouts/table-layouts";
@@ -21,162 +14,141 @@ import Separator from "@/refresh-components/Separator";
 import Switch from "@/refresh-components/inputs/Switch";
 import Checkbox from "@/refresh-components/inputs/Checkbox";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
+import SimpleLoader from "@/refresh-components/loaders/SimpleLoader";
+import Spacer from "@/refresh-components/Spacer";
+import { Disabled } from "@/refresh-components/Disabled";
 import {
   SvgPlusCircle,
   SvgArrowUpRight,
   SvgFiles,
-  SvgFolder,
+  SvgNetworkGraph,
 } from "@opal/icons";
-import type { CCPairSummary } from "@/lib/types";
-import { getSourceMetadata } from "@/lib/sources";
-import { ValidSources, DocumentSetSummary } from "@/lib/types";
-import useCCPairs from "@/hooks/useCCPairs";
-import { ConnectedSource } from "@/lib/hierarchy/interfaces";
-import { ProjectFile } from "@/app/app/projects/projectsService";
 import {
-  AttachedDocumentSnapshot,
-  HierarchyNodeSnapshot,
-} from "@/app/admin/agents/interfaces";
-import { timeAgo } from "@/lib/time";
-import Spacer from "@/refresh-components/Spacer";
-import { Disabled } from "@/refresh-components/Disabled";
-import SourceHierarchyBrowser from "./SourceHierarchyBrowser";
+  useKnowledgeCollections,
+  type KnowledgeCollection,
+} from "@/hooks/useKnowledgeCollections";
 
 // Knowledge pane view states
-type KnowledgeView = "main" | "add" | "document-sets" | "sources" | "recent";
+type KnowledgeView = "main" | "add" | "document-processing" | "knowledge-graph";
+
+export interface AgentKnowledgePaneProps {
+  enableKnowledge: boolean;
+  onEnableKnowledgeChange: (enabled: boolean) => void;
+  ragDocumentCollectionIds: string[];
+  onDocumentCollectionIdsChange: (ids: string[]) => void;
+  ragGraphCollectionIds: string[];
+  onGraphCollectionIdsChange: (ids: string[]) => void;
+}
 
 // ============================================================================
-// KNOWLEDGE SIDEBAR - Left column showing all knowledge categories
+// SYNC STATUS DOT
+// ============================================================================
+
+function SyncStatusDot({ status }: { status: string }) {
+  const color =
+    status === "idle"
+      ? "bg-green-500"
+      : status === "syncing" || status === "starting"
+      ? "bg-yellow-500"
+      : status === "error"
+      ? "bg-red-500"
+      : "bg-gray-400";
+
+  return (
+    <span
+      className={`inline-block h-2 w-2 rounded-full ${color}`}
+      title={status}
+    />
+  );
+}
+
+// ============================================================================
+// KNOWLEDGE SIDEBAR
 // ============================================================================
 
 interface KnowledgeSidebarProps {
   activeView: KnowledgeView;
-  activeSource?: ValidSources;
-  connectedSources: ConnectedSource[];
-  selectedSources: ValidSources[];
-  selectedDocumentSetIds: number[];
-  selectedFileIds: string[];
-  sourceSelectionCounts: Map<ValidSources, number>;
-  onNavigateToRecent: () => void;
-  onNavigateToDocumentSets: () => void;
-  onNavigateToSource: (source: ValidSources) => void;
-  vectorDbEnabled: boolean;
+  selectedDocumentCollectionIds: string[];
+  selectedGraphCollectionIds: string[];
+  onNavigateToDocumentProcessing: () => void;
+  onNavigateToKnowledgeGraph: () => void;
 }
 
 function KnowledgeSidebar({
   activeView,
-  activeSource,
-  connectedSources,
-  selectedSources,
-  selectedDocumentSetIds,
-  selectedFileIds,
-  sourceSelectionCounts,
-  onNavigateToRecent,
-  onNavigateToDocumentSets,
-  onNavigateToSource,
-  vectorDbEnabled,
+  selectedDocumentCollectionIds,
+  selectedGraphCollectionIds,
+  onNavigateToDocumentProcessing,
+  onNavigateToKnowledgeGraph,
 }: KnowledgeSidebarProps) {
   return (
     <TableLayouts.SidebarLayout aria-label="knowledge-sidebar">
       <LineItem
         icon={SvgFiles}
-        onClick={onNavigateToRecent}
-        selected={activeView === "recent"}
-        emphasized={activeView === "recent" || selectedFileIds.length > 0}
-        aria-label="knowledge-sidebar-files"
+        onClick={onNavigateToDocumentProcessing}
+        selected={activeView === "document-processing"}
+        emphasized={
+          activeView === "document-processing" ||
+          selectedDocumentCollectionIds.length > 0
+        }
+        aria-label="knowledge-sidebar-document-processing"
         rightChildren={
-          selectedFileIds.length > 0 ? (
+          selectedDocumentCollectionIds.length > 0 ? (
             <Text mainUiAction className="text-action-link-05">
-              {selectedFileIds.length}
+              {selectedDocumentCollectionIds.length}
             </Text>
           ) : undefined
         }
       >
-        Your Files
+        Document Processing
       </LineItem>
 
-      {vectorDbEnabled && (
-        <>
-          <LineItem
-            icon={SvgFolder}
-            onClick={onNavigateToDocumentSets}
-            selected={activeView === "document-sets"}
-            emphasized={
-              activeView === "document-sets" ||
-              selectedDocumentSetIds.length > 0
-            }
-            aria-label="knowledge-sidebar-document-sets"
-            rightChildren={
-              selectedDocumentSetIds.length > 0 ? (
-                <Text mainUiAction className="text-action-link-05">
-                  {selectedDocumentSetIds.length}
-                </Text>
-              ) : undefined
-            }
-          >
-            Document Set
-          </LineItem>
-
-          <Separator noPadding />
-
-          {connectedSources.map((connectedSource) => {
-            const sourceMetadata = getSourceMetadata(connectedSource.source);
-            const isSelected = selectedSources.includes(connectedSource.source);
-            const isActive =
-              activeView === "sources" &&
-              activeSource === connectedSource.source;
-            const selectionCount =
-              sourceSelectionCounts.get(connectedSource.source) ?? 0;
-
-            return (
-              <LineItem
-                key={connectedSource.source}
-                icon={sourceMetadata.icon}
-                onClick={() => onNavigateToSource(connectedSource.source)}
-                selected={isActive}
-                emphasized={isActive || isSelected || selectionCount > 0}
-                aria-label={`knowledge-sidebar-source-${connectedSource.source}`}
-                rightChildren={
-                  selectionCount > 0 ? (
-                    <Text mainUiAction className="text-action-link-05">
-                      {selectionCount}
-                    </Text>
-                  ) : undefined
-                }
-              >
-                {sourceMetadata.displayName}
-              </LineItem>
-            );
-          })}
-        </>
-      )}
+      <LineItem
+        icon={SvgNetworkGraph}
+        onClick={onNavigateToKnowledgeGraph}
+        selected={activeView === "knowledge-graph"}
+        emphasized={
+          activeView === "knowledge-graph" ||
+          selectedGraphCollectionIds.length > 0
+        }
+        aria-label="knowledge-sidebar-knowledge-graph"
+        rightChildren={
+          selectedGraphCollectionIds.length > 0 ? (
+            <Text mainUiAction className="text-action-link-05">
+              {selectedGraphCollectionIds.length}
+            </Text>
+          ) : undefined
+        }
+      >
+        Knowledge Graph
+      </LineItem>
     </TableLayouts.SidebarLayout>
   );
 }
 
 // ============================================================================
-// KNOWLEDGE TABLE - Generic table component for knowledge items
+// KNOWLEDGE TABLE - Generic table for collection items
 // ============================================================================
 
 interface KnowledgeTableColumn<T> {
   key: string;
   header: string;
-  sortable?: boolean;
-  width?: number; // Width in rem
+  width?: number;
   render: (item: T) => React.ReactNode;
 }
 
 interface KnowledgeTableProps<T> {
   items: T[];
   columns: KnowledgeTableColumn<T>[];
-  getItemId: (item: T) => string | number;
-  selectedIds: (string | number)[];
-  onToggleItem: (id: string | number) => void;
+  getItemId: (item: T) => string;
+  selectedIds: string[];
+  onToggleItem: (id: string) => void;
   searchValue?: string;
   onSearchChange?: (value: string) => void;
   searchPlaceholder?: string;
-  headerActions?: React.ReactNode;
   emptyMessage?: string;
+  isLoading?: boolean;
+  ariaLabelPrefix?: string;
 }
 
 function KnowledgeTable<T>({
@@ -188,33 +160,31 @@ function KnowledgeTable<T>({
   searchValue,
   onSearchChange,
   searchPlaceholder = "Search...",
-  headerActions,
   emptyMessage = "No items available.",
+  isLoading,
   ariaLabelPrefix,
-}: KnowledgeTableProps<T> & { ariaLabelPrefix?: string }) {
+}: KnowledgeTableProps<T>) {
+  if (isLoading) {
+    return (
+      <GeneralLayouts.Section height="auto" padding={1}>
+        <SimpleLoader />
+      </GeneralLayouts.Section>
+    );
+  }
+
   return (
     <GeneralLayouts.Section gap={0} alignItems="stretch" justifyContent="start">
-      {/* Header with search and actions */}
-      <GeneralLayouts.Section
-        flexDirection="row"
-        justifyContent="start"
-        alignItems="center"
-        gap={0.5}
-        height="auto"
-      >
-        {onSearchChange !== undefined && (
-          <GeneralLayouts.Section height="auto">
-            <InputTypeIn
-              leftSearchIcon
-              value={searchValue ?? ""}
-              onChange={(e) => onSearchChange?.(e.target.value)}
-              placeholder={searchPlaceholder}
-              variant="internal"
-            />
-          </GeneralLayouts.Section>
-        )}
-        {headerActions}
-      </GeneralLayouts.Section>
+      {onSearchChange !== undefined && (
+        <GeneralLayouts.Section height="auto">
+          <InputTypeIn
+            leftSearchIcon
+            value={searchValue ?? ""}
+            onChange={(e) => onSearchChange?.(e.target.value)}
+            placeholder={searchPlaceholder}
+            variant="internal"
+          />
+        </GeneralLayouts.Section>
+      )}
 
       <Spacer rem={0.5} />
 
@@ -259,7 +229,7 @@ function KnowledgeTable<T>({
 
             return (
               <TableLayouts.TableRow
-                key={String(id)}
+                key={id}
                 selected={isSelected}
                 onClick={() => onToggleItem(id)}
                 aria-label={
@@ -291,338 +261,139 @@ function KnowledgeTable<T>({
 }
 
 // ============================================================================
-// DOCUMENT SETS TABLE - Table content for document sets view
+// COLLECTION TABLE CONTENT - Table for document processing / knowledge graph
 // ============================================================================
 
-interface DocumentSetsTableContentProps {
-  documentSets: DocumentSetSummary[];
-  selectedDocumentSetIds: number[];
-  onDocumentSetToggle: (documentSetId: number) => void;
+interface CollectionTableContentProps {
+  collections: KnowledgeCollection[];
+  selectedIds: string[];
+  onToggle: (id: string) => void;
+  isLoading: boolean;
+  emptyMessage: string;
+  ariaLabelPrefix: string;
 }
 
-function DocumentSetsTableContent({
-  documentSets,
-  selectedDocumentSetIds,
-  onDocumentSetToggle,
-}: DocumentSetsTableContentProps) {
+function CollectionTableContent({
+  collections,
+  selectedIds,
+  onToggle,
+  isLoading,
+  emptyMessage,
+  ariaLabelPrefix,
+}: CollectionTableContentProps) {
   const [searchValue, setSearchValue] = useState("");
 
-  const filteredDocumentSets = useMemo(() => {
-    if (!searchValue) return documentSets;
+  const filteredCollections = useMemo(() => {
+    if (!searchValue) return collections;
     const lower = searchValue.toLowerCase();
-    return documentSets.filter((ds) => ds.name.toLowerCase().includes(lower));
-  }, [documentSets, searchValue]);
+    return collections.filter((c) => c.name.toLowerCase().includes(lower));
+  }, [collections, searchValue]);
 
-  const columns: KnowledgeTableColumn<DocumentSetSummary>[] = [
+  const columns: KnowledgeTableColumn<KnowledgeCollection>[] = [
     {
       key: "name",
       header: "Name",
-      sortable: true,
-      render: (ds) => (
-        <Content
-          icon={SvgFolder}
-          title={ds.name}
-          sizePreset="main-ui"
-          variant="section"
-        />
+      render: (col) => (
+        <div className="flex items-center gap-2 min-w-0">
+          <Text className="truncate">{col.name}</Text>
+          {col.connector_type && (
+            <span className="shrink-0 rounded bg-background-300 px-1.5 py-0.5 text-xs text-text-500">
+              {col.connector_type.replace("source-", "")}
+            </span>
+          )}
+        </div>
       ),
     },
     {
-      key: "sources",
-      header: "Sources",
-      width: 8,
-      render: (ds) => (
-        <TableLayouts.SourceIconsRow>
-          {ds.cc_pair_summaries
-            ?.slice(0, 4)
-            .map((summary: CCPairSummary, idx: number) => {
-              const sourceMetadata = getSourceMetadata(summary.source);
-              return <sourceMetadata.icon key={idx} size={16} />;
-            })}
-          {(ds.cc_pair_summaries?.length ?? 0) > 4 && (
-            <Text text03 secondaryBody>
-              +{(ds.cc_pair_summaries?.length ?? 0) - 4}
-            </Text>
-          )}
-        </TableLayouts.SourceIconsRow>
+      key: "status",
+      header: "Status",
+      width: 6,
+      render: (col) => (
+        <div className="flex items-center gap-1.5">
+          <SyncStatusDot status={col.sync_status} />
+          <Text text03 secondaryBody>
+            {col.sync_status}
+          </Text>
+        </div>
       ),
     },
   ];
 
   return (
     <KnowledgeTable
-      items={filteredDocumentSets}
+      items={filteredCollections}
       columns={columns}
-      getItemId={(ds) => ds.id}
-      selectedIds={selectedDocumentSetIds}
-      onToggleItem={(id) => onDocumentSetToggle(id as number)}
+      getItemId={(col) => col.id}
+      selectedIds={selectedIds}
+      onToggleItem={onToggle}
       searchValue={searchValue}
       onSearchChange={setSearchValue}
-      searchPlaceholder="Search document sets..."
-      emptyMessage="No document sets available."
-      ariaLabelPrefix="document-set-row"
+      searchPlaceholder="Search collections..."
+      emptyMessage={emptyMessage}
+      isLoading={isLoading}
+      ariaLabelPrefix={ariaLabelPrefix}
     />
   );
 }
 
-interface SourcesTableContentProps {
-  source: ValidSources;
-  selectedDocumentIds: string[];
-  onToggleDocument: (documentId: string) => void;
-  onSetDocumentIds: (ids: string[]) => void;
-  selectedFolderIds: number[];
-  onToggleFolder: (folderId: number) => void;
-  onSetFolderIds: (ids: number[]) => void;
-  onDeselectAllDocuments: () => void;
-  onDeselectAllFolders: () => void;
-  initialAttachedDocuments?: AttachedDocumentSnapshot[];
-  onSelectionCountChange?: (source: ValidSources, count: number) => void;
-}
-
-function SourcesTableContent({
-  source,
-  selectedDocumentIds,
-  onToggleDocument,
-  onSetDocumentIds,
-  selectedFolderIds,
-  onToggleFolder,
-  onSetFolderIds,
-  onDeselectAllDocuments,
-  onDeselectAllFolders,
-  initialAttachedDocuments,
-  onSelectionCountChange,
-}: SourcesTableContentProps) {
-  return (
-    <GeneralLayouts.Section gap={0.5} alignItems="stretch">
-      {/* Hierarchy browser */}
-      <SourceHierarchyBrowser
-        source={source}
-        selectedDocumentIds={selectedDocumentIds}
-        onToggleDocument={onToggleDocument}
-        onSetDocumentIds={onSetDocumentIds}
-        selectedFolderIds={selectedFolderIds}
-        onToggleFolder={onToggleFolder}
-        onSetFolderIds={onSetFolderIds}
-        initialAttachedDocuments={initialAttachedDocuments}
-        onDeselectAllDocuments={onDeselectAllDocuments}
-        onDeselectAllFolders={onDeselectAllFolders}
-        onSelectionCountChange={onSelectionCountChange}
-      />
-    </GeneralLayouts.Section>
-  );
-}
-
 // ============================================================================
-// RECENT FILES TABLE - Table content for user files view
-// ============================================================================
-
-interface RecentFilesTableContentProps {
-  allRecentFiles: ProjectFile[];
-  selectedFileIds: string[];
-  onToggleFile: (fileId: string) => void;
-  onUploadChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  hasProcessingFiles: boolean;
-}
-
-function RecentFilesTableContent({
-  allRecentFiles,
-  selectedFileIds,
-  onToggleFile,
-  onUploadChange,
-  hasProcessingFiles,
-}: RecentFilesTableContentProps) {
-  const [searchValue, setSearchValue] = useState("");
-
-  const filteredFiles = useMemo(() => {
-    if (!searchValue) return allRecentFiles;
-    const lower = searchValue.toLowerCase();
-    return allRecentFiles.filter((f) => f.name.toLowerCase().includes(lower));
-  }, [allRecentFiles, searchValue]);
-
-  const columns: KnowledgeTableColumn<ProjectFile>[] = [
-    {
-      key: "name",
-      header: "Name",
-      sortable: true,
-      render: (file) => (
-        <Content
-          icon={SvgFiles}
-          title={file.name}
-          sizePreset="main-ui"
-          variant="section"
-        />
-      ),
-    },
-    {
-      key: "lastUpdated",
-      header: "Last Updated",
-      sortable: true,
-      width: 8,
-      render: (file) => (
-        <Text text03 secondaryBody>
-          {timeAgo(file.last_accessed_at || file.created_at)}
-        </Text>
-      ),
-    },
-  ];
-
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
-
-  return (
-    <GeneralLayouts.Section gap={0.5} alignItems="stretch">
-      <TableLayouts.HiddenInput
-        inputRef={fileInputRef}
-        type="file"
-        multiple
-        onChange={onUploadChange}
-      />
-
-      <KnowledgeTable
-        items={filteredFiles}
-        columns={columns}
-        getItemId={(file) => file.id}
-        selectedIds={selectedFileIds}
-        onToggleItem={(id) => onToggleFile(id as string)}
-        searchValue={searchValue}
-        onSearchChange={setSearchValue}
-        searchPlaceholder="Search files..."
-        ariaLabelPrefix="user-file-row"
-        headerActions={
-          <Button
-            internal
-            leftIcon={SvgPlusCircle}
-            onClick={() => fileInputRef.current?.click()}
-          >
-            Add File
-          </Button>
-        }
-        emptyMessage="No files available. Upload files to get started."
-      />
-
-      {hasProcessingFiles && (
-        <GeneralLayouts.Section height="auto" alignItems="start">
-          <Text as="p" text03 secondaryBody>
-            Onyx is still processing your uploaded files. You can create the
-            agent now, but it will not have access to all files until processing
-            completes.
-          </Text>
-        </GeneralLayouts.Section>
-      )}
-    </GeneralLayouts.Section>
-  );
-}
-
-// ============================================================================
-// TWO-COLUMN LAYOUT - Sidebar + Table for detailed views
+// TWO-COLUMN LAYOUT - Sidebar + Table
 // ============================================================================
 
 interface KnowledgeTwoColumnViewProps {
   activeView: KnowledgeView;
-  activeSource?: ValidSources;
-  connectedSources: ConnectedSource[];
-  selectedSources: ValidSources[];
-  selectedDocumentSetIds: number[];
-  selectedFileIds: string[];
-  selectedDocumentIds: string[];
-  selectedFolderIds: number[];
-  sourceSelectionCounts: Map<ValidSources, number>;
-  documentSets: DocumentSetSummary[];
-  allRecentFiles: ProjectFile[];
-  onNavigateToRecent: () => void;
-  onNavigateToDocumentSets: () => void;
-  onNavigateToSource: (source: ValidSources) => void;
-  onDocumentSetToggle: (id: number) => void;
-  onSourceToggle: (source: ValidSources) => void;
-  onFileToggle: (fileId: string) => void;
-  onToggleDocument: (documentId: string) => void;
-  onToggleFolder: (folderId: number) => void;
-  onSetDocumentIds: (ids: string[]) => void;
-  onSetFolderIds: (ids: number[]) => void;
-  onDeselectAllDocuments: () => void;
-  onDeselectAllFolders: () => void;
-  onUploadChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  hasProcessingFiles: boolean;
-  initialAttachedDocuments?: AttachedDocumentSnapshot[];
-  onSelectionCountChange: (source: ValidSources, count: number) => void;
-  vectorDbEnabled: boolean;
+  selectedDocumentCollectionIds: string[];
+  selectedGraphCollectionIds: string[];
+  documentProcessingCollections: KnowledgeCollection[];
+  knowledgeGraphCollections: KnowledgeCollection[];
+  isLoading: boolean;
+  onNavigateToDocumentProcessing: () => void;
+  onNavigateToKnowledgeGraph: () => void;
+  onDocumentCollectionToggle: (id: string) => void;
+  onGraphCollectionToggle: (id: string) => void;
 }
 
 const KnowledgeTwoColumnView = memo(function KnowledgeTwoColumnView({
   activeView,
-  activeSource,
-  connectedSources,
-  selectedSources,
-  selectedDocumentSetIds,
-  selectedFileIds,
-  selectedDocumentIds,
-  selectedFolderIds,
-  sourceSelectionCounts,
-  documentSets,
-  allRecentFiles,
-  onNavigateToRecent,
-  onNavigateToDocumentSets,
-  onNavigateToSource,
-  onDocumentSetToggle,
-  onSourceToggle,
-  onFileToggle,
-  onToggleDocument,
-  onToggleFolder,
-  onSetDocumentIds,
-  onSetFolderIds,
-  onDeselectAllDocuments,
-  onDeselectAllFolders,
-  onUploadChange,
-  hasProcessingFiles,
-  initialAttachedDocuments,
-  onSelectionCountChange,
-  vectorDbEnabled,
+  selectedDocumentCollectionIds,
+  selectedGraphCollectionIds,
+  documentProcessingCollections,
+  knowledgeGraphCollections,
+  isLoading,
+  onNavigateToDocumentProcessing,
+  onNavigateToKnowledgeGraph,
+  onDocumentCollectionToggle,
+  onGraphCollectionToggle,
 }: KnowledgeTwoColumnViewProps) {
   return (
     <TableLayouts.TwoColumnLayout minHeight={18.75}>
       <KnowledgeSidebar
         activeView={activeView}
-        activeSource={activeSource}
-        connectedSources={connectedSources}
-        selectedSources={selectedSources}
-        selectedDocumentSetIds={selectedDocumentSetIds}
-        selectedFileIds={selectedFileIds}
-        sourceSelectionCounts={sourceSelectionCounts}
-        onNavigateToRecent={onNavigateToRecent}
-        onNavigateToDocumentSets={onNavigateToDocumentSets}
-        onNavigateToSource={onNavigateToSource}
-        vectorDbEnabled={vectorDbEnabled}
+        selectedDocumentCollectionIds={selectedDocumentCollectionIds}
+        selectedGraphCollectionIds={selectedGraphCollectionIds}
+        onNavigateToDocumentProcessing={onNavigateToDocumentProcessing}
+        onNavigateToKnowledgeGraph={onNavigateToKnowledgeGraph}
       />
 
       <TableLayouts.ContentColumn>
-        {activeView === "document-sets" && (
-          <DocumentSetsTableContent
-            documentSets={documentSets}
-            selectedDocumentSetIds={selectedDocumentSetIds}
-            onDocumentSetToggle={onDocumentSetToggle}
+        {activeView === "document-processing" && (
+          <CollectionTableContent
+            collections={documentProcessingCollections}
+            selectedIds={selectedDocumentCollectionIds}
+            onToggle={onDocumentCollectionToggle}
+            isLoading={isLoading}
+            emptyMessage="No datasources found. Add a datasource in the Data Sources page."
+            ariaLabelPrefix="doc-collection-row"
           />
         )}
-        {activeView === "sources" && activeSource && (
-          <SourcesTableContent
-            source={activeSource}
-            selectedDocumentIds={selectedDocumentIds}
-            onToggleDocument={onToggleDocument}
-            onSetDocumentIds={onSetDocumentIds}
-            selectedFolderIds={selectedFolderIds}
-            onToggleFolder={onToggleFolder}
-            onSetFolderIds={onSetFolderIds}
-            onDeselectAllDocuments={onDeselectAllDocuments}
-            onDeselectAllFolders={onDeselectAllFolders}
-            initialAttachedDocuments={initialAttachedDocuments}
-            onSelectionCountChange={onSelectionCountChange}
-          />
-        )}
-        {activeView === "recent" && (
-          <RecentFilesTableContent
-            allRecentFiles={allRecentFiles}
-            selectedFileIds={selectedFileIds}
-            onToggleFile={onFileToggle}
-            onUploadChange={onUploadChange}
-            hasProcessingFiles={hasProcessingFiles}
+        {activeView === "knowledge-graph" && (
+          <CollectionTableContent
+            collections={knowledgeGraphCollections}
+            selectedIds={selectedGraphCollectionIds}
+            onToggle={onGraphCollectionToggle}
+            isLoading={isLoading}
+            emptyMessage="No collections with a built knowledge graph. Build a knowledge graph from the Knowledge Graph page first."
+            ariaLabelPrefix="graph-collection-row"
           />
         )}
       </TableLayouts.ContentColumn>
@@ -631,31 +402,21 @@ const KnowledgeTwoColumnView = memo(function KnowledgeTwoColumnView({
 });
 
 // ============================================================================
-// KNOWLEDGE ADD VIEW - Initial pill selection view
+// KNOWLEDGE ADD VIEW - Pill selection view
 // ============================================================================
 
 interface KnowledgeAddViewProps {
-  connectedSources: ConnectedSource[];
-  onNavigateToDocumentSets: () => void;
-  onNavigateToRecent: () => void;
-  onNavigateToSource: (source: ValidSources) => void;
-  selectedDocumentSetIds: number[];
-  selectedFileIds: string[];
-  selectedSources: ValidSources[];
-  sourceSelectionCounts: Map<ValidSources, number>;
-  vectorDbEnabled: boolean;
+  onNavigateToDocumentProcessing: () => void;
+  onNavigateToKnowledgeGraph: () => void;
+  selectedDocumentCollectionIds: string[];
+  selectedGraphCollectionIds: string[];
 }
 
 const KnowledgeAddView = memo(function KnowledgeAddView({
-  connectedSources,
-  onNavigateToDocumentSets,
-  onNavigateToRecent,
-  onNavigateToSource,
-  selectedDocumentSetIds,
-  selectedFileIds,
-  selectedSources,
-  sourceSelectionCounts,
-  vectorDbEnabled,
+  onNavigateToDocumentProcessing,
+  onNavigateToKnowledgeGraph,
+  selectedDocumentCollectionIds,
+  selectedGraphCollectionIds,
 }: KnowledgeAddViewProps) {
   return (
     <GeneralLayouts.Section
@@ -671,73 +432,40 @@ const KnowledgeAddView = memo(function KnowledgeAddView({
         height="auto"
         wrap
       >
-        {vectorDbEnabled && (
-          <LineItem
-            icon={SvgFolder}
-            onClick={onNavigateToDocumentSets}
-            emphasized={selectedDocumentSetIds.length > 0}
-            aria-label="knowledge-add-document-sets"
-            rightChildren={
-              selectedDocumentSetIds.length > 0 ? (
-                <Text mainUiAction className="text-action-link-05">
-                  {selectedDocumentSetIds.length}
-                </Text>
-              ) : undefined
-            }
-          >
-            Document Sets
-          </LineItem>
-        )}
-
         <LineItem
           icon={SvgFiles}
-          description="Recent or new uploads"
-          onClick={onNavigateToRecent}
-          emphasized={selectedFileIds.length > 0}
-          aria-label="knowledge-add-files"
+          description="Vector similarity search"
+          onClick={onNavigateToDocumentProcessing}
+          emphasized={selectedDocumentCollectionIds.length > 0}
+          aria-label="knowledge-add-document-processing"
           rightChildren={
-            selectedFileIds.length > 0 ? (
+            selectedDocumentCollectionIds.length > 0 ? (
               <Text mainUiAction className="text-action-link-05">
-                {selectedFileIds.length}
+                {selectedDocumentCollectionIds.length}
               </Text>
             ) : undefined
           }
         >
-          Your Files
+          Document Processing
+        </LineItem>
+
+        <LineItem
+          icon={SvgNetworkGraph}
+          description="Neo4j hybrid search"
+          onClick={onNavigateToKnowledgeGraph}
+          emphasized={selectedGraphCollectionIds.length > 0}
+          aria-label="knowledge-add-knowledge-graph"
+          rightChildren={
+            selectedGraphCollectionIds.length > 0 ? (
+              <Text mainUiAction className="text-action-link-05">
+                {selectedGraphCollectionIds.length}
+              </Text>
+            ) : undefined
+          }
+        >
+          Knowledge Graph
         </LineItem>
       </GeneralLayouts.Section>
-
-      {vectorDbEnabled && connectedSources.length > 0 && (
-        <>
-          <Text as="p" text03 secondaryBody>
-            Connected Sources
-          </Text>
-          {connectedSources.map((connectedSource) => {
-            const sourceMetadata = getSourceMetadata(connectedSource.source);
-            const isSelected = selectedSources.includes(connectedSource.source);
-            const selectionCount =
-              sourceSelectionCounts.get(connectedSource.source) ?? 0;
-            return (
-              <LineItem
-                key={connectedSource.source}
-                icon={sourceMetadata.icon}
-                onClick={() => onNavigateToSource(connectedSource.source)}
-                emphasized={isSelected || selectionCount > 0}
-                aria-label={`knowledge-add-source-${connectedSource.source}`}
-                rightChildren={
-                  selectionCount > 0 ? (
-                    <Text mainUiAction className="text-action-link-05">
-                      {selectionCount}
-                    </Text>
-                  ) : undefined
-                }
-              >
-                {sourceMetadata.displayName}
-              </LineItem>
-            );
-          })}
-        </>
-      )}
     </GeneralLayouts.Section>
   );
 });
@@ -748,32 +476,16 @@ const KnowledgeAddView = memo(function KnowledgeAddView({
 
 interface KnowledgeMainContentProps {
   hasAnyKnowledge: boolean;
-  selectedDocumentSetIds: number[];
-  selectedDocumentIds: string[];
-  selectedFolderIds: number[];
-  selectedFileIds: string[];
-  selectedSources: ValidSources[];
-  documentSets: DocumentSetSummary[];
-  allRecentFiles: ProjectFile[];
-  connectedSources: ConnectedSource[];
+  totalSelected: number;
   onAddKnowledge: () => void;
   onViewEdit: () => void;
-  onFileClick?: (file: ProjectFile) => void;
 }
 
 const KnowledgeMainContent = memo(function KnowledgeMainContent({
   hasAnyKnowledge,
-  selectedDocumentSetIds,
-  selectedDocumentIds,
-  selectedFolderIds,
-  selectedFileIds,
-  selectedSources,
-  documentSets,
-  allRecentFiles,
-  connectedSources,
+  totalSelected,
   onAddKnowledge,
   onViewEdit,
-  onFileClick,
 }: KnowledgeMainContentProps) {
   if (!hasAnyKnowledge) {
     return (
@@ -795,14 +507,6 @@ const KnowledgeMainContent = memo(function KnowledgeMainContent({
       </GeneralLayouts.Section>
     );
   }
-
-  // Has knowledge - show preview with count
-  const totalSelected =
-    selectedDocumentSetIds.length +
-    selectedDocumentIds.length +
-    selectedFolderIds.length +
-    selectedFileIds.length +
-    selectedSources.length;
 
   return (
     <GeneralLayouts.Section
@@ -831,271 +535,101 @@ const KnowledgeMainContent = memo(function KnowledgeMainContent({
 // MAIN COMPONENT - AgentKnowledgePane
 // ============================================================================
 
-interface AgentKnowledgePaneProps {
-  enableKnowledge: boolean;
-  onEnableKnowledgeChange: (enabled: boolean) => void;
-  selectedSources: ValidSources[];
-  onSourcesChange: (sources: ValidSources[]) => void;
-  documentSets: DocumentSetSummary[];
-  selectedDocumentSetIds: number[];
-  onDocumentSetIdsChange: (ids: number[]) => void;
-  selectedDocumentIds: string[];
-  onDocumentIdsChange: (ids: string[]) => void;
-  selectedFolderIds: number[];
-  onFolderIdsChange: (ids: number[]) => void;
-  selectedFileIds: string[];
-  onFileIdsChange: (ids: string[]) => void;
-  allRecentFiles: ProjectFile[];
-  onFileClick?: (file: ProjectFile) => void;
-  onUploadChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  hasProcessingFiles: boolean;
-  // Initial attached documents for existing agents (to populate selectedDocumentDetails)
-  initialAttachedDocuments?: AttachedDocumentSnapshot[];
-  // Initial hierarchy nodes for existing agents (to calculate per-source counts)
-  initialHierarchyNodes?: HierarchyNodeSnapshot[];
-  // When false, hides document sets, connected sources, and hierarchy nodes
-  // (these require a vector DB). User files are still shown.
-  vectorDbEnabled?: boolean;
-}
-
 export default function AgentKnowledgePane({
   enableKnowledge,
   onEnableKnowledgeChange,
-  selectedSources,
-  onSourcesChange,
-  documentSets,
-  selectedDocumentSetIds,
-  onDocumentSetIdsChange,
-  selectedDocumentIds,
-  onDocumentIdsChange,
-  selectedFolderIds,
-  onFolderIdsChange,
-  selectedFileIds,
-  onFileIdsChange,
-  allRecentFiles,
-  onFileClick,
-  onUploadChange,
-  hasProcessingFiles,
-  initialAttachedDocuments,
-  initialHierarchyNodes,
-  vectorDbEnabled = true,
+  ragDocumentCollectionIds,
+  onDocumentCollectionIdsChange,
+  ragGraphCollectionIds,
+  onGraphCollectionIdsChange,
 }: AgentKnowledgePaneProps) {
-  // View state
   const [view, setView] = useState<KnowledgeView>("main");
-  const [activeSource, setActiveSource] = useState<ValidSources | undefined>();
+  const { collections, isLoading } = useKnowledgeCollections(enableKnowledge);
 
-  // Reset view to main when knowledge is disabled
+  // Reset view when knowledge is disabled
   useEffect(() => {
     if (!enableKnowledge) {
       setView("main");
     }
   }, [enableKnowledge]);
 
-  // Get connected sources from CC pairs
-  const { ccPairs } = useCCPairs(vectorDbEnabled);
-  const connectedSources: ConnectedSource[] = useMemo(() => {
-    if (!ccPairs || ccPairs.length === 0) return [];
-    const sourceSet = new Set<ValidSources>();
-    ccPairs.forEach((pair) => sourceSet.add(pair.source));
-    return Array.from(sourceSet).map((source) => ({
-      source,
-      connectorCount: ccPairs.filter((p) => p.source === source).length,
-    }));
-  }, [ccPairs]);
-
-  // Track per-source selection counts
-  // Initialized from initialHierarchyNodes and initialAttachedDocuments
-  const [sourceSelectionCounts, setSourceSelectionCounts] = useState<
-    Map<ValidSources, number>
-  >(() => {
-    const counts = new Map<ValidSources, number>();
-
-    // Count folders from initialHierarchyNodes (which have source info)
-    if (initialHierarchyNodes) {
-      for (const node of initialHierarchyNodes) {
-        const current = counts.get(node.source) ?? 0;
-        counts.set(node.source, current + 1);
-      }
-    }
-
-    // Count documents from initialAttachedDocuments (which now include source)
-    if (initialAttachedDocuments) {
-      for (const doc of initialAttachedDocuments) {
-        if (doc.source) {
-          const current = counts.get(doc.source) ?? 0;
-          counts.set(doc.source, current + 1);
-        }
-      }
-    }
-
-    return counts;
-  });
-
-  // Handler for selection count changes from SourceHierarchyBrowser
-  const handleSelectionCountChange = useCallback(
-    (source: ValidSources, count: number) => {
-      setSourceSelectionCounts((prev) => {
-        const newCounts = new Map(prev);
-        if (count === 0) {
-          newCounts.delete(source);
-        } else {
-          newCounts.set(source, count);
-        }
-        return newCounts;
-      });
-    },
-    []
-  );
-
-  // Check if any knowledge is selected
   const hasAnyKnowledge =
-    selectedDocumentSetIds.length > 0 ||
-    selectedDocumentIds.length > 0 ||
-    selectedFolderIds.length > 0 ||
-    selectedFileIds.length > 0 ||
-    selectedSources.length > 0;
+    ragDocumentCollectionIds.length > 0 || ragGraphCollectionIds.length > 0;
 
-  // Navigation handlers - memoized to prevent unnecessary re-renders
+  const totalSelected =
+    ragDocumentCollectionIds.length + ragGraphCollectionIds.length;
+
+  // Navigation handlers
   const handleNavigateToAdd = useCallback(() => setView("add"), []);
-  const handleNavigateToMain = useCallback(() => setView("main"), []);
-  const handleNavigateToDocumentSets = useCallback(
-    () => setView("document-sets"),
+  const handleNavigateToDocumentProcessing = useCallback(
+    () => setView("document-processing"),
     []
   );
-  const handleNavigateToRecent = useCallback(() => setView("recent"), []);
-  const handleNavigateToSource = useCallback((source: ValidSources) => {
-    setActiveSource(source);
-    setView("sources");
-  }, []);
-
-  // Toggle handlers - memoized to prevent unnecessary re-renders
-  const handleDocumentSetToggle = useCallback(
-    (documentSetId: number) => {
-      const newIds = selectedDocumentSetIds.includes(documentSetId)
-        ? selectedDocumentSetIds.filter((id) => id !== documentSetId)
-        : [...selectedDocumentSetIds, documentSetId];
-      onDocumentSetIdsChange(newIds);
-    },
-    [selectedDocumentSetIds, onDocumentSetIdsChange]
+  const handleNavigateToKnowledgeGraph = useCallback(
+    () => setView("knowledge-graph"),
+    []
   );
 
-  const handleSourceToggle = useCallback(
-    (source: ValidSources) => {
-      const newSources = selectedSources.includes(source)
-        ? selectedSources.filter((s) => s !== source)
-        : [...selectedSources, source];
-      onSourcesChange(newSources);
+  // Toggle handlers
+  const handleDocumentCollectionToggle = useCallback(
+    (id: string) => {
+      const newIds = ragDocumentCollectionIds.includes(id)
+        ? ragDocumentCollectionIds.filter((x) => x !== id)
+        : [...ragDocumentCollectionIds, id];
+      onDocumentCollectionIdsChange(newIds);
     },
-    [selectedSources, onSourcesChange]
+    [ragDocumentCollectionIds, onDocumentCollectionIdsChange]
   );
 
-  const handleFileToggle = useCallback(
-    (fileId: string) => {
-      const newIds = selectedFileIds.includes(fileId)
-        ? selectedFileIds.filter((id) => id !== fileId)
-        : [...selectedFileIds, fileId];
-      onFileIdsChange(newIds);
+  const handleGraphCollectionToggle = useCallback(
+    (id: string) => {
+      const newIds = ragGraphCollectionIds.includes(id)
+        ? ragGraphCollectionIds.filter((x) => x !== id)
+        : [...ragGraphCollectionIds, id];
+      onGraphCollectionIdsChange(newIds);
     },
-    [selectedFileIds, onFileIdsChange]
+    [ragGraphCollectionIds, onGraphCollectionIdsChange]
   );
 
-  const handleDocumentToggle = useCallback(
-    (documentId: string) => {
-      const newIds = selectedDocumentIds.includes(documentId)
-        ? selectedDocumentIds.filter((id) => id !== documentId)
-        : [...selectedDocumentIds, documentId];
-      onDocumentIdsChange(newIds);
-    },
-    [selectedDocumentIds, onDocumentIdsChange]
-  );
-
-  const handleFolderToggle = useCallback(
-    (folderId: number) => {
-      const newIds = selectedFolderIds.includes(folderId)
-        ? selectedFolderIds.filter((id) => id !== folderId)
-        : [...selectedFolderIds, folderId];
-      onFolderIdsChange(newIds);
-    },
-    [selectedFolderIds, onFolderIdsChange]
-  );
-
-  const handleDeselectAllDocuments = useCallback(() => {
-    onDocumentIdsChange([]);
-  }, [onDocumentIdsChange]);
-
-  const handleDeselectAllFolders = useCallback(() => {
-    onFolderIdsChange([]);
-  }, [onFolderIdsChange]);
-
-  // Memoized content based on view - prevents unnecessary re-renders
+  // Rendered content based on view
   const renderedContent = useMemo(() => {
     switch (view) {
       case "main":
         return (
           <KnowledgeMainContent
             hasAnyKnowledge={hasAnyKnowledge}
-            selectedDocumentSetIds={selectedDocumentSetIds}
-            selectedDocumentIds={selectedDocumentIds}
-            selectedFolderIds={selectedFolderIds}
-            selectedFileIds={selectedFileIds}
-            selectedSources={selectedSources}
-            documentSets={documentSets}
-            allRecentFiles={allRecentFiles}
-            connectedSources={connectedSources}
+            totalSelected={totalSelected}
             onAddKnowledge={handleNavigateToAdd}
             onViewEdit={handleNavigateToAdd}
-            onFileClick={onFileClick}
           />
         );
 
       case "add":
         return (
           <KnowledgeAddView
-            connectedSources={connectedSources}
-            onNavigateToDocumentSets={handleNavigateToDocumentSets}
-            onNavigateToRecent={handleNavigateToRecent}
-            onNavigateToSource={handleNavigateToSource}
-            selectedDocumentSetIds={selectedDocumentSetIds}
-            selectedFileIds={selectedFileIds}
-            selectedSources={selectedSources}
-            sourceSelectionCounts={sourceSelectionCounts}
-            vectorDbEnabled={vectorDbEnabled}
+            onNavigateToDocumentProcessing={handleNavigateToDocumentProcessing}
+            onNavigateToKnowledgeGraph={handleNavigateToKnowledgeGraph}
+            selectedDocumentCollectionIds={ragDocumentCollectionIds}
+            selectedGraphCollectionIds={ragGraphCollectionIds}
           />
         );
 
-      case "document-sets":
-      case "sources":
-      case "recent":
+      case "document-processing":
+      case "knowledge-graph":
         return (
           <KnowledgeTwoColumnView
             activeView={view}
-            activeSource={activeSource}
-            connectedSources={connectedSources}
-            selectedSources={selectedSources}
-            selectedDocumentSetIds={selectedDocumentSetIds}
-            selectedFileIds={selectedFileIds}
-            selectedDocumentIds={selectedDocumentIds}
-            selectedFolderIds={selectedFolderIds}
-            sourceSelectionCounts={sourceSelectionCounts}
-            documentSets={documentSets}
-            allRecentFiles={allRecentFiles}
-            onNavigateToRecent={handleNavigateToRecent}
-            onNavigateToDocumentSets={handleNavigateToDocumentSets}
-            onNavigateToSource={handleNavigateToSource}
-            onDocumentSetToggle={handleDocumentSetToggle}
-            onSourceToggle={handleSourceToggle}
-            onFileToggle={handleFileToggle}
-            onToggleDocument={handleDocumentToggle}
-            onToggleFolder={handleFolderToggle}
-            onSetDocumentIds={onDocumentIdsChange}
-            onSetFolderIds={onFolderIdsChange}
-            onDeselectAllDocuments={handleDeselectAllDocuments}
-            onDeselectAllFolders={handleDeselectAllFolders}
-            onUploadChange={onUploadChange}
-            hasProcessingFiles={hasProcessingFiles}
-            initialAttachedDocuments={initialAttachedDocuments}
-            onSelectionCountChange={handleSelectionCountChange}
-            vectorDbEnabled={vectorDbEnabled}
+            selectedDocumentCollectionIds={ragDocumentCollectionIds}
+            selectedGraphCollectionIds={ragGraphCollectionIds}
+            documentProcessingCollections={
+              collections?.document_processing ?? []
+            }
+            knowledgeGraphCollections={collections?.knowledge_graph ?? []}
+            isLoading={isLoading}
+            onNavigateToDocumentProcessing={handleNavigateToDocumentProcessing}
+            onNavigateToKnowledgeGraph={handleNavigateToKnowledgeGraph}
+            onDocumentCollectionToggle={handleDocumentCollectionToggle}
+            onGraphCollectionToggle={handleGraphCollectionToggle}
           />
         );
 
@@ -1104,36 +638,17 @@ export default function AgentKnowledgePane({
     }
   }, [
     view,
-    activeSource,
     hasAnyKnowledge,
-    selectedDocumentSetIds,
-    selectedDocumentIds,
-    selectedFolderIds,
-    selectedFileIds,
-    selectedSources,
-    sourceSelectionCounts,
-    documentSets,
-    allRecentFiles,
-    connectedSources,
-    hasProcessingFiles,
-    initialAttachedDocuments,
-    vectorDbEnabled,
-    onFileClick,
-    onUploadChange,
-    onDocumentIdsChange,
-    onFolderIdsChange,
+    totalSelected,
+    ragDocumentCollectionIds,
+    ragGraphCollectionIds,
+    collections,
+    isLoading,
     handleNavigateToAdd,
-    handleNavigateToDocumentSets,
-    handleNavigateToRecent,
-    handleNavigateToSource,
-    handleDocumentSetToggle,
-    handleSourceToggle,
-    handleFileToggle,
-    handleDocumentToggle,
-    handleFolderToggle,
-    handleDeselectAllDocuments,
-    handleDeselectAllFolders,
-    handleSelectionCountChange,
+    handleNavigateToDocumentProcessing,
+    handleNavigateToKnowledgeGraph,
+    handleDocumentCollectionToggle,
+    handleGraphCollectionToggle,
   ]);
 
   return (

@@ -21,6 +21,12 @@ function RagManagementSection() {
   const [selectedCollectionId, setSelectedCollectionId] = useState<
     string | null
   >(null);
+  const [selectedIsDatasource, setSelectedIsDatasource] = useState(false);
+
+  function handleCollectionSelect(id: string | null, isDatasource?: boolean) {
+    setSelectedCollectionId(id);
+    setSelectedIsDatasource(isDatasource ?? false);
+  }
 
   const tabs = SimpleTabs.generateTabs({
     documents: {
@@ -39,7 +45,7 @@ function RagManagementSection() {
     <div className="flex flex-col gap-4">
       <CollectionsPanel
         selectedCollectionId={selectedCollectionId}
-        onCollectionSelect={setSelectedCollectionId}
+        onCollectionSelect={handleCollectionSelect}
       />
 
       {selectedCollectionId ? (

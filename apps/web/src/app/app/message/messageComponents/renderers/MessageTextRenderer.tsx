@@ -3,11 +3,13 @@ import Text from "@/refresh-components/texts/Text";
 
 import {
   ChatPacket,
-  PacketType,
   StopReason,
 } from "../../../services/streamingModels";
 import { MessageRenderer, FullChatState } from "../interfaces";
-import { isFinalAnswerComplete } from "../../../services/packetUtils";
+import {
+  isFinalAnswerComplete,
+  getTextContent,
+} from "../../../services/packetUtils";
 import { useMarkdownRenderer } from "../markdownUtils";
 import { BlinkingBar } from "../../BlinkingBar";
 
@@ -37,34 +39,20 @@ export const MessageTextRenderer: MessageRenderer<
   const [displayedPacketCount, setDisplayedPacketCount] =
     useState(initialPacketCount);
 
-  // Get the full content from all packets
-  const fullContent = packets
-    .map((packet) => {
-      if (
-        packet.obj.type === PacketType.MESSAGE_DELTA ||
-        packet.obj.type === PacketType.MESSAGE_START
-      ) {
-        return packet.obj.content;
-      }
-      return "";
-    })
-    .join("");
+  const fullContent = useMemo(() => getTextContent(packets), [packets]);
 
   // Animation effect - gradually increase displayed packets at controlled rate
   useEffect(() => {
-    if (!animate) {
-      setDisplayedPacketCount(-1); // Show all packets
-      return;
-    }
+    if (displayedPacketCount === -1) return; // historical message, no animation
 
-    if (displayedPacketCount >= 0 && displayedPacketCount < packets.length) {
+    if (displayedPacketCount < packets.length) {
       const timer = setTimeout(() => {
         setDisplayedPacketCount((prev) => Math.min(prev + 1, packets.length));
       }, PACKET_DELAY_MS);
 
       return () => clearTimeout(timer);
     }
-  }, [animate, displayedPacketCount, packets.length]);
+  }, [displayedPacketCount, packets.length]);
 
   // Reset displayed count when packet array changes significantly (e.g., new message)
   useEffect(() => {
@@ -81,38 +69,21 @@ export const MessageTextRenderer: MessageRenderer<
   // Only mark as complete when all packets are received AND displayed
   useEffect(() => {
     if (isFinalAnswerComplete(packets)) {
-      // If animating, wait until all packets are displayed
-      if (
-        animate &&
-        displayedPacketCount >= 0 &&
-        displayedPacketCount < packets.length
-      ) {
-        return;
+      if (displayedPacketCount >= 0 && displayedPacketCount < packets.length) {
+        return; // animation still in progress, wait
       }
       onComplete();
     }
-  }, [packets, onComplete, animate, displayedPacketCount]);
+  }, [packets, onComplete, displayedPacketCount]);
 
   // Get content based on displayed packet count
   const content = useMemo(() => {
-    if (!animate || displayedPacketCount === -1) {
-      return fullContent; // Show all content
+    if (displayedPacketCount === -1 || displayedPacketCount >= packets.length) {
+      return fullContent;
     }
 
-    // Only show content from packets up to displayedPacketCount
-    return packets
-      .slice(0, displayedPacketCount)
-      .map((packet) => {
-        if (
-          packet.obj.type === PacketType.MESSAGE_DELTA ||
-          packet.obj.type === PacketType.MESSAGE_START
-        ) {
-          return packet.obj.content;
-        }
-        return "";
-      })
-      .join("");
-  }, [animate, displayedPacketCount, fullContent, packets]);
+    return getTextContent(packets.slice(0, displayedPacketCount));
+  }, [displayedPacketCount, fullContent, packets]);
 
   const { renderedContent } = useMarkdownRenderer(
     // the [*]() is a hack to show a blinking dot when the packet is not complete

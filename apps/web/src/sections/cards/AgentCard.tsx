@@ -1,12 +1,12 @@
 "use client";
 
-import { useMemo, useCallback } from "react";
+import { useMemo, useCallback, useState } from "react";
 import { MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
 import AgentAvatar from "@/refresh-components/avatars/AgentAvatar";
 import Button from "@/refresh-components/buttons/Button";
 import { useAppRouter } from "@/hooks/appNavigation";
 import IconButton from "@/refresh-components/buttons/IconButton";
-import { usePinnedAgents, useAgent } from "@/hooks/useAgents";
+import { usePinnedAgents, useAgent, useAgents } from "@/hooks/useAgents";
 import { cn, noProp } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import type { Route } from "next";
@@ -15,6 +15,7 @@ import {
   checkUserOwnsAgent,
   updateAgentSharedStatus,
   updateAgentFeaturedStatus,
+  deleteAgent,
 } from "@/lib/agents";
 import { useUser } from "@/providers/UserProvider";
 import {
@@ -25,11 +26,13 @@ import {
   SvgPin,
   SvgPinned,
   SvgShare,
+  SvgTrash,
   SvgUser,
 } from "@opal/icons";
 import { useCreateModal } from "@/refresh-components/contexts/ModalContext";
 import ShareAgentModal from "@/sections/modals/ShareAgentModal";
 import AgentViewerModal from "@/sections/modals/AgentViewerModal";
+import ConfirmationModalLayout from "@/refresh-components/layouts/ConfirmationModalLayout";
 import { toast } from "@/hooks/useToast";
 import { CardItemLayout } from "@/layouts/general-layouts";
 import { Content } from "@opal/layouts";
@@ -44,6 +47,7 @@ export default function AgentCard({ agent }: AgentCardProps) {
   const route = useAppRouter();
   const router = useRouter();
   const { pinnedAgents, togglePinnedAgent } = usePinnedAgents();
+  const { refresh: refreshAgents } = useAgents();
   const pinned = useMemo(
     () => pinnedAgents.some((pinnedAgent) => pinnedAgent.id === agent.id),
     [agent.id, pinnedAgents]
@@ -52,6 +56,7 @@ export default function AgentCard({ agent }: AgentCardProps) {
   const isPaidEnterpriseFeaturesEnabled = usePaidEnterpriseFeaturesEnabled();
   const canUpdateFeaturedStatus = isAdmin || isCurator;
   const isOwnedByUser = checkUserOwnsAgent(user, agent);
+  const canEdit = isOwnedByUser || isAdmin;
   const shareAgentModal = useCreateModal();
   const agentViewerModal = useCreateModal();
   const { agent: fullAgent, refresh: refreshAgent } = useAgent(agent.id);
@@ -109,6 +114,25 @@ export default function AgentCard({ agent }: AgentCardProps) {
     ]
   );
 
+  const deleteModal = useCreateModal();
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDelete = useCallback(async () => {
+    setIsDeleting(true);
+    try {
+      const error = await deleteAgent(agent.id);
+      if (error) {
+        toast.error(`Failed to delete agent: ${error}`);
+      } else {
+        toast.success(`Agent "${agent.name}" deleted.`);
+        await refreshAgents();
+      }
+    } finally {
+      setIsDeleting(false);
+      deleteModal.toggle(false);
+    }
+  }, [agent.id, agent.name, refreshAgents, deleteModal]);
+
   return (
     <>
       <shareAgentModal.Provider>
@@ -126,6 +150,27 @@ export default function AgentCard({ agent }: AgentCardProps) {
       <agentViewerModal.Provider>
         {fullAgent && <AgentViewerModal agent={fullAgent} />}
       </agentViewerModal.Provider>
+
+      <deleteModal.Provider>
+        {deleteModal.isOpen && (
+          <ConfirmationModalLayout
+            icon={SvgTrash}
+            title={`Delete "${agent.name}"`}
+            onClose={() => deleteModal.toggle(false)}
+            submit={
+              <Button
+                danger
+                onClick={handleDelete}
+                disabled={isDeleting}
+              >
+                {isDeleting ? "Deleting…" : "Delete"}
+              </Button>
+            }
+          >
+            This agent will be permanently deleted. This action cannot be undone.
+          </ConfirmationModalLayout>
+        )}
+      </deleteModal.Provider>
 
       <Interactive.Base
         onClick={() => agentViewerModal.toggle(true)}
@@ -156,7 +201,7 @@ export default function AgentCard({ agent }: AgentCardProps) {
                       className="hidden group-hover/AgentCard:flex"
                     />
                   )}
-                  {isOwnedByUser && (
+                  {canEdit && (
                     <IconButton
                       icon={SvgEdit}
                       tertiary
@@ -167,7 +212,15 @@ export default function AgentCard({ agent }: AgentCardProps) {
                       className="hidden group-hover/AgentCard:flex"
                     />
                   )}
-                  {isOwnedByUser && (
+                  {canEdit && (
+                    <IconButton
+                      icon={SvgTrash}
+                      tertiary
+                      onClick={noProp(() => deleteModal.toggle(true))}
+                      tooltip="Delete Agent"
+                      className="hidden group-hover/AgentCard:flex"
+                    />
+                  )}                  {isOwnedByUser && (
                     <IconButton
                       icon={SvgShare}
                       tertiary

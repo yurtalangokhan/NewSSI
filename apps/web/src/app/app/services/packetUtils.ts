@@ -177,13 +177,16 @@ export function groupPacketsByTurnIndex(
 }
 
 export function getTextContent(packets: Packet[]) {
+  // Prefer MESSAGE_DELTA tokens when present (streaming); fall back to MESSAGE_START
+  // content only for historical messages that have no delta packets.
+  const hasDelta = packets.some((p) => p.obj.type === PacketType.MESSAGE_DELTA);
   return packets
     .map((packet) => {
-      if (
-        packet.obj.type === PacketType.MESSAGE_START ||
-        packet.obj.type === PacketType.MESSAGE_DELTA
-      ) {
-        return (packet.obj as MessageStart | MessageDelta).content || "";
+      if (!hasDelta && packet.obj.type === PacketType.MESSAGE_START) {
+        return (packet.obj as MessageStart).content || "";
+      }
+      if (packet.obj.type === PacketType.MESSAGE_DELTA) {
+        return (packet.obj as MessageDelta).content || "";
       }
       return "";
     })

@@ -130,6 +130,25 @@ function injectSectionEnd(state: ProcessorState, groupKey: string): void {
   state.groupKeysWithSectionEnd.add(groupKey);
 }
 
+/**
+ * Content packet types that indicate a group has meaningful content to display
+ */
+const CONTENT_PACKET_TYPES_SET = new Set<PacketType>([
+  PacketType.MESSAGE_START,
+  PacketType.MESSAGE_DELTA,
+  PacketType.SEARCH_TOOL_START,
+  PacketType.IMAGE_GENERATION_TOOL_START,
+  PacketType.PYTHON_TOOL_START,
+  PacketType.CUSTOM_TOOL_START,
+  PacketType.FILE_READER_START,
+  PacketType.FETCH_TOOL_START,
+  PacketType.MEMORY_TOOL_START,
+  PacketType.MEMORY_TOOL_NO_ACCESS,
+  PacketType.REASONING_START,
+  PacketType.DEEP_RESEARCH_PLAN_START,
+  PacketType.RESEARCH_AGENT_START,
+]);
+
 function hasContentPackets(packets: Packet[]): boolean {
   return packets.some((packet) => {
     const type = packet.obj.type as PacketType;
@@ -314,6 +333,7 @@ function processPacket(state: ProcessorState, packet: Packet): void {
   // Track group key
   const groupKey = getGroupKey(packet);
   state.seenGroupKeys.add(groupKey);
+  const isFirstPacket = !state.groupedPacketsMap.has(groupKey);
 
   // Track SECTION_END and ERROR packets (both indicate completion)
   if (
@@ -326,14 +346,24 @@ function processPacket(state: ProcessorState, packet: Packet): void {
   // Add packet to group
   addPacketToGroup(state, packet, groupKey);
 
-  // Categorize groups whenever matching packets appear.
-  // This preserves visibility for mixed groups where display packets arrive
-  // before tool packets (or vice versa), and for delta-only tool streams.
-  if (isToolPacket(packet, false)) {
+  // Categorize on first packet of each group
+  if (isFirstPacket) {
+    if (isToolPacket(packet, false)) {
+      state.toolGroupKeys.add(groupKey);
+      console.log('[packetProcessor] Added to toolGroupKeys:', groupKey);
+    }
+    if (isDisplayPacket(packet)) {
+      state.displayGroupKeys.add(groupKey);
+      console.log('[packetProcessor] Added to displayGroupKeys:', groupKey);
+    }
+  } else if (isActualToolCallPacket(packet) && state.displayGroupKeys.has(groupKey)) {
+    // A tool-call packet arrived in a group that was initially classified as display
+    // (e.g. pre-tool reasoning text streamed before the model issued a tool call).
+    // Reclassify: move from display → tool so the pre-tool text is shown as part of
+    // the "Thought for some time" section instead of as a separate message bubble.
+    state.displayGroupKeys.delete(groupKey);
     state.toolGroupKeys.add(groupKey);
-  }
-  if (isDisplayPacket(packet)) {
-    state.displayGroupKeys.add(groupKey);
+    console.log('[packetProcessor] Reclassified group from display → tool:', groupKey);
   }
 
   // Track image generation for header display (regardless of group position)

@@ -170,10 +170,13 @@ export async function* handleSSEStream<T extends PacketType>(
         try {
           const backendPacket = JSON.parse(jsonLine) as BackendPacket;
 
-          // Advance turn_index when transitioning from tool → non-tool packets
-          // so they end up in separate groups for the packetProcessor.
+          // Advance turn_index at both transitions (display→tool and tool→display)
+          // so each section lands in its own group for the packetProcessor.
           const isToolPkt = TOOL_PACKET_TYPES.has(backendPacket.type);
           if (isToolPkt) {
+            if (!sawToolPackets) {
+              turnIndex++; // display → tool: pre-tool text gets its own group
+            }
             sawToolPackets = true;
           } else if (sawToolPackets) {
             turnIndex++;
