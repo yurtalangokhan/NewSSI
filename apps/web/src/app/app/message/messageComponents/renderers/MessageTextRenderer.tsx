@@ -3,11 +3,13 @@ import Text from "@/refresh-components/texts/Text";
 
 import {
   ChatPacket,
-  PacketType,
   StopReason,
 } from "../../../services/streamingModels";
 import { MessageRenderer, FullChatState } from "../interfaces";
-import { isFinalAnswerComplete } from "../../../services/packetUtils";
+import {
+  isFinalAnswerComplete,
+  getTextContent,
+} from "../../../services/packetUtils";
 import { useMarkdownRenderer } from "../markdownUtils";
 import { BlinkingBar } from "../../BlinkingBar";
 
@@ -37,18 +39,7 @@ export const MessageTextRenderer: MessageRenderer<
   const [displayedPacketCount, setDisplayedPacketCount] =
     useState(initialPacketCount);
 
-  // Get the full content from all packets
-  const fullContent = packets
-    .map((packet) => {
-      if (
-        packet.obj.type === PacketType.MESSAGE_DELTA ||
-        packet.obj.type === PacketType.MESSAGE_START
-      ) {
-        return packet.obj.content;
-      }
-      return "";
-    })
-    .join("");
+  const fullContent = useMemo(() => getTextContent(packets), [packets]);
 
   // Animation effect - gradually increase displayed packets at controlled rate
   useEffect(() => {
@@ -99,19 +90,7 @@ export const MessageTextRenderer: MessageRenderer<
       return fullContent; // Show all content
     }
 
-    // Only show content from packets up to displayedPacketCount
-    return packets
-      .slice(0, displayedPacketCount)
-      .map((packet) => {
-        if (
-          packet.obj.type === PacketType.MESSAGE_DELTA ||
-          packet.obj.type === PacketType.MESSAGE_START
-        ) {
-          return packet.obj.content;
-        }
-        return "";
-      })
-      .join("");
+    return getTextContent(packets.slice(0, displayedPacketCount));
   }, [animate, displayedPacketCount, fullContent, packets]);
 
   const { renderedContent } = useMarkdownRenderer(

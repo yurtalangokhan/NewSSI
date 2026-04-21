@@ -271,7 +271,7 @@ async def message_generator(
                     token_str = re.sub(r"<thinking>.*?</thinking>", "", token_str, flags=re.DOTALL)
                     token_str = re.sub(r"<think>(?:(?!</think>).)*$", "", token_str, flags=re.DOTALL)
                     token_str = re.sub(r"<thinking>(?:(?!</thinking>).)*$", "", token_str, flags=re.DOTALL)
-                    if token_str.strip():
+                    if token_str:
                         yield f"data: {json.dumps({'type': 'token', 'content': token_str})}\n\n"
     except Exception as e:
         import traceback

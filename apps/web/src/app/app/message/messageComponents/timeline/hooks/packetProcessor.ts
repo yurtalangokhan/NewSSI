@@ -135,6 +135,7 @@ function injectSectionEnd(state: ProcessorState, groupKey: string): void {
  */
 const CONTENT_PACKET_TYPES_SET = new Set<PacketType>([
   PacketType.MESSAGE_START,
+  PacketType.MESSAGE_DELTA,
   PacketType.SEARCH_TOOL_START,
   PacketType.IMAGE_GENERATION_TOOL_START,
   PacketType.PYTHON_TOOL_START,
