@@ -71,6 +71,7 @@ import { useForcedTools } from "@/lib/hooks/useForcedTools";
 import { ProjectFile, useProjectsContext } from "@/providers/ProjectsContext";
 import { useAppParams } from "@/hooks/appNavigation";
 import { projectFilesToFileDescriptors } from "@/app/app/services/fileUtils";
+import { UserFileStatus } from "@/app/app/projects/projectsService";
 
 const SYSTEM_MESSAGE_ID = -3;
 
@@ -142,7 +143,7 @@ export default function useChatController({
   const { pinnedAgents, togglePinnedAgent } = usePinnedAgents();
   const { agentPreferences } = useAgentPreferences();
   const { forcedToolIds } = useForcedTools();
-  const { fetchProjects, setCurrentMessageFiles, beginUpload } =
+  const { fetchProjects, setCurrentMessageFiles, beginUpload, uploadChatFiles } =
     useProjectsContext();
   const posthog = usePostHog();
 
@@ -540,9 +541,11 @@ export default function useChatController({
       const controller = new AbortController();
       setAbortController(currChatSessionId, controller);
 
-      const messageToResend = currentHistory.find(
-        (message) => message.messageId === messageIdToResend
-      );
+      const hasExplicitResendTarget =
+        messageIdToResend !== undefined && messageIdToResend !== null;
+      const messageToResend = hasExplicitResendTarget
+        ? currentHistory.find((message) => message.messageId === messageIdToResend)
+        : undefined;
       if (messageIdToResend && regenerationRequest) {
         updateRegenerationState(
           { regenerating: true, finalMessageIndex: messageIdToResend + 1 },
@@ -558,7 +561,7 @@ export default function useChatController({
         ? currentHistory.indexOf(messageToResend)
         : null;
 
-      if (!messageToResend && messageIdToResend !== undefined) {
+      if (!messageToResend && hasExplicitResendTarget) {
         toast.error(
           "Failed to re-send message - please refresh the page and try again."
         );
@@ -573,13 +576,32 @@ export default function useChatController({
         ? messageToResend?.message || message
         : message;
 
+      const hasUploadingFiles = currentMessageFiles.some(
+        (file) => file.status === UserFileStatus.UPLOADING
+      );
+      if (hasUploadingFiles) {
+        toast.error("Files are still uploading. Please wait for upload to finish and try again.");
+        updateChatStateAction(frozenSessionId, "input");
+        return;
+      }
+
+      const completedMessageFiles = currentMessageFiles.filter(
+        (file) => file.status === UserFileStatus.COMPLETED
+      );
+
       // When editing a message that had files attached, preserve the original files.
       // Skip for regeneration — the regeneration path reuses the existing user node
       // (and its files), so merging here would send duplicates.
-      const effectiveFileDescriptors = [
-        ...projectFilesToFileDescriptors(currentMessageFiles),
+      const rawEffectiveFileDescriptors = [
+        ...projectFilesToFileDescriptors(completedMessageFiles),
         ...(!regenerationRequest ? messageToResend?.files ?? [] : []),
       ];
+      const effectiveFileDescriptors = Array.from(
+        new Map(rawEffectiveFileDescriptors.map((file) => [file.id, file])).values()
+      );
+
+      console.log("[onSubmit] effectiveFileDescriptors:", effectiveFileDescriptors.map(f => ({ id: f.id, type: f.type, name: f.name })));
+      console.log("[onSubmit] currentMessageFiles passed in:", currentMessageFiles.map(f => ({ file_id: f.file_id, name: f.name, status: f.status })));
 
       updateChatStateAction(frozenSessionId, "loading");
 
@@ -656,7 +678,11 @@ export default function useChatController({
 
       let finalMessage: BackendMessage | null = null;
       let toolCall: ToolCallMetadata | null = null;
-      let files = effectiveFileDescriptors;
+      // Snapshot of files the user attached at submit time — must never grow during streaming.
+      // user_files packets from the stream represent knowledge-base context, not user uploads,
+      // so they are kept separate and only used for agent-side context (agentContextFiles).
+      const userMessageFiles = [...effectiveFileDescriptors];
+      let agentContextFiles: typeof effectiveFileDescriptors = [];
       let packets: Packet[] = [];
       let packetsVersion = 0;
 
@@ -784,23 +810,25 @@ export default function useChatController({
 
             if (Object.hasOwn(packet, "user_files")) {
               const userFiles = (packet as UserKnowledgeFilePacket).user_files;
-              // Ensure files are unique by id
-              const newUserFiles = userFiles.filter(
+              // Accumulate knowledge-base context files separately — do NOT touch userMessageFiles.
+              const newContextFiles = userFiles.filter(
                 (newFile) =>
-                  !files.some((existingFile) => existingFile.id === newFile.id)
+                  !agentContextFiles.some((existingFile) => existingFile.id === newFile.id) &&
+                  !userMessageFiles.some((existingFile) => existingFile.id === newFile.id)
               );
-              files = files.concat(newUserFiles);
+              agentContextFiles = agentContextFiles.concat(newContextFiles);
             }
 
             if (Object.hasOwn(packet, "file_ids")) {
-              aiMessageImages = (packet as FileChatDisplay).file_ids.map(
-                (fileId) => {
-                  return {
-                    id: fileId,
-                    type: ChatFileType.IMAGE,
-                  };
-                }
+              // Merge instead of replace so multiple file_ids packets don't overwrite each other.
+              const currentImages: FileDescriptor[] = aiMessageImages ?? [];
+              const incomingImages: FileDescriptor[] = (packet as FileChatDisplay).file_ids.map(
+                (fileId) => ({ id: fileId, type: ChatFileType.IMAGE })
               );
+              const newImages = incomingImages.filter(
+                (img) => !currentImages.some((existing: FileDescriptor) => existing.id === img.id)
+              );
+              aiMessageImages = currentImages.concat(newImages);
             } else if (
               Object.hasOwn(packet, "error") &&
               (packet as any).error != null
@@ -876,7 +904,7 @@ export default function useChatController({
                 {
                   ...initialUserNode,
                   messageId: newUserMessageId ?? undefined,
-                  files: files,
+                  files: userMessageFiles,
                 },
                 {
                   ...initialAgentNode,
@@ -1009,14 +1037,10 @@ export default function useChatController({
         return;
       }
       updateChatStateAction(getCurrentSessionId(), "uploading");
-      const uploadedMessageFiles = await beginUpload(
-        Array.from(acceptedFiles),
-        null
-      );
-      setCurrentMessageFiles((prev) => [...prev, ...uploadedMessageFiles]);
+      await uploadChatFiles(Array.from(acceptedFiles));
       updateChatStateAction(getCurrentSessionId(), "input");
     },
-    [liveAgent, llmManager, forcedToolIds]
+    [liveAgent, llmManager, forcedToolIds, uploadChatFiles]
   );
 
   useEffect(() => {

@@ -67,8 +67,16 @@ class UserInput(BaseModel):
     )
     agent_config: dict[str, Any] = Field(
         description="Additional configuration to pass through to the agent",
-        default={},
+        default_factory=dict,
         examples=[{"spicy_level": 0.8}],
+    )
+    file_content_blocks: list[dict[str, Any]] = Field(
+        description="Pre-processed LangChain content blocks for inline file attachments.",
+        default_factory=list,
+    )
+    files_metadata: list[dict[str, Any]] = Field(
+        description="Lightweight file metadata for chat history (id, type, name). No base64 data.",
+        default_factory=list,
     )
 
 
@@ -106,7 +114,7 @@ class ChatMessage(BaseModel):
     )
     tool_calls: list[ToolCall] = Field(
         description="Tool calls in the message.",
-        default=[],
+        default_factory=list,
     )
     tool_call_id: str | None = Field(
         description="Tool call that this message is responding to.",

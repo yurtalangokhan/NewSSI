@@ -5,6 +5,8 @@ Integrates with backend agents and uses PostgreSQL for persistence.
 
 import json
 import uuid
+import base64
+import logging
 from datetime import UTC, datetime
 from typing import Any
 
@@ -29,6 +31,7 @@ from service.StoreService import (
 )
 
 router = APIRouter(tags=["auth"])
+logger = logging.getLogger(__name__)
 
 
 def _get_controller() -> AuthController:
@@ -432,10 +435,6 @@ async def send_chat_message(request: Request):
 
     Uses raw JSON parsing to avoid Pydantic validation issues with old sessions.
     """
-    import logging
-
-    logger = logging.getLogger(__name__)
-
     # Parse body manually - bypass Pydantic validation
     try:
         body = await request.json()
@@ -541,10 +540,109 @@ async def send_chat_message(request: Request):
             # Built-in persona id → built-in agent key
             agent_key = PERSONA_ID_TO_AGENT.get(persona_id, DEFAULT_AGENT)
 
+    # -----------------------------------------------------------------
+    # Process inline file_descriptors → build file_content_blocks
+    # Each file_descriptor may carry:  {id, type, name, data, mime_type}
+    # where `data` is a base64-encoded string.  Files are also persisted
+    # in FileService._STORE so the GET /api/chat/file/{id} endpoint can
+    # serve them for CsvContent table display.
+    # -----------------------------------------------------------------
+    file_content_blocks: list[dict] = []
+    files_metadata: list[dict] = []
+    if file_descriptors:
+        from service.FileService import get_file, mime_to_chat_file_type, process_file_for_llm, store_file
+        logger.warning(f"Processing {len(file_descriptors)} file descriptor(s) from request")
+        skipped_files: list[str] = []
+        for fd in file_descriptors:
+            if not isinstance(fd, dict):
+                continue
+            fd_data = fd.get("data")
+            fd_mime = (fd.get("mime_type") or "application/octet-stream").lower()
+            fd_name = fd.get("name") or "attachment"
+            fd_id = fd.get("id") or str(uuid.uuid4())
+
+            if not fd_data:
+                # File from recent-files picker — no inline data.
+                # Try to serve from the in-memory cache populated when it was first sent.
+                record = get_file(fd_id)
+                if record is None:
+                    print(f"File '{fd_name}' ({fd_id}) has no inline data and is not in cache — skipping")
+                    logger.warning(f"File '{fd_name}' ({fd_id}) has no inline data and is not in cache — skipping")
+                    skipped_files.append(fd_name)
+                    continue
+                try:
+                    files_metadata.append({
+                        "id": fd_id,
+                        "type": mime_to_chat_file_type(record.mime_type),
+                        "name": record.filename,
+                    })
+                    text = process_file_for_llm(record)
+                    if text is None:
+                        file_content_blocks.append({
+                            "type": "image_url",
+                            "image_url": {"url": f"data:{record.mime_type};base64,{base64.b64encode(record.data).decode()}"},
+                        })
+                    elif text:
+                        file_content_blocks.append({
+                            "type": "text",
+                            "text": (
+                                f"--- Begin Content of {record.filename} ---\n"
+                                f"{text}\n"
+                                f"--- End Content of {record.filename} ---"
+                            ),
+                        })
+                except Exception as e:
+                    print(f"Failed to process cached file '{fd_name}' ({fd_id}): {e}")
+                    logger.error(f"Failed to process cached file '{fd_name}' ({fd_id}): {e}")
+                    skipped_files.append(fd_name)
+                continue
+
+            try:
+                raw = base64.b64decode(fd_data)
+                record = store_file(fd_id, raw, fd_mime, fd_name)
+
+                # Lightweight metadata stored in HumanMessage.additional_kwargs so it
+                # survives LangGraph checkpointing and can be returned in chat history.
+                files_metadata.append({
+                    "id": fd_id,
+                    "type": mime_to_chat_file_type(fd_mime),
+                    "name": fd_name,
+                })
+
+                text = process_file_for_llm(record)
+                if text is None:
+                    # Image file — send as multimodal image_url block
+                    file_content_blocks.append({
+                        "type": "image_url",
+                        "image_url": {"url": f"data:{fd_mime};base64,{fd_data}"},
+                    })
+                elif text:
+                    file_content_blocks.append({
+                        "type": "text",
+                        "text": (
+                            f"--- Begin Content of {fd_name} ---\n"
+                            f"{text}\n"
+                            f"--- End Content of {fd_name} ---"
+                        ),
+                    })
+            except Exception as e:
+                print(f"Failed to process file '{fd_name}' ({fd_mime}): {e}")
+                logger.error(f"Failed to process file '{fd_name}' ({fd_mime}): {e}")
+                skipped_files.append(fd_name)
+
+        print(f"File processing complete: {len(files_metadata)} processed, {len(skipped_files)} skipped")
+        logger.warning(
+            f"File processing complete: {len(files_metadata)} processed, "
+            f"{len(skipped_files)} skipped"
+            + (f" (skipped: {skipped_files})" if skipped_files else "")
+        )
+
     stream_input = StreamInput(
         message=message or "",
         thread_id=session_id,
         agent_config=agent_config,
+        file_content_blocks=file_content_blocks,
+        files_metadata=files_metadata,
     )
 
     async def generate_stream():

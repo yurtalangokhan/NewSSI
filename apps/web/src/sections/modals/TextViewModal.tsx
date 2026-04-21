@@ -26,11 +26,43 @@ import SimpleLoader from "@/refresh-components/loaders/SimpleLoader";
 import ScrollIndicatorDiv from "@/refresh-components/ScrollIndicatorDiv";
 import { cn } from "@/lib/utils";
 import { Section } from "@/layouts/general-layouts";
+import DocxPreview from "@/app/app/components/files/DocxPreview";
 
 export interface TextViewProps {
   presentingDocument: MinimalOnyxDocument;
   onClose: () => void;
 }
+
+const WORD_MIMES = [
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/msword",
+];
+
+const PPTX_MIMES = [
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "application/vnd.ms-powerpoint",
+];
+
+const isWordFormat = (mimeType: string) =>
+  WORD_MIMES.some((m) => mimeType.startsWith(m));
+
+const isPptxFormat = (mimeType: string) =>
+  PPTX_MIMES.some((m) => mimeType.startsWith(m));
+
+const isMarkdownFormat = (mimeType: string) =>
+  ["text/markdown", "text/x-markdown", "text/plain", "text/csv", "text/x-rst", "text/x-org", "txt"].some(
+    (f) => mimeType.startsWith(f)
+  );
+
+const isImageFormat = (mimeType: string) =>
+  ["image/png", "image/jpeg", "image/gif", "image/svg+xml"].some((f) =>
+    mimeType.startsWith(f)
+  );
+
+const isSupportedIframeFormat = (mimeType: string) =>
+  ["application/pdf", "image/png", "image/jpeg", "image/gif", "image/svg+xml"].some(
+    (f) => mimeType.startsWith(f)
+  );
 
 export default function TextViewModal({
   presentingDocument,
@@ -38,63 +70,27 @@ export default function TextViewModal({
 }: TextViewProps) {
   const [zoom, setZoom] = useState(100);
   const [fileContent, setFileContent] = useState("");
+  const [fileBlob, setFileBlob] = useState<Blob | null>(null);
   const [fileUrl, setFileUrl] = useState("");
   const [fileName, setFileName] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [fileType, setFileType] = useState("application/octet-stream");
-  const csvData = useMemo(() => {
-    if (!fileType.startsWith("text/csv")) {
-      return null;
-    }
 
+  const csvData = useMemo(() => {
+    if (!fileType.startsWith("text/csv")) return null;
     const lines = fileContent.split(/\r?\n/).filter((l) => l.length > 0);
     const headers = lines.length > 0 ? lines[0]?.split(",") ?? [] : [];
     const rows = lines.slice(1).map((line) => line.split(","));
-
     return { headers, rows } as { headers: string[]; rows: string[][] };
   }, [fileContent, fileType]);
-
-  // Detect if a given MIME type is one of the recognized markdown formats
-  const isMarkdownFormat = (mimeType: string): boolean => {
-    const markdownFormats = [
-      "text/markdown",
-      "text/x-markdown",
-      "text/plain",
-      "text/csv",
-      "text/x-rst",
-      "text/x-org",
-      "txt",
-    ];
-    return markdownFormats.some((format) => mimeType.startsWith(format));
-  };
-
-  const isImageFormat = (mimeType: string) => {
-    const imageFormats = [
-      "image/png",
-      "image/jpeg",
-      "image/gif",
-      "image/svg+xml",
-    ];
-    return imageFormats.some((format) => mimeType.startsWith(format));
-  };
-  // Detect if a given MIME type can be rendered in an <iframe>
-  const isSupportedIframeFormat = (mimeType: string): boolean => {
-    const supportedFormats = [
-      "application/pdf",
-      "image/png",
-      "image/jpeg",
-      "image/gif",
-      "image/svg+xml",
-    ];
-    return supportedFormats.some((format) => mimeType.startsWith(format));
-  };
 
   const fetchFile = useCallback(
     async (signal?: AbortSignal) => {
       setIsLoading(true);
       setLoadError(null);
       setFileContent("");
+      setFileBlob(null);
       const fileIdLocal =
         presentingDocument.document_id.split("__")[1] ||
         presentingDocument.document_id;
@@ -102,11 +98,7 @@ export default function TextViewModal({
       try {
         const response = await fetch(
           `/api/chat/file/${encodeURIComponent(fileIdLocal)}`,
-          {
-            method: "GET",
-            signal,
-            cache: "force-cache",
-          }
+          { method: "GET", signal, cache: "force-cache" }
         );
 
         if (!response.ok) {
@@ -117,9 +109,7 @@ export default function TextViewModal({
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
         setFileUrl((prev) => {
-          if (prev) {
-            window.URL.revokeObjectURL(prev);
-          }
+          if (prev) window.URL.revokeObjectURL(prev);
           return url;
         });
 
@@ -130,7 +120,6 @@ export default function TextViewModal({
         let contentType =
           response.headers.get("Content-Type") || "application/octet-stream";
 
-        // If it's octet-stream but file name suggests a text-based extension, override accordingly
         if (contentType === "application/octet-stream") {
           const lowerName = originalFileName.toLowerCase();
           if (lowerName.endsWith(".md") || lowerName.endsWith(".markdown")) {
@@ -139,27 +128,35 @@ export default function TextViewModal({
             contentType = "text/plain";
           } else if (lowerName.endsWith(".csv")) {
             contentType = "text/csv";
+          } else if (lowerName.endsWith(".docx") || lowerName.endsWith(".doc")) {
+            contentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+          } else if (lowerName.endsWith(".pptx") || lowerName.endsWith(".ppt")) {
+            contentType = "application/vnd.openxmlformats-officedocument.presentationml.presentation";
           }
         }
         setFileType(contentType);
 
-        // If the final content type looks like markdown, read its text
         if (isMarkdownFormat(contentType)) {
-          const text = await blob.text();
-          setFileContent(text);
+          setFileContent(await blob.text());
+        } else if (isWordFormat(contentType)) {
+          // Pass blob directly to DocxPreview for visual rendering
+          setFileBlob(blob);
+        } else if (isPptxFormat(contentType)) {
+          // Extract text slide-by-slide from backend
+          const textResponse = await fetch(
+            `/api/chat/file/${encodeURIComponent(fileIdLocal)}/text`,
+            { method: "GET", signal, cache: "force-cache" }
+          );
+          if (textResponse.ok) {
+            setFileContent(await textResponse.text());
+            setFileType("text/plain");
+          }
         }
       } catch (error) {
-        // Abort is expected on unmount / doc change
-        if (signal?.aborted) {
-          return;
-        }
+        if (signal?.aborted) return;
         setLoadError("Failed to load document.");
       } finally {
-        // Prevent stale/aborted requests from clobbering the loading state.
-        // This is especially important in React StrictMode where effects can run twice.
-        if (!signal?.aborted) {
-          setIsLoading(false);
-        }
+        if (!signal?.aborted) setIsLoading(false);
       }
     },
     [presentingDocument]
@@ -168,16 +165,12 @@ export default function TextViewModal({
   useEffect(() => {
     const controller = new AbortController();
     fetchFile(controller.signal);
-    return () => {
-      controller.abort();
-    };
+    return () => controller.abort();
   }, [fetchFile]);
 
   useEffect(() => {
     return () => {
-      if (fileUrl) {
-        window.URL.revokeObjectURL(fileUrl);
-      }
+      if (fileUrl) window.URL.revokeObjectURL(fileUrl);
     };
   }, [fileUrl]);
 
@@ -197,9 +190,7 @@ export default function TextViewModal({
     <Modal
       open
       onOpenChange={(open) => {
-        if (!open) {
-          onClose();
-        }
+        if (!open) onClose();
       }}
     >
       <Modal.Content
@@ -249,7 +240,11 @@ export default function TextViewModal({
                 className="flex flex-col flex-1 min-h-0 min-w-0 w-full transform origin-center transition-transform duration-300 ease-in-out"
                 style={{ transform: `scale(${zoom / 100})` }}
               >
-                {isImageFormat(fileType) ? (
+                {isWordFormat(fileType) && fileBlob ? (
+                  <ScrollIndicatorDiv className="flex-1 min-h-0" variant="shadow">
+                    <DocxPreview blob={fileBlob} className="w-full" />
+                  </ScrollIndicatorDiv>
+                ) : isImageFormat(fileType) ? (
                   <PreviewImage
                     src={fileUrl}
                     alt={fileName}

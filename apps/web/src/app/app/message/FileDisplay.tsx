@@ -20,13 +20,15 @@ export default function FileDisplay({ files, alignBubble }: FileDisplayProps) {
   const [previewingFile, setPreviewingFile] = useState<FileDescriptor | null>(
     null
   );
-  const textFiles = files.filter(
+  // Deduplicate by id as a last-resort safety net before rendering.
+  const uniqueFiles = Array.from(new Map(files.map((f) => [f.id, f])).values());
+  const textFiles = uniqueFiles.filter(
     (file) =>
       file.type === ChatFileType.PLAIN_TEXT ||
       file.type === ChatFileType.DOCUMENT
   );
-  const imageFiles = files.filter((file) => file.type === ChatFileType.IMAGE);
-  const csvFiles = files.filter((file) => file.type === ChatFileType.CSV);
+  const imageFiles = uniqueFiles.filter((file) => file.type === ChatFileType.IMAGE);
+  const csvFiles = uniqueFiles.filter((file) => file.type === ChatFileType.CSV);
 
   const presentingDocument: MinimalOnyxDocument = {
     document_id: previewingFile?.id ?? "",
