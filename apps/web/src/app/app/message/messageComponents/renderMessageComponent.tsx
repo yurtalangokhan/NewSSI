@@ -42,11 +42,26 @@ function isChatPacket(packet: Packet): packet is ChatPacket {
 }
 
 function isWebSearchPacket(packet: Packet): boolean {
-  if (packet.obj.type !== PacketType.SEARCH_TOOL_START) return false;
+  if (
+    packet.obj.type !== PacketType.SEARCH_TOOL_START &&
+    packet.obj.type !== PacketType.SEARCH_TOOL_QUERIES_DELTA &&
+    packet.obj.type !== PacketType.SEARCH_TOOL_DOCUMENTS_DELTA
+  ) {
+    return false;
+  }
+  if (packet.obj.type !== PacketType.SEARCH_TOOL_START) {
+    return false;
+  }
   return (packet.obj as SearchToolStart).is_internet_search === true;
 }
 
 function isInternalSearchPacket(packet: Packet): boolean {
+  if (
+    packet.obj.type === PacketType.SEARCH_TOOL_QUERIES_DELTA ||
+    packet.obj.type === PacketType.SEARCH_TOOL_DOCUMENTS_DELTA
+  ) {
+    return true;
+  }
   if (packet.obj.type !== PacketType.SEARCH_TOOL_START) return false;
   return (packet.obj as SearchToolStart).is_internet_search !== true;
 }
@@ -56,19 +71,32 @@ function isImageToolPacket(packet: Packet) {
 }
 
 function isPythonToolPacket(packet: Packet) {
-  return packet.obj.type === PacketType.PYTHON_TOOL_START;
+  return (
+    packet.obj.type === PacketType.PYTHON_TOOL_START ||
+    packet.obj.type === PacketType.PYTHON_TOOL_DELTA
+  );
 }
 
 function isCustomToolPacket(packet: Packet) {
-  return packet.obj.type === PacketType.CUSTOM_TOOL_START;
+  return (
+    packet.obj.type === PacketType.CUSTOM_TOOL_START ||
+    packet.obj.type === PacketType.CUSTOM_TOOL_DELTA
+  );
 }
 
 function isFileReaderToolPacket(packet: Packet) {
-  return packet.obj.type === PacketType.FILE_READER_START;
+  return (
+    packet.obj.type === PacketType.FILE_READER_START ||
+    packet.obj.type === PacketType.FILE_READER_RESULT
+  );
 }
 
 function isFetchToolPacket(packet: Packet) {
-  return packet.obj.type === PacketType.FETCH_TOOL_START;
+  return (
+    packet.obj.type === PacketType.FETCH_TOOL_START ||
+    packet.obj.type === PacketType.FETCH_TOOL_URLS ||
+    packet.obj.type === PacketType.FETCH_TOOL_DOCUMENTS
+  );
 }
 
 function isMemoryToolPacket(packet: Packet) {

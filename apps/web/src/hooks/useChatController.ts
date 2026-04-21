@@ -493,6 +493,10 @@ export default function useChatController({
           projectId ? parseInt(projectId) : null
         );
 
+        if (!currChatSessionId) {
+          throw new Error("Failed to create a valid chat session ID");
+        }
+
         // Optimistically add the new chat session to the sidebar cache
         // This ensures "New Chat" appears immediately, even before any messages are saved
         addPendingChatSession({

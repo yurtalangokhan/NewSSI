@@ -3,12 +3,23 @@ import { Packet, PacketType } from "@/app/app/services/streamingModels";
 // Packet types with renderers supporting collapsed streaming mode
 export const COLLAPSED_STREAMING_PACKET_TYPES = new Set<PacketType>([
   PacketType.SEARCH_TOOL_START,
+  PacketType.SEARCH_TOOL_QUERIES_DELTA,
+  PacketType.SEARCH_TOOL_DOCUMENTS_DELTA,
   PacketType.FETCH_TOOL_START,
+  PacketType.FETCH_TOOL_URLS,
+  PacketType.FETCH_TOOL_DOCUMENTS,
   PacketType.PYTHON_TOOL_START,
+  PacketType.PYTHON_TOOL_DELTA,
   PacketType.CUSTOM_TOOL_START,
+  PacketType.CUSTOM_TOOL_DELTA,
   PacketType.RESEARCH_AGENT_START,
+  PacketType.INTERMEDIATE_REPORT_START,
+  PacketType.INTERMEDIATE_REPORT_DELTA,
+  PacketType.INTERMEDIATE_REPORT_CITED_DOCS,
   PacketType.REASONING_START,
+  PacketType.REASONING_DELTA,
   PacketType.DEEP_RESEARCH_PLAN_START,
+  PacketType.DEEP_RESEARCH_PLAN_DELTA,
 ]);
 
 // Check if packets belong to a research agent (handles its own Done indicator)
@@ -17,15 +28,28 @@ export const isResearchAgentPackets = (packets: Packet[]): boolean =>
 
 // Check if packets belong to a search tool
 export const isSearchToolPackets = (packets: Packet[]): boolean =>
-  packets.some((p) => p.obj.type === PacketType.SEARCH_TOOL_START);
+  packets.some(
+    (p) =>
+      p.obj.type === PacketType.SEARCH_TOOL_START ||
+      p.obj.type === PacketType.SEARCH_TOOL_QUERIES_DELTA ||
+      p.obj.type === PacketType.SEARCH_TOOL_DOCUMENTS_DELTA
+  );
 
 // Check if packets belong to a python tool
 export const isPythonToolPackets = (packets: Packet[]): boolean =>
-  packets.some((p) => p.obj.type === PacketType.PYTHON_TOOL_START);
+  packets.some(
+    (p) =>
+      p.obj.type === PacketType.PYTHON_TOOL_START ||
+      p.obj.type === PacketType.PYTHON_TOOL_DELTA
+  );
 
 // Check if packets belong to reasoning
 export const isReasoningPackets = (packets: Packet[]): boolean =>
-  packets.some((p) => p.obj.type === PacketType.REASONING_START);
+  packets.some(
+    (p) =>
+      p.obj.type === PacketType.REASONING_START ||
+      p.obj.type === PacketType.REASONING_DELTA
+  );
 
 // Check if step supports collapsed streaming rendering mode
 export const stepSupportsCollapsedStreaming = (packets: Packet[]): boolean =>
@@ -105,7 +129,11 @@ export const stepHasCollapsedStreamingContent = (
 
 // Check if packets belong to a deep research plan
 export const isDeepResearchPlanPackets = (packets: Packet[]): boolean =>
-  packets.some((p) => p.obj.type === PacketType.DEEP_RESEARCH_PLAN_START);
+  packets.some(
+    (p) =>
+      p.obj.type === PacketType.DEEP_RESEARCH_PLAN_START ||
+      p.obj.type === PacketType.DEEP_RESEARCH_PLAN_DELTA
+  );
 
 // Check if packets belong to a memory tool
 export const isMemoryToolPackets = (packets: Packet[]): boolean =>

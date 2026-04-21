@@ -161,6 +161,9 @@ from api.routes import (
     assistants_router,
     threads_router,
     auth_router,
+    chat_router,
+    persona_router,
+    user_router,
     schedule_router,
     ingest_router,
     proxy_router,
@@ -173,6 +176,9 @@ app.include_router(agents_router)
 app.include_router(assistants_router)
 app.include_router(threads_router)
 app.include_router(auth_router)
+app.include_router(chat_router)
+app.include_router(persona_router)
+app.include_router(user_router)
 app.include_router(schedule_router)
 app.include_router(ingest_router)
 app.include_router(proxy_router)

@@ -112,7 +112,7 @@ function ShareAgentFormContent({ agentId }: ShareAgentFormContentProps) {
 
   function handleCopyLink() {
     if (!agentId) return;
-    const url = `${window.location.origin}/chat?agentId=${agentId}`;
+    const url = `${window.location.origin}/app?agentId=${agentId}`;
     navigator.clipboard.writeText(url);
   }
 

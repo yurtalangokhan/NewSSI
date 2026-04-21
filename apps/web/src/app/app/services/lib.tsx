@@ -85,7 +85,16 @@ export async function createChatSession(
     throw Error("Failed to create chat session");
   }
   const chatSessionResponseJson = await createChatSessionResponse.json();
-  return chatSessionResponseJson.chat_session_id;
+  const chatSessionId =
+    chatSessionResponseJson.chat_session_id ||
+    chatSessionResponseJson.id ||
+    chatSessionResponseJson.chatSessionId;
+
+  if (!chatSessionId || typeof chatSessionId !== "string") {
+    throw new Error("Invalid chat session ID in create-chat-session response");
+  }
+
+  return chatSessionId;
 }
 
 export type PacketType =
@@ -446,10 +455,10 @@ export function buildChatUrl(
   const finalSearchParamsString = finalSearchParams.join("&");
 
   if (finalSearchParamsString) {
-    return `/${search ? "search" : "chat"}?${finalSearchParamsString}`;
+    return `/app?${finalSearchParamsString}`;
   }
 
-  return `/${search ? "search" : "chat"}`;
+  return "/app";
 }
 
 export async function uploadFilesForChat(

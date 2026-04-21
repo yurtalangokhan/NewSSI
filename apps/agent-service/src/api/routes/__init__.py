@@ -4,6 +4,9 @@ from api.routes.AgentsRoute import router as agents_router
 from api.routes.AssistantsRoute import router as assistants_router
 from api.routes.ThreadsRoute import router as threads_router
 from api.routes.AuthRoute import router as auth_router
+from api.routes.ChatRoute import router as chat_router
+from api.routes.PersonaRoute import router as persona_router
+from api.routes.UserRoute import router as user_router
 from api.routes.ScheduleRoute import router as schedule_router
 from api.routes.IngestRoute import router as ingest_router
 from api.routes.ProxyRoute import router as proxy_router
@@ -16,6 +19,9 @@ __all__ = [
     "assistants_router",
     "threads_router",
     "auth_router",
+    "chat_router",
+    "persona_router",
+    "user_router",
     "schedule_router",
     "ingest_router",
     "proxy_router",

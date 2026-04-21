@@ -28,8 +28,9 @@ function constructCustomToolState(packets: CustomToolPacket[]) {
   const data = latestDelta?.data;
   const fileIds = latestDelta?.file_ids || null;
 
-  const isRunning = Boolean(toolStart && !toolEnd);
-  const isComplete = Boolean(toolStart && toolEnd);
+  const hasToolActivity = Boolean(toolStart || toolDeltas.length > 0);
+  const isRunning = Boolean(hasToolActivity && !toolEnd);
+  const isComplete = Boolean(hasToolActivity && toolEnd);
 
   return {
     toolName,

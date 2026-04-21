@@ -164,7 +164,7 @@ export default function ChatSearchCommandMenu({
 
   const handleChatSelect = useCallback(
     (chatId: string) => {
-      router.push(`/chat?chatId=${chatId}` as Route);
+      router.push(`/app?chatId=${chatId}` as Route);
       setOpen(false);
     },
     [router]
@@ -172,7 +172,7 @@ export default function ChatSearchCommandMenu({
 
   const handleProjectSelect = useCallback(
     (projectId: number) => {
-      router.push(`/chat?projectId=${projectId}` as Route);
+      router.push(`/app?projectId=${projectId}` as Route);
       setOpen(false);
     },
     [router]

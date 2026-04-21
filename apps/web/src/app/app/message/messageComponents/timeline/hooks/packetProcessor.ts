@@ -130,28 +130,17 @@ function injectSectionEnd(state: ProcessorState, groupKey: string): void {
   state.groupKeysWithSectionEnd.add(groupKey);
 }
 
-/**
- * Content packet types that indicate a group has meaningful content to display
- */
-const CONTENT_PACKET_TYPES_SET = new Set<PacketType>([
-  PacketType.MESSAGE_START,
-  PacketType.SEARCH_TOOL_START,
-  PacketType.IMAGE_GENERATION_TOOL_START,
-  PacketType.PYTHON_TOOL_START,
-  PacketType.CUSTOM_TOOL_START,
-  PacketType.FILE_READER_START,
-  PacketType.FETCH_TOOL_START,
-  PacketType.MEMORY_TOOL_START,
-  PacketType.MEMORY_TOOL_NO_ACCESS,
-  PacketType.REASONING_START,
-  PacketType.DEEP_RESEARCH_PLAN_START,
-  PacketType.RESEARCH_AGENT_START,
-]);
-
 function hasContentPackets(packets: Packet[]): boolean {
-  return packets.some((packet) =>
-    CONTENT_PACKET_TYPES_SET.has(packet.obj.type as PacketType)
-  );
+  return packets.some((packet) => {
+    const type = packet.obj.type as PacketType;
+    return (
+      type !== PacketType.SECTION_END &&
+      type !== PacketType.ERROR &&
+      type !== PacketType.STOP &&
+      type !== PacketType.TOP_LEVEL_BRANCHING &&
+      type !== PacketType.CITATION_INFO
+    );
+  });
 }
 
 /**
@@ -312,9 +301,6 @@ function addPacketToGroup(
 function processPacket(state: ProcessorState, packet: Packet): void {
   if (!packet) return;
 
-  // Debug logging
-  console.log('[packetProcessor] Processing packet:', packet.obj.type, 'content:', 'content' in packet.obj && typeof packet.obj.content === 'string' ? packet.obj.content.substring(0, 50) : 'N/A');
-
   // Handle TopLevelBranching packets - these tell us how many parallel branches to expect
   if (packet.obj.type === PacketType.TOP_LEVEL_BRANCHING) {
     handleTopLevelBranching(state, packet);
@@ -337,23 +323,17 @@ function processPacket(state: ProcessorState, packet: Packet): void {
     state.groupKeysWithSectionEnd.add(groupKey);
   }
 
-  // Check if this is the first packet in the group (before adding)
-  const existingGroup = state.groupedPacketsMap.get(groupKey);
-  const isFirstPacket = !existingGroup;
-
   // Add packet to group
   addPacketToGroup(state, packet, groupKey);
 
-  // Categorize on first packet of each group
-  if (isFirstPacket) {
-    if (isToolPacket(packet, false)) {
-      state.toolGroupKeys.add(groupKey);
-      console.log('[packetProcessor] Added to toolGroupKeys:', groupKey);
-    }
-    if (isDisplayPacket(packet)) {
-      state.displayGroupKeys.add(groupKey);
-      console.log('[packetProcessor] Added to displayGroupKeys:', groupKey);
-    }
+  // Categorize groups whenever matching packets appear.
+  // This preserves visibility for mixed groups where display packets arrive
+  // before tool packets (or vice versa), and for delta-only tool streams.
+  if (isToolPacket(packet, false)) {
+    state.toolGroupKeys.add(groupKey);
+  }
+  if (isDisplayPacket(packet)) {
+    state.displayGroupKeys.add(groupKey);
   }
 
   // Track image generation for header display (regardless of group position)
@@ -373,9 +353,6 @@ function processPacket(state: ProcessorState, packet: Packet): void {
   handleStreamingStatusPacket(state, packet);
   handleStopPacket(state, packet);
   handleToolAfterMessagePacket(state, packet);
-  
-  // Debug logging for state
-  console.log('[packetProcessor] After processing - toolGroups:', state.toolGroups.length, 'displayGroups:', state.potentialDisplayGroups.length, 'finalAnswerComing:', state.finalAnswerComing);
 }
 
 export function processPackets(
