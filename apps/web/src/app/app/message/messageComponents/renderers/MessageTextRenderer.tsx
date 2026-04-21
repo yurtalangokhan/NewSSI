@@ -43,19 +43,16 @@ export const MessageTextRenderer: MessageRenderer<
 
   // Animation effect - gradually increase displayed packets at controlled rate
   useEffect(() => {
-    if (!animate) {
-      setDisplayedPacketCount(-1); // Show all packets
-      return;
-    }
+    if (displayedPacketCount === -1) return; // historical message, no animation
 
-    if (displayedPacketCount >= 0 && displayedPacketCount < packets.length) {
+    if (displayedPacketCount < packets.length) {
       const timer = setTimeout(() => {
         setDisplayedPacketCount((prev) => Math.min(prev + 1, packets.length));
       }, PACKET_DELAY_MS);
 
       return () => clearTimeout(timer);
     }
-  }, [animate, displayedPacketCount, packets.length]);
+  }, [displayedPacketCount, packets.length]);
 
   // Reset displayed count when packet array changes significantly (e.g., new message)
   useEffect(() => {
@@ -72,26 +69,21 @@ export const MessageTextRenderer: MessageRenderer<
   // Only mark as complete when all packets are received AND displayed
   useEffect(() => {
     if (isFinalAnswerComplete(packets)) {
-      // If animating, wait until all packets are displayed
-      if (
-        animate &&
-        displayedPacketCount >= 0 &&
-        displayedPacketCount < packets.length
-      ) {
-        return;
+      if (displayedPacketCount >= 0 && displayedPacketCount < packets.length) {
+        return; // animation still in progress, wait
       }
       onComplete();
     }
-  }, [packets, onComplete, animate, displayedPacketCount]);
+  }, [packets, onComplete, displayedPacketCount]);
 
   // Get content based on displayed packet count
   const content = useMemo(() => {
-    if (!animate || displayedPacketCount === -1) {
-      return fullContent; // Show all content
+    if (displayedPacketCount === -1 || displayedPacketCount >= packets.length) {
+      return fullContent;
     }
 
     return getTextContent(packets.slice(0, displayedPacketCount));
-  }, [animate, displayedPacketCount, fullContent, packets]);
+  }, [displayedPacketCount, fullContent, packets]);
 
   const { renderedContent } = useMarkdownRenderer(
     // the [*]() is a hack to show a blinking dot when the packet is not complete
