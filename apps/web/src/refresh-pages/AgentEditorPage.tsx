@@ -39,15 +39,8 @@ import { Card } from "@/refresh-components/cards";
 import SimpleCollapsible from "@/refresh-components/SimpleCollapsible";
 import SwitchField from "@/refresh-components/form/SwitchField";
 import SimpleTooltip from "@/refresh-components/SimpleTooltip";
-import { useDocumentSets } from "@/app/admin/documents/sets/hooks";
-import { useProjectsContext } from "@/providers/ProjectsContext";
 import { useCreateModal } from "@/refresh-components/contexts/ModalContext";
 import { toast } from "@/hooks/useToast";
-import UserFilesModal from "@/components/modals/UserFilesModal";
-import {
-  ProjectFile,
-  UserFileStatus,
-} from "@/app/app/projects/projectsService";
 import Popover, { PopoverMenu } from "@/refresh-components/Popover";
 import LineItem from "@/refresh-components/buttons/LineItem";
 import {
@@ -94,7 +87,6 @@ import { deleteAgent } from "@/lib/agents";
 import ConfirmationModalLayout from "@/refresh-components/layouts/ConfirmationModalLayout";
 import ShareAgentModal from "@/sections/modals/ShareAgentModal";
 import AgentKnowledgePane from "@/sections/knowledge/AgentKnowledgePane";
-import { ValidSources } from "@/lib/types";
 import { useSettingsContext } from "@/providers/SettingsProvider";
 import { useUser } from "@/providers/UserProvider";
 import SimpleLoader from "@/refresh-components/loaders/SimpleLoader";
@@ -495,15 +487,6 @@ export default function AgentEditorPage({
     []
   );
 
-  // Hooks for Knowledge section
-  const { allRecentFiles, beginUpload } = useProjectsContext();
-  const { data: documentSets } = useDocumentSets();
-  const userFilesModal = useCreateModal();
-  const [presentingDocument, setPresentingDocument] = useState<{
-    document_id: string;
-    semantic_identifier: string;
-  } | null>(null);
-
   const { mcpData, isLoading: isMcpLoading } = useMcpServersForAgentEditor();
   const { openApiTools: openApiToolsRaw, isLoading: isOpenApiLoading } =
     useOpenApiTools();
@@ -622,21 +605,12 @@ export default function AgentEditorPage({
       (_, i) => existingAgent?.starter_messages?.[i]?.message ?? ""
     ),
 
-    // Knowledge - enabled if agent has any knowledge sources attached
+    // Knowledge - enabled if agent has any RAG collections selected
     enable_knowledge:
-      (existingAgent?.document_sets?.length ?? 0) > 0 ||
-      (existingAgent?.hierarchy_nodes?.length ?? 0) > 0 ||
-      (existingAgent?.attached_documents?.length ?? 0) > 0 ||
-      (existingAgent?.user_file_ids?.length ?? 0) > 0,
-    document_set_ids: existingAgent?.document_sets?.map((ds) => ds.id) ?? [],
-    // Individual document IDs from hierarchy browsing
-    document_ids: existingAgent?.attached_documents?.map((doc) => doc.id) ?? [],
-    // Hierarchy node IDs (folders/spaces/channels) for scoped search
-    hierarchy_node_ids:
-      existingAgent?.hierarchy_nodes?.map((node) => node.id) ?? [],
-    user_file_ids: existingAgent?.user_file_ids ?? [],
-    // Selected sources for the new knowledge UI - derived from document sets
-    selected_sources: [] as ValidSources[],
+      (existingAgent?.rag_config?.document_processing?.length ?? 0) > 0 ||
+      (existingAgent?.rag_config?.knowledge_graph?.length ?? 0) > 0,
+    rag_document_collection_ids: existingAgent?.rag_config?.document_processing ?? [],
+    rag_graph_collection_ids: existingAgent?.rag_config?.knowledge_graph ?? [],
 
     // Advanced
     llm_model_provider_override:
@@ -762,11 +736,8 @@ export default function AgentEditorPage({
 
     // Knowledge
     enable_knowledge: Yup.boolean(),
-    document_set_ids: Yup.array().of(Yup.number()),
-    document_ids: Yup.array().of(Yup.string()),
-    hierarchy_node_ids: Yup.array().of(Yup.number()),
-    user_file_ids: Yup.array().of(Yup.string()),
-    selected_sources: Yup.array().of(Yup.string()),
+    rag_document_collection_ids: Yup.array().of(Yup.string()),
+    rag_graph_collection_ids: Yup.array().of(Yup.string()),
 
     // Advanced
     llm_model_provider_override: Yup.string().nullable().optional(),
@@ -882,13 +853,30 @@ export default function AgentEditorPage({
         });
       }
 
+      // Build rag_config from selected collections
+      const hasKnowledge =
+        values.enable_knowledge &&
+        (values.rag_document_collection_ids.length > 0 ||
+          values.rag_graph_collection_ids.length > 0);
+
+      const ragConfig = hasKnowledge
+        ? {
+            document_processing: values.rag_document_collection_ids,
+            knowledge_graph: values.rag_graph_collection_ids,
+          }
+        : undefined;
+
+      // Auto-promote base_agent when knowledge is enabled
+      const effectiveBaseAgent =
+        hasKnowledge && values.base_agent === "chatbot"
+          ? "configurable-mcp-agent"
+          : values.base_agent || "chatbot";
+
       // Build submission data
       const submissionData: PersonaUpsertParameters = {
         name: values.name,
         description: values.description,
-        document_set_ids: values.enable_knowledge
-          ? values.document_set_ids
-          : [],
+        document_set_ids: [],
         is_public: values.is_public,
         llm_model_provider_override: values.llm_model_provider_override || null,
         llm_model_version_override: values.llm_model_version_override || null,
@@ -903,21 +891,19 @@ export default function AgentEditorPage({
         search_start_date: values.knowledge_cutoff_date || null,
         label_ids: values.label_ids,
         featured: values.featured,
-        // display_priority: ...,
 
-        user_file_ids: values.enable_knowledge ? values.user_file_ids : [],
-        hierarchy_node_ids: values.enable_knowledge
-          ? values.hierarchy_node_ids
-          : [],
-        document_ids: values.enable_knowledge ? values.document_ids : [],
+        user_file_ids: [],
+        hierarchy_node_ids: [],
+        document_ids: [],
+        rag_config: ragConfig,
 
         system_prompt: values.instructions,
         replace_base_system_prompt: values.replace_base_system_prompt,
         task_prompt: values.reminders || "",
         datetime_aware: false,
-        
+
         // Base agent and MCP tools for custom agents
-        base_agent: values.base_agent || "chatbot",
+        base_agent: effectiveBaseAgent,
         mcp_tools: enabledMcpToolNames,
       };
 
@@ -979,72 +965,6 @@ export default function AgentEditorPage({
     }
   }
 
-  // FilePickerPopover callbacks for Knowledge section
-  function handlePickRecentFile(
-    file: ProjectFile,
-    currentFileIds: string[],
-    setFieldValue: (field: string, value: unknown) => void
-  ) {
-    if (!currentFileIds.includes(file.id)) {
-      setFieldValue("user_file_ids", [...currentFileIds, file.id]);
-    }
-  }
-
-  function handleUnpickRecentFile(
-    file: ProjectFile,
-    currentFileIds: string[],
-    setFieldValue: (field: string, value: unknown) => void
-  ) {
-    setFieldValue(
-      "user_file_ids",
-      currentFileIds.filter((id) => id !== file.id)
-    );
-  }
-
-  function handleFileClick(file: ProjectFile) {
-    setPresentingDocument({
-      document_id: `project_file__${file.file_id}`,
-      semantic_identifier: file.name,
-    });
-  }
-
-  async function handleUploadChange(
-    e: React.ChangeEvent<HTMLInputElement>,
-    currentFileIds: string[],
-    setFieldValue: (field: string, value: unknown) => void
-  ) {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-    try {
-      let selectedIds = [...(currentFileIds || [])];
-      const optimistic = await beginUpload(
-        Array.from(files),
-        null,
-        (result) => {
-          const uploadedFiles = result.user_files || [];
-          if (uploadedFiles.length === 0) return;
-          const tempToFinal = new Map(
-            uploadedFiles
-              .filter((f) => f.temp_id)
-              .map((f) => [f.temp_id as string, f.id])
-          );
-          const replaced = (selectedIds || []).map(
-            (id: string) => tempToFinal.get(id) ?? id
-          );
-          selectedIds = replaced;
-          setFieldValue("user_file_ids", replaced);
-        }
-      );
-      if (optimistic) {
-        const optimisticIds = optimistic.map((f) => f.id);
-        selectedIds = [...selectedIds, ...optimisticIds];
-        setFieldValue("user_file_ids", selectedIds);
-      }
-    } catch (error) {
-      console.error("Upload error:", error);
-    }
-  }
-
   // Wait for async tool data before rendering the form. Formik captures
   // initialValues on mount — if tools haven't loaded yet, the initial values
   // won't include MCP tool fields. Later, toggling those fields would make
@@ -1070,24 +990,6 @@ export default function AgentEditorPage({
           initialStatus={{ warnings: {} }}
         >
           {({ isSubmitting, isValid, dirty, values, setFieldValue }) => {
-            const fileStatusMap = new Map(
-              allRecentFiles.map((f) => [f.id, f.status])
-            );
-
-            const hasUploadingFiles = values.user_file_ids.some(
-              (fileId: string) => {
-                const status = fileStatusMap.get(fileId);
-                if (status === undefined) {
-                  return fileId.startsWith("temp_");
-                }
-                return status === UserFileStatus.UPLOADING;
-              }
-            );
-
-            const hasProcessingFiles = values.user_file_ids.some(
-              (fileId: string) =>
-                fileStatusMap.get(fileId) === UserFileStatus.PROCESSING
-            );
             const isShared =
               values.is_public ||
               values.shared_user_ids.length > 0 ||
@@ -1096,54 +998,6 @@ export default function AgentEditorPage({
             return (
               <>
                 <FormWarningsEffect />
-
-                <userFilesModal.Provider>
-                  <UserFilesModal
-                    title="User Files"
-                    description="All files selected for this agent"
-                    recentFiles={values.user_file_ids
-                      .map((userFileId: string) => {
-                        const rf = allRecentFiles.find(
-                          (f) => f.id === userFileId
-                        );
-                        if (rf) return rf;
-                        return {
-                          id: userFileId,
-                          name: `File ${userFileId.slice(0, 8)}`,
-                          status: UserFileStatus.COMPLETED,
-                          file_id: userFileId,
-                          created_at: new Date().toISOString(),
-                          project_id: null,
-                          user_id: null,
-                          file_type: "",
-                          last_accessed_at: new Date().toISOString(),
-                          chat_file_type: "file" as const,
-                        } as unknown as ProjectFile;
-                      })
-                      .filter((f): f is ProjectFile => f !== null)}
-                    selectedFileIds={values.user_file_ids}
-                    onPickRecent={(file: ProjectFile) => {
-                      if (!values.user_file_ids.includes(file.id)) {
-                        setFieldValue("user_file_ids", [
-                          ...values.user_file_ids,
-                          file.id,
-                        ]);
-                      }
-                    }}
-                    onUnpickRecent={(file: ProjectFile) => {
-                      setFieldValue(
-                        "user_file_ids",
-                        values.user_file_ids.filter((id) => id !== file.id)
-                      );
-                    }}
-                    onView={(file: ProjectFile) => {
-                      setPresentingDocument({
-                        document_id: `project_file__${file.file_id}`,
-                        semantic_identifier: file.name,
-                      });
-                    }}
-                  />
-                </userFilesModal.Provider>
 
                 <shareAgentModal.Provider>
                   <ShareAgentModal
@@ -1211,8 +1065,7 @@ export default function AgentEditorPage({
                             disabled={
                               isSubmitting ||
                               !isValid ||
-                              !dirty ||
-                              hasUploadingFiles
+                              !dirty
                             }
                           >
                             {existingAgent ? "Save" : "Create"}
@@ -1312,42 +1165,14 @@ export default function AgentEditorPage({
                         onEnableKnowledgeChange={(enabled) =>
                           setFieldValue("enable_knowledge", enabled)
                         }
-                        selectedSources={values.selected_sources}
-                        onSourcesChange={(sources) =>
-                          setFieldValue("selected_sources", sources)
+                        ragDocumentCollectionIds={values.rag_document_collection_ids}
+                        onDocumentCollectionIdsChange={(ids) =>
+                          setFieldValue("rag_document_collection_ids", ids)
                         }
-                        documentSets={documentSets ?? []}
-                        selectedDocumentSetIds={values.document_set_ids}
-                        onDocumentSetIdsChange={(ids) =>
-                          setFieldValue("document_set_ids", ids)
+                        ragGraphCollectionIds={values.rag_graph_collection_ids}
+                        onGraphCollectionIdsChange={(ids) =>
+                          setFieldValue("rag_graph_collection_ids", ids)
                         }
-                        selectedDocumentIds={values.document_ids}
-                        onDocumentIdsChange={(ids) =>
-                          setFieldValue("document_ids", ids)
-                        }
-                        selectedFolderIds={values.hierarchy_node_ids}
-                        onFolderIdsChange={(ids) =>
-                          setFieldValue("hierarchy_node_ids", ids)
-                        }
-                        selectedFileIds={values.user_file_ids}
-                        onFileIdsChange={(ids) =>
-                          setFieldValue("user_file_ids", ids)
-                        }
-                        allRecentFiles={allRecentFiles}
-                        onFileClick={handleFileClick}
-                        onUploadChange={(e) =>
-                          handleUploadChange(
-                            e,
-                            values.user_file_ids,
-                            setFieldValue
-                          )
-                        }
-                        hasProcessingFiles={hasProcessingFiles}
-                        initialAttachedDocuments={
-                          existingAgent?.attached_documents
-                        }
-                        initialHierarchyNodes={existingAgent?.hierarchy_nodes}
-                        vectorDbEnabled={vectorDbEnabled}
                       />
 
                       <Separator noPadding />

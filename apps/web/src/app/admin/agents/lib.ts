@@ -33,6 +33,10 @@ interface PersonaUpsertRequest {
   hierarchy_node_ids: number[];
   // Individual documents for scoped search
   document_ids: string[];
+  rag_config?: {
+    document_processing: string[];
+    knowledge_graph: string[];
+  } | null;
 }
 
 export interface PersonaUpsertParameters {
@@ -65,6 +69,11 @@ export interface PersonaUpsertParameters {
   base_agent?: string | null;
   // MCP tool names to bind to the agent
   mcp_tools?: string[];
+  // RAG collection config
+  rag_config?: {
+    document_processing: string[];
+    knowledge_graph: string[];
+  };
 }
 
 function buildPersonaUpsertRequest({
@@ -93,6 +102,7 @@ function buildPersonaUpsertRequest({
   replace_base_system_prompt,
   base_agent,
   mcp_tools,
+  rag_config,
 }: PersonaUpsertParameters): PersonaUpsertRequest {
   return {
     name,
@@ -121,6 +131,7 @@ function buildPersonaUpsertRequest({
     document_ids: document_ids ?? [],
     base_agent: base_agent ?? null,
     mcp_tools: mcp_tools ?? [],
+    rag_config: rag_config ?? null,
   };
 }
 

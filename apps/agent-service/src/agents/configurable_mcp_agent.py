@@ -13,6 +13,7 @@ from langchain_core.tools import BaseTool
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.prebuilt import create_react_agent
 
+from agents.knowledge import KnowledgeSystemPromptBuilder, KnowledgeToolSelector
 from agents.lazy_agent import LazyLoadingAgent
 from core import get_model, settings
 
@@ -110,30 +111,31 @@ class ConfigurableMCPAgent(LazyLoadingAgent):
         mcp_tool_names: list[str],
         model_name: str | None = None,
         checkpointer: Any | None = None,
+        extra_tools: list[BaseTool] | None = None,
     ) -> CompiledStateGraph:
-        """
-        Create an agent graph with the specified configuration.
-        
+        """Create an agent graph with the specified configuration.
+
         Args:
             system_prompt: System prompt for the agent
             mcp_tool_names: List of MCP tool names to use
             model_name: Optional model override
             checkpointer: Optional checkpointer for persistence
-        
-        Returns:
-            Compiled agent graph
+            extra_tools: Additional pre-resolved tools (e.g. RAG tools)
         """
         model = get_model(model_name or settings.DEFAULT_MODEL)
-        
-        # Collect selected tools
-        agent_tools = []
+
+        # Collect MCP tools by name
+        agent_tools: list[BaseTool] = []
         for tool_name in mcp_tool_names:
             if tool_name in self._mcp_tools:
                 agent_tools.append(self._mcp_tools[tool_name])
             else:
                 logger.warning(f"Tool '{tool_name}' not found in MCP cache")
-        
-        # Create the agent
+
+        # Append any extra tools (e.g. database_search, graph_search)
+        if extra_tools:
+            agent_tools.extend(extra_tools)
+
         agent = create_react_agent(
             model=model,
             tools=agent_tools,
@@ -141,7 +143,7 @@ class ConfigurableMCPAgent(LazyLoadingAgent):
             prompt=SystemMessage(content=system_prompt),
             checkpointer=checkpointer,
         )
-        
+
         return agent
     
     async def ainvoke(
@@ -169,29 +171,38 @@ class ConfigurableMCPAgent(LazyLoadingAgent):
         
         # Get configuration
         configurable = (config or {}).get("configurable", {})
-        
+
         system_prompt = configurable.get("system_prompt", DEFAULT_SYSTEM_PROMPT)
         mcp_tool_names = configurable.get("mcp_tools", [])
+        rag_config: dict = configurable.get("rag_config") or {}
         model_name = configurable.get("model")
         mcp_url = configurable.get("mcp_url")
-        
+
         # Reload MCP tools if URL changed
         if mcp_url and mcp_url != settings.MCP_SERVER_URL:
             self._mcp_tools = {}
             await self._load_mcp_tools(mcp_url)
-        
+
+        # Resolve RAG tools and augment system prompt when rag_config is present
+        rag_tools = KnowledgeToolSelector.select_tools(rag_config)
+        if rag_tools:
+            mode = KnowledgeSystemPromptBuilder.determine_mode(rag_config)
+            if mode:
+                system_prompt = KnowledgeSystemPromptBuilder.build_full_prompt(system_prompt, mode)
+
         # Resolve checkpointer: prefer explicit param, then instance-level, then graph-level
         effective_checkpointer = checkpointer or getattr(self, '_checkpointer', None) or (
             self._graph.checkpointer if self._graph and hasattr(self._graph, 'checkpointer') else None
         )
-        
-        # If custom configuration provided, create a custom graph
-        if system_prompt != DEFAULT_SYSTEM_PROMPT or mcp_tool_names:
+
+        # Create a custom graph whenever anything deviates from defaults
+        if system_prompt != DEFAULT_SYSTEM_PROMPT or mcp_tool_names or rag_tools:
             graph = self._create_agent_graph(
                 system_prompt=system_prompt,
                 mcp_tool_names=mcp_tool_names,
                 model_name=model_name,
                 checkpointer=effective_checkpointer,
+                extra_tools=rag_tools,
             )
             result = await graph.ainvoke(input, config=config, **kwargs)
         else:
@@ -223,35 +234,44 @@ class ConfigurableMCPAgent(LazyLoadingAgent):
         
         # Get configuration
         configurable = (config or {}).get("configurable", {})
-        
+
         system_prompt = configurable.get("system_prompt", DEFAULT_SYSTEM_PROMPT)
         mcp_tool_names = configurable.get("mcp_tools", [])
+        rag_config: dict = configurable.get("rag_config") or {}
         model_name = configurable.get("model")
         mcp_url = configurable.get("mcp_url")
-        
+
         # Reload MCP tools if URL changed
         if mcp_url and mcp_url != settings.MCP_SERVER_URL:
             self._mcp_tools = {}
             await self._load_mcp_tools(mcp_url)
-        
+
         # If tools are requested but not in cache, retry loading
         if mcp_tool_names and not any(t in self._mcp_tools for t in mcp_tool_names):
             logger.warning(f"Tools {mcp_tool_names} not in cache, retrying load...")
             await self._load_mcp_tools(mcp_url)
-        
+
+        # Resolve RAG tools and augment system prompt when rag_config is present
+        rag_tools = KnowledgeToolSelector.select_tools(rag_config)
+        if rag_tools:
+            mode = KnowledgeSystemPromptBuilder.determine_mode(rag_config)
+            if mode:
+                system_prompt = KnowledgeSystemPromptBuilder.build_full_prompt(system_prompt, mode)
+
         # Resolve checkpointer
         effective_checkpointer = checkpointer or getattr(self, '_checkpointer', None) or (
             self._graph.checkpointer if self._graph and hasattr(self._graph, 'checkpointer') else None
         )
-        
-        # If custom configuration provided, create a custom graph
+
+        # Create a custom graph whenever anything deviates from defaults
         collected_output = None
-        if system_prompt != DEFAULT_SYSTEM_PROMPT or mcp_tool_names:
+        if system_prompt != DEFAULT_SYSTEM_PROMPT or mcp_tool_names or rag_tools:
             graph = self._create_agent_graph(
                 system_prompt=system_prompt,
                 mcp_tool_names=mcp_tool_names,
                 model_name=model_name,
                 checkpointer=effective_checkpointer,
+                extra_tools=rag_tools,
             )
             async for chunk in graph.astream(input, config=config, **kwargs):
                 collected_output = chunk
@@ -291,29 +311,38 @@ class ConfigurableMCPAgent(LazyLoadingAgent):
         
         # Get configuration
         configurable = (config or {}).get("configurable", {})
-        
+
         system_prompt = configurable.get("system_prompt", DEFAULT_SYSTEM_PROMPT)
         mcp_tool_names = configurable.get("mcp_tools", [])
+        rag_config: dict = configurable.get("rag_config") or {}
         model_name = configurable.get("model")
         mcp_url = configurable.get("mcp_url")
-        
+
         # Reload MCP tools if URL changed
         if mcp_url and mcp_url != settings.MCP_SERVER_URL:
             self._mcp_tools = {}
             await self._load_mcp_tools(mcp_url)
-        
+
+        # Resolve RAG tools and augment system prompt when rag_config is present
+        rag_tools = KnowledgeToolSelector.select_tools(rag_config)
+        if rag_tools:
+            mode = KnowledgeSystemPromptBuilder.determine_mode(rag_config)
+            if mode:
+                system_prompt = KnowledgeSystemPromptBuilder.build_full_prompt(system_prompt, mode)
+
         # Resolve checkpointer: prefer explicit param, then instance-level, then graph-level
         effective_checkpointer = checkpointer or getattr(self, '_checkpointer', None) or (
             self._graph.checkpointer if self._graph and hasattr(self._graph, 'checkpointer') else None
         )
-        
-        # If custom configuration provided, create a custom graph
-        if system_prompt != DEFAULT_SYSTEM_PROMPT or mcp_tool_names:
+
+        # Create a custom graph whenever anything deviates from defaults
+        if system_prompt != DEFAULT_SYSTEM_PROMPT or mcp_tool_names or rag_tools:
             graph = self._create_agent_graph(
                 system_prompt=system_prompt,
                 mcp_tool_names=mcp_tool_names,
                 model_name=model_name,
                 checkpointer=effective_checkpointer,
+                extra_tools=rag_tools,
             )
             async for event in graph.astream_events(input, config=config, version=version, **kwargs):
                 yield event

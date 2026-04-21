@@ -254,9 +254,11 @@ class AuthController(BaseController):
                                 tool_calls = getattr(raw_msg, "tool_calls", None) or []
                                 msg_content = _strip_think_tags(_extract_content(raw_msg))
 
-                                if tool_calls and not msg_content:
-                                    # AI message that only has tool_calls (no final answer)
-                                    # → emit custom_tool_start packets, skip as visible message
+                                if tool_calls:
+                                    # AI message that has tool_calls → intermediate step
+                                    # Emit tool_start packets and skip as visible message
+                                    # (even if it also has content, that content is just
+                                    # the model's internal reasoning before calling the tool)
                                     for tc in tool_calls:
                                         tc_name = tc.get("name", "tool") if isinstance(tc, dict) else getattr(tc, "name", "tool")
                                         pending_tool_packets.append({
