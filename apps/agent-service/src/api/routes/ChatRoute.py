@@ -221,10 +221,54 @@ async def send_chat_message(request: Request):
                 llm_override = llm_override or {}
                 llm_override["rag_config"] = custom_persona["rag_config"]
 
+    # Process file_descriptors sent by the frontend (inline base64 flow).
+    # Convert each descriptor into a LangChain content block and store the raw
+    # bytes in FileService so GET /api/chat/file/{id} can serve them later.
+    file_descriptors: list[dict] = body.get("file_descriptors") or []
+    file_content_blocks: list[dict] = []
+    files_metadata: list[dict] = []
+
+    if file_descriptors:
+        import base64 as _base64
+        from service.FileService import IMAGE_MIMES, store_file as _store_file
+        from service.Utils import _extract_file_blocks
+
+        for fd in file_descriptors:
+            fd_id: str = fd.get("id") or str(uuid.uuid4())
+            fd_name: str = fd.get("name") or "file"
+            fd_mime: str = fd.get("mime_type") or "application/octet-stream"
+            fd_data: str | None = fd.get("data")  # base64 string or None
+            fd_type: str = fd.get("type") or "document"
+
+            files_metadata.append({"id": fd_id, "type": fd_type, "name": fd_name})
+
+            if not fd_data:
+                continue
+
+            m = fd_mime.lower().split(";")[0].strip()
+
+            # Store raw bytes so the file-serve endpoint can return them
+            try:
+                raw = _base64.b64decode(fd_data)
+                _store_file(fd_id, raw, fd_mime, fd_name)
+            except Exception as store_err:
+                logger.warning(f"Could not store file {fd_id} in FileService: {store_err}")
+
+            if m in IMAGE_MIMES:
+                file_content_blocks.append({
+                    "type": "image_url",
+                    "image_url": {"url": f"data:{m};base64,{fd_data}"},
+                })
+            else:
+                blocks = _extract_file_blocks(fd_data, fd_mime, fd_name)
+                file_content_blocks.extend(blocks)
+
     stream_input = StreamInput(
         message=message or "",
         thread_id=session_id,
         agent_config=llm_override or {},
+        file_content_blocks=file_content_blocks,
+        files_metadata=files_metadata,
     )
 
     async def generate_stream():

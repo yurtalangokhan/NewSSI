@@ -4,10 +4,6 @@ import { useEffect } from "react";
 
 export default function PerformanceMeasureGuard() {
   useEffect(() => {
-    if (process.env.NODE_ENV !== "development") {
-      return;
-    }
-
     if (typeof window === "undefined" || !window.performance) {
       return;
     }
@@ -27,7 +23,10 @@ export default function PerformanceMeasureGuard() {
         return originalMeasure(...args);
       } catch (error) {
         const message = error instanceof Error ? error.message : "";
-        if (/negative time stamp/i.test(message)) {
+        if (
+          /negative time stamp/i.test(message) ||
+          /cannot have a negative time stamp/i.test(message)
+        ) {
           return;
         }
         throw error;

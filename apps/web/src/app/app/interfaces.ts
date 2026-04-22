@@ -93,6 +93,10 @@ export interface FileDescriptor {
   name?: string | null;
 
   user_file_id?: string | null;
+  // Inline base64 content — populated client-side, sent with the message payload.
+  // The backend extracts text / image data directly from this field.
+  data?: string | null;
+  mime_type?: string | null;
   // FE only
   isUploading?: boolean;
 }

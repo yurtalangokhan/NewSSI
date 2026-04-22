@@ -257,7 +257,16 @@ export default function FilePickerPopover({
         className="hidden"
         multiple
         onChange={handleUploadChange}
-        accept={"*/*"}
+        accept={
+          // Images (including JPEG variants)
+          "image/jpeg,image/png,image/gif,image/webp,.jfif,.jpe,.pjp,.pjpeg," +
+          // Documents
+          "application/pdf,.docx,.doc,.pptx,.ppt," +
+          // Spreadsheets / tabular
+          "text/csv,.csv,.xlsx,.xls," +
+          // Plain text
+          "text/plain,.txt,.md"
+        }
       />
 
       <recentFilesModal.Provider>

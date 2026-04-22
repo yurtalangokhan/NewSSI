@@ -278,8 +278,6 @@ async def _handle_input(
     except Exception as e:
         logger.warning(f"aget_state failed (no checkpointer?): {e} — treating as fresh conversation")
 
-    from langchain_core.messages import BaseMessage
-
     from service.Utils import convert_input_messages
 
     input: Command | dict[str, Any]
@@ -294,30 +292,39 @@ async def _handle_input(
         try:
             current_state = await agent.aget_state(config=config)
             existing_messages = current_state.values.get("messages", [])
+            _ = existing_messages  # available for debugging; LangGraph manages history via thread state
 
-            # Convert existing messages to HumanMessage/AIMessage if needed
-            history_messages: list[BaseMessage] = []
-            for msg in existing_messages:
-                if isinstance(msg, BaseMessage):
-                    history_messages.append(msg)
-                elif isinstance(msg, dict):
-                    # Handle dict format from checkpoint
-                    msg_type = msg.get("type", "human")
-                    msg_content = msg.get("content", "")
-                    if msg_type == "human":
-                        history_messages.append(HumanMessage(content=msg_content))
-                    elif msg_type in ("ai", "assistant"):
-                        from langchain_core.messages import AIMessage
-
-                        history_messages.append(AIMessage(content=msg_content))
-
-            # Append new message
-            history_messages.append(HumanMessage(content=user_input.message))
-            input = {"messages": history_messages}
+            # Build only the NEW HumanMessage — LangGraph appends it to the existing
+            # thread state automatically, so we must NOT re-pass the full history here.
+            # Re-passing history would cause file content blocks (images/text) from
+            # previous messages to be fed to the LLM again on every new message.
+            file_blocks: list[dict[str, Any]] = getattr(user_input, "file_content_blocks", [])
+            files_meta: list[dict[str, Any]] = getattr(user_input, "files_metadata", [])
+            # Store lightweight file metadata in additional_kwargs so the LangGraph
+            # checkpointer persists it and get_chat_session can reconstruct file badges.
+            extra_kwargs: dict[str, Any] = {"files_metadata": files_meta} if files_meta else {}
+            if file_blocks:
+                new_content: list[dict[str, Any]] = (
+                    [{"type": "text", "text": user_input.message}] if user_input.message else []
+                )
+                new_content.extend(file_blocks)
+                input = {"messages": [HumanMessage(content=new_content, additional_kwargs=extra_kwargs)]}
+            else:
+                input = {"messages": [HumanMessage(content=user_input.message, additional_kwargs=extra_kwargs)]}
         except Exception as e:
             logger.warning(f"Failed to fetch existing messages from checkpointer: {e}")
             # Fall back to just the new message
-            input = {"messages": [HumanMessage(content=user_input.message)]}
+            file_blocks = getattr(user_input, "file_content_blocks", [])
+            files_meta = getattr(user_input, "files_metadata", [])
+            extra_kwargs = {"files_metadata": files_meta} if files_meta else {}
+            if file_blocks:
+                fallback_content: list[dict[str, Any]] = (
+                    [{"type": "text", "text": user_input.message}] if user_input.message else []
+                )
+                fallback_content.extend(file_blocks)
+                input = {"messages": [HumanMessage(content=fallback_content, additional_kwargs=extra_kwargs)]}
+            else:
+                input = {"messages": [HumanMessage(content=user_input.message, additional_kwargs=extra_kwargs)]}
     else:
         raise HTTPException(
             status_code=400, detail="One of 'message' or 'messages' must be provided."

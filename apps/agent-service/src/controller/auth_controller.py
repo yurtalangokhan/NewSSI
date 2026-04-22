@@ -332,6 +332,24 @@ class AuthController(BaseController):
                             parent_msg_id = msg_idx if msg_idx > 0 else None
                             msg_idx += 1
 
+                            # Restore file badges from additional_kwargs set at send time.
+                            # raw_msg may be a LangChain object or a plain dict depending
+                            # on which checkpointer / deserialization path is used.
+                            if isinstance(raw_msg, dict):
+                                _extra = raw_msg.get("additional_kwargs", {}) or {}
+                            else:
+                                _extra = getattr(raw_msg, "additional_kwargs", {}) or {}
+                            raw_files_meta = _extra.get("files_metadata", [])
+                            history_files = [
+                                {
+                                    "id": f.get("id", ""),
+                                    "type": f.get("type", "document"),
+                                    "name": f.get("name"),
+                                }
+                                for f in (raw_files_meta or [])
+                                if isinstance(f, dict) and f.get("id")
+                            ]
+
                             messages.append(
                                 {
                                     "message_id": msg_idx,
@@ -347,7 +365,7 @@ class AuthController(BaseController):
                                     "alternate_assistant_id": thread_metadata.get("persona_id"),
                                     "chat_session_id": chat_session_id,
                                     "citations": None,
-                                    "files": [],
+                                    "files": history_files,
                                     "tool_call": None,
                                     "current_feedback": None,
                                     "processing_duration_seconds": None,

@@ -170,6 +170,7 @@ from api.routes import (
     run_router,
     datasources_router,
     assistant_schemas_router,
+    file_router,
 )
 
 app.include_router(agents_router)
@@ -185,6 +186,7 @@ app.include_router(proxy_router)
 app.include_router(run_router)
 app.include_router(datasources_router)
 app.include_router(assistant_schemas_router)
+app.include_router(file_router)
 
 try:
     from api.routes.MCPProvidersRoute import router as mcp_providers_router

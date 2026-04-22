@@ -251,6 +251,25 @@ class ChatController(BaseController):
                 msg_content = _strip_think_tags(_extract_content(raw_msg))
                 parent_msg_id = msg_idx if msg_idx > 0 else None
                 msg_idx += 1
+
+                # Restore file badges from additional_kwargs set at send time.
+                # raw_msg may be a LangChain object or a plain dict depending
+                # on checkpointer deserialization.
+                if isinstance(raw_msg, dict):
+                    _extra = raw_msg.get("additional_kwargs", {}) or {}
+                else:
+                    _extra = getattr(raw_msg, "additional_kwargs", {}) or {}
+                raw_files_meta = _extra.get("files_metadata", [])
+                history_files = [
+                    {
+                        "id": f.get("id", ""),
+                        "type": f.get("type", "document"),
+                        "name": f.get("name"),
+                    }
+                    for f in (raw_files_meta or [])
+                    if isinstance(f, dict) and f.get("id")
+                ]
+
                 messages.append(
                     {
                         "message_id": msg_idx,
@@ -266,7 +285,7 @@ class ChatController(BaseController):
                         "alternate_assistant_id": metadata.get("persona_id"),
                         "chat_session_id": chat_session_id,
                         "citations": None,
-                        "files": [],
+                        "files": history_files,
                         "tool_call": None,
                         "current_feedback": None,
                         "processing_duration_seconds": None,
@@ -367,12 +386,76 @@ class ChatController(BaseController):
         return {"max_tokens": 120000, "selected_tokens": 120000}
 
     async def get_session_token_count(self, session_id: str) -> dict[str, int]:
+        # Session files are inline attachments in this backend variant.
+        # Keep response shape compatible with frontend expectations.
         _ = session_id
-        return {"token_count": 0}
+        return {"token_count": 0, "total_tokens": 0}
 
-    async def get_session_files(self, session_id: str) -> dict[str, list[Any]]:
-        _ = session_id
-        return {"files": []}
+    async def get_session_files(self, session_id: str) -> list[dict[str, Any]]:
+        thread = await self._thread_controller.get_thread(session_id)
+        if not thread:
+            return []
+
+        files: list[dict[str, Any]] = []
+        seen_ids: set[str] = set()
+
+        try:
+            state = await self._thread_controller.get_thread_state(session_id)
+            langgraph_messages = state.get("values", {}).get("messages", [])
+
+            for raw_msg in langgraph_messages:
+                raw_type = getattr(raw_msg, "type", None)
+                if raw_type is None and isinstance(raw_msg, dict):
+                    raw_type = raw_msg.get("type", "")
+
+                if raw_type not in ("human", "user"):
+                    continue
+
+                if isinstance(raw_msg, dict):
+                    _extra = raw_msg.get("additional_kwargs", {}) or {}
+                else:
+                    _extra = getattr(raw_msg, "additional_kwargs", {}) or {}
+
+                raw_files_meta = _extra.get("files_metadata", [])
+                for f in raw_files_meta or []:
+                    if not isinstance(f, dict):
+                        continue
+                    file_id = f.get("id")
+                    if not file_id or file_id in seen_ids:
+                        continue
+                    seen_ids.add(file_id)
+
+                    chat_file_type = f.get("type", "document")
+                    if chat_file_type == "image":
+                        file_type = "image/png"
+                    elif chat_file_type == "csv":
+                        file_type = "text/csv"
+                    elif chat_file_type == "plain_text":
+                        file_type = "text/plain"
+                    else:
+                        file_type = "application/octet-stream"
+
+                    files.append(
+                        {
+                            "id": file_id,
+                            "name": f.get("name") or file_id,
+                            "project_id": None,
+                            "user_id": self._user_id,
+                            "file_id": file_id,
+                            "created_at": thread.get("created_at"),
+                            "status": "COMPLETED",
+                            "file_type": file_type,
+                            "last_accessed_at": thread.get("updated_at"),
+                            "chat_file_type": chat_file_type,
+                            "token_count": None,
+                            "chunk_count": None,
+                            "temp_id": None,
+                        }
+                    )
+        except Exception:
+            return []
+
+        return files
 
     async def create_chat_message_feedback(self) -> dict[str, bool]:
         return {"success": True}

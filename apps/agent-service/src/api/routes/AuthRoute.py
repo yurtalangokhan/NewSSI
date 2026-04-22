@@ -1,5 +1,11 @@
 """Auth routes - provides endpoints for authentication and user management."""
 
+import json
+import uuid
+import base64
+import logging
+from datetime import UTC, datetime
+from typing import Any
 import logging
 
 from fastapi import APIRouter, Request, Response

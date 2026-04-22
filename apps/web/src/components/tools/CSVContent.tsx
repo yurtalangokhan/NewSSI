@@ -23,6 +23,7 @@ const CsvContent: React.FC<ContentComponentProps> = ({
   const [data, setData] = useState<Record<string, string>[]>([]);
   const [headers, setHeaders] = useState<string[]>([]);
   const [isFetching, setIsFetching] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Cache parsed CSV across mounts so closing other modals doesn't force a refetch.
   // Keyed by file id; safe because chat file ids are unique.
@@ -34,6 +35,7 @@ const CsvContent: React.FC<ContentComponentProps> = ({
       setHeaders(cached.headers);
       setData(cached.data);
       setIsFetching(false);
+      setErrorMessage(null);
       return;
     }
 
@@ -43,12 +45,18 @@ const CsvContent: React.FC<ContentComponentProps> = ({
 
   const fetchCSV = async (id: string) => {
     setIsFetching(true);
+    setErrorMessage(null);
     try {
       const response = await fetch(`/api/chat/file/${id}`, {
-        cache: "force-cache",
+        cache: "no-store",
       });
       if (!response.ok) {
-        throw new Error("Failed to fetch CSV file");
+        setData([]);
+        setHeaders([]);
+        setErrorMessage(
+          "This file is no longer available in server memory. Please upload it again to view CSV content."
+        );
+        return;
       }
 
       const contentLength = response.headers.get("Content-Length");
@@ -58,14 +66,20 @@ const CsvContent: React.FC<ContentComponentProps> = ({
       const MAX_FILE_SIZE_MB = 5;
 
       if (fileSizeInMB > MAX_FILE_SIZE_MB) {
-        throw new Error("File size exceeds the maximum limit of 5MB");
+        setData([]);
+        setHeaders([]);
+        setErrorMessage("File size exceeds the maximum limit of 5MB");
+        return;
       }
 
       const csvData = await response.text();
       const rows = csvData.trim().split("\n");
       const firstRow = rows[0];
       if (!firstRow) {
-        throw new Error("CSV file is empty");
+        setData([]);
+        setHeaders([]);
+        setErrorMessage("CSV file is empty");
+        return;
       }
       const parsedHeaders = firstRow.split(",");
       setHeaders(parsedHeaders);
@@ -89,6 +103,7 @@ const CsvContent: React.FC<ContentComponentProps> = ({
       console.error("Error fetching CSV file:", error);
       setData([]);
       setHeaders([]);
+      setErrorMessage("Failed to load CSV content.");
     } finally {
       setIsFetching(false);
     }
@@ -156,7 +171,8 @@ const CsvContent: React.FC<ContentComponentProps> = ({
                   </Text>
                   <Text as="p" text04 mainUiBody>
                     {headers.length === 0
-                      ? "The CSV file may be too large or couldn't be loaded properly."
+                      ? errorMessage ||
+                        "The CSV file may be too large or couldn't be loaded properly."
                       : ""}
                   </Text>
                 </div>

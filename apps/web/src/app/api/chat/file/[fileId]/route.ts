@@ -1,21 +1,35 @@
 import { NextResponse } from 'next/server';
 
-const INTERNAL_URL = process.env.INTERNAL_URL || "http://localhost:8123";
+const INTERNAL_URL = process.env.INTERNAL_URL || 'http://localhost:8123';
 
 export async function GET(
-  request: Request,
+  _request: Request,
   { params }: { params: Promise<{ fileId: string }> }
 ) {
   try {
     const { fileId } = await params;
-    
-    // For now, return a mock file not found response
-    // In production, this would proxy to actual file storage
-    return NextResponse.json({ 
-      error: "File not found",
-      file_id: fileId 
-    }, { status: 404 });
-  } catch (error) {
-    return NextResponse.json({ error: "Failed to fetch file" }, { status: 500 });
+    const backendUrl = `${INTERNAL_URL}/api/chat/file/${encodeURIComponent(fileId)}`;
+
+    const response = await fetch(backendUrl, { cache: 'no-store' });
+
+    if (!response.ok) {
+      return NextResponse.json({ error: 'File not found' }, { status: response.status });
+    }
+
+    const contentType = response.headers.get('Content-Type') || 'application/octet-stream';
+    const body = await response.arrayBuffer();
+
+    return new Response(body, {
+      status: 200,
+      headers: {
+        'Content-Type': contentType,
+        'Cache-Control': 'private, max-age=3600',
+        ...(response.headers.get('Content-Disposition')
+          ? { 'Content-Disposition': response.headers.get('Content-Disposition')! }
+          : {}),
+      },
+    });
+  } catch {
+    return NextResponse.json({ error: 'Failed to fetch file' }, { status: 500 });
   }
 }

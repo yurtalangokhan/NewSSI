@@ -13,6 +13,7 @@ from api.routes.ProxyRoute import router as proxy_router
 from api.routes.RunRoute import router as run_router
 from api.routes.DatasourcesRoute import router as datasources_router
 from api.routes.AssistantSchemasRoute import router as assistant_schemas_router
+from api.routes.FileRoute import router as file_router
 
 __all__ = [
     "agents_router",
@@ -28,4 +29,5 @@ __all__ = [
     "run_router",
     "datasources_router",
     "assistant_schemas_router",
+    "file_router",
 ]

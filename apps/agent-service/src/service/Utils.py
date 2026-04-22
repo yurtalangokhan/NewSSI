@@ -90,60 +90,138 @@ def extract_text_from_pdf(base64_data: str) -> str:
 
 
 def convert_input_messages(messages: list[dict[str, Any]]) -> list[BaseMessage]:
-    """Convert raw input messages to LangChain BaseMessage objects."""
+    """Convert raw input messages to LangChain BaseMessage objects.
+
+    Supports inline base64 content blocks (legacy / LangChain SDK format):
+      - {type: "image", mime_type, data, metadata: {name, file_id?}}
+      - {type: "file",  mime_type, data, metadata: {filename, file_id?}}
+
+    For file types, text is extracted using FileService parsers and injected
+    as text blocks.  Image files become image_url blocks for multimodal LLMs.
+
+    When a file_id is present in metadata, the raw bytes are also stored in
+    FileService._STORE so GET /api/chat/file/{id} can serve them later
+    (needed for CsvContent table rendering).
+    """
     langchain_messages = []
     for msg in messages:
-        # We only really expect dictionaries from the frontend here, mainly for HumanMessage
-        # but let's be safe.
         role = msg.get("type", "human")
         content = msg.get("content", [])
-        
+
         if isinstance(content, str):
             langchain_messages.append(HumanMessage(content=content))
             continue
-            
+
         new_content = []
         for item in content:
             if isinstance(item, str):
                 new_content.append({"type": "text", "text": item})
                 continue
-                
+
             item_type = item.get("type")
             if item_type == "text":
                 new_content.append(item)
+
             elif item_type == "image":
-                # Check if it's actually a PDF disguised as an image (workaround for frontend SDK validation)
-                if item.get("mime_type") == "application/pdf":
-                    # extract text from PDF
-                    pdf_text = extract_text_from_pdf(item.get("data", ""))
-                    filename = item.get("metadata", {}).get("filename", "PDF Document")
+                mime = item.get("mime_type", "")
+                data_b64 = item.get("data", "")
+                metadata = item.get("metadata", {})
+                filename = metadata.get("filename") or metadata.get("name") or "image"
+
+                if mime == "application/pdf":
+                    # PDF sent as "image" block (legacy frontend SDK workaround)
+                    pdf_text = extract_text_from_pdf(data_b64)
                     new_content.append({
-                        "type": "text", 
-                        "text": f"--- Begin Content of {filename} ---\n{pdf_text}\n--- End Content of {filename} ---"
+                        "type": "text",
+                        "text": f"--- Begin Content of {filename} ---\n{pdf_text}\n--- End Content of {filename} ---",
                     })
+                    _maybe_store(metadata, data_b64, mime, filename)
+                elif mime and not mime.startswith("image/"):
+                    # Non-image file sent via "image" block — extract text
+                    blocks = _extract_file_blocks(data_b64, mime, filename)
+                    new_content.extend(blocks)
+                    _maybe_store(metadata, data_b64, mime, filename)
                 else:
-                    # Convert 'image' block to 'image_url' block
+                    # Actual image — convert to image_url block
                     new_content.append({
                         "type": "image_url",
-                        "image_url": {
-                            "url": f"data:{item.get('mime_type')};base64,{item.get('data')}"
-                        }
+                        "image_url": {"url": f"data:{mime};base64,{data_b64}"},
                     })
-            elif item_type == "file" and item.get("mime_type") == "application/pdf":
-                # extract text from PDF
-                pdf_text = extract_text_from_pdf(item.get("data", ""))
-                filename = item.get("metadata", {}).get("filename", "PDF Document")
-                new_content.append({
-                    "type": "text", 
-                    "text": f"--- Begin Content of {filename} ---\n{pdf_text}\n--- End Content of {filename} ---"
-                })
+                    _maybe_store(metadata, data_b64, mime, filename)
+
+            elif item_type == "file":
+                mime = item.get("mime_type", "application/octet-stream")
+                data_b64 = item.get("data", "")
+                metadata = item.get("metadata", {})
+                filename = metadata.get("filename") or metadata.get("name") or "file"
+
+                blocks = _extract_file_blocks(data_b64, mime, filename)
+                new_content.extend(blocks)
+                _maybe_store(metadata, data_b64, mime, filename)
+
             else:
-                # Fallback for unknown types
-                logger.warning(f"Unknown content type in message: {item_type}")
-                
+                logger.warning("Unknown content type in message: %s", item_type)
+
         langchain_messages.append(HumanMessage(content=new_content))
-        
+
     return langchain_messages
+
+
+# ---------------------------------------------------------------------------
+# Helpers for convert_input_messages
+# ---------------------------------------------------------------------------
+
+def _maybe_store(metadata: dict, data_b64: str, mime: str, filename: str) -> None:
+    """Store file bytes in FileService._STORE if a file_id is present in metadata."""
+    file_id = metadata.get("file_id")
+    if not file_id or not data_b64:
+        return
+    try:
+        from service.FileService import get_file, store_file
+        if get_file(file_id) is None:
+            raw = base64.b64decode(data_b64)
+            store_file(file_id, raw, mime, filename)
+    except Exception as e:
+        logger.debug("Could not store file %s in _STORE: %s", file_id, e)
+
+
+def _extract_file_blocks(data_b64: str, mime: str, filename: str) -> list[dict]:
+    """Extract text from a base64-encoded file and return LangChain content blocks."""
+    if not data_b64:
+        return []
+
+    m = mime.lower().split(";")[0].strip()
+
+    try:
+        if m == "application/pdf":
+            text = extract_text_from_pdf(data_b64)
+        else:
+            raw = base64.b64decode(data_b64)
+            from service.FileService import FileRecord, _extract_text_from_record
+            from datetime import UTC, datetime
+
+            # Build a temporary record for the extraction machinery
+            tmp = FileRecord(
+                file_id="_tmp_",
+                data=raw,
+                mime_type=m,
+                filename=filename,
+                chat_file_type="document",
+                created_at=datetime.now(UTC),
+            )
+            text = _extract_text_from_record(tmp)
+
+        if text is None:
+            # Image that slipped through — convert to image_url
+            return [{"type": "image_url", "image_url": {"url": f"data:{m};base64,{data_b64}"}}]
+
+        return [{
+            "type": "text",
+            "text": f"--- Begin Content of {filename} ---\n{text}\n--- End Content of {filename} ---",
+        }]
+    except Exception as e:
+        logger.error("Failed to extract content from %s (%s): %s", filename, mime, e)
+        return [{"type": "text", "text": f"[Could not extract content from {filename}]"}]
 
 
 def langchain_to_chat_message(message: BaseMessage) -> ChatMessage:
