@@ -95,6 +95,7 @@ class ChatController(BaseController):
                 "chat_session_id": chat_session_id,
                 "description": "Chat",
                 "persona_id": 0,
+                "persona_name": "",
                 "messages": [],
                 "time_created": None,
                 "time_updated": None,
@@ -106,8 +107,8 @@ class ChatController(BaseController):
             }
 
         metadata = thread.get("metadata", {}) or {}
-        state = await self._thread_controller.get_thread_state(chat_session_id)
-        langgraph_messages = state.get("values", {}).get("messages", [])
+        messages: list[dict[str, Any]] = []
+        packets_2d: list[list[dict[str, Any]]] = []
 
         def _strip_think_tags(text: str) -> str:
             if not text:
@@ -137,42 +138,157 @@ class ChatController(BaseController):
                 return content.get("text", "") or str(content)
             return ""
 
-        messages: list[dict[str, Any]] = []
-        packets_2d: list[list[dict[str, Any]]] = []
-        msg_idx = 0
+        try:
+            state = await self._thread_controller.get_thread_state(chat_session_id)
+            langgraph_messages = state.get("values", {}).get("messages", [])
+            pending_tool_packets: list[dict[str, Any]] = []
+            msg_idx = 0
 
-        for raw_msg in langgraph_messages:
-            raw_type = getattr(raw_msg, "type", None)
-            if raw_type is None and isinstance(raw_msg, dict):
-                raw_type = raw_msg.get("type", "")
+            for raw_msg in langgraph_messages:
+                raw_type = getattr(raw_msg, "type", None)
+                if raw_type is None and isinstance(raw_msg, dict):
+                    raw_type = raw_msg.get("type", "")
 
-            if raw_type == "tool":
-                continue
+                if raw_type == "tool":
+                    tool_name = getattr(raw_msg, "name", "") or "tool"
+                    tool_content = _extract_content(raw_msg)
+                    pending_tool_packets.append(
+                        {
+                            "placement": {"turn_index": 0, "sub_turn_index": None},
+                            "obj": {
+                                "type": "custom_tool_delta",
+                                "tool_name": tool_name,
+                                "response_type": "tool_result",
+                                "data": tool_content,
+                            },
+                        }
+                    )
+                    continue
 
-            msg_content = _strip_think_tags(_extract_content(raw_msg))
-            if raw_type == "ai" and not msg_content:
-                continue
+                if raw_type == "ai":
+                    tool_calls = getattr(raw_msg, "tool_calls", None) or []
+                    msg_content = _strip_think_tags(_extract_content(raw_msg))
 
-            parent_msg_id = msg_idx if msg_idx > 0 else None
-            msg_idx += 1
+                    if tool_calls:
+                        for tool_call in tool_calls:
+                            tool_name = (
+                                tool_call.get("name", "tool")
+                                if isinstance(tool_call, dict)
+                                else getattr(tool_call, "name", "tool")
+                            )
+                            pending_tool_packets.append(
+                                {
+                                    "placement": {"turn_index": 0, "sub_turn_index": None},
+                                    "obj": {
+                                        "type": "custom_tool_start",
+                                        "tool_name": tool_name,
+                                    },
+                                }
+                            )
+                        continue
 
-            messages.append(
-                {
-                    "message_id": msg_idx,
-                    "message_type": "assistant" if raw_type == "ai" else "user",
-                    "message": msg_content,
-                    "parentMessageId": parent_msg_id,
-                    "chat_session_id": chat_session_id,
-                }
-            )
+                    if not msg_content:
+                        continue
 
-        for i in range(len(messages) - 1):
-            messages[i]["latest_child_message"] = messages[i + 1]["message_id"]
+                    parent_msg_id = msg_idx if msg_idx > 0 else None
+                    msg_idx += 1
+
+                    turn_packets: list[dict[str, Any]] = []
+                    if pending_tool_packets:
+                        turn_packets.extend(pending_tool_packets)
+                        pending_tool_packets = []
+
+                    display_turn = 1 if turn_packets else 0
+                    turn_packets.append(
+                        {
+                            "placement": {"turn_index": display_turn, "sub_turn_index": None},
+                            "obj": {
+                                "type": "message_start",
+                                "content": msg_content,
+                                "final_documents": None,
+                            },
+                        }
+                    )
+                    turn_packets.append(
+                        {
+                            "placement": {"turn_index": display_turn, "sub_turn_index": None},
+                            "obj": {
+                                "type": "stop",
+                                "stop_reason": "finished",
+                            },
+                        }
+                    )
+                    packets_2d.append(turn_packets)
+
+                    messages.append(
+                        {
+                            "message_id": msg_idx,
+                            "message_type": "assistant",
+                            "research_type": None,
+                            "parent_message": parent_msg_id,
+                            "latest_child_message": None,
+                            "message": msg_content,
+                            "rephrased_query": None,
+                            "context_docs": None,
+                            "time_sent": None,
+                            "overridden_model": None,
+                            "alternate_assistant_id": metadata.get("persona_id"),
+                            "chat_session_id": chat_session_id,
+                            "citations": None,
+                            "files": [],
+                            "tool_call": None,
+                            "current_feedback": None,
+                            "processing_duration_seconds": None,
+                            "sub_questions": [],
+                            "comments": None,
+                            "parentMessageId": parent_msg_id,
+                            "refined_answer_improvement": None,
+                            "is_agentic": None,
+                        }
+                    )
+                    continue
+
+                msg_content = _strip_think_tags(_extract_content(raw_msg))
+                parent_msg_id = msg_idx if msg_idx > 0 else None
+                msg_idx += 1
+                messages.append(
+                    {
+                        "message_id": msg_idx,
+                        "message_type": "user",
+                        "research_type": None,
+                        "parent_message": parent_msg_id,
+                        "latest_child_message": None,
+                        "message": msg_content,
+                        "rephrased_query": None,
+                        "context_docs": None,
+                        "time_sent": None,
+                        "overridden_model": None,
+                        "alternate_assistant_id": metadata.get("persona_id"),
+                        "chat_session_id": chat_session_id,
+                        "citations": None,
+                        "files": [],
+                        "tool_call": None,
+                        "current_feedback": None,
+                        "processing_duration_seconds": None,
+                        "sub_questions": [],
+                        "comments": None,
+                        "parentMessageId": parent_msg_id,
+                        "refined_answer_improvement": None,
+                        "is_agentic": None,
+                    }
+                )
+
+            for index in range(len(messages) - 1):
+                messages[index]["latest_child_message"] = messages[index + 1]["message_id"]
+        except Exception:
+            messages = []
+            packets_2d = []
 
         return {
             "chat_session_id": chat_session_id,
             "description": metadata.get("name", "New Chat"),
             "persona_id": metadata.get("persona_id", 0),
+            "persona_name": "",
             "messages": messages,
             "time_created": thread.get("created_at"),
             "time_updated": thread.get("updated_at"),

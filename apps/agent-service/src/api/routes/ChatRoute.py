@@ -217,6 +217,9 @@ async def send_chat_message(request: Request):
             if custom_persona.get("mcp_tools"):
                 llm_override = llm_override or {}
                 llm_override["mcp_tools"] = custom_persona["mcp_tools"]
+            if custom_persona.get("rag_config"):
+                llm_override = llm_override or {}
+                llm_override["rag_config"] = custom_persona["rag_config"]
 
     stream_input = StreamInput(
         message=message or "",

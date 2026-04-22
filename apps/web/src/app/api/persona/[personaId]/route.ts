@@ -26,7 +26,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ pe
       headers: { "Content-Type": "application/json" }
     });
     const data = await response.json();
-    return NextResponse.json(data);
+    return NextResponse.json(data, { status: response.status });
   } catch (error) {
     return NextResponse.json({ error: "Failed to update persona" }, { status: 500 });
   }
@@ -39,7 +39,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ p
       method: "DELETE",
     });
     const data = await response.json();
-    return NextResponse.json(data);
+    return NextResponse.json(data, { status: response.status });
   } catch (error) {
     return NextResponse.json({ error: "Failed to delete persona" }, { status: 500 });
   }

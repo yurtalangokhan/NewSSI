@@ -476,15 +476,19 @@ export default function ActionsPopover({
 
     const fetchMCPServers = async () => {
       try {
-        const response = await fetch(
-          `/api/mcp/servers/persona/${selectedAgent.id}`,
-          {
-            signal: abortController.signal,
-          }
-        );
+        const response = await fetch(`/api/mcp/servers`, {
+          signal: abortController.signal,
+        });
         if (response.ok) {
           const data = await response.json();
-          const servers = data.mcp_servers || [];
+          const mcpServerIds = new Set(
+            (selectedAgent.tools || [])
+              .map((tool) => tool.mcp_server_id)
+              .filter((serverId): serverId is number => serverId != null)
+          );
+          const servers = (data.mcp_servers || []).filter((server: any) =>
+            mcpServerIds.has(server.id)
+          );
           setMcpServers(servers);
           // Seed auth/loading state based on response
           setMcpServerData((prev) => {

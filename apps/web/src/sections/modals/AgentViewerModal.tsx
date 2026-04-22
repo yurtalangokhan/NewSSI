@@ -195,10 +195,16 @@ export default function AgentViewerModal({ agent }: AgentViewerModalProps) {
     [agent.id, router, agentViewerModal]
   );
 
+  const ragDocumentCollections =
+    agent.rag_config?.document_processing?.length ?? 0;
+  const ragGraphCollections = agent.rag_config?.knowledge_graph?.length ?? 0;
+  const hasRagKnowledge = ragDocumentCollections > 0 || ragGraphCollections > 0;
+
   const hasKnowledge =
     (agent.document_sets && agent.document_sets.length > 0) ||
     (agent.hierarchy_nodes && agent.hierarchy_nodes.length > 0) ||
-    (agent.user_file_ids && agent.user_file_ids.length > 0);
+    (agent.user_file_ids && agent.user_file_ids.length > 0) ||
+    hasRagKnowledge;
 
   // Categorize tools into MCP, OpenAPI, and built-in
   const mcpToolsByServerId = useMemo(() => {
@@ -219,6 +225,14 @@ export default function AgentViewerModal({ agent }: AgentViewerModalProps) {
     [agent.tools]
   );
 
+  const builtInTools = useMemo(
+    () =>
+      agent.tools.filter(
+        (t) => !!t.in_code_tool_id && t.mcp_server_id == null
+      ),
+    [agent.tools]
+  );
+
   // Fetch MCP server metadata for display
   const { mcpData } = useMcpServersForAgentEditor();
   const mcpServers = mcpData?.mcp_servers ?? [];
@@ -234,7 +248,10 @@ export default function AgentViewerModal({ agent }: AgentViewerModalProps) {
     [mcpServers, mcpToolsByServerId]
   );
 
-  const hasActions = mcpServersWithTools.length > 0 || openApiTools.length > 0;
+  const hasActions =
+    mcpServersWithTools.length > 0 ||
+    openApiTools.length > 0 ||
+    builtInTools.length > 0;
   const defaultModel = getDisplayName(agent, llmProviders ?? []);
 
   return (
@@ -309,6 +326,28 @@ export default function AgentViewerModal({ agent }: AgentViewerModalProps) {
                   if (!file) return null;
                   return <FileCard key={fileId} file={file} />;
                 })}
+                {ragDocumentCollections > 0 && (
+                  <Content
+                    icon={SvgActions}
+                    title="Document Processing Collections"
+                    description={`${ragDocumentCollections} connected collection${
+                      ragDocumentCollections > 1 ? "s" : ""
+                    }`}
+                    sizePreset="main-ui"
+                    variant="section"
+                  />
+                )}
+                {ragGraphCollections > 0 && (
+                  <Content
+                    icon={SvgActions}
+                    title="Knowledge Graph Collections"
+                    description={`${ragGraphCollections} connected collection${
+                      ragGraphCollections > 1 ? "s" : ""
+                    }`}
+                    sizePreset="main-ui"
+                    variant="section"
+                  />
+                )}
               </Section>
             ) : (
               <EmptyMessage title="No Knowledge" />
@@ -330,6 +369,12 @@ export default function AgentViewerModal({ agent }: AgentViewerModalProps) {
                   ))}
                   {openApiTools.map((tool) => (
                     <ViewerOpenApiToolCard key={tool.id} tool={tool} />
+                  ))}
+                  {builtInTools.map((tool) => (
+                    <ViewerOpenApiToolCard
+                      key={`builtin-${tool.id}`}
+                      tool={tool}
+                    />
                   ))}
                 </Section>
               ) : (

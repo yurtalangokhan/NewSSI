@@ -102,38 +102,30 @@ export default function AgentsNavigationPage() {
         });
       });
 
-      if (serverIds.size === 0) return;
-
-      const serversMap = new Map<number, { id: number; name: string }>();
-
-      // Fetch server data for each unique server ID
-      for (const serverId of Array.from(serverIds)) {
-        try {
-          // We need to fetch from an agent that has this server
-          const agentWithServer = agents.find((agent) =>
-            agent.tools.some((tool) => tool.mcp_server_id === serverId)
-          );
-
-          if (agentWithServer) {
-            const response = await fetch(
-              `/api/mcp/servers/persona/${agentWithServer.id}`
-            );
-            if (response.ok) {
-              const data = await response.json();
-              const server = data.mcp_servers?.find(
-                (s: any) => s.id === serverId
-              );
-              if (server) {
-                serversMap.set(serverId, { id: server.id, name: server.name });
-              }
-            }
-          }
-        } catch (error) {
-          console.error(`Error fetching MCP server ${serverId}:`, error);
-        }
+      if (serverIds.size === 0) {
+        setMcpServersMap(new Map());
+        return;
       }
 
-      setMcpServersMap(serversMap);
+      try {
+        const response = await fetch(`/api/mcp/servers`);
+        if (!response.ok) {
+          return;
+        }
+
+        const data = await response.json();
+        const serversMap = new Map<number, { id: number; name: string }>();
+
+        for (const server of data.mcp_servers ?? []) {
+          if (serverIds.has(server.id)) {
+            serversMap.set(server.id, { id: server.id, name: server.name });
+          }
+        }
+
+        setMcpServersMap(serversMap);
+      } catch (error) {
+        console.error("Error fetching MCP servers:", error);
+      }
     };
 
     fetchMCPServers();

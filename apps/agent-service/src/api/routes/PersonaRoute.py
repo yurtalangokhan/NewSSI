@@ -21,6 +21,11 @@ async def get_personas():
     return await _get_controller().get_personas()
 
 
+@router.get("/api/persona/labels")
+async def get_persona_labels():
+    return await _get_controller().get_persona_labels()
+
+
 class PersonaUpsertRequest(BaseModel):
     name: str
     description: str
@@ -55,6 +60,11 @@ async def create_persona(request: PersonaUpsertRequest):
     return await _get_controller().create_persona(request.model_dump())
 
 
+@router.get("/api/persona/{persona_id}")
+async def get_persona(persona_id: int):
+    return await _get_controller().get_persona(persona_id)
+
+
 @router.patch("/api/persona/{persona_id}")
 async def update_persona(persona_id: int, request: PersonaUpsertRequest):
     return await _get_controller().update_persona(persona_id, request.model_dump())
@@ -68,8 +78,3 @@ async def delete_persona(persona_id: int):
 @router.post("/api/admin/persona/upload-image")
 async def upload_persona_image():
     return await _get_controller().upload_persona_image()
-
-
-@router.get("/api/persona/labels")
-async def get_persona_labels():
-    return await _get_controller().get_persona_labels()

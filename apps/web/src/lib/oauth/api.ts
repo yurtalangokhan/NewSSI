@@ -141,9 +141,16 @@ export async function handleOAuthCallback(
 export async function getUserOAuthTokenStatus(): Promise<OAuthTokenStatus[]> {
   const response = await fetch("/api/user-oauth-token/status");
 
+  // Local/dev backends may not implement OAuth token APIs yet.
+  // Treat this as "no user OAuth tokens" instead of a hard UI failure.
+  if (response.status === 404 || response.status === 501) {
+    return [];
+  }
+
   if (!response.ok) {
+    const errorText = await response.text().catch(() => "");
     throw new Error(
-      `Failed to fetch OAuth token status: ${response.statusText}`
+      `Failed to fetch OAuth token status: ${response.statusText || errorText || response.status}`
     );
   }
 

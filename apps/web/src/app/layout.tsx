@@ -30,6 +30,7 @@ import GatedContentWrapper from "@/components/GatedContentWrapper";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { fetchAppSidebarMetadata } from "@/lib/appSidebarSS";
 import StatsOverlayLoader from "@/components/dev/StatsOverlayLoader";
+import PerformanceMeasureGuard from "@/components/dev/PerformanceMeasureGuard";
 import AppHealthBanner from "@/sections/AppHealthBanner";
 
 const inter = Inter({
@@ -130,6 +131,7 @@ export default async function RootLayout({
           <div className="text-text min-h-screen bg-background">
             <TooltipProvider>
               <PHProvider>
+                <PerformanceMeasureGuard />
                 <AppHealthBanner />
                 {content}
               </PHProvider>

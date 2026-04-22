@@ -55,9 +55,10 @@ async def get_graph_and_config(agent_id: str) -> tuple[str, dict]:
         try:
             persona = await PersonaDB.get(int(agent_id))
             if persona and not persona.get("is_builtin"):
-                # Custom persona - use base_agent and mcp_tools
+                # Custom persona - use base_agent, MCP tools, and RAG config
                 base_agent = persona.get("base_agent")
                 mcp_tools = persona.get("mcp_tools", [])
+                rag_config = persona.get("rag_config") or {}
 
                 if base_agent:
                     graph_id = base_agent
@@ -65,12 +66,17 @@ async def get_graph_and_config(agent_id: str) -> tuple[str, dict]:
                 if mcp_tools:
                     config["mcp_tools"] = mcp_tools
 
+                if rag_config:
+                    config["rag_config"] = rag_config
+
                 # Also include system_prompt from persona
                 system_prompt = persona.get("system_prompt")
                 if system_prompt:
                     config["system_prompt"] = system_prompt
 
-                logger.info(f"Loaded persona config: base_agent={graph_id}, mcp_tools={mcp_tools}")
+                logger.info(
+                    f"Loaded persona config: base_agent={graph_id}, mcp_tools={mcp_tools}, rag_config_keys={list(rag_config.keys())}"
+                )
                 return graph_id, config
         except Exception as e:
             logger.warning(f"Could not load persona {agent_id}: {e}")

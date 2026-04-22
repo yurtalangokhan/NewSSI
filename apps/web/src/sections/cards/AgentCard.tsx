@@ -2,6 +2,7 @@
 
 import { useMemo, useCallback, useState } from "react";
 import { MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
+import type { FullPersona } from "@/app/admin/agents/interfaces";
 import AgentAvatar from "@/refresh-components/avatars/AgentAvatar";
 import Button from "@/refresh-components/buttons/Button";
 import { useAppRouter } from "@/hooks/appNavigation";
@@ -60,6 +61,30 @@ export default function AgentCard({ agent }: AgentCardProps) {
   const shareAgentModal = useCreateModal();
   const agentViewerModal = useCreateModal();
   const { agent: fullAgent, refresh: refreshAgent } = useAgent(agent.id);
+  const agentForViewer = useMemo<FullPersona>(
+    () =>
+      fullAgent ?? {
+        ...agent,
+        users: [],
+        groups: [],
+        document_sets: [],
+        hierarchy_nodes: [],
+        user_file_ids: [],
+        starter_messages: null,
+        system_prompt: "",
+        replace_base_system_prompt: false,
+        task_prompt: "",
+        datetime_aware: true,
+        mcp_tools: [],
+        rag_config: {
+          document_processing: [],
+          knowledge_graph: [],
+        },
+        attached_documents: [],
+        search_start_date: null,
+      },
+    [fullAgent, agent]
+  );
 
   // Start chat and auto-pin unpinned agents to the sidebar
   const handleStartChat = useCallback(() => {
@@ -148,7 +173,7 @@ export default function AgentCard({ agent }: AgentCardProps) {
       </shareAgentModal.Provider>
 
       <agentViewerModal.Provider>
-        {fullAgent && <AgentViewerModal agent={fullAgent} />}
+        <AgentViewerModal agent={agentForViewer} />
       </agentViewerModal.Provider>
 
       <deleteModal.Provider>
