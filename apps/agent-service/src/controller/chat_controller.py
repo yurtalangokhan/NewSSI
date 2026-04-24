@@ -47,6 +47,59 @@ class ChatController(BaseController):
         title = re.sub(r"\s+", " ", title).strip()
         return title[:80]
 
+    def _detect_response_language(self, text: str) -> str:
+        """Heuristic language detection for title generation prompting."""
+        lowered = (text or "").lower()
+        if not lowered.strip():
+            return "same as input"
+
+        # Quick Turkish signal via unique characters.
+        if re.search(r"[çğıöşü]", lowered):
+            return "Turkish"
+
+        tokens = re.findall(r"[a-zA-Z]+", lowered)
+        if not tokens:
+            return "same as input"
+
+        tr_markers = {
+            "ve",
+            "ile",
+            "icin",
+            "için",
+            "bir",
+            "bu",
+            "gibi",
+            "daha",
+            "olarak",
+            "ancak",
+            "cunku",
+            "çünkü",
+            "sonra",
+            "kadar",
+        }
+        en_markers = {
+            "the",
+            "and",
+            "for",
+            "with",
+            "this",
+            "that",
+            "from",
+            "into",
+            "about",
+            "before",
+            "after",
+        }
+
+        tr_score = sum(1 for t in tokens if t in tr_markers)
+        en_score = sum(1 for t in tokens if t in en_markers)
+
+        if tr_score > en_score:
+            return "Turkish"
+        if en_score > tr_score:
+            return "English"
+        return "same as input"
+
     def _is_trivial_prefix_title(self, title: str, source_text: str) -> bool:
         """Reject titles that are just the opening words of the response."""
         title_words = re.findall(r"[A-Za-z0-9ÇĞİÖŞÜçğıöşü]+", title.lower())
@@ -161,13 +214,16 @@ class ChatController(BaseController):
         if not ai_response:
             return ""
 
+        target_language = self._detect_response_language(ai_response)
+
         system_prompt = (
-            "Sen bir sohbet basligi ureticisisin. "
-            "Gorevin, asistan cevabini Ozetleyen 2-5 kelimelik bir baslik vermek. "
-            "Kurallar: sadece baslik don, aciklama yazma, noktalama koyma, tirnak kullanma. "
-            "Cevabin, metnin ilk kelimelerini oldugu gibi tekrar etmemeli."
+            "You generate chat titles. "
+            "Return a concise 2-5 word title that summarizes the assistant response. "
+            "Rules: return only the title, no explanation, no quotes, no trailing punctuation. "
+            "Do not copy the opening words of the response verbatim. "
+            f"Language requirement: the title must be in {target_language}."
         )
-        user_prompt = f"Asistan cevabi:\n{ai_response}"
+        user_prompt = f"Assistant response:\n{ai_response}"
 
         try:
             model = get_model()
