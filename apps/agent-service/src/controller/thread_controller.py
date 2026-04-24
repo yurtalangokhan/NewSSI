@@ -72,9 +72,14 @@ class ThreadController(BaseController):
         self,
         thread_id: str,
         metadata: dict[str, Any],
+        update_timestamp: bool = True,
     ) -> dict[str, Any] | None:
         """Update a thread."""
-        return await update_thread_in_store(thread_id, {"metadata": metadata})
+        return await update_thread_in_store(
+            thread_id,
+            {"metadata": metadata},
+            update_timestamp=update_timestamp,
+        )
 
     async def delete_thread(self, thread_id: str) -> bool:
         """Delete a thread."""

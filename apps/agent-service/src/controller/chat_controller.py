@@ -5,8 +5,11 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
+from langchain_core.messages import HumanMessage, SystemMessage
+
 from controller.base import BaseController
 from controller.thread_controller import ThreadController, get_thread_controller
+from core.llm import get_model
 from service.CheckpointerService import get_checkpointer
 
 
@@ -17,12 +20,204 @@ class ChatController(BaseController):
         self._thread_controller = thread_controller or get_thread_controller()
         self._user_id = user_id
 
+    def _is_invalid_generated_title(self, title: str) -> bool:
+        text = (title or "").strip().lower()
+        if not text:
+            return True
+
+        invalid_markers = [
+            "no llm models are currently available",
+            "please ensure your llm provider",
+            "check the admin panel",
+            "no llm providers are configured",
+            "model '",
+            "not found",
+        ]
+        return any(marker in text for marker in invalid_markers)
+
+    def _normalize_title(self, raw_title: str) -> str:
+        title = (raw_title or "").strip()
+        if not title:
+            return ""
+
+        # Keep only the first line and trim common wrappers like "Baslik:".
+        title = title.splitlines()[0].strip()
+        title = re.sub(r"^(baslik|başlık|title)\s*[:\-]\s*", "", title, flags=re.IGNORECASE)
+        title = title.strip("\"'`“”‘’[](){}.,;:!? ")
+        title = re.sub(r"\s+", " ", title).strip()
+        return title[:80]
+
+    def _is_trivial_prefix_title(self, title: str, source_text: str) -> bool:
+        """Reject titles that are just the opening words of the response."""
+        title_words = re.findall(r"[A-Za-z0-9ÇĞİÖŞÜçğıöşü]+", title.lower())
+        source_words = re.findall(r"[A-Za-z0-9ÇĞİÖŞÜçğıöşü]+", source_text.lower())
+        if not title_words or len(source_words) < len(title_words):
+            return False
+        return source_words[: len(title_words)] == title_words
+
+    def _heuristic_title_from_ai_response(self, ai_response: str) -> str:
+        """Build a short summary-like title from assistant response text without using an LLM."""
+        cleaned = re.sub(r"\s+", " ", (ai_response or "")).strip()
+        if not cleaned:
+            return ""
+
+        words = re.findall(r"[A-Za-z0-9ÇĞİÖŞÜçğıöşü]+", cleaned)
+        stopwords = {
+            "ve",
+            "veya",
+            "ile",
+            "için",
+            "icin",
+            "bu",
+            "bir",
+            "the",
+            "and",
+            "for",
+            "that",
+            "from",
+            "your",
+            "you",
+            "olarak",
+            "ancak",
+            "çünkü",
+            "sonuç",
+            "buna",
+            "göre",
+            "daha",
+            "gibi",
+            "olur",
+            "olacak",
+            "yapmak",
+            "yapabilir",
+            "adım",
+            "1",
+            "2",
+            "3",
+        }
+
+        # Score keywords by frequency and reward words that appear beyond the opening phrase.
+        frequencies: dict[str, int] = {}
+        first_seen: dict[str, int] = {}
+        for idx, word in enumerate(words):
+            lw = word.lower()
+            if len(lw) <= 2 or lw in stopwords:
+                continue
+            frequencies[lw] = frequencies.get(lw, 0) + 1
+            first_seen.setdefault(lw, idx)
+
+        if not frequencies:
+            return ""
+
+        ranked = sorted(
+            frequencies.keys(),
+            key=lambda w: (
+                frequencies[w],
+                -first_seen[w],
+            ),
+            reverse=True,
+        )
+
+        selected = ranked[:4]
+        title = " ".join(selected).strip().capitalize()
+        if self._is_invalid_generated_title(title):
+            return ""
+        if self._is_trivial_prefix_title(title, ai_response):
+            return ""
+        return title[:80]
+
+    async def _extract_first_ai_response(self, session_id: str) -> str:
+        """Return the first assistant response text for the session, if present."""
+        state = await self._thread_controller.get_thread_state(session_id)
+        messages = state.get("values", {}).get("messages", [])
+
+        for msg in messages:
+            msg_type = getattr(msg, "type", None) or (msg.get("type", "") if isinstance(msg, dict) else "")
+            if msg_type not in ("ai", "assistant"):
+                continue
+
+            content = getattr(msg, "content", "") if hasattr(msg, "content") else msg.get("content", "")
+            if isinstance(content, list):
+                parts: list[str] = []
+                for item in content:
+                    if isinstance(item, dict) and item.get("type") == "text":
+                        text = item.get("text", "")
+                        if text:
+                            parts.append(str(text))
+                    elif isinstance(item, str):
+                        parts.append(item)
+                content = " ".join(parts)
+
+            if not isinstance(content, str):
+                content = str(content or "")
+
+            normalized = " ".join(content.strip().split())
+            if normalized:
+                return normalized
+
+        return ""
+
+    async def _generate_title_from_ai_response(self, ai_response: str) -> str:
+        """Generate a concise session title (2-5 words) from the assistant response."""
+        if not ai_response:
+            return ""
+
+        system_prompt = (
+            "Sen bir sohbet basligi ureticisisin. "
+            "Gorevin, asistan cevabini Ozetleyen 2-5 kelimelik bir baslik vermek. "
+            "Kurallar: sadece baslik don, aciklama yazma, noktalama koyma, tirnak kullanma. "
+            "Cevabin, metnin ilk kelimelerini oldugu gibi tekrar etmemeli."
+        )
+        user_prompt = f"Asistan cevabi:\n{ai_response}"
+
+        try:
+            model = get_model()
+            result = await model.ainvoke(
+                [
+                    SystemMessage(content=system_prompt),
+                    HumanMessage(content=user_prompt),
+                ]
+            )
+            content = getattr(result, "content", "")
+
+            if isinstance(content, list):
+                parts: list[str] = []
+                for item in content:
+                    if isinstance(item, dict) and item.get("type") == "text":
+                        text = item.get("text", "")
+                        if text:
+                            parts.append(str(text))
+                    elif isinstance(item, str):
+                        parts.append(item)
+                content = " ".join(parts)
+
+            if not isinstance(content, str):
+                content = str(content or "")
+
+            normalized = self._normalize_title(content)
+            if self._is_invalid_generated_title(normalized):
+                return ""
+            if self._is_trivial_prefix_title(normalized, ai_response):
+                return ""
+            return normalized[:80] if normalized else ""
+        except Exception:
+            return ""
+
     async def _derive_session_name(self, session_id: str, default_name: str = "New Chat") -> str:
         checkpointer = get_checkpointer()
         if not checkpointer:
             return default_name
 
         try:
+            ai_response = await self._extract_first_ai_response(session_id)
+            if ai_response:
+                summary = await self._generate_title_from_ai_response(ai_response)
+                if summary:
+                    return summary
+
+                fallback_summary = self._heuristic_title_from_ai_response(ai_response)
+                if fallback_summary:
+                    return fallback_summary
+
             state = await self._thread_controller.get_thread_state(session_id)
             messages = state.get("values", {}).get("messages", [])
             for msg in messages:
@@ -402,7 +597,7 @@ class ChatController(BaseController):
             if trimmed_name
             else await self._derive_session_name(session_id, default_name=metadata.get("name", "New Chat") or "New Chat")
         )
-        await self._thread_controller.update_thread(session_id, metadata)
+        await self._thread_controller.update_thread(session_id, metadata, update_timestamp=False)
         return {"success": True}
 
     async def update_chat_session_model(self, session_id: str | None, model: str | None) -> dict[str, Any]:

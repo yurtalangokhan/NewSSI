@@ -122,6 +122,7 @@ class ThreadRepository(BaseRepository):
         self,
         thread_id: str,
         updates: dict[str, Any],
+        update_timestamp: bool = True,
     ) -> dict[str, Any] | None:
         """Merge *updates* into an existing thread.
 
@@ -136,7 +137,8 @@ class ThreadRepository(BaseRepository):
         if "status" in updates:
             current["status"] = updates["status"]
 
-        current["updated_at"] = datetime.now(UTC).isoformat()
+        if update_timestamp:
+            current["updated_at"] = datetime.now(UTC).isoformat()
         return await self.add_thread(current)
 
     async def delete_thread(self, thread_id: str) -> bool:

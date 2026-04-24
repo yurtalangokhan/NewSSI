@@ -43,7 +43,6 @@ import {
   SvgTrash,
 } from "@opal/icons";
 import useOnMount from "@/hooks/useOnMount";
-import { agentIdsMatch, useAgents, usePinnedAgents } from "@/hooks/useAgents";
 
 export interface PopoverSearchInputProps {
   setShowMoveOptions: (show: boolean) => void;
@@ -130,8 +129,6 @@ const ChatButton = memo(
       currentProjectId,
       createProject,
     } = useProjectsContext();
-    const { agents } = useAgents();
-    const { pinnedAgents, togglePinnedAgent } = usePinnedAgents();
     const [popoverOpen, setPopoverOpen] = useState(false);
     const [pendingMoveProjectId, setPendingMoveProjectId] = useState<
       number | null
@@ -282,17 +279,6 @@ const ChatButton = memo(
       createProject,
     ]);
 
-    // Pin the chat's agent when clicking on the conversation
-    async function handleClick() {
-      const agent = agents.find((a) => agentIdsMatch(a, chatSession.persona_id));
-      if (agent) {
-        const isAlreadyPinned = pinnedAgents.some((a) => a.id === agent.id);
-        if (!isAlreadyPinned) {
-          await togglePinnedAgent(agent, true);
-        }
-      }
-    }
-
     async function handleRename(newName: string) {
       setDisplayName(newName);
       await renameChatSession(chatSession.id, newName);
@@ -428,7 +414,6 @@ const ChatButton = memo(
         <Popover.Anchor>
           <SidebarTab
             href={isDragging ? undefined : `/app?chatId=${chatSession.id}`}
-            onClick={handleClick}
             transient={active}
             rightChildren={rightMenu}
             focused={renaming}

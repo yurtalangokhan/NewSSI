@@ -122,8 +122,16 @@ async def list_threads_from_store(
     )
 
 
-async def update_thread_in_store(thread_id: str, updates: dict) -> dict | None:
-    return await _thread_repo().update_thread(thread_id, updates)
+async def update_thread_in_store(
+    thread_id: str,
+    updates: dict,
+    update_timestamp: bool = True,
+) -> dict | None:
+    return await _thread_repo().update_thread(
+        thread_id,
+        updates,
+        update_timestamp=update_timestamp,
+    )
 
 
 async def delete_thread_from_store(thread_id: str) -> bool:
