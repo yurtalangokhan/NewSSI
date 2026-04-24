@@ -24,28 +24,50 @@ class AgentDefinitionRepository(BaseRepository):
     async def create(
         self,
         name: str,
-        agent_type: str,
-        class_path: str,
+        agent_type: str = "dynamic",
         description: str | None = None,
-        config_schema: dict | None = None,
-        default_config: dict | None = None,
+        graph_schema: str = "zero_shot",
+        brain_type: str = "llm",
+        memory_type: str = "none",
+        system_prompt: str | None = None,
+        model: str | None = None,
+        mcp_tools: list | None = None,
+        rag_config: dict | None = None,
+        sub_agents: list | None = None,
+        supervisor_prompt: str | None = None,
+        stages: list | None = None,
+        pipeline_prompt: str | None = None,
+        reflection_prompt: str | None = None,
+        max_iterations: int = 3,
         tags: list | None = None,
         version: str = "1.0.0",
     ) -> AgentDefinitionModel:
         """Create a new agent definition."""
         async with self._session() as session:
-            model = AgentDefinitionModel(
+            definition = AgentDefinitionModel(
                 name=name,
                 agent_type=agent_type,
-                class_path=class_path,
                 description=description,
-                config_schema=config_schema or {},
-                default_config=default_config or {},
+                graph_schema=graph_schema,
+                brain_type=brain_type,
+                memory_type=memory_type,
+                system_prompt=system_prompt,
+                model=model,
+                mcp_tools=mcp_tools or [],
+                rag_config=rag_config or {},
+                sub_agents=sub_agents or [],
+                supervisor_prompt=supervisor_prompt,
+                stages=stages or [],
+                pipeline_prompt=pipeline_prompt,
+                reflection_prompt=reflection_prompt,
+                max_iterations=max_iterations,
                 tags=tags or [],
                 version=version,
             )
-            session.add(model)
-            return model
+            session.add(definition)
+            await session.flush()
+            await session.refresh(definition)
+            return definition
 
     async def get_by_name(self, name: str) -> AgentDefinitionModel | None:
         """Get agent definition by name."""
@@ -64,6 +86,7 @@ class AgentDefinitionRepository(BaseRepository):
     async def list_all(
         self,
         agent_type: str | None = None,
+        graph_schema: str | None = None,
         active_only: bool = True,
     ) -> list[AgentDefinitionModel]:
         """List all agent definitions."""
@@ -72,6 +95,8 @@ class AgentDefinitionRepository(BaseRepository):
 
             if agent_type:
                 stmt = stmt.where(AgentDefinitionModel.agent_type == agent_type)
+            if graph_schema:
+                stmt = stmt.where(AgentDefinitionModel.graph_schema == graph_schema)
             if active_only:
                 stmt = stmt.where(AgentDefinitionModel.is_active == True)
 
@@ -99,6 +124,28 @@ class AgentDefinitionRepository(BaseRepository):
         """Delete an agent definition."""
         async with self._session() as session:
             stmt = delete(AgentDefinitionModel).where(AgentDefinitionModel.id == id)
+            result = await session.execute(stmt)
+            return result.rowcount > 0
+
+    async def activate(self, id: UUID) -> bool:
+        """Activate an agent definition."""
+        async with self._session() as session:
+            stmt = (
+                update(AgentDefinitionModel)
+                .where(AgentDefinitionModel.id == id)
+                .values(is_active=True)
+            )
+            result = await session.execute(stmt)
+            return result.rowcount > 0
+
+    async def deactivate(self, id: UUID) -> bool:
+        """Deactivate an agent definition."""
+        async with self._session() as session:
+            stmt = (
+                update(AgentDefinitionModel)
+                .where(AgentDefinitionModel.id == id)
+                .values(is_active=False)
+            )
             result = await session.execute(stmt)
             return result.rowcount > 0
 

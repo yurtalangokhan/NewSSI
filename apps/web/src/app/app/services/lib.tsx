@@ -60,7 +60,7 @@ export async function updateTemperatureOverrideForChatSession(
 }
 
 export async function createChatSession(
-  personaId: number,
+  personaId: string | number,
   description: string | null,
   projectId: number | null
 ): Promise<string> {
@@ -139,7 +139,7 @@ export interface SendMessageParams {
   // Used e.g. by Chrome extension "Read this tab" feature.
   additionalContext?: string;
   // Persona/agent ID for routing to specific agent
-  personaId?: number;
+  personaId?: string | number;
 }
 
 export async function* sendMessage({
@@ -426,7 +426,7 @@ const PARAMS_TO_SKIP = [
 export function buildChatUrl(
   existingSearchParams: ReadonlyURLSearchParams | null,
   chatSessionId: string | null,
-  personaId: number | null,
+  personaId: string | number | null,
   search?: boolean,
   skipReload?: boolean
 ) {

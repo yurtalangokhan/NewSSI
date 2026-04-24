@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-const LANGCONNECT_URL = process.env.LANGCONNECT_URL || "http://localhost:8084";
+const LANGCONNECT_URL = process.env.LANGCONNECT_URL || "http://localhost:8083";
 
 export async function GET() {
   try {

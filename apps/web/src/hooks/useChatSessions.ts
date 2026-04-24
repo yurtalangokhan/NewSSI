@@ -10,9 +10,9 @@ import {
 import useSWRInfinite from "swr/infinite";
 import { ChatSession, ChatSessionSharedStatus } from "@/app/app/interfaces";
 import { errorHandlingFetcher } from "@/lib/fetcher";
-import { MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
+import { AgentId, MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
 import useAppFocus from "./useAppFocus";
-import { useAgents } from "./useAgents";
+import { agentIdsMatch, useAgents } from "./useAgents";
 import { DEFAULT_AGENT_ID } from "@/lib/constants";
 
 const PAGE_SIZE = 50;
@@ -25,7 +25,7 @@ interface ChatSessionsResponse {
 
 export interface PendingChatSessionParams {
   chatSessionId: string;
-  personaId: number;
+  personaId: AgentId;
   projectId?: number | null;
 }
 
@@ -102,6 +102,28 @@ function usePendingSessions(): ChatSession[] {
   );
 }
 
+function dedupeChatSessionsById(sessions: ChatSession[]): ChatSession[] {
+  const byId = new Map<string, ChatSession>();
+  for (const session of sessions) {
+    const existing = byId.get(session.id);
+    if (!existing) {
+      byId.set(session.id, session);
+      continue;
+    }
+
+    const existingTime = existing.time_updated || "";
+    const currentTime = session.time_updated || "";
+    if (currentTime >= existingTime) {
+      byId.set(session.id, session);
+    }
+  }
+  return Array.from(byId.values()).sort(
+    (left, right) =>
+      new Date(right.time_updated || 0).getTime() -
+      new Date(left.time_updated || 0).getTime()
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Helper hooks
 // ---------------------------------------------------------------------------
@@ -112,7 +134,7 @@ function useFindAgentForCurrentChatSession(
   const { agents } = useAgents();
   const appFocus = useAppFocus();
 
-  let agentIdToFind: number;
+  let agentIdToFind: AgentId;
 
   // This could be an alreaady existing chat session.
   if (currentChatSession) {
@@ -126,10 +148,10 @@ function useFindAgentForCurrentChatSession(
 
   // Or this could be a new chat-session with an agent.
   else if (appFocus.isAgent()) {
-    agentIdToFind = Number.parseInt(appFocus.getId()!);
+    agentIdToFind = appFocus.getId()!;
   }
 
-  return agents.find((agent) => agent.id === agentIdToFind) ?? null;
+  return agents.find((agent) => agentIdsMatch(agent, agentIdToFind)) ?? null;
 }
 
 // ---------------------------------------------------------------------------
@@ -235,7 +257,7 @@ export default function useChatSessions(): UseChatSessionsOutput {
     );
 
     // Pending sessions go first (most recent), then fetched sessions
-    return [...remainingPending, ...allFetchedSessions];
+    return dedupeChatSessionsById([...remainingPending, ...allFetchedSessions]);
   }, [allFetchedSessions, pendingSessions]);
 
   const currentChatSessionId = appFocus.isChat() ? appFocus.getId() : null;

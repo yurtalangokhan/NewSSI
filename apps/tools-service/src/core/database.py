@@ -5,7 +5,11 @@ Provides a singleton DatabaseManager for async connection pooling.
 
 import os
 from typing import Optional
-import asyncpg
+
+try:
+    import asyncpg
+except ImportError:  # pragma: no cover - optional dependency in local dev
+    asyncpg = None
 
 
 class DatabaseManager:
@@ -17,7 +21,7 @@ class DatabaseManager:
     """
     
     _instance: Optional["DatabaseManager"] = None
-    _pool: Optional[asyncpg.Pool] = None
+    _pool: Optional[object] = None
     
     def __new__(cls) -> "DatabaseManager":
         if cls._instance is None:
@@ -35,13 +39,16 @@ class DatabaseManager:
             "database": os.environ.get("POSTGRES_DB", "postgres"),
         }
     
-    async def get_pool(self) -> asyncpg.Pool:
+    async def get_pool(self):
         """
         Get or create the database connection pool.
         
         Returns:
             asyncpg.Pool: The database connection pool.
         """
+        if asyncpg is None:
+            raise RuntimeError("asyncpg is not installed")
+
         if self._pool is None:
             config = self.config
             self._pool = await asyncpg.create_pool(
@@ -81,7 +88,7 @@ class DatabaseManager:
 db_manager = DatabaseManager()
 
 
-async def get_db_pool() -> asyncpg.Pool:
+async def get_db_pool():
     """
     Convenience function to get the database pool.
     

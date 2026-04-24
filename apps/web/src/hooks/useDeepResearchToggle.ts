@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 
 interface UseDeepResearchToggleProps {
   chatSessionId: string | null;
-  agentId: number | undefined;
+  agentId: string | number | undefined;
 }
 
 /**

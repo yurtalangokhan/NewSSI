@@ -71,6 +71,8 @@ def get_db_engine() -> AsyncEngine:
             _build_url(),
             pool_size=settings.POSTGRES_MIN_CONNECTIONS_PER_POOL,
             max_overflow=settings.POSTGRES_MAX_CONNECTIONS_PER_POOL,
+            pool_pre_ping=True,
+            pool_recycle=1800,
             echo=False,
         )
         logger.info("SQLAlchemy async engine created.")

@@ -17,6 +17,39 @@ class ChatController(BaseController):
         self._thread_controller = thread_controller or get_thread_controller()
         self._user_id = user_id
 
+    async def _derive_session_name(self, session_id: str, default_name: str = "New Chat") -> str:
+        checkpointer = get_checkpointer()
+        if not checkpointer:
+            return default_name
+
+        try:
+            state = await self._thread_controller.get_thread_state(session_id)
+            messages = state.get("values", {}).get("messages", [])
+            for msg in messages:
+                msg_type = getattr(msg, "type", None) or (msg.get("type", "") if isinstance(msg, dict) else "")
+                if msg_type not in ("human", "user"):
+                    continue
+
+                content = getattr(msg, "content", "") if hasattr(msg, "content") else msg.get("content", "")
+                if isinstance(content, list):
+                    for item in content:
+                        if isinstance(item, dict) and item.get("type") == "text":
+                            content = item.get("text", "")
+                            break
+                        if isinstance(item, str):
+                            content = item
+                            break
+                if not isinstance(content, str):
+                    content = str(content or "")
+
+                content = " ".join(content.strip().split())
+                if content:
+                    return content[:50]
+        except Exception:
+            return default_name
+
+        return default_name
+
     async def get_chat_sessions(self) -> dict[str, Any]:
         threads = await self._thread_controller.list_threads(
             limit=100,
@@ -63,24 +96,29 @@ class ChatController(BaseController):
         sessions.sort(key=lambda s: s.get("time_updated") or "", reverse=True)
         return {"sessions": sessions, "chat_sessions": sessions, "has_more": False}
 
-    async def create_chat_session(self) -> dict[str, Any]:
+    async def create_chat_session(
+        self,
+        persona_id: Any = 0,
+        description: str | None = None,
+    ) -> dict[str, Any]:
         thread_id = str(uuid.uuid4())
         now = datetime.now(UTC).isoformat()
+        name = (description or "").strip() or "New Chat"
 
         thread = await self._thread_controller.create_thread(
             thread_id=thread_id,
             metadata={
                 "user_id": self._user_id,
-                "name": "New Chat",
-                "persona_id": 0,
+                "name": name,
+                "persona_id": persona_id,
             },
         )
 
         return {
             "id": thread["thread_id"],
-            "name": thread.get("metadata", {}).get("name", "New Chat"),
-            "description": thread.get("metadata", {}).get("name", "New Chat"),
-            "persona_id": thread.get("metadata", {}).get("persona_id", 0),
+            "name": thread.get("metadata", {}).get("name", name),
+            "description": thread.get("metadata", {}).get("name", name),
+            "persona_id": thread.get("metadata", {}).get("persona_id", persona_id),
             "time_created": thread.get("created_at", now),
             "time_updated": thread.get("updated_at", now),
             "shared_status": "private",
@@ -150,7 +188,11 @@ class ChatController(BaseController):
                     raw_type = raw_msg.get("type", "")
 
                 if raw_type == "tool":
-                    tool_name = getattr(raw_msg, "name", "") or "tool"
+                    tool_name = (
+                        getattr(raw_msg, "name", None)
+                        or (raw_msg.get("name", "") if isinstance(raw_msg, dict) else "")
+                        or "tool"
+                    )
                     tool_content = _extract_content(raw_msg)
                     pending_tool_packets.append(
                         {
@@ -166,7 +208,10 @@ class ChatController(BaseController):
                     continue
 
                 if raw_type == "ai":
-                    tool_calls = getattr(raw_msg, "tool_calls", None) or []
+                    tool_calls = (
+                        getattr(raw_msg, "tool_calls", None)
+                        or (raw_msg.get("tool_calls", []) if isinstance(raw_msg, dict) else [])
+                    )
                     msg_content = _strip_think_tags(_extract_content(raw_msg))
 
                     if tool_calls:
@@ -300,6 +345,13 @@ class ChatController(BaseController):
             for index in range(len(messages) - 1):
                 messages[index]["latest_child_message"] = messages[index + 1]["message_id"]
         except Exception:
+            import logging as _logging
+            import traceback as _traceback
+            _logging.getLogger(__name__).error(
+                "Failed to load chat history for session %s:\n%s",
+                chat_session_id,
+                _traceback.format_exc(),
+            )
             messages = []
             packets_2d = []
 
@@ -344,7 +396,12 @@ class ChatController(BaseController):
             return {"success": False, "error": "Session not found"}
 
         metadata = thread.get("metadata", {}) or {}
-        metadata["name"] = name or "New Chat"
+        trimmed_name = name.strip() if isinstance(name, str) else None
+        metadata["name"] = (
+            trimmed_name
+            if trimmed_name
+            else await self._derive_session_name(session_id, default_name=metadata.get("name", "New Chat") or "New Chat")
+        )
         await self._thread_controller.update_thread(session_id, metadata)
         return {"success": True}
 

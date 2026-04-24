@@ -53,7 +53,12 @@ function AgentsSection({ title, description, agents }: AgentsSectionProps) {
       </div>
       <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-2">
         {agents
-          .sort((a, b) => b.id - a.id)
+          .sort((a, b) => {
+            if (typeof a.id === "number" && typeof b.id === "number") {
+              return b.id - a.id;
+            }
+            return a.name.localeCompare(b.name);
+          })
           .map((agent) => (
             <AgentCard key={agent.id} agent={agent} />
           ))}

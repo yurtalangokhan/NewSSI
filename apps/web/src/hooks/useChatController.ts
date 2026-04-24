@@ -17,7 +17,7 @@ import {
   buildImmediateMessages,
   buildEmptyMessage,
 } from "@/app/app/services/messageTree";
-import { MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
+import { AgentId, MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
 import { SEARCH_PARAM_NAMES } from "@/app/app/services/searchParams";
 import { SEARCH_TOOL_ID } from "@/app/app/components/tools/constants";
 import { OnyxDocument } from "@/lib/search/interfaces";
@@ -37,7 +37,6 @@ import {
   UserKnowledgeFilePacket,
 } from "@/app/app/interfaces";
 import { StreamStopReason } from "@/lib/search/interfaces";
-import { createChatSession } from "@/app/app/services/lib";
 import {
   getFinalLLM,
   modelSupportsImageInput,
@@ -75,6 +74,14 @@ import { UserFileStatus } from "@/app/app/projects/projectsService";
 
 const SYSTEM_MESSAGE_ID = -3;
 
+function createLocalChatSessionId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+
+  return `chat-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
 export interface OnSubmitProps {
   message: string;
   //from chat input bar
@@ -109,7 +116,7 @@ interface UseChatControllerProps {
   selectedDocuments: OnyxDocument[];
   searchParams: ReadonlyURLSearchParams;
   resetInputBar: () => void;
-  setSelectedAgentFromId: (agentId: number | null) => void;
+  setSelectedAgentFromId: (agentId: AgentId | null) => void;
 }
 
 async function stopChatSession(chatSessionId: string): Promise<void> {
@@ -241,12 +248,15 @@ export default function useChatController({
     setCurrentSession(newSessionId);
   };
 
-  const handleNewSessionNavigation = (chatSessionId: string) => {
+  const handleNewSessionNavigation = (
+    chatSessionId: string,
+    personaId: AgentId | null
+  ) => {
     // Build URL with skip-reload parameter
     const newUrl = buildChatUrl(
       searchParams,
       chatSessionId,
-      null,
+      personaId,
       false,
       true // skipReload
     );
@@ -465,9 +475,9 @@ export default function useChatController({
       // Auto-pin the agent to sidebar when sending a message if not already pinned
       if (liveAgent) {
         const isAlreadyPinned = pinnedAgents.some(
-          (agent) => agent.id === liveAgent.id
+          (agent) => String(agent.id) === String(liveAgent.id)
         );
-        if (!isAlreadyPinned) {
+        if (!isAlreadyPinned && typeof liveAgent.id === "number") {
           togglePinnedAgent(liveAgent, true).catch((err) => {
             console.error("Failed to auto-pin agent:", err);
           });
@@ -488,11 +498,8 @@ export default function useChatController({
         (m) => m.type === "user"
       );
       if (isNewSession) {
-        currChatSessionId = await createChatSession(
-          liveAgent?.id || 0,
-          searchParamBasedChatSessionName,
-          projectId ? parseInt(projectId) : null
-        );
+        const activePersonaId = liveAgent?.external_id ?? liveAgent?.id ?? 0;
+        currChatSessionId = createLocalChatSessionId();
 
         if (!currChatSessionId) {
           throw new Error("Failed to create a valid chat session ID");
@@ -502,7 +509,7 @@ export default function useChatController({
         // This ensures "New Chat" appears immediately, even before any messages are saved
         addPendingChatSession({
           chatSessionId: currChatSessionId,
-          personaId: liveAgent?.id || 0,
+          personaId: activePersonaId,
           projectId: projectId ? parseInt(projectId) : null,
         });
       } else {
@@ -533,7 +540,10 @@ export default function useChatController({
 
       // Navigate immediately for new sessions (before streaming starts)
       if (isNewSession) {
-        handleNewSessionNavigation(currChatSessionId);
+        handleNewSessionNavigation(
+          currChatSessionId,
+          liveAgent?.external_id ?? liveAgent?.id ?? null
+        );
       }
 
       const shouldAutoNameChatSessionAfterResponse =
@@ -721,6 +731,7 @@ export default function useChatController({
         const messageOrigin = isExtension ? "chrome_extension" : "webapp";
 
         const stack = new CurrentMessageFIFO();
+        const activePersonaId = liveAgent?.external_id ?? liveAgent?.id;
         updateCurrentMessageFIFO(stack, {
           signal: controller.signal,
           message: currMessage,
@@ -735,7 +746,7 @@ export default function useChatController({
             return parentId === SYSTEM_MESSAGE_ID ? null : parentId;
           })(),
           chatSessionId: currChatSessionId,
-          personaId: liveAgent?.id,
+          personaId: activePersonaId,
           filters: buildFilters(
             filterManager.selectedSources,
             filterManager.selectedDocumentSets,

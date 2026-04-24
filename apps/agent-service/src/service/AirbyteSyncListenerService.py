@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import asyncio
 from core.logger import get_logger
+from sqlalchemy.exc import DBAPIError
 
 logger = get_logger(__name__)
 import logging as _stdlib_logging
@@ -68,6 +69,14 @@ class AirbyteSyncListener:
                 await self._poll_once()
             except asyncio.CancelledError:
                 break
+            except DBAPIError:
+                logger.exception("Database error in sync listener poll cycle; recycling DB engine")
+                try:
+                    from core.db.engine import close_db_engine
+
+                    await close_db_engine()
+                except Exception:
+                    logger.exception("Failed to recycle DB engine after listener DB error")
             except Exception:
                 logger.exception("Error in sync listener poll cycle")
 

@@ -2,6 +2,8 @@ import { ValidSources } from "@/lib/types";
 import { ToolSnapshot } from "@/lib/tools/interfaces";
 import { DocumentSetSummary, MinimalUserSnapshot } from "@/lib/types";
 
+export type AgentId = number | string;
+
 // Represents a hierarchy node (folder, space, channel, etc.) attached to a persona
 export interface HierarchyNodeSnapshot {
   id: number;
@@ -33,6 +35,10 @@ export interface StarterMessage extends StarterMessageBase {
 
 export interface MinimalPersonaSnapshot {
   id: number;
+  external_id?: string | null;
+  is_dynamic?: boolean;
+  graph_schema?: string | null;
+  mcp_tools?: string[];
   name: string;
   description: string;
   tools: ToolSnapshot[];
@@ -85,6 +91,34 @@ export interface Persona extends MinimalPersonaSnapshot {
 
 export interface FullPersona extends Persona {
   search_start_date: string | null;
+}
+
+export interface DynamicAgentDefinition {
+  id: string;
+  name: string;
+  agent_type: string;
+  description: string | null;
+  graph_schema: string;
+  brain_type: string;
+  memory_type: string;
+  system_prompt: string | null;
+  model: string | null;
+  mcp_tools: string[];
+  rag_config?: {
+    document_processing: string[];
+    knowledge_graph: string[];
+  };
+  sub_agents: Array<Record<string, unknown>>;
+  supervisor_prompt: string | null;
+  stages: Array<Record<string, unknown>>;
+  pipeline_prompt: string | null;
+  reflection_prompt: string | null;
+  max_iterations: number;
+  version: string;
+  tags: string[];
+  is_active: boolean;
+  created_at: string | null;
+  updated_at: string | null;
 }
 
 export interface PersonaLabel {

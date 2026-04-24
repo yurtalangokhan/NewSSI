@@ -7,6 +7,7 @@ import {
   BackendChatSession,
   FeedbackType,
 } from "../interfaces";
+import { AgentId } from "@/app/admin/agents/interfaces";
 import {
   getLatestMessageChain,
   getMessageByMessageId,
@@ -39,7 +40,7 @@ interface ChatSessionData {
   lastAccessed: Date;
   isLoaded: boolean;
   description?: string;
-  personaId?: number;
+  personaId?: AgentId;
 
   // Streaming duration tracking
   streamingStartTime?: number;

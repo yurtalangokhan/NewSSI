@@ -96,6 +96,18 @@ function mapBackendToFrontend(packet: BackendPacket): { placement: any; obj: any
         placement: defaultPlacement,
         obj: packet,
       };
+
+    // Step lifecycle packets — each step becomes a new turn group in the timeline.
+    // We map custom_step_start to a custom_tool_start so the existing timeline
+    // renderer shows it as a named section without any additional frontend changes.
+    case "custom_step_start":
+      return {
+        placement: defaultPlacement,
+        obj: {
+          type: "custom_tool_start",
+          tool_name: `[step] ${(packet as any).step_name ?? "step"}`,
+        },
+      };
     
     default:
       // Unknown packet type - return as-is wrapped
@@ -106,9 +118,12 @@ function mapBackendToFrontend(packet: BackendPacket): { placement: any; obj: any
   }
 }
 
-// Packet types that represent tool lifecycle events (shown in timeline)
+// Packet types that represent tool/step lifecycle events (shown in timeline)
+// Adding a new type here causes the stream parser to advance turnIndex at
+// that boundary, placing subsequent packets in a fresh timeline group.
 const TOOL_PACKET_TYPES = new Set([
   "custom_tool_start", "custom_tool_delta",
+  "custom_step_start",
   "search_tool_start", "search_tool_queries_delta", "search_tool_documents_delta",
 ]);
 
@@ -125,6 +140,9 @@ export async function* handleSSEStream<T extends PacketType>(
   // so tool packets must have a different turn_index than message/display packets.
   let turnIndex = 0;
   let sawToolPackets = false;
+  // If tokens were already streamed for the current answer, skip the later
+  // full "message" packet from backend to avoid duplicate text rendering.
+  let sawTokenForCurrentAnswer = false;
   
   if (signal) {
     signal.addEventListener("abort", () => {
@@ -170,17 +188,36 @@ export async function* handleSSEStream<T extends PacketType>(
         try {
           const backendPacket = JSON.parse(jsonLine) as BackendPacket;
 
+          if (backendPacket.type === "token") {
+            sawTokenForCurrentAnswer = true;
+          }
+
+          if (
+            backendPacket.type === "message" &&
+            sawTokenForCurrentAnswer
+          ) {
+            // Token stream already provided this answer incrementally.
+            // Skip duplicated full-message payload.
+            continue;
+          }
+
           // Advance turn_index at both transitions (display→tool and tool→display)
           // so each section lands in its own group for the packetProcessor.
           const isToolPkt = TOOL_PACKET_TYPES.has(backendPacket.type);
           if (isToolPkt) {
             if (!sawToolPackets) {
               turnIndex++; // display → tool: pre-tool text gets its own group
+              sawTokenForCurrentAnswer = false;
             }
             sawToolPackets = true;
           } else if (sawToolPackets) {
             turnIndex++;
             sawToolPackets = false;
+            sawTokenForCurrentAnswer = false;
+          }
+
+          if (backendPacket.type === "stop") {
+            sawTokenForCurrentAnswer = false;
           }
 
           const mappedPacket = mapBackendToFrontend(backendPacket);

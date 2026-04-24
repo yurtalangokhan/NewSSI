@@ -1,6 +1,8 @@
 import math
 import os
 import re
+from functools import lru_cache
+from threading import Lock
 from typing import Annotated
 
 import numexpr
@@ -14,6 +16,9 @@ from core.env import env
 from core.logger import get_logger
 
 logger = get_logger(__name__)
+
+_VECTOR_STORE_CACHE: dict[str, PGVector] = {}
+_VECTOR_STORE_LOCK = Lock()
 
 
 # ============== User Context Tool ==============
@@ -92,6 +97,7 @@ def get_connection_string():
     return f"postgresql+psycopg://{env.POSTGRES_USER}:{env.POSTGRES_PASSWORD}@{env.POSTGRES_HOST}:{env.POSTGRES_PORT}/{env.POSTGRES_DB}"
 
 
+@lru_cache(maxsize=1024)
 def get_collection_name_from_uuid(collection_uuid: str) -> str:
     """
     Convert a LangConnect collection UUID to PGVector collection name (table_id).
@@ -134,16 +140,33 @@ def get_collection_name_from_uuid(collection_uuid: str) -> str:
 
 
 def load_vector_store(collection_name: str):
-    """Load a PGVector store for a specific collection."""
-    embeddings = get_embeddings()
-    connection = get_connection_string()
+    """Load a PGVector store for a specific collection.
 
-    return PGVector(
-        embeddings=embeddings,
-        collection_name=collection_name,
-        connection=connection,
-        use_jsonb=True,
-    )
+    Reuses vector store instances per collection to avoid repeatedly creating
+    fresh SQLAlchemy engines/connections under concurrent chat load.
+    """
+    cached = _VECTOR_STORE_CACHE.get(collection_name)
+    if cached is not None:
+        return cached
+
+    with _VECTOR_STORE_LOCK:
+        cached = _VECTOR_STORE_CACHE.get(collection_name)
+        if cached is not None:
+            return cached
+
+        embeddings = get_embeddings()
+        connection = get_connection_string()
+
+        vector_store = PGVector(
+            embeddings=embeddings,
+            collection_name=collection_name,
+            connection=connection,
+            use_jsonb=True,
+            # Extension should be managed by migrations/bootstrap, not per query.
+            create_extension=False,
+        )
+        _VECTOR_STORE_CACHE[collection_name] = vector_store
+        return vector_store
 
 
 def database_search_func(query: str, config: Annotated[RunnableConfig, InjectedToolArg]) -> str:

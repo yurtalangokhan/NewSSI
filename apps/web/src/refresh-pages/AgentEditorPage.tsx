@@ -439,6 +439,36 @@ export interface AgentEditorPageProps {
   refreshAgent?: () => void;
 }
 
+const GRAPH_SCHEMA_OPTIONS = [
+  { value: "zero_shot", label: "Zero Shot" },
+  { value: "react", label: "ReAct" },
+  { value: "supervisor", label: "Supervisor" },
+  { value: "pipeline", label: "Pipeline" },
+  { value: "plan_execute", label: "Plan & Execute" },
+  { value: "self_reflect", label: "Self Reflect" },
+];
+
+const GRAPH_SCHEMA_CAPABILITIES: Record<string, { supports_tools: boolean; supports_rag: boolean }> = {
+  zero_shot:    { supports_tools: false, supports_rag: false },
+  react:        { supports_tools: true,  supports_rag: true  },
+  supervisor:   { supports_tools: false, supports_rag: false },
+  pipeline:     { supports_tools: true,  supports_rag: true  },
+  plan_execute: { supports_tools: true,  supports_rag: true  },
+  self_reflect: { supports_tools: false, supports_rag: false },
+};
+
+const BRAIN_TYPE_OPTIONS = [
+  { value: "llm", label: "LLM" },
+  { value: "guard", label: "Guard" },
+  { value: "multi_model", label: "Multi Model" },
+];
+
+const MEMORY_TYPE_OPTIONS = [
+  { value: "none", label: "None" },
+  { value: "long_term", label: "Long Term" },
+  { value: "buffer", label: "Buffer" },
+];
+
 export default function AgentEditorPage({
   agent: existingAgent,
   refreshAgent,
@@ -597,6 +627,9 @@ export default function AgentEditorPage({
     
     // Base Agent Selection (only for custom agents - not built-in)
     base_agent: existingAgent?.base_agent ?? "chatbot",
+    graph_schema: existingAgent?.graph_schema ?? "zero_shot",
+    brain_type: (existingAgent as any)?.brain_type ?? "llm",
+    memory_type: (existingAgent as any)?.memory_type ?? "none",
 
     // Prompts
     instructions: existingAgent?.system_prompt ?? "",
@@ -723,7 +756,10 @@ export default function AgentEditorPage({
       .optional(),
 
     // Base Agent (only for custom agents)
-    base_agent: Yup.string().oneOf(["chatbot", "configurable-mcp-agent"]),
+    base_agent: Yup.string().oneOf(["chatbot", "configurable-mcp-agent", "dynamic-agent"]),
+      graph_schema: Yup.string().oneOf(GRAPH_SCHEMA_OPTIONS.map((option) => option.value)),
+      brain_type: Yup.string().oneOf(BRAIN_TYPE_OPTIONS.map((option) => option.value)),
+      memory_type: Yup.string().oneOf(MEMORY_TYPE_OPTIONS.map((option) => option.value)),
 
     // Prompts
     instructions: Yup.string().optional(),
@@ -836,7 +872,11 @@ export default function AgentEditorPage({
 
       // Collect enabled MCP tool names (for backend - separate from tool_ids)
       const enabledMcpToolNames: string[] = [];
-      if (values.base_agent === "configurable-mcp-agent") {
+      const dynamicLikeAgent = ["configurable-mcp-agent", "dynamic-agent"].includes(
+        values.base_agent
+      );
+
+      if (dynamicLikeAgent) {
         allMcpTools.forEach((tool) => {
           if ((values as any)[`mcp_tool_${tool.name}`] === true) {
             enabledMcpToolNames.push(tool.name);
@@ -845,13 +885,24 @@ export default function AgentEditorPage({
       }
 
       // Collect enabled built-in tools from tools-service
-      if (values.base_agent === "configurable-mcp-agent") {
+      if (dynamicLikeAgent) {
         allBuiltInTools.forEach((tool) => {
           if ((values as any)[`builtin_tool_${tool.name}`] === true) {
             enabledMcpToolNames.push(tool.name);
           }
         });
       }
+
+      // Keep dynamic-agent actions compatible with configurable-mcp-agent behavior
+      if (values.base_agent === "dynamic-agent") {
+        if (values.enable_knowledge && searchTool?.name) enabledMcpToolNames.push(searchTool.name);
+        if (values.image_generation && imageGenTool?.name) enabledMcpToolNames.push(imageGenTool.name);
+        if (values.web_search && webSearchTool?.name) enabledMcpToolNames.push(webSearchTool.name);
+        if (values.open_url && openURLTool?.name) enabledMcpToolNames.push(openURLTool.name);
+        if (values.code_interpreter && codeInterpreterTool?.name) enabledMcpToolNames.push(codeInterpreterTool.name);
+      }
+
+      const dedupedMcpToolNames = Array.from(new Set(enabledMcpToolNames));
 
       // Build rag_config from selected collections
       const hasKnowledge =
@@ -871,6 +922,58 @@ export default function AgentEditorPage({
         hasKnowledge && values.base_agent === "chatbot"
           ? "configurable-mcp-agent"
           : values.base_agent || "chatbot";
+
+      if (effectiveBaseAgent === "dynamic-agent") {
+        const dynamicGraphSchema =
+          values.graph_schema === "zero_shot" && (dedupedMcpToolNames.length > 0 || hasKnowledge)
+            ? "react"
+            : values.graph_schema;
+
+        const dynamicAgentId = existingAgent?.external_id ?? null;
+        const dynamicMethod = dynamicAgentId ? "PUT" : "POST";
+        const dynamicEndpoint = dynamicAgentId
+          ? `/api/agent-definitions/${dynamicAgentId}`
+          : "/api/agent-definitions";
+
+        const dynamicResponse = await fetch(dynamicEndpoint, {
+          method: dynamicMethod,
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name: values.name,
+            description: values.description || null,
+            graph_schema: dynamicGraphSchema,
+            brain_type: values.brain_type,
+            memory_type: values.memory_type,
+            system_prompt: values.instructions || null,
+            model: values.llm_model_version_override || null,
+            mcp_tools: dedupedMcpToolNames,
+            rag_config:
+              ragConfig ?? {
+                document_processing: [],
+                knowledge_graph: [],
+              },
+            tags: [],
+          }),
+        });
+
+        if (!dynamicResponse.ok) {
+          const errorText = await dynamicResponse.text();
+          toast.error(
+            `Failed to ${dynamicAgentId ? "update" : "create"} dynamic agent - ${errorText}`
+          );
+          return;
+        }
+
+        const createdDynamicAgent = await dynamicResponse.json();
+        toast.success(
+          `Agent "${createdDynamicAgent.name}" ${dynamicAgentId ? "updated" : "created"} successfully`
+        );
+        await refreshAgents();
+        appRouter({ agentId: createdDynamicAgent.id });
+        return;
+      }
 
       // Build submission data
       const submissionData: PersonaUpsertParameters = {
@@ -904,7 +1007,7 @@ export default function AgentEditorPage({
 
         // Base agent and MCP tools for custom agents
         base_agent: effectiveBaseAgent,
-        mcp_tools: enabledMcpToolNames,
+        mcp_tools: dedupedMcpToolNames,
       };
 
       // Call API
@@ -994,6 +1097,13 @@ export default function AgentEditorPage({
               values.is_public ||
               values.shared_user_ids.length > 0 ||
               values.shared_group_ids.length > 0;
+
+            const isDynamicAgent = values.base_agent === "dynamic-agent";
+            const schemaCapabilities = isDynamicAgent
+              ? (GRAPH_SCHEMA_CAPABILITIES[values.graph_schema] ?? { supports_tools: true, supports_rag: true })
+              : null;
+            const schemaSupportsTools = !isDynamicAgent || (schemaCapabilities?.supports_tools ?? true);
+            const schemaSupportsRag = !isDynamicAgent || (schemaCapabilities?.supports_rag ?? true);
 
             return (
               <>
@@ -1118,9 +1228,65 @@ export default function AgentEditorPage({
                                 <InputSelect.Item value="configurable-mcp-agent">
                                   Configurable MCP Agent - With MCP tool support
                                 </InputSelect.Item>
+                                <InputSelect.Item value="dynamic-agent">
+                                  Dynamic Agent - Graph schema based agent
+                                </InputSelect.Item>
                               </InputSelect.Content>
                             </InputSelectField>
                           </InputLayouts.Vertical>
+
+                          {values.base_agent === "dynamic-agent" && (
+                            <>
+                              <InputLayouts.Vertical
+                                name="graph_schema"
+                                title="Graph Schema"
+                                description="Select the dynamic graph execution pattern."
+                              >
+                                <InputSelectField name="graph_schema">
+                                  <InputSelect.Trigger placeholder="Select graph schema" />
+                                  <InputSelect.Content>
+                                    {GRAPH_SCHEMA_OPTIONS.map((option) => (
+                                      <InputSelect.Item key={option.value} value={option.value}>
+                                        {option.label}
+                                      </InputSelect.Item>
+                                    ))}
+                                  </InputSelect.Content>
+                                </InputSelectField>
+                              </InputLayouts.Vertical>
+
+                              <InputLayouts.Vertical
+                                name="brain_type"
+                                title="Brain Type"
+                              >
+                                <InputSelectField name="brain_type">
+                                  <InputSelect.Trigger placeholder="Select brain type" />
+                                  <InputSelect.Content>
+                                    {BRAIN_TYPE_OPTIONS.map((option) => (
+                                      <InputSelect.Item key={option.value} value={option.value}>
+                                        {option.label}
+                                      </InputSelect.Item>
+                                    ))}
+                                  </InputSelect.Content>
+                                </InputSelectField>
+                              </InputLayouts.Vertical>
+
+                              <InputLayouts.Vertical
+                                name="memory_type"
+                                title="Memory Type"
+                              >
+                                <InputSelectField name="memory_type">
+                                  <InputSelect.Trigger placeholder="Select memory type" />
+                                  <InputSelect.Content>
+                                    {MEMORY_TYPE_OPTIONS.map((option) => (
+                                      <InputSelect.Item key={option.value} value={option.value}>
+                                        {option.label}
+                                      </InputSelect.Item>
+                                    ))}
+                                  </InputSelect.Content>
+                                </InputSelectField>
+                              </InputLayouts.Vertical>
+                            </>
+                          )}
                         </GeneralLayouts.Section>
 
                         <GeneralLayouts.Section width="fit">
@@ -1160,23 +1326,28 @@ export default function AgentEditorPage({
 
                       <Separator noPadding />
 
-                      <AgentKnowledgePane
-                        enableKnowledge={values.enable_knowledge}
-                        onEnableKnowledgeChange={(enabled) =>
-                          setFieldValue("enable_knowledge", enabled)
-                        }
-                        ragDocumentCollectionIds={values.rag_document_collection_ids}
-                        onDocumentCollectionIdsChange={(ids) =>
-                          setFieldValue("rag_document_collection_ids", ids)
-                        }
-                        ragGraphCollectionIds={values.rag_graph_collection_ids}
-                        onGraphCollectionIdsChange={(ids) =>
-                          setFieldValue("rag_graph_collection_ids", ids)
-                        }
-                      />
+                      {schemaSupportsRag && (
+                        <>
+                          <AgentKnowledgePane
+                            enableKnowledge={values.enable_knowledge}
+                            onEnableKnowledgeChange={(enabled) =>
+                              setFieldValue("enable_knowledge", enabled)
+                            }
+                            ragDocumentCollectionIds={values.rag_document_collection_ids}
+                            onDocumentCollectionIdsChange={(ids) =>
+                              setFieldValue("rag_document_collection_ids", ids)
+                            }
+                            ragGraphCollectionIds={values.rag_graph_collection_ids}
+                            onGraphCollectionIdsChange={(ids) =>
+                              setFieldValue("rag_graph_collection_ids", ids)
+                            }
+                          />
 
-                      <Separator noPadding />
+                          <Separator noPadding />
+                        </>
+                      )}
 
+                      {schemaSupportsTools && (
                       <SimpleCollapsible>
                         <SimpleCollapsible.Header
                           title="Actions"
@@ -1268,7 +1439,7 @@ export default function AgentEditorPage({
                               )}
 
                               {/* MCP tools (from external MCP servers) - only show when configurable-mcp-agent is selected */}
-                              {values.base_agent === "configurable-mcp-agent" && allMcpTools.length > 0 && (
+                              {["configurable-mcp-agent", "dynamic-agent"].includes(values.base_agent) && allMcpTools.length > 0 && (
                                 <GeneralLayouts.Section gap={0.5}>
                                   <Text mainUiBody>External MCP Tools</Text>
                                   {allMcpTools.map((tool) => (
@@ -1293,7 +1464,7 @@ export default function AgentEditorPage({
                               )}
 
                               {/* Built-in tools from tools-service - only show when configurable-mcp-agent is selected */}
-                              {values.base_agent === "configurable-mcp-agent" && allBuiltInTools.length > 0 && (
+                              {["configurable-mcp-agent", "dynamic-agent"].includes(values.base_agent) && allBuiltInTools.length > 0 && (
                                 <GeneralLayouts.Section gap={0.5}>
                                   <Text mainUiBody>Tools Service</Text>
                                   <div className="max-h-96 overflow-y-auto space-y-4 pr-1">
@@ -1341,6 +1512,7 @@ export default function AgentEditorPage({
                           </GeneralLayouts.Section>
                         </SimpleCollapsible.Content>
                       </SimpleCollapsible>
+                      )}
 
                       <Separator noPadding />
 

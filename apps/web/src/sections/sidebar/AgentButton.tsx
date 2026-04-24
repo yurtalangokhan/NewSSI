@@ -49,6 +49,7 @@ export interface AgentButtonProps {
 const AgentButton = memo(({ agent }: AgentButtonProps) => {
   const currentAgent = useCurrentAgent();
   const { pinnedAgents, togglePinnedAgent } = usePinnedAgents();
+  const routeAgentId = agent.external_id ?? agent.id;
   const isActuallyPinned = pinnedAgents.some((a) => a.id === agent.id);
   const isCurrentAgent = currentAgent?.id === agent.id;
 
@@ -64,7 +65,7 @@ const AgentButton = memo(({ agent }: AgentButtonProps) => {
         <SidebarTab
           key={agent.id}
           leftIcon={() => <AgentAvatar agent={agent} />}
-          href={`/app?agentId=${agent.id}`}
+          href={`/app?agentId=${routeAgentId}`}
           onClick={handleClick}
           transient={isCurrentAgent}
           rightChildren={

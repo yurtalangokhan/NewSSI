@@ -20,6 +20,28 @@ import {
   SvgChevronRight,
 } from "@opal/icons";
 
+function dedupeChatHistorySessions(sessions: ChatSession[]): ChatSession[] {
+  const byId = new Map<string, ChatSession>();
+  for (const session of sessions) {
+    const existing = byId.get(session.id);
+    if (!existing) {
+      byId.set(session.id, session);
+      continue;
+    }
+    const existingTime = existing.time_updated || "";
+    const currentTime = session.time_updated || "";
+    if (currentTime >= existingTime) {
+      byId.set(session.id, session);
+    }
+  }
+
+  return Array.from(byId.values()).sort(
+    (left, right) =>
+      new Date(right.time_updated || 0).getTime() -
+      new Date(left.time_updated || 0).getTime()
+  );
+}
+
 interface ChatHistoryResponse {
   sessions: ChatSession[];
   chat_sessions: ChatSession[];
@@ -56,7 +78,7 @@ export default function ChatHistoryModal({
     }
   );
 
-  const allSessions = data?.sessions || [];
+  const allSessions = dedupeChatHistorySessions(data?.sessions || []);
   const hasMore = data?.has_more || false;
 
   // Reset selection when modal opens

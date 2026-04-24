@@ -496,7 +496,10 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
   const handleSwitchAgent = useCallback(
     (agent: (typeof agents)[0]) => {
       const params = new URLSearchParams();
-      params.set(SEARCH_PARAM_NAMES.PERSONA_ID, String(agent.id));
+      params.set(
+        SEARCH_PARAM_NAMES.PERSONA_ID,
+        String(agent.external_id ?? agent.id)
+      );
       router.push(`/app?${params.toString()}`);
     },
     [router]

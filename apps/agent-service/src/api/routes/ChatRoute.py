@@ -50,8 +50,12 @@ async def get_chat_sessions():
 
 
 @router.post("/api/chat/create-chat-session")
-async def create_chat_session():
-    return await _get_chat_controller().create_chat_session()
+async def create_chat_session(request: Request):
+    body = await request.json()
+    return await _get_chat_controller().create_chat_session(
+        persona_id=body.get("persona_id", 0),
+        description=body.get("description"),
+    )
 
 
 @router.get("/api/chat/get-chat-session/{chat_session_id}")
@@ -200,9 +204,19 @@ async def send_chat_message(request: Request):
         if needs_update:
             await thread_ctrl.update_thread(session_id, metadata)
 
-    assistant_id = PERSONA_ID_TO_AGENT.get(persona_id, DEFAULT_AGENT) if persona_id else DEFAULT_AGENT
+    assistant_id = DEFAULT_AGENT
 
-    if persona_id is not None:
+    if persona_id:
+        if isinstance(persona_id, str):
+            try:
+                uuid.UUID(persona_id)
+                assistant_id = persona_id
+            except (ValueError, AttributeError):
+                assistant_id = DEFAULT_AGENT
+        else:
+            assistant_id = PERSONA_ID_TO_AGENT.get(persona_id, DEFAULT_AGENT)
+
+    if persona_id is not None and not isinstance(persona_id, str):
         from service.PersonaRepository import PersonaDB
         try:
             custom_persona = await PersonaDB.get(persona_id)

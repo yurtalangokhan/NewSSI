@@ -181,18 +181,19 @@ export default function AgentViewerModal({ agent }: AgentViewerModalProps) {
   const router = useRouter();
   const { allRecentFiles } = useProjectsContext();
   const { llmProviders } = useLLMProviders(agent.id);
+  const routeAgentId = agent.external_id ?? agent.id;
 
   const handleStartChat = useCallback(
     (message: string) => {
       const params = new URLSearchParams({
-        [SEARCH_PARAM_NAMES.PERSONA_ID]: String(agent.id),
+        [SEARCH_PARAM_NAMES.PERSONA_ID]: String(routeAgentId),
         [SEARCH_PARAM_NAMES.USER_PROMPT]: message,
         [SEARCH_PARAM_NAMES.SEND_ON_LOAD]: "true",
       });
       router.push(`/app?${params.toString()}` as Route);
       agentViewerModal.toggle(false);
     },
-    [agent.id, router, agentViewerModal]
+    [agentViewerModal, routeAgentId, router]
   );
 
   const ragDocumentCollections =
@@ -248,10 +249,18 @@ export default function AgentViewerModal({ agent }: AgentViewerModalProps) {
     [mcpServers, mcpToolsByServerId]
   );
 
+  const unknownMcpToolNames = useMemo(() => {
+    const knownToolNames = new Set(
+      agent.tools.flatMap((tool) => [tool.name, tool.in_code_tool_id || ""]).filter(Boolean)
+    );
+    return (agent.mcp_tools || []).filter((name) => !knownToolNames.has(name));
+  }, [agent.mcp_tools, agent.tools]);
+
   const hasActions =
     mcpServersWithTools.length > 0 ||
     openApiTools.length > 0 ||
-    builtInTools.length > 0;
+    builtInTools.length > 0 ||
+    unknownMcpToolNames.length > 0;
   const defaultModel = getDisplayName(agent, llmProviders ?? []);
 
   return (
@@ -375,6 +384,21 @@ export default function AgentViewerModal({ agent }: AgentViewerModalProps) {
                       key={`builtin-${tool.id}`}
                       tool={tool}
                     />
+                  ))}
+                  {unknownMcpToolNames.map((toolName) => (
+                    <ExpandableCard.Root key={`mcp-name-${toolName}`}>
+                      <ExpandableCard.Header>
+                        <div className="p-2">
+                          <Content
+                            icon={SvgActions}
+                            title={toolName}
+                            description="MCP Tool"
+                            sizePreset="main-ui"
+                            variant="section"
+                          />
+                        </div>
+                      </ExpandableCard.Header>
+                    </ExpandableCard.Root>
                   ))}
                 </Section>
               ) : (

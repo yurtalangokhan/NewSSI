@@ -651,7 +651,8 @@ export function useLlmManager(
   } = useLLMProviders();
   // Fetch persona-specific providers to enforce RBAC restrictions per assistant
   // Only fetch if we have an agent selected
-  const personaId = liveAgent?.id !== undefined ? liveAgent.id : undefined;
+  const personaId =
+    typeof liveAgent?.id === "number" ? liveAgent.id : undefined;
   const {
     llmProviders: personaProviders,
     defaultText: personaDefaultText,
@@ -673,7 +674,7 @@ export function useLlmManager(
   });
 
   // Track the previous assistant ID to detect when it changes
-  const prevAgentIdRef = useRef<number | undefined>(undefined);
+  const prevAgentIdRef = useRef<string | number | undefined>(undefined);
 
   // Reset manual override when switching to a different assistant
   useEffect(() => {

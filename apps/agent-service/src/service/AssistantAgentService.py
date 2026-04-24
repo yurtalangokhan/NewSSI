@@ -185,14 +185,17 @@ class AssistantAgentService:
         """
         Get agent with dynamic configuration applied.
 
-        For supervisor agents, creates a configured graph based on the config.
+        Resolution order:
+        1. If agent_id looks like a UUID → look up AgentDefinition in DB → return DynamicAgent
+        2. If agent_id is numeric → resolve persona → fall through to registry
+        3. Look up in agents registry (chatbot, configurable-mcp-agent, …)
 
         Args:
-            agent_id: The base agent/graph ID
-            agent_config: Configuration including sub_agents or pipeline_stages
+            agent_id: Agent/graph/persona/definition ID
+            agent_config: Runtime config overrides
 
         Returns:
-            Configured agent graph
+            Configured agent graph or LazyLoadingAgent
         """
         from agents.agents import agents
         from agents.lazy_agent import LazyLoadingAgent
@@ -200,6 +203,22 @@ class AssistantAgentService:
         graph_id, stored_config = await self.get_graph_and_config(agent_id)
         merged_config = {**stored_config, **(agent_config or {})}
 
+        # ------------------------------------------------------------------
+        # 1.  UUID → AgentDefinition (DynamicAgent)
+        # ------------------------------------------------------------------
+        try:
+            from uuid import UUID as _UUID
+
+            definition_uuid = _UUID(agent_id)
+            definition = await self._get_agent_definition(definition_uuid)
+            if definition:
+                return await self._get_or_create_dynamic_agent(definition)
+        except (ValueError, AttributeError):
+            pass  # not a UUID string, continue to registry lookup
+
+        # ------------------------------------------------------------------
+        # 2 & 3.  Legacy registry lookup (personas + static agents)
+        # ------------------------------------------------------------------
         agent_entry = agents.get(graph_id)
         if not agent_entry:
             from fastapi import HTTPException
@@ -266,9 +285,6 @@ class AssistantAgentService:
                         model_name=model_name,
                     )
 
-            # For LazyLoadingAgents that handle configurable via their own astream()
-            # (e.g. ConfigurableMCPAgent), return the agent itself so its astream()
-            # is called and it can read mcp_tools/system_prompt from the RunnableConfig.
             return graph_like
 
         # For non-lazy agents, ensure checkpointer is set
@@ -276,6 +292,74 @@ class AssistantAgentService:
             graph_like.checkpointer = checkpointer
 
         return graph_like
+
+    # =========================================================================
+    # Dynamic agent helpers
+    # =========================================================================
+
+    async def _get_agent_definition(self, definition_id):
+        """Fetch AgentDefinitionModel from DB by UUID."""
+        try:
+            from agents.storage.repository import AgentDefinitionRepository
+
+            repo = AgentDefinitionRepository()
+            return await repo.get_by_id(definition_id)
+        except Exception as e:
+            logger.warning("Could not load agent definition %s: %s", definition_id, e)
+            return None
+
+    async def _get_or_create_dynamic_agent(self, definition):
+        """
+        Return a loaded DynamicAgent for the given definition.
+
+        Uses a per-definition cache so MCP tools are only loaded once.
+        Cache is invalidated on definition update/delete via AgentDefinitionService.
+        """
+        from agents.dynamic_agent import (
+            DynamicAgent,
+            cache_agent,
+            get_cached_agent,
+        )
+        from service.CheckpointerService import get_checkpointer
+
+        definition_id = str(definition.id)
+        checkpointer = get_checkpointer()
+        cached = get_cached_agent(definition_id)
+        if cached is not None:
+            # If an older cached graph was built without persistence, recreate it.
+            try:
+                cached_graph = cached.get_graph()
+                cached_checkpointer = getattr(cached_graph, "checkpointer", None)
+            except Exception:
+                cached_checkpointer = None
+
+            cached_load_failed = bool(getattr(cached, "_load_failed", False))
+
+            if cached_load_failed:
+                logger.warning(
+                    "Recreating DynamicAgent '%s' (id=%s) because previous load fell back",
+                    getattr(definition, "name", definition_id),
+                    definition_id,
+                )
+            elif checkpointer is not None and cached_checkpointer is None:
+                logger.warning(
+                    "Recreating DynamicAgent '%s' (id=%s) because cached graph has no checkpointer",
+                    getattr(definition, "name", definition_id),
+                    definition_id,
+                )
+            else:
+                return cached
+
+        config = definition.to_config()
+        agent = DynamicAgent(agent_config=config)
+
+        if checkpointer:
+            agent._checkpointer = checkpointer
+
+        await agent.load()
+        cache_agent(definition_id, agent)
+        logger.info("DynamicAgent '%s' created and cached (id=%s)", definition.name, definition_id)
+        return agent
 
 
 # Singleton instance accessor

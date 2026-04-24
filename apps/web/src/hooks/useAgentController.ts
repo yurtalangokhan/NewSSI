@@ -1,9 +1,9 @@
 "use client";
 
-import { MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
-import { useCallback, useMemo, useState } from "react";
+import { AgentId, MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChatSession } from "@/app/app/interfaces";
-import { useAgents, usePinnedAgents } from "@/hooks/useAgents";
+import { agentIdsMatch, useAgents, usePinnedAgents } from "@/hooks/useAgents";
 import { useSearchParams } from "next/navigation";
 import { SEARCH_PARAM_NAMES } from "@/app/app/services/searchParams";
 import { useSettingsContext } from "@/providers/SettingsProvider";
@@ -21,11 +21,19 @@ export default function useAgentController({
   const combinedSettings = useSettingsContext();
 
   const defaultAgentIdRaw = searchParams?.get(SEARCH_PARAM_NAMES.PERSONA_ID);
-  const defaultAgentId = defaultAgentIdRaw
-    ? parseInt(defaultAgentIdRaw)
-    : undefined;
+  const defaultAgentId = defaultAgentIdRaw ?? undefined;
 
   const existingChatSessionAgentId = selectedChatSession?.persona_id;
+  const resolveAgentById = useCallback(
+    (agentId: AgentId | null | undefined) => {
+      if (agentId === null || agentId === undefined) {
+        return undefined;
+      }
+      return availableAgents.find((assistant) => agentIdsMatch(assistant, agentId));
+    },
+    [availableAgents]
+  );
+
   const [selectedAgent, setSelectedAssistant] = useState<
     MinimalPersonaSnapshot | undefined
   >(
@@ -33,11 +41,9 @@ export default function useAgentController({
     // has hidden this agent it still shows the correct assistant when
     // going back to an old chat session
     existingChatSessionAgentId !== undefined
-      ? availableAgents.find(
-          (assistant) => assistant.id === existingChatSessionAgentId
-        )
+      ? resolveAgentById(existingChatSessionAgentId)
       : defaultAgentId !== undefined
-        ? availableAgents.find((assistant) => assistant.id === defaultAgentId)
+        ? resolveAgentById(defaultAgentId)
         : undefined
   );
 
@@ -73,27 +79,46 @@ export default function useAgentController({
     return pinnedAgents[0] || availableAgents[0];
   }, [selectedAgent, pinnedAgents, availableAgents, combinedSettings]);
 
+  useEffect(() => {
+    const targetAgentId = existingChatSessionAgentId ?? defaultAgentId;
+    if (targetAgentId === undefined) {
+      return;
+    }
+
+    const resolved = resolveAgentById(targetAgentId);
+    if (!resolved) {
+      return;
+    }
+
+    if (!selectedAgent || !agentIdsMatch(selectedAgent, resolved)) {
+      setSelectedAssistant(resolved);
+    }
+  }, [
+    defaultAgentId,
+    existingChatSessionAgentId,
+    resolveAgentById,
+    selectedAgent,
+  ]);
+
   const setSelectedAgentFromId = useCallback(
-    (agentId: number | null | undefined) => {
+    (agentId: AgentId | null | undefined) => {
       // NOTE: also intentionally look through available assistants here, so that
       // even if the user has hidden an agent they can still go back to it
       // for old chats
       let newAssistant =
         agentId !== null
-          ? availableAgents.find((assistant) => assistant.id === agentId)
+          ? resolveAgentById(agentId)
           : undefined;
 
       // if no assistant was passed in / found, use the default agent
       if (!newAssistant && defaultAgentId !== undefined) {
-        newAssistant = availableAgents.find(
-          (assistant) => assistant.id === defaultAgentId
-        );
+        newAssistant = resolveAgentById(defaultAgentId);
       }
 
       setSelectedAssistant(newAssistant);
       onAgentSelect?.();
     },
-    [availableAgents, defaultAgentId, onAgentSelect]
+    [defaultAgentId, onAgentSelect, resolveAgentById]
   );
 
   return {

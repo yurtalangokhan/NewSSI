@@ -13,20 +13,12 @@ export interface PageProps {
 export default function Page(props: PageProps) {
   const router = useRouter();
   const { id } = use(props.params);
-  const agentId = parseInt(id);
+  const numericId = Number.parseInt(id, 10);
+  const agentId = Number.isNaN(numericId) ? id : numericId;
   const hasLoadedOnce = useRef(false);
 
   // Call hook unconditionally (passes null when ID is invalid)
-  const { agent, isLoading, refresh } = useAgent(
-    isNaN(agentId) ? null : agentId
-  );
-
-  // Handle invalid ID (NaN)
-  useEffect(() => {
-    if (isNaN(agentId)) {
-      router.push("/app");
-    }
-  }, [agentId, router]);
+  const { agent, isLoading, refresh } = useAgent(agentId);
 
   // Track when loading has completed at least once to avoid false redirects
   useEffect(() => {

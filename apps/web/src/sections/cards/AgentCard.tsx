@@ -49,8 +49,10 @@ export default function AgentCard({ agent }: AgentCardProps) {
   const router = useRouter();
   const { pinnedAgents, togglePinnedAgent } = usePinnedAgents();
   const { refresh: refreshAgents } = useAgents();
+  const isDynamicAgent = !!agent.external_id || !!agent.is_dynamic;
+  const routeAgentId = agent.external_id ?? agent.id;
   const pinned = useMemo(
-    () => pinnedAgents.some((pinnedAgent) => pinnedAgent.id === agent.id),
+    () => pinnedAgents.some((pinnedAgent) => String(pinnedAgent.id) === String(agent.id)),
     [agent.id, pinnedAgents]
   );
   const { user, isAdmin, isCurator } = useUser();
@@ -60,7 +62,7 @@ export default function AgentCard({ agent }: AgentCardProps) {
   const canEdit = isOwnedByUser || isAdmin;
   const shareAgentModal = useCreateModal();
   const agentViewerModal = useCreateModal();
-  const { agent: fullAgent, refresh: refreshAgent } = useAgent(agent.id);
+  const { agent: fullAgent, refresh: refreshAgent } = useAgent(agent.external_id ?? agent.id);
   const agentForViewer = useMemo<FullPersona>(
     () =>
       fullAgent ?? {
@@ -88,11 +90,11 @@ export default function AgentCard({ agent }: AgentCardProps) {
 
   // Start chat and auto-pin unpinned agents to the sidebar
   const handleStartChat = useCallback(() => {
-    if (!pinned) {
+    if (!pinned && !isDynamicAgent) {
       togglePinnedAgent(agent, true);
     }
-    route({ agentId: agent.id });
-  }, [pinned, togglePinnedAgent, agent, route]);
+    route({ agentId: routeAgentId });
+  }, [pinned, isDynamicAgent, togglePinnedAgent, agent, route, routeAgentId]);
 
   const handleShare = useCallback(
     async (
@@ -145,7 +147,7 @@ export default function AgentCard({ agent }: AgentCardProps) {
   const handleDelete = useCallback(async () => {
     setIsDeleting(true);
     try {
-      const error = await deleteAgent(agent.id);
+      const error = await deleteAgent(agent.external_id ?? agent.id);
       if (error) {
         toast.error(`Failed to delete agent: ${error}`);
       } else {
@@ -157,6 +159,9 @@ export default function AgentCard({ agent }: AgentCardProps) {
       deleteModal.toggle(false);
     }
   }, [agent.id, agent.name, refreshAgents, deleteModal]);
+
+  const actionCount =
+    agent.tools.length > 0 ? agent.tools.length : (agent.mcp_tools?.length ?? 0);
 
   return (
     <>
@@ -215,7 +220,7 @@ export default function AgentCard({ agent }: AgentCardProps) {
               description={agent.description}
               rightChildren={
                 <>
-                  {isOwnedByUser && isPaidEnterpriseFeaturesEnabled && (
+                  {isOwnedByUser && isPaidEnterpriseFeaturesEnabled && !isDynamicAgent && (
                     <IconButton
                       icon={SvgBarChart}
                       tertiary
@@ -231,7 +236,7 @@ export default function AgentCard({ agent }: AgentCardProps) {
                       icon={SvgEdit}
                       tertiary
                       onClick={noProp(() =>
-                        router.push(`/app/agents/edit/${agent.id}` as Route)
+                        router.push(`/app/agents/edit/${routeAgentId}` as Route)
                       )}
                       tooltip="Edit Agent"
                       className="hidden group-hover/AgentCard:flex"
@@ -245,7 +250,8 @@ export default function AgentCard({ agent }: AgentCardProps) {
                       tooltip="Delete Agent"
                       className="hidden group-hover/AgentCard:flex"
                     />
-                  )}                  {isOwnedByUser && (
+                  )}
+                  {isOwnedByUser && !isDynamicAgent && (
                     <IconButton
                       icon={SvgShare}
                       tertiary
@@ -254,15 +260,17 @@ export default function AgentCard({ agent }: AgentCardProps) {
                       className="hidden group-hover/AgentCard:flex"
                     />
                   )}
-                  <IconButton
-                    icon={pinned ? SvgPinned : SvgPin}
-                    tertiary
-                    onClick={noProp(() => togglePinnedAgent(agent, !pinned))}
-                    tooltip={pinned ? "Unpin from Sidebar" : "Pin to Sidebar"}
-                    className={cn(
-                      !pinned && "hidden group-hover/AgentCard:flex"
-                    )}
-                  />
+                  {!isDynamicAgent && (
+                    <IconButton
+                      icon={pinned ? SvgPinned : SvgPin}
+                      tertiary
+                      onClick={noProp(() => togglePinnedAgent(agent, !pinned))}
+                      tooltip={pinned ? "Unpin from Sidebar" : "Pin to Sidebar"}
+                      className={cn(
+                        !pinned && "hidden group-hover/AgentCard:flex"
+                      )}
+                    />
+                  )}
                 </>
               }
             />
@@ -282,9 +290,9 @@ export default function AgentCard({ agent }: AgentCardProps) {
               <Content
                 icon={SvgActions}
                 title={
-                  agent.tools.length > 0
-                    ? `${agent.tools.length} Action${
-                        agent.tools.length > 1 ? "s" : ""
+                  actionCount > 0
+                    ? `${actionCount} Action${
+                        actionCount > 1 ? "s" : ""
                       }`
                     : "No Actions"
                 }

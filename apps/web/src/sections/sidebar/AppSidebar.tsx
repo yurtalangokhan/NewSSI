@@ -498,9 +498,10 @@ const MemoizedAppSidebarInner = memo(
         | "chat"
         | "search") ?? "chat";
     const newSessionButton = useMemo(() => {
+      const currentRouteAgentId = currentAgent?.external_id ?? currentAgent?.id;
       const href =
         combinedSettings?.settings?.disable_default_assistant && currentAgent
-          ? `/app?agentId=${currentAgent.id}`
+          ? `/app?agentId=${currentRouteAgentId}`
           : "/app";
       return (
         <div data-testid="AppSidebar/new-session">
@@ -525,6 +526,8 @@ const MemoizedAppSidebarInner = memo(
       combinedSettings,
       currentAgent,
       defaultAppMode,
+      reset,
+      setAppMode,
     ]);
 
     const buildButton = useMemo(

@@ -33,7 +33,9 @@ export function useOnboardingState(liveAgent?: MinimalPersonaSnapshot): {
   } = useProviderStatus();
 
   // Only fetch persona-specific providers (different endpoint)
-  const { refetch: refreshPersonaProviders } = useLLMProviders(liveAgent?.id);
+  const { refetch: refreshPersonaProviders } = useLLMProviders(
+    typeof liveAgent?.id === "number" ? liveAgent.id : undefined
+  );
 
   const userName = user?.personalization?.name;
   const llmDescriptors = providerOptions;

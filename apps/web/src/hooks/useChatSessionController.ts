@@ -30,6 +30,7 @@ import { ProjectFile } from "@/app/app/projects/projectsService";
 import { getSessionProjectTokenCount } from "@/app/app/projects/projectsService";
 import { getProjectFilesForSession } from "@/app/app/projects/projectsService";
 import { AppInputBarHandle } from "@/sections/input/AppInputBar";
+import { AgentId } from "@/app/admin/agents/interfaces";
 
 interface UseChatSessionControllerProps {
   existingChatSessionId: string | null;
@@ -38,7 +39,7 @@ interface UseChatSessionControllerProps {
   firstMessage?: string;
 
   // UI state setters
-  setSelectedAgentFromId: (agentId: number | null) => void;
+  setSelectedAgentFromId: (agentId: AgentId | null) => void;
   setSelectedDocuments: (documents: OnyxDocument[]) => void;
   setCurrentMessageFiles: (
     files: ProjectFile[] | ((prev: ProjectFile[]) => ProjectFile[])

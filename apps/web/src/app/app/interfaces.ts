@@ -4,6 +4,7 @@ import {
   SearchOnyxDocument,
   StreamStopReason,
 } from "@/lib/search/interfaces";
+import { AgentId } from "@/app/admin/agents/interfaces";
 import { Packet } from "./services/streamingModels";
 
 export type FeedbackType = "like" | "dislike";
@@ -39,7 +40,7 @@ export enum ChatSessionSharedStatus {
 export interface ChatSessionSummary {
   id: string;
   name: string | null;
-  persona_id: number | null;
+  persona_id: AgentId | null;
   time_created: string;
   shared_status: ChatSessionSharedStatus;
   current_alternate_model: string | null;
@@ -125,7 +126,7 @@ export interface ChatSession {
   id: string;
   name: string;
   description?: string;  // Optional - returned by some endpoints
-  persona_id: number;
+  persona_id: AgentId;
   time_created: string;
   time_updated: string;
   shared_status: ChatSessionSharedStatus;
@@ -156,7 +157,7 @@ export interface Message {
   parentNodeId: number | null;
   childrenNodeIds?: number[];
   latestChildNodeId?: number | null;
-  alternateAgentID?: number | null;
+  alternateAgentID?: AgentId | null;
   stackTrace?: string | null;
   errorCode?: string | null;
   isRetryable?: boolean;
@@ -182,7 +183,7 @@ export interface Message {
 export interface BackendChatSession {
   chat_session_id: string;
   description: string;
-  persona_id: number;
+  persona_id: AgentId;
   persona_name: string;
   messages: BackendMessage[];
   time_created: string;
@@ -221,7 +222,7 @@ export interface BackendMessage {
   context_docs: OnyxDocument[] | null;
   time_sent: string;
   overridden_model: string;
-  alternate_assistant_id: number | null; // TODO: rename to agent — https://linear.app/onyx-app/issue/ENG-3766
+  alternate_assistant_id: AgentId | null; // TODO: rename to agent — https://linear.app/onyx-app/issue/ENG-3766
   chat_session_id: string;
   citations: CitationMap | null;
   files: FileDescriptor[];

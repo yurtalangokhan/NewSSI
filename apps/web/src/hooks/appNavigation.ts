@@ -7,7 +7,7 @@ import { useCallback } from "react";
 
 interface UseAppRouterProps {
   chatSessionId?: string;
-  agentId?: number;
+  agentId?: string | number;
   projectId?: number;
 }
 

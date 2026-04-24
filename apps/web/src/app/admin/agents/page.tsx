@@ -63,7 +63,12 @@ function AgentCatalog({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
           {filteredAgents
             .slice()
-            .sort((a, b) => b.id - a.id)
+            .sort((a, b) => {
+              if (typeof a.id === "number" && typeof b.id === "number") {
+                return b.id - a.id;
+              }
+              return a.name.localeCompare(b.name);
+            })
             .map((agent) => (
               <AgentCard key={agent.id} agent={agent} />
             ))}

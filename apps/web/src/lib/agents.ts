@@ -1,4 +1,4 @@
-import { MinimalPersonaSnapshot, Persona } from "@/app/admin/agents/interfaces";
+import { AgentId, MinimalPersonaSnapshot, Persona } from "@/app/admin/agents/interfaces";
 import { User } from "./types";
 import { checkUserIsNoAuthUser } from "./user";
 import { personaComparator } from "@/app/admin/agents/lib";
@@ -86,9 +86,13 @@ export function filterAgents(
  * @param agentId - The ID of the agent to delete
  * @returns null on success, or an error message string on failure
  */
-export async function deleteAgent(agentId: number): Promise<string | null> {
+export async function deleteAgent(agentId: AgentId): Promise<string | null> {
   try {
-    const response = await fetch(`/api/persona/${agentId}`, {
+    const endpoint =
+      typeof agentId === "string"
+        ? `/api/agent-definitions/${agentId}`
+        : `/api/persona/${agentId}`;
+    const response = await fetch(endpoint, {
       method: "DELETE",
     });
 

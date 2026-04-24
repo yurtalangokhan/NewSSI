@@ -171,9 +171,11 @@ from api.routes import (
     datasources_router,
     assistant_schemas_router,
     file_router,
+    agent_definitions_router,
 )
 
 app.include_router(agents_router)
+app.include_router(agent_definitions_router)
 app.include_router(assistants_router)
 app.include_router(threads_router)
 app.include_router(auth_router)

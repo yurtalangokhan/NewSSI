@@ -156,6 +156,13 @@ async def message_generator(
 
     agent = await service.get_configured_agent(agent_id, user_input.agent_config or {})
 
+    # Detect DynamicAgent so we can emit step events per meaningful node.
+    from agents.dynamic_agent import DynamicAgent
+
+    is_dynamic_agent = isinstance(agent, DynamicAgent)
+    # Infrastructure nodes that should NOT produce step events
+    _INFRA_NODES = frozenset({"__interrupt__", "__end__", "tools", "agent"})
+
     kwargs, run_id = await _handle_input(user_input, agent, user_id)
 
     try:
@@ -183,6 +190,10 @@ async def message_generator(
 
                     if not update_messages:
                         continue
+
+                    # Emit step-start event for DynamicAgent non-infrastructure nodes
+                    if is_dynamic_agent and node not in _INFRA_NODES:
+                        yield f"data: {json.dumps({'type': 'custom_step_start', 'step_name': node})}\n\n"
 
                     if "supervisor" in node or "sub-agent" in node:
                         filtered_messages = []
@@ -241,6 +252,13 @@ async def message_generator(
                 elif chat_message.type == "tool":
                     tool_name = getattr(message, "name", "") or ""
                     yield f"data: {json.dumps({'type': 'custom_tool_delta', 'tool_name': tool_name, 'response_type': 'tool_result', 'data': chat_message.content})}\n\n"
+                    continue
+
+                # When token streaming is enabled, the frontend already receives
+                # the assistant answer incrementally via `token` packets.
+                # Emitting the final full `message` packet as well causes the UI
+                # to render the full answer and then animate tokens on top of it.
+                if chat_message.type == "ai" and user_input.stream_tokens:
                     continue
 
                 # Strip <think>/<thinking> tags from AI responses
