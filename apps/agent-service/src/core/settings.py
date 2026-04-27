@@ -94,6 +94,12 @@ class Settings(BaseSettings):
     NEO4J_USERNAME: str = "neo4j"
     NEO4J_PASSWORD: str = "neo4j123"
 
+    VECTOR_DB_PROVIDER: str = "milvus"
+    MILVUS_HOST: str = "localhost"
+    MILVUS_PORT: int = 9765
+    MILVUS_USER: str = ""
+    MILVUS_PASSWORD: str = ""
+
     AIRBYTE_API_URL: str | None = None
     AIRBYTE_LOCAL_OUTPUT_PATH: str = "/tmp/airbyte_local"
 

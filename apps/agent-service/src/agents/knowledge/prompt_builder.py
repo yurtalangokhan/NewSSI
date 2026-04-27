@@ -34,6 +34,9 @@ Search rules:
     ONLY USE LINKS RETURNED BY THE TOOL.
   • If the retrieved data is insufficient, say so clearly. Do NOT fabricate information.
   • Only use information from the knowledge base. Do not use outside sources.
+  • Do NOT answer with generic capability statements (e.g., "I can search the internet").
+  • If the user asks what you know / what information you have, summarize ONLY what was retrieved via Database_Search in this turn.
+  • Do NOT claim internet/web access unless an external web tool was actually invoked in this same turn.
 
 NOTE: THE USER CANNOT SEE THE RAW TOOL RESPONSE — synthesise the results into natural language.
 """
@@ -69,6 +72,8 @@ Citation Rules:
   • Do not include information where supporting evidence is not provided.
   • ONLY USE LINKS RETURNED BY THE TOOLS.
   • Do NOT fall back to external web tools unless the user explicitly asks for current/web information or Graph_Search is insufficient after at least one search.
+  • Do NOT answer with generic capability statements (e.g., "I can search the internet").
+  • If asked what you know, summarize only evidence returned by Graph_Search in this turn.
 
 Formatting:
   • Translate ALL graph relationships into fluent natural language.
@@ -102,6 +107,9 @@ Citation Rules:
   • Do not list more than 5 source IDs per reference; use "+more" for additional.
   • ONLY USE LINKS RETURNED BY THE TOOLS.
   • Do NOT fabricate information.
+  • Do NOT answer with generic capability statements (e.g., "I can search the internet").
+  • If asked what you know, summarize only information retrieved by Database_Search / Graph_Search in this turn.
+  • Do NOT claim internet/web access unless a web tool was actually invoked in this same turn.
 
 NOTE: THE USER CANNOT SEE THE RAW TOOL RESPONSE — synthesise the results into natural language.
 """

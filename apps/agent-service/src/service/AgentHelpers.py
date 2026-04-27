@@ -48,6 +48,32 @@ async def get_graph_and_config(agent_id: str) -> tuple[str, dict]:
     config: dict = {}
     graph_id = agent_id  # Default to agent_id as graph_id
 
+    # Check if agent_id is an AgentDefinition UUID.
+    # Dynamic agent tools read rag_config from RunnableConfig.configurable,
+    # so expose the definition's runtime settings here.
+    try:
+        from uuid import UUID as _UUID
+        from agents.storage.repository import AgentDefinitionRepository
+
+        definition_uuid = _UUID(agent_id)
+        definition = await AgentDefinitionRepository().get_by_id(definition_uuid)
+        if definition:
+            definition_cfg = definition.to_config() or {}
+            runtime_cfg: dict[str, Any] = {}
+
+            if definition_cfg.get("model"):
+                runtime_cfg["model"] = definition_cfg["model"]
+            if definition_cfg.get("system_prompt"):
+                runtime_cfg["system_prompt"] = definition_cfg["system_prompt"]
+            if definition_cfg.get("mcp_tools"):
+                runtime_cfg["mcp_tools"] = definition_cfg["mcp_tools"]
+            if definition_cfg.get("rag_config"):
+                runtime_cfg["rag_config"] = definition_cfg["rag_config"]
+
+            return graph_id, runtime_cfg
+    except (ValueError, AttributeError):
+        pass
+
     # Check if agent_id is a persona ID (numeric) - for custom agents
     if agent_id.isdigit():
         from service.PersonaRepository import PersonaDB

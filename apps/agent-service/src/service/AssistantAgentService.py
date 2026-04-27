@@ -132,6 +132,32 @@ class AssistantAgentService:
         config: dict = {}
         graph_id = agent_id
 
+        # Check if agent_id is an AgentDefinition UUID.
+        # For dynamic agents we must expose runtime-relevant config (especially
+        # rag_config) so tools receive it via RunnableConfig.configurable.
+        try:
+            from uuid import UUID as _UUID
+
+            definition_uuid = _UUID(agent_id)
+            definition = await self._get_agent_definition(definition_uuid)
+            if definition:
+                graph_id = agent_id
+                definition_cfg = definition.to_config() or {}
+
+                runtime_cfg: dict[str, Any] = {}
+                if definition_cfg.get("model"):
+                    runtime_cfg["model"] = definition_cfg["model"]
+                if definition_cfg.get("system_prompt"):
+                    runtime_cfg["system_prompt"] = definition_cfg["system_prompt"]
+                if definition_cfg.get("mcp_tools"):
+                    runtime_cfg["mcp_tools"] = definition_cfg["mcp_tools"]
+                if definition_cfg.get("rag_config"):
+                    runtime_cfg["rag_config"] = definition_cfg["rag_config"]
+
+                return graph_id, runtime_cfg
+        except (ValueError, AttributeError):
+            pass
+
         # Check if agent_id is a persona ID (numeric)
         if agent_id.isdigit():
             from service.PersonaRepository import PersonaDB

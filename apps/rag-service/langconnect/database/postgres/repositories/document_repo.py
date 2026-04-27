@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import json
 import logging
+import uuid
 from typing import Any
 
 from sqlalchemy import and_, delete, distinct, func, select, text
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import aliased
 
 from langconnect.database.postgres.models import PgCollection, PgEmbedding
@@ -142,12 +144,72 @@ class DocumentRepository(BaseRepository):
 
     # ---- write ----------------------------------------------------------
 
+    async def upsert_documents(
+        self,
+        *,
+        ids: list[str],
+        documents: list[str],
+        metadatas: list[dict[str, Any]],
+    ) -> int:
+        """Upsert chunk metadata rows into ``langchain_pg_embedding``.
+
+        This keeps Postgres-backed listing/chunk APIs functional when vectors are
+        stored in Milvus.
+        """
+        if not (len(ids) == len(documents) == len(metadatas)):
+            raise ValueError("ids, documents, and metadatas must have equal length")
+
+        if not ids:
+            return 0
+
+        rows = [
+            {
+                "id": str(doc_id),
+                "collection_id": uuid.UUID(self.collection_id),
+                "document": doc,
+                "cmetadata": metadata or {},
+            }
+            for doc_id, doc, metadata in zip(ids, documents, metadatas, strict=True)
+        ]
+
+        async with self._session() as session:
+            stmt = pg_insert(PgEmbedding).values(rows)
+            stmt = stmt.on_conflict_do_update(
+                index_elements=[PgEmbedding.id],
+                set_={
+                    "collection_id": stmt.excluded.collection_id,
+                    "document": stmt.excluded.document,
+                    "cmetadata": stmt.excluded.cmetadata,
+                },
+            )
+            await session.execute(stmt)
+
+        return len(rows)
+
     async def delete_by_file_id(self, file_id: str) -> int:
         """Delete embeddings whose ``cmetadata->>'file_id'`` matches.
 
+        With Milvus as the vector backend, also deletes vectors from Milvus
+        using an expr filter on the metadata.file_id field.
+
         Returns:
-            Number of rows deleted.
+            Number of rows deleted from Postgres.
         """
+        from langconnect import config
+        from langconnect.database.connection import get_vectorstore
+
+        # If using Milvus, delete vectors from Milvus first (best-effort)
+        if config.VECTOR_DB_PROVIDER.lower() != "pgvector":
+            table_id = await self.get_collection_table_name()
+            if table_id:
+                try:
+                    milvus_store = get_vectorstore(collection_name=table_id)
+                    # expr-based delete on metadata JSON field
+                    milvus_store.delete(expr=f'metadata["file_id"] == "{file_id}"')
+                    logger.info("Deleted Milvus vectors for file %r in collection %r.", file_id, table_id)
+                except Exception as exc:
+                    logger.warning("Milvus delete failed for file %r: %s", file_id, exc)
+
         async with self._session() as session:
             col = aliased(PgCollection, name="c")
 
@@ -173,7 +235,7 @@ class DocumentRepository(BaseRepository):
     # ---- graph-rag helpers ----------------------------------------------
 
     async def get_collection_table_name(self) -> str | None:
-        """Return the PGVector internal ``name`` (table_id) for the collection."""
+        """Return the collection ``name`` (table_id) used as vector collection key."""
         async with self._session() as session:
             stmt = select(PgCollection.name).where(
                 PgCollection.uuid == self.collection_id

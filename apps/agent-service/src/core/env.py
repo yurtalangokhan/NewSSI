@@ -190,6 +190,22 @@ class Env:
         return os.environ.get("NEO4J_PASSWORD", "neo4j123")
 
     @property
+    def MILVUS_HOST(self) -> str:
+        return os.environ.get("MILVUS_HOST", "localhost")
+
+    @property
+    def MILVUS_PORT(self) -> str:
+        return os.environ.get("MILVUS_PORT", "9765")
+
+    @property
+    def MILVUS_USER(self) -> str:
+        return os.environ.get("MILVUS_USER", "")
+
+    @property
+    def MILVUS_PASSWORD(self) -> str:
+        return os.environ.get("MILVUS_PASSWORD", "")
+
+    @property
     def GRACEFUL_SHUTDOWN_TIMEOUT(self) -> int:
         return int(os.environ.get("GRACEFUL_SHUTDOWN_TIMEOUT", "30"))
 

@@ -207,9 +207,9 @@ class VectorPerceptron(Perceptron):
         collection_name = self.get_config("collection_name")
         if collection_name:
             try:
-                from memory.postgres import get_pgvector_store
+                from agents.tools import load_vector_store
 
-                self._vector_store = get_pgvector_store(collection_name)
+                self._vector_store = load_vector_store(collection_name)
             except Exception:
                 pass
 

@@ -57,6 +57,13 @@ services:
       NEO4J_USERNAME: ${NEO4J_USERNAME:-neo4j}
       NEO4J_PASSWORD: ${NEO4J_PASSWORD:-neo4j123}
 
+      # Milvus / Vector DB Configuration
+      VECTOR_DB_PROVIDER: ${VECTOR_DB_PROVIDER:-milvus}
+      MILVUS_HOST: ${MILVUS_HOST:-host.docker.internal}
+      MILVUS_PORT: ${MILVUS_PORT:-9765}
+      MILVUS_USER: ${MILVUS_USER:-}
+      MILVUS_PASSWORD: ${MILVUS_PASSWORD:-}
+
       # MCP Server Configuration
       MCP_SERVER_URL: ${MCP_SERVER_URL:-http://tools-service:8003/mcp}
       TOOLS_SERVICE_URL: ${TOOLS_SERVICE_URL:-http://tools-service:8003/mcp}
@@ -102,6 +109,13 @@ services:
       NEO4J_URI: ${NEO4J_URI:-bolt://host.docker.internal:8697}
       NEO4J_USERNAME: ${NEO4J_USERNAME:-neo4j}
       NEO4J_PASSWORD: ${NEO4J_PASSWORD:-neo4j123}
+
+      # Milvus / Vector DB Configuration
+      VECTOR_DB_PROVIDER: ${VECTOR_DB_PROVIDER:-milvus}
+      MILVUS_HOST: ${MILVUS_HOST:-host.docker.internal}
+      MILVUS_PORT: ${MILVUS_PORT:-9765}
+      MILVUS_USER: ${MILVUS_USER:-}
+      MILVUS_PASSWORD: ${MILVUS_PASSWORD:-}
 
   # ==========================================================================
   # Tools Service - MCP Tools Server

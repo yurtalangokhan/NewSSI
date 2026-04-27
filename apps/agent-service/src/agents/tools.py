@@ -6,19 +6,30 @@ from threading import Lock
 from typing import Annotated
 
 import numexpr
+from langchain_community.vectorstores import Milvus  # noqa: PLC0415
 from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import BaseTool, InjectedToolArg, tool
 from langchain_ollama import OllamaEmbeddings
 from langchain_openai import OpenAIEmbeddings
-from langchain_postgres import PGVector
 
 from core.env import env
 from core.logger import get_logger
 
 logger = get_logger(__name__)
 
-_VECTOR_STORE_CACHE: dict[str, PGVector] = {}
+_VECTOR_STORE_CACHE: dict[str, Milvus] = {}
 _VECTOR_STORE_LOCK = Lock()
+
+
+def _get_milvus_connection_args() -> dict:
+    """Build Milvus connection args from environment."""
+    return {
+        "host": env.get("MILVUS_HOST", "localhost"),
+        "port": env.get("MILVUS_PORT", "9765"),
+        "user": env.get("MILVUS_USER", ""),
+        "password": env.get("MILVUS_PASSWORD", ""),
+        "secure": False,
+    }
 
 
 # ============== User Context Tool ==============
@@ -93,24 +104,24 @@ def get_embeddings():
 
 
 def get_connection_string():
-    """Get the PostgreSQL connection string."""
-    return f"postgresql+psycopg://{env.POSTGRES_USER}:{env.POSTGRES_PASSWORD}@{env.POSTGRES_HOST}:{env.POSTGRES_PORT}/{env.POSTGRES_DB}"
+    """Get the PostgreSQL connection string (used for metadata lookups only)."""
+    return f"postgresql://{env.POSTGRES_USER}:{env.POSTGRES_PASSWORD}@{env.POSTGRES_HOST}:{env.POSTGRES_PORT}/{env.POSTGRES_DB}"
 
 
 @lru_cache(maxsize=1024)
 def get_collection_name_from_uuid(collection_uuid: str) -> str:
     """
-    Convert a LangConnect collection UUID to PGVector collection name (table_id).
+    Convert a LangConnect collection UUID to vector collection key (table_id).
 
     LangConnect stores:
     - uuid column: the ID used in agent config (e.g., 124b3af0-86aa-4978-9e29-0eb5c8b28be4)
-    - name column: the PGVector collection name/table_id (e.g., db4ca372-487b-4f27-9be4-94ebed523295)
+    - name column: the vector collection name/table_id (e.g., db4ca372-487b-4f27-9be4-94ebed523295)
 
     Args:
         collection_uuid: The UUID from agent config (rag_config.collections)
 
     Returns:
-        The PGVector collection name, or the original UUID if not found.
+        The vector collection name, or the original UUID if not found.
     """
     import psycopg
 
@@ -140,10 +151,10 @@ def get_collection_name_from_uuid(collection_uuid: str) -> str:
 
 
 def load_vector_store(collection_name: str):
-    """Load a PGVector store for a specific collection.
+    """Load a Milvus vector store for a specific collection.
 
     Reuses vector store instances per collection to avoid repeatedly creating
-    fresh SQLAlchemy engines/connections under concurrent chat load.
+    fresh connections under concurrent chat load.
     """
     cached = _VECTOR_STORE_CACHE.get(collection_name)
     if cached is not None:
@@ -155,15 +166,19 @@ def load_vector_store(collection_name: str):
             return cached
 
         embeddings = get_embeddings()
-        connection = get_connection_string()
+        connection_args = _get_milvus_connection_args()
 
-        vector_store = PGVector(
-            embeddings=embeddings,
-            collection_name=collection_name,
-            connection=connection,
-            use_jsonb=True,
-            # Extension should be managed by migrations/bootstrap, not per query.
-            create_extension=False,
+        # Milvus collection names only allow [a-zA-Z0-9_] and must start with a letter/underscore
+        milvus_collection_name = collection_name.replace("-", "_")
+        if milvus_collection_name and milvus_collection_name[0].isdigit():
+            milvus_collection_name = "c_" + milvus_collection_name
+
+        vector_store = Milvus(
+            embedding_function=embeddings,
+            collection_name=milvus_collection_name,
+            connection_args=connection_args,
+            auto_id=True,
+            metadata_field="metadata",
         )
         _VECTOR_STORE_CACHE[collection_name] = vector_store
         return vector_store

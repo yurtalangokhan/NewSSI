@@ -39,10 +39,14 @@ class CollectionsManager:
 
     @staticmethod
     async def setup() -> None:
-        """Run any necessary initialisation (PGVector table bootstrap)."""
-        logger.info("Starting database initialization...")
-        get_vectorstore()
-        logger.info("Database initialization complete.")
+        """Run any necessary initialisation (vectorstore bootstrap)."""
+        logger.info("Starting vector store initialization...")
+        from langconnect import config
+        if config.VECTOR_DB_PROVIDER.lower() != "pgvector":
+            logger.info("Vector DB provider: %s — skipping PGVector table bootstrap.", config.VECTOR_DB_PROVIDER)
+        else:
+            get_vectorstore()
+        logger.info("Vector store initialization complete.")
 
     async def list(self) -> list[CollectionDetails]:
         """List all collections owned by the given user."""
@@ -110,9 +114,22 @@ class Collection:
 
     async def upsert(self, documents: list[Document]) -> list[str]:
         """Add one or more documents to the collection."""
+        from langconnect import config
+
         details = await self._get_details_or_raise()
         store = get_vectorstore(collection_name=details["table_id"])
-        return store.add_documents(documents)
+        ids = store.add_documents(documents)
+
+        # Milvus does not populate langchain_pg_embedding; persist chunk metadata
+        # to Postgres so list/get/chunk APIs and graph build remain functional.
+        if config.VECTOR_DB_PROVIDER.lower() != "pgvector":
+            await self._doc_repo.upsert_documents(
+                ids=[str(i) for i in ids],
+                documents=[doc.page_content for doc in documents],
+                metadatas=[doc.metadata or {} for doc in documents],
+            )
+
+        return ids
 
     async def delete(self, *, file_id: Optional[str] = None) -> bool:
         """Delete embeddings by file id."""
@@ -149,9 +166,9 @@ class Collection:
         results = store.similarity_search_with_score(query, k=limit)
         return [
             {
-                "id": doc.id,
+                "id": doc.id or (doc.metadata.get("file_id") if doc.metadata else None),
                 "page_content": doc.page_content,
-                "metadata": doc.metadata,
+                "metadata": doc.metadata or {},
                 "score": score,
             }
             for doc, score in results

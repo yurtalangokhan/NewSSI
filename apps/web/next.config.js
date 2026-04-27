@@ -19,7 +19,9 @@ const nextConfig = {
   productionBrowserSourceMaps: false,
   output: "standalone",
   transpilePackages: ["@onyx/opal"],
-  optimizePackageImports: ["@opal/icons", "@opal/components", "@opal/layouts", "motion"],
+  experimental: {
+    optimizePackageImports: ["@opal/icons", "@opal/components", "@opal/layouts", "motion"],
+  },
   typedRoutes: true,
   reactCompiler: false,
   images: {

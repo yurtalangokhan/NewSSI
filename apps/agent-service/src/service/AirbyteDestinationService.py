@@ -6,7 +6,7 @@ directly from Airbyte → HTTP POST → agent-service ``/ingest/batch``.
 
 There is **no file I/O** — the destination connector streams record
 batches over the Docker network to agent-service, which embeds them
-immediately into PGVector.
+immediately into the configured vector DB (Milvus by default).
 
 This module retains the ``get_destination_reader()`` factory for
 backward compatibility but the reader is a no-op since data is

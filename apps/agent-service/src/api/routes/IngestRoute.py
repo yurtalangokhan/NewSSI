@@ -7,14 +7,14 @@ HTTP endpoint that receives record batches from the custom Airbyte
   1. Converted to LangChain Documents
   2. Split into chunks (RecursiveCharacterTextSplitter)
   3. Embedded (Ollama / OpenAI)
-  4. Written to PGVector
+  4. Written to the configured vector DB (Milvus by default)
 
 **Zero disk I/O** — data flows from source → Airbyte → destination
-container → HTTP → embed → PGVector, never touching the filesystem.
+container → HTTP → embed → vector DB, never touching the filesystem.
 
 Memory model:
   Only one batch (default 200 records) is in RAM at a time.
-  After embedding + PGVector write, the batch is released.
+  After embedding + vector DB write, the batch is released.
 """
 
 from __future__ import annotations
@@ -47,7 +47,7 @@ async def ingest_batch(req: BatchRequest):
 
     Called by the custom Airbyte destination connector during sync.
     Each call processes one batch:
-      records → Documents → chunks → embed → PGVector
+      records → Documents → chunks → embed → vector DB
 
     On ``batch_index == 0`` (first batch), existing embeddings are cleared
     so the full-refresh semantic is preserved.

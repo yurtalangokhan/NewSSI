@@ -43,12 +43,21 @@ DEFAULT_EMBEDDINGS = get_embeddings()
 DEFAULT_COLLECTION_NAME = "default_collection"
 
 
-# Database configuration
+# Vector DB provider selection
+VECTOR_DB_PROVIDER = env("VECTOR_DB_PROVIDER", cast=str, default="milvus")
+
+# Database configuration (Postgres — used for collection metadata)
 POSTGRES_HOST = env("POSTGRES_HOST", cast=str, default="localhost")
 POSTGRES_PORT = env("POSTGRES_PORT", cast=int, default="5432")
 POSTGRES_USER = env("POSTGRES_USER", cast=str, default="langchain")
 POSTGRES_PASSWORD = env("POSTGRES_PASSWORD", cast=str, default="langchain")
 POSTGRES_DB = env("POSTGRES_DB", cast=str, default="langchain_test")
+
+# Milvus configuration
+MILVUS_HOST = env("MILVUS_HOST", cast=str, default="localhost")
+MILVUS_PORT = env("MILVUS_PORT", cast=int, default="9765")
+MILVUS_USER = env("MILVUS_USER", cast=str, default="")
+MILVUS_PASSWORD = env("MILVUS_PASSWORD", cast=str, default="")
 
 # Read allowed origins from environment variable
 ALLOW_ORIGINS_JSON = env("ALLOW_ORIGINS", cast=str, default="")

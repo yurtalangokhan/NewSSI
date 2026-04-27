@@ -10,6 +10,7 @@ from typing import Any
 from sqlalchemy import delete, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
+from langconnect import config
 from langconnect.database.postgres.models import PgCollection
 from langconnect.database.postgres.repositories.base import BaseRepository
 from langconnect.models.collection import CollectionDetails
@@ -116,10 +117,22 @@ class CollectionRepository(BaseRepository):
 
         table_id = str(uuid.uuid4())
 
-        # Local import to avoid circular dependency.
-        from langconnect.database.connection import get_vectorstore
-
-        get_vectorstore(table_id, collection_metadata=meta)
+        if config.VECTOR_DB_PROVIDER.lower() == "pgvector":
+            # PGVector path: calling get_vectorstore bootstraps the PG tables and
+            # inserts a row into langchain_pg_collection as a side effect.
+            from langconnect.database.connection import get_vectorstore
+            get_vectorstore(table_id, collection_metadata=meta)
+        else:
+            # Milvus path: Milvus collection is created lazily on first upsert.
+            # We only need to insert the metadata row into langchain_pg_collection.
+            async with self._session() as session:
+                stmt = pg_insert(PgCollection).values(
+                    uuid=uuid.UUID(table_id),
+                    name=table_id,
+                    cmetadata=meta,
+                )
+                await session.execute(stmt)
+                await session.commit()
 
         async with self._session() as session:
             stmt = (
