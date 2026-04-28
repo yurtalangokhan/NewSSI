@@ -54,6 +54,7 @@ import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
 import useFilter from "@/hooks/useFilter";
 import { MCPServer } from "@/lib/tools/interfaces";
 import type { IconProps } from "@opal/types";
+import { useTranslation } from "react-i18next";
 
 const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.CHAT_PREFERENCES]!;
 
@@ -176,6 +177,7 @@ function MCPServerCard({
  * and create save handlers for settings fields.
  */
 function ChatPreferencesForm() {
+  const { t } = useTranslation();
   const router = useRouter();
   const settings = useSettingsContext();
   const { values } = useFormikContext<ChatPreferencesFormValues>();
@@ -326,7 +328,7 @@ function ChatPreferencesForm() {
       <SettingsLayouts.Root>
         <SettingsLayouts.Header
           icon={route.icon}
-          title={route.title}
+          title={t(route.titleKey || "", { defaultValue: route.title })}
           description="Organization-wide chat settings and defaults. Users can override some of these in their personal settings."
           separator
         />

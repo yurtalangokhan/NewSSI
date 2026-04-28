@@ -24,6 +24,7 @@ import {
 } from "@opal/icons";
 import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
 import { WebProviderSetupModal } from "@/app/admin/configuration/web-search/WebProviderSetupModal";
+import { useTranslation } from "react-i18next";
 
 const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.WEB_SEARCH]!;
 import {
@@ -99,6 +100,7 @@ function HoverIconButton({
 }
 
 export default function Page() {
+  const { t } = useTranslation();
   const [searchModal, dispatchSearchModal] = useReducer(
     WebProviderModalReducer,
     initialWebProviderModalState
@@ -407,7 +409,7 @@ export default function Page() {
       <SettingsLayouts.Root>
         <SettingsLayouts.Header
           icon={route.icon}
-          title={route.title}
+          title={t(route.titleKey || "", { defaultValue: route.title })}
           description="Search settings for external search across the internet."
           separator
         />
@@ -430,7 +432,7 @@ export default function Page() {
       <SettingsLayouts.Root>
         <SettingsLayouts.Header
           icon={route.icon}
-          title={route.title}
+          title={t(route.titleKey || "", { defaultValue: route.title })}
           description="Search settings for external search across the internet."
           separator
         />
@@ -836,7 +838,7 @@ export default function Page() {
       <SettingsLayouts.Root>
         <SettingsLayouts.Header
           icon={route.icon}
-          title={route.title}
+          title={t(route.titleKey || "", { defaultValue: route.title })}
           description="Search settings for external search across the internet."
           separator
         />

@@ -21,6 +21,7 @@ import useCodeInterpreter from "@/hooks/useCodeInterpreter";
 import { updateCodeInterpreter } from "@/lib/admin/code-interpreter/svc";
 import { ContentAction } from "@opal/layouts";
 import { toast } from "@/hooks/useToast";
+import { useTranslation } from "react-i18next";
 
 const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.CODE_INTERPRETER]!;
 
@@ -141,6 +142,7 @@ function ActionButtons({
 }
 
 export default function CodeInterpreterPage() {
+  const { t } = useTranslation();
   const { isHealthy, isEnabled, isLoading, refetch } = useCodeInterpreter();
   const [showDisconnectModal, setShowDisconnectModal] = useState(false);
   const [isReconnecting, setIsReconnecting] = useState(false);
@@ -165,7 +167,7 @@ export default function CodeInterpreterPage() {
     <SettingsLayouts.Root>
       <SettingsLayouts.Header
         icon={route.icon}
-        title={route.title}
+        title={t(route.titleKey || "", { defaultValue: route.title })}
         description="Safe and sandboxed Python runtime available to your LLM. See docs for more details."
         separator
       />

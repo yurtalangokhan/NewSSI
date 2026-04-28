@@ -44,6 +44,7 @@ import { VertexAIModal } from "@/sections/modals/llmConfig/VertexAIModal";
 import { OpenRouterModal } from "@/sections/modals/llmConfig/OpenRouterModal";
 import { CustomModal } from "@/sections/modals/llmConfig/CustomModal";
 import { Section } from "@/layouts/general-layouts";
+import { useTranslation } from "react-i18next";
 
 const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.LLM_MODELS]!;
 
@@ -296,6 +297,7 @@ function NewCustomProviderCard({
 // ============================================================================
 
 export default function LLMConfigurationPage() {
+  const { t } = useTranslation();
   const { mutate } = useSWRConfig();
   const { llmProviders: existingLlmProviders, defaultText } =
     useAdminLLMProviders();
@@ -347,7 +349,11 @@ export default function LLMConfigurationPage() {
 
   return (
     <SettingsLayouts.Root>
-      <SettingsLayouts.Header icon={route.icon} title={route.title} separator />
+      <SettingsLayouts.Header
+        icon={route.icon}
+        title={t(route.titleKey || "", { defaultValue: route.title })}
+        separator
+      />
 
       <SettingsLayouts.Body>
         {hasProviders ? (

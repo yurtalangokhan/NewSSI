@@ -10,6 +10,7 @@ import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
 import CollectionsPanel from "./components/CollectionsPanel";
 import DocumentsPanel from "./components/DocumentsPanel";
 import SearchPanel from "./components/SearchPanel";
+import { useTranslation } from "react-i18next";
 
 const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.DOCUMENT_PROCESSING]!;
 
@@ -73,11 +74,12 @@ function RagManagementSection() {
 // ---------------------------------------------------------------------------
 
 export default function Page() {
+  const { t } = useTranslation();
   return (
     <SettingsLayouts.Root>
       <SettingsLayouts.Header
         icon={route.icon}
-        title={route.title}
+        title={t(route.titleKey || "", { defaultValue: route.title })}
         separator
       />
       <SettingsLayouts.Body>

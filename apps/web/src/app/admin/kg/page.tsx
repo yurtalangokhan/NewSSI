@@ -31,6 +31,7 @@ import { ThreeDotsLoader } from "@/components/Loading";
 import { SvgActivity, SvgSearch, SvgNetworkGraph } from "@opal/icons";
 import { cn } from "@/lib/utils";
 import InputSelect from "@/refresh-components/inputs/InputSelect";
+import { useTranslation } from "react-i18next";
 
 const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.KNOWLEDGE_GRAPH]!;
 
@@ -466,6 +467,7 @@ function Main({
 }
 
 export default function Page() {
+  const { t } = useTranslation();
   const { kgExposed, isLoading } = useIsKGExposed();
   const [activeTab, setActiveTab] = useState("build");
 
@@ -474,7 +476,11 @@ export default function Page() {
 
   return (
     <SettingsLayouts.Root width="full">
-      <SettingsLayouts.Header icon={route.icon} title={route.title} separator />
+      <SettingsLayouts.Header
+        icon={route.icon}
+        title={t(route.titleKey || "", { defaultValue: route.title })}
+        separator
+      />
       <SettingsLayouts.Body>
         <Main activeTab={activeTab} onTabChange={setActiveTab} />
       </SettingsLayouts.Body>

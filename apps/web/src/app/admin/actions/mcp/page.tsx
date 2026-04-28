@@ -13,7 +13,7 @@ export default function Main() {
     <SettingsLayouts.Root>
       <SettingsLayouts.Header
         icon={route.icon}
-        title={route.title}
+        title={t(route.titleKey || "", { defaultValue: route.title })}
         description={t("admin.actions.mcpDescription")}
         separator
       />

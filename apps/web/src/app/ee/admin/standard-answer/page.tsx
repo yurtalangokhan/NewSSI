@@ -71,9 +71,12 @@ const CategoryBubble = ({
 }: {
   name: string;
   onDelete?: () => void;
-}) => (
-  <span
-    className={`
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <span
+      className={`
       inline-block
       px-2
       py-1
@@ -88,8 +91,8 @@ const CategoryBubble = ({
       w-fit
       ${onDelete ? "cursor-pointer" : ""}
     `}
-    onClick={onDelete}
-  >
+      onClick={onDelete}
+    >
       {name}
       {onDelete && (
         <button
@@ -98,9 +101,10 @@ const CategoryBubble = ({
         >
           &times;
         </button>
-    )}
-  </span>
-);
+      )}
+    </span>
+  );
+};
 
 const StandardAnswersTableRow = ({
   standardAnswer,
@@ -109,6 +113,8 @@ const StandardAnswersTableRow = ({
   standardAnswer: StandardAnswer;
   handleDelete: (id: number) => void;
 }) => {
+  const { t } = useTranslation();
+
   return (
     <RowTemplate
       id={standardAnswer.id}
@@ -134,9 +140,11 @@ const StandardAnswersTableRow = ({
           className="flex items-center"
         >
           {standardAnswer.match_regex ? (
-            <span className="text-green-500 font-medium">Yes</span>
+            <span className="text-green-500 font-medium">
+              {t("admin.connector.trueValue")}
+            </span>
           ) : (
-            <span className="text-gray-500">No</span>
+            <span className="text-gray-500">{t("admin.connector.falseValue")}</span>
           )}
         </div>,
         <ReactMarkdown

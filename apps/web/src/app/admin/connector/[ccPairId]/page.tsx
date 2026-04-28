@@ -214,8 +214,10 @@ function Main({ ccPairId }: { ccPairId: number }) {
       if (result.success) {
         toast.success(
           `${
-            fromBeginning ? t("admin.connector.reindexingStarted") : t("admin.connector.indexingUpdateStarted")
-          } started successfully`
+            fromBeginning
+              ? t("admin.connector.reindexingStarted")
+              : t("admin.connector.indexingUpdateStarted")
+          } ${t("admin.connector.startedSuccessfully")}`
         );
       } else {
         toast.error(result.message || t("admin.connector.failedToStartIndexing"));
@@ -340,7 +342,7 @@ function Main({ ccPairId }: { ccPairId: number }) {
   if (!ccPair || (!hasLoadedOnce && ccPairError)) {
     return (
       <ErrorCallout
-        errorTitle={`Failed to fetch info on Connector with ID ${ccPairId}`}
+        errorTitle={t("admin.connector.failedToFetchInfo", { id: ccPairId })}
         errorMsg={
           ccPairError?.info?.detail ||
           ccPairError?.toString() ||
@@ -735,7 +737,7 @@ function Main({ ccPairId }: { ccPairId: number }) {
             )}
 
             <Title size="md" className="mt-6 mb-2">
-              Indexing Attempts
+              {t("admin.connector.indexingAttempts")}
             </Title>
             {indexAttempts && (
               <IndexAttemptsTable

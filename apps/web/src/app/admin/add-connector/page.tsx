@@ -140,7 +140,7 @@ export default function Page() {
     <SettingsLayouts.Root width="full">
       <SettingsLayouts.Header
         icon={route.icon}
-        title={route.title}
+        title={t(route.titleKey || "", { defaultValue: route.title })}
         rightChildren={
           <Button href="/admin/indexing/status" primary>
             {t("admin.addConnector.seeConnectors")}

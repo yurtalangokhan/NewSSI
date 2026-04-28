@@ -77,7 +77,7 @@ export default function Status() {
     <SettingsLayouts.Root width="full">
       <SettingsLayouts.Header
         icon={route.icon}
-        title={route.title}
+        title={t(route.titleKey || "", { defaultValue: route.title })}
         rightChildren={
           <Button href="/admin/add-connector">{t("admin.indexingStatus.addConnector")}</Button>
         }

@@ -327,9 +327,14 @@ function AddUserButton() {
 }
 
 export default function Page() {
+  const { t } = useTranslation();
   return (
     <SettingsLayouts.Root>
-      <SettingsLayouts.Header title={route.title} icon={route.icon} separator />
+      <SettingsLayouts.Header
+        title={t(route.titleKey || "", { defaultValue: route.title })}
+        icon={route.icon}
+        separator
+      />
       <SettingsLayouts.Body>
         <SearchableTables />
       </SettingsLayouts.Body>
