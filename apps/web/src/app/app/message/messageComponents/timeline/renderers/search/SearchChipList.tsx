@@ -1,4 +1,5 @@
 import React, { JSX, useState, useEffect, useRef, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { SourceTag, SourceInfo } from "@/refresh-components/buttons/source-tag";
 import { cn } from "@/lib/utils";
 
@@ -36,6 +37,7 @@ export function SearchChipList<T>({
   isQuery,
 }: SearchChipListProps<T>): JSX.Element {
   const [visibleCount, setVisibleCount] = useState(initialCount);
+  const { t } = useTranslation();
   const animatedKeysRef = useRef<Set<string>>(new Set());
 
   const getEntryKey = (entry: DisplayEntry<T>): string => {
@@ -104,7 +106,7 @@ export function SearchChipList<T>({
                 onSourceClick={onClick ? () => onClick(entry.item) : undefined}
                 showDetailsCard={showDetailsCard}
                 isQuery={isQuery}
-                tooltipText={isQuery ? "View Full Search Term" : undefined}
+                tooltipText={isQuery ? t("timeline.viewFullSearchTerm") : undefined}
               />
             ) : (
               <SourceTag

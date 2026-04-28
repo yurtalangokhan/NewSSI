@@ -3,6 +3,7 @@ import Button from "@/refresh-components/buttons/Button";
 import Text from "@/refresh-components/texts/Text";
 import { CloudEmbeddingModel } from "@/components/embedding/interfaces";
 import { SvgServer } from "@opal/icons";
+import { useTranslation } from "react-i18next";
 
 export interface SelectModelModalProps {
   model: CloudEmbeddingModel;
@@ -15,25 +16,25 @@ export default function SelectModelModal({
   onConfirm,
   onCancel,
 }: SelectModelModalProps) {
+  const { t } = useTranslation("admin");
   return (
     <Modal open onOpenChange={onCancel}>
       <Modal.Content width="sm" height="sm">
         <Modal.Header
           icon={SvgServer}
-          title={`Select ${model.model_name}`}
+          title={t("embeddings.selectModelTitle", { modelName: model.model_name })}
           onClose={onCancel}
         />
         <Modal.Body>
           <Text as="p">
-            You&apos;re selecting a new embedding model,{" "}
-            <strong>{model.model_name}</strong>. If you update to this model,
-            you will need to undergo a complete re-indexing. Are you sure?
+            {t("embeddings.selectModelBody1")}{" "}
+            <strong>{model.model_name}</strong>. {t("embeddings.selectModelBody2")}
           </Text>
         </Modal.Body>
         <Modal.Footer>
-          <Button onClick={onConfirm}>Confirm</Button>
+          <Button onClick={onConfirm}>{t("embeddings.confirmButton")}</Button>
           <Button secondary onClick={onCancel}>
-            Cancel
+            {t("embeddings.cancelButton")}
           </Button>
         </Modal.Footer>
       </Modal.Content>

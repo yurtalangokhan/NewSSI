@@ -10,6 +10,7 @@ import { Formik } from "formik";
 import * as Yup from "yup";
 import * as InputLayouts from "@/layouts/input-layouts";
 import InputTextAreaField from "@/refresh-components/form/InputTextAreaField";
+import { useTranslation } from "react-i18next";
 
 export interface FeedbackModalProps {
   feedbackType: FeedbackType;
@@ -25,6 +26,7 @@ export default function FeedbackModal({
   messageId,
 }: FeedbackModalProps) {
   const modal = useModal();
+  const { t } = useTranslation();
   const { handleFeedbackChange } = useFeedbackController();
 
   const initialValues: FeedbackFormValues = {
@@ -34,7 +36,7 @@ export default function FeedbackModal({
   const validationSchema = Yup.object({
     additional_feedback:
       feedbackType === "dislike"
-        ? Yup.string().trim().required("Feedback is required")
+        ? Yup.string().trim().required(t("modals.feedback.required"))
         : Yup.string().trim(),
   });
 
@@ -60,7 +62,7 @@ export default function FeedbackModal({
         <Modal.Content width="sm">
           <Modal.Header
             icon={feedbackType === "like" ? SvgThumbsUp : SvgThumbsDown}
-            title="Feedback"
+            title={t("modals.feedback.title")}
             onClose={() => modal.toggle(false)}
           />
           <Formik
@@ -78,12 +80,12 @@ export default function FeedbackModal({
                 <Modal.Body>
                   <InputLayouts.Vertical
                     name="additional_feedback"
-                    title="Provide Additional Details"
+                    title={t("modals.feedback.detailsLabel")}
                     optional={feedbackType === "like"}
                   >
                     <InputTextAreaField
                       name="additional_feedback"
-                      placeholder={`What did you ${feedbackType} about this response?`}
+                      placeholder={feedbackType === "like" ? t("modals.feedback.likePlaceholder") : t("modals.feedback.dislikePlaceholder")}
                     />
                   </InputLayouts.Vertical>
                 </Modal.Body>
@@ -94,7 +96,7 @@ export default function FeedbackModal({
                     secondary
                     type="button"
                   >
-                    Cancel
+                    {t("modals.cancel")}
                   </Button>
                   <Button
                     onClick={() => formikHandleSubmit()}
@@ -103,7 +105,7 @@ export default function FeedbackModal({
                       (feedbackType === "dislike" && (!dirty || !isValid))
                     }
                   >
-                    {isSubmitting ? "Submitting..." : "Submit"}
+                    {isSubmitting ? t("modals.feedback.submittingButton") : t("modals.feedback.submitButton")}
                   </Button>
                 </Modal.Footer>
               </>

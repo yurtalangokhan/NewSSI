@@ -7,6 +7,7 @@ import { RequestNewVerificationEmail } from "../waiting-on-verification/RequestN
 import { User } from "@/lib/types";
 import Logo from "@/refresh-components/Logo";
 import { NEXT_PUBLIC_CLOUD_ENABLED } from "@/lib/constants";
+import { useTranslation } from "react-i18next";
 
 export interface VerifyProps {
   user: User | null;
@@ -14,6 +15,7 @@ export interface VerifyProps {
 
 export default function Verify({ user }: VerifyProps) {
   const searchParams = useSearchParams();
+  const { t } = useTranslation();
 
   const [error, setError] = useState("");
 
@@ -22,9 +24,7 @@ export default function Verify({ user }: VerifyProps) {
     const firstUser =
       searchParams?.get("first_user") === "true" && NEXT_PUBLIC_CLOUD_ENABLED;
     if (!token) {
-      setError(
-        "Missing verification token. Try requesting a new verification email."
-      );
+      setError(t("auth.verifyEmail.missingToken"));
       return;
     }
 
@@ -37,8 +37,6 @@ export default function Verify({ user }: VerifyProps) {
     });
 
     if (response.ok) {
-      // Redirect to login page instead of /app so user can log in
-      // from any browser (not dependent on the original signup session)
       const loginUrl = firstUser
         ? "/auth/login?verified=true&first_user=true"
         : "/auth/login?verified=true";
@@ -50,11 +48,9 @@ export default function Verify({ user }: VerifyProps) {
       } catch (e) {
         console.error("Failed to parse verification error response:", e);
       }
-      setError(
-        `Failed to verify your email - ${errorDetail}. Please try requesting a new verification email.`
-      );
+      setError(t("auth.verifyEmail.failed", { detail: errorDetail }));
     }
-  }, [searchParams]);
+  }, [searchParams, t]);
 
   useEffect(() => {
     verify();
@@ -65,7 +61,7 @@ export default function Verify({ user }: VerifyProps) {
       <div className="min-h-screen flex flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
         <Logo folded size={64} className="mx-auto w-fit animate-pulse" />
         {!error ? (
-          <Text className="mt-2">Verifying your email...</Text>
+          <Text className="mt-2">{t("auth.verifyEmail.verifying")}</Text>
         ) : (
           <div>
             <Text className="mt-2">{error}</Text>
@@ -74,7 +70,7 @@ export default function Verify({ user }: VerifyProps) {
               <div className="text-center">
                 <RequestNewVerificationEmail email={user.email}>
                   <Text className="mt-2 text-link">
-                    Get new verification email
+                    {t("auth.verifyEmail.getNewEmail")}
                   </Text>
                 </RequestNewVerificationEmail>
               </div>

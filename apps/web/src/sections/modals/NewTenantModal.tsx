@@ -11,6 +11,7 @@ import { NewTenantInfo } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import Text from "@/refresh-components/texts/Text";
 import { ErrorTextLayout } from "@/layouts/input-layouts";
+import { useTranslation } from "react-i18next";
 
 // App domain should not be hardcoded
 const APP_DOMAIN = process.env.NEXT_PUBLIC_APP_DOMAIN || "onyx.app";
@@ -28,6 +29,7 @@ export default function NewTenantModal({
 }: NewTenantModalProps) {
   const router = useRouter();
   const { user } = useUser();
+  const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -51,10 +53,10 @@ export default function NewTenantModal({
           throw new Error(errorData.message || "Failed to accept invitation");
         }
 
-        toast.success("You have accepted the invitation.");
+        toast.success(t("newTenantModal.toastAccepted"));
       } else {
         // For non-invite flow, just show success message
-        toast.success("Processing your team join request...");
+        toast.success(t("newTenantModal.toastProcessing"));
       }
 
       // Common logout and redirect for both flows
@@ -65,7 +67,7 @@ export default function NewTenantModal({
       const message =
         error instanceof Error
           ? error.message
-          : "Failed to join the team. Please try again.";
+          : t("newTenantModal.toastJoinFailed");
 
       setError(message);
       toast.error(message);
@@ -95,13 +97,13 @@ export default function NewTenantModal({
         throw new Error(errorData.message || "Failed to decline invitation");
       }
 
-      toast.info("You have declined the invitation.");
+      toast.info(t("newTenantModal.toastDeclined"));
       onClose?.();
     } catch (error) {
       const message =
         error instanceof Error
           ? error.message
-          : "Failed to decline the invitation. Please try again.";
+          : t("newTenantModal.toastDeclineFailed");
 
       setError(message);
       toast.error(message);
@@ -111,16 +113,12 @@ export default function NewTenantModal({
   }
 
   const title = isInvite
-    ? `You have been invited to join ${
-        tenantInfo.number_of_users
-      } other teammate${
-        tenantInfo.number_of_users === 1 ? "" : "s"
-      } of ${APP_DOMAIN}.`
-    : `Your request to join ${tenantInfo.number_of_users} other users of ${APP_DOMAIN} has been approved.`;
+    ? t("newTenantModal.inviteTitle", { count: tenantInfo.number_of_users, domain: APP_DOMAIN })
+    : t("newTenantModal.joinApprovedTitle", { count: tenantInfo.number_of_users, domain: APP_DOMAIN });
 
   const description = isInvite
-    ? `By accepting this invitation, you will join the existing ${APP_DOMAIN} team and lose access to your current team. Note: you will lose access to your current agents, prompts, chats, and connected sources.`
-    : `To finish joining your team, please reauthenticate with ${user?.email}.`;
+    ? t("newTenantModal.inviteDescription", { domain: APP_DOMAIN })
+    : t("newTenantModal.joinDescription", { email: user?.email });
 
   return (
     <Modal open>
@@ -142,7 +140,7 @@ export default function NewTenantModal({
                   disabled={isLoading}
                   leftIcon={SvgX}
                 >
-                  Decline
+                  {t("newTenantModal.declineButton")}
                 </Button>
               ) : undefined
             }
@@ -154,11 +152,11 @@ export default function NewTenantModal({
               >
                 {isLoading
                   ? isInvite
-                    ? "Accepting..."
-                    : "Joining..."
+                    ? t("newTenantModal.acceptingButton")
+                    : t("newTenantModal.joiningButton")
                   : isInvite
-                    ? "Accept Invitation"
-                    : "Reauthenticate"}
+                    ? t("newTenantModal.acceptButton")
+                    : t("newTenantModal.reauthenticateButton")}
               </Button>
             }
           />

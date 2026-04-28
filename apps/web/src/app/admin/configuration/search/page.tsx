@@ -20,6 +20,7 @@ import CardSection from "@/components/admin/CardSection";
 import { ErrorCallout } from "@/components/ErrorCallout";
 import { useToastFromQuery } from "@/hooks/useToast";
 import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
+import { useTranslation } from "react-i18next";
 
 const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.SEARCH_SETTINGS]!;
 
@@ -31,10 +32,11 @@ export interface EmbeddingDetails {
 }
 
 function Main() {
+  const { t } = useTranslation("admin");
   const settings = useContext(SettingsContext);
   useToastFromQuery({
     "search-settings": {
-      message: `Changed search settings successfully`,
+      message: t("search.changedSuccessfully"),
       type: "success",
     },
   });
@@ -78,7 +80,7 @@ function Main() {
     !currentEmeddingModel ||
     futureEmeddingModelError
   ) {
-    return <ErrorCallout errorTitle="Failed to fetch embedding model status" />;
+    return <ErrorCallout errorTitle={t("search.fetchEmbeddingModelError")} />;
   }
 
   return (

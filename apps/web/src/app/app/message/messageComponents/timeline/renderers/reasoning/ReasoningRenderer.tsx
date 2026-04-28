@@ -5,6 +5,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { useTranslation } from "react-i18next";
 
 import {
   PacketType,
@@ -24,8 +25,6 @@ import {
 import { SvgCircle } from "@opal/icons";
 
 const THINKING_MIN_DURATION_MS = 500; // 0.5 second minimum for "Thinking" state
-
-const THINKING_STATUS = "Thinking";
 
 function extractFirstParagraph(content: string): {
   title: string | null;
@@ -93,6 +92,8 @@ export const ReasoningRenderer: MessageRenderer<
   ReasoningPacket,
   FullChatState
 > = ({ packets, onComplete, animate, children }) => {
+  const { t } = useTranslation();
+  const THINKING_STATUS = t("timeline.thinkingActive");
   const { hasStart, hasEnd, content } = useMemo(
     () => constructCurrentReasoningState(packets),
     [packets]
@@ -177,7 +178,7 @@ export const ReasoningRenderer: MessageRenderer<
   const reasoningContent = (
     <div className="pl-[var(--timeline-common-text-padding)]">
       <ExpandableTextDisplay
-        title="Full text"
+        title={t("timeline.fullText")}
         content={content}
         displayContent={displayContent}
         renderContent={renderMarkdown}

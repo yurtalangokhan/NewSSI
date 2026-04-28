@@ -1,5 +1,6 @@
 import React, { useMemo, useCallback } from "react";
 import { SvgCircle, SvgCheckCircle, SvgBookOpen } from "@opal/icons";
+import { useTranslation } from "react-i18next";
 
 import {
   PacketType,
@@ -64,6 +65,7 @@ export const ResearchAgentRenderer: MessageRenderer<
   isHover = false,
   children,
 }) => {
+  const { t } = useTranslation();
   // Extract the research task from the start packet
   const startPacket = packets.find(
     (p) => p.obj.type === PacketType.RESEARCH_AGENT_START
@@ -102,7 +104,7 @@ export const ResearchAgentRenderer: MessageRenderer<
         return {
           sub_turn_index: subTurnIndex,
           toolType: name,
-          status: isComplete ? "Complete" : "Running",
+          status: isComplete ? t("timeline.complete") : t("timeline.running"),
           isComplete,
           packets: toolPackets,
         };
@@ -194,10 +196,10 @@ export const ResearchAgentRenderer: MessageRenderer<
           content: (
             <div className="flex flex-col pl-[var(--timeline-common-text-padding)]">
               <Text as="p" text04 mainUiMuted className="mb-1">
-                Research Report
+                {t("timeline.researchReport")}
               </Text>
               <ExpandableTextDisplay
-                title="Research Report"
+                title={t("timeline.researchReport")}
                 content={fullReportContent}
                 maxLines={5}
                 renderContent={renderReport}
@@ -259,7 +261,7 @@ export const ResearchAgentRenderer: MessageRenderer<
           content: (
             <div className="flex flex-col pl-[var(--timeline-common-text-padding)]">
               <Text as="p" text04 mainUiMuted>
-                Research Task
+                {t("timeline.researchTask")}
               </Text>
               <Text as="p" text03 mainUiMuted>
                 {researchTask}
@@ -290,7 +292,7 @@ export const ResearchAgentRenderer: MessageRenderer<
       {researchTask && !showOnlyReport && !showOnlyTools && (
         <StepContainer
           stepIcon={SvgCircle}
-          header="Research Task"
+          header={t("timeline.researchTask")}
           collapsible={true}
           isLastStep={
             !stopPacketSeen &&
@@ -348,7 +350,7 @@ export const ResearchAgentRenderer: MessageRenderer<
       {fullReportContent && !showOnlyTools && (
         <StepContainer
           stepIcon={SvgBookOpen}
-          header="Research Report"
+          header={t("timeline.researchReport")}
           isLastStep={!stopPacketSeen && !isComplete}
           isFirstStep={!researchTask && nestedToolGroups.length === 0}
           isHover={isHover}
@@ -356,7 +358,7 @@ export const ResearchAgentRenderer: MessageRenderer<
         >
           <div className="pl-[var(--timeline-common-text-padding)]">
             <ExpandableTextDisplay
-              title="Research Report"
+              title={t("timeline.researchReport")}
               content={fullReportContent}
               renderContent={renderReport}
               isStreaming={isReportStreaming}

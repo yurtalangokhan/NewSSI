@@ -24,37 +24,40 @@ export const getErrorIcon = (errorCode?: string) => {
 /**
  * Get a human-readable title for a given error code
  */
-export const getErrorTitle = (errorCode?: string) => {
+export const getErrorTitle = (
+  errorCode: string | undefined,
+  t: (key: string) => string
+) => {
   switch (errorCode) {
     case "RATE_LIMIT":
-      return "Rate Limit Exceeded";
+      return t("errors.rateLimit");
     case "AUTH_ERROR":
-      return "Authentication Error";
+      return t("errors.authError");
     case "PERMISSION_DENIED":
-      return "Permission Denied";
+      return t("errors.permissionDenied");
     case "CONTEXT_TOO_LONG":
-      return "Message Too Long";
+      return t("errors.contextTooLong");
     case "TOOL_CALL_FAILED":
-      return "Tool Error";
+      return t("errors.toolCallFailed");
     case "CONNECTION_ERROR":
-      return "Connection Error";
+      return t("errors.connectionError");
     case "SERVICE_UNAVAILABLE":
-      return "Service Unavailable";
+      return t("errors.serviceUnavailable");
     case "INIT_FAILED":
-      return "Initialization Error";
+      return t("errors.initFailed");
     case "VALIDATION_ERROR":
-      return "Validation Error";
+      return t("errors.validationError");
     case "BUDGET_EXCEEDED":
-      return "Budget Exceeded";
+      return t("errors.budgetExceeded");
     case "CONTENT_POLICY":
-      return "Content Policy Violation";
+      return t("errors.contentPolicy");
     case "BAD_REQUEST":
-      return "Invalid Request";
+      return t("errors.badRequest");
     case "NOT_FOUND":
-      return "Resource Not Found";
+      return t("errors.notFound");
     case "API_ERROR":
-      return "API Error";
+      return t("errors.apiError");
     default:
-      return "Error";
+      return t("errors.generic");
   }
 };

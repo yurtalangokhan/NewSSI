@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import Text from "@/refresh-components/texts/Text";
 import { Persona } from "./interfaces";
 import { useRouter } from "next/navigation";
@@ -23,24 +24,26 @@ import { SvgAlertCircle, SvgTrash } from "@opal/icons";
 import type { Route } from "next";
 
 function PersonaTypeDisplay({ persona }: { persona: Persona }) {
+  const { t } = useTranslation("admin");
+
   if (persona.builtin_persona) {
-    return <Text as="p">Built-In</Text>;
+    return <Text as="p">{t("agents.typeBuiltIn")}</Text>;
   }
 
   if (persona.featured) {
-    return <Text as="p">Featured</Text>;
+    return <Text as="p">{t("agents.typeFeatured")}</Text>;
   }
 
   if (persona.is_public) {
-    return <Text as="p">Public</Text>;
+    return <Text as="p">{t("agents.typePublic")}</Text>;
   }
 
   if (persona.groups.length > 0 || persona.users.length > 0) {
-    return <Text as="p">Shared</Text>;
+    return <Text as="p">{t("agents.typeShared")}</Text>;
   }
 
   return (
-    <Text as="p">Personal {persona.owner && <>({persona.owner.email})</>}</Text>
+    <Text as="p">{t("agents.typePersonal")} {persona.owner && <>({persona.owner.email})</>}</Text>
   );
 }
 
@@ -55,6 +58,7 @@ export function PersonasTable({
   currentPage: number;
   pageSize: number;
 }) {
+  const { t } = useTranslation("admin");
   const router = useRouter();
   const { refreshUser, isAdmin } = useUser();
 
@@ -108,7 +112,7 @@ export function PersonasTable({
     });
 
     if (!response.ok) {
-      toast.error(`Failed to update persona order - ${await response.text()}`);
+      toast.error(t("agents.errorUpdateOrder", { msg: await response.text() }));
       setFinalPersonas(personas);
       await refreshPersonas();
       return;
@@ -135,7 +139,7 @@ export function PersonasTable({
         refreshPersonas();
         closeDeleteModal();
       } else {
-        toast.error(`Failed to delete persona - ${await response.text()}`);
+        toast.error(t("agents.errorDeletePersona", { msg: await response.text() }));
       }
     }
   };
