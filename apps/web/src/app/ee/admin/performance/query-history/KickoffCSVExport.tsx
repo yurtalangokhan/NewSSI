@@ -17,11 +17,13 @@ import {
 } from "./types";
 import { cn } from "@/lib/utils";
 import { SvgLoader, SvgPlayCircle } from "@opal/icons";
+import { useTranslation } from "react-i18next";
 export default function KickoffCSVExport({
   dateRange,
 }: {
   dateRange: DateRange;
 }) {
+  const { t } = useTranslation();
   const timerIdRef = useRef<null | number>(null);
   const retryCount = useRef<number>(0);
   const [, rerender] = useState<void>();
@@ -36,7 +38,7 @@ export default function KickoffCSVExport({
     retryCount.current = 0;
 
     if (failure) {
-      toast.error("Failed to download the query-history.");
+      toast.error(t("admin.performance.queryHistory.downloadFailed"));
     }
 
     rerender();
@@ -51,7 +53,9 @@ export default function KickoffCSVExport({
 
     setSpinnerStatus("spinning");
     toast.info(
-      `Generating CSV report. Click the '${PREVIOUS_CSV_TASK_BUTTON_NAME}' button to see all jobs.`
+      t("admin.performance.queryHistory.generatingCsv", {
+        buttonName: PREVIOUS_CSV_TASK_BUTTON_NAME,
+      })
     );
     const response = await fetch(withDateRange(dateRange), {
       method: "POST",
@@ -123,7 +127,9 @@ export default function KickoffCSVExport({
             : SvgPlayCircle
         }
       >
-        {spinnerStatus === "spinning" ? "Cancel" : "Kickoff Export"}
+        {spinnerStatus === "spinning"
+          ? t("admin.performance.queryHistory.cancel")
+          : t("admin.performance.queryHistory.kickoffExport")}
       </Button>
     </div>
   );

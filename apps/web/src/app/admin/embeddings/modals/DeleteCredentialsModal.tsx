@@ -7,6 +7,7 @@ import {
   getFormattedProviderName,
 } from "../../../../components/embedding/interfaces";
 import { SvgTrash } from "@opal/icons";
+import { useTranslation } from "react-i18next";
 
 export interface DeleteCredentialsModalProps {
   modelProvider: CloudEmbeddingProvider;
@@ -19,30 +20,31 @@ export default function DeleteCredentialsModal({
   onConfirm,
   onCancel,
 }: DeleteCredentialsModalProps) {
+  const { t } = useTranslation();
   return (
     <Modal open onOpenChange={onCancel}>
       <Modal.Content width="sm" height="sm">
         <Modal.Header
           icon={SvgTrash}
-          title={`Delete ${getFormattedProviderName(
-            modelProvider.provider_type
-          )} Credentials?`}
+          title={t("admin.embeddings.deleteCredentialsTitle", {
+            provider: getFormattedProviderName(modelProvider.provider_type),
+          })}
           onClose={onCancel}
         />
         <Modal.Body>
           <Text as="p">
-            You&apos;re about to delete your{" "}
-            {getFormattedProviderName(modelProvider.provider_type)} credentials.
-            Are you sure?
+            {t("admin.embeddings.deleteCredentialsBody", {
+              provider: getFormattedProviderName(modelProvider.provider_type),
+            })}
           </Text>
-          <Callout type="danger" title="Point of No Return" />
+          <Callout type="danger" title={t("admin.embeddings.pointOfNoReturn")} />
         </Modal.Body>
         <Modal.Footer>
           <Button secondary onClick={onCancel}>
-            Keep Credentials
+            {t("admin.embeddings.keepCredentials")}
           </Button>
           <Button danger onClick={onConfirm}>
-            Delete Credentials
+            {t("admin.embeddings.deleteCredentials")}
           </Button>
         </Modal.Footer>
       </Modal.Content>

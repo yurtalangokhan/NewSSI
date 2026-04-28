@@ -8,10 +8,12 @@ import { useConnectorStatus } from "@/lib/hooks";
 import useUsers from "@/hooks/useUsers";
 import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
 import * as SettingsLayouts from "@/layouts/settings-layouts";
+import { useTranslation } from "react-i18next";
 
 const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.GROUPS]!;
 
 function Main({ groupId }: { groupId: string }) {
+  const { t } = useTranslation();
   const {
     userGroup,
     isLoading: userGroupIsLoading,
@@ -40,20 +42,20 @@ function Main({ groupId }: { groupId: string }) {
   }
 
   if (!userGroup || userGroupError) {
-    return <div>Error loading user group</div>;
+    return <div>{t("admin.groups.errorLoadingGroup")}</div>;
   }
   if (!users || usersError) {
-    return <div>Error loading users</div>;
+    return <div>{t("admin.groups.errorLoadingUsers")}</div>;
   }
   if (!ccPairs || ccPairsError) {
-    return <div>Error loading connectors</div>;
+    return <div>{t("admin.groups.errorLoadingConnectors")}</div>;
   }
 
   return (
     <>
       <SettingsLayouts.Header
         icon={route.icon}
-        title={userGroup.name || "Unknown"}
+        title={userGroup.name || t("admin.groups.unknownGroup")}
         separator
         backButton
       />

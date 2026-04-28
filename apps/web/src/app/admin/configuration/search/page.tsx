@@ -32,11 +32,11 @@ export interface EmbeddingDetails {
 }
 
 function Main() {
-  const { t } = useTranslation("admin");
+  const { t } = useTranslation();
   const settings = useContext(SettingsContext);
   useToastFromQuery({
     "search-settings": {
-      message: t("search.changedSuccessfully"),
+      message: t("admin.search.changedSuccessfully"),
       type: "success",
     },
   });
@@ -80,7 +80,7 @@ function Main() {
     !currentEmeddingModel ||
     futureEmeddingModelError
   ) {
-    return <ErrorCallout errorTitle={t("search.fetchEmbeddingModelError")} />;
+    return <ErrorCallout errorTitle={t("admin.search.fetchEmbeddingModelError")} />;
   }
 
   return (
@@ -89,19 +89,18 @@ function Main() {
         <>
           {settings?.settings.needs_reindexing && (
             <p className="max-w-3xl">
-              Your search settings are currently out of date! We recommend
-              updating your search settings and re-indexing.
+              {t("admin.search.reindexWarning")}
             </p>
           )}
-          <Title className="mb-6 mt-8 !text-2xl">Embedding Model</Title>
+          <Title className="mb-6 mt-8 !text-2xl">{t("admin.search.embeddingModelTitle")}</Title>
 
           {currentEmeddingModel ? (
             <ModelPreview model={currentEmeddingModel} display showDetails />
           ) : (
-            <Title className="mt-8 mb-4">Choose your Embedding Model</Title>
+            <Title className="mt-8 mb-4">{t("admin.search.chooseEmbeddingModel")}</Title>
           )}
 
-          <Title className="mb-2 mt-8 !text-2xl">Post-processing</Title>
+          <Title className="mb-2 mt-8 !text-2xl">{t("admin.search.postProcessingTitle")}</Title>
 
           <CardSection className="!mr-auto mt-8 !w-96 shadow-lg bg-background-tint-00 rounded-16">
             {searchSettings && (
@@ -109,20 +108,20 @@ function Main() {
                 <div className="px-1 w-full rounded-lg">
                   <div className="space-y-4">
                     <div>
-                      <Text className="font-semibold">Multipass Indexing</Text>
+                      <Text className="font-semibold">{t("admin.search.multipassIndexing")}</Text>
                       <Text className="text-text-700">
                         {searchSettings.multipass_indexing
-                          ? "Enabled"
-                          : "Disabled"}
+                          ? t("admin.search.enabled")
+                          : t("admin.search.disabled")}
                       </Text>
                     </div>
 
                     <div>
-                      <Text className="font-semibold">Contextual RAG</Text>
+                      <Text className="font-semibold">{t("admin.search.contextualRag")}</Text>
                       <Text className="text-text-700">
                         {searchSettings.enable_contextual_rag
-                          ? "Enabled"
-                          : "Disabled"}
+                          ? t("admin.search.enabled")
+                          : t("admin.search.disabled")}
                       </Text>
                     </div>
                   </div>
@@ -133,7 +132,7 @@ function Main() {
 
           <div className="mt-4">
             <Button action href="/admin/embeddings">
-              Update Search Settings
+              {t("admin.search.updateButton")}
             </Button>
           </div>
         </>

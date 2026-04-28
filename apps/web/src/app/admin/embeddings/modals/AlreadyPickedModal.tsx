@@ -13,18 +13,18 @@ export default function AlreadyPickedModal({
   model,
   onClose,
 }: AlreadyPickedModalProps) {
-  const { t } = useTranslation("admin");
+  const { t } = useTranslation();
   return (
     <Modal open onOpenChange={onClose}>
       <Modal.Content width="sm" height="sm">
         <Modal.Header
           icon={SvgCheck}
-          title={t("embeddings.alreadyChosenTitle", { modelName: model.model_name })}
-          description={t("embeddings.alreadyChosenDescription")}
+          title={t("admin.embeddings.alreadyChosenTitle", { modelName: model.model_name })}
+          description={t("admin.embeddings.alreadyChosenDescription")}
           onClose={onClose}
         />
         <Modal.Footer>
-          <Button onClick={onClose}>{t("embeddings.closeButton")}</Button>
+          <Button onClick={onClose}>{t("admin.embeddings.closeButton")}</Button>
         </Modal.Footer>
       </Modal.Content>
     </Modal>

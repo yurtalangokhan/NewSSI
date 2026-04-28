@@ -14,6 +14,7 @@ import {
 } from "react";
 import { useAirbyteConnectors, AirbyteConnector } from "@/lib/airbyte";
 import { useRouter } from "next/navigation";
+import { useTranslation } from "react-i18next";
 
 // ── Connector tile ──────────────────────────────────────────────────────────
 
@@ -68,6 +69,7 @@ function ConnectorTile({
 // ── Page ───────────────────────────────────────────────────────────────────
 
 export default function Page() {
+  const { t } = useTranslation();
   const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.ADD_CONNECTOR]!;
   const router = useRouter();
 
@@ -141,7 +143,7 @@ export default function Page() {
         title={route.title}
         rightChildren={
           <Button href="/admin/indexing/status" primary>
-            See Connectors
+            {t("admin.addConnector.seeConnectors")}
           </Button>
         }
         separator
@@ -149,7 +151,7 @@ export default function Page() {
       <SettingsLayouts.Body>
         <InputTypeIn
           type="text"
-          placeholder="Search connectors…"
+          placeholder={t("admin.addConnector.searchPlaceholder")}
           ref={searchInputRef}
           value={rawSearchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
@@ -160,13 +162,13 @@ export default function Page() {
         {isLoading ? (
           <div className="pt-8">
             <Text as="p" secondaryBody textLight05>
-              Loading connectors…
+              {t("admin.addConnector.loadingConnectors")}
             </Text>
           </div>
         ) : error ? (
           <div className="pt-12 text-center">
             <Text as="p" secondaryBody textLight05>
-              Could not load connectors. Make sure agent-service is running.
+              {t("admin.addConnector.couldNotLoad")}
             </Text>
           </div>
         ) : (
@@ -177,7 +179,7 @@ export default function Page() {
                 <div key={cat} className="pt-8">
                   <Text as="p" headingH3>
                     {searchTerm
-                      ? "Results"
+                      ? t("admin.addConnector.results")
                       : (categoryLabels[cat] ?? cat.charAt(0).toUpperCase() + cat.slice(1))}
                   </Text>
                   <div className="flex flex-wrap gap-4 p-4">
@@ -201,8 +203,8 @@ export default function Page() {
               <div className="pt-12 text-center">
                 <Text as="p" secondaryBody textLight05>
                   {searchTerm
-                    ? `No connectors found for "${searchTerm}"`
-                    : "No connectors available."}
+                    ? t("admin.addConnector.noResultsFor", { searchTerm })
+                    : t("admin.addConnector.noConnectors")}
                 </Text>
               </div>
             )}

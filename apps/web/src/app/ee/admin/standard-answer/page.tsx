@@ -31,6 +31,7 @@ import CreateButton from "@/refresh-components/buttons/CreateButton";
 import { SvgEdit, SvgTrash } from "@opal/icons";
 import { Button } from "@opal/components";
 import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
+import { useTranslation } from "react-i18next";
 const NUM_RESULTS_PER_PAGE = 10;
 
 const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.STANDARD_ANSWERS]!;
@@ -51,6 +52,7 @@ const RowTemplate = ({
     Displayable,
   ];
 }) => {
+  const { t } = useTranslation();
   return (
     <TableRow key={id}>
       <TableCell className="w-1/24">{entries[0]}</TableCell>
@@ -88,14 +90,14 @@ const CategoryBubble = ({
     `}
     onClick={onDelete}
   >
-    {name}
-    {onDelete && (
-      <button
-        className="ml-1 text-subtle hover:text-emphasis"
-        aria-label="Remove category"
-      >
-        &times;
-      </button>
+      {name}
+      {onDelete && (
+        <button
+          className="ml-1 text-subtle hover:text-emphasis"
+          aria-label={t("admin.standardAnswers.removeCategory")}
+        >
+          &times;
+        </button>
     )}
   </span>
 );
@@ -163,6 +165,7 @@ const StandardAnswersTable = ({
   standardAnswerCategories: StandardAnswerCategory[];
   refresh: () => void;
 }) => {
+  const { t } = useTranslation();
   const [query, setQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedCategories, setSelectedCategories] = useState<
@@ -170,10 +173,10 @@ const StandardAnswersTable = ({
   >([]);
   const columns = [
     { name: "", key: "edit" },
-    { name: "Categories", key: "category" },
-    { name: "Keywords/Pattern", key: "keyword" },
-    { name: "Match regex?", key: "match_regex" },
-    { name: "Answer", key: "answer" },
+    { name: t("admin.standardAnswers.categories"), key: "category" },
+    { name: t("admin.standardAnswers.keywordsPattern"), key: "keyword" },
+    { name: t("admin.standardAnswers.matchRegex"), key: "match_regex" },
+    { name: t("admin.standardAnswers.answer"), key: "answer" },
     { name: "", key: "delete" },
   ];
 
@@ -215,10 +218,10 @@ const StandardAnswersTable = ({
   const handleDelete = async (id: number) => {
     const response = await deleteStandardAnswer(id);
     if (response.ok) {
-      toast.success(`Standard answer ${id} deleted`);
+      toast.success(t("admin.standardAnswers.deleted", { id }));
     } else {
       const errorMsg = await response.text();
-      toast.error(`Failed to delete standard answer - ${errorMsg}`);
+      toast.error(t("admin.standardAnswers.deleteFailed", { error: errorMsg }));
     }
     refresh();
   };
@@ -242,7 +245,7 @@ const StandardAnswersTable = ({
           className="flex-grow ml-2 h-6 bg-transparent outline-none placeholder-subtle overflow-hidden whitespace-normal resize-none"
           role="textarea"
           aria-multiline
-          placeholder="Find standard answers by keyword/phrase..."
+          placeholder={t("admin.standardAnswers.searchPlaceholder")}
           value={query}
           onChange={(event) => {
             setQuery(event.target.value);
@@ -277,7 +280,7 @@ const StandardAnswersTable = ({
               <FiTag size={16} />
             </div>
           }
-          defaultDisplay="All Categories"
+          defaultDisplay={t("admin.standardAnswers.allCategories")}
         />
         <div className="flex flex-wrap pb-4 mt-3">
           {selectedCategories.map((category) => (
@@ -316,7 +319,7 @@ const StandardAnswersTable = ({
         <div>
           {paginatedStandardAnswers.length === 0 && (
             <div className="flex justify-center">
-              <Text>No matching standard answers found...</Text>
+              <Text>{t("admin.standardAnswers.noMatches")}</Text>
             </div>
           )}
         </div>
@@ -324,9 +327,9 @@ const StandardAnswersTable = ({
           <>
             <div className="mt-4">
               <Text>
-                Ensure that you have added the category to the relevant{" "}
+                {t("admin.standardAnswers.ensureCategoryAssigned")}{" "}
                 <a className="text-link" href="/admin/bots">
-                  Slack Bot
+                  {t("admin.standardAnswers.slackBot")}
                 </a>
                 .
               </Text>
@@ -347,6 +350,7 @@ const StandardAnswersTable = ({
 };
 
 function Main() {
+  const { t } = useTranslation();
   const {
     data: standardAnswers,
     error: standardAnswersError,
@@ -366,7 +370,7 @@ function Main() {
   if (standardAnswersError || !standardAnswers) {
     return (
       <ErrorCallout
-        errorTitle="Error loading standard answers"
+        errorTitle={t("admin.standardAnswers.errorLoadingAnswers")}
         errorMsg={
           standardAnswersError.info?.message ||
           standardAnswersError.message.info?.detail
@@ -378,7 +382,7 @@ function Main() {
   if (standardAnswerCategoriesError || !standardAnswerCategories) {
     return (
       <ErrorCallout
-        errorTitle="Error loading standard answer categories"
+        errorTitle={t("admin.standardAnswers.errorLoadingCategories")}
         errorMsg={
           standardAnswerCategoriesError.info?.message ||
           standardAnswerCategoriesError.message.info?.detail
@@ -390,18 +394,17 @@ function Main() {
   return (
     <div className="mb-8">
       <Text className="mb-2">
-        Manage the standard answers for pre-defined questions.
+        {t("admin.standardAnswers.manageDescription1")}
         <br />
-        Note: Currently, only questions asked from Slack can receive standard
-        answers.
+        {t("admin.standardAnswers.manageDescription2")}
       </Text>
       {standardAnswers.length == 0 && (
-        <Text className="mb-2">Add your first standard answer below!</Text>
+        <Text className="mb-2">{t("admin.standardAnswers.addFirst")}</Text>
       )}
       <div className="mb-2"></div>
 
       <CreateButton href="/admin/standard-answer/new">
-        New Standard Answer
+        {t("admin.standardAnswers.newButton")}
       </CreateButton>
 
       <Separator />

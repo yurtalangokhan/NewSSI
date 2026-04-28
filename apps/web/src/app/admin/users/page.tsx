@@ -23,6 +23,7 @@ import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
 import { Spinner } from "@/components/Spinner";
 import { SvgDownloadCloud, SvgUserPlus } from "@opal/icons";
 import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
+import { useTranslation } from "react-i18next";
 
 const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.USERS]!;
 
@@ -60,6 +61,7 @@ function UsersTables({
   isDownloadingUsers: boolean;
   setIsDownloadingUsers: (loading: boolean) => void;
 }) {
+  const { t } = useTranslation();
   const [currentUsersCount, setCurrentUsersCount] = useState<number | null>(
     null
   );
@@ -72,7 +74,7 @@ function UsersTables({
     try {
       const response = await fetch("/api/manage/users/download");
       if (!response.ok) {
-        throw new Error("Failed to download all users");
+        throw new Error(t("admin.users.downloadFailedError", { error: "" }));
       }
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
@@ -85,7 +87,7 @@ function UsersTables({
       window.URL.revokeObjectURL(url);
       document.body.removeChild(anchor_tag);
     } catch (error) {
-      toast.error(`Failed to download all users - ${error}`);
+      toast.error(t("admin.users.downloadFailedError", { error: String(error) }));
     } finally {
       //Ensure spinner is visible for at least 1 second
       //This is to avoid the spinner disappearing too quickly
@@ -135,7 +137,7 @@ function UsersTables({
   if (domainsError) {
     return (
       <ErrorCallout
-        errorTitle="Error loading valid domains"
+        errorTitle={t("admin.users.errorLoadingDomains")}
         errorMsg={domainsError?.info?.detail}
       />
     );
@@ -143,18 +145,18 @@ function UsersTables({
 
   const tabs = SimpleTabs.generateTabs({
     current: {
-      name: "Current Users",
+      name: t("admin.users.currentUsersTab"),
       content: (
         <Card className="w-full">
           <CardHeader>
             <div className="flex justify-between items-center gap-1">
-              <CardTitle>Current Users</CardTitle>
+              <CardTitle>{t("admin.users.currentUsersTitle")}</CardTitle>
               <Button
                 leftIcon={SvgDownloadCloud}
                 disabled={isDownloadingUsers}
                 onClick={() => downloadAllUsers()}
               >
-                {isDownloadingUsers ? "Downloading..." : "Download CSV"}
+                {isDownloadingUsers ? t("admin.users.downloadingButton") : t("admin.users.downloadCsvButton")}
               </Button>
             </div>
           </CardHeader>
@@ -165,7 +167,7 @@ function UsersTables({
               invitedUsersMutate={invitedUsersMutate}
               countDisplay={
                 <CountDisplay
-                  label="Total users"
+                  label={t("admin.users.totalUsersLabel")}
                   value={currentUsersCount}
                   isLoading={currentUsersLoading}
                 />
@@ -183,14 +185,14 @@ function UsersTables({
       ),
     },
     invited: {
-      name: "Invited Users",
+      name: t("admin.users.invitedUsersTab"),
       content: (
         <Card className="w-full">
           <CardHeader>
             <div className="flex justify-between items-center gap-1">
-              <CardTitle>Invited Users</CardTitle>
+              <CardTitle>{t("admin.users.invitedUsersTitle")}</CardTitle>
               <CountDisplay
-                label="Total invited"
+                label={t("admin.users.totalInvitedLabel")}
                 value={invitedUsersCount}
                 isLoading={invitedUsersLoading}
               />
@@ -210,14 +212,14 @@ function UsersTables({
     },
     ...(NEXT_PUBLIC_CLOUD_ENABLED && {
       pending: {
-        name: "Pending Users",
+        name: t("admin.users.pendingUsersTab"),
         content: (
           <Card>
             <CardHeader>
               <div className="flex justify-between items-center gap-1">
-                <CardTitle>Pending Users</CardTitle>
+                <CardTitle>{t("admin.users.pendingUsersTitle")}</CardTitle>
                 <CountDisplay
-                  label="Total pending"
+                  label={t("admin.users.totalPendingLabel")}
                   value={pendingUsersCount}
                   isLoading={pendingUsersLoading}
                 />
@@ -242,6 +244,7 @@ function UsersTables({
 }
 
 function SearchableTables() {
+  const { t } = useTranslation();
   const [query, setQuery] = useState("");
   const [isDownloadingUsers, setIsDownloadingUsers] = useState(false);
 
@@ -251,7 +254,7 @@ function SearchableTables() {
       <div className="flex flex-col gap-y-4">
         <div className="flex flex-row items-center gap-2">
           <InputTypeIn
-            placeholder="Search"
+            placeholder={t("admin.users.searchPlaceholder")}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />
@@ -268,6 +271,7 @@ function SearchableTables() {
 }
 
 function AddUserButton() {
+  const { t } = useTranslation();
   const [bulkAddUsersModal, setBulkAddUsersModal] = useState(false);
 
   const onSuccess = (emailInviteStatus: EmailInviteStatus) => {
@@ -276,21 +280,17 @@ function AddUserButton() {
     );
     setBulkAddUsersModal(false);
     if (emailInviteStatus === "NOT_CONFIGURED") {
-      toast.warning(
-        "Users added, but no email notification was sent. There is no SMTP server set up for email sending."
-      );
+      toast.warning(t("admin.users.emailNotConfiguredWarning"));
     } else if (emailInviteStatus === "SEND_FAILED") {
-      toast.warning(
-        "Users added, but email sending failed. Check your SMTP configuration and try again."
-      );
+      toast.warning(t("admin.users.emailSendFailedWarning"));
     } else {
-      toast.success("Users invited!");
+      toast.success(t("admin.users.usersInvitedSuccess"));
     }
   };
 
   const onFailure = async (res: Response) => {
     const error = (await res.json()).detail;
-    toast.error(`Failed to invite users - ${error}`);
+    toast.error(t("admin.users.inviteFailedError", { error }));
   };
 
   const handleInviteClick = () => {
@@ -300,7 +300,7 @@ function AddUserButton() {
   return (
     <>
       <CreateButton primary onClick={handleInviteClick}>
-        Invite Users
+        {t("admin.users.inviteUsersButton")}
       </CreateButton>
 
       {bulkAddUsersModal && (
@@ -308,15 +308,13 @@ function AddUserButton() {
           <Modal.Content>
             <Modal.Header
               icon={SvgUserPlus}
-              title="Bulk Add Users"
+              title={t("admin.users.bulkAddTitle")}
               onClose={() => setBulkAddUsersModal(false)}
             />
             <Modal.Body>
               <div className="flex flex-col gap-2">
                 <Text as="p">
-                  Add the email addresses to import, separated by whitespaces.
-                  Invited users will be able to login to this domain with their
-                  email address.
+                  {t("admin.users.bulkAddDescription")}
                 </Text>
                 <BulkAdd onSuccess={onSuccess} onFailure={onFailure} />
               </div>
