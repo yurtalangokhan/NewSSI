@@ -1,7 +1,7 @@
 from enum import StrEnum
 from typing import Any
 
-from pydantic import computed_field
+from pydantic import AliasChoices, Field, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -57,8 +57,14 @@ class Settings(BaseSettings):
     COMPATIBLE_API_KEY: str | None = None
     COMPATIBLE_BASE_URL: str | None = None
 
-    MCP_SERVER_URL: str = "http://localhost:8002/mcp"
-    TOOLS_SERVICE_URL: str = "http://localhost:8002/mcp"
+    MCP_SERVER_URL: str = Field(
+        default="http://localhost:8002/mcp",
+        validation_alias=AliasChoices("MCP_SERVER_URL", "TOOLS_SERVICE_URL"),
+    )
+    TOOLS_SERVICE_URL: str = Field(
+        default="http://localhost:8002/mcp",
+        validation_alias=AliasChoices("TOOLS_SERVICE_URL", "MCP_SERVER_URL"),
+    )
     GITHUB_PAT: str | None = None
 
     LANGFUSE_TRACING: bool = False

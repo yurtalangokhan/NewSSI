@@ -28,7 +28,11 @@ app.add_middleware(
 
 OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "llama3.2")
 OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
-TOOLS_SERVICE_URL = os.environ.get("TOOLS_SERVICE_URL", "http://localhost:8002/mcp")
+TOOLS_SERVICE_URL = (
+    os.environ.get("TOOLS_SERVICE_URL")
+    or os.environ.get("MCP_SERVER_URL")
+    or "http://localhost:8002/mcp"
+)
 
 chat_sessions = {}
 chat_messages = {}

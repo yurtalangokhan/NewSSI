@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from langconnect.api import collections_router, datasources_router, documents_router, graph_router
 from langconnect.config import ALLOWED_ORIGINS
 from langconnect.database.collections import CollectionsManager
+from langconnect.database.postgres.schema_bootstrap import ensure_schema
 
 # Configure logging
 logging.basicConfig(
@@ -25,6 +26,7 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Lifespan context manager for FastAPI application."""
     logger.info("App is starting up. Creating background worker...")
+    await ensure_schema()
     await CollectionsManager.setup()
 
     # Initialize Neo4j connection (best-effort – graph features degrade gracefully)

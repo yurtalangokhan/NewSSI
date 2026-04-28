@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Index, String, text
+from sqlalchemy import Boolean, DateTime, Index, Integer, String, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -38,7 +38,7 @@ class AgentToolsModel(Base):
         server_default=text("TRUE"),
     )
     order_index: Mapped[int] = mapped_column(
-        Boolean,
+        Integer,
         nullable=False,
         default=0,
         server_default=text("0"),

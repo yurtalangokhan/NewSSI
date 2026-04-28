@@ -21,6 +21,7 @@ from langfuse import Langfuse  # type: ignore[import-untyped]
 from agents import get_agent, get_all_agent_info, load_agent
 from core import settings
 from core.db import close_db_engine, get_db_engine
+from core.db.schema_bootstrap import ensure_schema
 from core.logger import configure_logging
 from memory import initialize_database, initialize_store
 from service.AirbyteSyncListenerService import get_sync_listener
@@ -60,18 +61,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         if settings.DATABASE_TYPE.value == "postgres":
             _sa_engine = get_db_engine()
             logger.info("SQLAlchemy async engine ready: %s", _sa_engine.url.database)
+            await ensure_schema()
 
         from service.StoreService import set_global_store
 
         set_global_store(True)
 
         async with initialize_database() as saver:
-            if hasattr(saver, "setup"):
-                await saver.setup()
-
             async with initialize_store() as langgraph_store:
-                if hasattr(langgraph_store, "setup"):
-                    await langgraph_store.setup()
                 logger.info(f"LangGraph store initialized: {type(langgraph_store).__name__}")
 
                 agents = get_all_agent_info()

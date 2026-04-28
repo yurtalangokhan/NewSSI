@@ -14,8 +14,8 @@ RUN apt-get update && apt-get install -y \
     && apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/*
 
-# Install uv for fast package management
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+# Install uv from PyPI to avoid external registry dependency on GHCR
+RUN pip install --no-cache-dir uv
 
 # Copy project files
 COPY pyproject.toml .
