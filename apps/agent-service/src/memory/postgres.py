@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from langgraph.store.postgres import AsyncPostgresStore
+from psycopg import errors as pg_errors
 from psycopg.rows import dict_row
 from psycopg_pool import AsyncConnectionPool
 
@@ -67,7 +68,12 @@ async def get_postgres_saver():
     ) as pool:
         try:
             checkpointer = AsyncPostgresSaver(pool)
-            await checkpointer.setup()
+            try:
+                await checkpointer.setup()
+            except pg_errors.DuplicateColumn as exc:
+                # Some legacy DBs have partially-applied checkpoint migrations.
+                # Continue startup when the schema is already effectively present.
+                logger.warning("Ignoring duplicate-column during checkpointer setup: %s", exc)
             yield checkpointer
         finally:
             await pool.close()
