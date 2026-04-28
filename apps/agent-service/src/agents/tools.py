@@ -247,7 +247,7 @@ database_search.name = "Database_Search"
 # ============== Graph Search Tool (Neo4j via LangConnect API) ==============
 
 # LangConnect API base URL (service-to-service within Docker network)
-_LANGCONNECT_BASE_URL = os.environ.get("LANGCONNECT_API_URL", "http://langconnect-api:8080")
+_LANGCONNECT_BASE_URL = os.environ.get("RAG_SERVICE_API_URL", "http://langconnect-api:8080")
 _LANGCONNECT_SERVICE_TOKEN = os.environ.get(
     "LANGCONNECT_SERVICE_TOKEN", "internal-service-key-2026"
 )

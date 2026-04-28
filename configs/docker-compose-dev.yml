@@ -1,8 +1,9 @@
 # =============================================================================
 # Docker Compose - Development Services
 # 
-# Application services only - connects to infrastructure services
-# Run with: docker compose -f docker-compose-dev.yml up -d
+# Application services only - connects to infrastructure services.
+# Service env files are stored in each app folder as .env.
+# Run with: docker compose -f configs/docker-compose-dev.yml up -d
 # =============================================================================
 
 name: agentic-ai-platform
@@ -25,54 +26,14 @@ services:
       - /tmp/airbyte_local:/tmp/airbyte_local:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    env_file:
+      - ../apps/agent-service/.env
     environment:
-      # Database Configuration (connects to infrastructure service)
-      DATABASE_TYPE: ${DATABASE_TYPE:-postgres}
-      POSTGRES_HOST: ${POSTGRES_HOST}
-      POSTGRES_PORT: ${POSTGRES_PORT}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
-      
-      # Ollama Configuration
-      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.1:8b}
-      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
-      DEFAULT_MODEL: ${DEFAULT_MODEL:-ollama}
-      
-      # LangSmith Tracing (optional)
-      LANGCHAIN_TRACING_V2: ${LANGCHAIN_TRACING_V2:-false}
-      LANGCHAIN_API_KEY: ${LANGSMITH_API_KEY:-}
-      LANGCHAIN_PROJECT: agent-service
-      
-      # Mode
-      MODE: ${MODE:-dev}
-      
-      # Airbyte API Configuration
-      AIRBYTE_API_URL: ${AIRBYTE_API_URL:-http://host.docker.internal:8001/api/v1}
+      # Keep local path stable for docker-mounted Airbyte output
       AIRBYTE_LOCAL_OUTPUT_PATH: /tmp/airbyte_local
-      AIRBYTE_SYNC_POLL_INTERVAL_SECONDS: ${AIRBYTE_SYNC_POLL_INTERVAL_SECONDS:-30}
-      
-      # Neo4j Configuration
-      NEO4J_URI: ${NEO4J_URI:-bolt://host.docker.internal:8697}
-      NEO4J_USERNAME: ${NEO4J_USERNAME:-neo4j}
-      NEO4J_PASSWORD: ${NEO4J_PASSWORD:-neo4j123}
 
-      # Milvus / Vector DB Configuration
-      VECTOR_DB_PROVIDER: ${VECTOR_DB_PROVIDER:-milvus}
-      MILVUS_HOST: ${MILVUS_HOST:-host.docker.internal}
-      MILVUS_PORT: ${MILVUS_PORT:-9765}
-      MILVUS_USER: ${MILVUS_USER:-}
-      MILVUS_PASSWORD: ${MILVUS_PASSWORD:-}
-
-      # MCP Server Configuration
-      MCP_SERVER_URL: ${MCP_SERVER_URL:-http://tools-service:8003/mcp}
-      TOOLS_SERVICE_URL: ${TOOLS_SERVICE_URL:-http://tools-service:8003/mcp}
-      
-      # Auth
-      AUTH_SECRET: ${AUTH_SECRET:-}
-
-      # LangConnect (RAG Service)
-      LANGCONNECT_API_URL: ${LANGCONNECT_API_URL:-http://rag-service:8080}
+      # Service metadata defaults
+      LANGCHAIN_PROJECT: agent-service
 
   # ==========================================================================
   # RAG Service - Graph RAG API
@@ -89,33 +50,11 @@ services:
       - "8084:8080"
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    env_file:
+      - ../apps/rag-service/.env
     environment:
-      # PostgreSQL Configuration
-      POSTGRES_HOST: ${POSTGRES_HOST}
-      POSTGRES_PORT: ${POSTGRES_PORT}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
-      
-      # CORS
-      ALLOW_ORIGINS: ${ALLOW_ORIGINS:-'["*"]'}
-      
-      # Embedding Configuration
-      EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-ollama}
-      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
-      OLLAMA_EMBED_MODEL: ${OLLAMA_EMBED_MODEL:-nomic-embed-text}
-      
-      # Neo4j Configuration
-      NEO4J_URI: ${NEO4J_URI:-bolt://host.docker.internal:8697}
-      NEO4J_USERNAME: ${NEO4J_USERNAME:-neo4j}
-      NEO4J_PASSWORD: ${NEO4J_PASSWORD:-neo4j123}
-
-      # Milvus / Vector DB Configuration
-      VECTOR_DB_PROVIDER: ${VECTOR_DB_PROVIDER:-milvus}
-      MILVUS_HOST: ${MILVUS_HOST:-host.docker.internal}
-      MILVUS_PORT: ${MILVUS_PORT:-9765}
-      MILVUS_USER: ${MILVUS_USER:-}
-      MILVUS_PASSWORD: ${MILVUS_PASSWORD:-}
+      # Keep permissive CORS in local setup
+      ALLOW_ORIGINS: '["*"]'
 
   # ==========================================================================
   # Tools Service - MCP Tools Server
@@ -130,6 +69,8 @@ services:
     restart: unless-stopped
     ports:
       - "8003:8003"
+    env_file:
+      - ../apps/tools-service/.env
     environment:
       MCP_HOST: "0.0.0.0"
       MCP_PORT: "8003"
@@ -146,30 +87,25 @@ services:
       context: ../apps/web
       dockerfile: Dockerfile
       args:
-        INTERNAL_URL: ${INTERNAL_URL:-http://agent-service:8080}
+        INTERNAL_URL: http://agent-service:8080
     image: web:local
     restart: unless-stopped
     ports:
       - "8126:3000"
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    env_file:
+      - ../apps/web/.env
     environment:
       # Backend URLs
-      INTERNAL_URL: ${INTERNAL_URL:-http://agent-service:8080}
-      AGENT_SERVICE_URL: ${AGENT_SERVICE_URL:-http://agent-service:8080}
-      LANGCONNECT_URL: ${LANGCONNECT_URL:-http://rag-service:8080}
-      MCP_INTERNAL_URL: ${MCP_INTERNAL_URL:-http://tools-service:8003}
-      MCP_SERVER_URL: ${MCP_SERVER_URL:-http://tools-service:8003}
-      OLLAMA_URL: ${OLLAMA_URL:-http://host.docker.internal:11434}
-      WEB_DOMAIN: ${WEB_DOMAIN:-http://localhost:8126}
-      NODE_ENV: ${NODE_ENV:-development}
-      OVERRIDE_API_PRODUCTION: ${OVERRIDE_API_PRODUCTION:-true}
+      INTERNAL_URL: http://agent-service:8080
+      AGENT_SERVICE_URL: http://agent-service:8080
+      LANGCONNECT_URL: http://rag-service:8080
+      MCP_INTERNAL_URL: http://tools-service:8003
+      MCP_SERVER_URL: http://tools-service:8003
       
       # Auth
       AUTH_TYPE: basic
-      
-      # Simple Auth
-      VALID_API_KEYS: ${VALID_API_KEYS:-dev-key-123}
       
       # Feature Flags
       NEXT_PUBLIC_CLOUD_ENABLED: "false"

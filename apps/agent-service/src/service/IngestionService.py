@@ -15,7 +15,7 @@ import httpx
 from core.db import AirbyteMappingRepository, DatasourceRepository
 
 # LangConnect base URL for Graph RAG rebuild requests
-LANGCONNECT_BASE_URL = os.environ.get("LANGCONNECT_API_URL", "http://langconnect-api:8083")
+LANGCONNECT_BASE_URL = os.environ.get("RAG_SERVICE_API_URL", "http://langconnect-api:8083")
 # Internal service token for authenticating with LangConnect
 LANGCONNECT_SERVICE_TOKEN = os.environ.get("LANGCONNECT_SERVICE_TOKEN", "")
 

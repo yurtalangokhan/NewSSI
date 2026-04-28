@@ -574,7 +574,7 @@ services:
       AIRBYTE_DESTINATION_AGENT_URL: http://agent-service:8080
       AIRBYTE_EMBED_BATCH_SIZE: ${AIRBYTE_EMBED_BATCH_SIZE:-200}
       # LangConnect Configuration
-      LANGCONNECT_API_URL: http://langconnect-api:8080
+      RAG_SERVICE_API_URL: http://langconnect-api:8080
       LANGCONNECT_SERVICE_TOKEN: ${LANGCONNECT_SERVICE_TOKEN:-}
       # Neo4j Configuration
       NEO4J_URI: bolt://neo4j:7687

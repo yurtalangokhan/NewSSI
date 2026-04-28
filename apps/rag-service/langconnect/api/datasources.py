@@ -33,16 +33,33 @@ async def knowledge_selector(
     # 1. Fetch all PGVector collections (use internal identity to bypass owner filter)
     all_collections = await CollectionsManager("internal-service").list()
 
+    def _normalize_collection_name(col: dict[str, Any], metadata: dict[str, Any]) -> str:
+        """Return a user-friendly collection name with safe fallbacks."""
+        candidate = (
+            metadata.get("friendly_name")
+            or metadata.get("name")
+            or col.get("name")
+            or ""
+        )
+        normalized = str(candidate).strip()
+        if normalized.lower() in {"", "unnamed", "datasource label"}:
+            return f"datasource-{col['uuid'][:8]}"
+        return normalized
+
     def _build_item(col: dict[str, Any]) -> dict[str, Any]:
         metadata = col.get("metadata") or {}
         return {
             "id": col["uuid"],
-            "name": metadata.get("friendly_name") or col["name"],
+            "name": _normalize_collection_name(col, metadata),
             "connector_type": metadata.get("connector_type", ""),
             "sync_status": metadata.get("sync_status", "idle"),
         }
 
     document_processing = [_build_item(col) for col in all_collections]
+    # Keep connector-backed datasources first so they are easier to find in agent setup.
+    document_processing.sort(
+        key=lambda item: (item.get("connector_type", "") == "", item.get("name", "").lower())
+    )
 
     # 2. Fetch collection IDs that have a built knowledge graph
     knowledge_graph: list[dict[str, Any]] = []
