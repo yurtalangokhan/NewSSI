@@ -13,16 +13,39 @@ export interface AuthTypeMetadata {
 }
 
 export const getAuthTypeMetadataSS = async (): Promise<AuthTypeMetadata> => {
-  // Return default for development mode - skip backend call
-  return {
-    authType: AuthType.BASIC,
-    autoRedirect: false,
-    requiresVerification: false,
-    anonymousUserEnabled: true,
-    passwordMinLength: 8,
-    hasUsers: true,
-    oauthEnabled: false,
-  };
+  try {
+    const url = buildUrl("/auth/metadata");
+    const res = await fetch(url, {
+      method: "GET",
+    });
+    
+    if (!res.ok) {
+      throw new Error("Failed to fetch auth metadata");
+    }
+    
+    const data = await res.json();
+    return {
+      authType: data.authType || AuthType.BASIC,
+      autoRedirect: data.autoRedirect ?? false,
+      requiresVerification: data.requiresVerification ?? false,
+      anonymousUserEnabled: data.anonymousUserEnabled ?? null,
+      passwordMinLength: data.passwordMinLength ?? 8,
+      hasUsers: data.hasUsers ?? true,
+      oauthEnabled: data.oauthEnabled ?? false,
+    };
+  } catch (error) {
+    console.error("Error fetching auth metadata:", error);
+    // Fallback to basic auth on error
+    return {
+      authType: AuthType.BASIC,
+      autoRedirect: false,
+      requiresVerification: false,
+      anonymousUserEnabled: true,
+      passwordMinLength: 8,
+      hasUsers: true,
+      oauthEnabled: false,
+    };
+  }
 };
 
 const getOIDCAuthUrlSS = async (nextUrl: string | null): Promise<string> => {
