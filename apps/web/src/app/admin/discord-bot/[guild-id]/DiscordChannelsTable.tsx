@@ -20,6 +20,7 @@ import {
 import { SvgHash, SvgBubbleText, SvgLock } from "@opal/icons";
 import { IconProps } from "@opal/types";
 import { Persona } from "@/app/admin/agents/interfaces";
+import { useTranslation } from "react-i18next";
 
 function getChannelIcon(
   channelType: DiscordChannelType,
@@ -59,11 +60,12 @@ export function DiscordChannelsTable({
   onChannelUpdate,
   disabled = false,
 }: Props) {
+  const { t } = useTranslation();
   if (channels.length === 0) {
     return (
       <EmptyMessage
-        title="No channels configured"
-        description="Run !sync-channels in Discord to add channels."
+        title={t("admin.discord.noChannelsTitle")}
+        description={t("admin.discord.noChannelsDescription")}
       />
     );
   }
@@ -72,11 +74,11 @@ export function DiscordChannelsTable({
     <Table>
       <TableHeader>
         <TableRow className="[&>th]:whitespace-nowrap">
-          <TableHead>Channel</TableHead>
-          <TableHead>Enabled</TableHead>
-          <TableHead>Require @mention</TableHead>
-          <TableHead>Thread Only Mode</TableHead>
-          <TableHead>Agent Override</TableHead>
+          <TableHead>{t("admin.discord.channelTableChannel")}</TableHead>
+          <TableHead>{t("admin.discord.channelTableEnabled")}</TableHead>
+          <TableHead>{t("admin.discord.channelTableRequireMention")}</TableHead>
+          <TableHead>{t("admin.discord.channelTableThreadOnly")}</TableHead>
+          <TableHead>{t("admin.discord.channelTableAgentOverride")}</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>

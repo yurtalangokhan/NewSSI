@@ -8,6 +8,7 @@ import {
   ZulipConfig,
 } from "@/lib/connectors/connectors";
 import { getSourceMetadata } from "@/lib/sources";
+import { useTranslation } from "react-i18next";
 
 import Link from "next/link";
 
@@ -32,17 +33,18 @@ export const ConnectorTitle = ({
   showMetadata = true,
   className = "",
 }: ConnectorTitleProps) => {
+  const { t } = useTranslation("admin");
   const sourceMetadata = getSourceMetadata(connector.source);
 
   let additionalMetadata = new Map<string, string>();
   if (connector.source === "github") {
     const typedConnector = connector as Connector<GithubConfig>;
     additionalMetadata.set(
-      "Repo",
+      t("connectorTitle.repo"),
       typedConnector.connector_specific_config.repositories
         ? `${typedConnector.connector_specific_config.repo_owner}/${
             typedConnector.connector_specific_config.repositories.includes(",")
-              ? "multiple repos"
+              ? t("connectorTitle.multipleRepos")
               : typedConnector.connector_specific_config.repositories
           }`
         : `${typedConnector.connector_specific_config.repo_owner}/*`
@@ -50,7 +52,7 @@ export const ConnectorTitle = ({
   } else if (connector.source === "gitlab") {
     const typedConnector = connector as Connector<GitlabConfig>;
     additionalMetadata.set(
-      "Repo",
+      t("connectorTitle.repo"),
       `${typedConnector.connector_specific_config.project_owner}/${typedConnector.connector_specific_config.project_name}`
     );
   } else if (connector.source === "confluence") {
@@ -58,17 +60,17 @@ export const ConnectorTitle = ({
     const wikiUrl = typedConnector.connector_specific_config.is_cloud
       ? `${typedConnector.connector_specific_config.wiki_base}/wiki/spaces/${typedConnector.connector_specific_config.space}`
       : `${typedConnector.connector_specific_config.wiki_base}/spaces/${typedConnector.connector_specific_config.space}`;
-    additionalMetadata.set("Wiki URL", wikiUrl);
+    additionalMetadata.set(t("connectorTitle.wikiUrl"), wikiUrl);
     if (typedConnector.connector_specific_config.page_id) {
       additionalMetadata.set(
-        "Page ID",
+        t("connectorTitle.pageId"),
         typedConnector.connector_specific_config.page_id
       );
     }
   } else if (connector.source === "jira") {
     const typedConnector = connector as Connector<JiraConfig>;
     additionalMetadata.set(
-      "Jira Project URL",
+      t("connectorTitle.jiraProjectUrl"),
       typedConnector.connector_specific_config.jira_project_url
     );
   } else if (connector.source === "slack") {
@@ -78,20 +80,20 @@ export const ConnectorTitle = ({
       typedConnector.connector_specific_config?.channels.length > 0
     ) {
       additionalMetadata.set(
-        "Channels",
+        t("connectorTitle.channels"),
         typedConnector.connector_specific_config.channels.join(", ")
       );
     }
     if (typedConnector.connector_specific_config.channel_regex_enabled) {
-      additionalMetadata.set("Channel Regex Enabled", "True");
+      additionalMetadata.set(t("connectorTitle.channelRegexEnabled"), t("connectorTitle.trueValue"));
     }
     if (typedConnector.connector_specific_config.include_bot_messages) {
-      additionalMetadata.set("Include Bot Messages", "True");
+      additionalMetadata.set(t("connectorTitle.includeBotMessages"), t("connectorTitle.trueValue"));
     }
   } else if (connector.source === "zulip") {
     const typedConnector = connector as Connector<ZulipConfig>;
     additionalMetadata.set(
-      "Realm",
+      t("connectorTitle.realm"),
       typedConnector.connector_specific_config.realm_name
     );
   }

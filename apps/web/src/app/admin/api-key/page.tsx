@@ -33,10 +33,12 @@ import Text from "@/refresh-components/texts/Text";
 import { SvgEdit, SvgKey, SvgRefreshCw } from "@opal/icons";
 import { useCloudSubscription } from "@/hooks/useCloudSubscription";
 import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
+import { useTranslation } from "react-i18next";
 
 const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.API_KEYS]!;
 
 function Main() {
+  const { t } = useTranslation();
   const {
     data: apiKeys,
     isLoading,
@@ -62,7 +64,7 @@ function Main() {
   if (!apiKeys || error) {
     return (
       <ErrorCallout
-        errorTitle="Failed to fetch API Keys"
+        errorTitle={t("admin.apiKey.fetchError")}
         errorMsg={error?.info?.detail || error.toString()}
       />
     );
@@ -76,21 +78,19 @@ function Main() {
   const introSection = (
     <div className="flex flex-col items-start gap-4">
       <Text as="p">
-        API Keys allow you to access Onyx APIs programmatically.
-        {canCreateKeys
-          ? " Click the button below to generate a new API Key."
-          : ""}
+        {t("admin.apiKey.description")}
+        {canCreateKeys ? ` ${t("admin.apiKey.descriptionWithButton")}` : ""}
       </Text>
       {canCreateKeys ? (
         <CreateButton onClick={() => setShowCreateUpdateForm(true)}>
-          Create API Key
+          {t("admin.apiKey.createButton")}
         </CreateButton>
       ) : (
         <div className="flex flex-col gap-2 rounded-lg bg-background-tint-02 p-4">
           <Text as="p" text04>
-            This feature requires an active paid subscription.
+            {t("admin.apiKey.paidSubscriptionRequired")}
           </Text>
-          <Button href="/admin/billing">Upgrade Plan</Button>
+          <Button href="/admin/billing">{t("admin.apiKey.upgradePlanButton")}</Button>
         </div>
       )}
     </div>
@@ -123,10 +123,10 @@ function Main() {
       <Modal open={!!fullApiKey}>
         <Modal.Content width="sm" height="sm">
           <Modal.Header
-            title="New API Key"
+            title={t("admin.apiKey.newApiKeyTitle")}
             icon={SvgKey}
             onClose={() => setFullApiKey(null)}
-            description="Make sure you copy your new API key. You won't be able to see this key again."
+            description={t("admin.apiKey.newApiKeyDescription")}
           />
           <Modal.Body>
             <Text as="p" className="break-all flex-1">
@@ -145,15 +145,15 @@ function Main() {
         <>
           <Separator />
 
-          <Title className="mt-6">Existing API Keys</Title>
+          <Title className="mt-6">{t("admin.apiKey.existingKeysTitle")}</Title>
           <Table className="overflow-visible">
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>API Key</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Regenerate</TableHead>
-                <TableHead>Delete</TableHead>
+                <TableHead>{t("admin.apiKey.nameColumn")}</TableHead>
+                <TableHead>{t("admin.apiKey.apiKeyColumn")}</TableHead>
+                <TableHead>{t("admin.apiKey.roleColumn")}</TableHead>
+                <TableHead>{t("admin.apiKey.regenerateColumn")}</TableHead>
+                <TableHead>{t("admin.apiKey.deleteColumn")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -184,9 +184,7 @@ function Main() {
                         setKeyIsGenerating(false);
                         if (!response.ok) {
                           const errorMsg = await response.text();
-                          toast.error(
-                            `Failed to regenerate API Key: ${errorMsg}`
-                          );
+                          toast.error(t("admin.apiKey.regenerateError", { error: errorMsg }));
                           return;
                         }
                         const newKey = (await response.json()) as APIKey;
@@ -194,7 +192,7 @@ function Main() {
                         mutate("/api/admin/api-key");
                       }}
                     >
-                      Refresh
+                      {t("admin.apiKey.refreshButton")}
                     </Button>
                   </TableCell>
                   <TableCell>
@@ -203,7 +201,7 @@ function Main() {
                         const response = await deleteApiKey(apiKey.api_key_id);
                         if (!response.ok) {
                           const errorMsg = await response.text();
-                          toast.error(`Failed to delete API Key: ${errorMsg}`);
+                          toast.error(t("admin.apiKey.deleteError", { error: errorMsg }));
                           return;
                         }
                         mutate("/api/admin/api-key");
@@ -235,9 +233,14 @@ function Main() {
 }
 
 export default function Page() {
+  const { t } = useTranslation();
   return (
     <SettingsLayouts.Root>
-      <SettingsLayouts.Header title={route.title} icon={route.icon} separator />
+      <SettingsLayouts.Header
+        title={t(route.titleKey || "", { defaultValue: route.title })}
+        icon={route.icon}
+        separator
+      />
       <SettingsLayouts.Body>
         <Main />
       </SettingsLayouts.Body>

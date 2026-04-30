@@ -23,6 +23,7 @@ import {
 } from "@opal/icons";
 import { cn } from "@/lib/utils";
 import { ThreeDotsLoader } from "@/components/Loading";
+import { useTranslation } from "react-i18next";
 import {
   isClusterNode,
   isClusterEdge,
@@ -130,6 +131,7 @@ export default function GraphExplorer({
   selectedRelTypes,
   isActive,
 }: GraphExplorerProps) {
+  const { t } = useTranslation();
   const fgRef = useRef<any>(null);
   const observerRef = useRef<ResizeObserver | null>(null);
   const containerNodeRef = useRef<HTMLDivElement | null>(null);
@@ -795,10 +797,9 @@ export default function GraphExplorer({
   if (!scalableData || scalableData.nodes.length === 0) {
     return (
       <CardSection className="flex w-full flex-col gap-2 min-h-[200px] items-center justify-center">
-        <Text as="p" headingH3 text05>Graph Explorer</Text>
+        <Text as="p" headingH3 text05>{t("admin.kg.graphExplorerTitle")}</Text>
         <Text as="p" mainContentBody text04 className="text-center max-w-sm">
-          No graph data available. Select a collection and build a knowledge
-          graph to visualize entities and relationships.
+          {t("admin.kg.noGraphDataAvailable")}
         </Text>
       </CardSection>
     );
@@ -819,17 +820,20 @@ export default function GraphExplorer({
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2 flex-wrap">
             <Text as="p" mainUiAction text04 className="text-sm font-medium">
-              Graph Explorer
+              {t("admin.kg.graphExplorerTitle")}
             </Text>
             <Text as="span" mainContentMuted text03 className="text-xs tabular-nums">
-              {forceData.nodes.length} nodes · {forceData.links.length} edges
-              {totalNodes > forceData.nodes.length && (
-                <>
-                  {" "}(total:{" "}
-                  {totalNodes.toLocaleString()} ·{" "}
-                  {totalEdges.toLocaleString()})
-                </>
-              )}
+              {totalNodes > forceData.nodes.length
+                ? t("admin.kg.graphExplorerSummaryWithTotal", {
+                    nodes: forceData.nodes.length,
+                    edges: forceData.links.length,
+                    totalNodes,
+                    totalEdges,
+                  })
+                : t("admin.kg.graphExplorerSummary", {
+                    nodes: forceData.nodes.length,
+                    edges: forceData.links.length,
+                  })}
             </Text>
             {currentMode !== "full" && (
               <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium border border-status-warning-03 bg-status-warning-01 text-status-warning-07 uppercase">
@@ -838,7 +842,7 @@ export default function GraphExplorer({
             )}
             {!enablePointer && (
               <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium border border-status-error-03 bg-status-error-01 text-status-error-07">
-                perf mode
+                {t("admin.kg.perfMode")}
               </span>
             )}
           </div>
@@ -846,7 +850,7 @@ export default function GraphExplorer({
             {/* 2D / 3D toggle */}
             <button
               onClick={handleToggle3D}
-              title={is3D ? "Switch to 2D" : "Switch to 3D"}
+              title={is3D ? t("admin.kg.switchTo2d") : t("admin.kg.switchTo3d")}
               className={cn(
                 "rounded-04 px-2 py-1 text-xs font-medium border transition-colors",
                 is3D
@@ -860,28 +864,28 @@ export default function GraphExplorer({
             <button
               onClick={handleZoomIn}
               className="rounded-04 p-1 hover:bg-background-neutral-01 transition-colors"
-              title="Zoom in"
+              title={t("admin.kg.zoomIn")}
             >
               <SvgZoomIn className="h-4 w-4 stroke-text-03" />
             </button>
             <button
               onClick={handleZoomOut}
               className="rounded-04 p-1 hover:bg-background-neutral-01 transition-colors"
-              title="Zoom out"
+              title={t("admin.kg.zoomOut")}
             >
               <SvgZoomOut className="h-4 w-4 stroke-text-03" />
             </button>
             <button
               onClick={handleReset}
               className="rounded-04 p-1 hover:bg-background-neutral-01 transition-colors"
-              title="Reset view"
+              title={t("admin.kg.resetView")}
             >
               <SvgRefreshCw className="h-4 w-4 stroke-text-03" />
             </button>
             <button
               onClick={() => setIsFullscreen((f) => !f)}
               className="rounded-04 p-1 hover:bg-background-neutral-01 transition-colors"
-              title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+              title={isFullscreen ? t("admin.kg.exitFullscreen") : t("admin.kg.fullscreen")}
             >
               {isFullscreen ? (
                 <SvgFold className="h-4 w-4 stroke-text-03" />
@@ -900,7 +904,7 @@ export default function GraphExplorer({
               className="flex items-center gap-0.5 text-theme-primary-05 hover:underline"
             >
               <SvgExpand className="h-3 w-3 stroke-theme-primary-05" />
-              Overview
+              {t("admin.kg.overview")}
             </button>
             {breadcrumbs.map((crumb, i) => (
               <span key={i} className="flex items-center gap-0.5">
@@ -924,14 +928,16 @@ export default function GraphExplorer({
         {/* Search */}
         <div className="max-w-xs">
           <InputTypeIn
-            placeholder="Search nodes..."
+            placeholder={t("admin.kg.searchNodesPlaceholder")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             leftSearchIcon={!searchLoading}
           />
           {serverClusterMatches && serverMatchedClusterLabels.size > 0 && (
             <Text as="p" mainContentMuted text03 className="mt-1 text-[11px]">
-              {serverMatchedClusterLabels.size} cluster matched — highlighted in red
+              {t("admin.kg.clusterMatched", {
+                count: serverMatchedClusterLabels.size,
+              })}
             </Text>
           )}
         </div>
@@ -954,7 +960,7 @@ export default function GraphExplorer({
               height={dimensions.height}
               nodeLabel={(node: ForceGraphNode) =>
                 node.isCluster
-                  ? `⬡ ${node.name} (${node.nodeCount} nodes)\nTop: ${(node.topEntities || []).slice(0, 3).join(", ")}`
+                  ? `⬡ ${node.name} (${t("admin.kg.nodeCount", { count: node.nodeCount })})\n${t("admin.kg.top")}: ${(node.topEntities || []).slice(0, 3).join(", ")}`
                   : `${node.name} (${node.label})`
               }
               nodeRelSize={5}
@@ -997,7 +1003,7 @@ export default function GraphExplorer({
               height={dimensions.height}
               nodeLabel={(node: ForceGraphNode) =>
                 node.isCluster
-                  ? `⬡ ${node.name} (${node.nodeCount} nodes)`
+                  ? `⬡ ${node.name} (${t("admin.kg.nodeCount", { count: node.nodeCount })})`
                   : `${node.name} (${node.label})`
               }
               nodeRelSize={5}
@@ -1052,7 +1058,7 @@ export default function GraphExplorer({
             <div className="flex items-center gap-2">
               <div className="h-4 w-4 animate-spin rounded-full border-2 border-theme-primary-04 border-t-transparent" />
               <Text as="span" mainContentMuted text03 className="text-sm">
-                Settling layout…
+                {t("admin.kg.settlingLayout")}
               </Text>
             </div>
           </div>
@@ -1061,13 +1067,13 @@ export default function GraphExplorer({
           <div className="absolute bottom-2 left-2 select-none pointer-events-none">
             <Text as="p" mainContentMuted text03 className="text-[10px] opacity-60">
               {currentMode === "overview" &&
-                "Click cluster to expand · Right-click node for neighborhood"}
+                t("admin.kg.overviewHint")}
               {currentMode === "expand" &&
-                "Viewing cluster contents · Right-click for neighborhood"}
-              {currentMode === "neighborhood" && "Ego-graph view · Click nodes to explore"}
+                t("admin.kg.expandHint")}
+              {currentMode === "neighborhood" && t("admin.kg.neighborhoodHint")}
               {currentMode === "full" &&
                 forceData.nodes.length > 200 &&
-                "Large graph — zoom to see labels · Right-click for neighborhood"}
+                t("admin.kg.largeGraphHint")}
             </Text>
           </div>
         </div>

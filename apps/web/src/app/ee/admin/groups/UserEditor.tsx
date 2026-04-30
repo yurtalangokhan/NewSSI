@@ -2,6 +2,7 @@ import { User } from "@/lib/types";
 import { FiX } from "react-icons/fi";
 import InputComboBox from "@/refresh-components/inputs/InputComboBox/InputComboBox";
 import Button from "@/refresh-components/buttons/Button";
+import { useTranslation } from "react-i18next";
 
 interface UserEditorProps {
   selectedUserIds: string[];
@@ -18,6 +19,7 @@ export const UserEditor = ({
   existingUsers,
   onSubmit,
 }: UserEditorProps) => {
+  const { t } = useTranslation();
   const selectedUsers = allUsers.filter((user) =>
     selectedUserIds.includes(user.id)
   );
@@ -51,7 +53,7 @@ export const UserEditor = ({
 
       <div className="flex">
         <InputComboBox
-          placeholder="Search..."
+          placeholder={t("admin.groups.searchUsersPlaceholder")}
           value=""
           onChange={() => {}}
           onValueChange={(selectedValue) => {
@@ -77,7 +79,7 @@ export const UserEditor = ({
             className="ml-3 flex-nowrap w-32"
             onClick={() => onSubmit(selectedUsers)}
           >
-            Add Users
+            {t("admin.groups.addUsersButton")}
           </Button>
         )}
       </div>

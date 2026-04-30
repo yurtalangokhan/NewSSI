@@ -10,10 +10,12 @@ import { useUser } from "@/providers/UserProvider";
 import CreateButton from "@/refresh-components/buttons/CreateButton";
 import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
 import * as SettingsLayouts from "@/layouts/settings-layouts";
+import { useTranslation } from "react-i18next";
 
 const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.GROUPS]!;
 
 function Main() {
+  const { t } = useTranslation();
   const [showForm, setShowForm] = useState(false);
 
   const { data, isLoading, error, refreshUserGroups } = useUserGroups();
@@ -37,22 +39,22 @@ function Main() {
   }
 
   if (error || !data) {
-    return <div className="text-red-600">Error loading users</div>;
+    return <div className="text-red-600">{t("admin.groups.errorLoadingGroups")}</div>;
   }
 
   if (ccPairsError || !ccPairs) {
-    return <div className="text-red-600">Error loading connectors</div>;
+    return <div className="text-red-600">{t("admin.groups.errorLoadingConnectors")}</div>;
   }
 
   if (usersError || !users) {
-    return <div className="text-red-600">Error loading users</div>;
+    return <div className="text-red-600">{t("admin.groups.errorLoadingUsers")}</div>;
   }
 
   return (
     <>
       {isAdmin && (
         <CreateButton onClick={() => setShowForm(true)}>
-          Create New User Group
+          {t("admin.groups.createButton")}
         </CreateButton>
       )}
       {data.length > 0 && (

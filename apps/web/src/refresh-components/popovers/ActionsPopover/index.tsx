@@ -31,6 +31,7 @@ import { useAvailableTools } from "@/hooks/useAvailableTools";
 import useCCPairs from "@/hooks/useCCPairs";
 import { useSettingsContext } from "@/providers/SettingsProvider";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
+import { useTranslation } from "react-i18next";
 import { useToolOAuthStatus } from "@/lib/hooks/useToolOAuthStatus";
 import LineItem from "@/refresh-components/buttons/LineItem";
 import SimpleLoader from "@/refresh-components/loaders/SimpleLoader";
@@ -145,6 +146,7 @@ export default function ActionsPopover({
   availableSources = [],
   disabled = false,
 }: ActionsPopoverProps) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [secondaryView, setSecondaryView] = useState<SecondaryViewState | null>(
     null
@@ -871,7 +873,7 @@ export default function ActionsPopover({
       {[
         <InputTypeIn
           key="search"
-          placeholder="Search Actions"
+          placeholder={t("inputBar.searchActionsPlaceholder")}
           value={searchTerm}
           onChange={(event) => setSearchTerm(event.target.value)}
           autoFocus
@@ -970,7 +972,7 @@ export default function ActionsPopover({
 
         (isAdmin || isCurator) && (
           <LineItem href="/admin/actions" icon={SvgActions} key="more-actions">
-            More Actions
+            {t("inputBar.moreActionsButton")}
           </LineItem>
         ),
       ]}

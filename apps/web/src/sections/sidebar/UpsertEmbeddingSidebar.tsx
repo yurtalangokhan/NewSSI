@@ -2,14 +2,20 @@ import { useEmbeddingFormContext } from "@/components/context/EmbeddingContext";
 import Text from "@/refresh-components/texts/Text";
 import StepSidebar from "@/sections/sidebar/StepSidebarWrapper";
 import { SvgSettings } from "@opal/icons";
+import { useTranslation } from "react-i18next";
 export default function EmbeddingSidebar() {
   const { formStep, setFormStep } = useEmbeddingFormContext();
+  const { t } = useTranslation();
 
-  const settingSteps = ["Embedding Model", "Reranking Model", "Advanced"];
+  const settingSteps = [
+    t("sidebar.embeddingModel"),
+    t("sidebar.rerankingModel"),
+    t("sidebar.advanced"),
+  ];
 
   return (
     <StepSidebar
-      buttonName="Search Settings"
+      buttonName={t("sidebar.searchSettings")}
       buttonIcon={SvgSettings}
       buttonHref="/admin/configuration/search"
     >

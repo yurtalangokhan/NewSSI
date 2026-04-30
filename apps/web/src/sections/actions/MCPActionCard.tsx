@@ -28,6 +28,7 @@ import Text from "@/refresh-components/texts/Text";
 import { timeAgo } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import Modal from "@/refresh-components/layouts/ConfirmationModalLayout";
+import { useTranslation } from "react-i18next";
 
 export interface MCPActionCardProps {
   // Server identification
@@ -101,6 +102,7 @@ export default function MCPActionCard({
   onUpdateToolsStatus,
   className,
 }: MCPActionCardProps) {
+  const { t } = useTranslation();
   const [isToolsExpanded, setIsToolsExpanded] = useState(initialExpanded);
   const [searchQuery, setSearchQuery] = useState("");
   const [showOnlyEnabled, setShowOnlyEnabled] = useState(false);
@@ -251,13 +253,13 @@ export default function MCPActionCard({
           icon={SvgRefreshCw}
           internal
           onClick={handleRefreshTools}
-          tooltip="Refresh tools"
-          aria-label="Refresh tools"
+          tooltip={t("admin.mcp.refreshTools")}
+          aria-label={t("admin.mcp.refreshTools")}
           className={cn(isToolsRefreshing && "animate-spin")}
         />
         {lastRefreshedText && (
           <Text as="p" text03 mainUiBody className="whitespace-nowrap">
-            Tools last refreshed {lastRefreshedText}
+            {t("admin.mcp.toolsLastRefreshed", { time: lastRefreshedText })}
           </Text>
         )}
       </div>
@@ -303,8 +305,8 @@ export default function MCPActionCard({
           }}
           isEmpty={filteredTools.length === 0}
           searchQuery={searchQuery}
-          emptyMessage="No tools available"
-          emptySearchMessage="No tools found"
+          emptyMessage={t("admin.mcp.noToolsAvailable")}
+          emptySearchMessage={t("admin.mcp.noToolsFound")}
           leftAction={leftAction}
         >
           {filteredTools.map((tool) => (
@@ -329,7 +331,7 @@ export default function MCPActionCard({
           icon={({ className }) => (
             <SvgTrash className={cn(className, "stroke-action-danger-05")} />
           )}
-          title="Delete MCP server"
+          title={t("admin.mcp.deleteServerTitle")}
           onClose={() => deleteModal.toggle(false)}
           submit={
             <Button
@@ -345,17 +347,16 @@ export default function MCPActionCard({
                 }
               }}
             >
-              Delete
+              {t("admin.mcp.delete")}
             </Button>
           }
         >
           <div className="flex flex-col gap-4">
             <Text as="p" text03>
-              All tools connected to <b>{title}</b> will be removed. Deletion is
-              irreversible.
+              {t("admin.mcp.deleteServerWarning", { name: title })}
             </Text>
             <Text as="p" text03>
-              Are you sure you want to delete this MCP server?
+              {t("admin.mcp.deleteServerConfirm")}
             </Text>
           </div>
         </Modal>

@@ -1,5 +1,6 @@
 import { ConnectorStatus } from "@/lib/types";
 import { ConnectorMultiSelect } from "@/components/ConnectorMultiSelect";
+import { useTranslation } from "react-i18next";
 
 interface ConnectorEditorProps {
   selectedCCPairIds: number[];
@@ -12,6 +13,7 @@ export const ConnectorEditor = ({
   setSetCCPairIds,
   allCCPairs,
 }: ConnectorEditorProps) => {
+  const { t } = useTranslation();
   // Filter out public docs, since they don't make sense as part of a group
   const privateCCPairs = allCCPairs.filter(
     (ccPair) => ccPair.access_type === "private"
@@ -20,11 +22,11 @@ export const ConnectorEditor = ({
   return (
     <ConnectorMultiSelect
       name="connectors"
-      label="Connectors"
+      label={t("admin.groups.connectorsLabel")}
       connectors={privateCCPairs}
       selectedIds={selectedCCPairIds}
       onChange={setSetCCPairIds}
-      placeholder="Search for connectors..."
+      placeholder={t("admin.groups.searchConnectorsPlaceholder")}
       showError={true}
     />
   );

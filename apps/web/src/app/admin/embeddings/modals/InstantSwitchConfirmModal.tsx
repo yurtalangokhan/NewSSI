@@ -2,6 +2,7 @@ import Modal from "@/refresh-components/Modal";
 import Button from "@/refresh-components/buttons/Button";
 import Text from "@/refresh-components/texts/Text";
 import { SvgAlertTriangle } from "@opal/icons";
+import { useTranslation } from "react-i18next";
 export interface InstantSwitchConfirmModalProps {
   onClose: () => void;
   onConfirm: () => void;
@@ -11,28 +12,27 @@ export default function InstantSwitchConfirmModal({
   onClose,
   onConfirm,
 }: InstantSwitchConfirmModalProps) {
+  const { t } = useTranslation();
   return (
     <Modal open onOpenChange={onClose}>
       <Modal.Content width="sm" height="sm">
         <Modal.Header
           icon={SvgAlertTriangle}
-          title="Are you sure you want to do an instant switch?"
+          title={t("admin.embeddings.instantSwitchTitle")}
           onClose={onClose}
         />
         <Modal.Body>
           <Text as="p">
-            Instant switching will immediately change the embedding model
-            without re-indexing. Searches will be over a partial set of
-            documents (starting with 0 documents) until re-indexing is complete.
+            {t("admin.embeddings.instantSwitchBody")}
           </Text>
           <Text as="p">
-            <strong>This is not reversible.</strong>
+            <strong>{t("admin.embeddings.instantSwitchIrreversible")}</strong>
           </Text>
         </Modal.Body>
         <Modal.Footer>
-          <Button onClick={onConfirm}>Confirm</Button>
+          <Button onClick={onConfirm}>{t("admin.embeddings.confirmButton")}</Button>
           <Button secondary onClick={onClose}>
-            Cancel
+            {t("admin.embeddings.cancelButton")}
           </Button>
         </Modal.Footer>
       </Modal.Content>

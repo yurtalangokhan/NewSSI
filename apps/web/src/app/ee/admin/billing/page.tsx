@@ -1,6 +1,9 @@
+"use client";
+
 import * as SettingsLayouts from "@/layouts/settings-layouts";
 import BillingInformationPage from "./BillingInformationPage";
 import { SvgCreditCard } from "@opal/icons";
+import { useTranslation } from "react-i18next";
 
 export interface BillingInformation {
   stripe_subscription_id: string;
@@ -17,11 +20,13 @@ export interface BillingInformation {
 }
 
 export default function page() {
+  const { t } = useTranslation("admin");
+
   return (
     <SettingsLayouts.Root>
       <SettingsLayouts.Header
         icon={SvgCreditCard}
-        title="Billing Information"
+        title={t("billing.pageTitle")}
         separator
       />
       <SettingsLayouts.Body>

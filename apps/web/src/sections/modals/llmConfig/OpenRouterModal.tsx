@@ -26,6 +26,7 @@ import { AdvancedOptions } from "./components/AdvancedOptions";
 import { DisplayModels } from "./components/DisplayModels";
 import { FetchModelsButton } from "./components/FetchModelsButton";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 export const OPENROUTER_PROVIDER_NAME = "openrouter";
 const OPENROUTER_DISPLAY_NAME = "OpenRouter";
@@ -37,15 +38,18 @@ interface OpenRouterModalValues extends BaseLLMFormValues {
   api_base: string;
 }
 
-async function fetchOpenRouterModels(params: {
-  apiBase: string;
-  apiKey: string;
-  providerName?: string;
-}): Promise<{ models: ModelConfiguration[]; error?: string }> {
+async function fetchOpenRouterModels(
+  params: {
+    apiBase: string;
+    apiKey: string;
+    providerName?: string;
+  },
+  t: (key: string) => string
+): Promise<{ models: ModelConfiguration[]; error?: string }> {
   if (!params.apiBase || !params.apiKey) {
     return {
       models: [],
-      error: "API Base and API Key are required to fetch models",
+      error: t("llmConfig.apiFetchRequirements"),
     };
   }
 
@@ -86,7 +90,7 @@ async function fetchOpenRouterModels(params: {
     return { models };
   } catch (error) {
     const errorMessage =
-      error instanceof Error ? error.message : "Unknown error";
+      error instanceof Error ? error.message : t("llmConfig.unknownError");
     return { models: [], error: errorMessage };
   }
 }
@@ -116,6 +120,7 @@ export function OpenRouterModal({
         setTestError,
         wellKnownLLMProvider,
       }: ProviderFormContext) => {
+        const { t } = useTranslation();
         const modelConfigurations = buildAvailableModelConfigurations(
           existingLlmProvider,
           wellKnownLLMProvider
@@ -130,8 +135,8 @@ export function OpenRouterModal({
         };
 
         const validationSchema = buildDefaultValidationSchema().shape({
-          api_key: Yup.string().required("API Key is required"),
-          api_base: Yup.string().required("API Base URL is required"),
+          api_key: Yup.string().required(t("llmConfig.apiKeyRequired")),
+          api_base: Yup.string().required(t("llmConfig.apiBaseRequired")),
         });
 
         return (
@@ -176,25 +181,28 @@ export function OpenRouterModal({
 
                   <TextFormField
                     name="api_base"
-                    label="API Base URL"
-                    subtext="The base URL for OpenRouter API."
+                    label={t("llmConfig.apiBaseLabel")}
+                    subtext={t("llmConfig.openRouterApiBaseSubtext")}
                     placeholder={DEFAULT_API_BASE}
                   />
 
                   <FetchModelsButton
                     onFetch={() =>
-                      fetchOpenRouterModels({
-                        apiBase: formikProps.values.api_base,
-                        apiKey: formikProps.values.api_key,
-                        providerName: existingLlmProvider?.name,
-                      })
+                      fetchOpenRouterModels(
+                        {
+                          apiBase: formikProps.values.api_base,
+                          apiKey: formikProps.values.api_key,
+                          providerName: existingLlmProvider?.name,
+                        },
+                        t
+                      )
                     }
                     isDisabled={isFetchDisabled}
                     disabledHint={
                       !formikProps.values.api_key
-                        ? "Enter your API key first."
+                        ? t("llmConfig.enterApiKeyFirst")
                         : !formikProps.values.api_base
-                          ? "Enter the API base URL."
+                          ? t("llmConfig.enterApiBaseFirst")
                           : undefined
                     }
                     onModelsFetched={setFetchedModels}
@@ -206,10 +214,7 @@ export function OpenRouterModal({
                   <DisplayModels
                     modelConfigurations={currentModels}
                     formikProps={formikProps}
-                    noModelConfigurationsMessage={
-                      "Fetch available models first, then you'll be able to select " +
-                      "the models you want to make available in Onyx."
-                    }
+                    noModelConfigurationsMessage={t("llmConfig.fetchModelsFirst")}
                     recommendedDefaultModel={null}
                     shouldShowAutoUpdateToggle={false}
                   />

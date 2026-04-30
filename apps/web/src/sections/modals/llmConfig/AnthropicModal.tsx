@@ -17,6 +17,7 @@ import {
 } from "./formUtils";
 import { AdvancedOptions } from "./components/AdvancedOptions";
 import { DisplayModels } from "./components/DisplayModels";
+import { useTranslation } from "react-i18next";
 
 export const ANTHROPIC_PROVIDER_NAME = "anthropic";
 const DEFAULT_DEFAULT_MODEL_NAME = "claude-sonnet-4-5";
@@ -44,6 +45,8 @@ export function AnthropicModal({
         setTestError,
         wellKnownLLMProvider,
       }: ProviderFormContext) => {
+        // eslint-disable-next-line react-hooks/rules-of-hooks
+        const { t } = useTranslation();
         const modelConfigurations = buildAvailableModelConfigurations(
           existingLlmProvider,
           wellKnownLLMProvider
@@ -63,7 +66,7 @@ export function AnthropicModal({
         };
 
         const validationSchema = buildDefaultValidationSchema().shape({
-          api_key: Yup.string().required("API Key is required"),
+          api_key: Yup.string().required(t("llmConfig.apiKeyRequired")),
         });
 
         return (
@@ -92,7 +95,7 @@ export function AnthropicModal({
                 <Form className={LLM_FORM_CLASS_NAME}>
                   <DisplayNameField disabled={!!existingLlmProvider} />
 
-                  <PasswordInputTypeInField name="api_key" label="API Key" />
+                  <PasswordInputTypeInField name="api_key" label={t("llmConfig.longTermApiKey")} />
 
                   <DisplayModels
                     modelConfigurations={modelConfigurations}

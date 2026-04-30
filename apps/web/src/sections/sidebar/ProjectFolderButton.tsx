@@ -25,6 +25,7 @@ import {
   SvgMoreHorizontal,
   SvgTrash,
 } from "@opal/icons";
+import { useTranslation } from "react-i18next";
 
 export interface ProjectFolderButtonProps {
   project: Project;
@@ -32,6 +33,7 @@ export interface ProjectFolderButtonProps {
 
 const ProjectFolderButton = memo(({ project }: ProjectFolderButtonProps) => {
   const route = useAppRouter();
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [deleteConfirmationModalOpen, setDeleteConfirmationModalOpen] =
     useState(false);
@@ -89,7 +91,7 @@ const ProjectFolderButton = memo(({ project }: ProjectFolderButtonProps) => {
       icon={SvgEdit}
       onClick={noProp(() => setIsEditing(true))}
     >
-      Rename Project
+      {t("sidebar.renameProject")}
     </LineItem>,
     null,
     <LineItem
@@ -98,7 +100,7 @@ const ProjectFolderButton = memo(({ project }: ProjectFolderButtonProps) => {
       onClick={noProp(() => setDeleteConfirmationModalOpen(true))}
       danger
     >
-      Delete Project
+      {t("sidebar.deleteProject")}
     </LineItem>,
   ];
 
@@ -113,7 +115,7 @@ const ProjectFolderButton = memo(({ project }: ProjectFolderButtonProps) => {
       {/* Confirmation Modal (only for deletion) */}
       {deleteConfirmationModalOpen && (
         <ConfirmationModalLayout
-          title="Delete Project"
+          title={t("sidebar.deleteProjectTitle")}
           icon={SvgTrash}
           onClose={() => setDeleteConfirmationModalOpen(false)}
           submit={
@@ -124,12 +126,11 @@ const ProjectFolderButton = memo(({ project }: ProjectFolderButtonProps) => {
                 deleteProject(project.id);
               }}
             >
-              Delete
+              {t("sidebar.delete")}
             </Button>
           }
         >
-          Are you sure you want to delete this project? This action cannot be
-          undone.
+          {t("sidebar.deleteProjectConfirmation")}
         </ConfirmationModalLayout>
       )}
 

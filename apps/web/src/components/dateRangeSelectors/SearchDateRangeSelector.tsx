@@ -4,6 +4,8 @@ import { CustomDropdown } from "../Dropdown";
 import { timeRangeValues } from "@/app/config/timeRange";
 import { TimeRangeSelector } from "@/components/filters/TimeRangeSelector";
 import { cn } from "@/lib/utils";
+import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 
 export function SearchDateRangeSelector({
   value,
@@ -16,6 +18,18 @@ export function SearchDateRangeSelector({
   isHorizontal?: boolean;
   className?: string;
 }) {
+  const { t } = useTranslation();
+  const localizedTimeRangeValues = useMemo(
+    () =>
+      timeRangeValues.map((timeRangeValue) => ({
+        label: timeRangeValue.labelKey
+          ? t(timeRangeValue.labelKey, { defaultValue: timeRangeValue.label })
+          : timeRangeValue.label,
+        value: timeRangeValue.value,
+      })),
+    [t]
+  );
+
   return (
     <div>
       <CustomDropdown
@@ -26,7 +40,7 @@ export function SearchDateRangeSelector({
               "border border-border bg-background rounded-lg flex flex-col w-64 max-h-96 overflow-y-auto flex overscroll-contain",
               className
             )}
-            timeRangeValues={timeRangeValues}
+            timeRangeValues={localizedTimeRangeValues}
             onValueChange={onValueChange}
           />
         }
@@ -47,11 +61,11 @@ export function SearchDateRangeSelector({
           <FiCalendar className="flex-none my-auto mr-2" />{" "}
           <p className="line-clamp-1">
             {isHorizontal ? (
-              "Date"
+              t("admin.documentExplorer.date")
             ) : value?.selectValue ? (
               <div className="text-text-darker">{value.selectValue}</div>
             ) : (
-              "Any time..."
+              t("admin.documentExplorer.anyTime")
             )}
           </p>
           {value?.selectValue ? (

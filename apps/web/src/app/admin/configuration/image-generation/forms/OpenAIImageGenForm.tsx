@@ -1,6 +1,7 @@
 "use client";
 
-import React from "react";
+import React, { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import * as Yup from "yup";
 import { FormikField } from "@/refresh-components/form/FormikField";
 import { FormField } from "@/refresh-components/form/FormField";
@@ -24,10 +25,6 @@ const initialValues: OpenAIFormValues = {
   api_key: "",
 };
 
-const validationSchema = Yup.object().shape({
-  api_key: Yup.string().required("API Key is required"),
-});
-
 function OpenAIFormFields(props: ImageGenFormChildProps<OpenAIFormValues>) {
   const {
     apiStatus,
@@ -39,6 +36,7 @@ function OpenAIFormFields(props: ImageGenFormChildProps<OpenAIFormValues>) {
     resetApiState,
     imageProvider,
   } = props;
+  const { t } = useTranslation();
 
   return (
     <FormikField<string>
@@ -49,7 +47,7 @@ function OpenAIFormFields(props: ImageGenFormChildProps<OpenAIFormValues>) {
           state={apiStatus === "error" ? "error" : state}
           className="w-full"
         >
-          <FormField.Label>API Key</FormField.Label>
+          <FormField.Label>{t("admin.imageGeneration.forms.apiKeyLabel")}</FormField.Label>
           <FormField.Control>
             {apiKeyOptions.length > 0 ? (
               <InputComboBox
@@ -66,8 +64,8 @@ function OpenAIFormFields(props: ImageGenFormChildProps<OpenAIFormValues>) {
                 options={apiKeyOptions}
                 placeholder={
                   isLoadingCredentials
-                    ? "Loading..."
-                    : "Enter new API key or select existing provider"
+                    ? t("admin.imageGeneration.forms.apiKeyPlaceholderLoading")
+                    : t("admin.imageGeneration.forms.apiKeyPlaceholderSelect")
                 }
                 disabled={disabled}
                 isError={apiStatus === "error"}
@@ -80,7 +78,9 @@ function OpenAIFormFields(props: ImageGenFormChildProps<OpenAIFormValues>) {
                   resetApiState();
                 }}
                 placeholder={
-                  isLoadingCredentials ? "Loading..." : "Enter your API key"
+                  isLoadingCredentials
+                    ? t("admin.imageGeneration.forms.apiKeyPlaceholderLoading")
+                    : t("admin.imageGeneration.forms.apiKeyPlaceholder")
                 }
                 showClearButton={false}
                 disabled={disabled}
@@ -92,15 +92,17 @@ function OpenAIFormFields(props: ImageGenFormChildProps<OpenAIFormValues>) {
             <FormField.APIMessage
               state={apiStatus}
               messages={{
-                loading: `Testing API key with ${imageProvider.title}...`,
-                success: "API key is valid. Configuration saved.",
-                error: errorMessage || "Invalid API key",
+                loading: t("admin.imageGeneration.forms.testingApiKey", {
+                  name: imageProvider.title,
+                }),
+                success: t("admin.imageGeneration.forms.apiKeyValid"),
+                error: errorMessage || t("admin.imageGeneration.forms.apiKeyInvalid"),
               }}
             />
           ) : (
             <FormField.Message
               messages={{
-                idle: "Enter a new API key or select an existing provider.",
+                idle: t("admin.imageGeneration.forms.apiKeyHint"),
                 error: meta.error,
               }}
             />
@@ -134,16 +136,33 @@ function transformValues(
 
 export function OpenAIImageGenForm(props: ImageGenFormBaseProps) {
   const { imageProvider, existingConfig } = props;
+  const { t } = useTranslation();
+
+  const validationSchema = useMemo(
+    () =>
+      Yup.object().shape({
+        api_key: Yup.string().required(t("admin.imageGeneration.forms.apiKeyRequired")),
+      }),
+    [t]
+  );
 
   return (
     <ImageGenFormWrapper<OpenAIFormValues>
       {...props}
       title={
         existingConfig
-          ? `Edit ${imageProvider.title}`
-          : `Connect ${imageProvider.title}`
+          ? t("admin.imageGeneration.forms.editTitle", {
+              name: imageProvider.title,
+            })
+          : t("admin.imageGeneration.forms.connectTitle", {
+              name: imageProvider.title,
+            })
       }
-      description={imageProvider.description}
+      description={
+        imageProvider.descriptionKey
+          ? t(imageProvider.descriptionKey)
+          : imageProvider.description
+      }
       initialValues={initialValues}
       validationSchema={validationSchema}
       getInitialValuesFromCredentials={getInitialValuesFromCredentials}

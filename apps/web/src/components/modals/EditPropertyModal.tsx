@@ -3,6 +3,8 @@ import Modal from "@/refresh-components/Modal";
 import Button from "@/refresh-components/buttons/Button";
 import { TextFormField } from "@/components/Field";
 import { SvgEdit } from "@opal/icons";
+import { useTranslation } from "react-i18next";
+
 export interface EditPropertyModalProps {
   propertyTitle: string;
   propertyDetails?: string;
@@ -22,12 +24,13 @@ export default function EditPropertyModal({
   onClose,
   onSubmit,
 }: EditPropertyModalProps) {
+  const { t } = useTranslation("modals");
   return (
     <Modal open onOpenChange={onClose}>
       <Modal.Content width="sm">
         <Modal.Header
           icon={SvgEdit}
-          title={`Edit ${propertyTitle}`}
+          title={t("editPropertyTitle", { title: propertyTitle })}
           onClose={onClose}
         />
         <Modal.Body>
@@ -48,7 +51,7 @@ export default function EditPropertyModal({
                   vertical
                   label={propertyDetails || ""}
                   name="propertyValue"
-                  placeholder="Property value"
+                  placeholder={t("propertyValuePlaceholder")}
                 />
 
                 <Modal.Footer>
@@ -60,7 +63,7 @@ export default function EditPropertyModal({
                       values.propertyValue === propertyValue
                     }
                   >
-                    {isSubmitting ? "Updating..." : "Update property"}
+                    {isSubmitting ? t("updating") : t("update")}
                   </Button>
                 </Modal.Footer>
               </Form>
@@ -71,3 +74,4 @@ export default function EditPropertyModal({
     </Modal>
   );
 }
+

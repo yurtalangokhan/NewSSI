@@ -16,6 +16,7 @@ import { IconProps } from "@opal/types";
 import SimpleTooltip from "@/refresh-components/SimpleTooltip";
 import ShareButton from "@/app/craft/components/ShareButton";
 import type { SharingScope } from "@/app/craft/types/streamingTypes";
+import { useTranslation } from "react-i18next";
 
 /** SvgLoader wrapped with animate-spin so it can be passed as a Button leftIcon */
 const SpinningLoader: React.FunctionComponent<IconProps> = (props) => (
@@ -64,7 +65,7 @@ export default function UrlBar({
   onForward,
   previewUrl,
   onDownloadRaw,
-  downloadRawTooltip = "Download file",
+  downloadRawTooltip,
   onDownload,
   isDownloading = false,
   onRefresh,
@@ -72,6 +73,8 @@ export default function UrlBar({
   sharingScope = "private",
   onScopeChange,
 }: UrlBarProps) {
+  const { t } = useTranslation();
+  const effectiveDownloadTooltip = downloadRawTooltip ?? t("craftComponents.downloadFile");
   const handleOpenInNewTab = () => {
     if (previewUrl) {
       window.open(previewUrl, "_blank", "noopener,noreferrer");
@@ -93,7 +96,7 @@ export default function UrlBar({
                   ? "hover:bg-background-tint-03 text-text-03"
                   : "text-text-02 cursor-not-allowed"
               )}
-              aria-label="Go back"
+              aria-label={t("craftComponents.goBack")}
             >
               <SvgArrowLeft size={16} />
             </button>
@@ -106,7 +109,7 @@ export default function UrlBar({
                   ? "hover:bg-background-tint-03 text-text-03"
                   : "text-text-02 cursor-not-allowed"
               )}
-              aria-label="Go forward"
+              aria-label={t("craftComponents.goForward")}
             >
               <SvgArrowRight size={16} />
             </button>
@@ -114,7 +117,7 @@ export default function UrlBar({
               <button
                 onClick={onRefresh}
                 className="p-1.5 rounded-full transition-colors hover:bg-background-tint-03 text-text-03"
-                aria-label="Refresh"
+                aria-label={t("craftComponents.refresh")}
               >
                 <SvgRevert size={14} className="-scale-x-100" />
               </button>
@@ -125,11 +128,11 @@ export default function UrlBar({
         <div className="flex-1 min-w-0 flex items-center px-3 py-1.5 bg-background-tint-02 rounded-full gap-2 min-h-[2.25rem]">
           {/* Download raw file button */}
           {onDownloadRaw && (
-            <SimpleTooltip tooltip={downloadRawTooltip} delayDuration={200}>
+            <SimpleTooltip tooltip={effectiveDownloadTooltip} delayDuration={200}>
               <button
                 onClick={onDownloadRaw}
                 className="flex-shrink-0 p-0.5 rounded transition-colors hover:bg-background-tint-03 text-text-03"
-                aria-label={downloadRawTooltip}
+                aria-label={effectiveDownloadTooltip}
               >
                 <SvgDownloadCloud size={14} />
               </button>
@@ -137,11 +140,11 @@ export default function UrlBar({
           )}
           {/* Open in new tab button - only shown for Preview tab with valid URL */}
           {previewUrl && (
-            <SimpleTooltip tooltip="open in a new tab" delayDuration={200}>
+            <SimpleTooltip tooltip={t("craftComponents.openInNewTab")} delayDuration={200}>
               <button
                 onClick={handleOpenInNewTab}
                 className="flex-shrink-0 p-0.5 rounded transition-colors hover:bg-background-tint-03 text-text-03"
-                aria-label="open in a new tab"
+                aria-label={t("craftComponents.openInNewTab")}
               >
                 <SvgExternalLink size={14} />
               </button>
@@ -160,7 +163,7 @@ export default function UrlBar({
             disabled={isDownloading}
             onClick={onDownload}
           >
-            {isDownloading ? "Exporting..." : "Export to .docx"}
+            {isDownloading ? t("craftComponents.exporting") : t("craftComponents.exportToDocx")}
           </Button>
         )}
         {/* Share button — shown when webapp preview is active */}

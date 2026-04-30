@@ -18,6 +18,7 @@ import { buildInitialValues } from "../components/llmConnectionHelpers";
 import ConnectionProviderIcon from "@/refresh-components/ConnectionProviderIcon";
 import InlineExternalLink from "@/refresh-components/InlineExternalLink";
 import { ProviderIcon } from "@/app/admin/configuration/llm/ProviderIcon";
+import { useTranslation } from "react-i18next";
 
 // Field name constants
 const FIELD_API_KEY = "api_key";
@@ -47,6 +48,7 @@ interface AnthropicFormValues {
 function AnthropicFormFields(
   props: OnboardingFormChildProps<AnthropicFormValues>
 ) {
+  const { t } = useTranslation();
   const { apiStatus, showApiMessage, errorMessage, modelOptions, disabled } =
     props;
 
@@ -56,7 +58,7 @@ function AnthropicFormFields(
         name={FIELD_API_KEY}
         render={(field, helper, meta, state) => (
           <FormField name={FIELD_API_KEY} state={state} className="w-full">
-            <FormField.Label>API Key</FormField.Label>
+            <FormField.Label>{t("llmOnboarding.apiKey")}</FormField.Label>
             <FormField.Control>
               <PasswordInputTypeIn
                 {...field}
@@ -86,9 +88,9 @@ function AnthropicFormFields(
               <FormField.APIMessage
                 state={apiStatus}
                 messages={{
-                  loading: "Checking API key with Anthropic...",
-                  success: "API key valid.",
-                  error: errorMessage || "Invalid API key",
+                  loading: t("llmOnboarding.checkingAnthropic"),
+                  success: t("llmOnboarding.apiKeyValid"),
+                  error: errorMessage || t("llmOnboarding.invalidApiKey"),
                 }}
               />
             )}
@@ -106,7 +108,7 @@ function AnthropicFormFields(
             state={state}
             className="w-full"
           >
-            <FormField.Label>Default Model</FormField.Label>
+            <FormField.Label>{t("llmOnboarding.defaultModel")}</FormField.Label>
             <FormField.Control>
               <InputComboBox
                 value={field.value}
@@ -115,12 +117,12 @@ function AnthropicFormFields(
                 options={modelOptions}
                 disabled={disabled || modelOptions.length === 0}
                 onBlur={field.onBlur}
-                placeholder="Select a model"
+                placeholder={t("llmOnboarding.selectModel")}
               />
             </FormField.Control>
             <FormField.Message
               messages={{
-                idle: "This model will be used by Onyx by default.",
+                idle: t("llmOnboarding.defaultModelDesc"),
                 error: meta.error,
               }}
             />
@@ -138,6 +140,7 @@ export function AnthropicOnboardingForm({
   open,
   onOpenChange,
 }: AnthropicOnboardingFormProps) {
+  const { t } = useTranslation();
   const initialValues = useMemo(
     (): AnthropicFormValues => ({
       ...buildInitialValues(),
@@ -149,8 +152,8 @@ export function AnthropicOnboardingForm({
   );
 
   const validationSchema = Yup.object().shape({
-    [FIELD_API_KEY]: Yup.string().required("API Key is required"),
-    [FIELD_DEFAULT_MODEL_NAME]: Yup.string().required("Model name is required"),
+    [FIELD_API_KEY]: Yup.string().required(t("llmOnboardingForms.apiKeyRequired")),
+    [FIELD_DEFAULT_MODEL_NAME]: Yup.string().required(t("llmOnboardingForms.modelNameRequired")),
   });
 
   const icon = () => (
@@ -172,8 +175,8 @@ export function AnthropicOnboardingForm({
   return (
     <OnboardingFormWrapper<AnthropicFormValues>
       icon={icon}
-      title="Set up Claude"
-      description="Connect to Anthropic and set up your Claude models."
+      title={t("llmOnboarding.setupClaude")}
+      description={t("llmOnboarding.setupClaudeDesc")}
       llmDescriptor={llmDescriptor}
       onboardingState={onboardingState}
       onboardingActions={onboardingActions}

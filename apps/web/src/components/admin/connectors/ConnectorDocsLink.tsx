@@ -1,5 +1,6 @@
 import { ValidSources } from "@/lib/types";
 import { getSourceDocLink } from "@/lib/sources";
+import { useTranslation } from "react-i18next";
 
 export default function ConnectorDocsLink({
   sourceType,
@@ -8,6 +9,7 @@ export default function ConnectorDocsLink({
   sourceType: ValidSources;
   className?: string;
 }) {
+  const { t } = useTranslation("admin");
   const docsLink = getSourceDocLink(sourceType);
 
   if (!docsLink) {
@@ -18,7 +20,7 @@ export default function ConnectorDocsLink({
 
   return (
     <p className={paragraphClass}>
-      Check out
+      {t("connectorDocsLink.checkOut")}
       <a
         className="text-blue-600 hover:underline"
         target="_blank"
@@ -26,9 +28,9 @@ export default function ConnectorDocsLink({
         href={docsLink}
       >
         {" "}
-        our docs{" "}
+        {t("connectorDocsLink.ourDocs")}{" "}
       </a>
-      for more info on configuring this connector.
+      {t("connectorDocsLink.forMoreInfo")}
     </p>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import ConfirmationModalLayout from "@/refresh-components/layouts/ConfirmationModalLayout";
 import Button from "@/refresh-components/buttons/Button";
 import Checkbox from "@/refresh-components/inputs/Checkbox";
@@ -15,24 +16,23 @@ export default function MoveCustomAgentChatModal({
   onCancel,
   onConfirm,
 }: MoveCustomAgentChatModalProps) {
+  const { t } = useTranslation("modals");
   const [doNotShowAgain, setDoNotShowAgain] = useState(false);
 
   return (
     <ConfirmationModalLayout
       icon={SvgAlertCircle}
-      title="Move Custom Agent Chat"
+      title={t("moveCustomAgentChat.title")}
       onClose={onCancel}
       submit={
         <Button primary onClick={() => onConfirm(doNotShowAgain)}>
-          Confirm Move
+          {t("moveCustomAgentChat.confirmButton")}
         </Button>
       }
     >
       <div className="flex flex-col gap-4">
         <Text as="p" text03>
-          This chat uses a <b>custom agent</b> and moving it to a <b>project</b>{" "}
-          will not override the agent&apos;s prompt or knowledge configurations.
-          This should only be used for organization purposes.
+          {t("moveCustomAgentChat.warning")}
         </Text>
         <div className="flex items-center gap-1">
           <Checkbox
@@ -44,7 +44,7 @@ export default function MoveCustomAgentChatModal({
             htmlFor="move-custom-agent-do-not-show"
             className="text-text-03 text-sm"
           >
-            Do not show this again
+            {t("moveCustomAgentChat.doNotShowAgain")}
           </label>
         </div>
       </div>

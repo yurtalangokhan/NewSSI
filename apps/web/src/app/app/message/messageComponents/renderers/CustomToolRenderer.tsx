@@ -1,5 +1,8 @@
+"use client";
+
 import React, { useEffect, useMemo } from "react";
 import { FiExternalLink, FiDownload, FiTool } from "react-icons/fi";
+import { useTranslation } from "react-i18next";
 import {
   PacketType,
   CustomToolPacket,
@@ -48,6 +51,7 @@ export const CustomToolRenderer: MessageRenderer<CustomToolPacket, {}> = ({
   renderType,
   children,
 }) => {
+  const { t } = useTranslation();
   const { toolName, responseType, data, fileIds, isRunning, isComplete } =
     constructCustomToolState(packets);
 
@@ -59,13 +63,15 @@ export const CustomToolRenderer: MessageRenderer<CustomToolPacket, {}> = ({
 
   const status = useMemo(() => {
     if (isComplete) {
-      if (responseType === "image") return `${toolName} returned images`;
-      if (responseType === "csv") return `${toolName} returned a file`;
-      return `${toolName} completed`;
+      if (responseType === "image")
+        return t("customTool.returnedImages", { toolName });
+      if (responseType === "csv")
+        return t("customTool.returnedFile", { toolName });
+      return t("customTool.completed", { toolName });
     }
-    if (isRunning) return `${toolName} running...`;
+    if (isRunning) return t("customTool.running", { toolName });
     return null;
-  }, [toolName, responseType, isComplete, isRunning]);
+  }, [toolName, responseType, isComplete, isRunning, t]);
 
   const icon = FiTool;
 
@@ -75,8 +81,6 @@ export const CustomToolRenderer: MessageRenderer<CustomToolPacket, {}> = ({
         icon,
         status: status,
         supportsCollapsible: true,
-        // Status is already shown in the step header in compact mode.
-        // Avoid duplicating the same line in the content body.
         content: <></>,
       },
     ]);
@@ -89,43 +93,44 @@ export const CustomToolRenderer: MessageRenderer<CustomToolPacket, {}> = ({
       supportsCollapsible: true,
       content: (
         <div className="flex flex-col gap-3">
-          {/* File responses */}
           {fileIds && fileIds.length > 0 && (
             <div className="text-sm text-muted-foreground flex flex-col gap-2">
               {fileIds.map((fid, idx) => (
                 <div key={fid} className="flex items-center gap-2 flex-wrap">
-                  <span className="whitespace-nowrap">File {idx + 1}</span>
+                  <span className="whitespace-nowrap">
+                    {t("customTool.fileLabel", { index: idx + 1 })}
+                  </span>
                   <a
                     href={buildImgUrl(fid)}
                     target="_blank"
                     rel="noreferrer"
                     className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline whitespace-nowrap"
                   >
-                    <FiExternalLink className="w-3 h-3" /> Open
+                    <FiExternalLink className="w-3 h-3" />{" "}
+                    {t("customTool.openButton")}
                   </a>
                   <a
                     href={buildImgUrl(fid)}
                     download
                     className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline whitespace-nowrap"
                   >
-                    <FiDownload className="w-3 h-3" /> Download
+                    <FiDownload className="w-3 h-3" />{" "}
+                    {t("customTool.downloadButton")}
                   </a>
                 </div>
               ))}
             </div>
           )}
 
-          {/* JSON/Text responses */}
           {data !== undefined && data !== null && (
             <div className="text-xs bg-gray-50 dark:bg-gray-800 p-3 rounded border max-h-96 overflow-y-auto font-mono whitespace-pre-wrap break-all">
               {typeof data === "string" ? data : JSON.stringify(data, null, 2)}
             </div>
           )}
 
-          {/* Show placeholder if no response data yet */}
           {!fileIds && (data === undefined || data === null) && isRunning && (
             <div className="text-xs text-gray-500 italic">
-              Waiting for response...
+              {t("customTool.waitingForResponse")}
             </div>
           )}
         </div>

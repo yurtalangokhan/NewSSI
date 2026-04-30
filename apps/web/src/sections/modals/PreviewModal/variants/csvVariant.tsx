@@ -37,7 +37,9 @@ export const csvVariant: PreviewVariant = {
   headerDescription: (ctx) => {
     if (!ctx.fileContent) return "";
     const { rows } = parseCsv(ctx.fileContent);
-    return `CSV - ${rows.length} rows • ${ctx.fileSize}`;
+    return `CSV - ${ctx.t("filePreview.rows", { count: rows.length })} • ${
+      ctx.fileSize
+    }`;
   },
 
   renderContent: (ctx) => {
@@ -62,7 +64,7 @@ export const csvVariant: PreviewVariant = {
               <TableRow key={rIdx} noHover>
                 {headers.map((_: string, cIdx: number) => (
                   <TableCell
-                    key={cIdx}
+                     key={cIdx}
                     className={cn(
                       cIdx === 0 && "sticky left-0 bg-background-tint-01",
                       "py-4 px-4 whitespace-normal break-words"
@@ -84,7 +86,7 @@ export const csvVariant: PreviewVariant = {
         </Table>
         <TextSeparator
           count={rows.length}
-          text={rows.length === 1 ? "row" : "rows"}
+          text={ctx.t("filePreview.rowLabel", { count: rows.length })}
         />
       </Section>
     );
@@ -95,8 +97,8 @@ export const csvVariant: PreviewVariant = {
     const { headers, rows } = parseCsv(ctx.fileContent);
     return (
       <Text text03 mainUiBody className="select-none">
-        {headers.length} {headers.length === 1 ? "column" : "columns"} •{" "}
-        {rows.length} {rows.length === 1 ? "row" : "rows"}
+        {ctx.t("filePreview.columnLabel", { count: headers.length })} •{" "}
+        {ctx.t("filePreview.rowLabel", { count: rows.length })}
       </Text>
     );
   },

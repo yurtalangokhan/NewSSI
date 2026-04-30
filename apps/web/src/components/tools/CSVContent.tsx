@@ -13,6 +13,7 @@ import SimpleLoader from "@/refresh-components/loaders/SimpleLoader";
 import { SvgAlertCircle } from "@opal/icons";
 import Text from "@/refresh-components/texts/Text";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
 const CsvContent: React.FC<ContentComponentProps> = ({
   fileDescriptor,
@@ -20,6 +21,7 @@ const CsvContent: React.FC<ContentComponentProps> = ({
   fadeIn,
   expanded = false,
 }) => {
+  const { t } = useTranslation();
   const [data, setData] = useState<Record<string, string>[]>([]);
   const [headers, setHeaders] = useState<string[]>([]);
   const [isFetching, setIsFetching] = useState(true);
@@ -53,9 +55,7 @@ const CsvContent: React.FC<ContentComponentProps> = ({
       if (!response.ok) {
         setData([]);
         setHeaders([]);
-        setErrorMessage(
-          "This file is no longer available in server memory. Please upload it again to view CSV content."
-        );
+        setErrorMessage(t("filePreview.csvNoLongerInMemory"));
         return;
       }
 
@@ -68,7 +68,9 @@ const CsvContent: React.FC<ContentComponentProps> = ({
       if (fileSizeInMB > MAX_FILE_SIZE_MB) {
         setData([]);
         setHeaders([]);
-        setErrorMessage("File size exceeds the maximum limit of 5MB");
+        setErrorMessage(
+          t("filePreview.csvFileSizeExceeded", { size: MAX_FILE_SIZE_MB })
+        );
         return;
       }
 
@@ -78,7 +80,7 @@ const CsvContent: React.FC<ContentComponentProps> = ({
       if (!firstRow) {
         setData([]);
         setHeaders([]);
-        setErrorMessage("CSV file is empty");
+        setErrorMessage(t("filePreview.csvEmpty"));
         return;
       }
       const parsedHeaders = firstRow.split(",");
@@ -103,7 +105,7 @@ const CsvContent: React.FC<ContentComponentProps> = ({
       console.error("Error fetching CSV file:", error);
       setData([]);
       setHeaders([]);
-      setErrorMessage("Failed to load CSV content.");
+      setErrorMessage(t("filePreview.csvLoadFailed"));
     } finally {
       setIsFetching(false);
     }
@@ -166,13 +168,13 @@ const CsvContent: React.FC<ContentComponentProps> = ({
                   <SvgAlertCircle className="w-8 h-8 stroke-error" />
                   <Text as="p" text03 mainUiBody>
                     {headers.length === 0
-                      ? "Error loading CSV"
-                      : "No data available"}
+                      ? t("filePreview.errorLoadingCsv")
+                      : t("filePreview.noDataAvailable")}
                   </Text>
                   <Text as="p" text04 mainUiBody>
                     {headers.length === 0
                       ? errorMessage ||
-                        "The CSV file may be too large or couldn't be loaded properly."
+                        t("filePreview.csvMayBeTooLarge")
                       : ""}
                   </Text>
                 </div>

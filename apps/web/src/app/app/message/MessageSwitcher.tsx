@@ -1,7 +1,7 @@
 import { Button } from "@opal/components";
+import { useTranslation } from "react-i18next";
 import Text from "@/refresh-components/texts/Text";
 import { SvgChevronLeft, SvgChevronRight } from "@opal/icons";
-const DISABLED_MESSAGE = "Wait for agent message to complete";
 
 interface MessageSwitcherProps {
   currentPage: number;
@@ -18,6 +18,7 @@ export default function MessageSwitcher({
   handleNext,
   disableForStreaming,
 }: MessageSwitcherProps) {
+  const { t } = useTranslation();
   const handle = (num: number, callback: () => void) =>
     disableForStreaming
       ? undefined
@@ -37,7 +38,7 @@ export default function MessageSwitcher({
         onClick={previous}
         prominence="tertiary"
         disabled={disableForStreaming}
-        tooltip={disableForStreaming ? DISABLED_MESSAGE : "Previous"}
+        tooltip={disableForStreaming ? t("messageSwitcher.waitForCompletion") : t("messageSwitcher.previous")}
       />
 
       <div className="flex flex-row items-center justify-center">
@@ -57,7 +58,7 @@ export default function MessageSwitcher({
         onClick={next}
         prominence="tertiary"
         disabled={disableForStreaming}
-        tooltip={disableForStreaming ? DISABLED_MESSAGE : "Next"}
+        tooltip={disableForStreaming ? t("messageSwitcher.waitForCompletion") : t("messageSwitcher.next")}
       />
     </div>
   );

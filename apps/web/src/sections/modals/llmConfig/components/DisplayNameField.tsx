@@ -1,16 +1,18 @@
 import { TextFormField } from "@/components/Field";
+import { useTranslation } from "react-i18next";
 
 interface DisplayNameFieldProps {
   disabled?: boolean;
 }
 
 export function DisplayNameField({ disabled = false }: DisplayNameFieldProps) {
+  const { t } = useTranslation();
   return (
     <TextFormField
       name="name"
-      label="Display Name"
-      subtext="A name which you can use to identify this provider when selecting it in the UI."
-      placeholder="Display Name"
+      label={t("llmConfig.displayNameLabel")}
+      subtext={t("llmConfig.displayNameSubtext")}
+      placeholder={t("llmConfig.displayNamePlaceholder")}
       disabled={disabled}
     />
   );

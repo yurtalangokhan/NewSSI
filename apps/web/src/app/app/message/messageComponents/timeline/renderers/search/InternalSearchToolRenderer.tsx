@@ -1,5 +1,6 @@
 import { SvgSearch, SvgSearchMenu } from "@opal/icons";
 import { SearchToolPacket } from "@/app/app/services/streamingModels";
+import { useTranslation } from "react-i18next";
 import {
   MessageRenderer,
   RenderType,
@@ -60,6 +61,7 @@ export const InternalSearchToolRenderer: MessageRenderer<
   renderType,
   children,
 }) => {
+  const { t } = useTranslation();
   const searchState = constructCurrentSearchState(packets);
   const { queries, results, isComplete } = searchState;
 
@@ -69,7 +71,7 @@ export const InternalSearchToolRenderer: MessageRenderer<
 
   const hasResults = results.length > 0;
 
-  const queriesHeader = "Searching internal documents";
+  const queriesHeader = t("timeline.searchingDocs");
 
   if (queries.length === 0) {
     return children([
@@ -155,7 +157,7 @@ export const InternalSearchToolRenderer: MessageRenderer<
     return children([
       {
         icon: null,
-        status: "Reading",
+        status: t("timeline.reading"),
         supportsCollapsible: true,
         timelineLayout: "content",
         content: (
@@ -213,7 +215,7 @@ export const InternalSearchToolRenderer: MessageRenderer<
             <>
               {!isCompact && (
                 <Text as="p" mainUiMuted text04>
-                  Reading
+                  {t("timeline.reading")}
                 </Text>
               )}
               <SearchChipList

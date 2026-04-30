@@ -13,8 +13,10 @@ import {
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
 import { FiChevronDown, FiChevronRight } from "react-icons/fi";
 import Text from "@/refresh-components/texts/Text";
+import { useTranslation } from "react-i18next";
 
 export default function Status() {
+  const { t } = useTranslation();
   const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.INDEXING_STATUS]!;
   const { datasources, isLoading, mutate } = useAirbyteDatasources();
   const [search, setSearch] = useState("");
@@ -24,11 +26,11 @@ export default function Status() {
 
   useToastFromQuery({
     "connector-created": {
-      message: "Connector created successfully",
+      message: t("admin.indexingStatus.connectorCreated"),
       type: "success",
     },
     "connector-deleted": {
-      message: "Connector deleted successfully",
+      message: t("admin.indexingStatus.connectorDeleted"),
       type: "success",
     },
   });
@@ -75,19 +77,18 @@ export default function Status() {
     <SettingsLayouts.Root width="full">
       <SettingsLayouts.Header
         icon={route.icon}
-        title={route.title}
+        title={t(route.titleKey || "", { defaultValue: route.title })}
         rightChildren={
-          <Button href="/admin/add-connector">Add Connector</Button>
+          <Button href="/admin/add-connector">{t("admin.indexingStatus.addConnector")}</Button>
         }
         separator
       />
       <SettingsLayouts.Body>
-        {/* Search + expand/collapse controls */}
         <div className="flex items-center gap-3 mb-4">
           <div className="flex-1 max-w-sm">
             <InputTypeIn
               type="search"
-              placeholder="Search data sources…"
+              placeholder={t("admin.indexingStatus.searchPlaceholder")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -97,26 +98,30 @@ export default function Status() {
             className="flex items-center gap-1 text-sm text-link hover:underline"
           >
             <FiChevronDown size={16} />
-            <Text as="span" secondaryBody>Expand All</Text>
+            <Text as="span" secondaryBody>{t("admin.indexingStatus.expandAll")}</Text>
           </button>
           <button
             onClick={collapseAll}
             className="flex items-center gap-1 text-sm text-link hover:underline"
           >
             <FiChevronRight size={16} />
-            <Text as="span" secondaryBody>Collapse All</Text>
+            <Text as="span" secondaryBody>{t("admin.indexingStatus.collapseAll")}</Text>
           </button>
         </div>
 
         {isLoading && (
           <Text as="p" secondaryBody className="text-center py-8">
-            Loading…
+            {t("admin.indexingStatus.loading")}
           </Text>
         )}
 
         {!isLoading && groups.length === 0 && (
           <Text as="p" secondaryBody className="text-center py-8">
-            No data sources found. <a href="/admin/add-connector" className="text-link underline">Add a connector</a> to get started.
+            {t("admin.indexingStatus.noDataSources")}{" "}
+            <a href="/admin/add-connector" className="text-link underline">
+              {t("admin.indexingStatus.addConnectorLinkText")}
+            </a>{" "}
+            {t("admin.indexingStatus.toGetStarted")}
           </Text>
         )}
 

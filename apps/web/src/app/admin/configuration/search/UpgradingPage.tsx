@@ -1,6 +1,7 @@
 import { ThreeDotsLoader } from "@/components/Loading";
 import Modal from "@/refresh-components/Modal";
 import { errorHandlingFetcher } from "@/lib/fetcher";
+import { useTranslation } from "react-i18next";
 import {
   ConnectorIndexingStatusLite,
   ConnectorIndexingStatusLiteResponse,
@@ -29,6 +30,7 @@ export default function UpgradingPage({
 }: {
   futureEmbeddingModel: CloudEmbeddingModel | HostedEmbeddingModel;
 }) {
+  const { t } = useTranslation();
   const [isCancelling, setIsCancelling] = useState<boolean>(false);
 
   const { data: connectors, isLoading: isLoadingConnectors } = useSWR<
@@ -63,9 +65,7 @@ export default function UpgradingPage({
     if (response.ok) {
       mutate("/api/search-settings/get-secondary-search-settings");
     } else {
-      alert(
-        `Failed to cancel embedding model update - ${await response.text()}`
-      );
+      alert(`Failed to cancel embedding model update - ${await response.text()}`);
     }
     setIsCancelling(false);
   };
@@ -130,19 +130,16 @@ export default function UpgradingPage({
           <Modal.Content width="sm" height="sm">
             <Modal.Header
               icon={SvgX}
-              title="Cancel Embedding Model Switch"
+              title={t("admin.searchUpgrading.cancelTitle")}
               onClose={() => setIsCancelling(false)}
             />
             <Modal.Body>
-              <div>
-                Are you sure you want to cancel? Cancelling will revert to the
-                previous model and all progress will be lost.
-              </div>
+              <div>{t("admin.searchUpgrading.cancelBody")}</div>
             </Modal.Body>
             <Modal.Footer>
-              <Button onClick={onCancel}>Confirm</Button>
+              <Button onClick={onCancel}>{t("admin.searchUpgrading.confirmButton")}</Button>
               <Button onClick={() => setIsCancelling(false)} secondary>
-                Cancel
+                {t("admin.searchUpgrading.cancelButton")}
               </Button>
             </Modal.Footer>
           </Modal.Content>
@@ -151,11 +148,10 @@ export default function UpgradingPage({
 
       {futureEmbeddingModel && (
         <div>
-          <Title className="mt-8">Current Upgrade Status</Title>
+          <Title className="mt-8">{t("admin.searchUpgrading.currentStatusTitle")}</Title>
           <div className="mt-4">
             <div className="italic text-lg mb-2">
-              Currently in the process of switching to:{" "}
-              {futureEmbeddingModel.model_name}
+              {t("admin.searchUpgrading.switchingTo", { modelName: futureEmbeddingModel.model_name })}
             </div>
 
             <Button
@@ -163,22 +159,20 @@ export default function UpgradingPage({
               className="mt-4"
               onClick={() => setIsCancelling(true)}
             >
-              Cancel
+              {t("admin.searchUpgrading.cancelButton")}
             </Button>
 
             {connectors && connectors.length > 0 ? (
               futureEmbeddingModel.switchover_type === "instant" ? (
                 <div className="mt-8">
                   <h3 className="text-lg font-semibold mb-2">
-                    Switching Embedding Models
+                    {t("admin.searchUpgrading.switchingModelsTitle")}
                   </h3>
                   <p className="mb-4 text-text-800">
-                    You&apos;re currently switching embedding models, and
-                    you&apos;ve selected the instant switch option. The
-                    transition will complete shortly.
+                    {t("admin.searchUpgrading.instantSwitchBody")}
                   </p>
                   <p className="text-text-600">
-                    The new model will be active soon.
+                    {t("admin.searchUpgrading.newModelActiveSoon")}
                   </p>
                 </div>
               ) : (
@@ -192,29 +186,15 @@ export default function UpgradingPage({
                   <Text className="my-4">
                     {futureEmbeddingModel.switchover_type === "active_only" ? (
                       <>
-                        The table below shows the re-indexing progress of active
-                        (non-paused) connectors. Once all active connectors have
-                        been re-indexed successfully, the new model will be used
-                        for all search queries. Paused connectors will continue
-                        to be indexed in the background but won&apos;t block the
-                        switchover. Until then, we will use the old model so
-                        that no downtime is necessary during this transition.
+                        {t("admin.searchUpgrading.activeOnlyProgress")}
                         <br />
-                        Note: User file re-indexing progress is not shown. You
-                        will see this page until all active connectors are
-                        re-indexed!
+                        {t("admin.searchUpgrading.activeOnlyProgressNote")}
                       </>
                     ) : (
                       <>
-                        The table below shows the re-indexing progress of all
-                        existing connectors. Once all connectors have been
-                        re-indexed successfully, the new model will be used for
-                        all search queries. Until then, we will use the old
-                        model so that no downtime is necessary during this
-                        transition.
+                        {t("admin.searchUpgrading.allConnectorsProgress")}
                         <br />
-                        Note: User file re-indexing progress is not shown. You
-                        will see this page until all user files are re-indexed!
+                        {t("admin.searchUpgrading.allConnectorsProgressNote")}
                       </>
                     )}
                   </Text>
@@ -224,9 +204,7 @@ export default function UpgradingPage({
                       {futureEmbeddingModel.switchover_type === "active_only" &&
                         !hasVisibleReindexingProgress && (
                           <Text className="text-text-700 mt-4">
-                            All connectors are currently paused, so none are
-                            blocking the switchover. Paused connectors will keep
-                            re-indexing in the background.
+                            {t("admin.searchUpgrading.allPausedText")}
                           </Text>
                         )}
                       {hasVisibleReindexingProgress && (
@@ -236,22 +214,20 @@ export default function UpgradingPage({
                       )}
                     </>
                   ) : (
-                    <ErrorCallout errorTitle="Failed to fetch re-indexing progress" />
+                    <ErrorCallout errorTitle={t("admin.searchUpgrading.failedToFetchProgress")} />
                   )}
                 </>
               )
             ) : (
               <div className="mt-8 p-6 bg-background-100 border border-border-strong rounded-lg max-w-2xl">
                 <h3 className="text-lg font-semibold mb-2">
-                  Switching Embedding Models
+                  {t("admin.searchUpgrading.switchingModelsTitle")}
                 </h3>
                 <p className="mb-4 text-text-800">
-                  You&apos;re currently switching embedding models, but there
-                  are no connectors to reindex. This means the transition will
-                  be quick and seamless!
+                  {t("admin.searchUpgrading.noConnectorsBody")}
                 </p>
                 <p className="text-text-600">
-                  The new model will be active soon.
+                  {t("admin.searchUpgrading.newModelActiveSoon")}
                 </p>
               </div>
             )}

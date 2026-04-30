@@ -10,6 +10,7 @@ import type { IconProps } from "@opal/types";
 import Truncated from "@/refresh-components/texts/Truncated";
 import { SvgEdit } from "@opal/icons";
 import { useActionCardContext } from "@/sections/actions/ActionCardContext";
+import { useTranslation } from "react-i18next";
 
 interface ActionCardHeaderProps {
   title: string;
@@ -28,6 +29,7 @@ function ActionCardHeader({
   onEdit,
   onRename,
 }: ActionCardHeaderProps) {
+  const { t } = useTranslation();
   const [isRenaming, setIsRenaming] = useState(false);
   const { isHovered } = useActionCardContext();
 
@@ -102,7 +104,7 @@ function ActionCardHeader({
               text03
               className="shrink-0 whitespace-nowrap"
             >
-              (Not Authenticated)
+              ({t("admin.mcp.notAuthenticated")})
             </Text>
           )}
           {isDisconnected && !isRenaming && (
@@ -112,13 +114,13 @@ function ActionCardHeader({
               text02
               className="shrink-0 whitespace-nowrap"
             >
-              (Disconnected)
+              ({t("admin.mcp.disconnected")})
             </Text>
           )}
           {showRenameIcon && (
             <IconButton
               icon={SvgEdit}
-              tooltip="Rename"
+              tooltip={t("admin.mcp.rename")}
               internal
               tertiary
               onClick={handleRenameClick}

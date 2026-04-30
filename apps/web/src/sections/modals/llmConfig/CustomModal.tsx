@@ -27,6 +27,7 @@ import CreateButton from "@/refresh-components/buttons/CreateButton";
 import IconButton from "@/refresh-components/buttons/IconButton";
 import { SvgX } from "@opal/icons";
 import { toast } from "@/hooks/useToast";
+import { useTranslation } from "react-i18next";
 
 export const CUSTOM_PROVIDER_NAME = "custom";
 
@@ -61,6 +62,8 @@ export function CustomModal({
         testError,
         setTestError,
       }) => {
+        // eslint-disable-next-line react-hooks/rules-of-hooks
+        const { t } = useTranslation();
         const initialValues = {
           ...buildDefaultInitialValues(existingLlmProvider),
           provider: existingLlmProvider?.provider ?? "",
@@ -88,13 +91,13 @@ export function CustomModal({
         };
 
         const validationSchema = buildDefaultValidationSchema().shape({
-          provider: Yup.string().required("Provider Name is required"),
+          provider: Yup.string().required(t("llmConfig.providerNameRequired")),
           api_key: Yup.string(),
           api_base: Yup.string(),
           api_version: Yup.string(),
           model_configurations: Yup.array(
             Yup.object({
-              name: Yup.string().required("Model name is required"),
+              name: Yup.string().required(t("llmConfig.modelNameRequired")),
               is_visible: Yup.boolean().required("Visibility is required"),
               max_input_tokens: Yup.number()
                 .transform((value, originalValue) =>
@@ -132,7 +135,7 @@ export function CustomModal({
                 );
 
               if (modelConfigurations.length === 0) {
-                toast.error("At least one model name is required");
+                toast.error(t("llmConfig.atLeastOneModel"));
                 setSubmitting(false);
                 return;
               }
@@ -174,7 +177,7 @@ export function CustomModal({
 
                   <TextFormField
                     name="provider"
-                    label="Provider Name"
+                    label={t("llmConfig.customProviderLabel")}
                     subtext={
                       <>
                         Should be one of the providers listed at{" "}
@@ -189,38 +192,36 @@ export function CustomModal({
                         .
                       </>
                     }
-                    placeholder="Name of the custom provider"
+                    placeholder={t("llmConfig.customProviderPlaceholder")}
                   />
 
                   <Separator />
 
                   <Text as="p" secondaryBody text03>
-                    Fill in the following as needed. Refer to the LiteLLM
-                    documentation for the provider specified above to determine
-                    which fields are required.
+                    {t("llmConfig.fillInAsNeeded")}
                   </Text>
 
                   <PasswordInputTypeInField
                     name="api_key"
-                    label="[Optional] API Key"
+                    label={t("llmConfig.optionalApiKey")}
                   />
 
                   <TextFormField
                     name="api_base"
-                    label="[Optional] API Base"
+                    label={t("llmConfig.optionalApiBase")}
                     placeholder="API Base URL"
                   />
 
                   <TextFormField
                     name="api_version"
-                    label="[Optional] API Version"
+                    label={t("llmConfig.optionalApiVersion")}
                     placeholder="API Version"
                   />
 
                   <Separator />
 
                   <Text as="p" mainUiAction>
-                    [Optional] Custom Configs
+                    {t("llmConfig.customConfigTitle")}
                   </Text>
                   <Text as="p" secondaryBody text03>
                     <div>
@@ -251,7 +252,7 @@ export function CustomModal({
                                 <div className="w-full mr-6 border border-border p-3 rounded">
                                   <div>
                                     <Text as="p" mainUiAction>
-                                      Key
+                                      {t("llmConfig.customConfigKey")}
                                     </Text>
                                     <Field
                                       name={`custom_config_list[${index}][0]`}
@@ -266,7 +267,7 @@ export function CustomModal({
                                   </div>
                                   <div className="mt-3">
                                     <Text as="p" mainUiAction>
-                                      Value
+                                      {t("llmConfig.customConfigValue")}
                                     </Text>
                                     <Field
                                       name={`custom_config_list[${index}][1]`}
@@ -296,7 +297,7 @@ export function CustomModal({
                           <CreateButton
                             onClick={() => arrayHelpers.push(["", ""])}
                           >
-                            Add New
+                            {t("llmConfig.addNew")}
                           </CreateButton>
                         </div>
                       </div>
@@ -314,8 +315,8 @@ export function CustomModal({
 
                   <TextFormField
                     name="default_model_name"
-                    label="Default Model"
-                    subtext="The model to use by default for this provider. Must be one of the models listed above."
+                    label={t("llmConfig.defaultModelLabel")}
+                    subtext={t("llmConfig.customDefaultModelSubtext")}
                     placeholder="e.g. gpt-4"
                   />
 

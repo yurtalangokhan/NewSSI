@@ -1,6 +1,7 @@
 "use client";
 
-import React from "react";
+import React, { useMemo } from "react";
+import { useTranslation, Trans } from "react-i18next";
 import * as Yup from "yup";
 import { FormikField } from "@/refresh-components/form/FormikField";
 import { FormField } from "@/refresh-components/form/FormField";
@@ -31,17 +32,6 @@ const initialValues: AzureFormValues = {
   api_key: "",
 };
 
-const validationSchema = Yup.object().shape({
-  target_uri: Yup.string()
-    .required("Target URI is required")
-    .test(
-      "valid-target-uri",
-      "Target URI must be a valid URL with api-version and deployment name",
-      (value) => (value ? isValidAzureTargetUri(value) : false)
-    ),
-  api_key: Yup.string().required("API Key is required"),
-});
-
 function AzureFormFields(props: ImageGenFormChildProps<AzureFormValues>) {
   const {
     formikProps,
@@ -54,6 +44,7 @@ function AzureFormFields(props: ImageGenFormChildProps<AzureFormValues>) {
     resetApiState,
     imageProvider,
   } = props;
+  const { t } = useTranslation();
 
   return (
     <>
@@ -62,7 +53,9 @@ function AzureFormFields(props: ImageGenFormChildProps<AzureFormValues>) {
         name="target_uri"
         render={(field, helper, meta, state) => (
           <FormField name="target_uri" state={state} className="w-full">
-            <FormField.Label>Target URI</FormField.Label>
+            <FormField.Label>
+              {t("admin.imageGeneration.forms.azure.targetUriLabel")}
+            </FormField.Label>
             <FormField.Control>
               <InputTypeIn
                 {...field}
@@ -74,19 +67,20 @@ function AzureFormFields(props: ImageGenFormChildProps<AzureFormValues>) {
             <FormField.Message
               messages={{
                 idle: (
-                  <>
-                    Paste your endpoint target URI from{" "}
-                    <a
-                      href="https://oai.azure.com"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="underline"
-                    >
-                      Azure OpenAI
-                    </a>{" "}
-                    (including API endpoint base, deployment name, and API
-                    version).
-                  </>
+                  <Trans
+                    i18nKey="admin.imageGeneration.forms.azure.targetUriHint"
+                    values={{ link: "Azure OpenAI" }}
+                    components={{
+                      link: (
+                        <a
+                          href="https://oai.azure.com"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="underline"
+                        />
+                      ),
+                    }}
+                  />
                 ),
                 error: meta.error,
               }}
@@ -104,7 +98,9 @@ function AzureFormFields(props: ImageGenFormChildProps<AzureFormValues>) {
             state={apiStatus === "error" ? "error" : state}
             className="w-full"
           >
-            <FormField.Label>API Key</FormField.Label>
+            <FormField.Label>
+              {t("admin.imageGeneration.forms.apiKeyLabel")}
+            </FormField.Label>
             <FormField.Control>
               {apiKeyOptions.length > 0 ? (
                 <InputComboBox
@@ -121,8 +117,8 @@ function AzureFormFields(props: ImageGenFormChildProps<AzureFormValues>) {
                   options={apiKeyOptions}
                   placeholder={
                     isLoadingCredentials
-                      ? "Loading..."
-                      : "Enter new API key or select existing provider"
+                      ? t("admin.imageGeneration.forms.apiKeyPlaceholderLoading")
+                      : t("admin.imageGeneration.forms.apiKeyPlaceholderSelect")
                   }
                   disabled={disabled || !formikProps.values.target_uri?.trim()}
                   isError={apiStatus === "error"}
@@ -135,7 +131,9 @@ function AzureFormFields(props: ImageGenFormChildProps<AzureFormValues>) {
                     resetApiState();
                   }}
                   placeholder={
-                    isLoadingCredentials ? "Loading..." : "Enter your API key"
+                    isLoadingCredentials
+                      ? t("admin.imageGeneration.forms.apiKeyPlaceholderLoading")
+                      : t("admin.imageGeneration.forms.apiKeyPlaceholder")
                   }
                   showClearButton={false}
                   disabled={disabled || !formikProps.values.target_uri?.trim()}
@@ -147,27 +145,32 @@ function AzureFormFields(props: ImageGenFormChildProps<AzureFormValues>) {
               <FormField.APIMessage
                 state={apiStatus}
                 messages={{
-                  loading: `Testing API key with ${imageProvider.title}...`,
-                  success: "API key is valid. Configuration saved.",
-                  error: errorMessage || "Invalid API key",
+                  loading: t("admin.imageGeneration.forms.testingApiKey", {
+                    name: imageProvider.title,
+                  }),
+                  success: t("admin.imageGeneration.forms.apiKeyValid"),
+                  error:
+                    errorMessage || t("admin.imageGeneration.forms.apiKeyInvalid"),
                 }}
               />
             ) : (
               <FormField.Message
                 messages={{
                   idle: (
-                    <>
-                      {"Paste your "}
-                      <a
-                        href="https://oai.azure.com"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="underline"
-                      >
-                        API key
-                      </a>
-                      {" from Azure OpenAI to access your models."}
-                    </>
+                    <Trans
+                      i18nKey="admin.imageGeneration.forms.azure.apiKeyHint"
+                      values={{ link: "API key" }}
+                      components={{
+                        link: (
+                          <a
+                            href="https://oai.azure.com"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="underline"
+                          />
+                        ),
+                      }}
+                    />
                   ),
                   error: meta.error,
                 }}
@@ -233,16 +236,42 @@ function transformValues(
 
 export function AzureImageGenForm(props: ImageGenFormBaseProps) {
   const { imageProvider, existingConfig } = props;
+  const { t } = useTranslation();
+
+  const validationSchema = useMemo(
+    () =>
+      Yup.object().shape({
+        target_uri: Yup.string()
+          .required(t("admin.imageGeneration.forms.azure.targetUriRequired"))
+          .test(
+            "valid-target-uri",
+            t("admin.imageGeneration.forms.azure.targetUriInvalid"),
+            (value) => (value ? isValidAzureTargetUri(value) : false)
+          ),
+        api_key: Yup.string().required(
+          t("admin.imageGeneration.forms.apiKeyRequired")
+        ),
+      }),
+    [t]
+  );
 
   return (
     <ImageGenFormWrapper<AzureFormValues>
       {...props}
       title={
         existingConfig
-          ? `Edit ${imageProvider.title}`
-          : `Connect ${imageProvider.title}`
+          ? t("admin.imageGeneration.forms.editTitle", {
+              name: imageProvider.title,
+            })
+          : t("admin.imageGeneration.forms.connectTitle", {
+              name: imageProvider.title,
+            })
       }
-      description={imageProvider.description}
+      description={
+        imageProvider.descriptionKey
+          ? t(imageProvider.descriptionKey)
+          : imageProvider.description
+      }
       initialValues={initialValues}
       validationSchema={validationSchema}
       getInitialValuesFromCredentials={getInitialValuesFromCredentials}
