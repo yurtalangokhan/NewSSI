@@ -79,8 +79,13 @@ async def delete_all_chat_sessions():
 @router.patch("/api/chat/rename-chat-session")
 async def rename_chat_session(request: Request):
     body = await request.json()
+    session_id = body.get("chat_session_id")
+    try:
+        uuid.UUID(str(session_id))
+    except (ValueError, AttributeError):
+        return {"error": "invalid session id"}, 400
     return await _get_chat_controller().rename_chat_session(
-        session_id=body.get("chat_session_id"),
+        session_id=session_id,
         name=body.get("name"),
     )
 

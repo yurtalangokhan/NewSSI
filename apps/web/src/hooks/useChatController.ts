@@ -46,6 +46,7 @@ import {
   CurrentMessageFIFO,
   updateCurrentMessageFIFO,
 } from "@/app/app/services/currentMessageFIFO";
+import { createChatSession } from "@/app/app/services/lib";
 import { buildFilters } from "@/lib/search/utils";
 import { toast } from "@/hooks/useToast";
 import {
@@ -74,13 +75,6 @@ import { UserFileStatus } from "@/app/app/projects/projectsService";
 
 const SYSTEM_MESSAGE_ID = -3;
 
-function createLocalChatSessionId(): string {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-    return crypto.randomUUID();
-  }
-
-  return `chat-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
 
 export interface OnSubmitProps {
   message: string;
@@ -498,8 +492,11 @@ export default function useChatController({
         (m) => m.type === "user"
       );
       if (isNewSession) {
-        const activePersonaId = liveAgent?.external_id ?? liveAgent?.id ?? 0;
-        currChatSessionId = createLocalChatSessionId();
+        currChatSessionId = await createChatSession(
+          liveAgent?.id || 0,
+          searchParamBasedChatSessionName,
+          projectId ? parseInt(projectId) : null
+        );
 
         if (!currChatSessionId) {
           throw new Error("Failed to create a valid chat session ID");
@@ -509,7 +506,7 @@ export default function useChatController({
         // This ensures "New Chat" appears immediately, even before any messages are saved
         addPendingChatSession({
           chatSessionId: currChatSessionId,
-          personaId: activePersonaId,
+          personaId: liveAgent?.id || 0,
           projectId: projectId ? parseInt(projectId) : null,
         });
       } else {
