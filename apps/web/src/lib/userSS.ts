@@ -1,6 +1,7 @@
 import { User } from "./types";
 import { AuthType } from "./constants";
-import { UrlBuilder, buildUrl } from "./utilsSS";
+import { UrlBuilder, buildUrl, fetchSS } from "./utilsSS";
+import { cookies as getCookies } from "next/headers";
 
 export interface AuthTypeMetadata {
   authType: AuthType;
@@ -14,28 +15,12 @@ export interface AuthTypeMetadata {
 
 export const getAuthTypeMetadataSS = async (): Promise<AuthTypeMetadata> => {
   try {
-    const url = buildUrl("/auth/metadata");
-    const res = await fetch(url, {
-      method: "GET",
-    });
-    
-    if (!res.ok) {
-      throw new Error("Failed to fetch auth metadata");
+    const response = await fetchSS("/auth/type");
+    if (!response.ok) {
+      throw new Error(`Failed auth/type fetch: ${response.status}`);
     }
-    
-    const data = await res.json();
-    return {
-      authType: data.authType || AuthType.BASIC,
-      autoRedirect: data.autoRedirect ?? false,
-      requiresVerification: data.requiresVerification ?? false,
-      anonymousUserEnabled: data.anonymousUserEnabled ?? null,
-      passwordMinLength: data.passwordMinLength ?? 8,
-      hasUsers: data.hasUsers ?? true,
-      oauthEnabled: data.oauthEnabled ?? false,
-    };
-  } catch (error) {
-    console.error("Error fetching auth metadata:", error);
-    // Fallback to basic auth on error
+    return (await response.json()) as AuthTypeMetadata;
+  } catch {
     return {
       authType: AuthType.BASIC,
       autoRedirect: false,
@@ -136,31 +121,28 @@ export const logoutSS = async (
 };
 
 export const getCurrentUserSS = async (): Promise<User | null> => {
-  // Return default dev user for development mode - skip backend call
-  return {
-    id: "dev-user",
-    email: "dev@local.dev",
-    is_active: true,
-    is_superuser: true,
-    is_verified: true,
-    role: "admin" as any,
-    preferences: {
-      chosen_assistants: null,
-      visible_assistants: [],
-      hidden_assistants: [],
-      default_model: null,
-      recent_assistants: [],
-      auto_scroll: true,
-      shortcut_enabled: true,
-      temperature_override_enabled: false,
-      theme_preference: null,
-      chat_background: null,
-      default_app_mode: "CHAT",
-    },
-    team_name: null,
-    is_anonymous_user: false,
-    password_configured: true,
-  };
+  try {
+    // Avoid noisy backend 401 calls when there is clearly no authenticated session.
+    const cookieStore = await getCookies();
+    const hasAuthCookie =
+      cookieStore.has("fastapiusersauth") ||
+      cookieStore.has("session") ||
+      cookieStore.has("id_token");
+    if (!hasAuthCookie) {
+      return null;
+    }
+
+    const response = await fetchSS("/me");
+    if (response.status === 401) {
+      return null;
+    }
+    if (!response.ok) {
+      throw new Error(`Failed /me fetch: ${response.status}`);
+    }
+    return (await response.json()) as User;
+  } catch {
+    return null;
+  }
 };
 
 export const processCookies = (cookies: { getAll(): { name: string; value: string }[] }): string => {
