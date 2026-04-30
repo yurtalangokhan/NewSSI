@@ -62,7 +62,7 @@ export default function ChatHistoryModal({
   onSelectChat,
   onRefresh,
 }: ChatHistoryModalProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [selectedChats, setSelectedChats] = useState<Set<string>>(new Set());
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [deleteAllModalOpen, setDeleteAllModalOpen] = useState(false);
@@ -164,7 +164,7 @@ export default function ChatHistoryModal({
     if (!dateString) return "";
     try {
       const date = new Date(dateString);
-      return new Intl.DateTimeFormat("en-US", {
+      return new Intl.DateTimeFormat(i18n.language, {
         month: "short",
         day: "numeric",
         hour: "2-digit",

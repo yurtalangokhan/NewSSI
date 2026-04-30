@@ -34,7 +34,11 @@ interface MemoryTypeInfo {
   description: string;
 }
 
-function parseJsonArray(raw: string, fieldName: string) {
+function parseJsonArray(
+  raw: string,
+  fieldName: string,
+  t: (key: string, options?: any) => string
+) {
   if (!raw.trim()) {
     return [];
   }
@@ -42,11 +46,14 @@ function parseJsonArray(raw: string, fieldName: string) {
   try {
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) {
-      throw new Error(`${fieldName} must be a JSON array.`);
+      throw new Error(t("agentEditor.dynamic.jsonArrayError", { field: fieldName }));
     }
     return parsed;
-  } catch {
-    throw new Error(`${fieldName} must contain valid JSON array text.`);
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("JSON array")) {
+      throw error;
+    }
+    throw new Error(t("agentEditor.dynamic.jsonValidError", { field: fieldName }));
   }
 }
 
@@ -114,9 +121,17 @@ export default function DynamicAgentEditorPage() {
           mcp_tools: Object.entries(selectedTools)
             .filter(([, enabled]) => enabled)
             .map(([toolName]) => toolName),
-          sub_agents: parseJsonArray(subAgentsJson, "Sub agents"),
+          sub_agents: parseJsonArray(
+            subAgentsJson,
+            t("agentEditor.dynamic.subAgentsField"),
+            t
+          ),
           supervisor_prompt: supervisorPrompt.trim() || null,
-          stages: parseJsonArray(stagesJson, "Stages"),
+          stages: parseJsonArray(
+            stagesJson,
+            t("agentEditor.dynamic.stagesField"),
+            t
+          ),
           pipeline_prompt: pipelinePrompt.trim() || null,
           reflection_prompt: reflectionPrompt.trim() || null,
           max_iterations: Number.parseInt(maxIterations, 10) || 3,

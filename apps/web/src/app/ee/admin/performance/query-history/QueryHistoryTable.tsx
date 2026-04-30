@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import Separator from "@/refresh-components/Separator";
 import {
   Table,
@@ -55,6 +56,7 @@ function QueryHistoryTableRow({
 }: {
   chatSessionMinimal: ChatSessionMinimal;
 }) {
+  const { t } = useTranslation();
   return (
     <TableRow
       key={chatSessionMinimal.id}
@@ -76,7 +78,7 @@ function QueryHistoryTableRow({
         <FeedbackBadge feedback={chatSessionMinimal.feedback_type} />
       </TableCell>
       <TableCell>{chatSessionMinimal.user_email || "-"}</TableCell>
-      <TableCell>{chatSessionMinimal.assistant_name || "Unknown"}</TableCell>
+      <TableCell>{chatSessionMinimal.assistant_name || t("queryHistoryTable.unknown")}</TableCell>
       <TableCell>
         {timestampToReadableDate(chatSessionMinimal.time_created)}
       </TableCell>
@@ -100,10 +102,11 @@ function SelectFeedbackType({
   value: Feedback | "all";
   onValueChange: (value: Feedback | "all") => void;
 }) {
+  const { t } = useTranslation();
   return (
     <div>
       <Text as="p" className="my-auto mr-2 font-medium mb-1">
-        Feedback Type
+        {t("queryHistoryTable.feedbackType")}
       </Text>
       <div className="max-w-sm space-y-6">
         <InputSelect
@@ -114,16 +117,16 @@ function SelectFeedbackType({
 
           <InputSelect.Content>
             <InputSelect.Item value="all" icon={SvgMinusCircle}>
-              Any
+              {t("queryHistoryTable.any")}
             </InputSelect.Item>
             <InputSelect.Item value="like" icon={SvgThumbsUp}>
-              Like
+              {t("queryHistoryTable.like")}
             </InputSelect.Item>
             <InputSelect.Item value="dislike" icon={SvgThumbsDown}>
-              Dislike
+              {t("queryHistoryTable.dislike")}
             </InputSelect.Item>
             <InputSelect.Item value="mixed" icon={SvgMinus}>
-              Mixed
+              {t("queryHistoryTable.mixed")}
             </InputSelect.Item>
           </InputSelect.Content>
         </InputSelect>
@@ -133,11 +136,12 @@ function SelectFeedbackType({
 }
 
 function ExportBadge({ status }: { status: TaskStatus }) {
-  if (status === "SUCCESS") return <Badge variant="success">Success</Badge>;
+  const { t } = useTranslation();
+  if (status === "SUCCESS") return <Badge variant="success">{t("queryHistoryTable.exportSuccess")}</Badge>;
   else if (status === "FAILURE")
-    return <Badge variant="destructive">Failure</Badge>;
+    return <Badge variant="destructive">{t("queryHistoryTable.exportFailure")}</Badge>;
   else if (status === "PENDING" || status === "STARTED")
-    return <Badge variant="in_progress">Pending</Badge>;
+    return <Badge variant="in_progress">{t("queryHistoryTable.exportPending")}</Badge>;
   else return <></>;
 }
 
@@ -154,6 +158,7 @@ function PreviousQueryHistoryExportsModal({
     }
   );
 
+  const { t } = useTranslation();
   const tasks = (queryHistoryTasks ?? []).map((queryHistory) => ({
     taskId: queryHistory.task_id,
     start: new Date(queryHistory.start),
@@ -181,7 +186,7 @@ function PreviousQueryHistoryExportsModal({
       <Modal.Content width="lg" height="full">
         <Modal.Header
           icon={SvgFileText}
-          title="Previous Query History Exports"
+          title={t("queryHistoryTable.previousExportsTitle")}
           onClose={() => setShowModal(false)}
         />
         <Modal.Body>
@@ -190,11 +195,11 @@ function PreviousQueryHistoryExportsModal({
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Generated At</TableHead>
-                    <TableHead>Start Range</TableHead>
-                    <TableHead>End Range</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Download</TableHead>
+                    <TableHead>{t("queryHistoryTable.generatedAt")}</TableHead>
+                    <TableHead>{t("queryHistoryTable.startRange")}</TableHead>
+                    <TableHead>{t("queryHistoryTable.endRange")}</TableHead>
+                    <TableHead>{t("queryHistoryTable.status")}</TableHead>
+                    <TableHead>{t("queryHistoryTable.download")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -288,10 +293,12 @@ export function QueryHistoryTable() {
     }
   }, []);
 
+  const { t } = useTranslation();
+
   if (error) {
     return (
       <ErrorCallout
-        errorTitle="Error fetching query history"
+        errorTitle={t("queryHistoryTable.errorFetchingHistory")}
         errorMsg={error?.message}
       />
     );
@@ -333,12 +340,12 @@ export function QueryHistoryTable() {
         <Table className="mt-5">
           <TableHeader>
             <TableRow>
-              <TableHead>First User Message</TableHead>
-              <TableHead>First AI Response</TableHead>
-              <TableHead>Feedback</TableHead>
-              <TableHead>User</TableHead>
-              <TableHead>Persona</TableHead>
-              <TableHead>Date</TableHead>
+              <TableHead>{t("queryHistoryTable.firstUserMessage")}</TableHead>
+              <TableHead>{t("queryHistoryTable.firstAiResponse")}</TableHead>
+              <TableHead>{t("queryHistoryTable.feedback")}</TableHead>
+              <TableHead>{t("queryHistoryTable.user")}</TableHead>
+              <TableHead>{t("queryHistoryTable.persona")}</TableHead>
+              <TableHead>{t("queryHistoryTable.date")}</TableHead>
             </TableRow>
           </TableHeader>
           {isLoading ? (

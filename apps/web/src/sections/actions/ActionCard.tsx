@@ -11,6 +11,7 @@ import {
   ActionCardProvider,
   ActionCardContextValue,
 } from "@/sections/actions/ActionCardContext";
+import { useTranslation } from "react-i18next";
 
 export interface ActionCardProps {
   // Core content
@@ -73,6 +74,7 @@ export default function ActionCard({
   ariaLabel,
   className,
 }: ActionCardProps) {
+  const { t } = useTranslation("tools");
   // Internal state for uncontrolled mode
   const [internalExpanded, setInternalExpanded] = useState(initialExpanded);
 
@@ -116,7 +118,7 @@ export default function ActionCard({
           className
         )}
         role="article"
-        aria-label={ariaLabel || `${title} action card`}
+        aria-label={ariaLabel || t("actionCard.ariaLabel", { defaultValue: "{{title}} action card", title })}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >

@@ -27,6 +27,8 @@ export function highlightMatch(text: string, query: string): React.ReactNode {
   );
 }
 
+import i18n from "i18next";
+
 /**
  * Formats a date string for display in the chat search menu.
  * Examples: "just now", "5 mins ago", "3 hours ago", "yesterday", "3 days ago", "October 23"
@@ -37,7 +39,7 @@ export function formatDisplayTime(isoDate: string): string {
   const diffMs = now.getTime() - date.getTime();
 
   if (diffMs < 0) {
-    return "just now";
+    return i18n.t("dates.justNow");
   }
 
   const diffMins = Math.floor(diffMs / (1000 * 60));
@@ -46,17 +48,21 @@ export function formatDisplayTime(isoDate: string): string {
 
   // Just now (less than 1 minute)
   if (diffMins < 1) {
-    return "just now";
+    return i18n.t("dates.justNow");
   }
 
   // X mins ago (1-59 minutes)
   if (diffMins < 60) {
-    return `${diffMins} ${diffMins === 1 ? "min" : "mins"} ago`;
+    return i18n.t(diffMins === 1 ? "dates.minAgo" : "dates.minsAgo", {
+      count: diffMins,
+    });
   }
 
   // X hours ago (1-23 hours)
   if (diffHours < 24) {
-    return `${diffHours} ${diffHours === 1 ? "hour" : "hours"} ago`;
+    return i18n.t(diffHours === 1 ? "dates.hourAgo" : "dates.hoursAgo", {
+      count: diffHours,
+    });
   }
 
   // Check if yesterday
@@ -67,16 +73,18 @@ export function formatDisplayTime(isoDate: string): string {
     date.getMonth() === yesterday.getMonth() &&
     date.getFullYear() === yesterday.getFullYear()
   ) {
-    return "yesterday";
+    return i18n.t("dates.yesterday").toLowerCase();
   }
 
   // X days ago (2-7 days)
   if (diffDays <= 7) {
-    return `${diffDays} ${diffDays === 1 ? "day" : "days"} ago`;
+    return i18n.t(diffDays === 1 ? "dates.dayAgo" : "dates.daysAgo", {
+      count: diffDays,
+    });
   }
 
   // Month Day format (e.g., "October 23")
-  return date.toLocaleDateString("en-US", {
+  return date.toLocaleDateString(i18n.language, {
     month: "long",
     day: "numeric",
   });

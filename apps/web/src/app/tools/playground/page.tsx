@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useTranslation } from "react-i18next";
 import Button from "@/refresh-components/buttons/Button";
 import IconButton from "@/refresh-components/buttons/IconButton";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
@@ -26,7 +27,6 @@ import {
   ToolWithCategory,
 } from "@/lib/tools/builtInToolUtils";
 import _ from "lodash";
-
 
 function getDefaultValueForSchema(schema: any): any {
   if (!schema) return null;
@@ -90,7 +90,11 @@ function getValueAtPath(values: any, path: Array<string | number>) {
   }, values);
 }
 
-function setValueAtPath(values: any, path: Array<string | number>, newValue: any): any {
+function setValueAtPath(
+  values: any,
+  path: Array<string | number>,
+  newValue: any
+): any {
   if (path.length === 0) return newValue;
   const head = path[0] as string | number;
   const tail = path.slice(1);
@@ -122,7 +126,10 @@ function isFieldEmpty(value: any): boolean {
   return false;
 }
 
-function getMissingRequiredFields(schema: any, values: Record<string, any>): string[] {
+function getMissingRequiredFields(
+  schema: any,
+  values: Record<string, any>
+): string[] {
   if (!schema?.required || !schema?.properties) return [];
   return schema.required.filter((field: string) => isFieldEmpty(values[field]));
 }
@@ -138,8 +145,9 @@ function SchemaForm({
   onChange: (values: Record<string, any>) => void;
   fieldErrors?: Record<string, string>;
 }) {
+  const { t } = useTranslation("toolPlayground");
   const [formValues, setFormValues] = useState<Record<string, any>>(
-    initializeFormValues(schema, values),
+    initializeFormValues(schema, values)
   );
 
   const handleChange = (path: string[], value: any) => {
@@ -152,51 +160,71 @@ function SchemaForm({
     setFormValues(initializeFormValues(schema, values));
   }, [schema, values]);
 
-  if (!schema || !schema.properties || Object.keys(schema.properties).length === 0) {
-    return <Text as="p" text03 mainContentBody>No input parameters required</Text>;
+  if (
+    !schema ||
+    !schema.properties ||
+    Object.keys(schema.properties).length === 0
+  ) {
+    return (
+      <Text as="p" text03 mainContentBody>
+        {t("noInputParameters")}
+      </Text>
+    );
   }
 
   return (
     <div className="space-y-4">
-      {Object.entries(schema.properties).map(([name, property]: [string, any]) => {
-        const isRequired = schema.required?.includes(name);
-        const label = property.title || name;
-        const description = property.description;
-        const errorMsg = fieldErrors[name];
+      {Object.entries(schema.properties).map(
+        ([name, property]: [string, any]) => {
+          const isRequired = schema.required?.includes(name);
+          const label = property.title || name;
+          const description = property.description;
+          const errorMsg = fieldErrors[name];
 
-        return (
-          <div key={name} className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label
-                htmlFor={name}
-                className={cn(
-                  "text-sm font-medium text-text-04",
-                  isRequired && "after:ml-0.5 after:text-status-error-05 after:content-['*']",
+          return (
+            <div key={name} className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label
+                  htmlFor={name}
+                  className={cn(
+                    "text-sm font-medium text-text-04",
+                    isRequired &&
+                      "after:ml-0.5 after:text-status-error-05 after:content-['*']"
+                  )}
+                >
+                  {_.startCase(label)}
+                </label>
+                {isRequired && (
+                  <Text as="span" text03 secondaryBody className="text-xs">
+                    {t("required")}
+                  </Text>
                 )}
+              </div>
+              {description && (
+                <Text as="p" text03 secondaryBody className="text-xs">
+                  {description}
+                </Text>
+              )}
+              <div
+                className={cn(errorMsg && "ring-1 ring-status-error-04 rounded-md")}
               >
-                {_.startCase(label)}
-              </label>
-              {isRequired && (
-                <Text as="span" text03 secondaryBody className="text-xs">Required</Text>
+                {renderField(
+                  [name],
+                  property,
+                  formValues[name],
+                  (value: any) => handleChange([name], value),
+                  t
+                )}
+              </div>
+              {errorMsg && (
+                <Text as="p" className="text-xs text-status-error-05">
+                  {errorMsg}
+                </Text>
               )}
             </div>
-            {description && (
-              <Text as="p" text03 secondaryBody className="text-xs">{description}</Text>
-            )}
-            <div className={cn(errorMsg && "ring-1 ring-status-error-04 rounded-md")}>
-              {renderField(
-                [name],
-                property,
-                formValues[name],
-                (value: any) => handleChange([name], value),
-              )}
-            </div>
-            {errorMsg && (
-              <Text as="p" className="text-xs text-status-error-05">{errorMsg}</Text>
-            )}
-          </div>
-        );
-      })}
+          );
+        }
+      )}
     </div>
   );
 }
@@ -206,6 +234,7 @@ function renderField(
   property: any,
   value: any,
   onChange: (value: any) => void,
+  t?: (key: string, opts?: any) => string
 ) {
   const fieldId = path.join(".");
   const label = property.title || path[path.length - 1];
@@ -218,7 +247,7 @@ function renderField(
         value={value || ""}
         onChange={(e) => onChange(e.target.value)}
       >
-        <option value="">Select an option</option>
+        <option value="">{t ? t("selectOption") : "Select an option"}</option>
         {property.enum.map((option: string) => (
           <option key={option} value={option}>
             {option}
@@ -233,9 +262,13 @@ function renderField(
       <div className="rounded-lg border border-border-01 bg-background-tint-00 p-4">
         <div className="mb-3 flex items-center justify-between gap-2">
           <div>
-            <Text as="p" mainUiAction text04 className="text-sm font-medium">{_.startCase(label)}</Text>
+            <Text as="p" mainUiAction text04 className="text-sm font-medium">
+              {_.startCase(label)}
+            </Text>
             {property.description && (
-              <Text as="p" text03 secondaryBody className="text-xs">{property.description}</Text>
+              <Text as="p" text03 secondaryBody className="text-xs">
+                {property.description}
+              </Text>
             )}
           </div>
         </div>
@@ -258,7 +291,9 @@ function renderField(
             className="rounded-lg border border-border-01 bg-background-neutral-00 p-4"
           >
             <div className="mb-2 flex items-center justify-between gap-2">
-              <Text as="p" text04 mainUiAction className="text-sm font-medium">Item {index + 1}</Text>
+              <Text as="p" text04 mainUiAction className="text-sm font-medium">
+                {t ? t("itemIndex", { index: index + 1 }) : `Item ${index + 1}`}
+              </Text>
               <Button
                 secondary
                 size="md"
@@ -268,7 +303,7 @@ function renderField(
                   onChange(nextItems);
                 }}
               >
-                Remove
+                {t ? t("remove") : "Remove"}
               </Button>
             </div>
             {renderField(
@@ -280,6 +315,7 @@ function renderField(
                 nextItems[index] = nextValue;
                 onChange(nextItems);
               },
+              t
             )}
           </div>
         ))}
@@ -287,9 +323,11 @@ function renderField(
         <Button
           secondary
           size="md"
-          onClick={() => onChange([...items, getDefaultValueForSchema(property.items)])}
+          onClick={() =>
+            onChange([...items, getDefaultValueForSchema(property.items)])
+          }
         >
-          Add item
+          {t ? t("addItem") : "Add item"}
         </Button>
       </div>
     );
@@ -371,7 +409,15 @@ function renderField(
           onCheckedChange={onChange}
           aria-label={`toggle-${fieldId}`}
         />
-        <Text as="span" text03 mainUiBody>{value ? "Enabled" : "Disabled"}</Text>
+        <Text as="span" text03 mainUiBody>
+          {value
+            ? t
+              ? t("enabled")
+              : "Enabled"
+            : t
+            ? t("disabled")
+            : "Disabled"}
+        </Text>
       </div>
     );
   }
@@ -388,11 +434,17 @@ function renderField(
             onChange(e.target.value);
           }
         }}
-        placeholder={`Enter JSON for ${_.startCase(label)}`}
+        placeholder={
+          t
+            ? t("enterJsonFor", { label: _.startCase(label) })
+            : `Enter JSON for ${_.startCase(label)}`
+        }
         rows={6}
       />
       <Text as="p" text03 secondaryBody className="text-xs">
-        Unsupported field type. You can enter raw JSON here.
+        {t
+          ? t("unsupportedFieldType")
+          : "Unsupported field type. You can enter raw JSON here."}
       </Text>
     </div>
   );
@@ -407,6 +459,7 @@ function ResponseViewer({
   isLoading: boolean;
   error: string | null;
 }) {
+  const { t } = useTranslation("toolPlayground");
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -418,8 +471,12 @@ function ResponseViewer({
   if (error) {
     return (
       <div className="rounded-lg border border-status-error-03 bg-status-error-01 p-4 text-status-error-06">
-        <Text as="p" className="font-semibold text-status-error-06">Error</Text>
-        <Text as="p" className="text-sm text-status-error-06">{error}</Text>
+        <Text as="p" className="font-semibold text-status-error-06">
+          {t("error")}
+        </Text>
+        <Text as="p" className="text-sm text-status-error-06">
+          {error}
+        </Text>
       </div>
     );
   }
@@ -427,14 +484,18 @@ function ResponseViewer({
   if (!response) {
     return (
       <div className="text-center py-8">
-        <Text as="p" text03 mainContentMuted>Run the tool to see results</Text>
+        <Text as="p" text03 mainContentMuted>
+          {t("runToSeeResults")}
+        </Text>
       </div>
     );
   }
 
   return (
     <div className="space-y-3">
-      <Text as="p" className="text-sm font-semibold text-status-success-06">Result</Text>
+      <Text as="p" className="text-sm font-semibold text-status-success-06">
+        {t("result")}
+      </Text>
       <pre className="max-h-[60vh] overflow-auto rounded-lg bg-background-neutral-01 p-4 text-sm whitespace-pre-wrap break-words text-text-04">
         {typeof response === "string"
           ? response
@@ -445,6 +506,7 @@ function ResponseViewer({
 }
 
 export default function ToolsPlaygroundPage() {
+  const { t } = useTranslation("toolPlayground");
   const router = useRouter();
   const searchParams = useSearchParams();
   const toolName = searchParams.get("tool") || "";
@@ -470,7 +532,8 @@ export default function ToolsPlaygroundPage() {
           setTools(response.tools);
         }
       } catch (err) {
-        const message = err instanceof Error ? err.message : "Failed to fetch tools";
+        const message =
+          err instanceof Error ? err.message : t("failedToFetchTools");
         setError(message);
         toast.error(message);
       } finally {
@@ -511,8 +574,7 @@ export default function ToolsPlaygroundPage() {
   const filteredTools = toolsWithCategory;
 
   const selectedTool = useMemo(
-    () =>
-      toolsWithCategory.find((tool) => tool.name === toolName) ?? null,
+    () => toolsWithCategory.find((tool) => tool.name === toolName) ?? null,
     [toolsWithCategory, toolName]
   );
 
@@ -527,19 +589,16 @@ export default function ToolsPlaygroundPage() {
     [router]
   );
 
-  const handleInputChange = useCallback(
-    (values: Record<string, any>) => {
-      setInputValues(values);
-      setFieldErrors((prev) => {
-        const next = { ...prev };
-        Object.keys(next).forEach((field) => {
-          if (!isFieldEmpty(values[field])) delete next[field];
-        });
-        return next;
+  const handleInputChange = useCallback((values: Record<string, any>) => {
+    setInputValues(values);
+    setFieldErrors((prev) => {
+      const next = { ...prev };
+      Object.keys(next).forEach((field) => {
+        if (!isFieldEmpty(values[field])) delete next[field];
       });
-    },
-    []
-  );
+      return next;
+    });
+  }, []);
 
   const handleRunTool = useCallback(async () => {
     if (!selectedTool) return;
@@ -549,7 +608,7 @@ export default function ToolsPlaygroundPage() {
     if (missing.length > 0) {
       const errors: Record<string, string> = {};
       missing.forEach((field) => {
-        errors[field] = "This field is required";
+        errors[field] = t("fieldRequired");
       });
       setFieldErrors(errors);
       return;
@@ -571,14 +630,17 @@ export default function ToolsPlaygroundPage() {
         setResponse(result.result);
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Tool execution failed";
+      const message =
+        err instanceof Error ? err.message : t("toolExecutionFailed");
       setRunError(message);
     } finally {
       setIsRunning(false);
     }
   }, [inputValues, selectedTool]);
 
-  const pageTitle = selectedTool ? `${_.startCase(selectedTool.name)} Playground` : "Tools Playground";
+  const pageTitle = selectedTool
+    ? t("toolPlaygroundTitle", { name: _.startCase(selectedTool.name) })
+    : t("toolsPlayground");
 
   return (
     <div className="space-y-6 p-6">
@@ -592,12 +654,12 @@ export default function ToolsPlaygroundPage() {
           />
           <h1 className="mt-3 text-2xl font-bold text-text-05">{pageTitle}</h1>
           <Text as="p" text03 mainContentBody className="mt-1 text-sm">
-            Run built-in MCP tools with custom input and inspect the raw result.
+            {t("pageDescription")}
           </Text>
         </div>
         {selectedTool && (
           <Button primary onClick={handleRunTool} disabled={isRunning}>
-            {isRunning ? "Running..." : "Run Tool"}
+            {isRunning ? t("running") : t("runTool")}
           </Button>
         )}
       </div>
@@ -605,8 +667,12 @@ export default function ToolsPlaygroundPage() {
       <div className="rounded-lg border border-border-01 bg-background-neutral-00 p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <Text as="p" text05 className="text-sm font-semibold">Tool selector</Text>
-            <Text as="p" text03 mainContentBody className="text-sm">Choose a tool to open the playground.</Text>
+            <Text as="p" text05 className="text-sm font-semibold">
+              {t("toolSelector")}
+            </Text>
+            <Text as="p" text03 mainContentBody className="text-sm">
+              {t("chooseTool")}
+            </Text>
           </div>
           {toolsWithCategory.length > 0 && (
             <InputSelect
@@ -617,7 +683,7 @@ export default function ToolsPlaygroundPage() {
               }}
             >
               <div className="w-full sm:w-72">
-                <InputSelect.Trigger placeholder="Select a tool..." />
+                <InputSelect.Trigger placeholder={t("selectTool")} />
               </div>
               <InputSelect.Content>
                 {sortedCategories.map((category) => (
@@ -650,12 +716,23 @@ export default function ToolsPlaygroundPage() {
         <div className="grid gap-6 lg:grid-cols-[minmax(360px,1fr)_minmax(420px,560px)]">
           <div className="rounded-lg border border-border-01 bg-background-neutral-00 p-6">
             <div className="mb-4 space-y-2">
-              <Text as="p" text05 className="text-sm font-semibold">{_.startCase(selectedTool.name)}</Text>
-              <Text as="p" text03 mainContentBody className="text-sm">{selectedTool.description}</Text>
+              <Text as="p" text05 className="text-sm font-semibold">
+                {_.startCase(selectedTool.name)}
+              </Text>
+              <Text as="p" text03 mainContentBody className="text-sm">
+                {selectedTool.description}
+              </Text>
             </div>
             <div className="space-y-6">
               <div>
-                <Text as="p" text04 mainUiAction className="mb-3 text-sm font-semibold">Input</Text>
+                <Text
+                  as="p"
+                  text04
+                  mainUiAction
+                  className="mb-3 text-sm font-semibold"
+                >
+                  {t("input")}
+                </Text>
                 <SchemaForm
                   schema={normalizeSchema(selectedTool.input_schema)}
                   values={inputValues}
@@ -665,33 +742,48 @@ export default function ToolsPlaygroundPage() {
               </div>
               {runError && (
                 <div className="rounded-lg border border-status-error-03 bg-status-error-01 p-4">
-                  <Text as="p" className="text-status-error-06">{runError}</Text>
+                  <Text as="p" className="text-status-error-06">
+                    {runError}
+                  </Text>
                 </div>
               )}
             </div>
           </div>
           <div className="rounded-lg border border-border-01 bg-background-neutral-00 p-6">
-            <Text as="p" text05 className="mb-4 text-sm font-semibold">Response</Text>
-            <ResponseViewer response={response} isLoading={isRunning} error={runError} />
+            <Text as="p" text05 className="mb-4 text-sm font-semibold">
+              {t("response")}
+            </Text>
+            <ResponseViewer
+              response={response}
+              isLoading={isRunning}
+              error={runError}
+            />
           </div>
         </div>
       ) : (
         <div className="space-y-6">
           {filteredTools.length === 0 ? (
             <div className="rounded-lg border border-border-01 bg-background-neutral-00 p-6 text-center">
-              <Text as="p" text03 mainContentBody>No tools match your search.</Text>
+              <Text as="p" text03 mainContentBody>
+                {t("noToolsMatch")}
+              </Text>
             </div>
           ) : (
             Object.keys(groupedTools).map((category) => {
               const toolsInCategory = groupedTools[category] ?? [];
               return (
-                <div key={category} className="rounded-lg border border-border-01 bg-background-neutral-00 p-4">
+                <div
+                  key={category}
+                  className="rounded-lg border border-border-01 bg-background-neutral-00 p-4"
+                >
                   <div className="mb-3 flex items-center justify-between">
                     <div>
                       <Text as="p" text05 className="text-sm font-semibold">
                         {categoryLabelMap[category] || _.startCase(category)}
                       </Text>
-                      <Text as="p" text03 secondaryBody className="text-xs">{toolsInCategory.length} tools</Text>
+                      <Text as="p" text03 secondaryBody className="text-xs">
+                        {t("toolsCount", { count: toolsInCategory.length })}
+                      </Text>
                     </div>
                     <span className="rounded-full border border-border-01 px-2 py-0.5 text-xs text-text-03">
                       {toolsInCategory.length}
@@ -699,15 +791,32 @@ export default function ToolsPlaygroundPage() {
                   </div>
                   <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                     {toolsInCategory.map((tool) => (
-                      <div key={tool.name} className="rounded-lg border border-border-01 bg-background-tint-00 p-4">
-                        <Text as="p" text04 mainUiAction className="mb-2 text-sm font-semibold">{_.startCase(tool.name)}</Text>
-                        <Text as="p" text03 mainContentBody className="mb-4 text-sm line-clamp-3">{tool.description}</Text>
+                      <div
+                        key={tool.name}
+                        className="rounded-lg border border-border-01 bg-background-tint-00 p-4"
+                      >
+                        <Text
+                          as="p"
+                          text04
+                          mainUiAction
+                          className="mb-2 text-sm font-semibold"
+                        >
+                          {_.startCase(tool.name)}
+                        </Text>
+                        <Text
+                          as="p"
+                          text03
+                          mainContentBody
+                          className="mb-4 text-sm line-clamp-3"
+                        >
+                          {tool.description}
+                        </Text>
                         <Button
                           secondary
                           onClick={() => handleSelectTool(tool)}
                           className="px-3 py-2 text-sm"
                         >
-                          Open playground
+                          {t("openPlayground")}
                         </Button>
                       </div>
                     ))}
@@ -721,3 +830,4 @@ export default function ToolsPlaygroundPage() {
     </div>
   );
 }
+

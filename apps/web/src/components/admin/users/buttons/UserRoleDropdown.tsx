@@ -11,6 +11,7 @@ import InputSelect from "@/refresh-components/inputs/InputSelect";
 import GenericConfirmModal from "@/components/modals/GenericConfirmModal";
 import { useState } from "react";
 import { usePaidEnterpriseFeaturesEnabled } from "@/components/settings/usePaidEnterpriseFeaturesEnabled";
+import { useTranslation } from "react-i18next";
 
 export interface UserRoleDropdownProps {
   user: User;
@@ -23,6 +24,7 @@ export default function UserRoleDropdown({
   onSuccess,
   onError,
 }: UserRoleDropdownProps) {
+  const { t } = useTranslation();
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [pendingRole, setPendingRole] = useState<string | null>(null);
 
@@ -61,15 +63,17 @@ export default function UserRoleDropdown({
     <>
       {showConfirmModal && (
         <GenericConfirmModal
-          title="Change Curator Role"
-          message={`Warning: Switching roles from Curator to ${
-            USER_ROLE_LABELS[pendingRole as UserRole] ??
-            USER_ROLE_LABELS[user.role]
-          } will remove their status as individual curators from all groups.`}
-          confirmText={`Switch Role to ${
-            USER_ROLE_LABELS[pendingRole as UserRole] ??
-            USER_ROLE_LABELS[user.role]
-          }`}
+          title={t("admin.users.changeCuratorRoleTitle")}
+          message={t("admin.users.changeCuratorRoleWarning", {
+            newRole:
+              t(`admin.users.roles.${pendingRole as UserRole}`) ??
+              t(`admin.users.roles.${user.role}`),
+          })}
+          confirmText={t("admin.users.switchRoleToButton", {
+            role:
+              t(`admin.users.roles.${pendingRole as UserRole}`) ??
+              t(`admin.users.roles.${user.role}`),
+          })}
           onClose={() => setShowConfirmModal(false)}
           onConfirm={handleConfirm}
         />
@@ -105,10 +109,10 @@ export default function UserRoleDropdown({
                   key={role}
                   value={role}
                   data-testid={`user-role-dropdown-${role}`}
-                  title={INVALID_ROLE_HOVER_TEXT[role] ?? ""}
+                  title={t(`admin.users.rolesHover.${role}`) ?? ""}
                   data-tooltip-delay="0"
                 >
-                  {label}
+                  {t(`admin.users.roles.${role}`)}
                 </InputSelect.Item>
               );
             }

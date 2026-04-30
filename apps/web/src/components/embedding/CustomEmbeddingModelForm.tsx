@@ -10,6 +10,7 @@ import { Dispatch, SetStateAction } from "react";
 import Text from "@/components/ui/text";
 import Button from "@/refresh-components/buttons/Button";
 import { EmbeddingDetails } from "@/app/admin/embeddings/EmbeddingModelSelectionForm";
+import { useTranslation } from "react-i18next";
 
 export function CustomEmbeddingModelForm({
   setShowTentativeModel,
@@ -22,6 +23,8 @@ export function CustomEmbeddingModelForm({
   provider: EmbeddingDetails;
   embeddingType: EmbeddingProvider;
 }) {
+  const { t } = useTranslation("admin");
+
   return (
     <div>
       <Formik
@@ -41,15 +44,17 @@ export function CustomEmbeddingModelForm({
           }
         }
         validationSchema={Yup.object().shape({
-          model_name: Yup.string().required("Model name is required"),
-          model_dim: Yup.number().required("Model dimension is required"),
+          model_name: Yup.string().required(t("customEmbedding.modelNameRequired")),
+          model_dim: Yup.number().required(t("customEmbedding.modelDimRequired")),
           normalize: Yup.boolean().required(),
           query_prefix: Yup.string(),
           passage_prefix: Yup.string(),
-          provider_type: Yup.string().required("Provider type is required"),
+          provider_type: Yup.string().required(
+            t("customEmbedding.providerTypeRequired")
+          ),
           api_key: Yup.string().optional(),
           enabled: Yup.boolean(),
-          api_url: Yup.string().required("API base URL is required"),
+          api_url: Yup.string().required(t("customEmbedding.apiUrlRequired")),
           description: Yup.string(),
           index_name: Yup.string().nullable(),
         })}
@@ -60,43 +65,44 @@ export function CustomEmbeddingModelForm({
         {({ isSubmitting, submitForm, errors }) => (
           <Form>
             <Text className="text-xl text-text-900 font-bold mb-4">
-              Specify details for your {getFormattedProviderName(embeddingType)}{" "}
-              Provider&apos;s model
+              {t("customEmbedding.specifyDetails", {
+                provider: getFormattedProviderName(embeddingType),
+              })}
             </Text>
             <TextFormField
               name="model_name"
-              label="Model Name:"
-              subtext={`The name of the ${getFormattedProviderName(
-                embeddingType
-              )} model`}
-              placeholder="e.g. 'all-MiniLM-L6-v2'"
+              label={t("customEmbedding.modelName")}
+              subtext={t("customEmbedding.modelNameSubtext", {
+                provider: getFormattedProviderName(embeddingType),
+              })}
+              placeholder={t("customEmbedding.modelNamePlaceholder")}
             />
 
             <TextFormField
               name="model_dim"
-              label="Model Dimension:"
-              subtext="The dimension of the model's embeddings"
-              placeholder="e.g. '1536'"
+              label={t("customEmbedding.modelDimension")}
+              subtext={t("customEmbedding.modelDimensionSubtext")}
+              placeholder={t("customEmbedding.modelDimensionPlaceholder")}
               type="number"
             />
 
             <BooleanFormField
               removeIndent
               name="normalize"
-              label="Normalize"
-              subtext="Whether to normalize the embeddings"
+              label={t("customEmbedding.normalize")}
+              subtext={t("customEmbedding.normalizeSubtext")}
             />
 
             <TextFormField
               name="query_prefix"
-              label="Query Prefix:"
-              subtext="Prefix for query embeddings"
+              label={t("customEmbedding.queryPrefix")}
+              subtext={t("customEmbedding.queryPrefixSubtext")}
             />
 
             <TextFormField
               name="passage_prefix"
-              label="Passage Prefix:"
-              subtext="Prefix for passage embeddings"
+              label={t("customEmbedding.passagePrefix")}
+              subtext={t("customEmbedding.passagePrefixSubtext")}
             />
 
             <Button
@@ -104,7 +110,9 @@ export function CustomEmbeddingModelForm({
               disabled={isSubmitting}
               className="w-64 mx-auto"
             >
-              Configure {getFormattedProviderName(embeddingType)} Model
+              {t("customEmbedding.configureButton", {
+                provider: getFormattedProviderName(embeddingType),
+              })}
             </Button>
           </Form>
         )}

@@ -7,6 +7,7 @@ import { ApplicationStatus } from "@/interfaces/settings";
 import Button from "@/refresh-components/buttons/Button";
 import { cn } from "@/lib/utils";
 import { ADMIN_PATHS } from "@/lib/admin-routes";
+import { useTranslation } from "react-i18next";
 
 export interface ClientLayoutProps {
   children: React.ReactNode;
@@ -31,6 +32,7 @@ export function ClientLayout({
   enableEnterprise,
   enableCloud,
 }: ClientLayoutProps) {
+  const { t } = useTranslation("admin");
   const pathname = usePathname();
   const settings = useSettingsContext();
 
@@ -50,11 +52,11 @@ export function ClientLayout({
       {settings.settings.application_status ===
         ApplicationStatus.PAYMENT_REMINDER && (
         <div className="fixed top-2 left-1/2 transform -translate-x-1/2 bg-amber-400 dark:bg-amber-500 text-gray-900 dark:text-gray-100 p-4 rounded-lg shadow-lg z-50 max-w-md text-center">
-          <strong className="font-bold">Warning:</strong> Your trial ends in
-          less than 5 days and no payment method has been added.
+          <strong className="font-bold">{t("clientLayout.warning")}</strong>{" "}
+          {t("clientLayout.trialWarning")}
           <div className="mt-2">
             <Button className="w-full" href="/admin/billing">
-              Update Billing Information
+              {t("clientLayout.updateBilling")}
             </Button>
           </div>
         </div>

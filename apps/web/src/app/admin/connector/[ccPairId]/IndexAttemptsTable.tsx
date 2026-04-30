@@ -21,6 +21,8 @@ import { InfoIcon } from "@/components/icons/icons";
 import ExceptionTraceModal from "@/components/modals/ExceptionTraceModal";
 import SimpleTooltip from "@/refresh-components/SimpleTooltip";
 import { SvgClock } from "@opal/icons";
+import { useTranslation } from "react-i18next";
+
 export interface IndexingAttemptsTableProps {
   ccPair: CCPairFullInfo;
   indexAttempts: IndexAttemptSnapshot[];
@@ -35,6 +37,7 @@ export function IndexAttemptsTable({
   totalPages,
   onPageChange,
 }: IndexingAttemptsTableProps) {
+  const { t } = useTranslation();
   const [indexAttemptTracePopupId, setIndexAttemptTracePopupId] = useState<
     number | null
   >(null);
@@ -43,11 +46,10 @@ export function IndexAttemptsTable({
     return (
       <Callout
         className="mt-4"
-        title="No indexing attempts scheduled yet"
+        title={t("admin.connector.indexAttempts.noAttemptsTitle")}
         type="notice"
       >
-        Index attempts are scheduled in the background, and may take some time
-        to appear. Try refreshing the page in ~30 seconds!
+        {t("admin.connector.indexAttempts.noAttemptsDescription")}
       </Callout>
     );
   }
@@ -68,35 +70,36 @@ export function IndexAttemptsTable({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Time Started</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead className="whitespace-nowrap">New Docs</TableHead>
+            <TableHead>{t("admin.connector.indexAttempts.columns.timeStarted")}</TableHead>
+            <TableHead>{t("admin.connector.indexAttempts.columns.status")}</TableHead>
+            <TableHead className="whitespace-nowrap">
+              {t("admin.connector.indexAttempts.columns.newDocs")}
+            </TableHead>
             <TableHead>
               <SimpleTooltip
-                tooltip="Total number of documents replaced in the index during this indexing attempt"
+                tooltip={t("admin.connector.indexAttempts.tooltips.totalDocs")}
                 side="top"
               >
                 <span className="flex items-center">
-                  Total Docs
+                  {t("admin.connector.indexAttempts.columns.totalDocs")}
                   <InfoIcon className="ml-1 w-4 h-4" />
                 </span>
               </SimpleTooltip>
             </TableHead>
-            <TableHead>Error Message</TableHead>
+            <TableHead>{t("admin.connector.indexAttempts.columns.errorMessage")}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {indexAttempts.map((indexAttempt) => {
-            const docsPerMinute =
-              getDocsProcessedPerMinute(indexAttempt)?.toFixed(2);
+            const rawDocsPerMinute = getDocsProcessedPerMinute(indexAttempt);
+            const docsPerMinute = rawDocsPerMinute ? Number(rawDocsPerMinute.toFixed(2)) : null;
             const isReindexInProgress =
               indexAttempt.status === "in_progress" ||
               indexAttempt.status === "not_started";
-            const reindexTooltip = `This index attempt ${
-              isReindexInProgress ? "is" : "was"
-            } a full re-index. All documents from the source ${
-              isReindexInProgress ? "are being" : "were"
-            } synced into the system.`;
+            const reindexTooltip = isReindexInProgress
+              ? t("admin.connector.indexAttempts.tooltips.reindexActive")
+              : t("admin.connector.indexAttempts.tooltips.reindexPast");
+
             return (
               <TableRow key={indexAttempt.id}>
                 <TableCell>
@@ -108,14 +111,16 @@ export function IndexAttemptsTable({
                   <IndexAttemptStatus
                     status={indexAttempt.status || "not_started"}
                   />
-                  {docsPerMinute ? (
+                  {docsPerMinute !== null ? (
                     <div className="text-xs mt-1">
-                      {docsPerMinute} docs / min
+                      {t("admin.connector.indexAttempts.docsPerMinute", {
+                        count: docsPerMinute,
+                      })}
                     </div>
                   ) : (
                     indexAttempt.status === "success" && (
                       <div className="text-xs mt-1">
-                        No additional docs processed
+                        {t("admin.connector.indexAttempts.noDocsProcessed")}
                       </div>
                     )
                   )}
@@ -126,8 +131,9 @@ export function IndexAttemptsTable({
                       <div>{indexAttempt.new_docs_indexed}</div>
                       {indexAttempt.docs_removed_from_index > 0 && (
                         <div className="text-xs w-52 text-wrap flex italic overflow-hidden whitespace-normal px-1">
-                          (also removed {indexAttempt.docs_removed_from_index}{" "}
-                          docs that were detected as deleted in the source)
+                          {t("admin.connector.indexAttempts.removedDocs", {
+                            count: indexAttempt.docs_removed_from_index,
+                          })}
                         </div>
                       )}
                     </div>
@@ -167,7 +173,7 @@ export function IndexAttemptsTable({
                         }}
                         className="mt-2 text-link cursor-pointer select-none"
                       >
-                        View Full Trace
+                        {t("admin.connector.indexAttempts.viewFullTrace")}
                       </div>
                     )}
                   </div>

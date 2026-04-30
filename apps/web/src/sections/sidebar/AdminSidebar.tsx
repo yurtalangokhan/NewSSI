@@ -225,7 +225,7 @@ export default function AdminSidebar({
           <div className="flex flex-col gap-2">
             {settings.webVersion && (
               <Text as="p" text02 secondaryBody className="px-2">
-                {`Onyx version: ${settings.webVersion}`}
+                {t("admin.navigation.version", { version: settings.webVersion })}
               </Text>
             )}
             <UserAvatarPopover />

@@ -28,6 +28,7 @@ import {
 import { CRAFT_SEARCH_PARAM_NAMES } from "@/app/craft/services/searchParams";
 import { CRAFT_PATH } from "@/app/craft/v1/constants";
 import { toast } from "@/hooks/useToast";
+import { useTranslation } from "react-i18next";
 import InputBar, { InputBarHandle } from "@/app/craft/components/InputBar";
 import BuildWelcome from "@/app/craft/components/BuildWelcome";
 import BuildMessageList from "@/app/craft/components/BuildMessageList";
@@ -60,6 +61,7 @@ interface BuildChatPanelProps {
 export default function BuildChatPanel({
   existingSessionId,
 }: BuildChatPanelProps) {
+  const { t } = useTranslation();
   const router = useRouter();
   const posthog = usePostHog();
   const outputPanelOpen = useOutputPanelOpen();
@@ -260,7 +262,7 @@ export default function BuildChatPanel({
         // Existing session flow
         // Check if response is still streaming - show toast like main chat does
         if (isRunning) {
-          toast.error("Please wait for the current operation to complete.");
+          toast.error(t("craftComponents.pleaseWait"));
           return;
         }
 
@@ -284,7 +286,7 @@ export default function BuildChatPanel({
         if (!newSessionId) {
           // This should not happen if UI properly disables input until ready
           console.error("[ChatPanel] No pre-provisioned session available");
-          toast.error("Please wait for sandbox to initialize");
+          toast.error(t("craftComponents.waitSandbox"));
           return;
         }
 
@@ -484,7 +486,7 @@ export default function BuildChatPanel({
                 ref={inputBarRef}
                 onSubmit={handleSubmit}
                 isRunning={isRunning}
-                placeholder="Continue the conversation..."
+                placeholder={t("craftComponents.continueConversation")}
               />
             </div>
           </div>

@@ -140,6 +140,7 @@ export default function PreviewModal({
       zoom,
       onZoomIn: handleZoomIn,
       onZoomOut: handleZoomOut,
+      t,
     }),
     [
       fileContent,
@@ -151,6 +152,7 @@ export default function PreviewModal({
       zoom,
       handleZoomIn,
       handleZoomOut,
+      t,
     ]
   );
 

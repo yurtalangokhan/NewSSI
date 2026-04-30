@@ -10,6 +10,7 @@ import { toast } from "@/hooks/useToast";
 import { searchDocuments, type SearchResult } from "@/lib/langconnect";
 import { SvgSearch } from "@opal/icons";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
 interface SearchPanelProps {
   collectionId: string | null;
@@ -105,6 +106,7 @@ function ResultCard({
 }
 
 export default function SearchPanel({ collectionId }: SearchPanelProps) {
+  const { t } = useTranslation();
   const [query, setQuery] = useState("");
   const [limit, setLimit] = useState(10);
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -119,7 +121,9 @@ export default function SearchPanel({ collectionId }: SearchPanelProps) {
       setResults(data);
       setHasSearched(true);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Search failed");
+      toast.error(
+        e instanceof Error ? e.message : t("admin.documentProcessing.searchFailed")
+      );
     } finally {
       setIsSearching(false);
     }
@@ -129,7 +133,7 @@ export default function SearchPanel({ collectionId }: SearchPanelProps) {
     return (
       <CardSection>
         <Text as="p" mainContentMuted text03 className="text-center py-6">
-          Select a collection above to search documents.
+          {t("admin.documentProcessing.selectCollectionToSearchDocuments")}
         </Text>
       </CardSection>
     );
@@ -144,18 +148,17 @@ export default function SearchPanel({ collectionId }: SearchPanelProps) {
           text05
           className="border-b border-border-01 pb-2"
         >
-          Semantic Search
+          {t("admin.documentProcessing.semanticSearchTitle")}
         </Text>
         <Text as="p" mainContentBody text04 className="leading-relaxed">
-          Search documents using vector similarity. Results are ranked by cosine
-          similarity to your query.
+          {t("admin.documentProcessing.semanticSearchDescription")}
         </Text>
 
         {/* Search bar */}
         <div className="flex gap-2 items-end">
           <div className="flex-1">
             <InputTypeIn
-              placeholder="Enter search query…"
+              placeholder={t("admin.documentProcessing.searchQueryPlaceholder")}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => {
@@ -167,7 +170,7 @@ export default function SearchPanel({ collectionId }: SearchPanelProps) {
           {/* Limit selector */}
           <div className="flex flex-col gap-0.5">
             <Text as="p" mainContentMuted text03 className="text-xs">
-              Top K
+              {t("admin.documentProcessing.topK")}
             </Text>
             <select
               value={limit}
@@ -191,7 +194,9 @@ export default function SearchPanel({ collectionId }: SearchPanelProps) {
             onClick={handleSearch}
             disabled={isSearching || !query.trim()}
           >
-            {isSearching ? "Searching…" : "Search"}
+            {isSearching
+              ? t("admin.documentProcessing.searching")
+              : t("admin.documentProcessing.search")}
           </Button>
         </div>
       </CardSection>

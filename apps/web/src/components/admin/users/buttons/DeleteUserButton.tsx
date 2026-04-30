@@ -37,7 +37,7 @@ const DeleteUserButton = ({
     <>
       {showDeleteModal && (
         <ConfirmEntityModal
-          entityType="user"
+          entityType={t("admin.users.userEntity")}
           entityName={user.email}
           onClose={() => setShowDeleteModal(false)}
           onSubmit={() => trigger({ user_email: user.email, method: "DELETE" })}

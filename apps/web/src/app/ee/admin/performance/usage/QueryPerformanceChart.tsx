@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import { DateRangePickerValue } from "@/components/dateRangeSelectors/AdminDateRangeSelector";
 import { getDatesList, useQueryAnalytics, useUserAnalytics } from "../lib";
 import { ThreeDotsLoader } from "@/components/Loading";
@@ -13,6 +14,7 @@ export function QueryPerformanceChart({
 }: {
   timeRange: DateRangePickerValue;
 }) {
+  const { t } = useTranslation();
   const {
     data: queryAnalyticsData,
     isLoading: isQueryAnalyticsLoading,
@@ -40,7 +42,7 @@ export function QueryPerformanceChart({
   ) {
     chart = (
       <div className="h-80 text-red-600 text-bold flex flex-col">
-        <p className="m-auto">Failed to fetch query data...</p>
+        <p className="m-auto">{t("performanceCharts.failedFetchQuery")}</p>
       </div>
     );
   } else {
@@ -60,6 +62,10 @@ export function QueryPerformanceChart({
       ])
     );
 
+    const queriesLabel = t("performanceCharts.queriesLabel");
+    const uniqueUsersLabel = t("performanceCharts.uniqueUsersLabel");
+    const dayLabel = t("performanceCharts.dayLabel");
+
     chart = (
       <AreaChartDisplay
         className="mt-4"
@@ -68,13 +74,13 @@ export function QueryPerformanceChart({
           const queryAnalyticsForDate = dateToQueryAnalytics.get(dateStr);
           const userAnalyticsForDate = dateToUserAnalytics.get(dateStr);
           return {
-            Day: dateStr,
-            Queries: queryAnalyticsForDate?.total_queries || 0,
-            "Unique Users": userAnalyticsForDate?.total_active_users || 0,
+            [dayLabel]: dateStr,
+            [queriesLabel]: queryAnalyticsForDate?.total_queries || 0,
+            [uniqueUsersLabel]: userAnalyticsForDate?.total_active_users || 0,
           };
         })}
-        categories={["Queries", "Unique Users"]}
-        index="Day"
+        categories={[queriesLabel, uniqueUsersLabel]}
+        index={dayLabel}
         colors={["indigo", "fuchsia"]}
         yAxisFormatter={(number: number) =>
           new Intl.NumberFormat("en-US", {
@@ -97,8 +103,8 @@ export function QueryPerformanceChart({
 
   return (
     <CardSection className="mt-8">
-      <Title>Usage</Title>
-      <Text>Usage over time</Text>
+      <Title>{t("performanceCharts.usageTitle")}</Title>
+      <Text>{t("performanceCharts.usageOverTime")}</Text>
       {chart}
     </CardSection>
   );

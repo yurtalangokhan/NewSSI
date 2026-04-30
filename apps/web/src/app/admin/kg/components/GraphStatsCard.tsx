@@ -11,6 +11,7 @@ import {
 import { cn } from "@/lib/utils";
 import { ThreeDotsLoader } from "@/components/Loading";
 import { snakeToHumanReadable, useDebounce } from "@/app/admin/kg/utils";
+import { useTranslation } from "react-i18next";
 
 const PAGE_SIZE = 10;
 
@@ -75,6 +76,7 @@ export default function GraphStatsCard({
   visibleNodes,
   visibleEdges,
 }: GraphStatsCardProps) {
+  const { t } = useTranslation();
   const [labelData, setLabelData] = useState<PaginatedCounts | null>(null);
   const [relData, setRelData] = useState<PaginatedCounts | null>(null);
   const [labelsLoading, setLabelsLoading] = useState(false);
@@ -187,11 +189,11 @@ export default function GraphStatsCard({
       {/* Counts */}
       <div className="flex flex-col gap-1.5">
         <Text as="p" headingH3 text05>
-          Graph Stats
+          {t("admin.kg.graphStats")}
         </Text>
         <div className="flex flex-wrap gap-2">
           <div className="flex items-center gap-1.5 rounded-full border border-border-01 px-2.5 py-1">
-            <Text as="span" mainContentMuted text03 className="text-xs">Nodes</Text>
+            <Text as="span" mainContentMuted text03 className="text-xs">{t("admin.kg.nodes")}</Text>
             <Text as="span" mainUiAction text04 className="text-xs font-semibold tabular-nums">
               {visibleNodes < totalNodes
                 ? `${visibleNodes.toLocaleString()} / ${totalNodes.toLocaleString()}`
@@ -199,7 +201,7 @@ export default function GraphStatsCard({
             </Text>
           </div>
           <div className="flex items-center gap-1.5 rounded-full border border-border-01 px-2.5 py-1">
-            <Text as="span" mainContentMuted text03 className="text-xs">Edges</Text>
+            <Text as="span" mainContentMuted text03 className="text-xs">{t("admin.kg.edges")}</Text>
             <Text as="span" mainUiAction text04 className="text-xs font-semibold tabular-nums">
               {visibleEdges < totalEdges
                 ? `${visibleEdges.toLocaleString()} / ${totalEdges.toLocaleString()}`
@@ -218,7 +220,7 @@ export default function GraphStatsCard({
             text03
             className="text-xs font-medium uppercase tracking-wide"
           >
-            Entity Labels
+            {t("admin.kg.entityLabels")}
             {labelData && (
               <span className="ml-1 font-normal normal-case opacity-60">
                 ({labelData.total})
@@ -230,7 +232,7 @@ export default function GraphStatsCard({
               onClick={() => Array.from(selectedLabels).forEach(onToggleLabel)}
               className="text-[10px] text-theme-primary-05 hover:underline"
             >
-              clear
+              {t("admin.kg.clear")}
             </button>
           )}
         </div>
@@ -243,7 +245,7 @@ export default function GraphStatsCard({
           </span>
           <input
             type="text"
-            placeholder="Search labels…"
+            placeholder={t("admin.kg.searchLabelsPlaceholder")}
             value={labelsSearch}
             onChange={(e) => handleLabelsSearchChange(e.target.value)}
             className="h-7 w-full rounded-06 border border-border-01 bg-background-tint-00 pl-7 pr-2 text-xs text-text-04 placeholder:text-text-03 focus:outline-none focus:ring-1 focus:ring-theme-primary-04"
@@ -276,7 +278,7 @@ export default function GraphStatsCard({
                   }}
                   className="text-[10px] text-theme-primary-05 hover:underline disabled:opacity-40 disabled:pointer-events-none"
                 >
-                  ← prev
+                  {t("admin.kg.prev")}
                 </button>
                 <Text as="span" mainContentMuted text03 className="text-[10px] tabular-nums">
                   {labelPage} / {Math.ceil(labelData.total / PAGE_SIZE)}
@@ -290,14 +292,14 @@ export default function GraphStatsCard({
                   }}
                   className="text-[10px] text-theme-primary-05 hover:underline disabled:opacity-40 disabled:pointer-events-none"
                 >
-                  next →
+                  {t("admin.kg.next")}
                 </button>
               </div>
             )}
           </>
         ) : (
           <Text as="p" mainContentMuted text03 className="text-xs">
-            {labelsSearch ? "No matching labels" : "No labels"}
+            {labelsSearch ? t("admin.kg.noMatchingLabels") : t("admin.kg.noLabels")}
           </Text>
         )}
       </div>
@@ -311,7 +313,7 @@ export default function GraphStatsCard({
             text03
             className="text-xs font-medium uppercase tracking-wide"
           >
-            Relationship Types
+            {t("admin.kg.relationshipTypes")}
             {relData && (
               <span className="ml-1 font-normal normal-case opacity-60">
                 ({relData.total})
@@ -323,7 +325,7 @@ export default function GraphStatsCard({
               onClick={() => Array.from(selectedRelTypes).forEach(onToggleRelType)}
               className="text-[10px] text-theme-primary-05 hover:underline"
             >
-              clear
+              {t("admin.kg.clear")}
             </button>
           )}
         </div>
@@ -336,7 +338,7 @@ export default function GraphStatsCard({
           </span>
           <input
             type="text"
-            placeholder="Search relationship types…"
+            placeholder={t("admin.kg.searchRelationshipTypesPlaceholder")}
             value={relSearch}
             onChange={(e) => handleRelSearchChange(e.target.value)}
             className="h-7 w-full rounded-06 border border-border-01 bg-background-tint-00 pl-7 pr-2 text-xs text-text-04 placeholder:text-text-03 focus:outline-none focus:ring-1 focus:ring-theme-primary-04"
@@ -368,7 +370,7 @@ export default function GraphStatsCard({
                   }}
                   className="text-[10px] text-theme-primary-05 hover:underline disabled:opacity-40 disabled:pointer-events-none"
                 >
-                  ← prev
+                  {t("admin.kg.prev")}
                 </button>
                 <Text as="span" mainContentMuted text03 className="text-[10px] tabular-nums">
                   {relPage} / {Math.ceil(relData.total / PAGE_SIZE)}
@@ -382,14 +384,16 @@ export default function GraphStatsCard({
                   }}
                   className="text-[10px] text-theme-primary-05 hover:underline disabled:opacity-40 disabled:pointer-events-none"
                 >
-                  next →
+                  {t("admin.kg.next")}
                 </button>
               </div>
             )}
           </>
         ) : (
           <Text as="p" mainContentMuted text03 className="text-xs">
-            {relSearch ? "No matching relationship types" : "No relationship types"}
+            {relSearch
+              ? t("admin.kg.noMatchingRelationshipTypes")
+              : t("admin.kg.noRelationshipTypes")}
           </Text>
         )}
       </div>

@@ -81,7 +81,7 @@ function SettingsPopover({
     logout()
       .then((response) => {
         if (!response?.ok) {
-          alert("Failed to logout");
+          toast.error(t("userMenu.logoutFailed"));
           return;
         }
 
@@ -97,7 +97,7 @@ function SettingsPopover({
       })
 
       .catch(() => {
-        toast.error("Failed to logout");
+        toast.error(t("userMenu.logoutFailed"));
       });
   };
 
@@ -119,9 +119,9 @@ function SettingsPopover({
             icon={SvgBell}
             onClick={onOpenNotifications}
           >
-            {`${t("userMenu.notifications")}${
-              undismissedCount > 0 ? ` (${undismissedCount})` : ""
-            }`}
+            {undismissedCount > 0
+              ? t("userMenu.notificationsWithCount", { count: undismissedCount })
+              : t("userMenu.notifications")}
           </LineItem>,
           <LineItem
             key="help-faq"

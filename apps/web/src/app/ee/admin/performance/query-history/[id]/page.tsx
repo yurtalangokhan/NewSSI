@@ -1,6 +1,7 @@
 "use client";
 import { use } from "react";
 
+import { useTranslation } from "react-i18next";
 import Text from "@/components/ui/text";
 import Title from "@/components/ui/title";
 import Separator from "@/refresh-components/Separator";
@@ -16,15 +17,16 @@ import { ThreeDotsLoader } from "@/components/Loading";
 import CardSection from "@/components/admin/CardSection";
 
 function MessageDisplay({ message }: { message: MessageSnapshot }) {
+  const { t } = useTranslation("admin");
   return (
     <div>
       <p className="text-xs font-bold mb-1">
-        {message.message_type === "user" ? "User" : "AI"}
+        {message.message_type === "user" ? t("queryHistory.user") : t("queryHistory.ai")}
       </p>
       <Text>{message.message}</Text>
       {message.documents.length > 0 && (
         <div className="flex flex-col gap-y-2 mt-2">
-          <p className="font-bold text-xs">Reference Documents</p>
+          <p className="font-bold text-xs">{t("queryHistory.referenceDocuments")}</p>
           {message.documents.slice(0, 5).map((document) => {
             return (
               <Text className="flex" key={document.document_id}>
@@ -52,7 +54,7 @@ function MessageDisplay({ message }: { message: MessageSnapshot }) {
       )}
       {message.feedback_type && (
         <div className="mt-2">
-          <p className="font-bold text-xs">Feedback</p>
+          <p className="font-bold text-xs">{t("queryHistory.feedback")}</p>
           {message.feedback_text && <Text>{message.feedback_text}</Text>}
           <div className="mt-1">
             <FeedbackBadge feedback={message.feedback_type} />
@@ -65,6 +67,7 @@ function MessageDisplay({ message }: { message: MessageSnapshot }) {
 }
 
 export default function QueryPage(props: { params: Promise<{ id: string }> }) {
+  const { t } = useTranslation("admin");
   const params = use(props.params);
   const {
     data: chatSessionSnapshot,
@@ -82,7 +85,7 @@ export default function QueryPage(props: { params: Promise<{ id: string }> }) {
   if (!chatSessionSnapshot || error) {
     return (
       <ErrorCallout
-        errorTitle="Something went wrong :("
+        errorTitle={t("queryHistory.somethingWentWrong")}
         errorMsg={`Failed to fetch chat session - ${error}`}
       />
     );
@@ -93,7 +96,7 @@ export default function QueryPage(props: { params: Promise<{ id: string }> }) {
       <BackButton />
 
       <CardSection className="mt-4">
-        <Title>Chat Session Details</Title>
+        <Title>{t("queryHistory.chatSessionDetails")}</Title>
 
         <Text className="flex flex-wrap whitespace-normal mt-1 text-sm">
           {chatSessionSnapshot.assistant_name}

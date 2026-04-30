@@ -66,6 +66,7 @@ export const ADMIN_PATHS = {
   BILLING: "/admin/billing",
   INDEX_MIGRATION: "/admin/document-index-migration",
   DEBUG: "/admin/debug",
+  SYSTEM_INFO: "/admin/systeminfo",
   // Prefix-only entries (used in SETTINGS_LAYOUT_PREFIXES but have no
   // single page header of their own)
   DOCUMENTS: "/admin/documents",
@@ -266,6 +267,13 @@ export const ADMIN_ROUTE_CONFIG: Record<string, AdminRouteConfig> = {
     icon: SvgDownload,
     title: "Debug Logs",
     sidebarLabel: "Debug Logs",
+  },
+  [ADMIN_PATHS.SYSTEM_INFO]: {
+    icon: SvgServer,
+    title: "System Information",
+    sidebarLabel: "System Information",
+    titleKey: "admin.navigation.routes.systemInfo.title",
+    sidebarLabelKey: "admin.navigation.routes.systemInfo.sidebar",
   },
 };
 

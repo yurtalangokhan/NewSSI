@@ -10,6 +10,7 @@ import Button from "@/refresh-components/buttons/Button";
 
 import { SvgArrowExchange, SvgOnyxLogo } from "@opal/icons";
 import type { IconProps } from "@opal/types";
+import { useTranslation } from "react-i18next";
 
 export type WebProviderSetupModalProps = {
   isOpen: boolean;
@@ -60,6 +61,7 @@ export const WebProviderSetupModal = memo(
     apiKeyAutoFocus = true,
     hideApiKey = false,
   }: WebProviderSetupModalProps) => {
+    const { t } = useTranslation();
     const LogoArrangement = useMemo(() => {
       const Component: FunctionComponent<IconProps> = () => (
         <div className="flex items-center gap-1">
@@ -80,7 +82,7 @@ export const WebProviderSetupModal = memo(
         <Modal.Content width="sm" preventAccidentalClose>
           <Modal.Header
             icon={LogoArrangement}
-            title={`Set up ${providerLabel}`}
+            title={t("admin.webSearch.setupTitle", { providerLabel })}
             description={description}
             onClose={onClose}
           />
@@ -122,11 +124,11 @@ export const WebProviderSetupModal = memo(
                 }
                 className="w-full"
               >
-                <FormField.Label>API Key</FormField.Label>
+                <FormField.Label>{t("admin.webSearch.apiKeyLabel")}</FormField.Label>
                 <FormField.Control asChild>
                   <PasswordInputTypeIn
                     data-testid="web-provider-api-key-input"
-                    placeholder="Enter API key"
+                    placeholder={t("admin.webSearch.enterApiKey")}
                     value={apiKeyValue}
                     autoFocus={apiKeyAutoFocus}
                     isNonRevealable={isStoredApiKey}
@@ -146,7 +148,7 @@ export const WebProviderSetupModal = memo(
                       loading:
                         typeof helperMessage === "string"
                           ? helperMessage
-                          : "Validating API key...",
+                          : t("admin.webSearch.validatingApiKey"),
                     }}
                   />
                 ) : typeof helperMessage === "string" ? (
@@ -214,7 +216,7 @@ export const WebProviderSetupModal = memo(
                           loading:
                             typeof helperMessage === "string"
                               ? helperMessage
-                              : "Testing connection...",
+                              : t("admin.webSearch.testingConnection"),
                         }}
                       />
                     ) : typeof helperMessage === "string" ? (
@@ -245,7 +247,7 @@ export const WebProviderSetupModal = memo(
           </Modal.Body>
           <Modal.Footer>
             <Button type="button" main secondary onClick={onClose}>
-              Cancel
+              {t("admin.webSearch.cancel")}
             </Button>
             <Button
               type="button"
@@ -254,7 +256,7 @@ export const WebProviderSetupModal = memo(
               disabled={!canConnect || isProcessing}
               onClick={onConnect}
             >
-              {isProcessing ? "Connecting..." : "Connect"}
+              {isProcessing ? t("admin.webSearch.connecting") : t("admin.webSearch.connect")}
             </Button>
           </Modal.Footer>
         </Modal.Content>

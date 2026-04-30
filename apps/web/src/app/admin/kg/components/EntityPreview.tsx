@@ -4,6 +4,7 @@ import CardSection from "@/components/admin/CardSection";
 import Text from "@/refresh-components/texts/Text";
 import { SvgX, SvgChevronRight } from "@opal/icons";
 import type { GraphNode, GraphEdge } from "@/lib/langconnect";
+import { useTranslation } from "react-i18next";
 
 const ISO_DATE_RE =
   /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/;
@@ -42,6 +43,7 @@ export default function EntityPreview({
   onClose,
   onNodeSelect,
 }: EntityPreviewProps) {
+  const { t } = useTranslation();
   if (!node) return null;
 
   const outgoing = edges.filter((e) => e.source === node.id);
@@ -67,7 +69,7 @@ export default function EntityPreview({
         <button
           onClick={onClose}
           className="shrink-0 rounded-04 p-1 hover:bg-background-neutral-01 transition-colors"
-          aria-label="Close"
+          aria-label={t("entityPreview.closeAriaLabel")}
         >
           <SvgX className="h-4 w-4 stroke-text-03" />
         </button>
@@ -78,10 +80,10 @@ export default function EntityPreview({
         {/* Properties */}
         <div className="flex flex-col gap-1.5">
           <Text as="p" mainContentMuted text03 className="text-xs font-medium uppercase tracking-wide">
-            Properties ({propEntries.length})
+            {t("entityPreview.properties", { count: propEntries.length })}
           </Text>
           {propEntries.length === 0 ? (
-            <Text as="p" mainContentMuted text03 className="text-xs">No properties</Text>
+            <Text as="p" mainContentMuted text03 className="text-xs">{t("entityPreview.noProperties")}</Text>
           ) : (
             <div className="max-h-44 overflow-y-auto flex flex-col gap-0.5 pr-1">
               {propEntries.map(([key, value]) => (
@@ -102,10 +104,10 @@ export default function EntityPreview({
         {/* Outgoing */}
         <div className="flex flex-col gap-1.5">
           <Text as="p" mainContentMuted text03 className="text-xs font-medium uppercase tracking-wide">
-            Outgoing ({outgoing.length})
+            {t("entityPreview.outgoing", { count: outgoing.length })}
           </Text>
           {outgoing.length === 0 ? (
-            <Text as="p" mainContentMuted text03 className="text-xs">No outgoing relationships</Text>
+            <Text as="p" mainContentMuted text03 className="text-xs">{t("entityPreview.noOutgoing")}</Text>
           ) : (
             <div className="max-h-44 overflow-y-auto flex flex-col gap-1 pr-1">
               {outgoing.map((edge, i) => {
@@ -138,10 +140,10 @@ export default function EntityPreview({
         {/* Incoming */}
         <div className="flex flex-col gap-1.5">
           <Text as="p" mainContentMuted text03 className="text-xs font-medium uppercase tracking-wide">
-            Incoming ({incoming.length})
+            {t("entityPreview.incoming", { count: incoming.length })}
           </Text>
           {incoming.length === 0 ? (
-            <Text as="p" mainContentMuted text03 className="text-xs">No incoming relationships</Text>
+            <Text as="p" mainContentMuted text03 className="text-xs">{t("entityPreview.noIncoming")}</Text>
           ) : (
             <div className="max-h-44 overflow-y-auto flex flex-col gap-1 pr-1">
               {incoming.map((edge, i) => {

@@ -225,7 +225,7 @@ export default function GraphBuildPanel({
                   text04
                   className="text-xs font-medium text-status-warning-07"
                 >
-                  This collection already has a knowledge graph.
+                  {t("admin.kg.buildWarningTitle")}
                 </Text>
                 <Text
                   as="p"
@@ -233,8 +233,7 @@ export default function GraphBuildPanel({
                   text03
                   className="text-xs text-status-warning-06"
                 >
-                  Building again will delete all existing nodes and relationships,
-                  then create a new graph from scratch.
+                  {t("admin.kg.buildWarningDescription")}
                 </Text>
               </div>
             </div>
@@ -244,7 +243,7 @@ export default function GraphBuildPanel({
             <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between gap-3 flex-wrap">
                 <Text as="p" mainContentMuted text03 className="text-xs font-medium uppercase tracking-wide">
-                  Progress
+                  {t("admin.kg.progress")}
                 </Text>
                 <StatusBadge status={status.status} />
               </div>
@@ -253,7 +252,7 @@ export default function GraphBuildPanel({
                 <div className="flex flex-col gap-1.5">
                   <div className="flex items-center justify-between">
                     <Text as="p" mainContentMuted text03 className="text-xs">
-                      Completion
+                      {t("admin.kg.completion")}
                     </Text>
                     <Text
                       as="p"
@@ -274,10 +273,10 @@ export default function GraphBuildPanel({
               )}
 
               <div className="grid grid-cols-4 gap-3">
-                <StatCounter label="Chunks" value={status.total_chunks} />
-                <StatCounter label="Processed" value={status.processed_chunks} />
-                <StatCounter label="Entities" value={status.extracted_entities} />
-                <StatCounter label="Relations" value={status.extracted_relations} />
+                <StatCounter label={t("admin.kg.chunks")} value={status.total_chunks} />
+                <StatCounter label={t("admin.kg.processed")} value={status.processed_chunks} />
+                <StatCounter label={t("admin.kg.entities")} value={status.extracted_entities} />
+                <StatCounter label={t("admin.kg.relations")} value={status.extracted_relations} />
               </div>
             </div>
           )}
@@ -289,7 +288,7 @@ export default function GraphBuildPanel({
               text04
               className="text-status-error-06 text-sm"
             >
-              Error: {status.error}
+              {t("admin.kg.error")}: {status.error}
             </Text>
           )}
 

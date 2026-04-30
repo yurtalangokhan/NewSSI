@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+
 import * as SettingsLayouts from "@/layouts/settings-layouts";
 import { Card, type CardProps } from "@/refresh-components/cards";
 import {
@@ -21,7 +22,7 @@ import useCodeInterpreter from "@/hooks/useCodeInterpreter";
 import { updateCodeInterpreter } from "@/lib/admin/code-interpreter/svc";
 import { ContentAction } from "@opal/layouts";
 import { toast } from "@/hooks/useToast";
-import { useTranslation } from "react-i18next";
+import { useTranslation, Trans } from "react-i18next";
 
 const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.CODE_INTERPRETER]!;
 
@@ -40,13 +41,14 @@ function CodeInterpreterCard({
   strikethrough,
   rightContent,
 }: CodeInterpreterCardProps) {
+  const { t } = useTranslation();
   return (
     // TODO (@raunakab): Allow Content to accept strikethrough and middleText
     <Card variant={variant} padding={0.5}>
       <ContentAction
         icon={SvgTerminal}
         title={middleText ? `${title} ${middleText}` : title}
-        description="Built-in Python runtime"
+        description={t("admin.codeInterpreter.description")}
         variant="section"
         sizePreset="main-ui"
         rightChildren={rightContent}
@@ -153,14 +155,15 @@ export default function CodeInterpreterPage() {
   const [isReconnecting, setIsReconnecting] = useState(false);
 
   async function handleToggle(enabled: boolean) {
-    const action = enabled ? "reconnect" : "disconnect";
-    setIsReconnecting(enabled);
-    try {
-      const response = await updateCodeInterpreter({ enabled });
-      if (!response.ok) {
-        toast.error(`Failed to ${action} Code Interpreter`);
-        return;
-      }
+      const actionKey = enabled ? "reconnect" : "disconnect";
+      const actionLabel = t(`admin.codeInterpreter.${actionKey}`).toLowerCase();
+      setIsReconnecting(enabled);
+      try {
+        const response = await updateCodeInterpreter({ enabled });
+        if (!response.ok) {
+          toast.error(t("admin.codeInterpreter.toastToggleFailed", { action: actionLabel }));
+          return;
+        }
       setShowDisconnectModal(false);
       refetch();
     } finally {
@@ -173,14 +176,14 @@ export default function CodeInterpreterPage() {
       <SettingsLayouts.Header
         icon={route.icon}
         title={t(route.titleKey || "", { defaultValue: route.title })}
-        description="Safe and sandboxed Python runtime available to your LLM. See docs for more details."
+        description={t("admin.codeInterpreter.pageDescription")}
         separator
       />
 
       <SettingsLayouts.Body>
         {isEnabled || isLoading ? (
           <CodeInterpreterCard
-            title="Code Interpreter"
+            title={t("admin.codeInterpreter.title")}
             variant={isHealthy ? "primary" : "secondary"}
             strikethrough={!isHealthy}
             rightContent={
@@ -228,21 +231,21 @@ export default function CodeInterpreterPage() {
       {showDisconnectModal && (
         <ConfirmationModalLayout
           icon={SvgUnplug}
-          title="Disconnect Code Interpreter"
+          title={t("admin.codeInterpreter.disconnectTitle")}
           onClose={() => setShowDisconnectModal(false)}
           submit={
             <Button variant="danger" onClick={() => handleToggle(false)}>
-              Disconnect
+              {t("admin.codeInterpreter.disconnect")}
             </Button>
           }
         >
           <Text as="p" text03>
-            All running sessions connected to{" "}
-            <Text as="span" mainContentEmphasis text03>
-              Code Interpreter
-            </Text>{" "}
-            will stop working. Note that this will not remove any data from your
-            runtime. You can reconnect to this runtime later if needed.
+            <Trans
+              i18nKey="admin.codeInterpreter.disconnectConfirmation"
+              components={{
+                bold: <Text as="span" mainContentEmphasis text03 />,
+              }}
+            />
           </Text>
         </ConfirmationModalLayout>
       )}

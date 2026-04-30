@@ -24,7 +24,7 @@ import {
 } from "@opal/icons";
 import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
 import { WebProviderSetupModal } from "@/app/admin/configuration/web-search/WebProviderSetupModal";
-import { useTranslation } from "react-i18next";
+import { useTranslation, Trans } from "react-i18next";
 
 const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.WEB_SEARCH]!;
 import {
@@ -393,7 +393,7 @@ export default function Page() {
     const message =
       searchProvidersError?.message ||
       contentProvidersError?.message ||
-      "Unable to load web search configuration.";
+      t("admin.webSearch.loadingError");
 
     const detail =
       (searchProvidersError instanceof FetchError &&
@@ -414,7 +414,7 @@ export default function Page() {
           separator
         />
         <SettingsLayouts.Body>
-          <Callout type="danger" title="Failed to load web search settings">
+          <Callout type="danger" title={t("admin.webSearch.failedToLoad")}>
             {message}
             {detail && (
               <Text as="p" className="mt-2 text-text-03" mainContentBody text03>
@@ -433,7 +433,7 @@ export default function Page() {
         <SettingsLayouts.Header
           icon={route.icon}
           title={t(route.titleKey || "", { defaultValue: route.title })}
-          description="Search settings for external search across the internet."
+          description={t("admin.webSearch.pageDescription")}
           separator
         />
         <SettingsLayouts.Body>
@@ -537,7 +537,7 @@ export default function Page() {
         throw new Error(
           typeof errorBody?.detail === "string"
             ? errorBody.detail
-            : "Failed to set provider as default."
+            : t("admin.webSearch.toastDefaultSet")
         );
       }
 
@@ -716,7 +716,7 @@ export default function Page() {
       contentModal.phase === "validating" ||
       contentModal.phase === "saving"
     ) {
-      return "Validating API key...";
+      return t("admin.webSearch.validatingApiKey");
     }
 
     const providerName = selectedContentProviderType
@@ -726,28 +726,31 @@ export default function Page() {
 
     if (selectedContentProviderType === "exa") {
       return (
-        <>
-          Paste your{" "}
-          <a
-            href="https://dashboard.exa.ai/api-keys"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline"
-          >
-            API key
-          </a>{" "}
-          from Exa to enable crawling.
-        </>
+        <Trans
+          i18nKey="admin.webSearch.exaApiKeyInstructions"
+          components={{
+            link: (
+              <a
+                href="https://dashboard.exa.ai/api-keys"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline"
+              />
+            ),
+          }}
+        />
       );
     }
 
     return selectedContentProviderType === "firecrawl" ? (
-      <>
-        Paste your <span className="underline">API key</span> from Firecrawl to
-        access your search engine.
-      </>
+      <Trans
+        i18nKey="admin.webSearch.firecrawlApiKeyInstructions"
+        components={{
+          bold: <span className="underline" />,
+        }}
+      />
     ) : (
-      `Paste your API key from ${providerName} to enable crawling.`
+      t("admin.webSearch.genericApiKeyInstructions", { providerName })
     );
   };
 
@@ -846,14 +849,14 @@ export default function Page() {
         <SettingsLayouts.Body>
           <div className="flex w-full flex-col gap-3">
             <Content
-              title="Search Engine"
-              description="External search engine API used for web search result URLs, snippets, and metadata."
+              title={t("admin.webSearch.searchProvidersTitle")}
+              description={t("admin.webSearch.pageDescription")}
               sizePreset="main-content"
               variant="section"
             />
 
             {activationError && (
-              <Callout type="danger" title="Unable to update default provider">
+              <Callout type="danger" title={t("admin.webSearch.failedToUpdateDefault")}>
                 {activationError}
               </Callout>
             )}
@@ -879,8 +882,8 @@ export default function Page() {
                   </div>
                   <Text as="p" className="flex-1 px-0.5" mainUiBody text04>
                     {hasConfiguredSearchProvider
-                      ? "Select a search engine to enable web search."
-                      : "Connect a search engine to set up web search."}
+                      ? t("admin.webSearch.selectSearchEngine")
+                      : t("admin.webSearch.connectSearchEngine")}
                   </Text>
                 </div>
               </div>
@@ -902,7 +905,7 @@ export default function Page() {
                   const buttonState = (() => {
                     if (!provider || !isConfigured) {
                       return {
-                        label: "Connect",
+                        label: t("admin.webSearch.connect"),
                         disabled: false,
                         icon: "arrow" as const,
                         onClick: canOpenModal
@@ -916,7 +919,7 @@ export default function Page() {
 
                     if (isActive) {
                       return {
-                        label: "Current Default",
+                        label: t("admin.webSearch.currentDefault"),
                         disabled: false,
                         icon: "check" as const,
                         onClick: providerId
@@ -928,7 +931,7 @@ export default function Page() {
                     }
 
                     return {
-                      label: "Set as Default",
+                      label: t("admin.webSearch.setAsDefault"),
                       disabled: false,
                       icon: "arrow-circle" as const,
                       onClick: providerId
@@ -1043,14 +1046,14 @@ export default function Page() {
 
           <div className="flex w-full flex-col gap-3">
             <Content
-              title="Web Crawler"
-              description="Used to read the full contents of search result pages."
+              title={t("admin.webSearch.contentProvidersTitle")}
+              description={t("admin.webSearch.contentProvidersDescription")}
               sizePreset="main-content"
               variant="section"
             />
 
             {contentActivationError && (
-              <Callout type="danger" title="Unable to update crawler">
+              <Callout type="danger" title={t("admin.webSearch.failedToUpdateCrawler")}>
                 {contentActivationError}
               </Callout>
             )}
@@ -1089,7 +1092,7 @@ export default function Page() {
 
                   if (isCurrentCrawler) {
                     return {
-                      label: "Current Crawler",
+                      label: t("admin.webSearch.currentCrawler"),
                       icon: "check" as const,
                       disabled: false,
                       onClick: () => {
@@ -1263,46 +1266,48 @@ export default function Page() {
         optionalField={
           selectedProviderType === "google_pse"
             ? {
-                label: "Search Engine ID",
+                label: t("admin.webSearch.googlePseIdLabel"),
                 value: searchModal.configValue,
                 onChange: (value) =>
                   dispatchSearchModal({ type: "SET_CONFIG_VALUE", value }),
-                placeholder: "Enter search engine ID",
+                placeholder: t("admin.webSearch.googlePseIdPlaceholder"),
                 description: (
-                  <>
-                    Paste your{" "}
-                    <a
-                      href="https://programmablesearchengine.google.com/controlpanel/all"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="underline"
-                    >
-                      search engine ID
-                    </a>{" "}
-                    you want to use for web search.
-                  </>
+                  <Trans
+                    i18nKey="admin.webSearch.googlePseIdInstructions"
+                    components={{
+                      link: (
+                        <a
+                          href="https://programmablesearchengine.google.com/controlpanel/all"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="underline"
+                        />
+                      ),
+                    }}
+                  />
                 ),
               }
             : selectedProviderType === "searxng"
               ? {
-                  label: "SearXNG Base URL",
+                  label: t("admin.webSearch.searxngBaseUrlLabel"),
                   value: searchModal.configValue,
                   onChange: (value) =>
                     dispatchSearchModal({ type: "SET_CONFIG_VALUE", value }),
-                  placeholder: "https://your-searxng-instance.com",
+                  placeholder: t("admin.webSearch.searxngBaseUrlPlaceholder"),
                   description: (
-                    <>
-                      Paste the base URL of your{" "}
-                      <a
-                        href="https://docs.searxng.org/admin/installation.html"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="underline"
-                      >
-                        private SearXNG instance
-                      </a>
-                      .
-                    </>
+                    <Trans
+                      i18nKey="admin.webSearch.searxngBaseUrlInstructions"
+                      components={{
+                        link: (
+                          <a
+                            href="https://docs.searxng.org/admin/installation.html"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="underline"
+                          />
+                        ),
+                      }}
+                    />
                   ),
                 }
               : undefined

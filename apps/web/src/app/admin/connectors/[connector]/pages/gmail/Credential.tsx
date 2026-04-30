@@ -27,10 +27,12 @@ import { buildSimilarCredentialInfoURL } from "@/app/admin/connector/[ccPairId]/
 import { FiFile, FiCheck, FiLink, FiAlertTriangle } from "react-icons/fi";
 import { cn, truncateString } from "@/lib/utils";
 import { Section } from "@/layouts/general-layouts";
+import { useTranslation } from "react-i18next";
 
 type GmailCredentialJsonTypes = "authorized_user" | "service_account";
 
 const GmailCredentialUpload = ({ onSuccess }: { onSuccess?: () => void }) => {
+  const { t } = useTranslation();
   const { mutate } = useSWRConfig();
   const [isUploading, setIsUploading] = useState(false);
   const [fileName, setFileName] = useState<string | undefined>();
@@ -80,14 +82,14 @@ const GmailCredentialUpload = ({ onSuccess }: { onSuccess?: () => void }) => {
           }
         );
         if (response.ok) {
-          toast.success("Successfully uploaded app credentials");
+          toast.success(t("googleCredentials.uploadAppCredentials"));
           mutate("/api/manage/admin/connector/gmail/app-credential");
           if (onSuccess) {
             onSuccess();
           }
         } else {
           const errorMsg = await response.text();
-          toast.error(`Failed to upload app credentials - ${errorMsg}`);
+          toast.error(t("googleCredentials.failedUploadAppCredentials", { errorMsg }));
         }
       }
 
@@ -103,14 +105,14 @@ const GmailCredentialUpload = ({ onSuccess }: { onSuccess?: () => void }) => {
           }
         );
         if (response.ok) {
-          toast.success("Successfully uploaded service account key");
+          toast.success(t("googleCredentials.uploadServiceAccountKey"));
           mutate("/api/manage/admin/connector/gmail/service-account-key");
           if (onSuccess) {
             onSuccess();
           }
         } else {
           const errorMsg = await response.text();
-          toast.error(`Failed to upload service account key - ${errorMsg}`);
+          toast.error(t("googleCredentials.failedUploadServiceAccountKey", { errorMsg }));
         }
       }
       setIsUploading(false);
@@ -185,11 +187,11 @@ const GmailCredentialUpload = ({ onSuccess }: { onSuccess?: () => void }) => {
               )}
               <span className="text-sm text-text-500">
                 {isUploading
-                  ? `Uploading ${truncateString(fileName || "file", 50)}...`
+                  ? t("googleCredentials.uploading", { fileName: truncateString(fileName || "file", 50) })
                   : isDragging
-                    ? "Drop JSON file here"
+                    ? t("googleCredentials.dropJsonHere")
                     : truncateString(
-                        fileName || "Select or drag JSON credentials file...",
+                        fileName || t("googleCredentials.selectOrDragJson"),
                         50
                       )}
               </span>
@@ -232,6 +234,7 @@ export const GmailJsonUploadSection = ({
   onSuccess,
   existingAuthCredential,
 }: GmailJsonUploadSectionProps) => {
+  const { t } = useTranslation();
   const { mutate } = useSWRConfig();
   const [localServiceAccountData, setLocalServiceAccountData] = useState(
     serviceAccountCredentialData
@@ -259,8 +262,7 @@ export const GmailJsonUploadSection = ({
         <div className="flex items-start py-3 px-4 bg-yellow-50/30 dark:bg-yellow-900/5 rounded">
           <FiAlertTriangle className="text-yellow-500 h-5 w-5 mr-2 mt-0.5 flex-shrink-0" />
           <p className="text-sm">
-            Curators are unable to set up the Gmail credentials. To add a Gmail
-            connector, please contact an administrator.
+              {t("googleCredentials.curatorsCannotSetupGmail")}
           </p>
         </div>
       </div>
@@ -270,8 +272,7 @@ export const GmailJsonUploadSection = ({
   return (
     <div>
       <p className="text-sm mb-3">
-        To connect your Gmail, create credentials (either OAuth App or Service
-        Account), download the JSON file, and upload it below.
+        {t("googleCredentials.connectGmailDesc")}
       </p>
       <div className="mb-4">
         <a
@@ -281,7 +282,7 @@ export const GmailJsonUploadSection = ({
           rel="noreferrer"
         >
           <FiLink className="h-3 w-3" />
-          View detailed setup instructions
+          {t("googleCredentials.viewSetupInstructions")}
         </a>
       </div>
 
@@ -343,11 +344,11 @@ export const GmailJsonUploadSection = ({
                     );
 
                     toast.success(
-                      `Successfully deleted ${
-                        localServiceAccountData
-                          ? "service account key"
-                          : "app credentials"
-                      }`
+                      t("googleCredentials.successDeletedCredentials", {
+                        type: localServiceAccountData
+                          ? t("googleCredentials.serviceAccountKey")
+                          : t("googleCredentials.appCredentials"),
+                      })
                     );
                     // Immediately update local state
                     if (localServiceAccountData) {
@@ -358,7 +359,7 @@ export const GmailJsonUploadSection = ({
                     handleSuccess();
                   } else {
                     const errorMsg = await response.text();
-                    toast.error(`Failed to delete credentials - ${errorMsg}`);
+                  toast.error(t("googleCredentials.failedDeleteCredentials", { errorMsg }));
                   }
                 }}
               >
@@ -399,18 +400,16 @@ async function handleRevokeAccess(
   existingCredential:
     | Credential<GmailCredentialJson>
     | Credential<GmailServiceAccountCredentialJson>,
-  refreshCredentials: () => void
+  refreshCredentials: () => void,
+  t: (key: string) => string
 ) {
   if (connectorExists) {
-    const message =
-      "Cannot revoke the Gmail credential while any connector is still associated with the credential. " +
-      "Please delete all associated connectors, then try again.";
-    toast.error(message);
+    toast.error(t("googleCredentials.revokeGmailError"));
     return;
   }
 
   await adminDeleteCredential(existingCredential.id);
-  toast.success("Successfully revoked the Gmail credential!");
+  toast.success(t("googleCredentials.revokedGmail"));
 
   refreshCredentials();
 }
@@ -427,6 +426,7 @@ export const GmailAuthSection = ({
   onOAuthRedirect,
   onCredentialCreated,
 }: GmailCredentialSectionProps) => {
+  const { t } = useTranslation();
   const router = useRouter();
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [localServiceAccountData, setLocalServiceAccountData] = useState(
@@ -464,10 +464,9 @@ export const GmailAuthSection = ({
           <div className="py-3 px-4 bg-blue-50/30 dark:bg-blue-900/5 rounded mb-4 flex items-start">
             <FiCheck className="text-blue-500 h-5 w-5 mr-2 mt-0.5 flex-shrink-0" />
             <div className="flex-1">
-              <span className="font-medium block">Authentication Complete</span>
+              <span className="font-medium block">{t("googleCredentials.authenticationComplete")}</span>
               <p className="text-sm mt-1 text-text-500 dark:text-text-400 break-words">
-                Your Gmail credentials have been successfully uploaded and
-                authenticated.
+                {t("googleCredentials.gmailAuthenticatedDesc")}
               </p>
             </div>
           </div>
@@ -478,11 +477,12 @@ export const GmailAuthSection = ({
                 handleRevokeAccess(
                   connectorExists,
                   existingCredential,
-                  refreshCredentials
+                  refreshCredentials,
+                  t
                 );
               }}
             >
-              Revoke Access
+              {t("googleCredentials.revokeAccess")}
             </Button>
             {buildMode && onCredentialCreated && (
               <Button
@@ -505,13 +505,12 @@ export const GmailAuthSection = ({
   ) {
     return (
       <div>
-        <SectionHeader>Gmail Authentication</SectionHeader>
+        <SectionHeader>{t("googleCredentials.gmailAuthentication")}</SectionHeader>
         <div className="mt-4">
           <div className="flex items-start py-3 px-4 bg-yellow-50/30 dark:bg-yellow-900/5 rounded">
             <FiAlertTriangle className="text-yellow-500 h-5 w-5 mr-2 mt-0.5 flex-shrink-0" />
             <p className="text-sm">
-              Please complete Step 1 by uploading either OAuth credentials or a
-              Service Account key before proceeding with authentication.
+              {t("googleCredentials.completeStep1Gmail")}
             </p>
           </div>
         </div>
@@ -529,8 +528,8 @@ export const GmailAuthSection = ({
             }}
             validationSchema={Yup.object().shape({
               google_primary_admin: Yup.string()
-                .email("Must be a valid email")
-                .required("Required"),
+                .email(t("googleCredentials.mustBeValidEmail"))
+                .required(t("googleCredentials.required")),
             })}
             onSubmit={async (values, formikHelpers) => {
               formikHelpers.setSubmitting(true);
@@ -550,18 +549,18 @@ export const GmailAuthSection = ({
 
                 if (response.ok) {
                   toast.success(
-                    "Successfully created service account credential"
+                    t("googleCredentials.createdServiceAccount")
                   );
                   refreshCredentials();
                 } else {
                   const errorMsg = await response.text();
                   toast.error(
-                    `Failed to create service account credential - ${errorMsg}`
+                    t("googleCredentials.failedCreateServiceAccount", { errorMsg })
                   );
                 }
               } catch (error) {
                 toast.error(
-                  `Failed to create service account credential - ${error}`
+                  t("googleCredentials.failedCreateServiceAccount", { errorMsg: error })
                 );
               } finally {
                 formikHelpers.setSubmitting(false);
@@ -572,12 +571,12 @@ export const GmailAuthSection = ({
               <Form>
                 <TextFormField
                   name="google_primary_admin"
-                  label="Primary Admin Email:"
-                  subtext="Enter the email of an admin/owner of the Google Organization that owns the Gmail account(s) you want to index."
+                  label={t("googleCredentials.primaryAdminEmail")}
+                  subtext={t("googleCredentials.primaryAdminEmailGmailDesc")}
                 />
                 <div className="flex">
                   <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting ? "Creating..." : "Create Credential"}
+                    {isSubmitting ? t("googleCredentials.creating") : t("googleCredentials.createCredential")}
                   </Button>
                 </div>
               </Form>
@@ -593,8 +592,7 @@ export const GmailAuthSection = ({
       <div>
         <div className="bg-background-50/30 dark:bg-background-900/20 rounded mb-4">
           <p className="text-sm">
-            Next, you need to authenticate with Gmail via OAuth. This gives us
-            read access to the emails you have access to in your Gmail account.
+            {t("googleCredentials.gmailOAuthDesc")}
           </p>
         </div>
         <Button
@@ -622,12 +620,12 @@ export const GmailAuthSection = ({
                 setIsAuthenticating(false);
               }
             } catch (error) {
-              toast.error(`Failed to authenticate with Gmail - ${error}`);
+              toast.error(t("googleCredentials.failedAuthGmail", { error }));
               setIsAuthenticating(false);
             }
           }}
         >
-          {isAuthenticating ? "Authenticating..." : "Authenticate with Gmail"}
+          {isAuthenticating ? t("googleCredentials.authenticating") : t("googleCredentials.authenticateWithGmail")}
         </Button>
       </div>
     );
