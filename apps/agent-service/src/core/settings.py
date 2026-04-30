@@ -46,9 +46,6 @@ class Settings(BaseSettings):
     GRACEFUL_SHUTDOWN_TIMEOUT: int = 30
     LOG_LEVEL: LogLevel = LogLevel.WARNING
     AUTH_SECRET: str | None = None
-    KEYCLOAK_ENABLED: bool = False
-    KEYCLOAK_ISSUER_URL: str | None = None
-    KEYCLOAK_AUDIENCE: str | None = None
 
     OLLAMA_MODEL: str = "llama3.1:8b"
     OLLAMA_BASE_URL: str = "http://localhost:11434"

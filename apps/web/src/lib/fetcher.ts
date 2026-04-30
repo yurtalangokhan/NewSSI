@@ -22,18 +22,11 @@ const DEFAULT_ERROR_MSG = "An error occurred while fetching the data.";
 export const errorHandlingFetcher = async <T>(url: string): Promise<T> => {
   const res = await fetch(url);
 
-  let payload: any = null;
-  try {
-    payload = await res.json();
-  } catch {
-    payload = {};
-  }
-
   if (res.status === 403) {
     const redirect = new RedirectError(
       DEFAULT_AUTH_ERROR_MSG,
       res.status,
-      payload
+      await res.json()
     );
     throw redirect;
   }
@@ -42,10 +35,10 @@ export const errorHandlingFetcher = async <T>(url: string): Promise<T> => {
     const error = new FetchError(
       DEFAULT_ERROR_MSG,
       res.status,
-      payload
+      await res.json()
     );
     throw error;
   }
 
-  return payload as T;
+  return res.json();
 };

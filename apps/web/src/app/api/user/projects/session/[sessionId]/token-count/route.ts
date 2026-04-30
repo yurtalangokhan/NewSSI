@@ -8,28 +8,12 @@ export async function GET(
 ) {
   try {
     const { sessionId } = await params;
-    const cookie = request.headers.get("cookie") || "";
-
-    // No authenticated context: avoid noisy backend 401 logs.
-    if (!cookie) {
-      return NextResponse.json({ token_count: 0, total_tokens: 0 });
-    }
-
     // Proxy to backend token-count endpoint
-    const response = await fetch(`${INTERNAL_URL}/user/projects/session/${sessionId}/token-count`, {
-      headers: {
-        Cookie: cookie,
-      },
-    });
-
-    if (!response.ok) {
-      return NextResponse.json({ token_count: 0, total_tokens: 0 }, { status: response.status });
-    }
-
+    const response = await fetch(`${INTERNAL_URL}/user/projects/session/${sessionId}/token-count`);
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error) {
     // Return mock data for now
-    return NextResponse.json({ token_count: 0, total_tokens: 0 });
+    return NextResponse.json({ token_count: 0 });
   }
 }

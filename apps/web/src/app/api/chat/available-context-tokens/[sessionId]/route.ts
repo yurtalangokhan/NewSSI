@@ -8,13 +8,8 @@ export async function GET(
 ) {
   try {
     const { sessionId } = await params;
-    const cookie = request.headers.get("cookie") || "";
     // Proxy to backend available-context-tokens endpoint
-    const response = await fetch(`${INTERNAL_URL}/api/chat/available-context-tokens/${sessionId}`, {
-      headers: {
-        ...(cookie ? { Cookie: cookie } : {}),
-      },
-    });
+    const response = await fetch(`${INTERNAL_URL}/api/chat/available-context-tokens/${sessionId}`);
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error) {

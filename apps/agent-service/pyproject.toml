@@ -54,7 +54,6 @@ dependencies = [
     "python-pptx>=0.6.23",
     "pyowm ~=3.3.0",
     "python-dotenv ~=1.0.1",
-    "PyJWT ~=2.10.1",
     "setuptools ~=75.6.0",
     "tiktoken >=0.8.0",
     "uvicorn ~=0.32.1",

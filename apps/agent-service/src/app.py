@@ -149,22 +149,6 @@ async def health_check():
     return health_status
 
 
-@app.get("/api/health")
-async def api_health_check():
-    """API health check endpoint."""
-    health_status = {"status": "UP"}
-
-    if settings.LANGFUSE_TRACING:
-        try:
-            langfuse = Langfuse()
-            health_status["langfuse"] = "connected" if langfuse.auth_check() else "disconnected"
-        except Exception as e:
-            logger.error(f"Langfuse connection error: {e}")
-            health_status["langfuse"] = "disconnected"
-
-    return health_status
-
-
 # =============================================================================
 # Include routers (new modular routes)
 # =============================================================================

@@ -14,10 +14,6 @@ security = HTTPBearer(auto_error=False)
 INTERNAL_SERVICE_TOKEN = os.environ.get(
     "INTERNAL_SERVICE_TOKEN", "internal-service-key-2026"
 )
-IS_TESTING = os.environ.get("IS_TESTING", "").lower() == "true"
-ALLOW_LOCAL_INTERNAL_BYPASS = (
-    os.environ.get("ALLOW_LOCAL_INTERNAL_BYPASS", "").lower() == "true"
-)
 
 # Valid API keys from environment
 VALID_API_KEYS: set = set()
@@ -76,13 +72,8 @@ def verify_api_key(credentials: str) -> str | None:
     """
     valid_keys = _get_valid_api_keys()
 
-    # If no keys configured, tests may still provide bearer values to model
-    # distinct users without requiring a configured keyring.
+    # If no keys configured, allow all (dev mode)
     if not valid_keys:
-        if IS_TESTING:
-            if credentials.startswith("api-key:"):
-                credentials = credentials[8:]
-            return credentials or None
         return "dev-user"
 
     # Check if credentials is a valid key
@@ -111,22 +102,22 @@ def resolve_user(
     if internal_token == INTERNAL_SERVICE_TOKEN:
         return AuthenticatedUser("internal-service", "Internal Service")
 
-    if ALLOW_LOCAL_INTERNAL_BYPASS:
-        client_host = request.client.host if request.client else None
-        user_agent = request.headers.get("User-Agent", "")
-        if client_host and (
-            client_host.startswith("172.")
-            or client_host.startswith("192.168.")
-            or client_host == "127.0.0.1"
-        ):
-            if "httpx" in user_agent.lower() or "python" in user_agent.lower():
-                return AuthenticatedUser("internal-service", "Internal Service")
+    # Check if request is from trusted internal host (Docker)
+    client_host = request.client.host if request.client else None
+    forwarded_for = request.headers.get("X-Forwarded-For", "")
+    user_agent = request.headers.get("User-Agent", "")
+
+    # Allow requests from Docker internal network
+    if client_host and (
+        client_host.startswith("172.")
+        or client_host.startswith("192.168.")
+        or client_host == "127.0.0.1"
+    ):
+        if "httpx" in user_agent.lower() or "python" in user_agent.lower():
+            return AuthenticatedUser("internal-service", "Internal Service")
 
     # If no credentials provided - check if we allow anonymous
     if not credentials:
-        if IS_TESTING:
-            raise HTTPException(status_code=403, detail="API key required")
-
         # For development, allow access
         valid_keys = _get_valid_api_keys()
         if not valid_keys:

@@ -81,8 +81,6 @@ export const INVALID_ROLE_HOVER_TEXT: Partial<Record<UserRole, string>> = {
 export interface User {
   id: string;
   email: string;
-  first_name?: string | null;
-  full_name?: string | null;
   is_active: boolean;
   is_superuser: boolean;
   is_verified: boolean;

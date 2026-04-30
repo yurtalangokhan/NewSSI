@@ -1,7 +1,6 @@
 import { User } from "./types";
 import { AuthType } from "./constants";
-import { UrlBuilder, buildUrl, fetchSS } from "./utilsSS";
-import { cookies as getCookies } from "next/headers";
+import { UrlBuilder, buildUrl } from "./utilsSS";
 
 export interface AuthTypeMetadata {
   authType: AuthType;
@@ -14,23 +13,16 @@ export interface AuthTypeMetadata {
 }
 
 export const getAuthTypeMetadataSS = async (): Promise<AuthTypeMetadata> => {
-  try {
-    const response = await fetchSS("/auth/type");
-    if (!response.ok) {
-      throw new Error(`Failed auth/type fetch: ${response.status}`);
-    }
-    return (await response.json()) as AuthTypeMetadata;
-  } catch {
-    return {
-      authType: AuthType.BASIC,
-      autoRedirect: false,
-      requiresVerification: false,
-      anonymousUserEnabled: true,
-      passwordMinLength: 8,
-      hasUsers: true,
-      oauthEnabled: false,
-    };
-  }
+  // Return default for development mode - skip backend call
+  return {
+    authType: AuthType.BASIC,
+    autoRedirect: false,
+    requiresVerification: false,
+    anonymousUserEnabled: true,
+    passwordMinLength: 8,
+    hasUsers: true,
+    oauthEnabled: false,
+  };
 };
 
 const getOIDCAuthUrlSS = async (nextUrl: string | null): Promise<string> => {
@@ -121,28 +113,31 @@ export const logoutSS = async (
 };
 
 export const getCurrentUserSS = async (): Promise<User | null> => {
-  try {
-    // Avoid noisy backend 401 calls when there is clearly no authenticated session.
-    const cookieStore = await getCookies();
-    const hasAuthCookie =
-      cookieStore.has("fastapiusersauth") ||
-      cookieStore.has("session") ||
-      cookieStore.has("id_token");
-    if (!hasAuthCookie) {
-      return null;
-    }
-
-    const response = await fetchSS("/me");
-    if (response.status === 401) {
-      return null;
-    }
-    if (!response.ok) {
-      throw new Error(`Failed /me fetch: ${response.status}`);
-    }
-    return (await response.json()) as User;
-  } catch {
-    return null;
-  }
+  // Return default dev user for development mode - skip backend call
+  return {
+    id: "dev-user",
+    email: "dev@local.dev",
+    is_active: true,
+    is_superuser: true,
+    is_verified: true,
+    role: "admin" as any,
+    preferences: {
+      chosen_assistants: null,
+      visible_assistants: [],
+      hidden_assistants: [],
+      default_model: null,
+      recent_assistants: [],
+      auto_scroll: true,
+      shortcut_enabled: true,
+      temperature_override_enabled: false,
+      theme_preference: null,
+      chat_background: null,
+      default_app_mode: "CHAT",
+    },
+    team_name: null,
+    is_anonymous_user: false,
+    password_configured: true,
+  };
 };
 
 export const processCookies = (cookies: { getAll(): { name: string; value: string }[] }): string => {

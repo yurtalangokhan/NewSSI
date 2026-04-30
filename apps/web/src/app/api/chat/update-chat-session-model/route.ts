@@ -5,14 +5,10 @@ const INTERNAL_URL = process.env.INTERNAL_URL || "http://localhost:8123";
 export async function PUT(request: Request) {
   try {
     const body = await request.text();
-    const cookie = request.headers.get("cookie") || "";
     const response = await fetch(`${INTERNAL_URL}/api/chat/update-chat-session-model`, {
       method: "PUT",
       body,
-      headers: {
-        "Content-Type": "application/json",
-        ...(cookie ? { Cookie: cookie } : {}),
-      }
+      headers: { "Content-Type": "application/json" }
     });
     const data = await response.json();
     return NextResponse.json(data);

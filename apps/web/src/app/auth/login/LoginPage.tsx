@@ -15,7 +15,6 @@ interface LoginPageProps {
   authUrl: string | null;
   authTypeMetadata: AuthTypeMetadata | null;
   nextUrl: string | null;
-  oidcError?: string | null;
   hidePageRedirect?: boolean;
   verified?: boolean;
   isFirstUser?: boolean;
@@ -25,7 +24,6 @@ export default function LoginPage({
   authUrl,
   authTypeMetadata,
   nextUrl,
-  oidcError,
   hidePageRedirect,
   verified,
   isFirstUser,
@@ -44,14 +42,6 @@ export default function LoginPage({
           success
           close={false}
           text={t("auth.emailVerifiedMessage")}
-          className="w-full mb-4"
-        />
-      )}
-      {oidcError && (
-        <Message
-          error
-          close={false}
-          text={oidcError}
           className="w-full mb-4"
         />
       )}

@@ -102,18 +102,6 @@ class Env:
         return os.environ.get("AUTH_SECRET")
 
     @property
-    def KEYCLOAK_ENABLED(self) -> bool:
-        return os.environ.get("KEYCLOAK_ENABLED", "false").lower() == "true"
-
-    @property
-    def KEYCLOAK_ISSUER_URL(self) -> str | None:
-        return os.environ.get("KEYCLOAK_ISSUER_URL")
-
-    @property
-    def KEYCLOAK_AUDIENCE(self) -> str | None:
-        return os.environ.get("KEYCLOAK_AUDIENCE")
-
-    @property
     def OLLAMA_BASE_URL(self) -> str | None:
         return os.environ.get("OLLAMA_BASE_URL")
 
