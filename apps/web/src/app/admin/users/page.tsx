@@ -3,21 +3,25 @@
 import { useState } from "react";
 import SimpleTabs from "@/refresh-components/SimpleTabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import InvitedUserTable from "@/components/admin/users/InvitedUserTable";
 import SignedUpUserTable from "@/components/admin/users/SignedUpUserTable";
+import Modal from "@/refresh-components/Modal";
 import { ThreeDotsLoader } from "@/components/Loading";
 import { toast } from "@/hooks/useToast";
 import * as SettingsLayouts from "@/layouts/settings-layouts";
 import { errorHandlingFetcher } from "@/lib/fetcher";
-import useSWR from "swr";
+import useSWR, { mutate } from "swr";
 import { ErrorCallout } from "@/components/ErrorCallout";
+import BulkAdd, { EmailInviteStatus } from "@/components/admin/users/BulkAdd";
 import Text from "@/refresh-components/texts/Text";
 import { InvitedUserSnapshot } from "@/lib/types";
 import { NEXT_PUBLIC_CLOUD_ENABLED } from "@/lib/constants";
 import PendingUsersTable from "@/components/admin/users/PendingUsersTable";
+import CreateButton from "@/refresh-components/buttons/CreateButton";
 import Button from "@/refresh-components/buttons/Button";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
 import { Spinner } from "@/components/Spinner";
-import { SvgDownloadCloud } from "@opal/icons";
+import { SvgDownloadCloud, SvgUserPlus } from "@opal/icons";
 import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
 import { useRouter } from "next/navigation";
 import type { Route } from "next";
@@ -96,6 +100,16 @@ function UsersTables({
     }
   };
 
+  const {
+    data: invitedUsers,
+    error: invitedUsersError,
+    isLoading: invitedUsersLoading,
+    mutate: invitedUsersMutate,
+  } = useSWR<InvitedUserSnapshot[]>(
+    "/api/manage/users/invited",
+    errorHandlingFetcher
+  );
+
   const { data: validDomains, error: domainsError } = useSWR<string[]>(
     "/api/manage/admin/valid-domains",
     errorHandlingFetcher
@@ -111,6 +125,8 @@ function UsersTables({
     errorHandlingFetcher
   );
 
+  const invitedUsersCount =
+    invitedUsers === undefined ? null : invitedUsers.length;
   const pendingUsersCount =
     pendingUsers === undefined ? null : pendingUsers.length;
   // Show loading animation only during the initial data fetch
@@ -146,7 +162,9 @@ function UsersTables({
           </CardHeader>
           <CardContent>
             <SignedUpUserTable
+              invitedUsers={invitedUsers || []}
               q={q}
+              invitedUsersMutate={invitedUsersMutate}
               countDisplay={
                 <CountDisplay
                   label="Total users"

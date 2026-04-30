@@ -105,7 +105,7 @@ services:
       MCP_SERVER_URL: http://tools-service:8003
       
       # Auth
-      AUTH_TYPE: oidc
+      AUTH_TYPE: basic
       
       # Feature Flags
       NEXT_PUBLIC_CLOUD_ENABLED: "false"

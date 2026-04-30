@@ -5,12 +5,7 @@ const INTERNAL_URL = process.env.INTERNAL_URL || "http://localhost:8123";
 export async function GET(request: Request, { params }: { params: Promise<{ chatSessionId: string }> }) {
   try {
     const { chatSessionId } = await params;
-    const cookie = request.headers.get("cookie") || "";
-    const response = await fetch(`${INTERNAL_URL}/api/chat/get-chat-session/${chatSessionId}`, {
-      headers: {
-        ...(cookie ? { Cookie: cookie } : {}),
-      },
-    });
+    const response = await fetch(`${INTERNAL_URL}/api/chat/get-chat-session/${chatSessionId}`);
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error) {

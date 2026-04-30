@@ -23,15 +23,6 @@ interface ChatSessionsResponse {
   has_more: boolean;
 }
 
-function isValidChatSession(session: unknown): session is ChatSession {
-  if (!session || typeof session !== "object") {
-    return false;
-  }
-
-  const candidate = session as Partial<ChatSession>;
-  return typeof candidate.id === "string" && candidate.id.length > 0;
-}
-
 export interface PendingChatSessionParams {
   chatSessionId: string;
   personaId: AgentId;
@@ -114,10 +105,6 @@ function usePendingSessions(): ChatSession[] {
 function dedupeChatSessionsById(sessions: ChatSession[]): ChatSession[] {
   const byId = new Map<string, ChatSession>();
   for (const session of sessions) {
-    if (!isValidChatSession(session)) {
-      continue;
-    }
-
     const existing = byId.get(session.id);
     if (!existing) {
       byId.set(session.id, session);
@@ -212,14 +199,7 @@ export default function useChatSessions(): UseChatSessionsOutput {
 
   // Flatten all pages into a single session list
   const allFetchedSessions = useMemo(
-    () =>
-      data
-        ? data.flatMap((page) =>
-            Array.isArray(page?.sessions)
-              ? page.sessions.filter(isValidChatSession)
-              : []
-          )
-        : [],
+    () => (data ? data.flatMap((page) => page.sessions) : []),
     [data]
   );
 
@@ -323,9 +303,7 @@ export default function useChatSessions(): UseChatSessionsOutput {
         (pages) =>
           pages?.map((page) => ({
             ...page,
-            sessions: (page.sessions || []).filter(
-              (s) => isValidChatSession(s) && s.id !== sessionId
-            ),
+            sessions: page.sessions.filter((s) => s.id !== sessionId),
           })),
         { revalidate: false }
       );

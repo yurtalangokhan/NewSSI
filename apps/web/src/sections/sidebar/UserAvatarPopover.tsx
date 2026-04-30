@@ -41,18 +41,6 @@ function getDisplayName(email?: string, personalName?: string): string {
   return email.substring(0, atIndex);
 }
 
-function getPreferredName(user: {
-  email?: string;
-  first_name?: string | null;
-  full_name?: string | null;
-  personalization?: { name?: string };
-} | null): string {
-  if (!user) return ANONYMOUS_USER_NAME;
-  if (user.full_name && user.full_name.trim()) return user.full_name.trim();
-  if (user.first_name && user.first_name.trim()) return user.first_name.trim();
-  return getDisplayName(user.email, user.personalization?.name);
-}
-
 interface SettingsPopoverProps {
   onUserSettingsClick: () => void;
   onOpenNotifications: () => void;
@@ -94,7 +82,15 @@ function SettingsPopover({
           return;
         }
 
-        router.push("/auth/login?disableAutoRedirect=true");
+        const currentUrl = `${pathname}${
+          searchParams?.toString() ? `?${searchParams.toString()}` : ""
+        }`;
+
+        const encodedRedirect = encodeURIComponent(currentUrl);
+
+        router.push(
+          `/auth/login?disableAutoRedirect=true&next=${encodedRedirect}`
+        );
       })
 
       .catch(() => {
@@ -180,7 +176,7 @@ export default function UserAvatarPopover({
     errorHandlingFetcher
   );
 
-  const displayName = getPreferredName(user);
+  const displayName = getDisplayName(user?.email, user?.personalization?.name);
   const undismissedCount =
     notifications?.filter((n) => !n.dismissed).length ?? 0;
   const hasNotifications = undismissedCount > 0;
@@ -188,6 +184,7 @@ export default function UserAvatarPopover({
   const handlePopoverOpen = (state: boolean) => {
     if (state) {
       // Prefetch user settings data when popover opens for instant modal display
+      preload("/api/user/pats", errorHandlingFetcher);
       preload("/api/federated/oauth-status", errorHandlingFetcher);
       if (vectorDbEnabled) {
         preload("/api/manage/connector-status", errorHandlingFetcher);

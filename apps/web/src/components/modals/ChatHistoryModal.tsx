@@ -23,10 +23,6 @@ import {
 function dedupeChatHistorySessions(sessions: ChatSession[]): ChatSession[] {
   const byId = new Map<string, ChatSession>();
   for (const session of sessions) {
-    if (!session?.id) {
-      continue;
-    }
-
     const existing = byId.get(session.id);
     if (!existing) {
       byId.set(session.id, session);
@@ -82,9 +78,7 @@ export default function ChatHistoryModal({
     }
   );
 
-  const allSessions = dedupeChatHistorySessions(
-    (data?.sessions || []).filter((session): session is ChatSession => Boolean(session?.id))
-  );
+  const allSessions = dedupeChatHistorySessions(data?.sessions || []);
   const hasMore = data?.has_more || false;
 
   // Reset selection when modal opens

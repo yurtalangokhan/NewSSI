@@ -8,12 +8,8 @@ export async function DELETE(
 ) {
   try {
     const { chatSessionId } = await params;
-    const cookie = request.headers.get("cookie") || "";
     const response = await fetch(`${INTERNAL_URL}/api/chat/delete-chat-session/${chatSessionId}`, {
       method: "DELETE",
-      headers: {
-        ...(cookie ? { Cookie: cookie } : {}),
-      },
     });
     const data = await response.json();
     return NextResponse.json(data);

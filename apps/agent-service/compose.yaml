@@ -42,9 +42,6 @@ services:
       - airbyte_tmp:/tmp/airbyte
     environment:
       - AIRBYTE_LOCAL_ROOT=/tmp/airbyte
-      - KEYCLOAK_ENABLED=${KEYCLOAK_ENABLED:-true}
-      - KEYCLOAK_ISSUER_URL=${KEYCLOAK_ISSUER_URL:-http://keycloak:8080/realms/agenticai}
-      - KEYCLOAK_AUDIENCE=${KEYCLOAK_AUDIENCE:-agent-service}
     develop:
       watch:
         - path: src/agents/

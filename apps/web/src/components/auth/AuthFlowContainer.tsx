@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { OnyxIcon } from "../icons/icons";
 
 export default function AuthFlowContainer({
   children,
@@ -10,23 +11,16 @@ export default function AuthFlowContainer({
   footerContent?: React.ReactNode;
 }) {
   return (
-    <div className="auth-login-shell p-4 flex flex-col items-center justify-center min-h-screen relative overflow-hidden">
-      <div className="auth-login-bg-gradient" aria-hidden="true" />
-      <div className="auth-login-bg-grid" aria-hidden="true" />
-      <div className="auth-login-bg-glow auth-login-bg-glow-1" aria-hidden="true" />
-      <div className="auth-login-bg-glow auth-login-bg-glow-2" aria-hidden="true" />
-
-      <div className="w-full max-w-md flex items-start flex-col bg-background-tint-00/90 backdrop-blur-md border border-border rounded-16 shadow-lg shadow-02 p-6 z-10">
-        <div className="h-11 w-11 rounded-12 bg-theme-primary-05 text-white flex items-center justify-center font-semibold text-lg ring-2 ring-white/30">
-          AI
-        </div>
+    <div className="p-4 flex flex-col items-center justify-center min-h-screen bg-background">
+      <div className="w-full max-w-md flex items-start flex-col bg-background-tint-00 rounded-16 shadow-lg shadow-02 p-6">
+        <OnyxIcon size={44} className="text-theme-primary-05" />
         <div className="w-full mt-3">{children}</div>
       </div>
       {authState === "login" && (
         <div className="text-sm mt-6 text-center w-full text-text-03 mainUiBody mx-auto">
           {footerContent ?? (
             <>
-              New to AgenticAI Platform?{" "}
+              New to Onyx?{" "}
               <Link
                 href="/auth/signup"
                 className="text-text-05 mainUiAction underline transition-colors duration-200"

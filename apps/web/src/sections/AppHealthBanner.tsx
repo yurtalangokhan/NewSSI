@@ -12,7 +12,7 @@ import { logout } from "@/lib/user";
 import { usePathname, useRouter } from "next/navigation";
 import { SvgAlertTriangle, SvgLogOut } from "@opal/icons";
 import { Content } from "@opal/layouts";
-import { useUser } from "@/providers/UserProvider";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 
 export default function AppHealthBanner() {
   const router = useRouter();
@@ -23,7 +23,18 @@ export default function AppHealthBanner() {
   const expirationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const refreshIntervalRef = useRef<NodeJS.Timer | null>(null);
 
-  const { user, refreshUser } = useUser();
+  const { user, mutateUser, userError } = useCurrentUser();
+
+  // Handle 403 errors from the /api/me endpoint
+  useEffect(() => {
+    if (userError && userError.status === 403) {
+      logout().then(() => {
+        if (!pathname?.includes("/auth")) {
+          setShowLoggedOutModal(true);
+        }
+      });
+    }
+  }, [userError, pathname]);
 
   // Function to handle the "Log in" button click
   function handleLogin() {
@@ -107,8 +118,19 @@ export default function AppHealthBanner() {
             await new Promise((resolve) => setTimeout(resolve, 4000));
 
             // Get updated user data
-            // Refresh user state; timeout recalculation happens when `user` updates.
-            await refreshUser();
+            const updatedUser = await mutateUser();
+
+            if (updatedUser) {
+              // Reset expiration timeout with new expiration time
+              const newSecondsUntilExpiration =
+                getSecondsUntilExpiration(updatedUser);
+              if (newSecondsUntilExpiration !== null) {
+                setupExpirationTimeout(newSecondsUntilExpiration);
+                console.debug(
+                  `Token refreshed, new expiration in ${newSecondsUntilExpiration} seconds`
+                );
+              }
+            }
 
             break; // Success - exit the retry loop
           } catch (error) {
@@ -150,7 +172,7 @@ export default function AppHealthBanner() {
         attemptTokenRefresh();
       }
     }
-  }, [user, setupExpirationTimeout, refreshUser]);
+  }, [user, setupExpirationTimeout, mutateUser]);
 
   // Logged out modal
   if (showLoggedOutModal) {

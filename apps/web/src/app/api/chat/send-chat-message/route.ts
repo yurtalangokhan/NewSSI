@@ -5,7 +5,6 @@ const INTERNAL_URL = process.env.INTERNAL_URL || "http://localhost:8123";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.text();
-    const cookie = request.headers.get("cookie") || "";
     
     // Call the backend send-chat-message endpoint which handles:
     // 1. Session creation/updates
@@ -20,7 +19,6 @@ export async function POST(request: NextRequest) {
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'text/event-stream',
-        ...(cookie ? { Cookie: cookie } : {}),
       },
     });
 

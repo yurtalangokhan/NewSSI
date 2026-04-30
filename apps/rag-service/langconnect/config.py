@@ -62,40 +62,14 @@ MILVUS_PASSWORD = env("MILVUS_PASSWORD", cast=str, default="")
 # Read allowed origins from environment variable
 ALLOW_ORIGINS_JSON = env("ALLOW_ORIGINS", cast=str, default="")
 
-
-def parse_allowed_origins(raw_value: str | None) -> list[str]:
-    """Parse CORS origins from JSON, shell-sourced, or comma-separated env values."""
-    if not raw_value:
-        return ["http://localhost:3000"]
-
-    normalized = raw_value.strip()
-    if not normalized:
-        return ["http://localhost:3000"]
-
-    try:
-        parsed = json.loads(normalized)
-        if isinstance(parsed, str):
-            return [parsed]
-        if isinstance(parsed, list):
-            return [str(item) for item in parsed if str(item).strip()]
-    except json.JSONDecodeError:
-        pass
-
-    # Shell sourcing can strip quotes from values like ["*"] -> [*]
-    if normalized.startswith("[") and normalized.endswith("]"):
-        normalized = normalized[1:-1]
-
-    parts = [part.strip().strip('"\'') for part in normalized.split(",")]
-    parsed_parts = [part for part in parts if part]
-    return parsed_parts or ["http://localhost:3000"]
-
 # Neo4j configuration
 NEO4J_URI = env("NEO4J_URI", cast=str, default="bolt://localhost:7687")
 NEO4J_USERNAME = env("NEO4J_USERNAME", cast=str, default="neo4j")
 NEO4J_PASSWORD = env("NEO4J_PASSWORD", cast=str, default="neo4j123")
 
-ALLOWED_ORIGINS = parse_allowed_origins(ALLOW_ORIGINS_JSON)
 if ALLOW_ORIGINS_JSON:
+    ALLOWED_ORIGINS = json.loads(ALLOW_ORIGINS_JSON.strip())
     print(f"ALLOW_ORIGINS environment variable set to: {ALLOW_ORIGINS_JSON}")
 else:
+    ALLOWED_ORIGINS = "http://localhost:3000"
     print("ALLOW_ORIGINS environment variable not set.")

@@ -22,26 +22,6 @@ from core.env import env
 logger = logging.getLogger(__name__)
 
 
-def _normalize_model_name(model_name: str | None) -> str | None:
-    """Normalize provider aliases to concrete model names.
-
-    Some dynamic agent definitions may store provider labels (e.g. "ollama")
-    instead of an actual model id (e.g. "llama3.1:8b").
-    """
-    if model_name is None:
-        return None
-
-    normalized = model_name.strip()
-    if not normalized:
-        return None
-
-    lower_name = normalized.lower()
-    if lower_name in {"ollama", "default", "provider", "builtin"}:
-        return env.OLLAMA_MODEL or "llama3.1:8b"
-
-    return normalized
-
-
 class FakeToolModel(FakeListChatModel):
     """Fake model for testing or when no real models are available."""
 
@@ -73,8 +53,6 @@ def get_model(model_name: str | None = None) -> ModelT:
 
     # Initialize providers if not done yet
     provider_registry.initialize()
-
-    model_name = _normalize_model_name(model_name)
 
     # Fake model override for testing
     if model_name == "fake" or env.get("USE_FAKE_MODEL", "").lower() == "true":
