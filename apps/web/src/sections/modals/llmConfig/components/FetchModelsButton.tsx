@@ -3,7 +3,6 @@ import Button from "@/refresh-components/buttons/Button";
 import Text from "@/refresh-components/texts/Text";
 import SimpleTooltip from "@/refresh-components/SimpleTooltip";
 import { ModelConfiguration } from "@/interfaces/llm";
-import { useTranslation } from "react-i18next";
 
 interface FetchModelsButtonProps {
   onFetch: () => Promise<{ models: ModelConfiguration[]; error?: string }>;
@@ -24,7 +23,6 @@ export function FetchModelsButton({
 }: FetchModelsButtonProps) {
   const [isFetchingModels, setIsFetchingModels] = useState(false);
   const [fetchModelsError, setFetchModelsError] = useState("");
-  const { t } = useTranslation();
 
   const handleFetchModels = async () => {
     setIsFetchingModels(true);
@@ -41,7 +39,7 @@ export function FetchModelsButton({
       }
     } catch (err) {
       const errorMessage =
-        err instanceof Error ? err.message : t("llmConfig.unknownErrorOccurred");
+        err instanceof Error ? err.message : "Unknown error occurred";
       setFetchModelsError(errorMessage);
     } finally {
       setIsFetchingModels(false);
@@ -66,7 +64,7 @@ export function FetchModelsButton({
             onClick={handleFetchModels}
             disabled={isFetchingModels || isDisabled}
           >
-            {t("llmConfig.fetchAvailableModels")}
+            Fetch Available Models
           </Button>
         </div>
       </SimpleTooltip>

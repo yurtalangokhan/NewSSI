@@ -22,7 +22,6 @@ import { ModalCreationInterface } from "@/refresh-components/contexts/ModalConte
 import { SvgCheckCircle, SvgServer, SvgUnplug } from "@opal/icons";
 import { Section } from "@/layouts/general-layouts";
 import Text from "@/refresh-components/texts/Text";
-import { useTranslation } from "react-i18next";
 
 interface AddMCPServerModalProps {
   skipOverlay?: boolean;
@@ -52,7 +51,6 @@ export default function AddMCPServerModal({
   handleAuthenticate,
   mutateMcpServers,
 }: AddMCPServerModalProps) {
-  const { t } = useTranslation();
   const { isOpen, toggle } = useModal();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -84,13 +82,13 @@ export default function AddMCPServerModal({
       if (isEditMode && server) {
         // Update existing server
         await updateMCPServer(server.id, values);
-        toast.success(t("admin.mcp.serverUpdated"));
+        toast.success("MCP Server updated successfully");
         await mutateMcpServers?.();
       } else {
         // Create new server
         const createdServer = await createMCPServer(values);
 
-        toast.success(t("admin.mcp.serverCreated"));
+        toast.success("MCP Server created successfully");
 
         await mutateMcpServers?.();
 
@@ -139,38 +137,32 @@ export default function AddMCPServerModal({
             <Form>
               <Modal.Header
                 icon={SvgServer}
-                title={
-                  isEditMode
-                    ? t("admin.mcp.manageServer")
-                    : t("admin.mcp.addServer")
-                }
+                title={isEditMode ? "Manage MCP Server" : "Add MCP Server"}
                 description={
                   isEditMode
-                    ? t("admin.mcp.manageServerDescription")
-                    : t("admin.mcp.addServerDescription")
+                    ? "Update your MCP server configuration and manage authentication."
+                    : "Connect MCP (Model Context Protocol) server to add custom actions."
                 }
                 onClose={() => handleModalClose(false)}
               />
 
               <Modal.Body>
-                <InputLayouts.Vertical
-                  name="name"
-                  title={t("admin.mcp.serverName")}
-                >
+                <InputLayouts.Vertical name="name" title="Server Name">
                   <InputTypeInField
                     name="name"
-                    placeholder={t("admin.mcp.serverNamePlaceholder")}
+                    placeholder="Name your MCP server"
                     autoFocus
                   />
                 </InputLayouts.Vertical>
 
                 <InputLayouts.Vertical
                   name="description"
-                  title={`${t("admin.mcp.description")} (${t("admin.mcp.optional")})`}
+                  title="Description"
+                  optional
                 >
                   <InputTextAreaField
                     name="description"
-                    placeholder={t("admin.mcp.serverDescriptionPlaceholder")}
+                    placeholder="More details about the MCP server"
                     rows={3}
                   />
                 </InputLayouts.Vertical>
@@ -179,12 +171,12 @@ export default function AddMCPServerModal({
 
                 <InputLayouts.Vertical
                   name="server_url"
-                  title={t("admin.mcp.serverUrl")}
-                  subDescription={t("admin.mcp.serverUrlHint")}
+                  title="MCP Server URL"
+                  subDescription="Only connect to servers you trust. You are responsible for actions taken with this connection and keeping your tools updated."
                 >
                   <InputTypeInField
                     name="server_url"
-                    placeholder={t("admin.mcp.serverUrlPlaceholder")}
+                    placeholder="https://your-mcp-server.com/mcp"
                   />
                 </InputLayouts.Vertical>
 
@@ -206,16 +198,14 @@ export default function AddMCPServerModal({
                           width="fit"
                         >
                           <SvgCheckCircle className="w-4 h-4 stroke-status-success-05" />
-                          <Text>{t("admin.mcp.authenticatedConnected")}</Text>
+                          <Text>Authenticated &amp; Connected</Text>
                         </Section>
                         <Text secondaryBody text03>
                           {server.auth_type === "OAUTH"
-                            ? t("admin.mcp.oauthConnectedTo", {
-                                owner: server.owner,
-                              })
+                            ? `OAuth connected to ${server.owner}`
                             : server.auth_type === "API_TOKEN"
-                              ? t("admin.mcp.apiTokenConfigured")
-                              : t("admin.mcp.connected")}
+                              ? "API token configured"
+                              : "Connected"}
                         </Text>
                       </Section>
                       <Section
@@ -228,7 +218,7 @@ export default function AddMCPServerModal({
                           icon={SvgUnplug}
                           prominence="tertiary"
                           type="button"
-                          tooltip={t("admin.mcp.disconnectServer")}
+                          tooltip="Disconnect Server"
                           onClick={handleDisconnectClick}
                         />
                         <Button
@@ -240,7 +230,7 @@ export default function AddMCPServerModal({
                             handleAuthenticate(server.id);
                           }}
                         >
-                          {t("admin.mcp.editConfigs")}
+                          Edit Configs
                         </Button>
                       </Section>
                     </Section>
@@ -254,7 +244,7 @@ export default function AddMCPServerModal({
                   onClick={() => handleModalClose(false)}
                   disabled={isSubmitting}
                 >
-                  {t("modals.cancel")}
+                  Cancel
                 </Button>
                 <Button
                   primary
@@ -263,11 +253,11 @@ export default function AddMCPServerModal({
                 >
                   {isSubmitting
                     ? isEditMode
-                      ? t("admin.mcp.saving")
-                      : t("admin.mcp.adding")
+                      ? "Saving..."
+                      : "Adding..."
                     : isEditMode
-                      ? t("admin.mcp.saveChanges")
-                      : t("admin.mcp.addServer")}
+                      ? "Save Changes"
+                      : "Add Server"}
                 </Button>
               </Modal.Footer>
             </Form>

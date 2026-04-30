@@ -8,7 +8,6 @@ import CreateButton from "@/refresh-components/buttons/CreateButton";
 import { Button } from "@opal/components";
 import { SvgX } from "@opal/icons";
 import Text from "@/refresh-components/texts/Text";
-import { useTranslation } from "react-i18next";
 
 function ModelConfigurationRow({
   name,
@@ -79,7 +78,6 @@ export function ModelConfigurationField({
   name: string;
   formikProps: FormikProps<{ model_configurations: ModelConfiguration[] }>;
 }) {
-  const { t } = useTranslation();
   const [errorMap, setErrorMap] = useState<{ [index: number]: string }>({});
   const [finalError, setFinalError] = useState<string | undefined>();
 
@@ -87,10 +85,10 @@ export function ModelConfigurationField({
     <div className="pb-5 flex flex-col w-full">
       <div className="flex flex-col">
         <Text as="p" mainUiAction>
-          {t("admin.llm.modelConfigurations")}
+          Model Configurations
         </Text>
         <Text as="p" secondaryBody text03>
-          {t("admin.llm.modelConfigurationsDescription")}
+          Add models and customize the number of input tokens that they accept.
         </Text>
       </div>
       <FieldArray
@@ -100,10 +98,10 @@ export function ModelConfigurationField({
             <div className="flex flex-col gap-4 py-4">
               <div className="flex">
                 <Text as="p" secondaryBody className="flex flex-[2]">
-                  {t("admin.llm.modelName")}
+                  Model Name
                 </Text>
                 <Text as="p" secondaryBody className="flex flex-[1]">
-                  {t("admin.llm.maxInputTokens")}
+                  Max Input Tokens
                 </Text>
                 <div className="w-10" />
               </div>
@@ -154,7 +152,7 @@ export function ModelConfigurationField({
                   });
                 }}
               >
-                {t("admin.llm.addNew")}
+                Add New
               </CreateButton>
             </div>
           </div>

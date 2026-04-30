@@ -10,11 +10,9 @@ import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
 import CardSection from "@/components/admin/CardSection";
 import { DocumentSetCreationForm } from "../DocumentSetCreationForm";
 import { useRouter } from "next/navigation";
-import { useTranslation } from "react-i18next";
 
 function Main({ documentSetId }: { documentSetId: number }) {
   const router = useRouter();
-  const { t } = useTranslation();
 
   const {
     data: documentSets,
@@ -42,7 +40,7 @@ function Main({ documentSetId }: { documentSetId: number }) {
   if (documentSetsError || !documentSets) {
     return (
       <ErrorCallout
-        errorTitle={t("admin.documentSets.failedToFetchDocumentSets")}
+        errorTitle="Failed to fetch document sets"
         errorMsg={documentSetsError}
       />
     );
@@ -51,7 +49,7 @@ function Main({ documentSetId }: { documentSetId: number }) {
   if (ccPairsError || !ccPairs) {
     return (
       <ErrorCallout
-        errorTitle={t("admin.documentSets.failedToFetchConnectors")}
+        errorTitle="Failed to fetch Connectors"
         errorMsg={ccPairsError}
       />
     );
@@ -63,8 +61,8 @@ function Main({ documentSetId }: { documentSetId: number }) {
   if (!documentSet) {
     return (
       <ErrorCallout
-        errorTitle={t("admin.documentSets.documentSetNotFound")}
-        errorMsg={t("admin.documentSets.documentSetNotFoundMsg", { id: documentSetId })}
+        errorTitle="Document set not found"
+        errorMsg={`Document set with id ${documentSetId} not found`}
       />
     );
   }
@@ -90,13 +88,12 @@ export default function Page(props: {
   const params = use(props.params);
   const documentSetId = parseInt(params.documentSetId);
   const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.DOCUMENT_SETS]!;
-  const { t } = useTranslation();
 
   return (
     <SettingsLayouts.Root>
       <SettingsLayouts.Header
         icon={route.icon}
-        title={t("admin.documentSets.editDocumentSetTitle")}
+        title="Edit Document Set"
         separator
         backButton
       />

@@ -14,7 +14,6 @@ import { Button } from "@opal/components";
 import SimpleLoader from "@/refresh-components/loaders/SimpleLoader";
 import { Section } from "@/layouts/general-layouts";
 import Separator from "@/refresh-components/Separator";
-import { useTranslation } from "react-i18next";
 
 function getNotificationIcon(
   notifType: string
@@ -40,7 +39,6 @@ export default function NotificationsPopover({
 }: NotificationsPopoverProps) {
   const router = useRouter();
   const posthog = usePostHog();
-  const { t } = useTranslation();
   const {
     data: notifications,
     mutate,
@@ -106,7 +104,7 @@ export default function NotificationsPopover({
   return (
     <Section gap={0.5} padding={0.25}>
       <Section flexDirection="row" justifyContent="between" padding={0.5}>
-        <Text headingH3>{t("notifications.title")}</Text>
+        <Text headingH3>Notifications</Text>
         <Button icon={SvgX} prominence="tertiary" size="sm" onClick={onClose} />
       </Section>
 
@@ -123,7 +121,7 @@ export default function NotificationsPopover({
           <div className="h-48">
             <Section>
               <Text as="p" text03>
-                {t("notifications.empty")}
+                No notifications
               </Text>
             </Section>
           </div>
@@ -144,7 +142,7 @@ export default function NotificationsPopover({
                         size="sm"
                         icon={SvgX}
                         onClick={(e) => handleDismiss(notification.id, e)}
-                        tooltip={t("notifications.dismiss")}
+                        tooltip="Dismiss"
                       />
                     ) : undefined
                   }

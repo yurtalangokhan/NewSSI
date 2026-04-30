@@ -9,7 +9,6 @@ import { cn } from "@/lib/utils";
 import CopyIconButton from "@/refresh-components/buttons/CopyIconButton";
 import { Button } from "@opal/components";
 import { SvgEdit } from "@opal/icons";
-import { useTranslation } from "react-i18next";
 import FileDisplay from "./FileDisplay";
 
 interface MessageEditingProps {
@@ -138,7 +137,6 @@ const HumanMessage = React.memo(function HumanMessage({
   const [content, setContent] = useState(initialContent);
 
   const [isEditing, setIsEditing] = useState(false);
-  const { t } = useTranslation();
 
   // Use nodeId for switching (finding position in siblings)
   const indexInSiblings = otherMessagesCanSwitchTo?.indexOf(nodeId);
@@ -230,7 +228,7 @@ const HumanMessage = React.memo(function HumanMessage({
                 <Button
                   icon={SvgEdit}
                   prominence="tertiary"
-                  tooltip={t("humanMessage.editTooltip")}
+                  tooltip="Edit"
                   onClick={() => setIsEditing(true)}
                   data-testid="HumanMessage/edit-button"
                 />
@@ -251,7 +249,7 @@ const HumanMessage = React.memo(function HumanMessage({
                 icon={SvgEdit}
                 onClick={() => setIsEditing(true)}
                 prominence="tertiary"
-                tooltip={t("humanMessage.editTooltip")}
+                tooltip="Edit"
               />
             </div>
             <div className="ml-auto rounded-lg p-1">{content}</div>

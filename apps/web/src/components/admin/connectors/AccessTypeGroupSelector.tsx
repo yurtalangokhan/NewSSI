@@ -14,7 +14,6 @@ import {
 } from "@/lib/types";
 import { useUser } from "@/providers/UserProvider";
 import { SvgUsers } from "@opal/icons";
-import { useTranslation } from "react-i18next";
 function isValidAutoSyncSource(
   value: ConfigurableSources
 ): value is ValidAutoSyncSource {
@@ -39,7 +38,6 @@ export function AccessTypeGroupSelector({
   const isPaidEnterpriseFeaturesEnabled = usePaidEnterpriseFeaturesEnabled();
   const [shouldHideContent, setShouldHideContent] = useState(false);
   const isAutoSyncSupported = isValidAutoSyncSource(connector);
-  const { t } = useTranslation();
 
   const [access_type, meta, access_type_helpers] =
     useField<AccessType>("access_type");
@@ -85,7 +83,7 @@ export function AccessTypeGroupSelector({
   ]);
 
   if (userGroupsIsLoading) {
-    return <div>{t("admin.connectorForm.groupSelector.loading")}</div>;
+    return <div>Loading...</div>;
   }
   if (!isPaidEnterpriseFeaturesEnabled) {
     return null;
@@ -96,8 +94,8 @@ export function AccessTypeGroupSelector({
       <>
         {userGroups && userGroups[0] !== undefined && (
           <div className="mb-1 font-medium text-base">
-            {t("admin.connectorForm.groupSelector.assignedToGroup")}{" "}
-            <b>{userGroups[0].name}</b>.
+            This Connector will be assigned to group <b>{userGroups[0].name}</b>
+            .
           </div>
         )}
       </>
@@ -113,15 +111,15 @@ export function AccessTypeGroupSelector({
             <Separator />
             <div className="flex flex-col gap-3 pt-4">
               <Text as="p" mainUiAction text05>
-                {t("admin.connectorForm.groupSelector.assignGroupAccess")}
+                Assign group access for this Connector
               </Text>
               {userGroupsIsLoading ? (
                 <div className="animate-pulse bg-background-200 h-8 w-32 rounded" />
               ) : (
                 <Text as="p" mainUiMuted text03>
                   {isAdmin
-                    ? t("admin.connectorForm.groupSelector.visibleByGroups")
-                    : t("admin.connectorForm.groupSelector.curatorsSelectGroups")}
+                    ? "This Connector will be visible/accessible by the groups selected below"
+                    : "Curators must select one or more groups to give access to this Connector"}
                 </Text>
               )}
             </div>

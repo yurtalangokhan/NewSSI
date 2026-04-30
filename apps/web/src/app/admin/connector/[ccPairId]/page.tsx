@@ -64,31 +64,30 @@ import { useStatusChange } from "./useStatusChange";
 import { useReIndexModal } from "./ReIndexModal";
 import Button from "@/refresh-components/buttons/Button";
 import { SvgSettings } from "@opal/icons";
-import { useTranslation } from "react-i18next";
-import i18n from "@/i18n/config";
+// synchronize these validations with the SQLAlchemy connector class until we have a
+// centralized schema for both frontend and backend
+const RefreshFrequencySchema = Yup.object().shape({
+  propertyValue: Yup.number()
+    .typeError("Property value must be a valid number")
+    .integer("Property value must be an integer")
+    .min(1, "Property value must be greater than or equal to 1 minute")
+    .required("Property value is required"),
+});
 
-const getRefreshFrequencySchema = () =>
-  Yup.object().shape({
-    propertyValue: Yup.number()
-      .typeError(i18n.t("admin.connector.propertyValueMustBeNumber"))
-      .integer(i18n.t("admin.connector.propertyValueMustBeInteger"))
-      .min(1, i18n.t("admin.connector.propertyValueMin1"))
-      .required(i18n.t("admin.connector.propertyValueRequired")),
-  });
-
-const getPruneFrequencySchema = () =>
-  Yup.object().shape({
-    propertyValue: Yup.number()
-      .typeError(i18n.t("admin.connector.propertyValueMustBeNumber"))
-      .min(0.083, i18n.t("admin.connector.propertyValueMin5m"))
-      .required(i18n.t("admin.connector.propertyValueRequired")),
-  });
+const PruneFrequencySchema = Yup.object().shape({
+  propertyValue: Yup.number()
+    .typeError("Property value must be a valid number")
+    .min(
+      0.083,
+      "Property value must be greater than or equal to 0.083 hours (5 minutes)"
+    )
+    .required("Property value is required"),
+});
 
 const ITEMS_PER_PAGE = 8;
 const PAGES_PER_BATCH = 8;
 
 function Main({ ccPairId }: { ccPairId: number }) {
-  const { t } = useTranslation();
   const router = useRouter();
 
   const {
@@ -214,17 +213,17 @@ function Main({ ccPairId }: { ccPairId: number }) {
       if (result.success) {
         toast.success(
           `${
-            fromBeginning
-              ? t("admin.connector.reindexingStarted")
-              : t("admin.connector.indexingUpdateStarted")
-          } ${t("admin.connector.startedSuccessfully")}`
+            fromBeginning ? "Complete re-indexing" : "Indexing update"
+          } started successfully`
         );
       } else {
-        toast.error(result.message || t("admin.connector.failedToStartIndexing"));
+        toast.error(result.message || "Failed to start indexing");
       }
     } catch (error) {
       console.error("Failed to trigger indexing:", error);
-      toast.error(t("admin.connector.unexpectedIndexingError"));
+      toast.error(
+        "An unexpected error occurred while trying to start indexing"
+      );
     } finally {
       setShowIsResolvingKickoffLoader(false);
     }
@@ -263,9 +262,9 @@ function Main({ ccPairId }: { ccPairId: number }) {
         throw new Error(await response.text());
       }
       mutate(buildCCPairInfoUrl(ccPairId));
-      toast.success(t("admin.connector.connectorNameUpdated"));
+      toast.success("Connector name updated successfully");
     } catch (error) {
-      toast.error(t("admin.connector.failedToUpdateName"));
+      toast.error("Failed to update connector name");
     }
   };
 
@@ -284,10 +283,11 @@ function Main({ ccPairId }: { ccPairId: number }) {
     const parsedRefreshFreqMinutes = parseInt(propertyValue, 10);
 
     if (isNaN(parsedRefreshFreqMinutes)) {
-      toast.error(t("admin.connector.invalidRefreshFrequency"));
+      toast.error("Invalid refresh frequency: must be an integer");
       return;
     }
 
+    // Convert minutes to seconds
     const parsedRefreshFreqSeconds = parsedRefreshFreqMinutes * 60;
 
     try {
@@ -300,9 +300,9 @@ function Main({ ccPairId }: { ccPairId: number }) {
         throw new Error(await response.text());
       }
       mutate(buildCCPairInfoUrl(ccPairId));
-      toast.success(t("admin.connector.refreshFrequencyUpdated"));
+      toast.success("Connector refresh frequency updated successfully");
     } catch (error) {
-      toast.error(t("admin.connector.failedToUpdateRefreshFrequency"));
+      toast.error("Failed to update connector refresh frequency");
     }
   };
 
@@ -313,10 +313,11 @@ function Main({ ccPairId }: { ccPairId: number }) {
     const parsedFreqHours = parseFloat(propertyValue);
 
     if (isNaN(parsedFreqHours)) {
-      toast.error(t("admin.connector.invalidPruningFrequency"));
+      toast.error("Invalid pruning frequency: must be a valid number");
       return;
     }
 
+    // Convert hours to seconds
     const parsedFreqSeconds = parsedFreqHours * 3600;
 
     try {
@@ -329,9 +330,9 @@ function Main({ ccPairId }: { ccPairId: number }) {
         throw new Error(await response.text());
       }
       mutate(buildCCPairInfoUrl(ccPairId));
-      toast.success(t("admin.connector.pruningFrequencyUpdated"));
+      toast.success("Connector pruning frequency updated successfully");
     } catch (error) {
-      toast.error(t("admin.connector.failedToUpdatePruningFrequency"));
+      toast.error("Failed to update connector pruning frequency");
     }
   };
 
@@ -342,11 +343,11 @@ function Main({ ccPairId }: { ccPairId: number }) {
   if (!ccPair || (!hasLoadedOnce && ccPairError)) {
     return (
       <ErrorCallout
-        errorTitle={t("admin.connector.failedToFetchInfo", { id: ccPairId })}
+        errorTitle={`Failed to fetch info on Connector with ID ${ccPairId}`}
         errorMsg={
           ccPairError?.info?.detail ||
           ccPairError?.toString() ||
-          t("admin.connector.unknownError")
+          "Unknown error"
         }
       />
     );
@@ -371,7 +372,7 @@ function Main({ ccPairId }: { ccPairId: number }) {
           danger
           entityType="connector"
           entityName={ccPair.name}
-          additionalDetails={t("admin.connector.deletionDetails")}
+          additionalDetails="Deleting this connector schedules a deletion job that removes its indexed documents and deletes it for every user."
           onClose={() => {
             setShowDeleteConnectorConfirmModal(false);
           }}
@@ -381,11 +382,11 @@ function Main({ ccPairId }: { ccPairId: number }) {
 
       {editingRefreshFrequency && (
         <EditPropertyModal
-          propertyTitle={t("admin.connector.refreshFrequencyTitle")}
-          propertyDetails={t("admin.connector.refreshFrequencyDetails")}
+          propertyTitle="Refresh Frequency"
+          propertyDetails="How often the connector should refresh (in minutes)"
           propertyName="refresh_frequency"
           propertyValue={String(Math.round((refreshFreq || 0) / 60))}
-          validationSchema={getRefreshFrequencySchema()}
+          validationSchema={RefreshFrequencySchema}
           onSubmit={handleRefreshSubmit}
           onClose={() => setEditingRefreshFrequency(false)}
         />
@@ -393,13 +394,13 @@ function Main({ ccPairId }: { ccPairId: number }) {
 
       {editingPruningFrequency && (
         <EditPropertyModal
-          propertyTitle={t("admin.connector.pruningFrequencyTitle")}
-          propertyDetails={t("admin.connector.pruningFrequencyDetails")}
+          propertyTitle="Pruning Frequency"
+          propertyDetails="How often the connector should be pruned (in hours)"
           propertyName="pruning_frequency"
           propertyValue={String(
             ((pruneFreq || 0) / 3600).toFixed(3).replace(/\.?0+$/, "")
           )}
-          validationSchema={getPruneFrequencySchema()}
+          validationSchema={PruneFrequencySchema}
           onSubmit={handlePruningSubmit}
           onClose={() => setEditingPruningFrequency(false)}
         />
@@ -447,7 +448,7 @@ function Main({ ccPairId }: { ccPairId: number }) {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button leftIcon={SvgSettings} secondary>
-                  {t("admin.connector.manage")}
+                  Manage
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
@@ -469,17 +470,17 @@ function Main({ ccPairId }: { ccPairId: number }) {
                   className="flex items-center gap-x-2 cursor-pointer px-3 py-2"
                   tooltip={
                     ccPair.indexing
-                      ? t("admin.connector.cannotReindexWhileActive")
+                      ? "Cannot re-index while indexing is already in progress"
                       : ccPair.status === ConnectorCredentialPairStatus.PAUSED
-                        ? t("admin.connector.resumeBeforeReindex")
+                        ? "Resume the connector before re-indexing"
                         : ccPair.status ===
                             ConnectorCredentialPairStatus.INVALID
-                          ? t("admin.connector.fixConfigBeforeReindex")
+                          ? "Fix the connector configuration before re-indexing"
                           : undefined
                   }
                 >
                   <RefreshCwIcon className="h-4 w-4" />
-                  <span>{t("admin.connector.reIndex")}</span>
+                  <span>Re-Index</span>
                 </DropdownMenuItemWithTooltip>
                 {!isDeleting && (
                   <DropdownMenuItemWithTooltip
@@ -493,9 +494,7 @@ function Main({ ccPairId }: { ccPairId: number }) {
                     disabled={isStatusUpdating}
                     className="flex items-center gap-x-2 cursor-pointer px-3 py-2"
                     tooltip={
-                      isStatusUpdating
-                        ? t("admin.connector.statusUpdateInProgress")
-                        : undefined
+                      isStatusUpdating ? "Status update in progress" : undefined
                     }
                   >
                     {statusIsNotCurrentlyActive(ccPair.status) ? (
@@ -505,8 +504,8 @@ function Main({ ccPairId }: { ccPairId: number }) {
                     )}
                     <span>
                       {statusIsNotCurrentlyActive(ccPair.status)
-                        ? t("admin.connector.resume")
-                        : t("admin.connector.pause")}
+                        ? "Resume"
+                        : "Pause"}
                     </span>
                   </DropdownMenuItemWithTooltip>
                 )}
@@ -524,12 +523,12 @@ function Main({ ccPairId }: { ccPairId: number }) {
                     className="flex items-center gap-x-2 cursor-pointer px-3 py-2 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
                     tooltip={
                       !statusIsNotCurrentlyActive(ccPair.status)
-                        ? t("admin.connector.pauseBeforeDeleting")
+                        ? "Pause the connector before deleting"
                         : undefined
                     }
                   >
                     <Trash2Icon className="h-4 w-4" />
-                    <span>{t("admin.connector.delete")}</span>
+                    <span>Delete</span>
                   </DropdownMenuItemWithTooltip>
                 )}
               </DropdownMenuContent>
@@ -550,11 +549,9 @@ function Main({ ccPairId }: { ccPairId: number }) {
 
       {ccPair.status === ConnectorCredentialPairStatus.INVALID && (
         <div className="mt-6">
-          <Callout
-            type="warning"
-            title={t("admin.connector.invalidConnectorState")}
-          >
-            {t("admin.connector.invalidConnectorStateBody")}
+          <Callout type="warning" title="Invalid Connector State">
+            This connector is in an invalid state. Please update your
+            credentials or create a new connector before re-indexing.
           </Callout>
         </div>
       )}
@@ -563,23 +560,23 @@ function Main({ ccPairId }: { ccPairId: number }) {
         <Alert className="border-alert bg-yellow-50 dark:bg-yellow-800 my-2 mt-6">
           <AlertCircle className="h-4 w-4 text-yellow-700 dark:text-yellow-500" />
           <AlertTitle className="text-yellow-950 dark:text-yellow-200 font-semibold">
-            {t("admin.connector.someDocumentsFailed")}
+            Some documents failed to index
           </AlertTitle>
           <AlertDescription className="text-yellow-900 dark:text-yellow-300">
             {isResolvingErrors ? (
               <span>
                 <span className="text-sm text-yellow-700 dark:text-yellow-400 da animate-pulse">
-                  {t("admin.connector.resolvingFailures")}
+                  Resolving failures
                 </span>
               </span>
             ) : (
               <>
-                {t("admin.connector.issuesProcessingDocuments")}{" "}
+                We ran into some issues while processing some documents.{" "}
                 <b
                   className="text-link cursor-pointer dark:text-blue-300"
                   onClick={() => setShowIndexAttemptErrors(true)}
                 >
-                  {t("admin.connector.viewDetails")}
+                  View details.
                 </b>
               </>
             )}
@@ -588,13 +585,13 @@ function Main({ ccPairId }: { ccPairId: number }) {
       )}
 
       <Title className="mb-2 mt-6" size="md">
-        {t("admin.connector.indexingTitle")}
+        Indexing
       </Title>
 
       <Card className="px-8 py-12">
         <div className="flex">
           <div className="w-[200px]">
-            <div className="text-sm font-medium mb-1">{t("admin.connector.statusLabel")}</div>
+            <div className="text-sm font-medium mb-1">Status</div>
             <CCPairStatus
               ccPairStatus={ccPair.status}
               inRepeatedErrorState={ccPair.in_repeated_error_state}
@@ -603,7 +600,7 @@ function Main({ ccPairId }: { ccPairId: number }) {
           </div>
 
           <div className="w-[200px]">
-            <div className="text-sm font-medium mb-1">{t("admin.connector.documentsIndexed")}</div>
+            <div className="text-sm font-medium mb-1">Documents Indexed</div>
             <div className="text-sm text-text-default flex items-center gap-x-1">
               {ccPair.num_docs_indexed.toLocaleString()}
               {ccPair.status ===
@@ -618,7 +615,7 @@ function Main({ ccPairId }: { ccPairId: number }) {
           </div>
 
           <div className="w-[200px]">
-            <div className="text-sm font-medium mb-1">{t("admin.connector.lastIndexed")}</div>
+            <div className="text-sm font-medium mb-1">Last Indexed</div>
             <div className="text-sm text-text-default">
               {timeAgo(
                 indexAttempts?.find((attempt) => attempt.status === "success")
@@ -632,7 +629,7 @@ function Main({ ccPairId }: { ccPairId: number }) {
               <div className="w-[200px]">
                 {/* TODO: Remove className and switch to text03 once Text is fully integrated across this page */}
                 <Text as="p" className="text-sm font-medium mb-1">
-                  {t("admin.connector.permissionSyncing")}
+                  Permission Syncing
                 </Text>
                 {ccPair.permission_syncing ||
                 ccPair.last_permission_sync_attempt_status ? (
@@ -648,7 +645,7 @@ function Main({ ccPairId }: { ccPairId: number }) {
               <div className="w-[200px]">
                 {/* TODO: Remove className and switch to text03 once Text is fully integrated across this page */}
                 <Text as="p" className="text-sm font-medium mb-1">
-                  {t("admin.connector.lastSynced")}
+                  Last Synced
                 </Text>
                 <Text as="p" className="text-sm text-text-default">
                   {ccPair.last_permission_sync_attempt_finished
@@ -665,7 +662,7 @@ function Main({ ccPairId }: { ccPairId: number }) {
         ccPair.is_editable_for_current_user && (
           <>
             <Title size="md" className="mt-10 mb-2">
-              {t("admin.connector.credential")}
+              Credential
             </Title>
 
             <div className="mt-2">
@@ -682,7 +679,7 @@ function Main({ ccPairId }: { ccPairId: number }) {
         Object.keys(ccPair.connector.connector_specific_config).length > 0 && (
           <>
             <Title size="md" className="mt-10 mb-2">
-              {t("admin.connector.connectorConfiguration")}
+              Connector Configuration
             </Title>
 
             <Card className="px-8 py-4">
@@ -712,7 +709,7 @@ function Main({ ccPairId }: { ccPairId: number }) {
           <AdvancedOptionsToggle
             showAdvancedOptions={showAdvancedOptions}
             setShowAdvancedOptions={setShowAdvancedOptions}
-            title={t("admin.connector.advanced")}
+            title="Advanced"
           />
         </div>
         {showAdvancedOptions && (
@@ -720,7 +717,7 @@ function Main({ ccPairId }: { ccPairId: number }) {
             {(pruneFreq || indexingStart || refreshFreq) && (
               <>
                 <Title size="md" className="mt-3 mb-2">
-                  {t("admin.connector.advancedConfiguration")}
+                  Advanced Configuration
                 </Title>
                 <Card className="px-8 py-4">
                   <div>
@@ -737,7 +734,7 @@ function Main({ ccPairId }: { ccPairId: number }) {
             )}
 
             <Title size="md" className="mt-6 mb-2">
-              {t("admin.connector.indexingAttempts")}
+              Indexing Attempts
             </Title>
             {indexAttempts && (
               <IndexAttemptsTable

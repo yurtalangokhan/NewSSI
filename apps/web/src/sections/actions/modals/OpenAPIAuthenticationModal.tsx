@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { useTranslation } from "react-i18next";
 import { Formik, Form, FormikHelpers } from "formik";
 import * as Yup from "yup";
 import Modal from "@/refresh-components/Modal";
@@ -82,7 +81,6 @@ export default function OpenAPIAuthenticationModal({
   entityName = null,
 }: OpenAPIAuthenticationModalProps) {
   const authType = useAuthType();
-  const { t } = useTranslation();
   const isOAuthEnabled =
     authType === AuthType.OIDC || authType === AuthType.GOOGLE_OAUTH;
   const [existingOAuthConfig, setExistingOAuthConfig] =
@@ -133,7 +131,7 @@ export default function OpenAPIAuthenticationModal({
         if (isActive) {
           setExistingOAuthConfig(null);
           setOAuthConfigError(
-            t("openAPIAuth.oauthConfigLoadError")
+            "Failed to load existing OAuth configuration. Re-enter the details to update it."
           );
         }
       } finally {
@@ -359,7 +357,7 @@ export default function OpenAPIAuthenticationModal({
                 {shouldDisableForm ? (
                   <div className="flex min-h-[220px] items-center justify-center rounded-12 border border-border-01 bg-background-tint-00">
                     <Text as="p" secondaryBody text03>
-                      {t("openAPIAuth.loadingConfig")}
+                      Loading existing configuration...
                     </Text>
                   </div>
                 ) : (
@@ -375,7 +373,7 @@ export default function OpenAPIAuthenticationModal({
                               : "idle"
                         }
                       >
-                        <FormField.Label>{t("openAPIAuth.authMethodLabel")}</FormField.Label>
+                        <FormField.Label>Authentication Method</FormField.Label>
                         <FormField.Control asChild>
                           <InputSelect
                             value={values.authMethod}
@@ -383,25 +381,25 @@ export default function OpenAPIAuthenticationModal({
                               setFieldValue("authMethod", value)
                             }
                           >
-                            <InputSelect.Trigger placeholder={t("openAPIAuth.selectMethod")} />
+                            <InputSelect.Trigger placeholder="Select method" />
                             <InputSelect.Content>
                               <InputSelect.Item
                                 value="oauth"
-                                description={t("openAPIAuth.oauthDescription")}
+                                description="Each user authenticates via OAuth with their own credentials."
                               >
                                 OAuth
                               </InputSelect.Item>
                               {isOAuthEnabled && (
                                 <InputSelect.Item
                                   value="pt-oauth"
-                                  description={t("openAPIAuth.ptOauthDescription")}
+                                  description="Forward the user's OAuth access token used to authenticate Onyx."
                                 >
                                   OAuth Pass-through
                                 </InputSelect.Item>
                               )}
                               <InputSelect.Item
                                 value="custom-header"
-                                description={t("openAPIAuth.customHeaderDescription")}
+                                description="Send custom headers with every request."
                               >
                                 Custom Authorization Header
                               </InputSelect.Item>
@@ -430,7 +428,7 @@ export default function OpenAPIAuthenticationModal({
                                 : "idle"
                           }
                         >
-                          <FormField.Label>{t("openAPIAuth.authorizationUrlLabel")}</FormField.Label>
+                          <FormField.Label>Authorization URL</FormField.Label>
                           <FormField.Control asChild>
                             <InputTypeIn
                               name="authorizationUrl"
@@ -457,7 +455,7 @@ export default function OpenAPIAuthenticationModal({
                                 : "idle"
                           }
                         >
-                          <FormField.Label>{t("openAPIAuth.tokenUrlLabel")}</FormField.Label>
+                          <FormField.Label>Token URL</FormField.Label>
                           <FormField.Control asChild>
                             <InputTypeIn
                               name="tokenUrl"
@@ -484,7 +482,7 @@ export default function OpenAPIAuthenticationModal({
                                 : "idle"
                           }
                         >
-                          <FormField.Label>{t("openAPIAuth.clientIdLabel")}</FormField.Label>
+                          <FormField.Label>OAuth Client ID</FormField.Label>
                           <FormField.Control asChild>
                             <InputTypeIn
                               name="clientId"
@@ -496,7 +494,7 @@ export default function OpenAPIAuthenticationModal({
                           </FormField.Control>
                           {isEditingOAuthConfig && (
                             <FormField.Description>
-                              {t("openAPIAuth.keepCurrentClientId")}
+                              Leave blank to keep the current client ID.
                             </FormField.Description>
                           )}
                           <FormField.Message
@@ -516,7 +514,7 @@ export default function OpenAPIAuthenticationModal({
                                 : "idle"
                           }
                         >
-                          <FormField.Label>{t("openAPIAuth.clientSecretLabel")}</FormField.Label>
+                          <FormField.Label>OAuth Client Secret</FormField.Label>
                           <FormField.Control asChild>
                             <PasswordInputTypeIn
                               name="clientSecret"
@@ -528,7 +526,7 @@ export default function OpenAPIAuthenticationModal({
                           </FormField.Control>
                           {isEditingOAuthConfig && (
                             <FormField.Description>
-                              {t("openAPIAuth.keepCurrentClientSecret")}
+                              Leave blank to keep the current client secret.
                             </FormField.Description>
                           )}
                           <FormField.Message
@@ -549,20 +547,20 @@ export default function OpenAPIAuthenticationModal({
                           }
                         >
                           <FormField.Label>
-                            {t("openAPIAuth.scopesLabel")}{" "}
-                            <span className="text-text-03">({t("openAPIAuth.optional")})</span>
+                            Scopes{" "}
+                            <span className="text-text-03">(Optional)</span>
                           </FormField.Label>
                           <FormField.Control asChild>
                             <InputTypeIn
                               name="scopes"
                               value={values.scopes}
                               onChange={handleChange}
-                              placeholder={t("openAPIAuth.scopesPlaceholder")}
+                              placeholder="e.g. repo, user"
                               showClearButton={false}
                             />
                           </FormField.Control>
                           <FormField.Description>
-                              {t("openAPIAuth.scopesDescription")}
+                            Comma-separated list of OAuth scopes to request.
                           </FormField.Description>
                           <FormField.Message
                             messages={{
@@ -573,7 +571,8 @@ export default function OpenAPIAuthenticationModal({
 
                         <div className="flex flex-col gap-3 rounded-12 bg-background-tint-01 p-3">
                           <Text as="p" text03 secondaryBody>
-                            {t("openAPIAuth.oauthPassthroughNote")}
+                            OAuth passthrough is only available if you enable
+                            OIDC or OAuth authentication.
                           </Text>
                           <div className="flex flex-col gap-2 w-full">
                             <Text
@@ -582,7 +581,11 @@ export default function OpenAPIAuthenticationModal({
                               secondaryBody
                               className="flex flex-wrap gap-1"
                             >
-                                {t("openAPIAuth.useRedirectUri")}
+                              Use{" "}
+                              <span className="font-secondary-action">
+                                redirect URI
+                              </span>
+                              :
                             </Text>
                             <div className="flex items-center gap-2 rounded-08 border border-border-01 bg-background-tint-00 px-3 py-2">
                               <Text
@@ -594,7 +597,7 @@ export default function OpenAPIAuthenticationModal({
                               </Text>
                               <CopyIconButton
                                 getCopyText={() => redirectUri}
-                                tooltip={t("openAPIAuth.copyRedirectUri")}
+                                tooltip="Copy redirect URI"
                                 prominence="tertiary"
                                 size="sm"
                               />
@@ -607,10 +610,11 @@ export default function OpenAPIAuthenticationModal({
                       <section className="flex flex-col gap-4 rounded-12 bg-background-tint-00 border border-border-01 p-4">
                         <div className="flex flex-col gap-2">
                           <Text as="p" mainUiAction text04>
-                            {t("openAPIAuth.customHeadersTitle")}
+                            Authentication Headers
                           </Text>
                           <Text as="p" secondaryBody text03>
-                            {t("openAPIAuth.customHeadersDescription")}
+                            Specify custom headers for all requests sent to this
+                            action&apos;s API endpoint.
                           </Text>
                         </div>
                         <FormField
@@ -619,13 +623,13 @@ export default function OpenAPIAuthenticationModal({
                         >
                           <FormField.Control asChild>
                             <KeyValueInput
-                              keyTitle={t("openAPIAuth.headerKey")}
-                              valueTitle={t("openAPIAuth.headerValue")}
+                              keyTitle="Header"
+                              valueTitle="Value"
                               items={values.headers}
                               onChange={(items) =>
                                 setFieldValue("headers", items)
                               }
-                              addButtonLabel={t("openAPIAuth.addHeader")}
+                              addButtonLabel="Add Header"
                               onValidationError={(message) =>
                                 setFieldError("headers", message || undefined)
                               }
@@ -645,8 +649,8 @@ export default function OpenAPIAuthenticationModal({
                     )}
                     {values.authMethod === "pt-oauth" && (
                       <Message
-                        text={t("openAPIAuth.passthroughText")}
-                        description={t("openAPIAuth.passthroughDescription")}
+                        text="Use pass-through for services with shared identity provider."
+                        description="Onyx will forward the user's OAuth access token directly to the server as an Authorization header. Make sure the server supports authentication with the same provider."
                         default
                         medium
                         static
@@ -660,7 +664,7 @@ export default function OpenAPIAuthenticationModal({
 
               <Modal.Footer>
                 <Button main tertiary type="button" onClick={handleSkip}>
-                  {t("openAPIAuth.cancel")}
+                  Cancel
                 </Button>
                 <Button
                   main
@@ -670,7 +674,7 @@ export default function OpenAPIAuthenticationModal({
                     !isValid || isSubmitting || shouldDisableForm || !dirty
                   }
                 >
-                  {isSubmitting ? t("openAPIAuth.connecting") : t("openAPIAuth.connect")}
+                  {isSubmitting ? "Connecting..." : "Connect"}
                 </Button>
               </Modal.Footer>
             </Form>

@@ -1,10 +1,9 @@
-import { INTERNAL_URL } from "./constants";
+import { buildUrl } from "./utilsSS";
 
 // Maybe improve type-safety by creating a 'VersionType' instead of generic string
 export const getBackendVersion = async (): Promise<string | null> => {
   try {
-    const url = `${INTERNAL_URL}/version`;
-    const res = await fetch(url);
+    const res = await fetch(buildUrl("/version"));
     if (!res.ok) {
       //throw new Error("Failed to fetch data");
       return null;

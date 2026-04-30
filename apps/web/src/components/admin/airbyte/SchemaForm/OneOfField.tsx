@@ -10,7 +10,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import SchemaForm from "./index";
-import { useTranslation } from "react-i18next";
 
 interface OneOfFieldProps {
   variants: JSONSchemaProperty[];
@@ -25,7 +24,6 @@ export default function OneOfField({
   onChange,
   rootSchema,
 }: OneOfFieldProps) {
-  const { t } = useTranslation("admin");
   const discriminatorKey = detectDiscriminatorKey(variants);
 
   const options = variants.map((v, i) => ({
@@ -33,7 +31,7 @@ export default function OneOfField({
       v.title ??
       (discriminatorKey
         ? getDiscriminatorValue(v, discriminatorKey)
-        : t("airbyteConnector.optionLabel", { index: i + 1 })),
+        : `Option ${i + 1}`),
     value: String(i),
   }));
 

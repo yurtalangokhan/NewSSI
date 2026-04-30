@@ -12,21 +12,19 @@ import Text from "@/refresh-components/texts/Text";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
 import { cn } from "@/lib/utils";
 import { snakeToHumanReadable } from "@/app/admin/kg/utils";
-import { useTranslation } from "react-i18next";
 
 // Custom Header Component
 function TableHeader() {
-  const { t } = useTranslation();
   return (
     <div className="grid grid-cols-12 gap-y-4 px-8 p-4 border-b bg-background-tint-00">
       <div className="col-span-1">
-        <Text as="p">{t("kgEntityTypes.entityName")}</Text>
+        <Text as="p">Entity Name</Text>
       </div>
       <div className="col-span-10">
-        <Text as="p">{t("kgEntityTypes.description")}</Text>
+        <Text as="p">Description</Text>
       </div>
       <div className="col-span-1 flex flex-1 justify-center">
-        <Text as="p">{t("kgEntityTypes.active")}</Text>
+        <Text as="p">Active</Text>
       </div>
     </div>
   );
@@ -34,7 +32,6 @@ function TableHeader() {
 
 // Custom Row Component
 function TableRow({ entityType }: { entityType: EntityType }) {
-  const { t } = useTranslation();
   const [entityTypeState, setEntityTypeState] = useState(entityType);
   const [descriptionSavingState, setDescriptionSavingState] = useState<
     "saving" | "saved" | "failed" | undefined
@@ -114,7 +111,7 @@ function TableRow({ entityType }: { entityType: EntityType }) {
           </div>
           <div className="col-span-10 relative">
             <InputTypeIn
-              placeholder={t("kgEntityTypes.value")}
+              placeholder="Value"
               variant={!entityTypeState.active ? "disabled" : undefined}
               className="w-full px-3 py-2 border"
               defaultValue={entityType.description}
@@ -184,7 +181,6 @@ interface KGEntityTypesProps {
 export default function KGEntityTypes({
   sourceAndEntityTypes,
 }: KGEntityTypesProps) {
-  const { t } = useTranslation();
   // State to control open/close of all CollapsibleCards
   const [openCards, setOpenCards] = useState<{ [key: string]: boolean }>({});
   // State for search query
@@ -222,7 +218,7 @@ export default function KGEntityTypes({
     <div className="flex flex-col gap-y-4 w-full">
       <div className="flex flex-row items-center gap-x-1.5 mb-2">
         <InputTypeIn
-          placeholder={t("kgEntityTypes.searchSource")}
+          placeholder="Search source type..."
           value={search}
           onChange={(event) => setSearch(event.target.value)}
         />
@@ -230,22 +226,22 @@ export default function KGEntityTypes({
           className="h-9"
           onClick={allClosed ? handleExpandAll : handleCollapseAll}
         >
-          {allClosed ? t("kgEntityTypes.expandAll") : t("kgEntityTypes.collapseAll")}
+          {allClosed ? "Expand All" : "Collapse All"}
         </Button>
       </div>
       <div className="flex flex-col gap-y-4 w-full">
         {Object.entries(sourceAndEntityTypes.entity_types).length === 0 ? (
           <div className="flex flex-col gap-y-4">
             <Text as="p" text02>
-              {t("kgEntityTypes.noResults")}
+              No results available.
             </Text>
             <Text as="p" text02>
-              {t("kgEntityTypes.connectFirst")}{" "}
+              To configure Knowledge Graph, first connect some{" "}
               <Link
                 href="/admin/add-connector"
                 className="underline text-action-link-01"
               >
-                {t("kgEntityTypes.connectors")}
+                Connectors.
               </Link>
             </Text>
           </div>
@@ -283,18 +279,18 @@ export default function KGEntityTypes({
                         <span className="ml-auto flex flex-row gap-x-16 items-center pr-16">
                           <span className="flex flex-col items-start">
                             <Text as="p" secondaryBody text02>
-                              {t("kgEntityTypes.entitiesCount")}
+                              Entities Count
                             </Text>
                             <Text as="p">{stats.entities_count}</Text>
                           </span>
                           <span className="flex flex-col items-start">
                             <Text as="p" secondaryBody text02>
-                              {t("kgEntityTypes.lastUpdated")}
+                              Last Updated
                             </Text>
                             <Text as="p">
                               {stats.last_updated
                                 ? new Date(stats.last_updated).toLocaleString()
-                                : t("kgEntityTypes.notAvailable")}
+                                : "N/A"}
                             </Text>
                           </span>
                         </span>

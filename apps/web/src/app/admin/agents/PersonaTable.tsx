@@ -1,6 +1,5 @@
 "use client";
 
-import { useTranslation } from "react-i18next";
 import Text from "@/refresh-components/texts/Text";
 import { Persona } from "./interfaces";
 import { useRouter } from "next/navigation";
@@ -24,26 +23,24 @@ import { SvgAlertCircle, SvgTrash } from "@opal/icons";
 import type { Route } from "next";
 
 function PersonaTypeDisplay({ persona }: { persona: Persona }) {
-  const { t } = useTranslation();
-
   if (persona.builtin_persona) {
-    return <Text as="p">{t("admin.agents.typeBuiltIn")}</Text>;
+    return <Text as="p">Built-In</Text>;
   }
 
   if (persona.featured) {
-    return <Text as="p">{t("admin.agents.typeFeatured")}</Text>;
+    return <Text as="p">Featured</Text>;
   }
 
   if (persona.is_public) {
-    return <Text as="p">{t("admin.agents.typePublic")}</Text>;
+    return <Text as="p">Public</Text>;
   }
 
   if (persona.groups.length > 0 || persona.users.length > 0) {
-    return <Text as="p">{t("admin.agents.typeShared")}</Text>;
+    return <Text as="p">Shared</Text>;
   }
 
   return (
-    <Text as="p">{t("admin.agents.typePersonal")} {persona.owner && <>({persona.owner.email})</>}</Text>
+    <Text as="p">Personal {persona.owner && <>({persona.owner.email})</>}</Text>
   );
 }
 
@@ -58,7 +55,6 @@ export function PersonasTable({
   currentPage: number;
   pageSize: number;
 }) {
-  const { t } = useTranslation();
   const router = useRouter();
   const { refreshUser, isAdmin } = useUser();
 
@@ -112,7 +108,7 @@ export function PersonasTable({
     });
 
     if (!response.ok) {
-      toast.error(t("admin.agents.errorUpdateOrder", { msg: await response.text() }));
+      toast.error(`Failed to update persona order - ${await response.text()}`);
       setFinalPersonas(personas);
       await refreshPersonas();
       return;
@@ -139,7 +135,7 @@ export function PersonasTable({
         refreshPersonas();
         closeDeleteModal();
       } else {
-        toast.error(t("admin.agents.errorDeletePersona", { msg: await response.text() }));
+        toast.error(`Failed to delete persona - ${await response.text()}`);
       }
     }
   };
@@ -164,11 +160,7 @@ export function PersonasTable({
         refreshPersonas();
         closeDefaultModal();
       } else {
-        toast.error(
-          t("admin.agents.errorUpdatePersona", {
-            msg: await response.text(),
-          })
-        );
+        toast.error(`Failed to update persona - ${await response.text()}`);
       }
     }
   };
@@ -178,17 +170,11 @@ export function PersonasTable({
       {deleteModalOpen && personaToDelete && (
         <ConfirmationModalLayout
           icon={SvgAlertCircle}
-          title={t("admin.agents.deleteModalTitle")}
+          title="Delete Agent"
           onClose={closeDeleteModal}
-          submit={
-            <Button onClick={handleDeletePersona}>
-              {t("admin.agents.deleteModalConfirm")}
-            </Button>
-          }
+          submit={<Button onClick={handleDeletePersona}>Delete</Button>}
         >
-          {t("admin.agents.deleteModalBody", {
-            name: personaToDelete.name,
-          })}
+          {`Are you sure you want to delete ${personaToDelete.name}?`}
         </ConfirmationModalLayout>
       )}
       {defaultModalOpen &&
@@ -197,25 +183,15 @@ export function PersonasTable({
           const isDefault = personaToToggleDefault.featured;
 
           const title = isDefault
-            ? t("admin.agents.removeFeaturedTitle")
-            : t("admin.agents.setFeaturedTitle");
-          const buttonText = isDefault
-            ? t("admin.agents.removeFeaturedButton")
-            : t("admin.agents.setFeaturedButton");
+            ? "Remove Featured Agent"
+            : "Set Featured Agent";
+          const buttonText = isDefault ? "Remove Feature" : "Set as Featured";
           const text = isDefault
-            ? t("admin.agents.removeFeaturedBody", {
-                name: personaToToggleDefault.name,
-              })
-            : t("admin.agents.setFeaturedBody", {
-                name: personaToToggleDefault.name,
-              });
+            ? `Are you sure you want to remove the featured status of ${personaToToggleDefault.name}?`
+            : `Are you sure you want to set the featured status of ${personaToToggleDefault.name}?`;
           const additionalText = isDefault
-            ? t("admin.agents.removeFeaturedDescription", {
-                name: personaToToggleDefault.name,
-              })
-            : t("admin.agents.setFeaturedDescription", {
-                name: personaToToggleDefault.name,
-              });
+            ? `Removing "${personaToToggleDefault.name}" as a featured agent will not affect its visibility or accessibility.`
+            : `Setting "${personaToToggleDefault.name}" as a featured agent will make it public and visible to all users. This action cannot be undone.`;
 
           return (
             <ConfirmationModalLayout
@@ -236,14 +212,14 @@ export function PersonasTable({
           );
         })()}
 
-        <DraggableTable
+      <DraggableTable
         headers={[
-          t("admin.agents.tableName"),
-          t("admin.agents.tableDescription"),
-          t("admin.agents.tableType"),
-          t("admin.agents.tableFeatured"),
-          t("admin.agents.tableVisible"),
-          t("admin.agents.tableDelete"),
+          "Name",
+          "Description",
+          "Type",
+          "Featured Agent",
+          "Is Visible",
+          "Delete",
         ]}
         isAdmin={isAdmin}
         rows={finalPersonas.map((persona) => {
@@ -286,11 +262,9 @@ export function PersonasTable({
               >
                 <div className="my-auto flex-none w-22">
                   {!persona.featured ? (
-                    <div className="text-error">
-                      {t("admin.agents.notFeatured")}
-                    </div>
+                    <div className="text-error">Not Featured</div>
                   ) : (
-                    t("admin.agents.featured")
+                    "Featured"
                   )}
                 </div>
                 <Checkbox checked={persona.featured} />
@@ -306,9 +280,7 @@ export function PersonasTable({
                     refreshPersonas();
                   } else {
                     toast.error(
-                      t("admin.agents.errorUpdatePersona", {
-                        msg: await response.text(),
-                      })
+                      `Failed to update persona - ${await response.text()}`
                     );
                   }
                 }}
@@ -318,11 +290,9 @@ export function PersonasTable({
               >
                 <div className="my-auto w-fit">
                   {!persona.is_visible ? (
-                    <div className="text-error">
-                      {t("admin.agents.hidden")}
-                    </div>
+                    <div className="text-error">Hidden</div>
                   ) : (
-                    t("admin.agents.visible")
+                    "Visible"
                   )}
                 </div>
                 <Checkbox checked={persona.is_visible} />

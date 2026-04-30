@@ -22,44 +22,34 @@ import SidebarBody from "@/sections/sidebar/SidebarBody";
 import { SvgArrowUpCircle } from "@opal/icons";
 import { ADMIN_PATHS, sidebarItem } from "@/lib/admin-routes";
 import UserAvatarPopover from "@/sections/sidebar/UserAvatarPopover";
-import { useTranslation } from "react-i18next";
 
-const connectors_items = (
-  t: (key: string, options?: { defaultValue?: string }) => string
-) => [
-  sidebarItem(ADMIN_PATHS.INDEXING_STATUS, t),
-  sidebarItem(ADMIN_PATHS.ADD_CONNECTOR, t),
+const connectors_items = () => [
+  sidebarItem(ADMIN_PATHS.INDEXING_STATUS),
+  sidebarItem(ADMIN_PATHS.ADD_CONNECTOR),
 ];
 
-const document_management_items = (
-  t: (key: string, options?: { defaultValue?: string }) => string
-) => [
-  sidebarItem(ADMIN_PATHS.DOCUMENT_SETS, t),
-  sidebarItem(ADMIN_PATHS.DOCUMENT_EXPLORER, t),
+const document_management_items = () => [
+  sidebarItem(ADMIN_PATHS.DOCUMENT_SETS),
+  sidebarItem(ADMIN_PATHS.DOCUMENT_EXPLORER),
 ];
 
-const custom_agents_items = (
-  t: (key: string, options?: { defaultValue?: string }) => string,
-  isCurator: boolean,
-  enableEnterprise: boolean
-) => {
-  const items = [sidebarItem(ADMIN_PATHS.AGENTS, t)];
+const custom_agents_items = (isCurator: boolean, enableEnterprise: boolean) => {
+  const items = [sidebarItem(ADMIN_PATHS.AGENTS)];
 
   if (!isCurator) {}
 
   items.push(
-    sidebarItem(ADMIN_PATHS.MCP_ACTIONS, t)
+    sidebarItem(ADMIN_PATHS.MCP_ACTIONS)
   );
 
   if (enableEnterprise) {
-    items.push(sidebarItem(ADMIN_PATHS.STANDARD_ANSWERS, t));
+    items.push(sidebarItem(ADMIN_PATHS.STANDARD_ANSWERS));
   }
 
   return items;
 };
 
 const collections = (
-  t: (key: string, options?: { defaultValue?: string }) => string,
   isCurator: boolean,
   enableCloud: boolean,
   enableEnterprise: boolean,
@@ -74,85 +64,83 @@ const collections = (
     ...(vectorDbEnabled
       ? [
           {
-            name: t("admin.navigation.sections.connectors"),
-            items: connectors_items(t),
+            name: "Connectors",
+            items: connectors_items(),
           },
         ]
       : []),
     ...(vectorDbEnabled
       ? [
           {
-            name: t("admin.navigation.sections.documentManagement"),
-            items: document_management_items(t),
+            name: "Document Management",
+            items: document_management_items(),
           },
         ]
       : []),
     {
-      name: t("admin.navigation.sections.customAgents"),
-      items: custom_agents_items(t, isCurator, enableEnterprise),
+      name: "Custom Agents",
+      items: custom_agents_items(isCurator, enableEnterprise),
     },
     ...(isCurator && enableEnterprise
       ? [
           {
-              name: t("admin.navigation.sections.userManagement"),
-              items: [sidebarItem(ADMIN_PATHS.GROUPS, t)],
+            name: "User Management",
+            items: [sidebarItem(ADMIN_PATHS.GROUPS)],
           },
         ]
       : []),
     ...(!isCurator
       ? [
           {
-            name: t("admin.navigation.sections.configuration"),
+            name: "Configuration",
             items: [
-              sidebarItem(ADMIN_PATHS.CHAT_PREFERENCES, t),
-              sidebarItem(ADMIN_PATHS.LLM_MODELS, t),
-              sidebarItem(ADMIN_PATHS.WEB_SEARCH, t),
-              sidebarItem(ADMIN_PATHS.IMAGE_GENERATION, t),
-              sidebarItem(ADMIN_PATHS.CODE_INTERPRETER, t),
+              sidebarItem(ADMIN_PATHS.CHAT_PREFERENCES),
+              sidebarItem(ADMIN_PATHS.LLM_MODELS),
+              sidebarItem(ADMIN_PATHS.WEB_SEARCH),
+              sidebarItem(ADMIN_PATHS.IMAGE_GENERATION),
+              sidebarItem(ADMIN_PATHS.CODE_INTERPRETER),
               ...(!enableCloud && vectorDbEnabled
                 ? [
                     {
-                      ...sidebarItem(ADMIN_PATHS.SEARCH_SETTINGS, t),
+                      ...sidebarItem(ADMIN_PATHS.SEARCH_SETTINGS),
                       error: settings?.settings.needs_reindexing,
                     },
                   ]
                 : []),
-              sidebarItem(ADMIN_PATHS.DOCUMENT_PROCESSING, t),
-              ...(kgExposed
-                ? [sidebarItem(ADMIN_PATHS.KNOWLEDGE_GRAPH, t)]
-                : []),
+              sidebarItem(ADMIN_PATHS.DOCUMENT_PROCESSING),
+              ...(kgExposed ? [sidebarItem(ADMIN_PATHS.KNOWLEDGE_GRAPH)] : []),
             ],
           },
           {
-            name: t("admin.navigation.sections.userManagement"),
+            name: "User Management",
             items: [
-              sidebarItem(ADMIN_PATHS.USERS, t),
-              ...(enableEnterprise ? [sidebarItem(ADMIN_PATHS.GROUPS, t)] : []),
-              sidebarItem(ADMIN_PATHS.API_KEYS, t),
+              sidebarItem(ADMIN_PATHS.USERS),
+              ...(enableEnterprise ? [sidebarItem(ADMIN_PATHS.GROUPS)] : []),
+              sidebarItem(ADMIN_PATHS.API_KEYS),
             ],
           },
           ...(enableEnterprise
             ? [
                 {
-                  name: t("admin.navigation.sections.performance"),
+                  name: "Performance",
                   items: [
-                    sidebarItem(ADMIN_PATHS.USAGE, t),
+                    sidebarItem(ADMIN_PATHS.USAGE),
                     ...(settings?.settings.query_history_type !== "disabled"
-                      ? [sidebarItem(ADMIN_PATHS.QUERY_HISTORY, t)]
+                      ? [sidebarItem(ADMIN_PATHS.QUERY_HISTORY)]
                       : []),
                     ...(!enableCloud && customAnalyticsEnabled
-                      ? [sidebarItem(ADMIN_PATHS.CUSTOM_ANALYTICS, t)]
+                      ? [sidebarItem(ADMIN_PATHS.CUSTOM_ANALYTICS)]
                       : []),
                   ],
                 },
               ]
             : []),
           {
-            name: t("admin.navigation.sections.settings"),
+            name: "Settings",
             items: [
-              ...(enableEnterprise ? [sidebarItem(ADMIN_PATHS.THEME, t)] : []),
+              ...(enableEnterprise ? [sidebarItem(ADMIN_PATHS.THEME)] : []),
               ...(settings?.settings.opensearch_indexing_enabled
-                ? [sidebarItem(ADMIN_PATHS.INDEX_MIGRATION, t)]
+                ? [sidebarItem(ADMIN_PATHS.INDEX_MIGRATION)]
                 : []),
             ],
           },
@@ -172,7 +160,6 @@ export default function AdminSidebar({
   enableCloudSS,
   enableEnterpriseSS,
 }: AdminSidebarProps) {
-  const { t } = useTranslation();
   const { kgExposed } = useIsKGExposed();
   const pathname = usePathname();
   const { customAnalyticsEnabled } = useCustomAnalyticsEnabled();
@@ -197,7 +184,6 @@ export default function AdminSidebar({
   );
 
   const items = collections(
-    t,
     isCurator,
     enableCloudSS,
     enableEnterprise,
@@ -218,14 +204,14 @@ export default function AdminSidebar({
             )}
             href="/app"
           >
-            {t("admin.navigation.exitAdmin")}
+            Exit Admin
           </SidebarTab>
         }
         footer={
           <div className="flex flex-col gap-2">
             {settings.webVersion && (
               <Text as="p" text02 secondaryBody className="px-2">
-                {t("admin.navigation.version", { version: settings.webVersion })}
+                {`Onyx version: ${settings.webVersion}`}
               </Text>
             )}
             <UserAvatarPopover />

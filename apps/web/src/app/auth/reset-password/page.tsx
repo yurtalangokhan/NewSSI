@@ -17,21 +17,20 @@ import {
   TENANT_ID_COOKIE_NAME,
 } from "@/lib/constants";
 import Cookies from "js-cookie";
-import { useTranslation } from "react-i18next";
 
 const ResetPasswordPage: React.FC = () => {
   const [isWorking, setIsWorking] = useState(false);
-  const { t } = useTranslation();
   const searchParams = useSearchParams();
   const token = searchParams?.get("token");
   const tenantId = searchParams?.get(TENANT_ID_COOKIE_NAME);
+  // Keep search param same name as cookie for simplicity
 
   useEffect(() => {
     if (tenantId) {
       Cookies.set(TENANT_ID_COOKIE_NAME, tenantId, {
         path: "/",
         expires: 1 / 24,
-      });
+      }); // Expires in 1 hour
     }
   }, [tenantId]);
 
@@ -43,7 +42,7 @@ const ResetPasswordPage: React.FC = () => {
     <AuthFlowContainer>
       <div className="flex flex-col w-full justify-center">
         <div className="flex">
-          <Title className="mb-2 mx-auto font-bold">{t("auth.resetPassword.title")}</Title>
+          <Title className="mb-2 mx-auto font-bold">Reset Password</Title>
         </div>
         {isWorking && <Spinner />}
         <Formik
@@ -52,30 +51,32 @@ const ResetPasswordPage: React.FC = () => {
             confirmPassword: "",
           }}
           validationSchema={Yup.object().shape({
-            password: Yup.string().required(t("auth.resetPassword.passwordRequired")),
+            password: Yup.string().required("Password is required"),
             confirmPassword: Yup.string()
-              .oneOf([Yup.ref("password"), undefined], t("auth.resetPassword.confirmPasswordMismatch"))
-              .required(t("auth.resetPassword.confirmPasswordRequired")),
+              .oneOf([Yup.ref("password"), undefined], "Passwords must match")
+              .required("Confirm Password is required"),
           })}
           onSubmit={async (values) => {
             if (!token) {
-              toast.error(t("auth.resetPassword.toastMissingToken"));
+              toast.error("Invalid or missing reset token.");
               return;
             }
             setIsWorking(true);
             try {
               await resetPassword(token, values.password);
-              toast.success(t("auth.resetPassword.toastResetSuccess"));
+              toast.success(
+                "Password reset successfully. Redirecting to login..."
+              );
               setTimeout(() => {
                 redirect("/auth/login");
               }, 1000);
             } catch (error) {
               if (error instanceof Error) {
                 toast.error(
-                  error.message || t("auth.resetPassword.toastResetError")
+                  error.message || "An error occurred during password reset."
                 );
               } else {
-                toast.error(t("auth.resetPassword.toastUnexpectedError"));
+                toast.error("An unexpected error occurred. Please try again.");
               }
             } finally {
               setIsWorking(false);
@@ -86,15 +87,15 @@ const ResetPasswordPage: React.FC = () => {
             <Form className="w-full flex flex-col items-stretch mt-2">
               <TextFormField
                 name="password"
-                label={t("auth.resetPassword.newPasswordLabel")}
+                label="New Password"
                 type="password"
-                placeholder={t("auth.resetPassword.newPasswordPlaceholder")}
+                placeholder="Enter your new password"
               />
               <TextFormField
                 name="confirmPassword"
-                label={t("auth.resetPassword.confirmPasswordLabel")}
+                label="Confirm New Password"
                 type="password"
-                placeholder={t("auth.resetPassword.confirmPasswordPlaceholder")}
+                placeholder="Confirm your new password"
               />
 
               <div className="flex">
@@ -103,7 +104,7 @@ const ResetPasswordPage: React.FC = () => {
                   disabled={isSubmitting}
                   className="mx-auto w-full"
                 >
-                  {t("auth.resetPassword.resetButton")}
+                  Reset Password
                 </Button>
               </div>
             </Form>
@@ -112,7 +113,7 @@ const ResetPasswordPage: React.FC = () => {
         <div className="flex">
           <Text className="mt-4 mx-auto">
             <Link href="/auth/login" className="text-link font-medium">
-              {t("auth.resetPassword.backToLogin")}
+              Back to Login
             </Link>
           </Text>
         </div>

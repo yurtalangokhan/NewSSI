@@ -112,13 +112,8 @@ async def rename_chat_session(
         raise HTTPException(status_code=401, detail="Not authenticated")
 
     body = await request.json()
-    session_id = body.get("chat_session_id")
-    try:
-        uuid.UUID(str(session_id))
-    except (ValueError, AttributeError):
-        return {"error": "invalid session id"}, 400
-    return await _get_chat_controller().rename_chat_session(
-        session_id=session_id,
+    result = await _get_user_chat_controller(user_id).rename_chat_session(
+        session_id=body.get("chat_session_id"),
         name=body.get("name"),
     )
     if result.get("success") is False and result.get("error") == "Forbidden":

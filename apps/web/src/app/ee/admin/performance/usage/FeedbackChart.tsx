@@ -6,14 +6,12 @@ import Title from "@/components/ui/title";
 import { DateRangePickerValue } from "@/components/dateRangeSelectors/AdminDateRangeSelector";
 import CardSection from "@/components/admin/CardSection";
 import { AreaChartDisplay } from "@/components/ui/areaChart";
-import { useTranslation } from "react-i18next";
 
 export function FeedbackChart({
   timeRange,
 }: {
   timeRange: DateRangePickerValue;
 }) {
-  const { t } = useTranslation();
   const {
     data: queryAnalyticsData,
     isLoading: isQueryAnalyticsLoading,
@@ -34,9 +32,7 @@ export function FeedbackChart({
   ) {
     chart = (
       <div className="h-80 text-red-600 text-bold flex flex-col">
-        <p className="m-auto">
-          {t("admin.performance.usage.feedbackFetchFailed")}
-        </p>
+        <p className="m-auto">Failed to fetch feedback data...</p>
       </div>
     );
   } else {
@@ -57,16 +53,11 @@ export function FeedbackChart({
           const queryAnalyticsForDate = dateToQueryAnalytics.get(dateStr);
           return {
             Day: dateStr,
-            [t("admin.performance.usage.positiveFeedback")]:
-              queryAnalyticsForDate?.total_likes || 0,
-            [t("admin.performance.usage.negativeFeedback")]:
-              queryAnalyticsForDate?.total_dislikes || 0,
+            "Positive Feedback": queryAnalyticsForDate?.total_likes || 0,
+            "Negative Feedback": queryAnalyticsForDate?.total_dislikes || 0,
           };
         })}
-        categories={[
-          t("admin.performance.usage.positiveFeedback"),
-          t("admin.performance.usage.negativeFeedback"),
-        ]}
+        categories={["Positive Feedback", "Negative Feedback"]}
         index="Day"
         colors={["indigo", "fuchsia"]}
         yAxisWidth={60}
@@ -76,8 +67,8 @@ export function FeedbackChart({
 
   return (
     <CardSection className="mt-8">
-      <Title>{t("admin.performance.usage.feedbackTitle")}</Title>
-      <Text>{t("admin.performance.usage.feedbackDescription")}</Text>
+      <Title>Feedback</Title>
+      <Text>Thumbs Up / Thumbs Down over time</Text>
       {chart}
     </CardSection>
   );

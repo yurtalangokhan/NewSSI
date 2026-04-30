@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { useTranslation } from "react-i18next";
 import {
   Dialog,
   DialogContent,
@@ -47,7 +46,6 @@ function SchemaForm({
   onChange: (values: FormValues) => void;
 }) {
   const [formValues, setFormValues] = useState<FormValues>(values || {});
-  const { t } = useTranslation();
 
   const handleChange = (name: string, value: any) => {
     const newValues = { ...formValues, [name]: value };
@@ -56,7 +54,7 @@ function SchemaForm({
   };
 
   if (!schema || !schema.properties) {
-    return <div className="text-gray-500">{t("toolPlayground.noInputSchema")}</div>;
+    return <div className="text-gray-500">No input schema available</div>;
   }
 
   return (
@@ -75,7 +73,7 @@ function SchemaForm({
                 {_.startCase(label)}
               </Label>
               {isRequired && (
-                <span className="text-xs text-gray-500">{t("toolPlayground.required")}</span>
+                <span className="text-xs text-gray-500">Required</span>
               )}
             </div>
 
@@ -84,7 +82,7 @@ function SchemaForm({
             )}
 
             {renderField(name, property, formValues[name], (value: any) =>
-              handleChange(name, value), t
+              handleChange(name, value)
             )}
           </div>
         );
@@ -97,8 +95,7 @@ function renderField(
   name: string,
   property: any,
   value: any,
-  onChange: (value: any) => void,
-  t: (key: string) => string
+  onChange: (value: any) => void
 ) {
   if (property.enum) {
     return (
@@ -107,7 +104,7 @@ function renderField(
         onValueChange={onChange}
       >
         <SelectTrigger id={name}>
-          <SelectValue placeholder={t("toolPlayground.selectOption")} />
+          <SelectValue placeholder="Select an option" />
         </SelectTrigger>
         <SelectContent>
           {property.enum.map((option: string) => (
@@ -174,7 +171,7 @@ function renderField(
             checked={!!value}
             onCheckedChange={onChange}
           />
-            <Label name={name}>{value ? t("toolPlayground.enabled") : t("toolPlayground.disabled")}</Label>
+            <Label name={name}>{value ? "Enabled" : "Disabled"}</Label>
         </div>
       );
 
@@ -199,12 +196,11 @@ function ResponseViewer({
   isLoading: boolean;
   error: string | null;
 }) {
-  const { t } = useTranslation();
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
         <Loader2 className="size-6 animate-spin mr-2" />
-        <span>{t("toolPlayground.executingTool")}</span>
+        <span>Executing tool...</span>
       </div>
     );
   }
@@ -214,7 +210,7 @@ function ResponseViewer({
       <div className="flex items-start gap-2 p-4 bg-red-50 border border-red-200 rounded-lg">
         <AlertCircle className="size-5 text-red-600 shrink-0 mt-0.5" />
         <div>
-          <p className="font-medium text-red-800">{t("toolPlayground.error")}</p>
+          <p className="font-medium text-red-800">Error</p>
           <p className="text-sm text-red-700 mt-1">{error}</p>
         </div>
       </div>
@@ -224,7 +220,7 @@ function ResponseViewer({
   if (!response) {
     return (
       <div className="text-center py-8 text-gray-500">
-        {t("toolPlayground.runToSeeResults")}
+        Run the tool to see results
       </div>
     );
   }
@@ -233,7 +229,7 @@ function ResponseViewer({
     <div className="space-y-2">
       <div className="flex items-center gap-2 text-green-700">
         <CheckCircle className="size-4" />
-        <span className="font-medium">{t("toolPlayground.result")}</span>
+        <span className="font-medium">Result</span>
       </div>
       <pre className="bg-gray-100 p-4 rounded-lg overflow-auto text-sm max-h-96">
         {typeof response === "string"
@@ -253,7 +249,6 @@ export default function ToolPlayground({
   const [response, setResponse] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const { t } = useTranslation();
 
   const handleExecute = useCallback(async () => {
     setIsLoading(true);
@@ -271,7 +266,7 @@ export default function ToolPlayground({
         toast.error(result.error);
       } else {
         setResponse(result.result);
-        toast.success(t("toolPlayground.executedSuccessfully"));
+        toast.success("Tool executed successfully");
       }
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : "Tool execution failed";
@@ -303,11 +298,11 @@ export default function ToolPlayground({
 
         <div className="space-y-4">
           <p className="text-sm text-gray-600">
-            {tool.description || t("toolPlayground.noDescription")}
+            {tool.description || "No description available"}
           </p>
 
           <div className="border-t pt-4">
-            <h3 className="font-medium mb-4">{t("toolPlayground.inputHeader")}</h3>
+            <h3 className="font-medium mb-4">Input</h3>
             <SchemaForm
               schema={tool.input_schema}
               values={inputValues}
@@ -323,18 +318,18 @@ export default function ToolPlayground({
             {isLoading ? (
               <>
                 <Loader2 className="size-4 animate-spin mr-2" />
-                {t("toolPlayground.running")}
+                Running...
               </>
             ) : (
               <>
                 <Play className="size-4 mr-2" />
-                {t("toolPlayground.runTool")}
+                Run Tool
               </>
             )}
           </Button>
 
           <div className="border-t pt-4">
-            <h3 className="font-medium mb-4">{t("toolPlayground.responseHeader")}</h3>
+            <h3 className="font-medium mb-4">Response</h3>
             <ResponseViewer
               response={response}
               isLoading={isLoading}

@@ -16,34 +16,32 @@ import {
 import { toast } from "@/hooks/useToast";
 import { SvgActivity, SvgTrash, SvgAlertTriangle } from "@opal/icons";
 import { cn } from "@/lib/utils";
-import { useTranslation } from "react-i18next";
 
 function StatusBadge({ status }: { status: GraphBuildStatus }) {
-  const { t } = useTranslation();
   const config: Record<GraphBuildStatus, { label: string; className: string }> =
     {
       pending: {
-        label: t("admin.kg.status.pending"),
+        label: "Pending",
         className:
           "border-border-01 bg-background-neutral-01 text-text-03",
       },
       extracting: {
-        label: t("admin.kg.status.extracting"),
+        label: "Extracting",
         className:
           "border-status-warning-03 bg-status-warning-01 text-status-warning-06",
       },
       building: {
-        label: t("admin.kg.status.building"),
+        label: "Building",
         className:
           "border-status-info-03 bg-status-info-01 text-status-info-06",
       },
       completed: {
-        label: t("admin.kg.status.completed"),
+        label: "Completed",
         className:
           "border-status-success-03 bg-status-success-01 text-status-success-06",
       },
       failed: {
-        label: t("admin.kg.status.failed"),
+        label: "Failed",
         className:
           "border-status-error-03 bg-status-error-01 text-status-error-06",
       },
@@ -88,7 +86,6 @@ export default function GraphBuildPanel({
   collectionId,
   onBuildComplete,
 }: GraphBuildPanelProps) {
-  const { t } = useTranslation();
   const [pollActive, setPollActive] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -168,9 +165,11 @@ export default function GraphBuildPanel({
     setPollActive(true);
     try {
       await buildGraph({ collection_id: collectionId });
-      toast.success(t("admin.kg.graphBuildStarted"));
+      toast.success("Graph build started.");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : t("admin.kg.graphBuildStartFailed"));
+      toast.error(
+        e instanceof Error ? e.message : "Failed to start graph build"
+      );
       setIsSubmitting(false);
       setPollActive(false);
     }
@@ -180,18 +179,18 @@ export default function GraphBuildPanel({
     if (!collectionId) return;
     if (
       !window.confirm(
-        t("admin.kg.deleteConfirm")
+        "Delete the knowledge graph for this collection? This cannot be undone."
       )
     )
       return;
     setIsDeleting(true);
     try {
       await deleteGraph(collectionId);
-      toast.success(t("admin.kg.graphDeleted"));
+      toast.success("Graph deleted.");
       setPollActive(false);
       mutateGraphCollections();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : t("admin.kg.graphDeleteFailed"));
+      toast.error(e instanceof Error ? e.message : "Failed to delete graph");
     } finally {
       setIsDeleting(false);
     }
@@ -201,16 +200,17 @@ export default function GraphBuildPanel({
     <CardSection className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">
         <Text as="p" headingH3 text05>
-          {t("admin.kg.buildGraph")}
+          Build Graph
         </Text>
         <Text as="p" mainContentBody text04 className="leading-relaxed">
-          {t("admin.kg.buildGraphDescription")}
+          Extract entities and relationships from your documents using an LLM to
+          build a knowledge graph. This process analyses each document chunk.
         </Text>
       </div>
 
       {!collectionId ? (
         <Text as="p" mainContentMuted text03 className="text-sm">
-          {t("admin.kg.selectCollectionToBuild")}
+          Select a collection above to build or manage its knowledge graph.
         </Text>
       ) : (
         <>
@@ -225,7 +225,7 @@ export default function GraphBuildPanel({
                   text04
                   className="text-xs font-medium text-status-warning-07"
                 >
-                  {t("admin.kg.buildWarningTitle")}
+                  This collection already has a knowledge graph.
                 </Text>
                 <Text
                   as="p"
@@ -233,7 +233,8 @@ export default function GraphBuildPanel({
                   text03
                   className="text-xs text-status-warning-06"
                 >
-                  {t("admin.kg.buildWarningDescription")}
+                  Building again will delete all existing nodes and relationships,
+                  then create a new graph from scratch.
                 </Text>
               </div>
             </div>
@@ -243,7 +244,7 @@ export default function GraphBuildPanel({
             <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between gap-3 flex-wrap">
                 <Text as="p" mainContentMuted text03 className="text-xs font-medium uppercase tracking-wide">
-                  {t("admin.kg.progress")}
+                  Progress
                 </Text>
                 <StatusBadge status={status.status} />
               </div>
@@ -252,7 +253,7 @@ export default function GraphBuildPanel({
                 <div className="flex flex-col gap-1.5">
                   <div className="flex items-center justify-between">
                     <Text as="p" mainContentMuted text03 className="text-xs">
-                      {t("admin.kg.completion")}
+                      Completion
                     </Text>
                     <Text
                       as="p"
@@ -273,10 +274,10 @@ export default function GraphBuildPanel({
               )}
 
               <div className="grid grid-cols-4 gap-3">
-                <StatCounter label={t("admin.kg.chunks")} value={status.total_chunks} />
-                <StatCounter label={t("admin.kg.processed")} value={status.processed_chunks} />
-                <StatCounter label={t("admin.kg.entities")} value={status.extracted_entities} />
-                <StatCounter label={t("admin.kg.relations")} value={status.extracted_relations} />
+                <StatCounter label="Chunks" value={status.total_chunks} />
+                <StatCounter label="Processed" value={status.processed_chunks} />
+                <StatCounter label="Entities" value={status.extracted_entities} />
+                <StatCounter label="Relations" value={status.extracted_relations} />
               </div>
             </div>
           )}
@@ -288,7 +289,7 @@ export default function GraphBuildPanel({
               text04
               className="text-status-error-06 text-sm"
             >
-              {t("admin.kg.error")}: {status.error}
+              Error: {status.error}
             </Text>
           )}
 
@@ -298,11 +299,7 @@ export default function GraphBuildPanel({
               onClick={handleBuild}
               disabled={inProgress || isSubmitting}
             >
-              {inProgress
-                ? t("admin.kg.building")
-                : selectedHasGraph
-                  ? t("admin.kg.rebuildGraph")
-                  : t("admin.kg.buildGraph")}
+              {inProgress ? "Building…" : selectedHasGraph ? "Rebuild Graph" : "Build Graph"}
             </Button>
             <Button
               danger
@@ -310,7 +307,7 @@ export default function GraphBuildPanel({
               onClick={handleDelete}
               disabled={isDeleting || inProgress || !selectedHasGraph}
             >
-              {t("admin.kg.deleteGraph")}
+              Delete Graph
             </Button>
           </div>
         </>

@@ -6,7 +6,6 @@ import { DefaultModel, LLMProviderDescriptor } from "@/interfaces/llm";
 import { getProviderIcon } from "@/app/admin/configuration/llm/utils";
 import InputSelect from "@/refresh-components/inputs/InputSelect";
 import { createIcon } from "@/components/icons/icons";
-import { useTranslation } from "react-i18next";
 
 interface LLMOption {
   name: string;
@@ -41,7 +40,6 @@ export default function LLMSelector({
   requiresImageGeneration,
   excludePublicProviders = false,
 }: LLMSelectorProps) {
-  const { t } = useTranslation();
   const currentDescriptor = useMemo(
     () => (currentLlm ? parseLlmDescriptor(currentLlm) : null),
     [currentLlm]
@@ -154,9 +152,7 @@ export default function LLMSelector({
   const defaultModelDisplayName = defaultModelConfig
     ? defaultModelConfig.display_name || defaultModelConfig.name
     : defaultModelName || null;
-  const defaultLabel = userSettings
-    ? t("admin.llmConfig.systemDefault")
-    : t("admin.llmConfig.userDefault");
+  const defaultLabel = userSettings ? "System Default" : "User Default";
 
   // Determine if we should show grouped view (only if we have multiple vendors)
   const showGrouped = groupedOptions.length > 1;

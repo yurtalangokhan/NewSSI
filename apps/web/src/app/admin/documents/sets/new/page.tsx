@@ -9,11 +9,9 @@ import { ErrorCallout } from "@/components/ErrorCallout";
 import { useRouter } from "next/navigation";
 import { refreshDocumentSets } from "../hooks";
 import CardSection from "@/components/admin/CardSection";
-import { useTranslation } from "react-i18next";
 
 function Main() {
   const router = useRouter();
-  const { t } = useTranslation();
 
   const {
     data: ccPairs,
@@ -35,7 +33,7 @@ function Main() {
   if (ccPairsError || !ccPairs) {
     return (
       <ErrorCallout
-        errorTitle={t("admin.documentSets.failedToFetchConnectors")}
+        errorTitle="Failed to fetch Connectors"
         errorMsg={ccPairsError}
       />
     );
@@ -59,13 +57,12 @@ function Main() {
 
 export default function Page() {
   const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.DOCUMENT_SETS]!;
-  const { t } = useTranslation();
 
   return (
     <SettingsLayouts.Root>
       <SettingsLayouts.Header
         icon={route.icon}
-        title={t("admin.documentSets.newDocumentSetTitle")}
+        title="New Document Set"
         separator
         backButton
       />

@@ -3,7 +3,6 @@
 import { use } from "react";
 import BackButton from "@/refresh-components/buttons/BackButton";
 import { ErrorCallout } from "@/components/ErrorCallout";
-import { useTranslation } from "react-i18next";
 import { ThreeDotsLoader } from "@/components/Loading";
 import { InstantSSRAutoRefresh } from "@/components/SSRAutoRefresh";
 import SlackChannelConfigsTable from "./SlackChannelConfigsTable";
@@ -16,7 +15,7 @@ function SlackBotEditPage({
 }: {
   params: Promise<{ "bot-id": string }>;
 }) {
-  const { t } = useTranslation();
+  // Unwrap the params promise
   const unwrappedParams = use(params);
 
   const {
@@ -45,11 +44,11 @@ function SlackBotEditPage({
     const errorMsg =
       slackBotError?.info?.message ||
       slackBotError?.info?.detail ||
-      t("admin.bots.unknownError");
+      "An unknown error occurred";
     return (
       <ErrorCallout
-        errorTitle={t("admin.bots.somethingWentWrong")}
-        errorMsg={t("admin.bots.failedToFetchBot", { id: unwrappedParams["bot-id"], errorMsg })}
+        errorTitle="Something went wrong :("
+        errorMsg={`Failed to fetch Slack Bot ${unwrappedParams["bot-id"]}: ${errorMsg}`}
       />
     );
   }
@@ -58,11 +57,11 @@ function SlackBotEditPage({
     const errorMsg =
       slackChannelConfigsError?.info?.message ||
       slackChannelConfigsError?.info?.detail ||
-      t("admin.bots.unknownError");
+      "An unknown error occurred";
     return (
       <ErrorCallout
-        errorTitle={t("admin.bots.somethingWentWrong")}
-        errorMsg={t("admin.bots.failedToFetchBot", { id: unwrappedParams["bot-id"], errorMsg })}
+        errorTitle="Something went wrong :("
+        errorMsg={`Failed to fetch Slack Bot ${unwrappedParams["bot-id"]}: ${errorMsg}`}
       />
     );
   }

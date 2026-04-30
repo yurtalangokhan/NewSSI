@@ -15,7 +15,6 @@ import {
 } from "./formUtils";
 import { AdvancedOptions } from "./components/AdvancedOptions";
 import { DisplayModels } from "./components/DisplayModels";
-import { useTranslation } from "react-i18next";
 
 export const OPENAI_PROVIDER_NAME = "openai";
 const DEFAULT_DEFAULT_MODEL_NAME = "gpt-5.2";
@@ -43,8 +42,6 @@ export function OpenAIModal({
         setTestError,
         wellKnownLLMProvider,
       }) => {
-        // eslint-disable-next-line react-hooks/rules-of-hooks
-        const { t } = useTranslation();
         const modelConfigurations = buildAvailableModelConfigurations(
           existingLlmProvider,
           wellKnownLLMProvider
@@ -63,7 +60,7 @@ export function OpenAIModal({
         };
 
         const validationSchema = buildDefaultValidationSchema().shape({
-          api_key: Yup.string().required(t("llmConfig.apiKeyRequired")),
+          api_key: Yup.string().required("API Key is required"),
         });
 
         return (
@@ -92,7 +89,7 @@ export function OpenAIModal({
                 <Form className={LLM_FORM_CLASS_NAME}>
                   <DisplayNameField disabled={!!existingLlmProvider} />
 
-                  <PasswordInputTypeInField name="api_key" label={t("llmConfig.longTermApiKey")} />
+                  <PasswordInputTypeInField name="api_key" label="API Key" />
 
                   <DisplayModels
                     modelConfigurations={modelConfigurations}

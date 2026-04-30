@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useTranslation } from "react-i18next";
 import Modal from "@/refresh-components/Modal";
 import Button from "@/refresh-components/buttons/Button";
 import { User } from "@/lib/types";
@@ -18,7 +17,6 @@ export default function ResetPasswordModal({
   user,
   onClose,
 }: ResetPasswordModalProps) {
-  const { t } = useTranslation();
   const [newPassword, setNewPassword] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -36,13 +34,13 @@ export default function ResetPasswordModal({
       if (response.ok) {
         const data = await response.json();
         setNewPassword(data.new_password);
-        toast.success(t("admin.users.passwordResetSuccess"));
+        toast.success("Password reset successfully");
       } else {
         const errorData = await response.json();
-        toast.error(errorData.detail || t("admin.users.passwordResetFailed"));
+        toast.error(errorData.detail || "Failed to reset password");
       }
     } catch (error) {
-      toast.error(t("admin.users.passwordResetError"));
+      toast.error("An error occurred while resetting the password");
     } finally {
       setIsLoading(false);
     }
@@ -53,18 +51,18 @@ export default function ResetPasswordModal({
       <Modal.Content width="sm" height="sm">
         <Modal.Header
           icon={SvgKey}
-          title={t("admin.users.resetPasswordTitle")}
+          title="Reset Password"
           onClose={onClose}
           description={
             newPassword
               ? undefined
-              : t("admin.users.resetPasswordConfirmation", { email: user.email })
+              : `Are you sure you want to reset the password for ${user.email}?`
           }
         />
         <Modal.Body>
           {newPassword ? (
             <div>
-              <Text as="p">{t("admin.users.newPasswordLabel")}:</Text>
+              <Text as="p">New Password:</Text>
               <div className="flex items-center bg-background-tint-03 p-2 rounded gap-2">
                 <Text as="p" data-testid="new-password" className="flex-grow">
                   {newPassword}
@@ -72,7 +70,7 @@ export default function ResetPasswordModal({
                 <CopyIconButton getCopyText={() => newPassword} />
               </div>
               <Text as="p" text02>
-                {t("admin.users.passwordCommunicateNote")}
+                Please securely communicate this password to the user.
               </Text>
             </div>
           ) : (
@@ -83,10 +81,10 @@ export default function ResetPasswordModal({
             >
               {isLoading ? (
                 <Text as="p">
-                  <LoadingAnimation text={t("admin.users.resettingLoading")} />
+                  <LoadingAnimation text="Resetting" />
                 </Text>
               ) : (
-                t("admin.users.resetPasswordButton")
+                "Reset Password"
               )}
             </Button>
           )}

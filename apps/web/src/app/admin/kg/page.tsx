@@ -31,7 +31,6 @@ import { ThreeDotsLoader } from "@/components/Loading";
 import { SvgActivity, SvgSearch, SvgNetworkGraph } from "@opal/icons";
 import { cn } from "@/lib/utils";
 import InputSelect from "@/refresh-components/inputs/InputSelect";
-import { useTranslation } from "react-i18next";
 
 const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.KNOWLEDGE_GRAPH]!;
 
@@ -41,10 +40,9 @@ const COLLECTION_REQUIRED_TABS = new Set(["explorer", "search"]);
 // ── Collection selector ────────────────────────────────────────────────────
 
 function NoGraphBadge() {
-  const { t } = useTranslation();
   return (
     <span className="ml-1.5 inline-flex items-center rounded-04 border border-status-warning-03 bg-status-warning-01 px-1.5 py-0.5 text-[10px] font-medium leading-none text-status-warning-06">
-      {t("admin.kg.noGraph")}
+      No graph
     </span>
   );
 }
@@ -58,7 +56,6 @@ function CollectionSelector({
   onSelect: (id: string | null, hasGraph: boolean) => void;
   highlight?: boolean;
 }) {
-  const { t } = useTranslation();
   const { collections, isLoading: collectionsLoading } = useCollections();
   const { datasources, isLoading: dsLoading } = useAirbyteDatasources();
   const { graphCollections, isLoading: graphLoading } = useGraphCollections();
@@ -108,10 +105,11 @@ function CollectionSelector({
   return (
     <CardSection className="flex flex-col gap-3">
       <Text as="p" headingH3 text05>
-        {t("admin.kg.collection")}
+        Collection
       </Text>
       <Text as="p" mainContentBody text04>
-        {t("admin.kg.collectionDescription")}
+        Select a collection with a built knowledge graph to explore and run
+        graph searches.
       </Text>
       <div className="w-full max-w-sm">
         <InputSelect
@@ -122,11 +120,11 @@ function CollectionSelector({
           }}
           error={highlight}
         >
-          <InputSelect.Trigger placeholder={t("admin.kg.selectCollectionPlaceholder")} />
+          <InputSelect.Trigger placeholder="— Select a collection —" />
           <InputSelect.Content>
             {ragCollections.length > 0 && (
               <InputSelect.Group>
-                <InputSelect.Label>{t("admin.kg.collections")}</InputSelect.Label>
+                <InputSelect.Label>Collections</InputSelect.Label>
                 {ragCollections.map((c) => {
                   const hasGraph = graphCollectionSet.has(c.uuid);
                   return (
@@ -142,7 +140,7 @@ function CollectionSelector({
             )}
             {datasourceItems.length > 0 && (
               <InputSelect.Group>
-                <InputSelect.Label>{t("admin.kg.dataSources")}</InputSelect.Label>
+                <InputSelect.Label>Data Sources</InputSelect.Label>
                 {datasourceItems.map((ds) => (
                   <InputSelect.Item key={ds.id} value={ds.id}>
                     <span className="flex items-center">
@@ -159,13 +157,14 @@ function CollectionSelector({
       {highlight && (
         <Text as="p" className="text-xs text-status-error-06 font-medium">
           {!selectedId
-            ? t("admin.kg.selectCollectionForTab")
-            : t("admin.kg.noBuiltGraph")}
+            ? "Please select a collection to use this tab."
+            : "This collection has no built graph. Go to the Build tab to build one first."}
         </Text>
       )}
       {!highlight && hasUnbuilt && (
         <Text as="p" mainContentMuted text03 className="text-xs">
-          {t("admin.kg.noGraphHintPrefix")} <span className="inline-flex items-center rounded-04 border border-status-warning-03 bg-status-warning-01 px-1 text-[10px] font-medium text-status-warning-06">{t("admin.kg.noGraph")}</span> {t("admin.kg.noGraphHintSuffix")} <strong>{t("admin.kg.buildTab")}</strong>.
+          Items marked <span className="inline-flex items-center rounded-04 border border-status-warning-03 bg-status-warning-01 px-1 text-[10px] font-medium text-status-warning-06">No graph</span> need a graph built first. Select one and go to the{" "}
+          <strong>Build</strong> tab.
         </Text>
       )}
     </CardSection>
@@ -187,7 +186,6 @@ function ExplorerTab({
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
   const [selectedLabels, setSelectedLabels] = useState<Set<string>>(new Set());
   const [selectedRelTypes, setSelectedRelTypes] = useState<Set<string>>(new Set());
-  const { t } = useTranslation();
 
   const loadData = useCallback(async (id: string) => {
     setExplorerLoading(true);
@@ -275,7 +273,7 @@ function ExplorerTab({
     return (
       <CardSection className="flex items-center justify-center py-12">
         <Text as="p" mainContentMuted text03>
-          {t("admin.kg.selectCollectionToExplore")}
+          Select a collection above to explore its knowledge graph.
         </Text>
       </CardSection>
     );
@@ -360,7 +358,6 @@ function Main({
   activeTab: string;
   onTabChange: (tab: string) => void;
 }) {
-  const { t } = useTranslation();
   const [collectionId, setCollectionId] = useState<string | null>(null);
   const [selectedHasGraph, setSelectedHasGraph] = useState(false);
   const [selectorHighlight, setSelectorHighlight] = useState(false);
@@ -409,7 +406,9 @@ function Main({
       }}
     >
       <Text as="p" text03>
-        {t("admin.kg.description")}
+        Build a knowledge graph from your RAG collections. Extract entities and
+        relationships from documents, explore the graph visually, and run
+        graph-powered semantic searches.
       </Text>
 
       <CollectionSelector
@@ -427,10 +426,10 @@ function Main({
             disabled={!collectionId || !selectedHasGraph}
             onClick={() => (!collectionId || !selectedHasGraph) && triggerCollectionRequired()}
           >
-            {t("admin.kg.graphExplorerTab")}
+            Graph Explorer
           </Tabs.Trigger>
           <Tabs.Trigger value="build" icon={SvgActivity}>
-            {t("admin.kg.buildTab")}
+            Build
           </Tabs.Trigger>
           <Tabs.Trigger
             value="search"
@@ -438,7 +437,7 @@ function Main({
             disabled={!collectionId || !selectedHasGraph}
             onClick={() => (!collectionId || !selectedHasGraph) && triggerCollectionRequired()}
           >
-            {t("admin.kg.searchTab")}
+            Search
           </Tabs.Trigger>
         </Tabs.List>
 
@@ -467,7 +466,6 @@ function Main({
 }
 
 export default function Page() {
-  const { t } = useTranslation();
   const { kgExposed, isLoading } = useIsKGExposed();
   const [activeTab, setActiveTab] = useState("build");
 
@@ -476,11 +474,7 @@ export default function Page() {
 
   return (
     <SettingsLayouts.Root width="full">
-      <SettingsLayouts.Header
-        icon={route.icon}
-        title={t(route.titleKey || "", { defaultValue: route.title })}
-        separator
-      />
+      <SettingsLayouts.Header icon={route.icon} title={route.title} separator />
       <SettingsLayouts.Body>
         <Main activeTab={activeTab} onTabChange={setActiveTab} />
       </SettingsLayouts.Body>

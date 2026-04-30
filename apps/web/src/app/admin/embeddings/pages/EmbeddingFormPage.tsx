@@ -39,9 +39,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import SimpleTooltip from "@/refresh-components/SimpleTooltip";
 import { SvgAlertTriangle, SvgArrowLeft, SvgArrowRight } from "@opal/icons";
-import { useTranslation } from "react-i18next";
 export default function EmbeddingForm() {
-  const { t } = useTranslation();
   const { formStep, nextFormStep, prevFormStep } = useEmbeddingFormContext();
   const router = useRouter();
 
@@ -208,7 +206,7 @@ export default function EmbeddingForm() {
     if (response.ok) {
       return true;
     } else {
-      toast.error(t("admin.embeddings.failedToUpdateSearchSettings"));
+      toast.error("Failed to update search settings");
       return false;
     }
   }, [
@@ -263,10 +261,10 @@ export default function EmbeddingForm() {
               className="rounded-r-none w-32 h-full"
             >
               {switchoverType == SwitchoverType.REINDEX
-                ? t("admin.embeddings.reindexButton")
+                ? "Re-index"
                 : switchoverType == SwitchoverType.ACTIVE_ONLY
-                  ? t("admin.embeddings.activeOnlyButton")
-                  : t("admin.embeddings.instantSwitchButton")}
+                  ? "Active Only"
+                  : "Instant Switch"}
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -284,9 +282,9 @@ export default function EmbeddingForm() {
                     setSwitchoverType(SwitchoverType.REINDEX);
                   }}
                 >
-                  <SimpleTooltip tooltip={t("admin.embeddings.reindexTooltip")}>
+                  <SimpleTooltip tooltip="Re-runs all connectors in the background before switching over. Takes longer but ensures no degredation of search during the switch.">
                     <span className="w-full text-left">
-                      {t("admin.embeddings.recommendedReindex")}
+                      (Recommended) Re-index
                     </span>
                   </SimpleTooltip>
                 </DropdownMenuItem>
@@ -295,9 +293,9 @@ export default function EmbeddingForm() {
                     setSwitchoverType(SwitchoverType.ACTIVE_ONLY);
                   }}
                 >
-                  <SimpleTooltip tooltip={t("admin.embeddings.activeOnlyTooltip")}>
+                  <SimpleTooltip tooltip="Re-runs only active (non-paused) connectors in the background before switching over. Paused connectors won't block the switchover.">
                     <span className="w-full text-left">
-                      {t("admin.embeddings.activeConnectorsOnly")}
+                      Active Connectors Only
                     </span>
                   </SimpleTooltip>
                 </DropdownMenuItem>
@@ -306,10 +304,8 @@ export default function EmbeddingForm() {
                     setSwitchoverType(SwitchoverType.INSTANT);
                   }}
                 >
-                  <SimpleTooltip tooltip={t("admin.embeddings.instantSwitchTooltip")}>
-                    <span className="w-full text-left">
-                      {t("admin.embeddings.instantSwitchButton")}
-                    </span>
+                  <SimpleTooltip tooltip="Immediately switches to new settings without re-indexing. Searches will be degraded until the re-indexing is complete.">
+                    <span className="w-full text-left">Instant Switch</span>
                   </SimpleTooltip>
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -323,24 +319,22 @@ export default function EmbeddingForm() {
                 weight="fill"
               />
               <div className="absolute z-10 invisible group-hover:visible bg-background-800 text-text-200 text-sm rounded-md shadow-md p-2 right-0 mt-1 w-64">
-                <p className="font-semibold mb-2">
-                  {t("admin.embeddings.needsReindexingDueTo")}
-                </p>
+                <p className="font-semibold mb-2">Needs re-indexing due to:</p>
                 <ul className="list-disc pl-5">
                   {currentEmbeddingModel != selectedProvider && (
-                    <li>{t("admin.embeddings.changedEmbeddingProvider")}</li>
+                    <li>Changed embedding provider</li>
                   )}
                   {searchSettings?.multipass_indexing !=
                     advancedEmbeddingDetails.multipass_indexing && (
-                    <li>{t("admin.embeddings.multipassIndexingModification")}</li>
+                    <li>Multipass indexing modification</li>
                   )}
                   {searchSettings?.embedding_precision !=
                     advancedEmbeddingDetails.embedding_precision && (
-                    <li>{t("admin.embeddings.embeddingPrecisionModification")}</li>
+                    <li>Embedding precision modification</li>
                   )}
                   {searchSettings?.reduced_dimension !=
                     advancedEmbeddingDetails.reduced_dimension && (
-                    <li>{t("admin.embeddings.reducedDimensionModification")}</li>
+                    <li>Reduced dimension modification</li>
                   )}
                   {(searchSettings?.enable_contextual_rag !=
                     advancedEmbeddingDetails.enable_contextual_rag ||
@@ -348,7 +342,7 @@ export default function EmbeddingForm() {
                       advancedEmbeddingDetails.contextual_rag_llm_name ||
                     searchSettings?.contextual_rag_llm_provider !=
                       advancedEmbeddingDetails.contextual_rag_llm_provider) && (
-                    <li>{t("admin.embeddings.contextualRagModification")}</li>
+                    <li>Contextual RAG modification</li>
                   )}
                 </ul>
               </div>
@@ -363,9 +357,7 @@ export default function EmbeddingForm() {
                   weight="fill"
                 />
                 <div className="absolute z-10 invisible group-hover:visible bg-background-800 text-text-200 text-sm rounded-md shadow-md p-2 right-0 mt-1 w-64">
-                  <p className="font-semibold mb-2">
-                    {t("admin.embeddings.validationErrors")}
-                  </p>
+                  <p className="font-semibold mb-2">Validation Errors:</p>
                   <ul className="list-disc pl-5">
                     {Object.entries(combinedFormErrors).map(
                       ([field, error]) => (
@@ -388,7 +380,7 @@ export default function EmbeddingForm() {
             }}
             disabled={!isOverallFormValid}
           >
-            {t("admin.embeddings.updateSearch")}
+            Update Search
           </Button>
           {!isOverallFormValid &&
             Object.keys(combinedFormErrors).length > 0 && (
@@ -400,7 +392,7 @@ export default function EmbeddingForm() {
                 />
                 <div className="absolute z-10 invisible group-hover:visible bg-background-800 text-text-200 text-sm rounded-md shadow-md p-2 right-0 mt-1 w-64">
                   <p className="font-semibold mb-2 text-red-400">
-                    {t("admin.embeddings.validationErrors")}
+                    Validation Errors:
                   </p>
                   <ul className="list-disc pl-5">
                     {Object.entries(combinedFormErrors).map(
@@ -423,9 +415,7 @@ export default function EmbeddingForm() {
     return <ThreeDotsLoader />;
   }
   if (currentEmbeddingModelError || !currentEmbeddingModel) {
-    return (
-      <ErrorCallout errorTitle={t("admin.embeddings.failedToFetchEmbeddingModelStatus")} />
-    );
+    return <ErrorCallout errorTitle="Failed to fetch embedding model status" />;
   }
 
   const updateCurrentModel = (newModel: string) => {
@@ -483,7 +473,9 @@ export default function EmbeddingForm() {
     if (response.ok) {
       navigateToEmbeddingPage("embedding model");
     } else {
-      toast.error(t("admin.embeddings.failedToUpdateEmbeddingModel"));
+      toast.error("Failed to update embedding model");
+
+      alert(`Failed to update embedding model - ${await response.text()}`);
     }
   };
 
@@ -493,10 +485,15 @@ export default function EmbeddingForm() {
         {formStep == 0 && (
           <>
             <h2 className="text-2xl font-bold mb-4 text-text-800">
-              {t("admin.embeddings.selectEmbeddingModelTitle")}
+              Select an Embedding Model
             </h2>
             <Text as="p" className="mb-4">
-              {t("admin.embeddings.selectEmbeddingModelDescription")}
+              Note that updating the backing model will require a complete
+              re-indexing of all documents across every connected source. This
+              is taken care of in the background so that the system can continue
+              to be used, but depending on the size of the corpus, this could
+              take hours or days. You can monitor the progress of the
+              re-indexing on this page while the models are being switched.
             </Text>
             <CardSection>
               <EmbeddingModelSelection
@@ -527,7 +524,7 @@ export default function EmbeddingForm() {
                 rightIcon={SvgArrowRight}
                 action
               >
-                {t("admin.embeddings.continue")}
+                Continue
               </Button>
             </div>
           </>
@@ -537,31 +534,31 @@ export default function EmbeddingForm() {
             <Modal.Content>
               <Modal.Header
                 icon={SvgAlertTriangle}
-                title={t("admin.embeddings.poorModelTitle", {
-                  modelName: selectedProvider.model_name,
-                })}
+                title={`Are you sure you want to select ${selectedProvider.model_name}?`}
                 onClose={() => setShowPoorModel(false)}
               />
               <Modal.Body>
                 <div className="text-lg">
                   <Text as="p">
-                    {t("admin.embeddings.poorModelDescription", {
-                      modelName: selectedProvider.model_name,
-                    })}
+                    {`${selectedProvider.model_name} is a lower accuracy model. We recommend the following alternatives:`}
                   </Text>
                   <ul className="list-disc list-inside mt-2 ml-4">
                     <li>
-                      <Text as="p">{t("admin.embeddings.poorModelAltCloud")}</Text>
+                      <Text as="p">
+                        Cohere embed-english-v3.0 for cloud-based
+                      </Text>
                     </li>
                     <li>
-                      <Text as="p">{t("admin.embeddings.poorModelAltHosted")}</Text>
+                      <Text as="p">
+                        Nomic nomic-embed-text-v1 for self-hosted
+                      </Text>
                     </li>
                   </ul>
                 </div>
               </Modal.Body>
               <Modal.Footer>
                 <Button secondary onClick={() => setShowPoorModel(false)}>
-                  {t("admin.embeddings.cancelUpdate")}
+                  Cancel update
                 </Button>
                 <Button
                   onClick={() => {
@@ -571,9 +568,7 @@ export default function EmbeddingForm() {
                     nextFormStep();
                   }}
                 >
-                  {t("admin.embeddings.continueWithModel", {
-                    modelName: selectedProvider.model_name,
-                  })}
+                  {`Continue with ${selectedProvider.model_name}`}
                 </Button>
               </Modal.Footer>
             </Modal.Content>
@@ -594,10 +589,13 @@ export default function EmbeddingForm() {
         {formStep == 1 && (
           <>
             <h2 className="text-2xl font-bold mb-4 text-text-800">
-              {t("admin.embeddings.selectRerankingModelTitle")}
+              Select a Reranking Model
             </h2>
             <Text as="p" className="mb-4">
-              {t("admin.embeddings.selectRerankingModelDescription")}
+              Updating the reranking model does not require re-indexing
+              documents. The reranker helps improve search quality by reordering
+              results after the initial embedding search. Changes will take
+              effect immediately for all new searches.
             </Text>
 
             <CardSection>
@@ -622,7 +620,7 @@ export default function EmbeddingForm() {
                 onClick={() => prevFormStep()}
                 secondary
               >
-                {t("admin.embeddings.previous")}
+                Previous
               </Button>
 
               <ReIndexingButton needsReIndex={needsReIndex} />
@@ -635,7 +633,7 @@ export default function EmbeddingForm() {
                   rightIcon={SvgArrowRight}
                   secondary
                 >
-                  {t("admin.embeddings.advanced")}
+                  Advanced
                 </Button>
               </div>
             </div>
@@ -644,10 +642,11 @@ export default function EmbeddingForm() {
         {formStep == 2 && (
           <>
             <h2 className="text-2xl font-bold mb-4 text-text-800">
-              {t("admin.embeddings.advancedSearchConfigurationTitle")}
+              Advanced Search Configuration
             </h2>
             <Text as="p" className="mb-4">
-              {t("admin.embeddings.advancedSearchConfigurationDescription")}
+              Configure advanced embedding and search settings. Changes will
+              require re-indexing documents.
             </Text>
 
             <CardSection>
@@ -670,7 +669,7 @@ export default function EmbeddingForm() {
                 leftIcon={SvgArrowLeft}
                 secondary
               >
-                {t("admin.embeddings.previous")}
+                Previous
               </Button>
 
               <ReIndexingButton needsReIndex={needsReIndex} />

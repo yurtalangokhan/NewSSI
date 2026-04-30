@@ -11,7 +11,6 @@ import Button from "@/refresh-components/buttons/Button";
 import Separator from "@/refresh-components/Separator";
 import Text from "@/refresh-components/texts/Text";
 import { SvgUsers } from "@opal/icons";
-import { useTranslation } from "react-i18next";
 export interface UserGroupCreationFormProps {
   onClose: () => void;
   users: User[];
@@ -25,7 +24,6 @@ export default function UserGroupCreationForm({
   ccPairs,
   existingUserGroup,
 }: UserGroupCreationFormProps) {
-  const { t } = useTranslation();
   const isUpdate = existingUserGroup !== undefined;
 
   // Filter out ccPairs that aren't access_type "private"
@@ -38,11 +36,7 @@ export default function UserGroupCreationForm({
       <Modal.Content>
         <Modal.Header
           icon={SvgUsers}
-          title={
-            isUpdate
-              ? t("admin.groups.updateTitle")
-              : t("admin.groups.createTitle")
-          }
+          title={isUpdate ? "Update a User Group" : "Create a new User Group"}
           onClose={onClose}
         />
         <Modal.Body>
@@ -55,7 +49,7 @@ export default function UserGroupCreationForm({
               cc_pair_ids: [] as number[],
             }}
             validationSchema={Yup.object().shape({
-              name: Yup.string().required(t("admin.groups.nameRequired")),
+              name: Yup.string().required("Please enter a name for the group"),
               user_ids: Yup.array().of(Yup.string().required()),
               cc_pair_ids: Yup.array().of(Yup.number().required()),
             })}
@@ -67,8 +61,8 @@ export default function UserGroupCreationForm({
               if (response.ok) {
                 toast.success(
                   isUpdate
-                    ? t("admin.groups.updatedSuccess")
-                    : t("admin.groups.createdSuccess")
+                    ? "Successfully updated user group!"
+                    : "Successfully created user group!"
                 );
                 onClose();
               } else {
@@ -76,8 +70,8 @@ export default function UserGroupCreationForm({
                 const errorMsg = responseJson.detail || responseJson.message;
                 toast.error(
                   isUpdate
-                    ? t("admin.groups.updateFailed", { errorMsg })
-                    : t("admin.groups.createFailed", { errorMsg })
+                    ? `Error updating user group - ${errorMsg}`
+                    : `Error creating user group - ${errorMsg}`
                 );
               }
             }}
@@ -86,18 +80,19 @@ export default function UserGroupCreationForm({
               <Form>
                 <TextFormField
                   name="name"
-                  label={t("admin.groups.nameLabel")}
-                  placeholder={t("admin.groups.namePlaceholder")}
+                  label="Name:"
+                  placeholder="A name for the User Group"
                   disabled={isUpdate}
                 />
 
                 <Separator />
 
                 <Text as="p" className="font-medium">
-                  {t("admin.groups.selectConnectorsTitle")}
+                  Select which private connectors this group has access to:
                 </Text>
                 <Text as="p" text02>
-                  {t("admin.groups.selectConnectorsDescription")}
+                  All documents indexed by the selected connectors will be
+                  visible to users in this group.
                 </Text>
 
                 <ConnectorEditor
@@ -111,10 +106,11 @@ export default function UserGroupCreationForm({
                 <Separator />
 
                 <Text as="p" className="font-medium">
-                  {t("admin.groups.selectUsersTitle")}
+                  Select which Users should be a part of this Group.
                 </Text>
                 <Text as="p" text02>
-                  {t("admin.groups.selectUsersDescription")}
+                  All selected users will be able to search through all
+                  documents indexed by the selected connectors.
                 </Text>
                 <div className="mb-3 gap-2">
                   <UserEditor
@@ -132,9 +128,7 @@ export default function UserGroupCreationForm({
                     disabled={isSubmitting}
                     className="mx-auto w-64"
                   >
-                    {isUpdate
-                      ? t("admin.groups.updateSubmit")
-                      : t("admin.groups.createSubmit")}
+                    {isUpdate ? "Update!" : "Create!"}
                   </Button>
                 </div>
               </Form>

@@ -1,7 +1,6 @@
 "use client";
 
 import { JSONSchemaProperty } from "./types";
-import { useTranslation } from "react-i18next";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
 import PasswordInputTypeIn from "@/refresh-components/inputs/PasswordInputTypeIn";
 import InputTextArea from "@/refresh-components/inputs/InputTextArea";
@@ -29,7 +28,6 @@ export default function PrimitiveField({
   id,
   required,
 }: PrimitiveFieldProps) {
-  const { t } = useTranslation("admin");
   const type = Array.isArray(schema.type) ? schema.type[0] : schema.type;
   const isSecret = schema.airbyte_secret === true;
   const placeholder =
@@ -47,7 +45,7 @@ export default function PrimitiveField({
         onValueChange={(v) => onChange(v)}
       >
         <SelectTrigger>
-          <SelectValue placeholder={t("primitiveField.selectAnOption")} />
+          <SelectValue placeholder="Select an option..." />
         </SelectTrigger>
         <SelectContent>
           {schema.enum.map((v) => (

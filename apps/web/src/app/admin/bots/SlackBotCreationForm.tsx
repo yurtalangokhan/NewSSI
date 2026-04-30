@@ -6,10 +6,8 @@ import { useState } from "react";
 import { SlackTokensForm } from "./SlackTokensForm";
 import * as SettingsLayouts from "@/layouts/settings-layouts";
 import { SvgSlack } from "@opal/icons";
-import { useTranslation } from "react-i18next";
 
 export const NewSlackBotForm = () => {
-  const { t } = useTranslation();
   const [formValues] = useState({
     name: "",
     enabled: true,
@@ -21,7 +19,7 @@ export const NewSlackBotForm = () => {
 
   return (
     <SettingsLayouts.Root>
-      <SettingsLayouts.Header icon={SvgSlack} title={t("admin.bots.newBotPageTitle")} separator />
+      <SettingsLayouts.Header icon={SvgSlack} title="New Slack Bot" separator />
       <SettingsLayouts.Body>
         <CardSection>
           <div className="p-4">

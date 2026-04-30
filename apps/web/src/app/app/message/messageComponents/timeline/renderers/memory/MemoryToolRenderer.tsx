@@ -5,7 +5,6 @@ import {
   MessageRenderer,
   RenderType,
 } from "@/app/app/message/messageComponents/interfaces";
-import { useTranslation } from "react-i18next";
 import { BlinkingBar } from "@/app/app/message/BlinkingBar";
 import { constructCurrentMemoryState } from "./memoryStateUtils";
 import Text from "@/refresh-components/texts/Text";
@@ -41,14 +40,13 @@ export const MemoryToolRenderer: MessageRenderer<MemoryToolPacket, {}> = ({
     index,
   } = memoryState;
   const memoriesModal = useCreateModal();
-  const { t } = useTranslation();
   const isHighlight = renderType === RenderType.HIGHLIGHT;
 
   if (!hasStarted) {
     return children([
       {
         icon: SvgEditBig,
-        status: t("timeline.memory"),
+        status: "Memory",
         content: <div />,
         supportsCollapsible: false,
         timelineLayout: "timeline",
@@ -74,7 +72,7 @@ export const MemoryToolRenderer: MessageRenderer<MemoryToolPacket, {}> = ({
           content: (
             <div className="flex flex-col">
               <Text as="p" text02 className="text-sm mb-1">
-                {t("timeline.memory")}
+                Memory
               </Text>
               {content}
             </div>
@@ -86,7 +84,7 @@ export const MemoryToolRenderer: MessageRenderer<MemoryToolPacket, {}> = ({
     return children([
       {
         icon: SvgEditBig,
-        status: t("timeline.memory"),
+        status: "Memory",
         supportsCollapsible: false,
         timelineLayout: "timeline",
         content,
@@ -95,7 +93,7 @@ export const MemoryToolRenderer: MessageRenderer<MemoryToolPacket, {}> = ({
   }
 
   // Determine status text
-  let statusLabel = t("timeline.updatingMemoryActive");
+  let statusLabel = "Updating memory";
 
   const memoryContent = (
     <div className="flex flex-col">
@@ -119,7 +117,7 @@ export const MemoryToolRenderer: MessageRenderer<MemoryToolPacket, {}> = ({
               prominence="tertiary"
               size="md"
               icon={SvgMaximize2}
-              tooltip={t("timeline.viewMemories")}
+              tooltip="View Memories"
               onClick={(e) => {
                 e.stopPropagation();
                 memoriesModal.toggle(true);

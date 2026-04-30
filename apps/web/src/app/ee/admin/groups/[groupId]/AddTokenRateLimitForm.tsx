@@ -3,7 +3,6 @@ import CreateRateLimitModal from "../../../../admin/token-rate-limits/CreateRate
 import { Scope } from "../../../../admin/token-rate-limits/types";
 import { insertGroupTokenRateLimit } from "../../../../admin/token-rate-limits/lib";
 import { mutate } from "swr";
-import { useTranslation } from "react-i18next";
 
 interface AddMemberFormProps {
   isOpen: boolean;
@@ -29,7 +28,6 @@ export const AddTokenRateLimitForm: React.FC<AddMemberFormProps> = ({
   setIsOpen,
   userGroupId,
 }) => {
-  const { t } = useTranslation();
   const handleSubmit = (
     _: Scope,
     period_hours: number,
@@ -39,7 +37,7 @@ export const AddTokenRateLimitForm: React.FC<AddMemberFormProps> = ({
     handleCreateGroupTokenRateLimit(period_hours, token_budget, group_id)
       .then(() => {
         setIsOpen(false);
-        toast.success(t("admin.tokenRateLimits.createdSuccess"));
+        toast.success("Token rate limit created!");
         mutate(`/api/admin/token-rate-limits/user-group/${userGroupId}`);
       })
       .catch((error) => {

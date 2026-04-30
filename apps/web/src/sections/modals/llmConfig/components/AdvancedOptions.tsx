@@ -5,7 +5,6 @@ import { AgentsMultiSelect } from "@/components/AgentsMultiSelect";
 import Text from "@/refresh-components/texts/Text";
 import { useState } from "react";
 import { useAgents } from "@/hooks/useAgents";
-import { useTranslation } from "react-i18next";
 
 export function AdvancedOptions({
   formikProps,
@@ -14,7 +13,6 @@ export function AdvancedOptions({
 }) {
   const { agents, isLoading: agentsLoading, error: agentsError } = useAgents();
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
-  const { t } = useTranslation();
 
   return (
     <>
@@ -27,11 +25,11 @@ export function AdvancedOptions({
         <>
           <div className="flex flex-col gap-3">
             <Text as="p" headingH3>
-              {t("llmConfig.accessControls")}
+              Access Controls
             </Text>
             <IsPublicGroupSelector
               formikProps={formikProps}
-              objectName={t("llmConfig.llmProviderObjectName")}
+              objectName="LLM Provider"
               publicToWhom="Users"
               enforceGroupSelection={true}
               smallLabels={true}
@@ -41,10 +39,10 @@ export function AdvancedOptions({
               agents={agents}
               isLoading={agentsLoading}
               error={agentsError}
-              label={t("llmConfig.agentWhitelistLabel")}
-              subtext={t("llmConfig.agentWhitelistSubtext")}
+              label="Agent Whitelist"
+              subtext="Restrict this provider to specific agents."
               disabled={formikProps.values.is_public}
-              disabledMessage={t("llmConfig.agentWhitelistDisabled")}
+              disabledMessage="This LLM Provider is public and available to all agents."
             />
           </div>
         </>

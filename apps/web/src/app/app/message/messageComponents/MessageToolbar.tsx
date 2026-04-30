@@ -1,7 +1,6 @@
 "use client";
 
 import React, { RefObject, useState, useCallback, useMemo } from "react";
-import { useTranslation } from "react-i18next";
 import { Packet, StreamingCitation } from "@/app/app/services/streamingModels";
 import { FeedbackType } from "@/app/app/interfaces";
 import { OnyxDocument } from "@/lib/search/interfaces";
@@ -49,8 +48,6 @@ const SourcesTagWrapper = React.memo(function SourcesTagWrapper({
   updateCurrentDocumentSidebarVisible: (visible: boolean) => void;
   updateCurrentSelectedNodeForDocDisplay: (nodeId: number | null) => void;
 }) {
-  const { t } = useTranslation();
-
   // Convert citations to SourceInfo array
   const sources = useMemo(
     () => citationsToSourceInfoArray(citations, documentMap),
@@ -79,7 +76,7 @@ const SourcesTagWrapper = React.memo(function SourcesTagWrapper({
   return (
     <SourceTag
       variant="button"
-      displayName={t("messageToolbar.sourcesLabel")}
+      displayName="Sources"
       sources={sources}
       onSourceClick={handleSourceClick}
       toggleSource
@@ -137,7 +134,6 @@ export default function MessageToolbar({
   citations,
   documentMap,
 }: MessageToolbarProps) {
-  const { t } = useTranslation();
   // Document sidebar state - managed internally to reduce prop drilling
   const documentSidebarVisible = useDocumentSidebarVisible();
   const selectedMessageForDocDisplay = useSelectedNodeForDocDisplay();
@@ -256,7 +252,7 @@ export default function MessageToolbar({
               variant="select"
               selected={isFeedbackTransient("like")}
               tooltip={
-                currentFeedback === "like" ? t("messageToolbar.removeLike") : t("messageToolbar.goodResponse")
+                currentFeedback === "like" ? "Remove Like" : "Good Response"
               }
               data-testid="AgentMessage/like-button"
             />
@@ -267,8 +263,8 @@ export default function MessageToolbar({
               selected={isFeedbackTransient("dislike")}
               tooltip={
                 currentFeedback === "dislike"
-                  ? t("messageToolbar.removeDislike")
-                  : t("messageToolbar.badResponse")
+                  ? "Remove Dislike"
+                  : "Bad Response"
               }
               data-testid="AgentMessage/dislike-button"
             />

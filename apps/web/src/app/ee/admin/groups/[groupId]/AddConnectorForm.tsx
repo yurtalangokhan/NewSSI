@@ -6,7 +6,6 @@ import { toast } from "@/hooks/useToast";
 import { ConnectorStatus, UserGroup } from "@/lib/types";
 import { ConnectorMultiSelect } from "@/components/ConnectorMultiSelect";
 import { SvgPlus } from "@opal/icons";
-import { useTranslation } from "react-i18next";
 export interface AddConnectorFormProps {
   ccPairs: ConnectorStatus<any, any>[];
   userGroup: UserGroup;
@@ -18,7 +17,6 @@ export default function AddConnectorForm({
   userGroup,
   onClose,
 }: AddConnectorFormProps) {
-  const { t } = useTranslation();
   const [selectedCCPairIds, setSelectedCCPairIds] = useState<number[]>([]);
 
   // Filter out ccPairs that are already in the user group and are not private
@@ -36,17 +34,17 @@ export default function AddConnectorForm({
       <Modal.Content width="sm" height="sm">
         <Modal.Header
           icon={SvgPlus}
-          title={t("admin.groups.addConnectorTitle")}
+          title="Add New Connector"
           onClose={onClose}
         />
         <Modal.Body>
           <ConnectorMultiSelect
             name="connectors"
-            label={t("admin.groups.selectConnectorsLabel")}
+            label="Select Connectors"
             connectors={availableCCPairs}
             selectedIds={selectedCCPairIds}
             onChange={setSelectedCCPairIds}
-            placeholder={t("admin.groups.searchConnectorsToAddPlaceholder")}
+            placeholder="Search for connectors to add..."
             showError={false}
           />
 
@@ -66,19 +64,17 @@ export default function AddConnectorForm({
                 cc_pair_ids: newCCPairIds,
               });
               if (response.ok) {
-                toast.success(t("admin.groups.addedConnectorsSuccess"));
+                toast.success("Successfully added connectors to group");
                 onClose();
               } else {
                 const responseJson = await response.json();
                 const errorMsg = responseJson.detail || responseJson.message;
-                toast.error(
-                  t("admin.groups.addConnectorsFailed", { errorMsg })
-                );
+                toast.error(`Failed to add connectors to group - ${errorMsg}`);
                 onClose();
               }
             }}
           >
-            {t("admin.groups.addConnectorsButton")}
+            Add Connectors
           </Button>
         </Modal.Body>
       </Modal.Content>

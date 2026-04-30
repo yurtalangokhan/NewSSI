@@ -4,7 +4,6 @@ import Text from "@/refresh-components/texts/Text";
 import StepSidebar from "@/sections/sidebar/StepSidebarWrapper";
 import { useUser } from "@/providers/UserProvider";
 import { SvgSettings } from "@opal/icons";
-import { useTranslation } from "react-i18next";
 
 export default function Sidebar() {
   const { formStep, setFormStep, connector, allowAdvanced, allowCreate } =
@@ -12,17 +11,13 @@ export default function Sidebar() {
   const noCredential = credentialTemplates[connector] == null;
 
   const { isAdmin } = useUser();
-  const { t } = useTranslation();
-  const buttonName = isAdmin ? t("sidebar.adminPage") : t("sidebar.curatorPage");
+  const buttonName = isAdmin ? "Admin Page" : "Curator Page";
 
   const settingSteps = [
-    ...(!noCredential ? [t("sidebar.credential")] : []),
-    t("sidebar.connector"),
-    ...(connector == "file" ? [] : [t("sidebar.advancedOptional")]),
+    ...(!noCredential ? ["Credential"] : []),
+    "Connector",
+    ...(connector == "file" ? [] : ["Advanced (optional)"]),
   ];
-
-  const connectorStepIndex = noCredential ? 0 : 1;
-  const advancedStepIndex = settingSteps.length - 1;
 
   return (
     <StepSidebar
@@ -36,8 +31,8 @@ export default function Sidebar() {
         )}
         {settingSteps.map((step, index) => {
           const allowed =
-            (index === connectorStepIndex && allowCreate) ||
-            (connector !== "file" && index === advancedStepIndex && allowAdvanced) ||
+            (step == "Connector" && allowCreate) ||
+            (step == "Advanced (optional)" && allowAdvanced) ||
             index <= formStep;
 
           return (

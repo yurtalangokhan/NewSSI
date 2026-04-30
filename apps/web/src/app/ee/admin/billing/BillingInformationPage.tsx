@@ -19,10 +19,7 @@ import Button from "@/refresh-components/buttons/Button";
 import { SubscriptionSummary } from "./SubscriptionSummary";
 import { BillingAlerts } from "./BillingAlerts";
 import { SvgClipboard, SvgWallet } from "@opal/icons";
-import { useTranslation } from "react-i18next";
-
 export default function BillingInformationPage() {
-  const { t } = useTranslation();
   const {
     data: billingInformation,
     error,
@@ -32,30 +29,30 @@ export default function BillingInformationPage() {
   useEffect(() => {
     const url = new URL(window.location.href);
     if (url.searchParams.has("session_id")) {
-      toast.success(t("ee.billing.updatedSuccess"));
+      toast.success(
+        "Congratulations! Your subscription has been updated successfully."
+      );
       url.searchParams.delete("session_id");
       window.history.replaceState({}, "", url.toString());
     }
-  }, [t]);
+  }, []);
 
   if (isLoading) {
-    return (
-      <div className="text-center py-8">{t("ee.billing.loading")}</div>
-    );
+    return <div className="text-center py-8">Loading...</div>;
   }
 
   if (error) {
     console.error("Failed to fetch billing information:", error);
     return (
       <div className="text-center py-8 text-red-500">
-        {t("ee.billing.errorLoading")}
+        Error loading billing information. Please try again later.
       </div>
     );
   }
 
   if (!billingInformation || !hasActiveSubscription(billingInformation)) {
     return (
-      <div className="text-center py-8">{t("ee.billing.noInformation")}</div>
+      <div className="text-center py-8">No billing information available.</div>
     );
   }
 
@@ -69,7 +66,7 @@ export default function BillingInformationPage() {
       window.location.href = response.stripe_customer_portal_url;
     } catch (error) {
       console.error("Error creating customer portal session:", error);
-      toast.error(t("ee.billing.portalError"));
+      toast.error("Error creating customer portal session");
     }
   };
 
@@ -79,7 +76,7 @@ export default function BillingInformationPage() {
         <CardHeader>
           <CardTitle className="text-2xl font-bold flex items-center">
             <SvgWallet className="mr-4 text-muted-foreground h-6 w-6" />
-            {t("ee.billing.subscriptionDetails")}
+            Subscription Details
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -91,10 +88,10 @@ export default function BillingInformationPage() {
       <Card className="shadow-md">
         <CardHeader>
           <CardTitle className="text-xl font-semibold">
-            {t("ee.billing.manageSubscription")}
+            Manage Subscription
           </CardTitle>
           <CardDescription>
-            {t("ee.billing.manageDescription")}
+            View your plan, update payment, or change subscription
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -103,7 +100,7 @@ export default function BillingInformationPage() {
             className="w-full"
             leftIcon={SvgClipboard}
           >
-            {t("ee.billing.manageSubscription")}
+            Manage Subscription
           </Button>
         </CardContent>
       </Card>

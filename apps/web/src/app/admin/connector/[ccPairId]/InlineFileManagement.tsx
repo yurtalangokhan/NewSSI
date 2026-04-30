@@ -31,7 +31,6 @@ import {
 } from "@opal/icons";
 import { formatBytes } from "@/lib/utils";
 import { timestampToReadableDate } from "@/lib/dateUtils";
-import { useTranslation } from "react-i18next";
 
 interface InlineFileManagementProps {
   connectorId: number;
@@ -42,7 +41,6 @@ export default function InlineFileManagement({
   connectorId,
   onRefresh,
 }: InlineFileManagementProps) {
-  const { t } = useTranslation();
   const [isEditing, setIsEditing] = useState(false);
   const [selectedFilesToRemove, setSelectedFilesToRemove] = useState<
     Set<string>
@@ -99,7 +97,9 @@ export default function InlineFileManagement({
     ).length;
 
     if (remainingFiles === 0 && filesToAdd.length === 0) {
-      toast.error(t("inlineFileManagement.cannotRemoveAll"));
+      toast.error(
+        "Cannot remove all files from a connector. Delete the connector if this is desired."
+      );
       return;
     }
 
@@ -117,7 +117,10 @@ export default function InlineFileManagement({
         filesToAdd
       );
 
-      toast.success(t("inlineFileManagement.filesUpdated"));
+      toast.success(
+        "Files updated successfully! Document index is being updated in the background. " +
+          "New files are being indexed and removed files will be pruned from the search results."
+      );
 
       // Reset editing state
       setIsEditing(false);
@@ -129,7 +132,7 @@ export default function InlineFileManagement({
       onRefresh();
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : t("inlineFileManagement.failedToUpdate")
+        error instanceof Error ? error.message : "Failed to update files"
       );
     } finally {
       setIsSaving(false);
@@ -153,7 +156,7 @@ export default function InlineFileManagement({
   if (error) {
     return (
       <Text as="p" className="text-error">
-        {t("inlineFileManagement.errorLoadingFiles", { message: error.message })}
+        Error loading files: {error.message}
       </Text>
     );
   }
@@ -168,7 +171,7 @@ export default function InlineFileManagement({
       {/* Header with Edit/Save buttons */}
       <div className="flex justify-between items-center mb-4">
         <Text as="p" mainUiBody>
-          {t("inlineFileManagement.files")} ({totalFiles} {t("inlineFileManagement.files").toLowerCase()})
+          Files ({totalFiles} file{totalFiles !== 1 ? "s" : ""})
         </Text>
         <div className="flex gap-2">
           {!isEditing ? (
@@ -177,7 +180,7 @@ export default function InlineFileManagement({
               secondary
               leftIcon={SvgEdit}
             >
-              {t("inlineFileManagement.edit")}
+              Edit
             </Button>
           ) : (
             <>
@@ -187,7 +190,7 @@ export default function InlineFileManagement({
                 leftIcon={SvgX}
                 disabled={isSaving}
               >
-                {t("inlineFileManagement.cancel")}
+                Cancel
               </Button>
               <Button
                 onClick={handleSaveClick}
@@ -198,7 +201,7 @@ export default function InlineFileManagement({
                   (selectedFilesToRemove.size === 0 && filesToAdd.length === 0)
                 }
               >
-                {isSaving ? t("inlineFileManagement.saving") : t("inlineFileManagement.saveChanges")}
+                {isSaving ? "Saving..." : "Save Changes"}
               </Button>
             </>
           )}
@@ -208,7 +211,7 @@ export default function InlineFileManagement({
       {/* File List */}
       {files.length === 0 && filesToAdd.length === 0 ? (
         <Text as="p" mainUiMuted className="text-center py-8">
-          {t("inlineFileManagement.noFiles")}
+          No files in this connector
         </Text>
       ) : (
         <div className="border rounded-lg overflow-hidden mb-4">
@@ -218,9 +221,9 @@ export default function InlineFileManagement({
               <TableHeader className="sticky top-0 bg-background z-10">
                 <TableRow>
                   {isEditing && <TableHead className="w-12"></TableHead>}
-                  <TableHead>{t("inlineFileManagement.fileName")}</TableHead>
-                  <TableHead>{t("inlineFileManagement.size")}</TableHead>
-                  <TableHead>{t("inlineFileManagement.uploadDate")}</TableHead>
+                  <TableHead>File Name</TableHead>
+                  <TableHead>Size</TableHead>
+                  <TableHead>Upload Date</TableHead>
                   {isEditing && <TableHead className="w-12"></TableHead>}
                 </TableRow>
               </TableHeader>
@@ -259,7 +262,7 @@ export default function InlineFileManagement({
                         </span>
                         {isMarkedForRemoval && (
                           <span className="ml-2 text-xs font-semibold text-red-600 dark:text-red-400">
-                            {t("inlineFileManagement.removing")}
+                            Removing
                           </span>
                         )}
                       </TableCell>
@@ -306,7 +309,7 @@ export default function InlineFileManagement({
                     <TableCell className="font-medium">
                       {file.name}
                       <Text as="p" figureSmallValue>
-                        {t("inlineFileManagement.new")}
+                        New
                       </Text>
                     </TableCell>
                     <TableCell>{formatBytes(file.size)}</TableCell>
@@ -337,7 +340,7 @@ export default function InlineFileManagement({
             leftIcon={SvgPlusCircle}
             disabled={isSaving}
           >
-            {t("inlineFileManagement.addFiles")}
+            Add Files
           </Button>
         </div>
       )}
@@ -347,8 +350,8 @@ export default function InlineFileManagement({
         <Modal.Content width="sm">
           <Modal.Header
             icon={SvgFolderPlus}
-            title={t("inlineFileManagement.confirmFileChanges")}
-            description={t("inlineFileManagement.confirmDesc")}
+            title="Confirm File Changes"
+            description="When you save these changes, the following will happen:"
           />
 
           <Modal.Body>
@@ -359,14 +362,15 @@ export default function InlineFileManagement({
                   mainUiBody
                   className="font-semibold text-red-800 dark:text-red-200"
                 >
-                  🗑️ {t("inlineFileManagement.filesWillBeRemoved", { count: selectedFilesToRemove.size })}
+                  🗑️ {selectedFilesToRemove.size} file(s) will be removed
                 </Text>
                 <Text
                   as="p"
                   secondaryBody
                   className="text-red-700 dark:text-red-300 mt-1"
                 >
-                  {t("inlineFileManagement.filesRemovedDesc")}
+                  Documents from these files will be pruned from the Document
+                  Index
                 </Text>
               </div>
             )}
@@ -378,14 +382,15 @@ export default function InlineFileManagement({
                   mainUiBody
                   className="font-semibold text-green-800 dark:text-green-200"
                 >
-                  {t("inlineFileManagement.filesWillBeAdded", { count: filesToAdd.length })}
+                  {filesToAdd.length} file(s) will be added
                 </Text>
                 <Text
                   as="p"
                   secondaryBody
                   className="text-green-700 dark:text-green-300 mt-1"
                 >
-                  {t("inlineFileManagement.filesAddedDesc")}
+                  New files will be uploaded, chunked, embedded, and indexed in
+                  the Document Index
                 </Text>
               </div>
             )}
@@ -397,10 +402,10 @@ export default function InlineFileManagement({
               secondary
               disabled={isSaving}
             >
-              {t("inlineFileManagement.cancel")}
+              Cancel
             </Button>
             <Button onClick={handleConfirmSave} disabled={isSaving}>
-              {isSaving ? t("inlineFileManagement.saving") : t("inlineFileManagement.confirmAndSave")}
+              {isSaving ? "Saving..." : "Confirm & Save"}
             </Button>
           </Modal.Footer>
         </Modal.Content>

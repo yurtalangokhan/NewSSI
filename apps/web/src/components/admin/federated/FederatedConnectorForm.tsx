@@ -34,7 +34,6 @@ import { ListFieldInput } from "@/refresh-components/inputs/ListFieldInput";
 import Checkbox from "@/refresh-components/inputs/Checkbox";
 import Separator from "@/refresh-components/Separator";
 import { SvgSettings } from "@opal/icons";
-import { useTranslation } from "react-i18next";
 
 export interface FederatedConnectorFormProps {
   connector: ConfigurableSources;
@@ -196,7 +195,6 @@ export function FederatedConnectorForm({
   preloadedConnectorData,
   preloadedCredentialSchema,
 }: FederatedConnectorFormProps) {
-  const { t } = useTranslation("admin");
   const router = useRouter();
   const sourceMetadata = getSourceMetadata(connector);
   const isEditMode = connectorId !== undefined;
@@ -322,10 +320,10 @@ export function FederatedConnectorForm({
           <Loader2 className="h-8 w-8 animate-spin text-blue-500 mb-4" />
           <div className="text-center">
             <p className="text-lg font-medium text-gray-700 mb-2">
-              {t("federatedForm.loadingCredentialSchema")}
+              Loading credential schema...
             </p>
             <p className="text-sm text-gray-500">
-              {t("federatedForm.retrievingRequiredFields")}
+              Retrieving required fields for this connector type
             </p>
           </div>
         </div>
@@ -783,7 +781,7 @@ export function FederatedConnectorForm({
               <DropdownMenuTrigger asChild>
                 <div>
                   <Button secondary leftIcon={SvgSettings}>
-                    {t("federatedForm.manage")}
+                    Manage
                   </Button>
                 </div>
               </DropdownMenuTrigger>
@@ -795,7 +793,7 @@ export function FederatedConnectorForm({
                   tooltip={isDeleting ? "Deletion in progress" : undefined}
                 >
                   <Trash2Icon className="h-4 w-4" />
-                  <span>{isDeleting ? t("federatedForm.deleting") : t("federatedForm.delete")}</span>
+                  <span>{isDeleting ? "Deleting..." : "Delete"}</span>
                 </DropdownMenuItemWithTooltip>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -804,22 +802,22 @@ export function FederatedConnectorForm({
       </div>
 
       <Title className="mb-2 mt-6" size="md">
-        {t("federatedForm.title")}
+        Federated Connector Configuration
       </Title>
 
       <Card className="px-8 py-4">
         <CardContent className="p-0">
           <form onSubmit={handleSubmit}>
             <Text as="p" headingH3>
-              {t("federatedForm.credentials")}
+              Credentials
             </Text>
             <Text as="p" mainUiMuted>
-              {t("federatedForm.enterCredentials")}
+              Enter the credentials for this connector.
             </Text>
             <div className="space-y-4">{renderCredentialFields()}</div>
             <Separator />
             <Text as="p" headingH3>
-              {t("federatedForm.configuration")}
+              Configuration
             </Text>
             <div className="space-y-4">{renderConfigFields()}</div>
 
@@ -848,7 +846,7 @@ export function FederatedConnectorForm({
                 disabled={isValidating || !formState.schema}
                 className="flex ml-auto"
               >
-                {isValidating ? t("federatedForm.validating") : t("federatedForm.validate")}
+                {isValidating ? "Validating..." : "Validate"}
               </Button>
               <Button
                 type="submit"
@@ -858,11 +856,11 @@ export function FederatedConnectorForm({
               >
                 {isSubmitting
                   ? isEditMode
-                    ? t("federatedForm.updating")
-                    : t("federatedForm.creating")
+                    ? "Updating..."
+                    : "Creating..."
                   : isEditMode
-                    ? t("federatedForm.update")
-                    : t("federatedForm.create")}
+                    ? "Update"
+                    : "Create"}
               </Button>
             </div>
           </form>

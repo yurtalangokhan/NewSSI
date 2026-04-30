@@ -4,7 +4,6 @@ import { toast } from "@/hooks/useToast";
 import { SlackBot, ValidSources } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
-import { useTranslation } from "react-i18next";
 import { updateSlackBotField } from "@/lib/updateSlackBotField";
 import { SlackTokensForm } from "./SlackTokensForm";
 import { SourceIcon } from "@/components/SourceIcon";
@@ -44,7 +43,6 @@ export const ExistingSlackBotForm = ({
   existingSlackBot: SlackBot;
   refreshSlackBot?: () => void;
 }) => {
-  const { t } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(false);
   const [formValues, setFormValues] = useState(existingSlackBot);
   const router = useRouter();
@@ -146,16 +144,16 @@ export const ExistingSlackBotForm = ({
       <div className="mt-2">
         <div className="inline-block border rounded-lg border-background-200 p-2">
           <Checkbox
-            label={t("admin.bots.updateFormEnabledLabel")}
+            label="Enabled"
             checked={formValues.enabled}
             onChange={(e) => handleUpdateField("enabled", e.target.checked)}
           />
         </div>
         {showDeleteModal && (
           <GenericConfirmModal
-            title={t("admin.bots.deleteTitle")}
-            message={t("admin.bots.deleteMessage")}
-            confirmText={t("admin.bots.deleteConfirm")}
+            title="Delete Slack Bot"
+            message="Are you sure you want to delete this Slack bot? This action cannot be undone."
+            confirmText="Delete"
             onClose={() => setShowDeleteModal(false)}
             onConfirm={async () => {
               try {
@@ -163,10 +161,10 @@ export const ExistingSlackBotForm = ({
                 if (!response.ok) {
                   throw new Error(await response.text());
                 }
-                toast.success(t("admin.bots.deleteSuccess"));
+                toast.success("Slack bot deleted successfully");
                 router.push("/admin/bots");
               } catch (error) {
-                toast.error(t("admin.bots.deleteError"));
+                toast.error("Failed to delete Slack bot");
               }
               setShowDeleteModal(false);
             }}

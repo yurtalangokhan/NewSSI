@@ -40,7 +40,6 @@ import DocumentSetCard from "@/sections/cards/DocumentSetCard";
 import { getDisplayName } from "@/lib/llmConfig/utils";
 import { useLLMProviders } from "@/hooks/useLLMProviders";
 import { Interactive } from "@opal/core";
-import { useTranslation } from "react-i18next";
 
 /**
  * Read-only MCP Server card for the viewer modal.
@@ -53,7 +52,6 @@ interface ViewerMCPServerCardProps {
 
 function ViewerMCPServerCard({ server, tools }: ViewerMCPServerCardProps) {
   const [folded, setFolded] = useState(false);
-  const { t } = useTranslation();
   const serverIcon = getActionIcon(server.server_url, server.name);
 
   return (
@@ -72,7 +70,7 @@ function ViewerMCPServerCard({ server, tools }: ViewerMCPServerCardProps) {
                 rightIcon={folded ? SvgExpand : SvgFold}
                 onClick={() => setFolded((prev) => !prev)}
               >
-                {folded ? t("agentViewer.expandButton") : t("agentViewer.foldButton")}
+                {folded ? "Expand" : "Fold"}
               </Button>
             }
           />
@@ -181,7 +179,6 @@ export interface AgentViewerModalProps {
 export default function AgentViewerModal({ agent }: AgentViewerModalProps) {
   const agentViewerModal = useModal();
   const router = useRouter();
-  const { t } = useTranslation();
   const { allRecentFiles } = useProjectsContext();
   const { llmProviders } = useLLMProviders(agent.id);
   const routeAgentId = agent.external_id ?? agent.id;
@@ -288,7 +285,7 @@ export default function AgentViewerModal({ agent }: AgentViewerModalProps) {
             {agent.featured && (
               <Content
                 icon={SvgStar}
-                title={t("agentViewer.featuredLabel")}
+                title="Featured"
                 sizePreset="main-ui"
                 variant="body"
               />
@@ -303,7 +300,7 @@ export default function AgentViewerModal({ agent }: AgentViewerModalProps) {
             {agent.is_public && (
               <Content
                 icon={SvgOrganization}
-                title={t("agentViewer.publicToOrgLabel")}
+                title="Public to your organization"
                 sizePreset="main-ui"
                 variant="body"
                 prominence="muted"
@@ -318,7 +315,7 @@ export default function AgentViewerModal({ agent }: AgentViewerModalProps) {
           <Separator noPadding />
           <Section gap={0.5} alignItems="start">
             <Content
-              title={t("agentViewer.knowledgeSectionTitle")}
+              title="Knowledge"
               sizePreset="main-content"
               variant="section"
             />
@@ -341,8 +338,10 @@ export default function AgentViewerModal({ agent }: AgentViewerModalProps) {
                 {ragDocumentCollections > 0 && (
                   <Content
                     icon={SvgActions}
-                    title={t("agentViewer.documentProcessingLabel")}
-                    description={t("agentViewer.documentProcessingDescription", { count: ragDocumentCollections })}
+                    title="Document Processing Collections"
+                    description={`${ragDocumentCollections} connected collection${
+                      ragDocumentCollections > 1 ? "s" : ""
+                    }`}
                     sizePreset="main-ui"
                     variant="section"
                   />
@@ -350,21 +349,23 @@ export default function AgentViewerModal({ agent }: AgentViewerModalProps) {
                 {ragGraphCollections > 0 && (
                   <Content
                     icon={SvgActions}
-                    title={t("agentViewer.knowledgeGraphLabel")}
-                    description={t("agentViewer.knowledgeGraphDescription", { count: ragGraphCollections })}
+                    title="Knowledge Graph Collections"
+                    description={`${ragGraphCollections} connected collection${
+                      ragGraphCollections > 1 ? "s" : ""
+                    }`}
                     sizePreset="main-ui"
                     variant="section"
                   />
                 )}
               </Section>
             ) : (
-              <EmptyMessage title={t("agentViewer.noKnowledgeMessage")} />
+              <EmptyMessage title="No Knowledge" />
             )}
           </Section>
 
           {/* Actions & Tools */}
           <SimpleCollapsible>
-            <SimpleCollapsible.Header title={t("agentViewer.actionsAndToolsTitle")} />
+            <SimpleCollapsible.Header title="Actions & Tools" />
             <SimpleCollapsible.Content>
               {hasActions ? (
                 <Section gap={0.5} alignItems="start">
@@ -391,7 +392,7 @@ export default function AgentViewerModal({ agent }: AgentViewerModalProps) {
                           <Content
                             icon={SvgActions}
                             title={toolName}
-                            description={t("agentViewer.mcpToolDescription")}
+                            description="MCP Tool"
                             sizePreset="main-ui"
                             variant="section"
                           />
@@ -401,7 +402,7 @@ export default function AgentViewerModal({ agent }: AgentViewerModalProps) {
                   ))}
                 </Section>
               ) : (
-                <EmptyMessage title={t("agentViewer.noActionsMessage")} />
+                <EmptyMessage title="No Actions" />
               )}
             </SimpleCollapsible.Content>
           </SimpleCollapsible>
@@ -409,12 +410,12 @@ export default function AgentViewerModal({ agent }: AgentViewerModalProps) {
           {/* More Info (Collapsible) */}
           <Separator noPadding />
           <SimpleCollapsible>
-            <SimpleCollapsible.Header title={t("agentViewer.moreInfoTitle")} />
+            <SimpleCollapsible.Header title="More Info" />
             <SimpleCollapsible.Content>
               <Section gap={0.5} alignItems="start">
                 {agent.system_prompt && (
                   <Content
-                    title={t("agentViewer.instructionsLabel")}
+                    title="Instructions"
                     description={agent.system_prompt}
                     sizePreset="main-ui"
                     variant="section"
@@ -422,8 +423,8 @@ export default function AgentViewerModal({ agent }: AgentViewerModalProps) {
                 )}
                 {defaultModel && (
                   <Horizontal
-                    title={t("agentViewer.defaultModelLabel")}
-                    description={t("agentViewer.defaultModelDescription")}
+                    title="Default Model"
+                    description="This model will be used by Onyx by default in your chats."
                     nonInteractive
                     sizePreset="main-ui"
                   >
@@ -432,8 +433,8 @@ export default function AgentViewerModal({ agent }: AgentViewerModalProps) {
                 )}
                 {agent.search_start_date && (
                   <Horizontal
-                    title={t("agentViewer.knowledgeCutoffLabel")}
-                    description={t("agentViewer.knowledgeCutoffDescription")}
+                    title="Knowledge Cutoff Date"
+                    description="Documents with a last-updated date prior to this will be ignored."
                     nonInteractive
                     sizePreset="main-ui"
                   >
@@ -443,8 +444,8 @@ export default function AgentViewerModal({ agent }: AgentViewerModalProps) {
                   </Horizontal>
                 )}
                 <Horizontal
-                  title={t("agentViewer.overwriteSystemPromptsLabel")}
-                  description={t("agentViewer.overwriteSystemPromptsDescription")}
+                  title="Overwrite System Prompts"
+                  description='Remove the base system prompt which includes useful instructions (e.g. "You can use Markdown tables"). This may affect response quality.'
                   nonInteractive
                   sizePreset="main-ui"
                 >
@@ -459,7 +460,7 @@ export default function AgentViewerModal({ agent }: AgentViewerModalProps) {
             <>
               <Separator noPadding />
               <Content
-                title={t("agentViewer.promptRemindersLabel")}
+                title="Prompt Reminders"
                 description={agent.task_prompt}
                 sizePreset="main-content"
                 variant="section"
@@ -472,7 +473,7 @@ export default function AgentViewerModal({ agent }: AgentViewerModalProps) {
             <>
               <Separator noPadding />
               <Content
-                title={t("agentViewer.conversationStartersLabel")}
+                title="Conversation Starters"
                 sizePreset="main-content"
                 variant="section"
               />

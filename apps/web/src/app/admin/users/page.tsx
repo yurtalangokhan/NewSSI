@@ -19,7 +19,8 @@ import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
 import { Spinner } from "@/components/Spinner";
 import { SvgDownloadCloud } from "@opal/icons";
 import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
-import { useTranslation } from "react-i18next";
+import { useRouter } from "next/navigation";
+import type { Route } from "next";
 
 const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.USERS]!;
 
@@ -57,7 +58,6 @@ function UsersTables({
   isDownloadingUsers: boolean;
   setIsDownloadingUsers: (loading: boolean) => void;
 }) {
-  const { t } = useTranslation();
   const [currentUsersCount, setCurrentUsersCount] = useState<number | null>(
     null
   );
@@ -70,7 +70,7 @@ function UsersTables({
     try {
       const response = await fetch("/api/manage/users/download");
       if (!response.ok) {
-        throw new Error(t("admin.users.downloadFailedError", { error: "" }));
+        throw new Error("Failed to download all users");
       }
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
@@ -83,7 +83,7 @@ function UsersTables({
       window.URL.revokeObjectURL(url);
       document.body.removeChild(anchor_tag);
     } catch (error) {
-      toast.error(t("admin.users.downloadFailedError", { error: String(error) }));
+      toast.error(`Failed to download all users - ${error}`);
     } finally {
       //Ensure spinner is visible for at least 1 second
       //This is to avoid the spinner disappearing too quickly
@@ -121,7 +121,7 @@ function UsersTables({
   if (domainsError) {
     return (
       <ErrorCallout
-        errorTitle={t("admin.users.errorLoadingDomains")}
+        errorTitle="Error loading valid domains"
         errorMsg={domainsError?.info?.detail}
       />
     );
@@ -129,18 +129,18 @@ function UsersTables({
 
   const tabs = SimpleTabs.generateTabs({
     current: {
-      name: t("admin.users.currentUsersTab"),
+      name: "Current Users",
       content: (
         <Card className="w-full">
           <CardHeader>
             <div className="flex justify-between items-center gap-1">
-              <CardTitle>{t("admin.users.currentUsersTitle")}</CardTitle>
+              <CardTitle>Current Users</CardTitle>
               <Button
                 leftIcon={SvgDownloadCloud}
                 disabled={isDownloadingUsers}
                 onClick={() => downloadAllUsers()}
               >
-                {isDownloadingUsers ? t("admin.users.downloadingButton") : t("admin.users.downloadCsvButton")}
+                {isDownloadingUsers ? "Downloading..." : "Download CSV"}
               </Button>
             </div>
           </CardHeader>
@@ -149,7 +149,7 @@ function UsersTables({
               q={q}
               countDisplay={
                 <CountDisplay
-                  label={t("admin.users.totalUsersLabel")}
+                  label="Total users"
                   value={currentUsersCount}
                   isLoading={currentUsersLoading}
                 />
@@ -166,42 +166,16 @@ function UsersTables({
         </Card>
       ),
     },
-    invited: {
-      name: t("admin.users.invitedUsersTab"),
-      content: (
-        <Card className="w-full">
-          <CardHeader>
-            <div className="flex justify-between items-center gap-1">
-              <CardTitle>{t("admin.users.invitedUsersTitle")}</CardTitle>
-              <CountDisplay
-                label={t("admin.users.totalInvitedLabel")}
-                value={invitedUsersCount}
-                isLoading={invitedUsersLoading}
-              />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <InvitedUserTable
-              users={invitedUsers || []}
-              mutate={invitedUsersMutate}
-              error={invitedUsersError}
-              isLoading={invitedUsersLoading}
-              q={q}
-            />
-          </CardContent>
-        </Card>
-      ),
-    },
     ...(NEXT_PUBLIC_CLOUD_ENABLED && {
       pending: {
-        name: t("admin.users.pendingUsersTab"),
+        name: "Pending Users",
         content: (
           <Card>
             <CardHeader>
               <div className="flex justify-between items-center gap-1">
-                <CardTitle>{t("admin.users.pendingUsersTitle")}</CardTitle>
+                <CardTitle>Pending Users</CardTitle>
                 <CountDisplay
-                  label={t("admin.users.totalPendingLabel")}
+                  label="Total pending"
                   value={pendingUsersCount}
                   isLoading={pendingUsersLoading}
                 />
@@ -226,7 +200,6 @@ function UsersTables({
 }
 
 function SearchableTables() {
-  const { t } = useTranslation();
   const [query, setQuery] = useState("");
   const [isDownloadingUsers, setIsDownloadingUsers] = useState(false);
 
@@ -236,7 +209,7 @@ function SearchableTables() {
       <div className="flex flex-col gap-y-4">
         <div className="flex flex-row items-center gap-2">
           <InputTypeIn
-            placeholder={t("admin.users.searchPlaceholder")}
+            placeholder="Search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />
@@ -253,70 +226,19 @@ function SearchableTables() {
 }
 
 function AddUserButton() {
-  const { t } = useTranslation();
-  const [bulkAddUsersModal, setBulkAddUsersModal] = useState(false);
-
-  const onSuccess = (emailInviteStatus: EmailInviteStatus) => {
-    mutate(
-      (key) => typeof key === "string" && key.startsWith("/api/manage/users")
-    );
-    setBulkAddUsersModal(false);
-    if (emailInviteStatus === "NOT_CONFIGURED") {
-      toast.warning(t("admin.users.emailNotConfiguredWarning"));
-    } else if (emailInviteStatus === "SEND_FAILED") {
-      toast.warning(t("admin.users.emailSendFailedWarning"));
-    } else {
-      toast.success(t("admin.users.usersInvitedSuccess"));
-    }
-  };
-
-  const onFailure = async (res: Response) => {
-    const error = (await res.json()).detail;
-    toast.error(t("admin.users.inviteFailedError", { error }));
-  };
-
-  const handleInviteClick = () => {
-    setBulkAddUsersModal(true);
-  };
+  const router = useRouter();
 
   return (
-    <>
-      <CreateButton primary onClick={handleInviteClick}>
-        {t("admin.users.inviteUsersButton")}
-      </CreateButton>
-
-      {bulkAddUsersModal && (
-        <Modal open onOpenChange={() => setBulkAddUsersModal(false)}>
-          <Modal.Content>
-            <Modal.Header
-              icon={SvgUserPlus}
-              title={t("admin.users.bulkAddTitle")}
-              onClose={() => setBulkAddUsersModal(false)}
-            />
-            <Modal.Body>
-              <div className="flex flex-col gap-2">
-                <Text as="p">
-                  {t("admin.users.bulkAddDescription")}
-                </Text>
-                <BulkAdd onSuccess={onSuccess} onFailure={onFailure} />
-              </div>
-            </Modal.Body>
-          </Modal.Content>
-        </Modal>
-      )}
-    </>
+    <div className="flex items-center gap-2">
+      <Button onClick={() => router.push("/admin/users/add" as Route)}>Add User</Button>
+    </div>
   );
 }
 
 export default function Page() {
-  const { t } = useTranslation();
   return (
     <SettingsLayouts.Root>
-      <SettingsLayouts.Header
-        title={t(route.titleKey || "", { defaultValue: route.title })}
-        icon={route.icon}
-        separator
-      />
+      <SettingsLayouts.Header title={route.title} icon={route.icon} separator />
       <SettingsLayouts.Body>
         <SearchableTables />
       </SettingsLayouts.Body>

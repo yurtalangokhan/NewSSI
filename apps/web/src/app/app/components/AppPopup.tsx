@@ -7,7 +7,6 @@ import Text from "@/refresh-components/texts/Text";
 import { FormField } from "@/refresh-components/form/FormField";
 import Checkbox from "@/refresh-components/inputs/Checkbox";
 import { useContext, useEffect, useState } from "react";
-import { useTranslation } from "react-i18next";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { transformLinkUri } from "@/lib/utils";
@@ -27,7 +26,6 @@ const CustomLogoHeaderIcon = ({ className, size = 24 }: IconProps) => (
 );
 
 export function AppPopup() {
-  const { t } = useTranslation();
   const [completedFlow, setCompletedFlow] = useState(true);
   const [showConsentError, setShowConsentError] = useState(false);
   const [consentChecked, setConsentChecked] = useState(false);
@@ -78,7 +76,7 @@ export function AppPopup() {
       <Modal.Content width="sm" height="lg">
         <Modal.Header
           icon={headerIcon}
-          title={popupTitle || t("appPopup.defaultTitle")}
+          title={popupTitle || "Welcome to Onyx!"}
         />
         <Modal.Body>
           <div className="overflow-y-auto text-left">
@@ -172,7 +170,8 @@ export function AppPopup() {
                 </div>
                 <FormField.Message
                   messages={{
-                    error: t("appPopup.consentError"),
+                    error:
+                      "You need to agree to the terms to access the application.",
                   }}
                 />
               </FormField>
@@ -193,7 +192,7 @@ export function AppPopup() {
               setCompletedFlow(true);
             }}
           >
-            {t("appPopup.startButton")}
+            Start
           </Button>
         </Modal.Footer>
       </Modal.Content>

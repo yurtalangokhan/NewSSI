@@ -10,7 +10,6 @@ import useFederatedOAuthStatus from "@/hooks/useFederatedOAuthStatus";
 import { SvgLink } from "@opal/icons";
 import { Card } from "@/refresh-components/cards";
 import { ContentAction } from "@opal/layouts";
-import { useTranslation } from "react-i18next";
 
 export interface FederatedConnectorOAuthStatus {
   federated_connector_id: number;
@@ -102,7 +101,6 @@ function useFederatedOauthModal() {
 }
 
 export default function FederatedOAuthModal() {
-  const { t } = useTranslation("modals");
   const settings = useContext(SettingsContext);
 
   const {
@@ -127,10 +125,8 @@ export default function FederatedOAuthModal() {
       <Modal.Content width="sm" height="sm">
         <Modal.Header
           icon={SvgLink}
-          title={t("federatedOAuth.title")}
-          description={t("federatedOAuth.description", {
-            applicationName,
-          })}
+          title="Connect Your Apps"
+          description={`Improve answer quality by letting ${applicationName} search all your connected data.`}
         />
         <Modal.Body>
           {needsAuth.map((connector) => {
@@ -152,7 +148,7 @@ export default function FederatedOAuthModal() {
                       target="_blank"
                       href={connector.authorize_url}
                     >
-                      {t("federatedOAuth.connect")}
+                      Connect
                     </Button>
                   }
                 />
@@ -161,9 +157,7 @@ export default function FederatedOAuthModal() {
           })}
         </Modal.Body>
         <Modal.Footer>
-          <Button onClick={handleOAuthModalSkip}>
-            {t("federatedOAuth.skipForNow")}
-          </Button>
+          <Button onClick={handleOAuthModalSkip}>Skip for now</Button>
         </Modal.Footer>
       </Modal.Content>
     </Modal>

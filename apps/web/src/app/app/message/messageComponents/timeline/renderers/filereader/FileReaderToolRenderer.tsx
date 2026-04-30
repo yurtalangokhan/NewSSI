@@ -1,5 +1,4 @@
 import { useEffect } from "react";
-import { useTranslation } from "react-i18next";
 import { SvgFileText } from "@opal/icons";
 import {
   PacketType,
@@ -68,7 +67,6 @@ export const FileReaderToolRenderer: MessageRenderer<
   {}
 > = ({ packets, onComplete, stopPacketSeen, renderType, children }) => {
   const state = constructFileReaderState(packets);
-  const { t } = useTranslation();
 
   useEffect(() => {
     if (state.isComplete) {
@@ -82,7 +80,7 @@ export const FileReaderToolRenderer: MessageRenderer<
         state.endChar,
         state.totalChars
       )})`
-    : t("timeline.readingFile");
+    : "Reading file";
 
   const isCompact = renderType === RenderType.COMPACT;
 

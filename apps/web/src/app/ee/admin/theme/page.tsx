@@ -14,7 +14,6 @@ import { Formik, Form } from "formik";
 import * as Yup from "yup";
 import { EnterpriseSettings } from "@/interfaces/settings";
 import { useRouter } from "next/navigation";
-import { useTranslation } from "react-i18next";
 
 const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.THEME]!;
 
@@ -29,7 +28,6 @@ const CHAR_LIMITS = {
 };
 
 export default function ThemePage() {
-  const { t } = useTranslation();
   const router = useRouter();
   const settings = useContext(SettingsContext);
   const [selectedLogo, setSelectedLogo] = useState<File | null>(null);
@@ -59,7 +57,7 @@ export default function ThemePage() {
       return true;
     } else {
       const errorMsg = (await response.json()).detail;
-      toast.error(t("admin.theme.failedToUpdateSettings", { error: errorMsg }));
+      alert(`Failed to update settings. ${errorMsg}`);
       return false;
     }
   }
@@ -67,78 +65,63 @@ export default function ThemePage() {
   const validationSchema = Yup.object().shape({
     application_name: Yup.string()
       .trim()
-        .max(
-          CHAR_LIMITS.application_name,
-          t("admin.theme.maximumCharacters", {
-            count: CHAR_LIMITS.application_name,
-          })
-        )
+      .max(
+        CHAR_LIMITS.application_name,
+        `Maximum ${CHAR_LIMITS.application_name} characters`
+      )
       .nullable(),
     logo_display_style: Yup.string()
       .oneOf(["logo_and_name", "logo_only", "name_only"])
       .required(),
     use_custom_logo: Yup.boolean().required(),
     custom_greeting_message: Yup.string()
-        .max(
-          CHAR_LIMITS.custom_greeting_message,
-          t("admin.theme.maximumCharacters", {
-            count: CHAR_LIMITS.custom_greeting_message,
-          })
-        )
+      .max(
+        CHAR_LIMITS.custom_greeting_message,
+        `Maximum ${CHAR_LIMITS.custom_greeting_message} characters`
+      )
       .nullable(),
     custom_header_content: Yup.string()
-        .max(
-          CHAR_LIMITS.custom_header_content,
-          t("admin.theme.maximumCharacters", {
-            count: CHAR_LIMITS.custom_header_content,
-          })
-        )
+      .max(
+        CHAR_LIMITS.custom_header_content,
+        `Maximum ${CHAR_LIMITS.custom_header_content} characters`
+      )
       .nullable(),
     custom_lower_disclaimer_content: Yup.string()
-        .max(
-          CHAR_LIMITS.custom_lower_disclaimer_content,
-          t("admin.theme.maximumCharacters", {
-            count: CHAR_LIMITS.custom_lower_disclaimer_content,
-          })
-        )
+      .max(
+        CHAR_LIMITS.custom_lower_disclaimer_content,
+        `Maximum ${CHAR_LIMITS.custom_lower_disclaimer_content} characters`
+      )
       .nullable(),
     show_first_visit_notice: Yup.boolean().nullable(),
     custom_popup_header: Yup.string()
-        .max(
-          CHAR_LIMITS.custom_popup_header,
-          t("admin.theme.maximumCharacters", {
-            count: CHAR_LIMITS.custom_popup_header,
-          })
-        )
+      .max(
+        CHAR_LIMITS.custom_popup_header,
+        `Maximum ${CHAR_LIMITS.custom_popup_header} characters`
+      )
       .when("show_first_visit_notice", {
         is: true,
-        then: (schema) => schema.required(t("admin.theme.noticeHeaderRequired")),
+        then: (schema) => schema.required("Notice Header is required"),
         otherwise: (schema) => schema.nullable(),
       }),
     custom_popup_content: Yup.string()
-        .max(
-          CHAR_LIMITS.custom_popup_content,
-          t("admin.theme.maximumCharacters", {
-            count: CHAR_LIMITS.custom_popup_content,
-          })
-        )
+      .max(
+        CHAR_LIMITS.custom_popup_content,
+        `Maximum ${CHAR_LIMITS.custom_popup_content} characters`
+      )
       .when("show_first_visit_notice", {
         is: true,
-        then: (schema) => schema.required(t("admin.theme.noticeContentRequired")),
+        then: (schema) => schema.required("Notice Content is required"),
         otherwise: (schema) => schema.nullable(),
       }),
     enable_consent_screen: Yup.boolean().nullable(),
     consent_screen_prompt: Yup.string()
-        .max(
-          CHAR_LIMITS.consent_screen_prompt,
-          t("admin.theme.maximumCharacters", {
-            count: CHAR_LIMITS.consent_screen_prompt,
-          })
-        )
+      .max(
+        CHAR_LIMITS.consent_screen_prompt,
+        `Maximum ${CHAR_LIMITS.consent_screen_prompt} characters`
+      )
       .when("enable_consent_screen", {
         is: true,
-        then: (schema) =>
-          schema.required(t("admin.theme.noticeConsentPromptRequired")),
+        then: (schema) => schema.required("Notice Consent Prompt is required"),
         otherwise: (schema) => schema.nullable(),
       }),
   });
@@ -176,7 +159,7 @@ export default function ThemePage() {
           });
           if (!response.ok) {
             const errorMsg = (await response.json()).detail;
-            toast.error(t("admin.theme.failedToUploadLogo", { error: errorMsg }));
+            alert(`Failed to upload logo. ${errorMsg}`);
             formikHelpers.setSubmitting(false);
             return;
           }
@@ -209,7 +192,7 @@ export default function ThemePage() {
         // dirty comparisons reflect the newly-saved values.
         if (success) {
           formikHelpers.resetForm({ values });
-          toast.success(t("admin.theme.appearanceSettingsSaved"));
+          toast.success("Appearance settings saved successfully!");
         }
 
         formikHelpers.setSubmitting(false);
@@ -231,7 +214,7 @@ export default function ThemePage() {
             <SettingsLayouts.Root>
               <SettingsLayouts.Header
                 title={route.title}
-                description={t("admin.theme.pageDescription")}
+                description="Customize how the application appears to users across your organization."
                 icon={route.icon}
                 rightChildren={
                   <Button
@@ -247,9 +230,7 @@ export default function ThemePage() {
                       await submitForm();
                     }}
                   >
-                    {isSubmitting
-                      ? t("admin.theme.applying")
-                      : t("admin.theme.applyChanges")}
+                    {isSubmitting ? "Applying..." : "Apply Changes"}
                   </Button>
                 }
               />

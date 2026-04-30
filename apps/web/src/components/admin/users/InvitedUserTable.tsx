@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useTranslation } from "react-i18next";
 import {
   Table,
   TableHead,
@@ -26,11 +25,10 @@ interface Props {
 }
 
 const InvitedUserTable = ({ users, mutate, error, isLoading, q }: Props) => {
-  const { t } = useTranslation();
   const [currentPageNum, setCurrentPageNum] = useState<number>(1);
 
   if (!users.length)
-    return <p>{t("admin.users.invitedEmptyState")}</p>;
+    return <p>Users that have been invited will show up here</p>;
 
   const totalPages = Math.ceil(users.length / USERS_PER_PAGE);
 
@@ -52,7 +50,7 @@ const InvitedUserTable = ({ users, mutate, error, isLoading, q }: Props) => {
   if (error) {
     return (
       <ErrorCallout
-        errorTitle={t("admin.users.errorLoadingUsers")}
+        errorTitle="Error loading users"
         errorMsg={error?.info?.detail}
       />
     );
@@ -63,9 +61,9 @@ const InvitedUserTable = ({ users, mutate, error, isLoading, q }: Props) => {
       <Table className="overflow-visible">
         <TableHeader>
           <TableRow>
-            <TableHead>{t("admin.users.emailHeader")}</TableHead>
+            <TableHead>Email</TableHead>
             <TableHead>
-              <div className="flex justify-end">{t("admin.users.actionsHeader")}</div>
+              <div className="flex justify-end">Actions</div>
             </TableHead>
           </TableRow>
         </TableHeader>
@@ -88,7 +86,7 @@ const InvitedUserTable = ({ users, mutate, error, isLoading, q }: Props) => {
           ) : (
             <TableRow>
               <TableCell colSpan={2} className="h-24 text-center">
-                {t("admin.users.noUsersFoundMatching", { query: q })}
+                {`No users found matching "${q}"`}
               </TableCell>
             </TableRow>
           )}

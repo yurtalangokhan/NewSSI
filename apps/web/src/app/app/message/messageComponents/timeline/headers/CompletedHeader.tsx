@@ -12,7 +12,6 @@ import { formatDurationSeconds } from "@/lib/time";
 import { noProp } from "@/lib/utils";
 import MemoriesModal from "@/refresh-components/modals/MemoriesModal";
 import { useCreateModal } from "@/refresh-components/contexts/ModalContext";
-import { useTranslation } from "react-i18next";
 
 // =============================================================================
 // MemoryTagWithTooltip
@@ -123,12 +122,6 @@ export const CompletedHeader = React.memo(function CompletedHeader({
   memoryId = null,
   memoryIndex = null,
 }: CompletedHeaderProps) {
-  const { t } = useTranslation();
-  const stepCountLabel =
-    totalSteps === 1
-      ? t("timeline.stepSingular")
-      : t("timeline.stepPlural");
-
   if (isMemoryOnly) {
     return (
       <div className="flex w-full justify-between">
@@ -146,10 +139,10 @@ export const CompletedHeader = React.memo(function CompletedHeader({
             size="md"
             onClick={noProp(onToggle)}
             rightIcon={isExpanded ? SvgFold : SvgExpand}
-            aria-label={t("timeline.expandTimeline")}
+            aria-label="Expand timeline"
             aria-expanded={isExpanded}
           >
-            {`${totalSteps} ${stepCountLabel}`}
+            {`${totalSteps} ${totalSteps === 1 ? "step" : "steps"}`}
           </Button>
         )}
       </div>
@@ -157,10 +150,8 @@ export const CompletedHeader = React.memo(function CompletedHeader({
   }
 
   const durationText = processingDurationSeconds
-    ? t("timeline.thoughtForDuration", {
-        duration: formatDurationSeconds(processingDurationSeconds),
-      })
-    : t("timeline.thoughtForSomeTime");
+    ? `Thought for ${formatDurationSeconds(processingDurationSeconds)}`
+    : "Thought for some time";
 
   const imageText =
     generatedImageCount > 0
@@ -195,10 +186,10 @@ export const CompletedHeader = React.memo(function CompletedHeader({
           size="md"
           onClick={noProp(onToggle)}
           rightIcon={isExpanded ? SvgFold : SvgExpand}
-          aria-label={t("timeline.expandTimeline")}
+          aria-label="Expand timeline"
           aria-expanded={isExpanded}
         >
-          {`${totalSteps} ${stepCountLabel}`}
+          {`${totalSteps} ${totalSteps === 1 ? "step" : "steps"}`}
         </Button>
       )}
     </div>

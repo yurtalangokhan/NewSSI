@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState } from "react";
-
 import * as SettingsLayouts from "@/layouts/settings-layouts";
 import { Card, type CardProps } from "@/refresh-components/cards";
 import {
@@ -22,7 +21,6 @@ import useCodeInterpreter from "@/hooks/useCodeInterpreter";
 import { updateCodeInterpreter } from "@/lib/admin/code-interpreter/svc";
 import { ContentAction } from "@opal/layouts";
 import { toast } from "@/hooks/useToast";
-import { useTranslation, Trans } from "react-i18next";
 
 const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.CODE_INTERPRETER]!;
 
@@ -41,14 +39,13 @@ function CodeInterpreterCard({
   strikethrough,
   rightContent,
 }: CodeInterpreterCardProps) {
-  const { t } = useTranslation();
   return (
     // TODO (@raunakab): Allow Content to accept strikethrough and middleText
     <Card variant={variant} padding={0.5}>
       <ContentAction
         icon={SvgTerminal}
         title={middleText ? `${title} ${middleText}` : title}
-        description={t("admin.codeInterpreter.description")}
+        description="Built-in Python runtime"
         variant="section"
         sizePreset="main-ui"
         rightChildren={rightContent}
@@ -58,7 +55,6 @@ function CodeInterpreterCard({
 }
 
 function CheckingStatus() {
-  const { t } = useTranslation();
   return (
     <Section
       flexDirection="row"
@@ -68,7 +64,7 @@ function CheckingStatus() {
       padding={0.5}
     >
       <Text mainUiAction text03>
-        {t("admin.codeInterpreter.checking")}
+        Checking...
       </Text>
       <SimpleLoader />
     </Section>
@@ -81,14 +77,11 @@ interface ConnectionStatusProps {
 }
 
 function ConnectionStatus({ healthy, isLoading }: ConnectionStatusProps) {
-  const { t } = useTranslation();
   if (isLoading) {
     return <CheckingStatus />;
   }
 
-  const label = healthy
-    ? t("admin.codeInterpreter.connected")
-    : t("admin.codeInterpreter.connectionLost");
+  const label = healthy ? "Connected" : "Connection Lost";
   const Icon = healthy ? SvgCheckCircle : SvgXOctagon;
   const iconColor = healthy ? "text-status-success-05" : "text-status-error-05";
 
@@ -119,7 +112,6 @@ function ActionButtons({
   onRefresh,
   disabled,
 }: ActionButtonsProps) {
-  const { t } = useTranslation();
   return (
     <Section
       flexDirection="row"
@@ -133,7 +125,7 @@ function ActionButtons({
         size="sm"
         icon={SvgUnplug}
         onClick={onDisconnect}
-        tooltip={t("admin.codeInterpreter.disconnect")}
+        tooltip="Disconnect"
         disabled={disabled}
       />
       <Button
@@ -141,7 +133,7 @@ function ActionButtons({
         size="sm"
         icon={SvgRefreshCw}
         onClick={onRefresh}
-        tooltip={t("admin.codeInterpreter.refresh")}
+        tooltip="Refresh"
         disabled={disabled}
       />
     </Section>
@@ -149,21 +141,19 @@ function ActionButtons({
 }
 
 export default function CodeInterpreterPage() {
-  const { t } = useTranslation();
   const { isHealthy, isEnabled, isLoading, refetch } = useCodeInterpreter();
   const [showDisconnectModal, setShowDisconnectModal] = useState(false);
   const [isReconnecting, setIsReconnecting] = useState(false);
 
   async function handleToggle(enabled: boolean) {
-      const actionKey = enabled ? "reconnect" : "disconnect";
-      const actionLabel = t(`admin.codeInterpreter.${actionKey}`).toLowerCase();
-      setIsReconnecting(enabled);
-      try {
-        const response = await updateCodeInterpreter({ enabled });
-        if (!response.ok) {
-          toast.error(t("admin.codeInterpreter.toastToggleFailed", { action: actionLabel }));
-          return;
-        }
+    const action = enabled ? "reconnect" : "disconnect";
+    setIsReconnecting(enabled);
+    try {
+      const response = await updateCodeInterpreter({ enabled });
+      if (!response.ok) {
+        toast.error(`Failed to ${action} Code Interpreter`);
+        return;
+      }
       setShowDisconnectModal(false);
       refetch();
     } finally {
@@ -175,15 +165,15 @@ export default function CodeInterpreterPage() {
     <SettingsLayouts.Root>
       <SettingsLayouts.Header
         icon={route.icon}
-        title={t(route.titleKey || "", { defaultValue: route.title })}
-        description={t("admin.codeInterpreter.pageDescription")}
+        title={route.title}
+        description="Safe and sandboxed Python runtime available to your LLM. See docs for more details."
         separator
       />
 
       <SettingsLayouts.Body>
         {isEnabled || isLoading ? (
           <CodeInterpreterCard
-            title={t("admin.codeInterpreter.title")}
+            title="Code Interpreter"
             variant={isHealthy ? "primary" : "secondary"}
             strikethrough={!isHealthy}
             rightContent={
@@ -206,8 +196,8 @@ export default function CodeInterpreterPage() {
         ) : (
           <CodeInterpreterCard
             variant="secondary"
-            title={t("admin.navigation.routes.codeInterpreter.title")}
-            middleText={`(${t("admin.codeInterpreter.disconnected")})`}
+            title="Code Interpreter"
+            middleText="(Disconnected)"
             strikethrough={true}
             rightContent={
               <Section flexDirection="row" alignItems="center" padding={0.5}>
@@ -219,7 +209,7 @@ export default function CodeInterpreterPage() {
                     rightIcon={SvgArrowExchange}
                     onClick={() => handleToggle(true)}
                   >
-                    {t("admin.codeInterpreter.reconnect")}
+                    Reconnect
                   </Button>
                 )}
               </Section>
@@ -231,21 +221,21 @@ export default function CodeInterpreterPage() {
       {showDisconnectModal && (
         <ConfirmationModalLayout
           icon={SvgUnplug}
-          title={t("admin.codeInterpreter.disconnectTitle")}
+          title="Disconnect Code Interpreter"
           onClose={() => setShowDisconnectModal(false)}
           submit={
             <Button variant="danger" onClick={() => handleToggle(false)}>
-              {t("admin.codeInterpreter.disconnect")}
+              Disconnect
             </Button>
           }
         >
           <Text as="p" text03>
-            <Trans
-              i18nKey="admin.codeInterpreter.disconnectConfirmation"
-              components={{
-                bold: <Text as="span" mainContentEmphasis text03 />,
-              }}
-            />
+            All running sessions connected to{" "}
+            <Text as="span" mainContentEmphasis text03>
+              Code Interpreter
+            </Text>{" "}
+            will stop working. Note that this will not remove any data from your
+            runtime. You can reconnect to this runtime later if needed.
           </Text>
         </ConfirmationModalLayout>
       )}

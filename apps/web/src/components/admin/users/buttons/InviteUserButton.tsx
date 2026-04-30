@@ -8,7 +8,6 @@ import useSWRMutation from "swr/mutation";
 import Button from "@/refresh-components/buttons/Button";
 import GenericConfirmModal from "@/components/modals/GenericConfirmModal";
 import { useState } from "react";
-import { useTranslation } from "react-i18next";
 
 export const InviteUserButton = ({
   user,
@@ -19,7 +18,6 @@ export const InviteUserButton = ({
   invited: boolean;
   mutate: (() => void) | (() => void)[];
 }) => {
-  const { t } = useTranslation();
   const { trigger: inviteTrigger, isMutating: isInviting } = useSWRMutation(
     "/api/manage/admin/users",
     async (url, { arg }: { arg: { emails: string[] } }) => {
@@ -43,11 +41,11 @@ export const InviteUserButton = ({
         } else {
           mutate.forEach((fn) => fn());
         }
-        toast.success(t("admin.users.singleInviteSuccess"));
+        toast.success("User invited successfully!");
       },
       onError: (errorMsg) => {
         setShowInviteModal(false);
-        toast.error(t("admin.users.singleInviteError", { error: errorMsg }));
+        toast.error(`Unable to invite user - ${errorMsg}`);
       },
     }
   );
@@ -75,11 +73,11 @@ export const InviteUserButton = ({
         } else {
           mutate.forEach((fn) => fn());
         }
-        toast.success(t("admin.users.singleUninviteSuccess"));
+        toast.success("User uninvited successfully!");
       },
       onError: (errorMsg) => {
         setShowInviteModal(false);
-        toast.error(t("admin.users.singleUninviteError", { error: errorMsg }));
+        toast.error(`Unable to uninvite user - ${errorMsg}`);
       },
     }
   );
@@ -101,19 +99,17 @@ export const InviteUserButton = ({
     <>
       {showInviteModal && (
         <GenericConfirmModal
-          title={invited ? t("admin.users.uninviteUserTitle") : t("admin.users.inviteUserTitle")}
-          message={
-            invited
-              ? t("admin.users.uninviteConfirmation", { email: user.email })
-              : t("admin.users.inviteConfirmation", { email: user.email })
-          }
+          title={`${invited ? "Uninvite" : "Invite"} User`}
+          message={`Are you sure you want to ${
+            invited ? "uninvite" : "invite"
+          } ${user.email}?`}
           onClose={() => setShowInviteModal(false)}
           onConfirm={handleConfirm}
         />
       )}
 
       <Button onClick={() => setShowInviteModal(true)} disabled={isMutating}>
-        {invited ? t("admin.users.uninviteButton") : t("admin.users.inviteButton")}
+        {invited ? "Uninvite" : "Invite"}
       </Button>
     </>
   );

@@ -1,7 +1,6 @@
 "use client";
 
 import React, { memo } from "react";
-import { useTranslation } from "react-i18next";
 import { MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
 import { usePinnedAgents, useCurrentAgent } from "@/hooks/useAgents";
 import { cn, noProp } from "@/lib/utils";
@@ -50,7 +49,6 @@ export interface AgentButtonProps {
 const AgentButton = memo(({ agent }: AgentButtonProps) => {
   const currentAgent = useCurrentAgent();
   const { pinnedAgents, togglePinnedAgent } = usePinnedAgents();
-  const { t } = useTranslation();
   const routeAgentId = agent.external_id ?? agent.id;
   const isActuallyPinned = pinnedAgents.some((a) => a.id === agent.id);
   const isCurrentAgent = currentAgent?.id === agent.id;
@@ -80,7 +78,7 @@ const AgentButton = memo(({ agent }: AgentButtonProps) => {
                 internal
                 onClick={noProp(() => togglePinnedAgent(agent, false))}
                 className={cn("hidden group-hover/SidebarTab:flex")}
-                tooltip={t("sidebar.unpinAgent")}
+                tooltip={"Unpin Agent"}
               />
             )
           }

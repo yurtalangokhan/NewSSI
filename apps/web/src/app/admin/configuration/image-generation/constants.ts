@@ -4,8 +4,6 @@ export interface ImageProvider {
   provider_name: string;
   title: string;
   description: string;
-  titleKey?: string;
-  descriptionKey?: string;
 }
 
 export interface ProviderGroup {
@@ -24,7 +22,6 @@ export const IMAGE_PROVIDER_GROUPS: ProviderGroup[] = [
         title: "GPT Image 1.5",
         description:
           "OpenAI's latest Image Generation model with the highest prompt fidelity.",
-        descriptionKey: "admin.imageGeneration.providers.openai.gpt_image_1_5",
       },
       {
         image_provider_id: "openai_gpt_image_1",
@@ -33,7 +30,6 @@ export const IMAGE_PROVIDER_GROUPS: ProviderGroup[] = [
         title: "GPT Image 1",
         description:
           "A capable image generation model from OpenAI with strong prompt adherence.",
-        descriptionKey: "admin.imageGeneration.providers.openai.gpt_image_1",
       },
       {
         image_provider_id: "openai_dalle_3",
@@ -42,7 +38,6 @@ export const IMAGE_PROVIDER_GROUPS: ProviderGroup[] = [
         title: "DALL-E 3",
         description:
           "OpenAI image generation model capable of generating rich and expressive images.",
-        descriptionKey: "admin.imageGeneration.providers.openai.dalle_3",
       },
     ],
   },
@@ -56,7 +51,6 @@ export const IMAGE_PROVIDER_GROUPS: ProviderGroup[] = [
         title: "Azure OpenAI GPT Image 1.5",
         description:
           "GPT Image 1.5 image generation model hosted on Microsoft Azure.",
-        descriptionKey: "admin.imageGeneration.providers.azure.gpt_image_1_5",
       },
       {
         image_provider_id: "azure_gpt_image_1",
@@ -65,7 +59,6 @@ export const IMAGE_PROVIDER_GROUPS: ProviderGroup[] = [
         title: "Azure OpenAI GPT Image 1",
         description:
           "GPT Image 1 image generation model hosted on Microsoft Azure.",
-        descriptionKey: "admin.imageGeneration.providers.azure.gpt_image_1",
       },
       {
         image_provider_id: "azure_dalle_3",
@@ -74,7 +67,6 @@ export const IMAGE_PROVIDER_GROUPS: ProviderGroup[] = [
         title: "Azure OpenAI DALL-E 3",
         description:
           "DALL-E 3 image generation model hosted on Microsoft Azure.",
-        descriptionKey: "admin.imageGeneration.providers.azure.dalle_3",
       },
     ],
   },
@@ -88,7 +80,6 @@ export const IMAGE_PROVIDER_GROUPS: ProviderGroup[] = [
         title: "Gemini 2.5 Flash Image",
         description:
           "Gemini 2.5 Flash Image (Nano Banana) model is designed for speed and efficiency.",
-        descriptionKey: "admin.imageGeneration.providers.vertex_ai.gemini_2_5_flash",
       },
       {
         image_provider_id: "gemini-3-pro-image-preview",
@@ -97,7 +88,6 @@ export const IMAGE_PROVIDER_GROUPS: ProviderGroup[] = [
         title: "Gemini 3 Pro Image Preview",
         description:
           "Gemini 3 Pro Image Preview (Nano Banana Pro) is designed for professional asset production.",
-        descriptionKey: "admin.imageGeneration.providers.vertex_ai.gemini_3_pro",
       },
     ],
   },

@@ -13,7 +13,6 @@ import {
 } from "@opal/icons";
 import { useActionCardContext } from "@/sections/actions/ActionCardContext";
 import { cn } from "@/lib/utils";
-import { useTranslation } from "react-i18next";
 
 interface ActionsProps {
   status: ActionStatus;
@@ -41,7 +40,6 @@ const Actions = React.memo(
     isToolsExpanded,
     onToggleTools,
   }: ActionsProps) => {
-    const { t } = useTranslation();
     const { isHovered: isParentHovered } = useActionCardContext();
     const showViewToolsButton =
       (status === ActionStatus.CONNECTED ||
@@ -66,7 +64,7 @@ const Actions = React.memo(
               >
                 <OpalButton
                   icon={SvgUnplug}
-                  tooltip={t("admin.mcp.disconnectServer")}
+                  tooltip="Disconnect Server"
                   prominence="tertiary"
                   onClick={onDisconnect}
                   aria-label={`Disconnect ${serverName} server`}
@@ -76,7 +74,7 @@ const Actions = React.memo(
             {onManage && (
               <OpalButton
                 icon={SvgSettings}
-                tooltip={t("admin.mcp.manageServer")}
+                tooltip="Manage Server"
                 prominence="tertiary"
                 onClick={onManage}
                 aria-label={`Manage ${serverName} server`}
@@ -91,8 +89,8 @@ const Actions = React.memo(
               aria-label={`View tools for ${serverName}`}
             >
               {status === ActionStatus.FETCHING
-                ? t("admin.mcp.fetchingTools")
-                : t("admin.mcp.viewTools", { count: toolCount ?? 0 })}
+                ? "Fetching tools..."
+                : `View ${toolCount ?? 0} tool${toolCount !== 1 ? "s" : ""}`}
             </Button>
           )}
         </div>
@@ -110,7 +108,7 @@ const Actions = React.memo(
               rightIcon={SvgArrowExchange}
               aria-label={`Authenticate and connect to ${serverName}`}
             >
-              {t("admin.mcp.authenticate")}
+              Authenticate
             </Button>
           )}
           <div
@@ -124,7 +122,7 @@ const Actions = React.memo(
             {onDelete && (
               <OpalButton
                 icon={SvgTrash}
-                tooltip={t("admin.mcp.deleteServer")}
+                tooltip="Delete Server"
                 prominence="tertiary"
                 onClick={onDelete}
                 aria-label={`Delete ${serverName} server`}
@@ -133,7 +131,7 @@ const Actions = React.memo(
             {onManage && (
               <OpalButton
                 icon={SvgSettings}
-                tooltip={t("admin.mcp.manageServer")}
+                tooltip="Manage Server"
                 prominence="tertiary"
                 onClick={onManage}
                 aria-label={`Manage ${serverName} server`}
@@ -155,13 +153,13 @@ const Actions = React.memo(
               rightIcon={SvgPlug}
               aria-label={`Reconnect to ${serverName}`}
             >
-              {t("admin.mcp.reconnect")}
+              Reconnect
             </Button>
           )}
           {onManage && (
             <OpalButton
               icon={SvgSettings}
-              tooltip={t("admin.mcp.manageServer")}
+              tooltip="Manage Server"
               prominence="tertiary"
               onClick={onManage}
               aria-label={`Manage ${serverName} server`}
@@ -176,7 +174,7 @@ const Actions = React.memo(
             aria-label={`View tools for ${serverName}`}
             disabled
           >
-            {t("admin.mcp.viewTools", { count: toolCount ?? 0 })}
+            {`View ${toolCount ?? 0} tool${toolCount !== 1 ? "s" : ""}`}
           </Button>
         )}
       </div>

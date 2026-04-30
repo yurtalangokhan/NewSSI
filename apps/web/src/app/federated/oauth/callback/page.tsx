@@ -1,25 +1,26 @@
 "use client";
 
 import OAuthCallbackPage from "@/components/oauth/OAuthCallbackPage";
-import { useTranslation } from "react-i18next";
+import { getSourceDisplayName } from "@/lib/sources";
 
 export default function FederatedOAuthCallbackPage() {
-  const { t } = useTranslation("auth");
   const federatedConfig = {
-    processingMessage: t("oauthCallback.processing"),
-    processingDetails: t("oauthCallback.federatedProcessingDetails"),
-    successMessage: t("oauthCallback.successTitle"),
-    successDetailsTemplate: t("oauthCallback.federatedSuccess"),
-    errorMessage: t("oauthCallback.errorTitle"),
-    backButtonText: t("oauthCallback.backToChat"),
-    redirectingMessage: t("oauthCallback.federatedRedirecting"),
+    processingMessage: "Processing...",
+    processingDetails: "Please wait while we complete the setup.",
+    successMessage: "Success!",
+    successDetailsTemplate:
+      "Your {serviceName} authorization completed successfully. You can now use this connector for search.",
+    errorMessage: "Something Went Wrong",
+    backButtonText: "Back to Chat",
+    redirectingMessage: "Redirecting to chat in 2 seconds...",
     autoRedirectDelay: 2000,
     defaultRedirectPath: "/app",
     callbackApiUrl: "/api/federated/callback",
     errorMessageMap: {
-      "validation errors": t("oauthCallback.federatedErrorValidation"),
-      client_secret: t("oauthCallback.federatedErrorClientSecret"),
-      oauth: t("oauthCallback.federatedErrorOAuth"),
+      "validation errors":
+        "Configuration error - please check your connector settings",
+      client_secret: "Authentication credentials are missing or invalid",
+      oauth: "OAuth authorization failed",
     },
   };
 

@@ -3,7 +3,6 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { CRAFT_PATH } from "@/app/craft/v1/constants";
-import { useTranslation } from "react-i18next";
 
 /**
  * Build Page - Redirects to the new Build V1 page
@@ -12,7 +11,6 @@ import { useTranslation } from "react-i18next";
  * This page exists for backwards compatibility.
  */
 export default function BuildPage() {
-  const { t } = useTranslation("app");
   const router = useRouter();
 
   useEffect(() => {
@@ -21,7 +19,7 @@ export default function BuildPage() {
 
   return (
     <div className="flex items-center justify-center h-screen">
-      <div className="animate-pulse text-text-03">{t("redirecting")}</div>
+      <div className="animate-pulse text-text-03">Redirecting...</div>
     </div>
   );
 }

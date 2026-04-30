@@ -26,8 +26,6 @@ import { Section } from "@/layouts/general-layouts";
 import { toast } from "@/hooks/useToast";
 import useAppFocus from "@/hooks/useAppFocus";
 import { useSettingsContext } from "@/providers/SettingsProvider";
-import { LanguageSwitcher } from "@/components/LanguageSwitcher";
-import { useTranslation } from "react-i18next";
 
 function getDisplayName(email?: string, personalName?: string): string {
   // Prioritize custom personal name if set
@@ -65,7 +63,6 @@ function SettingsPopover({
   onOpenNotifications,
 }: SettingsPopoverProps) {
   const { user } = useUser();
-  const { t } = useTranslation();
   const { data: notifications } = useSWR<Notification[]>(
     "/api/notifications",
     errorHandlingFetcher,
@@ -93,7 +90,7 @@ function SettingsPopover({
     logout()
       .then((response) => {
         if (!response?.ok) {
-          toast.error(t("userMenu.logoutFailed"));
+          alert("Failed to logout");
           return;
         }
 
@@ -101,7 +98,7 @@ function SettingsPopover({
       })
 
       .catch(() => {
-        toast.error(t("userMenu.logoutFailed"));
+        toast.error("Failed to logout");
       });
   };
 
@@ -115,7 +112,7 @@ function SettingsPopover({
               href="/app/settings"
               onClick={onUserSettingsClick}
             >
-              {t("userMenu.userSettings")}
+              User Settings
             </LineItem>
           </div>,
           <LineItem
@@ -123,9 +120,9 @@ function SettingsPopover({
             icon={SvgBell}
             onClick={onOpenNotifications}
           >
-            {undismissedCount > 0
-              ? t("userMenu.notificationsWithCount", { count: undismissedCount })
-              : t("userMenu.notifications")}
+            {`Notifications${
+              undismissedCount > 0 ? ` (${undismissedCount})` : ""
+            }`}
           </LineItem>,
           <LineItem
             key="help-faq"
@@ -134,15 +131,12 @@ function SettingsPopover({
             target="_blank"
             rel="noopener noreferrer"
           >
-            {t("userMenu.helpFaq")}
+            Help & FAQ
           </LineItem>,
-          <div key="language-switcher">
-            <LanguageSwitcher />
-          </div>,
           null,
           showLogin && (
             <LineItem key="log-in" icon={SvgUser} onClick={handleLogin}>
-              {t("userMenu.logIn")}
+              Log in
             </LineItem>
           ),
           showLogout && (
@@ -152,7 +146,7 @@ function SettingsPopover({
               danger
               onClick={handleLogout}
             >
-              {t("userMenu.logOut")}
+              Log out
             </LineItem>
           ),
         ]}

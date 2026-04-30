@@ -13,7 +13,6 @@ import Button from "@/refresh-components/buttons/Button";
 import Text from "@/refresh-components/texts/Text";
 import { PageSelector } from "@/components/PageSelector";
 import { useEffect, useState, useMemo } from "react";
-import { useTranslation } from "react-i18next";
 import { SvgAlertTriangle } from "@opal/icons";
 export interface IndexAttemptErrorsModalProps {
   errors: {
@@ -35,7 +34,6 @@ export default function IndexAttemptErrorsModal({
   isResolvingErrors = false,
   pageSize: propPageSize,
 }: IndexAttemptErrorsModalProps) {
-  const { t } = useTranslation();
   const [calculatedPageSize, setCalculatedPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -130,10 +128,10 @@ export default function IndexAttemptErrorsModal({
       <Modal.Content width="lg" height="full">
         <Modal.Header
           icon={SvgAlertTriangle}
-          title={t("admin.connector.indexingErrorsTitle")}
+          title="Indexing Errors"
           description={
             isResolvingErrors
-              ? t("admin.connector.resolvingErrorsDescription")
+              ? "Currently attempting to resolve all errors by performing a full re-index. This may take some time to complete."
               : undefined
           }
           onClose={onClose}
@@ -143,10 +141,13 @@ export default function IndexAttemptErrorsModal({
           {!isResolvingErrors && (
             <div className="flex flex-col gap-2 flex-shrink-0">
               <Text as="p">
-                {t("admin.connector.indexingErrorsDescription")}
+                Below are the errors encountered during indexing. Each row
+                represents a failed document or entity.
               </Text>
               <Text as="p">
-                {t("admin.connector.kickoffReindexDescription")}
+                Click the button below to kick off a full re-index to try and
+                resolve these errors. This full re-index may take much longer
+                than a normal update.
               </Text>
             </div>
           )}
@@ -155,10 +156,10 @@ export default function IndexAttemptErrorsModal({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>{t("admin.connector.timeHeader")}</TableHead>
-                  <TableHead>{t("admin.connector.documentIdHeader")}</TableHead>
-                  <TableHead className="w-1/2">{t("admin.connector.errorMessageHeader")}</TableHead>
-                  <TableHead>{t("admin.connector.statusHeader")}</TableHead>
+                  <TableHead>Time</TableHead>
+                  <TableHead>Document ID</TableHead>
+                  <TableHead className="w-1/2">Error Message</TableHead>
+                  <TableHead>Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -176,10 +177,10 @@ export default function IndexAttemptErrorsModal({
                             rel="noopener noreferrer"
                             className="text-link hover:underline"
                           >
-                            {error.document_id || error.entity_id || t("admin.connector.unknown")}
+                            {error.document_id || error.entity_id || "Unknown"}
                           </a>
                         ) : (
-                          error.document_id || error.entity_id || t("admin.connector.unknown")
+                          error.document_id || error.entity_id || "Unknown"
                         )}
                       </TableCell>
                       <TableCell className="h-[60px] align-top p-0">
@@ -195,7 +196,7 @@ export default function IndexAttemptErrorsModal({
                               : "bg-red-100 text-red-800"
                           }`}
                         >
-                          {error.is_resolved ? t("admin.connector.resolved") : t("admin.connector.unresolved")}
+                          {error.is_resolved ? "Resolved" : "Unresolved"}
                         </span>
                       </TableCell>
                     </TableRow>
@@ -206,7 +207,7 @@ export default function IndexAttemptErrorsModal({
                       colSpan={4}
                       className="text-center py-8 text-gray-500"
                     >
-                      {t("admin.connector.noErrorsOnPage")}
+                      No errors found on this page
                     </TableCell>
                   </TableRow>
                 )}
@@ -232,7 +233,7 @@ export default function IndexAttemptErrorsModal({
                     onClick={onResolveAll}
                     className="ml-4 whitespace-nowrap"
                   >
-                    {t("admin.connector.resolveAll")}
+                    Resolve All
                   </Button>
                 )}
               </div>

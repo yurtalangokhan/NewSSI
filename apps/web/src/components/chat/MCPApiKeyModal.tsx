@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input";
 import Label from "@/refresh-components/form/Label";
 import Text from "@/refresh-components/texts/Text";
 import { SvgAlertCircle, SvgEye, SvgEyeClosed, SvgKey } from "@opal/icons";
-import { useTranslation } from "react-i18next";
 interface MCPAuthTemplate {
   headers: Array<{ name: string; value: string }>;
   request_body_params: Array<{ path: string; value: string }>;
@@ -42,7 +41,6 @@ export default function MCPApiKeyModal({
   isAuthenticated = false,
   existingCredentials,
 }: MCPApiKeyModalProps) {
-  const { t } = useTranslation("modals");
   const [apiKey, setApiKey] = useState("");
   const [showApiKey, setShowApiKey] = useState(false);
   const [credentials, setCredentials] = useState<Record<string, string>>({});
@@ -92,7 +90,7 @@ export default function MCPApiKeyModal({
         onClose();
       } catch (error) {
         console.error("Error submitting credentials:", error);
-        let errorMessage = t("mcpApiKey.saveError");
+        let errorMessage = "Failed to save credentials";
         if (error instanceof Error) {
           errorMessage = error.message;
         } else if (typeof error === "string") {
@@ -116,7 +114,7 @@ export default function MCPApiKeyModal({
         onClose();
       } catch (error) {
         console.error("Error submitting API key:", error);
-        let errorMessage = t("mcpApiKey.saveApiKeyError");
+        let errorMessage = "Failed to save API key";
         if (error instanceof Error) {
           errorMessage = error.message;
         } else if (typeof error === "string") {
@@ -152,37 +150,25 @@ export default function MCPApiKeyModal({
     }));
   };
 
-  const credsType = isTemplateMode
-    ? t("mcpApiKey.credentials")
-    : t("mcpApiKey.apiKey");
+  const credsType = isTemplateMode ? "Credentials" : "API Key";
   return (
     <Modal open={isOpen} onOpenChange={handleClose}>
       <Modal.Content width="sm" height="sm">
         <Modal.Header
           icon={SvgKey}
-          title={
-            isAuthenticated
-              ? t("mcpApiKey.manageTitle", { type: credsType })
-              : t("mcpApiKey.enterTitle", { type: credsType })
-          }
+          title={isAuthenticated ? `Manage ${credsType}` : `Enter ${credsType}`}
           onClose={handleClose}
         />
         <Modal.Body>
           <Text as="p">
             {isAuthenticated
-              ? t("mcpApiKey.updateDescription", {
-                  type: credsType,
-                  serverName,
-                })
-              : t("mcpApiKey.enterDescription", {
-                  type: credsType,
-                  serverName,
-                })}
+              ? `Update your ${credsType} for ${serverName}.`
+              : `Enter your ${credsType} for ${serverName} to enable authentication.`}
           </Text>
           <Text as="p" text02>
             {isAuthenticated
-              ? t("mcpApiKey.validationNote")
-              : t("mcpApiKey.storageNote", { type: credsType })}
+              ? "Changes will be validated against the server before being saved."
+              : `Your ${credsType} will be validated against the server and stored securely.`}
           </Text>
 
           {error && (
@@ -213,9 +199,7 @@ export default function MCPApiKeyModal({
                         onChange={(e) =>
                           updateCredential(field, e.target.value)
                         }
-                        placeholder={t("mcpApiKey.fieldPlaceholder", {
-                          field: field.replace(/_/g, " "),
-                        })}
+                        placeholder={`Enter your ${field.replace(/_/g, " ")}`}
                         className="pr-10"
                         required
                       />
@@ -246,9 +230,7 @@ export default function MCPApiKeyModal({
                     type={showApiKey ? "text" : "password"}
                     value={apiKey}
                     onChange={(e) => setApiKey(e.target.value)}
-                    placeholder={t("mcpApiKey.fieldPlaceholder", {
-                      field: credsType,
-                    })}
+                    placeholder={`Enter your ${credsType}`}
                     className="pr-10"
                     required
                   />
@@ -269,7 +251,7 @@ export default function MCPApiKeyModal({
 
             <div className="flex justify-end space-x-2 pt-4">
               <Button secondary onClick={handleClose} disabled={isSubmitting}>
-                {t("mcpApiKey.cancel")}
+                Cancel
               </Button>
               <Button
                 type="submit"
@@ -283,10 +265,10 @@ export default function MCPApiKeyModal({
                 }
               >
                 {isSubmitting
-                  ? t("mcpApiKey.saving")
+                  ? "Saving..."
                   : isAuthenticated
-                    ? t("mcpApiKey.update", { type: credsType })
-                    : t("mcpApiKey.save", { type: credsType })}
+                    ? `Update ${credsType}`
+                    : `Save ${credsType}`}
               </Button>
             </div>
           </form>

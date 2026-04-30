@@ -69,7 +69,6 @@ import { AppModeProvider } from "@/providers/AppModeProvider";
 import { AppBackgroundProvider } from "@/providers/AppBackgroundProvider";
 import { QueryControllerProvider } from "@/providers/QueryControllerProvider";
 import ToastProvider from "@/providers/ToastProvider";
-import I18nProvider from "@/providers/I18nProvider";
 
 interface AppProviderProps {
   children: React.ReactNode;
@@ -87,28 +86,26 @@ export default function AppProvider({
   folded,
 }: AppProviderProps) {
   return (
-    <I18nProvider>
-      <SettingsProvider settings={settings}>
-        <UserProvider
-          settings={settings}
-          user={user}
-          authTypeMetadata={authTypeMetadata}
-        >
-          <AppBackgroundProvider>
-            <ProviderContextProvider>
-              <ModalProvider user={user}>
-                <AppSidebarProvider folded={!!folded}>
-                  <AppModeProvider>
-                    <QueryControllerProvider>
-                      <ToastProvider>{children}</ToastProvider>
-                    </QueryControllerProvider>
-                  </AppModeProvider>
-                </AppSidebarProvider>
-              </ModalProvider>
-            </ProviderContextProvider>
-          </AppBackgroundProvider>
-        </UserProvider>
-      </SettingsProvider>
-    </I18nProvider>
+    <SettingsProvider settings={settings}>
+      <UserProvider
+        settings={settings}
+        user={user}
+        authTypeMetadata={authTypeMetadata}
+      >
+        <AppBackgroundProvider>
+          <ProviderContextProvider>
+            <ModalProvider user={user}>
+              <AppSidebarProvider folded={!!folded}>
+                <AppModeProvider>
+                  <QueryControllerProvider>
+                    <ToastProvider>{children}</ToastProvider>
+                  </QueryControllerProvider>
+                </AppModeProvider>
+              </AppSidebarProvider>
+            </ModalProvider>
+          </ProviderContextProvider>
+        </AppBackgroundProvider>
+      </UserProvider>
+    </SettingsProvider>
   );
 }

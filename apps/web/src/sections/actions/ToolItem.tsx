@@ -13,7 +13,6 @@ import {
   SvgCornerRightUpDot,
   SvgMinusCircle,
 } from "@opal/icons";
-import { useTranslation } from "react-i18next";
 
 type ToolItemVariant = "mcp" | "openapi";
 
@@ -90,7 +89,6 @@ const ToolItem: React.FC<ToolItemProps> = ({
   onToggle,
   className,
 }) => {
-  const { t } = useTranslation();
   const isMcpVariant = variant === "mcp";
 
   const unavailableStyles =
@@ -213,7 +211,7 @@ const ToolItem: React.FC<ToolItemProps> = ({
               <div className="flex gap-0.5 items-center">
                 <div className="flex items-center px-0.5">
                   <Text as="p" text03 secondaryBody className="text-right">
-                    {t("tools.toolUnavailable")}
+                    Tool unavailable
                   </Text>
                 </div>
                 <div className="flex items-center justify-center p-0.5 w-4 h-4">

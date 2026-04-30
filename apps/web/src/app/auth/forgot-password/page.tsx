@@ -13,11 +13,9 @@ import { toast } from "@/hooks/useToast";
 import { Spinner } from "@/components/Spinner";
 import { redirect } from "next/navigation";
 import { NEXT_PUBLIC_FORGOT_PASSWORD_ENABLED } from "@/lib/constants";
-import { useTranslation } from "react-i18next";
 
 const ForgotPasswordPage: React.FC = () => {
   const [isWorking, setIsWorking] = useState(false);
-  const { t } = useTranslation();
 
   if (!NEXT_PUBLIC_FORGOT_PASSWORD_ENABLED) {
     redirect("/auth/login");
@@ -27,7 +25,7 @@ const ForgotPasswordPage: React.FC = () => {
     <AuthFlowContainer>
       <div className="flex flex-col w-full justify-center">
         <div className="flex">
-          <Title className="mb-2 mx-auto font-bold">{t("auth.forgotPassword.title")}</Title>
+          <Title className="mb-2 mx-auto font-bold">Forgot Password</Title>
         </div>
         {isWorking && <Spinner />}
         <Formik
@@ -41,12 +39,14 @@ const ForgotPasswordPage: React.FC = () => {
             setIsWorking(true);
             try {
               await forgotPassword(values.email);
-              toast.success(t("auth.forgotPassword.toastEmailSent"));
+              toast.success(
+                "Password reset email sent. Please check your inbox."
+              );
             } catch (error) {
               const errorMessage =
                 error instanceof Error
                   ? error.message
-                  : t("auth.forgotPassword.toastError");
+                  : "An error occurred. Please try again.";
               toast.error(errorMessage);
             } finally {
               setIsWorking(false);
@@ -57,9 +57,9 @@ const ForgotPasswordPage: React.FC = () => {
             <Form className="w-full flex flex-col items-stretch mt-2">
               <TextFormField
                 name="email"
-                label={t("auth.forgotPassword.emailLabel")}
+                label="Email"
                 type="email"
-                placeholder={t("auth.emailPlaceholder")}
+                placeholder="email@yourcompany.com"
               />
 
               <div className="flex">
@@ -68,7 +68,7 @@ const ForgotPasswordPage: React.FC = () => {
                   disabled={isSubmitting}
                   className="mx-auto w-full"
                 >
-                  {t("auth.forgotPassword.resetButton")}
+                  Reset Password
                 </Button>
               </div>
             </Form>
@@ -77,7 +77,7 @@ const ForgotPasswordPage: React.FC = () => {
         <div className="flex">
           <Text className="mt-4 mx-auto">
             <Link href="/auth/login" className="text-link font-medium">
-              {t("auth.forgotPassword.backToLogin")}
+              Back to Login
             </Link>
           </Text>
         </div>

@@ -4,7 +4,6 @@ import React, { useState, useEffect } from "react";
 import "./loading.css";
 import { ThreeDots } from "react-loader-spinner";
 import { cn } from "@/lib/utils";
-import { useTranslation } from "react-i18next";
 
 interface LoadingAnimationProps {
   text?: string;
@@ -15,7 +14,6 @@ export const LoadingAnimation: React.FC<LoadingAnimationProps> = ({
   text,
   size,
 }) => {
-  const { t } = useTranslation("app");
   const [dots, setDots] = useState("...");
 
   useEffect(() => {
@@ -40,7 +38,7 @@ export const LoadingAnimation: React.FC<LoadingAnimationProps> = ({
   return (
     <span className="loading-animation inline-flex">
       <span className={cn("mx-auto inline-flex", size)}>
-        {text === undefined ? t("loading.thinking") : text}
+        {text === undefined ? "Thinking" : text}
         <span className="dots">{dots}</span>
       </span>
     </span>

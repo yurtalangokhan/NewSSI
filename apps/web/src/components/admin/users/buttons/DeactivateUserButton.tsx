@@ -4,7 +4,6 @@ import Button from "@/refresh-components/buttons/Button";
 import useSWRMutation from "swr/mutation";
 import userMutationFetcher from "@/lib/admin/users/userMutationFetcher";
 import { SvgXCircle } from "@opal/icons";
-import { useTranslation } from "react-i18next";
 const DeactivateUserButton = ({
   user,
   deactivate,
@@ -18,7 +17,6 @@ const DeactivateUserButton = ({
   className?: string;
   children?: string;
 }) => {
-  const { t } = useTranslation();
   const { trigger, isMutating } = useSWRMutation(
     deactivate
       ? "/api/manage/admin/deactivate-user"
@@ -27,11 +25,7 @@ const DeactivateUserButton = ({
     {
       onSuccess: () => {
         mutate();
-        toast.success(
-          deactivate
-            ? t("admin.users.deactivatedSuccess")
-            : t("admin.users.activatedSuccess")
-        );
+        toast.success(`User ${deactivate ? "deactivated" : "activated"}!`);
       },
       onError: (errorMsg) => toast.error(errorMsg.message),
     }

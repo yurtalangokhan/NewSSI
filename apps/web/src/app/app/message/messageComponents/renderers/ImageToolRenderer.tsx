@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo } from "react";
 import { SvgImage } from "@opal/icons";
-import { useTranslation } from "react-i18next";
 import {
   PacketType,
   ImageGenerationToolPacket,
@@ -46,7 +45,6 @@ export const ImageToolRenderer: MessageRenderer<
   ImageGenerationToolPacket,
   {}
 > = ({ packets, onComplete, renderType, children }) => {
-  const { t } = useTranslation();
   const { prompt, images, isGenerating, isComplete, error } =
     constructCurrentImageState(packets);
 
@@ -58,13 +56,13 @@ export const ImageToolRenderer: MessageRenderer<
 
   const status = useMemo(() => {
     if (isComplete) {
-      return `${t("timeline.generatedImages", { count: images.length })}`;
+      return `Generated ${images.length} image${images.length > 1 ? "s" : ""}`;
     }
     if (isGenerating) {
-      return t("timeline.generatingImage");
+      return "Generating image...";
     }
     return null;
-  }, [isComplete, isGenerating, images.length, t]);
+  }, [isComplete, isGenerating, images.length]);
 
   // Render based on renderType
   if (renderType === RenderType.FULL) {
@@ -74,7 +72,7 @@ export const ImageToolRenderer: MessageRenderer<
       return children([
         {
           icon: SvgImage,
-          status: t("timeline.generatingImages"),
+          status: "Generating images...",
           supportsCollapsible: false,
           content: (
             <div className="flex flex-col">
@@ -92,7 +90,9 @@ export const ImageToolRenderer: MessageRenderer<
       return children([
         {
           icon: SvgImage,
-          status: `${t("timeline.generatedImages", { count: images.length })}`,
+          status: `Generated ${images.length} image${
+            images.length !== 1 ? "s" : ""
+          }`,
           supportsCollapsible: false,
           content: (
             <div className="flex flex-col my-1">
@@ -140,7 +140,7 @@ export const ImageToolRenderer: MessageRenderer<
     return children([
       {
         icon: SvgImage,
-        status: t("timeline.generatingImage"),
+        status: "Generating image...",
         supportsCollapsible: false,
         content: (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -155,7 +155,7 @@ export const ImageToolRenderer: MessageRenderer<
                 style={{ animationDelay: "0.2s" }}
               ></div>
             </div>
-            <span>{t("timeline.generatingImage")}</span>
+            <span>Generating image...</span>
           </div>
         ),
       },
@@ -166,11 +166,11 @@ export const ImageToolRenderer: MessageRenderer<
     return children([
       {
         icon: SvgImage,
-        status: t("timeline.imageGenerationFailed"),
+        status: "Image generation failed",
         supportsCollapsible: false,
         content: (
           <div className="text-sm text-red-600 dark:text-red-400">
-            {t("timeline.imageGenerationFailed")}
+            Image generation failed
           </div>
         ),
       },
@@ -181,11 +181,14 @@ export const ImageToolRenderer: MessageRenderer<
     return children([
       {
         icon: SvgImage,
-        status: `${t("timeline.generatedImages", { count: images.length })}`,
+        status: `Generated ${images.length} image${
+          images.length > 1 ? "s" : ""
+        }`,
         supportsCollapsible: false,
         content: (
           <div className="text-sm text-muted-foreground">
-            {t("timeline.generatedImages", { count: images.length })}
+            Generated {images.length} image
+            {images.length > 1 ? "s" : ""}
           </div>
         ),
       },

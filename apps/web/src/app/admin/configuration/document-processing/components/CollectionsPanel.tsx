@@ -15,7 +15,6 @@ import {
 } from "@/lib/langconnect";
 import { useAirbyteDatasources } from "@/lib/airbyte";
 import { SvgHardDrive, SvgPlus, SvgTrash } from "@opal/icons";
-import { useTranslation } from "react-i18next";
 
 interface CollectionsPanelProps {
   selectedCollectionId: string | null;
@@ -26,7 +25,6 @@ export default function CollectionsPanel({
   selectedCollectionId,
   onCollectionSelect,
 }: CollectionsPanelProps) {
-  const { t } = useTranslation();
   const { collections: allCollections, isLoading: collectionsLoading, mutate } = useCollections();
   const { datasources, isLoading: dsLoading } = useAirbyteDatasources();
   const isLoading = collectionsLoading || dsLoading;
@@ -62,13 +60,9 @@ export default function CollectionsPanel({
       onCollectionSelect(created.uuid);
       setNewName("");
       setIsCreating(false);
-      toast.success(t("admin.documentProcessing.collectionCreated", { name: created.name }));
+      toast.success(`Collection "${created.name}" created.`);
     } catch (e) {
-      toast.error(
-        e instanceof Error
-          ? e.message
-          : t("admin.documentProcessing.collectionCreateFailed")
-      );
+      toast.error(e instanceof Error ? e.message : "Failed to create collection");
     } finally {
       setIsSubmitting(false);
     }
@@ -85,13 +79,9 @@ export default function CollectionsPanel({
       await deleteCollection(selectedCollectionId);
       await mutate();
       onCollectionSelect(null);
-      toast.success(t("admin.documentProcessing.collectionDeleted"));
+      toast.success("Collection deleted.");
     } catch (e) {
-      toast.error(
-        e instanceof Error
-          ? e.message
-          : t("admin.documentProcessing.collectionDeleteFailed")
-      );
+      toast.error(e instanceof Error ? e.message : "Failed to delete collection");
     } finally {
       setIsDeleting(false);
     }
@@ -102,12 +92,14 @@ export default function CollectionsPanel({
       <div className="flex items-center gap-2 border-b border-border-01 pb-3">
         <SvgHardDrive className="h-4 w-4 stroke-text-03" aria-hidden />
         <Text as="p" headingH3 text05>
-          {t("admin.documentProcessing.ragCollections")}
+          RAG Collections
         </Text>
       </div>
 
       <Text as="p" mainContentBody text04 className="leading-relaxed">
-        {t("admin.documentProcessing.ragCollectionsDescription")}
+        Collections store your documents as vector embeddings in PGVector.
+        Select an existing collection or create a new one to manage documents
+        and run semantic search.
       </Text>
 
       {isLoading ? (
@@ -119,7 +111,7 @@ export default function CollectionsPanel({
               {collections.length === 0 ? (
                 <div className="flex items-center h-9 rounded-08 border border-border-01 bg-background-neutral-01 px-3">
                   <Text as="p" mainUiMuted text03>
-                    {t("admin.documentProcessing.noCollections")}
+                    No collections yet — create one below
                   </Text>
                 </div>
               ) : (
@@ -129,14 +121,14 @@ export default function CollectionsPanel({
                     onCollectionSelect(v || null, v ? isDatasourceCollection(v) : undefined)
                   }
                 >
-                  <InputSelect.Trigger placeholder={t("admin.documentProcessing.selectCollection")} />
+                  <InputSelect.Trigger placeholder="Select a collection..." />
                   <InputSelect.Content>
                     {collections.map((c) => (
                       <InputSelect.Item key={c.uuid} value={c.uuid}>
                         {c.name}
                         {isDatasourceCollection(c.uuid) && (
                           <span className="ml-2 text-[10px] font-medium uppercase tracking-wide text-text-03 bg-background-neutral-02 border border-border-01 rounded px-1 py-0.5">
-                            {t("admin.documentProcessing.datasource")}
+                            Datasource
                           </span>
                         )}
                       </InputSelect.Item>
@@ -154,7 +146,7 @@ export default function CollectionsPanel({
                 setNewName("");
               }}
             >
-              {t("admin.documentProcessing.newCollection")}
+              New Collection
             </Button>
 
             {selectedCollectionId && (
@@ -164,7 +156,7 @@ export default function CollectionsPanel({
                 onClick={handleDelete}
                 disabled={isDeleting}
               >
-                {isDeleting ? t("admin.documentProcessing.deleting") : t("modals.delete")}
+                {isDeleting ? "Deleting…" : "Delete"}
               </Button>
             )}
           </div>
@@ -173,7 +165,7 @@ export default function CollectionsPanel({
             <div className="flex items-center gap-2 pt-1">
               <div className="flex-1">
                 <InputTypeIn
-                  placeholder={t("admin.documentProcessing.collectionName")}
+                  placeholder="Collection name"
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
                   onKeyDown={(e) => {
@@ -188,11 +180,9 @@ export default function CollectionsPanel({
                 onClick={handleCreate}
                 disabled={isSubmitting || !newName.trim()}
               >
-                {isSubmitting
-                  ? t("admin.documentProcessing.creating")
-                  : t("admin.documentProcessing.create")}
+                {isSubmitting ? "Creating…" : "Create"}
               </Button>
-              <Button onClick={() => setIsCreating(false)}>{t("modals.cancel")}</Button>
+              <Button onClick={() => setIsCreating(false)}>Cancel</Button>
             </div>
           )}
 
@@ -204,7 +194,7 @@ export default function CollectionsPanel({
               </Text>
               {selectedIsDatasource && (
                 <Text as="span" mainContentMuted text03 className="text-xs italic ml-auto">
-                  {t("admin.documentProcessing.readOnlyDatasourceCollection")}
+                  Read-only datasource collection
                 </Text>
               )}
             </div>

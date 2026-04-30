@@ -105,7 +105,7 @@ function mapBackendToFrontend(packet: BackendPacket): { placement: any; obj: any
         placement: defaultPlacement,
         obj: {
           type: "custom_tool_start",
-          tool_name: `[step] ${(packet as any).step_name ?? ""}`,
+          tool_name: `[step] ${(packet as any).step_name ?? "step"}`,
         },
       };
     

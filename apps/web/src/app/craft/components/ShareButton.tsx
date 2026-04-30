@@ -11,7 +11,6 @@ import Popover from "@/refresh-components/Popover";
 import Truncated from "@/refresh-components/texts/Truncated";
 import { Section } from "@/layouts/general-layouts";
 import { ContentAction } from "@opal/layouts";
-import { useTranslation } from "react-i18next";
 
 interface ShareButtonProps {
   sessionId: string;
@@ -20,31 +19,29 @@ interface ShareButtonProps {
   onScopeChange?: () => void;
 }
 
+const SCOPE_OPTIONS: {
+  value: SharingScope;
+  label: string;
+  description: string;
+}[] = [
+  {
+    value: "private",
+    label: "Private",
+    description: "Only you can view this app.",
+  },
+  {
+    value: "public_org",
+    label: "Organization",
+    description: "Anyone logged into your Onyx can view this app.",
+  },
+];
+
 export default function ShareButton({
   sessionId,
   webappUrl,
   sharingScope: initialScope,
   onScopeChange,
 }: ShareButtonProps) {
-  const { t } = useTranslation();
-
-  const SCOPE_OPTIONS: {
-    value: SharingScope;
-    label: string;
-    description: string;
-  }[] = [
-    {
-      value: "private",
-      label: t("craftComponents.private"),
-      description: t("craftComponents.privateDesc"),
-    },
-    {
-      value: "public_org",
-      label: t("craftComponents.organization"),
-      description: t("craftComponents.organizationDesc"),
-    },
-  ];
-
   const [isOpen, setIsOpen] = useState(false);
   const [sharingScope, setSharingScope] = useState<SharingScope>(initialScope);
   const [copyState, setCopyState] = useState<"idle" | "copied" | "error">(
@@ -105,9 +102,9 @@ export default function ShareButton({
             primary={isShared}
             tertiary={!isShared}
             leftIcon={SvgLink}
-            aria-label={t("craftComponents.shareWebapp")}
+            aria-label="Share webapp"
           >
-            {isShared ? t("craftComponents.shared") : t("craftComponents.share")}
+            {isShared ? "Shared" : "Share"}
           </Button>
         </Popover.Trigger>
         <Popover.Content side="bottom" align="end" width="lg" sideOffset={4}>
@@ -176,7 +173,7 @@ export default function ShareButton({
                           : SvgCopy
                     }
                     onClick={handleCopy}
-                    aria-label={t("craftComponents.copyLink")}
+                    aria-label="Copy link"
                   />
                 </Section>
               </div>

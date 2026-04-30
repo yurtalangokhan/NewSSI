@@ -10,7 +10,6 @@ import { UserGroup } from "@/lib/types";
 import { Scope } from "./types";
 import { toast } from "@/hooks/useToast";
 import { SvgSettings } from "@opal/icons";
-import { useTranslation } from "react-i18next";
 interface CreateRateLimitModalProps {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
@@ -31,7 +30,6 @@ export default function CreateRateLimitModal({
   forSpecificScope,
   forSpecificUserGroup,
 }: CreateRateLimitModalProps) {
-  const { t } = useTranslation();
   const [modalUserGroups, setModalUserGroups] = useState([]);
   const [shouldFetchUserGroups, setShouldFetchUserGroups] = useState(
     forSpecificScope === Scope.USER_GROUP
@@ -49,7 +47,7 @@ export default function CreateRateLimitModal({
         setModalUserGroups(options);
         setShouldFetchUserGroups(false);
       } catch (error) {
-        toast.error(t("admin.tokenRateLimits.fetchUserGroupsError", { error }));
+        toast.error(`Failed to fetch user groups: ${error}`);
       }
     };
 
@@ -63,7 +61,7 @@ export default function CreateRateLimitModal({
       <Modal.Content width="sm" height="sm">
         <Modal.Header
           icon={SvgSettings}
-          title={t("admin.tokenRateLimits.createModalTitle")}
+          title="Create a Token Rate Limit"
           onClose={() => setIsOpen(false)}
         />
         <Modal.Body>
@@ -77,17 +75,17 @@ export default function CreateRateLimitModal({
             }}
             validationSchema={Yup.object().shape({
               period_hours: Yup.number()
-                .required(t("admin.tokenRateLimits.timeWindowRequired"))
-                .min(1, t("admin.tokenRateLimits.timeWindowMin")),
+                .required("Time Window is a required field")
+                .min(1, "Time Window must be at least 1 hour"),
               token_budget: Yup.number()
-                .required(t("admin.tokenRateLimits.tokenBudgetRequired"))
-                .min(1, t("admin.tokenRateLimits.tokenBudgetMin")),
+                .required("Token Budget is a required field")
+                .min(1, "Token Budget must be at least 1"),
               target_scope: Yup.string().required(
-                t("admin.tokenRateLimits.targetScopeRequired")
+                "Target Scope is a required field"
               ),
               user_group_id: Yup.string().test(
                 "user_group_id",
-                t("admin.tokenRateLimits.userGroupRequired"),
+                "User Group is a required field",
                 (value, context) => {
                   return (
                     context.parent.target_scope !== "user_group" ||
@@ -113,11 +111,11 @@ export default function CreateRateLimitModal({
                 {!forSpecificScope && (
                   <SelectorFormField
                     name="target_scope"
-                    label={t("admin.tokenRateLimits.targetScopeLabel")}
+                    label="Target Scope"
                     options={[
-                      { name: t("admin.tokenRateLimits.scopeGlobal"), value: Scope.GLOBAL },
-                      { name: t("admin.tokenRateLimits.scopeUser"), value: Scope.USER },
-                      { name: t("admin.tokenRateLimits.scopeUserGroup"), value: Scope.USER_GROUP },
+                      { name: "Global", value: Scope.GLOBAL },
+                      { name: "User", value: Scope.USER },
+                      { name: "User Group", value: Scope.USER_GROUP },
                     ]}
                     includeDefault={false}
                     onSelect={(selected) => {
@@ -132,25 +130,25 @@ export default function CreateRateLimitModal({
                   values.target_scope === Scope.USER_GROUP && (
                     <SelectorFormField
                       name="user_group_id"
-                      label={t("admin.tokenRateLimits.userGroupLabel")}
+                      label="User Group"
                       options={modalUserGroups}
                       includeDefault={false}
                     />
                   )}
                 <TextFormField
                   name="period_hours"
-                  label={t("admin.tokenRateLimits.timeWindowLabel")}
+                  label="Time Window (Hours)"
                   type="number"
                   placeholder=""
                 />
                 <TextFormField
                   name="token_budget"
-                  label={t("admin.tokenRateLimits.tokenBudgetLabel")}
+                  label="Token Budget (Thousands)"
                   type="number"
                   placeholder=""
                 />
                 <Button type="submit" disabled={isSubmitting}>
-                  {t("admin.tokenRateLimits.createSubmitButton")}
+                  Create
                 </Button>
               </Form>
             )}

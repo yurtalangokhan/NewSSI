@@ -18,7 +18,6 @@ import {
 import { mutate } from "swr";
 import { testEmbedding } from "@/app/admin/embeddings/pages/utils";
 import { SvgSettings } from "@opal/icons";
-import { useTranslation } from "react-i18next";
 
 export interface ChangeCredentialsModalProps {
   provider: CloudEmbeddingProvider;
@@ -39,7 +38,6 @@ export default function ChangeCredentialsModal({
   isProxy = false,
   isAzure = false,
 }: ChangeCredentialsModalProps) {
-  const { t } = useTranslation();
   const [apiKey, setApiKey] = useState("");
   const [apiUrl, setApiUrl] = useState("");
   const [modelName, setModelName] = useState("");
@@ -72,14 +70,14 @@ export default function ChangeCredentialsModal({
           setApiKey(JSON.stringify(jsonContent));
         } catch (parseError) {
           throw new Error(
-            t("changeCredentials.failedParseJson")
+            "Failed to parse JSON file. Please ensure it's a valid JSON."
           );
         }
       } catch (error) {
         setTestError(
           error instanceof Error
             ? error.message
-            : t("changeCredentials.unknownFileError")
+            : "An unknown error occurred while processing the file."
         );
         setApiKey("");
         clearFileInput();
@@ -108,7 +106,7 @@ export default function ChangeCredentialsModal({
       onDeleted();
     } catch (error) {
       setDeletionError(
-        error instanceof Error ? error.message : t("changeCredentials.unknownError")
+        error instanceof Error ? error.message : "An unknown error occurred"
       );
     }
   };
@@ -120,7 +118,7 @@ export default function ChangeCredentialsModal({
       .split(" ")[0];
 
     if (!normalizedProviderType) {
-      setTestError(t("changeCredentials.providerTypeInvalid"));
+      setTestError("Provider type is invalid or missing.");
       return;
     }
 
@@ -155,7 +153,9 @@ export default function ChangeCredentialsModal({
         const errorData = await updateResponse.json();
         throw new Error(
           errorData.detail ||
-            t("changeCredentials.failedUpdate", { type: isProxy ? "API URL" : "API key" })
+            `Failed to update provider- check your ${
+              isProxy ? "API URL" : "API key"
+            }`
         );
       }
 
@@ -165,7 +165,7 @@ export default function ChangeCredentialsModal({
       onConfirm();
     } catch (error) {
       setTestError(
-        error instanceof Error ? error.message : t("changeCredentials.unknownError")
+        error instanceof Error ? error.message : "An unknown error occurred"
       );
     }
   };
@@ -174,23 +174,24 @@ export default function ChangeCredentialsModal({
       <Modal.Content>
         <Modal.Header
           icon={SvgSettings}
-          title={isProxy
-            ? t("changeCredentials.modifyConfigTitle", { provider: getFormattedProviderName(provider.provider_type) })
-            : t("changeCredentials.modifyKeyTitle", { provider: getFormattedProviderName(provider.provider_type) })}
+          title={`Modify your ${getFormattedProviderName(
+            provider.provider_type
+          )} ${isProxy ? "Configuration" : "key"}`}
           onClose={onCancel}
         />
         <Modal.Body>
           {!isAzure && (
             <>
               <Text as="p">
-                {isProxy ? t("changeCredentials.modifyDescWithUrl") : t("changeCredentials.modifyDesc")}
+                You can modify your configuration by providing a new API key
+                {isProxy ? " or API URL." : "."}
               </Text>
 
               <div className="flex flex-col gap-2">
-                <Label className="mt-2">{t("changeCredentials.apiKey")}</Label>
+                <Label className="mt-2">API Key</Label>
                 {useFileUpload ? (
                   <>
-                    <Label className="mt-2">{t("changeCredentials.uploadJson")}</Label>
+                    <Label className="mt-2">Upload JSON File</Label>
                     <input
                       ref={fileInputRef}
                       type="file"
@@ -198,7 +199,7 @@ export default function ChangeCredentialsModal({
                       onChange={handleFileUpload}
                       className="text-lg w-full p-1"
                     />
-                    {fileName && <p>{t("changeCredentials.uploadedFile", { name: fileName })}</p>}
+                    {fileName && <p>Uploaded file: {fileName}</p>}
                   </>
                 ) : (
                   <>
@@ -207,14 +208,14 @@ export default function ChangeCredentialsModal({
                       className="border border-border rounded w-full py-2 px-3 bg-background-emphasis"
                       value={apiKey}
                       onChange={(e: any) => setApiKey(e.target.value)}
-                      placeholder={t("changeCredentials.pasteApiKey")}
+                      placeholder="Paste your API key here"
                     />
                   </>
                 )}
 
                 {isProxy && (
                   <>
-                    <Label className="mt-2">{t("changeCredentials.apiUrl")}</Label>
+                    <Label className="mt-2">API URL</Label>
 
                     <input
                       className={`
@@ -228,7 +229,7 @@ export default function ChangeCredentialsModal({
                       `}
                       value={apiUrl}
                       onChange={(e: any) => setApiUrl(e.target.value)}
-                      placeholder={t("changeCredentials.pasteApiUrl")}
+                      placeholder="Paste your API URL here"
                     />
 
                     {deletionError && (
@@ -238,9 +239,10 @@ export default function ChangeCredentialsModal({
                     )}
 
                     <div>
-                      <Label className="mt-2">{t("changeCredentials.testModel")}</Label>
+                      <Label className="mt-2">Test Model</Label>
                       <Text as="p">
-                        {t("changeCredentials.liteLlmNote")}
+                        Since you are using a liteLLM proxy, we&apos;ll need a
+                        model name to test the connection with.
                       </Text>
                     </div>
                     <input
@@ -255,7 +257,7 @@ export default function ChangeCredentialsModal({
                    `}
                       value={modelName}
                       onChange={(e: any) => setModelName(e.target.value)}
-                      placeholder={t("changeCredentials.pasteModelName")}
+                      placeholder="Paste your model name here"
                     />
                   </>
                 )}
@@ -271,7 +273,7 @@ export default function ChangeCredentialsModal({
                   onClick={() => handleSubmit()}
                   disabled={!apiKey}
                 >
-                  {t("changeCredentials.updateConfig")}
+                  Update Configuration
                 </Button>
 
                 <Separator />
@@ -280,14 +282,15 @@ export default function ChangeCredentialsModal({
           )}
 
           <Text as="p" className="mt-4 font-bold">
-            {t("changeCredentials.canDelete")}
+            You can delete your configuration.
           </Text>
           <Text as="p">
-            {t("changeCredentials.deleteNote")}
+            This is only possible if you have already switched to a different
+            embedding type!
           </Text>
 
           <Button className="mr-auto" onClick={handleDelete} danger>
-            {t("changeCredentials.deleteConfig")}
+            Delete Configuration
           </Button>
           {deletionError && (
             <Callout type="danger" title="Error">

@@ -15,19 +15,26 @@ import { toast } from "@/hooks/useToast";
 import { SvgSearch } from "@opal/icons";
 import { cn } from "@/lib/utils";
 import { ThreeDotsLoader } from "@/components/Loading";
-import { useTranslation } from "react-i18next";
 
 const SEARCH_TYPES: {
   value: SearchType;
+  label: string;
+  description: string;
 }[] = [
   {
     value: "entity",
+    label: "Entity",
+    description: "Search by entity similarity",
   },
   {
     value: "cypher",
+    label: "Cypher",
+    description: "Graph traversal query",
   },
   {
     value: "hybrid",
+    label: "Hybrid",
+    description: "Combined vector + graph",
   },
 ];
 
@@ -38,7 +45,6 @@ interface GraphSearchPanelProps {
 export default function GraphSearchPanel({
   collectionId,
 }: GraphSearchPanelProps) {
-  const { t } = useTranslation();
   const [query, setQuery] = useState("");
   const [searchType, setSearchType] = useState<SearchType>("hybrid");
   const [limit, setLimit] = useState(10);
@@ -65,7 +71,7 @@ export default function GraphSearchPanel({
       const res = await searchGraph(input);
       setResult(res);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : t("admin.kg.graphSearchFailed"));
+      toast.error(e instanceof Error ? e.message : "Graph search failed");
     } finally {
       setIsSearching(false);
     }
@@ -74,10 +80,11 @@ export default function GraphSearchPanel({
   return (
     <CardSection className="flex flex-col gap-4">
       <Text as="p" headingH3 text05>
-        {t("admin.kg.graphSearchTitle")}
+        Graph Search
       </Text>
       <Text as="p" mainContentBody text04 className="leading-relaxed">
-        {t("admin.kg.graphSearchDescription")}
+        Query the knowledge graph using entity similarity, Cypher graph
+        traversal, or a hybrid approach combining both.
       </Text>
 
       {/* Search type selector */}
@@ -88,10 +95,10 @@ export default function GraphSearchPanel({
           text03
           className="text-xs font-medium uppercase tracking-wide"
         >
-          {t("admin.kg.searchType")}
+          Search Type
         </Text>
         <div className="grid grid-cols-3 gap-2">
-          {SEARCH_TYPES.map(({ value }) => (
+          {SEARCH_TYPES.map(({ value, label, description }) => (
             <button
               key={value}
               onClick={() => setSearchType(value)}
@@ -103,10 +110,10 @@ export default function GraphSearchPanel({
               )}
             >
               <Text as="span" mainUiAction text04 className="text-sm font-medium">
-                {t(`admin.kg.searchTypes.${value}.label`)}
+                {label}
               </Text>
               <Text as="span" mainContentMuted text03 className="text-xs">
-                {t(`admin.kg.searchTypes.${value}.description`)}
+                {description}
               </Text>
             </button>
           ))}
@@ -119,7 +126,7 @@ export default function GraphSearchPanel({
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center justify-between">
               <Text as="p" mainContentMuted text03 className="text-xs">
-                {t("admin.kg.vectorWeight")}
+                Vector Weight
               </Text>
               <Text
                 as="p"
@@ -143,7 +150,7 @@ export default function GraphSearchPanel({
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center justify-between">
               <Text as="p" mainContentMuted text03 className="text-xs">
-                {t("admin.kg.graphWeight")}
+                Graph Weight
               </Text>
               <Text
                 as="p"
@@ -171,7 +178,7 @@ export default function GraphSearchPanel({
       <div className="flex gap-2 items-center flex-wrap">
         <div className="flex-1 min-w-[200px]">
           <InputTypeIn
-            placeholder={t("admin.kg.searchQueryPlaceholder")}
+            placeholder="Enter your search query..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSearch()}
@@ -179,7 +186,7 @@ export default function GraphSearchPanel({
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
           <Text as="span" mainContentMuted text03 className="text-xs whitespace-nowrap">
-            {t("admin.kg.limit")}
+            Limit
           </Text>
           <input
             type="number"
@@ -197,7 +204,7 @@ export default function GraphSearchPanel({
           onClick={handleSearch}
           disabled={!collectionId || !query.trim() || isSearching}
         >
-          {t("admin.kg.search")}
+          Search
         </Button>
       </div>
 
@@ -220,7 +227,7 @@ export default function GraphSearchPanel({
                 text03
                 className="text-xs font-medium mb-2 uppercase tracking-wide"
               >
-                {t("admin.kg.context")}
+                Context
               </Text>
               <Text
                 as="p"
@@ -242,7 +249,7 @@ export default function GraphSearchPanel({
                 text03
                 className="text-xs font-medium uppercase tracking-wide"
               >
-                {t("admin.kg.nodes")} ({result.nodes.length})
+                Nodes ({result.nodes.length})
               </Text>
               <div className="flex flex-col gap-1.5 max-h-48 overflow-y-auto pr-1">
                 {result.nodes.map((node) => (
@@ -271,7 +278,7 @@ export default function GraphSearchPanel({
                 text03
                 className="text-xs font-medium uppercase tracking-wide"
               >
-                {t("admin.kg.relationships")} ({result.edges.length})
+                Relationships ({result.edges.length})
               </Text>
               <div className="flex flex-col gap-1.5 max-h-48 overflow-y-auto pr-1">
                 {result.edges.map((edge) => {
@@ -316,7 +323,7 @@ export default function GraphSearchPanel({
                 text03
                 className="text-sm text-center py-4"
               >
-                {t("admin.kg.noResultsFound")}
+                No results found.
               </Text>
             )}
         </div>

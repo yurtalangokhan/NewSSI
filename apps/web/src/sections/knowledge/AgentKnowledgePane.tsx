@@ -27,7 +27,6 @@ import {
   useKnowledgeCollections,
   type KnowledgeCollection,
 } from "@/hooks/useKnowledgeCollections";
-import { useTranslation } from "react-i18next";
 
 // Knowledge pane view states
 type KnowledgeView = "main" | "add" | "document-processing" | "knowledge-graph";
@@ -82,7 +81,6 @@ function KnowledgeSidebar({
   onNavigateToDocumentProcessing,
   onNavigateToKnowledgeGraph,
 }: KnowledgeSidebarProps) {
-  const { t } = useTranslation();
   return (
     <TableLayouts.SidebarLayout aria-label="knowledge-sidebar">
       <LineItem
@@ -102,7 +100,7 @@ function KnowledgeSidebar({
           ) : undefined
         }
       >
-        {t("agentKnowledge.documentProcessing")}
+        Document Processing
       </LineItem>
 
       <LineItem
@@ -122,7 +120,7 @@ function KnowledgeSidebar({
           ) : undefined
         }
       >
-        {t("agentKnowledge.knowledgeGraph")}
+        Knowledge Graph
       </LineItem>
     </TableLayouts.SidebarLayout>
   );
@@ -161,14 +159,11 @@ function KnowledgeTable<T>({
   onToggleItem,
   searchValue,
   onSearchChange,
-  searchPlaceholder,
-  emptyMessage,
+  searchPlaceholder = "Search...",
+  emptyMessage = "No items available.",
   isLoading,
   ariaLabelPrefix,
 }: KnowledgeTableProps<T>) {
-  const { t } = useTranslation();
-  const resolvedSearchPlaceholder = searchPlaceholder ?? t("agentKnowledge.searchPlaceholder");
-  const resolvedEmptyMessage = emptyMessage ?? t("agentKnowledge.noItemsAvailable");
   if (isLoading) {
     return (
       <GeneralLayouts.Section height="auto" padding={1}>
@@ -185,7 +180,7 @@ function KnowledgeTable<T>({
             leftSearchIcon
             value={searchValue ?? ""}
             onChange={(e) => onSearchChange?.(e.target.value)}
-            placeholder={resolvedSearchPlaceholder}
+            placeholder={searchPlaceholder}
             variant="internal"
           />
         </GeneralLayouts.Section>
@@ -223,7 +218,7 @@ function KnowledgeTable<T>({
       {items.length === 0 ? (
         <GeneralLayouts.Section height="auto" padding={1}>
           <Text text03 secondaryBody>
-            {resolvedEmptyMessage}
+            {emptyMessage}
           </Text>
         </GeneralLayouts.Section>
       ) : (
@@ -287,7 +282,6 @@ function CollectionTableContent({
   ariaLabelPrefix,
 }: CollectionTableContentProps) {
   const [searchValue, setSearchValue] = useState("");
-  const { t } = useTranslation();
 
   const filteredCollections = useMemo(() => {
     if (!searchValue) return collections;
@@ -298,7 +292,7 @@ function CollectionTableContent({
   const columns: KnowledgeTableColumn<KnowledgeCollection>[] = [
     {
       key: "name",
-      header: t("agentKnowledge.columnName"),
+      header: "Name",
       render: (col) => (
         <div className="flex items-center gap-2 min-w-0">
           <Text className="truncate">{col.name}</Text>
@@ -312,7 +306,7 @@ function CollectionTableContent({
     },
     {
       key: "status",
-      header: t("agentKnowledge.columnStatus"),
+      header: "Status",
       width: 6,
       render: (col) => (
         <div className="flex items-center gap-1.5">
@@ -334,7 +328,7 @@ function CollectionTableContent({
       onToggleItem={onToggle}
       searchValue={searchValue}
       onSearchChange={setSearchValue}
-      searchPlaceholder={t("agentKnowledge.searchCollections")}
+      searchPlaceholder="Search collections..."
       emptyMessage={emptyMessage}
       isLoading={isLoading}
       ariaLabelPrefix={ariaLabelPrefix}
@@ -371,7 +365,6 @@ const KnowledgeTwoColumnView = memo(function KnowledgeTwoColumnView({
   onDocumentCollectionToggle,
   onGraphCollectionToggle,
 }: KnowledgeTwoColumnViewProps) {
-  const { t } = useTranslation();
   return (
     <TableLayouts.TwoColumnLayout minHeight={18.75}>
       <KnowledgeSidebar
@@ -389,7 +382,7 @@ const KnowledgeTwoColumnView = memo(function KnowledgeTwoColumnView({
             selectedIds={selectedDocumentCollectionIds}
             onToggle={onDocumentCollectionToggle}
             isLoading={isLoading}
-            emptyMessage={t("agentKnowledge.noDatasourcesFound")}
+            emptyMessage="No datasources found. Add a datasource in the Data Sources page."
             ariaLabelPrefix="doc-collection-row"
           />
         )}
@@ -399,7 +392,7 @@ const KnowledgeTwoColumnView = memo(function KnowledgeTwoColumnView({
             selectedIds={selectedGraphCollectionIds}
             onToggle={onGraphCollectionToggle}
             isLoading={isLoading}
-            emptyMessage={t("agentKnowledge.noKnowledgeGraphCollections")}
+            emptyMessage="No collections with a built knowledge graph. Build a knowledge graph from the Knowledge Graph page first."
             ariaLabelPrefix="graph-collection-row"
           />
         )}
@@ -425,7 +418,6 @@ const KnowledgeAddView = memo(function KnowledgeAddView({
   selectedDocumentCollectionIds,
   selectedGraphCollectionIds,
 }: KnowledgeAddViewProps) {
-  const { t } = useTranslation();
   return (
     <GeneralLayouts.Section
       gap={0.5}
@@ -442,7 +434,7 @@ const KnowledgeAddView = memo(function KnowledgeAddView({
       >
         <LineItem
           icon={SvgFiles}
-          description={t("agentKnowledge.vectorSimilaritySearch")}
+          description="Vector similarity search"
           onClick={onNavigateToDocumentProcessing}
           emphasized={selectedDocumentCollectionIds.length > 0}
           aria-label="knowledge-add-document-processing"
@@ -454,12 +446,12 @@ const KnowledgeAddView = memo(function KnowledgeAddView({
             ) : undefined
           }
         >
-          {t("agentKnowledge.documentProcessing")}
+          Document Processing
         </LineItem>
 
         <LineItem
           icon={SvgNetworkGraph}
-          description={t("agentKnowledge.neo4jHybridSearch")}
+          description="Neo4j hybrid search"
           onClick={onNavigateToKnowledgeGraph}
           emphasized={selectedGraphCollectionIds.length > 0}
           aria-label="knowledge-add-knowledge-graph"
@@ -471,7 +463,7 @@ const KnowledgeAddView = memo(function KnowledgeAddView({
             ) : undefined
           }
         >
-          {t("agentKnowledge.knowledgeGraph")}
+          Knowledge Graph
         </LineItem>
       </GeneralLayouts.Section>
     </GeneralLayouts.Section>
@@ -495,7 +487,6 @@ const KnowledgeMainContent = memo(function KnowledgeMainContent({
   onAddKnowledge,
   onViewEdit,
 }: KnowledgeMainContentProps) {
-  const { t } = useTranslation();
   if (!hasAnyKnowledge) {
     return (
       <GeneralLayouts.Section
@@ -505,7 +496,7 @@ const KnowledgeMainContent = memo(function KnowledgeMainContent({
         height="auto"
       >
         <Text text03 secondaryBody>
-          {t("agentKnowledge.addKnowledgeDescription")}
+          Add documents or connected sources to use for this agent.
         </Text>
         <OpalButton
           icon={SvgPlusCircle}
@@ -525,7 +516,8 @@ const KnowledgeMainContent = memo(function KnowledgeMainContent({
       height="auto"
     >
       <Text as="p" text03 secondaryBody>
-        {t("agentKnowledge.knowledgeSourcesSelected", { count: totalSelected })}
+        {totalSelected} knowledge source{totalSelected !== 1 ? "s" : ""}{" "}
+        selected
       </Text>
       <Button
         internal
@@ -533,7 +525,7 @@ const KnowledgeMainContent = memo(function KnowledgeMainContent({
         onClick={onViewEdit}
         aria-label="knowledge-view-edit"
       >
-        {t("agentKnowledge.viewEdit")}
+        View / Edit
       </Button>
     </GeneralLayouts.Section>
   );
@@ -553,7 +545,6 @@ export default function AgentKnowledgePane({
 }: AgentKnowledgePaneProps) {
   const [view, setView] = useState<KnowledgeView>("main");
   const { collections, isLoading } = useKnowledgeCollections(enableKnowledge);
-  const { t } = useTranslation();
 
   // Reset view when knowledge is disabled
   useEffect(() => {
@@ -663,8 +654,8 @@ export default function AgentKnowledgePane({
   return (
     <GeneralLayouts.Section gap={0.5} alignItems="stretch" height="auto">
       <Content
-        title={t("agentKnowledge.title")}
-        description={t("agentKnowledge.description")}
+        title="Knowledge"
+        description="Add specific connectors and documents for this agent to use to inform its responses."
         sizePreset="main-content"
         variant="section"
       />
@@ -672,8 +663,8 @@ export default function AgentKnowledgePane({
       <Card>
         <GeneralLayouts.Section gap={0.5} alignItems="stretch" height="auto">
           <InputLayouts.Horizontal
-            title={t("agentKnowledge.useKnowledge")}
-            description={t("agentKnowledge.useKnowledgeDescription")}
+            title="Use Knowledge"
+            description="Let this agent reference these documents to inform its responses."
           >
             <Switch
               name="enable_knowledge"

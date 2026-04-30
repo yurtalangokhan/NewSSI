@@ -8,7 +8,6 @@ import { FileDescriptor } from "@/app/app/interfaces";
 import { cn } from "@/lib/utils";
 import TextViewModal from "@/sections/modals/TextViewModal";
 import { MinimalOnyxDocument } from "@/lib/search/interfaces";
-import { useTranslation } from "react-i18next";
 
 export interface ExpandableContentWrapperProps {
   fileDescriptor: FileDescriptor;
@@ -28,7 +27,6 @@ export default function ExpandableContentWrapper({
   close,
   ContentComponent,
 }: ExpandableContentWrapperProps) {
-  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [fadeIn, setFadeIn] = useState(false);
@@ -51,11 +49,8 @@ export default function ExpandableContentWrapper({
   const downloadFile = () => {
     const a = document.createElement("a");
     a.href = `api/chat/file/${fileDescriptor.id}`;
-    a.download = fileDescriptor.name || t("filePreview.defaultDownloadName");
-    a.setAttribute(
-      "download",
-      fileDescriptor.name || t("filePreview.defaultDownloadName")
-    );
+    a.download = fileDescriptor.name || "download.csv";
+    a.setAttribute("download", fileDescriptor.name || "download.csv");
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -71,7 +66,7 @@ export default function ExpandableContentWrapper({
       <CardHeader className="w-full bg-background-tint-02 top-0 p-3">
         <div className="flex justify-between items-center">
           <Text className="text-ellipsis line-clamp-1" text03 mainUiAction>
-            {fileDescriptor.name || t("filePreview.untitled")}
+            {fileDescriptor.name || "Untitled"}
           </Text>
           <div className="flex flex-row items-center justify-end gap-1">
             <Button
@@ -79,25 +74,21 @@ export default function ExpandableContentWrapper({
               size="sm"
               onClick={downloadFile}
               icon={SvgDownloadCloud}
-              tooltip={t("filePreview.downloadFile")}
+              tooltip="Download file"
             />
             <Button
               prominence="tertiary"
               size="sm"
               onClick={toggleExpand}
               icon={expanded ? SvgFold : SvgMaximize2}
-              tooltip={
-                expanded
-                  ? t("filePreview.minimize")
-                  : t("filePreview.fullScreen")
-              }
+              tooltip={expanded ? "Minimize" : "Full screen"}
             />
             <Button
               prominence="tertiary"
               size="sm"
               onClick={close}
               icon={SvgX}
-              tooltip={t("filePreview.hide")}
+              tooltip="Hide"
             />
           </div>
         </div>

@@ -2,8 +2,6 @@
 
 import { withFormik, FormikProps, FormikErrors, Form, Field } from "formik";
 import Button from "@/refresh-components/buttons/Button";
-import { useTranslation } from "react-i18next";
-import i18n from "@/i18n/config";
 
 const WHITESPACE_SPLIT = /\s+/;
 const EMAIL_REGEX = /[^@]+@[^.]+\.[^.]/;
@@ -45,31 +43,28 @@ const AddUserFormRenderer = ({
   errors,
   isSubmitting,
   handleSubmit,
-}: FormikProps<FormValues>) => {
-  const { t } = useTranslation();
-  return (
-    <Form className="w-full" onSubmit={handleSubmit}>
-      <Field
-        id="emails"
-        name="emails"
-        as="textarea"
-        className="w-full p-4"
-        onKeyDown={(e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            handleSubmit();
-          }
-        }}
-      />
-      {touched.emails && errors.emails && (
-        <div className="text-error text-sm">{errors.emails}</div>
-      )}
-      <Button type="submit" disabled={isSubmitting} className="self-end">
-        {t("admin.users.addButton")}
-      </Button>
-    </Form>
-  );
-};
+}: FormikProps<FormValues>) => (
+  <Form className="w-full" onSubmit={handleSubmit}>
+    <Field
+      id="emails"
+      name="emails"
+      as="textarea"
+      className="w-full p-4"
+      onKeyDown={(e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          handleSubmit();
+        }
+      }}
+    />
+    {touched.emails && errors.emails && (
+      <div className="text-error text-sm">{errors.emails}</div>
+    )}
+    <Button type="submit" disabled={isSubmitting} className="self-end">
+      Add
+    </Button>
+  </Form>
+);
 
 const AddUserForm = withFormik<FormProps, FormValues>({
   mapPropsToValues: (props) => {
@@ -80,11 +75,11 @@ const AddUserForm = withFormik<FormProps, FormValues>({
   validate: (values: FormValues): FormikErrors<FormValues> => {
     const emails = normalizeEmails(values.emails);
     if (!emails.length) {
-      return { emails: i18n.t("admin.users.emailRequired") };
+      return { emails: "Required" };
     }
     for (let email of emails) {
       if (!email.match(EMAIL_REGEX)) {
-        return { emails: i18n.t("admin.users.invalidEmailError", { email }) };
+        return { emails: `${email} is not a valid email` };
       }
     }
     return {};

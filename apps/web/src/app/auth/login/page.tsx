@@ -9,7 +9,6 @@ import { redirect } from "next/navigation";
 import type { Route } from "next";
 import AuthFlowContainer from "@/components/auth/AuthFlowContainer";
 import LoginPage from "./LoginPage";
-import { LoginAdminNote } from "./LoginAdminNote";
 import { AuthType } from "@/lib/constants";
 
 export interface PageProps {
@@ -99,7 +98,7 @@ export default async function Page(props: PageProps) {
     (authTypeMetadata.authType === AuthType.GOOGLE_OAUTH ||
       authTypeMetadata.authType === AuthType.OIDC ||
       authTypeMetadata.authType === AuthType.SAML) ? (
-      <LoginAdminNote />
+      <>Need access? Reach out to your IT admin to get access.</>
     ) : undefined;
 
   return (

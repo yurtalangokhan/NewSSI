@@ -27,7 +27,6 @@ import { Section } from "@/layouts/general-layouts";
 import useFilter from "@/hooks/useFilter";
 import { Button as OpalButton } from "@opal/components";
 import ScrollIndicatorDiv from "@/refresh-components/ScrollIndicatorDiv";
-import { useTranslation } from "react-i18next";
 
 function getIcon(
   file: ProjectFile,
@@ -39,15 +38,12 @@ function getIcon(
   return SvgFileText;
 }
 
-function getDescription(
-  file: ProjectFile,
-  t: (key: string) => string
-): string {
+function getDescription(file: ProjectFile): string {
   const s = String(file.status || "");
   const typeLabel = getFileExtension(file.name);
-  if (s === UserFileStatus.PROCESSING) return t("app.userFiles.processing");
-  if (s === UserFileStatus.UPLOADING) return t("app.userFiles.uploading");
-  if (s === UserFileStatus.DELETING) return t("app.userFiles.deleting");
+  if (s === UserFileStatus.PROCESSING) return "Processing...";
+  if (s === UserFileStatus.UPLOADING) return "Uploading...";
+  if (s === UserFileStatus.DELETING) return "Deleting...";
   if (s === UserFileStatus.COMPLETED) return typeLabel;
   return file.status ?? typeLabel;
 }
@@ -67,14 +63,13 @@ function FileAttachment({
   onView,
   onDelete,
 }: FileAttachmentProps) {
-  const { t } = useTranslation();
   const isProcessing =
     String(file.status) === UserFileStatus.PROCESSING ||
     String(file.status) === UserFileStatus.UPLOADING ||
     String(file.status) === UserFileStatus.DELETING;
 
   const Icon = getIcon(file, isProcessing);
-  const description = getDescription(file, t);
+  const description = getDescription(file);
   const rightText = file.last_accessed_at
     ? formatRelativeTime(file.last_accessed_at)
     : "";
@@ -123,7 +118,6 @@ export default function UserFilesModal({
   onPickRecent,
   onUnpickRecent,
 }: UserFilesModalProps) {
-  const { t } = useTranslation();
   const { isOpen, toggle } = useModal();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(
     () => new Set(selectedFileIds || [])
@@ -188,7 +182,7 @@ export default function UserFilesModal({
             <Section flexDirection="row" gap={0.5}>
               <InputTypeIn
                 ref={searchInputRef}
-                placeholder={t("app.userFiles.searchPlaceholder")}
+                placeholder="Search files..."
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 leftSearchIcon
@@ -204,7 +198,7 @@ export default function UserFilesModal({
                   secondary={false}
                   internal
                 >
-                  {t("app.userFiles.addFilesButton")}
+                  Add Files
                 </CreateButton>
               )}
             </Section>
@@ -217,7 +211,7 @@ export default function UserFilesModal({
           >
             {/* File display section */}
             {filtered.length === 0 ? (
-              <Text text03>{t("app.userFiles.noFilesFound")}</Text>
+              <Text text03>No files found</Text>
             ) : (
               <ScrollIndicatorDiv className="p-2 gap-2 max-h-[70vh]">
                 {filtered.map((projectFle) => {
@@ -260,11 +254,7 @@ export default function UserFilesModal({
                 {!query.trim() && !showOnlySelected && (
                   <TextSeparator
                     count={recentFiles.length}
-                    text={
-                      recentFiles.length === 1
-                        ? t("app.userFiles.fileSingular")
-                        : t("app.userFiles.filePlural")
-                    }
+                    text={recentFiles.length === 1 ? "File" : "Files"}
                   />
                 )}
               </ScrollIndicatorDiv>
@@ -276,13 +266,8 @@ export default function UserFilesModal({
             {onPickRecent && (
               <Section flexDirection="row" justifyContent="start" gap={0.5}>
                 <Text as="p" text03>
-                  {selectedCount === 1
-                    ? t("app.userFiles.fileSelectedSingular", {
-                        count: selectedCount,
-                      })
-                    : t("app.userFiles.fileSelectedPlural", {
-                        count: selectedCount,
-                      })}
+                  {selectedCount} {selectedCount === 1 ? "file" : "files"}{" "}
+                  selected
                 </Text>
                 <OpalButton
                   icon={SvgEye}
@@ -303,7 +288,7 @@ export default function UserFilesModal({
 
             {/* Right side: Done button */}
             <Button secondary onClick={() => toggle(false)}>
-              {t("app.userFiles.doneButton")}
+              Done
             </Button>
           </Modal.Footer>
         </Modal.Content>

@@ -8,7 +8,6 @@ import { SvgSliders } from "@opal/icons";
 import { useUser } from "@/providers/UserProvider";
 import { useAuthType } from "@/lib/hooks";
 import { AuthType } from "@/lib/constants";
-import { useTranslation } from "react-i18next";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -22,12 +21,11 @@ export default function Layout({ children }: LayoutProps) {
   const showPasswordSection = Boolean(user?.password_configured);
   const showTokensSection = authType !== null;
   const showAccountsAccessTab = showPasswordSection || showTokensSection;
-  const { t } = useTranslation();
 
   return (
     <AppLayouts.Root>
       <SettingsLayouts.Root width="lg">
-        <SettingsLayouts.Header icon={SvgSliders} title={t("settingsLayout.title")} separator />
+        <SettingsLayouts.Header icon={SvgSliders} title="Settings" separator />
 
         <SettingsLayouts.Body>
           <div className="grid grid-cols-[auto_1fr]">
@@ -37,27 +35,27 @@ export default function Layout({ children }: LayoutProps) {
                 href="/app/settings/general"
                 transient={pathname === "/app/settings/general"}
               >
-                {t("settingsLayout.generalTab")}
+                General
               </SidebarTab>
               <SidebarTab
                 href="/app/settings/chat-preferences"
                 transient={pathname === "/app/settings/chat-preferences"}
               >
-                {t("settingsLayout.chatPreferencesTab")}
+                Chat Preferences
               </SidebarTab>
               {showAccountsAccessTab && (
                 <SidebarTab
                   href="/app/settings/accounts-access"
                   transient={pathname === "/app/settings/accounts-access"}
                 >
-                  {t("settingsLayout.accountsAccessTab")}
+                  Accounts & Access
                 </SidebarTab>
               )}
               <SidebarTab
                 href="/app/settings/connectors"
                 transient={pathname === "/app/settings/connectors"}
               >
-                {t("settingsLayout.connectorsTab")}
+                Connectors
               </SidebarTab>
             </div>
 

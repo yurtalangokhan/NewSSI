@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { useTranslation } from "react-i18next";
 import * as SettingsLayouts from "@/layouts/settings-layouts";
 import { Section } from "@/layouts/general-layouts";
 import * as InputLayouts from "@/layouts/input-layouts";
@@ -85,7 +84,6 @@ interface SelectedConnectorState {
  * Uses SettingsLayouts like AgentEditorPage does.
  */
 export default function BuildConfigPage() {
-  const { t } = useTranslation("app");
   const { isAdmin, isCurator } = useUser();
   const { llmProviders } = useLLMProviders();
   const { openPersonaEditor, openLlmSetup } = useOnboarding();
@@ -374,8 +372,8 @@ export default function BuildConfigPage() {
       <SettingsLayouts.Root>
         <SettingsLayouts.Header
           icon={SvgPlug}
-          title={t("craft.configureTitle")}
-          description={t("craft.configureDescription")}
+          title="Configure Onyx Craft"
+          description="Select data sources and your default LLM"
           rightChildren={
             <div className="flex items-center gap-2">
               <Button
@@ -383,13 +381,13 @@ export default function BuildConfigPage() {
                 onClick={handleRestoreChanges}
                 disabled={!hasChanges || isUpdating}
               >
-                {t("craft.restoreChanges")}
+                Restore Changes
               </Button>
               <Button
                 onClick={handleUpdate}
                 disabled={!hasChanges || isUpdating || isPreProvisioning}
               >
-                {isUpdating || isPreProvisioning ? t("craft.updating") : t("craft.update")}
+                {isUpdating || isPreProvisioning ? "Updating..." : "Update"}
               </Button>
             </div>
           }
@@ -398,7 +396,7 @@ export default function BuildConfigPage() {
           {isLoading ? (
             <Card variant="tertiary">
               <Section alignItems="center" gap={0.5} height="fit">
-                <Text mainContentBody>{t("craft.loading")}</Text>
+                <Text mainContentBody>Loading...</Text>
               </Section>
             </Card>
           ) : (
@@ -411,20 +409,20 @@ export default function BuildConfigPage() {
               >
                 <Card>
                   <InputLayouts.Horizontal
-                    title={t("craft.yourDemoPersona")}
+                    title="Your Demo Persona"
                     description={
                       firstName && lastName && positionText
                         ? `${firstName} ${lastName}, ${positionText} at ${DEMO_COMPANY_NAME}`
                         : positionText
                           ? `${positionText} at ${DEMO_COMPANY_NAME}`
-                          : t("craft.notSet")
+                          : "Not set"
                     }
                     center
                   >
                     <SimpleTooltip
                       tooltip={
                         !hasLlmProvider
-                          ? t("craft.configureLlmFirst")
+                          ? "Configure an LLM provider first"
                           : undefined
                       }
                       disabled={hasLlmProvider}
@@ -446,7 +444,7 @@ export default function BuildConfigPage() {
                   }
                   title={
                     isUpdating || isPreProvisioning
-                      ? t("craft.sessionBeingProvisioned")
+                      ? "Please wait while your session is being provisioned"
                       : undefined
                   }
                 >
@@ -458,8 +456,8 @@ export default function BuildConfigPage() {
                     }`}
                   >
                     <InputLayouts.Horizontal
-                      title={t("craft.defaultLlm")}
-                      description={t("craft.selectLanguageModel")}
+                      title="Default LLM"
+                      description="Select the language model to craft with"
                       center
                     >
                       <BuildLLMPopover
@@ -493,19 +491,19 @@ export default function BuildConfigPage() {
                 <div className="w-full flex items-center justify-between">
                   <div className="flex flex-col gap-0.25">
                     <Text mainContentEmphasis text04>
-                      {t("craft.connectors")}
+                      Connectors
                     </Text>
                     <Text secondaryBody text03>
-                      {t("craft.connectYourOwnDataSources")}
+                      Connect your own data sources
                     </Text>
                   </div>
                   <div className="w-fit flex-shrink-0">
                     <SimpleTooltip
                       tooltip={
                         isUpdating || isPreProvisioning
-                          ? t("craft.sessionBeingProvisioned")
+                          ? "Please wait while your session is being provisioned"
                           : !hasConnectorEverSucceeded
-                            ? t("craft.connectAndSyncToDisableDemo")
+                            ? "Connect and sync a data source to disable demo data"
                             : undefined
                       }
                       disabled={
@@ -534,7 +532,7 @@ export default function BuildConfigPage() {
                           }`}
                         >
                           <div className="flex items-center gap-2">
-                            <SimpleTooltip tooltip={t("craft.demoDatasetContains")}>
+                            <SimpleTooltip tooltip="The demo dataset contains 1000 files across various connectors">
                               <span className="inline-flex items-center cursor-help">
                                 <SvgInfoSmall
                                   size={16}
@@ -542,7 +540,7 @@ export default function BuildConfigPage() {
                                 />
                               </span>
                             </SimpleTooltip>
-                            <Text mainUiAction>{t("craft.useDemoDataset")}</Text>
+                            <Text mainUiAction>Use Demo Dataset</Text>
                           </div>
                           <Switch
                             checked={pendingDemoData ?? demoDataEnabled}

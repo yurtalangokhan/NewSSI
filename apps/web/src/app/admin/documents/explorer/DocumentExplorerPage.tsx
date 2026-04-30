@@ -5,7 +5,6 @@ import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
 import { Explorer } from "./Explorer";
 import { Connector } from "@/lib/connectors/connectors";
 import { DocumentSetSummary } from "@/lib/types";
-import { useTranslation } from "react-i18next";
 
 interface DocumentExplorerPageProps {
   initialSearchValue: string | undefined;
@@ -18,16 +17,11 @@ export default function DocumentExplorerPage({
   connectors,
   documentSets,
 }: DocumentExplorerPageProps) {
-  const { t } = useTranslation();
   const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.DOCUMENT_EXPLORER]!;
 
   return (
     <SettingsLayouts.Root>
-      <SettingsLayouts.Header
-        icon={route.icon}
-        title={t(route.titleKey || "", { defaultValue: route.title })}
-        separator
-      />
+      <SettingsLayouts.Header icon={route.icon} title={route.title} separator />
 
       <SettingsLayouts.Body>
         <Explorer

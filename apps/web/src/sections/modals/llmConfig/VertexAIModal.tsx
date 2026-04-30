@@ -19,7 +19,6 @@ import {
 import { AdvancedOptions } from "./components/AdvancedOptions";
 import { DisplayModels } from "./components/DisplayModels";
 import Separator from "@/refresh-components/Separator";
-import { useTranslation } from "react-i18next";
 
 export const VERTEXAI_PROVIDER_NAME = "vertex_ai";
 const VERTEXAI_DISPLAY_NAME = "Google Cloud Vertex AI";
@@ -56,7 +55,6 @@ export function VertexAIModal({
         setTestError,
         wellKnownLLMProvider,
       }: ProviderFormContext) => {
-        const { t } = useTranslation();
         const modelConfigurations = buildAvailableModelConfigurations(
           existingLlmProvider,
           wellKnownLLMProvider
@@ -84,7 +82,7 @@ export function VertexAIModal({
         const validationSchema = buildDefaultValidationSchema().shape({
           custom_config: Yup.object({
             vertex_credentials: Yup.string().required(
-              t("llmConfig.credentialsRequired")
+              "Credentials file is required"
             ),
             vertex_location: Yup.string(),
           }),
@@ -133,13 +131,13 @@ export function VertexAIModal({
 
                   <FileUploadFormField
                     name="custom_config.vertex_credentials"
-                    label={t("llmConfig.credentialsLabel")}
-                    subtext={t("llmConfig.credentialsSubtext")}
+                    label="Credentials File"
+                    subtext="Upload your Google Cloud service account JSON credentials file."
                   />
 
                   <TextFormField
                     name="custom_config.vertex_location"
-                    label={t("llmConfig.locationLabel")}
+                    label="Location"
                     placeholder={VERTEXAI_DEFAULT_LOCATION}
                     subtext="The Google Cloud region for your Vertex AI models (e.g., global, us-east1, us-central1, europe-west1). See [Google's documentation](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/learn/locations#google_model_endpoint_locations) to find the appropriate region for your model."
                     optional

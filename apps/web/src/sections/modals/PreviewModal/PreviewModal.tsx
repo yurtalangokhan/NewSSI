@@ -11,7 +11,6 @@ import { getCodeLanguage, getDataLanguage } from "@/lib/languages";
 import { fetchChatFile } from "@/lib/chat/svc";
 import { PreviewContext } from "@/sections/modals/PreviewModal/interfaces";
 import { resolveVariant } from "@/sections/modals/PreviewModal/variants";
-import { useTranslation } from "react-i18next";
 
 function resolveMimeType(mimeType: string, fileName: string): string {
   if (mimeType !== "application/octet-stream") return mimeType;
@@ -32,7 +31,6 @@ export default function PreviewModal({
   presentingDocument,
   onClose,
 }: PreviewModalProps) {
-  const { t } = useTranslation();
   const [fileContent, setFileContent] = useState("");
   const [fileUrl, setFileUrl] = useState("");
   const [fileName, setFileName] = useState("");
@@ -88,7 +86,7 @@ export default function PreviewModal({
       });
 
       const originalFileName =
-        presentingDocument.semantic_identifier || t("filePreview.document");
+        presentingDocument.semantic_identifier || "document";
       setFileName(originalFileName);
 
       const rawContentType =
@@ -104,11 +102,11 @@ export default function PreviewModal({
         setFileContent(await blob.text());
       }
     } catch {
-      setLoadError(t("filePreview.failedToLoadDocument"));
+      setLoadError("Failed to load document.");
     } finally {
       setIsLoading(false);
     }
-  }, [presentingDocument, t]);
+  }, [presentingDocument]);
 
   useEffect(() => {
     fetchFile();
@@ -140,7 +138,6 @@ export default function PreviewModal({
       zoom,
       onZoomIn: handleZoomIn,
       onZoomOut: handleZoomOut,
-      t,
     }),
     [
       fileContent,
@@ -152,7 +149,6 @@ export default function PreviewModal({
       zoom,
       handleZoomIn,
       handleZoomOut,
-      t,
     ]
   );
 
@@ -170,7 +166,7 @@ export default function PreviewModal({
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
         <Modal.Header
-          title={fileName || t("filePreview.document")}
+          title={fileName || "Document"}
           description={variant.headerDescription(ctx)}
           onClose={onClose}
         />

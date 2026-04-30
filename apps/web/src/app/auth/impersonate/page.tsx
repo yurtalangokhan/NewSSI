@@ -11,7 +11,6 @@ import { toast } from "@/hooks/useToast";
 import { TextFormField } from "@/components/Field";
 import Button from "@/refresh-components/buttons/Button";
 import Text from "@/refresh-components/texts/Text";
-import { useTranslation } from "react-i18next";
 
 const ImpersonateSchema = Yup.object().shape({
   email: Yup.string().email("Invalid email").required("Required"),
@@ -19,7 +18,6 @@ const ImpersonateSchema = Yup.object().shape({
 });
 
 export default function ImpersonatePage() {
-  const { t } = useTranslation();
   const router = useRouter();
   const { user, isCloudSuperuser } = useUser();
   if (!user) {
@@ -66,7 +64,7 @@ export default function ImpersonatePage() {
       <div className="flex flex-col w-full justify-center">
         <div className="w-full flex flex-col items-center justify-center">
           <Text as="p" headingH3 className="mb-6 text-center">
-            {t("authPages.impersonate.title")}
+            Impersonate User
           </Text>
         </div>
 
@@ -80,27 +78,30 @@ export default function ImpersonatePage() {
               <TextFormField
                 name="email"
                 type="email"
-                label={t("auth.emailLabel")}
-                placeholder={t("auth.emailPlaceholder")}
+                label="Email"
+                placeholder="email@yourcompany.com"
               />
 
               <TextFormField
                 name="apiKey"
                 type="password"
-                label={t("authPages.impersonate.apiKeyLabel")}
-                placeholder={t("authPages.impersonate.apiKeyPlaceholder")}
+                label="API Key"
+                placeholder="Enter API Key"
               />
 
               <Button type="submit" className="w-full" disabled={isSubmitting}>
-                {t("authPages.impersonate.submitButton")}
+                Impersonate User
               </Button>
             </Form>
           )}
         </Formik>
 
-        <Text as="p" mainUiMuted text03 className="mt-4 text-center px-4">
-          {t("authPages.impersonate.adminNote")}
-        </Text>
+        <Text
+          as="p"
+          mainUiMuted
+          text03
+          className="mt-4 text-center px-4"
+        >{`Note: This feature is only available for @onyx.app administrators`}</Text>
       </div>
     </AuthFlowContainer>
   );

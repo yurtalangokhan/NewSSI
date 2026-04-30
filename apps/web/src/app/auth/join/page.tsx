@@ -8,7 +8,6 @@ import {
 import { redirect } from "next/navigation";
 import EmailPasswordForm from "../login/EmailPasswordForm";
 import SignInButton from "@/app/auth/login/SignInButton";
-import { JoinHeading, OrDivider } from "./JoinAuthUI";
 import AuthFlowContainer from "@/components/auth/AuthFlowContainer";
 import AuthErrorDisplay from "@/components/auth/AuthErrorDisplay";
 import { AuthType } from "@/lib/constants";
@@ -70,12 +69,18 @@ const Page = async (props: {
       <>
         <div className="absolute top-10x w-full"></div>
         <div className="flex w-full flex-col justify-center">
-          <JoinHeading />
+          <h2 className="text-center text-xl text-strong font-bold">
+            Re-authenticate to join team
+          </h2>
 
           {cloud && authUrl && (
             <div className="w-full justify-center">
               <SignInButton authorizeUrl={authUrl} authType={AuthType.CLOUD} />
-              <OrDivider />
+              <div className="flex items-center w-full my-4">
+                <div className="flex-grow border-t border-background-300"></div>
+                <span className="px-4 text-text-500">or</span>
+                <div className="flex-grow border-t border-background-300"></div>
+              </div>
             </div>
           )}
 

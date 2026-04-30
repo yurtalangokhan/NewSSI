@@ -6,7 +6,6 @@ import { Button } from "@opal/components";
 import Text from "@/refresh-components/texts/Text";
 import { useStreamingDuration } from "../hooks/useStreamingDuration";
 import { formatDurationSeconds } from "@/lib/time";
-import { useTranslation } from "react-i18next";
 
 export interface StreamingHeaderProps {
   headerText: string;
@@ -29,7 +28,6 @@ export const StreamingHeader = React.memo(function StreamingHeader({
   streamingStartTime,
   toolProcessingDuration,
 }: StreamingHeaderProps) {
-  const { t } = useTranslation();
   // Use backend duration when available, otherwise continue live timer
   const elapsedSeconds = useStreamingDuration(
     toolProcessingDuration === undefined, // Stop updating when we have backend duration
@@ -69,7 +67,7 @@ export const StreamingHeader = React.memo(function StreamingHeader({
             size="md"
             onClick={onToggle}
             rightIcon={SvgFold}
-            aria-label={t("craftComponents.collapseTimeline")}
+            aria-label="Collapse timeline"
             aria-expanded={true}
           >
             {formatDurationSeconds(elapsedSeconds)}
@@ -80,7 +78,7 @@ export const StreamingHeader = React.memo(function StreamingHeader({
             size="md"
             onClick={onToggle}
             icon={isExpanded ? SvgFold : SvgExpand}
-            aria-label={isExpanded ? t("craftComponents.collapseTimeline") : t("craftComponents.expandTimeline")}
+            aria-label={isExpanded ? "Collapse timeline" : "Expand timeline"}
             aria-expanded={isExpanded}
           />
         ))}

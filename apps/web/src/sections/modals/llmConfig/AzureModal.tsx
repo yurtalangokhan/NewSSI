@@ -24,7 +24,6 @@ import {
   parseAzureTargetUri,
 } from "@/lib/azureTargetUri";
 import Separator from "@/refresh-components/Separator";
-import { useTranslation } from "react-i18next";
 
 export const AZURE_PROVIDER_NAME = "azure";
 const AZURE_DISPLAY_NAME = "Microsoft Azure Cloud";
@@ -71,7 +70,6 @@ export function AzureModal({
         setTestError,
         wellKnownLLMProvider,
       }: ProviderFormContext) => {
-        const { t } = useTranslation();
         const modelConfigurations = buildAvailableModelConfigurations(
           existingLlmProvider,
           wellKnownLLMProvider
@@ -86,12 +84,12 @@ export function AzureModal({
         };
 
         const validationSchema = buildDefaultValidationSchema().shape({
-          api_key: Yup.string().required(t("llmConfig.apiKeyRequired")),
+          api_key: Yup.string().required("API Key is required"),
           target_uri: Yup.string()
-            .required(t("llmConfig.targetUriRequired"))
+            .required("Target URI is required")
             .test(
               "valid-target-uri",
-              t("llmConfig.targetUriInvalid"),
+              "Target URI must be a valid URL with api-version query parameter and either a deployment name in the path or /openai/responses",
               (value) => (value ? isValidAzureTargetUri(value) : false)
             ),
         });
@@ -145,7 +143,7 @@ export function AzureModal({
 
                   <TextFormField
                     name="target_uri"
-                    label={t("llmConfig.targetUriLabel")}
+                    label="Target URI"
                     placeholder="https://your-resource.cognitiveservices.azure.com/openai/deployments/deployment-name/chat/completions?api-version=2025-01-01-preview"
                     subtext="The complete target URI for your deployment from the Azure AI portal."
                   />

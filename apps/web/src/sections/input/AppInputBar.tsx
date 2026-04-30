@@ -59,7 +59,6 @@ import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
 import { useQueryController } from "@/providers/QueryControllerProvider";
 import { Section } from "@/layouts/general-layouts";
 import Spacer from "@/refresh-components/Spacer";
-import { useTranslation } from "react-i18next";
 
 const LINE_HEIGHT = 24;
 const MIN_INPUT_HEIGHT = 44;
@@ -121,7 +120,6 @@ function AgentSelectorPopover({
 }) {
   const [open, setOpen] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState("");
-  const { t } = useTranslation();
 
   const filteredAgents = React.useMemo(() => {
     if (!searchQuery.trim()) return agents;
@@ -151,7 +149,7 @@ function AgentSelectorPopover({
           variant="internal"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder={t("inputBar.searchAgentsPlaceholder")}
+          placeholder="Search agents..."
         />
         <PopoverMenu>
           {filteredAgents.filter((a) => a.id !== 0).map((agent) => (
@@ -248,7 +246,6 @@ const AppInputBar = React.memo(
     const containerRef = useRef<HTMLDivElement>(null);
     const { user } = useUser();
     const { isClassifying, classification } = useQueryController();
-    const { t } = useTranslation();
 
     // Expose reset and focus methods to parent via ref
     React.useImperativeHandle(ref, () => ({
@@ -606,8 +603,8 @@ const AppInputBar = React.memo(
                   aria-multiline
                   placeholder={
                     isSearchMode
-                      ? t("inputBar.searchModePlaceholder")
-                      : t("inputBar.chatModePlaceholder")
+                      ? "Search connected sources"
+                      : "How can I help you today"
                   }
                   value={message}
                   onKeyDown={(event) => {
@@ -664,7 +661,7 @@ const AppInputBar = React.memo(
                         tabbingIconIndex === sortedFilteredPrompts.length
                       }
                     >
-                      {t("inputBar.createNewPromptMenuItem")}
+                      Create New Prompt
                     </LineItem>,
                   ]}
                 </Popover.Menu>
@@ -775,7 +772,7 @@ const AppInputBar = React.memo(
                   trigger={(open) => (
                     <Button
                       icon={SvgPlusCircle}
-                      tooltip={t("inputBar.attachFilesTooltip")}
+                      tooltip="Attach Files"
                       transient={open}
                       disabled={disabled}
                       prominence="tertiary"
@@ -818,8 +815,8 @@ const AppInputBar = React.memo(
                                 return currentTabUrl;
                               }
                             })()
-                          : t("inputBar.readingTabText")
-                        : t("inputBar.readThisTabButton")}
+                          : "Reading tab..."
+                        : "Read this tab"}
                     </Button>
                   ) : (
                     showDeepResearch && (
@@ -831,7 +828,7 @@ const AppInputBar = React.memo(
                         foldable={!deepResearchEnabled}
                         disabled={disabled}
                       >
-                        {t("inputBar.deepResearchButton")}
+                        Deep Research
                       </Button>
                     )
                   )}

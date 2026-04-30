@@ -22,7 +22,6 @@ import { buildInitialValues } from "../components/llmConnectionHelpers";
 import ConnectionProviderIcon from "@/refresh-components/ConnectionProviderIcon";
 import InlineExternalLink from "@/refresh-components/InlineExternalLink";
 import { ProviderIcon } from "@/app/admin/configuration/llm/ProviderIcon";
-import { useTranslation } from "react-i18next";
 
 enum OllamaTab {
   SelfHosted = "self-hosted",
@@ -68,7 +67,6 @@ function OllamaFormFields({
   activeTab: OllamaTab;
   setActiveTab: (tab: OllamaTab) => void;
 }) {
-  const { t } = useTranslation();
   const {
     formikProps,
     apiStatus,
@@ -125,9 +123,9 @@ function OllamaFormFields({
     >
       <Tabs.List>
         <Tabs.Trigger value={OllamaTab.SelfHosted}>
-          {t("llmOnboarding.selfHostedOllama")}
+          Self-hosted Ollama
         </Tabs.Trigger>
-        <Tabs.Trigger value={OllamaTab.Cloud}>{t("llmOnboarding.ollamaCloud")}</Tabs.Trigger>
+        <Tabs.Trigger value={OllamaTab.Cloud}>Ollama Cloud</Tabs.Trigger>
       </Tabs.List>
 
       <Tabs.Content value={OllamaTab.SelfHosted}>
@@ -136,7 +134,7 @@ function OllamaFormFields({
             name={FIELD_API_BASE}
             render={(field, helper, meta, state) => (
               <FormField name={FIELD_API_BASE} state={state} className="w-full">
-                <FormField.Label>{t("llmOnboarding.apiBaseUrl")}</FormField.Label>
+                <FormField.Label>API Base URL</FormField.Label>
                 <FormField.Control>
                   <InputTypeIn
                     {...field}
@@ -155,16 +153,16 @@ function OllamaFormFields({
                   <FormField.APIMessage
                     state={apiStatus}
                     messages={{
-                      loading: t("llmOnboarding.checkingOllama"),
-                      success: t("llmOnboarding.connectedSuccessfully"),
-                      error: errorMessage || t("llmOnboarding.failedToConnect"),
+                      loading: "Checking connection to Ollama...",
+                      success: "Connected successfully.",
+                      error: errorMessage || "Failed to connect",
                     }}
                   />
                 )}
                 {!showApiMessage && (
                   <FormField.Message
                     messages={{
-                      idle: t("llmOnboarding.selfHostedOllamaBaseUrl"),
+                      idle: "Your self-hosted Ollama API base URL.",
                       error: meta.error,
                     }}
                   />
@@ -207,28 +205,28 @@ function OllamaFormFields({
                           e.preventDefault();
                           handleFetchModels();
                         })}
-                        tooltip={t("llmOnboarding.fetchAvailableModels")}
+                        tooltip="Fetch available models"
                         disabled={disabled || isFetchingModels}
                       />
                     }
                     onBlur={field.onBlur}
-                    placeholder={t("llmOnboarding.selectModel")}
+                    placeholder="Select a model"
                   />
                 </FormField.Control>
                 {showModelsApiErrorMessage && (
                   <FormField.APIMessage
                     state={modelsApiStatus}
                     messages={{
-                      loading: t("llmOnboarding.fetchingModels"),
-                      success: t("llmOnboarding.modelsFetched"),
-                      error: modelsErrorMessage || t("llmOnboarding.failedFetchModels"),
+                      loading: "Fetching models...",
+                      success: "Models fetched successfully.",
+                      error: modelsErrorMessage || "Failed to fetch models",
                     }}
                   />
                 )}
                 {!showModelsApiErrorMessage && (
                   <FormField.Message
                     messages={{
-                      idle: t("llmOnboarding.defaultModelDesc"),
+                      idle: "This model will be used by Onyx by default.",
                       error: meta.error,
                     }}
                   />
@@ -249,7 +247,7 @@ function OllamaFormFields({
                 state={state}
                 className="w-full"
               >
-                <FormField.Label>{t("llmOnboarding.apiKey")}</FormField.Label>
+                <FormField.Label>API Key</FormField.Label>
                 <FormField.Control>
                   <PasswordInputTypeIn
                     {...field}
@@ -269,9 +267,9 @@ function OllamaFormFields({
                   <FormField.APIMessage
                     state={apiStatus}
                     messages={{
-                      loading: t("llmOnboarding.checkingOllamaCloud"),
-                      success: t("llmOnboarding.ollamaCloudValid"),
-                      error: errorMessage || t("llmOnboarding.invalidApiKey"),
+                      loading: "Checking API key with Ollama Cloud...",
+                      success: "API key valid. Your available models updated.",
+                      error: errorMessage || "Invalid API key",
                     }}
                   />
                 )}
@@ -329,28 +327,28 @@ function OllamaFormFields({
                           e.preventDefault();
                           handleFetchModels();
                         })}
-                        tooltip={t("llmOnboarding.fetchAvailableModels")}
+                        tooltip="Fetch available models"
                         disabled={disabled || isFetchingModels}
                       />
                     }
                     onBlur={field.onBlur}
-                    placeholder={t("llmOnboarding.selectModel")}
+                    placeholder="Select a model"
                   />
                 </FormField.Control>
                 {showModelsApiErrorMessage && (
                   <FormField.APIMessage
                     state={modelsApiStatus}
                     messages={{
-                      loading: t("llmOnboarding.fetchingModels"),
-                      success: t("llmOnboarding.modelsFetched"),
-                      error: modelsErrorMessage || t("llmOnboarding.failedFetchModels"),
+                      loading: "Fetching models...",
+                      success: "Models fetched successfully.",
+                      error: modelsErrorMessage || "Failed to fetch models",
                     }}
                   />
                 )}
                 {!showModelsApiErrorMessage && (
                   <FormField.Message
                     messages={{
-                      idle: t("llmOnboarding.defaultModelDesc"),
+                      idle: "This model will be used by Onyx by default.",
                       error: meta.error,
                     }}
                   />
@@ -371,7 +369,6 @@ export function OllamaOnboardingForm({
   open,
   onOpenChange,
 }: OllamaOnboardingFormProps) {
-  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<OllamaTab>(OllamaTab.SelfHosted);
 
   const initialValues = useMemo(
@@ -391,18 +388,18 @@ export function OllamaOnboardingForm({
   const validationSchema = useMemo(() => {
     if (activeTab === OllamaTab.SelfHosted) {
       return Yup.object().shape({
-        [FIELD_API_BASE]: Yup.string().required(t("llmOnboardingForms.apiKeyRequired")),
+        [FIELD_API_BASE]: Yup.string().required("API Base is required"),
         [FIELD_DEFAULT_MODEL_NAME]: Yup.string().required(
-          t("llmOnboardingForms.modelNameRequired")
+          "Model name is required"
         ),
       });
     } else {
       return Yup.object().shape({
         custom_config: Yup.object().shape({
-          OLLAMA_API_KEY: Yup.string().required(t("llmOnboardingForms.apiKeyRequired")),
+          OLLAMA_API_KEY: Yup.string().required("API Key is required"),
         }),
         [FIELD_DEFAULT_MODEL_NAME]: Yup.string().required(
-          t("llmOnboardingForms.modelNameRequired")
+          "Model name is required"
         ),
       });
     }
@@ -417,8 +414,8 @@ export function OllamaOnboardingForm({
   return (
     <OnboardingFormWrapper<OllamaFormValues>
       icon={icon}
-      title={t("llmOnboarding.setupOllama")}
-      description={t("llmOnboarding.setupOllamaDesc")}
+      title="Set up Ollama"
+      description="Connect to your Ollama models."
       llmDescriptor={llmDescriptor}
       onboardingState={onboardingState}
       onboardingActions={onboardingActions}

@@ -1,22 +1,19 @@
-"use client";
-
 import OAuthCallbackPage from "@/components/oauth/OAuthCallbackPage";
-import { useTranslation } from "react-i18next";
 
 export default function OAuthConfigCallbackPage() {
-  const { t } = useTranslation("auth");
-
   return (
     <OAuthCallbackPage
       config={{
         callbackApiUrl: "/api/oauth-config/callback",
         defaultRedirectPath: "/app",
-        processingMessage: t("oauthCallback.oauthConfigProcessing"),
-        processingDetails: t("oauthCallback.oauthConfigProcessingDetails"),
-        successMessage: t("oauthCallback.oauthConfigSuccess"),
-        successDetailsTemplate: t("oauthCallback.oauthConfigSuccessDetail"),
-        errorMessage: t("oauthCallback.oauthConfigError"),
-        backButtonText: t("oauthCallback.backToChat"),
+        processingMessage: "Completing Authorization...",
+        processingDetails:
+          "Please wait while we securely store your credentials.",
+        successMessage: "Authorization Successful!",
+        successDetailsTemplate:
+          "You have successfully authorized the tool to access your {serviceName} account.",
+        errorMessage: "Authorization Failed",
+        backButtonText: "Back to Chat",
         autoRedirectDelay: 2000,
       }}
     />

@@ -1,5 +1,4 @@
 import { type User } from "@/lib/types";
-import { useTranslation } from "react-i18next";
 import { toast } from "@/hooks/useToast";
 import userMutationFetcher from "@/lib/admin/users/userMutationFetcher";
 import useSWRMutation from "swr/mutation";
@@ -19,7 +18,6 @@ export const LeaveOrganizationButton = ({
   className?: string;
   children?: React.ReactNode;
 }) => {
-  const { t } = useTranslation();
   const router = useRouter();
   const { trigger, isMutating } = useSWRMutation(
     "/api/tenants/leave-team",
@@ -27,10 +25,9 @@ export const LeaveOrganizationButton = ({
     {
       onSuccess: () => {
         mutate();
-        toast.success(t("admin.users.leaveTeamSuccess"));
+        toast.success("Successfully left the team!");
       },
-      onError: (errorMsg) =>
-        toast.error(t("admin.users.leaveTeamError", { error: errorMsg })),
+      onError: (errorMsg) => toast.error(`Unable to leave team - ${errorMsg}`),
     }
   );
 
@@ -45,12 +42,12 @@ export const LeaveOrganizationButton = ({
     <>
       {showLeaveModal && (
         <ConfirmEntityModal
-          actionButtonText={t("admin.users.leaveButton")}
-          entityType={t("admin.users.teamEntity")}
-          entityName={t("admin.users.yourTeamEntity")}
+          actionButtonText="Leave"
+          entityType="team"
+          entityName="your team"
           onClose={() => setShowLeaveModal(false)}
           onSubmit={handleLeaveOrganization}
-          additionalDetails={t("admin.users.leaveTeamDetails")}
+          additionalDetails="You will lose access to all team data and resources."
         />
       )}
 

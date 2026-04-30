@@ -17,7 +17,6 @@ import useSWR, { mutate } from "swr";
 import Checkbox from "@/refresh-components/inputs/Checkbox";
 import { TableHeader } from "@/components/ui/table";
 import Text from "@/components/ui/text";
-import { useTranslation } from "react-i18next";
 
 type TokenRateLimitTableArgs = {
   tokenRateLimits: TokenRateLimitDisplay[];
@@ -36,7 +35,6 @@ export const TokenRateLimitTable = ({
   hideHeading,
   isAdmin,
 }: TokenRateLimitTableArgs) => {
-  const { t } = useTranslation();
   const shouldRenderGroupName = () =>
     tokenRateLimits.length > 0 &&
     tokenRateLimits[0] !== undefined &&
@@ -73,7 +71,7 @@ export const TokenRateLimitTable = ({
           <Text className="my-2">{description}</Text>
         )}
         <Text className={`${!hideHeading && "my-8"}`}>
-          {t("admin.tokenRateLimits.noLimitsSet")}
+          No token rate limits set!
         </Text>
       </div>
     );
@@ -92,11 +90,11 @@ export const TokenRateLimitTable = ({
       >
         <TableHeader>
           <TableRow>
-            <TableHead>{t("admin.tokenRateLimits.enabledHeader")}</TableHead>
-            {shouldRenderGroupName() && <TableHead>{t("admin.tokenRateLimits.groupNameHeader")}</TableHead>}
-            <TableHead>{t("admin.tokenRateLimits.timeWindowLabel")}</TableHead>
-            <TableHead>{t("admin.tokenRateLimits.tokenBudgetLabel")}</TableHead>
-            {isAdmin && <TableHead>{t("admin.tokenRateLimits.deleteHeader")}</TableHead>}
+            <TableHead>Enabled</TableHead>
+            {shouldRenderGroupName() && <TableHead>Group Name</TableHead>}
+            <TableHead>Time Window (Hours)</TableHead>
+            <TableHead>Token Budget (Thousands)</TableHead>
+            {isAdmin && <TableHead>Delete</TableHead>}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -128,7 +126,7 @@ export const TokenRateLimitTable = ({
                           }
                         />
                         <p className="ml-2">
-                          {tokenRateLimit.enabled ? t("admin.tokenRateLimits.enabledStatus") : t("admin.tokenRateLimits.disabledStatus")}
+                          {tokenRateLimit.enabled ? "Enabled" : "Disabled"}
                         </p>
                       </div>
                     </div>
@@ -140,12 +138,12 @@ export const TokenRateLimitTable = ({
                   </TableCell>
                 )}
                 <TableCell>
-                  {tokenRateLimit.period_hours > 1
-                    ? t("admin.tokenRateLimits.periodHours", { count: tokenRateLimit.period_hours })
-                    : t("admin.tokenRateLimits.periodHour", { count: tokenRateLimit.period_hours })}
+                  {tokenRateLimit.period_hours +
+                    " hour" +
+                    (tokenRateLimit.period_hours > 1 ? "s" : "")}
                 </TableCell>
                 <TableCell>
-                  {t("admin.tokenRateLimits.thousandTokens", { count: tokenRateLimit.token_budget })}
+                  {tokenRateLimit.token_budget + " thousand tokens"}
                 </TableCell>
                 {isAdmin && (
                   <TableCell>
@@ -180,7 +178,6 @@ export const GenericTokenRateLimitTable = ({
   responseMapper?: (data: any) => TokenRateLimitDisplay[];
   isAdmin?: boolean;
 }) => {
-  const { t } = useTranslation();
   const { data, isLoading, error } = useSWR<TokenRateLimitDisplay[]>(
     fetchUrl,
     errorHandlingFetcher
@@ -191,7 +188,7 @@ export const GenericTokenRateLimitTable = ({
   }
 
   if (!isLoading && error) {
-    return <Text>{t("admin.tokenRateLimits.failedToLoad")}</Text>;
+    return <Text>Failed to load token rate limits</Text>;
   }
 
   let processedData = data;

@@ -25,7 +25,6 @@ import { AdvancedOptions } from "./components/AdvancedOptions";
 import { DisplayModels } from "./components/DisplayModels";
 import { useEffect, useState } from "react";
 import { fetchOllamaModels } from "@/app/admin/configuration/llm/utils";
-import { useTranslation } from "react-i18next";
 
 export const OLLAMA_PROVIDER_NAME = "ollama_chat";
 const DEFAULT_API_BASE = "http://127.0.0.1:11434";
@@ -61,7 +60,6 @@ function OllamaModalContent({
   isFormValid,
 }: OllamaModalContentProps) {
   const [isLoadingModels, setIsLoadingModels] = useState(true);
-  const { t } = useTranslation();
 
   useEffect(() => {
     if (formikProps.values.api_base) {
@@ -106,14 +104,14 @@ function OllamaModalContent({
 
       <PasswordInputTypeInField
         name="custom_config.OLLAMA_API_KEY"
-        label={t("llmConfig.ollamaApiKeyLabel")}
+        label="API Key (Optional)"
         subtext="Optional API key for Ollama Cloud (https://ollama.com). Leave blank for local instances."
       />
 
       <DisplayModels
         modelConfigurations={currentModels}
         formikProps={formikProps}
-        noModelConfigurationsMessage={t("llmConfig.ollamaNoModels")}
+        noModelConfigurationsMessage="No models found. Please provide a valid API base URL."
         isLoading={isLoadingModels}
         recommendedDefaultModel={null}
         shouldShowAutoUpdateToggle={false}

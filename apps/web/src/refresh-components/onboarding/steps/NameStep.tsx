@@ -8,7 +8,6 @@ import InputAvatar from "@/refresh-components/inputs/InputAvatar";
 import { cn } from "@/lib/utils";
 import IconButton from "@/refresh-components/buttons/IconButton";
 import { SvgCheckCircle, SvgEdit, SvgUser } from "@opal/icons";
-import { useTranslation } from "react-i18next";
 
 export interface NameStepProps {
   state: OnboardingState;
@@ -17,7 +16,6 @@ export interface NameStepProps {
 
 const NameStep = React.memo(
   ({ state: onboardingState, actions: onboardingActions }: NameStepProps) => {
-    const { t } = useTranslation();
     const { userName } = onboardingState.data;
     const { updateName, goToStep, setButtonActive, nextStep } =
       onboardingActions;
@@ -48,16 +46,16 @@ const NameStep = React.memo(
           </div>
           <div>
             <Text as="p" text04 mainUiAction>
-              {t("nameStep.whatShouldOnyxCallYou")}
+              What should Onyx call you?
             </Text>
             <Text as="p" text03 secondaryBody>
-              {t("nameStep.nameDisplayDesc")}
+              We will display this name in the app.
             </Text>
           </div>
         </div>
         <InputTypeIn
           ref={inputRef}
-          placeholder={t("nameStep.yourName")}
+          placeholder="Your name"
           value={userName || ""}
           onChange={(e) => updateName(e.target.value)}
           onKeyDown={handleKeyDown}

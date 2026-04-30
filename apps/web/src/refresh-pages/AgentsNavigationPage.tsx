@@ -31,7 +31,6 @@ import {
   SvgUser,
 } from "@opal/icons";
 import useOnMount from "@/hooks/useOnMount";
-import { useTranslation } from "react-i18next";
 
 interface AgentsSectionProps {
   title: string;
@@ -73,7 +72,6 @@ export default function AgentsNavigationPage() {
   const [creatorFilterOpen, setCreatorFilterOpen] = useState(false);
   const [actionsFilterOpen, setActionsFilterOpen] = useState(false);
   const { user } = useUser();
-  const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<"all" | "your">("all");
   const [selectedCreatorIds, setSelectedCreatorIds] = useState<Set<string>>(
@@ -370,21 +368,21 @@ export default function AgentsNavigationPage() {
 
   const creatorFilterButtonText = useMemo(() => {
     if (selectedCreatorIds.size === 0) {
-      return t("agentsPage.creatorFilterEveryone");
+      return "Everyone";
     } else if (selectedCreatorIds.size === 1) {
       const selectedId = Array.from(selectedCreatorIds)[0];
       const creator = uniqueCreators.find((c) => c.id === selectedId);
-      return creator ? t("agentsPage.creatorFilterBy", { email: creator.email }) : t("agentsPage.creatorFilterEveryone");
+      return `By ${creator?.email}` || "Everyone";
     } else {
-      return t("agentsPage.creatorFilterCount", { count: selectedCreatorIds.size });
+      return `${selectedCreatorIds.size} people`;
     }
-  }, [selectedCreatorIds, uniqueCreators, t]);
+  }, [selectedCreatorIds, uniqueCreators]);
 
   const actionsFilterButtonText = useMemo(() => {
     const totalSelected = selectedActionIds.size + selectedMcpServerIds.size;
 
     if (totalSelected === 0) {
-      return t("agentsPage.actionsFilterAll");
+      return "All Actions";
     } else if (totalSelected === 1) {
       // Check if it's a single tool
       if (selectedActionIds.size === 1) {
@@ -409,11 +407,11 @@ export default function AgentsNavigationPage() {
         }
       }
 
-      return t("agentsPage.actionsFilterAll");
+      return "All Actions";
     } else {
-      return t("agentsPage.actionsFilterSelected", { count: totalSelected });
+      return `${totalSelected} selected`;
     }
-  }, [selectedActionIds, selectedMcpServerIds, uniqueActions, t]);
+  }, [selectedActionIds, selectedMcpServerIds, uniqueActions]);
 
   return (
     <SettingsLayouts.Root
@@ -422,23 +420,24 @@ export default function AgentsNavigationPage() {
     >
       <SettingsLayouts.Header
         icon={SvgOnyxOctagon}
-        title={t("agentsPage.title")}
-        description={t("agentsPage.description")}
+        title="Agents"
+        description="Customize AI behavior and knowledge for you and your team's use cases."
         rightChildren={
           <Button
             href="/app/agents/create"
             icon={SvgPlus}
             aria-label="AgentsPage/new-agent-button"
           >
-            {t("agentsPage.newAgentButton")}
+            New Agent
           </Button>
-        }>
+        }
+      >
         <div className="flex flex-col gap-2">
           <div className="flex flex-row items-center gap-2">
             <div className="flex-[2]">
               <InputTypeIn
                 ref={searchInputRef}
-                placeholder={t("agentsPage.searchAgentsPlaceholder")}
+                placeholder="Search agents..."
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
                 leftSearchIcon
@@ -450,8 +449,8 @@ export default function AgentsNavigationPage() {
                 onValueChange={(value) => setActiveTab(value as "all" | "your")}
               >
                 <Tabs.List>
-                  <Tabs.Trigger value="all">{t("agentsPage.allAgentsTab")}</Tabs.Trigger>
-                  <Tabs.Trigger value="your">{t("agentsPage.yourAgentsTab")}</Tabs.Trigger>
+                  <Tabs.Trigger value="all">All Agents</Tabs.Trigger>
+                  <Tabs.Trigger value="your">Your Agents</Tabs.Trigger>
                 </Tabs.List>
               </Tabs>
             </div>
@@ -476,7 +475,7 @@ export default function AgentsNavigationPage() {
                   {[
                     <InputTypeIn
                       key="created-by"
-                      placeholder={t("agentsPage.createdByPlaceholder")}
+                      placeholder="Created by..."
                       variant="internal"
                       leftSearchIcon
                       value={creatorSearchQuery}
@@ -553,7 +552,7 @@ export default function AgentsNavigationPage() {
                   {[
                     <InputTypeIn
                       key="actions"
-                      placeholder={t("agentsPage.filterActionsPlaceholder")}
+                      placeholder="Filter actions..."
                       variant="internal"
                       leftSearchIcon
                       value={actionsSearchQuery}
@@ -648,19 +647,19 @@ export default function AgentsNavigationPage() {
             className="w-full h-full flex flex-col items-center justify-center py-12"
             text03
           >
-            {t("agentsPage.noAgentsFound")}
+            No Agents found
           </Text>
         ) : (
           <>
             <AgentsSection
-              title={t("agentsPage.featuredAgentsTitle")}
-              description={t("agentsPage.featuredAgentsDescription")}
+              title="Featured Agents"
+              description="Curated by your team"
               agents={featuredAgents}
             />
-            <AgentsSection title={t("agentsPage.allAgentsSectionTitle")} agents={allAgents} />
+            <AgentsSection title="All Agents" agents={allAgents} />
             <TextSeparator
               count={agentCount}
-              text={agentCount === 1 ? t("agentsPage.agentSingular") : t("agentsPage.agentPlural")}
+              text={agentCount === 1 ? "Agent" : "Agents"}
             />
           </>
         )}

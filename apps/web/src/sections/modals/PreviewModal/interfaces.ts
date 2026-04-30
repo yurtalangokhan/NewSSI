@@ -1,6 +1,5 @@
 import React from "react";
 import { ModalContentProps } from "@/refresh-components/Modal";
-import { TFunction } from "i18next";
 
 export interface PreviewContext {
   fileContent: string;
@@ -12,7 +11,6 @@ export interface PreviewContext {
   zoom: number;
   onZoomIn: () => void;
   onZoomOut: () => void;
-  t: TFunction;
 }
 
 export interface PreviewVariant

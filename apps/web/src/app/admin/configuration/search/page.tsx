@@ -20,7 +20,6 @@ import CardSection from "@/components/admin/CardSection";
 import { ErrorCallout } from "@/components/ErrorCallout";
 import { useToastFromQuery } from "@/hooks/useToast";
 import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
-import { useTranslation } from "react-i18next";
 
 const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.SEARCH_SETTINGS]!;
 
@@ -32,11 +31,10 @@ export interface EmbeddingDetails {
 }
 
 function Main() {
-  const { t } = useTranslation();
   const settings = useContext(SettingsContext);
   useToastFromQuery({
     "search-settings": {
-      message: t("admin.search.changedSuccessfully"),
+      message: `Changed search settings successfully`,
       type: "success",
     },
   });
@@ -80,7 +78,7 @@ function Main() {
     !currentEmeddingModel ||
     futureEmeddingModelError
   ) {
-    return <ErrorCallout errorTitle={t("admin.search.fetchEmbeddingModelError")} />;
+    return <ErrorCallout errorTitle="Failed to fetch embedding model status" />;
   }
 
   return (
@@ -89,18 +87,19 @@ function Main() {
         <>
           {settings?.settings.needs_reindexing && (
             <p className="max-w-3xl">
-              {t("admin.search.reindexWarning")}
+              Your search settings are currently out of date! We recommend
+              updating your search settings and re-indexing.
             </p>
           )}
-          <Title className="mb-6 mt-8 !text-2xl">{t("admin.search.embeddingModelTitle")}</Title>
+          <Title className="mb-6 mt-8 !text-2xl">Embedding Model</Title>
 
           {currentEmeddingModel ? (
             <ModelPreview model={currentEmeddingModel} display showDetails />
           ) : (
-            <Title className="mt-8 mb-4">{t("admin.search.chooseEmbeddingModel")}</Title>
+            <Title className="mt-8 mb-4">Choose your Embedding Model</Title>
           )}
 
-          <Title className="mb-2 mt-8 !text-2xl">{t("admin.search.postProcessingTitle")}</Title>
+          <Title className="mb-2 mt-8 !text-2xl">Post-processing</Title>
 
           <CardSection className="!mr-auto mt-8 !w-96 shadow-lg bg-background-tint-00 rounded-16">
             {searchSettings && (
@@ -108,20 +107,20 @@ function Main() {
                 <div className="px-1 w-full rounded-lg">
                   <div className="space-y-4">
                     <div>
-                      <Text className="font-semibold">{t("admin.search.multipassIndexing")}</Text>
+                      <Text className="font-semibold">Multipass Indexing</Text>
                       <Text className="text-text-700">
                         {searchSettings.multipass_indexing
-                          ? t("admin.search.enabled")
-                          : t("admin.search.disabled")}
+                          ? "Enabled"
+                          : "Disabled"}
                       </Text>
                     </div>
 
                     <div>
-                      <Text className="font-semibold">{t("admin.search.contextualRag")}</Text>
+                      <Text className="font-semibold">Contextual RAG</Text>
                       <Text className="text-text-700">
                         {searchSettings.enable_contextual_rag
-                          ? t("admin.search.enabled")
-                          : t("admin.search.disabled")}
+                          ? "Enabled"
+                          : "Disabled"}
                       </Text>
                     </div>
                   </div>
@@ -132,7 +131,7 @@ function Main() {
 
           <div className="mt-4">
             <Button action href="/admin/embeddings">
-              {t("admin.search.updateButton")}
+              Update Search Settings
             </Button>
           </div>
         </>
@@ -144,14 +143,9 @@ function Main() {
 }
 
 export default function Page() {
-  const { t } = useTranslation();
   return (
     <SettingsLayouts.Root>
-      <SettingsLayouts.Header
-        title={t(route.titleKey || "", { defaultValue: route.title })}
-        icon={route.icon}
-        separator
-      />
+      <SettingsLayouts.Header title={route.title} icon={route.icon} separator />
       <SettingsLayouts.Body>
         <Main />
       </SettingsLayouts.Body>

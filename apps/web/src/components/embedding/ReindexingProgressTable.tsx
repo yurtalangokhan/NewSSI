@@ -15,14 +15,12 @@ import {
 import Link from "next/link";
 import { useState } from "react";
 import { FiMaximize2 } from "react-icons/fi";
-import { useTranslation } from "react-i18next";
 
 export function ReindexingProgressTable({
   reindexingProgress,
 }: {
   reindexingProgress: ConnectorIndexingStatusLite[];
 }) {
-  const { t } = useTranslation("admin");
   const numToDisplay = 10;
   const [page, setPage] = useState(1);
 
@@ -31,15 +29,9 @@ export function ReindexingProgressTable({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-1/7 sm:w-1/5">
-              {t("embeddings.connectorName")}
-            </TableHead>
-            <TableHead className="w-3/7 sm:w-1/5">
-              {t("embeddings.status")}
-            </TableHead>
-            <TableHead className="w-3/7 sm:w-1/5">
-              {t("embeddings.docsReindexed")}
-            </TableHead>
+            <TableHead className="w-1/7 sm:w-1/5">Connector Name</TableHead>
+            <TableHead className="w-3/7 sm:w-1/5">Status</TableHead>
+            <TableHead className="w-3/7 sm:w-1/5">Docs Re-Indexed</TableHead>
             <TableHead className="w-3/7 sm:w-1/5"></TableHead>
           </TableRow>
         </TableHeader>
@@ -87,4 +79,3 @@ export function ReindexingProgressTable({
     </div>
   );
 }
-

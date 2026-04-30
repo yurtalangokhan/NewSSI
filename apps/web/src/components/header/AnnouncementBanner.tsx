@@ -6,13 +6,11 @@ import Link from "next/link";
 import type { Route } from "next";
 import Cookies from "js-cookie";
 import { SvgX } from "@opal/icons";
-import { useTranslation } from "react-i18next";
 const DISMISSED_NOTIFICATION_COOKIE_PREFIX = "dismissed_notification_";
 const COOKIE_EXPIRY_DAYS = 1;
 
 export function AnnouncementBanner() {
   const settings = useContext(SettingsContext);
-  const { t } = useTranslation();
   const [localNotifications, setLocalNotifications] = useState(
     settings?.settings.notifications || []
   );
@@ -70,31 +68,33 @@ export function AnnouncementBanner() {
             >
               {notification.notif_type == "reindex" ? (
                 <p className="text-center">
-                  {t("header.reindexBanner")}{" "}
+                  Your index is out of date - we strongly recommend updating
+                  your search settings.{" "}
                   <Link
                     href={"/admin/configuration/search"}
                     className="ml-2 underline cursor-pointer"
                   >
-                    {t("header.reindexUpdateLink")}
+                    Update here
                   </Link>
                 </p>
               ) : notification.notif_type == "two_day_trial_ending" ? (
                 <p className="text-center">
-                  {t("header.trialEndingBanner")}{" "}
+                  Your trial is ending soon - submit your billing information to
+                  continue using Onyx.{" "}
                   <Link
                     href={"/admin/billing" as Route}
                     className="ml-2 underline cursor-pointer"
                   >
-                    {t("header.trialUpdateLink")}
+                    Update here
                   </Link>
                 </p>
               ) : null}
               <button
                 onClick={() => handleDismiss(notification.id)}
                 className="absolute top-0 right-0 mt-2 mr-2"
-                aria-label={t("header.dismissTooltip")}
+                aria-label="Dismiss"
               >
-                <CustomTooltip showTick citation delay={100} content={t("header.dismissTooltip")}>
+                <CustomTooltip showTick citation delay={100} content="Dismiss">
                   <SvgX className="stroke-text-04 h-5 w-5" />
                 </CustomTooltip>
               </button>

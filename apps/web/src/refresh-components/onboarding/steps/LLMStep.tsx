@@ -12,7 +12,6 @@ import {
 import { Disabled } from "@/refresh-components/Disabled";
 import { ProviderIcon } from "@/app/admin/configuration/llm/ProviderIcon";
 import { SvgCheckCircle, SvgCpu, SvgExternalLink } from "@opal/icons";
-import { useTranslation } from "react-i18next";
 
 type LLMStepProps = {
   state: OnboardingState;
@@ -88,7 +87,8 @@ const LLMStepInner = ({
   actions: onboardingActions,
   llmDescriptors,
   disabled,
-}: LLMStepProps) => {  const { t } = useTranslation();  const isLoading = !llmDescriptors || llmDescriptors.length === 0;
+}: LLMStepProps) => {
+  const isLoading = !llmDescriptors || llmDescriptors.length === 0;
 
   const [selectedProvider, setSelectedProvider] =
     useState<SelectedProvider | null>(null);
@@ -129,10 +129,10 @@ const LLMStepInner = ({
               </div>
               <div>
                 <Text as="p" text04 mainUiAction>
-                  {t("llmOnboarding.connectLlmTitle")}
+                  Connect your LLM models
                 </Text>
                 <Text as="p" text03 secondaryBody>
-                  {t("llmOnboarding.connectLlmSubtitle")}
+                  Onyx supports both self-hosted models and popular providers.
                 </Text>
               </div>
             </div>
@@ -143,7 +143,7 @@ const LLMStepInner = ({
                 disabled={disabled}
                 href="admin/configuration/llm"
               >
-                {t("llmOnboarding.viewInAdminPanel")}
+                View in Admin Panel
               </Button>
             </div>
           </div>
@@ -200,8 +200,8 @@ const LLMStepInner = ({
                 {/* Custom provider card */}
                 <div className="basis-[calc(50%-theme(spacing.1)/2)] grow">
                   <LLMProviderCard
-                    title={t("llmOnboarding.customLLMProvider")}
-                    subtitle={t("llmOnboarding.liteLLMCompatible")}
+                    title="Custom LLM Provider"
+                    subtitle="LiteLLM Compatible APIs"
                     disabled={disabled}
                     isConnected={onboardingState.data.llmProviders?.some(
                       (provider) => provider === "custom"
@@ -231,9 +231,11 @@ const LLMStepInner = ({
             providers={onboardingState.data.llmProviders || []}
           />
           <Text as="p" text04 mainUiAction>
-            {t("llmOnboarding.modelsConnected", {
-              count: onboardingState.data.llmProviders?.length || 0,
-            })}
+            {onboardingState.data.llmProviders?.length || 0}{" "}
+            {(onboardingState.data.llmProviders?.length || 0) === 1
+              ? "model"
+              : "models"}{" "}
+            connected
           </Text>
         </div>
         <div className="p-1">

@@ -30,7 +30,6 @@ import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
 import SimpleTooltip from "@/refresh-components/SimpleTooltip";
 import { ConfirmEntityModal } from "@/components/modals/ConfirmEntityModal";
 import IconButton from "@/refresh-components/buttons/IconButton";
-import { useTranslation } from "react-i18next";
 
 /**
  * Build a hierarchical tree from a flat list of library entries.
@@ -79,7 +78,6 @@ export default function UserLibraryModal({
   onClose,
   onChanges,
 }: UserLibraryModalProps) {
-  const { t } = useTranslation();
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set());
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -219,8 +217,8 @@ export default function UserLibraryModal({
         <Modal.Content width="md" height="fit">
           <Modal.Header
             icon={SvgFileText}
-            title={t("userLibraryModal.yourFiles")}
-            description={t("userLibraryModal.yourFilesDesc")}
+            title="Your Files"
+            description="Upload files for your agent to read (Excel, Word, PowerPoint, etc.)"
             onClose={onClose}
           />
           <Modal.Body>
@@ -251,7 +249,7 @@ export default function UserLibraryModal({
                     icon={SvgFolderPlus}
                     onClick={() => setShowNewFolderModal(true)}
                     secondary
-                    tooltip={t("userLibraryModal.newFolderTooltip")}
+                    tooltip="New Folder"
                   />
                   <input
                     ref={fileInputRef}
@@ -266,8 +264,8 @@ export default function UserLibraryModal({
                     icon={SvgUploadCloud}
                     onClick={() => handleUploadToFolder("/")}
                     disabled={isUploading}
-                    tooltip={isUploading ? t("userLibraryModal.uploading") : t("userLibraryModal.upload")}
-                    aria-label={isUploading ? t("userLibraryModal.uploading") : t("userLibraryModal.upload")}
+                    tooltip={isUploading ? "Uploading..." : "Upload"}
+                    aria-label={isUploading ? "Uploading..." : "Upload"}
                     secondary
                   />
                 </Section>
@@ -275,23 +273,24 @@ export default function UserLibraryModal({
                 {isLoading ? (
                   <Section padding={2} height="fit">
                     <Text secondaryBody text03>
-                      {t("userLibraryModal.loadingFiles")}
+                      Loading files...
                     </Text>
                   </Section>
                 ) : error ? (
                   <Section padding={2} height="fit">
                     <Text secondaryBody text03>
-                      {t("userLibraryModal.failedToLoad")}
+                      Failed to load files
                     </Text>
                   </Section>
                 ) : fileCount === 0 ? (
                   <Section padding={2} height="fit" gap={0.5}>
                     <SvgFileText size={32} className="stroke-text-02" />
                     <Text secondaryBody text03>
-                      {t("userLibraryModal.noFilesYet")}
+                      No files uploaded yet
                     </Text>
                     <Text secondaryBody text02>
-                      {t("userLibraryModal.noFilesDesc")}
+                      Upload Excel, Word, PowerPoint, or other files for your
+                      agent to work with
                     </Text>
                   </Section>
                 ) : (
@@ -312,7 +311,7 @@ export default function UserLibraryModal({
           </Modal.Body>
 
           <Modal.Footer>
-            <Button onClick={onClose}>{t("userLibraryModal.done")}</Button>
+            <Button onClick={onClose}>Done</Button>
           </Modal.Footer>
         </Modal.Content>
       </Modal>
@@ -348,7 +347,7 @@ export default function UserLibraryModal({
         <Modal.Content width="sm" height="fit">
           <Modal.Header
             icon={SvgFolder}
-            title={t("userLibraryModal.newFolder")}
+            title="New Folder"
             onClose={() => {
               setShowNewFolderModal(false);
               setNewFolderName("");
@@ -357,12 +356,12 @@ export default function UserLibraryModal({
           <Modal.Body>
             <Section flexDirection="column" gap={0.5} alignItems="stretch">
               <Text secondaryBody text03>
-                {t("userLibraryModal.folderName")}
+                Folder name
               </Text>
               <InputTypeIn
                 value={newFolderName}
                 onChange={(e) => setNewFolderName(e.target.value)}
-                placeholder={t("userLibraryModal.enterFolderName")}
+                placeholder="Enter folder name"
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && newFolderName.trim()) {
                     handleCreateDirectory();
@@ -380,13 +379,13 @@ export default function UserLibraryModal({
                 setNewFolderName("");
               }}
             >
-              {t("userLibraryModal.cancel")}
+              Cancel
             </Button>
             <Button
               onClick={handleCreateDirectory}
               disabled={!newFolderName.trim()}
             >
-              {t("userLibraryModal.create")}
+              Create
             </Button>
           </Modal.Footer>
         </Modal.Content>

@@ -9,7 +9,6 @@ import {
 } from "./interfaces";
 import { FiExternalLink } from "react-icons/fi";
 import CardSection from "../admin/CardSection";
-import { useTranslation } from "react-i18next";
 
 export function ModelPreview({
   model,
@@ -20,7 +19,6 @@ export function ModelPreview({
   display?: boolean;
   showDetails?: boolean;
 }) {
-  const { t } = useTranslation("admin");
   const currentModelCopy = getCurrentModelCopy(model.model_name);
 
   return (
@@ -34,44 +32,38 @@ export function ModelPreview({
       <div className="text-sm mt-1 mx-1 mb-3">
         {model.description ||
           currentModelCopy?.description ||
-          t("embeddings.modelDescriptionFallback")}
+          "Custom model—no description is available."}
       </div>
 
       {showDetails && (
         <div className="pt-4 border-t border-border space-y-3">
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
-              <span className="font-semibold text-text-700">
-                {t("embeddings.dimensions")}
-              </span>
+              <span className="font-semibold text-text-700">Dimensions:</span>
               <div className="text-text-600">
                 {model.model_dim.toLocaleString()}
               </div>
             </div>
 
             <div>
-              <span className="font-semibold text-text-700">
-                {t("embeddings.provider")}
-              </span>
+              <span className="font-semibold text-text-700">Provider:</span>
               <div className="text-text-600">
                 {getFormattedProviderName(model.provider_type)}
               </div>
             </div>
 
             <div>
-              <span className="font-semibold text-text-700">
-                {t("embeddings.normalized")}
-              </span>
+              <span className="font-semibold text-text-700">Normalized:</span>
               <div className="text-text-600">
-                {model.normalize ? t("embeddings.yes") : t("embeddings.no")}
+                {model.normalize ? "Yes" : "No"}
               </div>
             </div>
 
             {"embedding_precision" in model &&
               (model as any).embedding_precision && (
                 <div>
-                   <span className="font-semibold text-text-700">
-                    {t("embeddings.precision")}
+                  <span className="font-semibold text-text-700">
+                    Precision:
                   </span>
                   <div className="text-text-600">
                     {(model as any).embedding_precision}
@@ -82,17 +74,15 @@ export function ModelPreview({
             {"isDefault" in model &&
               (model as HostedEmbeddingModel).isDefault && (
                 <div>
-                  <span className="font-semibold text-text-700">
-                    {t("embeddings.type")}
-                  </span>
-                  <div className="text-text-600">{t("embeddings.default")}</div>
+                  <span className="font-semibold text-text-700">Type:</span>
+                  <div className="text-text-600">Default</div>
                 </div>
               )}
 
             {"pricePerMillion" in model && (
               <div>
                 <span className="font-semibold text-text-700">
-                  {t("embeddings.pricePerMillion")}
+                  Price/Million:
                 </span>
                 <div className="text-text-600">
                   ${(model as CloudEmbeddingModel).pricePerMillion}
@@ -106,7 +96,7 @@ export function ModelPreview({
               {model.query_prefix && (
                 <div>
                   <span className="font-semibold text-text-700">
-                    {t("embeddings.queryPrefix")}
+                    Query Prefix:
                   </span>
                   <div className="text-text-600 font-mono text-xs p-2 rounded">
                     &quot;{model.query_prefix}&quot;
@@ -117,7 +107,7 @@ export function ModelPreview({
               {model.passage_prefix && (
                 <div>
                   <span className="font-semibold text-text-700">
-                    {t("embeddings.passagePrefix")}
+                    Passage Prefix:
                   </span>
                   <div className="text-text-600 font-mono text-xs p-2 rounded">
                     &quot;{model.passage_prefix}&quot;
@@ -129,9 +119,7 @@ export function ModelPreview({
 
           {model.api_url && (
             <div>
-              <span className="font-semibold text-text-700">
-                {t("embeddings.apiUrl")}
-              </span>
+              <span className="font-semibold text-text-700">API URL:</span>
               <div className="text-text-600 font-mono text-xs bg-background p-2 rounded break-all">
                 {model.api_url}
               </div>
@@ -140,18 +128,14 @@ export function ModelPreview({
 
           {model.api_version && (
             <div>
-              <span className="font-semibold text-text-700">
-                {t("embeddings.apiVersion")}
-              </span>
+              <span className="font-semibold text-text-700">API Version:</span>
               <div className="text-text-600">{model.api_version}</div>
             </div>
           )}
 
           {model.deployment_name && (
             <div>
-              <span className="font-semibold text-text-700">
-                {t("embeddings.deployment")}
-              </span>
+              <span className="font-semibold text-text-700">Deployment:</span>
               <div className="text-text-600">{model.deployment_name}</div>
             </div>
           )}
@@ -164,7 +148,7 @@ export function ModelPreview({
                 rel="noopener noreferrer"
                 className="inline-flex items-center text-blue-500 hover:text-blue-700 transition-colors duration-200 text-sm"
               >
-                <span>{t("embeddings.viewDocumentation")}</span>
+                <span>View Documentation</span>
                 <FiExternalLink className="ml-1" size={14} />
               </a>
             </div>
@@ -184,7 +168,6 @@ export function ModelOption({
   onSelect?: (model: HostedEmbeddingModel) => void;
   selected: boolean;
 }) {
-  const { t } = useTranslation("admin");
   const currentModelCopy = getCurrentModelCopy(model.model_name);
 
   return (
@@ -213,10 +196,10 @@ export function ModelOption({
       <p className="text-sm k text-text-600 dark:text-neutral-400 text-left mb-2">
         {model.description ||
           currentModelCopy?.description ||
-          t("embeddings.modelDescriptionFallback")}
+          "Custom model—no description is available."}
       </p>
       <div className="text-xs text-text-500">
-        {model.isDefault ? t("embeddings.default") : t("embeddings.selfHosted")}
+        {model.isDefault ? "Default" : "Self-hosted"}
       </div>
       {onSelect && (
         <div className="mt-3">
@@ -232,9 +215,7 @@ export function ModelOption({
             }}
             disabled={selected}
           >
-            {selected
-              ? t("embeddings.selectedModelLabel")
-              : t("embeddings.selectModelLabel")}
+            {selected ? "Selected Model" : "Select Model"}
           </button>
         </div>
       )}
@@ -297,4 +278,3 @@ export function ModelSelector({
     </div>
   );
 }
-

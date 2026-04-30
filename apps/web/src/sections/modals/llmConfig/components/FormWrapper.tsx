@@ -16,7 +16,6 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { LLM_PROVIDERS_ADMIN_URL } from "@/lib/llmConfig/constants";
 import { setDefaultLlmModel } from "@/lib/llmConfig/svc";
-import { useTranslation } from "react-i18next";
 
 export interface ProviderFormContext {
   onClose: () => void;
@@ -55,7 +54,6 @@ export function ProviderFormEntrypointWrapper({
 }: ProviderFormEntrypointWrapperProps) {
   const [formIsVisible, setFormIsVisible] = useState(false);
   const isControlled = open !== undefined;
-  const { t } = useTranslation();
 
   // Shared hooks
   const { mutate } = useSWRConfig();
@@ -91,17 +89,17 @@ export function ProviderFormEntrypointWrapper({
       (m) => m.is_visible
     );
     if (!firstVisibleModel) {
-      toast.error(t("llmConfig.noVisibleModels"));
+      toast.error("No visible models available for this provider.");
       return;
     }
 
     try {
       await setDefaultLlmModel(existingLlmProvider.id, firstVisibleModel.name);
       await mutate(LLM_PROVIDERS_ADMIN_URL);
-      toast.success(t("llmConfig.setAsDefaultSuccess"));
+      toast.success("Provider set as default successfully!");
     } catch (e) {
-      const message = e instanceof Error ? e.message : t("llmConfig.unknownError");
-      toast.error(t("llmConfig.setAsDefaultError", { error: message }));
+      const message = e instanceof Error ? e.message : "Unknown error";
+      toast.error(`Failed to set provider as default: ${message}`);
     }
   }
 
@@ -115,7 +113,7 @@ export function ProviderFormEntrypointWrapper({
     wellKnownLLMProvider,
   };
 
-  const defaultTitle = `${existingLlmProvider ? t("llmConfig.configure") : t("llmConfig.setup")} ${
+  const defaultTitle = `${existingLlmProvider ? "Configure" : "Setup"} ${
     existingLlmProvider?.name ? `"${existingLlmProvider.name}"` : providerName
   }`;
 
@@ -145,9 +143,9 @@ export function ProviderFormEntrypointWrapper({
     return (
       <>
         <Button action onClick={() => setFormIsVisible(true)}>
-          {buttonText ?? t("llmConfig.add", { providerName })}
+          {buttonText ?? `Add ${providerName}`}
         </Button>
-        {renderModal(formIsVisible, `${t("llmConfig.setup")} ${providerName}`)}
+        {renderModal(formIsVisible, `Setup ${providerName}`)}
       </>
     );
   }
@@ -175,13 +173,13 @@ export function ProviderFormEntrypointWrapper({
                 className={cn("text-action-link-05", "cursor-pointer")}
                 onClick={handleSetAsDefault}
               >
-                {t("llmConfig.setAsDefault")}
+                Set as default
               </Text>
             </div>
 
             {existingLlmProvider && (
               <div className="my-auto ml-3">
-                <Badge variant="success">{t("llmConfig.enabled")}</Badge>
+                <Badge variant="success">Enabled</Badge>
               </div>
             )}
 
@@ -191,7 +189,7 @@ export function ProviderFormEntrypointWrapper({
                 secondary={!!existingLlmProvider}
                 onClick={() => setFormIsVisible(true)}
               >
-                {t("llmConfig.edit")}
+                Edit
               </Button>
             </div>
           </>
@@ -204,7 +202,7 @@ export function ProviderFormEntrypointWrapper({
             </div>
             <div className="ml-auto my-auto">
               <Button action onClick={() => setFormIsVisible(true)}>
-                {t("llmConfig.setUp")}
+                Set up
               </Button>
             </div>
           </>

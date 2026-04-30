@@ -22,7 +22,6 @@ import Button from "@/refresh-components/buttons/Button";
 import { AuthType } from "@/lib/constants";
 import { FcGoogle } from "react-icons/fc";
 import type { IconProps } from "@opal/types";
-import { useTranslation } from "react-i18next";
 
 interface SignInButtonProps {
   authorizeUrl: string;
@@ -33,18 +32,19 @@ export default function SignInButton({
   authorizeUrl,
   authType,
 }: SignInButtonProps) {
-  const { t } = useTranslation();
-  let buttonText: string;
+  let button: React.ReactNode;
   let icon: React.FunctionComponent<IconProps> | undefined;
 
   if (authType === AuthType.GOOGLE_OAUTH || authType === AuthType.CLOUD) {
-    buttonText = t("auth.continueWithGoogle");
+    button = "Continue with Google";
     icon = FcGoogle;
   } else if (authType === AuthType.OIDC) {
-    buttonText = t("auth.continueWithOidc");
+    button = "Continue with OIDC SSO";
   } else if (authType === AuthType.SAML) {
-    buttonText = t("auth.continueWithSaml");
-  } else {
+    button = "Continue with SAML SSO";
+  }
+
+  if (!button) {
     throw new Error(`Unhandled authType: ${authType}`);
   }
 
@@ -57,7 +57,7 @@ export default function SignInButton({
       leftIcon={icon}
       href={authorizeUrl}
     >
-      {buttonText}
+      {button}
     </Button>
   );
 }

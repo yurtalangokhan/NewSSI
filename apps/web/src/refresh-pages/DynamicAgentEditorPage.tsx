@@ -13,7 +13,6 @@ import InputSelect from "@/refresh-components/inputs/InputSelect";
 import InputTextArea from "@/refresh-components/inputs/InputTextArea";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
 import Text from "@/refresh-components/texts/Text";
-import { useTranslation } from "react-i18next";
 
 interface GraphSchemaInfo {
   schema_type: string;
@@ -34,11 +33,7 @@ interface MemoryTypeInfo {
   description: string;
 }
 
-function parseJsonArray(
-  raw: string,
-  fieldName: string,
-  t: (key: string, options?: any) => string
-) {
+function parseJsonArray(raw: string, fieldName: string) {
   if (!raw.trim()) {
     return [];
   }
@@ -46,19 +41,15 @@ function parseJsonArray(
   try {
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) {
-      throw new Error(t("agentEditor.dynamic.jsonArrayError", { field: fieldName }));
+      throw new Error(`${fieldName} must be a JSON array.`);
     }
     return parsed;
-  } catch (error) {
-    if (error instanceof Error && error.message.includes("JSON array")) {
-      throw error;
-    }
-    throw new Error(t("agentEditor.dynamic.jsonValidError", { field: fieldName }));
+  } catch {
+    throw new Error(`${fieldName} must contain valid JSON array text.`);
   }
 }
 
 export default function DynamicAgentEditorPage() {
-  const { t } = useTranslation();
   const { refresh: refreshAgents } = useAgents();
   const { tools } = useAvailableTools();
   const appRouter = useAppRouter();
@@ -99,7 +90,7 @@ export default function DynamicAgentEditorPage() {
 
   async function handleSubmit() {
     if (!name.trim()) {
-      toast.error(t("agentEditor.agentNameRequired"));
+      toast.error("Agent name is required");
       return;
     }
 
@@ -121,17 +112,9 @@ export default function DynamicAgentEditorPage() {
           mcp_tools: Object.entries(selectedTools)
             .filter(([, enabled]) => enabled)
             .map(([toolName]) => toolName),
-          sub_agents: parseJsonArray(
-            subAgentsJson,
-            t("agentEditor.dynamic.subAgentsField"),
-            t
-          ),
+          sub_agents: parseJsonArray(subAgentsJson, "Sub agents"),
           supervisor_prompt: supervisorPrompt.trim() || null,
-          stages: parseJsonArray(
-            stagesJson,
-            t("agentEditor.dynamic.stagesField"),
-            t
-          ),
+          stages: parseJsonArray(stagesJson, "Stages"),
           pipeline_prompt: pipelinePrompt.trim() || null,
           reflection_prompt: reflectionPrompt.trim() || null,
           max_iterations: Number.parseInt(maxIterations, 10) || 3,
@@ -145,20 +128,11 @@ export default function DynamicAgentEditorPage() {
 
       const created = await response.json();
       await refreshAgents();
-      toast.success(
-        t("agentEditor.agentSuccess", {
-          name: created.name,
-          action: t("agentEditor.actionCreated"),
-        })
-      );
+      toast.success(`Agent \"${created.name}\" created successfully`);
       appRouter({ agentId: created.id });
     } catch (error) {
       console.error("Dynamic agent create failed", error);
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : t("agentEditor.dynamic.createFailed")
-      );
+      toast.error(error instanceof Error ? error.message : "Failed to create dynamic agent");
     } finally {
       setIsSubmitting(false);
     }
@@ -168,61 +142,37 @@ export default function DynamicAgentEditorPage() {
     <div className="flex flex-col gap-6 w-full max-w-4xl p-4">
       <div className="flex flex-col gap-2">
         <Text as="p" headingH2>
-          {t("agentEditor.dynamic.createTitle")}
+          Create Dynamic Agent
         </Text>
         <Text as="p" secondaryBody>
-          {t("agentEditor.dynamic.createSubtitle")}
+          Build an agent definition backed by the new dynamic graph schema system.
         </Text>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="flex flex-col gap-2">
-          <Text as="p" secondaryBody>
-            {t("agentEditor.nameLabel")}
-          </Text>
-          <InputTypeIn
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-          />
+          <Text as="p" secondaryBody>Name</Text>
+          <InputTypeIn value={name} onChange={(event) => setName(event.target.value)} />
         </div>
         <div className="flex flex-col gap-2">
-          <Text as="p" secondaryBody>
-            {t("agentEditor.dynamic.modelOverrideLabel")}
-          </Text>
-          <InputTypeIn
-            value={model}
-            onChange={(event) => setModel(event.target.value)}
-            placeholder={t("agentEditor.optionalLabel")}
-          />
+          <Text as="p" secondaryBody>Model Override</Text>
+          <InputTypeIn value={model} onChange={(event) => setModel(event.target.value)} placeholder="Optional" />
         </div>
       </div>
 
       <div className="flex flex-col gap-2">
-        <Text as="p" secondaryBody>
-          {t("agentEditor.descriptionLabel")}
-        </Text>
-        <InputTextArea
-          rows={3}
-          value={description}
-          onChange={(event) => setDescription(event.target.value)}
-        />
+        <Text as="p" secondaryBody>Description</Text>
+        <InputTextArea rows={3} value={description} onChange={(event) => setDescription(event.target.value)} />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="flex flex-col gap-2">
-          <Text as="p" secondaryBody>
-            {t("agentEditor.graphSchemaLabel")}
-          </Text>
+          <Text as="p" secondaryBody>Graph Schema</Text>
           <InputSelect value={graphSchema} onValueChange={setGraphSchema}>
-            <InputSelect.Trigger
-              placeholder={t("agentEditor.selectGraphSchemaPlaceholder")}
-            />
+            <InputSelect.Trigger placeholder="Select schema" />
             <InputSelect.Content>
               {(schemas ?? []).map((schema) => (
-                <InputSelect.Item
-                  key={schema.schema_type}
-                  value={schema.schema_type}
-                >
+                <InputSelect.Item key={schema.schema_type} value={schema.schema_type}>
                   {schema.schema_type}
                 </InputSelect.Item>
               ))}
@@ -230,19 +180,12 @@ export default function DynamicAgentEditorPage() {
           </InputSelect>
         </div>
         <div className="flex flex-col gap-2">
-          <Text as="p" secondaryBody>
-            {t("agentEditor.brainTypeLabel")}
-          </Text>
+          <Text as="p" secondaryBody>Brain Type</Text>
           <InputSelect value={brainType} onValueChange={setBrainType}>
-            <InputSelect.Trigger
-              placeholder={t("agentEditor.selectBrainTypePlaceholder")}
-            />
+            <InputSelect.Trigger placeholder="Select brain" />
             <InputSelect.Content>
               {(brains ?? []).map((brain) => (
-                <InputSelect.Item
-                  key={brain.brain_type}
-                  value={brain.brain_type}
-                >
+                <InputSelect.Item key={brain.brain_type} value={brain.brain_type}>
                   {brain.brain_type}
                 </InputSelect.Item>
               ))}
@@ -250,19 +193,12 @@ export default function DynamicAgentEditorPage() {
           </InputSelect>
         </div>
         <div className="flex flex-col gap-2">
-          <Text as="p" secondaryBody>
-            {t("agentEditor.memoryTypeLabel")}
-          </Text>
+          <Text as="p" secondaryBody>Memory Type</Text>
           <InputSelect value={memoryType} onValueChange={setMemoryType}>
-            <InputSelect.Trigger
-              placeholder={t("agentEditor.selectMemoryTypePlaceholder")}
-            />
+            <InputSelect.Trigger placeholder="Select memory" />
             <InputSelect.Content>
               {(memoryTypes ?? []).map((memory) => (
-                <InputSelect.Item
-                  key={memory.memory_type}
-                  value={memory.memory_type}
-                >
+                <InputSelect.Item key={memory.memory_type} value={memory.memory_type}>
                   {memory.memory_type}
                 </InputSelect.Item>
               ))}
@@ -278,43 +214,25 @@ export default function DynamicAgentEditorPage() {
       )}
 
       <div className="flex flex-col gap-2">
-        <Text as="p" secondaryBody>
-          {t("agentEditor.instructionsLabel")}
-        </Text>
-        <InputTextArea
-          rows={6}
-          value={systemPrompt}
-          onChange={(event) => setSystemPrompt(event.target.value)}
-        />
+        <Text as="p" secondaryBody>System Prompt</Text>
+        <InputTextArea rows={6} value={systemPrompt} onChange={(event) => setSystemPrompt(event.target.value)} />
       </div>
 
       {selectedSchema?.supports_tools && (
         <div className="flex flex-col gap-3">
-          <Text as="p" secondaryBody>
-            {t("agentEditor.actionsLabel")}
-          </Text>
+          <Text as="p" secondaryBody>Tools</Text>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             {tools.map((tool) => (
-              <label
-                key={tool.name}
-                className="flex items-center gap-2 border border-border rounded-08 px-3 py-2"
-              >
+              <label key={tool.name} className="flex items-center gap-2 border border-border rounded-08 px-3 py-2">
                 <Checkbox
                   checked={selectedTools[tool.name] ?? false}
                   onCheckedChange={(checked) => {
-                    setSelectedTools((current) => ({
-                      ...current,
-                      [tool.name]: checked,
-                    }));
+                    setSelectedTools((current) => ({ ...current, [tool.name]: checked }));
                   }}
                 />
                 <div className="flex flex-col">
-                  <Text as="p" secondaryBody>
-                    {tool.display_name || tool.name}
-                  </Text>
-                  <Text as="p" secondaryBody>
-                    {tool.name}
-                  </Text>
+                  <Text as="p" secondaryBody>{tool.display_name || tool.name}</Text>
+                  <Text as="p" secondaryBody>{tool.name}</Text>
                 </div>
               </label>
             ))}
@@ -325,24 +243,12 @@ export default function DynamicAgentEditorPage() {
       {graphSchema === "supervisor" && (
         <>
           <div className="flex flex-col gap-2">
-            <Text as="p" secondaryBody>
-              {t("agentEditor.dynamic.supervisorPromptLabel")}
-            </Text>
-            <InputTextArea
-              rows={4}
-              value={supervisorPrompt}
-              onChange={(event) => setSupervisorPrompt(event.target.value)}
-            />
+            <Text as="p" secondaryBody>Supervisor Prompt</Text>
+            <InputTextArea rows={4} value={supervisorPrompt} onChange={(event) => setSupervisorPrompt(event.target.value)} />
           </div>
           <div className="flex flex-col gap-2">
-            <Text as="p" secondaryBody>
-              {t("agentEditor.dynamic.subAgentsJsonLabel")}
-            </Text>
-            <InputTextArea
-              rows={8}
-              value={subAgentsJson}
-              onChange={(event) => setSubAgentsJson(event.target.value)}
-            />
+            <Text as="p" secondaryBody>Sub Agents JSON</Text>
+            <InputTextArea rows={8} value={subAgentsJson} onChange={(event) => setSubAgentsJson(event.target.value)} />
           </div>
         </>
       )}
@@ -350,24 +256,12 @@ export default function DynamicAgentEditorPage() {
       {graphSchema === "pipeline" && (
         <>
           <div className="flex flex-col gap-2">
-            <Text as="p" secondaryBody>
-              {t("agentEditor.dynamic.pipelinePromptLabel")}
-            </Text>
-            <InputTextArea
-              rows={4}
-              value={pipelinePrompt}
-              onChange={(event) => setPipelinePrompt(event.target.value)}
-            />
+            <Text as="p" secondaryBody>Pipeline Prompt</Text>
+            <InputTextArea rows={4} value={pipelinePrompt} onChange={(event) => setPipelinePrompt(event.target.value)} />
           </div>
           <div className="flex flex-col gap-2">
-            <Text as="p" secondaryBody>
-              {t("agentEditor.dynamic.stagesJsonLabel")}
-            </Text>
-            <InputTextArea
-              rows={8}
-              value={stagesJson}
-              onChange={(event) => setStagesJson(event.target.value)}
-            />
+            <Text as="p" secondaryBody>Stages JSON</Text>
+            <InputTextArea rows={8} value={stagesJson} onChange={(event) => setStagesJson(event.target.value)} />
           </div>
         </>
       )}
@@ -375,32 +269,19 @@ export default function DynamicAgentEditorPage() {
       {graphSchema === "self_reflect" && (
         <>
           <div className="flex flex-col gap-2">
-            <Text as="p" secondaryBody>
-              {t("agentEditor.dynamic.reflectionPromptLabel")}
-            </Text>
-            <InputTextArea
-              rows={4}
-              value={reflectionPrompt}
-              onChange={(event) => setReflectionPrompt(event.target.value)}
-            />
+            <Text as="p" secondaryBody>Reflection Prompt</Text>
+            <InputTextArea rows={4} value={reflectionPrompt} onChange={(event) => setReflectionPrompt(event.target.value)} />
           </div>
           <div className="flex flex-col gap-2 max-w-xs">
-            <Text as="p" secondaryBody>
-              {t("agentEditor.dynamic.maxIterationsLabel")}
-            </Text>
-            <InputTypeIn
-              value={maxIterations}
-              onChange={(event) => setMaxIterations(event.target.value)}
-            />
+            <Text as="p" secondaryBody>Max Iterations</Text>
+            <InputTypeIn value={maxIterations} onChange={(event) => setMaxIterations(event.target.value)} />
           </div>
         </>
       )}
 
       <div>
         <Button main onClick={handleSubmit} disabled={isSubmitting}>
-          {isSubmitting
-            ? t("agentEditor.dynamic.creatingAgent")
-            : t("agentEditor.dynamic.createAgent")}
+          {isSubmitting ? "Creating..." : "Create Agent"}
         </Button>
       </div>
     </div>

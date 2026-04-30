@@ -22,7 +22,6 @@ import {
   SvgUploadCloud,
 } from "@opal/icons";
 import { cn } from "@/lib/utils";
-import { useTranslation } from "react-i18next";
 
 const ACCEPTED_TYPES = {
   "application/pdf": [".pdf"],
@@ -58,7 +57,6 @@ function ChunkViewer({
   collectionId: string;
   documentId: string;
 }) {
-  const { t } = useTranslation();
   const { chunks, stats, isLoading } = useDocumentChunks(
     collectionId,
     documentId
@@ -76,18 +74,9 @@ function ChunkViewer({
     <div className="pt-2 pl-4 flex flex-col gap-3">
       {stats && (
         <div className="flex items-center gap-4">
-          <StatBadge
-            label={t("admin.documentProcessing.chunkStats.chunks")}
-            value={stats.total_chunks}
-          />
-          <StatBadge
-            label={t("admin.documentProcessing.chunkStats.avgChars")}
-            value={stats.avg_chars}
-          />
-          <StatBadge
-            label={t("admin.documentProcessing.chunkStats.avgTokens")}
-            value={stats.avg_tokens}
-          />
+          <StatBadge label="Chunks" value={stats.total_chunks} />
+          <StatBadge label="Avg chars" value={stats.avg_chars} />
+          <StatBadge label="Avg tokens" value={stats.avg_tokens} />
         </div>
       )}
       <div className="flex flex-col gap-2 max-h-80 overflow-y-auto pr-1">
@@ -151,7 +140,6 @@ function DocumentRow({
   collectionId: string;
   onDelete: () => void;
 }) {
-  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -166,13 +154,11 @@ function DocumentRow({
     setIsDeleting(true);
     try {
       await deleteDocument(collectionId, doc.id);
-      toast.success(t("admin.documentProcessing.documentDeleted"));
+      toast.success("Document deleted.");
       onDelete();
     } catch (e) {
       toast.error(
-        e instanceof Error
-          ? e.message
-          : t("admin.documentProcessing.deleteDocumentFailed")
+        e instanceof Error ? e.message : "Failed to delete document"
       );
     } finally {
       setIsDeleting(false);
@@ -206,7 +192,7 @@ function DocumentRow({
             onClick={() => setExpanded((v) => !v)}
             aria-label={expanded ? "Collapse chunks" : "View chunks"}
           >
-            {t("admin.documentProcessing.chunks")}
+            Chunks
           </Button>
           <Button
             danger
@@ -238,7 +224,6 @@ interface DocumentsPanelProps {
 }
 
 export default function DocumentsPanel({ collectionId, readOnly = false }: DocumentsPanelProps) {
-  const { t } = useTranslation();
   const { documents, isLoading, mutate } = useDocuments(collectionId);
   const [isUploading, setIsUploading] = useState(false);
   const [isDragActive, setIsDragActive] = useState(false);
@@ -255,23 +240,19 @@ export default function DocumentsPanel({ collectionId, readOnly = false }: Docum
           toast.warning(result.warnings);
         }
       } catch (e) {
-        toast.error(
-          e instanceof Error
-            ? e.message
-            : t("admin.documentProcessing.uploadFailed")
-        );
+        toast.error(e instanceof Error ? e.message : "Upload failed");
       } finally {
         setIsUploading(false);
       }
     },
-    [collectionId, mutate, t]
+    [collectionId, mutate]
   );
 
   if (!collectionId) {
     return (
       <CardSection>
         <Text as="p" mainContentMuted text03 className="text-center py-6">
-          {t("admin.documentProcessing.selectCollectionToManageDocuments")}
+          Select a collection above to manage documents.
         </Text>
       </CardSection>
     );
@@ -283,10 +264,11 @@ export default function DocumentsPanel({ collectionId, readOnly = false }: Docum
       {!readOnly && (
         <CardSection className="flex flex-col gap-3">
           <Text as="p" headingH3 text05 className="border-b border-border-01 pb-2">
-            {t("admin.documentProcessing.uploadDocuments")}
+            Upload Documents
           </Text>
           <Text as="p" mainContentBody text04 className="leading-relaxed">
-            {t("admin.documentProcessing.supportedFormats")}
+            Supported formats: PDF, DOCX, PPTX, CSV, XLSX, TXT, MD, HTML, JSON,
+            RTF. Max 200 MB per file.
           </Text>
 
           <Dropzone
@@ -320,7 +302,7 @@ export default function DocumentsPanel({ collectionId, readOnly = false }: Docum
                   <>
                     <ThreeDotsLoader />
                     <Text as="p" mainContentMuted text03>
-                      {t("admin.documentProcessing.uploadingAndProcessing")}
+                      Uploading and processing…
                     </Text>
                   </>
                 ) : (
@@ -335,11 +317,11 @@ export default function DocumentsPanel({ collectionId, readOnly = false }: Docum
                     <div className="text-center">
                       <Text as="p" mainUiAction text04>
                         {isDragActive
-                          ? t("admin.documentProcessing.dropFilesHere")
-                          : t("admin.documentProcessing.dragDropOrClick")}
+                          ? "Drop files here"
+                          : "Drag & drop files here, or click to select"}
                       </Text>
                       <Text as="p" mainContentMuted text03 className="mt-1 text-xs">
-                        {t("admin.documentProcessing.supportedFormatsCompact")}
+                        PDF, DOCX, PPTX, CSV, XLSX, TXT, MD, HTML, JSON, RTF · Up to 200 MB each
                       </Text>
                     </div>
                   </>
@@ -352,7 +334,7 @@ export default function DocumentsPanel({ collectionId, readOnly = false }: Docum
       {/* Document list */}
       <CardSection className="flex flex-col gap-3">
         <Text as="p" headingH3 text05 className="border-b border-border-01 pb-2">
-          {t("admin.documentProcessing.documents")} {" "}
+          Documents{" "}
           {!isLoading && (
             <span className="font-normal text-text-03">({documents.length})</span>
           )}
@@ -362,7 +344,7 @@ export default function DocumentsPanel({ collectionId, readOnly = false }: Docum
           <ThreeDotsLoader />
         ) : documents.length === 0 ? (
           <Text as="p" mainContentMuted text03 className="text-center py-6">
-            {t("admin.documentProcessing.noDocuments")}
+            No documents yet — upload files above.
           </Text>
         ) : (
           <div className="flex flex-col gap-2">

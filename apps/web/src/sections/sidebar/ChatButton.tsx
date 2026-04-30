@@ -43,7 +43,6 @@ import {
   SvgTrash,
 } from "@opal/icons";
 import useOnMount from "@/hooks/useOnMount";
-import { useTranslation } from "react-i18next";
 
 export interface PopoverSearchInputProps {
   setShowMoveOptions: (show: boolean) => void;
@@ -55,7 +54,6 @@ export function PopoverSearchInput({
   onSearch,
 }: PopoverSearchInputProps) {
   const [searchTerm, setSearchTerm] = useState("");
-  const { t } = useTranslation();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -87,7 +85,7 @@ export function PopoverSearchInput({
         value={searchTerm}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
-        placeholder={t("sidebar.searchProjects")}
+        placeholder="Search Projects"
         onClick={noProp()}
         variant="internal"
         autoFocus
@@ -106,7 +104,6 @@ const ChatButton = memo(
   ({ chatSession, project, draggable = false }: ChatButtonProps) => {
     const route = useAppRouter();
     const activeSidebarTab = useAppFocus();
-    const { t } = useTranslation();
     const active = useMemo(
       () =>
         activeSidebarTab.isChat() &&
@@ -195,21 +192,21 @@ const ChatButton = memo(
             icon={SvgShare}
             onClick={noProp(() => setShowShareModal(true))}
           >
-            {t("sidebar.share")}
+            Share
           </LineItem>,
           <LineItem
             key="rename"
             icon={SvgEdit}
             onClick={noProp(() => setRenaming(true))}
           >
-            {t("sidebar.rename")}
+            Rename
           </LineItem>,
           <LineItem
             key="move"
             icon={SvgFolderIn}
             onClick={noProp(() => setShowMoveOptions(true))}
           >
-            {t("sidebar.moveToProject")}
+            Move to Project
           </LineItem>,
           project && (
             <LineItem
@@ -217,7 +214,7 @@ const ChatButton = memo(
               icon={SvgFolder}
               onClick={noProp(() => handleRemoveFromProject())}
             >
-              {t("sidebar.removeFromProject", { name: project.name })}
+              {`Remove from ${project.name}`}
             </LineItem>
           ),
           null,
@@ -227,7 +224,7 @@ const ChatButton = memo(
             danger
             onClick={noProp(() => setDeleteConfirmationModalOpen(true))}
           >
-            {t("sidebar.delete")}
+            Delete
           </LineItem>,
         ];
         setPopoverItems(popoverItems);
@@ -262,7 +259,7 @@ const ChatButton = memo(
                     handleCreateProjectAndMove(searchTerm.trim())
                   )}
                 >
-                  {t("sidebar.createProject", { name: searchTerm.trim() })}
+                  {`Create ${searchTerm.trim()}`}
                 </LineItem>,
               ]
             : []),

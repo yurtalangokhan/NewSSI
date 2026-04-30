@@ -25,7 +25,6 @@ import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
 import useFilter from "@/hooks/useFilter";
 import { useQueryController } from "@/providers/QueryControllerProvider";
 import { toast } from "@/hooks/useToast";
-import { useTranslation } from "react-i18next";
 
 // ============================================================================
 // Types
@@ -42,6 +41,13 @@ export interface SearchResultsProps {
 
 const RESULTS_PER_PAGE = 20;
 
+const TIME_FILTER_OPTIONS: { value: TimeFilter; label: string }[] = [
+  { value: "day", label: "Past 24 hours" },
+  { value: "week", label: "Past week" },
+  { value: "month", label: "Past month" },
+  { value: "year", label: "Past year" },
+];
+
 // ============================================================================
 // SearchResults Component (default export)
 // ============================================================================
@@ -50,15 +56,6 @@ const RESULTS_PER_PAGE = 20;
  * Component for displaying search results with source filter sidebar.
  */
 export default function SearchUI({ onDocumentClick }: SearchResultsProps) {
-  const { t } = useTranslation();
-
-  const TIME_FILTER_OPTIONS: { value: TimeFilter; label: string }[] = [
-    { value: "day", label: t("app.chatSearch.filters.time.past24Hours") },
-    { value: "week", label: t("app.chatSearch.filters.time.pastWeek") },
-    { value: "month", label: t("app.chatSearch.filters.time.pastMonth") },
-    { value: "year", label: t("app.chatSearch.filters.time.pastYear") },
-  ];
-
   // Available tags from backend
   const { tags: availableTags } = useTags();
   const {
@@ -219,7 +216,7 @@ export default function SearchUI({ onDocumentClick }: SearchResultsProps) {
                   }}
                 >
                   {TIME_FILTER_OPTIONS.find((o) => o.value === timeFilter)
-                    ?.label ?? t("app.chatSearch.filters.time.allTime")}
+                    ?.label ?? "All Time"}
                 </FilterButton>
               </Popover.Trigger>
               <Popover.Content align="start" width="md">
@@ -254,17 +251,17 @@ export default function SearchUI({ onDocumentClick }: SearchResultsProps) {
                   }}
                 >
                   {selectedTags.length > 0
-                    ? t("app.chatSearch.filters.tags.count", {
-                        count: selectedTags.length,
-                      })
-                    : t("app.chatSearch.filters.tags.title")}
+                    ? `${selectedTags.length} Tag${
+                        selectedTags.length > 1 ? "s" : ""
+                      }`
+                    : "Tags"}
                 </FilterButton>
               </Popover.Trigger>
               <Popover.Content align="start" width="lg">
                 <PopoverMenu>
                   <InputTypeIn
                     leftSearchIcon
-                    placeholder={t("app.chatSearch.filters.tags.placeholder")}
+                    placeholder="Filter tags..."
                     value={tagQuery}
                     onChange={(e) => setTagQuery(e.target.value)}
                     onClear={() => setTagQuery("")}
@@ -309,7 +306,7 @@ export default function SearchUI({ onDocumentClick }: SearchResultsProps) {
         <div className="row-start-1 col-start-2 flex flex-col justify-end gap-3">
           <Section alignItems="start">
             <Text text03 mainUiMuted>
-              {t("app.chatSearch.resultsCount", { count: results.length })}
+              {results.length} Results
             </Text>
           </Section>
 
@@ -319,10 +316,7 @@ export default function SearchUI({ onDocumentClick }: SearchResultsProps) {
         {/* Bottom-left: Search results */}
         <div className="row-start-2 col-start-1 min-h-0 overflow-y-scroll py-3 flex flex-col gap-2">
           {error ? (
-            <EmptyMessage
-              title={t("app.chatSearch.searchFailed")}
-              description={error}
-            />
+            <EmptyMessage title="Search failed" description={error} />
           ) : paginatedResults.length > 0 ? (
             <>
               {paginatedResults.map((doc) => (
@@ -336,8 +330,8 @@ export default function SearchUI({ onDocumentClick }: SearchResultsProps) {
             </>
           ) : (
             <EmptyMessage
-              title={t("app.chatSearch.noDocumentsFound")}
-              description={t("app.chatSearch.trySearchingSomethingElse")}
+              title="No documents found"
+              description="Try searching for something else"
             />
           )}
         </div>

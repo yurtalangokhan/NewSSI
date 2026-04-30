@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useTranslation } from "react-i18next";
 import { humanReadableFormat } from "@/lib/time";
 import { BackendChatSession } from "@/app/app/interfaces";
 import { processRawChatHistory } from "@/app/app/services/lib";
@@ -27,7 +26,6 @@ export default function SharedChatDisplay({
   chatSession,
   persona,
 }: SharedChatDisplayProps) {
-  const { t } = useTranslation();
   const [presentingDocument, setPresentingDocument] =
     useState<MinimalOnyxDocument | null>(null);
 
@@ -37,8 +35,8 @@ export default function SharedChatDisplay({
     return (
       <div className="min-h-full w-full">
         <div className="mx-auto w-fit pt-8">
-          <Callout type="danger" title={t("sharedChat.notFoundTitle")}>
-            {t("sharedChat.idNotFound")}
+          <Callout type="danger" title="Shared Chat Not Found">
+            Did not find a shared chat with the specified ID.
           </Callout>
         </div>
       </div>
@@ -55,8 +53,8 @@ export default function SharedChatDisplay({
     return (
       <div className="min-h-full w-full">
         <div className="mx-auto w-fit pt-8">
-          <Callout type="danger" title={t("sharedChat.notFoundTitle")}>
-            {t("sharedChat.noMessages")}
+          <Callout type="danger" title="Shared Chat Not Found">
+            No messages found in shared chat.
           </Callout>
         </div>
       </div>
@@ -80,13 +78,11 @@ export default function SharedChatDisplay({
             </Text>
             <div className="flex flex-col items-end">
               <Text as="p" text03 secondaryBody>
-                {t("sharedChat.sharedOn", {
-                  date: humanReadableFormat(chatSession.time_created),
-                })}
+                Shared on {humanReadableFormat(chatSession.time_created)}
               </Text>
               {chatSession.owner_name && (
                 <Text as="p" text03 secondaryBody>
-                  {t("sharedChat.by", { name: chatSession.owner_name })}
+                  by {chatSession.owner_name}
                 </Text>
               )}
             </div>

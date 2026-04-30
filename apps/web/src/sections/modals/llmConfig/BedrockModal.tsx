@@ -32,7 +32,6 @@ import Separator from "@/refresh-components/Separator";
 import Text from "@/refresh-components/texts/Text";
 import Tabs from "@/refresh-components/Tabs";
 import { cn } from "@/lib/utils";
-import { useTranslation } from "react-i18next";
 
 export const BEDROCK_PROVIDER_NAME = "bedrock";
 const BEDROCK_DISPLAY_NAME = "AWS Bedrock";
@@ -100,7 +99,6 @@ function BedrockModalInternals({
   onClose,
 }: BedrockModalInternalsProps) {
   const authMethod = formikProps.values.custom_config?.BEDROCK_AUTH_METHOD;
-  const { t } = useTranslation();
 
   // Clean up unused auth fields when tab changes
   useEffect(() => {
@@ -143,17 +141,17 @@ function BedrockModalInternals({
 
       <SelectorFormField
         name={FIELD_AWS_REGION_NAME}
-        label={t("llmConfig.awsRegionLabel")}
-        subtext={t("llmConfig.awsRegionSubtext")}
+        label="AWS Region"
+        subtext="Region where your Amazon Bedrock models are hosted."
         options={AWS_REGION_OPTIONS}
       />
 
       <div>
         <Text as="p" mainUiAction>
-          {t("llmConfig.authMethod")}
+          Authentication Method
         </Text>
         <Text as="p" secondaryBody text03>
-          {t("llmConfig.authMethodDescription")}
+          Choose how Onyx should authenticate with Bedrock.
         </Text>
         <Tabs
           value={authMethod || AUTH_METHOD_ACCESS_KEY}
@@ -162,18 +160,19 @@ function BedrockModalInternals({
           }
         >
           <Tabs.List>
-            <Tabs.Trigger value={AUTH_METHOD_IAM}>{t("llmConfig.iamRole")}</Tabs.Trigger>
+            <Tabs.Trigger value={AUTH_METHOD_IAM}>IAM Role</Tabs.Trigger>
             <Tabs.Trigger value={AUTH_METHOD_ACCESS_KEY}>
-              {t("llmConfig.accessKey")}
+              Access Key
             </Tabs.Trigger>
             <Tabs.Trigger value={AUTH_METHOD_LONG_TERM_API_KEY}>
-              {t("llmConfig.longTermApiKey")}
+              Long-term API Key
             </Tabs.Trigger>
           </Tabs.List>
 
           <Tabs.Content value={AUTH_METHOD_IAM}>
             <Text as="p" text03>
-              {t("llmConfig.iamRoleDescription")}
+              Uses the IAM role attached to your AWS environment. Recommended
+              for EC2, ECS, Lambda, or other AWS services.
             </Text>
           </Tabs.Content>
 
@@ -181,12 +180,12 @@ function BedrockModalInternals({
             <div className="flex flex-col gap-4 w-full">
               <TextFormField
                 name={FIELD_AWS_ACCESS_KEY_ID}
-                label={t("llmConfig.awsAccessKeyId")}
+                label="AWS Access Key ID"
                 placeholder="AKIAIOSFODNN7EXAMPLE"
               />
               <PasswordInputTypeInField
                 name={FIELD_AWS_SECRET_ACCESS_KEY}
-                label={t("llmConfig.awsSecretAccessKey")}
+                label="AWS Secret Access Key"
                 placeholder="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
               />
             </div>
@@ -196,8 +195,8 @@ function BedrockModalInternals({
             <div className="flex flex-col gap-4 w-full">
               <PasswordInputTypeInField
                 name={FIELD_AWS_BEARER_TOKEN_BEDROCK}
-                label={t("llmConfig.awsLongTermApiKey")}
-                placeholder={t("llmConfig.awsLongTermApiKeyPlaceholder")}
+                label="AWS Bedrock Long-term API Key"
+                placeholder="Your long-term API key"
               />
             </div>
           </Tabs.Content>
@@ -221,9 +220,9 @@ function BedrockModalInternals({
         isDisabled={isFetchDisabled}
         disabledHint={
           !formikProps.values.custom_config?.AWS_REGION_NAME
-            ? t("llmConfig.selectAwsRegion")
+            ? "Select an AWS region."
             : !isAuthComplete
-              ? t("llmConfig.completeAuthMethod")
+              ? 'Complete the "Authentication Method" section.'
               : undefined
         }
         onModelsFetched={setFetchedModels}
@@ -235,7 +234,10 @@ function BedrockModalInternals({
       <DisplayModels
         modelConfigurations={currentModels}
         formikProps={formikProps}
-        noModelConfigurationsMessage={t("llmConfig.fetchModelsFirst")}
+        noModelConfigurationsMessage={
+          "Fetch available models first, then you'll be able to select " +
+          "the models you want to make available in Onyx."
+        }
         recommendedDefaultModel={null}
         shouldShowAutoUpdateToggle={false}
       />

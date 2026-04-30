@@ -1,6 +1,5 @@
 "use client";
 
-import { useTranslation } from "react-i18next";
 import Text from "@/components/ui/text";
 import Title from "@/components/ui/title";
 import * as SettingsLayouts from "@/layouts/settings-layouts";
@@ -23,8 +22,6 @@ function AgentCatalog({
   searchQuery: string;
   onSearchQueryChange: (value: string) => void;
 }) {
-  const { t } = useTranslation();
-
   const filteredAgents = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
     if (!normalizedQuery) {
@@ -46,16 +43,17 @@ function AgentCatalog({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-3">
-        <Title>{t("admin.agents.catalogTitle")}</Title>
-        <CreateButton href="/app/agents/create?admin=true">{t("admin.agents.createButton")}</CreateButton>
+        <Title>Agent Catalog</Title>
+        <CreateButton href="/app/agents/create?admin=true">Create Agent</CreateButton>
       </div>
 
       <Text>
-        {t("admin.agents.catalogDescription")}
+        Browse all existing agents from one place, then edit/delete/share from
+        each card as needed.
       </Text>
 
       <InputTypeIn
-        placeholder={t("admin.agents.searchPlaceholder")}
+        placeholder="Search existing agents by name, description, or owner"
         value={searchQuery}
         onChange={(event) => onSearchQueryChange(event.target.value)}
         leftSearchIcon
@@ -77,7 +75,7 @@ function AgentCatalog({
         </div>
       ) : (
         <div className="mt-2 p-6 border border-border rounded-lg bg-background-weak text-center">
-          <Text>{t("admin.agents.noSearchResults")}</Text>
+          <Text>No agents match your search.</Text>
         </div>
       )}
     </div>
@@ -105,7 +103,6 @@ function MainContent({
 }
 
 export default function Page() {
-  const { t } = useTranslation();
   const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.AGENTS]!;
   const [searchQuery, setSearchQuery] = useState("");
   const {
@@ -116,22 +113,18 @@ export default function Page() {
 
   return (
     <SettingsLayouts.Root>
-      <SettingsLayouts.Header
-        icon={route.icon}
-        title={t(route.titleKey || "", { defaultValue: route.title })}
-        separator
-      />
+      <SettingsLayouts.Header icon={route.icon} title={route.title} separator />
 
       <SettingsLayouts.Body>
         {isCatalogLoading && <ThreeDotsLoader />}
 
         {catalogError && (
           <ErrorCallout
-            errorTitle={t("admin.agents.errorTitle")}
+            errorTitle="Failed to load agents"
             errorMsg={
               catalogError?.info?.message ||
               catalogError?.info?.detail ||
-              t("admin.agents.errorUnknown")
+              "An unknown error occurred"
             }
           />
         )}

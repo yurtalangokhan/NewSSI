@@ -16,7 +16,6 @@ import { buildInitialValues } from "../components/llmConnectionHelpers";
 import ConnectionProviderIcon from "@/refresh-components/ConnectionProviderIcon";
 import InlineExternalLink from "@/refresh-components/InlineExternalLink";
 import { ProviderIcon } from "@/app/admin/configuration/llm/ProviderIcon";
-import { useTranslation } from "react-i18next";
 import {
   isValidAzureTargetUri,
   parseAzureTargetUri,
@@ -51,7 +50,6 @@ interface AzureFormValues {
 }
 
 function AzureFormFields(props: OnboardingFormChildProps<AzureFormValues>) {
-  const { t } = useTranslation();
   const {
     formikProps,
     apiStatus,
@@ -67,7 +65,7 @@ function AzureFormFields(props: OnboardingFormChildProps<AzureFormValues>) {
         name={FIELD_TARGET_URI}
         render={(field, helper, meta, state) => (
           <FormField name={FIELD_TARGET_URI} state={state} className="w-full">
-            <FormField.Label>{t("llmOnboarding.targetUri")}</FormField.Label>
+            <FormField.Label>Target URI</FormField.Label>
             <FormField.Control>
               <InputTypeIn
                 {...field}
@@ -104,7 +102,7 @@ function AzureFormFields(props: OnboardingFormChildProps<AzureFormValues>) {
         name={FIELD_API_KEY}
         render={(field, helper, meta, state) => (
           <FormField name={FIELD_API_KEY} state={state} className="w-full">
-            <FormField.Label>{t("llmOnboarding.apiKey")}</FormField.Label>
+            <FormField.Label>API Key</FormField.Label>
             <FormField.Control>
               <PasswordInputTypeIn
                 {...field}
@@ -134,9 +132,9 @@ function AzureFormFields(props: OnboardingFormChildProps<AzureFormValues>) {
               <FormField.APIMessage
                 state={apiStatus}
                 messages={{
-                  loading: t("llmOnboarding.checkingAzure"),
-                  success: t("llmOnboarding.azureApiKeyValid"),
-                  error: errorMessage || t("llmOnboarding.invalidApiKey"),
+                  loading: "Checking API key with Azure OpenAI...",
+                  success: "API key valid. Your available models updated.",
+                  error: errorMessage || "Invalid API key",
                 }}
               />
             )}
@@ -154,7 +152,7 @@ function AzureFormFields(props: OnboardingFormChildProps<AzureFormValues>) {
             state={state}
             className="w-full"
           >
-            <FormField.Label>{t("llmOnboarding.defaultModel")}</FormField.Label>
+            <FormField.Label>Default Model</FormField.Label>
             <FormField.Control>
               <InputComboBox
                 value={field.value}
@@ -163,12 +161,12 @@ function AzureFormFields(props: OnboardingFormChildProps<AzureFormValues>) {
                 options={modelOptions}
                 disabled={disabled}
                 onBlur={field.onBlur}
-                placeholder={t("llmOnboarding.selectOrTypeModel")}
+                placeholder="Select or type a model name"
               />
             </FormField.Control>
             <FormField.Message
               messages={{
-                idle: t("llmOnboarding.defaultModelDesc"),
+                idle: "This model will be used by Onyx by default.",
                 error: meta.error,
               }}
             />
@@ -186,7 +184,6 @@ export function AzureOnboardingForm({
   open,
   onOpenChange,
 }: AzureOnboardingFormProps) {
-  const { t } = useTranslation();
   const initialValues = useMemo(
     (): AzureFormValues => ({
       ...buildInitialValues(),
@@ -197,15 +194,15 @@ export function AzureOnboardingForm({
   );
 
   const validationSchema = Yup.object().shape({
-    [FIELD_API_KEY]: Yup.string().required(t("llmOnboardingForms.apiKeyRequired")),
+    [FIELD_API_KEY]: Yup.string().required("API Key is required"),
     [FIELD_TARGET_URI]: Yup.string()
-      .required(t("llmOnboardingForms.targetUriRequired"))
+      .required("Target URI is required")
       .test(
         "valid-target-uri",
-        t("llmOnboardingForms.targetUriValidation"),
+        "Target URI must be a valid URL with api-version query parameter and either a deployment name in the path (/openai/deployments/{name}/...) or /openai/responses for realtime",
         (value) => (value ? isValidAzureTargetUri(value) : false)
       ),
-    [FIELD_DEFAULT_MODEL_NAME]: Yup.string().required(t("llmOnboardingForms.modelNameRequired")),
+    [FIELD_DEFAULT_MODEL_NAME]: Yup.string().required("Model name is required"),
   });
 
   const icon = () => (
@@ -217,8 +214,8 @@ export function AzureOnboardingForm({
   return (
     <OnboardingFormWrapper<AzureFormValues>
       icon={icon}
-      title={t("llmOnboarding.setupAzure")}
-      description={t("llmOnboarding.setupAzureDesc")}
+      title="Set up Azure OpenAI"
+      description="Connect to Microsoft Azure and set up your Azure OpenAI models."
       llmDescriptor={llmDescriptor}
       onboardingState={onboardingState}
       onboardingActions={onboardingActions}

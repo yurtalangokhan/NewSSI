@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useTranslation } from "react-i18next";
 import { toast } from "@/hooks/useToast";
 import {
   Table,
@@ -28,12 +27,11 @@ interface Props {
 }
 
 const PendingUsersTable = ({ users, mutate, error, isLoading, q }: Props) => {
-  const { t } = useTranslation();
   const [currentPageNum, setCurrentPageNum] = useState<number>(1);
   const [userToApprove, setUserToApprove] = useState<string | null>(null);
 
   if (!users.length)
-    return <p>{t("admin.users.pendingEmptyState")}</p>;
+    return <p>Users that have requested to join will show up here</p>;
 
   const totalPages = Math.ceil(users.length / USERS_PER_PAGE);
 
@@ -55,7 +53,7 @@ const PendingUsersTable = ({ users, mutate, error, isLoading, q }: Props) => {
   if (error) {
     return (
       <ErrorCallout
-        errorTitle={t("admin.users.errorLoadingPendingUsers")}
+        errorTitle="Error loading pending users"
         errorMsg={error?.info?.detail}
       />
     );
@@ -74,7 +72,7 @@ const PendingUsersTable = ({ users, mutate, error, isLoading, q }: Props) => {
       mutate();
       setUserToApprove(null);
     } catch (error) {
-      toast.error(t("admin.users.approveFailedError"));
+      toast.error("Failed to approve user request");
     }
   };
 
@@ -82,22 +80,22 @@ const PendingUsersTable = ({ users, mutate, error, isLoading, q }: Props) => {
     <>
       {userToApprove && (
         <ConfirmEntityModal
-          entityType={t("admin.users.joinRequestEntity")}
+          entityType="Join Request"
           entityName={userToApprove}
           onClose={() => setUserToApprove(null)}
           onSubmit={() => handleAcceptRequest(userToApprove)}
-          actionButtonText={t("admin.users.approveButton")}
-          action={t("admin.users.approveAction")}
-          additionalDetails={t("admin.users.approveDetails", { user: userToApprove })}
+          actionButtonText="Approve"
+          action="approve the join request of"
+          additionalDetails={`${userToApprove} has requested to join the team. Approving will add them as a user in this team.`}
           removeConfirmationText
         />
       )}
       <Table className="overflow-visible">
         <TableHeader>
           <TableRow>
-            <TableHead>{t("admin.users.emailHeader")}</TableHead>
+            <TableHead>Email</TableHead>
             <TableHead>
-              <div className="flex justify-end">{t("admin.users.actionsHeader")}</div>
+              <div className="flex justify-end">Actions</div>
             </TableHead>
           </TableRow>
         </TableHeader>
@@ -113,7 +111,7 @@ const PendingUsersTable = ({ users, mutate, error, isLoading, q }: Props) => {
                       onClick={() => setUserToApprove(user.email.toLowerCase())}
                       leftIcon={SvgCheck}
                     >
-                      {t("admin.users.acceptJoinRequest")}
+                      Accept Join Request
                     </Button>
                   </div>
                 </TableCell>
@@ -122,7 +120,7 @@ const PendingUsersTable = ({ users, mutate, error, isLoading, q }: Props) => {
           ) : (
             <TableRow>
               <TableCell colSpan={2} className="h-24 text-center">
-                {t("admin.users.noPendingUsersFoundMatching", { query: q })}
+                {`No pending users found matching "${q}"`}
               </TableCell>
             </TableRow>
           )}

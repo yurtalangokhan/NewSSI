@@ -13,7 +13,6 @@ import {
   DEMO_COMPANY_NAME,
   getPositionText,
 } from "@/app/craft/onboarding/constants";
-import { useTranslation } from "react-i18next";
 
 interface SelectableButtonProps {
   selected: boolean;
@@ -77,7 +76,6 @@ export default function OnboardingUserInfo({
   onWorkAreaChange,
   onLevelChange,
 }: OnboardingUserInfoProps) {
-  const { t } = useTranslation();
   const requiresLevel =
     workArea !== undefined && WORK_AREAS_REQUIRING_LEVEL.includes(workArea);
 
@@ -93,7 +91,7 @@ export default function OnboardingUserInfo({
       {/* Header */}
       <div className="flex flex-col items-center gap-3">
         <Text headingH2 text05>
-          {t("onboardingUserInfo.demoDataConfig")}
+          Demo Data Configuration
         </Text>
       </div>
 
@@ -130,13 +128,15 @@ export default function OnboardingUserInfo({
         */}
 
         <Text mainUiBody text04 className="text-center">
-          {t("onboardingUserInfo.demoDataDesc")}
+          While you wait for your data to sync, try out our simulated demo
+          dataset! <br />
+          The simulated data will adapt to your role and level choices below.
         </Text>
 
         {/* Work area */}
         <div className="flex flex-col gap-3 items-center">
           <Text mainUiBody text04>
-            {t("onboardingUserInfo.selectRole")}
+            Select your role:
           </Text>
           <div className="grid grid-cols-3 gap-3 w-full">
             {WORK_AREA_OPTIONS.map((option) => (
@@ -154,7 +154,7 @@ export default function OnboardingUserInfo({
         {/* Level */}
         <div className="flex flex-col gap-3 items-center">
           <Text mainUiBody text04>
-            {t("onboardingUserInfo.level")}{" "}
+            Level{" "}
             {requiresLevel && <span className="text-status-error-05">*</span>}
           </Text>
           <div className="flex justify-center gap-3 w-full">
@@ -180,11 +180,9 @@ export default function OnboardingUserInfo({
         <div className="flex justify-center min-h-[1.5rem]">
           {personaInfo && positionText && (
             <Text mainContentBody text03 className="text-center">
-              {t("onboardingUserInfo.youWillPlay", {
-                position: positionText,
-                name: personaInfo.name,
-                company: DEMO_COMPANY_NAME,
-              })}
+              You will play the role of {positionText} named {personaInfo.name}{" "}
+              working at <br />
+              {DEMO_COMPANY_NAME}
             </Text>
           )}
         </div>

@@ -20,7 +20,6 @@ import IconButton from "@/refresh-components/buttons/IconButton";
 import ButtonRenaming from "@/refresh-components/buttons/ButtonRenaming";
 import { UserFileStatus } from "../../projects/projectsService";
 import { SvgAddLines, SvgEdit, SvgFiles, SvgFolderOpen } from "@opal/icons";
-import { useTranslation } from "react-i18next";
 
 export interface ProjectContextPanelProps {
   projectTokenCount?: number;
@@ -34,7 +33,6 @@ export default function ProjectContextPanel({
 }: ProjectContextPanelProps) {
   const addInstructionModal = useCreateModal();
   const projectFilesModal = useCreateModal();
-  const { t } = useTranslation();
   // Edit project name state
   const [isEditingName, setIsEditingName] = useState(false);
   // Convert ProjectFile to MinimalOnyxDocument format for viewing
@@ -96,7 +94,7 @@ export default function ProjectContextPanel({
 
   // Handle project name editing
   const currentProject = projects.find((p) => p.id === currentProjectId);
-  const projectName = currentProject?.name || t("projectContextPanel.loadingProject");
+  const projectName = currentProject?.name || "Loading project...";
 
   const startEditing = useCallback(() => {
     setIsEditingName(true);
@@ -121,8 +119,8 @@ export default function ProjectContextPanel({
 
       <projectFilesModal.Provider>
         <UserFilesModal
-          title={t("projectContextPanel.projectFilesTitle")}
-          description={t("projectContextPanel.projectFilesDescription")}
+          title="Project Files"
+          description="Sessions in this project can access the files here."
           recentFiles={[...allCurrentProjectFiles]}
           onView={handleOnView}
           handleUploadChange={handleUploadChange}
@@ -157,7 +155,7 @@ export default function ProjectContextPanel({
                   internal
                   onClick={startEditing}
                   className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity"
-                  tooltip={t("projectContextPanel.editProjectNameTooltip")}
+                  tooltip="Edit project name"
                 />
               </>
             )}
@@ -168,7 +166,7 @@ export default function ProjectContextPanel({
         <div className="flex flex-row gap-2 justify-between">
           <div className="min-w-0 flex-1">
             <Text as="p" headingH3 text04>
-              {t("projectContextPanel.instructionsLabel")}
+              Instructions
             </Text>
             {isLoadingProjectDetails && !currentProjectDetails ? (
               <div className="h-5 w-3/4 rounded bg-background-tint-02 animate-pulse" />
@@ -178,7 +176,7 @@ export default function ProjectContextPanel({
               </Text>
             ) : (
               <Text as="p" text02 secondaryBody className="truncate">
-                {t("projectContextPanel.instructionsPlaceholder")}
+                Add instructions to tailor the response in this project.
               </Text>
             )}
           </div>
@@ -187,7 +185,7 @@ export default function ProjectContextPanel({
             onClick={() => addInstructionModal.toggle(true)}
             tertiary
           >
-            {t("projectContextPanel.setInstructionsButton")}
+            Set Instructions
           </Button>
         </div>
         <div
@@ -200,7 +198,7 @@ export default function ProjectContextPanel({
                 Files
               </Text>
               <Text as="p" text02 secondaryBody>
-                {t("projectContextPanel.filesDescription")}
+                Chats in this project can access these files.
               </Text>
             </div>
             <FilePickerPopover
@@ -208,7 +206,7 @@ export default function ProjectContextPanel({
                 // The `secondary={undefined}` is required here because `CreateButton` sets it to true.
                 // Therefore, we need to first remove the truthiness before passing in the other `tertiary` flag.
                 <CreateButton secondary={undefined} tertiary transient={open}>
-                  {t("projectContextPanel.addFilesButton")}
+                  Add Files
                 </CreateButton>
               )}
               onFileClick={handleOnView}
@@ -256,12 +254,12 @@ export default function ProjectContextPanel({
                   <div className="flex flex-col overflow-hidden">
                     <div className="flex items-center justify-between gap-2 w-full">
                       <Text as="p" text04 secondaryAction>
-                        {t("projectContextPanel.viewFilesButton")}
+                        View files
                       </Text>
                       <SvgFiles className="h-5 w-5 stroke-text-02" />
                     </div>
                     <Text as="p" text03 secondaryBody>
-                      {t("projectContextPanel.filesCount", { n: displayFileCount })}
+                      {displayFileCount} files
                     </Text>
                   </div>
                 </button>
@@ -292,12 +290,12 @@ export default function ProjectContextPanel({
                     <div className="flex flex-col overflow-hidden h-12 p-1">
                       <div className="flex items-center justify-between gap-2 w-full">
                         <Text as="p" text04 secondaryAction>
-                          {t("projectContextPanel.viewAllButton")}
+                          View All
                         </Text>
                         <SvgFiles className="h-5 w-5 stroke-text-02" />
                       </div>
                       <Text as="p" text03 secondaryBody>
-                        {t("projectContextPanel.filesCount", { n: displayFileCount })}
+                        {displayFileCount} files
                       </Text>
                     </div>
                   </button>
@@ -308,7 +306,9 @@ export default function ProjectContextPanel({
               </div>
               {projectTokenCount > availableContextTokens && (
                 <Text as="p" text02 secondaryBody>
-                  {t("projectContextPanel.contextLimitWarning")}
+                  This project exceeds the model&apos;s context limits. Sessions
+                  will automatically search for relevant files first before
+                  generating response.
                 </Text>
               )}
             </>
@@ -326,8 +326,8 @@ export default function ProjectContextPanel({
                 }`}
               >
                 {isDragActive
-                  ? t("projectContextPanel.dropFilesActive")
-                  : t("projectContextPanel.dropFilesDefault")}
+                  ? "Drop files here to add to this project"
+                  : "Add documents, texts, or images to use in the project. Drag & drop supported."}
               </p>
             </div>
           )}

@@ -1,4 +1,3 @@
-import { useTranslation } from "react-i18next";
 import { ThreeDotsLoader } from "@/components/Loading";
 import { X, Search } from "lucide-react";
 import {
@@ -28,7 +27,6 @@ export function PersonaMessagesChart({
   availablePersonas: Persona[];
   timeRange: DateRangePickerValue;
 }) {
-  const { t } = useTranslation();
   const [selectedPersonaId, setSelectedPersonaId] = useState<
     number | undefined
   >(undefined);
@@ -126,9 +124,9 @@ export function PersonaMessagesChart({
       const messageData = messagesMap.get(dateStr);
       const uniqueUserData = uniqueUsersMap.get(dateStr);
       return {
-        [t("performanceCharts.dayLabel")]: dateStr,
-        [t("performanceCharts.messagesLabel")]: messageData?.total_messages || 0,
-        [t("performanceCharts.uniqueUsersLabel")]: uniqueUserData?.unique_users || 0,
+        Day: dateStr,
+        Messages: messageData?.total_messages || 0,
+        "Unique Users": uniqueUserData?.unique_users || 0,
       };
     });
   }, [
@@ -136,7 +134,6 @@ export function PersonaMessagesChart({
     personaUniqueUsersData,
     timeRange.from,
     selectedPersonaId,
-    t,
   ]);
 
   let content;
@@ -149,20 +146,20 @@ export function PersonaMessagesChart({
   } else if (!availablePersonas || hasError) {
     content = (
       <div className="h-80 text-red-600 text-bold flex flex-col">
-        <p className="m-auto">{t("performanceCharts.failedFetchData")}</p>
+        <p className="m-auto">Failed to fetch data...</p>
       </div>
     );
   } else if (selectedPersonaId === undefined) {
     content = (
       <div className="h-80 text-text-500 flex flex-col">
-        <p className="m-auto">{t("performanceCharts.selectAgentToView")}</p>
+        <p className="m-auto">Select an agent to view analytics</p>
       </div>
     );
   } else if (!personaMessagesData?.length) {
     content = (
       <div className="h-80 text-text-500 flex flex-col">
         <p className="m-auto">
-          {t("performanceCharts.noDataForAgent")}
+          No data found for selected agent in the specified time range
         </p>
       </div>
     );
@@ -171,8 +168,8 @@ export function PersonaMessagesChart({
       <AreaChartDisplay
         className="mt-4"
         data={chartData}
-        categories={[t("performanceCharts.messagesLabel"), t("performanceCharts.uniqueUsersLabel")]}
-        index={t("performanceCharts.dayLabel")}
+        categories={["Messages", "Unique Users"]}
+        index="Day"
         colors={["indigo", "fuchsia"]}
         yAxisWidth={60}
       />
@@ -181,9 +178,9 @@ export function PersonaMessagesChart({
 
   return (
     <CardSection className="mt-8">
-      <Title>{t("performanceCharts.agentAnalyticsTitle")}</Title>
+      <Title>Agent Analytics</Title>
       <div className="flex flex-col gap-4">
-        <Text>{t("performanceCharts.messagesPerDay")}</Text>
+        <Text>Messages and unique users per day for the selected agent</Text>
         <div className="flex items-center gap-4">
           <Select
             value={selectedPersonaId?.toString() ?? ""}
@@ -192,14 +189,14 @@ export function PersonaMessagesChart({
             }}
           >
             <SelectTrigger className="flex w-full max-w-xs">
-              <SelectValue placeholder={t("performanceCharts.selectAgent")} />
+              <SelectValue placeholder="Select an agent to display" />
             </SelectTrigger>
             <SelectContent>
               <div className="flex items-center px-2 pb-2 sticky top-0 bg-background border-b">
                 <Search className="h-4 w-4 mr-2 shrink-0 opacity-50" />
                 <input
                   className="flex h-8 w-full rounded-sm bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
-                  placeholder={t("performanceCharts.searchAgents")}
+                  placeholder="Search agents..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onClick={(e) => e.stopPropagation()}

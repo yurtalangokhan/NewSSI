@@ -21,9 +21,9 @@ import {
   createDatasource,
 } from "@/lib/airbyte";
 import SchemaForm from "@/components/admin/airbyte/SchemaForm/index";
-import { useTranslation } from "react-i18next";
 
 type Step = 0 | 1 | 2;
+const STEP_LABELS = ["Configure", "Select Streams", "Name & Confirm"];
 
 interface AirbyteConnectorPageProps {
   connectorName: string;
@@ -33,7 +33,6 @@ export default function AirbyteConnectorPage({
   connectorName,
 }: AirbyteConnectorPageProps) {
   const router = useRouter();
-  const { t } = useTranslation();
 
   const [step, setStep] = useState<Step>(0);
   const [spec, setSpec] = useState<ConnectorSpec | null>(null);
@@ -85,11 +84,7 @@ export default function AirbyteConnectorPage({
         setValidationMsg(result.message);
       }
     } catch (e: unknown) {
-      setValidationMsg(
-        e instanceof Error
-          ? e.message
-          : t("admin.airbyteConnector.validationFailed")
-      );
+      setValidationMsg(e instanceof Error ? e.message : "Validation failed");
     } finally {
       setValidating(false);
     }
@@ -109,16 +104,14 @@ export default function AirbyteConnectorPage({
             selectedStreams.size > 0 ? Array.from(selectedStreams) : undefined,
         },
       });
-      toast.success(t("admin.airbyteConnector.datasourceCreated"));
+      toast.success("Data source created successfully");
       router.push("/admin/indexing/status");
     } catch (e: unknown) {
       if (e instanceof DatasourceConflictError) {
         setNameError(e.message);
       } else {
         toast.error(
-          e instanceof Error
-            ? e.message
-            : t("admin.airbyteConnector.datasourceCreateFailed")
+          e instanceof Error ? e.message : "Failed to create data source"
         );
       }
     } finally {
@@ -131,17 +124,13 @@ export default function AirbyteConnectorPage({
       {/* Sidebar */}
       <div className="sticky top-0 self-start flex-shrink-0 h-screen">
       <StepSidebar
-        buttonName={t("admin.airbyteConnector.addConnector")}
+        buttonName="Add Connector"
         buttonIcon={SvgSettings}
         buttonHref="/admin/add-connector"
       >
         <div className="relative mt-4">
           <div className="absolute h-[85%] left-[6px] top-[8px] bottom-0 w-0.5 bg-background-tint-04" />
-          {[
-            t("admin.airbyteConnector.steps.configure"),
-            t("admin.airbyteConnector.steps.selectStreams"),
-            t("admin.airbyteConnector.steps.nameAndConfirm"),
-          ].map((label, index) => {
+          {STEP_LABELS.map((label, index) => {
             const allowed = index <= step;
             return (
               <div
@@ -194,16 +183,17 @@ export default function AirbyteConnectorPage({
         {step === 0 && (
           <CardSection className="mt-4">
             <Text as="p" headingH3 className="pb-4">
-              {t("admin.airbyteConnector.configureConnector")}
+              Configure Connector
             </Text>
 
             {specError ? (
               <Text as="p" secondaryBody className="text-red-500">
-                {t("admin.airbyteConnector.loadConfigFailed")}
+                Failed to load connector configuration. Make sure agent-service
+                is running.
               </Text>
             ) : !spec ? (
               <Text as="p" secondaryBody textLight05>
-                {t("admin.airbyteConnector.loadingConfig")}
+                Loading configuration form…
               </Text>
             ) : (
               <SchemaForm
@@ -227,9 +217,7 @@ export default function AirbyteConnectorPage({
                 onClick={handleValidateAndNext}
                 disabled={validating || !spec}
               >
-                {validating
-                  ? t("admin.airbyteConnector.testingConnection")
-                  : t("admin.airbyteConnector.testAndContinue")}
+                {validating ? "Testing connection…" : "Test & Continue"}
               </Button>
             </div>
           </CardSection>
@@ -239,16 +227,16 @@ export default function AirbyteConnectorPage({
         {step === 1 && (
           <CardSection className="mt-4">
             <Text as="p" headingH3 className="pb-4">
-              {t("admin.airbyteConnector.steps.selectStreams")}
+              Select Streams
             </Text>
 
             {loadingStreams ? (
               <Text as="p" secondaryBody textLight05>
-                {t("admin.airbyteConnector.discoveringStreams")}
+                Discovering streams…
               </Text>
             ) : streams.length === 0 ? (
               <Text as="p" secondaryBody textLight05>
-                {t("admin.airbyteConnector.noStreams")}
+                No streams found. All available data will be synced.
               </Text>
             ) : (
               <>
@@ -259,13 +247,13 @@ export default function AirbyteConnectorPage({
                       setSelectedStreams(new Set(streams.map((s) => s.name)))
                     }
                   >
-                    {t("admin.airbyteConnector.selectAll")}
+                    Select All
                   </Button>
                   <Button
                     size="md"
                     onClick={() => setSelectedStreams(new Set())}
                   >
-                    {t("admin.airbyteConnector.deselectAll")}
+                    Deselect All
                   </Button>
                 </div>
                 <div className="space-y-2 max-h-96 overflow-y-auto">
@@ -295,11 +283,9 @@ export default function AirbyteConnectorPage({
             )}
 
             <div className="flex justify-between mt-6">
-              <Button onClick={() => setStep(0)}>
-                {t("admin.airbyteConnector.back")}
-              </Button>
+              <Button onClick={() => setStep(0)}>Back</Button>
               <Button primary onClick={() => setStep(2)}>
-                {t("admin.airbyteConnector.continue")}
+                Continue
               </Button>
             </div>
           </CardSection>
@@ -309,16 +295,16 @@ export default function AirbyteConnectorPage({
         {step === 2 && (
           <CardSection className="mt-4">
             <Text as="p" headingH3 className="pb-4">
-              {t("admin.airbyteConnector.steps.nameAndConfirm")}
+              Name &amp; Confirm
             </Text>
 
             <div className="space-y-2 mb-6">
               <Text as="p" secondaryBody className="font-medium">
-                {t("admin.airbyteConnector.datasourceName")}
+                Data Source Name
               </Text>
               <InputTypeIn
                 type="text"
-                placeholder={t("admin.airbyteConnector.datasourcePlaceholder")}
+                placeholder="My data source"
                 value={datasourceName}
                 onChange={(e) => {
                   setDatasourceName(e.target.value);
@@ -336,7 +322,7 @@ export default function AirbyteConnectorPage({
             <div className="rounded-lg border border-border p-4 space-y-2 text-sm mb-6">
               <div className="flex justify-between">
                 <Text as="span" secondaryBody textLight05>
-                  {t("admin.airbyteConnector.summaryConnector")}
+                  Connector
                 </Text>
                 <Text as="span" secondaryBody>
                   {displayName}
@@ -344,30 +330,24 @@ export default function AirbyteConnectorPage({
               </div>
               <div className="flex justify-between">
                 <Text as="span" secondaryBody textLight05>
-                  {t("admin.airbyteConnector.summaryStreams")}
+                  Streams
                 </Text>
                 <Text as="span" secondaryBody>
                   {selectedStreams.size > 0
-                    ? t("admin.airbyteConnector.selectedCount", {
-                        count: selectedStreams.size,
-                      })
-                    : t("admin.airbyteConnector.all")}
+                    ? `${selectedStreams.size} selected`
+                    : "All"}
                 </Text>
               </div>
             </div>
 
             <div className="flex justify-between">
-              <Button onClick={() => setStep(1)}>
-                {t("admin.airbyteConnector.back")}
-              </Button>
+              <Button onClick={() => setStep(1)}>Back</Button>
               <Button
                 primary
                 onClick={handleCreate}
                 disabled={creating || !datasourceName.trim()}
               >
-                {creating
-                  ? t("admin.airbyteConnector.creating")
-                  : t("admin.airbyteConnector.createDataSource")}
+                {creating ? "Creating…" : "Create Data Source"}
               </Button>
             </div>
           </CardSection>

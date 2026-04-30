@@ -5,7 +5,6 @@ import { User, UserGroup } from "@/lib/types";
 import { UserEditor } from "../UserEditor";
 import { useState } from "react";
 import { SvgUserPlus } from "@opal/icons";
-import { useTranslation } from "react-i18next";
 export interface AddMemberFormProps {
   users: User[];
   userGroup: UserGroup;
@@ -17,7 +16,6 @@ export default function AddMemberForm({
   userGroup,
   onClose,
 }: AddMemberFormProps) {
-  const { t } = useTranslation();
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
 
   return (
@@ -25,7 +23,7 @@ export default function AddMemberForm({
       <Modal.Content width="sm" height="sm">
         <Modal.Header
           icon={SvgUserPlus}
-          title={t("admin.groups.addMemberTitle")}
+          title="Add New User"
           onClose={onClose}
         />
         <Modal.Body>
@@ -49,12 +47,12 @@ export default function AddMemberForm({
                 cc_pair_ids: userGroup.cc_pairs.map((ccPair) => ccPair.id),
               });
               if (response.ok) {
-                toast.success(t("admin.groups.addedUsersSuccess"));
+                toast.success("Successfully added users to group");
                 onClose();
               } else {
                 const responseJson = await response.json();
                 const errorMsg = responseJson.detail || responseJson.message;
-                toast.error(t("admin.groups.addUsersFailed", { errorMsg }));
+                toast.error(`Failed to add users to group - ${errorMsg}`);
                 onClose();
               }
             }}

@@ -1,6 +1,5 @@
 "use client";
 
-import { useTranslation } from "react-i18next";
 import { redirect, useRouter, useSearchParams } from "next/navigation";
 import {
   personaIncludesRetrieval,
@@ -108,7 +107,6 @@ export interface ChatPageProps {
 }
 
 export default function AppPage({ firstMessage }: ChatPageProps) {
-  const { t } = useTranslation();
   // Performance tracking
   // Keeping this here in case we need to track down slow renders in the future
   // const renderCount = useRef(0);
@@ -278,8 +276,8 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
       const names = lastFailedFiles.map((f) => f.name).join(", ");
       toast.error(
         lastFailedFiles.length === 1
-          ? t("chat.fileFailed", { name: names })
-          : t("chat.filesFailed", { names: names })
+          ? `File failed and was removed: ${names}`
+          : `Files failed and were removed: ${names}`
       );
       clearLastFailedFiles();
     }
@@ -428,7 +426,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
       .reverse()
       .find((m) => m.type === "user");
     if (!lastUserMsg) {
-      toast.error(t("chat.noPreviousMessage"));
+      toast.error("No previously-submitted user message found.");
       return;
     }
 
@@ -673,7 +671,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
             <Modal.Content>
               <Modal.Header
                 icon={SvgFileText}
-                title={t("chat.sources")}
+                title="Sources"
                 onClose={() => updateCurrentDocumentSidebarVisible(false)}
               />
               <Modal.Body>
@@ -793,7 +791,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
                         <Button
                           icon={SvgChevronDown}
                           onClick={handleScrollToBottom}
-                          aria-label={t("chat.scrollToBottom")}
+                          aria-label="Scroll to bottom"
                           prominence="secondary"
                         />
                       </div>

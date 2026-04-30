@@ -10,7 +10,6 @@ import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
 import CollectionsPanel from "./components/CollectionsPanel";
 import DocumentsPanel from "./components/DocumentsPanel";
 import SearchPanel from "./components/SearchPanel";
-import { useTranslation } from "react-i18next";
 
 const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.DOCUMENT_PROCESSING]!;
 
@@ -19,7 +18,6 @@ const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.DOCUMENT_PROCESSING]!;
 // ---------------------------------------------------------------------------
 
 function RagManagementSection() {
-  const { t } = useTranslation();
   const [selectedCollectionId, setSelectedCollectionId] = useState<
     string | null
   >(null);
@@ -32,12 +30,12 @@ function RagManagementSection() {
 
   const tabs = SimpleTabs.generateTabs({
     documents: {
-      name: t("admin.documentProcessing.tabs.documents"),
+      name: "Documents",
       icon: SvgFiles,
       content: <DocumentsPanel collectionId={selectedCollectionId} />,
     },
     search: {
-      name: t("admin.documentProcessing.tabs.search"),
+      name: "Search",
       icon: SvgSearch,
       content: <SearchPanel collectionId={selectedCollectionId} />,
     },
@@ -60,7 +58,8 @@ function RagManagementSection() {
               aria-hidden
             />
             <Text as="p" mainContentMuted text03>
-              {t("admin.documentProcessing.selectOrCreateCollection")}
+              Select or create a collection above to manage documents and run
+              searches.
             </Text>
           </div>
         </CardSection>
@@ -74,22 +73,22 @@ function RagManagementSection() {
 // ---------------------------------------------------------------------------
 
 export default function Page() {
-  const { t } = useTranslation();
   return (
     <SettingsLayouts.Root>
       <SettingsLayouts.Header
         icon={route.icon}
-        title={t(route.titleKey || "", { defaultValue: route.title })}
+        title={route.title}
         separator
       />
       <SettingsLayouts.Body>
         <div className="flex flex-col gap-8 pb-36">
           <div className="flex flex-col gap-2">
             <Text as="p" headingH3 text05>
-              {t("admin.documentProcessing.langConnectRag")}
+              LangConnect RAG
             </Text>
             <Text as="p" mainContentBody text04 className="leading-relaxed">
-              {t("admin.documentProcessing.langConnectRagDescription")}
+              Manage vector collections, upload documents for indexing, and run
+              semantic search powered by LangConnect and PGVector.
             </Text>
           </div>
 

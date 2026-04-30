@@ -1,8 +1,5 @@
-"use client";
-
 import React, { useEffect, useMemo, useState } from "react";
 import Text from "@/refresh-components/texts/Text";
-import { useTranslation } from "react-i18next";
 
 import {
   ChatPacket,
@@ -95,7 +92,6 @@ export const MessageTextRenderer: MessageRenderer<
     "font-main-content-body"
   );
 
-  const { t } = useTranslation();
   const wasUserCancelled = stopReason === StopReason.USER_CANCELLED;
 
   return children([
@@ -108,7 +104,7 @@ export const MessageTextRenderer: MessageRenderer<
             {renderedContent}
             {wasUserCancelled && (
               <Text as="p" secondaryBody text04>
-                {t("messageText.userStoppedGeneration")}
+                User has stopped generation
               </Text>
             )}
           </>

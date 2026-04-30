@@ -5,7 +5,6 @@ import Button from "@/refresh-components/buttons/Button";
 import { Badge } from "@/components/ui/badge";
 import { FilterComponent, FilterOptions } from "./FilterComponent";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
-import { useTranslation } from "react-i18next";
 
 interface SearchAndFilterControlsProps {
   searchQuery: string;
@@ -33,7 +32,8 @@ export function SearchAndFilterControls({
   hasActiveFilters,
   filterComponentRef,
   resetPagination,
-}: SearchAndFilterControlsProps) {  const { t } = useTranslation();  const [localSearchValue, setLocalSearchValue] = useState(searchQuery);
+}: SearchAndFilterControlsProps) {
+  const [localSearchValue, setLocalSearchValue] = useState(searchQuery);
 
   // Debounce the search query
   useEffect(() => {
@@ -53,7 +53,7 @@ export function SearchAndFilterControls({
   return (
     <div className="flex items-center gap-x-2">
       <InputTypeIn
-        placeholder={t("indexingFilters.searchConnectors")}
+        placeholder="Search Connectors"
         type="text"
         value={localSearchValue}
         onChange={(event) => setLocalSearchValue(event.target.value)}
@@ -61,7 +61,7 @@ export function SearchAndFilterControls({
       />
 
       <Button onClick={hasExpandedSources ? onCollapseAll : onExpandAll}>
-        {hasExpandedSources ? t("indexingFilters.collapseAll") : t("indexingFilters.expandAll")}
+        {hasExpandedSources ? "Collapse All" : "Expand All"}
       </Button>
 
       <div className="flex items-center gap-2">
@@ -75,14 +75,14 @@ export function SearchAndFilterControls({
             {filterOptions.accessType &&
               filterOptions.accessType.length > 0 && (
                 <Badge variant="secondary" className="px-2 py-0.5 text-xs">
-                  {t("indexingFilters.access")}: {filterOptions.accessType.join(", ")}
+                  Access: {filterOptions.accessType.join(", ")}
                 </Badge>
               )}
 
             {filterOptions.lastStatus &&
               filterOptions.lastStatus.length > 0 && (
                 <Badge variant="secondary" className="px-2 py-0.5 text-xs">
-                  {t("indexingFilters.status")}:{" "}
+                  Status:{" "}
                   {filterOptions.lastStatus
                     .map((s) => s.replace(/_/g, " "))
                     .join(", ")}
@@ -92,7 +92,7 @@ export function SearchAndFilterControls({
             {filterOptions.docsCountFilter.operator &&
               filterOptions.docsCountFilter.value !== null && (
                 <Badge variant="secondary" className="px-2 py-0.5 text-xs">
-                  {t("indexingFilters.docs")} {filterOptions.docsCountFilter.operator}{" "}
+                  Docs {filterOptions.docsCountFilter.operator}{" "}
                   {filterOptions.docsCountFilter.value}
                 </Badge>
               )}
@@ -100,7 +100,7 @@ export function SearchAndFilterControls({
             {filterOptions.docsCountFilter.operator &&
               filterOptions.docsCountFilter.value === null && (
                 <Badge variant="secondary" className="px-2 py-0.5 text-xs">
-                  {t("indexingFilters.docs")} {filterOptions.docsCountFilter.operator} {t("indexingFilters.any")}
+                  Docs {filterOptions.docsCountFilter.operator} any
                 </Badge>
               )}
 
@@ -109,7 +109,7 @@ export function SearchAndFilterControls({
               className="px-2 py-0.5 text-xs border-red-400  bg-red-100 hover:border-red-600 cursor-pointer hover:bg-red-100 dark:hover:bg-red-900"
               onClick={onClearFilters}
             >
-              <span className="text-red-500 dark:text-red-400">{t("indexingFilters.clear")}</span>
+              <span className="text-red-500 dark:text-red-400">Clear</span>
             </Badge>
           </div>
         )}

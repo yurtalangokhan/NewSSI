@@ -20,10 +20,8 @@ import { createGuildConfig } from "@/app/admin/discord-bot/lib";
 import { DiscordGuildsTable } from "@/app/admin/discord-bot/DiscordGuildsTable";
 import { BotConfigCard } from "@/app/admin/discord-bot/BotConfigCard";
 import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
-import { useTranslation } from "react-i18next";
 
 function DiscordBotContent() {
-  const { t } = useTranslation();
   const { data: guilds, isLoading, error, refreshGuilds } = useDiscordGuilds();
   const { data: botConfig, isManaged } = useDiscordBotConfig();
   const [registrationKey, setRegistrationKey] = useState<string | null>(null);
@@ -40,10 +38,10 @@ function DiscordBotContent() {
       const result = await createGuildConfig();
       setRegistrationKey(result.registration_key);
       refreshGuilds();
-      toast.success(t("admin.discord.serverConfigCreated"));
+      toast.success("Server configuration created!");
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : t("admin.discord.createServerFailed")
+        err instanceof Error ? err.message : "Failed to create server"
       );
     } finally {
       setIsCreating(false);
@@ -57,8 +55,8 @@ function DiscordBotContent() {
   if (error || !guilds) {
     return (
       <ErrorCallout
-        errorTitle={t("admin.discord.loadServersErrorTitle")}
-        errorMsg={error?.info?.detail || t("admin.discord.unknownError")}
+        errorTitle="Failed to load Discord servers"
+        errorMsg={error?.info?.detail || "An unknown error occurred"}
       />
     );
   }
@@ -70,14 +68,14 @@ function DiscordBotContent() {
       <Modal open={!!registrationKey}>
         <Modal.Content width="sm">
           <Modal.Header
-            title={t("admin.discord.registrationKeyTitle")}
+            title="Registration Key"
             icon={SvgKey}
             onClose={() => setRegistrationKey(null)}
-            description={t("admin.discord.registrationKeyDescription")}
+            description="This key will only be shown once!"
           />
           <Modal.Body>
             <Text text04 mainUiBody>
-              {t("admin.discord.registrationKeyInstructions")}
+              Copy the command and send it from any text channel in your server!
             </Text>
             <Card variant="secondary">
               <Section
@@ -104,15 +102,13 @@ function DiscordBotContent() {
           alignItems="center"
         >
           <Text mainContentEmphasis text05>
-            {t("admin.discord.serverConfigurations")}
+            Server Configurations
           </Text>
           <CreateButton
             onClick={handleCreateGuild}
             disabled={isCreating || !isBotAvailable}
           >
-            {isCreating
-              ? t("admin.discord.creating")
-              : t("admin.discord.addServer")}
+            {isCreating ? "Creating..." : "Add Server"}
           </CreateButton>
         </Section>
         <DiscordGuildsTable guilds={guilds} onRefresh={refreshGuilds} />
@@ -122,7 +118,6 @@ function DiscordBotContent() {
 }
 
 export default function Page() {
-  const { t } = useTranslation();
   const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.DISCORD_BOTS]!;
 
   return (
@@ -130,7 +125,7 @@ export default function Page() {
       <SettingsLayouts.Header
         icon={route.icon}
         title={route.title}
-        description={t("admin.discord.pageDescription")}
+        description="Connect Onyx to your Discord servers. Users can ask questions directly in Discord channels."
       />
       <SettingsLayouts.Body>
         <DiscordBotContent />

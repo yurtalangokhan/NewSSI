@@ -8,10 +8,8 @@ import { Callout } from "@/components/ui/callout";
 import Text from "@/components/ui/text";
 import { useContext, useState } from "react";
 import InputTextArea from "@/refresh-components/inputs/InputTextArea";
-import { useTranslation } from "react-i18next";
 
 export function CustomAnalyticsUpdateForm() {
-  const { t } = useTranslation();
   const settings = useContext(SettingsContext);
   const customAnalyticsScript = settings?.customAnalyticsScript;
 
@@ -20,7 +18,7 @@ export function CustomAnalyticsUpdateForm() {
   const [secretKey, setSecretKey] = useState<string>("");
 
   if (!settings) {
-    return <Callout type="danger" title={t("admin.performance.customAnalytics.fetchFailed")}></Callout>;
+    return <Callout type="danger" title="Failed to fetch settings"></Callout>;
   }
 
   return (
@@ -43,29 +41,28 @@ export function CustomAnalyticsUpdateForm() {
             }
           );
           if (response.ok) {
-            toast.success(
-              t("admin.performance.customAnalytics.updatedSuccess")
-            );
+            toast.success("Custom analytics script updated successfully!");
           } else {
             const errorMsg = (await response.json()).detail;
             toast.error(
-              t("admin.performance.customAnalytics.updateFailed", {
-                errorMsg,
-              })
+              `Failed to update custom analytics script: "${errorMsg}"`
             );
           }
           setSecretKey("");
         }}
       >
         <div className="mb-4">
-          <Label>{t("admin.performance.customAnalytics.scriptLabel")}</Label>
+          <Label>Script</Label>
           <Text className="mb-3">
-            {t("admin.performance.customAnalytics.scriptDescription")}
+            Specify the Javascript that should run on page load in order to
+            initialize your custom tracking/analytics.
           </Text>
           <Text className="mb-2">
-            {t("admin.performance.customAnalytics.scriptNotePrefix")}{" "}
+            Do not include the{" "}
             <span className="font-mono">&lt;script&gt;&lt;/script&gt;</span>{" "}
-            {t("admin.performance.customAnalytics.scriptNoteSuffix")}
+            tags. If you upload a script below but you are not recieving any
+            events in your analytics platform, try removing all extra whitespace
+            before each line of JavaScript.
           </Text>
           <InputTextArea
             value={newCustomAnalyticsScript}
@@ -75,12 +72,13 @@ export function CustomAnalyticsUpdateForm() {
           />
         </div>
 
-        <Label>{t("admin.performance.customAnalytics.secretKeyLabel")}</Label>
+        <Label>Secret Key</Label>
         <SubLabel>
           <>
-            {t("admin.performance.customAnalytics.secretKeyDescription")}{" "}
+            For security reasons, you must provide a secret key to update this
+            script. This should be the value of the{" "}
             <i>CUSTOM_ANALYTICS_SECRET_KEY</i> environment variable set when
-            {t("admin.performance.customAnalytics.secretKeyDescriptionSuffix")}
+            initially setting up Onyx.
           </>
         </SubLabel>
         <input
@@ -98,7 +96,7 @@ export function CustomAnalyticsUpdateForm() {
         />
 
         <Button className="mt-4" type="submit">
-          {t("admin.performance.customAnalytics.updateButton")}
+          Update
         </Button>
       </form>
     </div>

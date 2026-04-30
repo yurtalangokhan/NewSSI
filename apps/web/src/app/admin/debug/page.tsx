@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import * as SettingsLayouts from "@/layouts/settings-layouts";
 import { ThreeDotsLoader } from "@/components/Loading";
-import { useTranslation } from "react-i18next";
 import {
   Table,
   TableBody,
@@ -22,7 +21,6 @@ import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
 const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.DEBUG]!;
 
 function Main() {
-  const { t } = useTranslation();
   const [categories, setCategories] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -78,7 +76,9 @@ function Main() {
       {isDownloading && <Spinner />}
       <div className="mb-8">
         <Text className="mb-3">
-          <b>{t("admin.debug.logsTitle")}</b> {t("admin.debug.description")}
+          <b>Debug Logs</b> provide detailed information about system operations
+          and events. You can download logs for each category to analyze system
+          behavior or troubleshoot issues.
         </Text>
 
         {categories.length > 0 && (
@@ -86,8 +86,8 @@ function Main() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>{t("admin.debug.categoryHeader")}</TableHead>
-                  <TableHead>{t("admin.debug.actionsHeader")}</TableHead>
+                  <TableHead>Category</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -103,7 +103,7 @@ function Main() {
                         secondary
                         leftIcon={SvgDownloadCloud}
                       >
-                        {t("admin.debug.downloadLogs")}
+                        Download Logs
                       </Button>
                     </TableCell>
                   </TableRow>
