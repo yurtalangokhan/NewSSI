@@ -132,7 +132,6 @@ export default async function RootLayout({
             <TooltipProvider>
               <PHProvider>
                 <PerformanceMeasureGuard />
-                <AppHealthBanner />
                 {content}
               </PHProvider>
             </TooltipProvider>
@@ -170,6 +169,7 @@ export default async function RootLayout({
       settings={combinedSettings}
       folded={folded}
     >
+      <AppHealthBanner />
       <Suspense fallback={null}>
         <PostHogPageView />
       </Suspense>

@@ -143,6 +143,7 @@ export async function* handleSSEStream<T extends PacketType>(
   // If tokens were already streamed for the current answer, skip the later
   // full "message" packet from backend to avoid duplicate text rendering.
   let sawTokenForCurrentAnswer = false;
+  let hasMessageStartForCurrentAnswer = false;
   
   if (signal) {
     signal.addEventListener("abort", () => {
@@ -208,16 +209,35 @@ export async function* handleSSEStream<T extends PacketType>(
             if (!sawToolPackets) {
               turnIndex++; // display → tool: pre-tool text gets its own group
               sawTokenForCurrentAnswer = false;
+              hasMessageStartForCurrentAnswer = false;
             }
             sawToolPackets = true;
           } else if (sawToolPackets) {
             turnIndex++;
             sawToolPackets = false;
             sawTokenForCurrentAnswer = false;
+            hasMessageStartForCurrentAnswer = false;
           }
 
           if (backendPacket.type === "stop") {
             sawTokenForCurrentAnswer = false;
+            hasMessageStartForCurrentAnswer = false;
+          }
+
+          if (backendPacket.type === "message") {
+            hasMessageStartForCurrentAnswer = true;
+          }
+
+          if (backendPacket.type === "token" && !hasMessageStartForCurrentAnswer) {
+            yield {
+              placement: { turn_index: turnIndex, sub_turn_index: null },
+              obj: {
+                type: "message_start",
+                content: "",
+                final_documents: null,
+              },
+            } as T;
+            hasMessageStartForCurrentAnswer = true;
           }
 
           const mappedPacket = mapBackendToFrontend(backendPacket);

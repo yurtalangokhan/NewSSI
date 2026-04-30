@@ -20,6 +20,21 @@ class ChatController(BaseController):
         self._thread_controller = thread_controller or get_thread_controller()
         self._user_id = user_id
 
+    async def _ensure_thread_belongs_to_user(self, thread_id: str, thread: dict[str, Any] | None) -> bool:
+        if not thread:
+            return False
+
+        metadata = thread.get("metadata", {}) or {}
+        owner = metadata.get("user_id")
+
+        # Migration path for old records created before ownership was enforced.
+        if not owner:
+            metadata["user_id"] = self._user_id
+            await self._thread_controller.update_thread(thread_id, metadata)
+            return True
+
+        return owner == self._user_id
+
     def _is_invalid_generated_title(self, title: str) -> bool:
         text = (title or "").strip().lower()
         if not text:
@@ -379,6 +394,9 @@ class ChatController(BaseController):
 
     async def get_chat_session(self, chat_session_id: str) -> dict[str, Any]:
         thread = await self._thread_controller.get_thread(chat_session_id)
+        if thread and not await self._ensure_thread_belongs_to_user(chat_session_id, thread):
+            raise PermissionError("Forbidden")
+
         if not thread:
             return {
                 "chat_session_id": chat_session_id,
@@ -622,11 +640,19 @@ class ChatController(BaseController):
         }
 
     async def delete_chat_session(self, chat_session_id: str) -> dict[str, Any]:
+        thread = await self._thread_controller.get_thread(chat_session_id)
+        if thread and not await self._ensure_thread_belongs_to_user(chat_session_id, thread):
+            return {"success": False, "error": "Forbidden"}
+
         await self._thread_controller.delete_thread(chat_session_id)
         return {"success": True}
 
     async def delete_all_chat_sessions(self) -> dict[str, Any]:
-        threads = await self._thread_controller.list_threads(limit=1000, offset=0)
+        threads = await self._thread_controller.list_threads(
+            limit=1000,
+            offset=0,
+            metadata={"user_id": self._user_id},
+        )
         deleted_count = 0
 
         for thread in threads:
@@ -645,6 +671,8 @@ class ChatController(BaseController):
         thread = await self._thread_controller.get_thread(session_id)
         if not thread:
             return {"success": False, "error": "Session not found"}
+        if not await self._ensure_thread_belongs_to_user(session_id, thread):
+            return {"success": False, "error": "Forbidden"}
 
         metadata = thread.get("metadata", {}) or {}
         trimmed_name = name.strip() if isinstance(name, str) else None
@@ -661,10 +689,12 @@ class ChatController(BaseController):
             return {"success": False, "error": "Missing session_id"}
 
         thread = await self._thread_controller.get_thread(session_id)
-        if thread:
+        if thread and await self._ensure_thread_belongs_to_user(session_id, thread):
             metadata = thread.get("metadata", {}) or {}
             metadata["current_alternate_model"] = model
             await self._thread_controller.update_thread(session_id, metadata)
+        elif thread:
+            return {"success": False, "error": "Forbidden"}
         return {"success": True}
 
     async def update_chat_session_temperature(
@@ -676,10 +706,12 @@ class ChatController(BaseController):
             return {"success": False, "error": "Missing session_id"}
 
         thread = await self._thread_controller.get_thread(session_id)
-        if thread:
+        if thread and await self._ensure_thread_belongs_to_user(session_id, thread):
             metadata = thread.get("metadata", {}) or {}
             metadata["current_temperature_override"] = temperature
             await self._thread_controller.update_thread(session_id, metadata)
+        elif thread:
+            return {"success": False, "error": "Forbidden"}
         return {"success": True}
 
     async def stop_chat_session(self, chat_session_id: str) -> dict[str, Any]:
@@ -701,6 +733,9 @@ class ChatController(BaseController):
 
     async def get_session_files(self, session_id: str) -> list[dict[str, Any]]:
         thread = await self._thread_controller.get_thread(session_id)
+        if thread and not await self._ensure_thread_belongs_to_user(session_id, thread):
+            return []
+
         if not thread:
             return []
 
