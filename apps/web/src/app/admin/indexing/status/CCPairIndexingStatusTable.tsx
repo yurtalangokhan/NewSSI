@@ -295,6 +295,7 @@ export function CCPairIndexingStatusTable({
   sourceLoadingStates?: Record<ValidSources, boolean>;
 }) {
   const isPaidEnterpriseFeaturesEnabled = usePaidEnterpriseFeaturesEnabled();
+  const { t } = useTranslation();
 
   return (
     <Table className="-mt-8 table-fixed">
@@ -346,13 +347,13 @@ export function CCPairIndexingStatusTable({
                 {!sourceLoadingStates[ccPairStatus.source] && (
                   <>
                     <TableRow className="border border-border dark:border-neutral-700">
-                      <TableHead>Name</TableHead>
-                      <TableHead>Last Indexed</TableHead>
-                      <TableHead>Status</TableHead>
+                      <TableHead>{t("admin.indexingStatus.columns.name")}</TableHead>
+                      <TableHead>{t("admin.indexingStatus.columns.lastSynced")}</TableHead>
+                      <TableHead>{t("admin.indexingStatus.columns.status")}</TableHead>
                       {isPaidEnterpriseFeaturesEnabled && (
-                        <TableHead>Permissions / Access</TableHead>
+                        <TableHead>{t("admin.indexingStatus.columns.permissionsAccess")}</TableHead>
                       )}
-                      <TableHead>Total Docs</TableHead>
+                      <TableHead>{t("admin.indexingStatus.columns.totalDocs")}</TableHead>
                       <TableHead></TableHead>
                     </TableRow>
                     {ccPairStatus.indexing_statuses.map((indexingStatus) => {
@@ -419,7 +420,7 @@ export function CCPairIndexingStatusTable({
                                 className="h-[56px] text-center text-sm text-gray-400 dark:text-gray-500 border-b border-r border-l border-border dark:border-neutral-700"
                               >
                                 <span className="italic">
-                                  All caught up! No more connectors to show
+                                  {t("admin.indexingStatus.table.allCaughtUp")}
                                 </span>
                               </TableCell>
                             ) : (

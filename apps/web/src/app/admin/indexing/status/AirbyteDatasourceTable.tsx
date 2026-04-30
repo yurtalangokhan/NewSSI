@@ -129,22 +129,26 @@ interface PresetOption {
 }
 
 const SCHEDULE_PRESETS: PresetOption[] = [
-  { value: "every_5_min",   label: "Every 5 minutes",  description: "High frequency",       cron: "0 */5 * * * ?"   },
-  { value: "every_15_min",  label: "Every 15 minutes", description: "Moderate frequency",   cron: "0 */15 * * * ?"  },
-  { value: "every_30_min",  label: "Every 30 minutes", description: "Standard",             cron: "0 */30 * * * ?"  },
-  { value: "hourly",        label: "Hourly",           description: "Every hour at :00",    cron: "0 0 * * * ?"     },
-  { value: "every_6_hours", label: "Every 6 hours",    description: "4 times a day",        cron: "0 0 */6 * * ?"   },
-  { value: "every_12_hours",label: "Every 12 hours",   description: "Twice a day",          cron: "0 0 */12 * * ?"  },
-  { value: "daily",         label: "Daily",            description: "Every day at midnight",cron: "0 0 0 * * ?"     },
-  { value: "weekly",        label: "Weekly",           description: "Every Monday at midnight", cron: "0 0 0 * * 1" },
-  { value: "monthly",       label: "Monthly",          description: "1st of every month",   cron: "0 0 0 1 * ?"     },
-  { value: "custom",        label: "Custom",           description: "Enter cron expression",cron: ""               },
+  { value: "every_5_min", label: "admin.indexingStatus.manage.presets.every_5_min", description: "admin.indexingStatus.manage.presets.descriptions.highFrequency", cron: "0 */5 * * * ?" },
+  { value: "every_15_min", label: "admin.indexingStatus.manage.presets.every_15_min", description: "admin.indexingStatus.manage.presets.descriptions.moderateFrequency", cron: "0 */15 * * * ?" },
+  { value: "every_30_min", label: "admin.indexingStatus.manage.presets.every_30_min", description: "admin.indexingStatus.manage.presets.descriptions.standard", cron: "0 */30 * * * ?" },
+  { value: "hourly", label: "admin.indexingStatus.manage.presets.hourly", description: "admin.indexingStatus.manage.presets.descriptions.everyHour", cron: "0 0 * * * ?" },
+  { value: "every_6_hours", label: "admin.indexingStatus.manage.presets.every_6_hours", description: "admin.indexingStatus.manage.presets.descriptions.fourTimesDay", cron: "0 0 */6 * * ?" },
+  { value: "every_12_hours", label: "admin.indexingStatus.manage.presets.every_12_hours", description: "admin.indexingStatus.manage.presets.descriptions.twiceDay", cron: "0 0 */12 * * ?" },
+  { value: "daily", label: "admin.indexingStatus.manage.presets.daily", description: "admin.indexingStatus.manage.presets.descriptions.everyDayMidnight", cron: "0 0 0 * * ?" },
+  { value: "weekly", label: "admin.indexingStatus.manage.presets.weekly", description: "admin.indexingStatus.manage.presets.descriptions.everyMondayMidnight", cron: "0 0 0 * * 1" },
+  { value: "monthly", label: "admin.indexingStatus.manage.presets.monthly", description: "admin.indexingStatus.manage.presets.descriptions.firstOfMonth", cron: "0 0 0 1 * ?" },
+  { value: "custom", label: "admin.indexingStatus.manage.presets.custom", description: "admin.indexingStatus.manage.presets.descriptions.enterCron", cron: "" },
 ];
 
 const DAYS_OF_WEEK = [
-  { value: "1", label: "Mon" }, { value: "2", label: "Tue" }, { value: "3", label: "Wed" },
-  { value: "4", label: "Thu" }, { value: "5", label: "Fri" }, { value: "6", label: "Sat" },
-  { value: "0", label: "Sun" },
+  { value: "1", label: "admin.indexingStatus.manage.days.mon" },
+  { value: "2", label: "admin.indexingStatus.manage.days.tue" },
+  { value: "3", label: "admin.indexingStatus.manage.days.wed" },
+  { value: "4", label: "admin.indexingStatus.manage.days.thu" },
+  { value: "5", label: "admin.indexingStatus.manage.days.fri" },
+  { value: "6", label: "admin.indexingStatus.manage.days.sat" },
+  { value: "0", label: "admin.indexingStatus.manage.days.sun" },
 ];
 
 const TIMEZONES = [
@@ -157,22 +161,39 @@ const TIMEZONES = [
   "Asia/Tokyo",
 ];
 
-function describeCron(cron: string): string {
+function describeCron(cron: string, t: any): string {
   const parts = cron.trim().split(/\s+/);
   if (parts.length !== 6) return cron;
-  const [, minute, hour, dom, month, dow] = parts as [string, string, string, string, string, string];
+  const [, minute, hour, dom, month, dow] = parts as [
+    string,
+    string,
+    string,
+    string,
+    string,
+    string,
+  ];
   const preset = SCHEDULE_PRESETS.find((p) => p.cron === cron);
-  if (preset && preset.value !== "custom") return preset.label;
+  if (preset && preset.value !== "custom") return t(preset.label);
   if (dow !== "*" && dow !== "?" && dom === "*" && month === "*") {
-    const dayNames: Record<string, string> = {
-      "0": "Sunday","1": "Monday","2": "Tuesday","3": "Wednesday",
-      "4": "Thursday","5": "Friday","6": "Saturday",
-    };
-    const days = dow.split(",").map((d) => dayNames[d] || d).join(", ");
-    return `Every ${days} at ${hour.padStart(2,"0")}:${minute.padStart(2,"0")}`;
+    const days = dow
+      .split(",")
+      .map((d) => t(`admin.indexingStatus.manage.days.full.${d}`))
+      .join(", ");
+    return t("admin.indexingStatus.manage.describe.every", {
+      days,
+      time: `${hour.padStart(2, "0")}:${minute.padStart(2, "0")}`,
+    });
   }
-  if ((dow === "*" || dow === "?") && dom === "*" && month === "*" && !hour.includes("*") && !minute.includes("*")) {
-    return `Daily at ${hour.padStart(2,"0")}:${minute.padStart(2,"0")}`;
+  if (
+    (dow === "*" || dow === "?") &&
+    dom === "*" &&
+    month === "*" &&
+    !hour.includes("*") &&
+    !minute.includes("*")
+  ) {
+    return t("admin.indexingStatus.manage.describe.dailyAt", {
+      time: `${hour.padStart(2, "0")}:${minute.padStart(2, "0")}`,
+    });
   }
   return cron;
 }
@@ -433,8 +454,10 @@ function ManageDialog({
                   {SCHEDULE_PRESETS.map((p) => (
                     <SelectItem key={p.value} value={p.value}>
                       <span className="flex items-center gap-2">
-                        <span>{p.label}</span>
-                        <span className="text-xs text-text-02">{p.description}</span>
+                        <span>{t(p.label)}</span>
+                        <span className="text-xs text-text-02">
+                          {t(p.description)}
+                        </span>
                       </span>
                     </SelectItem>
                   ))}
@@ -502,7 +525,7 @@ function ManageDialog({
                               : "border-border text-text-02 hover:border-blue-400 hover:text-text-00"
                           }`}
                         >
-                          {day.label}
+                          {t(day.label)}
                         </button>
                       ))}
                     </div>
@@ -586,8 +609,11 @@ function ManageDialog({
                 <div className="flex items-center gap-2 pt-2 border-t border-border">
                   <SvgClock className="h-3.5 w-3.5 shrink-0 text-text-02" />
                   <Text as="span" secondaryBody textLight05 className="text-xs">
-                    {t("admin.indexingStatus.manage.cronLabel")}: <code className="bg-background-tint-02 px-1 rounded">{cron}</code>
-                    {cron && <> → {describeCron(cron)}</>}
+                    {t("admin.indexingStatus.manage.cronLabel")}:{" "}
+                    <code className="bg-background-tint-02 px-1 rounded">
+                      {cron}
+                    </code>
+                    {cron && <> → {describeCron(cron, t)}</>}
                   </Text>
                 </div>
               </div>
@@ -599,6 +625,7 @@ function ManageDialog({
                 <SvgClock className="h-3.5 w-3.5 shrink-0 text-text-02" />
                 <Text as="span" secondaryBody textLight05 className="text-sm">
                   {t("admin.indexingStatus.manage.cronLabel")}: <code className="bg-background-tint-02 px-1.5 py-0.5 rounded text-xs">{cron}</code>
+                  {cron && <> → {describeCron(cron, t)}</>}
                 </Text>
               </div>
             )}
