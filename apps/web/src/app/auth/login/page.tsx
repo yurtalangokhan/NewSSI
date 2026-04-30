@@ -26,6 +26,9 @@ export default async function Page(props: PageProps) {
     : searchParams?.next ?? null;
   const verified = searchParams?.verified === "true";
   const isFirstUser = searchParams?.first_user === "true";
+  const oidcError: string | null = Array.isArray(searchParams?.oidcError)
+    ? searchParams?.oidcError[0] ?? null
+    : searchParams?.oidcError ?? null;
 
   // catch cases where the backend is completely unreachable here
   // without try / catch, will just raise an exception and the page
@@ -109,6 +112,7 @@ export default async function Page(props: PageProps) {
           authUrl={authUrl}
           authTypeMetadata={authTypeMetadata}
           nextUrl={nextUrl}
+          oidcError={oidcError}
           hidePageRedirect={true}
           verified={verified}
           isFirstUser={isFirstUser}

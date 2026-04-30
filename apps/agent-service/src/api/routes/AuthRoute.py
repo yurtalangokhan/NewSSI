@@ -1,16 +1,13 @@
 """Auth routes - provides endpoints for authentication and user management."""
 
-import json
-import uuid
-import base64
 import logging
-from datetime import UTC, datetime
-from typing import Any
-import logging
+from typing import Annotated
 
-from fastapi import APIRouter, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 
+from api.dependencies import verify_api_key
 from controller import AuthMetadataController, get_auth_metadata_controller
 
 logger = logging.getLogger(__name__)
@@ -45,6 +42,9 @@ class User(BaseModel):
     team_name: str | None = None
     is_anonymous_user: bool = False
     password_configured: bool = True
+    first_name: str | None = None
+    full_name: str | None = None
+    personalization: dict | None = None
 
 
 class AuthTypeMetadata(BaseModel):
@@ -86,8 +86,15 @@ async def get_auth_type() -> AuthTypeMetadata:
 
 
 @router.get("/me")
-async def get_current_user() -> User:
-    return User(**(await _get_controller().get_current_user()))
+async def get_current_user(
+    request: Request,
+    user_id: Annotated[str | None, Depends(verify_api_key)],
+) -> User:
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    user_data = await _get_controller().get_current_user(request=request, user_id=user_id)
+    return User(**user_data)
 
 
 @router.post("/auth/login")
@@ -134,6 +141,61 @@ async def health_check():
 @router.post("/api/auth/refresh")
 async def refresh_auth():
     return await _get_controller().refresh_auth()
+
+
+@router.get("/auth/oidc/authorize")
+async def oidc_authorize(
+    next_url: str | None = Query(default=None, alias="next"),
+    redirect_uri: str | None = Query(default=None),
+    redirect: bool = False,
+):
+    try:
+        result = await _get_controller().get_oidc_authorize_url(
+            next_url=next_url,
+            redirect_uri_override=redirect_uri,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    if redirect:
+        return RedirectResponse(url=result["authorization_url"], status_code=307)
+    return result
+
+
+@router.get("/auth/oidc/callback")
+async def oidc_callback(
+    request: Request,
+    response: Response,
+):
+    code = request.query_params.get("code")
+    state = request.query_params.get("state")
+    redirect_uri = request.query_params.get("redirect_uri")
+
+    if not code:
+        raise HTTPException(status_code=400, detail="Missing authorization code")
+
+    try:
+        callback_result = await _get_controller().handle_oidc_callback(
+            code=code,
+            state=state,
+            response=response,
+            redirect_uri_override=redirect_uri,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.exception("OIDC callback failed")
+        raise HTTPException(status_code=401, detail=f"OIDC callback failed: {exc}") from exc
+
+    redirect_url = callback_result.get("redirect_url", "/")
+    redirect_response = RedirectResponse(url=redirect_url, status_code=307)
+
+    # Move all cookies that were set on the injected Response object onto the redirect.
+    for header_name, header_value in response.raw_headers:
+        if header_name.lower() == b"set-cookie":
+            redirect_response.raw_headers.append((header_name, header_value))
+
+    return redirect_response
 
 
 @router.get("/api/admin/mcp/servers")

@@ -8,8 +8,24 @@ export async function GET(
 ) {
   try {
     const { sessionId } = await params;
+    const cookie = _request.headers.get("cookie") || "";
+
+    // No authenticated context: avoid noisy backend 401 logs.
+    if (!cookie) {
+      return NextResponse.json([]);
+    }
+
     // Proxy to backend files endpoint
-    const response = await fetch(`${INTERNAL_URL}/user/projects/session/${sessionId}/files`);
+    const response = await fetch(`${INTERNAL_URL}/user/projects/session/${sessionId}/files`, {
+      headers: {
+        Cookie: cookie,
+      },
+    });
+
+    if (!response.ok) {
+      return NextResponse.json([], { status: response.status });
+    }
+
     const data = await response.json();
     return NextResponse.json(data);
   } catch (_error) {

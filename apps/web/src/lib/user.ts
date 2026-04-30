@@ -16,11 +16,8 @@ export const getCurrentUser = async (): Promise<User | null> => {
 };
 
 export const logout = async (): Promise<Response> => {
-  const response = await fetch("/auth/logout", {
-    method: "POST",
-    credentials: "include",
-  });
-  return response;
+  window.location.assign("/auth/logout");
+  return new Response(null, { status: 204 });
 };
 
 export const basicLogin = async (
