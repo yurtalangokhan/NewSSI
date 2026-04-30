@@ -89,7 +89,19 @@ export function useTimelineHeader(
     }
 
     if (packetType === PacketType.CUSTOM_TOOL_START) {
-      const toolName = (firstPacket.obj as CustomToolStart).tool_name;
+      const rawToolName = (firstPacket.obj as CustomToolStart).tool_name;
+      let toolName = rawToolName;
+
+      if (typeof rawToolName === "string") {
+        const match = rawToolName.match(/^\[step\]\s*(.*)$/i);
+        if (match) {
+          const stepName = match[1]?.trim();
+          toolName = stepName
+            ? t("timeline.stepNamed", { name: stepName })
+            : t("timeline.step");
+        }
+      }
+
       return {
         headerText: toolName ? t("timeline.executingToolNamed", { toolName }) : t("timeline.executingTool"),
         hasPackets,

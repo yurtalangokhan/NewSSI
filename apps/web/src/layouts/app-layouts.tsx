@@ -65,6 +65,7 @@ import { AppMode, useAppMode } from "@/providers/AppModeProvider";
 import useAppFocus from "@/hooks/useAppFocus";
 import { useQueryController } from "@/providers/QueryControllerProvider";
 import { usePaidEnterpriseFeaturesEnabled } from "@/components/settings/usePaidEnterpriseFeaturesEnabled";
+import { useTranslation } from "react-i18next";
 
 /**
  * App Header Component
@@ -81,6 +82,7 @@ import { usePaidEnterpriseFeaturesEnabled } from "@/components/settings/usePaidE
  * - App-Mode toggle (EE gated)
  */
 function Header() {
+  const { t } = useTranslation();
   const isPaidEnterpriseFeaturesEnabled = usePaidEnterpriseFeaturesEnabled();
   const { appMode, setAppMode } = useAppMode();
   const settings = useSettingsContext();
@@ -234,7 +236,7 @@ function Header() {
             icon={SvgFolderIn}
             onClick={noProp(() => setShowMoveOptions(true))}
           >
-            Move to Project
+            {t("sidebar.moveToProject")}
           </LineItem>,
           <LineItem
             key="delete"
@@ -242,7 +244,7 @@ function Header() {
             onClick={noProp(() => setDeleteConfirmationModalOpen(true))}
             danger
           >
-            Delete
+            {t("sidebar.delete")}
           </LineItem>,
         ];
 
@@ -283,17 +285,16 @@ function Header() {
 
       {deleteModalOpen && (
         <ConfirmationModalLayout
-          title="Delete Chat"
+          title={t("sidebar.deleteChatTitle")}
           icon={SvgTrash}
           onClose={() => setDeleteModalOpen(false)}
           submit={
             <RefreshButton danger onClick={handleDeleteChat}>
-              Delete
+              {t("sidebar.delete")}
             </RefreshButton>
           }
         >
-          Are you sure you want to delete this chat? This action cannot be
-          undone.
+          {t("sidebar.deleteChatConfirmation")}
         </ConfirmationModalLayout>
       )}
 
@@ -399,7 +400,7 @@ function Header() {
                 onClick={() => setShowShareModal(true)}
                 aria-label="share-chat-button"
               >
-                Share Chat
+                {t("sidebar.share")}
               </Button>
               <SimplePopover
                 trigger={

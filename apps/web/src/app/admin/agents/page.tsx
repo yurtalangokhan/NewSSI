@@ -116,7 +116,11 @@ export default function Page() {
 
   return (
     <SettingsLayouts.Root>
-      <SettingsLayouts.Header icon={route.icon} title={route.title} separator />
+      <SettingsLayouts.Header
+        icon={route.icon}
+        title={t(route.titleKey || "", { defaultValue: route.title })}
+        separator
+      />
 
       <SettingsLayouts.Body>
         {isCatalogLoading && <ThreeDotsLoader />}

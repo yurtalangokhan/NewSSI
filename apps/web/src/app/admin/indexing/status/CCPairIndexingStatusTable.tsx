@@ -35,6 +35,7 @@ import { PageSelector } from "@/components/PageSelector";
 import { ConnectorStaggeredSkeleton } from "./ConnectorRowSkeleton";
 import { Button } from "@opal/components";
 import { SvgSettings } from "@opal/icons";
+import { useTranslation } from "react-i18next";
 
 // Helper to handle navigation with cmd/ctrl+click support
 // NOTE: using this rather than Next/Link (or similar) since shadcn
@@ -74,6 +75,7 @@ function SummaryRow({
   onToggle: () => void;
 }) {
   const isPaidEnterpriseFeaturesEnabled = usePaidEnterpriseFeaturesEnabled();
+  const { t } = useTranslation();
 
   return (
     <TableRow
@@ -96,14 +98,14 @@ function SummaryRow({
 
       <TableCell>
         <div className="text-sm text-neutral-500 dark:text-neutral-300">
-          Total Connectors
+          {t("admin.indexingStatus.table.totalConnectors")}
         </div>
         <div className="text-xl font-semibold">{summary.total_connectors}</div>
       </TableCell>
 
       <TableCell>
         <div className="text-sm text-neutral-500 dark:text-neutral-300">
-          Active Connectors
+          {t("admin.indexingStatus.table.activeConnectors")}
         </div>
         <p className="flex text-xl mx-auto font-semibold items-center text-lg mt-1">
           {summary.active_connectors}/{summary.total_connectors}
@@ -113,7 +115,7 @@ function SummaryRow({
       {isPaidEnterpriseFeaturesEnabled && (
         <TableCell>
           <div className="text-sm text-neutral-500 dark:text-neutral-300">
-            Public Connectors
+            {t("admin.indexingStatus.table.publicConnectors")}
           </div>
           <p className="flex text-xl mx-auto font-semibold items-center text-lg mt-1">
             {summary.public_connectors}/{summary.total_connectors}
@@ -123,7 +125,7 @@ function SummaryRow({
 
       <TableCell>
         <div className="text-sm text-neutral-500 dark:text-neutral-300">
-          Total Docs Indexed
+          {t("admin.indexingStatus.table.totalDocsIndexed")}
         </div>
         <div className="text-xl font-semibold">
           {summary.total_docs_indexed.toLocaleString()}
@@ -146,6 +148,7 @@ function ConnectorRow({
 }) {
   const router = useRouter();
   const isPaidEnterpriseFeaturesEnabled = usePaidEnterpriseFeaturesEnabled();
+  const { t } = useTranslation();
 
   const connectorUrl = `/admin/connector/${ccPairsIndexingStatus.cc_pair_id}`;
 
@@ -189,19 +192,19 @@ function ConnectorRow({
         <TableCell>
           {ccPairsIndexingStatus.access_type === "public" ? (
             <Badge variant={isEditable ? "success" : "default"} icon={FiUnlock}>
-              Organization Public
+              {t("admin.indexingStatus.table.organizationPublic")}
             </Badge>
           ) : ccPairsIndexingStatus.access_type === "sync" ? (
             <Badge
               variant={isEditable ? "auto-sync" : "default"}
               icon={FiRefreshCw}
             >
-              Inherited from{" "}
+              {t("admin.indexingStatus.table.inheritedFrom")} 
               {getSourceDisplayName(ccPairsIndexingStatus.source)}
             </Badge>
           ) : (
             <Badge variant={isEditable ? "private" : "default"} icon={FiLock}>
-              Private
+              {t("admin.indexingStatus.table.private")}
             </Badge>
           )}
         </TableCell>
@@ -209,7 +212,7 @@ function ConnectorRow({
       <TableCell>{ccPairsIndexingStatus.docs_indexed}</TableCell>
       <TableCell>
         {isEditable && (
-          <SimpleTooltip tooltip="Manage Connector">
+          <SimpleTooltip tooltip={t("admin.indexingStatus.table.manageConnector")}>
             <Button icon={SvgSettings} prominence="tertiary" />
           </SimpleTooltip>
         )}
@@ -227,6 +230,7 @@ function FederatedConnectorRow({
 }) {
   const router = useRouter();
   const isPaidEnterpriseFeaturesEnabled = usePaidEnterpriseFeaturesEnabled();
+  const { t } = useTranslation();
 
   const federatedUrl = `/admin/federated/${federatedConnector.id}`;
 
@@ -252,12 +256,12 @@ function FederatedConnectorRow({
       </TableCell>
       <TableCell>N/A</TableCell>
       <TableCell>
-        <Badge variant="success">Indexed</Badge>
+        <Badge variant="success">{t("admin.indexingStatus.table.indexed")}</Badge>
       </TableCell>
       {isPaidEnterpriseFeaturesEnabled && (
         <TableCell>
           <Badge variant="secondary" icon={FiRefreshCw}>
-            Federated Access
+            {t("admin.indexingStatus.table.federatedAccess")}
           </Badge>
         </TableCell>
       )}
@@ -270,7 +274,7 @@ function FederatedConnectorRow({
             e.stopPropagation();
             navigateWithModifier(e, federatedUrl, router);
           }}
-          tooltip="Manage Federated Connector"
+          tooltip={t("admin.indexingStatus.table.manageFederatedConnector")}
         />
       </TableCell>
     </TableRow>

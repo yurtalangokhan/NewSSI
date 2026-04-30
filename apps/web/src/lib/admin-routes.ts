@@ -103,6 +103,8 @@ export const ADMIN_ROUTE_CONFIG: Record<string, AdminRouteConfig> = {
     icon: SvgFolder,
     title: "Document Sets",
     sidebarLabel: "Document Sets",
+    titleKey: "admin.navigation.routes.documentSets.title",
+    sidebarLabelKey: "admin.navigation.routes.documentSets.sidebar",
   },
   [ADMIN_PATHS.DOCUMENT_EXPLORER]: {
     icon: SvgZoomIn,
@@ -120,6 +122,8 @@ export const ADMIN_ROUTE_CONFIG: Record<string, AdminRouteConfig> = {
     icon: SvgOnyxOctagon,
     title: "Agents",
     sidebarLabel: "Agents",
+    titleKey: "admin.navigation.routes.agents.title",
+    sidebarLabelKey: "admin.navigation.routes.agents.sidebar",
   },
   [ADMIN_PATHS.SLACK_BOTS]: {
     icon: SvgSlack,

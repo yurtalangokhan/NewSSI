@@ -48,6 +48,7 @@ import {
 import { AttachedDocumentSnapshot } from "@/app/admin/agents/interfaces";
 import { timeAgo } from "@/lib/time";
 import Spacer from "@/refresh-components/Spacer";
+import { useTranslation } from "react-i18next";
 
 // ============================================================================
 // HIERARCHY BREADCRUMB - Navigation path for folder hierarchy
@@ -181,6 +182,7 @@ export default function SourceHierarchyBrowser({
   const [folderPosition, setFolderPosition] =
     useState<FolderPosition>("on_top");
   const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
+  const { t } = useTranslation();
 
   // View selected only filter state
   const [viewSelectedOnly, setViewSelectedOnly] = useState(false);
@@ -217,7 +219,7 @@ export default function SourceHierarchyBrowser({
         setAllNodes(response.nodes);
       } catch (error) {
         setNodesError(
-          error instanceof Error ? error.message : "Failed to load folders"
+          error instanceof Error ? error.message : t("sourceBrowser.failedToLoadFolders")
         );
       } finally {
         setIsLoadingNodes(false);
@@ -688,7 +690,7 @@ export default function SourceHierarchyBrowser({
             leftSearchIcon
             value={searchValue}
             onChange={(e) => setSearchValue(e.target.value)}
-            placeholder="Search..."
+            placeholder={t("sourceBrowser.searchPlaceholder")}
             variant="internal"
           />
         </GeneralLayouts.Section>
@@ -699,7 +701,7 @@ export default function SourceHierarchyBrowser({
         <>
           <Spacer rem={0.5} />
           <Button action tertiary onClick={handleToggleViewSelected}>
-            Selected items
+            {t("sourceBrowser.selectedItems")}
           </Button>
         </>
       ) : (
@@ -731,7 +733,7 @@ export default function SourceHierarchyBrowser({
         </TableLayouts.CheckboxCell>
         <TableLayouts.TableCell flex>
           <Text secondaryBody text03>
-            Name
+            {t("sourceBrowser.columnName")}
           </Text>
         </TableLayouts.TableCell>
         <TableLayouts.TableCell width={8}>
@@ -743,14 +745,14 @@ export default function SourceHierarchyBrowser({
                   transient={sortDropdownOpen}
                   onClick={() => setSortDropdownOpen(true)}
                 >
-                  {sortField === "name" ? "Name" : "Last Updated"}
+                  {sortField === "name" ? t("sourceBrowser.sortByName") : t("sourceBrowser.sortByLastUpdated")}
                 </SelectButton>
               </div>
             </Popover.Trigger>
             <Popover.Content align="end" sideOffset={4} width="lg">
               <Popover.Menu>
                 {/* Sort by section */}
-                <Divider showTitle text="Sort by" dividerLine={false} />
+                <Divider showTitle text={t("sourceBrowser.sortBy")} dividerLine={false} />
                 <LineItem
                   selected={sortField === "name"}
                   onClick={() => setSortField("name")}
@@ -758,7 +760,7 @@ export default function SourceHierarchyBrowser({
                     sortField === "name" ? <SvgCheck size={16} /> : undefined
                   }
                 >
-                  Name
+                  {t("sourceBrowser.sortByName")}
                 </LineItem>
                 <LineItem
                   selected={sortField === "last_updated"}
@@ -769,10 +771,10 @@ export default function SourceHierarchyBrowser({
                     ) : undefined
                   }
                 >
-                  Last Updated
+                  {t("sourceBrowser.sortByLastUpdated")}
                 </LineItem>
                 {/* Sorting Order section */}
-                <Divider showTitle text="Sorting Order" dividerLine={false} />
+                <Divider showTitle text={t("sourceBrowser.sortingOrder")} dividerLine={false} />
                 <LineItem
                   selected={sortDirection === "desc"}
                   onClick={() => setSortDirection("desc")}
@@ -782,7 +784,7 @@ export default function SourceHierarchyBrowser({
                     ) : undefined
                   }
                 >
-                  {sortField === "name" ? "Z to A" : "Recent to Old"}
+                  {sortField === "name" ? t("sourceBrowser.descName") : t("sourceBrowser.descDate")}
                 </LineItem>
                 <LineItem
                   selected={sortDirection === "asc"}
@@ -791,10 +793,10 @@ export default function SourceHierarchyBrowser({
                     sortDirection === "asc" ? <SvgCheck size={16} /> : undefined
                   }
                 >
-                  {sortField === "name" ? "A to Z" : "Old to Recent"}
+                  {sortField === "name" ? t("sourceBrowser.ascName") : t("sourceBrowser.ascDate")}
                 </LineItem>
                 {/* Folders section */}
-                <Divider showTitle text="Folders" dividerLine={false} />
+                <Divider showTitle text={t("sourceBrowser.folders")} dividerLine={false} />
                 <LineItem
                   selected={folderPosition === "on_top"}
                   onClick={() => setFolderPosition("on_top")}
@@ -804,7 +806,7 @@ export default function SourceHierarchyBrowser({
                     ) : undefined
                   }
                 >
-                  On top
+                  {t("sourceBrowser.foldersOnTop")}
                 </LineItem>
                 <LineItem
                   selected={folderPosition === "mixed"}
@@ -815,7 +817,7 @@ export default function SourceHierarchyBrowser({
                     ) : undefined
                   }
                 >
-                  Mixed with Files
+                  {t("sourceBrowser.foldersMixed")}
                 </LineItem>
               </Popover.Menu>
             </Popover.Content>
@@ -835,8 +837,8 @@ export default function SourceHierarchyBrowser({
           <GeneralLayouts.Section height="auto" padding={1}>
             <Text text03 secondaryBody>
               {path.length === 0
-                ? "Select a folder to browse documents."
-                : "No items in this folder."}
+                ? t("sourceBrowser.selectFolderToBrowse")
+                : t("sourceBrowser.noItemsInFolder")}
             </Text>
           </GeneralLayouts.Section>
         ) : (

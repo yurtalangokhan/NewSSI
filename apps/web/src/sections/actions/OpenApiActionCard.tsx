@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "@/hooks/useToast";
 import ActionCard from "@/sections/actions/ActionCard";
 import Actions from "@/sections/actions/Actions";
@@ -39,6 +40,7 @@ export default function OpenApiActionCard({
   const [searchQuery, setSearchQuery] = useState("");
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const deleteModal = useCreateModal();
+  const { t } = useTranslation();
 
   const methodSpecs = useMemo<MethodSpec[]>(() => {
     try {
@@ -171,15 +173,15 @@ export default function OpenApiActionCard({
         <ToolsList
           isEmpty={filteredTools.length === 0}
           searchQuery={searchQuery}
-          emptyMessage="No actions defined for this OpenAPI schema"
-          emptySearchMessage="No actions match your search"
+          emptyMessage={t("openApiActionCard.emptyMessage")}
+          emptySearchMessage={t("openApiActionCard.emptySearchMessage")}
           className="gap-2"
         >
           {filteredTools.map((method) => (
             <ToolItem
               key={`${tool.id}-${method.method}-${method.path}-${method.name}`}
               name={method.name}
-              description={method.summary || "No summary provided"}
+              description={method.summary || t("openApiActionCard.noSummary")}
               variant="openapi"
               openApiMetadata={{
                 method: method.method,
@@ -195,7 +197,7 @@ export default function OpenApiActionCard({
           icon={({ className }) => (
             <SvgTrash className={cn(className, "stroke-action-danger-05")} />
           )}
-          title="Delete OpenAPI action"
+          title={t("openApiActionCard.deleteTitle")}
           onClose={() => deleteModal.toggle(false)}
           submit={
             <Button
@@ -205,17 +207,16 @@ export default function OpenApiActionCard({
                 deleteModal.toggle(false);
               }}
             >
-              Delete
+              {t("openApiActionCard.deleteButton")}
             </Button>
           }
         >
           <div className="flex flex-col gap-4">
             <Text as="p" text03>
-              This will permanently delete the OpenAPI action <b>{tool.name}</b>{" "}
-              and its configuration.
+              {t("openApiActionCard.deleteConfirmText", { name: tool.name })}
             </Text>
             <Text as="p" text03>
-              Are you sure you want to delete this OpenAPI action?
+              {t("openApiActionCard.deleteConfirmQuestion")}
             </Text>
           </div>
         </Modal>

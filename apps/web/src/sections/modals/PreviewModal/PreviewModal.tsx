@@ -11,6 +11,7 @@ import { getCodeLanguage, getDataLanguage } from "@/lib/languages";
 import { fetchChatFile } from "@/lib/chat/svc";
 import { PreviewContext } from "@/sections/modals/PreviewModal/interfaces";
 import { resolveVariant } from "@/sections/modals/PreviewModal/variants";
+import { useTranslation } from "react-i18next";
 
 function resolveMimeType(mimeType: string, fileName: string): string {
   if (mimeType !== "application/octet-stream") return mimeType;
@@ -31,6 +32,7 @@ export default function PreviewModal({
   presentingDocument,
   onClose,
 }: PreviewModalProps) {
+  const { t } = useTranslation();
   const [fileContent, setFileContent] = useState("");
   const [fileUrl, setFileUrl] = useState("");
   const [fileName, setFileName] = useState("");
@@ -86,7 +88,7 @@ export default function PreviewModal({
       });
 
       const originalFileName =
-        presentingDocument.semantic_identifier || "document";
+        presentingDocument.semantic_identifier || t("filePreview.document");
       setFileName(originalFileName);
 
       const rawContentType =
@@ -102,11 +104,11 @@ export default function PreviewModal({
         setFileContent(await blob.text());
       }
     } catch {
-      setLoadError("Failed to load document.");
+      setLoadError(t("filePreview.failedToLoadDocument"));
     } finally {
       setIsLoading(false);
     }
-  }, [presentingDocument]);
+  }, [presentingDocument, t]);
 
   useEffect(() => {
     fetchFile();
@@ -166,7 +168,7 @@ export default function PreviewModal({
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
         <Modal.Header
-          title={fileName || "Document"}
+          title={fileName || t("filePreview.document")}
           description={variant.headerDescription(ctx)}
           onClose={onClose}
         />

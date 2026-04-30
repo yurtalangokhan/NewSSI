@@ -1205,8 +1205,7 @@ export default function AgentEditorPage({
 
                           <InputLayouts.Vertical
                             name="description"
-                            title={t("agentEditor.descriptionLabel")}
-                            optional
+                            title={`${t("agentEditor.descriptionLabel")} (${t("agentEditor.optionalLabel")})`}
                           >
                             <InputTextAreaField
                               name="description"
@@ -1306,8 +1305,7 @@ export default function AgentEditorPage({
                       <GeneralLayouts.Section>
                         <InputLayouts.Vertical
                           name="instructions"
-                          title={t("agentEditor.instructionsLabel")}
-                          optional
+                          title={`${t("agentEditor.instructionsLabel")} (${t("agentEditor.optionalLabel")})`}
                           description={t("agentEditor.instructionsDescription")}
                         >
                           <InputTextAreaField
@@ -1318,9 +1316,8 @@ export default function AgentEditorPage({
 
                         <InputLayouts.Vertical
                           name="starter_messages"
-                          title={t("agentEditor.conversationStartersLabel")}
                           description={t("agentEditor.conversationStartersDescription")}
-                          optional
+                          title={`${t("agentEditor.conversationStartersLabel")} (${t("agentEditor.optionalLabel")})`}
                         >
                           <StarterMessages />
                         </InputLayouts.Vertical>

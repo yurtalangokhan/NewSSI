@@ -218,7 +218,7 @@ export default function AdminSidebar({
             )}
             href="/app"
           >
-            Exit Admin
+            {t("admin.navigation.exitAdmin")}
           </SidebarTab>
         }
         footer={

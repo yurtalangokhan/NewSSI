@@ -27,6 +27,7 @@ import ScrollIndicatorDiv from "@/refresh-components/ScrollIndicatorDiv";
 import { cn } from "@/lib/utils";
 import { Section } from "@/layouts/general-layouts";
 import DocxPreview from "@/app/app/components/files/DocxPreview";
+import { useTranslation } from "react-i18next";
 
 export interface TextViewProps {
   presentingDocument: MinimalOnyxDocument;
@@ -68,6 +69,7 @@ export default function TextViewModal({
   presentingDocument,
   onClose,
 }: TextViewProps) {
+  const { t } = useTranslation();
   const [zoom, setZoom] = useState(100);
   const [fileContent, setFileContent] = useState("");
   const [fileBlob, setFileBlob] = useState<Blob | null>(null);
@@ -102,7 +104,7 @@ export default function TextViewModal({
         );
 
         if (!response.ok) {
-          setLoadError("Failed to load document.");
+          setLoadError(t("filePreview.failedToLoadDocument"));
           return;
         }
 
@@ -114,7 +116,7 @@ export default function TextViewModal({
         });
 
         const originalFileName =
-          presentingDocument.semantic_identifier || "document";
+          presentingDocument.semantic_identifier || t("filePreview.document");
         setFileName(originalFileName);
 
         let contentType =
@@ -154,12 +156,12 @@ export default function TextViewModal({
         }
       } catch (error) {
         if (signal?.aborted) return;
-        setLoadError("Failed to load document.");
+        setLoadError(t("filePreview.failedToLoadDocument"));
       } finally {
         if (!signal?.aborted) setIsLoading(false);
       }
     },
-    [presentingDocument]
+    [presentingDocument, t]
   );
 
   useEffect(() => {
@@ -201,7 +203,7 @@ export default function TextViewModal({
       >
         <Modal.Header
           icon={SvgFileText}
-          title={fileName || "Document"}
+          title={fileName || t("filePreview.document")}
           onClose={onClose}
         >
           <Section flexDirection="row" justifyContent="start" gap={0.25}>
@@ -209,20 +211,20 @@ export default function TextViewModal({
               prominence="tertiary"
               onClick={handleZoomOut}
               icon={SvgZoomOut}
-              tooltip="Zoom Out"
+              tooltip={t("filePreview.zoomOut")}
             />
             <Text mainUiBody>{zoom}%</Text>
             <OpalButton
               prominence="tertiary"
               onClick={handleZoomIn}
               icon={SvgZoomIn}
-              tooltip="Zoom In"
+              tooltip={t("filePreview.zoomIn")}
             />
             <OpalButton
               prominence="tertiary"
               onClick={handleDownload}
               icon={SvgDownloadCloud}
-              tooltip="Download"
+              tooltip={t("filePreview.download")}
             />
           </Section>
         </Modal.Header>
@@ -254,7 +256,7 @@ export default function TextViewModal({
                   <iframe
                     src={`${fileUrl}#toolbar=0`}
                     className="w-full h-full flex-1 min-h-0 border-none"
-                    title="File Viewer"
+                    title={t("filePreview.fileViewer")}
                   />
                 ) : isMarkdownFormat(fileType) ? (
                   <ScrollIndicatorDiv

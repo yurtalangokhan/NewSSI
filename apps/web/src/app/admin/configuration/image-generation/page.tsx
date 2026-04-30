@@ -14,7 +14,7 @@ export default function Page() {
       <SettingsLayouts.Header
         icon={route.icon}
         title={t(route.titleKey || "", { defaultValue: route.title })}
-        description="Settings for in-chat image generation."
+        description={t("admin.imageGeneration.description")}
       />
       <SettingsLayouts.Body>
         <ImageGenerationContent />

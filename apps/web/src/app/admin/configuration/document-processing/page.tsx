@@ -19,6 +19,7 @@ const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.DOCUMENT_PROCESSING]!;
 // ---------------------------------------------------------------------------
 
 function RagManagementSection() {
+  const { t } = useTranslation();
   const [selectedCollectionId, setSelectedCollectionId] = useState<
     string | null
   >(null);
@@ -31,12 +32,12 @@ function RagManagementSection() {
 
   const tabs = SimpleTabs.generateTabs({
     documents: {
-      name: "Documents",
+      name: t("admin.documentProcessing.tabs.documents"),
       icon: SvgFiles,
       content: <DocumentsPanel collectionId={selectedCollectionId} />,
     },
     search: {
-      name: "Search",
+      name: t("admin.documentProcessing.tabs.search"),
       icon: SvgSearch,
       content: <SearchPanel collectionId={selectedCollectionId} />,
     },
@@ -59,8 +60,7 @@ function RagManagementSection() {
               aria-hidden
             />
             <Text as="p" mainContentMuted text03>
-              Select or create a collection above to manage documents and run
-              searches.
+              {t("admin.documentProcessing.selectOrCreateCollection")}
             </Text>
           </div>
         </CardSection>
@@ -86,11 +86,10 @@ export default function Page() {
         <div className="flex flex-col gap-8 pb-36">
           <div className="flex flex-col gap-2">
             <Text as="p" headingH3 text05>
-              LangConnect RAG
+              {t("admin.documentProcessing.langConnectRag")}
             </Text>
             <Text as="p" mainContentBody text04 className="leading-relaxed">
-              Manage vector collections, upload documents for indexing, and run
-              semantic search powered by LangConnect and PGVector.
+              {t("admin.documentProcessing.langConnectRagDescription")}
             </Text>
           </div>
 

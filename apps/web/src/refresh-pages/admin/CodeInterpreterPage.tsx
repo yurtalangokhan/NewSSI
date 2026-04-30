@@ -56,6 +56,7 @@ function CodeInterpreterCard({
 }
 
 function CheckingStatus() {
+  const { t } = useTranslation();
   return (
     <Section
       flexDirection="row"
@@ -65,7 +66,7 @@ function CheckingStatus() {
       padding={0.5}
     >
       <Text mainUiAction text03>
-        Checking...
+        {t("admin.codeInterpreter.checking")}
       </Text>
       <SimpleLoader />
     </Section>
@@ -78,11 +79,14 @@ interface ConnectionStatusProps {
 }
 
 function ConnectionStatus({ healthy, isLoading }: ConnectionStatusProps) {
+  const { t } = useTranslation();
   if (isLoading) {
     return <CheckingStatus />;
   }
 
-  const label = healthy ? "Connected" : "Connection Lost";
+  const label = healthy
+    ? t("admin.codeInterpreter.connected")
+    : t("admin.codeInterpreter.connectionLost");
   const Icon = healthy ? SvgCheckCircle : SvgXOctagon;
   const iconColor = healthy ? "text-status-success-05" : "text-status-error-05";
 
@@ -113,6 +117,7 @@ function ActionButtons({
   onRefresh,
   disabled,
 }: ActionButtonsProps) {
+  const { t } = useTranslation();
   return (
     <Section
       flexDirection="row"
@@ -126,7 +131,7 @@ function ActionButtons({
         size="sm"
         icon={SvgUnplug}
         onClick={onDisconnect}
-        tooltip="Disconnect"
+        tooltip={t("admin.codeInterpreter.disconnect")}
         disabled={disabled}
       />
       <Button
@@ -134,7 +139,7 @@ function ActionButtons({
         size="sm"
         icon={SvgRefreshCw}
         onClick={onRefresh}
-        tooltip="Refresh"
+        tooltip={t("admin.codeInterpreter.refresh")}
         disabled={disabled}
       />
     </Section>
@@ -198,8 +203,8 @@ export default function CodeInterpreterPage() {
         ) : (
           <CodeInterpreterCard
             variant="secondary"
-            title="Code Interpreter"
-            middleText="(Disconnected)"
+            title={t("admin.navigation.routes.codeInterpreter.title")}
+            middleText={`(${t("admin.codeInterpreter.disconnected")})`}
             strikethrough={true}
             rightContent={
               <Section flexDirection="row" alignItems="center" padding={0.5}>
@@ -211,7 +216,7 @@ export default function CodeInterpreterPage() {
                     rightIcon={SvgArrowExchange}
                     onClick={() => handleToggle(true)}
                   >
-                    Reconnect
+                    {t("admin.codeInterpreter.reconnect")}
                   </Button>
                 )}
               </Section>
