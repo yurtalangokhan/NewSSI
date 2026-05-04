@@ -24,6 +24,7 @@ import { cn } from "@/lib/utils";
 import { useUser } from "@/providers/UserProvider";
 import useUserPersonalization from "@/hooks/useUserPersonalization";
 import type { MemoryItem } from "@/lib/types";
+import { useTranslation } from "react-i18next";
 
 interface MemoryItemProps {
   memory: LocalMemory;
@@ -48,6 +49,7 @@ function MemoryItem({
   shouldHighlight,
   onHighlighted,
 }: MemoryItemProps) {
+  const { t } = useTranslation("memories");
   const [isFocused, setIsFocused] = useState(false);
   const [isHighlighting, setIsHighlighting] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -89,7 +91,7 @@ function MemoryItem({
         <Section flexDirection="row" alignItems="start" gap={0.5}>
           <InputTextArea
             ref={textareaRef}
-            placeholder="Type or paste in a personal note or memory"
+            placeholder={t("placeholder")}
             value={memory.content}
             onChange={(e) => onUpdate(originalIndex, e.target.value)}
             onFocus={() => setIsFocused(true)}
@@ -107,8 +109,8 @@ function MemoryItem({
             onClick={() => void onRemove(originalIndex)}
             tertiary
             disabled={!memory.content.trim() && memory.isNew}
-            aria-label="Remove Line"
-            tooltip="Remove Line"
+            aria-label={t("removeLine")}
+            tooltip={t("removeLine")}
           />
         </Section>
         {isFocused && (
@@ -136,6 +138,7 @@ export default function MemoriesModal({
   initialTargetIndex,
   highlightFirstOnOpen = false,
 }: MemoriesModalProps) {
+  const { t } = useTranslation("memories");
   const close = useModalClose(onClose);
   const [focusMemoryId, setFocusMemoryId] = useState<number | null>(null);
 
@@ -145,8 +148,8 @@ export default function MemoriesModal({
     user,
     updateUserPersonalization,
     {
-      onSuccess: () => toast.success("Preferences saved"),
-      onError: () => toast.error("Failed to save preferences"),
+      onSuccess: () => toast.success(t("preferencesSaved")),
+      onError: () => toast.error(t("preferencesSaveFailed")),
     }
   );
 
@@ -228,13 +231,13 @@ export default function MemoriesModal({
       <Modal.Content width="sm" height="lg">
         <Modal.Header
           icon={SvgAddLines}
-          title="Memory"
-          description="Let Onyx reference these stored notes and memories in chats."
+          title={t("modalTitle")}
+          description={t("modalDescription")}
           onClose={close}
         >
           <Section flexDirection="row" gap={0.5}>
             <InputTypeIn
-              placeholder="Search..."
+              placeholder={t("searchPlaceholder")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               leftSearchIcon
@@ -248,11 +251,11 @@ export default function MemoriesModal({
               disabled={!canAddMemory}
               title={
                 !canAddMemory
-                  ? `Maximum of ${MAX_MEMORY_COUNT} memories reached`
+                  ? t("maxMemoriesReached", { count: MAX_MEMORY_COUNT })
                   : undefined
               }
             >
-              Add Line
+              {t("addLine")}
             </Button>
           </Section>
         </Modal.Header>
@@ -261,9 +264,7 @@ export default function MemoriesModal({
           {filteredMemories.length === 0 ? (
             <Section alignItems="center" padding={2}>
               <Text secondaryBody text03>
-                {searchQuery.trim()
-                  ? "No memories match your search."
-                  : 'No memories yet. Click "Add Line" to get started.'}
+                {searchQuery.trim() ? t("noResults") : t("noMemoriesYet")}
               </Text>
             </Section>
           ) : (
@@ -290,10 +291,11 @@ export default function MemoriesModal({
           )}
           <TextSeparator
             count={totalLineCount}
-            text={totalLineCount === 1 ? "Line" : "Lines"}
+            text={t("line", { count: totalLineCount })}
           />
         </Modal.Body>
       </Modal.Content>
     </Modal>
   );
 }
+

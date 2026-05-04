@@ -18,6 +18,7 @@ import {
   ImageGenSubmitPayload,
   FormValues,
 } from "./types";
+import { useTranslation } from "react-i18next";
 import { toast } from "@/hooks/useToast";
 
 export function ImageGenFormWrapper<T extends FormValues>({
@@ -34,6 +35,7 @@ export function ImageGenFormWrapper<T extends FormValues>({
   transformValues,
   getInitialValuesFromCredentials,
 }: ImageGenFormWrapperProps<T>) {
+  const { t } = useTranslation();
   // State management
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [apiStatus, setApiStatus] = useState<APIFormFieldState>("idle");
@@ -142,7 +144,7 @@ export function ImageGenFormWrapper<T extends FormValues>({
         const parts = apiKeyValue.split(":");
         const providerIdStr = parts[1];
         if (!providerIdStr) {
-          throw new Error("Invalid provider selection");
+          throw new Error(t("admin.imageGeneration.forms.invalidProvider"));
         }
         const providerId = parseInt(providerIdStr, 10);
 
@@ -157,7 +159,9 @@ export function ImageGenFormWrapper<T extends FormValues>({
 
         if (!result.ok) {
           setApiStatus("error");
-          setErrorMessage(result.errorMessage || "API key validation failed");
+          setErrorMessage(
+            result.errorMessage || t("admin.imageGeneration.forms.validationFailed")
+          );
           setIsSubmitting(false);
           return;
         }
@@ -202,7 +206,10 @@ export function ImageGenFormWrapper<T extends FormValues>({
 
           if (!result.ok) {
             setApiStatus("error");
-            setErrorMessage(result.errorMessage || "API key validation failed");
+            setErrorMessage(
+              result.errorMessage ||
+                t("admin.imageGeneration.forms.validationFailed")
+            );
             setIsSubmitting(false);
             return;
           }
@@ -240,7 +247,9 @@ export function ImageGenFormWrapper<T extends FormValues>({
       setIsSubmitting(false);
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "Unknown error occurred";
+        error instanceof Error
+          ? error.message
+          : t("admin.imageGeneration.forms.unknownError");
       setApiStatus("error");
       setErrorMessage(message);
       toast.error(message);

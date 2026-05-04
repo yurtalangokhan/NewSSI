@@ -3,6 +3,7 @@ import Button from "@/refresh-components/buttons/Button";
 import type { IconProps } from "@opal/types";
 import Modal from "@/refresh-components/Modal";
 import { SvgLoader } from "@opal/icons";
+import { useTranslation } from "react-i18next";
 export interface ProviderModalProps {
   // Modal configurations
   clickOutsideToClose?: boolean;
@@ -34,9 +35,13 @@ export default function ProviderModal({
   onSubmit,
   submitDisabled = false,
   isSubmitting = false,
-  submitLabel = "Connect",
-  cancelLabel = "Cancel",
+  submitLabel,
+  cancelLabel,
 }: ProviderModalProps) {
+  const { t } = useTranslation("modals");
+  const resolvedSubmitLabel = submitLabel || t("providerModal.connect");
+  const resolvedCancelLabel = cancelLabel || t("providerModal.cancel");
+
   const SpinningLoader: React.FunctionComponent<IconProps> = (props) => (
     <SvgLoader
       {...props}
@@ -77,7 +82,7 @@ export default function ProviderModal({
         {onSubmit && (
           <Modal.Footer>
             <Button type="button" secondary onClick={() => onOpenChange(false)}>
-              {cancelLabel}
+              {resolvedCancelLabel}
             </Button>
             <Button
               type="button"
@@ -85,7 +90,7 @@ export default function ProviderModal({
               disabled={submitDisabled || isSubmitting}
               leftIcon={isSubmitting ? SpinningLoader : undefined}
             >
-              {submitLabel}
+              {resolvedSubmitLabel}
             </Button>
           </Modal.Footer>
         )}

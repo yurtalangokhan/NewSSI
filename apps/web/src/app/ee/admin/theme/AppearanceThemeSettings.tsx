@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import { FormField } from "@/refresh-components/form/FormField";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
 import Tabs from "@/refresh-components/Tabs";
@@ -47,6 +48,7 @@ export const AppearanceThemeSettings = forwardRef<
   { selectedLogo, setSelectedLogo, charLimits },
   ref
 ) {
+  const { t } = useTranslation();
   const { values, errors, setFieldValue } = useFormikContext<any>();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const applicationNameInputRef = useRef<HTMLInputElement>(null);
@@ -220,7 +222,7 @@ export const AppearanceThemeSettings = forwardRef<
                 />
               }
             >
-              Application Display Name
+              {t("appearanceTheme.applicationDisplayName")}
             </FormField.Label>
             <FormField.Control asChild>
               <InputTypeIn
@@ -236,7 +238,7 @@ export const AppearanceThemeSettings = forwardRef<
               />
             </FormField.Control>
             <FormField.Description>
-              This name will show across the app and replace "Onyx" in the UI.
+              {t("appearanceTheme.applicationDisplayNameDesc")}
             </FormField.Description>
             <FormField.Message
               messages={{ error: errors.application_name as string }}
@@ -244,7 +246,7 @@ export const AppearanceThemeSettings = forwardRef<
           </FormField>
 
           <FormField state="idle">
-            <FormField.Label>Logo Display Style</FormField.Label>
+            <FormField.Label>{t("appearanceTheme.logoDisplayStyle")}</FormField.Label>
             <FormField.Control>
               <Tabs
                 value={values.logo_display_style}
@@ -255,50 +257,49 @@ export const AppearanceThemeSettings = forwardRef<
                 <Tabs.List>
                   <Tabs.Trigger
                     value="logo_and_name"
-                    tooltip="Show both your application logo and name."
+                    tooltip={t("appearanceTheme.logoAndName_tooltip")}
                     tooltipSide="top"
                     {...getPreviewHandlers("sidebar")}
                   >
-                    Logo & Name
+                    {t("appearanceTheme.logoAndName")}
                   </Tabs.Trigger>
                   <Tabs.Trigger
                     value="logo_only"
                     disabled={!hasLogo}
                     tooltip={
                       hasLogo
-                        ? "Show only your application logo."
-                        : "Upload a logo to enable this option."
+                        ? t("appearanceTheme.logoOnly_tooltip")
+                        : t("appearanceTheme.logoOnly_disabled_tooltip")
                     }
                     tooltipSide="top"
                     {...getPreviewHandlers("sidebar")}
                   >
-                    Logo Only
+                    {t("appearanceTheme.logoOnly")}
                   </Tabs.Trigger>
                   <Tabs.Trigger
                     value="name_only"
                     disabled={!hasApplicationName}
                     tooltip={
                       hasApplicationName
-                        ? "Show only your application name."
-                        : "Enter an application name to enable this option."
+                        ? t("appearanceTheme.nameOnly_tooltip")
+                        : t("appearanceTheme.nameOnly_disabled_tooltip")
                     }
                     tooltipSide="top"
                     {...getPreviewHandlers("sidebar")}
                   >
-                    Name Only
+                    {t("appearanceTheme.nameOnly")}
                   </Tabs.Trigger>
                 </Tabs.List>
               </Tabs>
             </FormField.Control>
             <FormField.Description>
-              Choose what to display at the top of the sidebar. Options become
-              available once you add a logo or application name.
+              {t("appearanceTheme.logoDisplayStyleDesc")}
             </FormField.Description>
           </FormField>
         </div>
 
         <FormField state="idle">
-          <FormField.Label>Application Logo</FormField.Label>
+          <FormField.Label>{t("appearanceTheme.applicationLogo")}</FormField.Label>
           <FormField.Control>
             <InputImage
               src={getLogoSrc()}
@@ -318,7 +319,7 @@ export const AppearanceThemeSettings = forwardRef<
               onClick={handleLogoEdit}
               leftIcon={SvgEdit}
             >
-              Update
+              {t("appearanceTheme.update")}
             </Button>
           </div>
         </FormField>
@@ -331,13 +332,13 @@ export const AppearanceThemeSettings = forwardRef<
         logoDisplayStyle={values.logo_display_style}
         applicationDisplayName={values.application_name ?? ""}
         chat_footer_content={
-          values.custom_lower_disclaimer_content || "Chat Footer Content"
+          values.custom_lower_disclaimer_content || t("appearanceTheme.chatFooterPlaceholder")
         }
         chat_header_content={
-          values.custom_header_content || "Chat Header Content"
+          values.custom_header_content || t("appearanceTheme.chatHeaderPlaceholder")
         }
         greeting_message={
-          values.custom_greeting_message || "Welcome to Acme Chat"
+          values.custom_greeting_message || t("appearanceTheme.welcomePlaceholder")
         }
         logoSrc={getLogoSrc()}
         highlightTarget={highlightTarget}
@@ -352,7 +353,7 @@ export const AppearanceThemeSettings = forwardRef<
             />
           }
         >
-          Greeting Message
+          {t("appearanceTheme.greetingMessage")}
         </FormField.Label>
         <FormField.Control asChild>
           <InputTypeIn
@@ -368,7 +369,7 @@ export const AppearanceThemeSettings = forwardRef<
           />
         </FormField.Control>
         <FormField.Description>
-          Add a short message to the home page.
+          {t("appearanceTheme.greetingMessageDesc")}
         </FormField.Description>
         <FormField.Message
           messages={{ error: errors.custom_greeting_message as string }}
@@ -384,7 +385,7 @@ export const AppearanceThemeSettings = forwardRef<
             />
           }
         >
-          Chat Header Text
+          {t("appearanceTheme.chatHeaderText")}
         </FormField.Label>
         <FormField.Control asChild>
           <InputTypeIn
@@ -415,14 +416,14 @@ export const AppearanceThemeSettings = forwardRef<
             />
           }
         >
-          Chat Footer Text
+          {t("appearanceTheme.chatFooterText")}
         </FormField.Label>
         <FormField.Control asChild>
           <InputTextArea
             ref={lowerDisclaimerInputRef}
             data-label="chat-footer-textarea"
             rows={3}
-            placeholder="Add markdown content"
+            placeholder={t("appearanceTheme.addMarkdownContent")}
             variant={
               errors.custom_lower_disclaimer_content ? "error" : undefined
             }
@@ -434,7 +435,7 @@ export const AppearanceThemeSettings = forwardRef<
           />
         </FormField.Control>
         <FormField.Description>
-          Add markdown content for disclaimers or additional information.
+          {t("appearanceTheme.chatFooterDesc")}
         </FormField.Description>
         <FormField.Message
           messages={{ error: errors.custom_lower_disclaimer_content as string }}
@@ -446,10 +447,10 @@ export const AppearanceThemeSettings = forwardRef<
       <div className="flex flex-col gap-4 p-4 bg-background-tint-00 rounded-16">
         <FormField state="idle" className="gap-0">
           <div className="flex justify-between items-center">
-            <FormField.Label>Show First Visit Notice</FormField.Label>
+            <FormField.Label>{t("appearanceTheme.showFirstVisitNotice")}</FormField.Label>
             <FormField.Control>
               <Switch
-                aria-label="Show First Visit Notice"
+                aria-label={t("appearanceTheme.showFirstVisitNotice")}
                 data-label="first-visit-notice-toggle"
                 checked={values.show_first_visit_notice}
                 onCheckedChange={(checked) =>
@@ -459,7 +460,7 @@ export const AppearanceThemeSettings = forwardRef<
             </FormField.Control>
           </div>
           <FormField.Description>
-            Show a one-time pop-up for new users at their first visit.
+            {t("appearanceTheme.showFirstVisitNoticeDesc")}
           </FormField.Description>
         </FormField>
 
@@ -475,7 +476,7 @@ export const AppearanceThemeSettings = forwardRef<
                   />
                 }
               >
-                Notice Header
+                {t("appearanceTheme.noticeHeader")}
               </FormField.Label>
               <FormField.Control asChild>
                 <InputTypeIn
@@ -504,14 +505,14 @@ export const AppearanceThemeSettings = forwardRef<
                   />
                 }
               >
-                Notice Content
+                {t("appearanceTheme.noticeContent")}
               </FormField.Label>
               <FormField.Control asChild>
                 <InputTextArea
                   ref={noticeContentInputRef}
                   data-label="notice-content-textarea"
                   rows={3}
-                  placeholder="Add markdown content"
+                  placeholder={t("appearanceTheme.addMarkdownContent")}
                   variant={errors.custom_popup_content ? "error" : undefined}
                   value={values.custom_popup_content}
                   onChange={(e) =>
@@ -526,10 +527,10 @@ export const AppearanceThemeSettings = forwardRef<
 
             <FormField state="idle" className="gap-0">
               <div className="flex justify-between items-center">
-                <FormField.Label>Require Consent to Notice</FormField.Label>
+                <FormField.Label>{t("appearanceTheme.requireConsentToNotice")}</FormField.Label>
                 <FormField.Control>
                   <Switch
-                    aria-label="Require Consent to Notice"
+                    aria-label={t("appearanceTheme.requireConsentToNotice")}
                     data-label="require-consent-toggle"
                     checked={values.enable_consent_screen}
                     onCheckedChange={(checked) =>
@@ -539,8 +540,7 @@ export const AppearanceThemeSettings = forwardRef<
                 </FormField.Control>
               </div>
               <FormField.Description>
-                Require the user to read and agree to the notice before
-                accessing the application.
+                {t("appearanceTheme.requireConsentDesc")}
               </FormField.Description>
             </FormField>
 
@@ -557,14 +557,14 @@ export const AppearanceThemeSettings = forwardRef<
                     />
                   }
                 >
-                  Notice Consent Prompt
+                  {t("appearanceTheme.noticeConsentPrompt")}
                 </FormField.Label>
                 <FormField.Control asChild>
                   <InputTextArea
                     ref={consentPromptTextAreaRef}
                     data-label="consent-prompt-textarea"
                     rows={3}
-                    placeholder="Add markdown content"
+                    placeholder={t("appearanceTheme.addMarkdownContent")}
                     variant={errors.consent_screen_prompt ? "error" : undefined}
                     value={values.consent_screen_prompt}
                     onChange={(e) => {

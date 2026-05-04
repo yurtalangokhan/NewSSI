@@ -57,6 +57,7 @@ function ChunkViewer({
   collectionId: string;
   documentId: string;
 }) {
+  const { t } = useTranslation();
   const { chunks, stats, isLoading } = useDocumentChunks(
     collectionId,
     documentId
@@ -74,9 +75,18 @@ function ChunkViewer({
     <div className="pt-2 pl-4 flex flex-col gap-3">
       {stats && (
         <div className="flex items-center gap-4">
-          <StatBadge label="Chunks" value={stats.total_chunks} />
-          <StatBadge label="Avg chars" value={stats.avg_chars} />
-          <StatBadge label="Avg tokens" value={stats.avg_tokens} />
+          <StatBadge
+            label={t("admin.documentProcessing.chunkStats.chunks")}
+            value={stats.total_chunks}
+          />
+          <StatBadge
+            label={t("admin.documentProcessing.chunkStats.avgChars")}
+            value={stats.avg_chars}
+          />
+          <StatBadge
+            label={t("admin.documentProcessing.chunkStats.avgTokens")}
+            value={stats.avg_tokens}
+          />
         </div>
       )}
       <div className="flex flex-col gap-2 max-h-80 overflow-y-auto pr-1">

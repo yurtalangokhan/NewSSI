@@ -8,6 +8,7 @@ import { openDocument } from "@/lib/search/utils";
 import { SubQuestionDetail } from "@/app/app/interfaces";
 import { ValidSources } from "@/lib/types";
 import { Card } from "@/components/ui/card";
+import { useTranslation } from "react-i18next";
 
 export const buildDocumentSummaryDisplay = (
   matchHighlights: string[],
@@ -130,6 +131,7 @@ export function CompactDocumentCard({
   document,
   updatePresentingDocument,
 }: CompactDocumentCardProps) {
+  const { t, i18n } = useTranslation();
   const isWebSource =
     document.is_internet || document.source_type === ValidSources.Web;
 
@@ -171,7 +173,11 @@ export function CompactDocumentCard({
               figureSmallLabel
               className="line-clamp-2 text-left !m-0"
             >
-              Updated {new Date(document.updated_at).toLocaleDateString()}
+              {t("dates.updatedAt", {
+                date: new Date(document.updated_at).toLocaleDateString(
+                  i18n.language
+                ),
+              })}
             </Text>
           )}
       </button>

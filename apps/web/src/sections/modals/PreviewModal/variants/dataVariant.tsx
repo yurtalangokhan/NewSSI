@@ -29,9 +29,7 @@ export const dataVariant: PreviewVariant = {
 
   headerDescription: (ctx) =>
     ctx.fileContent
-      ? `${ctx.language} - ${ctx.lineCount} ${
-          ctx.lineCount === 1 ? "line" : "lines"
-        } · ${ctx.fileSize}`
+      ? `${ctx.language} - ${ctx.t("lines", { count: ctx.lineCount })} · ${ctx.fileSize}`
       : "",
 
   renderContent: (ctx) => {
@@ -56,7 +54,7 @@ export const dataVariant: PreviewVariant = {
 
   renderFooterLeft: (ctx) => (
     <Text text03 mainUiBody className="select-none">
-      {ctx.lineCount} {ctx.lineCount === 1 ? "line" : "lines"}
+      {ctx.t("lines", { count: ctx.lineCount })}
     </Text>
   ),
 

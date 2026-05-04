@@ -11,6 +11,7 @@ import Text from "@/refresh-components/texts/Text";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
 import { SvgX } from "@opal/icons";
 import { Button } from "@opal/components";
+import { useTranslation } from "react-i18next";
 
 interface FederatedConnectorSelectorProps {
   name: string;
@@ -32,8 +33,7 @@ export const FederatedConnectorSelector = ({
   disabled = false,
   placeholder = "Search federated connectors...",
   showError = false,
-}: FederatedConnectorSelectorProps) => {
-  const [open, setOpen] = useState(false);
+}: FederatedConnectorSelectorProps) => {  const { t } = useTranslation();  const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const dropdownRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -121,7 +121,7 @@ export const FederatedConnectorSelector = ({
   };
 
   const effectivePlaceholder = allConnectorsSelected
-    ? "All federated connectors selected"
+    ? t("federatedConnectorSelector.allFederatedSelected")
     : placeholder;
 
   const isInputDisabled = disabled || allConnectorsSelected;
@@ -135,8 +135,7 @@ export const FederatedConnectorSelector = ({
       )}
 
       <Text as="p" mainUiMuted text03>
-        Documents from selected federated connectors will be searched in
-        real-time during queries.
+        {t("federatedConnectorSelector.federatedConnectorsDesc")}
       </Text>
       <div className="relative">
         <InputTypeIn
@@ -170,8 +169,8 @@ export const FederatedConnectorSelector = ({
             {filteredUnselectedConnectors.length === 0 ? (
               <div className="py-4 text-center text-xs text-text-03">
                 {searchQuery
-                  ? "No matching federated connectors found"
-                  : "No more federated connectors available"}
+                  ? t("federatedConnectorSelector.noMatchingFederated")
+                  : t("federatedConnectorSelector.noMoreFederated")}
               </div>
             ) : (
               <div>
@@ -252,7 +251,7 @@ export const FederatedConnectorSelector = ({
         </div>
       ) : (
         <div className="mt-3 p-3 border border-dashed border-border-02 rounded-12 bg-background-neutral-01 text-text-03 text-xs">
-          No federated connectors selected. Search and select connectors above.
+          {t("federatedConnectorSelector.noFederatedSelected")}
         </div>
       )}
 

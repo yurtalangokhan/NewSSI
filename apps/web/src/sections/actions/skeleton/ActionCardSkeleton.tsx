@@ -2,6 +2,7 @@
 
 import React from "react";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
 interface ActionCardSkeletonProps {
   className?: string;
@@ -10,6 +11,8 @@ interface ActionCardSkeletonProps {
 const ActionCardSkeleton: React.FC<ActionCardSkeletonProps> = ({
   className,
 }) => {
+  const { t } = useTranslation("tools");
+
   return (
     <div
       className={cn(
@@ -17,7 +20,7 @@ const ActionCardSkeleton: React.FC<ActionCardSkeletonProps> = ({
         className
       )}
       role="status"
-      aria-label="Loading action card"
+      aria-label={t("actionCardSkeleton.loading")}
     >
       <div className="flex flex-col w-full">
         {/* Header Section */}

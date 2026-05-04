@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import { useState, useEffect, useMemo } from "react";
 import { FieldArray, useFormikContext, ErrorMessage } from "formik";
 import { DocumentSetSummary } from "@/lib/types";
@@ -62,6 +63,7 @@ export function SlackChannelConfigFormFields({
   slack_bot_id,
   formikProps,
 }: SlackChannelConfigFormFieldsProps) {
+  const { t } = useTranslation();
   const router = useRouter();
   const { values, setFieldValue } = useFormikContext<any>();
   const [viewUnselectableSets, setViewUnselectableSets] = useState(false);
@@ -137,9 +139,7 @@ export function SlackChannelConfigFormFields({
           (dsId: number) => !invalidSelected.includes(dsId)
         )
       );
-      toast.warning(
-        "We removed one or more document sets from your selection because they are no longer valid. Please review and update your configuration."
-      );
+      toast.warning(t("slackChannelConfigs.removedDocumentSets"));
     }
   }, [unselectableSets, values.document_sets, setFieldValue]);
 
@@ -167,22 +167,19 @@ export function SlackChannelConfigFormFields({
         {isDefault && (
           <>
             <Badge variant="agent" className="bg-blue-100 text-blue-800">
-              Default Configuration
+              {t("slackChannelConfigs.defaultConfigBadge")}
             </Badge>
             <p className="mt-2 text-sm">
-              This default configuration will apply to all channels and direct
-              messages (DMs) in your Slack workspace.
+              {t("slackChannelConfigs.defaultConfigDesc")}
             </p>
             <div className="mt-4 p-4 bg-background rounded-md border border-neutral-300">
               <CheckboxField
                 name="disabled"
-                label="Disable Default Configuration"
+                label={t("slackChannelConfigs.disableDefaultConfig")}
                 labelClassName="text-text"
               />
               <p className="mt-2 text-sm italic">
-                Warning: Disabling the default configuration means OnyxBot
-                won&apos;t respond in Slack channels unless they are explicitly
-                configured. Additionally, OnyxBot will not respond to DMs.
+                {t("slackChannelConfigs.disableDefaultWarning")}
               </p>
             </div>
           </>
@@ -191,14 +188,14 @@ export function SlackChannelConfigFormFields({
           <>
             <TextFormField
               name="channel_name"
-              label="Slack Channel Name"
-              placeholder="Enter channel name (e.g., general, support)"
-              subtext="Enter the name of the Slack channel (without the # symbol)"
+              label={t("slackChannelConfigs.slackChannelName")}
+              placeholder={t("slackChannelConfigs.slackChannelPlaceholder")}
+              subtext={t("slackChannelConfigs.slackChannelSubtext")}
             />
           </>
         )}
         <div className="space-y-2 mt-4">
-          <Label>Knowledge Source</Label>
+          <Label>{t("slackChannelConfigs.knowledgeSource")}</Label>
           <RadioGroup
             className="flex flex-col gap-y-4"
             value={values.knowledge_source}
@@ -209,28 +206,28 @@ export function SlackChannelConfigFormFields({
             <RadioGroupItemField
               value="all_public"
               id="all_public"
-              label="All Public Knowledge"
-              sublabel="Let OnyxBot respond based on information from all public connectors"
+              label={t("slackChannelConfigs.allPublicKnowledge")}
+              sublabel={t("slackChannelConfigs.allPublicKnowledgeDesc")}
             />
             {selectableSets.length + unselectableSets.length > 0 && (
               <RadioGroupItemField
                 value="document_sets"
                 id="document_sets"
-                label="Specific Document Sets"
-                sublabel="Control which documents to use for answering questions"
+                label={t("slackChannelConfigs.specificDocumentSets")}
+                sublabel={t("slackChannelConfigs.specificDocumentSetsDesc")}
               />
             )}
             <RadioGroupItemField
               value="assistant"
               id="assistant"
-              label="Search Agent"
-              sublabel="Control both the documents and the prompt to use for answering questions"
+              label={t("slackChannelConfigs.searchAgent")}
+              sublabel={t("slackChannelConfigs.searchAgentDesc")}
             />
             <RadioGroupItemField
               value="non_search_agent"
               id="non_search_agent"
-              label="Non-Search Agent"
-              sublabel="Chat with an agent that does not use documents"
+              label={t("slackChannelConfigs.nonSearchAgent")}
+              sublabel={t("slackChannelConfigs.nonSearchAgentDesc")}
             />
           </RadioGroup>
         </div>
@@ -239,13 +236,11 @@ export function SlackChannelConfigFormFields({
             <div className="mt-4">
               <SubLabel>
                 <>
-                  Select the document sets OnyxBot will use while answering
-                  questions in Slack.
+                  {t("slackChannelConfigs.selectDocSetsLabel")}
                   <br />
                   {unselectableSets.length > 0 ? (
                     <span>
-                      Some incompatible document sets are{" "}
-                      {viewUnselectableSets ? "visible" : "hidden"}.{" "}
+                      {t("slackChannelConfigs.incompatibleDocSets", { visibility: viewUnselectableSets ? t("slackChannelConfigs.visible") : t("slackChannelConfigs.hidden") })}{" "}
                       <button
                         type="button"
                         onClick={() =>
@@ -256,9 +251,9 @@ export function SlackChannelConfigFormFields({
                         className="text-sm text-action-link-05"
                       >
                         {viewUnselectableSets
-                          ? "Hide un-selectable "
-                          : "View all "}
-                        document sets
+                          ? t("slackChannelConfigs.hideUnselectable")
+                          : t("slackChannelConfigs.viewAll")}
+                        {t("slackChannelConfigs.documentSetsLabel")}
                       </button>
                     </span>
                   ) : (
@@ -296,8 +291,7 @@ export function SlackChannelConfigFormFields({
                     {viewUnselectableSets && unselectableSets.length > 0 && (
                       <div className="mt-4">
                         <p className="text-sm text-text-dark/80">
-                          These document sets cannot be attached as they have
-                          auto-synced docs:
+                          {t("slackChannelConfigs.autoSyncDocs")}
                         </p>
                         <div className="mb-3 mt-2 flex gap-2 flex-wrap text-sm">
                           {unselectableSets.map((documentSet) => (
@@ -305,7 +299,7 @@ export function SlackChannelConfigFormFields({
                               key={documentSet.id}
                               documentSet={documentSet}
                               disabled
-                              disabledTooltip="Unable to use this document set because it contains a connector with auto-sync permissions. OnyxBot's responses in this channel are visible to all Slack users, so mirroring the asker's permissions could inadvertently expose private information."
+                              disabledTooltip={t("slackChannelConfigs.disabledDocSetTooltip")}
                               isSelected={false}
                             />
                           ))}
@@ -326,15 +320,12 @@ export function SlackChannelConfigFormFields({
           <div className="mt-4">
             <SubLabel>
               <>
-                Select the search-enabled agent OnyxBot will use while answering
-                questions in Slack.
+                {t("slackChannelConfigs.selectSearchAgentLabel")}
                 {syncEnabledAgents.length > 0 && (
                   <>
                     <br />
                     <span className="text-sm text-text-dark/80">
-                      Note: Some of your agents have auto-synced connectors in
-                      their document sets. You cannot select these agents as
-                      they will not be able to answer questions in Slack.{" "}
+                      {t("slackChannelConfigs.syncConnectorsNote")}{" "}
                       <button
                         type="button"
                         onClick={() =>
@@ -345,9 +336,9 @@ export function SlackChannelConfigFormFields({
                         className="text-sm text-action-link-05"
                       >
                         {viewSyncEnabledAgents
-                          ? "Hide un-selectable "
-                          : "View all "}
-                        agents
+                          ? t("slackChannelConfigs.hideUnselectable")
+                          : t("slackChannelConfigs.viewAll")}
+                        {t("slackChannelConfigs.agentsLabel")}
                       </button>
                     </span>
                   </>
@@ -365,7 +356,7 @@ export function SlackChannelConfigFormFields({
             {viewSyncEnabledAgents && syncEnabledAgents.length > 0 && (
               <div className="mt-4">
                 <p className="text-sm text-text-dark/80">
-                  Un-selectable agents:
+                  {t("slackChannelConfigs.unselectableAgents")}
                 </p>
                 <div className="mb-3 mt-2 flex gap-2 flex-wrap text-sm">
                   {syncEnabledAgents.map((persona: MinimalPersonaSnapshot) => (
@@ -390,15 +381,12 @@ export function SlackChannelConfigFormFields({
           <div className="mt-4">
             <SubLabel>
               <>
-                Select the non-search agent OnyxBot will use while answering
-                questions in Slack.
+                {t("slackChannelConfigs.selectNonSearchAgentLabel")}
                 {syncEnabledAgents.length > 0 && (
                   <>
                     <br />
                     <span className="text-sm text-text-dark/80">
-                      Note: Some of your agents have auto-synced connectors in
-                      their document sets. You cannot select these agents as
-                      they will not be able to answer questions in Slack.{" "}
+                      {t("slackChannelConfigs.syncConnectorsNote")}{" "}
                       <button
                         type="button"
                         onClick={() =>
@@ -409,9 +397,9 @@ export function SlackChannelConfigFormFields({
                         className="text-sm text-action-link-05"
                       >
                         {viewSyncEnabledAgents
-                          ? "Hide un-selectable "
-                          : "View all "}
-                        agents
+                          ? t("slackChannelConfigs.hideUnselectable")
+                          : t("slackChannelConfigs.viewAll")}
+                        {t("slackChannelConfigs.agentsLabel")}
                       </button>
                     </span>
                   </>
@@ -434,25 +422,25 @@ export function SlackChannelConfigFormFields({
         {values.knowledge_source !== "non_search_agent" && (
           <AccordionItem value="search-options">
             <AccordionTrigger className="text-text">
-              Search Configuration
+              {t("slackChannelConfigs.searchConfig")}
             </AccordionTrigger>
             <AccordionContent>
               <div className="space-y-4 pb-3">
                 <div className="w-64">
                   <SelectorFormField
                     name="response_type"
-                    label="Answer Type"
-                    tooltip="Controls the format of OnyxBot's responses."
+                    label={t("slackChannelConfigs.answerType")}
+                    tooltip={t("slackChannelConfigs.answerTypeTooltip")}
                     options={[
-                      { name: "Standard", value: "citations" },
-                      { name: "Detailed", value: "quotes" },
+                      { name: t("slackChannelConfigs.answerTypeStandard"), value: "citations" },
+                      { name: t("slackChannelConfigs.answerTypeDetailed"), value: "quotes" },
                     ]}
                   />
                 </div>
                 <CheckboxField
                   name="answer_validity_check_enabled"
-                  label="Only respond if citations found"
-                  tooltip="If set, will only answer questions where the model successfully produces citations"
+                  label={t("slackChannelConfigs.onlyRespondIfCitations")}
+                  tooltip={t("slackChannelConfigs.onlyRespondIfCitationsTooltip")}
                 />
               </div>
             </AccordionContent>
@@ -460,13 +448,13 @@ export function SlackChannelConfigFormFields({
         )}
 
         <AccordionItem className="mt-4" value="general-options">
-          <AccordionTrigger>General Configuration</AccordionTrigger>
+          <AccordionTrigger>{t("slackChannelConfigs.generalConfig")}</AccordionTrigger>
           <AccordionContent className="overflow-visible">
             <div className="space-y-4">
               <CheckboxField
                 name="show_continue_in_web_ui"
-                label="Show Continue in Web UI button"
-                tooltip="If set, will show a button at the bottom of the response that allows the user to continue the conversation in the Onyx Web UI"
+                label={t("slackChannelConfigs.showContinueInWebUI")}
+                tooltip={t("slackChannelConfigs.showContinueInWebUITooltip")}
               />
 
               <CheckboxField
@@ -477,61 +465,52 @@ export function SlackChannelConfigFormFields({
                     setFieldValue("follow_up_tags", []);
                   }
                 }}
-                label={'Give a "Still need help?" button'}
-                tooltip={`OnyxBot's response will include a button at the bottom
-                      of the response that asks the user if they still need help.`}
+                label={t("slackChannelConfigs.stillNeedHelp")}
+                tooltip={t("slackChannelConfigs.stillNeedHelpTooltip")}
               />
               {values.still_need_help_enabled && (
-                <CollapsibleSection prompt="Configure Still Need Help Button">
+                <CollapsibleSection prompt={t("slackChannelConfigs.configureStillNeedHelp")}>
                   <TextArrayField
                     name="follow_up_tags"
-                    label="(Optional) Users / Groups to Tag"
+                    label={t("slackChannelConfigs.optionalUsersGroupsTag")}
                     values={values}
                     subtext={
                       <div>
-                        The Slack users / groups we should tag if the user
-                        clicks the &quot;Still need help?&quot; button. If no
-                        emails are provided, we will not tag anyone and will
-                        just react with a 🆘 emoji to the original message.
+                        {t("slackChannelConfigs.usersGroupsTagSubtext")}
                       </div>
                     }
-                    placeholder="User email or user group name..."
+                    placeholder={t("slackChannelConfigs.userEmailGroupPlaceholder")}
                   />
                 </CollapsibleSection>
               )}
 
               <CheckboxField
                 name="questionmark_prefilter_enabled"
-                label="Only respond to questions"
-                tooltip="If set, OnyxBot will only respond to messages that contain a question mark"
+                label={t("slackChannelConfigs.onlyRespondToQuestions")}
+                tooltip={t("slackChannelConfigs.onlyRespondToQuestionsTooltip")}
               />
               <CheckboxField
                 name="respond_tag_only"
-                label="Respond to @OnyxBot Only"
-                tooltip="If set, OnyxBot will only respond when directly tagged"
+                label={t("slackChannelConfigs.respondTagOnly")}
+                tooltip={t("slackChannelConfigs.respondTagOnlyTooltip")}
               />
               <CheckboxField
                 name="respond_to_bots"
-                label="Respond to Bot messages"
-                tooltip="If not set, OnyxBot will always ignore messages from Bots"
+                label={t("slackChannelConfigs.respondToBots")}
+                tooltip={t("slackChannelConfigs.respondToBotsTooltip")}
               />
               <CheckboxField
                 name="is_ephemeral"
-                label="Respond to user in a private (ephemeral) message"
-                tooltip="If set, OnyxBot will respond only to the user in a private (ephemeral) message. If you also
-                chose 'Search' Agent above, selecting this option will make documents that are private to the user
-                available for their queries."
+                label={t("slackChannelConfigs.respondEphemeral")}
+                tooltip={t("slackChannelConfigs.respondEphemeralTooltip")}
               />
 
               <TextArrayField
                 name="respond_member_group_list"
-                label="(Optional) Respond to Certain Users / Groups"
-                subtext={
-                  "If specified, OnyxBot responses will only " +
-                  "be visible to the members or groups in this list."
-                }
+                label={t("slackChannelConfigs.optionalRespondCertainUsers")}
+                subtext={t("slackChannelConfigs.respondCertainUsersSubtext")}
                 values={values}
-                placeholder="User email or user group name..."
+                placeholder={t("slackChannelConfigs.userEmailGroupPlaceholder")}
               />
 
               <StandardAnswerCategoryDropdownField
@@ -557,21 +536,14 @@ export function SlackChannelConfigFormFields({
               </TooltipTrigger>
               <TooltipContent side="top" className="bg-background p-4 w-80">
                 <Label className="text-text mb-2 font-semibold">
-                  Privacy Alert
+                  {t("slackChannelConfigs.privacyAlert")}
                 </Label>
                 <p className="text-sm text-text-darker mb-4">
-                  Please note that if the private (ephemeral) response is *not
-                  selected*, only public documents within the selected document
-                  sets will be accessible for user queries. If the private
-                  (ephemeral) response *is selected*, user quries can also
-                  leverage documents that the user has already been granted
-                  access to. Note that users will be able to share the response
-                  with others in the channel, so please ensure that this is
-                  aligned with your company sharing policies.
+                  {t("slackChannelConfigs.privacyAlertDesc")}
                 </p>
                 <div className="space-y-2">
                   <h4 className="text-sm text-text font-medium">
-                    Relevant Connectors:
+                    {t("slackChannelConfigs.relevantConnectors")}
                   </h4>
                   <div className="max-h-40 overflow-y-auto border-t border-text-subtle flex-col gap-y-2">
                     {memoizedPrivateConnectors.map((ccpairinfo: any) => (
@@ -597,9 +569,9 @@ export function SlackChannelConfigFormFields({
             </Tooltip>
           </TooltipProvider>
         )}
-        <Button type="submit">{isUpdate ? "Update" : "Create"}</Button>
+        <Button type="submit">{isUpdate ? t("slackChannelConfigs.update") : t("slackChannelConfigs.create")}</Button>
         <Button secondary onClick={() => router.back()}>
-          Cancel
+          {t("slackChannelConfigs.cancel")}
         </Button>
       </div>
     </>

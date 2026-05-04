@@ -19,14 +19,11 @@ import {
   SvgChevronLeft,
   SvgChevronRight,
 } from "@opal/icons";
+import { useTranslation } from "react-i18next";
 
 function dedupeChatHistorySessions(sessions: ChatSession[]): ChatSession[] {
   const byId = new Map<string, ChatSession>();
   for (const session of sessions) {
-    if (!session?.id) {
-      continue;
-    }
-
     const existing = byId.get(session.id);
     if (!existing) {
       byId.set(session.id, session);
@@ -65,6 +62,7 @@ export default function ChatHistoryModal({
   onSelectChat,
   onRefresh,
 }: ChatHistoryModalProps) {
+  const { t, i18n } = useTranslation();
   const [selectedChats, setSelectedChats] = useState<Set<string>>(new Set());
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [deleteAllModalOpen, setDeleteAllModalOpen] = useState(false);
@@ -82,9 +80,7 @@ export default function ChatHistoryModal({
     }
   );
 
-  const allSessions = dedupeChatHistorySessions(
-    (data?.sessions || []).filter((session): session is ChatSession => Boolean(session?.id))
-  );
+  const allSessions = dedupeChatHistorySessions(data?.sessions || []);
   const hasMore = data?.has_more || false;
 
   // Reset selection when modal opens
@@ -133,11 +129,11 @@ export default function ChatHistoryModal({
       onRefresh();
     } catch (error) {
       console.error("Failed to delete selected chats:", error);
-      showErrorNotification("Failed to delete some chats. Please try again.");
+      showErrorNotification(t("app.chatHistory.toastDeleteSomeFailed"));
     } finally {
       setIsDeleting(false);
     }
-  }, [selectedChats, mutate, onRefresh]);
+  }, [selectedChats, mutate, onRefresh, t]);
 
   const handleDeleteAll = useCallback(async () => {
     setIsDeleting(true);
@@ -150,11 +146,11 @@ export default function ChatHistoryModal({
       onRefresh();
     } catch (error) {
       console.error("Failed to delete all chats:", error);
-      showErrorNotification("Failed to delete all chats. Please try again.");
+      showErrorNotification(t("app.chatHistory.toastDeleteAllFailed"));
     } finally {
       setIsDeleting(false);
     }
-  }, [mutate, onRefresh]);
+  }, [mutate, onRefresh, t]);
 
   const handleSelect = useCallback(
     (chatId: string) => {
@@ -168,7 +164,7 @@ export default function ChatHistoryModal({
     if (!dateString) return "";
     try {
       const date = new Date(dateString);
-      return new Intl.DateTimeFormat("en-US", {
+      return new Intl.DateTimeFormat(i18n.language, {
         month: "short",
         day: "numeric",
         hour: "2-digit",
@@ -207,15 +203,21 @@ export default function ChatHistoryModal({
                   />
                   <span className="text-lg font-semibold">
                     {selectedChats.size > 0
-                      ? `${selectedChats.size} selected`
-                      : "Select chats"}
+                      ? t("app.chatHistory.selectedCount", {
+                          count: selectedChats.size,
+                        })
+                      : t("app.chatHistory.selectPlaceholder")}
                   </span>
                 </>
               ) : (
                 <>
-                  <h2 className="text-lg font-semibold">Chat History</h2>
+                  <h2 className="text-lg font-semibold">
+                    {t("app.chatHistory.title")}
+                  </h2>
                   <span className="text-sm text-gray-500">
-                    {allSessions.length} chats
+                    {t("app.chatHistory.chatCountSuffix", {
+                      count: allSessions.length,
+                    })}
                   </span>
                 </>
               )}
@@ -229,7 +231,7 @@ export default function ChatHistoryModal({
                     danger
                   >
                     <SvgTrash className="mr-2 h-4 w-4" />
-                    Delete Selected
+                    {t("app.chatHistory.deleteSelectedButton")}
                   </Button>
                   <IconButton icon={SvgX} onClick={onClose} />
                 </>
@@ -239,7 +241,7 @@ export default function ChatHistoryModal({
                     onClick={() => setIsSelectionMode(true)}
                     secondary
                   >
-                    Select
+                    {t("app.chatHistory.selectButton")}
                   </Button>
                   <Button
                     onClick={() => setDeleteAllModalOpen(true)}
@@ -247,7 +249,7 @@ export default function ChatHistoryModal({
                     disabled={allSessions.length === 0}
                   >
                     <SvgTrash className="mr-2 h-4 w-4" />
-                    Delete All
+                    {t("app.chatHistory.deleteAllButton")}
                   </Button>
                   <IconButton icon={SvgX} onClick={onClose} />
                 </>
@@ -265,8 +267,10 @@ export default function ChatHistoryModal({
               <div className="flex h-full items-center justify-center">
                 <div className="text-center text-gray-500">
                   <SvgEditBig className="mx-auto mb-2 h-12 w-12 text-gray-300" />
-                  <p>No chat sessions yet</p>
-                  <p className="text-sm">Start a new conversation to see it here</p>
+                  <p>{t("app.chatHistory.noSessionsYet")}</p>
+                  <p className="text-sm">
+                    {t("app.chatHistory.startNewConversationHint")}
+                  </p>
                 </div>
               </div>
             ) : (
@@ -278,7 +282,9 @@ export default function ChatHistoryModal({
                       checked={selectedChats.has("__select_all__")}
                       onChange={handleSelectAll}
                     />
-                    <span className="text-sm font-medium">Select all</span>
+                    <span className="text-sm font-medium">
+                      {t("app.chatHistory.selectAll")}
+                    </span>
                   </div>
                 )}
 
@@ -318,7 +324,9 @@ export default function ChatHistoryModal({
                         </div>
                         {session.persona_id !== null && session.persona_id !== 0 && (
                           <span className="text-xs text-gray-400">
-                            Agent ID: {session.persona_id}
+                            {t("app.chatHistory.agentIdLabel", {
+                              id: session.persona_id,
+                            })}
                           </span>
                         )}
                       </div>
@@ -333,7 +341,7 @@ export default function ChatHistoryModal({
                       onClick={() => setPage((p) => p + 1)}
                       secondary
                     >
-                      Load More
+                      {t("app.chatHistory.loadMoreButton")}
                     </Button>
                   </div>
                 )}
@@ -346,7 +354,7 @@ export default function ChatHistoryModal({
       {/* Delete All Confirmation Modal */}
       {deleteAllModalOpen && (
         <ConfirmationModalLayout
-          title="Delete All Chats"
+          title={t("app.chatHistory.deleteAllChatsTitle")}
           icon={SvgTrash}
           onClose={() => setDeleteAllModalOpen(false)}
           submit={
@@ -355,13 +363,16 @@ export default function ChatHistoryModal({
               onClick={handleDeleteAll}
               disabled={isDeleting}
             >
-              {isDeleting ? "Deleting..." : "Delete All"}
+              {isDeleting
+                ? t("app.chatHistory.deletingButton")
+                : t("app.chatHistory.deleteAllButton")}
             </Button>
           }
         >
           <p>
-            Are you sure you want to delete all {allSessions.length} chat sessions?
-            This action cannot be undone.
+            {t("app.chatHistory.deleteAllChatsConfirmation", {
+              count: allSessions.length,
+            })}
           </p>
         </ConfirmationModalLayout>
       )}

@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { ThreeDotsLoader } from "@/components/Loading";
 import { getDatesList, useOnyxBotAnalytics } from "../lib";
 import { DateRangePickerValue } from "@/components/dateRangeSelectors/AdminDateRangeSelector";
@@ -11,6 +12,7 @@ export function OnyxBotChart({
 }: {
   timeRange: DateRangePickerValue;
 }) {
+  const { t } = useTranslation();
   const {
     data: onyxBotAnalyticsData,
     isLoading: isOnyxBotAnalyticsLoading,
@@ -31,7 +33,7 @@ export function OnyxBotChart({
   ) {
     chart = (
       <div className="h-80 text-red-600 text-bold flex flex-col">
-        <p className="m-auto">Failed to fetch feedback data...</p>
+        <p className="m-auto">{t("performanceCharts.failedFetchFeedback")}</p>
       </div>
     );
   } else {
@@ -46,20 +48,24 @@ export function OnyxBotChart({
       ])
     );
 
+    const dayLabel = t("performanceCharts.dayLabel");
+    const totalQueriesLabel = t("performanceCharts.totalQueriesLabel");
+    const autoResolvedLabel = t("performanceCharts.autoResolvedLabel");
+
     chart = (
       <AreaChartDisplay
         className="mt-4"
         data={dateRange.map((dateStr) => {
           const onyxBotAnalyticsForDate = dateToOnyxBotAnalytics.get(dateStr);
           return {
-            Day: dateStr,
-            "Total Queries": onyxBotAnalyticsForDate?.total_queries || 0,
-            "Automatically Resolved":
+            [dayLabel]: dateStr,
+            [totalQueriesLabel]: onyxBotAnalyticsForDate?.total_queries || 0,
+            [autoResolvedLabel]:
               onyxBotAnalyticsForDate?.auto_resolved || 0,
           };
         })}
-        categories={["Total Queries", "Automatically Resolved"]}
-        index="Day"
+        categories={[totalQueriesLabel, autoResolvedLabel]}
+        index={dayLabel}
         colors={["indigo", "fuchsia"]}
         yAxisWidth={60}
       />
@@ -68,8 +74,8 @@ export function OnyxBotChart({
 
   return (
     <CardSection className="mt-8">
-      <Title>Slack Channel</Title>
-      <Text>Total Queries vs Auto Resolved</Text>
+      <Title>{t("performanceCharts.slackChannelTitle")}</Title>
+      <Text>{t("performanceCharts.totalVsAutoResolved")}</Text>
       {chart}
     </CardSection>
   );

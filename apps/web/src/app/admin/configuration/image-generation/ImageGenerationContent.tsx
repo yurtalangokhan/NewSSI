@@ -8,6 +8,7 @@ import { useCreateModal } from "@/refresh-components/contexts/ModalContext";
 import { toast } from "@/hooks/useToast";
 import { errorHandlingFetcher } from "@/lib/fetcher";
 import { LLMProviderResponse, LLMProviderView } from "@/interfaces/llm";
+import { useTranslation } from "react-i18next";
 import {
   IMAGE_PROVIDER_GROUPS,
   ImageProvider,
@@ -30,6 +31,7 @@ export default function ImageGenerationContent() {
     "/api/admin/llm/provider?include_image_gen=true",
     errorHandlingFetcher
   );
+  const { t } = useTranslation();
   const llmProviders = llmProviderResponse?.providers ?? [];
 
   const {
@@ -79,11 +81,15 @@ export default function ImageGenerationContent() {
     if (config) {
       try {
         await setDefaultImageGenerationConfig(config.image_provider_id);
-        toast.success(`${provider.title} set as default`);
+        toast.success(
+          t("admin.imageGeneration.toastDefaultSet", { name: provider.title })
+        );
         refetchConfigs();
       } catch (error) {
         toast.error(
-          error instanceof Error ? error.message : "Failed to set default"
+          error instanceof Error
+            ? error.message
+            : t("admin.imageGeneration.toastDefaultFailed")
         );
       }
     }
@@ -96,11 +102,15 @@ export default function ImageGenerationContent() {
     if (config) {
       try {
         await unsetDefaultImageGenerationConfig(config.image_provider_id);
-        toast.success(`${provider.title} deselected`);
+        toast.success(
+          t("admin.imageGeneration.toastDeselected", { name: provider.title })
+        );
         refetchConfigs();
       } catch (error) {
         toast.error(
-          error instanceof Error ? error.message : "Failed to deselect"
+          error instanceof Error
+            ? error.message
+            : t("admin.imageGeneration.toastDeselectFailed")
         );
       }
     }
@@ -116,7 +126,7 @@ export default function ImageGenerationContent() {
   };
 
   const handleModalSuccess = () => {
-    toast.success("Provider configured successfully");
+    toast.success(t("admin.imageGeneration.toastConfigured"));
     setEditConfig(null);
     refetchConfigs();
     refetchProviders();
@@ -125,7 +135,7 @@ export default function ImageGenerationContent() {
   if (llmError || configError) {
     return (
       <div className="text-error">
-        Failed to load configuration. Please refresh the page.
+        {t("admin.imageGeneration.errorLoadConfig")}
       </div>
     );
   }
@@ -136,10 +146,10 @@ export default function ImageGenerationContent() {
         {/* Section Header */}
         <div className="flex flex-col gap-0.5">
           <Text mainContentEmphasis text05>
-            Image Generation Model
+            {t("admin.imageGeneration.modelTitle")}
           </Text>
           <Text secondaryBody text03>
-            Select a model to generate images in chat.
+            {t("admin.imageGeneration.modelDescription")}
           </Text>
         </div>
 
@@ -149,7 +159,7 @@ export default function ImageGenerationContent() {
             static
             large
             close={false}
-            text="Connect an image generation model to use in chat."
+            text={t("admin.imageGeneration.connectModelMessage")}
             className="w-full"
           />
         )}
@@ -168,8 +178,16 @@ export default function ImageGenerationContent() {
                   icon={() => (
                     <ProviderIcon provider={provider.provider_name} size={18} />
                   )}
-                  title={provider.title}
-                  description={provider.description}
+                  title={
+                    provider.titleKey
+                      ? t(provider.titleKey)
+                      : provider.title
+                  }
+                  description={
+                    provider.descriptionKey
+                      ? t(provider.descriptionKey)
+                      : provider.description
+                  }
                   status={getStatus(provider)}
                   onConnect={() => handleConnect(provider)}
                   onSelect={() => handleSelect(provider)}

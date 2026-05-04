@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { Route } from "next";
 import { Dialog } from "@headlessui/react";
@@ -23,6 +24,7 @@ export interface TenantByDomainResponse {
 }
 
 export default function NewTeamModal() {
+  const { t } = useTranslation("modals");
   const { showNewTeamModal, setShowNewTeamModal } = useModalContext();
   const [existingTenant, setExistingTenant] =
     useState<TenantByDomainResponse | null>(null);
@@ -99,7 +101,7 @@ export default function NewTeamModal() {
       }
 
       setHasRequestedInvite(true);
-      toast.success("Your invite request has been sent to the team admin.");
+      toast.success(t("newTeam.inviteRequestSent"));
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Failed to request an invite";
@@ -139,12 +141,12 @@ export default function NewTeamModal() {
             {hasRequestedInvite ? (
               <>
                 <SvgCheckCircle className="mr-2 h-5 w-5 stroke-text-05" />
-                Join Request Sent
+                {t("newTeam.joinRequestSent")}
               </>
             ) : (
               <>
                 <SvgOrganization className="mr-2 h-5 w-5 stroke-text-04" />
-                We found an existing team for {appDomain}
+                {t("newTeam.foundExistingTeam", { domain: appDomain })}
               </>
             )}
           </Dialog.Title>
@@ -152,7 +154,7 @@ export default function NewTeamModal() {
           {isLoading ? (
             <div className="py-8 text-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-border-05 mx-auto mb-4"></div>
-              <p>Loading team information...</p>
+              <p>{t("newTeam.loadingTeamInformation")}</p>
             </div>
           ) : error ? (
             <div className="space-y-4">
@@ -163,16 +165,14 @@ export default function NewTeamModal() {
                   className="w-full"
                   rightIcon={SvgArrowRight}
                 >
-                  Continue with new team
+                  {t("newTeam.continueWithNewTeam")}
                 </Button>
               </div>
             </div>
           ) : hasRequestedInvite ? (
             <div className="space-y-4">
               <p className="text-text-04">
-                Your join request has been sent. You can explore as your own
-                team while waiting for an admin of {appDomain} to approve your
-                request.
+                {t("newTeam.joinRequestSentDescription", { domain: appDomain })}
               </p>
               <div className="flex w-full pt-2">
                 <Button
@@ -180,14 +180,14 @@ export default function NewTeamModal() {
                   className="w-full"
                   rightIcon={SvgArrowRight}
                 >
-                  Try Onyx while waiting
+                  {t("newTeam.tryOnyxWhileWaiting")}
                 </Button>
               </div>
             </div>
           ) : (
             <div className="space-y-4">
               <p className="text-text-03 text-sm mb-2">
-                Your join request can be approved by any admin of {appDomain}.
+                {t("newTeam.joinRequestApprovalInfo", { domain: appDomain })}
               </p>
               <div className="flex flex-col items-center justify-center gap-4 mt-4">
                 <Button
@@ -197,8 +197,8 @@ export default function NewTeamModal() {
                   leftIcon={isSubmitting ? SimpleLoader : SvgArrowUp}
                 >
                   {isSubmitting
-                    ? "Sending request..."
-                    : "Request to join your team"}
+                    ? t("newTeam.sendingRequest")
+                    : t("newTeam.requestToJoin")}
                 </Button>
               </div>
               <Button
@@ -207,7 +207,7 @@ export default function NewTeamModal() {
                 leftIcon={SvgPlus}
                 secondary
               >
-                Continue with new team
+                {t("newTeam.continueWithNewTeam")}
               </Button>
             </div>
           )}

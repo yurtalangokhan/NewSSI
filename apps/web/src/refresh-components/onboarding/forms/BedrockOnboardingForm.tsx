@@ -22,6 +22,7 @@ import ConnectionProviderIcon from "@/refresh-components/ConnectionProviderIcon"
 import InlineExternalLink from "@/refresh-components/InlineExternalLink";
 import { DOCS_ADMINS_PATH } from "@/lib/constants";
 import { ProviderIcon } from "@/app/admin/configuration/llm/ProviderIcon";
+import { useTranslation } from "react-i18next";
 
 // AWS Bedrock regions
 const AWS_REGION_OPTIONS = [
@@ -79,6 +80,7 @@ interface BedrockFormValues {
 }
 
 function BedrockFormFields(props: OnboardingFormChildProps<BedrockFormValues>) {
+  const { t } = useTranslation();
   const {
     formikProps,
     apiStatus,
@@ -119,7 +121,7 @@ function BedrockFormFields(props: OnboardingFormChildProps<BedrockFormValues>) {
             state={state}
             className="w-full"
           >
-            <FormField.Label>AWS Region</FormField.Label>
+            <FormField.Label>{t("llmOnboarding.awsRegion")}</FormField.Label>
             <FormField.Control>
               <InputSelect
                 value={field.value ?? ""}
@@ -138,7 +140,7 @@ function BedrockFormFields(props: OnboardingFormChildProps<BedrockFormValues>) {
             </FormField.Control>
             <FormField.Message
               messages={{
-                idle: "Region where your Amazon Bedrock models are hosted.",
+                idle: t("llmOnboarding.awsRegionDesc"),
                 error: meta.error,
               }}
             />
@@ -154,7 +156,7 @@ function BedrockFormFields(props: OnboardingFormChildProps<BedrockFormValues>) {
             state={state}
             className="w-full"
           >
-            <FormField.Label>Authentication Method</FormField.Label>
+            <FormField.Label>{t("llmOnboarding.authMethod")}</FormField.Label>
             <FormField.Control>
               <InputSelect
                 value={authMethod}
@@ -164,13 +166,13 @@ function BedrockFormFields(props: OnboardingFormChildProps<BedrockFormValues>) {
                 <InputSelect.Trigger onBlur={field.onBlur} />
                 <InputSelect.Content>
                   <InputSelect.Item value={AUTH_METHOD_IAM}>
-                    IAM Role
+                    {t("llmOnboarding.iamRole")}
                   </InputSelect.Item>
                   <InputSelect.Item value={AUTH_METHOD_ACCESS_KEY}>
-                    Access Key
+                    {t("llmOnboarding.accessKey")}
                   </InputSelect.Item>
                   <InputSelect.Item value={AUTH_METHOD_LONG_TERM_API_KEY}>
-                    Long-term API Key
+                    {t("llmOnboarding.longTermApiKey")}
                   </InputSelect.Item>
                 </InputSelect.Content>
               </InputSelect>
@@ -201,8 +203,7 @@ function BedrockFormFields(props: OnboardingFormChildProps<BedrockFormValues>) {
             <SvgAlertCircle className="h-4 w-4 stroke-text-03" />
           </div>
           <Text as="p" text04 mainUiBody>
-            Onyx will use the IAM role attached to the environment it&apos;s
-            running in to authenticate.
+          {t("llmOnboarding.iamDesc")}
           </Text>
         </div>
       )}
@@ -217,7 +218,7 @@ function BedrockFormFields(props: OnboardingFormChildProps<BedrockFormValues>) {
                 state={state}
                 className="w-full"
               >
-                <FormField.Label>AWS Access Key ID</FormField.Label>
+                <FormField.Label>{t("llmOnboarding.awsAccessKeyId")}</FormField.Label>
                 <FormField.Control>
                   <InputTypeIn
                     {...field}
@@ -249,7 +250,7 @@ function BedrockFormFields(props: OnboardingFormChildProps<BedrockFormValues>) {
                 state={state}
                 className="w-full"
               >
-                <FormField.Label>AWS Secret Access Key</FormField.Label>
+                <FormField.Label>{t("llmOnboarding.awsSecretAccessKey")}</FormField.Label>
                 <FormField.Control>
                   <PasswordInputTypeIn
                     {...field}
@@ -263,9 +264,9 @@ function BedrockFormFields(props: OnboardingFormChildProps<BedrockFormValues>) {
                   <FormField.APIMessage
                     state={apiStatus}
                     messages={{
-                      loading: "Checking credentials...",
-                      success: "Credentials valid.",
-                      error: errorMessage || "Invalid credentials",
+                      loading: t("llmOnboarding.checkingCredentials"),
+                      success: t("llmOnboarding.credentialsValid"),
+                      error: errorMessage || t("llmOnboarding.invalidCreds"),
                     }}
                   />
                 )}
@@ -292,7 +293,7 @@ function BedrockFormFields(props: OnboardingFormChildProps<BedrockFormValues>) {
               state={state}
               className="w-full"
             >
-              <FormField.Label>AWS Bedrock Long-term API Key</FormField.Label>
+              <FormField.Label>{t("llmOnboarding.awsLongTermKey")}</FormField.Label>
               <FormField.Control>
                 <PasswordInputTypeIn
                   {...field}
@@ -306,9 +307,9 @@ function BedrockFormFields(props: OnboardingFormChildProps<BedrockFormValues>) {
                 <FormField.APIMessage
                   state={apiStatus}
                   messages={{
-                    loading: "Checking API key...",
-                    success: "API key valid.",
-                    error: errorMessage || "Invalid API key",
+                    loading: t("llmOnboarding.checkingApiKeyBedrock"),
+                    success: t("llmOnboarding.apiKeyValid"),
+                    error: errorMessage || t("llmOnboarding.invalidApiKey"),
                   }}
                 />
               )}
@@ -335,7 +336,7 @@ function BedrockFormFields(props: OnboardingFormChildProps<BedrockFormValues>) {
             state={state}
             className="w-full"
           >
-            <FormField.Label>Default Model</FormField.Label>
+            <FormField.Label>{t("llmOnboarding.defaultModel")}</FormField.Label>
             <FormField.Control>
               <InputComboBox
                 value={field.value}
@@ -366,25 +367,25 @@ function BedrockFormFields(props: OnboardingFormChildProps<BedrockFormValues>) {
                     tooltip={
                       isFetchDisabled
                         ? !formikProps.values.custom_config?.AWS_REGION_NAME
-                          ? "Select an AWS region first"
-                          : "Complete authentication first"
-                        : "Fetch available models"
+                          ? t("llmOnboarding.selectAWSRegionFirst")
+                          : t("llmOnboarding.completeAuthFirst")
+                        : t("llmOnboarding.fetchAvailableModels")
                     }
-                    aria-label="Fetch available models"
+                    aria-label={t("llmOnboarding.fetchAvailableModelsAria")}
                     disabled={disabled || isFetchingModels || isFetchDisabled}
                   />
                 }
                 onBlur={field.onBlur}
-                placeholder="Select a model"
+                placeholder={t("llmOnboarding.selectModel")}
               />
             </FormField.Control>
             {showModelsApiErrorMessage && (
               <FormField.APIMessage
                 state={modelsApiStatus}
                 messages={{
-                  loading: "Fetching models...",
-                  success: "Models fetched successfully.",
-                  error: modelsErrorMessage || "Failed to fetch models",
+                  loading: t("llmOnboarding.fetchingModels"),
+                  success: t("llmOnboarding.modelsFetched"),
+                  error: modelsErrorMessage || t("llmOnboarding.failedFetchModels"),
                 }}
               />
             )}
@@ -409,6 +410,7 @@ export function BedrockOnboardingForm({
   open,
   onOpenChange,
 }: BedrockOnboardingFormProps) {
+  const { t } = useTranslation();
   const initialValues = useMemo(
     (): BedrockFormValues => ({
       ...buildInitialValues(),
@@ -426,7 +428,7 @@ export function BedrockOnboardingForm({
   );
 
   const validationSchema = Yup.object().shape({
-    [FIELD_DEFAULT_MODEL_NAME]: Yup.string().required("Model name is required"),
+    [FIELD_DEFAULT_MODEL_NAME]: Yup.string().required(t("llmOnboardingForms.modelNameRequired")),
     custom_config: Yup.object().shape({
       AWS_REGION_NAME: Yup.string().required("AWS Region is required"),
       BEDROCK_AUTH_METHOD: Yup.string(),
@@ -457,8 +459,8 @@ export function BedrockOnboardingForm({
   return (
     <OnboardingFormWrapper<BedrockFormValues>
       icon={icon}
-      title="Set up Amazon Bedrock"
-      description="Connect to AWS and set up your Amazon Bedrock models."
+      title={t("llmOnboarding.setupBedrock")}
+      description={t("llmOnboarding.setupBedrockDesc")}
       llmDescriptor={llmDescriptor}
       onboardingState={onboardingState}
       onboardingActions={onboardingActions}
