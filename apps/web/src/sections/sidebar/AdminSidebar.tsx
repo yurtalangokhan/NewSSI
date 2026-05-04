@@ -22,6 +22,7 @@ import SidebarBody from "@/sections/sidebar/SidebarBody";
 import { SvgArrowUpCircle } from "@opal/icons";
 import { ADMIN_PATHS, sidebarItem } from "@/lib/admin-routes";
 import UserAvatarPopover from "@/sections/sidebar/UserAvatarPopover";
+import { useTranslation } from "react-i18next";
 
 const connectors_items = () => [
   sidebarItem(ADMIN_PATHS.INDEXING_STATUS),
@@ -160,6 +161,7 @@ export default function AdminSidebar({
   enableCloudSS,
   enableEnterpriseSS,
 }: AdminSidebarProps) {
+  const { t } = useTranslation();
   const { kgExposed } = useIsKGExposed();
   const pathname = usePathname();
   const { customAnalyticsEnabled } = useCustomAnalyticsEnabled();

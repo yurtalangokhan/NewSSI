@@ -69,9 +69,7 @@ function SyncHistoryStatusBadge({ status }: { status: SyncAttempt["status"] }) {
   if (status === "pending" || status === "incomplete")
     return (
       <Badge variant="in_progress">
-        {t(`admin.indexingStatus.sync.${status}`, {
-          defaultValue: status.charAt(0).toUpperCase() + status.slice(1),
-        })}
+        {status.charAt(0).toUpperCase() + status.slice(1)}
       </Badge>
     );
   return <Badge variant="secondary">{status}</Badge>;
@@ -654,13 +652,8 @@ function ManageDialog({
                       <TableCell className="text-sm">
                         {attempt.duration_seconds != null
                           ? attempt.duration_seconds >= 60
-                            ? t("admin.indexingStatus.sync.duration_m_s", {
-                                minutes: Math.floor(attempt.duration_seconds / 60),
-                                seconds: attempt.duration_seconds % 60,
-                              })
-                            : t("admin.indexingStatus.sync.duration_s", {
-                                seconds: attempt.duration_seconds,
-                              })
+                            ? `${Math.floor(attempt.duration_seconds / 60)}m ${attempt.duration_seconds % 60}s`
+                            : `${attempt.duration_seconds}s`
                           : "-"}
                       </TableCell>
                     </TableRow>

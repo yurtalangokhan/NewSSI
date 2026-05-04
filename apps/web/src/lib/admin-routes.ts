@@ -77,6 +77,8 @@ interface AdminRouteConfig {
   icon: IconFunctionComponent;
   title: string;
   sidebarLabel: string;
+  titleKey?: string;
+  sidebarLabelKey?: string;
 }
 
 /**

@@ -11,6 +11,7 @@ import { getCodeLanguage, getDataLanguage } from "@/lib/languages";
 import { fetchChatFile } from "@/lib/chat/svc";
 import { PreviewContext } from "@/sections/modals/PreviewModal/interfaces";
 import { resolveVariant } from "@/sections/modals/PreviewModal/variants";
+import { useTranslation } from "react-i18next";
 
 function resolveMimeType(mimeType: string, fileName: string): string {
   if (mimeType !== "application/octet-stream") return mimeType;
@@ -31,6 +32,7 @@ export default function PreviewModal({
   presentingDocument,
   onClose,
 }: PreviewModalProps) {
+  const { t } = useTranslation();
   const [fileContent, setFileContent] = useState("");
   const [fileUrl, setFileUrl] = useState("");
   const [fileName, setFileName] = useState("");

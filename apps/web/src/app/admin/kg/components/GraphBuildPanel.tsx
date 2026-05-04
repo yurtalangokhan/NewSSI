@@ -16,6 +16,7 @@ import {
 import { toast } from "@/hooks/useToast";
 import { SvgActivity, SvgTrash, SvgAlertTriangle } from "@opal/icons";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
 function StatusBadge({ status }: { status: GraphBuildStatus }) {
   const config: Record<GraphBuildStatus, { label: string; className: string }> =
@@ -86,6 +87,7 @@ export default function GraphBuildPanel({
   collectionId,
   onBuildComplete,
 }: GraphBuildPanelProps) {
+  const { t } = useTranslation();
   const [pollActive, setPollActive] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);

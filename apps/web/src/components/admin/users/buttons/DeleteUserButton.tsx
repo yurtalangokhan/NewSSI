@@ -5,6 +5,7 @@ import useSWRMutation from "swr/mutation";
 import Button from "@/refresh-components/buttons/Button";
 import { useState } from "react";
 import { ConfirmEntityModal } from "@/components/modals/ConfirmEntityModal";
+import { useTranslation } from "react-i18next";
 
 const DeleteUserButton = ({
   user,
@@ -17,6 +18,7 @@ const DeleteUserButton = ({
   className?: string;
   children?: React.ReactNode;
 }) => {
+  const { t } = useTranslation();
   const { trigger, isMutating } = useSWRMutation(
     "/api/manage/admin/delete-user",
     userMutationFetcher,

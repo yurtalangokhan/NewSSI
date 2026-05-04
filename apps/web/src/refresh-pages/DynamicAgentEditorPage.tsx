@@ -13,6 +13,7 @@ import InputSelect from "@/refresh-components/inputs/InputSelect";
 import InputTextArea from "@/refresh-components/inputs/InputTextArea";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
 import Text from "@/refresh-components/texts/Text";
+import { useTranslation } from "react-i18next";
 
 interface GraphSchemaInfo {
   schema_type: string;
@@ -57,6 +58,7 @@ function parseJsonArray(
 }
 
 export default function DynamicAgentEditorPage() {
+  const { t } = useTranslation();
   const { refresh: refreshAgents } = useAgents();
   const { tools } = useAvailableTools();
   const appRouter = useAppRouter();
