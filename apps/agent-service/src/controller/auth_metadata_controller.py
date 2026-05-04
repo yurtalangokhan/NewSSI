@@ -251,7 +251,11 @@ class AuthMetadataController(BaseController):
         return {"success": False, "error": "Missing credentials"}
 
     async def logout(self, response: Response) -> dict[str, Any]:
-        response.delete_cookie("session")
+        # Delete all auth-related cookies for both basic and OIDC auth
+        cookies_to_delete = ["session", "fastapiusersauth", "id_token", "refresh_token", "access_token"]
+        for cookie_name in cookies_to_delete:
+            response.delete_cookie(cookie_name, path="/", samesite="lax")
+        
         return {"success": True}
 
     async def get_settings(self) -> dict[str, Any]:
