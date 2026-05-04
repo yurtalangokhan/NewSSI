@@ -3,7 +3,6 @@
 import {
   type User,
   UserRole,
-  InvitedUserSnapshot,
   USER_ROLE_LABELS,
 } from "@/lib/types";
 import { ReactNode, useEffect, useState } from "react";
@@ -23,7 +22,6 @@ import DeactivateUserButton from "./buttons/DeactivateUserButton";
 import usePaginatedFetch from "@/hooks/usePaginatedFetch";
 import { ThreeDotsLoader } from "@/components/Loading";
 import { ErrorCallout } from "@/components/ErrorCallout";
-import { InviteUserButton } from "./buttons/InviteUserButton";
 import InputSelect from "@/refresh-components/inputs/InputSelect";
 import {
   Select,
@@ -36,6 +34,7 @@ import { useUser } from "@/providers/UserProvider";
 import { LeaveOrganizationButton } from "./buttons/LeaveOrganizationButton";
 import { NEXT_PUBLIC_CLOUD_ENABLED } from "@/lib/constants";
 import ResetPasswordModal from "./ResetPasswordModal";
+import EditUserModal from "./EditUserModal";
 import { LogOut, UserMinus } from "lucide-react";
 import Popover from "@/refresh-components/Popover";
 import { SvgKey, SvgMoreHorizontal } from "@opal/icons";
@@ -47,23 +46,19 @@ interface ActionMenuProps {
   user: User;
   currentUser: User | null;
   refresh: () => void;
-  invitedUsersMutate: () => void;
+  onEditUser: (user: User) => void;
   handleResetPassword: (user: User) => void;
 }
 
 export interface SignedUpUserTableProps {
-  invitedUsers: InvitedUserSnapshot[];
   q: string;
-  invitedUsersMutate: () => void;
   countDisplay?: ReactNode;
   onTotalItemsChange?: (count: number) => void;
   onLoadingChange?: (isLoading: boolean) => void;
 }
 
 export default function SignedUpUserTable({
-  invitedUsers,
   q = "",
-  invitedUsersMutate,
   countDisplay,
   onTotalItemsChange,
   onLoadingChange,
@@ -75,7 +70,7 @@ export default function SignedUpUserTable({
 
   const [selectedRoles, setSelectedRoles] = useState<UserRole[]>([]);
   const [resetPasswordUser, setResetPasswordUser] = useState<User | null>(null);
-  const invitedEmails = invitedUsers.map((user) => user.email.toLowerCase());
+  const [editUser, setEditUser] = useState<User | null>(null);
 
   const {
     currentPageData: pageOfUsers,
@@ -250,7 +245,7 @@ export default function SignedUpUserTable({
     user,
     currentUser,
     refresh,
-    invitedUsersMutate,
+    onEditUser,
     handleResetPassword,
   }) => {
     const buttonClassName = "w-full";
@@ -303,6 +298,9 @@ export default function SignedUpUserTable({
                 Reset Password
               </Button>
             )}
+            <Button className={buttonClassName} onClick={() => onEditUser(user)}>
+              Edit User
+            </Button>
           </div>
         </Popover.Content>
       </Popover>
@@ -312,18 +310,11 @@ export default function SignedUpUserTable({
   const renderActionButtons = (user: User) => {
     return (
       <div className="flex items-center justify-end gap-2">
-        {user.role === UserRole.SLACK_USER && (
-          <InviteUserButton
-            user={user}
-            invited={invitedEmails.includes(user.email.toLowerCase())}
-            mutate={[refresh, invitedUsersMutate]}
-          />
-        )}
         <ActionMenu
           user={user}
           currentUser={currentUser}
           refresh={refresh}
-          invitedUsersMutate={invitedUsersMutate}
+          onEditUser={setEditUser}
           handleResetPassword={handleResetPassword}
         />
       </div>
@@ -396,6 +387,13 @@ export default function SignedUpUserTable({
         <ResetPasswordModal
           user={resetPasswordUser}
           onClose={() => setResetPasswordUser(null)}
+        />
+      )}
+      {editUser && (
+        <EditUserModal
+          user={editUser}
+          onClose={() => setEditUser(null)}
+          onSuccess={refresh}
         />
       )}
     </>

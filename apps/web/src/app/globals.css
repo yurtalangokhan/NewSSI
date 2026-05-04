@@ -182,6 +182,95 @@
   .dbg-green {
     border: 1px solid green;
   }
+
+  .auth-login-shell {
+    background-color: #081a2a;
+    background-image:
+      radial-gradient(circle at 15% 15%, rgba(40, 168, 255, 0.22), transparent 40%),
+      radial-gradient(circle at 85% 20%, rgba(0, 224, 201, 0.2), transparent 38%),
+      radial-gradient(circle at 50% 85%, rgba(23, 97, 255, 0.2), transparent 50%);
+  }
+
+  .auth-login-bg-gradient {
+    position: absolute;
+    inset: -20%;
+    background:
+      conic-gradient(
+        from 0deg,
+        rgba(0, 224, 201, 0.14),
+        rgba(40, 168, 255, 0.16),
+        rgba(88, 112, 255, 0.14),
+        rgba(0, 224, 201, 0.14)
+      );
+    filter: blur(52px);
+    animation: authGradientDrift 16s ease-in-out infinite alternate;
+    opacity: 0.8;
+  }
+
+  .auth-login-bg-grid {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(120, 180, 255, 0.12) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(120, 180, 255, 0.12) 1px, transparent 1px);
+    background-size: 44px 44px;
+    mask-image: radial-gradient(circle at center, black 25%, transparent 85%);
+    animation: authGridPan 22s linear infinite;
+    opacity: 0.35;
+  }
+
+  .auth-login-bg-glow {
+    position: absolute;
+    width: 34rem;
+    height: 34rem;
+    border-radius: 9999px;
+    filter: blur(46px);
+    opacity: 0.35;
+    animation: authGlowPulse 9s ease-in-out infinite;
+  }
+
+  .auth-login-bg-glow-1 {
+    top: -10rem;
+    right: -8rem;
+    background: radial-gradient(circle, rgba(0, 224, 201, 0.5), transparent 65%);
+  }
+
+  .auth-login-bg-glow-2 {
+    bottom: -12rem;
+    left: -10rem;
+    background: radial-gradient(circle, rgba(49, 124, 255, 0.5), transparent 65%);
+    animation-delay: 1.6s;
+  }
+}
+
+@keyframes authGradientDrift {
+  0% {
+    transform: scale(1) translate3d(-2%, -1%, 0) rotate(0deg);
+  }
+  100% {
+    transform: scale(1.1) translate3d(3%, 2%, 0) rotate(8deg);
+  }
+}
+
+@keyframes authGridPan {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(-44px, -44px, 0);
+  }
+}
+
+@keyframes authGlowPulse {
+  0%,
+  100% {
+    transform: scale(0.95);
+    opacity: 0.28;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 0.42;
+  }
 }
 
 /* TYPOGRAPHY SYSTEM - Imported from Figma Design System */
