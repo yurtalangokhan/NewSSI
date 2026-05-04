@@ -1,7 +1,8 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@opal/components";
 import { SvgSidebar } from "@opal/icons";
+import { useTheme } from "next-themes";
 
 interface LogoSectionProps {
   folded?: boolean;
@@ -9,6 +10,13 @@ interface LogoSectionProps {
 }
 
 function LogoSection({ folded, onFoldClick }: LogoSectionProps) {
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const closeButton = useCallback(
     () => (
       <Button
@@ -21,14 +29,26 @@ function LogoSection({ folded, onFoldClick }: LogoSectionProps) {
     [onFoldClick]
   );
 
+  const logoSrc =
+    mounted && resolvedTheme === "light"
+      ? "/logo.turksat.black.svg"
+      : "/logo.turksat.png";
+
   return (
     <div
       className={cn(
-        /* Keep top spacing consistent after removing the brand logo. */
-        "flex px-2.5 py-2 h-[3.25rem] min-h-[3.25rem]",
-        folded ? "justify-center" : "justify-end"
+        "flex px-2.5 py-2 h-[3.25rem] min-h-[3.25rem] items-center",
+        folded ? "justify-center" : "justify-between"
       )}
     >
+      {!folded && (
+        <img
+          src={logoSrc}
+          alt="Logo"
+          className="h-8 w-auto object-contain"
+          draggable={false}
+        />
+      )}
       {folded !== undefined && closeButton()}
     </div>
   );

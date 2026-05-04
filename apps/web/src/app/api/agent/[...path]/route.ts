@@ -22,20 +22,45 @@ async function proxyToAgentService(
       targetUrl.searchParams.append(key, value);
     });
 
-    const response = await fetch(targetUrl.toString(), {
+    const headers = new Headers(request.headers);
+    headers.delete("host");
+    headers.delete("content-length");
+
+    const response = await fetch(targetUrl, {
       method: request.method,
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers,
       body:
-        request.method !== "GET" && request.method !== "HEAD"
-          ? await request.text()
-          : undefined,
+        request.method === "GET" || request.method === "HEAD"
+          ? undefined
+          : request.body,
+      signal: request.signal,
+      redirect: "manual",
+      // @ts-ignore - Required by undici for stream request bodies in Node runtime.
+      duplex: "half",
     });
 
-    const data = await response.json().catch(() => null);
+    const setCookies =
+      // @ts-ignore - undici provides getSetCookie in Node runtime.
+      response.headers.getSetCookie?.() ??
+      (response.headers.get("set-cookie")
+        ? [response.headers.get("set-cookie")]
+        : []);
 
-    return NextResponse.json(data ?? {}, { status: response.status });
+    const responseHeaders = new Headers(response.headers);
+    responseHeaders.delete("set-cookie");
+
+    const proxyResponse = new NextResponse(response.body, {
+      status: response.status,
+      headers: responseHeaders,
+    });
+
+    for (const cookie of setCookies) {
+      if (cookie) {
+        proxyResponse.headers.append("set-cookie", cookie);
+      }
+    }
+
+    return proxyResponse;
   } catch (error) {
     console.error("Agent service proxy error:", error);
     return NextResponse.json(

@@ -1,5 +1,5 @@
 import { User } from "./types";
-import { AuthType } from "./constants";
+import { AuthType, SERVER_SIDE_ONLY__AUTH_TYPE } from "./constants";
 import { UrlBuilder, buildUrl, fetchSS } from "./utilsSS";
 import { cookies as getCookies } from "next/headers";
 
@@ -22,7 +22,8 @@ export const getAuthTypeMetadataSS = async (): Promise<AuthTypeMetadata> => {
     return (await response.json()) as AuthTypeMetadata;
   } catch {
     return {
-      authType: AuthType.BASIC,
+      // Preserve configured auth mode when backend /auth/type is temporarily unavailable.
+      authType: SERVER_SIDE_ONLY__AUTH_TYPE,
       autoRedirect: false,
       requiresVerification: false,
       anonymousUserEnabled: true,

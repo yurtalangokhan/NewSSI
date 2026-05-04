@@ -14,13 +14,28 @@ const cspHeader = `
     }
 `;
 
+const isDevelopment = process.env.NODE_ENV === "development";
+const optimizePackageImportsConfig = isDevelopment
+  ? {}
+  : {
+      optimizePackageImports: [
+        "@opal/icons",
+        "@opal/components",
+        "@opal/layouts",
+        "motion",
+      ],
+    };
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   productionBrowserSourceMaps: false,
   output: "standalone",
   transpilePackages: ["@onyx/opal"],
+  turbopack: {
+    root: __dirname,
+  },
   experimental: {
-    optimizePackageImports: ["@opal/icons", "@opal/components", "@opal/layouts", "motion"],
+    ...optimizePackageImportsConfig,
   },
   typedRoutes: true,
   reactCompiler: false,

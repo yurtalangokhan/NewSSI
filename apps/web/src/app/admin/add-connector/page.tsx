@@ -17,15 +17,28 @@ import { useRouter } from "next/navigation";
 
 // ── Connector tile ──────────────────────────────────────────────────────────
 
+const MAX_INLINE_SVG_LENGTH = 24_000;
+
 function connectorIconSrc(connector: AirbyteConnector): string | null {
   if (connector.icon_url) {
     // Raw SVG string → encode as data URL
     if (connector.icon_url.trimStart().startsWith("<svg")) {
+      if (connector.icon_url.length > MAX_INLINE_SVG_LENGTH) {
+        return null;
+      }
       return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(connector.icon_url)}`;
     }
     return connector.icon_url;
   }
-  if (connector.icon) return connector.icon;
+  if (connector.icon) {
+    if (
+      connector.icon.trimStart().startsWith("<svg") &&
+      connector.icon.length > MAX_INLINE_SVG_LENGTH
+    ) {
+      return null;
+    }
+    return connector.icon;
+  }
   return null;
 }
 
@@ -38,7 +51,10 @@ function ConnectorTile({
   preSelect?: boolean;
   onClick: (c: AirbyteConnector) => void;
 }) {
-  const iconSrc = connectorIconSrc(connector);
+  const iconSrc = useMemo(
+    () => connectorIconSrc(connector),
+    [connector.icon_url, connector.icon]
+  );
   return (
     <button
       onClick={() => onClick(connector)}

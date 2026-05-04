@@ -30,6 +30,46 @@ export interface AirbyteConnectorsResponse {
   connectors?: AirbyteConnector[];
 }
 
+const MAX_INLINE_SVG_LENGTH = 24_000;
+
+function isOversizedInlineSvg(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    value.trimStart().startsWith("<svg") &&
+    value.length > MAX_INLINE_SVG_LENGTH
+  );
+}
+
+function normalizeConnector(connector: AirbyteConnector): AirbyteConnector {
+  const normalized: AirbyteConnector = { ...connector };
+
+  if (isOversizedInlineSvg(normalized.icon_url)) {
+    normalized.icon_url = undefined;
+  }
+  if (isOversizedInlineSvg(normalized.icon)) {
+    normalized.icon = undefined;
+  }
+
+  return normalized;
+}
+
+function normalizeConnectorsResponse(
+  response: AirbyteConnectorsResponse
+): AirbyteConnectorsResponse {
+  const normalizedByCategory = Object.fromEntries(
+    Object.entries(response.by_category ?? {}).map(([category, connectors]) => [
+      category,
+      (connectors ?? []).map(normalizeConnector),
+    ])
+  );
+
+  return {
+    ...response,
+    by_category: normalizedByCategory,
+    connectors: response.connectors?.map(normalizeConnector),
+  };
+}
+
 /** Raw JSON Schema object (subset used by Airbyte specs) */
 export type JSONSchema = Record<string, unknown>;
 
@@ -167,11 +207,18 @@ export function useAirbyteConnectors(search?: string) {
     ? `/api/agent/datasources/connectors?search=${encodeURIComponent(search)}`
     : "/api/agent/datasources/connectors";
 
-  const { data, error, isLoading, mutate } =
-    useSWR<AirbyteConnectorsResponse>(url, errorHandlingFetcher);
+  const { data, error, isLoading, mutate } = useSWR<AirbyteConnectorsResponse>(
+    url,
+    errorHandlingFetcher,
+    {
+      revalidateOnFocus: false,
+    }
+  );
+
+  const normalizedData = data ? normalizeConnectorsResponse(data) : null;
 
   return {
-    data: data ?? null,
+    data: normalizedData,
     isLoading,
     error,
     mutate,
