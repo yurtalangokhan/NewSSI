@@ -26,6 +26,8 @@ import { Section } from "@/layouts/general-layouts";
 import { toast } from "@/hooks/useToast";
 import useAppFocus from "@/hooks/useAppFocus";
 import { useSettingsContext } from "@/providers/SettingsProvider";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { useTranslation } from "react-i18next";
 
 function getDisplayName(email?: string, personalName?: string): string {
   // Prioritize custom personal name if set
@@ -63,6 +65,7 @@ function SettingsPopover({
   onOpenNotifications,
 }: SettingsPopoverProps) {
   const { user } = useUser();
+  const { t } = useTranslation();
   const { data: notifications } = useSWR<Notification[]>(
     "/api/notifications",
     errorHandlingFetcher,
@@ -112,7 +115,7 @@ function SettingsPopover({
               href="/app/settings"
               onClick={onUserSettingsClick}
             >
-              User Settings
+              {t("userMenu.userSettings")}
             </LineItem>
           </div>,
           <LineItem
@@ -120,7 +123,7 @@ function SettingsPopover({
             icon={SvgBell}
             onClick={onOpenNotifications}
           >
-            {`Notifications${
+            {`${t("userMenu.notifications")}${
               undismissedCount > 0 ? ` (${undismissedCount})` : ""
             }`}
           </LineItem>,
@@ -131,12 +134,15 @@ function SettingsPopover({
             target="_blank"
             rel="noopener noreferrer"
           >
-            Help & FAQ
+            {t("userMenu.helpFaq")}
           </LineItem>,
+          <div key="language-switcher">
+            <LanguageSwitcher />
+          </div>,
           null,
           showLogin && (
             <LineItem key="log-in" icon={SvgUser} onClick={handleLogin}>
-              Log in
+              {t("userMenu.logIn")}
             </LineItem>
           ),
           showLogout && (
@@ -146,7 +152,7 @@ function SettingsPopover({
               danger
               onClick={handleLogout}
             >
-              Log out
+              {t("userMenu.logOut")}
             </LineItem>
           ),
         ]}

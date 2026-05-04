@@ -3,6 +3,7 @@ import {
   MessageRenderer,
   RenderType,
 } from "@/app/app/message/messageComponents/interfaces";
+import { useTranslation } from "react-i18next";
 import { BlinkingBar } from "@/app/app/message/BlinkingBar";
 import { OnyxDocument } from "@/lib/search/interfaces";
 import { ValidSources } from "@/lib/types";
@@ -54,6 +55,7 @@ export const FetchToolRenderer: MessageRenderer<FetchToolPacket, {}> = ({
   renderType,
   children,
 }) => {
+  const { t } = useTranslation();
   const fetchState = constructCurrentFetchState(packets);
   const { urls, documents, hasStarted, isLoading, isComplete } = fetchState;
   const isCompact = renderType === RenderType.COMPACT;
@@ -63,7 +65,7 @@ export const FetchToolRenderer: MessageRenderer<FetchToolPacket, {}> = ({
     return children([
       {
         icon: SvgCircle,
-        status: "Reading",
+        status: t("timeline.reading"),
         content: <div />,
         supportsCollapsible: false,
         timelineLayout: "timeline",
@@ -85,7 +87,7 @@ export const FetchToolRenderer: MessageRenderer<FetchToolPacket, {}> = ({
         content: (
           <div className="flex flex-col">
             <Text as="p" text02 className="text-sm mb-1">
-              Reading
+              {t("timeline.reading")}
             </Text>
             {displayDocuments ? (
               <SearchChipList
@@ -121,7 +123,7 @@ export const FetchToolRenderer: MessageRenderer<FetchToolPacket, {}> = ({
   return children([
     {
       icon: SvgCircle,
-      status: "Reading",
+      status: t("timeline.reading"),
       supportsCollapsible: false,
       timelineLayout: "timeline",
       content: (

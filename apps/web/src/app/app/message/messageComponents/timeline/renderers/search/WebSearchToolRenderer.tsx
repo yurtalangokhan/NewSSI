@@ -1,5 +1,6 @@
 import React from "react";
 import { SvgSearch, SvgGlobe } from "@opal/icons";
+import { useTranslation } from "react-i18next";
 import { SearchToolPacket } from "@/app/app/services/streamingModels";
 import {
   MessageRenderer,
@@ -41,19 +42,20 @@ export const WebSearchToolRenderer: MessageRenderer<SearchToolPacket, {}> = ({
   renderType,
   children,
 }) => {
+  const { t } = useTranslation();
   const searchState = constructCurrentSearchState(packets);
   const { queries } = searchState;
 
   const isHighlight = renderType === RenderType.HIGHLIGHT;
   const isInline = renderType === RenderType.INLINE;
 
-  const queriesHeader = "Searching the web";
+  const queriesHeader = t("timeline.searchingWeb");
 
   if (queries.length === 0) {
     return children([
       {
         icon: SvgGlobe,
-        status: "Searching the web",
+        status: t("timeline.searchingWeb"),
         content: <div />,
         supportsCollapsible: false,
         timelineLayout: "timeline",
@@ -118,7 +120,7 @@ export const WebSearchToolRenderer: MessageRenderer<SearchToolPacket, {}> = ({
   return children([
     {
       icon: SvgGlobe,
-      status: "Searching the web",
+      status: t("timeline.searchingWeb"),
       content: (
         <SearchChipList
           items={queries}

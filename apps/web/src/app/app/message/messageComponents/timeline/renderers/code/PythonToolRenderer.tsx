@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import {
   PacketType,
   PythonToolPacket,
@@ -84,6 +85,7 @@ export const PythonToolRenderer: MessageRenderer<PythonToolPacket, {}> = ({
 }) => {
   const { code, stdout, stderr, fileIds, isExecuting, isComplete, hasError } =
     constructCurrentPythonState(packets);
+  const { t } = useTranslation();
 
   useEffect(() => {
     if (isComplete) {
@@ -93,16 +95,16 @@ export const PythonToolRenderer: MessageRenderer<PythonToolPacket, {}> = ({
 
   const status = useMemo(() => {
     if (isExecuting) {
-      return "Executing Python code...";
+      return t("timeline.executingPythonCode");
     }
     if (hasError) {
-      return "Python execution failed";
+      return t("timeline.pythonExecutionFailed");
     }
     if (isComplete) {
-      return "Python execution completed";
+      return t("timeline.pythonExecutionCompleted");
     }
-    return "Python execution";
-  }, [isComplete, isExecuting, hasError]);
+    return t("timeline.pythonExecution");
+  }, [isComplete, isExecuting, hasError, t]);
 
   // Shared content for all states - used by both FULL and compact modes
   const content = (
@@ -121,7 +123,7 @@ export const PythonToolRenderer: MessageRenderer<PythonToolPacket, {}> = ({
               style={{ animationDelay: "0.2s" }}
             ></div>
           </div>
-          <span>Running code...</span>
+          <span>{t("timeline.runningCode")}</span>
         </div>
       )}
 
