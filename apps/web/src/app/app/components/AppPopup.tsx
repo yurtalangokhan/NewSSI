@@ -12,18 +12,14 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { transformLinkUri } from "@/lib/utils";
 import { SvgAlertCircle } from "@opal/icons";
-import { IconProps, OnyxIcon } from "@/components/icons/icons";
+import { IconProps } from "@/components/icons/icons";
+import Logo from "@/refresh-components/Logo";
 
 const ALL_USERS_INITIAL_POPUP_FLOW_COMPLETED =
   "allUsersInitialPopupFlowCompleted";
 
 const CustomLogoHeaderIcon = ({ className, size = 24 }: IconProps) => (
-  <img
-    src="/api/enterprise-settings/logo"
-    alt="Logo"
-    style={{ width: size, height: size, objectFit: "contain" }}
-    className={className}
-  />
+  <Logo folded size={size} className={className} />
 );
 
 export function AppPopup() {
@@ -66,12 +62,12 @@ export function AppPopup() {
   // - Otherwise -> show uploaded custom logo (fallback to Onyx icon)
   const headerIcon =
     !hasApplicationName && !hasCustomLogo
-      ? (props: IconProps) => <OnyxIcon size={24} {...props} />
+      ? (props: IconProps) => <Logo folded size={24} className={props.className} />
       : logoDisplayStyle === "name_only"
         ? SvgAlertCircle
         : hasCustomLogo
           ? CustomLogoHeaderIcon
-          : (props: IconProps) => <OnyxIcon size={24} {...props} />;
+          : (props: IconProps) => <Logo folded size={24} className={props.className} />;
 
   return (
     <Modal open onOpenChange={() => {}}>

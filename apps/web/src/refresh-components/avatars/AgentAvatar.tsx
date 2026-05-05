@@ -2,14 +2,11 @@
 
 import { MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
 import { buildImgUrl } from "@/app/app/components/files/images/utils";
-import { OnyxIcon } from "@/components/icons/icons";
-import { useSettingsContext } from "@/providers/SettingsProvider";
 import {
   DEFAULT_AGENT_AVATAR_SIZE_PX,
   DEFAULT_AGENT_ID,
 } from "@/lib/constants";
 import CustomAgentAvatar from "@/refresh-components/avatars/CustomAgentAvatar";
-import Image from "next/image";
 
 export interface AgentAvatarProps {
   agent: MinimalPersonaSnapshot;
@@ -21,24 +18,15 @@ export default function AgentAvatar({
   size = DEFAULT_AGENT_AVATAR_SIZE_PX,
   ...props
 }: AgentAvatarProps) {
-  const settings = useSettingsContext();
-
   if (agent.id === DEFAULT_AGENT_ID) {
-    return settings.enterpriseSettings?.use_custom_logo ? (
-      <div
-        className="aspect-square rounded-full overflow-hidden relative"
-        style={{ height: size, width: size }}
-      >
-        <Image
-          alt="Logo"
-          src="/api/enterprise-settings/logo"
-          fill
-          className="object-cover object-center"
-          sizes={`${size}px`}
-        />
-      </div>
-    ) : (
-      <OnyxIcon size={size} className="shrink-0" />
+    return (
+      <img
+        src="/logo.turksat.svg?v=20260505-2"
+        alt="Turksat Logo"
+        className="shrink-0"
+        style={{ width: size, height: size }}
+        draggable={false}
+      />
     );
   }
 

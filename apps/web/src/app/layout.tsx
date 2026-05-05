@@ -46,14 +46,10 @@ const hankenGrotesk = Hanken_Grotesk({
 });
 
 export async function generateMetadata(): Promise<Metadata> {
-  let logoLocation = buildClientUrl("/onyx.ico");
+  const logoLocation = buildClientUrl("/logo.turksat.svg?v=20260505-2");
   let enterpriseSettings: EnterpriseSettings | null = null;
   if (SERVER_SIDE_ONLY__PAID_ENTERPRISE_FEATURES_ENABLED) {
     enterpriseSettings = await (await fetchEnterpriseSettingsSS()).json();
-    logoLocation =
-      enterpriseSettings && enterpriseSettings.use_custom_logo
-        ? "/api/enterprise-settings/logo"
-        : buildClientUrl("/onyx.ico");
   }
 
   return {

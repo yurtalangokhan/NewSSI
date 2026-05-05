@@ -9,6 +9,8 @@ interface LogoSectionProps {
   onFoldClick?: () => void;
 }
 
+const LOGO_CACHE_BUSTER = "v=20260505-2";
+
 function LogoSection({ folded, onFoldClick }: LogoSectionProps) {
   const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
@@ -29,10 +31,24 @@ function LogoSection({ folded, onFoldClick }: LogoSectionProps) {
     [onFoldClick]
   );
 
+  if (!mounted) {
+    return (
+      <div
+        className={cn(
+          "flex px-2.5 py-2 h-[3.25rem] min-h-[3.25rem] items-center",
+          folded ? "justify-center" : "justify-between"
+        )}
+      >
+        {!folded && <div className="h-8 w-[184px]" aria-hidden="true" />}
+        {folded !== undefined && closeButton()}
+      </div>
+    );
+  }
+
   const logoSrc =
-    mounted && resolvedTheme === "light"
-      ? "/logo.turksat.black.svg"
-      : "/logo.turksat.png";
+    resolvedTheme === "light"
+      ? `/logo.turksat.svg?${LOGO_CACHE_BUSTER}`
+      : `/logo.turksat.white.svg?${LOGO_CACHE_BUSTER}`;
 
   return (
     <div
@@ -41,14 +57,7 @@ function LogoSection({ folded, onFoldClick }: LogoSectionProps) {
         folded ? "justify-center" : "justify-between"
       )}
     >
-      {!folded && (
-        <img
-          src={logoSrc}
-          alt="Logo"
-          className="h-8 w-auto object-contain"
-          draggable={false}
-        />
-      )}
+      {!folded && <img src={logoSrc} alt="Turksat Logo" className="h-8 w-auto" draggable={false} />}
       {folded !== undefined && closeButton()}
     </div>
   );
