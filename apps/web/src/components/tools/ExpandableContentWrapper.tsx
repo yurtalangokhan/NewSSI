@@ -8,6 +8,7 @@ import { FileDescriptor } from "@/app/app/interfaces";
 import { cn } from "@/lib/utils";
 import TextViewModal from "@/sections/modals/TextViewModal";
 import { MinimalOnyxDocument } from "@/lib/search/interfaces";
+import { useTranslation } from "react-i18next";
 
 export interface ExpandableContentWrapperProps {
   fileDescriptor: FileDescriptor;
@@ -27,6 +28,7 @@ export default function ExpandableContentWrapper({
   close,
   ContentComponent,
 }: ExpandableContentWrapperProps) {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [fadeIn, setFadeIn] = useState(false);
@@ -49,8 +51,11 @@ export default function ExpandableContentWrapper({
   const downloadFile = () => {
     const a = document.createElement("a");
     a.href = `api/chat/file/${fileDescriptor.id}`;
-    a.download = fileDescriptor.name || "download.csv";
-    a.setAttribute("download", fileDescriptor.name || "download.csv");
+    a.download = fileDescriptor.name || t("filePreview.defaultDownloadName");
+    a.setAttribute(
+      "download",
+      fileDescriptor.name || t("filePreview.defaultDownloadName")
+    );
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -66,7 +71,7 @@ export default function ExpandableContentWrapper({
       <CardHeader className="w-full bg-background-tint-02 top-0 p-3">
         <div className="flex justify-between items-center">
           <Text className="text-ellipsis line-clamp-1" text03 mainUiAction>
-            {fileDescriptor.name || "Untitled"}
+            {fileDescriptor.name || t("filePreview.untitled")}
           </Text>
           <div className="flex flex-row items-center justify-end gap-1">
             <Button
@@ -74,7 +79,7 @@ export default function ExpandableContentWrapper({
               size="sm"
               onClick={downloadFile}
               icon={SvgDownloadCloud}
-              tooltip="Download file"
+              tooltip={t("filePreview.downloadFile")}
             />
             <Button
               prominence="tertiary"

@@ -10,6 +10,7 @@ import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
 import CollectionsPanel from "./components/CollectionsPanel";
 import DocumentsPanel from "./components/DocumentsPanel";
 import SearchPanel from "./components/SearchPanel";
+import { useTranslation } from "react-i18next";
 
 const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.DOCUMENT_PROCESSING]!;
 
@@ -18,6 +19,7 @@ const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.DOCUMENT_PROCESSING]!;
 // ---------------------------------------------------------------------------
 
 function RagManagementSection() {
+  const { t } = useTranslation();
   const [selectedCollectionId, setSelectedCollectionId] = useState<
     string | null
   >(null);
@@ -30,12 +32,12 @@ function RagManagementSection() {
 
   const tabs = SimpleTabs.generateTabs({
     documents: {
-      name: "Documents",
+      name: t("admin.documentProcessing.tabs.documents"),
       icon: SvgFiles,
       content: <DocumentsPanel collectionId={selectedCollectionId} />,
     },
     search: {
-      name: "Search",
+      name: t("admin.documentProcessing.tabs.search"),
       icon: SvgSearch,
       content: <SearchPanel collectionId={selectedCollectionId} />,
     },
@@ -58,8 +60,7 @@ function RagManagementSection() {
               aria-hidden
             />
             <Text as="p" mainContentMuted text03>
-              Select or create a collection above to manage documents and run
-              searches.
+              {t("admin.documentProcessing.selectOrCreateCollection")}
             </Text>
           </div>
         </CardSection>
@@ -73,11 +74,12 @@ function RagManagementSection() {
 // ---------------------------------------------------------------------------
 
 export default function Page() {
+  const { t } = useTranslation();
   return (
     <SettingsLayouts.Root>
       <SettingsLayouts.Header
         icon={route.icon}
-        title={route.title}
+        title={t(route.titleKey || "", { defaultValue: route.title })}
         separator
       />
       <SettingsLayouts.Body>
@@ -87,8 +89,8 @@ export default function Page() {
               LangConnect RAG
             </Text>
             <Text as="p" mainContentBody text04 className="leading-relaxed">
-              Manage vector collections, upload documents for indexing, and run
-              semantic search powered by LangConnect and PGVector.
+              {t("admin.documentProcessing.langConnectRag")}
+              {t("admin.documentProcessing.langConnectRagDescription")}
             </Text>
           </div>
 

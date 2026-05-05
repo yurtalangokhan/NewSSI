@@ -3,6 +3,7 @@ import { SvgFold, SvgExpand } from "@opal/icons";
 import { Button } from "@opal/components";
 import Text from "@/refresh-components/texts/Text";
 import { cn, noProp } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
 export interface StoppedHeaderProps {
   totalSteps: number;
@@ -18,6 +19,7 @@ export const StoppedHeader = React.memo(function StoppedHeader({
   isExpanded,
   onToggle,
 }: StoppedHeaderProps) {
+  const { t } = useTranslation();
   const isInteractive = collapsible && totalSteps > 0;
 
   return (
@@ -32,7 +34,7 @@ export const StoppedHeader = React.memo(function StoppedHeader({
     >
       <div className="px-[var(--timeline-header-text-padding-x)] py-[var(--timeline-header-text-padding-y)]">
         <Text as="p" mainUiAction text03>
-          Interrupted Thinking
+          {t("timeline.interruptedThinking")}
         </Text>
       </div>
 

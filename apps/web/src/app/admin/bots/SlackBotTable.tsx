@@ -15,6 +15,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { SlackBot } from "@/lib/types";
 import { EditIcon } from "@/components/icons/icons";
+import { useTranslation } from "react-i18next";
 
 const NUM_IN_PAGE = 20;
 
@@ -28,6 +29,7 @@ function ClickableTableRow({
   [key: string]: any;
 }) {
   const router = useRouter();
+  const { t } = useTranslation();
 
   useEffect(() => {
     router.prefetch(url as Route);
@@ -45,6 +47,7 @@ function ClickableTableRow({
 }
 
 export const SlackBotTable = ({ slackBots }: { slackBots: SlackBot[] }) => {
+  const { t } = useTranslation();
   const [page, setPage] = useState(1);
 
   // sort by id for consistent ordering
@@ -68,10 +71,10 @@ export const SlackBotTable = ({ slackBots }: { slackBots: SlackBot[] }) => {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Name</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Default Config</TableHead>
-            <TableHead>Channel Count</TableHead>
+            <TableHead>{t("admin.bots.tableNameHeader")}</TableHead>
+            <TableHead>{t("admin.bots.tableStatusHeader")}</TableHead>
+            <TableHead>{t("admin.bots.tableDefaultConfigHeader")}</TableHead>
+            <TableHead>{t("admin.bots.tableChannelCountHeader")}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -90,13 +93,13 @@ export const SlackBotTable = ({ slackBots }: { slackBots: SlackBot[] }) => {
                 </TableCell>
                 <TableCell>
                   {slackBot.enabled ? (
-                    <Badge variant="success">Enabled</Badge>
+                    <Badge variant="success">{t("admin.bots.enabledBadge")}</Badge>
                   ) : (
-                    <Badge variant="destructive">Disabled</Badge>
+                    <Badge variant="destructive">{t("admin.bots.disabledBadge")}</Badge>
                   )}
                 </TableCell>
                 <TableCell>
-                  <Badge variant="secondary">Default Set</Badge>
+                  <Badge variant="secondary">{t("admin.bots.defaultSetBadge")}</Badge>
                 </TableCell>
                 <TableCell>{slackBot.configs_count}</TableCell>
                 <TableCell>
@@ -111,7 +114,7 @@ export const SlackBotTable = ({ slackBots }: { slackBots: SlackBot[] }) => {
                 colSpan={5}
                 className="text-center text-muted-foreground"
               >
-                Please add a New Slack Bot to begin chatting with Danswer!
+                {t("admin.bots.noBotsText")}
               </TableCell>
             </TableRow>
           )}

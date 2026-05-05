@@ -5,6 +5,7 @@ import { SvgTrash } from "@opal/icons";
 import { LLMProviderView } from "@/interfaces/llm";
 import { LLM_PROVIDERS_ADMIN_URL } from "@/lib/llmConfig/constants";
 import { deleteLlmProvider } from "@/lib/llmConfig/svc";
+import { useTranslation } from "react-i18next";
 
 interface FormActionButtonsProps {
   isTesting: boolean;
@@ -23,6 +24,7 @@ export function FormActionButtons({
   onClose,
   isFormValid,
 }: FormActionButtonsProps) {
+  const { t } = useTranslation();
   const handleDelete = async () => {
     if (!existingLlmProvider) return;
 
@@ -31,8 +33,8 @@ export function FormActionButtons({
       mutate(LLM_PROVIDERS_ADMIN_URL);
       onClose();
     } catch (e) {
-      const message = e instanceof Error ? e.message : "Unknown error";
-      alert(`Failed to delete provider: ${message}`);
+      const message = e instanceof Error ? e.message : t("llmConfig.unknownError");
+      alert(t("llmConfig.deleteProviderError", { error: message }));
     }
   };
 
@@ -48,17 +50,17 @@ export function FormActionButtons({
         <Button type="submit" disabled={isTesting || !isFormValid}>
           {isTesting ? (
             <Text as="p" inverted>
-              <LoadingAnimation text="Testing" />
+              <LoadingAnimation text={t("llmConfig.testing")} />
             </Text>
           ) : existingLlmProvider ? (
-            "Update"
+            t("llmConfig.update")
           ) : (
-            "Enable"
+            t("llmConfig.enable")
           )}
         </Button>
         {existingLlmProvider && (
           <Button danger leftIcon={SvgTrash} onClick={handleDelete}>
-            Delete
+            {t("llmConfig.delete")}
           </Button>
         )}
       </div>

@@ -79,7 +79,7 @@ export function ModelConfigurationField({
   name: string;
   formikProps: FormikProps<{ model_configurations: ModelConfiguration[] }>;
 }) {
-  const { t } = useTranslation("admin");
+  const { t } = useTranslation();
   const [errorMap, setErrorMap] = useState<{ [index: number]: string }>({});
   const [finalError, setFinalError] = useState<string | undefined>();
 
@@ -87,10 +87,10 @@ export function ModelConfigurationField({
     <div className="pb-5 flex flex-col w-full">
       <div className="flex flex-col">
         <Text as="p" mainUiAction>
-          {t("llm.modelConfigurations")}
+          {t("admin.llm.modelConfigurations")}
         </Text>
         <Text as="p" secondaryBody text03>
-          {t("llm.modelConfigurationsDescription")}
+          {t("admin.llm.modelConfigurationsDescription")}
         </Text>
       </div>
       <FieldArray
@@ -100,10 +100,10 @@ export function ModelConfigurationField({
             <div className="flex flex-col gap-4 py-4">
               <div className="flex">
                 <Text as="p" secondaryBody className="flex flex-[2]">
-                  {t("llm.modelName")}
+                  {t("admin.llm.modelName")}
                 </Text>
                 <Text as="p" secondaryBody className="flex flex-[1]">
-                  {t("llm.maxInputTokens")}
+                  {t("admin.llm.maxInputTokens")}
                 </Text>
                 <div className="w-10" />
               </div>
@@ -154,7 +154,7 @@ export function ModelConfigurationField({
                   });
                 }}
               >
-                {t("llm.addNew")}
+                {t("admin.llm.addNew")}
               </CreateButton>
             </div>
           </div>

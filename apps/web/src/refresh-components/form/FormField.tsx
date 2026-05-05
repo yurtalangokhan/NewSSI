@@ -2,6 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import { FieldContext } from "./FieldContext";
+import { useTranslation } from "react-i18next";
 import {
   ControlProps,
   DescriptionProps,
@@ -65,6 +66,7 @@ export const FormFieldLabel: React.FC<LabelProps> = ({
   ...props
 }) => {
   const { baseId } = useFieldContext();
+  const { t } = useTranslation();
   return (
     <label
       id={`${baseId}-label`}
@@ -79,11 +81,11 @@ export const FormFieldLabel: React.FC<LabelProps> = ({
       {children}
       {required ? (
         <Text as="p" text03 mainUiMuted className="mx-0.5">
-          {"(Required)"}
+          {`(${t("common.required", { defaultValue: "Required" })})`}
         </Text>
       ) : optional ? (
         <Text as="p" text03 mainUiMuted className="mx-0.5">
-          {"(Optional)"}
+          {`(${t("common.optional", { defaultValue: "Optional" })})`}
         </Text>
       ) : null}
       {rightIcon && <span className="flex items-center">{rightIcon}</span>}

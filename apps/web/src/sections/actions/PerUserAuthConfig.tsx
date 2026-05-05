@@ -10,6 +10,7 @@ import Text from "@/refresh-components/texts/Text";
 import Separator from "@/refresh-components/Separator";
 import type { MCPAuthFormValues } from "@/sections/actions/modals/MCPAuthenticationModal";
 import { SvgUser } from "@opal/icons";
+import { useTranslation } from "react-i18next";
 
 interface PerUserAuthConfigProps {
   values: MCPAuthFormValues;
@@ -23,6 +24,7 @@ export function PerUserAuthConfig({
   values,
   setFieldValue,
 }: PerUserAuthConfigProps) {
+  const { t } = useTranslation();
   // Use draft state for KeyValue array (like in LLMConnectionFieldsCustom)
   const [headersDraft, setHeadersDraft] = useState<KeyValue[]>(
     Object.entries(values.auth_template?.headers || {}).map(([key, value]) => ({
@@ -104,16 +106,16 @@ export function PerUserAuthConfig({
     <div className="flex flex-col gap-4 -mx-2 px-2 py-2 bg-background-tint-00 rounded-12">
       {/* Authentication Headers */}
       <FormField name="auth_template.headers" state="idle">
-        <FormField.Label>Authentication Headers</FormField.Label>
+        <FormField.Label>{t("perUserAuth.authHeadersLabel")}</FormField.Label>
         <FormField.Control asChild>
           <InputKeyValue
-            keyTitle="Header Name"
-            valueTitle="Header Value"
+            keyTitle={t("perUserAuth.headerName")}
+            valueTitle={t("perUserAuth.headerValue")}
             items={headersDraft}
             onChange={handleHeadersChange}
             mode="fixed-line"
             layout="equal"
-            addButtonLabel="Add Header"
+            addButtonLabel={t("perUserAuth.addHeader")}
           />
         </FormField.Control>
         <FormField.Description>
@@ -141,10 +143,10 @@ export function PerUserAuthConfig({
               <SvgUser className="w-4 h-4 stroke-text-04 mt-0.5" />
               <div className="flex flex-col gap-1">
                 <Text text04 secondaryAction as="p">
-                  Only for your own account
+                  {t("perUserAuth.onlyForYourAccount")}
                 </Text>
                 <Text text03 secondaryBody as="p">
-                  The following credentials will not be shared with your
+                  {t("perUserAuth.credentialsNotShared")}
                   organization.
                 </Text>
               </div>

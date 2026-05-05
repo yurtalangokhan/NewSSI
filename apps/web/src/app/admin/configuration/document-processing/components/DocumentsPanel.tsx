@@ -151,6 +151,7 @@ function DocumentRow({
   collectionId: string;
   onDelete: () => void;
 }) {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -165,7 +166,7 @@ function DocumentRow({
     setIsDeleting(true);
     try {
       await deleteDocument(collectionId, doc.id);
-      toast.success("Document deleted.");
+      toast.success(t("admin.documentProcessing.documentDeleted"));
       onDelete();
     } catch (e) {
       toast.error(
@@ -203,7 +204,7 @@ function DocumentRow({
             onClick={() => setExpanded((v) => !v)}
             aria-label={expanded ? "Collapse chunks" : "View chunks"}
           >
-            Chunks
+            {t("admin.documentProcessing.chunks")}
           </Button>
           <Button
             danger
@@ -235,6 +236,7 @@ interface DocumentsPanelProps {
 }
 
 export default function DocumentsPanel({ collectionId, readOnly = false }: DocumentsPanelProps) {
+  const { t } = useTranslation();
   const { documents, isLoading, mutate } = useDocuments(collectionId);
   const [isUploading, setIsUploading] = useState(false);
   const [isDragActive, setIsDragActive] = useState(false);
@@ -275,10 +277,10 @@ export default function DocumentsPanel({ collectionId, readOnly = false }: Docum
       {!readOnly && (
         <CardSection className="flex flex-col gap-3">
           <Text as="p" headingH3 text05 className="border-b border-border-01 pb-2">
-            Upload Documents
+            {t("admin.documentProcessing.uploadDocuments")}
           </Text>
           <Text as="p" mainContentBody text04 className="leading-relaxed">
-            Supported formats: PDF, DOCX, PPTX, CSV, XLSX, TXT, MD, HTML, JSON,
+            {t("admin.documentProcessing.supportedFormats")}
             RTF. Max 200 MB per file.
           </Text>
 
@@ -313,7 +315,7 @@ export default function DocumentsPanel({ collectionId, readOnly = false }: Docum
                   <>
                     <ThreeDotsLoader />
                     <Text as="p" mainContentMuted text03>
-                      Uploading and processing…
+                      {t("admin.documentProcessing.uploadingAndProcessing")}
                     </Text>
                   </>
                 ) : (
@@ -328,11 +330,11 @@ export default function DocumentsPanel({ collectionId, readOnly = false }: Docum
                     <div className="text-center">
                       <Text as="p" mainUiAction text04>
                         {isDragActive
-                          ? "Drop files here"
-                          : "Drag & drop files here, or click to select"}
+                          ? t("admin.documentProcessing.dropFilesHere")
+                          : t("admin.documentProcessing.dragDropOrClick")}
                       </Text>
                       <Text as="p" mainContentMuted text03 className="mt-1 text-xs">
-                        PDF, DOCX, PPTX, CSV, XLSX, TXT, MD, HTML, JSON, RTF · Up to 200 MB each
+                        {t("admin.documentProcessing.supportedFormatsCompact")}
                       </Text>
                     </div>
                   </>
@@ -345,7 +347,7 @@ export default function DocumentsPanel({ collectionId, readOnly = false }: Docum
       {/* Document list */}
       <CardSection className="flex flex-col gap-3">
         <Text as="p" headingH3 text05 className="border-b border-border-01 pb-2">
-          Documents{" "}
+          {t("admin.documentProcessing.documents")} {" "}
           {!isLoading && (
             <span className="font-normal text-text-03">({documents.length})</span>
           )}
@@ -355,7 +357,7 @@ export default function DocumentsPanel({ collectionId, readOnly = false }: Docum
           <ThreeDotsLoader />
         ) : documents.length === 0 ? (
           <Text as="p" mainContentMuted text03 className="text-center py-6">
-            No documents yet — upload files above.
+            {t("admin.documentProcessing.noDocuments")}
           </Text>
         ) : (
           <div className="flex flex-col gap-2">

@@ -155,8 +155,8 @@ export default function LLMSelector({
     ? defaultModelConfig.display_name || defaultModelConfig.name
     : defaultModelName || null;
   const defaultLabel = userSettings
-    ? t("admin.llmConfig.systemDefault")
-    : t("admin.llmConfig.userDefault");
+    ? t("admin.llmConfig.systemDefault", { defaultValue: "Default Model" })
+    : t("admin.llmConfig.userDefault", { defaultValue: "Default Model" });
 
   // Determine if we should show grouped view (only if we have multiple vendors)
   const showGrouped = groupedOptions.length > 1;

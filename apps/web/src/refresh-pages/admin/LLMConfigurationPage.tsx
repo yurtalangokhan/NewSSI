@@ -44,6 +44,7 @@ import { VertexAIModal } from "@/sections/modals/llmConfig/VertexAIModal";
 import { OpenRouterModal } from "@/sections/modals/llmConfig/OpenRouterModal";
 import { CustomModal } from "@/sections/modals/llmConfig/CustomModal";
 import { Section } from "@/layouts/general-layouts";
+import { useTranslation } from "react-i18next";
 
 const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.LLM_MODELS]!;
 
@@ -125,6 +126,7 @@ function ExistingProviderCard({
   isDefault,
   isLastProvider,
 }: ExistingProviderCardProps) {
+  const { t } = useTranslation();
   const { mutate } = useSWRConfig();
   const [isOpen, setIsOpen] = useState(false);
   const deleteModal = useCreateModal();
@@ -134,10 +136,10 @@ function ExistingProviderCard({
       await deleteLlmProvider(provider.id);
       mutate(LLM_PROVIDERS_ADMIN_URL);
       deleteModal.toggle(false);
-      toast.success("Provider deleted successfully!");
+      toast.success(t("admin.llm.providerDeletedSuccess"));
     } catch (e) {
       const message = e instanceof Error ? e.message : "Unknown error";
-      toast.error(`Failed to delete provider: ${message}`);
+      toast.error(t("admin.llm.deleteProviderFailed", { message }));
     }
   };
 
@@ -146,23 +148,23 @@ function ExistingProviderCard({
       {deleteModal.isOpen && (
         <ConfirmationModalLayout
           icon={SvgTrash}
-          title={`Delete ${provider.name}`}
+          title={t("admin.llm.deleteProviderTitle", { name: provider.name })}
           onClose={() => deleteModal.toggle(false)}
           submit={
             <Button variant="danger" onClick={handleDelete}>
-              Delete
+              {t("sidebar.delete")}
             </Button>
           }
         >
           <Section alignItems="start" gap={0.5}>
             <Text text03>
-              All LLM models from provider <b>{provider.name}</b> will be
-              removed and unavailable for future chats. Chat history will be
-              preserved.
+              {t("admin.llm.deleteProviderBodyPrefix")} <b>{provider.name}</b>{" "}
+              {t("admin.llm.deleteProviderBodySuffix")}
+                {t("admin.llm.connectAnotherProvider")}
             </Text>
             {isLastProvider && (
               <Text text03>
-                Connect another provider to continue using chats.
+                {t("modals.connect")} another provider to continue using chats.
               </Text>
             )}
           </Section>
@@ -177,7 +179,11 @@ function ExistingProviderCard({
             description={getProviderDisplayName(provider.provider)}
             sizePreset="main-content"
             variant="section"
-            tag={isDefault ? { title: "Default", color: "blue" } : undefined}
+            tag={
+              isDefault
+                ? { title: t("admin.llm.defaultTag"), color: "blue" }
+                : undefined
+            }
             rightChildren={
               <Section flexDirection="row" gap={0} alignItems="start">
                 <Hoverable.Item
@@ -187,14 +193,14 @@ function ExistingProviderCard({
                   <Button
                     icon={SvgTrash}
                     prominence="tertiary"
-                    aria-label="Delete provider"
+                    aria-label={t("admin.llm.deleteProviderAria")}
                     onClick={() => deleteModal.toggle(true)}
                   />
                 </Hoverable.Item>
                 <Button
                   icon={SvgSettings}
                   prominence="tertiary"
-                  aria-label="Edit provider"
+                  aria-label={t("admin.llm.editProviderAria")}
                   onClick={() => setIsOpen(true)}
                 />
               </Section>
@@ -226,6 +232,7 @@ function NewProviderCard({
   isFirstProvider,
   formFn,
 }: NewProviderCardProps) {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -262,6 +269,7 @@ interface NewCustomProviderCardProps {
 function NewCustomProviderCard({
   isFirstProvider,
 }: NewCustomProviderCardProps) {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -278,7 +286,7 @@ function NewCustomProviderCard({
             prominence="tertiary"
             onClick={() => setIsOpen(true)}
           >
-            Set Up
+            {t("admin.llm.setUp")}
           </Button>
         }
       />
@@ -296,6 +304,7 @@ function NewCustomProviderCard({
 // ============================================================================
 
 export default function LLMConfigurationPage() {
+  const { t } = useTranslation();
   const { mutate } = useSWRConfig();
   const { llmProviders: existingLlmProviders, defaultText } =
     useAdminLLMProviders();
@@ -338,23 +347,31 @@ export default function LLMConfigurationPage() {
     try {
       await setDefaultLlmModel(providerId, modelName);
       mutate(LLM_PROVIDERS_ADMIN_URL);
-      toast.success("Default model updated successfully!");
+      toast.success(t("admin.llm.defaultModelUpdatedSuccess"));
     } catch (e) {
       const message = e instanceof Error ? e.message : "Unknown error";
-      toast.error(`Failed to set default model: ${message}`);
+      toast.error(t("admin.llm.setDefaultModelFailed", { message }));
     }
   }
 
   return (
     <SettingsLayouts.Root>
-      <SettingsLayouts.Header icon={route.icon} title={route.title} separator />
+      <SettingsLayouts.Header
+        icon={route.icon}
+        title={
+          route.titleKey
+            ? t(route.titleKey, { defaultValue: route.title })
+            : route.title
+        }
+        separator
+      />
 
       <SettingsLayouts.Body>
         {hasProviders ? (
           <Card>
             <HorizontalInput
-              title="Default Model"
-              description="This model will be used by Onyx by default in your chats."
+              title={t("admin.llm.defaultModelLabel")}
+              description={t("admin.llm.defaultModelDescription")}
               nonInteractive
               center
             >
@@ -362,7 +379,9 @@ export default function LLMConfigurationPage() {
                 value={currentDefaultValue}
                 onValueChange={handleDefaultModelChange}
               >
-                <InputSelect.Trigger placeholder="Select a default model" />
+                <InputSelect.Trigger
+                  placeholder={t("admin.llm.selectDefaultModelPlaceholder")}
+                />
                 <InputSelect.Content>
                   {providersWithVisibleModels.map(
                     ({ provider, visibleModels }) => (
@@ -389,7 +408,7 @@ export default function LLMConfigurationPage() {
             large
             icon
             close={false}
-            text="Set up an LLM provider to start chatting."
+            text={t("admin.llm.setUpProviderToStart")}
             className="w-full"
           />
         )}
@@ -404,7 +423,7 @@ export default function LLMConfigurationPage() {
               justifyContent="start"
             >
               <Content
-                title="Available Providers"
+                title={t("admin.llm.availableProviders")}
                 sizePreset="main-content"
                 variant="section"
               />
@@ -433,8 +452,8 @@ export default function LLMConfigurationPage() {
           justifyContent="start"
         >
           <Content
-            title="Add Provider"
-            description="Onyx supports both popular providers and self-hosted models."
+            title={t("admin.llm.addProvider")}
+            description={t("admin.llm.addProviderDescription")}
             sizePreset="main-content"
             variant="section"
           />
@@ -443,9 +462,7 @@ export default function LLMConfigurationPage() {
             {wellKnownLLMProviders?.map((provider) => {
               const formFn = PROVIDER_MODAL_MAP[provider.name];
               if (!formFn) {
-                toast.error(
-                  `No modal mapping for provider "${provider.name}".`
-                );
+                toast.error(t("admin.llm.noModalMapping", { name: provider.name }));
                 return null;
               }
               return (

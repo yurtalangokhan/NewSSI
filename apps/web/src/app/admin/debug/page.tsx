@@ -17,11 +17,13 @@ import Text from "@/components/ui/text";
 import { Spinner } from "@/components/Spinner";
 import { SvgDownloadCloud } from "@opal/icons";
 import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
+import { useTranslation } from "react-i18next";
 
 const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.DEBUG]!;
 
 function Main() {
   const [categories, setCategories] = useState<string[]>([]);
+  const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(true);
   const [isDownloading, setIsDownloading] = useState(false);
 
@@ -76,9 +78,7 @@ function Main() {
       {isDownloading && <Spinner />}
       <div className="mb-8">
         <Text className="mb-3">
-          <b>Debug Logs</b> provide detailed information about system operations
-          and events. You can download logs for each category to analyze system
-          behavior or troubleshoot issues.
+          <b>{t("admin.debug.logsTitle")}</b> {t("admin.debug.description")}
         </Text>
 
         {categories.length > 0 && (
@@ -86,8 +86,8 @@ function Main() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Actions</TableHead>
+                  <TableHead>{t("admin.debug.categoryHeader")}</TableHead>
+                  <TableHead>{t("admin.debug.actionsHeader")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -103,7 +103,7 @@ function Main() {
                         secondary
                         leftIcon={SvgDownloadCloud}
                       >
-                        Download Logs
+                        {t("admin.debug.downloadLogs")}
                       </Button>
                     </TableCell>
                   </TableRow>

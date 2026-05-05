@@ -6,6 +6,7 @@ import { toast } from "@/hooks/useToast";
 import { ConnectorStatus, UserGroup } from "@/lib/types";
 import { ConnectorMultiSelect } from "@/components/ConnectorMultiSelect";
 import { SvgPlus } from "@opal/icons";
+import { useTranslation } from "react-i18next";
 export interface AddConnectorFormProps {
   ccPairs: ConnectorStatus<any, any>[];
   userGroup: UserGroup;
@@ -17,6 +18,7 @@ export default function AddConnectorForm({
   userGroup,
   onClose,
 }: AddConnectorFormProps) {
+  const { t } = useTranslation();
   const [selectedCCPairIds, setSelectedCCPairIds] = useState<number[]>([]);
 
   // Filter out ccPairs that are already in the user group and are not private
@@ -34,17 +36,17 @@ export default function AddConnectorForm({
       <Modal.Content width="sm" height="sm">
         <Modal.Header
           icon={SvgPlus}
-          title="Add New Connector"
+          title={t("admin.groups.addConnectorTitle")}
           onClose={onClose}
         />
         <Modal.Body>
           <ConnectorMultiSelect
             name="connectors"
-            label="Select Connectors"
+            label={t("admin.groups.selectConnectorsLabel")}
             connectors={availableCCPairs}
             selectedIds={selectedCCPairIds}
             onChange={setSelectedCCPairIds}
-            placeholder="Search for connectors to add..."
+            placeholder={t("admin.groups.searchConnectorsToAddPlaceholder")}
             showError={false}
           />
 
@@ -64,7 +66,7 @@ export default function AddConnectorForm({
                 cc_pair_ids: newCCPairIds,
               });
               if (response.ok) {
-                toast.success("Successfully added connectors to group");
+                toast.success(t("admin.groups.addedConnectorsSuccess"));
                 onClose();
               } else {
                 const responseJson = await response.json();
@@ -74,7 +76,7 @@ export default function AddConnectorForm({
               }
             }}
           >
-            Add Connectors
+            {t("admin.groups.addConnectorsButton")}
           </Button>
         </Modal.Body>
       </Modal.Content>

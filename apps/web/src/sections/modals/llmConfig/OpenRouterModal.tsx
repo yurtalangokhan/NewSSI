@@ -26,6 +26,7 @@ import { AdvancedOptions } from "./components/AdvancedOptions";
 import { DisplayModels } from "./components/DisplayModels";
 import { FetchModelsButton } from "./components/FetchModelsButton";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 export const OPENROUTER_PROVIDER_NAME = "openrouter";
 const OPENROUTER_DISPLAY_NAME = "OpenRouter";
@@ -97,6 +98,7 @@ export function OpenRouterModal({
   open,
   onOpenChange,
 }: LLMProviderFormProps) {
+  const { t } = useTranslation();
   const [fetchedModels, setFetchedModels] = useState<ModelConfiguration[]>([]);
 
   return (
@@ -130,8 +132,8 @@ export function OpenRouterModal({
         };
 
         const validationSchema = buildDefaultValidationSchema().shape({
-          api_key: Yup.string().required("API Key is required"),
-          api_base: Yup.string().required("API Base URL is required"),
+          api_key: Yup.string().required(t("llmConfig.apiKeyRequired")),
+          api_base: Yup.string().required(t("llmConfig.apiBaseRequired")),
         });
 
         return (
@@ -176,8 +178,8 @@ export function OpenRouterModal({
 
                   <TextFormField
                     name="api_base"
-                    label="API Base URL"
-                    subtext="The base URL for OpenRouter API."
+                    label={t("llmConfig.apiBaseLabel")}
+                    subtext={t("llmConfig.openRouterApiBaseSubtext")}
                     placeholder={DEFAULT_API_BASE}
                   />
 
@@ -206,10 +208,7 @@ export function OpenRouterModal({
                   <DisplayModels
                     modelConfigurations={currentModels}
                     formikProps={formikProps}
-                    noModelConfigurationsMessage={
-                      "Fetch available models first, then you'll be able to select " +
-                      "the models you want to make available in Onyx."
-                    }
+                    noModelConfigurationsMessage={t("llmConfig.fetchModelsFirst")}
                     recommendedDefaultModel={null}
                     shouldShowAutoUpdateToggle={false}
                   />

@@ -11,6 +11,7 @@ import { FormField } from "@/refresh-components/form/FormField";
 import { USER_ROLE_LABELS, UserRole } from "@/lib/types";
 import { APIKey } from "./types";
 import { SvgKey } from "@opal/icons";
+import { useTranslation } from "react-i18next";
 
 export interface OnyxApiKeyFormProps {
   onClose: () => void;
@@ -23,6 +24,7 @@ export default function OnyxApiKeyForm({
   onCreateApiKey,
   apiKey,
 }: OnyxApiKeyFormProps) {
+  const { t } = useTranslation();
   const isUpdate = apiKey !== undefined;
 
   return (
@@ -30,7 +32,7 @@ export default function OnyxApiKeyForm({
       <Modal.Content width="sm" height="lg">
         <Modal.Header
           icon={SvgKey}
-          title={isUpdate ? "Update API Key" : "Create a new API Key"}
+          title={isUpdate ? t("admin.apiKey.updateTitle") : t("admin.apiKey.createTitle")}
           onClose={onClose}
         />
         <Formik
@@ -57,8 +59,8 @@ export default function OnyxApiKeyForm({
             if (response.ok) {
               toast.success(
                 isUpdate
-                  ? "Successfully updated API key!"
-                  : "Successfully created API key!"
+                  ? t("admin.apiKey.successUpdated")
+                  : t("admin.apiKey.successCreated")
               );
               if (!isUpdate) {
                 onCreateApiKey(await response.json());
@@ -69,8 +71,8 @@ export default function OnyxApiKeyForm({
               const errorMsg = responseJson.detail || responseJson.message;
               toast.error(
                 isUpdate
-                  ? `Error updating API key - ${errorMsg}`
-                  : `Error creating API key - ${errorMsg}`
+                  ? t("admin.apiKey.errorUpdating", { errorMsg })
+                  : t("admin.apiKey.errorCreating", { errorMsg })
               );
             }
           }}
@@ -78,16 +80,13 @@ export default function OnyxApiKeyForm({
           {({ isSubmitting }) => (
             <Form className="w-full overflow-visible">
               <Modal.Body>
-                <Text as="p">
-                  Choose a memorable name for your API key. This is optional and
-                  can be added or changed later!
-                </Text>
+                <Text as="p">{t("admin.apiKey.nameHint")}</Text>
 
                 <FormikField<string>
                   name="name"
                   render={(field, helper, _meta, state) => (
                     <FormField name="name" state={state} className="w-full">
-                      <FormField.Label>Name (optional):</FormField.Label>
+                      <FormField.Label>{t("admin.apiKey.nameLabel")}</FormField.Label>
                       <FormField.Control>
                         <InputTypeIn
                           {...field}
@@ -104,7 +103,7 @@ export default function OnyxApiKeyForm({
                   name="role"
                   render={(field, helper, _meta, state) => (
                     <FormField name="role" state={state} className="w-full">
-                      <FormField.Label>Role:</FormField.Label>
+                      <FormField.Label>{t("admin.apiKey.roleLabel")}</FormField.Label>
                       <FormField.Control>
                         <InputComboBox
                           value={field.value}
@@ -123,14 +122,12 @@ export default function OnyxApiKeyForm({
                               value: UserRole.ADMIN.toString(),
                             },
                           ]}
-                          placeholder="Select a role"
+                          placeholder={t("admin.apiKey.roleSelectPlaceholder")}
                           strict
                         />
                       </FormField.Control>
                       <FormField.Description>
-                        Select the role for this API key. Limited has access to
-                        simple public APIs. Basic has access to regular user
-                        APIs. Admin has access to admin level APIs.
+                        {t("admin.apiKey.roleDescription")}
                       </FormField.Description>
                     </FormField>
                   )}
@@ -139,7 +136,7 @@ export default function OnyxApiKeyForm({
 
               <Modal.Footer>
                 <Button type="submit" disabled={isSubmitting}>
-                  {isUpdate ? "Update" : "Create"}
+                  {isUpdate ? t("admin.apiKey.updateSubmitButton") : t("admin.apiKey.createSubmitButton")}
                 </Button>
               </Modal.Footer>
             </Form>

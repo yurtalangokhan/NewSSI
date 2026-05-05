@@ -13,6 +13,7 @@ import {
   Credential,
   CredentialWithPrivateKey,
 } from "@/lib/connectors/credentials";
+import { useTranslation } from "react-i18next";
 
 const PRIVATE_KEY_FIELD_KEY = "private_key";
 
@@ -62,6 +63,7 @@ export function CredentialForm<T extends Yup.AnyObject>({
   source,
   onSubmit,
 }: Props<T>): JSX.Element {
+  const { t } = useTranslation();
   return (
     <>
       <Formik
@@ -101,7 +103,7 @@ export function CredentialForm<T extends Yup.AnyObject>({
                 disabled:pointer-events-none disabled:opacity-50 
                 shadow hover:bg-primary/90 h-9 px-4 py-2"
               >
-                Update
+                {t("credentialForm.updateButton")}
               </button>
             </div>
           </Form>

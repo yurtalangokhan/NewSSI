@@ -6,6 +6,7 @@ import Button from "@/refresh-components/buttons/Button";
 import Text from "@/refresh-components/texts/Text";
 import { cn } from "@/lib/utils";
 import { SvgUnplug } from "@opal/icons";
+import { useTranslation } from "react-i18next";
 interface DisconnectEntityModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -25,6 +26,7 @@ export default function DisconnectEntityModal({
   isDisconnecting = false,
   skipOverlay = false,
 }: DisconnectEntityModalProps) {
+  const { t } = useTranslation();
   const disconnectButtonRef = useRef<HTMLButtonElement>(null);
 
   if (!name) return null;
@@ -51,17 +53,17 @@ export default function DisconnectEntityModal({
           icon={({ className }) => (
             <SvgUnplug className={cn(className, "stroke-action-danger-05")} />
           )}
-          title={`Disconnect ${name}`}
+          title={t("admin.mcp.disconnectTitle", { name })}
           onClose={onClose}
         />
 
         <Modal.Body>
           <Text as="p" text03 mainUiBody>
-            All tools connected to {name} will stop working. You can reconnect
-            to this server later if needed.
+            {t("admin.mcp.disconnectWarning", { name })}
+            {t("admin.mcp.disconnectConfirm")}
           </Text>
           <Text as="p" text03 mainUiBody>
-            Are you sure you want to proceed?
+            {t("modals.cancel")}
           </Text>
         </Modal.Body>
 
@@ -76,7 +78,7 @@ export default function DisconnectEntityModal({
               onClick={onConfirmDisconnectAndDelete}
               disabled={isDisconnecting}
             >
-              Disconnect &amp; Delete
+              {t("admin.mcp.disconnectAndDelete")}
             </Button>
           )}
           <Button
@@ -86,7 +88,9 @@ export default function DisconnectEntityModal({
             disabled={isDisconnecting}
             ref={disconnectButtonRef}
           >
-            {isDisconnecting ? "Disconnecting..." : "Disconnect"}
+            {isDisconnecting
+              ? t("admin.mcp.disconnecting")
+              : t("admin.mcp.disconnect")}
           </Button>
         </Modal.Footer>
       </Modal.Content>

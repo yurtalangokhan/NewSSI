@@ -6,6 +6,7 @@ import { User } from "@/lib/types";
 import { toast } from "@/hooks/useToast";
 import { LoadingAnimation } from "@/components/Loading";
 import { SvgUser } from "@opal/icons";
+import { useTranslation } from "react-i18next";
 
 export interface EditUserModalProps {
   user: User;
@@ -18,6 +19,7 @@ export default function EditUserModal({
   onClose,
   onSuccess,
 }: EditUserModalProps) {
+  const { t } = useTranslation();
   const fullNameParts = (user.full_name || "").trim().split(/\s+/).filter(Boolean);
   const initialFirstName = user.first_name || fullNameParts[0] || "";
   const initialLastName = fullNameParts.length > 1 ? fullNameParts.slice(1).join(" ") : "";
@@ -35,12 +37,12 @@ export default function EditUserModal({
 
   const handleSave = async () => {
     if (!isProfileChanged && !isPasswordChanged) {
-      toast.warning("No changes to save");
+      toast.warning(t("admin.users.editUserModal.noChanges"));
       return;
     }
 
     if (isPasswordChanged && password.trim().length < 8) {
-      toast.error("Password must be at least 8 characters");
+      toast.error(t("admin.users.editUserModal.passwordTooShort"));
       return;
     }
 
@@ -59,7 +61,7 @@ export default function EditUserModal({
 
         if (!profileRes.ok) {
           const err = await profileRes.json().catch(() => ({}));
-          throw new Error(err.detail || "Failed to update user profile");
+          throw new Error(err.detail || t("admin.users.editUserModal.updateProfileFailed"));
         }
       }
 
@@ -76,15 +78,15 @@ export default function EditUserModal({
 
         if (!passRes.ok) {
           const err = await passRes.json().catch(() => ({}));
-          throw new Error(err.detail || "Failed to set user password");
+          throw new Error(err.detail || t("admin.users.editUserModal.setPasswordFailed"));
         }
       }
 
-      toast.success("User updated successfully");
+      toast.success(t("admin.users.editUserModal.updateSuccess"));
       onSuccess();
       onClose();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to update user");
+      toast.error(error instanceof Error ? error.message : t("admin.users.editUserModal.updateFailed"));
     } finally {
       setIsSaving(false);
     }
@@ -95,15 +97,15 @@ export default function EditUserModal({
       <Modal.Content width="sm">
         <Modal.Header
           icon={SvgUser}
-          title="Edit User"
+          title={t("admin.users.editUserModal.title")}
           onClose={onClose}
-          description="Update name and set a new password. Username/email is immutable."
+          description={t("admin.users.editUserModal.description")}
         />
         <Modal.Body>
           <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-1">
               <Text as="p" text03>
-                Email (immutable)
+                {t("admin.users.editUserModal.emailLabel")}
               </Text>
               <input
                 type="text"
@@ -116,50 +118,50 @@ export default function EditUserModal({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div className="flex flex-col gap-1">
                 <Text as="p" text03>
-                  First Name
+                  {t("admin.users.editUserModal.firstNameLabel")}
                 </Text>
                 <input
                   type="text"
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
                   className="h-10 rounded border border-border-subtle bg-background px-3"
-                  placeholder="First name"
+                  placeholder={t("admin.users.editUserModal.firstNamePlaceholder")}
                 />
               </div>
 
               <div className="flex flex-col gap-1">
                 <Text as="p" text03>
-                  Last Name
+                  {t("admin.users.editUserModal.lastNameLabel")}
                 </Text>
                 <input
                   type="text"
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
                   className="h-10 rounded border border-border-subtle bg-background px-3"
-                  placeholder="Last name"
+                  placeholder={t("admin.users.editUserModal.lastNamePlaceholder")}
                 />
               </div>
             </div>
 
             <div className="flex flex-col gap-1">
               <Text as="p" text03>
-                New Password
+                {t("admin.users.editUserModal.passwordLabel")}
               </Text>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="h-10 rounded border border-border-subtle bg-background px-3"
-                placeholder="Leave blank to keep current password"
+                placeholder={t("admin.users.editUserModal.passwordPlaceholder")}
               />
             </div>
 
             <div className="mt-2 flex items-center gap-2">
               <Button onClick={onClose} tertiary>
-                Cancel
+                {t("admin.users.editUserModal.cancelButton")}
               </Button>
               <Button onClick={handleSave} disabled={isSaving}>
-                {isSaving ? <LoadingAnimation text="Saving" /> : "Save Changes"}
+                {isSaving ? <LoadingAnimation text={t("admin.users.editUserModal.savingButton")} /> : t("admin.users.editUserModal.save")}
               </Button>
             </div>
           </div>

@@ -30,6 +30,7 @@ import {
 import { Section } from "@/layouts/general-layouts";
 import { OpenButton } from "@opal/components";
 import { LLMOption, LLMOptionGroup } from "./interfaces";
+import { useTranslation } from "react-i18next";
 
 export interface LLMPopoverProps {
   llmManager: LlmManager;
@@ -146,6 +147,7 @@ export default function LLMPopover({
   currentModelName,
   disabled = false,
 }: LLMPopoverProps) {
+  const { t } = useTranslation();
   const llmProviders = llmManager.llmProviders;
   const isLoadingProviders = llmManager.isLoadingProviders;
 
@@ -322,10 +324,10 @@ export default function LLMPopover({
 
     const capabilities: string[] = [];
     if (option.supportsReasoning) {
-      capabilities.push("Reasoning");
+      capabilities.push(t("app.llmPopover.capabilityReasoning"));
     }
     if (option.supportsImageInput) {
-      capabilities.push("Vision");
+      capabilities.push(t("app.llmPopover.capabilityVision"));
     }
     const description =
       capabilities.length > 0 ? capabilities.join(", ") : undefined;
@@ -381,7 +383,7 @@ export default function LLMPopover({
             variant="internal"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search models..."
+            placeholder={t("app.llmPopover.searchPlaceholder")}
           />
 
           {/* Model List with Vendor Groups */}
@@ -391,7 +393,7 @@ export default function LLMPopover({
                   <div key="loading" className="flex items-center gap-2 py-3">
                     <SimpleLoader />
                     <Text secondaryBody text03>
-                      Loading models...
+                      {t("app.llmPopover.loadingModels")}
                     </Text>
                   </div>,
                 ]
@@ -399,7 +401,7 @@ export default function LLMPopover({
                 ? [
                     <div key="empty" className="py-3">
                       <Text secondaryBody text03>
-                        No models found
+                        {t("app.llmPopover.noModelsFound")}
                       </Text>
                     </div>,
                   ]

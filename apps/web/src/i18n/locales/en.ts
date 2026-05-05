@@ -713,6 +713,7 @@ const en = {
     daysAgo: "{{count}} days ago",
     weeksAgo: "{{count}}w ago",
     monthsAgo: "{{count}}mo ago",
+    yearsAgo: "{{count}}y ago",
     daysAgoLong: "{{count}} days ago",
     selectTimeRange: "Select a time range",
     updatedAt: "Updated {{date}}",
@@ -1671,6 +1672,27 @@ const en = {
       changeCuratorRoleTitle: "Change Curator Role",
       changeCuratorRoleWarning: "Warning: Switching roles from Curator to {{newRole}} will remove their status as individual curators from all groups.",
       switchRoleToButton: "Switch Role to {{role}}",
+      editUserModal: {
+        title: "Edit User",
+        description:
+          "Update name and set a new password. Username/email is immutable.",
+        emailLabel: "Email (immutable)",
+        firstNameLabel: "First Name",
+        firstNamePlaceholder: "First name",
+        lastNameLabel: "Last Name",
+        lastNamePlaceholder: "Last name",
+        passwordLabel: "New Password",
+        passwordPlaceholder: "Leave blank to keep current password",
+        cancelButton: "Cancel",
+        save: "Save Changes",
+        savingButton: "Saving",
+        noChanges: "No changes to save",
+        passwordTooShort: "Password must be at least 8 characters",
+        updateProfileFailed: "Failed to update user profile",
+        setPasswordFailed: "Failed to set user password",
+        updateSuccess: "User updated successfully",
+        updateFailed: "Failed to update user",
+      },
     },
     connectorForm: {
       documentAccess: {
@@ -1836,6 +1858,8 @@ const en = {
         failed: "Failed",
         cancelled: "Cancelled",
         running: "Running",
+        duration_m_s: "{{minutes}}m {{seconds}}s",
+        duration_s: "{{seconds}}s",
       },
       errors: {
         triggerSyncFailed: "Failed to trigger sync",
@@ -2561,6 +2585,9 @@ const en = {
       webVersion: "Web Version",
     },
     documentSets: {
+      title: "Document Sets",
+      description:
+        "allow you to group logically connected documents into a single bundle. These can then be used as a filter when performing searches to control the scope of information Onyx searches over.",
       failedToFetchConnectors: "Failed to fetch Connectors",
       failedToFetchDocumentSets: "Failed to fetch document sets",
       documentSetNotFound: "Document set not found",
@@ -2862,6 +2889,7 @@ const en = {
       anyTime: "Any time...",
       allSources: "All Sources",
       allDocumentSets: "All Document Sets",
+      searchPlaceholder: "Find documents based on title / content...",
       timeRanges: {
         last2Years: "Last 2 years",
         lastYear: "Last year",

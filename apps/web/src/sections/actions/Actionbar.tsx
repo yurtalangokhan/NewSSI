@@ -6,6 +6,7 @@ import Button from "@/refresh-components/buttons/Button";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
 import Text from "@/refresh-components/texts/Text";
 import { SvgPlusCircle } from "@opal/icons";
+import { useTranslation } from "react-i18next";
 interface ActionbarProps {
   hasActions: boolean;
   searchQuery?: string;
@@ -22,9 +23,10 @@ const Actionbar: React.FC<ActionbarProps> = ({
   onSearchQueryChange,
   onAddAction,
   className,
-  buttonText = "Add MCP Server",
-  barText = "Connect MCP server to add custom actions.",
+  buttonText,
+  barText,
 }) => {
+  const { t } = useTranslation();
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     onSearchQueryChange?.(e.target.value);
   };
@@ -40,7 +42,7 @@ const Actionbar: React.FC<ActionbarProps> = ({
       {hasActions ? (
         <div className="flex-1 min-w-[160px]">
           <InputTypeIn
-            placeholder="Search servers…"
+            placeholder={t("admin.mcp.searchServersPlaceholder")}
             value={searchQuery}
             onChange={handleSearchChange}
             leftSearchIcon
@@ -51,14 +53,14 @@ const Actionbar: React.FC<ActionbarProps> = ({
       ) : (
         <div className="flex-1">
           <Text as="p" mainUiMuted text03>
-            {barText}
+            {barText || t("admin.mcp.connectServerHint")}
           </Text>
         </div>
       )}
 
       <div className="flex gap-2 items-center justify-end">
         <Button main primary leftIcon={SvgPlusCircle} onClick={onAddAction}>
-          {buttonText}
+          {buttonText || t("admin.mcp.addServer")}
         </Button>
       </div>
     </div>

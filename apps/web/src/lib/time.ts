@@ -1,11 +1,5 @@
 import { User } from "@/lib/types";
-
-const conditionallyAddPlural = (noun: string, cnt: number) => {
-  if (cnt > 1) {
-    return `${noun}s`;
-  }
-  return noun;
-};
+import i18n from "@/i18n/config";
 
 export const timeAgo = (
   dateString: string | undefined | null
@@ -17,44 +11,45 @@ export const timeAgo = (
   const date = new Date(dateString);
   const now = new Date();
   const secondsDiff = Math.floor((now.getTime() - date.getTime()) / 1000);
+  const t = i18n.t.bind(i18n);
 
   if (secondsDiff < 60) {
-    return `${secondsDiff} ${conditionallyAddPlural(
-      "second",
-      secondsDiff
-    )} ago`;
+    return t("dates.justNow");
   }
 
   const minutesDiff = Math.floor(secondsDiff / 60);
   if (minutesDiff < 60) {
-    return `${minutesDiff} ${conditionallyAddPlural(
-      "minute",
-      secondsDiff
-    )} ago`;
+    return minutesDiff === 1
+      ? t("dates.minAgo", { count: 1 })
+      : t("dates.minsAgo", { count: minutesDiff });
   }
 
   const hoursDiff = Math.floor(minutesDiff / 60);
   if (hoursDiff < 24) {
-    return `${hoursDiff} ${conditionallyAddPlural("hour", hoursDiff)} ago`;
+    return hoursDiff === 1
+      ? t("dates.hourAgo", { count: 1 })
+      : t("dates.hoursAgo", { count: hoursDiff });
   }
 
   const daysDiff = Math.floor(hoursDiff / 24);
   if (daysDiff < 30) {
-    return `${daysDiff} ${conditionallyAddPlural("day", daysDiff)} ago`;
+    return daysDiff === 1
+      ? t("dates.dayAgo", { count: 1 })
+      : t("dates.daysAgo", { count: daysDiff });
   }
 
   const weeksDiff = Math.floor(daysDiff / 7);
   if (weeksDiff < 4) {
-    return `${weeksDiff} ${conditionallyAddPlural("week", weeksDiff)} ago`;
+    return t("dates.weeksAgo", { count: weeksDiff });
   }
 
   const monthsDiff = Math.floor(daysDiff / 30);
   if (monthsDiff < 12) {
-    return `${monthsDiff} ${conditionallyAddPlural("month", monthsDiff)} ago`;
+    return t("dates.monthsAgo", { count: monthsDiff });
   }
 
   const yearsDiff = Math.floor(monthsDiff / 12);
-  return `${yearsDiff} ${conditionallyAddPlural("year", yearsDiff)} ago`;
+  return t("dates.yearsAgo", { count: yearsDiff });
 };
 
 export function localizeAndPrettify(dateString: string) {

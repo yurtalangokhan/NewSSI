@@ -29,6 +29,7 @@ import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
 import useMcpServers from "@/hooks/useMcpServers";
 import BuiltInToolsSection from "./BuiltInToolsSection";
+import { useTranslation } from "react-i18next";
 
 export default function MCPPageContent() {
   // Data fetching
@@ -40,6 +41,7 @@ export default function MCPPageContent() {
 
   // Modal management
   const authModal = useCreateModal();
+  const { t } = useTranslation();
   const disconnectModal = useCreateModal();
   const manageServerModal = useCreateModal();
 
@@ -494,8 +496,8 @@ export default function MCPPageContent() {
             searchQuery={searchQuery}
             onSearchQueryChange={setSearchQuery}
             onAddAction={handleAddServer}
-            buttonText="Add MCP Server"
-            barText="Connect MCP server to add custom actions."
+            buttonText={t("admin.mcp.addServer")}
+            barText={t("admin.mcp.connectServerHint")}
           />
         </div>
 

@@ -54,6 +54,7 @@ import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
 import useFilter from "@/hooks/useFilter";
 import { MCPServer } from "@/lib/tools/interfaces";
 import type { IconProps } from "@opal/types";
+import { useTranslation } from "react-i18next";
 
 const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.CHAT_PREFERENCES]!;
 
@@ -101,6 +102,7 @@ function MCPServerCard({
   onToggleTool,
   onToggleTools,
 }: MCPServerCardProps) {
+  const { t } = useTranslation();
   const [isFolded, setIsFolded] = useState(true);
   const {
     query,
@@ -128,7 +130,7 @@ function MCPServerCard({
         {tools.length > 0 && (
           <Section flexDirection="row" gap={0.5}>
             <InputTypeIn
-              placeholder="Search tools..."
+              placeholder={t("agentEditor.searchToolsPlaceholder")}
               variant="internal"
               leftSearchIcon
               value={query}
@@ -140,7 +142,9 @@ function MCPServerCard({
               prominence="internal"
               size="lg"
             >
-              {isFolded ? "Expand" : "Fold"}
+              {isFolded
+                ? t("agentEditor.expandButton")
+                : t("agentEditor.foldButton")}
             </Button>
           </Section>
         )}
@@ -176,6 +180,7 @@ function MCPServerCard({
  * and create save handlers for settings fields.
  */
 function ChatPreferencesForm() {
+  const { t } = useTranslation();
   const router = useRouter();
   const settings = useSettingsContext();
   const { values } = useFormikContext<ChatPreferencesFormValues>();
@@ -261,12 +266,12 @@ function ChatPreferencesForm() {
           },
           { optimisticData, revalidate: true }
         );
-        toast.success("Tools updated");
+        toast.success(t("admin.chatPreferencesPage.toastToolsUpdated"));
       } catch {
-        toast.error("Failed to update tools");
+        toast.error(t("admin.chatPreferencesPage.toastToolsFailed"));
       }
     },
-    [defaultAgentConfig, mutateDefaultAgent]
+    [defaultAgentConfig, mutateDefaultAgent, t]
   );
 
   const toggleTool = useCallback(
@@ -313,12 +318,12 @@ function ChatPreferencesForm() {
         }
 
         router.refresh();
-        toast.success("Settings updated");
+        toast.success(t("admin.chatPreferencesPage.toastSettingsUpdated"));
       } catch (error) {
-        toast.error("Failed to update settings");
+        toast.error(t("admin.chatPreferencesPage.toastSettingsFailed"));
       }
     },
-    [settings, router]
+    [settings, router, t]
   );
 
   return (
@@ -326,8 +331,8 @@ function ChatPreferencesForm() {
       <SettingsLayouts.Root>
         <SettingsLayouts.Header
           icon={route.icon}
-          title={route.title}
-          description="Organization-wide chat settings and defaults. Users can override some of these in their personal settings."
+          title={t(route.titleKey || "", { defaultValue: route.title })}
+          description={t("admin.chatPreferencesPage.description")}
           separator
         />
 
@@ -335,12 +340,14 @@ function ChatPreferencesForm() {
           {/* Team Context */}
           <Section gap={1}>
             <InputLayouts.Vertical
-              title="Team Name"
-              subDescription="This is added to all chat sessions as additional context to provide a richer/customized experience."
+              title={t("admin.chatPreferencesPage.teamNameTitle")}
+              subDescription={t(
+                "admin.chatPreferencesPage.teamNameDescription"
+              )}
             >
               <InputTypeInField
                 name="company_name"
-                placeholder="Enter team name"
+                placeholder={t("admin.chatPreferencesPage.teamNamePlaceholder")}
                 onBlur={() => {
                   if (values.company_name !== initialCompanyName.current) {
                     void saveSettings({
@@ -353,12 +360,16 @@ function ChatPreferencesForm() {
             </InputLayouts.Vertical>
 
             <InputLayouts.Vertical
-              title="Team Context"
-              subDescription="Users can also provide additional individual context in their personal settings."
+              title={t("admin.chatPreferencesPage.teamContextTitle")}
+              subDescription={t(
+                "admin.chatPreferencesPage.teamContextDescription"
+              )}
             >
               <InputTextAreaField
                 name="company_description"
-                placeholder="Describe your team and how Onyx should behave."
+                placeholder={t(
+                  "admin.chatPreferencesPage.teamContextPlaceholder"
+                )}
                 rows={4}
                 maxRows={10}
                 autoResize
@@ -379,8 +390,8 @@ function ChatPreferencesForm() {
           </Section>
 
           <InputLayouts.Horizontal
-            title="System Prompt"
-            description="Base prompt for all chats, agents, and projects. Modify with caution: Significant changes may degrade response quality."
+            title={t("admin.chatPreferencesPage.systemPromptTitle")}
+            description={t("admin.chatPreferencesPage.systemPromptDescription")}
           >
             <Button
               prominence="tertiary"
@@ -394,7 +405,7 @@ function ChatPreferencesForm() {
                 setSystemPromptModalOpen(true);
               }}
             >
-              Modify Prompt
+              {t("admin.chatPreferencesPage.modifyPrompt")}
             </Button>
           </InputLayouts.Horizontal>
 
@@ -403,7 +414,7 @@ function ChatPreferencesForm() {
           {/* Features */}
           <Section gap={0.75}>
             <Content
-              title="Features"
+              title={t("admin.chatPreferencesPage.featuresTitle")}
               sizePreset="main-content"
               variant="section"
             />
@@ -411,7 +422,7 @@ function ChatPreferencesForm() {
               <SimpleTooltip
                 tooltip={
                   uniqueSources.length === 0
-                    ? "Set up connectors to use Search Mode"
+                    ? t("admin.chatPreferencesPage.searchModeSetupTooltip")
                     : undefined
                 }
                 side="top"
@@ -419,8 +430,10 @@ function ChatPreferencesForm() {
                 <Disabled disabled={uniqueSources.length === 0} allowClick>
                   <div className="w-full">
                     <InputLayouts.Horizontal
-                      title="Search Mode"
-                      description="UI mode for quick document search across your organization."
+                      title={t("admin.chatPreferencesPage.searchModeTitle")}
+                      description={t(
+                        "admin.chatPreferencesPage.searchModeDescription"
+                      )}
                       disabled={uniqueSources.length === 0}
                     >
                       <SwitchField
@@ -435,8 +448,10 @@ function ChatPreferencesForm() {
                 </Disabled>
               </SimpleTooltip>
               <InputLayouts.Horizontal
-                title="Deep Research"
-                description="Agentic research system that works across the web and connected sources. Uses significantly more tokens per query."
+                title={t("admin.chatPreferencesPage.deepResearchTitle")}
+                description={t(
+                  "admin.chatPreferencesPage.deepResearchDescription"
+                )}
               >
                 <SwitchField
                   name="deep_research_enabled"
@@ -446,8 +461,10 @@ function ChatPreferencesForm() {
                 />
               </InputLayouts.Horizontal>
               <InputLayouts.Horizontal
-                title="Chat Auto-Scroll"
-                description="Automatically scroll to new content as chat generates response. Users can override this in their personal settings."
+                title={t("admin.chatPreferencesPage.chatAutoScrollTitle")}
+                description={t(
+                  "admin.chatPreferencesPage.chatAutoScrollDescription"
+                )}
               >
                 <SwitchField
                   name="auto_scroll"
@@ -467,7 +484,7 @@ function ChatPreferencesForm() {
                 {/* Connectors */}
                 <Section gap={0.75}>
                   <Content
-                    title="Connectors"
+                    title={t("admin.chatPreferencesPage.connectorsTitle")}
                     sizePreset="main-content"
                     variant="section"
                   />
@@ -479,7 +496,9 @@ function ChatPreferencesForm() {
                     gap={0.25}
                   >
                     {uniqueSources.length === 0 ? (
-                      <EmptyMessage title="No connectors set up" />
+                      <EmptyMessage
+                        title={t("admin.chatPreferencesPage.noConnectors")}
+                      />
                     ) : (
                       <>
                         <Section
@@ -511,7 +530,7 @@ function ChatPreferencesForm() {
                           prominence="tertiary"
                           rightIcon={SvgExternalLink}
                         >
-                          Manage All
+                          {t("admin.chatPreferencesPage.manageAll")}
                         </Button>
                       </>
                     )}
@@ -521,16 +540,22 @@ function ChatPreferencesForm() {
                 {/* Actions & Tools */}
                 <SimpleCollapsible>
                   <SimpleCollapsible.Header
-                    title="Actions & Tools"
-                    description="Tools and capabilities available for chat to use. This does not apply to agents."
+                    title={t("admin.chatPreferencesPage.actionsToolsTitle")}
+                    description={t(
+                      "admin.chatPreferencesPage.actionsToolsDescription"
+                    )}
                   />
                   <SimpleCollapsible.Content>
                     <Section gap={0.5}>
                       {vectorDbEnabled && searchTool && (
                         <Card>
                           <InputLayouts.Horizontal
-                            title="Internal Search"
-                            description="Search through your organization's connected knowledge base and documents."
+                            title={t(
+                              "admin.chatPreferencesPage.internalSearchTitle"
+                            )}
+                            description={t(
+                              "admin.chatPreferencesPage.internalSearchDescription"
+                            )}
                           >
                             <Switch
                               checked={isToolEnabled(searchTool.id)}
@@ -546,14 +571,20 @@ function ChatPreferencesForm() {
                         tooltip={
                           imageGenTool
                             ? undefined
-                            : "Image generation requires a configured model. Set one up under Configuration > Image Generation, or ask an admin."
+                            : t(
+                                "admin.chatPreferencesPage.imageGenerationUnavailableTooltip"
+                              )
                         }
                         side="top"
                       >
                         <Card variant={imageGenTool ? undefined : "disabled"}>
                           <InputLayouts.Horizontal
-                            title="Image Generation"
-                            description="Generate and manipulate images using AI-powered tools."
+                            title={t(
+                              "admin.chatPreferencesPage.imageGenerationTitle"
+                            )}
+                            description={t(
+                              "admin.chatPreferencesPage.imageGenerationDescription"
+                            )}
                             disabled={!imageGenTool}
                           >
                             <Switch
@@ -574,8 +605,10 @@ function ChatPreferencesForm() {
 
                       <Card variant={webSearchTool ? undefined : "disabled"}>
                         <InputLayouts.Horizontal
-                          title="Web Search"
-                          description="Search the web for real-time information and up-to-date results."
+                          title={t("admin.chatPreferencesPage.webSearchTitle")}
+                          description={t(
+                            "admin.chatPreferencesPage.webSearchDescription"
+                          )}
                           disabled={!webSearchTool}
                         >
                           <Switch
@@ -595,8 +628,10 @@ function ChatPreferencesForm() {
 
                       <Card variant={openURLTool ? undefined : "disabled"}>
                         <InputLayouts.Horizontal
-                          title="Open URL"
-                          description="Fetch and read content from web URLs."
+                          title={t("admin.chatPreferencesPage.openUrlTitle")}
+                          description={t(
+                            "admin.chatPreferencesPage.openUrlDescription"
+                          )}
                           disabled={!openURLTool}
                         >
                           <Switch
@@ -618,8 +653,12 @@ function ChatPreferencesForm() {
                         variant={codeInterpreterTool ? undefined : "disabled"}
                       >
                         <InputLayouts.Horizontal
-                          title="Code Interpreter"
-                          description="Generate and run code."
+                          title={t(
+                            "admin.chatPreferencesPage.codeInterpreterTitle"
+                          )}
+                          description={t(
+                            "admin.chatPreferencesPage.codeInterpreterDescription"
+                          )}
                           disabled={!codeInterpreterTool}
                         >
                           <Switch
@@ -684,13 +723,17 @@ function ChatPreferencesForm() {
 
           {/* Advanced Options */}
           <SimpleCollapsible defaultOpen={false}>
-            <SimpleCollapsible.Header title="Advanced Options" />
+            <SimpleCollapsible.Header
+              title={t("admin.chatPreferencesPage.advancedOptionsTitle")}
+            />
             <SimpleCollapsible.Content>
               <Section gap={1}>
                 <Card>
                   <InputLayouts.Horizontal
-                    title="Keep Chat History"
-                    description="Specify how long Onyx should retain chats in your organization."
+                    title={t("admin.chatPreferencesPage.keepChatHistoryTitle")}
+                    description={t(
+                      "admin.chatPreferencesPage.keepChatHistoryDescription"
+                    )}
                   >
                     <InputSelectField
                       name="maximum_chat_retention_days"
@@ -704,13 +747,21 @@ function ChatPreferencesForm() {
                       <InputSelect.Trigger />
                       <InputSelect.Content>
                         <InputSelect.Item value="forever">
-                          Forever
+                          {t("admin.chatPreferencesPage.forever")}
                         </InputSelect.Item>
-                        <InputSelect.Item value="7">7 days</InputSelect.Item>
-                        <InputSelect.Item value="30">30 days</InputSelect.Item>
-                        <InputSelect.Item value="90">90 days</InputSelect.Item>
+                        <InputSelect.Item value="7">
+                          {t("admin.chatPreferencesPage.days", { count: 7 })}
+                        </InputSelect.Item>
+                        <InputSelect.Item value="30">
+                          {t("admin.chatPreferencesPage.days", { count: 30 })}
+                        </InputSelect.Item>
+                        <InputSelect.Item value="90">
+                          {t("admin.chatPreferencesPage.days", { count: 90 })}
+                        </InputSelect.Item>
                         <InputSelect.Item value="365">
-                          365 days
+                          {t("admin.chatPreferencesPage.days", {
+                            count: 365,
+                          })}
                         </InputSelect.Item>
                       </InputSelect.Content>
                     </InputSelectField>
@@ -719,8 +770,12 @@ function ChatPreferencesForm() {
 
                 <Card>
                   <InputLayouts.Horizontal
-                    title="Allow Anonymous Users"
-                    description="Allow anyone to start chats without logging in. They do not see any other chats and cannot create agents or update settings."
+                    title={t(
+                      "admin.chatPreferencesPage.allowAnonymousUsersTitle"
+                    )}
+                    description={t(
+                      "admin.chatPreferencesPage.allowAnonymousUsersDescription"
+                    )}
                   >
                     <SwitchField
                       name="anonymous_user_enabled"
@@ -731,8 +786,12 @@ function ChatPreferencesForm() {
                   </InputLayouts.Horizontal>
 
                   <InputLayouts.Horizontal
-                    title="Always Start with an Agent"
-                    description="This removes the default chat. Users will always start in an agent, and new chats will be created in their last active agent. Set featured agents to help new users get started."
+                    title={t(
+                      "admin.chatPreferencesPage.alwaysStartWithAgentTitle"
+                    )}
+                    description={t(
+                      "admin.chatPreferencesPage.alwaysStartWithAgentDescription"
+                    )}
                   >
                     <SwitchField
                       name="disable_default_assistant"
@@ -757,15 +816,15 @@ function ChatPreferencesForm() {
         <Modal.Content width="md" height="fit">
           <Modal.Header
             icon={SvgAddLines}
-            title="System Prompt"
-            description="This base prompt is prepended to all chats, agents, and projects."
+            title={t("admin.chatPreferencesPage.systemPromptTitle")}
+            description={t("admin.chatPreferencesPage.systemPromptModalDescription")}
             onClose={() => setSystemPromptModalOpen(false)}
           />
           <Modal.Body>
             <InputTextArea
               value={systemPromptValue}
               onChange={(e) => setSystemPromptValue(e.target.value)}
-              placeholder="Enter your system prompt..."
+              placeholder={t("admin.chatPreferencesPage.systemPromptPlaceholder")}
               rows={8}
               maxRows={20}
               autoResize
@@ -776,7 +835,7 @@ function ChatPreferencesForm() {
               prominence="secondary"
               onClick={() => setSystemPromptModalOpen(false)}
             >
-              Cancel
+              {t("common.cancel")}
             </Button>
             <Button
               prominence="primary"
@@ -795,13 +854,17 @@ function ChatPreferencesForm() {
                   }
                   await mutateDefaultAgent();
                   setSystemPromptModalOpen(false);
-                  toast.success("System prompt updated");
+                  toast.success(
+                    t("admin.chatPreferencesPage.toastSystemPromptUpdated")
+                  );
                 } catch {
-                  toast.error("Failed to update system prompt");
+                  toast.error(
+                    t("admin.chatPreferencesPage.toastSystemPromptFailed")
+                  );
                 }
               }}
             >
-              Save
+              {t("common.save")}
             </Button>
           </Modal.Footer>
         </Modal.Content>

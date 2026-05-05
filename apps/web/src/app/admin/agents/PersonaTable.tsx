@@ -24,26 +24,26 @@ import { SvgAlertCircle, SvgTrash } from "@opal/icons";
 import type { Route } from "next";
 
 function PersonaTypeDisplay({ persona }: { persona: Persona }) {
-  const { t } = useTranslation("admin");
+  const { t } = useTranslation();
 
   if (persona.builtin_persona) {
-    return <Text as="p">{t("agents.typeBuiltIn")}</Text>;
+    return <Text as="p">{t("admin.agents.typeBuiltIn")}</Text>;
   }
 
   if (persona.featured) {
-    return <Text as="p">{t("agents.typeFeatured")}</Text>;
+    return <Text as="p">{t("admin.agents.typeFeatured")}</Text>;
   }
 
   if (persona.is_public) {
-    return <Text as="p">{t("agents.typePublic")}</Text>;
+    return <Text as="p">{t("admin.agents.typePublic")}</Text>;
   }
 
   if (persona.groups.length > 0 || persona.users.length > 0) {
-    return <Text as="p">{t("agents.typeShared")}</Text>;
+    return <Text as="p">{t("admin.agents.typeShared")}</Text>;
   }
 
   return (
-    <Text as="p">{t("agents.typePersonal")} {persona.owner && <>({persona.owner.email})</>}</Text>
+    <Text as="p">{t("admin.agents.typePersonal")} {persona.owner && <>({persona.owner.email})</>}</Text>
   );
 }
 
@@ -58,7 +58,7 @@ export function PersonasTable({
   currentPage: number;
   pageSize: number;
 }) {
-  const { t } = useTranslation("admin");
+  const { t } = useTranslation();
   const router = useRouter();
   const { refreshUser, isAdmin } = useUser();
 
@@ -174,11 +174,11 @@ export function PersonasTable({
       {deleteModalOpen && personaToDelete && (
         <ConfirmationModalLayout
           icon={SvgAlertCircle}
-          title="Delete Agent"
+          title={t("admin.agents.deleteModalTitle")}
           onClose={closeDeleteModal}
-          submit={<Button onClick={handleDeletePersona}>Delete</Button>}
+          submit={<Button onClick={handleDeletePersona}>{t("admin.agents.deleteModalConfirm")}</Button>}
         >
-          {`Are you sure you want to delete ${personaToDelete.name}?`}
+          {t("admin.agents.deleteModalBody", { name: personaToDelete.name })}
         </ConfirmationModalLayout>
       )}
       {defaultModalOpen &&
@@ -187,15 +187,17 @@ export function PersonasTable({
           const isDefault = personaToToggleDefault.featured;
 
           const title = isDefault
-            ? "Remove Featured Agent"
-            : "Set Featured Agent";
-          const buttonText = isDefault ? "Remove Feature" : "Set as Featured";
+            ? t("admin.agents.removeFeaturedTitle")
+            : t("admin.agents.setFeaturedTitle");
+          const buttonText = isDefault 
+            ? t("admin.agents.removeFeaturedButton")
+            : t("admin.agents.setFeaturedButton");
           const text = isDefault
-            ? `Are you sure you want to remove the featured status of ${personaToToggleDefault.name}?`
-            : `Are you sure you want to set the featured status of ${personaToToggleDefault.name}?`;
+            ? t("admin.agents.removeFeaturedBody", { name: personaToToggleDefault.name })
+            : t("admin.agents.setFeaturedBody", { name: personaToToggleDefault.name });
           const additionalText = isDefault
-            ? `Removing "${personaToToggleDefault.name}" as a featured agent will not affect its visibility or accessibility.`
-            : `Setting "${personaToToggleDefault.name}" as a featured agent will make it public and visible to all users. This action cannot be undone.`;
+            ? t("admin.agents.removeFeaturedDescription", { name: personaToToggleDefault.name })
+            : t("admin.agents.setFeaturedDescription", { name: personaToToggleDefault.name });
 
           return (
             <ConfirmationModalLayout
@@ -218,12 +220,12 @@ export function PersonasTable({
 
       <DraggableTable
         headers={[
-          "Name",
-          "Description",
-          "Type",
-          "Featured Agent",
-          "Is Visible",
-          "Delete",
+          t("admin.agents.tableName"),
+          t("admin.agents.tableDescription"),
+          t("admin.agents.tableType"),
+          t("admin.agents.tableFeatured"),
+          t("admin.agents.tableVisible"),
+          t("admin.agents.tableDelete"),
         ]}
         isAdmin={isAdmin}
         rows={finalPersonas.map((persona) => {
@@ -266,9 +268,9 @@ export function PersonasTable({
               >
                 <div className="my-auto flex-none w-22">
                   {!persona.featured ? (
-                    <div className="text-error">Not Featured</div>
+                    <div className="text-error">{t("admin.agents.notFeatured")}</div>
                   ) : (
-                    "Featured"
+                    t("admin.agents.featured")
                   )}
                 </div>
                 <Checkbox checked={persona.featured} />
@@ -294,9 +296,9 @@ export function PersonasTable({
               >
                 <div className="my-auto w-fit">
                   {!persona.is_visible ? (
-                    <div className="text-error">Hidden</div>
+                    <div className="text-error">{t("admin.agents.hidden")}</div>
                   ) : (
-                    "Visible"
+                    t("admin.agents.visible")
                   )}
                 </div>
                 <Checkbox checked={persona.is_visible} />

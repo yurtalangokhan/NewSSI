@@ -11,6 +11,7 @@ import { SvgFolderPlus } from "@opal/icons";
 import Modal from "@/refresh-components/Modal";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
 import { toast } from "@/hooks/useToast";
+import { useTranslation } from "react-i18next";
 
 interface CreateProjectModalProps {
   initialProjectName?: string;
@@ -19,6 +20,7 @@ interface CreateProjectModalProps {
 export default function CreateProjectModal({
   initialProjectName,
 }: CreateProjectModalProps) {
+  const { t } = useTranslation();
   const { createProject } = useProjectsContext();
   const modal = useModal();
   const route = useAppRouter();
@@ -38,7 +40,12 @@ export default function CreateProjectModal({
       route({ projectId: newProject.id });
       modal.toggle(false);
     } catch (e) {
-      toast.error(`Failed to create the project ${name}`);
+      toast.error(
+        t("modals.createProject.toastError", {
+          name,
+          defaultValue: `Failed to create the project ${name}`,
+        })
+      );
     }
   }
 
@@ -50,23 +57,23 @@ export default function CreateProjectModal({
         <Modal.Content width="sm">
           <Modal.Header
             icon={SvgFolderPlus}
-            title="Create New Project"
-            description="Use projects to organize your files and chats in one place, and add custom instructions for ongoing work."
+            title={t("modals.createProject.title")}
+            description={t("modals.createProject.description")}
             onClose={() => modal.toggle(false)}
           />
           <Modal.Body>
-            <InputLayouts.Vertical title="Project Name">
+            <InputLayouts.Vertical title={t("modals.createProject.nameLabel")}>
               <InputTypeIn
                 value={projectName}
                 onChange={(e) => setProjectName(e.target.value)}
-                placeholder="What are you working on?"
+                placeholder={t("modals.createProject.namePlaceholder")}
                 showClearButton
               />
             </InputLayouts.Vertical>
           </Modal.Body>
           <Modal.Footer>
             <Button secondary onClick={() => modal.toggle(false)}>
-              Cancel
+              {t("modals.cancel")}
             </Button>
             <Button onClick={handleSubmit}>Create Project</Button>
           </Modal.Footer>

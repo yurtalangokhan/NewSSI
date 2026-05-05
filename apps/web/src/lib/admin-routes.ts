@@ -90,21 +90,29 @@ export const ADMIN_ROUTE_CONFIG: Record<string, AdminRouteConfig> = {
     icon: SvgBookOpen,
     title: "Existing Connectors",
     sidebarLabel: "Existing Connectors",
+    titleKey: "admin.navigation.routes.indexingStatus.title",
+    sidebarLabelKey: "admin.navigation.routes.indexingStatus.sidebar",
   },
   [ADMIN_PATHS.ADD_CONNECTOR]: {
     icon: SvgUploadCloud,
     title: "Add Connector",
     sidebarLabel: "Add Connector",
+    titleKey: "admin.navigation.routes.addConnector.title",
+    sidebarLabelKey: "admin.navigation.routes.addConnector.sidebar",
   },
   [ADMIN_PATHS.DOCUMENT_SETS]: {
     icon: SvgFolder,
     title: "Document Sets",
     sidebarLabel: "Document Sets",
+    titleKey: "admin.navigation.routes.documentSets.title",
+    sidebarLabelKey: "admin.navigation.routes.documentSets.sidebar",
   },
   [ADMIN_PATHS.DOCUMENT_EXPLORER]: {
     icon: SvgZoomIn,
     title: "Document Explorer",
     sidebarLabel: "Explorer",
+    titleKey: "admin.navigation.routes.documentExplorer.title",
+    sidebarLabelKey: "admin.navigation.routes.documentExplorer.sidebar",
   },
   [ADMIN_PATHS.DOCUMENT_FEEDBACK]: {
     icon: SvgThumbsUp,
@@ -115,6 +123,8 @@ export const ADMIN_ROUTE_CONFIG: Record<string, AdminRouteConfig> = {
     icon: SvgOnyxOctagon,
     title: "Agents",
     sidebarLabel: "Agents",
+    titleKey: "admin.navigation.routes.agents.title",
+    sidebarLabelKey: "admin.navigation.routes.agents.sidebar",
   },
   [ADMIN_PATHS.SLACK_BOTS]: {
     icon: SvgSlack,
@@ -130,6 +140,8 @@ export const ADMIN_ROUTE_CONFIG: Record<string, AdminRouteConfig> = {
     icon: SvgMcp,
     title: "MCP Actions",
     sidebarLabel: "MCP Actions",
+    titleKey: "admin.navigation.routes.mcpActions.title",
+    sidebarLabelKey: "admin.navigation.routes.mcpActions.sidebar",
   },
   [ADMIN_PATHS.OPENAPI_ACTIONS]: {
     icon: SvgActions,
@@ -150,51 +162,71 @@ export const ADMIN_ROUTE_CONFIG: Record<string, AdminRouteConfig> = {
     icon: SvgBubbleText,
     title: "Chat Preferences",
     sidebarLabel: "Chat Preferences",
+    titleKey: "admin.navigation.routes.chatPreferences.title",
+    sidebarLabelKey: "admin.navigation.routes.chatPreferences.sidebar",
   },
   [ADMIN_PATHS.LLM_MODELS]: {
     icon: SvgCpu,
     title: "LLM Models",
     sidebarLabel: "LLM Models",
+    titleKey: "admin.navigation.routes.llmModels.title",
+    sidebarLabelKey: "admin.navigation.routes.llmModels.sidebar",
   },
   [ADMIN_PATHS.WEB_SEARCH]: {
     icon: SvgGlobe,
     title: "Web Search",
     sidebarLabel: "Web Search",
+    titleKey: "admin.navigation.routes.webSearch.title",
+    sidebarLabelKey: "admin.navigation.routes.webSearch.sidebar",
   },
   [ADMIN_PATHS.IMAGE_GENERATION]: {
     icon: SvgImage,
     title: "Image Generation",
     sidebarLabel: "Image Generation",
+    titleKey: "admin.navigation.routes.imageGeneration.title",
+    sidebarLabelKey: "admin.navigation.routes.imageGeneration.sidebar",
   },
   [ADMIN_PATHS.CODE_INTERPRETER]: {
     icon: SvgTerminal,
     title: "Code Interpreter",
     sidebarLabel: "Code Interpreter",
+    titleKey: "admin.navigation.routes.codeInterpreter.title",
+    sidebarLabelKey: "admin.navigation.routes.codeInterpreter.sidebar",
   },
   [ADMIN_PATHS.SEARCH_SETTINGS]: {
     icon: SvgSearch,
     title: "Search Settings",
     sidebarLabel: "Search Settings",
+    titleKey: "admin.navigation.routes.searchSettings.title",
+    sidebarLabelKey: "admin.navigation.routes.searchSettings.sidebar",
   },
   [ADMIN_PATHS.DOCUMENT_PROCESSING]: {
     icon: SvgFileText,
     title: "Document Processing",
     sidebarLabel: "Document Processing",
+    titleKey: "admin.navigation.routes.documentProcessing.title",
+    sidebarLabelKey: "admin.navigation.routes.documentProcessing.sidebar",
   },
   [ADMIN_PATHS.KNOWLEDGE_GRAPH]: {
     icon: SvgNetworkGraph,
     title: "Knowledge Graph",
     sidebarLabel: "Knowledge Graph",
+    titleKey: "admin.navigation.routes.knowledgeGraph.title",
+    sidebarLabelKey: "admin.navigation.routes.knowledgeGraph.sidebar",
   },
   [ADMIN_PATHS.USERS]: {
     icon: SvgUser,
     title: "Manage Users",
     sidebarLabel: "Users",
+    titleKey: "admin.navigation.routes.users.title",
+    sidebarLabelKey: "admin.navigation.routes.users.sidebar",
   },
   [ADMIN_PATHS.API_KEYS]: {
     icon: SvgKey,
     title: "API Keys",
     sidebarLabel: "API Keys",
+    titleKey: "admin.navigation.routes.apiKeys.title",
+    sidebarLabelKey: "admin.navigation.routes.apiKeys.sidebar",
   },
   [ADMIN_PATHS.TOKEN_RATE_LIMITS]: {
     icon: SvgShield,
@@ -249,7 +281,17 @@ export const ADMIN_ROUTE_CONFIG: Record<string, AdminRouteConfig> = {
  * Helper that converts a route config entry into the `{ name, icon, link }`
  * shape expected by the sidebar. Extra fields (e.g. `error`) can be spread in.
  */
-export function sidebarItem(path: string) {
+export function sidebarItem(
+  path: string,
+  t?: (key: string, options?: { defaultValue?: string }) => string
+) {
   const config = ADMIN_ROUTE_CONFIG[path]!;
-  return { name: config.sidebarLabel, icon: config.icon, link: path };
+  return {
+    name:
+      config.sidebarLabelKey && t
+        ? t(config.sidebarLabelKey, { defaultValue: config.sidebarLabel })
+        : config.sidebarLabel,
+    icon: config.icon,
+    link: path,
+  };
 }

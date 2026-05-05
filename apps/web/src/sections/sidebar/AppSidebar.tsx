@@ -559,7 +559,7 @@ const MemoizedAppSidebarInner = memo(
           }
         />
       ),
-      [folded]
+      [folded, t]
     );
 
     // History button to open chat history modal
@@ -573,7 +573,7 @@ const MemoizedAppSidebarInner = memo(
           {t("sidebar.chatHistory")}
         </SidebarTab>
       ),
-      [folded]
+      [folded, t]
     );
 
     const moreAgentsButton = useMemo(
