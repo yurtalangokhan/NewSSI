@@ -100,8 +100,6 @@ export default function CollectionsPanel({
 
       <Text as="p" mainContentBody text04 className="leading-relaxed">
         {t("admin.documentProcessing.ragCollectionsDescription")}
-        Select an existing collection or create a new one to manage documents
-        and run semantic search.
       </Text>
 
       {isLoading ? (
@@ -182,9 +180,10 @@ export default function CollectionsPanel({
                 onClick={handleCreate}
                 disabled={isSubmitting || !newName.trim()}
               >
-                {isSubmitting ? "Creating…" : "Create"}
-              </Button>
+                {isSubmitting
                   ? t("admin.documentProcessing.creating")
+                  : t("admin.documentProcessing.create")}
+              </Button>
             </div>
           )}
 

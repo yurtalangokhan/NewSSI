@@ -24,8 +24,9 @@ import {
 } from "@opal/icons";
 import { cn } from "@/lib/utils";
 import SimpleTabs from "@/refresh-components/SimpleTabs";
-import { SvgFiles, SvgGlobe } from "@opal/icons";
+import { SvgFiles, SvgGlobe, SvgPencilRuler } from "@opal/icons";
 import WebCrawlPanel from "./WebCrawlPanel";
+import TextInputPanel from "./TextInputPanel";
 
 const ACCEPTED_TYPES = {
   "application/pdf": [".pdf"],
@@ -101,16 +102,22 @@ function ChunkViewer({
           >
             <div className="flex items-center gap-3 mb-1">
               <Text as="p" mainContentMuted text03 className="font-mono text-[10px]">
-                Chunk {idx + 1}
+                {t("admin.documentProcessing.chunk", {
+                  index: idx + 1,
+                  defaultValue: "Chunk {{index}}",
+                })}
               </Text>
               <Text as="p" mainContentMuted text03 className="font-mono text-[10px] opacity-60" title={chunk.id}>
-                ID: {chunk.id}
+                {t("admin.documentProcessing.chunkId", {
+                  defaultValue: "ID",
+                })}
+                : {chunk.id}
               </Text>
               {chunk.metadata?.char_count != null && (
-                <StatBadge label="Chars" value={chunk.metadata.char_count as number} />
+                <StatBadge label={t("admin.documentProcessing.chunkStats.chars")} value={chunk.metadata.char_count as number} />
               )}
               {chunk.metadata?.token_count != null && (
-                <StatBadge label="Tokens" value={chunk.metadata.token_count as number} />
+                <StatBadge label={t("admin.documentProcessing.chunkStats.tokens")} value={chunk.metadata.token_count as number} />
               )}
             </div>
             <Text
@@ -160,11 +167,17 @@ function DocumentRow({
 
   const fileName =
     (doc.metadata?.filename as string) ||
+    (doc.metadata?.title as string) ||
     (doc.metadata?.source as string) ||
     doc.id;
 
   async function handleDelete() {
-    const confirmed = window.confirm(`Delete document "${fileName}"?`);
+    const confirmed = window.confirm(
+      t("admin.documentProcessing.deleteDocumentConfirm", {
+        name: fileName,
+        defaultValue: 'Delete document "{{name}}"?',
+      })
+    );
     if (!confirmed) return;
     setIsDeleting(true);
     try {
@@ -173,7 +186,9 @@ function DocumentRow({
       onDelete();
     } catch (e) {
       toast.error(
-        e instanceof Error ? e.message : "Failed to delete document"
+        e instanceof Error
+          ? e.message
+          : t("admin.documentProcessing.deleteDocumentFailed")
       );
     } finally {
       setIsDeleting(false);
@@ -205,18 +220,30 @@ function DocumentRow({
             size="md"
             leftIcon={expanded ? SvgChevronUpSmall : SvgChevronDownSmall}
             onClick={() => setExpanded((v) => !v)}
-            aria-label={expanded ? "Collapse chunks" : "View chunks"}
+            aria-label={
+              expanded
+                ? t("admin.documentProcessing.collapseChunks", {
+                    defaultValue: "Collapse chunks",
+                  })
+                : t("admin.documentProcessing.viewChunks", {
+                    defaultValue: "View chunks",
+                  })
+            }
           >
             {t("admin.documentProcessing.chunks")}
           </Button>
           <Button
             danger
             size="md"
-            leftIcon={SvgTrash}
             onClick={handleDelete}
             disabled={isDeleting}
-            aria-label="Delete document"
-          />
+            aria-label={t("admin.documentProcessing.deleteDocumentAria", {
+              defaultValue: "Delete document",
+            })}
+            className="!px-2"
+          >
+            <SvgTrash className="h-4 w-4" />
+          </Button>
         </div>
       </div>
 
@@ -249,14 +276,22 @@ export default function DocumentsPanel({ collectionId, readOnly = false }: Docum
       if (!collectionId || acceptedFiles.length === 0) return;
       setIsUploading(true);
       try {
-        const result = await uploadDocuments(collectionId, acceptedFiles);
+        const metadatas = acceptedFiles.map((f) => ({ filename: f.name }));
+        const result = await uploadDocuments(collectionId, acceptedFiles, metadatas);
         await mutate();
-        toast.success(result.message || `Uploaded ${acceptedFiles.length} file(s).`);
+        toast.success(
+          t("admin.documentProcessing.uploadSuccess", {
+            count: acceptedFiles.length,
+            defaultValue: `${acceptedFiles.length} dosya başarıyla yüklendi.`,
+          })
+        );
         if (result.warnings) {
           toast.warning(result.warnings);
         }
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : "Upload failed");
+        toast.error(
+          e instanceof Error ? e.message : t("admin.documentProcessing.uploadFailed")
+        );
       } finally {
         setIsUploading(false);
       }
@@ -268,7 +303,7 @@ export default function DocumentsPanel({ collectionId, readOnly = false }: Docum
     return (
       <CardSection>
         <Text as="p" mainContentMuted text03 className="text-center py-6">
-          Select a collection above to manage documents.
+          {t("admin.documentProcessing.selectCollectionToManageDocuments")}
         </Text>
       </CardSection>
     );
@@ -294,7 +329,6 @@ export default function DocumentsPanel({ collectionId, readOnly = false }: Docum
                     className="leading-relaxed"
                   >
                     {t("admin.documentProcessing.supportedFormats")}
-                    RTF. Max 200 MB per file.
                   </Text>
 
                   <Dropzone
@@ -372,6 +406,18 @@ export default function DocumentsPanel({ collectionId, readOnly = false }: Docum
                     )}
                   </Dropzone>
                 </CardSection>
+              ),
+            },
+            text: {
+              name: t("admin.documentProcessing.tabs.text", {
+                defaultValue: "Metin",
+              }),
+              icon: SvgPencilRuler,
+              content: (
+                <TextInputPanel
+                  collectionId={collectionId}
+                  onDocumentAdded={() => mutate()}
+                />
               ),
             },
             web: {

@@ -143,13 +143,21 @@ export default function Page() {
       const data = await response.json();
       if (!response.ok) {
         setOnyxTestError(
-          typeof data?.detail === "string" ? data.detail : "Crawl failed."
+          typeof data?.detail === "string"
+            ? data.detail
+            : t("admin.webSearch.crawlFailed", {
+                defaultValue: "Crawl failed.",
+              })
         );
       } else {
         setOnyxTestResult(data);
       }
     } catch {
-      setOnyxTestError("Network error while crawling.");
+      setOnyxTestError(
+        t("admin.webSearch.networkErrorWhileCrawling", {
+          defaultValue: "Network error while crawling.",
+        })
+      );
     } finally {
       setOnyxTestLoading(false);
     }
@@ -282,7 +290,7 @@ export default function Page() {
           provider.provider_type,
           provider.name
         ),
-        subtitle: "Custom integration",
+        subtitle: t("admin.webSearch.customIntegration"),
         logoSrc: undefined,
         provider,
       }));
@@ -1120,7 +1128,7 @@ export default function Page() {
                 const buttonState = (() => {
                   if (!isConfigured) {
                     return {
-                      label: "Connect",
+                      label: t("admin.webSearch.connect"),
                       icon: "arrow" as const,
                       disabled: false,
                       onClick: () => {
@@ -1150,7 +1158,7 @@ export default function Page() {
                     isConfigured;
 
                   return {
-                    label: "Set as Default",
+                    label: t("admin.webSearch.setAsDefault"),
                     icon: "arrow-circle" as const,
                     disabled: !canActivate,
                     onClick: canActivate
@@ -1161,9 +1169,6 @@ export default function Page() {
                   };
                 })();
 
-                const contentButtonKey = `content-${provider.provider_type}-${provider.id}`;
-                const isContentButtonHovered =
-                  hoveredButtonKey === contentButtonKey;
                 const isContentCardClickable =
                   buttonState.icon === "arrow" &&
                   typeof buttonState.onClick === "function" &&
@@ -1252,22 +1257,18 @@ export default function Page() {
                           />
                         )}
                       {buttonState.icon === "check" ? (
-                        <HoverIconButton
-                          isHovered={isContentButtonHovered}
-                          onMouseEnter={() =>
-                            setHoveredButtonKey(contentButtonKey)
-                          }
-                          onMouseLeave={() => setHoveredButtonKey(null)}
-                          action={true}
+                        <Button
+                          action
                           tertiary
                           disabled={buttonState.disabled}
                           onClick={(e) => {
                             e.stopPropagation();
                             buttonState.onClick?.();
                           }}
+                          rightIcon={SvgCheckSquare}
                         >
                           {buttonState.label}
-                        </HoverIconButton>
+                        </Button>
                       ) : (
                         <Button
                           action={false}
@@ -1303,7 +1304,9 @@ export default function Page() {
                         <div className="flex items-center gap-2">
                           <div className="flex-1">
                             <InputTypeIn
-                              placeholder="https://example.com"
+                              placeholder={t("admin.webSearch.urlPlaceholder", {
+                                defaultValue: "https://example.com",
+                              })}
                               value={onyxTestUrl}
                               onChange={(e) => {
                                 setOnyxTestUrl(e.target.value);

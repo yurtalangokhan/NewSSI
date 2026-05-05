@@ -58,17 +58,25 @@ export default function WebCrawlPanel({
       const data = await res.json();
       if (!res.ok) {
         setCrawlError(
-          typeof data?.detail === "string" ? data.detail : "Crawl failed."
+          typeof data?.detail === "string"
+            ? data.detail
+            : t("admin.documentProcessing.webCrawl.crawlFailed", {
+                defaultValue: "Crawl failed.",
+              })
         );
       } else {
         setCrawlResult(data as CrawlResult);
       }
     } catch {
-      setCrawlError("Network error while crawling.");
+      setCrawlError(
+        t("admin.documentProcessing.webCrawl.networkError", {
+          defaultValue: "Network error while crawling.",
+        })
+      );
     } finally {
       setCrawling(false);
     }
-  }, [url]);
+  }, [url, t]);
 
   const handleAddToCollection = useCallback(async () => {
     if (!crawlResult?.scrape_successful || !crawlResult.content) return;
@@ -96,7 +104,13 @@ export default function WebCrawlPanel({
       setUrl("");
       setCrawlResult(null);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to add document.");
+      toast.error(
+        e instanceof Error
+          ? e.message
+          : t("admin.documentProcessing.webCrawl.addFailed", {
+              defaultValue: "Failed to add document.",
+            })
+      );
     } finally {
       setAdding(false);
     }
@@ -125,7 +139,9 @@ export default function WebCrawlPanel({
         <div className="flex w-full flex-col gap-2 md:flex-row md:items-center">
           <div className="w-full flex-1 min-w-0">
             <InputTypeIn
-              placeholder="https://example.com"
+              placeholder={t("admin.documentProcessing.webCrawl.urlPlaceholder", {
+                defaultValue: "https://example.com",
+              })}
               value={url}
               onChange={(e) => {
                 setUrl(e.target.value);
@@ -218,7 +234,10 @@ export default function WebCrawlPanel({
                   text04
                   className="whitespace-pre-wrap break-words text-sm leading-relaxed"
                 >
-                  {crawlResult.content || "(no content extracted)"}
+                  {crawlResult.content ||
+                    t("admin.documentProcessing.webCrawl.noContent", {
+                      defaultValue: "(no content extracted)",
+                    })}
                 </Text>
               </div>
             </>

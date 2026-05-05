@@ -65,20 +65,11 @@ export default function Page() {
       <SettingsLayouts.Header
         icon={route.icon}
         title={t(route.titleKey || "", { defaultValue: route.title })}
+        description={t("admin.documentProcessing.langConnectRagDescription")}
         separator
       />
       <SettingsLayouts.Body>
         <div className="flex flex-col gap-8 pb-36">
-          <div className="flex flex-col gap-2">
-            <Text as="p" headingH3 text05>
-              LangConnect RAG
-            </Text>
-            <Text as="p" mainContentBody text04 className="leading-relaxed">
-              {t("admin.documentProcessing.langConnectRag")}
-              {t("admin.documentProcessing.langConnectRagDescription")}
-            </Text>
-          </div>
-
           <RagManagementSection />
         </div>
       </SettingsLayouts.Body>
