@@ -1,10 +1,12 @@
 import { buildUrl } from "@/lib/utilsSS";
+import { getDomain } from "@/lib/redirectSS";
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 
 export const GET = async (request: NextRequest) => {
   const target = new URL(buildUrl("/auth/oidc/authorize"));
-  const dynamicRedirectUri = `${request.nextUrl.origin}/auth/oidc/callback`;
+  const callbackBase = getDomain(request).replace(/\/$/, "");
+  const dynamicRedirectUri = `${callbackBase}/auth/oidc/callback`;
 
   request.nextUrl.searchParams.forEach((value, key) => {
     target.searchParams.set(key, value);
