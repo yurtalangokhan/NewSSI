@@ -23,6 +23,9 @@ import {
   SvgUploadCloud,
 } from "@opal/icons";
 import { cn } from "@/lib/utils";
+import SimpleTabs from "@/refresh-components/SimpleTabs";
+import { SvgFiles, SvgGlobe } from "@opal/icons";
+import WebCrawlPanel from "./WebCrawlPanel";
 
 const ACCEPTED_TYPES = {
   "application/pdf": [".pdf"],
@@ -273,76 +276,119 @@ export default function DocumentsPanel({ collectionId, readOnly = false }: Docum
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Upload dropzone - hidden for datasource (read-only) collections */}
+      {/* Upload section — Belge / Web tabs (hidden for read-only datasource collections) */}
       {!readOnly && (
-        <CardSection className="flex flex-col gap-3">
-          <Text as="p" headingH3 text05 className="border-b border-border-01 pb-2">
-            {t("admin.documentProcessing.uploadDocuments")}
-          </Text>
-          <Text as="p" mainContentBody text04 className="leading-relaxed">
-            {t("admin.documentProcessing.supportedFormats")}
-            RTF. Max 200 MB per file.
-          </Text>
+        <SimpleTabs
+          tabs={SimpleTabs.generateTabs({
+            document: {
+              name: t("admin.documentProcessing.tabs.document", {
+                defaultValue: "Belge",
+              }),
+              icon: SvgFiles,
+              content: (
+                <CardSection className="flex flex-col gap-3">
+                  <Text
+                    as="p"
+                    mainContentBody
+                    text04
+                    className="leading-relaxed"
+                  >
+                    {t("admin.documentProcessing.supportedFormats")}
+                    RTF. Max 200 MB per file.
+                  </Text>
 
-          <Dropzone
-            onDrop={handleDrop}
-            onDragEnter={() => setIsDragActive(true)}
-            onDragLeave={() => setIsDragActive(false)}
-            accept={ACCEPTED_TYPES}
-            maxSize={MAX_SIZE_BYTES}
-            multiple
-            disabled={isUploading}
-            onDropRejected={(rejections) => {
-              const reason = rejections[0]?.errors[0]?.message ?? "File rejected";
-              toast.error(reason);
-            }}
-          >
-            {({ getRootProps, getInputProps }) => (
-              <div
-                {...getRootProps()}
-                className={cn(
-                  "flex flex-col items-center justify-center gap-3",
-                  "rounded-08 border-2 border-dashed",
-                  "px-6 py-10 cursor-pointer transition-colors",
-                  isDragActive
-                    ? "border-action-primary bg-background-neutral-02"
-                    : "border-border-01 bg-background-neutral-01 hover:border-action-primary hover:bg-background-neutral-02",
-                  isUploading && "opacity-60 cursor-not-allowed"
-                )}
-              >
-                <input {...getInputProps()} />
-                {isUploading ? (
-                  <>
-                    <ThreeDotsLoader />
-                    <Text as="p" mainContentMuted text03>
-                      {t("admin.documentProcessing.uploadingAndProcessing")}
-                    </Text>
-                  </>
-                ) : (
-                  <>
-                    <SvgUploadCloud
-                      className={cn(
-                        "h-8 w-8 transition-colors",
-                        isDragActive ? "stroke-action-primary" : "stroke-text-03"
-                      )}
-                      aria-hidden
-                    />
-                    <div className="text-center">
-                      <Text as="p" mainUiAction text04>
-                        {isDragActive
-                          ? t("admin.documentProcessing.dropFilesHere")
-                          : t("admin.documentProcessing.dragDropOrClick")}
-                      </Text>
-                      <Text as="p" mainContentMuted text03 className="mt-1 text-xs">
-                        {t("admin.documentProcessing.supportedFormatsCompact")}
-                      </Text>
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
-          </Dropzone>
-        </CardSection>
+                  <Dropzone
+                    onDrop={handleDrop}
+                    onDragEnter={() => setIsDragActive(true)}
+                    onDragLeave={() => setIsDragActive(false)}
+                    accept={ACCEPTED_TYPES}
+                    maxSize={MAX_SIZE_BYTES}
+                    multiple
+                    disabled={isUploading}
+                    onDropRejected={(rejections) => {
+                      const reason =
+                        rejections[0]?.errors[0]?.message ?? "File rejected";
+                      toast.error(reason);
+                    }}
+                  >
+                    {({ getRootProps, getInputProps }) => (
+                      <div
+                        {...getRootProps()}
+                        className={cn(
+                          "flex flex-col items-center justify-center gap-3",
+                          "rounded-08 border-2 border-dashed",
+                          "px-6 py-10 cursor-pointer transition-colors",
+                          isDragActive
+                            ? "border-action-primary bg-background-neutral-02"
+                            : "border-border-01 bg-background-neutral-01 hover:border-action-primary hover:bg-background-neutral-02",
+                          isUploading && "opacity-60 cursor-not-allowed"
+                        )}
+                      >
+                        <input {...getInputProps()} />
+                        {isUploading ? (
+                          <>
+                            <ThreeDotsLoader />
+                            <Text as="p" mainContentMuted text03>
+                              {t(
+                                "admin.documentProcessing.uploadingAndProcessing"
+                              )}
+                            </Text>
+                          </>
+                        ) : (
+                          <>
+                            <SvgUploadCloud
+                              className={cn(
+                                "h-8 w-8 transition-colors",
+                                isDragActive
+                                  ? "stroke-action-primary"
+                                  : "stroke-text-03"
+                              )}
+                              aria-hidden
+                            />
+                            <div className="text-center">
+                              <Text as="p" mainUiAction text04>
+                                {isDragActive
+                                  ? t(
+                                      "admin.documentProcessing.dropFilesHere"
+                                    )
+                                  : t(
+                                      "admin.documentProcessing.dragDropOrClick"
+                                    )}
+                              </Text>
+                              <Text
+                                as="p"
+                                mainContentMuted
+                                text03
+                                className="mt-1 text-xs"
+                              >
+                                {t(
+                                  "admin.documentProcessing.supportedFormatsCompact"
+                                )}
+                              </Text>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </Dropzone>
+                </CardSection>
+              ),
+            },
+            web: {
+              name: t("admin.documentProcessing.tabs.web", {
+                defaultValue: "Web",
+              }),
+              icon: SvgGlobe,
+              content: (
+                <WebCrawlPanel
+                  collectionId={collectionId}
+                  onDocumentAdded={() => mutate()}
+                />
+              ),
+            },
+          })}
+          defaultValue="document"
+        />
       )}
       {/* Document list */}
       <CardSection className="flex flex-col gap-3">
