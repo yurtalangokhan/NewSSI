@@ -10,6 +10,7 @@ import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
 import CardSection from "@/components/admin/CardSection";
 import { DocumentSetCreationForm } from "../DocumentSetCreationForm";
 import { useRouter } from "next/navigation";
+import { useTranslation } from "react-i18next";
 
 function Main({ documentSetId }: { documentSetId: number }) {
   const router = useRouter();
@@ -28,6 +29,7 @@ function Main({ documentSetId }: { documentSetId: number }) {
 
   // EE only
   const { data: userGroups, isLoading: userGroupsIsLoading } = useUserGroups();
+  const { t } = useTranslation();
 
   if (isDocumentSetsLoading || isCCPairsLoading || userGroupsIsLoading) {
     return (
@@ -40,7 +42,7 @@ function Main({ documentSetId }: { documentSetId: number }) {
   if (documentSetsError || !documentSets) {
     return (
       <ErrorCallout
-        errorTitle="Failed to fetch document sets"
+        errorTitle={t("admin.documentSets.failedToFetchDocumentSets")}
         errorMsg={documentSetsError}
       />
     );
@@ -49,7 +51,7 @@ function Main({ documentSetId }: { documentSetId: number }) {
   if (ccPairsError || !ccPairs) {
     return (
       <ErrorCallout
-        errorTitle="Failed to fetch Connectors"
+        errorTitle={t("admin.documentSets.failedToFetchConnectors")}
         errorMsg={ccPairsError}
       />
     );
@@ -61,8 +63,8 @@ function Main({ documentSetId }: { documentSetId: number }) {
   if (!documentSet) {
     return (
       <ErrorCallout
-        errorTitle="Document set not found"
-        errorMsg={`Document set with id ${documentSetId} not found`}
+        errorTitle={t("admin.documentSets.documentSetNotFound")}
+        errorMsg={t("admin.documentSets.documentSetNotFoundMsg", { id: documentSetId })}
       />
     );
   }
@@ -85,6 +87,7 @@ function Main({ documentSetId }: { documentSetId: number }) {
 export default function Page(props: {
   params: Promise<{ documentSetId: string }>;
 }) {
+  const { t } = useTranslation();
   const params = use(props.params);
   const documentSetId = parseInt(params.documentSetId);
   const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.DOCUMENT_SETS]!;
@@ -93,7 +96,7 @@ export default function Page(props: {
     <SettingsLayouts.Root>
       <SettingsLayouts.Header
         icon={route.icon}
-        title="Edit Document Set"
+        title={t("admin.documentSets.editDocumentSetTitle")}
         separator
         backButton
       />

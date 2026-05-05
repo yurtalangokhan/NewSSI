@@ -19,9 +19,11 @@ import { DeleteButton } from "@/components/DeleteButton";
 import { TableHeader } from "@/components/ui/table";
 import Button from "@/refresh-components/buttons/Button";
 import { SvgEdit } from "@opal/icons";
+import { useTranslation } from "react-i18next";
 const MAX_USERS_TO_DISPLAY = 6;
 
 const SimpleUserDisplay = ({ user }: { user: User }) => {
+  const { t } = useTranslation();
   return (
     <div className="flex my-0.5">
       <FiUser className="mr-2 my-auto" /> {user.email}
@@ -38,6 +40,7 @@ export const UserGroupsTable = ({
   userGroups,
   refresh,
 }: UserGroupsTableProps) => {
+  const { t } = useTranslation();
   const router = useRouter();
 
   // sort by name for consistent ordering
@@ -57,10 +60,10 @@ export const UserGroupsTable = ({
         <TableHeader>
           <TableRow>
             <TableHead>Name</TableHead>
-            <TableHead>Connectors</TableHead>
-            <TableHead>Users</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Delete</TableHead>
+            <TableHead>{t("admin.groups.connectorsHeader")}</TableHead>
+            <TableHead>{t("admin.groups.usersHeader")}</TableHead>
+            <TableHead>{t("admin.groups.statusHeader")}</TableHead>
+            <TableHead>{t("admin.groups.deleteHeader")}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -129,7 +132,7 @@ export const UserGroupsTable = ({
                               })}
                             <div>
                               + {userGroup.users.length - MAX_USERS_TO_DISPLAY}{" "}
-                              more
+                              {t("admin.groups.moreUsers")}
                             </div>
                           </div>
                         )}
@@ -140,10 +143,10 @@ export const UserGroupsTable = ({
                   </TableCell>
                   <TableCell>
                     {userGroup.is_up_to_date ? (
-                      <div className="text-success">Up to date!</div>
+                      <div className="text-success">{t("admin.groups.upToDate")}</div>
                     ) : (
                       <div className="w-10">
-                        <LoadingAnimation text="Syncing" />
+                        <LoadingAnimation text={t("admin.groups.syncing")} />
                       </div>
                     )}
                   </TableCell>
@@ -154,12 +157,12 @@ export const UserGroupsTable = ({
                         const response = await deleteUserGroup(userGroup.id);
                         if (response.ok) {
                           toast.success(
-                            `User Group "${userGroup.name}" deleted`
+                            t("admin.groups.deleted", { name: userGroup.name })
                           );
                         } else {
                           const errorMsg = (await response.json()).detail;
                           toast.error(
-                            `Failed to delete User Group - ${errorMsg}`
+                            t("admin.groups.deleteFailed", { errorMsg })
                           );
                         }
                         refresh();

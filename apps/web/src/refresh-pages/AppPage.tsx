@@ -77,6 +77,7 @@ import EESearchUI from "@/ee/sections/SearchUI";
 const SearchUI = eeGated(EESearchUI);
 import { motion, AnimatePresence } from "motion/react";
 import { useAppMode } from "@/providers/AppModeProvider";
+import { useTranslation } from "react-i18next";
 
 interface FadeProps {
   show: boolean;
@@ -85,6 +86,7 @@ interface FadeProps {
 }
 
 function Fade({ show, children, className }: FadeProps) {
+  const { t } = useTranslation();
   return (
     <AnimatePresence>
       {show && (
@@ -107,6 +109,7 @@ export interface ChatPageProps {
 }
 
 export default function AppPage({ firstMessage }: ChatPageProps) {
+  const { t } = useTranslation();
   // Performance tracking
   // Keeping this here in case we need to track down slow renders in the future
   // const renderCount = useRef(0);
@@ -276,8 +279,8 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
       const names = lastFailedFiles.map((f) => f.name).join(", ");
       toast.error(
         lastFailedFiles.length === 1
-          ? `File failed and was removed: ${names}`
-          : `Files failed and were removed: ${names}`
+          ? t("chat.fileFailed", { name: names })
+          : t("chat.filesFailed", { names: names })
       );
       clearLastFailedFiles();
     }
@@ -426,7 +429,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
       .reverse()
       .find((m) => m.type === "user");
     if (!lastUserMsg) {
-      toast.error("No previously-submitted user message found.");
+      toast.error(t("chat.noPreviousMessage"));
       return;
     }
 
@@ -671,7 +674,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
             <Modal.Content>
               <Modal.Header
                 icon={SvgFileText}
-                title="Sources"
+                title={t("chat.sources")}
                 onClose={() => updateCurrentDocumentSidebarVisible(false)}
               />
               <Modal.Body>
@@ -791,7 +794,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
                         <Button
                           icon={SvgChevronDown}
                           onClick={handleScrollToBottom}
-                          aria-label="Scroll to bottom"
+                          aria-label={t("chat.scrollToBottom")}
                           prominence="secondary"
                         />
                       </div>

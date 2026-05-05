@@ -17,8 +17,10 @@ import { createBotConfig, deleteBotConfig } from "@/app/admin/discord-bot/lib";
 import { toast } from "@/hooks/useToast";
 import { ConfirmEntityModal } from "@/components/modals/ConfirmEntityModal";
 import { getFormattedDateTime } from "@/lib/dateUtils";
+import { useTranslation } from "react-i18next";
 
 export function BotConfigCard() {
+  const { t } = useTranslation();
   const {
     data: botConfig,
     isLoading,
@@ -46,7 +48,7 @@ export function BotConfigCard() {
           alignItems="center"
         >
           <Text mainContentEmphasis text05>
-            Bot Token
+            {t("admin.discord.botTokenTitle")}
           </Text>
         </Section>
         <ThreeDotsLoader />
@@ -59,7 +61,7 @@ export function BotConfigCard() {
 
   const handleSaveToken = async () => {
     if (!botToken.trim()) {
-      toast.error("Please enter a bot token");
+      toast.error(t("admin.discord.enterBotToken"));
       return;
     }
 
@@ -68,10 +70,10 @@ export function BotConfigCard() {
       await createBotConfig(botToken.trim());
       setBotToken("");
       refreshBotConfig();
-      toast.success("Bot token saved successfully");
+      toast.success(t("admin.discord.botTokenSaved"));
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : "Failed to save bot token"
+        err instanceof Error ? err.message : t("admin.discord.botTokenSaveFailed")
       );
     } finally {
       setIsSubmitting(false);
@@ -83,10 +85,10 @@ export function BotConfigCard() {
     try {
       await deleteBotConfig();
       refreshBotConfig();
-      toast.success("Bot token deleted");
+      toast.success(t("admin.discord.botTokenDeleted"));
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : "Failed to delete bot token"
+        err instanceof Error ? err.message : t("admin.discord.botTokenDeleteFailed")
       );
     } finally {
       setIsSubmitting(false);
@@ -99,29 +101,35 @@ export function BotConfigCard() {
       {showDeleteConfirm && (
         <ConfirmEntityModal
           danger
-          entityType="Discord bot token"
-          entityName="Discord Bot Token"
+          entityType={t("admin.discord.botTokenEntityType")}
+          entityName={t("admin.discord.botTokenEntityName")}
           onClose={() => setShowDeleteConfirm(false)}
           onSubmit={handleDeleteToken}
-          additionalDetails="This will disconnect your Discord bot. You will need to re-enter the token to use the bot again."
+          additionalDetails={t("admin.discord.botTokenDeleteDetails")}
         />
       )}
       <Card>
         <Section flexDirection="row" justifyContent="between">
           <Section flexDirection="row" gap={0.5} width="fit">
             <Text mainContentEmphasis text05>
-              Bot Token
+              {t("admin.discord.botTokenTitle")}
             </Text>
             {isConfigured ? (
-              <Badge variant="success">Configured</Badge>
+              <Badge variant="success">
+                {t("admin.discord.botConfigured")}
+              </Badge>
             ) : (
-              <Badge variant="secondary">Not Configured</Badge>
+              <Badge variant="secondary">
+                {t("admin.discord.botNotConfigured")}
+              </Badge>
             )}
           </Section>
           {isConfigured && (
             <SimpleTooltip
               tooltip={
-                hasServerConfigs ? "Delete server configs first" : undefined
+                hasServerConfigs
+                  ? t("admin.discord.deleteServerConfigsFirst")
+                  : undefined
               }
               disabled={!hasServerConfigs}
             >
@@ -130,7 +138,7 @@ export function BotConfigCard() {
                 disabled={isSubmitting || hasServerConfigs}
                 danger
               >
-                Delete Discord Token
+                {t("admin.discord.deleteDiscordToken")}
               </Button>
             </SimpleTooltip>
           )}
@@ -139,29 +147,30 @@ export function BotConfigCard() {
         {isConfigured ? (
           <Section flexDirection="column" alignItems="start" gap={0.5}>
             <Text text03 secondaryBody>
-              Your Discord bot token is configured.
+              {t("admin.discord.botConfiguredMessage")}
               {botConfig?.created_at && (
                 <>
                   {" "}
-                  Added {getFormattedDateTime(new Date(botConfig.created_at))}.
+                  {t("admin.discord.botConfiguredAt", {
+                    date: getFormattedDateTime(new Date(botConfig.created_at)),
+                  })}
                 </>
               )}
             </Text>
             <Text text03 secondaryBody>
-              To change the token, delete the current one and add a new one.
+              {t("admin.discord.changeTokenHint")}
             </Text>
           </Section>
         ) : (
           <Section flexDirection="column" alignItems="start" gap={0.75}>
             <Text text03 secondaryBody>
-              Enter your Discord bot token to enable the bot. You can get this
-              from the Discord Developer Portal.
+              {t("admin.discord.enterTokenDescription")}
             </Text>
             <Section flexDirection="row" alignItems="end" gap={0.5}>
               <PasswordInputTypeIn
                 value={botToken}
                 onChange={(e) => setBotToken(e.target.value)}
-                placeholder="Enter bot token..."
+                placeholder={t("admin.discord.botTokenPlaceholder")}
                 disabled={isSubmitting}
                 className="flex-1"
               />
@@ -169,7 +178,9 @@ export function BotConfigCard() {
                 onClick={handleSaveToken}
                 disabled={isSubmitting || !botToken.trim()}
               >
-                {isSubmitting ? "Saving..." : "Save Token"}
+                {isSubmitting
+                  ? t("admin.discord.saving")
+                  : t("admin.discord.saveToken")}
               </Button>
             </Section>
           </Section>

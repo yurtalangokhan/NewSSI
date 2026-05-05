@@ -12,6 +12,7 @@ import { formatDurationSeconds } from "@/lib/time";
 import { noProp } from "@/lib/utils";
 import MemoriesModal from "@/refresh-components/modals/MemoriesModal";
 import { useCreateModal } from "@/refresh-components/contexts/ModalContext";
+import { useTranslation } from "react-i18next";
 
 // =============================================================================
 // MemoryTagWithTooltip
@@ -122,6 +123,7 @@ export const CompletedHeader = React.memo(function CompletedHeader({
   memoryId = null,
   memoryIndex = null,
 }: CompletedHeaderProps) {
+  const { t } = useTranslation();
   if (isMemoryOnly) {
     return (
       <div className="flex w-full justify-between">
@@ -139,7 +141,7 @@ export const CompletedHeader = React.memo(function CompletedHeader({
             size="md"
             onClick={noProp(onToggle)}
             rightIcon={isExpanded ? SvgFold : SvgExpand}
-            aria-label="Expand timeline"
+            aria-label={t("timeline.expandTimeline")}
             aria-expanded={isExpanded}
           >
             {`${totalSteps} ${totalSteps === 1 ? "step" : "steps"}`}
@@ -150,8 +152,10 @@ export const CompletedHeader = React.memo(function CompletedHeader({
   }
 
   const durationText = processingDurationSeconds
-    ? `Thought for ${formatDurationSeconds(processingDurationSeconds)}`
-    : "Thought for some time";
+    ? t("timeline.thoughtForDuration", {
+        duration: formatDurationSeconds(processingDurationSeconds),
+      })
+    : t("timeline.thoughtForSomeTime");
 
   const imageText =
     generatedImageCount > 0
@@ -186,7 +190,7 @@ export const CompletedHeader = React.memo(function CompletedHeader({
           size="md"
           onClick={noProp(onToggle)}
           rightIcon={isExpanded ? SvgFold : SvgExpand}
-          aria-label="Expand timeline"
+          aria-label={t("timeline.expandTimeline")}
           aria-expanded={isExpanded}
         >
           {`${totalSteps} ${totalSteps === 1 ? "step" : "steps"}`}

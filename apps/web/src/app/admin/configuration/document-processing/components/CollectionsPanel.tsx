@@ -15,6 +15,7 @@ import {
 } from "@/lib/langconnect";
 import { useAirbyteDatasources } from "@/lib/airbyte";
 import { SvgHardDrive, SvgPlus, SvgTrash } from "@opal/icons";
+import { useTranslation } from "react-i18next";
 
 interface CollectionsPanelProps {
   selectedCollectionId: string | null;
@@ -25,6 +26,7 @@ export default function CollectionsPanel({
   selectedCollectionId,
   onCollectionSelect,
 }: CollectionsPanelProps) {
+  const { t } = useTranslation();
   const { collections: allCollections, isLoading: collectionsLoading, mutate } = useCollections();
   const { datasources, isLoading: dsLoading } = useAirbyteDatasources();
   const isLoading = collectionsLoading || dsLoading;
@@ -60,7 +62,7 @@ export default function CollectionsPanel({
       onCollectionSelect(created.uuid);
       setNewName("");
       setIsCreating(false);
-      toast.success(`Collection "${created.name}" created.`);
+      toast.success(t("admin.documentProcessing.collectionCreated", { name: created.name }));
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to create collection");
     } finally {
@@ -79,7 +81,7 @@ export default function CollectionsPanel({
       await deleteCollection(selectedCollectionId);
       await mutate();
       onCollectionSelect(null);
-      toast.success("Collection deleted.");
+      toast.success(t("admin.documentProcessing.collectionDeleted"));
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to delete collection");
     } finally {
@@ -92,12 +94,12 @@ export default function CollectionsPanel({
       <div className="flex items-center gap-2 border-b border-border-01 pb-3">
         <SvgHardDrive className="h-4 w-4 stroke-text-03" aria-hidden />
         <Text as="p" headingH3 text05>
-          RAG Collections
+          {t("admin.documentProcessing.ragCollections")}
         </Text>
       </div>
 
       <Text as="p" mainContentBody text04 className="leading-relaxed">
-        Collections store your documents as vector embeddings in PGVector.
+        {t("admin.documentProcessing.ragCollectionsDescription")}
         Select an existing collection or create a new one to manage documents
         and run semantic search.
       </Text>
@@ -111,7 +113,7 @@ export default function CollectionsPanel({
               {collections.length === 0 ? (
                 <div className="flex items-center h-9 rounded-08 border border-border-01 bg-background-neutral-01 px-3">
                   <Text as="p" mainUiMuted text03>
-                    No collections yet — create one below
+                    {t("admin.documentProcessing.noCollections")}
                   </Text>
                 </div>
               ) : (
@@ -121,14 +123,14 @@ export default function CollectionsPanel({
                     onCollectionSelect(v || null, v ? isDatasourceCollection(v) : undefined)
                   }
                 >
-                  <InputSelect.Trigger placeholder="Select a collection..." />
+                  <InputSelect.Trigger placeholder={t("admin.documentProcessing.selectCollection")} />
                   <InputSelect.Content>
                     {collections.map((c) => (
                       <InputSelect.Item key={c.uuid} value={c.uuid}>
                         {c.name}
                         {isDatasourceCollection(c.uuid) && (
                           <span className="ml-2 text-[10px] font-medium uppercase tracking-wide text-text-03 bg-background-neutral-02 border border-border-01 rounded px-1 py-0.5">
-                            Datasource
+                            {t("admin.documentProcessing.datasource")}
                           </span>
                         )}
                       </InputSelect.Item>
@@ -146,7 +148,7 @@ export default function CollectionsPanel({
                 setNewName("");
               }}
             >
-              New Collection
+              {t("admin.documentProcessing.newCollection")}
             </Button>
 
             {selectedCollectionId && (
@@ -156,7 +158,7 @@ export default function CollectionsPanel({
                 onClick={handleDelete}
                 disabled={isDeleting}
               >
-                {isDeleting ? "Deleting…" : "Delete"}
+                {isDeleting ? t("admin.documentProcessing.deleting") : t("modals.delete")}
               </Button>
             )}
           </div>
@@ -165,7 +167,7 @@ export default function CollectionsPanel({
             <div className="flex items-center gap-2 pt-1">
               <div className="flex-1">
                 <InputTypeIn
-                  placeholder="Collection name"
+                  placeholder={t("admin.documentProcessing.collectionName")}
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
                   onKeyDown={(e) => {
@@ -182,7 +184,7 @@ export default function CollectionsPanel({
               >
                 {isSubmitting ? "Creating…" : "Create"}
               </Button>
-              <Button onClick={() => setIsCreating(false)}>Cancel</Button>
+                  ? t("admin.documentProcessing.creating")
             </div>
           )}
 
@@ -194,7 +196,7 @@ export default function CollectionsPanel({
               </Text>
               {selectedIsDatasource && (
                 <Text as="span" mainContentMuted text03 className="text-xs italic ml-auto">
-                  Read-only datasource collection
+                  {t("admin.documentProcessing.readOnlyDatasourceCollection")}
                 </Text>
               )}
             </div>

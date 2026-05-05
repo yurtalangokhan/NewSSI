@@ -20,6 +20,7 @@ import {
 } from "@/refresh-components/Collapsible";
 import { Wrench, ChevronDown, Loader2, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { useTranslation } from "react-i18next";
 
 interface BuiltInToolsSectionProps {
   onToolSelect?: (tool: BuiltInTool) => void;
@@ -71,6 +72,7 @@ function ToolCardSkeleton() {
 export default function BuiltInToolsSection({
   onToolSelect,
 }: BuiltInToolsSectionProps) {
+  const { t } = useTranslation();
   const router = useRouter();
   const [tools, setTools] = useState<BuiltInTool[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -89,7 +91,10 @@ export default function BuiltInToolsSection({
           setTools(response.tools);
         }
       } catch (err) {
-        const errorMsg = err instanceof Error ? err.message : "Failed to fetch tools";
+        const errorMsg =
+          err instanceof Error
+            ? err.message
+            : t("admin.mcp.fetchingTools");
         setError(errorMsg);
         toast.error(errorMsg);
       } finally {
@@ -146,14 +151,16 @@ export default function BuiltInToolsSection({
       <div className="flex items-center justify-between gap-4 mb-4">
         <div className="flex items-center gap-2">
           <Wrench className="size-5" />
-          <h2 className="text-lg font-semibold">Built-in Tools</h2>
+          <h2 className="text-lg font-semibold">
+            {t("admin.mcpAuth.builtInToolsName")}
+          </h2>
           <Badge variant="outline">{tools.length}</Badge>
         </div>
         <div className="relative w-64">
           <Search className="absolute left-2.5 top-2.5 size-4 text-text-03" />
           <Input
             type="text"
-            placeholder="Search tools..."
+            placeholder={t("admin.mcp.searchTools")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9"
@@ -164,7 +171,7 @@ export default function BuiltInToolsSection({
       {isLoading && (
         <div className="flex items-center justify-center py-8">
           <Loader2 className="size-6 animate-spin mr-2" />
-          <span>Loading tools...</span>
+          <span>{t("admin.mcp.fetchingTools")}</span>
         </div>
       )}
 
@@ -175,8 +182,8 @@ export default function BuiltInToolsSection({
       {!isLoading && !error && tools.length === 0 && (
         <div className="text-center py-12 text-text-03">
           <Wrench className="size-8 mx-auto mb-2 opacity-50" />
-          <p>No built-in tools available yet</p>
-          <p className="text-sm mt-1">Tools will appear here once the tools-service is configured</p>
+          <p>{t("admin.mcp.noToolsAvailable")}</p>
+          <p className="text-sm mt-1">{t("admin.mcp.connectServerHint")}</p>
         </div>
       )}
 

@@ -9,6 +9,7 @@ import Text from "@/refresh-components/texts/Text";
 import { cn } from "@/lib/utils";
 import { FieldLabel } from "@/components/Field";
 import { Section } from "@/layouts/general-layouts";
+import { useTranslation } from "react-i18next";
 
 interface AutoModeToggleProps {
   isAutoMode: boolean;
@@ -16,15 +17,15 @@ interface AutoModeToggleProps {
 }
 
 function AutoModeToggle({ isAutoMode, onToggle }: AutoModeToggleProps) {
+  const { t } = useTranslation();
   return (
     <div className="flex items-center justify-between">
       <div>
         <Text as="p" mainUiAction className="block">
-          Auto Update
+          {t("llmConfig.autoUpdate")}
         </Text>
         <Text as="p" secondaryBody text03 className="block">
-          Automatically update the available models when new models are
-          released. Recommended for most teams.
+          {t("llmConfig.autoUpdateDescription")}
         </Text>
       </div>
       <Switch checked={isAutoMode} onCheckedChange={onToggle} />
@@ -33,13 +34,14 @@ function AutoModeToggle({ isAutoMode, onToggle }: AutoModeToggleProps) {
 }
 
 function DisplayModelHeader({ alternativeText }: { alternativeText?: string }) {
+  const { t } = useTranslation();
   return (
     <div>
       <FieldLabel
-        label="Available Models"
+        label={t("llmConfig.availableModels")}
         subtext={
           alternativeText ??
-          "Select which models to make available for this provider."
+          t("llmConfig.selectModelsSubtext")
         }
         name="_available-models"
       />
@@ -62,6 +64,7 @@ export function DisplayModels<T extends BaseLLMFormValues>({
   recommendedDefaultModel: SimpleKnownModel | null;
   shouldShowAutoUpdateToggle: boolean;
 }) {
+  const { t } = useTranslation();
   const isAutoMode = formikProps.values.is_auto_mode;
 
   if (isLoading) {
@@ -149,7 +152,7 @@ export function DisplayModels<T extends BaseLLMFormValues>({
     return (
       <div>
         <DisplayModelHeader
-          alternativeText={noModelConfigurationsMessage ?? "No models found"}
+          alternativeText={noModelConfigurationsMessage ?? t("llmConfig.noModelsFound")}
         />
       </div>
     );
@@ -212,7 +215,7 @@ export function DisplayModels<T extends BaseLLMFormValues>({
                   areSomeModelsSelected ? "text-text-03" : "text-text-02"
                 )}
               >
-                Select all models
+                {t("llmConfig.selectAllModels")}
               </Text>
             </Button>
           </Section>
@@ -228,7 +231,7 @@ export function DisplayModels<T extends BaseLLMFormValues>({
                 secondaryBody
                 className="text-xs text-action-link-05 hover:text-action-link-06"
               >
-                Clear all ({selectedModels.length})
+                {t("llmConfig.clearAll", { count: selectedModels.length })}
               </Text>
             </Button>
           )}
@@ -289,7 +292,7 @@ export function DisplayModels<T extends BaseLLMFormValues>({
                           secondaryBody
                           className="text-action-text-link-05"
                         >
-                          Default
+                          {t("llmConfig.default")}
                         </Text>
                       </div>
                     )}
@@ -372,7 +375,7 @@ export function DisplayModels<T extends BaseLLMFormValues>({
                           isDefault ? "text-text-inverse" : "text-text-03"
                         )}
                       >
-                        {isDefault ? "Default" : "Set as default"}
+                        {isDefault ? t("llmConfig.default") : t("llmConfig.setAsDefaultModel")}
                       </Text>
                     </Button>
                   </div>

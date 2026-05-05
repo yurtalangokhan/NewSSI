@@ -18,6 +18,7 @@ import { HoverPopup } from "@/components/HoverPopup";
 import Checkbox from "@/refresh-components/inputs/Checkbox";
 import { ScoreSection } from "../ScoreEditor";
 import { truncateString } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
 const IsVisibleSection = ({
   document,
@@ -26,6 +27,7 @@ const IsVisibleSection = ({
   document: DocumentBoostStatus;
   onUpdate: (response: Response) => void;
 }) => {
+  const { t } = useTranslation();
   return (
     <HoverPopup
       mainContent={
@@ -40,7 +42,9 @@ const IsVisibleSection = ({
             }}
             className="flex text-error cursor-pointer hover:bg-accent-background-hovered py-1 px-2 w-fit rounded-full"
           >
-            <div className="select-none">Hidden</div>
+            <div className="select-none">
+              {t("admin.documentsFeedback.hidden")}
+            </div>
             <div className="ml-1 my-auto">
               <Checkbox checked={false} />
             </div>
@@ -56,7 +60,9 @@ const IsVisibleSection = ({
             }}
             className="flex cursor-pointer hover:bg-accent-background-hovered py-1 px-2 w-fit rounded-full"
           >
-            <div className="my-auto select-none">Visible</div>
+            <div className="my-auto select-none">
+              {t("admin.documentsFeedback.visible")}
+            </div>
             <div className="ml-1 my-auto">
               <Checkbox checked={true} />
             </div>
@@ -72,7 +78,7 @@ const IsVisibleSection = ({
           ) : (
             <div className="flex">
               <FiEyeOff className="my-auto mr-1" />
-              Hide
+              {t("admin.documentsFeedback.unhide")}
             </div>
           )}
         </div>
@@ -89,6 +95,7 @@ export const DocumentFeedbackTable = ({
   documents: DocumentBoostStatus[];
   refresh: () => void;
 }) => {
+  const { t } = useTranslation();
   const [page, setPage] = useState(1);
 
   return (
@@ -96,9 +103,9 @@ export const DocumentFeedbackTable = ({
       <Table className="overflow-visible">
         <TableHeader>
           <TableRow>
-            <TableHead>Document Name</TableHead>
-            <TableHead>Is Searchable?</TableHead>
-            <TableHead>Score</TableHead>
+            <TableHead>{t("admin.documentsFeedback.documentName")}</TableHead>
+            <TableHead>{t("admin.documentsFeedback.isSearchable")}</TableHead>
+            <TableHead>{t("admin.documentsFeedback.score")}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -125,9 +132,9 @@ export const DocumentFeedbackTable = ({
                           refresh();
                         } else {
                           toast.error(
-                            `Error updating hidden status - ${getErrorMsg(
-                              response
-                            )}`
+                            t("admin.documentsFeedback.errorUpdatingHidden", {
+                              error: getErrorMsg(response),
+                            })
                           );
                         }
                       }}

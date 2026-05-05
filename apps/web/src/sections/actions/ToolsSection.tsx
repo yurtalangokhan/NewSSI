@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import Button from "@/refresh-components/buttons/Button";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
 import { SvgFold } from "@opal/icons";
+import { useTranslation } from "react-i18next";
 interface ToolsSectionProps {
   onFold?: () => void;
   searchQuery: string;
@@ -18,7 +19,9 @@ const ToolsSection: React.FC<ToolsSectionProps> = ({
   onSearchQueryChange,
   className,
 }) => {
+  const { t } = useTranslation();
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { t } = useTranslation();
     onSearchQueryChange(e.target.value);
   };
 
@@ -28,8 +31,8 @@ const ToolsSection: React.FC<ToolsSectionProps> = ({
         {/* Search Bar */}
         <div className="flex-1 min-w-[160px]">
           <InputTypeIn
-            placeholder="Search tools…"
-            aria-label="Search tools"
+            placeholder={t("admin.mcp.searchTools")}
+            aria-label={t("admin.mcp.searchTools")}
             value={searchQuery}
             onChange={handleSearchChange}
             leftSearchIcon
@@ -43,7 +46,7 @@ const ToolsSection: React.FC<ToolsSectionProps> = ({
           {/* Fold Button */}
           {onFold && (
             <Button tertiary onClick={onFold} rightIcon={SvgFold}>
-              Fold
+              {t("admin.mcp.fold")}
             </Button>
           )}
         </div>

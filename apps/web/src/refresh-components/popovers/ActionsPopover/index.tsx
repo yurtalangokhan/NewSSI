@@ -41,6 +41,7 @@ import MCPLineItem, {
 import { useProjectsContext } from "@/providers/ProjectsContext";
 import { SvgActions, SvgChevronRight, SvgKey, SvgSliders } from "@opal/icons";
 import { Button } from "@opal/components";
+import { useTranslation } from "react-i18next";
 
 const UNAVAILABLE_TOOL_TOOLTIP_FALLBACK =
   "This action is not configured yet. Ask an admin to enable it.";
@@ -101,6 +102,7 @@ const getAdminConfigureInfo = (
 function getConfiguredSources(
   availableSources: ValidSources[]
 ): Array<SourceMetadata & { originalName: string; uniqueKey: string }> {
+  const { t } = useTranslation();
   const allSources = listSourceMetadata();
 
   const seenSources = new Set<string>();
@@ -145,6 +147,7 @@ export default function ActionsPopover({
   availableSources = [],
   disabled = false,
 }: ActionsPopoverProps) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [secondaryView, setSecondaryView] = useState<SecondaryViewState | null>(
     null
@@ -871,7 +874,7 @@ export default function ActionsPopover({
       {[
         <InputTypeIn
           key="search"
-          placeholder="Search Actions"
+          placeholder={t("inputBar.searchActionsPlaceholder")}
           value={searchTerm}
           onChange={(event) => setSearchTerm(event.target.value)}
           autoFocus
@@ -970,7 +973,7 @@ export default function ActionsPopover({
 
         (isAdmin || isCurator) && (
           <LineItem href="/admin/actions" icon={SvgActions} key="more-actions">
-            More Actions
+            {t("inputBar.moreActionsButton")}
           </LineItem>
         ),
       ]}

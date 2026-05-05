@@ -719,6 +719,7 @@ const tr = {
     daysAgo: "{{count}} gün önce",
     weeksAgo: "{{count}}h önce",
     monthsAgo: "{{count}}ay önce",
+    yearsAgo: "{{count}}y önce",
     daysAgoLong: "{{count}} gün önce",
     selectTimeRange: "Bir zaman aralığı seçin",
     updatedAt: "Güncellendi: {{date}}",
@@ -1681,6 +1682,27 @@ const tr = {
       changeCuratorRoleTitle: "Küratör Rolünü Değiştir",
       changeCuratorRoleWarning: "Uyarı: Rolü Küratör'den {{newRole}} olarak değiştirmek, tüm gruplardaki bireysel küratörlük durumlarını kaldıracaktır.",
       switchRoleToButton: "Rolü {{role}} Olarak Değiştir",
+      editUserModal: {
+        title: "Kullanıcıyı Düzenle",
+        description:
+          "Adı güncelleyin ve yeni bir şifre belirleyin. Kullanıcı adı/e-posta değiştirilemez.",
+        emailLabel: "E-posta (değiştirilemez)",
+        firstNameLabel: "Ad",
+        firstNamePlaceholder: "Ad",
+        lastNameLabel: "Soyad",
+        lastNamePlaceholder: "Soyad",
+        passwordLabel: "Yeni Şifre",
+        passwordPlaceholder: "Mevcut şifreyi korumak için boş bırakın",
+        cancelButton: "İptal",
+        save: "Değişiklikleri Kaydet",
+        savingButton: "Kaydediliyor",
+        noChanges: "Kaydedilecek değişiklik yok",
+        passwordTooShort: "Şifre en az 8 karakter olmalıdır",
+        updateProfileFailed: "Kullanıcı profili güncellenemedi",
+        setPasswordFailed: "Kullanıcı şifresi ayarlanamadı",
+        updateSuccess: "Kullanıcı başarıyla güncellendi",
+        updateFailed: "Kullanıcı güncellenemedi",
+      },
     },
     connectorForm: {
       documentAccess: {
@@ -1847,6 +1869,8 @@ const tr = {
         failed: "Başarısız",
         cancelled: "İptal Edildi",
         running: "Çalışıyor",
+        duration_m_s: "{{minutes}}dk {{seconds}}sn",
+        duration_s: "{{seconds}}sn",
       },
       errors: {
         triggerSyncFailed: "Eşitleme tetiklenemedi",
@@ -2560,6 +2584,9 @@ const tr = {
       webVersion: "Web Versiyonu",
     },
     documentSets: {
+      title: "Belge Setleri",
+      description:
+        "mantıksal olarak bağlı belgeleri tek bir pakette gruplamanızı sağlar. Bu paketler, arama yaparken filtre olarak kullanılarak Onyx'in arama kapsamını kontrol etmenize yardımcı olur.",
       failedToFetchConnectors: "Bağlayıcılar alınamadı",
       failedToFetchDocumentSets: "Belge setleri alınamadı",
       documentSetNotFound: "Belge seti bulunamadı",
@@ -2795,7 +2822,7 @@ const tr = {
         },
         documentExplorer: {
           title: "Belge Gezgini",
-          sidebar: "Gezgin",
+          sidebar: "Belge Gezgini",
         },
         mcpActions: {
           title: "MCP Aksiyonları",
@@ -2865,6 +2892,7 @@ const tr = {
       anyTime: "Herhangi bir zaman...",
       allSources: "Tüm Kaynaklar",
       allDocumentSets: "Tüm Belge Setleri",
+      searchPlaceholder: "Başlığa / içeriğe göre belge bul...",
       timeRanges: {
         last2Years: "Son 2 yıl",
         lastYear: "Son yıl",

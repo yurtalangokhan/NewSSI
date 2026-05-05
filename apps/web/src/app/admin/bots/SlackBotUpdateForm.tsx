@@ -13,6 +13,7 @@ import GenericConfirmModal from "@/components/modals/GenericConfirmModal";
 import Button from "@/refresh-components/buttons/Button";
 import { cn } from "@/lib/utils";
 import { SvgChevronDownSmall, SvgTrash } from "@opal/icons";
+import { useTranslation } from "react-i18next";
 
 function Checkbox({
   label,
@@ -43,6 +44,7 @@ export const ExistingSlackBotForm = ({
   existingSlackBot: SlackBot;
   refreshSlackBot?: () => void;
 }) => {
+  const { t } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(false);
   const [formValues, setFormValues] = useState(existingSlackBot);
   const router = useRouter();
@@ -144,16 +146,16 @@ export const ExistingSlackBotForm = ({
       <div className="mt-2">
         <div className="inline-block border rounded-lg border-background-200 p-2">
           <Checkbox
-            label="Enabled"
+            label={t("admin.bots.updateFormEnabledLabel")}
             checked={formValues.enabled}
             onChange={(e) => handleUpdateField("enabled", e.target.checked)}
           />
         </div>
         {showDeleteModal && (
           <GenericConfirmModal
-            title="Delete Slack Bot"
-            message="Are you sure you want to delete this Slack bot? This action cannot be undone."
-            confirmText="Delete"
+            title={t("admin.bots.deleteTitle")}
+            message={t("admin.bots.deleteMessage")}
+            confirmText={t("admin.bots.deleteConfirm")}
             onClose={() => setShowDeleteModal(false)}
             onConfirm={async () => {
               try {
@@ -161,10 +163,10 @@ export const ExistingSlackBotForm = ({
                 if (!response.ok) {
                   throw new Error(await response.text());
                 }
-                toast.success("Slack bot deleted successfully");
+                toast.success(t("admin.bots.deleteSuccess"));
                 router.push("/admin/bots");
               } catch (error) {
-                toast.error("Failed to delete Slack bot");
+                toast.error(t("admin.bots.deleteError"));
               }
               setShowDeleteModal(false);
             }}

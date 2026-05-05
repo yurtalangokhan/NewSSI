@@ -20,6 +20,7 @@ import { Connector } from "@/lib/connectors/connectors";
 import { HorizontalFilters } from "@/components/filters/SourceSelector";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
 import { ThreeDotsLoader } from "@/components/Loading";
+import { useTranslation } from "react-i18next";
 
 const DocumentDisplay = ({
   document,
@@ -109,6 +110,7 @@ export function Explorer({
   documentSets: DocumentSetSummary[];
 }) {
   const router = useRouter();
+  const { t } = useTranslation();
 
   const [query, setQuery] = useState(initialSearchValue || "");
   const [timeoutId, setTimeoutId] = useState<number | null>(null);
@@ -165,7 +167,7 @@ export function Explorer({
     <div className="flex flex-col gap-6">
       <div className="flex flex-col justify-center gap-2">
         <InputTypeIn
-          placeholder="Find documents based on title / content..."
+          placeholder={t("admin.documentExplorer.searchPlaceholder")}
           value={query}
           onChange={(event) => {
             setQuery(event.target.value);

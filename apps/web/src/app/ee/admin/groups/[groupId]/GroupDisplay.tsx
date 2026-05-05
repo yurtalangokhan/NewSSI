@@ -34,6 +34,7 @@ import { AddTokenRateLimitForm } from "./AddTokenRateLimitForm";
 import { GenericTokenRateLimitTable } from "@/app/admin/token-rate-limits/TokenRateLimitTables";
 import { useUser } from "@/providers/UserProvider";
 import GenericConfirmModal from "@/components/modals/GenericConfirmModal";
+import { useTranslation } from "react-i18next";
 
 interface GroupDisplayProps {
   users: User[];
@@ -55,6 +56,7 @@ const UserRoleDropdown = ({
   onError: (message: string) => void;
   isAdmin: boolean;
 }) => {
+  const { t } = useTranslation();
   const [localRole, setLocalRole] = useState(() => {
     if (user.role === UserRole.CURATOR) {
       return group.curator_ids.includes(user.id)
@@ -113,9 +115,9 @@ const UserRoleDropdown = ({
       {/* Confirmation modal - only shown when users try to demote themselves */}
       {showDemoteConfirm && pendingRoleChange && (
         <GenericConfirmModal
-          title="Remove Yourself as a Curator for this Group?"
-          message="Are you sure you want to change your role to Basic? This will remove your ability to curate this group."
-          confirmText="Yes, set me to Basic"
+          title={t("admin.groups.removeSelfCuratorTitle")}
+          message={t("admin.groups.removeSelfCuratorMessage")}
+          confirmText={t("admin.groups.removeSelfCuratorConfirm")}
           onClose={() => {
             // Cancel the role change if user dismisses modal
             setShowDemoteConfirm(false);
@@ -136,12 +138,12 @@ const UserRoleDropdown = ({
           onValueChange={handleChange}
           disabled={isSettingRole}
         >
-          <InputSelect.Trigger placeholder="Select role" />
+          <InputSelect.Trigger placeholder={t("admin.apiKey.roleSelectPlaceholder")} />
 
           <InputSelect.Content>
             <InputSelect.Item value={UserRole.BASIC}>Basic</InputSelect.Item>
             <InputSelect.Item value={UserRole.CURATOR}>
-              Curator
+              {t("admin.groups.roleBasic")}
             </InputSelect.Item>
           </InputSelect.Content>
         </InputSelect>
@@ -158,6 +160,7 @@ export const GroupDisplay = ({
   userGroup,
   refreshUserGroup,
 }: GroupDisplayProps) => {
+  const { t } = useTranslation();
   const [addMemberFormVisible, setAddMemberFormVisible] = useState(false);
   const [addConnectorFormVisible, setAddConnectorFormVisible] = useState(false);
   const [addRateLimitFormVisible, setAddRateLimitFormVisible] = useState(false);
@@ -165,19 +168,19 @@ export const GroupDisplay = ({
   const { isAdmin } = useUser();
 
   const onRoleChangeSuccess = () =>
-    toast.success("User role updated successfully!");
+    toast.success(t("admin.groups.roleUpdatedSuccess"));
   const onRoleChangeError = (errorMsg: string) =>
-    toast.error(`Unable to update user role - ${errorMsg}`);
+    toast.error(t("admin.groups.roleUpdateFailed", { errorMsg }));
 
   return (
     <div>
       <div className="text-sm mb-3 flex">
-        <Text className="mr-1">Status:</Text>{" "}
+        <Text className="mr-1">{t("admin.groups.statusLabel")}</Text>{" "}
         {userGroup.is_up_to_date ? (
-          <div className="text-success font-bold">Up to date</div>
+          <div className="text-success font-bold">{t("admin.groups.upToDate")}</div>
         ) : (
           <div className="text-accent font-bold">
-            <LoadingAnimation text="Syncing" />
+            <LoadingAnimation text={t("admin.groups.syncing")} />
           </div>
         )}
       </div>
@@ -185,7 +188,7 @@ export const GroupDisplay = ({
       <Separator />
 
       <div className="flex w-full">
-        <h2 className="text-xl font-bold">Users</h2>
+        <h2 className="text-xl font-bold">{t("admin.groups.usersSection")}</h2>
       </div>
 
       <div className="mt-2">
@@ -194,10 +197,10 @@ export const GroupDisplay = ({
             <Table className="overflow-visible">
               <TableHeader>
                 <TableRow>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Role</TableHead>
+                  <TableHead>{t("admin.groups.emailHeader")}</TableHead>
+                  <TableHead>{t("admin.groups.roleHeader")}</TableHead>
                   <TableHead className="flex w-full">
-                    <div className="ml-auto">Remove User</div>
+                    <div className="ml-auto">{t("admin.groups.removeUserHeader")}</div>
                   </TableHead>
                 </TableRow>
               </TableHeader>
@@ -244,7 +247,7 @@ export const GroupDisplay = ({
                                   );
                                   if (response.ok) {
                                     toast.success(
-                                      "Successfully removed user from group"
+                                      t("admin.groups.removedUserSuccess")
                                     );
                                   } else {
                                     const responseJson = await response.json();
@@ -252,7 +255,9 @@ export const GroupDisplay = ({
                                       responseJson.detail ||
                                       responseJson.message;
                                     toast.error(
-                                      `Error removing user from group - ${errorMsg}`
+                                      t("admin.groups.removeUserFailed", {
+                                        errorMsg,
+                                      })
                                     );
                                   }
                                   refreshUserGroup();
@@ -269,12 +274,12 @@ export const GroupDisplay = ({
             </Table>
           </>
         ) : (
-          <div className="text-sm">No users in this group...</div>
+          <div className="text-sm">{t("admin.groups.noUsers")}</div>
         )}
       </div>
 
       <SimpleTooltip
-        tooltip="Cannot update group while sync is occurring"
+        tooltip={t("admin.groups.syncTooltip")}
         disabled={userGroup.is_up_to_date}
       >
         <Button
@@ -285,7 +290,7 @@ export const GroupDisplay = ({
             }
           }}
         >
-          Add Users
+          {t("admin.groups.addUsersButton")}
         </Button>
       </SimpleTooltip>
       {addMemberFormVisible && (
@@ -301,16 +306,16 @@ export const GroupDisplay = ({
 
       <Separator />
 
-      <h2 className="text-xl font-bold mt-8">Connectors</h2>
+      <h2 className="text-xl font-bold mt-8">{t("admin.groups.connectorsSection")}</h2>
       <div className="mt-2">
         {userGroup.cc_pairs.length > 0 ? (
           <>
             <Table className="overflow-visible">
               <TableHeader>
                 <TableRow>
-                  <TableHead>Connector</TableHead>
+                  <TableHead>{t("admin.groups.connectorHeader")}</TableHead>
                   <TableHead className="flex w-full">
-                    <div className="ml-auto">Remove Connector</div>
+                    <div className="ml-auto">{t("admin.groups.removeConnectorHeader")}</div>
                   </TableHead>
                 </TableRow>
               </TableHeader>
@@ -346,14 +351,16 @@ export const GroupDisplay = ({
                                 );
                                 if (response.ok) {
                                   toast.success(
-                                    "Successfully removed connector from group"
+                                    t("admin.groups.removedConnectorSuccess")
                                   );
                                 } else {
                                   const responseJson = await response.json();
                                   const errorMsg =
                                     responseJson.detail || responseJson.message;
                                   toast.error(
-                                    `Error removing connector from group - ${errorMsg}`
+                                    t("admin.groups.removeConnectorFailed", {
+                                      errorMsg,
+                                    })
                                   );
                                 }
                                 refreshUserGroup();
@@ -369,12 +376,12 @@ export const GroupDisplay = ({
             </Table>
           </>
         ) : (
-          <div className="text-sm">No connectors in this group...</div>
+          <div className="text-sm">{t("admin.groups.noConnectors")}</div>
         )}
       </div>
 
       <SimpleTooltip
-        tooltip="Cannot update group while sync is occurring"
+        tooltip={t("admin.groups.syncTooltip")}
         disabled={userGroup.is_up_to_date}
       >
         <Button
@@ -385,7 +392,7 @@ export const GroupDisplay = ({
             }
           }}
         >
-          Add Connectors
+          {t("admin.groups.addConnectorsButton")}
         </Button>
       </SimpleTooltip>
 
@@ -402,7 +409,7 @@ export const GroupDisplay = ({
 
       <Separator />
 
-      <h2 className="text-xl font-bold mt-8 mb-2">Document Sets</h2>
+      <h2 className="text-xl font-bold mt-8 mb-2">{t("admin.groups.documentSetsSection")}</h2>
 
       <div>
         {userGroup.document_sets.length > 0 ? (
@@ -420,14 +427,14 @@ export const GroupDisplay = ({
           </div>
         ) : (
           <>
-            <Text>No document sets in this group...</Text>
+            <Text>{t("admin.groups.noDocumentSets")}</Text>
           </>
         )}
       </div>
 
       <Separator />
 
-      <h2 className="text-xl font-bold mt-8 mb-2">Agents</h2>
+      <h2 className="text-xl font-bold mt-8 mb-2">{t("admin.groups.agentsSection")}</h2>
 
       <div>
         {userGroup.document_sets.length > 0 ? (
@@ -445,14 +452,14 @@ export const GroupDisplay = ({
           </div>
         ) : (
           <>
-            <Text>No Agents in this group...</Text>
+            <Text>{t("admin.groups.noAgents")}</Text>
           </>
         )}
       </div>
 
       <Separator />
 
-      <h2 className="text-xl font-bold mt-8 mb-2">Token Rate Limits</h2>
+      <h2 className="text-xl font-bold mt-8 mb-2">{t("admin.groups.tokenRateLimitsSection")}</h2>
 
       <AddTokenRateLimitForm
         isOpen={addRateLimitFormVisible}
@@ -471,7 +478,7 @@ export const GroupDisplay = ({
           className="mt-3"
           onClick={() => setAddRateLimitFormVisible(true)}
         >
-          Create a Token Rate Limit
+          {t("admin.groups.createTokenRateLimitButton")}
         </Button>
       )}
     </div>

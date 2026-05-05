@@ -32,8 +32,8 @@ import { Button as OpalButton } from "@opal/components";
 import { useLabels } from "@/lib/hooks";
 import { PersonaLabel } from "@/app/admin/agents/interfaces";
 
-const YOUR_ORGANIZATION_TAB = "Your Organization";
-const USERS_AND_GROUPS_TAB = "Users & Groups";
+import { useTranslation } from "react-i18next";
+// Constants moved to inside the component so they can be translated
 
 // ============================================================================
 // Types
@@ -59,6 +59,9 @@ function ShareAgentFormContent({ agentId }: ShareAgentFormContentProps) {
   const { values, setFieldValue, handleSubmit, dirty } =
     useFormikContext<ShareAgentFormValues>();
   const { data: usersData } = useShareableUsers({ includeApiKeys: true });
+  const { t } = useTranslation();
+  const USERS_AND_GROUPS_TAB = t("shareAgent.usersAndGroups");
+  const YOUR_ORGANIZATION_TAB = t("shareAgent.yourOrganization");
   const { data: groupsData } = useShareableGroups();
   const { user: currentUser, isAdmin, isCurator } = useUser();
   const { agent: fullAgent } = useAgent(agentId ?? null);
@@ -193,7 +196,7 @@ function ShareAgentFormContent({ agentId }: ShareAgentFormContentProps) {
 
   return (
     <Modal.Content width="sm" height="lg">
-      <Modal.Header icon={SvgShare} title="Share Agent" onClose={handleClose} />
+      <Modal.Header icon={SvgShare} title={t("shareAgent.title")} onClose={handleClose} />
 
       <Modal.Body padding={0.5}>
         <Card variant="borderless" padding={0.5}>
@@ -217,7 +220,7 @@ function ShareAgentFormContent({ agentId }: ShareAgentFormContentProps) {
             <Tabs.Content value={USERS_AND_GROUPS_TAB}>
               <Section gap={0.5} alignItems="start">
                 <InputComboBox
-                  placeholder="Add users and groups"
+                  placeholder={t("shareAgent.addUsersAndGroups")}
                   value=""
                   onChange={() => {}}
                   onValueChange={handleComboBoxSelect}
@@ -235,7 +238,7 @@ function ShareAgentFormContent({ agentId }: ShareAgentFormContentProps) {
                         <LineItem
                           key={`user-${user.id}`}
                           icon={SvgUser}
-                          description={isCurrentUser ? "You" : undefined}
+                          description={isCurrentUser ? t("shareAgent.you") : undefined}
                           rightChildren={
                             isOwner || (isCurrentUser && !agentId) ? (
                               // Owner will always have the agent "shared" with it.
@@ -245,7 +248,7 @@ function ShareAgentFormContent({ agentId }: ShareAgentFormContentProps) {
                               // This user, during creation, is assumed to be the "owner".
                               // That is why the `(isCurrentUser && !agent)` condition exists.
                               <Text secondaryBody text03>
-                                Owner
+                                {t("shareAgent.owner")}
                               </Text>
                             ) : (
                               // For all other cases (including for "self-unsharing"),
@@ -291,8 +294,8 @@ function ShareAgentFormContent({ agentId }: ShareAgentFormContentProps) {
                     close={false}
                     static
                     className="w-full"
-                    text="This agent is public to your organization."
-                    description="Everyone in your organization has access to this agent."
+                    text={t("shareAgent.agentIsPublic")}
+                    description={t("shareAgent.agentIsPublicDescription")}
                   />
                 </Section>
               )}
@@ -301,8 +304,8 @@ function ShareAgentFormContent({ agentId }: ShareAgentFormContentProps) {
             <Tabs.Content value={YOUR_ORGANIZATION_TAB} padding={0.5}>
               <Section gap={1} alignItems="stretch">
                 <InputLayouts.Horizontal
-                  title="Publish This Agent"
-                  description="Make this agent available to everyone in your organization."
+                  title={t("shareAgent.publishTitle")}
+                  description={t("shareAgent.publishDescription")}
                 >
                   <SwitchField name="isPublic" />
                 </InputLayouts.Horizontal>
@@ -312,8 +315,8 @@ function ShareAgentFormContent({ agentId }: ShareAgentFormContentProps) {
                     <div className="border-t border-border-02" />
 
                     <InputLayouts.Horizontal
-                      title="Feature This Agent"
-                      description="Show this agent at the top of the explore agents list and automatically pin it to the sidebar for new users with access."
+                      title={t("shareAgent.featureTitle")}
+                      description={t("shareAgent.featureDescription")}
                     >
                       <SwitchField name="isFeatured" />
                     </InputLayouts.Horizontal>
@@ -326,11 +329,11 @@ function ShareAgentFormContent({ agentId }: ShareAgentFormContentProps) {
                   onAdd={addLabel}
                   value={labelInputValue}
                   onChange={setLabelInputValue}
-                  placeholder="Add labels..."
+                  placeholder={t("shareAgent.addLabels")}
                   icon={SvgTag}
                 />
                 <Text secondaryBody text04>
-                  Add labels and categories to help people better discover this
+                  {t("shareAgent.labelsDescription")}
                   agent.
                 </Text>
               </Section>
@@ -344,18 +347,18 @@ function ShareAgentFormContent({ agentId }: ShareAgentFormContentProps) {
           left={
             agentId ? (
               <Button secondary leftIcon={SvgLink} onClick={handleCopyLink}>
-                Copy Link
+                  {t("shareAgent.copyLink")}
               </Button>
             ) : undefined
           }
           cancel={
             <Button secondary onClick={handleClose}>
-              Cancel
+              {t("shareAgent.cancel")}
             </Button>
           }
           submit={
             <Button onClick={() => handleSubmit()} disabled={!dirty}>
-              Save
+              {t("shareAgent.save")}
             </Button>
           }
         />

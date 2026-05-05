@@ -9,6 +9,7 @@ import {
   useField,
   useFormikContext,
 } from "formik";
+import { useTranslation } from "react-i18next";
 import { FileUpload } from "@/components/admin/connectors/FileUpload";
 import * as Yup from "yup";
 import { FormBodyBuilder } from "./admin/connectors/types";
@@ -712,6 +713,7 @@ export const BooleanFormField = memo(function BooleanFormField({
   disabledTooltipSide,
   onChange,
 }: BooleanFormFieldProps) {
+  const { t } = useTranslation();
   // Generate a stable, valid id from the field name for label association
   const checkboxId = `checkbox-${name.replace(/[^a-zA-Z0-9_-]/g, "_")}`;
 
@@ -767,9 +769,9 @@ export const BooleanFormField = memo(function BooleanFormField({
                     onClick={toggle}
                   >
                     <div className="flex items-center gap-x-2">
-                      <Label small={small}>{`${label}${
-                        optional ? " (Optional)" : ""
-                      }`}</Label>
+                      <Label small={small}>
+                        {`${label}${optional ? ` (${t("common.optional", { defaultValue: "Optional" })})` : ""}`}
+                      </Label>
                       {tooltip && <ToolTipDetails>{tooltip}</ToolTipDetails>}
                     </div>
                     {subtext && <SubLabel>{subtext}</SubLabel>}

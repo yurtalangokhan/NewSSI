@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { Button } from "@opal/components";
 import { SvgSidebar } from "@opal/icons";
@@ -13,6 +14,7 @@ const LOGO_CACHE_BUSTER = "v=20260505-2";
 
 function LogoSection({ folded, onFoldClick }: LogoSectionProps) {
   const { resolvedTheme } = useTheme();
+  const { t } = useTranslation();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -24,11 +26,11 @@ function LogoSection({ folded, onFoldClick }: LogoSectionProps) {
       <Button
         icon={SvgSidebar}
         prominence="tertiary"
-        tooltip="Close Sidebar"
+        tooltip={t("sidebar.closeSidebar")}
         onClick={onFoldClick}
       />
     ),
-    [onFoldClick]
+    [onFoldClick, t]
   );
 
   if (!mounted) {

@@ -16,25 +16,25 @@ export default function SelectModelModal({
   onConfirm,
   onCancel,
 }: SelectModelModalProps) {
-  const { t } = useTranslation("admin");
+  const { t } = useTranslation();
   return (
     <Modal open onOpenChange={onCancel}>
       <Modal.Content width="sm" height="sm">
         <Modal.Header
           icon={SvgServer}
-          title={t("embeddings.selectModelTitle", { modelName: model.model_name })}
+          title={t("admin.embeddings.selectModelTitle", { modelName: model.model_name })}
           onClose={onCancel}
         />
         <Modal.Body>
           <Text as="p">
-            {t("embeddings.selectModelBody1")}{" "}
-            <strong>{model.model_name}</strong>. {t("embeddings.selectModelBody2")}
+            {t("admin.embeddings.selectModelBody1")}{" "}
+            <strong>{model.model_name}</strong>. {t("admin.embeddings.selectModelBody2")}
           </Text>
         </Modal.Body>
         <Modal.Footer>
-          <Button onClick={onConfirm}>{t("embeddings.confirmButton")}</Button>
+          <Button onClick={onConfirm}>{t("admin.embeddings.confirmButton")}</Button>
           <Button secondary onClick={onCancel}>
-            {t("embeddings.cancelButton")}
+            {t("admin.embeddings.cancelButton")}
           </Button>
         </Modal.Footer>
       </Modal.Content>
