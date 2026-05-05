@@ -7,9 +7,10 @@ export const GET = async (request: NextRequest) => {
   // which adds back a redirect to the main app.
   const url = new URL(buildUrl("/auth/oidc/callback"));
   url.search = request.nextUrl.search;
+  const callbackBase = getDomain(request).replace(/\/$/, "");
   url.searchParams.set(
     "redirect_uri",
-    `${request.nextUrl.origin}/auth/oidc/callback`
+    `${callbackBase}/auth/oidc/callback`
   );
   const cookieHeader = request.headers.get("cookie") || "";
 

@@ -48,6 +48,12 @@ export default function SignInButton({
     throw new Error(`Unhandled authType: ${authType}`);
   }
 
+  const handleSignIn = () => {
+    // Force a top-level browser navigation so the OIDC redirect flow does not
+    // go through Next.js RSC fetches (which can trigger CORS errors).
+    window.location.assign(authorizeUrl);
+  };
+
   return (
     <Button
       secondary={
@@ -55,7 +61,7 @@ export default function SignInButton({
       }
       className="!w-full"
       leftIcon={icon}
-      href={authorizeUrl}
+      onClick={handleSignIn}
     >
       {buttonText}
     </Button>
