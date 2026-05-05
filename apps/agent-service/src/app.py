@@ -185,6 +185,7 @@ from api.routes import (
     assistant_schemas_router,
     file_router,
     agent_definitions_router,
+    web_search_router,
 )
 
 app.include_router(agents_router)
@@ -202,6 +203,7 @@ app.include_router(run_router)
 app.include_router(datasources_router)
 app.include_router(assistant_schemas_router)
 app.include_router(file_router)
+app.include_router(web_search_router)
 
 try:
     from api.routes.MCPProvidersRoute import router as mcp_providers_router

@@ -15,6 +15,7 @@ from api.routes.DatasourcesRoute import router as datasources_router
 from api.routes.AssistantSchemasRoute import router as assistant_schemas_router
 from api.routes.FileRoute import router as file_router
 from api.routes.AgentDefinitionsRoute import router as agent_definitions_router
+from api.routes.WebSearchRoute import router as web_search_router
 
 __all__ = [
     "agents_router",
@@ -32,4 +33,5 @@ __all__ = [
     "assistant_schemas_router",
     "file_router",
     "agent_definitions_router",
+    "web_search_router",
 ]

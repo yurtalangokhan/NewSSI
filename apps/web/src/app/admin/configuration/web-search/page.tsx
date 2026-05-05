@@ -17,11 +17,15 @@ import {
   SvgArrowExchange,
   SvgArrowRightCircle,
   SvgCheckSquare,
+  SvgChevronDown,
+  SvgChevronRight,
   SvgEdit,
   SvgGlobe,
+  SvgLoader,
   SvgOnyxLogo,
   SvgX,
 } from "@opal/icons";
+import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
 import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
 import { WebProviderSetupModal } from "@/app/admin/configuration/web-search/WebProviderSetupModal";
 import { useTranslation, Trans } from "react-i18next";
@@ -114,6 +118,42 @@ export default function Page() {
     string | null
   >(null);
   const [hoveredButtonKey, setHoveredButtonKey] = useState<string | null>(null);
+  const [onyxCrawlerExpanded, setOnyxCrawlerExpanded] = useState(false);
+  const [onyxTestUrl, setOnyxTestUrl] = useState("");
+  const [onyxTestLoading, setOnyxTestLoading] = useState(false);
+  const [onyxTestResult, setOnyxTestResult] = useState<{
+    title: string;
+    content: string;
+    scrape_successful: boolean;
+    failure_reason?: string | null;
+  } | null>(null);
+  const [onyxTestError, setOnyxTestError] = useState<string | null>(null);
+
+  const handleOnyxCrawlerTest = async () => {
+    if (!onyxTestUrl.trim()) return;
+    setOnyxTestLoading(true);
+    setOnyxTestResult(null);
+    setOnyxTestError(null);
+    try {
+      const response = await fetch("/api/admin/web-search/content-providers/crawl", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: onyxTestUrl.trim() }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setOnyxTestError(
+          typeof data?.detail === "string" ? data.detail : "Crawl failed."
+        );
+      } else {
+        setOnyxTestResult(data);
+      }
+    } catch {
+      setOnyxTestError("Network error while crawling.");
+    } finally {
+      setOnyxTestLoading(false);
+    }
+  };
 
   const {
     data: searchProvidersData,
@@ -1135,23 +1175,32 @@ export default function Page() {
                   }
                 };
 
+                const isOnyxCrawler = provider.provider_type === "onyx_web_crawler";
+
                 return (
                   <div
                     key={`${provider.provider_type}-${provider.id}`}
-                    onClick={
-                      isContentCardClickable
-                        ? handleContentCardClick
-                        : undefined
-                    }
                     className={cn(
-                      "flex items-start justify-between gap-3 rounded-16 border p-1 bg-background-neutral-00",
+                      "flex flex-col rounded-16 border bg-background-neutral-00",
                       isCurrentCrawler
                         ? "border-action-link-05"
-                        : "border-border-01",
-                      isContentCardClickable &&
-                        "cursor-pointer hover:bg-background-tint-01 transition-colors"
+                        : "border-border-01"
                     )}
                   >
+                    <div
+                      onClick={
+                        isContentCardClickable
+                          ? handleContentCardClick
+                          : undefined
+                      }
+                      className={cn(
+                        "flex items-start justify-between gap-3 p-1",
+                        isContentCardClickable &&
+                          "cursor-pointer hover:bg-background-tint-01 transition-colors",
+                        isOnyxCrawler && onyxCrawlerExpanded && "rounded-t-16",
+                        isOnyxCrawler && !onyxCrawlerExpanded && "rounded-16"
+                      )}
+                    >
                     <div className="flex flex-1 items-start gap-1 px-2 py-1">
                       {renderLogo({
                         logoSrc:
@@ -1173,6 +1222,19 @@ export default function Page() {
                       />
                     </div>
                     <div className="flex items-center justify-end gap-2">
+                      {isOnyxCrawler && (
+                        <OpalButton
+                          icon={onyxCrawlerExpanded ? SvgChevronDown : SvgChevronRight}
+                          tooltip={onyxCrawlerExpanded ? "Collapse" : "Test crawler"}
+                          prominence="tertiary"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOnyxCrawlerExpanded((v) => !v);
+                          }}
+                          aria-label={onyxCrawlerExpanded ? "Collapse" : "Test crawler"}
+                        />
+                      )}
                       {provider.provider_type !== "onyx_web_crawler" &&
                         isConfigured && (
                           <OpalButton
@@ -1229,6 +1291,83 @@ export default function Page() {
                         </Button>
                       )}
                     </div>
+                    </div>
+                    {isOnyxCrawler && onyxCrawlerExpanded && (
+                      <div className="border-t border-border-01 px-4 py-3 flex flex-col gap-3">
+                        <Text as="p" mainUiBody text03>
+                          {t("admin.webSearch.onyxCrawlerTestDescription", {
+                            defaultValue:
+                              "Enter a URL to test the built-in crawler and preview the extracted content.",
+                          })}
+                        </Text>
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1">
+                            <InputTypeIn
+                              placeholder="https://example.com"
+                              value={onyxTestUrl}
+                              onChange={(e) => {
+                                setOnyxTestUrl(e.target.value);
+                                setOnyxTestResult(null);
+                                setOnyxTestError(null);
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") void handleOnyxCrawlerTest();
+                              }}
+                            />
+                          </div>
+                          <Button
+                            action={false}
+                            tertiary
+                            disabled={!onyxTestUrl.trim() || onyxTestLoading}
+                            onClick={() => void handleOnyxCrawlerTest()}
+                            rightIcon={onyxTestLoading ? SvgLoader : SvgArrowRightCircle}
+                          >
+                            {onyxTestLoading
+                              ? t("admin.webSearch.crawling", { defaultValue: "Crawling..." })
+                              : t("admin.webSearch.testCrawl", { defaultValue: "Test" })}
+                          </Button>
+                        </div>
+                        {onyxTestError && (
+                          <div className="rounded-8 border border-status-danger-02 bg-status-danger-00 px-3 py-2">
+                            <Text as="p" mainUiBody className="text-status-error-05">
+                              {onyxTestError}
+                            </Text>
+                          </div>
+                        )}
+                        {onyxTestResult && (
+                          <div className="flex flex-col gap-2 rounded-8 border border-border-01 bg-background-neutral-01 px-3 py-2">
+                            {onyxTestResult.scrape_successful ? (
+                              <>
+                                {onyxTestResult.title && (
+                                  <Text as="p" mainUiBody className="font-semibold text-text-01">
+                                    {onyxTestResult.title}
+                                  </Text>
+                                )}
+                                <Text
+                                  as="p"
+                                  mainUiBody
+                                  text03
+                                  className="whitespace-pre-wrap break-words max-h-64 overflow-y-auto"
+                                >
+                                  {onyxTestResult.content
+                                    ? onyxTestResult.content
+                                    : t("admin.webSearch.noContent", {
+                                        defaultValue: "(no content extracted)",
+                                      })}
+                                </Text>
+                              </>
+                            ) : (
+                              <Text as="p" mainUiBody className="text-status-error-05">
+                                {onyxTestResult.failure_reason ||
+                                  t("admin.webSearch.crawlFailed", {
+                                    defaultValue: "Crawl failed.",
+                                  })}
+                              </Text>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 );
               })}
