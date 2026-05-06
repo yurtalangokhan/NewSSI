@@ -2,14 +2,12 @@
 
 import { useState } from "react";
 import CardSection from "@/components/admin/CardSection";
-import SimpleTabs from "@/refresh-components/SimpleTabs";
 import * as SettingsLayouts from "@/layouts/settings-layouts";
 import Text from "@/refresh-components/texts/Text";
-import { SvgFiles, SvgSearch, SvgHardDrive } from "@opal/icons";
+import { SvgHardDrive } from "@opal/icons";
 import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
 import CollectionsPanel from "./components/CollectionsPanel";
 import DocumentsPanel from "./components/DocumentsPanel";
-import SearchPanel from "./components/SearchPanel";
 import { useTranslation } from "react-i18next";
 
 const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.DOCUMENT_PROCESSING]!;
@@ -30,19 +28,6 @@ function RagManagementSection() {
     setSelectedIsDatasource(isDatasource ?? false);
   }
 
-  const tabs = SimpleTabs.generateTabs({
-    documents: {
-      name: t("admin.documentProcessing.tabs.documents"),
-      icon: SvgFiles,
-      content: <DocumentsPanel collectionId={selectedCollectionId} />,
-    },
-    search: {
-      name: t("admin.documentProcessing.tabs.search"),
-      icon: SvgSearch,
-      content: <SearchPanel collectionId={selectedCollectionId} />,
-    },
-  });
-
   return (
     <div className="flex flex-col gap-4">
       <CollectionsPanel
@@ -51,7 +36,7 @@ function RagManagementSection() {
       />
 
       {selectedCollectionId ? (
-        <SimpleTabs tabs={tabs} defaultValue="documents" />
+        <DocumentsPanel collectionId={selectedCollectionId} readOnly={selectedIsDatasource} />
       ) : (
         <CardSection>
           <div className="flex flex-col items-center gap-2 py-8 text-center">
@@ -80,20 +65,11 @@ export default function Page() {
       <SettingsLayouts.Header
         icon={route.icon}
         title={t(route.titleKey || "", { defaultValue: route.title })}
+        description={t("admin.documentProcessing.langConnectRagDescription")}
         separator
       />
       <SettingsLayouts.Body>
         <div className="flex flex-col gap-8 pb-36">
-          <div className="flex flex-col gap-2">
-            <Text as="p" headingH3 text05>
-              LangConnect RAG
-            </Text>
-            <Text as="p" mainContentBody text04 className="leading-relaxed">
-              {t("admin.documentProcessing.langConnectRag")}
-              {t("admin.documentProcessing.langConnectRagDescription")}
-            </Text>
-          </div>
-
           <RagManagementSection />
         </div>
       </SettingsLayouts.Body>

@@ -68,6 +68,11 @@ dependencies = [
     "sqlalchemy[asyncio] >=2.0",
     "alembic >=1.13",
     "asyncpg >=0.29",
+    "beautifulsoup4 >=4.12.0",
+    "chardet >=5.0.0",
+    "lxml >=5.0.0",
+    "playwright >=1.40.0",
+    "requests >=2.31.0",
 ]
 
 [dependency-groups]

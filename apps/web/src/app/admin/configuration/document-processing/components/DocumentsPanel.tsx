@@ -23,6 +23,10 @@ import {
   SvgUploadCloud,
 } from "@opal/icons";
 import { cn } from "@/lib/utils";
+import SimpleTabs from "@/refresh-components/SimpleTabs";
+import { SvgFiles, SvgGlobe, SvgPencilRuler } from "@opal/icons";
+import WebCrawlPanel from "./WebCrawlPanel";
+import TextInputPanel from "./TextInputPanel";
 
 const ACCEPTED_TYPES = {
   "application/pdf": [".pdf"],
@@ -98,16 +102,22 @@ function ChunkViewer({
           >
             <div className="flex items-center gap-3 mb-1">
               <Text as="p" mainContentMuted text03 className="font-mono text-[10px]">
-                Chunk {idx + 1}
+                {t("admin.documentProcessing.chunk", {
+                  index: idx + 1,
+                  defaultValue: "Chunk {{index}}",
+                })}
               </Text>
               <Text as="p" mainContentMuted text03 className="font-mono text-[10px] opacity-60" title={chunk.id}>
-                ID: {chunk.id}
+                {t("admin.documentProcessing.chunkId", {
+                  defaultValue: "ID",
+                })}
+                : {chunk.id}
               </Text>
               {chunk.metadata?.char_count != null && (
-                <StatBadge label="Chars" value={chunk.metadata.char_count as number} />
+                <StatBadge label={t("admin.documentProcessing.chunkStats.chars")} value={chunk.metadata.char_count as number} />
               )}
               {chunk.metadata?.token_count != null && (
-                <StatBadge label="Tokens" value={chunk.metadata.token_count as number} />
+                <StatBadge label={t("admin.documentProcessing.chunkStats.tokens")} value={chunk.metadata.token_count as number} />
               )}
             </div>
             <Text
@@ -157,11 +167,17 @@ function DocumentRow({
 
   const fileName =
     (doc.metadata?.filename as string) ||
+    (doc.metadata?.title as string) ||
     (doc.metadata?.source as string) ||
     doc.id;
 
   async function handleDelete() {
-    const confirmed = window.confirm(`Delete document "${fileName}"?`);
+    const confirmed = window.confirm(
+      t("admin.documentProcessing.deleteDocumentConfirm", {
+        name: fileName,
+        defaultValue: 'Delete document "{{name}}"?',
+      })
+    );
     if (!confirmed) return;
     setIsDeleting(true);
     try {
@@ -170,7 +186,9 @@ function DocumentRow({
       onDelete();
     } catch (e) {
       toast.error(
-        e instanceof Error ? e.message : "Failed to delete document"
+        e instanceof Error
+          ? e.message
+          : t("admin.documentProcessing.deleteDocumentFailed")
       );
     } finally {
       setIsDeleting(false);
@@ -202,18 +220,30 @@ function DocumentRow({
             size="md"
             leftIcon={expanded ? SvgChevronUpSmall : SvgChevronDownSmall}
             onClick={() => setExpanded((v) => !v)}
-            aria-label={expanded ? "Collapse chunks" : "View chunks"}
+            aria-label={
+              expanded
+                ? t("admin.documentProcessing.collapseChunks", {
+                    defaultValue: "Collapse chunks",
+                  })
+                : t("admin.documentProcessing.viewChunks", {
+                    defaultValue: "View chunks",
+                  })
+            }
           >
             {t("admin.documentProcessing.chunks")}
           </Button>
           <Button
             danger
             size="md"
-            leftIcon={SvgTrash}
             onClick={handleDelete}
             disabled={isDeleting}
-            aria-label="Delete document"
-          />
+            aria-label={t("admin.documentProcessing.deleteDocumentAria", {
+              defaultValue: "Delete document",
+            })}
+            className="!px-2"
+          >
+            <SvgTrash className="h-4 w-4" />
+          </Button>
         </div>
       </div>
 
@@ -246,14 +276,22 @@ export default function DocumentsPanel({ collectionId, readOnly = false }: Docum
       if (!collectionId || acceptedFiles.length === 0) return;
       setIsUploading(true);
       try {
-        const result = await uploadDocuments(collectionId, acceptedFiles);
+        const metadatas = acceptedFiles.map((f) => ({ filename: f.name }));
+        const result = await uploadDocuments(collectionId, acceptedFiles, metadatas);
         await mutate();
-        toast.success(result.message || `Uploaded ${acceptedFiles.length} file(s).`);
+        toast.success(
+          t("admin.documentProcessing.uploadSuccess", {
+            count: acceptedFiles.length,
+            defaultValue: `${acceptedFiles.length} dosya başarıyla yüklendi.`,
+          })
+        );
         if (result.warnings) {
           toast.warning(result.warnings);
         }
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : "Upload failed");
+        toast.error(
+          e instanceof Error ? e.message : t("admin.documentProcessing.uploadFailed")
+        );
       } finally {
         setIsUploading(false);
       }
@@ -265,7 +303,7 @@ export default function DocumentsPanel({ collectionId, readOnly = false }: Docum
     return (
       <CardSection>
         <Text as="p" mainContentMuted text03 className="text-center py-6">
-          Select a collection above to manage documents.
+          {t("admin.documentProcessing.selectCollectionToManageDocuments")}
         </Text>
       </CardSection>
     );
@@ -273,76 +311,130 @@ export default function DocumentsPanel({ collectionId, readOnly = false }: Docum
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Upload dropzone - hidden for datasource (read-only) collections */}
+      {/* Upload section — Belge / Web tabs (hidden for read-only datasource collections) */}
       {!readOnly && (
-        <CardSection className="flex flex-col gap-3">
-          <Text as="p" headingH3 text05 className="border-b border-border-01 pb-2">
-            {t("admin.documentProcessing.uploadDocuments")}
-          </Text>
-          <Text as="p" mainContentBody text04 className="leading-relaxed">
-            {t("admin.documentProcessing.supportedFormats")}
-            RTF. Max 200 MB per file.
-          </Text>
+        <SimpleTabs
+          tabs={SimpleTabs.generateTabs({
+            document: {
+              name: t("admin.documentProcessing.tabs.document", {
+                defaultValue: "Belge",
+              }),
+              icon: SvgFiles,
+              content: (
+                <CardSection className="flex flex-col gap-3">
+                  <Text
+                    as="p"
+                    mainContentBody
+                    text04
+                    className="leading-relaxed"
+                  >
+                    {t("admin.documentProcessing.supportedFormats")}
+                  </Text>
 
-          <Dropzone
-            onDrop={handleDrop}
-            onDragEnter={() => setIsDragActive(true)}
-            onDragLeave={() => setIsDragActive(false)}
-            accept={ACCEPTED_TYPES}
-            maxSize={MAX_SIZE_BYTES}
-            multiple
-            disabled={isUploading}
-            onDropRejected={(rejections) => {
-              const reason = rejections[0]?.errors[0]?.message ?? "File rejected";
-              toast.error(reason);
-            }}
-          >
-            {({ getRootProps, getInputProps }) => (
-              <div
-                {...getRootProps()}
-                className={cn(
-                  "flex flex-col items-center justify-center gap-3",
-                  "rounded-08 border-2 border-dashed",
-                  "px-6 py-10 cursor-pointer transition-colors",
-                  isDragActive
-                    ? "border-action-primary bg-background-neutral-02"
-                    : "border-border-01 bg-background-neutral-01 hover:border-action-primary hover:bg-background-neutral-02",
-                  isUploading && "opacity-60 cursor-not-allowed"
-                )}
-              >
-                <input {...getInputProps()} />
-                {isUploading ? (
-                  <>
-                    <ThreeDotsLoader />
-                    <Text as="p" mainContentMuted text03>
-                      {t("admin.documentProcessing.uploadingAndProcessing")}
-                    </Text>
-                  </>
-                ) : (
-                  <>
-                    <SvgUploadCloud
-                      className={cn(
-                        "h-8 w-8 transition-colors",
-                        isDragActive ? "stroke-action-primary" : "stroke-text-03"
-                      )}
-                      aria-hidden
-                    />
-                    <div className="text-center">
-                      <Text as="p" mainUiAction text04>
-                        {isDragActive
-                          ? t("admin.documentProcessing.dropFilesHere")
-                          : t("admin.documentProcessing.dragDropOrClick")}
-                      </Text>
-                      <Text as="p" mainContentMuted text03 className="mt-1 text-xs">
-                        {t("admin.documentProcessing.supportedFormatsCompact")}
-                      </Text>
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
-          </Dropzone>
-        </CardSection>
+                  <Dropzone
+                    onDrop={handleDrop}
+                    onDragEnter={() => setIsDragActive(true)}
+                    onDragLeave={() => setIsDragActive(false)}
+                    accept={ACCEPTED_TYPES}
+                    maxSize={MAX_SIZE_BYTES}
+                    multiple
+                    disabled={isUploading}
+                    onDropRejected={(rejections) => {
+                      const reason =
+                        rejections[0]?.errors[0]?.message ?? "File rejected";
+                      toast.error(reason);
+                    }}
+                  >
+                    {({ getRootProps, getInputProps }) => (
+                      <div
+                        {...getRootProps()}
+                        className={cn(
+                          "flex flex-col items-center justify-center gap-3",
+                          "rounded-08 border-2 border-dashed",
+                          "px-6 py-10 cursor-pointer transition-colors",
+                          isDragActive
+                            ? "border-action-primary bg-background-neutral-02"
+                            : "border-border-01 bg-background-neutral-01 hover:border-action-primary hover:bg-background-neutral-02",
+                          isUploading && "opacity-60 cursor-not-allowed"
+                        )}
+                      >
+                        <input {...getInputProps()} />
+                        {isUploading ? (
+                          <>
+                            <ThreeDotsLoader />
+                            <Text as="p" mainContentMuted text03>
+                              {t(
+                                "admin.documentProcessing.uploadingAndProcessing"
+                              )}
+                            </Text>
+                          </>
+                        ) : (
+                          <>
+                            <SvgUploadCloud
+                              className={cn(
+                                "h-8 w-8 transition-colors",
+                                isDragActive
+                                  ? "stroke-action-primary"
+                                  : "stroke-text-03"
+                              )}
+                              aria-hidden
+                            />
+                            <div className="text-center">
+                              <Text as="p" mainUiAction text04>
+                                {isDragActive
+                                  ? t(
+                                      "admin.documentProcessing.dropFilesHere"
+                                    )
+                                  : t(
+                                      "admin.documentProcessing.dragDropOrClick"
+                                    )}
+                              </Text>
+                              <Text
+                                as="p"
+                                mainContentMuted
+                                text03
+                                className="mt-1 text-xs"
+                              >
+                                {t(
+                                  "admin.documentProcessing.supportedFormatsCompact"
+                                )}
+                              </Text>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </Dropzone>
+                </CardSection>
+              ),
+            },
+            text: {
+              name: t("admin.documentProcessing.tabs.text", {
+                defaultValue: "Metin",
+              }),
+              icon: SvgPencilRuler,
+              content: (
+                <TextInputPanel
+                  collectionId={collectionId}
+                  onDocumentAdded={() => mutate()}
+                />
+              ),
+            },
+            web: {
+              name: t("admin.documentProcessing.tabs.web", {
+                defaultValue: "Web",
+              }),
+              icon: SvgGlobe,
+              content: (
+                <WebCrawlPanel
+                  collectionId={collectionId}
+                  onDocumentAdded={() => mutate()}
+                />
+              ),
+            },
+          })}
+          defaultValue="document"
+        />
       )}
       {/* Document list */}
       <CardSection className="flex flex-col gap-3">
