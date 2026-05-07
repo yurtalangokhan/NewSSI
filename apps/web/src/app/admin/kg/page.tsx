@@ -112,7 +112,6 @@ function CollectionSelector({
       </Text>
       <Text as="p" mainContentBody text04>
         {t("admin.kg.collectionDescription")}
-        graph searches.
       </Text>
       <div className="w-full max-w-sm">
         <InputSelect
@@ -167,7 +166,6 @@ function CollectionSelector({
       {!highlight && hasUnbuilt && (
         <Text as="p" mainContentMuted text03 className="text-xs">
           {t("admin.kg.noGraphHintPrefix")} <span className="inline-flex items-center rounded-04 border border-status-warning-03 bg-status-warning-01 px-1 text-[10px] font-medium text-status-warning-06">{t("admin.kg.noGraph")}</span> {t("admin.kg.noGraphHintSuffix")} <strong>{t("admin.kg.buildTab")}</strong>.
-          <strong>Build</strong> tab.
         </Text>
       )}
     </CardSection>

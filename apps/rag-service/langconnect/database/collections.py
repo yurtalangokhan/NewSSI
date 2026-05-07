@@ -146,6 +146,10 @@ class Collection:
             await self._get_details_or_raise()
         return docs
 
+    async def count(self) -> int:
+        """Return the number of distinct documents in this collection."""
+        return await self._doc_repo.count_documents()
+
     async def get(self, document_id: str) -> dict[str, Any]:
         """Fetch a single chunk by its UUID, verifying collection ownership."""
         result = await self._doc_repo.get_document(document_id)

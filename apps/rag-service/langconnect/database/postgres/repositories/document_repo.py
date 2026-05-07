@@ -116,6 +116,24 @@ class DocumentRepository(BaseRepository):
             "metadata": self._parse_metadata(row.cmetadata),
         }
 
+    async def count_documents(self) -> int:
+        """Count distinct file_ids (i.e. documents) in this collection."""
+        async with self._session() as session:
+            emb = aliased(PgEmbedding, name="emb")
+            col = aliased(PgCollection, name="col")
+
+            file_id_expr = emb.cmetadata["file_id"].as_string()
+
+            stmt = (
+                select(func.count(distinct(file_id_expr)))
+                .join(col, emb.collection_id == col.uuid)
+                .where(col.uuid == self.collection_id)
+                .where(col.cmetadata["owner_id"].as_string() == self.user_id)
+                .where(file_id_expr.isnot(None))
+            )
+            result = await session.execute(stmt)
+            return result.scalar_one() or 0
+
     async def list_chunks_by_file_id(self, file_id: str) -> list[dict[str, Any]]:
         """List all chunks for a specific file by its file_id."""
         async with self._session() as session:

@@ -15,6 +15,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 
 from langconnect.auth import AuthenticatedUser, resolve_user
+from langconnect.database.collections import Collection
 from langconnect.database.neo4j import GraphStore
 from langconnect.models.graph import (
     BuildProgress,
@@ -58,6 +59,18 @@ async def build_graph(
         collection_id=request.collection_id,
         user_id=user.identity,
     )
+
+    # Reject the request when the collection has no documents
+    collection = Collection(
+        collection_id=request.collection_id,
+        user_id=user.identity,
+    )
+    doc_count = await collection.count()
+    if doc_count == 0:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Cannot build a knowledge graph: the collection contains no documents.",
+        )
 
     # Check if a build is already in progress
     existing = get_build_progress(request.collection_id)

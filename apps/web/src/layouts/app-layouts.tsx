@@ -196,7 +196,7 @@ function Header() {
       setDeleteModalOpen(false);
     } catch (error) {
       console.error("Failed to delete chat:", error);
-      showErrorNotification("Failed to delete chat. Please try again.");
+      showErrorNotification(t("sidebar.deleteChatError"));
     }
   }, [
     currentChatSession,
@@ -296,7 +296,6 @@ function Header() {
           }
         >
           {t("sidebar.deleteChatConfirmation")}
-          undone.
         </ConfirmationModalLayout>
       )}
 

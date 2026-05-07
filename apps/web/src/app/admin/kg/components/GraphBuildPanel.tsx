@@ -7,6 +7,7 @@ import Text from "@/refresh-components/texts/Text";
 import {
   useGraphBuildStatus,
   useGraphCollections,
+  useDocuments,
   buildGraph,
   deleteGraph,
   fetchGraphBuildStatus,
@@ -106,6 +107,9 @@ export default function GraphBuildPanel({
   );
 
   const selectedHasGraph = !!collectionId && graphCollectionSet.has(collectionId);
+
+  const { documents, isLoading: docsLoading } = useDocuments(collectionId);
+  const hasDocuments = documents.length > 0;
 
   const { status } = useGraphBuildStatus(collectionId, pollActive);
 
@@ -241,17 +245,26 @@ export default function GraphBuildPanel({
           {t("admin.kg.buildGraph")}
         </Text>
         <Text as="p" mainContentBody text04 className="leading-relaxed">
-          {t("admin.kg.buildGraphDescription")}
-          {t("admin.kg.selectCollectionToBuild")}
+          {t("admin.kg.buildGraphDescription")}{" "}{t("admin.kg.selectCollectionToBuild")}
         </Text>
       </div>
 
       {!collectionId ? (
         <Text as="p" mainContentMuted text03 className="text-sm">
-          Select a collection above to build or manage its knowledge graph.
+          {t("admin.kg.selectCollectionToBuild")}
         </Text>
       ) : (
         <>
+          {/* No documents warning */}
+          {!inProgress && !docsLoading && !hasDocuments && (
+            <div className="flex items-start gap-2 rounded-08 border border-status-error-03 bg-status-error-01 p-3">
+              <SvgAlertTriangle className="h-4 w-4 shrink-0 stroke-status-error-06 mt-0.5" />
+              <Text as="p" mainContentBody text04 className="text-xs text-status-error-06">
+                {t("admin.kg.noDocumentsForBuild")}
+              </Text>
+            </div>
+          )}
+
           {/* Warning for already-built collections */}
           {selectedHasGraph && !inProgress && (
             <div className="flex items-start gap-2 rounded-08 border border-status-warning-03 bg-status-warning-01 p-3">
@@ -346,7 +359,7 @@ export default function GraphBuildPanel({
             <Button
               leftIcon={SvgActivity}
               onClick={handleBuild}
-              disabled={inProgress || isSubmitting}
+              disabled={inProgress || isSubmitting || !hasDocuments}
             >
               {inProgress
                 ? t("admin.kg.building")
@@ -381,6 +394,21 @@ export default function GraphBuildPanel({
               {t("admin.kg.deleteGraph")}
             </Button>
           </div>
+          {/* Document list */}
+          {!docsLoading && hasDocuments && (
+            <div className="flex flex-col gap-2">
+              <Text as="p" mainContentMuted text03 className="text-xs font-medium uppercase tracking-wide">
+                {t("admin.kg.collectionDocuments")} ({documents.length})
+              </Text>
+              <div className="flex flex-col gap-1 max-h-48 overflow-y-auto rounded-08 border border-border-01 bg-background-neutral-01 p-2">
+                {documents.map((doc) => (
+                  <div key={doc.id} className="flex items-center gap-2 px-2 py-1 rounded-04 hover:bg-background-neutral-02 text-xs text-text-03 truncate">
+                    <span className="truncate">{(doc.metadata?.filename as string) || (doc.metadata?.title as string) || doc.id}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </>
       )}
     </CardSection>

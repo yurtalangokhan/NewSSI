@@ -319,6 +319,7 @@ const en = {
     deleteProjectConfirmation:
       "Are you sure you want to delete this project? This action cannot be undone.",
     deleteChatTitle: "Delete Chat",
+    deleteChatError: "Failed to delete chat. Please try again.",
     deleteChatConfirmation:
       "Are you sure you want to delete this chat? This action cannot be undone.",
     deleteButton: "Delete",
@@ -2172,6 +2173,8 @@ const en = {
       noGraphHintSuffix:
         "marked items must have a graph built first. Select one and go to the",
       buildTab: "Build",
+      collectionDocuments: "Documents in Collection",
+      noDocumentsForBuild: "This collection has no documents. Add documents before building a graph.",
       graphExplorerTab: "Graph Explorer",
       searchTab: "Search",
       selectCollectionForTab: "Please select a collection to use this tab.",
@@ -3427,6 +3430,8 @@ const en = {
     customConfigValue: "Value",
     addNew: "Add New",
     customDefaultModelSubtext: "The model to use by default for this provider. Must be one of the models listed above.",
+    systemDefault: "System Default",
+    userDefault: "User Default",
     fillInAsNeeded: "Fill in the following as needed. Refer to the LiteLLM documentation for the provider specified above to determine which fields are required.",
     optionalApiKey: "[Optional] API Key",
     optionalApiBase: "[Optional] API Base",

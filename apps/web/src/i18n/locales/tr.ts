@@ -304,6 +304,7 @@ const tr = {
     deleteProjectConfirmation:
       "Bu projeyi silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.",
     deleteChatTitle: "Sohbeti Sil",
+    deleteChatError: "Sohbet silinemedi. Lütfen tekrar deneyin.",
     deleteChatConfirmation:
       "Bu sohbeti silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.",
     deleteButton: "Sil",
@@ -2186,6 +2187,8 @@ const tr = {
       noGraphHintSuffix:
         "olarak işaretlenen öğeler için önce grafik oluşturulmalıdır. Birini seçip",
       buildTab: "Oluştur",
+      collectionDocuments: "Koleksiyondaki Belgeler",
+      noDocumentsForBuild: "Bu koleksiyonda belge yok. Grafik oluşturmadan önce koleksiyona belge ekleyin.",
       graphExplorerTab: "Grafik Gezgini",
       searchTab: "Arama",
       selectCollectionForTab:
@@ -3390,6 +3393,8 @@ const tr = {
     customConfigValue: "Değer",
     addNew: "Yeni Ekle",
     customDefaultModelSubtext: "Bu sağlayıcı için varsayılan olarak kullanılacak model. Yukarıda listelenen modellerden biri olmalıdır.",
+    systemDefault: "Sistem Varsayılanı",
+    userDefault: "Kullanıcı Varsayılanı",
     fillInAsNeeded: "Aşağıdakileri gerektiği gibi doldurun. Hangi alanların gerekli olduğunu belirlemek için yukarıda belirtilen sağlayıcının LiteLLM belgelerine bakın.",
     optionalApiKey: "[İsteğe Bağlı] API Anahtarı",
     optionalApiBase: "[İsteğe Bağlı] API Base",
