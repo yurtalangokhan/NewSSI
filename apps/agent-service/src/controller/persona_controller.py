@@ -218,6 +218,7 @@ class PersonaController(BaseController):
 
     async def create_persona(self, payload: dict[str, Any]) -> dict[str, Any]:
         try:
+            rag_config = payload.get("rag_config")
             persona = await PersonaDB.create(
                 name=payload["name"],
                 description=payload["description"],
@@ -233,6 +234,7 @@ class PersonaController(BaseController):
                 labels=payload.get("label_ids", []),
                 base_agent=payload.get("base_agent"),
                 mcp_tools=payload.get("mcp_tools") or [],
+                rag_config=rag_config,
             )
         except Exception as exc:
             self._raise_internal_error(str(exc))
@@ -245,6 +247,7 @@ class PersonaController(BaseController):
             if existing and existing.get("is_builtin"):
                 raise HTTPException(status_code=403, detail="Cannot update built-in agents")
 
+            rag_config = payload.get("rag_config")
             persona = await PersonaDB.update(
                 persona_id,
                 name=payload["name"],
@@ -259,6 +262,7 @@ class PersonaController(BaseController):
                 labels=payload.get("label_ids", []),
                 base_agent=payload.get("base_agent"),
                 mcp_tools=payload.get("mcp_tools") or [],
+                rag_config=rag_config,
             )
             if not persona:
                 self._raise_not_found("Persona not found")

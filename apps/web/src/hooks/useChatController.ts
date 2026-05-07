@@ -2,6 +2,7 @@
 
 import {
   buildChatUrl,
+  createChatSession,
   nameChatSession,
   updateLlmOverrideForChatSession,
 } from "@/app/app/services/lib";
@@ -73,14 +74,6 @@ import { projectFilesToFileDescriptors } from "@/app/app/services/fileUtils";
 import { UserFileStatus } from "@/app/app/projects/projectsService";
 
 const SYSTEM_MESSAGE_ID = -3;
-
-function createLocalChatSessionId(): string {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-    return crypto.randomUUID();
-  }
-
-  return `chat-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
 
 export interface OnSubmitProps {
   message: string;
@@ -499,18 +492,25 @@ export default function useChatController({
       );
       if (isNewSession) {
         const activePersonaId = liveAgent?.external_id ?? liveAgent?.id ?? 0;
-        currChatSessionId = createLocalChatSessionId();
+        const parsedProjectId = projectId ? parseInt(projectId) : null;
 
-        if (!currChatSessionId) {
-          throw new Error("Failed to create a valid chat session ID");
+        try {
+          currChatSessionId = await createChatSession(
+            activePersonaId,
+            null,
+            parsedProjectId
+          );
+        } catch (error) {
+          console.error("Failed to create chat session:", error);
+          toast.error("Failed to create chat session");
+          return;
         }
 
-        // Optimistically add the new chat session to the sidebar cache
-        // This ensures "New Chat" appears immediately, even before any messages are saved
+        // Seed the sidebar cache with the server-issued session id before streaming starts.
         addPendingChatSession({
           chatSessionId: currChatSessionId,
           personaId: activePersonaId,
-          projectId: projectId ? parseInt(projectId) : null,
+          projectId: parsedProjectId,
         });
       } else {
         // Use the existing session ID from props or from the store

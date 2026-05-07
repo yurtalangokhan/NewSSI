@@ -32,6 +32,7 @@ DEFAULT_USER_AGENT = "OnyxWebCrawler/1.0 (+https://www.onyx.app)"
 DEFAULT_MAX_PDF_SIZE_BYTES = 50 * 1024 * 1024  # 50 MB
 DEFAULT_MAX_HTML_SIZE_BYTES = 20 * 1024 * 1024  # 20 MB
 DEFAULT_MAX_WORKERS = 5
+DEFAULT_MIN_DIRECT_TEXT_LENGTH = 180
 
 # Headers that, when present on a 4xx response, signal that the upstream
 # is a Cloudflare-style bot challenge (vs. a real auth/not-found error)
@@ -151,6 +152,10 @@ def _parse_html_to_web_content(url: str, html: str) -> WebContent:
     )
 
 
+def _looks_like_low_information_content(text: str, min_length: int) -> bool:
+    return len(text.strip()) < min_length
+
+
 class OnyxWebCrawler(WebContentProvider):
     """
     Lightweight built-in crawler that fetches HTML directly and extracts readable text.
@@ -171,12 +176,14 @@ class OnyxWebCrawler(WebContentProvider):
         user_agent: str = DEFAULT_USER_AGENT,
         max_pdf_size_bytes: int | None = None,
         max_html_size_bytes: int | None = None,
+        min_direct_text_length: int = DEFAULT_MIN_DIRECT_TEXT_LENGTH,
         playwright_fallback_enabled: bool = OPEN_URL_PLAYWRIGHT_FALLBACK_ENABLED,
     ) -> None:
         self._read_timeout_seconds = timeout_seconds
         self._connect_timeout_seconds = connect_timeout_seconds
         self._max_pdf_size_bytes = max_pdf_size_bytes
         self._max_html_size_bytes = max_html_size_bytes
+        self._min_direct_text_length = min_direct_text_length
         self._playwright_fallback_enabled = playwright_fallback_enabled
         self._headers = {
             "User-Agent": user_agent,
@@ -292,7 +299,32 @@ class OnyxWebCrawler(WebContentProvider):
             )
             return _failed_result(url, FailureReason.DECODE_ERROR)
 
-        return _parse_html_to_web_content(url, decoded_html)
+        direct_result = _parse_html_to_web_content(url, decoded_html)
+
+        if not self._playwright_fallback_enabled:
+            return direct_result
+
+        if not direct_result.scrape_successful:
+            logger.info(
+                "Direct HTML parse failed for %s; retrying via Playwright",
+                url,
+            )
+            fallback = self._fetch_via_playwright(url)
+            return fallback or direct_result
+
+        if _looks_like_low_information_content(
+            direct_result.full_content, self._min_direct_text_length
+        ):
+            logger.info(
+                "Direct HTML parse returned low-information content for %s; "
+                "retrying via Playwright",
+                url,
+            )
+            fallback = self._fetch_via_playwright(url)
+            if fallback is not None and fallback.scrape_successful:
+                return fallback
+
+        return direct_result
 
     def _handle_pdf_response(self, url: str, content: bytes) -> WebContent:
         if (

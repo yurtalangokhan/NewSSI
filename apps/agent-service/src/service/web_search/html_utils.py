@@ -18,17 +18,79 @@ class HtmlBasedConnectorTransformLinksStrategy(Enum):
 
 
 HTML_BASED_CONNECTOR_TRANSFORM_LINKS_STRATEGY = HtmlBasedConnectorTransformLinksStrategy.STRIP
-PARSE_WITH_TRAFILATURA = False
+PARSE_WITH_TRAFILATURA = True
 WEB_CONNECTOR_IGNORED_CLASSES: list[str] = []
 WEB_CONNECTOR_IGNORED_ELEMENTS: list[str] = []
 
 MINTLIFY_UNWANTED = ["sticky", "hidden"]
+NON_CONTENT_TAGS = ["script", "style", "noscript", "template"]
+
+# Semantic HTML5 tags that are structurally noise (navigation, chrome, sidebars)
+NOISE_SEMANTIC_TAGS = ["nav", "header", "footer", "aside"]
+
+# Tags that define the content root — never removed by noise filters
+_STRUCTURAL_TAGS = frozenset(["html", "head", "body", "main", "article", "section"])
+
+# ARIA landmark roles that indicate non-content regions
+NOISE_ARIA_ROLES = ["navigation", "banner", "complementary", "contentinfo"]
+
+# CSS class / id substrings that reliably indicate noise.
+# Matched as substrings (case-insensitive) against both class and id attributes.
+NOISE_CLASS_PATTERNS = [
+    "nav",
+    "navbar",
+    "menu",
+    "sidebar",
+    "widget",
+    "breadcrumb",
+    "cookie",
+    "consent",
+    "gdpr",
+    "advertisement",
+    "sponsor",
+    "social-share",
+    "share-bar",
+    "related-posts",
+    "recommended",
+    "popup",
+    "modal",
+    "overlay",
+    "banner",
+]
 
 
 @dataclass
 class ParsedHTML:
     title: str | None
     cleaned_text: str
+
+
+def _select_content_root(soup: bs4.BeautifulSoup) -> bs4.BeautifulSoup | bs4.element.Tag:
+    """Prefer content-bearing regions over full-document parsing.
+
+    Priority:
+    1) <article> when present (news/blog pages)
+    2) <main> / role=main
+    3) <body>
+    4) full soup as a last resort
+    """
+    body = soup.body
+    if body is None:
+        return soup
+
+    article = body.find("article")
+    if isinstance(article, bs4.element.Tag):
+        return article
+
+    main = body.find("main")
+    if isinstance(main, bs4.element.Tag):
+        return main
+
+    role_main = body.find(attrs={"role": "main"})
+    if isinstance(role_main, bs4.element.Tag):
+        return role_main
+
+    return body
 
 
 def strip_excessive_newlines_and_spaces(document: str) -> str:
@@ -175,6 +237,41 @@ def parse_html_page_basic(text: str | BytesIO | IO[bytes]) -> str:
     return format_document_soup(soup)
 
 
+def _remove_noise_elements(soup: bs4.BeautifulSoup) -> None:
+    """Remove structural noise (nav, chrome, sidebars) from a BeautifulSoup tree in-place.
+
+    Uses extract() rather than decompose() so that child nodes already held in
+    a pre-built find_all() list remain accessible without AttributeErrors.
+    Skips tags that have already been detached (parent is None).
+    """
+    for tag in soup.find_all(NOISE_SEMANTIC_TAGS):
+        if tag.parent is not None:
+            tag.extract()
+
+    for tag in soup.find_all(attrs={"role": True}):
+        if tag.parent is None:
+            continue
+        role_value = tag.get("role", "")
+        roles = role_value.split() if isinstance(role_value, str) else []
+        if any(r in NOISE_ARIA_ROLES for r in roles):
+            tag.extract()
+
+    noise_pattern = re.compile(
+        "|".join(re.escape(p) for p in NOISE_CLASS_PATTERNS), re.IGNORECASE
+    )
+    for tag in soup.find_all(True):
+        if tag.parent is None or tag.name in _STRUCTURAL_TAGS:
+            continue
+        # Match against each class token individually to avoid false positives
+        # on compound feature-flag class names (e.g. "vector-feature-menu-pinned").
+        classes = tag.get("class", [])
+        tag_id = tag.get("id", "") or ""
+        class_hit = any(noise_pattern.search(cls) for cls in classes)
+        id_hit = noise_pattern.search(tag_id)
+        if class_hit or id_hit:
+            tag.extract()
+
+
 def web_html_cleanup(
     page_content: str | bs4.BeautifulSoup,
     mintlify_cleanup_enabled: bool = True,
@@ -206,23 +303,32 @@ def web_html_cleanup(
     for undesired_tag in WEB_CONNECTOR_IGNORED_ELEMENTS:
         [tag.extract() for tag in soup.find_all(undesired_tag)]
 
+    for non_content_tag in NON_CONTENT_TAGS:
+        [tag.extract() for tag in soup.find_all(non_content_tag)]
+
     if additional_element_types_to_discard:
         for undesired_tag in additional_element_types_to_discard:
             [tag.extract() for tag in soup.find_all(undesired_tag)]
 
-    soup_string = str(soup)
     page_text = ""
 
     if PARSE_WITH_TRAFILATURA:
+        # Pass the full minimally-cleaned document to trafilatura so its own
+        # content-extraction algorithms can work on complete page context.
+        # Applying our noise filters first degrades trafilatura's heuristics.
         try:
-            page_text = parse_html_with_trafilatura(soup_string)
+            page_text = parse_html_with_trafilatura(str(soup))
             if not page_text:
                 raise ValueError("Empty content returned by trafilatura.")
         except Exception as e:
-            logger.info("Trafilatura parsing failed: %s. Falling back on bs4.", e)
-            page_text = format_document_soup(soup)
+            logger.warning("Trafilatura parsing failed: %s. Falling back on bs4.", e)
+            _remove_noise_elements(soup)
+            content_root = _select_content_root(soup)
+            page_text = format_document_soup(content_root)
     else:
-        page_text = format_document_soup(soup)
+        _remove_noise_elements(soup)
+        content_root = _select_content_root(soup)
+        page_text = format_document_soup(content_root)
 
     # 200B is ZeroWidthSpace which we don't care for
     cleaned_text = page_text.replace("\u200b", "")
