@@ -21,11 +21,13 @@ import { useTranslation } from "react-i18next";
 interface CollectionsPanelProps {
   selectedCollectionId: string | null;
   onCollectionSelect: (id: string | null, isDatasource?: boolean) => void;
+  isCollectionMutationLocked: boolean;
 }
 
 export default function CollectionsPanel({
   selectedCollectionId,
   onCollectionSelect,
+  isCollectionMutationLocked,
 }: CollectionsPanelProps) {
   const { t } = useTranslation();
   const { collections: allCollections, isLoading: collectionsLoading, mutate } = useCollections();
@@ -76,6 +78,16 @@ export default function CollectionsPanel({
 
   async function handleDelete() {
     if (!selectedCollectionId || !selectedCollection) return;
+    if (isCollectionMutationLocked) {
+      toast.warning(
+        t("admin.documentProcessing.collectionMutationLocked", {
+          defaultValue:
+            "Graph RAG build devam ederken bu koleksiyon üzerinde değişiklik yapılamaz.",
+        })
+      );
+      return;
+    }
+
     const confirmed = window.confirm(
       `Delete collection "${selectedCollection.name}"? This will remove all documents in it.`
     );
@@ -95,6 +107,16 @@ export default function CollectionsPanel({
 
   async function handleRename() {
     if (!selectedCollectionId || !selectedCollection) return;
+    if (isCollectionMutationLocked) {
+      toast.warning(
+        t("admin.documentProcessing.collectionMutationLocked", {
+          defaultValue:
+            "Graph RAG build devam ederken bu koleksiyon üzerinde değişiklik yapılamaz.",
+        })
+      );
+      return;
+    }
+
     const name = renameName.trim();
     if (!name || name === selectedCollection.name) {
       setIsRenaming(false);
@@ -189,7 +211,7 @@ export default function CollectionsPanel({
                   setRenameName(selectedCollection.name);
                   setIsRenaming(true);
                 }}
-                disabled={selectedIsDatasource}
+                disabled={selectedIsDatasource || isCollectionMutationLocked}
               >
                 {t("admin.documentProcessing.renameCollection")}
               </Button>
@@ -200,7 +222,7 @@ export default function CollectionsPanel({
                 danger
                 leftIcon={SvgTrash}
                 onClick={handleDelete}
-                disabled={isDeleting || isRenaming}
+                disabled={isDeleting || isRenaming || isCollectionMutationLocked}
               >
                 {isDeleting ? t("admin.documentProcessing.deleting") : t("modals.delete")}
               </Button>
@@ -268,6 +290,14 @@ export default function CollectionsPanel({
               {selectedIsDatasource && (
                 <Text as="span" mainContentMuted text03 className="text-xs italic ml-auto">
                   {t("admin.documentProcessing.readOnlyDatasourceCollection")}
+                </Text>
+              )}
+              {!selectedIsDatasource && isCollectionMutationLocked && (
+                <Text as="span" mainContentMuted text03 className="text-xs italic ml-auto">
+                  {t("admin.documentProcessing.collectionMutationLocked", {
+                    defaultValue:
+                      "Graph RAG build devam ederken bu koleksiyon üzerinde değişiklik yapılamaz.",
+                  })}
                 </Text>
               )}
             </div>

@@ -1,6 +1,7 @@
 import json
 from uuid import UUID
 
+from langconnect.models.graph import BuildProgress
 from tests.unit_tests.fixtures import (
     get_async_test_client,
 )
@@ -357,6 +358,58 @@ async def test_documents_create_with_invalid_metadata_format() -> None:
         )
 
         assert response.status_code == 400
+
+
+async def test_document_mutations_blocked_while_graph_building(
+    monkeypatch,
+) -> None:
+    """POST/DELETE document mutations should be blocked while build is active."""
+    async with get_async_test_client() as client:
+        create_col = await client.post(
+            "/collections",
+            json={"name": "docs_locked", "metadata": {}},
+            headers=USER_1_HEADERS,
+        )
+        assert create_col.status_code == 201
+        collection_id = create_col.json()["uuid"]
+
+        # Insert one document before lock so we can also test DELETE.
+        file_content = b"Before lock"
+        files = [("files", ("before-lock.txt", file_content, "text/plain"))]
+        upload_resp = await client.post(
+            f"/collections/{collection_id}/documents",
+            files=files,
+            headers=USER_1_HEADERS,
+        )
+        assert upload_resp.status_code == 200
+
+        docs_resp = await client.get(
+            f"/collections/{collection_id}/documents",
+            headers=USER_1_HEADERS,
+        )
+        assert docs_resp.status_code == 200
+        doc_id = docs_resp.json()[0]["id"]
+
+        def _fake_progress(_: str):
+            return BuildProgress(collection_id=collection_id, status="building")
+
+        monkeypatch.setattr(
+            "langconnect.services.build_lock.get_build_progress",
+            _fake_progress,
+        )
+
+        locked_upload = await client.post(
+            f"/collections/{collection_id}/documents",
+            files=[("files", ("locked.txt", b"Locked", "text/plain"))],
+            headers=USER_1_HEADERS,
+        )
+        assert locked_upload.status_code == 409
+
+        locked_delete = await client.delete(
+            f"/collections/{collection_id}/documents/{doc_id}",
+            headers=USER_1_HEADERS,
+        )
+        assert locked_delete.status_code == 409
 
         # Test with metadata that's not a list
         invalid_metadata_not_list = json.dumps({"key": "value"})
