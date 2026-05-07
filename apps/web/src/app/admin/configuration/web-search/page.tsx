@@ -87,6 +87,14 @@ interface HoverIconButtonProps extends React.ComponentProps<typeof Button> {
   children: React.ReactNode;
 }
 
+// Wraps SvgLoader with animate-spin while preserving the Button's icon styling.
+const SpinningLoader = ({
+  className,
+  ...props
+}: React.ComponentProps<typeof SvgLoader>) => (
+  <SvgLoader {...props} className={cn("animate-spin", className)} />
+);
+
 function HoverIconButton({
   isHovered,
   onMouseEnter,
@@ -1323,7 +1331,7 @@ export default function Page() {
                             tertiary
                             disabled={!onyxTestUrl.trim() || onyxTestLoading}
                             onClick={() => void handleOnyxCrawlerTest()}
-                            rightIcon={onyxTestLoading ? SvgLoader : SvgArrowRightCircle}
+                            rightIcon={onyxTestLoading ? SpinningLoader : SvgArrowRightCircle}
                           >
                             {onyxTestLoading
                               ? t("admin.webSearch.crawling", { defaultValue: "Crawling..." })
@@ -1341,11 +1349,17 @@ export default function Page() {
                           <div className="flex flex-col gap-2 rounded-8 border border-border-01 bg-background-neutral-01 px-3 py-2">
                             {onyxTestResult.scrape_successful ? (
                               <>
-                                {onyxTestResult.title && (
-                                  <Text as="p" mainUiBody className="font-semibold text-text-01">
-                                    {onyxTestResult.title}
-                                  </Text>
-                                )}
+                                <div className="flex items-center gap-2">
+                                  {onyxTestResult.title && (
+                                    <Text as="p" mainUiBody className="font-semibold text-text-01">
+                                      {onyxTestResult.title}
+                                    </Text>
+                                  )}
+                                  <span className="shrink-0 rounded-full bg-background-neutral-02 px-2 py-0.5 text-xs text-text-03">
+                                    {onyxTestResult.content.length.toLocaleString()}{" "}
+                                    {t("admin.webSearch.chars", { defaultValue: "karakter" })}
+                                  </span>
+                                </div>
                                 <Text
                                   as="p"
                                   mainUiBody
