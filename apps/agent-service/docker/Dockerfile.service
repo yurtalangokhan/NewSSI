@@ -11,6 +11,7 @@ RUN pip install uv
 
 # --no-frozen: allow uv to update the lock file if pyproject.toml changed
 RUN uv lock && uv sync --frozen --no-install-project --no-dev
+RUN uv run playwright install --with-deps chromium
 
 COPY src/agents/ ./agents/
 COPY src/api/ ./api/

@@ -53,6 +53,7 @@ class PersonaUpsertRequest(BaseModel):
     document_ids: list = []
     base_agent: str | None = None
     mcp_tools: list[str] = []
+    rag_config: dict | None = None
 
 
 @router.post("/api/persona")

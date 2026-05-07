@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from datetime import UTC, datetime
 from typing import Any
+from uuid import UUID
 
 from sqlalchemy import cast, delete, select
 from sqlalchemy.dialects.postgresql import JSONB
@@ -23,6 +24,15 @@ def _ensure_datetime(val: Any) -> datetime:
     if isinstance(val, str):
         return datetime.fromisoformat(val)
     return datetime.now(UTC)
+
+
+def _parse_thread_id(thread_id: str) -> UUID | None:
+    """Return a UUID for valid thread ids and ``None`` for malformed values."""
+    try:
+        return UUID(thread_id)
+    except (TypeError, ValueError, AttributeError):
+        logger.warning("Skipping thread lookup for malformed thread_id=%r", thread_id)
+        return None
 
 
 class ThreadRepository(BaseRepository):
@@ -73,9 +83,13 @@ class ThreadRepository(BaseRepository):
 
     async def get_thread(self, thread_id: str) -> dict[str, Any] | None:
         """Fetch a single thread by UUID."""
+        parsed_thread_id = _parse_thread_id(thread_id)
+        if parsed_thread_id is None:
+            return None
+
         async with self._session() as session:
             stmt = select(ThreadModel).where(
-                ThreadModel.thread_id == thread_id
+                ThreadModel.thread_id == parsed_thread_id
             )
             result = await session.execute(stmt)
             row = result.scalar_one_or_none()
@@ -143,9 +157,13 @@ class ThreadRepository(BaseRepository):
 
     async def delete_thread(self, thread_id: str) -> bool:
         """Delete a thread by UUID.  Returns ``True`` if a row was removed."""
+        parsed_thread_id = _parse_thread_id(thread_id)
+        if parsed_thread_id is None:
+            return False
+
         async with self._session() as session:
             stmt = delete(ThreadModel).where(
-                ThreadModel.thread_id == thread_id
+                ThreadModel.thread_id == parsed_thread_id
             )
             result = await session.execute(stmt)
             return result.rowcount > 0

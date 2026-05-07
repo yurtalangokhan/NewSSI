@@ -1,13 +1,11 @@
 """Web search admin configuration routes."""
 
-import logging
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 
+from controller import WebSearchController, get_web_search_controller
 from service.AuthService import verify_bearer
-
-logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/api/admin/web-search",
@@ -15,98 +13,44 @@ router = APIRouter(
     dependencies=[Depends(verify_bearer)],
 )
 
-_DEFAULT_CONTENT_PROVIDER = {
-    "id": 1,
-    "name": "Onyx Web Crawler",
-    "provider_type": "onyx_web_crawler",
-    "is_active": True,
-    "config": None,
-    "has_api_key": False,
-}
+
+def _get_controller() -> WebSearchController:
+    return get_web_search_controller()
 
 
 @router.get("/search-providers")
 async def list_search_providers() -> list[dict[str, Any]]:
-    return []
+    return _get_controller().list_search_providers()
 
 
 @router.get("/content-providers")
 async def list_content_providers() -> list[dict[str, Any]]:
-    return [_DEFAULT_CONTENT_PROVIDER]
+    return _get_controller().list_content_providers()
 
 
 @router.post("/content-providers/test")
 async def test_content_provider(payload: dict[str, Any]) -> dict[str, Any]:
     provider_type = payload.get("provider_type", "onyx_web_crawler")
-
-    if provider_type != "onyx_web_crawler":
-        raise HTTPException(
-            status_code=400,
-            detail=f"Unsupported content provider type: {provider_type}",
-        )
-
-    try:
-        from service.web_search.onyx_web_crawler import OnyxWebCrawler
-
-        crawler = OnyxWebCrawler()
-        results = crawler.contents(["https://example.com"])
-        if results and not results[0].scrape_successful:
-            raise HTTPException(
-                status_code=400,
-                detail=results[0].failure_reason or "Failed to fetch test URL",
-            )
-    except HTTPException:
-        raise
-    except Exception as exc:
-        logger.warning("OnyxWebCrawler test failed: %s", exc)
-        raise HTTPException(status_code=400, detail=str(exc))
-
-    return {"status": "ok"}
+    return _get_controller().test_content_provider(provider_type)
 
 
 @router.post("/content-providers/crawl")
 async def crawl_url(payload: dict[str, Any]) -> dict[str, Any]:
-    """Crawl a single URL with the Onyx Web Crawler and return the result."""
-    url: str | None = payload.get("url")
-    if not url or not isinstance(url, str) or not url.strip():
-        raise HTTPException(status_code=422, detail="A non-empty 'url' field is required.")
-
-    url = url.strip()
-    if not url.startswith(("http://", "https://")):
-        raise HTTPException(status_code=422, detail="URL must start with http:// or https://")
-
-    try:
-        from service.web_search.onyx_web_crawler import OnyxWebCrawler
-
-        crawler = OnyxWebCrawler()
-        results = crawler.contents([url])
-        result = results[0] if results else None
-        if result is None:
-            raise HTTPException(status_code=500, detail="No result returned from crawler.")
-
-        return {
-            "title": result.title,
-            "content": result.full_content,
-            "scrape_successful": result.scrape_successful,
-            "failure_reason": result.failure_reason,
-        }
-    except HTTPException:
-        raise
-    except Exception as exc:
-        logger.warning("OnyxWebCrawler crawl failed for %s: %s", url, exc)
-        raise HTTPException(status_code=500, detail=str(exc))
-
-
-@router.post("/content-providers/{provider_id}/activate")
-async def activate_content_provider(provider_id: int) -> dict[str, Any]:
-    return {"status": "ok", "id": provider_id}
-
-
-@router.post("/content-providers/{provider_id}/deactivate")
-async def deactivate_content_provider(provider_id: int) -> dict[str, Any]:
-    return {"status": "ok", "id": provider_id}
+    """Crawl a single URL with the built-in web crawler and return the result."""
+    url: str = payload.get("url") or ""
+    return _get_controller().crawl_url(url)
 
 
 @router.post("/content-providers/reset-default")
 async def reset_default_content_provider() -> dict[str, Any]:
-    return {"status": "ok"}
+    return _get_controller().reset_default_content_provider()
+
+
+@router.post("/content-providers/{provider_id}/activate")
+async def activate_content_provider(provider_id: int) -> dict[str, Any]:
+    return _get_controller().activate_content_provider(provider_id)
+
+
+@router.post("/content-providers/{provider_id}/deactivate")
+async def deactivate_content_provider(provider_id: int) -> dict[str, Any]:
+    return _get_controller().deactivate_content_provider(provider_id)
