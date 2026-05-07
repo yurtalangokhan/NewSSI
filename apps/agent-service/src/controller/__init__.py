@@ -15,6 +15,7 @@ from controller.run_controller import RunController, get_run_controller
 from controller.schedule_controller import ScheduleController, get_schedule_controller
 from controller.thread_controller import ThreadController, get_thread_controller
 from controller.user_controller import UserController, get_user_controller
+from controller.web_search_controller import WebSearchController, get_web_search_controller
 
 __all__ = [
     "BaseController",
@@ -44,4 +45,6 @@ __all__ = [
     "get_run_controller",
     "IngestController",
     "get_ingest_controller",
+    "WebSearchController",
+    "get_web_search_controller",
 ]
