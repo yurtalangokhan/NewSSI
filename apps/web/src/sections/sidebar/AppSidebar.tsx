@@ -37,7 +37,6 @@ import { useAppSidebarContext } from "@/providers/AppSidebarProvider";
 import ProjectFolderButton from "@/sections/sidebar/ProjectFolderButton";
 import CreateProjectModal from "@/components/modals/CreateProjectModal";
 import MoveCustomAgentChatModal from "@/components/modals/MoveCustomAgentChatModal";
-import ChatHistoryModal from "@/components/modals/ChatHistoryModal";
 import { useProjectsContext } from "@/providers/ProjectsContext";
 import { removeChatSessionFromProject } from "@/app/app/projects/projectsService";
 import type { Project } from "@/app/app/projects/projectsService";
@@ -63,7 +62,6 @@ import {
   SvgDevKit,
   SvgEditBig,
   SvgFolderPlus,
-  SvgHistory,
   SvgMoreHorizontal,
   SvgOnyxOctagon,
   SvgSearchMenu,
@@ -254,9 +252,6 @@ const MemoizedAppSidebarInner = memo(
     >(null);
     const [showMoveCustomAgentModal, setShowMoveCustomAgentModal] =
       useState(false);
-
-    // State for chat history modal
-    const [showChatHistoryModal, setShowChatHistoryModal] = useState(false);
 
     // Fetch notifications for build mode intro
     const { data: notifications, mutate: mutateNotifications } = useSWR<
@@ -562,20 +557,6 @@ const MemoizedAppSidebarInner = memo(
       [folded, t]
     );
 
-    // History button to open chat history modal
-    const historyButton = useMemo(
-      () => (
-        <SidebarTab
-          leftIcon={SvgHistory}
-          folded={folded}
-          onClick={() => setShowChatHistoryModal(true)}
-        >
-          {t("sidebar.chatHistory")}
-        </SidebarTab>
-      ),
-      [folded, t]
-    );
-
     const moreAgentsButton = useMemo(
       () => (
         <div data-testid="AppSidebar/more-agents">
@@ -688,19 +669,6 @@ const MemoizedAppSidebarInner = memo(
           />
         )}
 
-        {/* Chat History Modal */}
-        <ChatHistoryModal
-          open={showChatHistoryModal}
-          onClose={() => setShowChatHistoryModal(false)}
-          onSelectChat={(chatId) => {
-            router.push(`/app?chatId=${chatId}`);
-            setShowChatHistoryModal(false);
-          }}
-          onRefresh={() => {
-            refreshChatSessions();
-          }}
-        />
-
         {/* Intro animation overlay */}
         <AnimatePresence>
           {showIntroAnimation && (
@@ -735,7 +703,6 @@ const MemoizedAppSidebarInner = memo(
               <div className="flex flex-col gap-0.5">
                 {newSessionButton}
                 {searchChatsButton}
-                {historyButton}
                 {isOnyxCraftEnabled && buildButton}
               </div>
             }

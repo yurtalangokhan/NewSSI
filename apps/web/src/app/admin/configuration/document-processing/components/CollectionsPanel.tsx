@@ -12,6 +12,7 @@ import {
   useCollections,
   createCollection,
   deleteCollection,
+  updateCollection,
 } from "@/lib/langconnect";
 import { useAirbyteDatasources } from "@/lib/airbyte";
 import { SvgHardDrive, SvgPlus, SvgTrash } from "@opal/icons";
@@ -44,6 +45,9 @@ export default function CollectionsPanel({
   const [newName, setNewName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [renameName, setRenameName] = useState("");
+  const [isRenameSubmitting, setIsRenameSubmitting] = useState(false);
 
   const selectedCollection = collections.find(
     (c) => c.uuid === selectedCollectionId
@@ -86,6 +90,34 @@ export default function CollectionsPanel({
       toast.error(e instanceof Error ? e.message : "Failed to delete collection");
     } finally {
       setIsDeleting(false);
+    }
+  }
+
+  async function handleRename() {
+    if (!selectedCollectionId || !selectedCollection) return;
+    const name = renameName.trim();
+    if (!name || name === selectedCollection.name) {
+      setIsRenaming(false);
+      return;
+    }
+
+    setIsRenameSubmitting(true);
+    try {
+      const updated = await updateCollection(selectedCollectionId, { name });
+      await mutate();
+      onCollectionSelect(updated.uuid, selectedIsDatasource);
+      setIsRenaming(false);
+      toast.success(
+        t("admin.documentProcessing.collectionRenamed", { name: updated.name })
+      );
+    } catch (e) {
+      toast.error(
+        e instanceof Error
+          ? e.message
+          : t("admin.documentProcessing.collectionRenameFailed")
+      );
+    } finally {
+      setIsRenameSubmitting(false);
     }
   }
 
@@ -151,10 +183,24 @@ export default function CollectionsPanel({
 
             {selectedCollectionId && (
               <Button
+                action
+                onClick={() => {
+                  if (!selectedCollection) return;
+                  setRenameName(selectedCollection.name);
+                  setIsRenaming(true);
+                }}
+                disabled={selectedIsDatasource}
+              >
+                {t("admin.documentProcessing.renameCollection")}
+              </Button>
+            )}
+
+            {selectedCollectionId && (
+              <Button
                 danger
                 leftIcon={SvgTrash}
                 onClick={handleDelete}
-                disabled={isDeleting}
+                disabled={isDeleting || isRenaming}
               >
                 {isDeleting ? t("admin.documentProcessing.deleting") : t("modals.delete")}
               </Button>
@@ -183,6 +229,32 @@ export default function CollectionsPanel({
                 {isSubmitting
                   ? t("admin.documentProcessing.creating")
                   : t("admin.documentProcessing.create")}
+              </Button>
+            </div>
+          )}
+
+          {isRenaming && selectedCollection && (
+            <div className="flex items-center gap-2 pt-1">
+              <div className="flex-1">
+                <InputTypeIn
+                  placeholder={t("admin.documentProcessing.collectionName")}
+                  value={renameName}
+                  onChange={(e) => setRenameName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleRename();
+                    if (e.key === "Escape") setIsRenaming(false);
+                  }}
+                  autoFocus
+                />
+              </div>
+              <Button
+                action
+                onClick={handleRename}
+                disabled={isRenameSubmitting || !renameName.trim()}
+              >
+                {isRenameSubmitting
+                  ? t("admin.documentProcessing.renaming")
+                  : t("admin.documentProcessing.rename")}
               </Button>
             </div>
           )}

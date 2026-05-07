@@ -119,7 +119,7 @@ export default function LoginPage({
       )}
 
       {!hidePageRedirect && (
-        <p className="text-center mt-4">
+        <p className="text-center mt-4 text-white/90">
           {t("auth.noAccountPrompt")}{" "}
           <span
             onClick={() => {
@@ -129,7 +129,7 @@ export default function LoginPage({
                 window.location.href = "/auth/signup";
               }
             }}
-            className="text-link font-medium cursor-pointer"
+            className="text-white font-medium cursor-pointer underline"
           >
             {t("auth.createAccountLink")}
           </span>

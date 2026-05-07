@@ -90,6 +90,8 @@ export default function GraphBuildPanel({
 }: GraphBuildPanelProps) {
   const { t } = useTranslation();
   const [pollActive, setPollActive] = useState(false);
+  const [isPollingPaused, setIsPollingPaused] = useState(false);
+  const [isPollingStopped, setIsPollingStopped] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -120,23 +122,34 @@ export default function GraphBuildPanel({
     currentStatus === "building";
 
   useEffect(() => {
-    if (inProgress) {
+    if (inProgress && !isPollingPaused && !isPollingStopped) {
       setPollActive(true);
     } else if (currentStatus === "completed" || currentStatus === "failed") {
       setPollActive(false);
       setIsSubmitting(false);
+      setIsPollingPaused(false);
+      setIsPollingStopped(false);
       if (currentStatus === "completed") {
         mutateGraphCollections();
         onBuildComplete?.();
       }
     }
-  }, [currentStatus, inProgress, onBuildComplete, mutateGraphCollections]);
+  }, [
+    currentStatus,
+    inProgress,
+    isPollingPaused,
+    isPollingStopped,
+    onBuildComplete,
+    mutateGraphCollections,
+  ]);
 
   // Auto-resume polling when collection is selected (e.g. after page refresh)
   useEffect(() => {
     if (!collectionId) {
       setPollActive(false);
       setIsSubmitting(false);
+      setIsPollingPaused(false);
+      setIsPollingStopped(false);
       return;
     }
 
@@ -150,7 +163,9 @@ export default function GraphBuildPanel({
           data.status === "extracting" ||
           data.status === "building"
         ) {
-          setPollActive(true);
+          if (!isPollingPaused && !isPollingStopped) {
+            setPollActive(true);
+          }
         }
       } catch {
         // No active build — nothing to resume
@@ -160,12 +175,14 @@ export default function GraphBuildPanel({
     return () => {
       cancelled = true;
     };
-  }, [collectionId]);
+  }, [collectionId, isPollingPaused, isPollingStopped]);
 
   const handleBuild = async () => {
     if (!collectionId) return;
     setIsSubmitting(true);
     setPollActive(true);
+    setIsPollingPaused(false);
+    setIsPollingStopped(false);
     try {
       await buildGraph({ collection_id: collectionId });
       toast.success(t("admin.kg.graphBuildStarted"));
@@ -174,6 +191,26 @@ export default function GraphBuildPanel({
       setIsSubmitting(false);
       setPollActive(false);
     }
+  };
+
+  const handlePausePolling = () => {
+    setPollActive(false);
+    setIsPollingPaused(true);
+    setIsPollingStopped(false);
+    toast.info(t("admin.kg.pausedTrackingInfo"));
+  };
+
+  const handleStopPolling = () => {
+    setPollActive(false);
+    setIsPollingStopped(true);
+    setIsPollingPaused(false);
+    toast.info(t("admin.kg.stoppedTrackingInfo"));
+  };
+
+  const handleResumePolling = () => {
+    setIsPollingPaused(false);
+    setIsPollingStopped(false);
+    setPollActive(true);
   };
 
   const handleDelete = async () => {
@@ -293,6 +330,18 @@ export default function GraphBuildPanel({
             </Text>
           )}
 
+          {inProgress && isPollingPaused && (
+            <Text as="p" mainContentMuted text03 className="text-sm">
+              {t("admin.kg.pausedTrackingInfo")}
+            </Text>
+          )}
+
+          {inProgress && isPollingStopped && (
+            <Text as="p" mainContentMuted text03 className="text-sm">
+              {t("admin.kg.stoppedTrackingInfo")}
+            </Text>
+          )}
+
           <div className="flex items-center gap-2 pt-1">
             <Button
               leftIcon={SvgActivity}
@@ -305,6 +354,24 @@ export default function GraphBuildPanel({
                   ? t("admin.kg.rebuildGraph")
                   : t("admin.kg.buildGraph")}
             </Button>
+
+            {inProgress && !isPollingPaused && !isPollingStopped && (
+              <>
+                <Button secondary onClick={handlePausePolling}>
+                  {t("admin.kg.pauseBuild")}
+                </Button>
+                <Button danger onClick={handleStopPolling}>
+                  {t("admin.kg.stopBuild")}
+                </Button>
+              </>
+            )}
+
+            {inProgress && (isPollingPaused || isPollingStopped) && (
+              <Button secondary onClick={handleResumePolling}>
+                {t("admin.kg.resumeBuild")}
+              </Button>
+            )}
+
             <Button
               danger
               leftIcon={SvgTrash}
