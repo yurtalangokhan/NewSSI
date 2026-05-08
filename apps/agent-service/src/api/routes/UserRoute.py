@@ -63,6 +63,33 @@ class UserPersonalizationPayload(BaseModel):
     user_preferences: str | None = None
 
 
+class ThemePreferencePayload(BaseModel):
+    theme_preference: str
+
+
+class ChatBackgroundPayload(BaseModel):
+    chat_background: str | None = None
+
+
+class DefaultModelPayload(BaseModel):
+    default_model: str | None = None
+
+
+class AutoScrollPayload(BaseModel):
+    auto_scroll: bool
+
+
+class DefaultAppModePayload(BaseModel):
+    default_app_mode: str
+
+
+class InputPromptPayload(BaseModel):
+    prompt: str
+    content: str
+    active: bool = True
+    is_public: bool = False
+
+
 @router.get("/api/user/assistant/preferences")
 async def get_user_assistant_preferences():
     return await _get_controller().get_user_assistant_preferences()
@@ -94,6 +121,84 @@ async def update_user_personalization(
     return await _get_controller().update_user_personalization(
         user_id=user_id,
         personalization=payload.model_dump(exclude_none=True),
+    )
+
+
+@router.patch("/api/user/theme-preference")
+async def update_user_theme_preference(
+    payload: ThemePreferencePayload,
+    user_id: str | None = Depends(verify_api_key),
+):
+    if not user_id:
+        return {"success": False, "detail": "Not authenticated"}
+    return await _get_controller().update_user_theme_preference(
+        user_id=user_id,
+        theme_preference=payload.theme_preference,
+    )
+
+
+@router.patch("/api/user/chat-background")
+async def update_user_chat_background(
+    payload: ChatBackgroundPayload,
+    user_id: str | None = Depends(verify_api_key),
+):
+    if not user_id:
+        return {"success": False, "detail": "Not authenticated"}
+    return await _get_controller().update_user_chat_background(
+        user_id=user_id,
+        chat_background=payload.chat_background,
+    )
+
+
+@router.patch("/api/user/default-model")
+async def update_user_default_model(
+    payload: DefaultModelPayload,
+    user_id: str | None = Depends(verify_api_key),
+):
+    if not user_id:
+        return {"success": False, "detail": "Not authenticated"}
+    return await _get_controller().update_user_default_model(
+        user_id=user_id,
+        default_model=payload.default_model,
+    )
+
+
+@router.patch("/api/auto-scroll")
+async def update_user_auto_scroll(
+    payload: AutoScrollPayload,
+    user_id: str | None = Depends(verify_api_key),
+):
+    if not user_id:
+        return {"success": False, "detail": "Not authenticated"}
+    return await _get_controller().update_user_auto_scroll(
+        user_id=user_id,
+        auto_scroll=payload.auto_scroll,
+    )
+
+
+@router.patch("/api/shortcut-enabled")
+async def update_user_shortcut_enabled(
+    shortcut_enabled: bool,
+    user_id: str | None = Depends(verify_api_key),
+):
+    if not user_id:
+        return {"success": False, "detail": "Not authenticated"}
+    return await _get_controller().update_user_shortcut_enabled(
+        user_id=user_id,
+        shortcut_enabled=shortcut_enabled,
+    )
+
+
+@router.patch("/api/user/default-app-mode")
+async def update_user_default_app_mode(
+    payload: DefaultAppModePayload,
+    user_id: str | None = Depends(verify_api_key),
+):
+    if not user_id:
+        return {"success": False, "detail": "Not authenticated"}
+    return await _get_controller().update_user_default_app_mode(
+        user_id=user_id,
+        default_app_mode=payload.default_app_mode,
     )
 
 
@@ -133,8 +238,48 @@ async def get_notifications():
 
 
 @router.get("/api/input_prompt")
-async def get_input_prompts():
-    return await _get_controller().get_input_prompts()
+async def get_input_prompts(user_id: str | None = Depends(verify_api_key)):
+    if not user_id:
+        return []
+    return await _get_controller().get_input_prompts(user_id)
+
+
+@router.post("/api/input_prompt")
+async def create_input_prompt(
+    payload: InputPromptPayload,
+    user_id: str | None = Depends(verify_api_key),
+):
+    if not user_id:
+        return {"success": False, "detail": "Not authenticated"}
+    return await _get_controller().create_input_prompt(
+        user_id=user_id,
+        payload=payload.model_dump(),
+    )
+
+
+@router.patch("/api/input_prompt/{prompt_id}")
+async def update_input_prompt(
+    prompt_id: int,
+    payload: InputPromptPayload,
+    user_id: str | None = Depends(verify_api_key),
+):
+    if not user_id:
+        return {"success": False, "detail": "Not authenticated"}
+    return await _get_controller().update_input_prompt(
+        user_id=user_id,
+        prompt_id=prompt_id,
+        payload=payload.model_dump(),
+    )
+
+
+@router.delete("/api/input_prompt/{prompt_id}")
+async def delete_input_prompt(
+    prompt_id: int,
+    user_id: str | None = Depends(verify_api_key),
+):
+    if not user_id:
+        return {"success": False, "detail": "Not authenticated"}
+    return await _get_controller().delete_input_prompt(user_id=user_id, prompt_id=prompt_id)
 
 
 @router.get("/api/manage/connector-status")

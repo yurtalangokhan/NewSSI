@@ -10,6 +10,7 @@ from fastapi import HTTPException, status
 
 from controller.auth_controller import AuthController, get_auth_controller
 from controller.base import BaseController
+from core.db.repositories.user_settings_repo import UserSettingsRepository
 from core.env import env
 
 
@@ -19,6 +20,16 @@ class UserController(BaseController):
     def __init__(self, auth_controller: AuthController | None = None):
         self._auth_controller = auth_controller or get_auth_controller()
         self._supported_roles = ["admin", "global_curator", "curator", "limited", "basic"]
+        self._user_settings_repo = UserSettingsRepository()
+
+    async def _update_user_settings(self, user_id: str, updates: dict[str, Any]) -> dict[str, Any]:
+        try:
+            return await self._user_settings_repo.upsert_by_user_id(user_id, updates)
+        except Exception as exc:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to persist user settings: {exc}",
+            ) from exc
 
     def _is_keycloak_enabled(self) -> bool:
         return env.get("KEYCLOAK_ENABLED", "false").lower() == "true"
@@ -350,8 +361,45 @@ class UserController(BaseController):
     async def get_notifications(self) -> list[Any]:
         return []
 
-    async def get_input_prompts(self) -> list[Any]:
-        return []
+    async def get_input_prompts(self, user_id: str) -> list[Any]:
+        if not user_id:
+            return []
+        return await self._user_settings_repo.list_prompt_shortcuts(user_id)
+
+    async def create_input_prompt(self, *, user_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+        try:
+            return await self._user_settings_repo.create_prompt_shortcut(user_id, payload)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    async def update_input_prompt(
+        self,
+        *,
+        user_id: str,
+        prompt_id: int,
+        payload: dict[str, Any],
+    ) -> dict[str, Any]:
+        try:
+            updated = await self._user_settings_repo.update_prompt_shortcut(
+                user_id=user_id,
+                prompt_id=prompt_id,
+                payload=payload,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+        if updated is None:
+            raise HTTPException(status_code=404, detail="Input prompt not found")
+        return updated
+
+    async def delete_input_prompt(self, *, user_id: str, prompt_id: int) -> dict[str, bool]:
+        deleted = await self._user_settings_repo.delete_prompt_shortcut(
+            user_id=user_id,
+            prompt_id=prompt_id,
+        )
+        if not deleted:
+            raise HTTPException(status_code=404, detail="Input prompt not found")
+        return {"success": True}
 
     async def get_connector_status(self) -> list[Any]:
         return []
@@ -546,6 +594,7 @@ class UserController(BaseController):
         created_user_id = str(created.get("id", ""))
         if created_user_id:
             await self._set_user_realm_role(created_user_id, role or "basic")
+            await self._user_settings_repo.ensure_defaults(created_user_id)
 
         return {
             "success": True,
@@ -856,6 +905,84 @@ class UserController(BaseController):
                 detail=f"Failed to update user personalization: {resp.text}",
             )
 
+        settings_updates: dict[str, Any] = {}
+        if "memories" in personalization:
+            settings_updates["memories"] = personalization.get("memories") or []
+        if "use_memories" in personalization:
+            settings_updates["use_memories"] = bool(personalization.get("use_memories"))
+        if "enable_memory_tool" in personalization:
+            settings_updates["enable_memory_tool"] = bool(
+                personalization.get("enable_memory_tool")
+            )
+        if "user_preferences" in personalization:
+            settings_updates["user_preferences"] = str(
+                personalization.get("user_preferences") or ""
+            )
+        if settings_updates:
+            await self._update_user_settings(user_id, settings_updates)
+
+        return {"success": True}
+
+    async def update_user_theme_preference(
+        self,
+        *,
+        user_id: str,
+        theme_preference: str,
+    ) -> dict[str, Any]:
+        normalized = theme_preference.lower().strip()
+        if normalized not in {"light", "dark", "system"}:
+            raise HTTPException(status_code=400, detail="Invalid theme preference")
+        await self._update_user_settings(user_id, {"theme_preference": normalized})
+        return {"success": True}
+
+    async def update_user_chat_background(
+        self,
+        *,
+        user_id: str,
+        chat_background: str | None,
+    ) -> dict[str, Any]:
+        value = chat_background.strip() if isinstance(chat_background, str) else None
+        await self._update_user_settings(user_id, {"chat_background": value or None})
+        return {"success": True}
+
+    async def update_user_default_model(
+        self,
+        *,
+        user_id: str,
+        default_model: str | None,
+    ) -> dict[str, Any]:
+        value = default_model.strip() if isinstance(default_model, str) else None
+        await self._update_user_settings(user_id, {"default_model": value or None})
+        return {"success": True}
+
+    async def update_user_auto_scroll(
+        self,
+        *,
+        user_id: str,
+        auto_scroll: bool,
+    ) -> dict[str, Any]:
+        await self._update_user_settings(user_id, {"auto_scroll": bool(auto_scroll)})
+        return {"success": True}
+
+    async def update_user_shortcut_enabled(
+        self,
+        *,
+        user_id: str,
+        shortcut_enabled: bool,
+    ) -> dict[str, Any]:
+        await self._update_user_settings(user_id, {"shortcut_enabled": bool(shortcut_enabled)})
+        return {"success": True}
+
+    async def update_user_default_app_mode(
+        self,
+        *,
+        user_id: str,
+        default_app_mode: str,
+    ) -> dict[str, Any]:
+        normalized = default_app_mode.upper().strip()
+        if normalized not in {"AUTO", "CHAT", "SEARCH"}:
+            raise HTTPException(status_code=400, detail="Invalid default app mode")
+        await self._update_user_settings(user_id, {"default_app_mode": normalized})
         return {"success": True}
 
     async def get_federated(self) -> list[Any]:
