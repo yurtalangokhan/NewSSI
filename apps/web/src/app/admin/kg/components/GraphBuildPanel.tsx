@@ -11,6 +11,9 @@ import {
   buildGraph,
   deleteGraph,
   fetchGraphBuildStatus,
+  pauseGraphBuild,
+  resumeGraphBuild,
+  stopGraphBuild,
   type GraphBuildStatus,
   type GraphBuildStatusResponse,
 } from "@/lib/langconnect";
@@ -95,6 +98,8 @@ export default function GraphBuildPanel({
   const [isPollingStopped, setIsPollingStopped] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [lastKnownSnapshot, setLastKnownSnapshot] =
+    useState<{ collectionId: string; status: GraphBuildStatusResponse } | null>(null);
 
   const {
     graphCollections,
@@ -111,14 +116,27 @@ export default function GraphBuildPanel({
   const { documents, isLoading: docsLoading } = useDocuments(collectionId);
   const hasDocuments = documents.length > 0;
 
-  const { status } = useGraphBuildStatus(collectionId, pollActive);
+  const { status, mutate: mutateStatus } = useGraphBuildStatus(collectionId, pollActive);
 
-  const currentStatus = status?.status;
+  useEffect(() => {
+    if (status && collectionId) {
+      setLastKnownSnapshot({ collectionId, status });
+    }
+  }, [status, collectionId]);
+
+  const effectiveStatus =
+    status ??
+    (lastKnownSnapshot?.collectionId === collectionId ? lastKnownSnapshot.status : null);
+
+  const currentStatus = effectiveStatus?.status;
 
   const computedPercent =
-    status && status.total_chunks > 0
-      ? Math.round((status.processed_chunks / status.total_chunks) * 100)
-      : (status?.progress_percent ?? 0);
+    effectiveStatus && effectiveStatus.total_chunks > 0
+      ? Math.round(
+          (effectiveStatus.processed_chunks / effectiveStatus.total_chunks) *
+            100
+        )
+      : (effectiveStatus?.progress_percent ?? 0);
 
   const inProgress =
     currentStatus === "pending" ||
@@ -154,6 +172,7 @@ export default function GraphBuildPanel({
       setIsSubmitting(false);
       setIsPollingPaused(false);
       setIsPollingStopped(false);
+      setLastKnownSnapshot(null);
       return;
     }
 
@@ -167,7 +186,12 @@ export default function GraphBuildPanel({
           data.status === "extracting" ||
           data.status === "building"
         ) {
-          if (!isPollingPaused && !isPollingStopped) {
+          setLastKnownSnapshot({ collectionId, status: data });
+          if (data.is_paused) {
+            setIsPollingPaused(true);
+            setIsPollingStopped(false);
+            setPollActive(false);
+          } else if (!isPollingPaused && !isPollingStopped) {
             setPollActive(true);
           }
         }
@@ -184,37 +208,69 @@ export default function GraphBuildPanel({
   const handleBuild = async () => {
     if (!collectionId) return;
     setIsSubmitting(true);
-    setPollActive(true);
     setIsPollingPaused(false);
     setIsPollingStopped(false);
+    // Clear stale snapshot and SWR cache so the previous build's status
+    // (e.g. 'failed') never flashes in the UI after a new build starts.
+    setLastKnownSnapshot(null);
+    await mutateStatus(undefined, { revalidate: false });
     try {
       await buildGraph({ collection_id: collectionId });
+      // API has returned: initialize_build_progress() already wrote 'pending'
+      // to the backend store synchronously, so turning on polling now will
+      // immediately get the correct status — no synthetic data needed.
+      setPollActive(true);
       toast.success(t("admin.kg.graphBuildStarted"));
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t("admin.kg.graphBuildStartFailed"));
       setIsSubmitting(false);
-      setPollActive(false);
     }
   };
 
-  const handlePausePolling = () => {
-    setPollActive(false);
-    setIsPollingPaused(true);
-    setIsPollingStopped(false);
-    toast.info(t("admin.kg.pausedTrackingInfo"));
+  const handlePausePolling = async () => {
+    if (!collectionId) return;
+    try {
+      await pauseGraphBuild(collectionId);
+      setPollActive(false);
+      setIsPollingPaused(true);
+      setIsPollingStopped(false);
+      toast.info(t("admin.kg.pausedTrackingInfo"));
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : t("admin.kg.graphBuildPauseFailed")
+      );
+    }
   };
 
-  const handleStopPolling = () => {
-    setPollActive(false);
-    setIsPollingStopped(true);
-    setIsPollingPaused(false);
-    toast.info(t("admin.kg.stoppedTrackingInfo"));
+  const handleStopPolling = async () => {
+    if (!collectionId) return;
+    try {
+      await stopGraphBuild(collectionId);
+      // Keep polling active so the frontend automatically detects the
+      // final "failed" status and cleans up all state via the useEffect.
+      setIsPollingPaused(false);
+      setIsPollingStopped(false);
+      setPollActive(true);
+      toast.info(t("admin.kg.graphBuildStopRequested"));
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : t("admin.kg.graphBuildStopFailed")
+      );
+    }
   };
 
-  const handleResumePolling = () => {
-    setIsPollingPaused(false);
-    setIsPollingStopped(false);
-    setPollActive(true);
+  const handleResumePolling = async () => {
+    if (!collectionId) return;
+    try {
+      await resumeGraphBuild(collectionId);
+      setIsPollingPaused(false);
+      setIsPollingStopped(false);
+      setPollActive(true);
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : t("admin.kg.graphBuildResumeFailed")
+      );
+    }
   };
 
   const handleDelete = async () => {
@@ -290,13 +346,13 @@ export default function GraphBuildPanel({
             </div>
           )}
 
-          {status && (inProgress || currentStatus === "completed") && (
+          {effectiveStatus && (inProgress || currentStatus === "completed") && (
             <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between gap-3 flex-wrap">
                 <Text as="p" mainContentMuted text03 className="text-xs font-medium uppercase tracking-wide">
                   {t("admin.kg.progress")}
                 </Text>
-                <StatusBadge status={status.status} />
+                <StatusBadge status={effectiveStatus.status} />
               </div>
 
               {inProgress && (
@@ -324,10 +380,10 @@ export default function GraphBuildPanel({
               )}
 
               <div className="grid grid-cols-4 gap-3">
-                <StatCounter label={t("admin.kg.chunks")} value={status.total_chunks} />
-                <StatCounter label={t("admin.kg.processed")} value={status.processed_chunks} />
-                <StatCounter label={t("admin.kg.entities")} value={status.extracted_entities} />
-                <StatCounter label={t("admin.kg.relations")} value={status.extracted_relations} />
+                <StatCounter label={t("admin.kg.chunks")} value={effectiveStatus.total_chunks} />
+                <StatCounter label={t("admin.kg.processed")} value={effectiveStatus.processed_chunks} />
+                <StatCounter label={t("admin.kg.entities")} value={effectiveStatus.extracted_entities} />
+                <StatCounter label={t("admin.kg.relations")} value={effectiveStatus.extracted_relations} />
               </div>
             </div>
           )}

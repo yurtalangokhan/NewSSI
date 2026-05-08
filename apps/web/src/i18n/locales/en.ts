@@ -2194,6 +2194,9 @@ const en = {
         "Select a collection above to build or manage a knowledge graph.",
       graphBuildStarted: "Graph build started.",
       graphBuildStartFailed: "Failed to start graph build",
+      graphBuildPauseFailed: "Failed to pause graph build",
+      graphBuildResumeFailed: "Failed to resume graph build",
+      graphBuildStopFailed: "Failed to stop graph build",
       pauseBuild: "Pause",
       resumeBuild: "Resume",
       stopBuild: "Stop",
@@ -2201,6 +2204,8 @@ const en = {
         "Build status updates are paused. Click Resume to continue monitoring progress.",
       stoppedTrackingInfo:
         "Build tracking is stopped for this session. Click Resume to re-attach to live status.",
+      graphBuildStopRequested:
+        "Stop requested. The build will terminate after the current step completes.",
       graphDeleted: "Graph deleted.",
       graphDeleteFailed: "Failed to delete graph",
       buildWarningTitle: "This collection already has a knowledge graph.",

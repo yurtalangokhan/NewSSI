@@ -94,6 +94,7 @@ export type GraphBuildStatus =
 export interface GraphBuildStatusResponse {
   collection_id: string;
   status: GraphBuildStatus;
+  is_paused: boolean;
   total_chunks: number;
   processed_chunks: number;
   extracted_entities: number;
@@ -456,6 +457,36 @@ export async function buildGraph(input: GraphBuildInput): Promise<void> {
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err?.detail || "Failed to start graph build");
+  }
+}
+
+export async function pauseGraphBuild(collectionId: string): Promise<void> {
+  const res = await fetch(`${RAG}/graph/build/${collectionId}/pause`, {
+    method: "POST",
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.detail || "Failed to pause graph build");
+  }
+}
+
+export async function resumeGraphBuild(collectionId: string): Promise<void> {
+  const res = await fetch(`${RAG}/graph/build/${collectionId}/resume`, {
+    method: "POST",
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.detail || "Failed to resume graph build");
+  }
+}
+
+export async function stopGraphBuild(collectionId: string): Promise<void> {
+  const res = await fetch(`${RAG}/graph/build/${collectionId}/stop`, {
+    method: "POST",
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.detail || "Failed to stop graph build");
   }
 }
 

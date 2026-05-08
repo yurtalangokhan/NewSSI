@@ -183,6 +183,7 @@ export default function useChatController({
   const setAbortController = useChatSessionStore(
     (state) => state.setAbortController
   );
+  const abortSession = useChatSessionStore((state) => state.abortSession);
   const setIsReady = useChatSessionStore((state) => state.setIsReady);
   const setStreamingStartTime = useChatSessionStore(
     (state) => state.setStreamingStartTime
@@ -334,15 +335,15 @@ export default function useChatController({
     const currentSession = getCurrentSessionId();
     const lastMessage = currentMessageHistory[currentMessageHistory.length - 1];
 
+    // Abort the frontend stream immediately so token rendering stops at once.
+    abortSession(currentSession);
+
     // Call the backend stop endpoint to set the Redis fence
     // This signals the backend to stop processing as soon as possible
     // The backend will emit a STOP packet when it detects the fence
-    try {
-      await stopChatSession(currentSession);
-    } catch (error) {
+    stopChatSession(currentSession).catch((error) => {
       console.error("Failed to stop chat session:", error);
-      // Continue with UI cleanup even if backend call fails
-    }
+    });
 
     // Clean up incomplete tool calls for immediate UI feedback
     if (
@@ -361,7 +362,7 @@ export default function useChatController({
     // The stream will close naturally when the backend sends the STOP packet
     setStreamingStartTime(currentSession, null);
     updateChatStateAction(currentSession, "input");
-  }, [currentMessageHistory, currentMessageTree]);
+  }, [abortSession, currentMessageHistory, currentMessageTree]);
 
   const onSubmit = useCallback(
     async ({

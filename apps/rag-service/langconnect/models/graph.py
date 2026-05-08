@@ -154,6 +154,7 @@ class BuildProgress(BaseModel):
 
     collection_id: str
     status: BuildStatus = BuildStatus.PENDING
+    is_paused: bool = False
     total_chunks: int = 0
     processed_chunks: int = 0
     extracted_entities: int = 0

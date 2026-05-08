@@ -2209,6 +2209,9 @@ const tr = {
         "Bilgi grafiği oluşturmak veya yönetmek için yukarıdan bir koleksiyon seçin.",
       graphBuildStarted: "Grafik oluşturma başlatıldı.",
       graphBuildStartFailed: "Grafik oluşturma başlatılamadı",
+      graphBuildPauseFailed: "Grafik oluşturma duraklatılamadı",
+      graphBuildResumeFailed: "Grafik oluşturma devam ettirilemedi",
+      graphBuildStopFailed: "Grafik oluşturma durdurulamadı",
       pauseBuild: "Duraklat",
       resumeBuild: "Devam Et",
       stopBuild: "Durdur",
@@ -2216,6 +2219,8 @@ const tr = {
         "Yapı durumu güncellemeleri duraklatıldı. İlerlemeyi izlemeye devam etmek için Devam Et'e tıklayın.",
       stoppedTrackingInfo:
         "Bu oturum için yapı takibi durduruldu. Canlı duruma yeniden bağlanmak için Devam Et'e tıklayın.",
+      graphBuildStopRequested:
+        "Durdurma isteği gönderildi. Mevcut adım tamamlandıktan sonra işlem sonlanacak.",
       graphDeleted: "Grafik silindi.",
       graphDeleteFailed: "Grafik silinemedi",
       buildWarningTitle: "Bu koleksiyonda zaten bir bilgi grafiği var.",

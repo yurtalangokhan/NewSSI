@@ -2,6 +2,8 @@
 import * as SettingsLayouts from "@/layouts/settings-layouts";
 import Button from "@/refresh-components/buttons/Button";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
+import SimpleLoader from "@/refresh-components/loaders/SimpleLoader";
+import Message from "@/refresh-components/messages/Message";
 import Text from "@/refresh-components/texts/Text";
 import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
 import {
@@ -99,7 +101,12 @@ export default function Page() {
     searchInputRef.current?.focus();
   }, []);
 
-  const { data: connectorsData, isLoading, error } = useAirbyteConnectors(
+  const {
+    data: connectorsData,
+    isLoading,
+    error,
+    mutate: refreshConnectors,
+  } = useAirbyteConnectors(
     searchTerm || undefined
   );
 
@@ -153,6 +160,11 @@ export default function Page() {
     }
   };
 
+  const errorMessage =
+    error instanceof Error && error.message
+      ? error.message
+      : t("admin.addConnector.couldNotLoad");
+
   return (
     <SettingsLayouts.Root width="full">
       <SettingsLayouts.Header
@@ -181,16 +193,33 @@ export default function Page() {
         />
 
         {isLoading ? (
-          <div className="pt-8">
-            <Text as="p" secondaryBody textLight05>
-              {t("admin.addConnector.loadingConnectors")}
-            </Text>
+          <div className="pt-8 max-w-2xl">
+            <Message
+              static
+              info
+              large
+              close={false}
+              icon
+              iconComponent={SimpleLoader}
+              text={t("admin.addConnector.loadingConnectors")}
+              description={t("admin.addConnector.loadingConnectors")}
+              className="w-full"
+            />
           </div>
         ) : error ? (
-          <div className="pt-12 text-center">
-            <Text as="p" secondaryBody textLight05>
-              {t("admin.addConnector.couldNotLoad")}
-            </Text>
+          <div className="pt-8 max-w-2xl">
+            <Message
+              static
+              error
+              large
+              close={false}
+              icon
+              text={t("admin.addConnector.couldNotLoad")}
+              description={errorMessage}
+              actions={t("common.retry", { defaultValue: "Retry" })}
+              onAction={() => void refreshConnectors()}
+              className="w-full"
+            />
           </div>
         ) : (
           <>
