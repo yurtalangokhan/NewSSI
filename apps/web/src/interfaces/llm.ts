@@ -135,3 +135,61 @@ export type FetchModelsParams =
   | OllamaFetchParams
   | OpenRouterFetchParams
   | VertexAIFetchParams;
+
+// Well-known provider types for configuration modals
+export interface WellKnownLangChainProvider {
+  name: string;
+  provider_type: string;
+  category: string;
+  known_models?: ModelConfiguration[];
+  recommended_default_model?: SimpleKnownModel | null;
+}
+
+// URL-based provider interface (from DB providers table)
+export interface ProviderModelConfig {
+  name: string;
+  is_visible: boolean;
+  max_input_tokens: number | null;
+  supports_image_input: boolean;
+  supports_reasoning: boolean;
+}
+
+export interface UrlBasedProvider {
+  id: string;
+  user_id: string;
+  name: string;
+  provider_type: "ollama" | "vllm" | "openai_compatible" | "litellm";
+  base_url: string;
+  has_api_key: boolean;
+  is_active: boolean;
+  is_builtin: boolean;
+  config: {
+    api_version?: string | null;
+    custom_config?: Record<string, string>;
+    model_configurations?: ProviderModelConfig[];
+    [key: string]: unknown;
+  };
+}
+
+// API-key provider interface (from DB user_providers table)
+export interface ApiKeyProviderDb {
+  id: string;
+  user_id: string;
+  name: string;
+  provider_type: string;
+  api_key_masked: string;
+  api_base: string | null;
+  api_version: string | null;
+  deployment_name: string | null;
+  custom_config: Record<string, unknown>;
+  is_active: boolean;
+}
+
+// Shape returned by GET /api/admin/providers
+export interface AllProvidersResponse {
+  builtin: UrlBasedProvider[];
+  url_providers: UrlBasedProvider[];
+  user_providers: ApiKeyProviderDb[];
+}
+
+export type ApiKeyProvider = ApiKeyProviderDb;

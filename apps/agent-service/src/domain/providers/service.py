@@ -74,7 +74,13 @@ class ProviderService:
 
     async def create_url_provider(self, user_id: str, data: dict[str, Any]) -> dict[str, Any]:
         self._check_builtin_collision(data)
-        return await self._repo.create_url_provider(user_id, data)
+        created = await self._repo.create_url_provider(user_id, data)
+        # Best-effort: auto-sync model capabilities from the provider
+        try:
+            created = await self.sync_models_for_provider(created["id"], user_id)
+        except Exception as exc:
+            logger.warning("Auto-sync models failed for new provider %s: %s", created.get("id"), exc)
+        return created
 
     async def update_url_provider(self, provider_id: str, user_id: str, data: dict[str, Any]) -> dict[str, Any]:
         result = await self._repo.update_url_provider(provider_id, user_id, data)
@@ -92,25 +98,163 @@ class ProviderService:
         return await self._repo.delete_user_provider(provider_id, user_id)
 
     async def get_models_for_provider(self, provider_id: str, user_id: str) -> list[dict[str, Any]]:
-        """Fetch available models for a DB-stored URL-based provider."""
-        provider = await self._repo.get_url_provider(provider_id, user_id)
+        """Fetch available models for either DB-stored or built-in URL-based providers."""
+        import uuid
+
+        provider: dict[str, Any] | None = None
+
+        # DB providers use UUID ids. Built-ins use provider_type ids like "ollama".
+        try:
+            uuid.UUID(provider_id)
+            provider = await self._repo.get_url_provider(provider_id, user_id)
+        except ValueError:
+            provider = self._resolve_builtin_provider(provider_id)
+
         if not provider:
             return []
 
-        ptype = provider["provider_type"]
-        base_url = provider["base_url"]
-
-        if ptype == "ollama":
-            return await self._fetch_ollama_models(base_url)
-        if ptype in ("vllm", "openai_compatible"):
-            return await self._fetch_vllm_models(base_url)
-        return []
+        return await self._fetch_models_by_type(
+            provider.get("provider_type", ""),
+            provider.get("base_url"),
+        )
 
     async def get_vllm_models(self, provider_id: str, user_id: str) -> list[dict[str, Any]]:
         provider = await self._repo.get_url_provider(provider_id, user_id)
         if not provider:
             return []
         return await self._fetch_vllm_models(provider["base_url"])
+
+    @staticmethod
+    def _resolve_builtin_provider(provider_type: str) -> dict[str, Any] | None:
+        from core.providers.registry import provider_registry
+
+        provider_registry.initialize()
+        provider = provider_registry.get_provider(provider_type)
+        if provider is None:
+            return None
+
+        return {
+            "provider_type": provider_type,
+            "base_url": getattr(provider, "base_url", None),
+        }
+
+    async def _fetch_models_by_type(self, provider_type: str, base_url: str | None) -> list[dict[str, Any]]:
+        if not base_url:
+            return []
+
+        if provider_type == "ollama":
+            return await self._fetch_ollama_models(base_url)
+        if provider_type in ("vllm", "openai_compatible", "litellm"):
+            return await self._fetch_vllm_models(base_url)
+        return []
+
+    async def test_connection(self, provider_type: str, base_url: str | None, api_key: str | None) -> dict[str, Any]:
+        """Test connectivity to a provider. Returns {success, latency_ms, error}."""
+        import time
+        start = time.monotonic()
+
+        try:
+            if provider_type == "ollama":
+                result = await self._test_ollama(base_url or "http://localhost:11434")
+            elif provider_type in ("vllm", "openai_compatible", "litellm"):
+                result = await self._test_openai_compatible(base_url or "", api_key)
+            elif provider_type == "openai":
+                result = await self._test_openai_api(api_key or "")
+            elif provider_type == "anthropic":
+                result = await self._test_anthropic(api_key or "")
+            else:
+                result = await self._test_generic_openai_api(provider_type, api_key or "", base_url)
+
+            latency_ms = round((time.monotonic() - start) * 1000)
+            return {"success": result["success"], "latency_ms": latency_ms, "error": result.get("error")}
+        except Exception as exc:
+            latency_ms = round((time.monotonic() - start) * 1000)
+            error_msg = str(exc) or type(exc).__name__
+            return {"success": False, "latency_ms": latency_ms, "error": error_msg}
+
+    @staticmethod
+    def _extract_origin(url: str) -> str:
+        """Return only scheme://host:port, stripping any path/query/fragment."""
+        from urllib.parse import urlparse
+        parsed = urlparse(url.rstrip("/"))
+        if parsed.netloc:
+            return f"{parsed.scheme}://{parsed.netloc}"
+        return url.rstrip("/")
+
+    @staticmethod
+    async def _test_ollama(base_url: str) -> dict[str, Any]:
+        import httpx
+        from urllib.parse import urlparse
+        parsed = urlparse(base_url.rstrip("/"))
+        origin = f"{parsed.scheme}://{parsed.netloc}" if parsed.netloc else base_url.rstrip("/")
+        try:
+            async with httpx.AsyncClient(timeout=8.0) as client:
+                resp = await client.get(f"{origin}/api/tags")
+                if resp.is_success:
+                    models = resp.json().get("models", [])
+                    return {"success": True, "model_count": len(models)}
+                return {"success": False, "error": f"HTTP {resp.status_code}"}
+        except httpx.ConnectError:
+            return {"success": False, "error": f"Cannot connect to {origin}"}
+        except httpx.TimeoutException:
+            return {"success": False, "error": f"Connection timed out ({origin})"}
+
+    @staticmethod
+    async def _test_openai_compatible(base_url: str, api_key: str | None) -> dict[str, Any]:
+        import httpx
+        from urllib.parse import urlparse
+        parsed = urlparse(base_url.rstrip("/"))
+        origin = f"{parsed.scheme}://{parsed.netloc}" if parsed.netloc else base_url.rstrip("/")
+        headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
+        try:
+            async with httpx.AsyncClient(timeout=8.0) as client:
+                resp = await client.get(f"{origin}/v1/models", headers=headers)
+                if resp.is_success:
+                    return {"success": True}
+                return {"success": False, "error": f"HTTP {resp.status_code}"}
+        except httpx.ConnectError:
+            return {"success": False, "error": f"Cannot connect to {origin}"}
+        except httpx.TimeoutException:
+            return {"success": False, "error": f"Connection timed out ({origin})"}
+
+    @staticmethod
+    async def _test_openai_api(api_key: str) -> dict[str, Any]:
+        import httpx
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            resp = await client.get(
+                "https://api.openai.com/v1/models",
+                headers={"Authorization": f"Bearer {api_key}"},
+            )
+            if resp.is_success:
+                return {"success": True}
+            return {"success": False, "error": f"HTTP {resp.status_code}: {resp.text[:200]}"}
+
+    @staticmethod
+    async def _test_anthropic(api_key: str) -> dict[str, Any]:
+        import httpx
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            resp = await client.get(
+                "https://api.anthropic.com/v1/models",
+                headers={"x-api-key": api_key, "anthropic-version": "2023-06-01"},
+            )
+            if resp.is_success:
+                return {"success": True}
+            return {"success": False, "error": f"HTTP {resp.status_code}: {resp.text[:200]}"}
+
+    @staticmethod
+    async def _test_generic_openai_api(provider_type: str, api_key: str, base_url: str | None) -> dict[str, Any]:
+        """Fallback: try /v1/models with the api_key as Bearer token."""
+        if not base_url:
+            return {"success": False, "error": f"No base_url configured for {provider_type}"}
+        import httpx
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            resp = await client.get(
+                f"{base_url.rstrip('/')}/v1/models",
+                headers={"Authorization": f"Bearer {api_key}"},
+            )
+            if resp.is_success:
+                return {"success": True}
+            return {"success": False, "error": f"HTTP {resp.status_code}"}
 
     async def stream_ollama_pull(self, model_name: str, provider_id: str, user_id: str):
         """Stream Ollama model pull progress as SSE."""
@@ -134,6 +278,41 @@ class ProviderService:
                         yield f"data: {line}\n\n"
         yield 'data: {"status":"done"}\n\n'
 
+    async def sync_models_for_provider(self, provider_id: str, user_id: str) -> dict[str, Any]:
+        """Fetch models from provider, infer capabilities, and persist to config."""
+        provider = await self._repo.get_url_provider(provider_id, user_id)
+        if not provider:
+            raise ValueError("Provider not found")
+
+        ptype = provider["provider_type"]
+        base_url = provider["base_url"]
+
+        if ptype == "ollama":
+            models = await self._fetch_ollama_models(base_url)
+        elif ptype in ("vllm", "openai_compatible", "litellm"):
+            models = await self._fetch_vllm_models(base_url)
+        else:
+            models = []
+
+        model_configurations = [
+            {
+                "name": m["name"],
+                "is_visible": True,
+                "max_input_tokens": m.get("max_input_tokens"),
+                "supports_image_input": m.get("supports_image_input", False),
+                "supports_reasoning": m.get("supports_reasoning", False),
+            }
+            for m in models
+        ]
+
+        config = dict(provider.get("config") or {})
+        config["model_configurations"] = model_configurations
+
+        updated = await self._repo.update_url_provider(
+            provider_id, user_id, {**provider, "config": config}
+        )
+        return updated or provider
+
     # ── Helpers ──────────────────────────────────────────────────────────────
 
     def _check_builtin_collision(self, data: dict[str, Any]) -> None:
@@ -148,34 +327,92 @@ class ProviderService:
         if ptype == "vllm" and vllm_url and base_url == vllm_url:
             raise ValueError("This URL is already used by the built-in vLLM provider.")
 
+    # ── Model fetching ───────────────────────────────────────────────────────
+
     @staticmethod
     async def _fetch_ollama_models(base_url: str) -> list[dict[str, Any]]:
+        """Fetch models from Ollama using /api/show capabilities (Ollama >= 0.5.0)."""
+        import asyncio
         import httpx
+
+        origin = ProviderService._extract_origin(base_url)
         try:
             async with httpx.AsyncClient(timeout=5.0) as client:
-                resp = await client.get(f"{base_url}/api/tags")
-                if not resp.is_success:
+                tags_resp = await client.get(f"{origin}/api/tags")
+                if not tags_resp.is_success:
                     return []
+                raw_models = tags_resp.json().get("models", [])
+
+                async def _show(model_name: str) -> dict[str, Any]:
+                    try:
+                        r = await client.post(
+                            f"{origin}/api/show",
+                            json={"name": model_name},
+                            timeout=4.0,
+                        )
+                        if not r.is_success:
+                            return {}
+                        data = r.json()
+
+                        # ── Context length ────────────────────────────────
+                        ctx_len: int | None = None
+                        for key, val in (data.get("model_info") or {}).items():
+                            if key.endswith(".context_length") and isinstance(val, int) and val > 0:
+                                ctx_len = val
+                                break
+                        if ctx_len is None and isinstance(data.get("context_length"), int):
+                            ctx_len = data["context_length"]
+
+                        # ── Capabilities (Ollama >= 0.5.0) ───────────────
+                        # Possible values: "completion", "vision", "thinking", "tools",
+                        #                  "embedding", "insert"
+                        caps_list: list[str] = data.get("capabilities") or []
+                        return {
+                            "ctx_len": ctx_len,
+                            "supports_image_input": "vision" in caps_list,
+                            "supports_reasoning": "thinking" in caps_list,
+                        }
+                    except Exception:
+                        return {}
+
+                show_results = await asyncio.gather(*(_show(m["name"]) for m in raw_models))
+
                 return [
-                    {"name": m["name"], "provider_type": "ollama"}
-                    for m in resp.json().get("models", [])
+                    {
+                        "name": m["name"],
+                        "provider_type": "ollama",
+                        "size": m.get("size"),
+                        "max_input_tokens": show.get("ctx_len"),
+                        "supports_image_input": show.get("supports_image_input", False),
+                        "supports_reasoning": show.get("supports_reasoning", False),
+                    }
+                    for m, show in zip(raw_models, show_results)
                 ]
         except Exception as e:
-            logger.warning("Failed to fetch Ollama models from %s: %s", base_url, e)
+            logger.warning("Failed to fetch Ollama models from %s: %s", origin, e)
             return []
 
     @staticmethod
     async def _fetch_vllm_models(base_url: str) -> list[dict[str, Any]]:
+        """Fetch models from a vLLM / OpenAI-compatible endpoint."""
         import httpx
+
+        origin = ProviderService._extract_origin(base_url)
         try:
             async with httpx.AsyncClient(timeout=5.0) as client:
-                resp = await client.get(f"{base_url}/v1/models")
+                resp = await client.get(f"{origin}/v1/models")
                 if not resp.is_success:
                     return []
                 return [
-                    {"name": m["id"], "provider_type": "vllm"}
+                    {
+                        "name": m.get("id", ""),
+                        "provider_type": "vllm",
+                        "max_input_tokens": m.get("max_model_len"),
+                        "supports_image_input": False,
+                        "supports_reasoning": False,
+                    }
                     for m in resp.json().get("data", [])
                 ]
         except Exception as e:
-            logger.warning("Failed to fetch vLLM models from %s: %s", base_url, e)
+            logger.warning("Failed to fetch vLLM models from %s: %s", origin, e)
             return []

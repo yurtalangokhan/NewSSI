@@ -5,11 +5,14 @@ import { errorHandlingFetcher } from "@/lib/fetcher";
 import {
   AllProvidersResponse,
   ApiKeyProvider,
+  UrlBasedProvider,
   WellKnownLangChainProvider,
 } from "@/interfaces/llm";
 
+type ProvidersApiResponse = AllProvidersResponse;
+
 export function useAllProviders() {
-  const { data, error, isLoading, mutate } = useSWR<AllProvidersResponse>(
+  const { data, error, isLoading, mutate } = useSWR<ProvidersApiResponse>(
     "/api/admin/providers",
     errorHandlingFetcher,
     { revalidateOnFocus: false }
@@ -22,6 +25,20 @@ export function useAllProviders() {
   };
 }
 
+export function useUrlProviders() {
+  const { data, error, isLoading, mutate } = useSWR<ProvidersApiResponse>(
+    "/api/admin/providers",
+    errorHandlingFetcher,
+    { revalidateOnFocus: false }
+  );
+  return {
+    data: data?.url_providers ?? [],
+    isLoading,
+    error,
+    mutate,
+  };
+}
+
 export function useApiKeyProviders() {
   const { data, error, isLoading, mutate } = useSWR<ApiKeyProvider[]>(
     "/api/admin/user-providers",
@@ -29,10 +46,10 @@ export function useApiKeyProviders() {
     { revalidateOnFocus: false }
   );
   return {
-    apiKeyProviders: data ?? [],
+    data: data ?? [],
     isLoading,
     error,
-    refetch: mutate,
+    mutate,
   };
 }
 
@@ -43,7 +60,7 @@ export function useWellKnownLangChainProviders() {
     { revalidateOnFocus: false, dedupingInterval: 60000 }
   );
   return {
-    wellKnownProviders: data ?? [],
+    data: data ?? [],
     isLoading,
     error,
     mutate,

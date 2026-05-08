@@ -42,7 +42,7 @@ export function ModelDownloadModal({ open, onOpenChange, providerId }: Props) {
 
   const handlePull = async () => {
     if (!modelName.trim()) {
-      toast({ title: "Model name is required", variant: "destructive" });
+      toast({ message: "Model name is required", level: "error" });
       return;
     }
     setPulling(true);
@@ -90,12 +90,12 @@ export function ModelDownloadModal({ open, onOpenChange, providerId }: Props) {
       }
 
       setDone(true);
-      toast({ title: `Model "${modelName}" downloaded` });
+      toast({ message: `Model "${modelName}" downloaded` });
       await mutate(`/api/admin/providers/${providerId}/models`);
     } catch (e: unknown) {
       toast({
-        title: e instanceof Error ? e.message : "Pull failed",
-        variant: "destructive",
+        message: e instanceof Error ? e.message : "Pull failed",
+        level: "error",
       });
     } finally {
       setPulling(false);
@@ -109,44 +109,46 @@ export function ModelDownloadModal({ open, onOpenChange, providerId }: Props) {
 
   return (
     <Modal open={open} onOpenChange={handleClose}>
-      <Modal.Content className="max-w-md">
-        <Modal.Header>
-          <Modal.Title>Download Ollama Model</Modal.Title>
-        </Modal.Header>
+      <Modal.Content width="sm">
+        <Modal.Header title="Download Ollama Model" onClose={handleClose} />
 
-        <div className="space-y-4 py-2">
-          <div className="space-y-1">
-            <Text size="sm" weight="medium">Model Name</Text>
-            <input
-              className="w-full rounded border border-input bg-background px-3 py-2 text-sm"
-              placeholder="e.g. llama3.1:8b"
-              value={modelName}
-              disabled={pulling}
-              onChange={(e) => setModelName(e.target.value)}
-            />
-          </div>
-
-          {progress && (
+        <Modal.Body>
+          <div className="space-y-4 w-full">
             <div className="space-y-1">
-              <Text size="sm">{progress.status}</Text>
-              {pct !== null && (
-                <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-                  <div
-                    className="h-full rounded-full bg-primary transition-all"
-                    style={{ width: `${pct}%` }}
-                  />
-                </div>
-              )}
+              <Text secondaryBody>Model Name</Text>
+              <input
+                className="w-full rounded border border-input bg-background px-3 py-2 text-sm"
+                placeholder="e.g. llama3.1:8b"
+                value={modelName}
+                disabled={pulling}
+                onChange={(e) => setModelName(e.target.value)}
+              />
             </div>
-          )}
-        </div>
+
+            {progress && (
+              <div className="space-y-1">
+                <div className="flex justify-between items-center">
+                  <Text secondaryBody>{progress.status}</Text>
+                </div>
+                {pct !== null && (
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-full rounded-full bg-primary transition-all"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </Modal.Body>
 
         <Modal.Footer>
-          <Button variant="ghost" onClick={handleClose} disabled={pulling && !done}>
+          <Button prominence="secondary" onClick={handleClose} disabled={pulling && !done}>
             {done ? "Close" : "Cancel"}
           </Button>
           {!done && (
-            <Button onClick={handlePull} disabled={pulling}>
+            <Button prominence="primary" onClick={handlePull} disabled={pulling}>
               {pulling ? "Downloading…" : "Download"}
             </Button>
           )}
