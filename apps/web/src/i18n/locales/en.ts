@@ -1132,6 +1132,7 @@ const en = {
     agentPrivateWarning:
       "This agent is private to you and will only be featured for yourself.",
     defaultModelLabel: "Default Model",
+    defaultModelOption: "Default Model",
     defaultModelDescription:
       "Select the LLM model to use for this agent. If not set, the user's default model will be used.",
     knowledgeCutoffLabel: "Knowledge Cutoff Date",
@@ -2158,6 +2159,7 @@ const en = {
       noToolsAvailable: "No tools available",
       noToolsFound: "No tools found",
       fetchingTools: "Fetching tools...",
+      testTool: "Test Tool",
     },
     kg: {
       description:
@@ -3471,6 +3473,10 @@ const en = {
     addItem: "Add item",
     enabled: "Enabled",
     disabled: "Disabled",
+    enterField: "Enter {{label}}",
+    fieldLabels: {
+      expression: "Expression",
+    },
     enterJsonFor: "Enter JSON for {{label}}",
     unsupportedFieldType:
       "Unsupported field type. You can enter raw JSON here.",
@@ -3623,6 +3629,7 @@ const en = {
     error: "Error",
     success: "Success",
     manage: "Manage",
+    optional: "Optional",
   },
   ee: {
     billing: {

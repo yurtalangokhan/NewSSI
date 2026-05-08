@@ -1141,6 +1141,7 @@ const tr = {
     agentPrivateWarning:
       "Bu ajan size özeldir ve yalnızca sizin için öne çıkarılacaktır.",
     defaultModelLabel: "Varsayılan Model",
+    defaultModelOption: "Varsayılan Model",
     defaultModelDescription:
       "Bu ajan için kullanılacak LLM modelini seçin. Ayarlanmadığı takdirde kullanıcının varsayılan modeli kullanılacaktır.",
     knowledgeCutoffLabel: "Bilgi Kesme Tarihi",
@@ -2172,6 +2173,7 @@ const tr = {
       noToolsAvailable: "Araç bulunamadı",
       noToolsFound: "Araç bulunamadı",
       fetchingTools: "Araçlar getiriliyor...",
+      testTool: "Aracı Test Et",
     },
     kg: {
       description:
@@ -3429,6 +3431,10 @@ const tr = {
     addItem: "Öğe ekle",
     enabled: "Etkin",
     disabled: "Devre dışı",
+    enterField: "{{label}} girin",
+    fieldLabels: {
+      expression: "İfade",
+    },
     enterJsonFor: "{{label}} için JSON girin",
     unsupportedFieldType:
       "Desteklenmeyen alan türü. Buraya ham JSON girebilirsiniz.",
@@ -3581,6 +3587,7 @@ const tr = {
     error: "Hata",
     success: "Başarılı",
     manage: "Yönet",
+    optional: "İsteğe Bağlı",
   },
   ee: {
     billing: {

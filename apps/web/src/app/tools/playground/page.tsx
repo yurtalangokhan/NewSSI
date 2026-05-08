@@ -119,6 +119,15 @@ function normalizeSchema(schema: any): any {
   return schema;
 }
 
+function getLocalizedFieldLabel(
+  label: string,
+  t?: (key: string, opts?: any) => string
+) {
+  if (!t) return _.startCase(label);
+  const labelKey = _.snakeCase(String(label || "")).toLowerCase();
+  return t(`toolPlayground.fieldLabels.${labelKey}`, { defaultValue: _.startCase(label) });
+}
+
 function isFieldEmpty(value: any): boolean {
   if (value === null || value === undefined) return true;
   if (typeof value === "string") return value.trim() === "";
@@ -145,7 +154,7 @@ function SchemaForm({
   onChange: (values: Record<string, any>) => void;
   fieldErrors?: Record<string, string>;
 }) {
-  const { t } = useTranslation("toolPlayground");
+  const { t } = useTranslation();
   const [formValues, setFormValues] = useState<Record<string, any>>(
     initializeFormValues(schema, values)
   );
@@ -167,7 +176,7 @@ function SchemaForm({
   ) {
     return (
       <Text as="p" text03 mainContentBody>
-        {t("noInputParameters")}
+        {t("toolPlayground.noInputParameters")}
       </Text>
     );
   }
@@ -178,6 +187,7 @@ function SchemaForm({
         ([name, property]: [string, any]) => {
           const isRequired = schema.required?.includes(name);
           const label = property.title || name;
+          const localizedLabel = getLocalizedFieldLabel(label, t);
           const description = property.description;
           const errorMsg = fieldErrors[name];
 
@@ -192,11 +202,11 @@ function SchemaForm({
                       "after:ml-0.5 after:text-status-error-05 after:content-['*']"
                   )}
                 >
-                  {_.startCase(label)}
+                  {localizedLabel}
                 </label>
                 {isRequired && (
                   <Text as="span" text03 secondaryBody className="text-xs">
-                    {t("required")}
+                    {t("toolPlayground.required")}
                   </Text>
                 )}
               </div>
@@ -238,6 +248,7 @@ function renderField(
 ) {
   const fieldId = path.join(".");
   const label = property.title || path[path.length - 1];
+  const localizedLabel = getLocalizedFieldLabel(label, t);
 
   if (property.enum) {
     return (
@@ -247,7 +258,7 @@ function renderField(
         value={value || ""}
         onChange={(e) => onChange(e.target.value)}
       >
-        <option value="">{t ? t("selectOption") : "Select an option"}</option>
+        <option value="">{t ? t("toolPlayground.selectOption") : "Select an option"}</option>
         {property.enum.map((option: string) => (
           <option key={option} value={option}>
             {option}
@@ -263,7 +274,7 @@ function renderField(
         <div className="mb-3 flex items-center justify-between gap-2">
           <div>
             <Text as="p" mainUiAction text04 className="text-sm font-medium">
-              {_.startCase(label)}
+              {localizedLabel}
             </Text>
             {property.description && (
               <Text as="p" text03 secondaryBody className="text-xs">
@@ -292,7 +303,7 @@ function renderField(
           >
             <div className="mb-2 flex items-center justify-between gap-2">
               <Text as="p" text04 mainUiAction className="text-sm font-medium">
-                {t ? t("itemIndex", { index: index + 1 }) : `Item ${index + 1}`}
+                {t ? t("toolPlayground.itemIndex", { index: index + 1 }) : `Item ${index + 1}`}
               </Text>
               <Button
                 secondary
@@ -303,7 +314,7 @@ function renderField(
                   onChange(nextItems);
                 }}
               >
-                {t ? t("remove") : "Remove"}
+                {t ? t("toolPlayground.remove") : "Remove"}
               </Button>
             </div>
             {renderField(
@@ -327,7 +338,7 @@ function renderField(
             onChange([...items, getDefaultValueForSchema(property.items)])
           }
         >
-          {t ? t("addItem") : "Add item"}
+          {t ? t("toolPlayground.addItem") : "Add item"}
         </Button>
       </div>
     );
@@ -345,7 +356,9 @@ function renderField(
           id={fieldId}
           value={value || ""}
           onChange={(e) => onChange(e.target.value)}
-          placeholder={property.example || `Enter ${_.startCase(label)}`}
+          placeholder={property.example || (t
+            ? t("toolPlayground.enterField", { label: localizedLabel })
+            : `Enter ${localizedLabel}`)}
           rows={5}
         />
       );
@@ -356,7 +369,9 @@ function renderField(
         id={fieldId}
         value={value || ""}
         onChange={(e) => onChange(e.target.value)}
-        placeholder={property.example || `Enter ${_.startCase(label)}`}
+        placeholder={property.example || (t
+          ? t("toolPlayground.enterField", { label: localizedLabel })
+          : `Enter ${localizedLabel}`)}
         showClearButton={false}
       />
     );
@@ -374,7 +389,9 @@ function renderField(
             min={property.minimum}
             max={property.maximum}
             step={property.type === "integer" ? 1 : 0.1}
-            placeholder={property.example || `Enter ${_.startCase(label)}`}
+            placeholder={property.example || (t
+              ? t("toolPlayground.enterField", { label: localizedLabel })
+              : `Enter ${localizedLabel}`)}
             showClearButton={false}
           />
           <div className="flex justify-between text-xs text-text-03">
@@ -395,7 +412,9 @@ function renderField(
         min={property.minimum}
         max={property.maximum}
         step={property.type === "integer" ? 1 : 0.1}
-        placeholder={property.example || `Enter ${_.startCase(label)}`}
+        placeholder={property.example || (t
+          ? t("toolPlayground.enterField", { label: localizedLabel })
+          : `Enter ${localizedLabel}`)}
         showClearButton={false}
       />
     );
@@ -412,10 +431,10 @@ function renderField(
         <Text as="span" text03 mainUiBody>
           {value
             ? t
-              ? t("enabled")
+              ? t("toolPlayground.enabled")
               : "Enabled"
             : t
-            ? t("disabled")
+            ? t("toolPlayground.disabled")
             : "Disabled"}
         </Text>
       </div>
@@ -436,14 +455,14 @@ function renderField(
         }}
         placeholder={
           t
-            ? t("enterJsonFor", { label: _.startCase(label) })
-            : `Enter JSON for ${_.startCase(label)}`
+            ? t("toolPlayground.enterJsonFor", { label: localizedLabel })
+            : `Enter JSON for ${localizedLabel}`
         }
         rows={6}
       />
       <Text as="p" text03 secondaryBody className="text-xs">
         {t
-          ? t("unsupportedFieldType")
+          ? t("toolPlayground.unsupportedFieldType")
           : "Unsupported field type. You can enter raw JSON here."}
       </Text>
     </div>
@@ -459,7 +478,7 @@ function ResponseViewer({
   isLoading: boolean;
   error: string | null;
 }) {
-  const { t } = useTranslation("toolPlayground");
+  const { t } = useTranslation();
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -472,7 +491,7 @@ function ResponseViewer({
     return (
       <div className="rounded-lg border border-status-error-03 bg-status-error-01 p-4 text-status-error-06">
         <Text as="p" className="font-semibold text-status-error-06">
-          {t("error")}
+          {t("toolPlayground.error")}
         </Text>
         <Text as="p" className="text-sm text-status-error-06">
           {error}
@@ -485,7 +504,7 @@ function ResponseViewer({
     return (
       <div className="text-center py-8">
         <Text as="p" text03 mainContentMuted>
-          {t("runToSeeResults")}
+          {t("toolPlayground.runToSeeResults")}
         </Text>
       </div>
     );
@@ -494,7 +513,7 @@ function ResponseViewer({
   return (
     <div className="space-y-3">
       <Text as="p" className="text-sm font-semibold text-status-success-06">
-        {t("result")}
+        {t("toolPlayground.result")}
       </Text>
       <pre className="max-h-[60vh] overflow-auto rounded-lg bg-background-neutral-01 p-4 text-sm whitespace-pre-wrap break-words text-text-04">
         {typeof response === "string"
@@ -506,7 +525,7 @@ function ResponseViewer({
 }
 
 export default function ToolsPlaygroundPage() {
-  const { t } = useTranslation("toolPlayground");
+  const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
   const toolName = searchParams.get("tool") || "";
@@ -533,7 +552,7 @@ export default function ToolsPlaygroundPage() {
         }
       } catch (err) {
         const message =
-          err instanceof Error ? err.message : t("failedToFetchTools");
+          err instanceof Error ? err.message : t("toolPlayground.failedToFetchTools");
         setError(message);
         toast.error(message);
       } finally {
@@ -608,7 +627,7 @@ export default function ToolsPlaygroundPage() {
     if (missing.length > 0) {
       const errors: Record<string, string> = {};
       missing.forEach((field) => {
-        errors[field] = t("fieldRequired");
+        errors[field] = t("toolPlayground.fieldRequired");
       });
       setFieldErrors(errors);
       return;
@@ -631,7 +650,7 @@ export default function ToolsPlaygroundPage() {
       }
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : t("toolExecutionFailed");
+          err instanceof Error ? err.message : t("toolPlayground.toolExecutionFailed");
       setRunError(message);
     } finally {
       setIsRunning(false);
@@ -639,8 +658,8 @@ export default function ToolsPlaygroundPage() {
   }, [inputValues, selectedTool]);
 
   const pageTitle = selectedTool
-    ? t("toolPlaygroundTitle", { name: _.startCase(selectedTool.name) })
-    : t("toolsPlayground");
+    ? t("toolPlayground.toolPlaygroundTitle", { name: _.startCase(selectedTool.name) })
+    : t("toolPlayground.toolsPlayground");
 
   return (
     <div className="space-y-6 p-6">
@@ -649,17 +668,17 @@ export default function ToolsPlaygroundPage() {
           <IconButton
             icon={SvgArrowLeft}
             onClick={() => router.back()}
-            tooltip="Back"
-            aria-label="Back"
+            tooltip={t("common.back")}
+            aria-label={t("common.back")}
           />
           <h1 className="mt-3 text-2xl font-bold text-text-05">{pageTitle}</h1>
           <Text as="p" text03 mainContentBody className="mt-1 text-sm">
-            {t("pageDescription")}
+            {t("toolPlayground.pageDescription")}
           </Text>
         </div>
         {selectedTool && (
           <Button primary onClick={handleRunTool} disabled={isRunning}>
-            {isRunning ? t("running") : t("runTool")}
+            {isRunning ? t("toolPlayground.running") : t("toolPlayground.runTool")}
           </Button>
         )}
       </div>
@@ -668,10 +687,10 @@ export default function ToolsPlaygroundPage() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <Text as="p" text05 className="text-sm font-semibold">
-              {t("toolSelector")}
+              {t("toolPlayground.toolSelector")}
             </Text>
             <Text as="p" text03 mainContentBody className="text-sm">
-              {t("chooseTool")}
+              {t("toolPlayground.chooseTool")}
             </Text>
           </div>
           {toolsWithCategory.length > 0 && (
@@ -683,7 +702,7 @@ export default function ToolsPlaygroundPage() {
               }}
             >
               <div className="w-full sm:w-72">
-                <InputSelect.Trigger placeholder={t("selectTool")} />
+                <InputSelect.Trigger placeholder={t("toolPlayground.selectTool")} />
               </div>
               <InputSelect.Content>
                 {sortedCategories.map((category) => (
@@ -731,7 +750,7 @@ export default function ToolsPlaygroundPage() {
                   mainUiAction
                   className="mb-3 text-sm font-semibold"
                 >
-                  {t("input")}
+                  {t("toolPlayground.input")}
                 </Text>
                 <SchemaForm
                   schema={normalizeSchema(selectedTool.input_schema)}
@@ -751,7 +770,7 @@ export default function ToolsPlaygroundPage() {
           </div>
           <div className="rounded-lg border border-border-01 bg-background-neutral-00 p-6">
             <Text as="p" text05 className="mb-4 text-sm font-semibold">
-              {t("response")}
+              {t("toolPlayground.response")}
             </Text>
             <ResponseViewer
               response={response}
@@ -765,7 +784,7 @@ export default function ToolsPlaygroundPage() {
           {filteredTools.length === 0 ? (
             <div className="rounded-lg border border-border-01 bg-background-neutral-00 p-6 text-center">
               <Text as="p" text03 mainContentBody>
-                {t("noToolsMatch")}
+                {t("toolPlayground.noToolsMatch")}
               </Text>
             </div>
           ) : (
@@ -782,7 +801,7 @@ export default function ToolsPlaygroundPage() {
                         {categoryLabelMap[category] || _.startCase(category)}
                       </Text>
                       <Text as="p" text03 secondaryBody className="text-xs">
-                        {t("toolsCount", { count: toolsInCategory.length })}
+                        {t("toolPlayground.toolsCount", { count: toolsInCategory.length })}
                       </Text>
                     </div>
                     <span className="rounded-full border border-border-01 px-2 py-0.5 text-xs text-text-03">
@@ -816,7 +835,7 @@ export default function ToolsPlaygroundPage() {
                           onClick={() => handleSelectTool(tool)}
                           className="px-3 py-2 text-sm"
                         >
-                          {t("openPlayground")}
+                          {t("toolPlayground.openPlayground")}
                         </Button>
                       </div>
                     ))}

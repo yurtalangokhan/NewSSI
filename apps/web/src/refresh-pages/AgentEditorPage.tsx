@@ -464,7 +464,7 @@ export default function AgentEditorPage({
   const settings = useSettingsContext();
   const { isAdmin, isCurator } = useUser();
   const { t } = useTranslation();
-  const optionalLabel = t("common.optional", { defaultValue: "Optional" });
+  const optionalLabel = t("common.optional");
   const optionalTag = ` (${optionalLabel})`;
   const canUpdateFeaturedStatus = isAdmin || isCurator;
   const vectorDbEnabled = settings?.settings.vector_db_enabled !== false;
@@ -1572,6 +1572,7 @@ export default function AgentEditorPage({
                                     values,
                                     llmProviders
                                   )}
+                                  defaultOptionLabel={t("agentEditor.defaultModelOption")}
                                   onSelect={(selected) =>
                                     onLlmSelect(selected, setFieldValue)
                                   }
