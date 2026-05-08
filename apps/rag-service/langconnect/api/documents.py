@@ -9,6 +9,7 @@ from pydantic import TypeAdapter, ValidationError
 from langconnect.auth import AuthenticatedUser, resolve_user
 from langconnect.database.collections import Collection
 from langconnect.models import DocumentResponse, SearchQuery, SearchResult
+from langconnect.services.build_lock import ensure_collection_mutable
 from langconnect.services import process_document
 
 # Create a TypeAdapter that enforces “list of dict”
@@ -27,6 +28,8 @@ async def documents_create(
     metadatas_json: str | None = Form(None),
 ):
     """Processes and indexes (adds) new document files with optional metadata."""
+    ensure_collection_mutable(str(collection_id))
+
     # If no metadata JSON is provided, fill with None
     if not metadatas_json:
         metadatas: list[dict] | list[None] = [None] * len(files)
@@ -194,6 +197,8 @@ async def documents_delete(
     document_id: str,
 ):
     """Deletes a specific document from a collection by its ID."""
+    ensure_collection_mutable(str(collection_id))
+
     collection = Collection(
         collection_id=str(collection_id),
         user_id=user.identity,

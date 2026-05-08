@@ -319,6 +319,7 @@ const en = {
     deleteProjectConfirmation:
       "Are you sure you want to delete this project? This action cannot be undone.",
     deleteChatTitle: "Delete Chat",
+    deleteChatError: "Failed to delete chat. Please try again.",
     deleteChatConfirmation:
       "Are you sure you want to delete this chat? This action cannot be undone.",
     deleteButton: "Delete",
@@ -1131,6 +1132,7 @@ const en = {
     agentPrivateWarning:
       "This agent is private to you and will only be featured for yourself.",
     defaultModelLabel: "Default Model",
+    defaultModelOption: "Default Model",
     defaultModelDescription:
       "Select the LLM model to use for this agent. If not set, the user's default model will be used.",
     knowledgeCutoffLabel: "Knowledge Cutoff Date",
@@ -2064,6 +2066,11 @@ const en = {
         "Select a collection above to manage documents.",
       collectionCreated: "Collection \"{{name}}\" created.",
       collectionCreateFailed: "Failed to create collection",
+      renameCollection: "Rename Collection",
+      rename: "Rename",
+      renaming: "Renaming…",
+      collectionRenamed: "Collection renamed to \"{{name}}\".",
+      collectionRenameFailed: "Failed to rename collection",
       collectionDeleted: "Collection deleted.",
       collectionDeleteFailed: "Failed to delete collection",
       documentDeleted: "Document deleted.",
@@ -2152,6 +2159,7 @@ const en = {
       noToolsAvailable: "No tools available",
       noToolsFound: "No tools found",
       fetchingTools: "Fetching tools...",
+      testTool: "Test Tool",
     },
     kg: {
       description:
@@ -2167,6 +2175,8 @@ const en = {
       noGraphHintSuffix:
         "marked items must have a graph built first. Select one and go to the",
       buildTab: "Build",
+      collectionDocuments: "Documents in Collection",
+      noDocumentsForBuild: "This collection has no documents. Add documents before building a graph.",
       graphExplorerTab: "Graph Explorer",
       searchTab: "Search",
       selectCollectionForTab: "Please select a collection to use this tab.",
@@ -2186,6 +2196,18 @@ const en = {
         "Select a collection above to build or manage a knowledge graph.",
       graphBuildStarted: "Graph build started.",
       graphBuildStartFailed: "Failed to start graph build",
+      graphBuildPauseFailed: "Failed to pause graph build",
+      graphBuildResumeFailed: "Failed to resume graph build",
+      graphBuildStopFailed: "Failed to stop graph build",
+      pauseBuild: "Pause",
+      resumeBuild: "Resume",
+      stopBuild: "Stop",
+      pausedTrackingInfo:
+        "Build status updates are paused. Click Resume to continue monitoring progress.",
+      stoppedTrackingInfo:
+        "Build tracking is stopped for this session. Click Resume to re-attach to live status.",
+      graphBuildStopRequested:
+        "Stop requested. The build will terminate after the current step completes.",
       graphDeleted: "Graph deleted.",
       graphDeleteFailed: "Failed to delete graph",
       buildWarningTitle: "This collection already has a knowledge graph.",
@@ -3415,6 +3437,8 @@ const en = {
     customConfigValue: "Value",
     addNew: "Add New",
     customDefaultModelSubtext: "The model to use by default for this provider. Must be one of the models listed above.",
+    systemDefault: "System Default",
+    userDefault: "User Default",
     fillInAsNeeded: "Fill in the following as needed. Refer to the LiteLLM documentation for the provider specified above to determine which fields are required.",
     optionalApiKey: "[Optional] API Key",
     optionalApiBase: "[Optional] API Base",
@@ -3449,6 +3473,10 @@ const en = {
     addItem: "Add item",
     enabled: "Enabled",
     disabled: "Disabled",
+    enterField: "Enter {{label}}",
+    fieldLabels: {
+      expression: "Expression",
+    },
     enterJsonFor: "Enter JSON for {{label}}",
     unsupportedFieldType:
       "Unsupported field type. You can enter raw JSON here.",
@@ -3601,6 +3629,7 @@ const en = {
     error: "Error",
     success: "Success",
     manage: "Manage",
+    optional: "Optional",
   },
   ee: {
     billing: {

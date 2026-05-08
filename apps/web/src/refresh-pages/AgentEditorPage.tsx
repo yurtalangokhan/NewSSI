@@ -464,6 +464,8 @@ export default function AgentEditorPage({
   const settings = useSettingsContext();
   const { isAdmin, isCurator } = useUser();
   const { t } = useTranslation();
+  const optionalLabel = t("common.optional");
+  const optionalTag = ` (${optionalLabel})`;
   const canUpdateFeaturedStatus = isAdmin || isCurator;
   const vectorDbEnabled = settings?.settings.vector_db_enabled !== false;
 
@@ -1205,8 +1207,7 @@ export default function AgentEditorPage({
 
                           <InputLayouts.Vertical
                             name="description"
-                            title={t("agentEditor.descriptionLabel")}
-                            optional
+                            title={`${t("agentEditor.descriptionLabel")}${optionalTag}`}
                           >
                             <InputTextAreaField
                               name="description"
@@ -1306,8 +1307,7 @@ export default function AgentEditorPage({
                       <GeneralLayouts.Section>
                         <InputLayouts.Vertical
                           name="instructions"
-                          title={t("agentEditor.instructionsLabel")}
-                          optional
+                          title={`${t("agentEditor.instructionsLabel")}${optionalTag}`}
                           description={t("agentEditor.instructionsDescription")}
                         >
                           <InputTextAreaField
@@ -1318,9 +1318,8 @@ export default function AgentEditorPage({
 
                         <InputLayouts.Vertical
                           name="starter_messages"
-                          title={t("agentEditor.conversationStartersLabel")}
+                          title={`${t("agentEditor.conversationStartersLabel")}${optionalTag}`}
                           description={t("agentEditor.conversationStartersDescription")}
-                          optional
                         >
                           <StarterMessages />
                         </InputLayouts.Vertical>
@@ -1573,6 +1572,7 @@ export default function AgentEditorPage({
                                     values,
                                     llmProviders
                                   )}
+                                  defaultOptionLabel={t("agentEditor.defaultModelOption")}
                                   onSelect={(selected) =>
                                     onLlmSelect(selected, setFieldValue)
                                   }

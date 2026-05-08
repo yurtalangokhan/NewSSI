@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import type { Route } from "next";
 import { Button } from "@opal/components";
 import { SvgArrowLeft } from "@opal/icons";
+import { useTranslation } from "react-i18next";
 
 export interface BackButtonProps {
   behaviorOverride?: () => void;
@@ -15,6 +16,7 @@ export default function BackButton({
   routerOverride,
 }: BackButtonProps) {
   const router = useRouter();
+  const { t } = useTranslation();
 
   return (
     <Button
@@ -30,7 +32,7 @@ export default function BackButton({
         }
       }}
     >
-      Back
+      {t("common.back")}
     </Button>
   );
 }

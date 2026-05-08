@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { forceCollide as d3ForceCollide } from "d3-force-3d";
 import dynamic from "next/dynamic";
+import { useTheme } from "next-themes";
 import CardSection from "@/components/admin/CardSection";
 import Text from "@/refresh-components/texts/Text";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
@@ -132,6 +133,8 @@ export default function GraphExplorer({
   isActive,
 }: GraphExplorerProps) {
   const { t } = useTranslation();
+  const { resolvedTheme } = useTheme();
+  const isDarkMode = resolvedTheme === "dark";
   const fgRef = useRef<any>(null);
   const observerRef = useRef<ResizeObserver | null>(null);
   const containerNodeRef = useRef<HTMLDivElement | null>(null);
@@ -750,7 +753,7 @@ export default function GraphExplorer({
           const lfs = Math.max(10 / globalScale, 1.5);
           ctx.font = `${lfs}px Inter, sans-serif`;
           ctx.textBaseline = "top";
-          ctx.fillStyle = isClusterMatch ? "#dc2626" : "rgba(0,0,0,0.8)";
+          ctx.fillStyle = isClusterMatch ? "#dc2626" : isDarkMode ? "rgba(255,255,255,0.9)" : "rgba(0,0,0,0.8)";
           ctx.fillText(node.name, node.x, node.y + size + 2);
         }
       } else {
@@ -770,7 +773,7 @@ export default function GraphExplorer({
           ctx.font = `${fontSize}px Inter, sans-serif`;
           ctx.textAlign = "center";
           ctx.textBaseline = "top";
-          ctx.fillStyle = "rgba(0,0,0,0.8)";
+          ctx.fillStyle = isDarkMode ? "rgba(255,255,255,0.9)" : "rgba(0,0,0,0.8)";
           ctx.fillText(node.name, node.x, node.y + radius + 2);
         }
       }
@@ -782,6 +785,7 @@ export default function GraphExplorer({
       showLabels,
       isDense,
       serverMatchedClusterLabels,
+      isDarkMode,
     ]
   );
 

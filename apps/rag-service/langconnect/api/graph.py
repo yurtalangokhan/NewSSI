@@ -15,6 +15,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 
 from langconnect.auth import AuthenticatedUser, resolve_user
+from langconnect.database.collections import Collection
 from langconnect.database.neo4j import GraphStore
 from langconnect.models.graph import (
     BuildProgress,
@@ -31,6 +32,10 @@ from langconnect.models.graph import (
 from langconnect.services.graph_rag_service import (
     GraphRAGService,
     get_build_progress,
+    initialize_build_progress,
+    request_pause_build,
+    request_resume_build,
+    request_stop_build,
 )
 
 logger = logging.getLogger(__name__)
@@ -59,14 +64,30 @@ async def build_graph(
         user_id=user.identity,
     )
 
+    # Reject the request when the collection has no documents
+    collection = Collection(
+        collection_id=request.collection_id,
+        user_id=user.identity,
+    )
+    doc_count = await collection.count()
+    if doc_count == 0:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Cannot build a knowledge graph: the collection contains no documents.",
+        )
+
     # Check if a build is already in progress
     existing = get_build_progress(request.collection_id)
-    if existing and existing.status in ("extracting", "building"):
+    if existing and existing.status in ("pending", "extracting", "building"):
         return GraphBuildResponse(
             collection_id=request.collection_id,
             status=existing.status,
             message="Build already in progress.",
         )
+
+    # Pre-register a pending record so status polls return "pending"
+    # immediately — before the background task has a chance to run.
+    initialize_build_progress(request.collection_id)
 
     # Launch background build
     background_tasks.add_task(
@@ -97,6 +118,63 @@ async def get_build_status(
     if progress is None:
         return None
     return progress
+
+
+@router.post("/build/{collection_id}/pause", response_model=GraphBuildResponse)
+async def pause_build(
+    collection_id: str,
+    user: Annotated[AuthenticatedUser, Depends(resolve_user)],
+):
+    """Pause a currently running graph build."""
+    progress = request_pause_build(collection_id)
+    if progress is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="No running graph build found to pause.",
+        )
+    return GraphBuildResponse(
+        collection_id=collection_id,
+        status=progress.status,
+        message="Graph build paused.",
+    )
+
+
+@router.post("/build/{collection_id}/resume", response_model=GraphBuildResponse)
+async def resume_build(
+    collection_id: str,
+    user: Annotated[AuthenticatedUser, Depends(resolve_user)],
+):
+    """Resume a paused graph build."""
+    progress = request_resume_build(collection_id)
+    if progress is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="No running graph build found to resume.",
+        )
+    return GraphBuildResponse(
+        collection_id=collection_id,
+        status=progress.status,
+        message="Graph build resumed.",
+    )
+
+
+@router.post("/build/{collection_id}/stop", response_model=GraphBuildResponse)
+async def stop_build(
+    collection_id: str,
+    user: Annotated[AuthenticatedUser, Depends(resolve_user)],
+):
+    """Request cancellation for a currently running graph build."""
+    progress = request_stop_build(collection_id)
+    if progress is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="No running graph build found to stop.",
+        )
+    return GraphBuildResponse(
+        collection_id=collection_id,
+        status=progress.status,
+        message="Graph build stop requested.",
+    )
 
 
 # ------------------------------------------------------------------

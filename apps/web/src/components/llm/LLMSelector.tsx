@@ -29,6 +29,7 @@ export interface LLMSelectorProps {
   onSelect: (value: string | null) => void;
   requiresImageGeneration?: boolean;
   excludePublicProviders?: boolean;
+  defaultOptionLabel?: string;
 }
 
 export default function LLMSelector({
@@ -40,6 +41,7 @@ export default function LLMSelector({
   onSelect,
   requiresImageGeneration,
   excludePublicProviders = false,
+  defaultOptionLabel,
 }: LLMSelectorProps) {
   const { t } = useTranslation();
   const currentDescriptor = useMemo(
@@ -154,9 +156,11 @@ export default function LLMSelector({
   const defaultModelDisplayName = defaultModelConfig
     ? defaultModelConfig.display_name || defaultModelConfig.name
     : defaultModelName || null;
-  const defaultLabel = userSettings
-    ? t("admin.llmConfig.systemDefault", { defaultValue: "Default Model" })
-    : t("admin.llmConfig.userDefault", { defaultValue: "Default Model" });
+  const defaultLabel =
+    defaultOptionLabel ||
+    (userSettings
+      ? t("admin.llmConfig.systemDefault", { defaultValue: "Default Model" })
+      : t("admin.llmConfig.userDefault", { defaultValue: "Default Model" }));
 
   // Determine if we should show grouped view (only if we have multiple vendors)
   const showGrouped = groupedOptions.length > 1;

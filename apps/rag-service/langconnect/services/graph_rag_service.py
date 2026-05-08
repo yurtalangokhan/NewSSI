@@ -31,9 +31,84 @@ logger = logging.getLogger(__name__)
 _build_progress: dict[str, BuildProgress] = {}
 
 
+class _BuildControl:
+    """In-memory cooperative control state for a running build."""
+
+    def __init__(self) -> None:
+        self.pause_event = asyncio.Event()
+        self.pause_event.set()
+        self.cancel_requested = False
+
+
+_build_controls: dict[str, _BuildControl] = {}
+
+_ACTIVE_BUILD_STATUSES: frozenset[BuildStatus] = frozenset({
+    BuildStatus.PENDING,
+    BuildStatus.EXTRACTING,
+    BuildStatus.BUILDING,
+})
+
+
 def get_build_progress(collection_id: str) -> BuildProgress | None:
     """Get current build progress for a collection."""
     return _build_progress.get(collection_id)
+
+
+def initialize_build_progress(collection_id: str) -> BuildProgress:
+    """Pre-register a pending build record before the background task starts.
+
+    This eliminates the race window where status polls return a stale
+    'failed' record because the background task has not yet executed.
+    """
+    progress = BuildProgress(
+        collection_id=collection_id,
+        status=BuildStatus.PENDING,
+    )
+    _build_progress[collection_id] = progress
+    return progress
+
+
+def _get_active_build(collection_id: str) -> tuple[BuildProgress, _BuildControl] | None:
+    """Return (progress, control) if a build is currently active, else None."""
+    progress = _build_progress.get(collection_id)
+    control = _build_controls.get(collection_id)
+    if progress is None or control is None or progress.status not in _ACTIVE_BUILD_STATUSES:
+        return None
+    return progress, control
+
+
+def request_pause_build(collection_id: str) -> BuildProgress | None:
+    """Pause a running build for the given collection."""
+    result = _get_active_build(collection_id)
+    if result is None:
+        return None
+    progress, control = result
+    control.pause_event.clear()
+    progress.is_paused = True
+    return progress
+
+
+def request_resume_build(collection_id: str) -> BuildProgress | None:
+    """Resume a paused running build for the given collection."""
+    result = _get_active_build(collection_id)
+    if result is None:
+        return None
+    progress, control = result
+    control.pause_event.set()
+    progress.is_paused = False
+    return progress
+
+
+def request_stop_build(collection_id: str) -> BuildProgress | None:
+    """Request cancellation for a running build."""
+    result = _get_active_build(collection_id)
+    if result is None:
+        return None
+    progress, control = result
+    control.cancel_requested = True
+    control.pause_event.set()
+    progress.is_paused = False
+    return progress
 
 
 class GraphRAGService:
@@ -60,11 +135,16 @@ class GraphRAGService:
             2. Extract entities/relations with LLMGraphTransformer.
             3. Upsert into Neo4j.
         """
-        progress = BuildProgress(
+        # Re-use the record pre-registered by initialize_build_progress()
+        # (called in the API endpoint before launching this background task).
+        # If somehow not present, create a fresh record as a safety fallback.
+        progress = _build_progress.get(self.collection_id) or BuildProgress(
             collection_id=self.collection_id,
             status=BuildStatus.PENDING,
         )
         _build_progress[self.collection_id] = progress
+        control = _BuildControl()
+        _build_controls[self.collection_id] = control
 
         try:
             # Ensure Neo4j indexes exist
@@ -89,6 +169,7 @@ class GraphRAGService:
             all_relations: list[dict[str, Any]] = []
 
             for chunk in chunks:
+                await self._wait_if_paused_or_stopped(control)
                 result: ExtractionResult = await extractor.extract_from_text(
                     text=chunk["content"],
                     chunk_id=chunk.get("id"),
@@ -103,6 +184,7 @@ class GraphRAGService:
                 progress.extracted_relations = len(all_relations)
 
             # 3. Upsert into Neo4j
+            await self._wait_if_paused_or_stopped(control)
             progress.status = BuildStatus.BUILDING
             counts = await self.graph_store.bulk_upsert(all_entities, all_relations)
             logger.info(
@@ -114,12 +196,29 @@ class GraphRAGService:
 
             progress.status = BuildStatus.COMPLETED
 
+        except asyncio.CancelledError:
+            logger.info("Graph build cancelled for %s", self.collection_id)
+            progress.status = BuildStatus.FAILED
+            progress.error = "Build was cancelled by user."
+
         except Exception as exc:
             logger.exception("Graph build failed for %s", self.collection_id)
             progress.status = BuildStatus.FAILED
             progress.error = str(exc)
 
+        finally:
+            _build_controls.pop(self.collection_id, None)
+
         return progress
+
+    async def _wait_if_paused_or_stopped(self, control: _BuildControl) -> None:
+        """Cooperative checkpoint for pause/resume/stop controls."""
+        if control.cancel_requested:
+            raise asyncio.CancelledError()
+        if not control.pause_event.is_set():
+            await control.pause_event.wait()
+        if control.cancel_requested:
+            raise asyncio.CancelledError()
 
     async def _fetch_all_chunks(self) -> list[dict[str, Any]]:
         """Fetch all document chunks from the PGVector collection."""

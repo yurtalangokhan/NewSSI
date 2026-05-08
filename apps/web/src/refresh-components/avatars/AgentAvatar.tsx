@@ -21,8 +21,8 @@ export default function AgentAvatar({
   if (agent.id === DEFAULT_AGENT_ID) {
     return (
       <img
-        src="/logo.turksat.svg?v=20260505-2"
-        alt="Turksat Logo"
+        src="/logo.single.svg"
+        alt="Agent Logo"
         className="shrink-0"
         style={{ width: size, height: size }}
         draggable={false}

@@ -6,6 +6,7 @@ import * as SettingsLayouts from "@/layouts/settings-layouts";
 import Text from "@/refresh-components/texts/Text";
 import { SvgHardDrive } from "@opal/icons";
 import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
+import { useGraphBuildStatus } from "@/lib/langconnect";
 import CollectionsPanel from "./components/CollectionsPanel";
 import DocumentsPanel from "./components/DocumentsPanel";
 import { useTranslation } from "react-i18next";
@@ -22,6 +23,14 @@ function RagManagementSection() {
     string | null
   >(null);
   const [selectedIsDatasource, setSelectedIsDatasource] = useState(false);
+  const { status: buildStatus } = useGraphBuildStatus(
+    selectedCollectionId,
+    Boolean(selectedCollectionId)
+  );
+  const isCollectionMutationLocked =
+    buildStatus?.status === "pending" ||
+    buildStatus?.status === "extracting" ||
+    buildStatus?.status === "building";
 
   function handleCollectionSelect(id: string | null, isDatasource?: boolean) {
     setSelectedCollectionId(id);
@@ -33,10 +42,15 @@ function RagManagementSection() {
       <CollectionsPanel
         selectedCollectionId={selectedCollectionId}
         onCollectionSelect={handleCollectionSelect}
+        isCollectionMutationLocked={isCollectionMutationLocked}
       />
 
       {selectedCollectionId ? (
-        <DocumentsPanel collectionId={selectedCollectionId} readOnly={selectedIsDatasource} />
+        <DocumentsPanel
+          collectionId={selectedCollectionId}
+          readOnly={selectedIsDatasource}
+          isCollectionMutationLocked={isCollectionMutationLocked}
+        />
       ) : (
         <CardSection>
           <div className="flex flex-col items-center gap-2 py-8 text-center">

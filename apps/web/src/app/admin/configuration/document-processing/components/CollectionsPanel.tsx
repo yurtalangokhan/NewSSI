@@ -12,6 +12,7 @@ import {
   useCollections,
   createCollection,
   deleteCollection,
+  updateCollection,
 } from "@/lib/langconnect";
 import { useAirbyteDatasources } from "@/lib/airbyte";
 import { SvgHardDrive, SvgPlus, SvgTrash } from "@opal/icons";
@@ -20,11 +21,13 @@ import { useTranslation } from "react-i18next";
 interface CollectionsPanelProps {
   selectedCollectionId: string | null;
   onCollectionSelect: (id: string | null, isDatasource?: boolean) => void;
+  isCollectionMutationLocked: boolean;
 }
 
 export default function CollectionsPanel({
   selectedCollectionId,
   onCollectionSelect,
+  isCollectionMutationLocked,
 }: CollectionsPanelProps) {
   const { t } = useTranslation();
   const { collections: allCollections, isLoading: collectionsLoading, mutate } = useCollections();
@@ -44,6 +47,9 @@ export default function CollectionsPanel({
   const [newName, setNewName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [renameName, setRenameName] = useState("");
+  const [isRenameSubmitting, setIsRenameSubmitting] = useState(false);
 
   const selectedCollection = collections.find(
     (c) => c.uuid === selectedCollectionId
@@ -72,6 +78,16 @@ export default function CollectionsPanel({
 
   async function handleDelete() {
     if (!selectedCollectionId || !selectedCollection) return;
+    if (isCollectionMutationLocked) {
+      toast.warning(
+        t("admin.documentProcessing.collectionMutationLocked", {
+          defaultValue:
+            "Graph RAG build devam ederken bu koleksiyon üzerinde değişiklik yapılamaz.",
+        })
+      );
+      return;
+    }
+
     const confirmed = window.confirm(
       `Delete collection "${selectedCollection.name}"? This will remove all documents in it.`
     );
@@ -86,6 +102,44 @@ export default function CollectionsPanel({
       toast.error(e instanceof Error ? e.message : "Failed to delete collection");
     } finally {
       setIsDeleting(false);
+    }
+  }
+
+  async function handleRename() {
+    if (!selectedCollectionId || !selectedCollection) return;
+    if (isCollectionMutationLocked) {
+      toast.warning(
+        t("admin.documentProcessing.collectionMutationLocked", {
+          defaultValue:
+            "Graph RAG build devam ederken bu koleksiyon üzerinde değişiklik yapılamaz.",
+        })
+      );
+      return;
+    }
+
+    const name = renameName.trim();
+    if (!name || name === selectedCollection.name) {
+      setIsRenaming(false);
+      return;
+    }
+
+    setIsRenameSubmitting(true);
+    try {
+      const updated = await updateCollection(selectedCollectionId, { name });
+      await mutate();
+      onCollectionSelect(updated.uuid, selectedIsDatasource);
+      setIsRenaming(false);
+      toast.success(
+        t("admin.documentProcessing.collectionRenamed", { name: updated.name })
+      );
+    } catch (e) {
+      toast.error(
+        e instanceof Error
+          ? e.message
+          : t("admin.documentProcessing.collectionRenameFailed")
+      );
+    } finally {
+      setIsRenameSubmitting(false);
     }
   }
 
@@ -151,10 +205,24 @@ export default function CollectionsPanel({
 
             {selectedCollectionId && (
               <Button
+                action
+                onClick={() => {
+                  if (!selectedCollection) return;
+                  setRenameName(selectedCollection.name);
+                  setIsRenaming(true);
+                }}
+                disabled={selectedIsDatasource || isCollectionMutationLocked}
+              >
+                {t("admin.documentProcessing.renameCollection")}
+              </Button>
+            )}
+
+            {selectedCollectionId && (
+              <Button
                 danger
                 leftIcon={SvgTrash}
                 onClick={handleDelete}
-                disabled={isDeleting}
+                disabled={isDeleting || isRenaming || isCollectionMutationLocked}
               >
                 {isDeleting ? t("admin.documentProcessing.deleting") : t("modals.delete")}
               </Button>
@@ -187,6 +255,32 @@ export default function CollectionsPanel({
             </div>
           )}
 
+          {isRenaming && selectedCollection && (
+            <div className="flex items-center gap-2 pt-1">
+              <div className="flex-1">
+                <InputTypeIn
+                  placeholder={t("admin.documentProcessing.collectionName")}
+                  value={renameName}
+                  onChange={(e) => setRenameName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleRename();
+                    if (e.key === "Escape") setIsRenaming(false);
+                  }}
+                  autoFocus
+                />
+              </div>
+              <Button
+                action
+                onClick={handleRename}
+                disabled={isRenameSubmitting || !renameName.trim()}
+              >
+                {isRenameSubmitting
+                  ? t("admin.documentProcessing.renaming")
+                  : t("admin.documentProcessing.rename")}
+              </Button>
+            </div>
+          )}
+
           {selectedCollection && (
             <div className="flex items-center gap-2 rounded-08 bg-background-neutral-01 border border-border-01 px-3 py-2">
               <SvgHardDrive className="h-3.5 w-3.5 shrink-0 stroke-text-03" aria-hidden />
@@ -196,6 +290,14 @@ export default function CollectionsPanel({
               {selectedIsDatasource && (
                 <Text as="span" mainContentMuted text03 className="text-xs italic ml-auto">
                   {t("admin.documentProcessing.readOnlyDatasourceCollection")}
+                </Text>
+              )}
+              {!selectedIsDatasource && isCollectionMutationLocked && (
+                <Text as="span" mainContentMuted text03 className="text-xs italic ml-auto">
+                  {t("admin.documentProcessing.collectionMutationLocked", {
+                    defaultValue:
+                      "Graph RAG build devam ederken bu koleksiyon üzerinde değişiklik yapılamaz.",
+                  })}
                 </Text>
               )}
             </div>

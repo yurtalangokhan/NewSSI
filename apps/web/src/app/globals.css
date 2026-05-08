@@ -241,6 +241,23 @@
     background: radial-gradient(circle, rgba(49, 124, 255, 0.5), transparent 65%);
     animation-delay: 1.6s;
   }
+
+  .auth-login-shell input,
+  .auth-login-shell textarea,
+  .auth-login-shell select,
+  .auth-login-shell p,
+  .auth-login-shell span,
+  .auth-login-shell label {
+    color: #ffffff;
+  }
+
+  .auth-login-shell input:-webkit-autofill,
+  .auth-login-shell input:-webkit-autofill:hover,
+  .auth-login-shell input:-webkit-autofill:focus {
+    -webkit-text-fill-color: #ffffff;
+    box-shadow: 0 0 0px 1000px rgba(8, 26, 42, 0.9) inset;
+    transition: background-color 5000s ease-in-out 0s;
+  }
 }
 
 @keyframes authGradientDrift {
@@ -483,44 +500,46 @@
 }
 
 ::-webkit-scrollbar {
-  width: 0px;
+  width: 8px;
   /* Vertical scrollbar width */
   height: 8px;
   /* Horizontal scrollbar height */
 }
 
 ::-webkit-scrollbar-track {
-  background: transparent;
-  /* background: theme("colors.scrollbar.track"); */
+  background: var(--scrollbar-track, transparent);
   /* Track background color */
 }
 
-/* Style the scrollbar handle */
+/* Scrollbar thumb — hidden by default, revealed on parent hover */
 ::-webkit-scrollbar-thumb {
   background: transparent;
-  /* background: theme("colors.scrollbar.thumb"); */
-  /* Handle color */
   border-radius: 10px;
+  transition: background 0.25s ease;
+}
+
+/* Reveal scrollbar thumb when hovering the scrollable container */
+*:hover::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb, #7a7a7a);
 }
 
 /* Handle on hover */
 ::-webkit-scrollbar-thumb:hover {
-  background: transparent;
-  /* background: theme("colors.scrollbar.thumb-hover"); */
-  /* Handle color on hover */
+  background: var(--scrollbar-thumb-hover, #5f5f5f) !important;
 }
 
 .dark-scrollbar::-webkit-scrollbar-thumb {
   background: transparent;
-  /* background: theme("colors.scrollbar.dark.thumb"); */
-  /* Handle color */
   border-radius: 10px;
+  transition: background 0.25s ease;
+}
+
+.dark-scrollbar:hover::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb, #555555);
 }
 
 .dark-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: transparent;
-  /* background: theme("colors.scrollbar.dark.thumb-hover"); */
-  /* Handle color on hover */
+  background: var(--scrollbar-thumb-hover, #777777) !important;
 }
 
 /* TEXTAREA */
@@ -535,21 +554,39 @@ textarea::-webkit-scrollbar-track {
 }
 
 textarea::-webkit-scrollbar-thumb {
-  background: var(--scrollbar-thumb);
+  background: transparent;
   border-radius: 4px;
+  transition: background 0.25s ease;
+}
+
+textarea:hover::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
 }
 
 textarea::-webkit-scrollbar-thumb:hover {
-  background: var(--scrollbar-thumb-hover);
+  background: var(--scrollbar-thumb-hover) !important;
 }
 
 textarea {
   resize: vertical;
 }
 
-/* For Firefox */
-textarea {
+/* For Firefox — hide by default, show on hover via scrollbar-color */
+* {
+  scrollbar-color: transparent transparent;
   scrollbar-width: thin;
+  transition: scrollbar-color 0.25s ease;
+}
+
+*:hover {
+  scrollbar-color: var(--scrollbar-thumb, #7a7a7a) transparent;
+}
+
+textarea {
+  scrollbar-color: transparent transparent;
+}
+
+textarea:hover {
   scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
 }
 

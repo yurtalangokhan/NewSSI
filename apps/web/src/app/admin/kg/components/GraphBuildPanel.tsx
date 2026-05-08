@@ -7,9 +7,13 @@ import Text from "@/refresh-components/texts/Text";
 import {
   useGraphBuildStatus,
   useGraphCollections,
+  useDocuments,
   buildGraph,
   deleteGraph,
   fetchGraphBuildStatus,
+  pauseGraphBuild,
+  resumeGraphBuild,
+  stopGraphBuild,
   type GraphBuildStatus,
   type GraphBuildStatusResponse,
 } from "@/lib/langconnect";
@@ -90,8 +94,12 @@ export default function GraphBuildPanel({
 }: GraphBuildPanelProps) {
   const { t } = useTranslation();
   const [pollActive, setPollActive] = useState(false);
+  const [isPollingPaused, setIsPollingPaused] = useState(false);
+  const [isPollingStopped, setIsPollingStopped] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [lastKnownSnapshot, setLastKnownSnapshot] =
+    useState<{ collectionId: string; status: GraphBuildStatusResponse } | null>(null);
 
   const {
     graphCollections,
@@ -105,14 +113,30 @@ export default function GraphBuildPanel({
 
   const selectedHasGraph = !!collectionId && graphCollectionSet.has(collectionId);
 
-  const { status } = useGraphBuildStatus(collectionId, pollActive);
+  const { documents, isLoading: docsLoading } = useDocuments(collectionId);
+  const hasDocuments = documents.length > 0;
 
-  const currentStatus = status?.status;
+  const { status, mutate: mutateStatus } = useGraphBuildStatus(collectionId, pollActive);
+
+  useEffect(() => {
+    if (status && collectionId) {
+      setLastKnownSnapshot({ collectionId, status });
+    }
+  }, [status, collectionId]);
+
+  const effectiveStatus =
+    status ??
+    (lastKnownSnapshot?.collectionId === collectionId ? lastKnownSnapshot.status : null);
+
+  const currentStatus = effectiveStatus?.status;
 
   const computedPercent =
-    status && status.total_chunks > 0
-      ? Math.round((status.processed_chunks / status.total_chunks) * 100)
-      : (status?.progress_percent ?? 0);
+    effectiveStatus && effectiveStatus.total_chunks > 0
+      ? Math.round(
+          (effectiveStatus.processed_chunks / effectiveStatus.total_chunks) *
+            100
+        )
+      : (effectiveStatus?.progress_percent ?? 0);
 
   const inProgress =
     currentStatus === "pending" ||
@@ -120,23 +144,35 @@ export default function GraphBuildPanel({
     currentStatus === "building";
 
   useEffect(() => {
-    if (inProgress) {
+    if (inProgress && !isPollingPaused && !isPollingStopped) {
       setPollActive(true);
     } else if (currentStatus === "completed" || currentStatus === "failed") {
       setPollActive(false);
       setIsSubmitting(false);
+      setIsPollingPaused(false);
+      setIsPollingStopped(false);
       if (currentStatus === "completed") {
         mutateGraphCollections();
         onBuildComplete?.();
       }
     }
-  }, [currentStatus, inProgress, onBuildComplete, mutateGraphCollections]);
+  }, [
+    currentStatus,
+    inProgress,
+    isPollingPaused,
+    isPollingStopped,
+    onBuildComplete,
+    mutateGraphCollections,
+  ]);
 
   // Auto-resume polling when collection is selected (e.g. after page refresh)
   useEffect(() => {
     if (!collectionId) {
       setPollActive(false);
       setIsSubmitting(false);
+      setIsPollingPaused(false);
+      setIsPollingStopped(false);
+      setLastKnownSnapshot(null);
       return;
     }
 
@@ -150,7 +186,14 @@ export default function GraphBuildPanel({
           data.status === "extracting" ||
           data.status === "building"
         ) {
-          setPollActive(true);
+          setLastKnownSnapshot({ collectionId, status: data });
+          if (data.is_paused) {
+            setIsPollingPaused(true);
+            setIsPollingStopped(false);
+            setPollActive(false);
+          } else if (!isPollingPaused && !isPollingStopped) {
+            setPollActive(true);
+          }
         }
       } catch {
         // No active build — nothing to resume
@@ -160,19 +203,73 @@ export default function GraphBuildPanel({
     return () => {
       cancelled = true;
     };
-  }, [collectionId]);
+  }, [collectionId, isPollingPaused, isPollingStopped]);
 
   const handleBuild = async () => {
     if (!collectionId) return;
     setIsSubmitting(true);
-    setPollActive(true);
+    setIsPollingPaused(false);
+    setIsPollingStopped(false);
+    // Clear stale snapshot and SWR cache so the previous build's status
+    // (e.g. 'failed') never flashes in the UI after a new build starts.
+    setLastKnownSnapshot(null);
+    await mutateStatus(undefined, { revalidate: false });
     try {
       await buildGraph({ collection_id: collectionId });
+      // API has returned: initialize_build_progress() already wrote 'pending'
+      // to the backend store synchronously, so turning on polling now will
+      // immediately get the correct status — no synthetic data needed.
+      setPollActive(true);
       toast.success(t("admin.kg.graphBuildStarted"));
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t("admin.kg.graphBuildStartFailed"));
       setIsSubmitting(false);
+    }
+  };
+
+  const handlePausePolling = async () => {
+    if (!collectionId) return;
+    try {
+      await pauseGraphBuild(collectionId);
       setPollActive(false);
+      setIsPollingPaused(true);
+      setIsPollingStopped(false);
+      toast.info(t("admin.kg.pausedTrackingInfo"));
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : t("admin.kg.graphBuildPauseFailed")
+      );
+    }
+  };
+
+  const handleStopPolling = async () => {
+    if (!collectionId) return;
+    try {
+      await stopGraphBuild(collectionId);
+      // Keep polling active so the frontend automatically detects the
+      // final "failed" status and cleans up all state via the useEffect.
+      setIsPollingPaused(false);
+      setIsPollingStopped(false);
+      setPollActive(true);
+      toast.info(t("admin.kg.graphBuildStopRequested"));
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : t("admin.kg.graphBuildStopFailed")
+      );
+    }
+  };
+
+  const handleResumePolling = async () => {
+    if (!collectionId) return;
+    try {
+      await resumeGraphBuild(collectionId);
+      setIsPollingPaused(false);
+      setIsPollingStopped(false);
+      setPollActive(true);
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : t("admin.kg.graphBuildResumeFailed")
+      );
     }
   };
 
@@ -204,17 +301,26 @@ export default function GraphBuildPanel({
           {t("admin.kg.buildGraph")}
         </Text>
         <Text as="p" mainContentBody text04 className="leading-relaxed">
-          {t("admin.kg.buildGraphDescription")}
-          {t("admin.kg.selectCollectionToBuild")}
+          {t("admin.kg.buildGraphDescription")}{" "}{t("admin.kg.selectCollectionToBuild")}
         </Text>
       </div>
 
       {!collectionId ? (
         <Text as="p" mainContentMuted text03 className="text-sm">
-          Select a collection above to build or manage its knowledge graph.
+          {t("admin.kg.selectCollectionToBuild")}
         </Text>
       ) : (
         <>
+          {/* No documents warning */}
+          {!inProgress && !docsLoading && !hasDocuments && (
+            <div className="flex items-start gap-2 rounded-08 border border-status-error-03 bg-status-error-01 p-3">
+              <SvgAlertTriangle className="h-4 w-4 shrink-0 stroke-status-error-06 mt-0.5" />
+              <Text as="p" mainContentBody text04 className="text-xs text-status-error-06">
+                {t("admin.kg.noDocumentsForBuild")}
+              </Text>
+            </div>
+          )}
+
           {/* Warning for already-built collections */}
           {selectedHasGraph && !inProgress && (
             <div className="flex items-start gap-2 rounded-08 border border-status-warning-03 bg-status-warning-01 p-3">
@@ -240,13 +346,13 @@ export default function GraphBuildPanel({
             </div>
           )}
 
-          {status && (inProgress || currentStatus === "completed") && (
+          {effectiveStatus && (inProgress || currentStatus === "completed") && (
             <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between gap-3 flex-wrap">
                 <Text as="p" mainContentMuted text03 className="text-xs font-medium uppercase tracking-wide">
                   {t("admin.kg.progress")}
                 </Text>
-                <StatusBadge status={status.status} />
+                <StatusBadge status={effectiveStatus.status} />
               </div>
 
               {inProgress && (
@@ -274,10 +380,10 @@ export default function GraphBuildPanel({
               )}
 
               <div className="grid grid-cols-4 gap-3">
-                <StatCounter label={t("admin.kg.chunks")} value={status.total_chunks} />
-                <StatCounter label={t("admin.kg.processed")} value={status.processed_chunks} />
-                <StatCounter label={t("admin.kg.entities")} value={status.extracted_entities} />
-                <StatCounter label={t("admin.kg.relations")} value={status.extracted_relations} />
+                <StatCounter label={t("admin.kg.chunks")} value={effectiveStatus.total_chunks} />
+                <StatCounter label={t("admin.kg.processed")} value={effectiveStatus.processed_chunks} />
+                <StatCounter label={t("admin.kg.entities")} value={effectiveStatus.extracted_entities} />
+                <StatCounter label={t("admin.kg.relations")} value={effectiveStatus.extracted_relations} />
               </div>
             </div>
           )}
@@ -293,11 +399,23 @@ export default function GraphBuildPanel({
             </Text>
           )}
 
+          {inProgress && isPollingPaused && (
+            <Text as="p" mainContentMuted text03 className="text-sm">
+              {t("admin.kg.pausedTrackingInfo")}
+            </Text>
+          )}
+
+          {inProgress && isPollingStopped && (
+            <Text as="p" mainContentMuted text03 className="text-sm">
+              {t("admin.kg.stoppedTrackingInfo")}
+            </Text>
+          )}
+
           <div className="flex items-center gap-2 pt-1">
             <Button
               leftIcon={SvgActivity}
               onClick={handleBuild}
-              disabled={inProgress || isSubmitting}
+              disabled={inProgress || isSubmitting || !hasDocuments}
             >
               {inProgress
                 ? t("admin.kg.building")
@@ -305,6 +423,24 @@ export default function GraphBuildPanel({
                   ? t("admin.kg.rebuildGraph")
                   : t("admin.kg.buildGraph")}
             </Button>
+
+            {inProgress && !isPollingPaused && !isPollingStopped && (
+              <>
+                <Button secondary onClick={handlePausePolling}>
+                  {t("admin.kg.pauseBuild")}
+                </Button>
+                <Button danger onClick={handleStopPolling}>
+                  {t("admin.kg.stopBuild")}
+                </Button>
+              </>
+            )}
+
+            {inProgress && (isPollingPaused || isPollingStopped) && (
+              <Button secondary onClick={handleResumePolling}>
+                {t("admin.kg.resumeBuild")}
+              </Button>
+            )}
+
             <Button
               danger
               leftIcon={SvgTrash}
@@ -314,6 +450,21 @@ export default function GraphBuildPanel({
               {t("admin.kg.deleteGraph")}
             </Button>
           </div>
+          {/* Document list */}
+          {!docsLoading && hasDocuments && (
+            <div className="flex flex-col gap-2">
+              <Text as="p" mainContentMuted text03 className="text-xs font-medium uppercase tracking-wide">
+                {t("admin.kg.collectionDocuments")} ({documents.length})
+              </Text>
+              <div className="flex flex-col gap-1 max-h-48 overflow-y-auto rounded-08 border border-border-01 bg-background-neutral-01 p-2">
+                {documents.map((doc) => (
+                  <div key={doc.id} className="flex items-center gap-2 px-2 py-1 rounded-04 hover:bg-background-neutral-02 text-xs text-text-03 truncate">
+                    <span className="truncate">{(doc.metadata?.filename as string) || (doc.metadata?.title as string) || doc.id}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </>
       )}
     </CardSection>

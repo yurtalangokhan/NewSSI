@@ -383,8 +383,8 @@ function ManageDialog({
               onClick={() => setTab(tabName)}
               className={`px-4 py-2 text-sm font-medium capitalize transition-colors ${
                 tab === tabName
-                  ? "border-b-2 border-blue-500 text-text-00"
-                  : "text-text-02 hover:text-text-00"
+                  ? "border-b-2 border-blue-500 text-text-05"
+                  : "text-text-03 hover:text-text-05"
               }`}
             >
               {tabName === "schedule" ? (
@@ -451,7 +451,7 @@ function ManageDialog({
 
             {/* Frequency preset */}
             <div className="space-y-1.5">
-              <Text as="p" secondaryBody className="font-medium">
+              <Text as="p" secondaryBody text04 className="font-medium">
                 {t("admin.indexingStatus.manage.frequency")}
               </Text>
               <Select value={preset} onValueChange={setPreset}>
@@ -482,8 +482,8 @@ function ManageDialog({
                       onClick={() => setCustomMode(m)}
                       className={`flex-1 py-1 text-xs font-medium rounded transition-colors capitalize ${
                         customMode === m
-                          ? "bg-background text-text-00 shadow-sm"
-                          : "text-text-02 hover:text-text-00"
+                          ? "bg-background text-text-05 shadow-sm"
+                          : "text-text-03 hover:text-text-05"
                       }`}
                     >
                       {m === "expression"
@@ -498,7 +498,7 @@ function ManageDialog({
                 {/* Expression */}
                 {customMode === "expression" && (
                   <div className="space-y-2">
-                    <Text as="p" secondaryBody className="text-xs font-medium">
+                    <Text as="p" secondaryBody text04 className="text-xs font-medium">
                       {t("admin.indexingStatus.manage.cronExpression")}
                     </Text>
                     <InputTypeIn
@@ -508,7 +508,7 @@ function ManageDialog({
                       onChange={(e) => setCron(e.target.value)}
                       className="font-mono text-sm"
                     />
-                    <Text as="p" secondaryBody textLight05 className="text-xs">
+                    <Text as="p" secondaryBody text03 className="text-xs">
                       {t("admin.indexingStatus.manage.cronFormat")}
                     </Text>
                   </div>
@@ -517,7 +517,7 @@ function ManageDialog({
                 {/* Weekly day picker */}
                 {customMode === "weekly" && (
                   <div className="space-y-3">
-                    <Text as="p" secondaryBody className="text-xs font-medium">
+                    <Text as="p" secondaryBody text04 className="text-xs font-medium">
                       {t("admin.indexingStatus.manage.daysOfWeek")}
                     </Text>
                     <div className="flex gap-1.5 flex-wrap">
@@ -537,7 +537,7 @@ function ManageDialog({
                     </div>
                     <div className="flex gap-3 items-end">
                       <div className="space-y-1">
-                        <Text as="p" secondaryBody textLight05 className="text-xs">
+                        <Text as="p" secondaryBody text03 className="text-xs">
                           {t("admin.indexingStatus.manage.hour")}
                         </Text>
                         <Select value={selectedHour} onValueChange={(v) => { setSelectedHour(v); setTimeout(buildWeeklyCron, 0); }}>
@@ -551,7 +551,7 @@ function ManageDialog({
                       </div>
                       <span className="pb-2 font-bold">:</span>
                       <div className="space-y-1">
-                        <Text as="p" secondaryBody textLight05 className="text-xs">
+                        <Text as="p" secondaryBody text03 className="text-xs">
                           {t("admin.indexingStatus.manage.minute")}
                         </Text>
                         <Select value={selectedMinute} onValueChange={(v) => { setSelectedMinute(v); setTimeout(buildWeeklyCron, 0); }}>
@@ -573,12 +573,12 @@ function ManageDialog({
                 {/* Daily at time */}
                 {customMode === "time" && (
                   <div className="space-y-3">
-                    <Text as="p" secondaryBody className="text-xs font-medium">
+                    <Text as="p" secondaryBody text04 className="text-xs font-medium">
                       {t("admin.indexingStatus.manage.runDailyAt")}
                     </Text>
                     <div className="flex gap-3 items-end">
                       <div className="space-y-1">
-                        <Text as="p" secondaryBody textLight05 className="text-xs">
+                        <Text as="p" secondaryBody text03 className="text-xs">
                           {t("admin.indexingStatus.manage.hour")}
                         </Text>
                         <Select value={selectedHour} onValueChange={(v) => { setSelectedHour(v); setTimeout(buildTimeCron, 0); }}>
@@ -592,7 +592,7 @@ function ManageDialog({
                       </div>
                       <span className="pb-2 font-bold">:</span>
                       <div className="space-y-1">
-                        <Text as="p" secondaryBody textLight05 className="text-xs">
+                        <Text as="p" secondaryBody text03 className="text-xs">
                           {t("admin.indexingStatus.manage.minute")}
                         </Text>
                         <Select value={selectedMinute} onValueChange={(v) => { setSelectedMinute(v); setTimeout(buildTimeCron, 0); }}>
@@ -613,8 +613,8 @@ function ManageDialog({
 
                 {/* Cron preview */}
                 <div className="flex items-center gap-2 pt-2 border-t border-border">
-                  <SvgClock className="h-3.5 w-3.5 shrink-0 text-text-02" />
-                  <Text as="span" secondaryBody textLight05 className="text-xs">
+                  <SvgClock className="h-3.5 w-3.5 shrink-0 text-text-03" />
+                  <Text as="span" secondaryBody text03 className="text-xs">
                     {t("admin.indexingStatus.manage.cronLabel")}:{" "}
                     <code className="bg-background-tint-02 px-1 rounded">
                       {cron}
@@ -628,8 +628,8 @@ function ManageDialog({
             {/* Cron preview for presets */}
             {preset !== "custom" && cron && (
               <div className="flex items-center gap-2">
-                <SvgClock className="h-3.5 w-3.5 shrink-0 text-text-02" />
-                <Text as="span" secondaryBody textLight05 className="text-sm">
+                <SvgClock className="h-3.5 w-3.5 shrink-0 text-text-03" />
+                <Text as="span" secondaryBody text03 className="text-sm">
                   {t("admin.indexingStatus.manage.cronLabel")}: <code className="bg-background-tint-02 px-1.5 py-0.5 rounded text-xs">{cron}</code>
                   {cron && <> → {describeCron(cron, t)}</>}
                 </Text>
@@ -638,7 +638,7 @@ function ManageDialog({
 
             {/* Timezone */}
             <div className="space-y-1.5">
-              <Text as="p" secondaryBody className="font-medium">
+              <Text as="p" secondaryBody text04 className="font-medium">
                 {t("admin.indexingStatus.manage.timezone")}
               </Text>
               <Select value={timezone} onValueChange={setTimezone}>
@@ -654,10 +654,10 @@ function ManageDialog({
             {/* Update Graph RAG */}
             <div className="flex items-center justify-between rounded-lg border border-border p-3">
               <div className="space-y-0.5">
-                <Text as="p" secondaryBody className="font-medium">
+                <Text as="p" secondaryBody text04 className="font-medium">
                   {t("admin.indexingStatus.manage.updateGraphRag")}
                 </Text>
-                <Text as="p" secondaryBody textLight05 className="text-xs">
+                <Text as="p" secondaryBody text03 className="text-xs">
                   {t("admin.indexingStatus.manage.updateGraphRagHint")}
                 </Text>
               </div>
@@ -669,10 +669,10 @@ function ManageDialog({
             {/* Enabled */}
             <div className="flex items-center justify-between rounded-lg border border-border p-3">
               <div className="space-y-0.5">
-                <Text as="p" secondaryBody className="font-medium">
+                <Text as="p" secondaryBody text04 className="font-medium">
                   {t("admin.indexingStatus.manage.enabled")}
                 </Text>
-                <Text as="p" secondaryBody textLight05 className="text-xs">
+                <Text as="p" secondaryBody text03 className="text-xs">
                   {t("admin.indexingStatus.manage.enabledHint")}
                 </Text>
               </div>
@@ -683,7 +683,7 @@ function ManageDialog({
 
             {/* Next run info */}
             {schedule?.next_run_at && (
-              <Text as="p" secondaryBody textLight05 className="text-xs">
+              <Text as="p" secondaryBody text03 className="text-xs">
                 {t("admin.indexingStatus.manage.nextRun")}: {new Date(schedule.next_run_at).toLocaleString()}
               </Text>
             )}

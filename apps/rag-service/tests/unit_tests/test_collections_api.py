@@ -1,5 +1,6 @@
 from uuid import UUID
 
+from langconnect.models.graph import BuildProgress
 from tests.unit_tests.fixtures import get_async_test_client
 
 USER_1_HEADERS = {
@@ -155,6 +156,41 @@ async def test_delete_collection_and_nonexistent() -> None:
             f"/collections/{collection_id}", headers=USER_1_HEADERS
         )
         assert r4.status_code == 204
+
+
+async def test_collection_mutations_blocked_while_graph_building(
+    monkeypatch,
+) -> None:
+    """DELETE/PATCH should be blocked while graph build is in progress."""
+    async with get_async_test_client() as client:
+        create_resp = await client.post(
+            "/collections",
+            json={"name": "locked_collection", "metadata": {}},
+            headers=USER_1_HEADERS,
+        )
+        assert create_resp.status_code == 201
+        collection_id = create_resp.json()["uuid"]
+
+        def _fake_progress(_: str):
+            return BuildProgress(collection_id=collection_id, status="building")
+
+        monkeypatch.setattr(
+            "langconnect.services.build_lock.get_build_progress",
+            _fake_progress,
+        )
+
+        delete_resp = await client.delete(
+            f"/collections/{collection_id}",
+            headers=USER_1_HEADERS,
+        )
+        assert delete_resp.status_code == 409
+
+        update_resp = await client.patch(
+            f"/collections/{collection_id}",
+            json={"name": "renamed"},
+            headers=USER_1_HEADERS,
+        )
+        assert update_resp.status_code == 409
 
 
 async def test_patch_collection() -> None:

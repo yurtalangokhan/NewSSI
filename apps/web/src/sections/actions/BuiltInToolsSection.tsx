@@ -29,9 +29,11 @@ interface BuiltInToolsSectionProps {
 function ToolCard({
   tool,
   onTest,
+  t,
 }: {
   tool: ToolWithCategory;
   onTest: (tool: ToolWithCategory) => void;
+  t: (key: string, options?: Record<string, unknown>) => string;
 }) {
   return (
     <div className="border border-border-01 rounded-lg p-4 hover:bg-background-tint-00 transition-colors">
@@ -44,13 +46,13 @@ function ToolCard({
         )}
       </div>
       <p className="text-sm text-text-03 line-clamp-2 mb-3">
-        {tool.description || "No description"}
+        {tool.description || t("toolPlayground.noDescription")}
       </p>
       <button
         onClick={() => onTest(tool)}
         className="text-sm text-theme-primary-04 hover:text-theme-primary-05 font-medium"
       >
-        Test Tool →
+        {t("admin.mcp.testTool")} →
       </button>
     </div>
   );
@@ -207,6 +209,7 @@ export default function BuiltInToolsSection({
                       key={tool.name}
                       tool={tool}
                       onTest={handleTestTool}
+                      t={t}
                     />
                   ))}
                 </div>

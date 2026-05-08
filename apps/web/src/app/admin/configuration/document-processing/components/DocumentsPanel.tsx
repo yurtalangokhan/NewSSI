@@ -156,10 +156,12 @@ function DocumentRow({
   doc,
   collectionId,
   onDelete,
+  isCollectionMutationLocked,
 }: {
   doc: RagDocument;
   collectionId: string;
   onDelete: () => void;
+  isCollectionMutationLocked: boolean;
 }) {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
@@ -172,6 +174,16 @@ function DocumentRow({
     doc.id;
 
   async function handleDelete() {
+    if (isCollectionMutationLocked) {
+      toast.warning(
+        t("admin.documentProcessing.collectionMutationLocked", {
+          defaultValue:
+            "Graph RAG build devam ederken bu koleksiyon üzerinde değişiklik yapılamaz.",
+        })
+      );
+      return;
+    }
+
     const confirmed = window.confirm(
       t("admin.documentProcessing.deleteDocumentConfirm", {
         name: fileName,
@@ -236,7 +248,7 @@ function DocumentRow({
             danger
             size="md"
             onClick={handleDelete}
-            disabled={isDeleting}
+            disabled={isDeleting || isCollectionMutationLocked}
             aria-label={t("admin.documentProcessing.deleteDocumentAria", {
               defaultValue: "Delete document",
             })}
@@ -263,9 +275,14 @@ function DocumentRow({
 interface DocumentsPanelProps {
   collectionId: string | null;
   readOnly?: boolean;
+  isCollectionMutationLocked?: boolean;
 }
 
-export default function DocumentsPanel({ collectionId, readOnly = false }: DocumentsPanelProps) {
+export default function DocumentsPanel({
+  collectionId,
+  readOnly = false,
+  isCollectionMutationLocked = false,
+}: DocumentsPanelProps) {
   const { t } = useTranslation();
   const { documents, isLoading, mutate } = useDocuments(collectionId);
   const [isUploading, setIsUploading] = useState(false);
@@ -274,6 +291,16 @@ export default function DocumentsPanel({ collectionId, readOnly = false }: Docum
   const handleDrop = useCallback(
     async (acceptedFiles: File[]) => {
       if (!collectionId || acceptedFiles.length === 0) return;
+      if (isCollectionMutationLocked) {
+        toast.warning(
+          t("admin.documentProcessing.collectionMutationLocked", {
+            defaultValue:
+              "Graph RAG build devam ederken bu koleksiyon üzerinde değişiklik yapılamaz.",
+          })
+        );
+        return;
+      }
+
       setIsUploading(true);
       try {
         const metadatas = acceptedFiles.map((f) => ({ filename: f.name }));
@@ -296,7 +323,7 @@ export default function DocumentsPanel({ collectionId, readOnly = false }: Docum
         setIsUploading(false);
       }
     },
-    [collectionId, mutate]
+    [collectionId, isCollectionMutationLocked, mutate, t]
   );
 
   if (!collectionId) {
@@ -312,7 +339,7 @@ export default function DocumentsPanel({ collectionId, readOnly = false }: Docum
   return (
     <div className="flex flex-col gap-4">
       {/* Upload section — Belge / Web tabs (hidden for read-only datasource collections) */}
-      {!readOnly && (
+      {!readOnly && !isCollectionMutationLocked && (
         <SimpleTabs
           tabs={SimpleTabs.generateTabs({
             document: {
@@ -436,6 +463,23 @@ export default function DocumentsPanel({ collectionId, readOnly = false }: Docum
           defaultValue="document"
         />
       )}
+
+      {isCollectionMutationLocked && (
+        <CardSection className="flex flex-col gap-2 border border-status-warning-05/30 bg-status-warning-05/5">
+          <Text as="p" mainUiAction text04>
+            {t("admin.documentProcessing.collectionMutationLocked", {
+              defaultValue:
+                "Graph RAG build devam ederken bu koleksiyon üzerinde değişiklik yapılamaz.",
+            })}
+          </Text>
+          <Text as="p" mainContentMuted text03>
+            {t("admin.documentProcessing.collectionMutationLockedDescription", {
+              defaultValue:
+                "Build tamamlandıktan sonra belge ekleme/silme ve koleksiyon düzenleme işlemleri tekrar açılacaktır.",
+            })}
+          </Text>
+        </CardSection>
+      )}
       {/* Document list */}
       <CardSection className="flex flex-col gap-3">
         <Text as="p" headingH3 text05 className="border-b border-border-01 pb-2">
@@ -459,6 +503,7 @@ export default function DocumentsPanel({ collectionId, readOnly = false }: Docum
                 doc={doc}
                 collectionId={collectionId}
                 onDelete={() => mutate()}
+                isCollectionMutationLocked={isCollectionMutationLocked}
               />
             ))}
           </div>

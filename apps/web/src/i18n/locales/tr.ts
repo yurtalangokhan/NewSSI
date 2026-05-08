@@ -304,6 +304,7 @@ const tr = {
     deleteProjectConfirmation:
       "Bu projeyi silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.",
     deleteChatTitle: "Sohbeti Sil",
+    deleteChatError: "Sohbet silinemedi. Lütfen tekrar deneyin.",
     deleteChatConfirmation:
       "Bu sohbeti silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.",
     deleteButton: "Sil",
@@ -1140,6 +1141,7 @@ const tr = {
     agentPrivateWarning:
       "Bu ajan size özeldir ve yalnızca sizin için öne çıkarılacaktır.",
     defaultModelLabel: "Varsayılan Model",
+    defaultModelOption: "Varsayılan Model",
     defaultModelDescription:
       "Bu ajan için kullanılacak LLM modelini seçin. Ayarlanmadığı takdirde kullanıcının varsayılan modeli kullanılacaktır.",
     knowledgeCutoffLabel: "Bilgi Kesme Tarihi",
@@ -2078,6 +2080,11 @@ const tr = {
         "Belgeleri yönetmek için yukarıdan bir koleksiyon seçin.",
       collectionCreated: "\"{{name}}\" koleksiyonu oluşturuldu.",
       collectionCreateFailed: "Koleksiyon oluşturulamadı",
+      renameCollection: "Koleksiyonu Yeniden Adlandır",
+      rename: "Yeniden Adlandır",
+      renaming: "Yeniden adlandırılıyor…",
+      collectionRenamed: "Koleksiyon adı \"{{name}}\" olarak güncellendi.",
+      collectionRenameFailed: "Koleksiyon yeniden adlandırılamadı",
       collectionDeleted: "Koleksiyon silindi.",
       collectionDeleteFailed: "Koleksiyon silinemedi",
       documentDeleted: "Belge silindi.",
@@ -2166,6 +2173,7 @@ const tr = {
       noToolsAvailable: "Araç bulunamadı",
       noToolsFound: "Araç bulunamadı",
       fetchingTools: "Araçlar getiriliyor...",
+      testTool: "Aracı Test Et",
     },
     kg: {
       description:
@@ -2181,6 +2189,8 @@ const tr = {
       noGraphHintSuffix:
         "olarak işaretlenen öğeler için önce grafik oluşturulmalıdır. Birini seçip",
       buildTab: "Oluştur",
+      collectionDocuments: "Koleksiyondaki Belgeler",
+      noDocumentsForBuild: "Bu koleksiyonda belge yok. Grafik oluşturmadan önce koleksiyona belge ekleyin.",
       graphExplorerTab: "Grafik Gezgini",
       searchTab: "Arama",
       selectCollectionForTab:
@@ -2201,6 +2211,18 @@ const tr = {
         "Bilgi grafiği oluşturmak veya yönetmek için yukarıdan bir koleksiyon seçin.",
       graphBuildStarted: "Grafik oluşturma başlatıldı.",
       graphBuildStartFailed: "Grafik oluşturma başlatılamadı",
+      graphBuildPauseFailed: "Grafik oluşturma duraklatılamadı",
+      graphBuildResumeFailed: "Grafik oluşturma devam ettirilemedi",
+      graphBuildStopFailed: "Grafik oluşturma durdurulamadı",
+      pauseBuild: "Duraklat",
+      resumeBuild: "Devam Et",
+      stopBuild: "Durdur",
+      pausedTrackingInfo:
+        "Yapı durumu güncellemeleri duraklatıldı. İlerlemeyi izlemeye devam etmek için Devam Et'e tıklayın.",
+      stoppedTrackingInfo:
+        "Bu oturum için yapı takibi durduruldu. Canlı duruma yeniden bağlanmak için Devam Et'e tıklayın.",
+      graphBuildStopRequested:
+        "Durdurma isteği gönderildi. Mevcut adım tamamlandıktan sonra işlem sonlanacak.",
       graphDeleted: "Grafik silindi.",
       graphDeleteFailed: "Grafik silinemedi",
       buildWarningTitle: "Bu koleksiyonda zaten bir bilgi grafiği var.",
@@ -3378,6 +3400,8 @@ const tr = {
     customConfigValue: "Değer",
     addNew: "Yeni Ekle",
     customDefaultModelSubtext: "Bu sağlayıcı için varsayılan olarak kullanılacak model. Yukarıda listelenen modellerden biri olmalıdır.",
+    systemDefault: "Sistem Varsayılanı",
+    userDefault: "Kullanıcı Varsayılanı",
     fillInAsNeeded: "Aşağıdakileri gerektiği gibi doldurun. Hangi alanların gerekli olduğunu belirlemek için yukarıda belirtilen sağlayıcının LiteLLM belgelerine bakın.",
     optionalApiKey: "[İsteğe Bağlı] API Anahtarı",
     optionalApiBase: "[İsteğe Bağlı] API Base",
@@ -3407,6 +3431,10 @@ const tr = {
     addItem: "Öğe ekle",
     enabled: "Etkin",
     disabled: "Devre dışı",
+    enterField: "{{label}} girin",
+    fieldLabels: {
+      expression: "İfade",
+    },
     enterJsonFor: "{{label}} için JSON girin",
     unsupportedFieldType:
       "Desteklenmeyen alan türü. Buraya ham JSON girebilirsiniz.",
@@ -3559,6 +3587,7 @@ const tr = {
     error: "Hata",
     success: "Başarılı",
     manage: "Yönet",
+    optional: "İsteğe Bağlı",
   },
   ee: {
     billing: {
