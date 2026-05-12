@@ -178,7 +178,7 @@ function ExistingProviderCard({
             </Text>
             {isLastProvider && (
               <Text text03>
-                {t("modals.connect")} another provider to continue using chats.
+                {t("admin.llm.connectAnotherProvider")}
               </Text>
             )}
           </Section>
@@ -263,7 +263,7 @@ function NewProviderCard({
             prominence="tertiary"
             onClick={() => setIsOpen(true)}
           >
-            Connect
+            {t("modals.connect")}
           </Button>
         }
       />
@@ -487,8 +487,8 @@ export default function LLMConfigurationPage() {
           justifyContent="start"
         >
           <Content
-            title="Built-in Providers"
-            description="Configured via environment variables, read-only"
+            title={t("admin.llm.builtInProvidersTitle")}
+            description={t("admin.llm.builtInProvidersDescription")}
             sizePreset="main-content"
             variant="section"
           />
@@ -505,8 +505,8 @@ export default function LLMConfigurationPage() {
               <Card>
                 <ContentAction
                   icon={getProviderIcon("ollama_chat")}
-                  title="Ollama (Built-in)"
-                  description="Configured from environment"
+                  title={t("admin.llm.ollamaBuiltInTitle")}
+                  description={t("admin.llm.configuredFromEnvironment")}
                   sizePreset="main-content"
                   variant="section"
                 />
@@ -526,18 +526,18 @@ export default function LLMConfigurationPage() {
         >
           <div className="flex justify-between items-center">
             <Content
-              title="Local / Self-Hosted Providers"
-              description="Ollama, vLLM, and other self-hosted LLM servers"
+              title={t("admin.llm.localProvidersTitle")}
+              description={t("admin.llm.localProvidersDescription")}
               sizePreset="main-content"
               variant="section"
             />
             <Button prominence="primary" onClick={() => setUrlProviderModalOpen(true)}>
-              + Add Provider
+              {t("admin.llm.addProviderCta")}
             </Button>
           </div>
           
           {urlProviders.length === 0 ? (
-            <Text secondaryBody>No local providers configured yet.</Text>
+            <Text secondaryBody>{t("admin.llm.noLocalProvidersYet")}</Text>
           ) : (
             <div className="flex flex-col gap-2">
               {urlProviders.map((provider: UrlBasedProvider) => (
@@ -579,18 +579,18 @@ export default function LLMConfigurationPage() {
         >
           <div className="flex justify-between items-center">
             <Content
-              title="Cloud Providers"
-              description="API-key-based providers (OpenAI, Anthropic, etc.)"
+              title={t("admin.llm.cloudProvidersTitle")}
+              description={t("admin.llm.cloudProvidersDescription")}
               sizePreset="main-content"
               variant="section"
             />
             <Button prominence="primary" onClick={() => setApiKeyProviderModalOpen(true)}>
-              + Add Provider
+              {t("admin.llm.addProviderCta")}
             </Button>
           </div>
 
           {apiKeyProviders.length === 0 ? (
-            <Text secondaryBody>No cloud providers configured yet.</Text>
+            <Text secondaryBody>{t("admin.llm.noCloudProvidersYet")}</Text>
           ) : (
             <div className="flex flex-col gap-2">
               {apiKeyProviders.map((provider: ApiKeyProvider) => (
@@ -598,7 +598,7 @@ export default function LLMConfigurationPage() {
                   <ContentAction
                     icon={getProviderIcon(provider.provider_type)}
                     title={provider.name}
-                    description={`${provider.provider_type} · ${provider.user_config.default_model ?? "no default"}`}
+                    description={`${provider.provider_type} · ${provider.user_config.default_model ?? t("admin.llm.noDefault")}`}
                     sizePreset="main-content"
                     variant="section"
                     rightChildren={
@@ -608,10 +608,10 @@ export default function LLMConfigurationPage() {
                         onClick={async () => {
                           try {
                             await fetch(`/api/admin/user-providers/${provider.id}`, { method: "DELETE" });
-                            toast({ message: "Provider deleted" });
+                            toast({ message: t("admin.llm.providerDeletedSuccess") });
                             mutateProviders();
                           } catch (e) {
-                            toast({ message: "Failed to delete provider", level: "error" });
+                            toast({ message: t("admin.llm.failedToDeleteProvider"), level: "error" });
                           }
                         }}
                       />

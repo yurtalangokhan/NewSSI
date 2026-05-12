@@ -6,6 +6,7 @@ import { toast } from "@/hooks/useToast";
 import Modal from "@/refresh-components/Modal";
 import { Button } from "@opal/components";
 import Text from "@/refresh-components/texts/Text";
+import { useTranslation } from "react-i18next";
 
 interface Props {
   open: boolean;
@@ -20,6 +21,7 @@ interface OllamaProgress {
 }
 
 export function ModelDownloadModal({ open, onOpenChange, providerId }: Props) {
+  const { t } = useTranslation();
   const { mutate } = useSWRConfig();
   const [modelName, setModelName] = useState("");
   const [pulling, setPulling] = useState(false);
@@ -42,12 +44,12 @@ export function ModelDownloadModal({ open, onOpenChange, providerId }: Props) {
 
   const handlePull = async () => {
     if (!modelName.trim()) {
-      toast({ message: "Model name is required", level: "error" });
+      toast({ message: t("admin.llm.modelNameRequired"), level: "error" });
       return;
     }
     setPulling(true);
     setDone(false);
-    setProgress({ status: "Starting…" });
+    setProgress({ status: t("admin.llm.starting") });
 
     try {
       const res = await fetch("/api/admin/ollama/pull", {
@@ -57,7 +59,7 @@ export function ModelDownloadModal({ open, onOpenChange, providerId }: Props) {
       });
 
       if (!res.ok || !res.body) {
-        throw new Error("Pull request failed");
+        throw new Error(t("admin.llm.pullRequestFailed"));
       }
 
       const reader = res.body.getReader();
@@ -90,11 +92,11 @@ export function ModelDownloadModal({ open, onOpenChange, providerId }: Props) {
       }
 
       setDone(true);
-      toast({ message: `Model "${modelName}" downloaded` });
+      toast({ message: t("admin.llm.modelDownloaded", { model: modelName }) });
       await mutate(`/api/admin/providers/${providerId}/models`);
     } catch (e: unknown) {
       toast({
-        message: e instanceof Error ? e.message : "Pull failed",
+        message: e instanceof Error ? e.message : t("admin.llm.pullFailed"),
         level: "error",
       });
     } finally {
@@ -110,15 +112,15 @@ export function ModelDownloadModal({ open, onOpenChange, providerId }: Props) {
   return (
     <Modal open={open} onOpenChange={handleClose}>
       <Modal.Content width="sm">
-        <Modal.Header title="Download Ollama Model" onClose={handleClose} />
+        <Modal.Header title={t("admin.llm.downloadOllamaModel")} onClose={handleClose} />
 
         <Modal.Body>
           <div className="space-y-4 w-full">
             <div className="space-y-1">
-              <Text secondaryBody>Model Name</Text>
+              <Text secondaryBody>{t("admin.llm.modelName")}</Text>
               <input
                 className="w-full rounded border border-input bg-background px-3 py-2 text-sm"
-                placeholder="e.g. llama3.1:8b"
+                placeholder={t("admin.llm.modelNameExample")}
                 value={modelName}
                 disabled={pulling}
                 onChange={(e) => setModelName(e.target.value)}
@@ -145,11 +147,11 @@ export function ModelDownloadModal({ open, onOpenChange, providerId }: Props) {
 
         <Modal.Footer>
           <Button prominence="secondary" onClick={handleClose} disabled={pulling && !done}>
-            {done ? "Close" : "Cancel"}
+            {done ? t("modals.done") : t("modals.cancel")}
           </Button>
           {!done && (
             <Button prominence="primary" onClick={handlePull} disabled={pulling}>
-              {pulling ? "Downloading…" : "Download"}
+              {pulling ? t("admin.llm.downloading") : t("admin.llm.download")}
             </Button>
           )}
         </Modal.Footer>

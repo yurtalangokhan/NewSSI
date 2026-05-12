@@ -9,6 +9,7 @@ import { Button } from "@opal/components";
 import Text from "@/refresh-components/texts/Text";
 import InputSelect from "@/refresh-components/inputs/InputSelect";
 import { getProviderIcon } from "@/lib/llmConfig/providers";
+import { useTranslation } from "react-i18next";
 
 interface Props {
   open: boolean;
@@ -21,6 +22,7 @@ const URL_TYPES = ["ollama", "vllm", "openai_compatible", "litellm"];
 type TestStatus = "idle" | "testing" | "ok" | "error";
 
 export function UrlProviderModal({ open, onOpenChange, wellKnownProviders }: Props) {
+  const { t } = useTranslation();
   const { mutate } = useSWRConfig();
   const [name, setName] = useState("");
   const [providerType, setProviderType] = useState("ollama");
@@ -54,7 +56,7 @@ export function UrlProviderModal({ open, onOpenChange, wellKnownProviders }: Pro
 
   const handleTest = async () => {
     if (!baseUrl.trim()) {
-      toast({ message: "Base URL is required to test connection", level: "error" });
+      toast({ message: t("admin.llm.baseUrlRequiredToTest"), level: "error" });
       return;
     }
     setTestStatus("testing");
@@ -75,17 +77,17 @@ export function UrlProviderModal({ open, onOpenChange, wellKnownProviders }: Pro
         setTestStatus("ok");
       } else {
         setTestStatus("error");
-        setTestError(data.error || "Connection failed");
+        setTestError(data.error || t("admin.llm.connectionFailed"));
       }
     } catch (e) {
       setTestStatus("error");
-      setTestError(e instanceof Error ? e.message : "Connection failed");
+      setTestError(e instanceof Error ? e.message : t("admin.llm.connectionFailed"));
     }
   };
 
   const handleSubmit = async () => {
     if (!name.trim() || !baseUrl.trim()) {
-      toast({ message: "Name and Base URL are required", level: "error" });
+      toast({ message: t("admin.llm.nameAndBaseUrlRequired"), level: "error" });
       return;
     }
 
@@ -116,15 +118,15 @@ export function UrlProviderModal({ open, onOpenChange, wellKnownProviders }: Pro
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(err.detail || "Failed to add provider");
+        throw new Error(err.detail || t("admin.llm.failedToAddProvider"));
       }
-      toast({ message: "Provider added" });
+      toast({ message: t("admin.llm.providerAdded") });
       await mutate("/api/admin/providers");
       reset();
       onOpenChange(false);
     } catch (e: unknown) {
       toast({
-        message: e instanceof Error ? e.message : "Failed to add provider",
+        message: e instanceof Error ? e.message : t("admin.llm.failedToAddProvider"),
         level: "error",
       });
     } finally {
@@ -135,17 +137,20 @@ export function UrlProviderModal({ open, onOpenChange, wellKnownProviders }: Pro
   return (
     <Modal open={open} onOpenChange={onOpenChange}>
       <Modal.Content width="sm">
-        <Modal.Header title="Add Local / Self-Hosted Provider" onClose={() => onOpenChange(false)} />
+        <Modal.Header
+          title={t("admin.llm.addLocalProviderTitle")}
+          onClose={() => onOpenChange(false)}
+        />
 
         <Modal.Body>
           <div className="space-y-4 w-full">
             <div className="space-y-1">
-              <Text secondaryBody>Provider Type</Text>
+              <Text secondaryBody>{t("admin.llm.providerType")}</Text>
               <InputSelect
                 value={providerType}
                 onValueChange={(v) => { setProviderType(v); setTestStatus("idle"); }}
               >
-                <InputSelect.Trigger placeholder="Select provider" />
+                <InputSelect.Trigger placeholder={t("admin.llm.selectProvider")} />
                 <InputSelect.Content>
                   {urlProviders.map((p) => {
                     const ProviderIcon = getProviderIcon(p.provider_type);
@@ -164,21 +169,21 @@ export function UrlProviderModal({ open, onOpenChange, wellKnownProviders }: Pro
             </div>
 
             <div className="space-y-1">
-              <Text secondaryBody>Display Name</Text>
+              <Text secondaryBody>{t("admin.llm.displayName")}</Text>
               <input
                 className="w-full rounded border border-input bg-background px-3 py-2 text-sm"
-                placeholder="e.g. Local Ollama"
+                placeholder={t("admin.llm.localDisplayNamePlaceholder")}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
             </div>
 
             <div className="space-y-1">
-              <Text secondaryBody>Base URL</Text>
+              <Text secondaryBody>{t("admin.llm.baseUrl")}</Text>
               <div className="flex gap-2">
                 <input
                   className="flex-1 rounded border border-input bg-background px-3 py-2 text-sm"
-                  placeholder="http://localhost:11434"
+                  placeholder={t("admin.llm.baseUrlPlaceholder")}
                   value={baseUrl}
                   onChange={(e) => { setBaseUrl(e.target.value); setTestStatus("idle"); }}
                 />
@@ -187,47 +192,50 @@ export function UrlProviderModal({ open, onOpenChange, wellKnownProviders }: Pro
                   onClick={handleTest}
                   disabled={testStatus === "testing" || !baseUrl.trim()}
                 >
-                  {testStatus === "testing" ? "Testing…" : "Test"}
+                  {testStatus === "testing" ? t("admin.llm.testing") : t("admin.llm.test")}
                 </Button>
               </div>
               {testStatus === "ok" && (
                 <p className="text-sm text-green-600">
-                  ✓ Connected{testLatency !== null ? ` (${testLatency}ms)` : ""}
+                  {t("admin.llm.connected")}
+                  {testLatency !== null ? ` (${testLatency}ms)` : ""}
                 </p>
               )}
               {testStatus === "error" && (
-                <p className="text-sm text-red-500">✗ {testError || "Connection failed"}</p>
+                <p className="text-sm text-red-500">
+                  {t("admin.llm.connectionFailed")}: {testError || t("admin.llm.connectionFailed")}
+                </p>
               )}
             </div>
 
             <div className="space-y-1">
-              <Text secondaryBody>API Key (optional)</Text>
+              <Text secondaryBody>{t("admin.llm.apiKeyOptional")}</Text>
               <input
                 type="password"
                 className="w-full rounded border border-input bg-background px-3 py-2 text-sm"
-                placeholder="Leave blank if not required"
+                placeholder={t("admin.llm.leaveBlankIfNotRequired")}
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
               />
             </div>
 
             <div className="space-y-1">
-              <Text secondaryBody>[Optional] API Version</Text>
+              <Text secondaryBody>{t("admin.llm.optionalApiVersion")}</Text>
               <input
                 className="w-full rounded border border-input bg-background px-3 py-2 text-sm"
-                placeholder="e.g. 2024-02-15-preview"
+                placeholder={t("admin.llm.apiVersionPlaceholder")}
                 value={apiVersion}
                 onChange={(e) => setApiVersion(e.target.value)}
               />
             </div>
 
             <div className="rounded border border-border p-3 space-y-2">
-              <Text secondaryBody>[Optional] Custom Configs</Text>
+              <Text secondaryBody>{t("admin.llm.optionalCustomConfigs")}</Text>
               {customConfigList.map(([key, value], idx) => (
                 <div key={`${idx}-${key}`} className="grid grid-cols-12 gap-2">
                   <input
                     className="col-span-5 rounded border border-input bg-background px-3 py-2 text-sm"
-                    placeholder="Key"
+                    placeholder={t("admin.llm.key")}
                     value={key}
                     onChange={(e) => {
                       setCustomConfigList((prev) =>
@@ -239,7 +247,7 @@ export function UrlProviderModal({ open, onOpenChange, wellKnownProviders }: Pro
                   />
                   <input
                     className="col-span-5 rounded border border-input bg-background px-3 py-2 text-sm"
-                    placeholder="Value"
+                    placeholder={t("admin.llm.value")}
                     value={value}
                     onChange={(e) => {
                       setCustomConfigList((prev) =>
@@ -256,7 +264,7 @@ export function UrlProviderModal({ open, onOpenChange, wellKnownProviders }: Pro
                         setCustomConfigList((prev) => prev.filter((_, i) => i !== idx));
                       }}
                     >
-                      Remove
+                      {t("admin.llm.remove")}
                     </Button>
                   </div>
                 </div>
@@ -265,17 +273,17 @@ export function UrlProviderModal({ open, onOpenChange, wellKnownProviders }: Pro
                 prominence="secondary"
                 onClick={() => setCustomConfigList((prev) => [...prev, ["", ""]])}
               >
-                + Add Config
+                {t("admin.llm.addConfig")}
               </Button>
             </div>
 
 
 
             <div className="space-y-1">
-              <Text secondaryBody>Default Model (optional)</Text>
+              <Text secondaryBody>{t("admin.llm.defaultModelOptional")}</Text>
               <input
                 className="w-full rounded border border-input bg-background px-3 py-2 text-sm"
-                placeholder="e.g. llama3.2"
+                placeholder={t("admin.llm.defaultModelExample")}
                 value={defaultModel}
                 onChange={(e) => setDefaultModel(e.target.value)}
               />
@@ -286,10 +294,10 @@ export function UrlProviderModal({ open, onOpenChange, wellKnownProviders }: Pro
 
         <Modal.Footer>
           <Button prominence="secondary" onClick={() => onOpenChange(false)}>
-            Cancel
+            {t("modals.cancel")}
           </Button>
           <Button prominence="primary" onClick={handleSubmit} disabled={submitting}>
-            {submitting ? "Adding…" : "Add Provider"}
+            {submitting ? t("admin.llm.adding") : t("admin.llm.addProvider")}
           </Button>
         </Modal.Footer>
       </Modal.Content>

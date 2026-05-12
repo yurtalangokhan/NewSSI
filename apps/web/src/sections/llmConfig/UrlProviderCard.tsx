@@ -11,6 +11,7 @@ import { Section } from "@/layouts/general-layouts";
 import { Hoverable } from "@opal/core";
 import { SvgTrash, SvgDownload, SvgChevronDown, SvgChevronUp, SvgRefreshCw, SvgCheckCircle, SvgAlertCircle } from "@opal/icons";
 import { getProviderIcon } from "@/lib/llmConfig/providers";
+import { useTranslation } from "react-i18next";
 
 type TestStatus = "idle" | "testing" | "ok" | "error";
 
@@ -32,32 +33,44 @@ interface Props {
 
 const GROUP = (id: string) => `url-provider-${id}`;
 
-function ModelLoadingSpinner() {
+function ModelLoadingSpinner({ loadingLabel }: { loadingLabel: string }) {
   return (
     <div className="flex items-center justify-center gap-2 px-3 py-4 text-sm text-muted-foreground">
       <SvgRefreshCw className="h-4 w-4 animate-spin" />
-      <span>Loading models...</span>
+      <span>{loadingLabel}</span>
     </div>
   );
 }
 
-function CapabilityBadges({ model }: { model: LiveModel | ProviderModelConfig }) {
+function CapabilityBadges({
+  model,
+  visionLabel,
+  reasoningLabel,
+  visionTitle,
+  reasoningTitle,
+}: {
+  model: LiveModel | ProviderModelConfig;
+  visionLabel: string;
+  reasoningLabel: string;
+  visionTitle: string;
+  reasoningTitle: string;
+}) {
   return (
     <span className="flex gap-1">
       {model.supports_image_input && (
         <span
-          title="Supports image input"
+          title={visionTitle}
           className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 font-medium"
         >
-          Vision
+          {visionLabel}
         </span>
       )}
       {model.supports_reasoning && (
         <span
-          title="Supports reasoning"
+          title={reasoningTitle}
           className="text-[10px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 font-medium"
         >
-          Reasoning
+          {reasoningLabel}
         </span>
       )}
     </span>
@@ -65,6 +78,7 @@ function CapabilityBadges({ model }: { model: LiveModel | ProviderModelConfig })
 }
 
 export function UrlProviderCard({ provider, onDownload, readOnly = false }: Props) {
+  const { t } = useTranslation();
   const { mutate } = useSWRConfig();
 
   const [testStatus, setTestStatus] = useState<TestStatus>("idle");
@@ -97,12 +111,12 @@ export function UrlProviderCard({ provider, onDownload, readOnly = false }: Prop
         setTestStatus("ok");
       } else {
         setTestStatus("error");
-        toast({ message: data.error || "Connection failed", level: "error" });
+        toast({ message: data.error || t("admin.llm.connectionFailed"), level: "error" });
       }
     } catch (e) {
       setTestStatus("error");
       toast({
-        message: e instanceof Error ? e.message : "Connection failed",
+        message: e instanceof Error ? e.message : t("admin.llm.connectionFailed"),
         level: "error",
       });
     }
@@ -141,7 +155,7 @@ export function UrlProviderCard({ provider, onDownload, readOnly = false }: Prop
       const res = await fetch(`/api/admin/providers/${provider.id}/sync-models`, {
         method: "POST",
       });
-      if (!res.ok) throw new Error("Sync failed");
+      if (!res.ok) throw new Error(t("admin.llm.syncFailed"));
       const updated = await res.json();
       // Preserve size from previous live fetch (not stored in DB)
       const sizeMap = new Map((liveModels ?? []).map((m) => [m.name, m.size]));
@@ -156,9 +170,9 @@ export function UrlProviderCard({ provider, onDownload, readOnly = false }: Prop
       );
       setLiveModels(synced);
       await mutate("/api/admin/providers");
-      toast({ message: `Synced ${synced.length} model(s)` });
+      toast({ message: t("admin.llm.syncedModels", { count: synced.length }) });
     } catch {
-      toast({ message: "Failed to sync models", level: "error" });
+      toast({ message: t("admin.llm.failedToSyncModels"), level: "error" });
     } finally {
       setSyncing(false);
     }
@@ -167,10 +181,10 @@ export function UrlProviderCard({ provider, onDownload, readOnly = false }: Prop
   const handleDelete = async () => {
     try {
       await fetch(`/api/admin/providers/${provider.id}`, { method: "DELETE" });
-      toast({ message: "Provider deleted" });
+      toast({ message: t("admin.llm.providerDeletedSuccess") });
       mutate("/api/admin/providers");
     } catch {
-      toast({ message: "Failed to delete provider", level: "error" });
+      toast({ message: t("admin.llm.failedToDeleteProvider"), level: "error" });
     }
   };
 
@@ -210,10 +224,10 @@ export function UrlProviderCard({ provider, onDownload, readOnly = false }: Prop
                   {testStatus === "error" && <SvgAlertCircle className="h-4 w-4" />}
                   <span>
                     {testStatus === "testing"
-                      ? "Testing…"
+                      ? t("admin.llm.testing")
                       : testStatus === "ok" && testLatency !== null
                       ? `${testLatency}ms`
-                      : "Test"}
+                      : t("admin.llm.test")}
                   </span>
                 </button>
               </Hoverable.Item>
@@ -252,12 +266,12 @@ export function UrlProviderCard({ provider, onDownload, readOnly = false }: Prop
         {expanded && (
           <div className="w-full mt-1 pt-2 border-t border-border">
             {modelsLoading ? (
-              <ModelLoadingSpinner />
+              <ModelLoadingSpinner loadingLabel={t("admin.llm.loadingModels")} />
             ) : displayModels.length > 0 ? (
               <div className="flex flex-col gap-0.5">
                 <div className="flex items-center justify-between px-1 mb-1">
                   <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                    Models · {displayModels.length}
+                    {t("admin.llm.modelsCount", { count: displayModels.length })}
                   </p>
                   {!readOnly && (
                     <button
@@ -267,7 +281,7 @@ export function UrlProviderCard({ provider, onDownload, readOnly = false }: Prop
                       disabled={syncing}
                     >
                       <SvgRefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} />
-                      <span>{syncing ? "Syncing..." : "Sync"}</span>
+                      <span>{syncing ? t("admin.llm.syncing") : t("admin.llm.sync")}</span>
                     </button>
                   )}
                 </div>
@@ -279,11 +293,17 @@ export function UrlProviderCard({ provider, onDownload, readOnly = false }: Prop
                     <span className="text-sm font-mono text-foreground truncate mr-2">
                       {"display_name" in m ? m.display_name || m.name : m.name}
                     </span>
-                    <CapabilityBadges model={m} />
+                    <CapabilityBadges
+                      model={m}
+                      visionLabel={t("app.llmPopover.capabilityVision")}
+                      reasoningLabel={t("app.llmPopover.capabilityReasoning")}
+                      visionTitle={t("admin.llm.supportsImageInput")}
+                      reasoningTitle={t("admin.llm.supportsReasoning")}
+                    />
                     <span className="flex-1" />
                     {m.max_input_tokens != null && (
                       <span className="text-xs text-muted-foreground tabular-nums mr-3">
-                        {m.max_input_tokens.toLocaleString()} ctx
+                        {m.max_input_tokens.toLocaleString()} {t("admin.llm.contextShort")}
                       </span>
                     )}
                     {"size" in m && m.size != null && m.size >= 5e7 && (
@@ -296,7 +316,7 @@ export function UrlProviderCard({ provider, onDownload, readOnly = false }: Prop
               </div>
             ) : (
               <div className="flex items-center justify-between px-1 py-1">
-                <p className="text-sm text-muted-foreground">No models found.</p>
+                <p className="text-sm text-muted-foreground">{t("app.llmPopover.noModelsFound")}</p>
                 {!readOnly && (
                   <button
                     type="button"
@@ -305,7 +325,7 @@ export function UrlProviderCard({ provider, onDownload, readOnly = false }: Prop
                     disabled={syncing}
                   >
                     <SvgRefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} />
-                    <span>{syncing ? "Syncing..." : "Sync"}</span>
+                    <span>{syncing ? t("admin.llm.syncing") : t("admin.llm.sync")}</span>
                   </button>
                 )}
               </div>
