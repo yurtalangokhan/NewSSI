@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useSWRConfig } from "swr";
 import { toast } from "@/hooks/useToast";
 import {
@@ -26,7 +26,7 @@ import {
   getProviderIcon,
   getProviderProductName,
 } from "@/lib/llmConfig/providers";
-import { deleteLlmProvider, setDefaultLlmModel } from "@/lib/llmConfig/svc";
+import { deleteLlmProvider } from "@/lib/llmConfig/svc";
 import Text from "@/refresh-components/texts/Text";
 import { Horizontal as HorizontalInput } from "@/layouts/input-layouts";
 import Card from "@/refresh-components/cards/Card";
@@ -58,6 +58,7 @@ import { ModelDownloadModal } from "@/sections/modals/llmConfig/ModelDownloadMod
 import { UrlProviderCard } from "@/sections/llmConfig/UrlProviderCard";
 import { Section } from "@/layouts/general-layouts";
 import { useTranslation } from "react-i18next";
+import { useUser } from "@/providers/UserProvider";
 
 const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.LLM_MODELS]!;
 
@@ -318,14 +319,14 @@ function NewCustomProviderCard({
 
 export default function LLMConfigurationPage() {
   const { t } = useTranslation();
-  const { mutate } = useSWRConfig();
+  const { updateUserDefaultModel, user } = useUser();
   const { llmProviders: existingLlmProviders, defaultText } =
     useAdminLLMProviders();
   const { wellKnownLLMProviders } = useWellKnownLLMProviders();
   const { providers: allProviders } = useAllProviders();
-  
+
   // New DB-based providers
-  const { data: urlProviders = [] } = useUrlProviders();
+  const { data: urlProviders = [], mutate: mutateProviders } = useUrlProviders();
   const { data: apiKeyProviders = [] } = useApiKeyProviders();
   const { data: wellKnownLangChainProviders = [] } = useWellKnownLangChainProviders();
   const builtinProviders = allProviders?.builtin ?? [];
@@ -335,43 +336,68 @@ export default function LLMConfigurationPage() {
   const [downloadModalOpen, setDownloadModalOpen] = useState(false);
   const [selectedProviderForDownload, setSelectedProviderForDownload] = useState<string | null>(null);
 
+  const knownModelsByProviderType = useMemo(
+    () =>
+      new Map(
+        wellKnownLangChainProviders.map((provider) => [
+          provider.provider_type,
+          provider.known_models?.map((model) => model.name) ?? [],
+        ])
+      ),
+    [wellKnownLangChainProviders]
+  );
+
+  const allDbProviderGroups = useMemo(
+    () =>
+      [
+        ...(existingLlmProviders ?? []).map((p) => ({
+          providerKey: `legacy-${p.id}`,
+          providerName: p.name,
+          providerType: p.provider,
+          models: p.model_configurations
+            .filter((m) => m.is_visible !== false)
+            .map((m) => m.name),
+        })),
+        ...urlProviders.map((p) => ({
+          providerKey: p.id,
+          providerName: p.name,
+          providerType: p.provider_type,
+          models: (p.config.model_configurations ?? [])
+            .filter((m) => m.is_visible)
+            .map((m) => m.name),
+        })),
+        ...apiKeyProviders.map((p) => {
+          const knownModels = knownModelsByProviderType.get(p.provider_type) ?? [];
+          const defaultModel = p.user_config.default_model ? [p.user_config.default_model] : [];
+          return {
+            providerKey: p.id,
+            providerName: p.name,
+            providerType: p.provider_type,
+            models: Array.from(new Set([...knownModels, ...defaultModel])),
+          };
+        }),
+      ].filter((g) => g.models.length > 0),
+    [existingLlmProviders, urlProviders, apiKeyProviders, knownModelsByProviderType]
+  );
+
   if (!existingLlmProviders) {
     return <ThreeDotsLoader />;
   }
 
-  const hasProviders = existingLlmProviders.length > 0;
-  const isFirstProvider = !hasProviders;
-
-  // Pre-sort providers so the default appears first
-  const sortedProviders = [...existingLlmProviders].sort((a, b) => {
-    const aIsDefault = defaultText?.provider_id === a.id;
-    const bIsDefault = defaultText?.provider_id === b.id;
-    if (aIsDefault && !bIsDefault) return -1;
-    if (!aIsDefault && bIsDefault) return 1;
-    return 0;
-  });
-
-  // Pre-filter to providers that have at least one visible model
-  const providersWithVisibleModels = existingLlmProviders
-    .map((provider) => ({
-      provider,
-      visibleModels: provider.model_configurations.filter((m) => m.is_visible),
-    }))
-    .filter(({ visibleModels }) => visibleModels.length > 0);
-
-  // Default model logic — use the global default from the API response
-  const currentDefaultValue = defaultText
-    ? `${defaultText.provider_id}:${defaultText.model_name}`
+  // Default model comes from user settings.
+  const currentDefaultValue = user?.preferences?.default_model ?? undefined;
+  const selectedDefaultProviderType = currentDefaultValue
+    ? allDbProviderGroups.find((group) =>
+        group.models.includes(currentDefaultValue)
+      )?.providerType
     : undefined;
+  const SelectedDefaultProviderIcon = selectedDefaultProviderType
+    ? getProviderIcon(selectedDefaultProviderType)
+    : null;
 
-  async function handleDefaultModelChange(compositeValue: string) {
-    const separatorIndex = compositeValue.indexOf(":");
-    const providerId = Number(compositeValue.slice(0, separatorIndex));
-    const modelName = compositeValue.slice(separatorIndex + 1);
-
+  async function handleDefaultModelChange(modelName: string) {
     try {
-      await setDefaultLlmModel(providerId, modelName);
-      mutate(LLM_PROVIDERS_ADMIN_URL);
+      await updateUserDefaultModel(modelName || null);
       toast({ message: t("admin.llm.defaultModelUpdatedSuccess") });
     } catch (e) {
       const message = e instanceof Error ? e.message : "Unknown error";
@@ -392,7 +418,7 @@ export default function LLMConfigurationPage() {
       />
 
       <SettingsLayouts.Body>
-        {hasProviders ? (
+        {allDbProviderGroups.length > 0 ? (
           <Card>
             <HorizontalInput
               title={t("admin.llm.defaultModelLabel")}
@@ -406,22 +432,37 @@ export default function LLMConfigurationPage() {
               >
                 <InputSelect.Trigger
                   placeholder={t("admin.llm.selectDefaultModelPlaceholder")}
-                />
+                >
+                  {currentDefaultValue ? (
+                    <span className="inline-flex items-center gap-2 text-text-04">
+                      {SelectedDefaultProviderIcon && (
+                        <SelectedDefaultProviderIcon className="h-4 w-4 text-text-04" />
+                      )}
+                      <span className="truncate">{currentDefaultValue}</span>
+                    </span>
+                  ) : null}
+                </InputSelect.Trigger>
                 <InputSelect.Content>
-                  {providersWithVisibleModels.map(
-                    ({ provider, visibleModels }) => (
-                      <InputSelect.Group key={provider.id}>
-                        <InputSelect.Label>{provider.name}</InputSelect.Label>
-                        {visibleModels.map((model) => (
-                          <InputSelect.Item
-                            key={`${provider.id}:${model.name}`}
-                            value={`${provider.id}:${model.name}`}
-                          >
-                            {model.display_name || model.name}
-                          </InputSelect.Item>
-                        ))}
-                      </InputSelect.Group>
-                    )
+                  {allDbProviderGroups.map(
+                    ({ providerKey, providerName, providerType, models }) => {
+                      const ProviderIcon = getProviderIcon(providerType);
+
+                      return (
+                        <InputSelect.Group key={providerKey}>
+                          <InputSelect.Label>
+                            <span className="inline-flex items-center gap-2">
+                              <ProviderIcon className="h-3.5 w-3.5" />
+                              <span>{providerName}</span>
+                            </span>
+                          </InputSelect.Label>
+                          {models.map((model) => (
+                            <InputSelect.Item key={`${providerKey}:${model}`} value={model}>
+                              {model}
+                            </InputSelect.Item>
+                          ))}
+                        </InputSelect.Group>
+                      );
+                    }
                   )}
                 </InputSelect.Content>
               </InputSelect>
@@ -557,7 +598,7 @@ export default function LLMConfigurationPage() {
                   <ContentAction
                     icon={getProviderIcon(provider.provider_type)}
                     title={provider.name}
-                    description={`${provider.provider_type} • ****`}
+                    description={`${provider.provider_type} · ${provider.user_config.default_model ?? "no default"}`}
                     sizePreset="main-content"
                     variant="section"
                     rightChildren={
@@ -568,7 +609,7 @@ export default function LLMConfigurationPage() {
                           try {
                             await fetch(`/api/admin/user-providers/${provider.id}`, { method: "DELETE" });
                             toast({ message: "Provider deleted" });
-                            mutate("/api/admin/user-providers");
+                            mutateProviders();
                           } catch (e) {
                             toast({ message: "Failed to delete provider", level: "error" });
                           }
@@ -587,39 +628,6 @@ export default function LLMConfigurationPage() {
           onOpenChange={setApiKeyProviderModalOpen}
           wellKnownProviders={wellKnownLangChainProviders}
         />
-
-        <Separator noPadding />
-
-        {/* ── Add Standard LLM Provider (existing UI) ── */}
-        <GeneralLayouts.Section
-          gap={0.75}
-          height="fit"
-          alignItems="stretch"
-          justifyContent="start"
-        >
-          <Content
-            title={t("admin.llm.addProvider")}
-            description={t("admin.llm.addProviderDescription")}
-            sizePreset="main-content"
-            variant="section"
-          />
-
-          <div className="grid grid-cols-2 gap-2">
-            {wellKnownLLMProviders?.map((provider) => {
-              const formFn = PROVIDER_MODAL_MAP[provider.name];
-              if (!formFn) return null;
-              return (
-                <NewProviderCard
-                  key={provider.name}
-                  provider={provider}
-                  isFirstProvider={isFirstProvider}
-                  formFn={formFn}
-                />
-              );
-            })}
-            <NewCustomProviderCard isFirstProvider={isFirstProvider} />
-          </div>
-        </GeneralLayouts.Section>
       </SettingsLayouts.Body>
     </SettingsLayouts.Root>
   );

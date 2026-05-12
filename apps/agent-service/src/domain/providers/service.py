@@ -97,6 +97,14 @@ class ProviderService:
     async def delete_user_provider(self, provider_id: str, user_id: str) -> bool:
         return await self._repo.delete_user_provider(provider_id, user_id)
 
+    async def reorder_providers(self, user_id: str, ordered_config_ids: list[str]) -> bool:
+        return await self._repo.reorder_providers(user_id, ordered_config_ids)
+
+    async def update_provider_default_model(
+        self, config_id: str, user_id: str, model: str | None
+    ) -> bool:
+        return await self._repo.update_provider_default_model(config_id, user_id, model)
+
     async def get_models_for_provider(self, provider_id: str, user_id: str) -> list[dict[str, Any]]:
         """Fetch available models for either DB-stored or built-in URL-based providers."""
         import uuid
@@ -162,6 +170,8 @@ class ProviderService:
                 result = await self._test_openai_api(api_key or "")
             elif provider_type == "anthropic":
                 result = await self._test_anthropic(api_key or "")
+            elif provider_type in ("google_genai", "google_vertexai"):
+                result = await self._test_google_genai(api_key or "")
             else:
                 result = await self._test_generic_openai_api(provider_type, api_key or "", base_url)
 
@@ -242,14 +252,42 @@ class ProviderService:
             return {"success": False, "error": f"HTTP {resp.status_code}: {resp.text[:200]}"}
 
     @staticmethod
+    async def _test_google_genai(api_key: str) -> dict[str, Any]:
+        import httpx
+        if not api_key:
+            return {"success": False, "error": "API key is required"}
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            resp = await client.get(
+                "https://generativelanguage.googleapis.com/v1beta/models",
+                params={"key": api_key},
+            )
+            if resp.is_success:
+                return {"success": True}
+            return {"success": False, "error": f"HTTP {resp.status_code}: {resp.text[:200]}"}
+
+    @staticmethod
     async def _test_generic_openai_api(provider_type: str, api_key: str, base_url: str | None) -> dict[str, Any]:
         """Fallback: try /v1/models with the api_key as Bearer token."""
-        if not base_url:
+        default_base_urls = {
+            "openrouter": "https://openrouter.ai/api",
+            "deepseek": "https://api.deepseek.com",
+            "groq": "https://api.groq.com/openai",
+            "xai": "https://api.x.ai",
+            "perplexity": "https://api.perplexity.ai",
+            "together": "https://api.together.xyz",
+            "fireworks": "https://api.fireworks.ai/inference",
+            "cerebras": "https://api.cerebras.ai",
+            "huggingface": "https://router.huggingface.co",
+            "nvidia": "https://integrate.api.nvidia.com",
+            "sambanova": "https://api.sambanova.ai",
+        }
+        resolved_base_url = (base_url or default_base_urls.get(provider_type) or "").rstrip("/")
+        if not resolved_base_url:
             return {"success": False, "error": f"No base_url configured for {provider_type}"}
         import httpx
         async with httpx.AsyncClient(timeout=8.0) as client:
             resp = await client.get(
-                f"{base_url.rstrip('/')}/v1/models",
+                f"{resolved_base_url}/v1/models",
                 headers={"Authorization": f"Bearer {api_key}"},
             )
             if resp.is_success:

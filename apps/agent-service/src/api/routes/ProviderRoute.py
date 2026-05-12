@@ -25,6 +25,7 @@ class UrlProviderPayload(BaseModel):
     provider_type: str
     base_url: str
     api_key: str | None = None
+    default_model: str | None = None
     config: dict[str, Any] = {}
 
 
@@ -34,8 +35,16 @@ class UserProviderPayload(BaseModel):
     api_key: str
     api_base: str | None = None
     api_version: str | None = None
-    deployment_name: str | None = None
+    default_model: str | None = None
     custom_config: dict[str, Any] = {}
+
+
+class ReorderPayload(BaseModel):
+    ordered_config_ids: list[str]
+
+
+class DefaultModelPayload(BaseModel):
+    model: str | None = None
 
 
 class OllamaPullPayload(BaseModel):
@@ -74,12 +83,21 @@ async def delete_provider(provider_id: str):
     return {"success": True}
 
 
+# ── Ordering & default model ─────────────────────────────────────────────────
+
+@router.put("/providers/order")
+async def reorder_providers(body: ReorderPayload):
+    await _svc.reorder_providers(_DEFAULT_USER_ID, body.ordered_config_ids)
+    return {"success": True}
+
+
+@router.patch("/providers/{config_id}/default-model")
+async def update_default_model(config_id: str, body: DefaultModelPayload):
+    await _svc.update_provider_default_model(config_id, _DEFAULT_USER_ID, body.model)
+    return {"success": True}
+
+
 # ── API-key providers ────────────────────────────────────────────────────────
-
-@router.get("/user-providers")
-async def list_user_providers():
-    return await _repo.list_user_providers(_DEFAULT_USER_ID)
-
 
 @router.post("/user-providers")
 async def create_user_provider(body: UserProviderPayload):

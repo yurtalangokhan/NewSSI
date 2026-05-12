@@ -8,6 +8,7 @@ import Modal from "@/refresh-components/Modal";
 import { Button } from "@opal/components";
 import Text from "@/refresh-components/texts/Text";
 import InputSelect from "@/refresh-components/inputs/InputSelect";
+import { getProviderIcon } from "@/lib/llmConfig/providers";
 
 interface Props {
   open: boolean;
@@ -32,6 +33,7 @@ export function UrlProviderModal({ open, onOpenChange, wellKnownProviders }: Pro
   const [testStatus, setTestStatus] = useState<TestStatus>("idle");
   const [testLatency, setTestLatency] = useState<number | null>(null);
   const [testError, setTestError] = useState<string | null>(null);
+  const [defaultModel, setDefaultModel] = useState("");
 
   const urlProviders = wellKnownProviders.filter((p) =>
     URL_TYPES.includes(p.provider_type)
@@ -44,6 +46,7 @@ export function UrlProviderModal({ open, onOpenChange, wellKnownProviders }: Pro
     setApiKey("");
     setApiVersion("");
     setCustomConfigList([]);
+    setDefaultModel("");
     setTestStatus("idle");
     setTestLatency(null);
     setTestError(null);
@@ -104,6 +107,7 @@ export function UrlProviderModal({ open, onOpenChange, wellKnownProviders }: Pro
           provider_type: providerType,
           base_url: baseUrl.trim(),
           api_key: apiKey.trim() || undefined,
+          default_model: defaultModel.trim() || undefined,
           config: {
             api_version: apiVersion.trim() || null,
             custom_config: customConfig,
@@ -143,11 +147,18 @@ export function UrlProviderModal({ open, onOpenChange, wellKnownProviders }: Pro
               >
                 <InputSelect.Trigger placeholder="Select provider" />
                 <InputSelect.Content>
-                  {urlProviders.map((p) => (
-                    <InputSelect.Item key={p.provider_type} value={p.provider_type}>
-                      {p.name}
-                    </InputSelect.Item>
-                  ))}
+                  {urlProviders.map((p) => {
+                    const ProviderIcon = getProviderIcon(p.provider_type);
+                    return (
+                      <InputSelect.Item
+                        key={p.provider_type}
+                        value={p.provider_type}
+                        icon={ProviderIcon}
+                      >
+                        {p.name}
+                      </InputSelect.Item>
+                    );
+                  })}
                 </InputSelect.Content>
               </InputSelect>
             </div>
@@ -259,6 +270,16 @@ export function UrlProviderModal({ open, onOpenChange, wellKnownProviders }: Pro
             </div>
 
 
+
+            <div className="space-y-1">
+              <Text secondaryBody>Default Model (optional)</Text>
+              <input
+                className="w-full rounded border border-input bg-background px-3 py-2 text-sm"
+                placeholder="e.g. llama3.2"
+                value={defaultModel}
+                onChange={(e) => setDefaultModel(e.target.value)}
+              />
+            </div>
 
           </div>
         </Modal.Body>

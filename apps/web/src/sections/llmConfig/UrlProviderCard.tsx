@@ -32,15 +32,11 @@ interface Props {
 
 const GROUP = (id: string) => `url-provider-${id}`;
 
-function ModelSkeleton() {
+function ModelLoadingSpinner() {
   return (
-    <div className="flex flex-col gap-1.5 animate-pulse">
-      {[1, 2, 3].map((i) => (
-        <div key={i} className="flex items-center justify-between px-3 py-2 rounded-md bg-muted">
-          <div className="h-3 rounded bg-muted-foreground/20 w-1/3" />
-          <div className="h-3 rounded bg-muted-foreground/20 w-12" />
-        </div>
-      ))}
+    <div className="flex items-center justify-center gap-2 px-3 py-4 text-sm text-muted-foreground">
+      <SvgRefreshCw className="h-4 w-4 animate-spin" />
+      <span>Loading models...</span>
     </div>
   );
 }
@@ -191,7 +187,7 @@ export function UrlProviderCard({ provider, onDownload, readOnly = false }: Prop
         <ContentAction
           icon={getProviderIcon(provider.provider_type)}
           title={provider.name}
-          description={provider.base_url}
+          description={`${provider.base_url}${provider.user_config?.default_model ? ` · ${provider.user_config.default_model}` : ""}`}
           sizePreset="main-content"
           variant="section"
           rightChildren={
@@ -256,7 +252,7 @@ export function UrlProviderCard({ provider, onDownload, readOnly = false }: Prop
         {expanded && (
           <div className="w-full mt-1 pt-2 border-t border-border">
             {modelsLoading ? (
-              <ModelSkeleton />
+              <ModelLoadingSpinner />
             ) : displayModels.length > 0 ? (
               <div className="flex flex-col gap-0.5">
                 <div className="flex items-center justify-between px-1 mb-1">
