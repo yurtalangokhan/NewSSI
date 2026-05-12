@@ -56,6 +56,7 @@ import { UrlProviderModal } from "@/sections/modals/llmConfig/UrlProviderModal";
 import { ApiKeyProviderModal } from "@/sections/modals/llmConfig/ApiKeyProviderModal";
 import { ModelDownloadModal } from "@/sections/modals/llmConfig/ModelDownloadModal";
 import { UrlProviderCard } from "@/sections/llmConfig/UrlProviderCard";
+import { EditProviderModal } from "@/sections/modals/llmConfig/EditProviderModal";
 import { Section } from "@/layouts/general-layouts";
 import { useTranslation } from "react-i18next";
 import { useUser } from "@/providers/UserProvider";
@@ -174,7 +175,6 @@ function ExistingProviderCard({
             <Text text03>
               {t("admin.llm.deleteProviderBodyPrefix")} <b>{provider.name}</b>{" "}
               {t("admin.llm.deleteProviderBodySuffix")}
-                {t("admin.llm.connectAnotherProvider")}
             </Text>
             {isLastProvider && (
               <Text text03>
@@ -314,6 +314,95 @@ function NewCustomProviderCard({
 }
 
 // ============================================================================
+// ApiKeyProviderCard — card for configured cloud (API-key) providers
+// ============================================================================
+
+interface ApiKeyProviderCardProps {
+  provider: ApiKeyProvider;
+  onDeleted: () => void;
+}
+
+function ApiKeyProviderCard({ provider, onDeleted }: ApiKeyProviderCardProps) {
+  const { t } = useTranslation();
+  const deleteModal = useCreateModal();
+  const [editOpen, setEditOpen] = useState(false);
+
+  const handleDelete = async () => {
+    try {
+      const res = await fetch(`/api/admin/user-providers/${provider.id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error(`Delete failed: ${res.status}`);
+      toast({ message: t("admin.llm.providerDeletedSuccess") });
+      deleteModal.toggle(false);
+      onDeleted();
+    } catch {
+      toast({ message: t("admin.llm.failedToDeleteProvider"), level: "error" });
+    }
+  };
+
+  return (
+    <>
+      {deleteModal.isOpen && (
+        <ConfirmationModalLayout
+          icon={SvgTrash}
+          title={t("admin.llm.deleteProviderTitle", { name: provider.name })}
+          onClose={() => deleteModal.toggle(false)}
+          submit={
+            <Button variant="danger" onClick={handleDelete}>
+              {t("sidebar.delete")}
+            </Button>
+          }
+        >
+          <Section alignItems="start" gap={0.5}>
+            <Text text03>
+              {t("admin.llm.deleteProviderBodyPrefix")} <b>{provider.name}</b>{" "}
+              {t("admin.llm.deleteProviderBodySuffix")}
+            </Text>
+          </Section>
+        </ConfirmationModalLayout>
+      )}
+
+      <Hoverable.Root group={`cloud-provider-${provider.id}`}>
+        <Card padding={0.5}>
+          <ContentAction
+            icon={getProviderIcon(provider.provider_type)}
+            title={provider.name}
+            description={`${provider.provider_type} · ${provider.user_config.default_model ?? t("admin.llm.noDefault")}`}
+            sizePreset="main-content"
+            variant="section"
+            rightChildren={
+              <Section flexDirection="row" gap={0} alignItems="start">
+                <Hoverable.Item group={`cloud-provider-${provider.id}`} variant="opacity-on-hover">
+                  <Button
+                    icon={SvgSettings}
+                    prominence="tertiary"
+                    aria-label={t("admin.llm.editProviderAria")}
+                    onClick={() => setEditOpen(true)}
+                  />
+                </Hoverable.Item>
+                <Hoverable.Item group={`cloud-provider-${provider.id}`} variant="opacity-on-hover">
+                  <Button
+                    icon={SvgTrash}
+                    prominence="tertiary"
+                    aria-label={t("admin.llm.deleteProviderAria")}
+                    onClick={() => deleteModal.toggle(true)}
+                  />
+                </Hoverable.Item>
+              </Section>
+            }
+          />
+        </Card>
+      </Hoverable.Root>
+
+      <EditProviderModal
+        provider={provider}
+        open={editOpen}
+        onOpenChange={setEditOpen}
+      />
+    </>
+  );
+}
+
+// ============================================================================
 // LLMConfigurationPage — main page component
 // ============================================================================
 
@@ -326,8 +415,8 @@ export default function LLMConfigurationPage() {
   const { providers: allProviders } = useAllProviders();
 
   // New DB-based providers
-  const { data: urlProviders = [], mutate: mutateProviders } = useUrlProviders();
-  const { data: apiKeyProviders = [] } = useApiKeyProviders();
+  const { data: urlProviders = [] } = useUrlProviders();
+  const { data: apiKeyProviders = [], mutate: mutateApiKeyProviders } = useApiKeyProviders();
   const { data: wellKnownLangChainProviders = [] } = useWellKnownLangChainProviders();
   const builtinProviders = allProviders?.builtin ?? [];
 
@@ -594,30 +683,11 @@ export default function LLMConfigurationPage() {
           ) : (
             <div className="flex flex-col gap-2">
               {apiKeyProviders.map((provider: ApiKeyProvider) => (
-                <Card key={provider.id}>
-                  <ContentAction
-                    icon={getProviderIcon(provider.provider_type)}
-                    title={provider.name}
-                    description={`${provider.provider_type} · ${provider.user_config.default_model ?? t("admin.llm.noDefault")}`}
-                    sizePreset="main-content"
-                    variant="section"
-                    rightChildren={
-                      <Button
-                        icon={SvgTrash}
-                        prominence="tertiary"
-                        onClick={async () => {
-                          try {
-                            await fetch(`/api/admin/user-providers/${provider.id}`, { method: "DELETE" });
-                            toast({ message: t("admin.llm.providerDeletedSuccess") });
-                            mutateProviders();
-                          } catch (e) {
-                            toast({ message: t("admin.llm.failedToDeleteProvider"), level: "error" });
-                          }
-                        }}
-                      />
-                    }
-                  />
-                </Card>
+                <ApiKeyProviderCard
+                  key={provider.id}
+                  provider={provider}
+                  onDeleted={mutateApiKeyProviders}
+                />
               ))}
             </div>
           )}

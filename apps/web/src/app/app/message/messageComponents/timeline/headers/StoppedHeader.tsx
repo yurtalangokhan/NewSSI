@@ -44,10 +44,10 @@ export const StoppedHeader = React.memo(function StoppedHeader({
           size="md"
           onClick={noProp(onToggle)}
           rightIcon={isExpanded ? SvgFold : SvgExpand}
-          aria-label={isExpanded ? "Collapse timeline" : "Expand timeline"}
+          aria-label={isExpanded ? t("timeline.collapseTimeline") : t("timeline.expandTimeline")}
           aria-expanded={isExpanded}
         >
-          {`${totalSteps} ${totalSteps === 1 ? "step" : "steps"}`}
+          {`${totalSteps} ${totalSteps === 1 ? t("timeline.stepSingular") : t("timeline.stepPlural")}`}
         </Button>
       )}
     </div>

@@ -9,9 +9,13 @@ import { ContentAction } from "@opal/layouts";
 import { Button } from "@opal/components";
 import { Section } from "@/layouts/general-layouts";
 import { Hoverable } from "@opal/core";
-import { SvgTrash, SvgDownload, SvgChevronDown, SvgChevronUp, SvgRefreshCw, SvgCheckCircle, SvgAlertCircle } from "@opal/icons";
+import { SvgTrash, SvgDownload, SvgChevronDown, SvgChevronUp, SvgRefreshCw, SvgCheckCircle, SvgAlertCircle, SvgSettings } from "@opal/icons";
 import { getProviderIcon } from "@/lib/llmConfig/providers";
 import { useTranslation } from "react-i18next";
+import ConfirmationModalLayout from "@/refresh-components/layouts/ConfirmationModalLayout";
+import { useCreateModal } from "@/refresh-components/contexts/ModalContext";
+import Text from "@/refresh-components/texts/Text";
+import { EditProviderModal } from "@/sections/modals/llmConfig/EditProviderModal";
 
 type TestStatus = "idle" | "testing" | "ok" | "error";
 
@@ -80,6 +84,8 @@ function CapabilityBadges({
 export function UrlProviderCard({ provider, onDownload, readOnly = false }: Props) {
   const { t } = useTranslation();
   const { mutate } = useSWRConfig();
+  const deleteModal = useCreateModal();
+  const [editOpen, setEditOpen] = useState(false);
 
   const [testStatus, setTestStatus] = useState<TestStatus>("idle");
   const [testLatency, setTestLatency] = useState<number | null>(null);
@@ -182,6 +188,7 @@ export function UrlProviderCard({ provider, onDownload, readOnly = false }: Prop
     try {
       await fetch(`/api/admin/providers/${provider.id}`, { method: "DELETE" });
       toast({ message: t("admin.llm.providerDeletedSuccess") });
+      deleteModal.toggle(false);
       mutate("/api/admin/providers");
     } catch {
       toast({ message: t("admin.llm.failedToDeleteProvider"), level: "error" });
@@ -196,16 +203,35 @@ export function UrlProviderCard({ provider, onDownload, readOnly = false }: Prop
   ].join(" ");
 
   return (
-    <Hoverable.Root group={GROUP(provider.id)}>
-      <Card padding={0.5}>
-        <ContentAction
-          icon={getProviderIcon(provider.provider_type)}
-          title={provider.name}
-          description={`${provider.base_url}${provider.user_config?.default_model ? ` · ${provider.user_config.default_model}` : ""}`}
-          sizePreset="main-content"
-          variant="section"
-          rightChildren={
-            <Section flexDirection="row" gap={0} alignItems="center">
+    <>
+      {deleteModal.isOpen && (
+        <ConfirmationModalLayout
+          icon={SvgTrash}
+          title={t("admin.llm.deleteProviderTitle", { name: provider.name })}
+          onClose={() => deleteModal.toggle(false)}
+          submit={
+            <Button variant="danger" onClick={handleDelete}>
+              {t("sidebar.delete")}
+            </Button>
+          }
+        >
+          <Text text03>
+            {t("admin.llm.deleteProviderBodyPrefix")} <b>{provider.name}</b>{" "}
+            {t("admin.llm.deleteProviderBodySuffix")}
+          </Text>
+        </ConfirmationModalLayout>
+      )}
+
+      <Hoverable.Root group={GROUP(provider.id)}>
+        <Card padding={0.5}>
+          <ContentAction
+            icon={getProviderIcon(provider.provider_type)}
+            title={provider.name}
+            description={`${provider.base_url}${provider.user_config?.default_model ? ` · ${provider.user_config.default_model}` : ""}`}
+            sizePreset="main-content"
+            variant="section"
+            rightChildren={
+              <Section flexDirection="row" gap={0} alignItems="center">
               <Hoverable.Item group={GROUP(provider.id)} variant="opacity-on-hover">
                 <button
                   type="button"
@@ -251,13 +277,24 @@ export function UrlProviderCard({ provider, onDownload, readOnly = false }: Prop
               )}
 
               {!readOnly && (
-                <Hoverable.Item group={GROUP(provider.id)} variant="opacity-on-hover">
-                  <Button
-                    icon={SvgTrash}
-                    prominence="tertiary"
-                    onClick={handleDelete}
-                  />
-                </Hoverable.Item>
+                <>
+                  <Hoverable.Item group={GROUP(provider.id)} variant="opacity-on-hover">
+                    <Button
+                      icon={SvgSettings}
+                      prominence="tertiary"
+                      aria-label={t("admin.llm.editProviderAria")}
+                      onClick={() => setEditOpen(true)}
+                    />
+                  </Hoverable.Item>
+                  <Hoverable.Item group={GROUP(provider.id)} variant="opacity-on-hover">
+                    <Button
+                      icon={SvgTrash}
+                      prominence="tertiary"
+                      aria-label={t("admin.llm.deleteProviderAria")}
+                      onClick={() => deleteModal.toggle(true)}
+                    />
+                  </Hoverable.Item>
+                </>
               )}
             </Section>
           }
@@ -332,8 +369,17 @@ export function UrlProviderCard({ provider, onDownload, readOnly = false }: Prop
             )}
           </div>
         )}
-      </Card>
-    </Hoverable.Root>
+        </Card>
+      </Hoverable.Root>
+
+      {!readOnly && (
+        <EditProviderModal
+          provider={provider}
+          open={editOpen}
+          onOpenChange={setEditOpen}
+        />
+      )}
+    </>
   );
 }
 

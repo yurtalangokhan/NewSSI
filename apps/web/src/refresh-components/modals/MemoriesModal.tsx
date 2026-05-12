@@ -49,7 +49,7 @@ function MemoryItem({
   shouldHighlight,
   onHighlighted,
 }: MemoryItemProps) {
-  const { t } = useTranslation("memories");
+  const { t } = useTranslation("common", { keyPrefix: "memories" });
   const [isFocused, setIsFocused] = useState(false);
   const [isHighlighting, setIsHighlighting] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -138,7 +138,7 @@ export default function MemoriesModal({
   initialTargetIndex,
   highlightFirstOnOpen = false,
 }: MemoriesModalProps) {
-  const { t } = useTranslation("memories");
+  const { t } = useTranslation("common", { keyPrefix: "memories" });
   const close = useModalClose(onClose);
   const [focusMemoryId, setFocusMemoryId] = useState<number | null>(null);
 

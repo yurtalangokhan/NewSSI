@@ -94,6 +94,12 @@ class ProviderService:
     async def create_user_provider(self, user_id: str, data: dict[str, Any]) -> dict[str, Any]:
         return await self._repo.create_user_provider(user_id, data)
 
+    async def update_user_provider(self, provider_id: str, user_id: str, data: dict[str, Any]) -> dict[str, Any]:
+        result = await self._repo.update_user_provider(provider_id, user_id, data)
+        if result is None:
+            raise ValueError("Provider not found or cannot be updated")
+        return result
+
     async def delete_user_provider(self, provider_id: str, user_id: str) -> bool:
         return await self._repo.delete_user_provider(provider_id, user_id)
 

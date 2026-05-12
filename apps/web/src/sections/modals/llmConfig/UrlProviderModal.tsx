@@ -8,7 +8,7 @@ import Modal from "@/refresh-components/Modal";
 import { Button } from "@opal/components";
 import Text from "@/refresh-components/texts/Text";
 import InputSelect from "@/refresh-components/inputs/InputSelect";
-import { getProviderIcon } from "@/lib/llmConfig/providers";
+import { getProviderIcon, URL_PROVIDER_TYPES } from "@/lib/llmConfig/providers";
 import { useTranslation } from "react-i18next";
 
 interface Props {
@@ -16,8 +16,6 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   wellKnownProviders: WellKnownLangChainProvider[];
 }
-
-const URL_TYPES = ["ollama", "vllm", "openai_compatible", "litellm"];
 
 type TestStatus = "idle" | "testing" | "ok" | "error";
 
@@ -38,7 +36,7 @@ export function UrlProviderModal({ open, onOpenChange, wellKnownProviders }: Pro
   const [defaultModel, setDefaultModel] = useState("");
 
   const urlProviders = wellKnownProviders.filter((p) =>
-    URL_TYPES.includes(p.provider_type)
+    URL_PROVIDER_TYPES.includes(p.provider_type)
   );
 
   const reset = () => {

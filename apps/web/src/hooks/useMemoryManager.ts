@@ -25,13 +25,49 @@ export function useMemoryManager({
   const [searchQuery, setSearchQuery] = useState("");
   const initialMemoriesRef = useRef<MemoryItem[]>([]);
   const isSavingRef = useRef(false);
+  const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
+
+  const queueSave = useCallback(
+    async (
+      newMemories: MemoryItem[],
+      successMessage: string,
+      errorMessage: string,
+      onSuccess?: () => void
+    ): Promise<boolean> => {
+      let success = false;
+
+      saveQueueRef.current = saveQueueRef.current.then(async () => {
+        isSavingRef.current = true;
+        try {
+          success = await onSaveMemories(newMemories);
+          if (success) {
+            initialMemoriesRef.current = newMemories;
+            onSuccess?.();
+            onNotify(successMessage, "success");
+          } else {
+            onNotify(errorMessage, "error");
+          }
+        } catch {
+          success = false;
+          onNotify(errorMessage, "error");
+        } finally {
+          isSavingRef.current = false;
+        }
+      });
+
+      await saveQueueRef.current;
+      return success;
+    },
+    [onNotify, onSaveMemories]
+  );
 
   // Initialize local memories from props
   useEffect(() => {
     const existingMemories: LocalMemory[] = memories.map((mem, index) => ({
       id: mem.id ?? -(index + 1),
       content: mem.content,
-      isNew: mem.id === null,
+      // Memories from props are already persisted, even if backend doesn't provide IDs.
+      isNew: false,
     }));
 
     setLocalMemories((prev) => {
@@ -62,23 +98,21 @@ export function useMemoryManager({
     if (unsavedNewItem && !isSavingRef.current) {
       const newMemories: MemoryItem[] = localMemories
         .filter((m) => m.content.trim())
-        .map((m) => ({ id: m.isNew ? null : m.id, content: m.content }));
+        .map((m) => ({
+          id: m.isNew || m.id < 0 ? null : m.id,
+          content: m.content,
+        }));
 
       const memoriesChanged =
         JSON.stringify(newMemories) !==
         JSON.stringify(initialMemoriesRef.current);
 
       if (memoriesChanged) {
-        isSavingRef.current = true;
-        onSaveMemories(newMemories).then((success) => {
-          isSavingRef.current = false;
-          if (success) {
-            initialMemoriesRef.current = newMemories;
-            onNotify("Memory saved", "success");
-          } else {
-            onNotify("Failed to save memory", "error");
-          }
-        });
+        void queueSave(
+          newMemories,
+          "Memory saved",
+          "Failed to save memory"
+        );
       }
     }
 
@@ -88,7 +122,7 @@ export function useMemoryManager({
       ...prev,
     ]);
     return newId;
-  }, [localMemories, onSaveMemories, onNotify]);
+  }, [localMemories, queueSave]);
 
   const handleUpdateMemory = useCallback((index: number, value: string) => {
     setLocalMemories((prev) =>
@@ -111,16 +145,21 @@ export function useMemoryManager({
       const newMemories: MemoryItem[] = localMemories
         .filter((_, i) => i !== index)
         .filter((m) => !m.isNew || m.content.trim())
-        .map((m) => ({ id: m.isNew ? null : m.id, content: m.content }));
+        .map((m) => ({
+          id: m.isNew || m.id < 0 ? null : m.id,
+          content: m.content,
+        }));
 
-      const success = await onSaveMemories(newMemories);
+      const success = await queueSave(
+        newMemories,
+        "Memory deleted",
+        "Failed to delete memory"
+      );
       if (success) {
-        onNotify("Memory deleted", "success");
-      } else {
-        onNotify("Failed to delete memory", "error");
+        setLocalMemories((prev) => prev.filter((_, i) => i !== index));
       }
     },
-    [localMemories, onSaveMemories, onNotify]
+    [localMemories, queueSave]
   );
 
   const handleBlurMemory = useCallback(
@@ -131,7 +170,10 @@ export function useMemoryManager({
 
       const newMemories: MemoryItem[] = localMemories
         .filter((m) => m.content.trim())
-        .map((m) => ({ id: m.isNew ? null : m.id, content: m.content }));
+        .map((m) => ({
+          id: m.isNew || m.id < 0 ? null : m.id,
+          content: m.content,
+        }));
 
       const memoriesChanged =
         JSON.stringify(newMemories) !==
@@ -139,17 +181,9 @@ export function useMemoryManager({
 
       if (!memoriesChanged) return;
 
-      isSavingRef.current = true;
-      const success = await onSaveMemories(newMemories);
-      isSavingRef.current = false;
-      if (success) {
-        initialMemoriesRef.current = newMemories;
-        onNotify("Memory saved", "success");
-      } else {
-        onNotify("Failed to save memory", "error");
-      }
+      await queueSave(newMemories, "Memory saved", "Failed to save memory");
     },
-    [localMemories, onSaveMemories, onNotify]
+    [localMemories, queueSave]
   );
 
   const filteredMemories = localMemories

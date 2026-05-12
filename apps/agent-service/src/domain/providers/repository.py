@@ -113,7 +113,11 @@ class ProviderRepository(BaseRepository):
 
             provider.name = data.get("name", provider.name)
             provider.base_url = data.get("base_url", provider.base_url)
-            if data.get("api_key"):
+            if "provider_type" in data and data["provider_type"]:
+                provider.provider_type = data["provider_type"]
+            if data.get("clear_api_key"):
+                config.api_key_encrypted = None
+            elif data.get("api_key"):
                 config.api_key_encrypted = encrypt_api_key(data["api_key"])
             if "config" in data:
                 provider.config = data["config"]
@@ -211,6 +215,43 @@ class ProviderRepository(BaseRepository):
                 raise ValueError(
                     f"A {data['provider_type']} provider already exists."
                 )
+            await session.refresh(provider)
+            await session.refresh(config)
+            return self._serialize_with_config(provider, config)
+
+    async def update_user_provider(self, provider_id: str, user_id: str, data: dict[str, Any]) -> dict[str, Any] | None:
+        async with self._session() as session:
+            result = await session.execute(
+                select(ProviderModel, UserProviderConfigModel)
+                .join(
+                    UserProviderConfigModel,
+                    UserProviderConfigModel.provider_id == ProviderModel.id,
+                )
+                .where(
+                    ProviderModel.id == uuid.UUID(provider_id),
+                    UserProviderConfigModel.user_id == user_id,
+                    ProviderModel.provider_kind == "api_key",
+                )
+            )
+            row = result.first()
+            if not row:
+                return None
+            provider, config = row
+
+            if "name" in data:
+                provider.name = data["name"]
+            if "api_base" in data:
+                config.api_base = data["api_base"] or None
+            if "api_version" in data:
+                config.api_version = data["api_version"] or None
+            if "default_model" in data:
+                config.default_model = data["default_model"] or None
+            if data.get("api_key"):
+                api_key = data["api_key"]
+                config.api_key_encrypted = encrypt_api_key(api_key)
+                config.api_key_fingerprint = hashlib.sha256(api_key.encode()).hexdigest()[:16]
+
+            await session.flush()
             await session.refresh(provider)
             await session.refresh(config)
             return self._serialize_with_config(provider, config)

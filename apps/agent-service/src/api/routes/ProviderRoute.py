@@ -25,6 +25,7 @@ class UrlProviderPayload(BaseModel):
     provider_type: str
     base_url: str
     api_key: str | None = None
+    clear_api_key: bool = False
     default_model: str | None = None
     config: dict[str, Any] = {}
 
@@ -37,6 +38,14 @@ class UserProviderPayload(BaseModel):
     api_version: str | None = None
     default_model: str | None = None
     custom_config: dict[str, Any] = {}
+
+
+class UserProviderUpdatePayload(BaseModel):
+    name: str | None = None
+    api_key: str | None = None
+    api_base: str | None = None
+    api_version: str | None = None
+    default_model: str | None = None
 
 
 class ReorderPayload(BaseModel):
@@ -105,6 +114,14 @@ async def create_user_provider(body: UserProviderPayload):
         return await _svc.create_user_provider(_DEFAULT_USER_ID, body.model_dump())
     except ValueError as exc:
         raise HTTPException(400, str(exc))
+
+
+@router.put("/user-providers/{provider_id}")
+async def update_user_provider(provider_id: str, body: UserProviderUpdatePayload):
+    try:
+        return await _svc.update_user_provider(provider_id, _DEFAULT_USER_ID, body.model_dump(exclude_none=True))
+    except ValueError as exc:
+        raise HTTPException(404, str(exc))
 
 
 @router.delete("/user-providers/{provider_id}")
