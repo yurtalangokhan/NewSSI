@@ -5,6 +5,8 @@ const tr = {
     noPreviousMessage: "Daha önce gönderilmiş kullanıcı mesajı bulunamadı.",
     sources: "Kaynaklar",
     scrollToBottom: "En alta kaydır",
+    dragDropFiles: "Dosyaları yüklemek için buraya sürükleyin",
+    releaseToUpload: "Dosyalarınızı yüklemek için bırakın",
   },
   app: {
     title: "Onyx",

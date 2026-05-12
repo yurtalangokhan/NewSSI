@@ -5,6 +5,8 @@ const en = {
     noPreviousMessage: "No previously-submitted user message found.",
     sources: "Sources",
     scrollToBottom: "Scroll to bottom",
+    dragDropFiles: "Drag files here to upload",
+    releaseToUpload: "Release to upload your files",
   },
   app: {
     title: "Onyx",

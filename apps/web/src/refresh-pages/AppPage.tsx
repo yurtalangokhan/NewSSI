@@ -64,7 +64,7 @@ import OnboardingFlow from "@/refresh-components/onboarding/OnboardingFlow";
 import { OnboardingStep } from "@/refresh-components/onboarding/types";
 import { useShowOnboarding } from "@/hooks/useShowOnboarding";
 import * as AppLayouts from "@/layouts/app-layouts";
-import { SvgChevronDown, SvgFileText } from "@opal/icons";
+import { SvgChevronDown, SvgFileText, SvgUploadCloud } from "@opal/icons";
 import { Button } from "@opal/components";
 import Spacer from "@/refresh-components/Spacer";
 import { DEFAULT_CONTEXT_TOKENS } from "@/lib/constants";
@@ -106,6 +106,97 @@ function Fade({ show, children, className }: FadeProps) {
 
 export interface ChatPageProps {
   firstMessage?: string;
+}
+
+interface DragOverlayProps {
+  isDragging: boolean;
+}
+
+function DragOverlay({ isDragging }: DragOverlayProps) {
+  const { t } = useTranslation();
+  return (
+    <AnimatePresence>
+      {isDragging && (
+        <motion.div
+          key="drag-overlay"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          className="relative z-40 pointer-events-none flex flex-col items-center justify-center gap-4 py-12"
+        >
+          {/* Icon with glow effect */}
+          <motion.div
+            initial={{ scale: 0.5, opacity: 0, y: 10 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.5, opacity: 0, y: 10 }}
+            transition={{
+              duration: 0.4,
+              type: "spring",
+              stiffness: 260,
+              damping: 20,
+            }}
+            className="relative"
+          >
+            {/* Glow background */}
+            <motion.div
+              animate={{
+                boxShadow: [
+                  "0 0 20px rgba(59, 130, 246, 0)",
+                  "0 0 40px rgba(59, 130, 246, 0.3)",
+                  "0 0 20px rgba(59, 130, 246, 0)",
+                ],
+              }}
+              transition={{
+                duration: 2,
+                repeat: Infinity,
+                ease: "easeInOut",
+              }}
+              className="absolute inset-0 rounded-full"
+            />
+
+            {/* Icon */}
+            <div className="relative text-blue-500 dark:text-blue-400">
+              <SvgUploadCloud size={48} className="w-12 h-12" />
+            </div>
+          </motion.div>
+
+          {/* Text label with animation */}
+          <motion.div
+            initial={{ opacity: 0, y: 5 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 5 }}
+            transition={{ duration: 0.3, delay: 0.1 }}
+            className="text-center"
+          >
+            <h3 className="text-base font-semibold text-text-darker dark:text-white">
+              {t("chat.dragDropFiles")}
+            </h3>
+            <p className="text-xs text-text-light dark:text-text-light mt-1">
+              {t("chat.releaseToUpload")}
+            </p>
+          </motion.div>
+
+          {/* Floating animation for extra visual interest */}
+          <motion.div
+            animate={{
+              y: [0, -6, 0],
+            }}
+            transition={{
+              duration: 3,
+              repeat: Infinity,
+              ease: "easeInOut",
+            }}
+            className="mt-1"
+          >
+            <div className="text-xs text-text-light dark:text-text-light/60 font-medium tracking-wide">
+              ↑
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
 }
 
 export default function AppPage({ firstMessage }: ChatPageProps) {
@@ -221,6 +312,8 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
 
   const [presentingDocument, setPresentingDocument] =
     useState<MinimalOnyxDocument | null>(null);
+
+  const [dragActive, setDragActive] = useState(false);
 
   const llmManager = useLlmManager(currentChatSession ?? undefined, liveAgent);
 
@@ -711,9 +804,12 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
 
       <AppLayouts.Root enableBackground={!appFocus.isProject()}>
         <Dropzone
-          onDrop={(acceptedFiles) =>
-            handleMessageSpecificFileUpload(acceptedFiles)
-          }
+          onDrop={(acceptedFiles) => {
+            handleMessageSpecificFileUpload(acceptedFiles);
+            setDragActive(false);
+          }}
+          onDragEnter={() => setDragActive(true)}
+          onDragLeave={() => setDragActive(false)}
           noClick
         >
           {({ getRootProps }) => (
@@ -833,7 +929,20 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
                       (Footer) that explains why the Footer removes its top
                       padding during chat to compensate for this extra space.
                     */}
-                    <div>
+                    <motion.div
+                      layout
+                      className={cn(
+                        "relative w-full transition-all duration-300 ease-in-out overflow-hidden rounded-xl",
+                        dragActive
+                          ? "bg-white/5 dark:bg-black/10 backdrop-blur-sm border border-blue-400/20 dark:border-blue-500/10"
+                          : ""
+                      )}
+                      animate={{
+                        minHeight: dragActive ? "220px" : "auto",
+                      }}
+                      transition={{ duration: 0.3, ease: "easeInOut" }}
+                    >
+                      {dragActive && <DragOverlay isDragging={dragActive} />}
                       <div
                         className={cn(
                           "transition-all duration-150 ease-in-out overflow-hidden",
@@ -885,7 +994,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
                           appFocus.isChat() ? "h-[14px]" : "h-0"
                         )}
                       />
-                    </div>
+                    </motion.div>
                   </div>
                 </div>
 
