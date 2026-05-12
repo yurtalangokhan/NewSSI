@@ -73,6 +73,7 @@ class ChatBackgroundPayload(BaseModel):
 
 class DefaultModelPayload(BaseModel):
     default_model: str | None = None
+    default_provider_id: str | None = None
 
 
 class AutoScrollPayload(BaseModel):
@@ -160,6 +161,7 @@ async def update_user_default_model(
     return await _get_controller().update_user_default_model(
         user_id=user_id,
         default_model=payload.default_model,
+        default_provider_id=payload.default_provider_id,
     )
 
 

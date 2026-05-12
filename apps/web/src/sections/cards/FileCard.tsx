@@ -141,11 +141,17 @@ export function FileCard({
   }, [file.name]);
 
   const imageUrl = useMemo(() => {
-    if (isImage && file.file_id) {
+    if (!isImage) return null;
+    const fileWithData = file as typeof file & { _inline_data?: string; _mime_type?: string };
+    if (fileWithData._inline_data && fileWithData._mime_type) {
+      return `data:${fileWithData._mime_type};base64,${fileWithData._inline_data}`;
+    }
+    if (file.file_id) {
       return `/api/chat/file/${file.file_id}`;
     }
     return null;
-  }, [isImage, file.file_id]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isImage, file.file_id, (file as any)._inline_data, (file as any)._mime_type]);
 
   const isActuallyProcessing =
     String(file.status) === UserFileStatus.UPLOADING ||

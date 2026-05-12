@@ -93,6 +93,24 @@ export default function TextViewModal({
       setLoadError(null);
       setFileContent("");
       setFileBlob(null);
+
+      // For files not persisted yet (e.g. image chosen in input, not sent yet),
+      // render directly from inline data URL and skip backend fetch.
+      if (presentingDocument.preview_url) {
+        setFileUrl((prev) => {
+          if (prev) window.URL.revokeObjectURL(prev);
+          return presentingDocument.preview_url!;
+        });
+        setFileName(
+          presentingDocument.semantic_identifier || t("filePreview.document")
+        );
+        setFileType(
+          presentingDocument.preview_mime_type || "application/octet-stream"
+        );
+        setIsLoading(false);
+        return;
+      }
+
       const fileIdLocal =
         presentingDocument.document_id.split("__")[1] ||
         presentingDocument.document_id;
@@ -172,7 +190,9 @@ export default function TextViewModal({
 
   useEffect(() => {
     return () => {
-      if (fileUrl) window.URL.revokeObjectURL(fileUrl);
+      if (fileUrl && fileUrl.startsWith("blob:")) {
+        window.URL.revokeObjectURL(fileUrl);
+      }
     };
   }, [fileUrl]);
 

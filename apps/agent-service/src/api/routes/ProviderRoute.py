@@ -68,6 +68,11 @@ async def list_providers():
     return await _svc.list_all(_DEFAULT_USER_ID)
 
 
+@router.get("/providers/available-models")
+async def get_available_models():
+    return await _svc.get_available_models_for_user(_DEFAULT_USER_ID)
+
+
 @router.post("/providers")
 async def create_provider(body: UrlProviderPayload):
     try:

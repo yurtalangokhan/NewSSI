@@ -26,6 +26,7 @@ class UserSettingsModel(Base):
     chat_background: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     default_model: Mapped[str | None] = mapped_column(Text, nullable=True)
+    default_provider_id: Mapped[str | None] = mapped_column(Text, nullable=True)
     auto_scroll: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=True, server_default=text("TRUE")
     )

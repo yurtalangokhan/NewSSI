@@ -8,37 +8,171 @@ from domain.providers.repository import ProviderRepository
 
 logger = get_logger(__name__)
 
-WELL_KNOWN_PROVIDERS: list[dict[str, str]] = [
+def _known_model(
+    name: str,
+    *,
+    display_name: str | None = None,
+    supports_image_input: bool = False,
+    supports_reasoning: bool = False,
+    max_input_tokens: int | None = None,
+) -> dict[str, Any]:
+    return {
+        "name": name,
+        "display_name": display_name or name,
+        "is_visible": True,
+        "max_input_tokens": max_input_tokens,
+        "supports_image_input": supports_image_input,
+        "supports_reasoning": supports_reasoning,
+    }
+
+
+KNOWN_MODELS_BY_PROVIDER: dict[str, list[dict[str, Any]]] = {
+    "openai": [
+        _known_model("gpt-5", supports_reasoning=True, max_input_tokens=200000),
+        _known_model("gpt-5-mini", supports_reasoning=True, max_input_tokens=200000),
+        _known_model("gpt-4.1", supports_image_input=True, max_input_tokens=128000),
+        _known_model("gpt-4o", supports_image_input=True, max_input_tokens=128000),
+    ],
+    "anthropic": [
+        _known_model("claude-opus-4-1", supports_image_input=True, supports_reasoning=True, max_input_tokens=200000),
+        _known_model("claude-sonnet-4", supports_image_input=True, supports_reasoning=True, max_input_tokens=200000),
+        _known_model("claude-3-7-sonnet-latest", supports_image_input=True, max_input_tokens=200000),
+    ],
+    "google_genai": [
+        _known_model("gemini-2.5-pro", supports_image_input=True, supports_reasoning=True, max_input_tokens=1000000),
+        _known_model("gemini-2.5-flash", supports_image_input=True, max_input_tokens=1000000),
+        _known_model("gemini-2.0-flash", supports_image_input=True, max_input_tokens=1000000),
+    ],
+    "google_vertexai": [
+        _known_model("gemini-2.5-pro", supports_image_input=True, supports_reasoning=True, max_input_tokens=1000000),
+        _known_model("gemini-2.5-flash", supports_image_input=True, max_input_tokens=1000000),
+    ],
+    "azure_openai": [
+        _known_model("gpt-5", supports_reasoning=True, max_input_tokens=200000),
+        _known_model("gpt-4.1", supports_image_input=True, max_input_tokens=128000),
+        _known_model("gpt-4o", supports_image_input=True, max_input_tokens=128000),
+    ],
+    "aws_bedrock": [
+        _known_model("anthropic.claude-3-7-sonnet-20250219-v1:0", supports_image_input=True, max_input_tokens=200000),
+        _known_model("anthropic.claude-3-5-sonnet-20241022-v2:0", supports_image_input=True, max_input_tokens=200000),
+        _known_model("amazon.nova-pro-v1:0", supports_image_input=True, max_input_tokens=300000),
+    ],
+    "groq": [
+        _known_model("llama-3.3-70b-versatile", max_input_tokens=131072),
+        _known_model("llama-3.1-8b-instant", max_input_tokens=131072),
+        _known_model("mixtral-8x7b-32768", max_input_tokens=32768),
+    ],
+    "mistral": [
+        _known_model("mistral-large-latest", supports_reasoning=True, max_input_tokens=128000),
+        _known_model("mistral-medium-latest", max_input_tokens=128000),
+        _known_model("ministral-8b-latest", max_input_tokens=128000),
+    ],
+    "cohere": [
+        _known_model("command-a-03-2025", max_input_tokens=128000),
+        _known_model("command-r-plus", max_input_tokens=128000),
+        _known_model("command-r", max_input_tokens=128000),
+    ],
+    "deepseek": [
+        _known_model("deepseek-chat", max_input_tokens=128000),
+        _known_model("deepseek-reasoner", supports_reasoning=True, max_input_tokens=128000),
+    ],
+    "xai": [
+        _known_model("grok-3-beta", supports_reasoning=True, max_input_tokens=131072),
+        _known_model("grok-2-vision", supports_image_input=True, max_input_tokens=32768),
+    ],
+    "perplexity": [
+        _known_model("sonar-pro", supports_reasoning=True, max_input_tokens=127000),
+        _known_model("sonar", max_input_tokens=127000),
+    ],
+    "together": [
+        _known_model("meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo", max_input_tokens=131072),
+        _known_model("Qwen/Qwen2.5-72B-Instruct-Turbo", max_input_tokens=32768),
+    ],
+    "fireworks": [
+        _known_model("accounts/fireworks/models/llama-v3p1-70b-instruct", max_input_tokens=131072),
+        _known_model("accounts/fireworks/models/mixtral-8x22b-instruct", max_input_tokens=65536),
+    ],
+    "cerebras": [
+        _known_model("llama-3.3-70b", max_input_tokens=131072),
+        _known_model("llama-3.1-8b", max_input_tokens=131072),
+    ],
+    "huggingface": [
+        _known_model("meta-llama/Llama-3.1-70B-Instruct", max_input_tokens=131072),
+        _known_model("Qwen/Qwen2.5-72B-Instruct", max_input_tokens=32768),
+    ],
+    "nvidia": [
+        _known_model("meta/llama-3.1-70b-instruct", max_input_tokens=131072),
+        _known_model("google/gemma-2-9b-it", max_input_tokens=8192),
+    ],
+    "ibm_watsonx": [
+        _known_model("ibm/granite-3-8b-instruct", max_input_tokens=32768),
+        _known_model("meta-llama/llama-3-1-70b-instruct", max_input_tokens=131072),
+    ],
+    "sambanova": [
+        _known_model("Meta-Llama-3.1-405B-Instruct", max_input_tokens=131072),
+        _known_model("Meta-Llama-3.1-70B-Instruct", max_input_tokens=131072),
+    ],
+    "openrouter": [
+        _known_model("openai/gpt-5", supports_reasoning=True, max_input_tokens=200000),
+        _known_model("anthropic/claude-sonnet-4", supports_image_input=True, supports_reasoning=True, max_input_tokens=200000),
+        _known_model("google/gemini-2.5-pro", supports_image_input=True, supports_reasoning=True, max_input_tokens=1000000),
+    ],
+}
+
+
+def _well_known_api_key(
+    name: str,
+    provider_type: str,
+    *,
+    icon: str,
+    default_model: str | None = None,
+    default_model_display: str | None = None,
+) -> dict[str, Any]:
+    return {
+        "name": name,
+        "provider_type": provider_type,
+        "category": "api_key",
+        "icon": icon,
+        "known_models": KNOWN_MODELS_BY_PROVIDER.get(provider_type, []),
+        "recommended_default_model": (
+            {"name": default_model, "display_name": default_model_display or default_model}
+            if default_model
+            else None
+        ),
+    }
+
+
+WELL_KNOWN_PROVIDERS: list[dict[str, Any]] = [
     # URL-based
     {"name": "Ollama", "provider_type": "ollama", "category": "url_based", "icon": "ollama"},
     {"name": "vLLM", "provider_type": "vllm", "category": "url_based", "icon": "cpu"},
     {"name": "OpenAI-Compatible", "provider_type": "openai_compatible", "category": "url_based", "icon": "openai"},
     {"name": "LiteLLM Proxy", "provider_type": "litellm", "category": "url_based", "icon": "cpu"},
     # API-key-based
-    {"name": "OpenAI", "provider_type": "openai", "category": "api_key", "icon": "openai"},
-    {"name": "Anthropic", "provider_type": "anthropic", "category": "api_key", "icon": "anthropic"},
-    {"name": "Google Gemini", "provider_type": "google_genai", "category": "api_key", "icon": "google"},
-    {"name": "Google Vertex AI", "provider_type": "google_vertexai", "category": "api_key", "icon": "google"},
-    {"name": "Azure OpenAI", "provider_type": "azure_openai", "category": "api_key", "icon": "azure"},
-    {"name": "Azure AI", "provider_type": "azure_ai", "category": "api_key", "icon": "azure"},
-    {"name": "AWS Bedrock", "provider_type": "aws_bedrock", "category": "api_key", "icon": "amazon"},
-    {"name": "Groq", "provider_type": "groq", "category": "api_key", "icon": "cpu"},
-    {"name": "MistralAI", "provider_type": "mistral", "category": "api_key", "icon": "mistral"},
-    {"name": "Cohere", "provider_type": "cohere", "category": "api_key", "icon": "cpu"},
-    {"name": "DeepSeek", "provider_type": "deepseek", "category": "api_key", "icon": "deepseek"},
-    {"name": "xAI (Grok)", "provider_type": "xai", "category": "api_key", "icon": "cpu"},
-    {"name": "Perplexity", "provider_type": "perplexity", "category": "api_key", "icon": "cpu"},
-    {"name": "Together AI", "provider_type": "together", "category": "api_key", "icon": "cpu"},
-    {"name": "Fireworks AI", "provider_type": "fireworks", "category": "api_key", "icon": "cpu"},
-    {"name": "Cerebras", "provider_type": "cerebras", "category": "api_key", "icon": "cpu"},
-    {"name": "HuggingFace", "provider_type": "huggingface", "category": "api_key", "icon": "cpu"},
-    {"name": "NVIDIA AI", "provider_type": "nvidia", "category": "api_key", "icon": "cpu"},
-    {"name": "IBM WatsonX", "provider_type": "ibm_watsonx", "category": "api_key", "icon": "cpu"},
-    {"name": "SambaNova", "provider_type": "sambanova", "category": "api_key", "icon": "cpu"},
-    {"name": "OpenRouter", "provider_type": "openrouter", "category": "api_key", "icon": "openrouter"},
+    _well_known_api_key("OpenAI", "openai", icon="openai", default_model="gpt-5"),
+    _well_known_api_key("Anthropic", "anthropic", icon="anthropic", default_model="claude-sonnet-4"),
+    _well_known_api_key("Google Gemini", "google_genai", icon="google", default_model="gemini-2.5-pro"),
+    _well_known_api_key("Google Vertex AI", "google_vertexai", icon="google", default_model="gemini-2.5-pro"),
+    _well_known_api_key("Azure OpenAI", "azure_openai", icon="azure", default_model="gpt-5"),
+    _well_known_api_key("Azure AI", "azure_ai", icon="azure"),
+    _well_known_api_key("AWS Bedrock", "aws_bedrock", icon="amazon", default_model="anthropic.claude-3-7-sonnet-20250219-v1:0", default_model_display="Anthropic Claude 3.7 Sonnet"),
+    _well_known_api_key("Groq", "groq", icon="cpu", default_model="llama-3.3-70b-versatile", default_model_display="Llama 3.3 70B Versatile"),
+    _well_known_api_key("MistralAI", "mistral", icon="mistral", default_model="mistral-large-latest"),
+    _well_known_api_key("Cohere", "cohere", icon="cpu", default_model="command-a-03-2025"),
+    _well_known_api_key("DeepSeek", "deepseek", icon="deepseek", default_model="deepseek-chat"),
+    _well_known_api_key("xAI (Grok)", "xai", icon="cpu", default_model="grok-3-beta"),
+    _well_known_api_key("Perplexity", "perplexity", icon="cpu", default_model="sonar-pro"),
+    _well_known_api_key("Together AI", "together", icon="cpu", default_model="meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo", default_model_display="Llama 3.1 70B Turbo"),
+    _well_known_api_key("Fireworks AI", "fireworks", icon="cpu", default_model="accounts/fireworks/models/llama-v3p1-70b-instruct", default_model_display="Llama v3.1 70B"),
+    _well_known_api_key("Cerebras", "cerebras", icon="cpu", default_model="llama-3.3-70b"),
+    _well_known_api_key("HuggingFace", "huggingface", icon="cpu", default_model="meta-llama/Llama-3.1-70B-Instruct", default_model_display="Llama 3.1 70B Instruct"),
+    _well_known_api_key("NVIDIA AI", "nvidia", icon="cpu", default_model="meta/llama-3.1-70b-instruct", default_model_display="Llama 3.1 70B Instruct"),
+    _well_known_api_key("IBM WatsonX", "ibm_watsonx", icon="cpu", default_model="ibm/granite-3-8b-instruct", default_model_display="granite-3-8b-instruct"),
+    _well_known_api_key("SambaNova", "sambanova", icon="cpu", default_model="Meta-Llama-3.1-405B-Instruct", default_model_display="Llama 3.1 405B Instruct"),
+    _well_known_api_key("OpenRouter", "openrouter", icon="openrouter", default_model="openai/gpt-5", default_model_display="OpenAI GPT-5"),
 ]
 
-_WELL_KNOWN_BY_TYPE: dict[str, dict[str, str]] = {p["provider_type"]: p for p in WELL_KNOWN_PROVIDERS}
+_WELL_KNOWN_BY_TYPE: dict[str, dict[str, Any]] = {p["provider_type"]: p for p in WELL_KNOWN_PROVIDERS}
 
 
 class ProviderService:
@@ -71,6 +205,85 @@ class ProviderService:
             "url_providers": url_providers,
             "user_providers": user_providers,
         }
+
+    async def get_available_models_for_user(self, user_id: str) -> list[dict[str, Any]]:
+        """Return all user-visible providers flattened for model selection UIs."""
+        all_providers = await self.list_all(user_id)
+        results: list[dict[str, Any]] = []
+
+        # URL providers (builtin + DB URL providers) persist synced model metadata
+        # in provider.config.model_configurations.
+        for provider in [
+            *all_providers.get("builtin", []),
+            *all_providers.get("url_providers", []),
+        ]:
+            config = provider.get("config") or {}
+            model_configurations = config.get("model_configurations") or []
+            if not isinstance(model_configurations, list):
+                model_configurations = []
+
+            # Existing providers may not have synced model_configurations yet.
+            # In that case, discover models live from the provider endpoint.
+            if not model_configurations:
+                live_models = await self._fetch_models_by_type(
+                    provider.get("provider_type", ""),
+                    provider.get("base_url"),
+                )
+                model_configurations = [
+                    {
+                        "name": m.get("name"),
+                        "display_name": m.get("name"),
+                        "is_visible": True,
+                        "max_input_tokens": m.get("max_input_tokens"),
+                        "supports_image_input": m.get("supports_image_input", False),
+                        "supports_reasoning": m.get("supports_reasoning", False),
+                    }
+                    for m in live_models
+                    if m.get("name")
+                ]
+
+            # Keep an explicit default model selectable even if discovery fails.
+            default_model = (provider.get("user_config") or {}).get("default_model")
+            if default_model and not any(m.get("name") == default_model for m in model_configurations):
+                model_configurations.append(_known_model(default_model))
+
+            results.append(
+                {
+                    "id": provider.get("id"),
+                    "name": provider.get("name") or provider.get("provider_type"),
+                    "provider": provider.get("provider_type"),
+                    "provider_display_name": provider.get("name") or provider.get("provider_type"),
+                    "model_configurations": model_configurations,
+                }
+            )
+
+        # API-key providers use the well-known provider catalog as the source of
+        # truth (enterprise-safe, deterministic model options).
+        for provider in all_providers.get("user_providers", []):
+            default_model = (provider.get("user_config") or {}).get("default_model")
+            provider_type = provider.get("provider_type")
+            known = _WELL_KNOWN_BY_TYPE.get(provider_type, {})
+            model_configurations = [
+                dict(model) for model in known.get("known_models", [])
+            ]
+
+            # Keep user default model selectable even if it is custom and not in catalog.
+            if default_model and not any(m.get("name") == default_model for m in model_configurations):
+                model_configurations.append(_known_model(default_model))
+
+            provider_display_name = known.get("name") or provider.get("name") or provider_type
+
+            results.append(
+                {
+                    "id": provider.get("id"),
+                    "name": provider.get("name") or provider_display_name,
+                    "provider": provider_type,
+                    "provider_display_name": provider_display_name,
+                    "model_configurations": model_configurations,
+                }
+            )
+
+        return results
 
     async def create_url_provider(self, user_id: str, data: dict[str, Any]) -> dict[str, Any]:
         self._check_builtin_collision(data)

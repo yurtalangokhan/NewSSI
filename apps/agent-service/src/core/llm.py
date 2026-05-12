@@ -18,6 +18,7 @@ from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
 
 from core.env import env
+from core.settings import settings
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +54,19 @@ class FakeToolModel(FakeListChatModel):
 
 
 ModelT: TypeAlias = ChatOllama | ChatOpenAI | FakeToolModel
+
+
+def get_model_from_config(
+    configurable: dict,
+    default_model: str | None = None,
+) -> ModelT:
+    """Resolve model from runtime config, supporting injected llm_instance."""
+    llm_instance = configurable.get("llm_instance")
+    if llm_instance is not None:
+        return llm_instance
+
+    model_name = configurable.get("model") or default_model or settings.DEFAULT_MODEL
+    return get_model(model_name)
 
 
 @cache

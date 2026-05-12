@@ -950,9 +950,19 @@ class UserController(BaseController):
         *,
         user_id: str,
         default_model: str | None,
+        default_provider_id: str | None = None,
     ) -> dict[str, Any]:
         value = default_model.strip() if isinstance(default_model, str) else None
         await self._update_user_settings(user_id, {"default_model": value or None})
+        if default_provider_id is not None:
+            provider_id = (
+                default_provider_id.strip()
+                if isinstance(default_provider_id, str)
+                else None
+            )
+            await self._update_user_settings(
+                user_id, {"default_provider_id": provider_id or None}
+            )
         return {"success": True}
 
     async def update_user_auto_scroll(

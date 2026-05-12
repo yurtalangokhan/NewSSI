@@ -7,6 +7,7 @@ import {
   useAdminLLMProviders,
   useWellKnownLLMProviders,
 } from "@/hooks/useLLMProviders";
+import { useAvailableModels } from "@/hooks/useAvailableModels";
 import {
   useAllProviders,
   useUrlProviders,
@@ -413,6 +414,7 @@ export default function LLMConfigurationPage() {
     useAdminLLMProviders();
   const { wellKnownLLMProviders } = useWellKnownLLMProviders();
   const { providers: allProviders } = useAllProviders();
+  const { llmProviders: availableModels } = useAvailableModels();
 
   // New DB-based providers
   const { data: urlProviders = [] } = useUrlProviders();
@@ -438,55 +440,86 @@ export default function LLMConfigurationPage() {
 
   const allDbProviderGroups = useMemo(
     () =>
-      [
-        ...(existingLlmProviders ?? []).map((p) => ({
-          providerKey: `legacy-${p.id}`,
-          providerName: p.name,
-          providerType: p.provider,
-          models: p.model_configurations
-            .filter((m) => m.is_visible !== false)
-            .map((m) => m.name),
-        })),
-        ...urlProviders.map((p) => ({
+      (availableModels ?? [])
+        .map((p) => ({
           providerKey: p.id,
           providerName: p.name,
-          providerType: p.provider_type,
-          models: (p.config.model_configurations ?? [])
-            .filter((m) => m.is_visible)
+          providerType: p.provider,
+          models: (p.model_configurations ?? [])
+            .filter((m) => m.is_visible !== false)
             .map((m) => m.name),
-        })),
-        ...apiKeyProviders.map((p) => {
-          const knownModels = knownModelsByProviderType.get(p.provider_type) ?? [];
-          const defaultModel = p.user_config.default_model ? [p.user_config.default_model] : [];
-          return {
-            providerKey: p.id,
-            providerName: p.name,
-            providerType: p.provider_type,
-            models: Array.from(new Set([...knownModels, ...defaultModel])),
-          };
-        }),
-      ].filter((g) => g.models.length > 0),
-    [existingLlmProviders, urlProviders, apiKeyProviders, knownModelsByProviderType]
+        }))
+        .filter((g) => g.models.length > 0),
+    [availableModels]
   );
 
-  if (!existingLlmProviders) {
+  if (!availableModels) {
     return <ThreeDotsLoader />;
   }
 
-  // Default model comes from user settings.
+  // Default model/provider comes from user settings.
+  // Preferred format is separate fields: default_model + default_provider_id.
+  // Older data may still be stored as "providerId:modelName" in default_model.
   const currentDefaultValue = user?.preferences?.default_model ?? undefined;
-  const selectedDefaultProviderType = currentDefaultValue
-    ? allDbProviderGroups.find((group) =>
-        group.models.includes(currentDefaultValue)
-      )?.providerType
+  const currentDefaultProviderId = user?.preferences?.default_provider_id;
+
+  let selectedDefaultProviderKey: string | number | undefined =
+    currentDefaultProviderId ?? undefined;
+  let selectedDefaultModelName: string | undefined = currentDefaultValue;
+
+  if (currentDefaultValue && !selectedDefaultProviderKey) {
+    const firstColonIndex = currentDefaultValue.indexOf(":");
+    if (firstColonIndex > 0) {
+      const possibleProviderKey = currentDefaultValue.slice(0, firstColonIndex);
+      const hasMatchingProviderKey = allDbProviderGroups.some(
+        (group) => String(group.providerKey) === possibleProviderKey
+      );
+
+      // Legacy composite value: "providerId:modelName"
+      if (hasMatchingProviderKey) {
+        selectedDefaultProviderKey = possibleProviderKey;
+        selectedDefaultModelName = currentDefaultValue.slice(firstColonIndex + 1);
+      }
+    }
+  }
+
+  // If provider is still unknown, infer from model name.
+  if (!selectedDefaultProviderKey && selectedDefaultModelName) {
+    const matchingProvider = allDbProviderGroups.find((group) =>
+      group.models.includes(selectedDefaultModelName as string)
+    );
+    if (matchingProvider) {
+      selectedDefaultProviderKey = matchingProvider.providerKey;
+    }
+  }
+
+  // For display purposes
+  const selectedDefaultProviderType = selectedDefaultProviderKey
+    ? allDbProviderGroups.find((group) => group.providerKey === selectedDefaultProviderKey)?.providerType
     : undefined;
   const SelectedDefaultProviderIcon = selectedDefaultProviderType
     ? getProviderIcon(selectedDefaultProviderType)
     : null;
 
-  async function handleDefaultModelChange(modelName: string) {
+  // Create the composite value for the dropdown (providerId:modelName)
+  const dropdownCurrentValue = selectedDefaultProviderKey && selectedDefaultModelName
+    ? `${selectedDefaultProviderKey}:${selectedDefaultModelName}`
+    : undefined;
+
+  async function handleDefaultModelChange(compositeValue: string) {
     try {
-      await updateUserDefaultModel(modelName || null);
+      if (compositeValue) {
+        const separatorIndex = compositeValue.indexOf(":");
+        const providerId =
+          separatorIndex >= 0 ? compositeValue.slice(0, separatorIndex) : null;
+        const justModelName =
+          separatorIndex >= 0
+            ? compositeValue.slice(separatorIndex + 1)
+            : compositeValue;
+        await updateUserDefaultModel(justModelName || null, providerId);
+      } else {
+        await updateUserDefaultModel(null, null);
+      }
       toast({ message: t("admin.llm.defaultModelUpdatedSuccess") });
     } catch (e) {
       const message = e instanceof Error ? e.message : "Unknown error";
@@ -516,18 +549,18 @@ export default function LLMConfigurationPage() {
               center
             >
               <InputSelect
-                value={currentDefaultValue}
+                value={dropdownCurrentValue}
                 onValueChange={handleDefaultModelChange}
               >
                 <InputSelect.Trigger
                   placeholder={t("admin.llm.selectDefaultModelPlaceholder")}
                 >
-                  {currentDefaultValue ? (
+                  {dropdownCurrentValue && selectedDefaultModelName ? (
                     <span className="inline-flex items-center gap-2 text-text-04">
                       {SelectedDefaultProviderIcon && (
                         <SelectedDefaultProviderIcon className="h-4 w-4 text-text-04" />
                       )}
-                      <span className="truncate">{currentDefaultValue}</span>
+                      <span className="truncate">{selectedDefaultModelName}</span>
                     </span>
                   ) : null}
                 </InputSelect.Trigger>
@@ -545,7 +578,7 @@ export default function LLMConfigurationPage() {
                             </span>
                           </InputSelect.Label>
                           {models.map((model) => (
-                            <InputSelect.Item key={`${providerKey}:${model}`} value={model}>
+                            <InputSelect.Item key={`${providerKey}:${model}`} value={`${providerKey}:${model}`}>
                               {model}
                             </InputSelect.Item>
                           ))}

@@ -55,6 +55,8 @@ export interface QuotesInfoPacket {
 export interface MinimalOnyxDocument {
   document_id: string;
   semantic_identifier: string | null;
+  preview_url?: string;
+  preview_mime_type?: string;
 }
 
 export interface OnyxDocument extends MinimalOnyxDocument {

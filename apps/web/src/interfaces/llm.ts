@@ -55,7 +55,7 @@ export interface VisionProvider extends LLMProviderView {
 }
 
 export interface LLMProviderDescriptor {
-  id: number;
+  id: number | string;
   name: string;
   provider: string;
   provider_display_name: string;
