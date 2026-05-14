@@ -141,6 +141,7 @@ class TestConnectionPayload(BaseModel):
     provider_type: str
     base_url: str | None = None
     api_key: str | None = None
+    provider_id: str | None = None
 
 
 # ── Well-known catalog ───────────────────────────────────────────────────────
@@ -154,7 +155,13 @@ async def get_well_known_providers():
 
 @router.post("/providers/test-connection")
 async def test_provider_connection(body: TestConnectionPayload):
-    return await _svc.test_connection(body.provider_type, body.base_url, body.api_key)
+    return await _svc.test_connection(
+        body.provider_type,
+        body.base_url,
+        body.api_key,
+        provider_id=body.provider_id,
+        user_id=_DEFAULT_USER_ID,
+    )
 
 
 # ── Model discovery ──────────────────────────────────────────────────────────

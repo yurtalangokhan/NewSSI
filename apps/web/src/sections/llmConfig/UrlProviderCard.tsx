@@ -109,6 +109,7 @@ export function UrlProviderCard({ provider, onDownload, readOnly = false }: Prop
         body: JSON.stringify({
           provider_type: provider.provider_type,
           base_url: provider.base_url,
+          provider_id: provider.id,
         }),
       });
       const data = await res.json();

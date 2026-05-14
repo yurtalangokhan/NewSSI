@@ -6,6 +6,8 @@ credentials resolved at request time.
 
 from __future__ import annotations
 
+from copy import deepcopy
+
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_openai import AzureChatOpenAI, ChatOpenAI
 from langchain_ollama import ChatOllama
@@ -35,6 +37,16 @@ def _normalize_provider(provider_type: str) -> str:
     return (provider_type or "").strip().lower()
 
 
+def _deep_merge_dict(base: dict, override: dict) -> dict:
+    merged = deepcopy(base)
+    for key, value in (override or {}).items():
+        if isinstance(value, dict) and isinstance(merged.get(key), dict):
+            merged[key] = _deep_merge_dict(merged[key], value)
+        else:
+            merged[key] = value
+    return merged
+
+
 async def get_llm_for_provider(
     model_name: str,
     provider_type: str,
@@ -43,6 +55,7 @@ async def get_llm_for_provider(
     base_url: str | None = None,
     api_version: str | None = None,
     supports_reasoning: bool | None = None,
+    request_overrides: dict | None = None,
 ) -> BaseChatModel:
     provider = _normalize_provider(provider_type)
 
@@ -107,10 +120,36 @@ async def get_llm_for_provider(
         )
 
     if provider in {"vllm", "openai_compatible", "litellm", "deepseek", "openrouter"}:
+        model_kwargs: dict = {}
+
+        if isinstance(request_overrides, dict):
+            # Supports arbitrary OpenAI-compatible request options from provider config.
+            configured_model_kwargs = request_overrides.get("model_kwargs")
+            if isinstance(configured_model_kwargs, dict):
+                model_kwargs = _deep_merge_dict(model_kwargs, configured_model_kwargs)
+
+            configured_extra_body = request_overrides.get("extra_body")
+            if isinstance(configured_extra_body, dict):
+                model_kwargs = _deep_merge_dict(model_kwargs, {"extra_body": configured_extra_body})
+
+        # Capability-driven default for vLLM/Qwen-like endpoints that require
+        # explicit thinking enablement via chat_template_kwargs.
+        if provider == "vllm" and supports_reasoning is True:
+            model_kwargs = _deep_merge_dict(
+                model_kwargs,
+                {"extra_body": {"chat_template_kwargs": {"enable_thinking": True}}},
+            )
+
+        kwargs = {
+            "model": model_name,
+            "api_key": api_key or "dummy",
+            "base_url": base_url,
+        }
+        if model_kwargs:
+            kwargs["model_kwargs"] = model_kwargs
+
         return ChatOpenAI(
-            model=model_name,
-            api_key=api_key or "dummy",
-            base_url=base_url,
+            **kwargs,
         )
 
     if provider in {"azure", "azure_openai"}:

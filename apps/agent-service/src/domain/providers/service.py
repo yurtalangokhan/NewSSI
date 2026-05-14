@@ -225,9 +225,11 @@ class ProviderService:
             # Existing providers may not have synced model_configurations yet.
             # In that case, discover models live from the provider endpoint.
             if not model_configurations:
+                api_key = await self._get_provider_api_key(provider, user_id)
                 live_models = await self._fetch_models_by_type(
                     provider.get("provider_type", ""),
                     provider.get("base_url"),
+                    api_key=api_key,
                 )
                 model_configurations = [
                     {
@@ -329,11 +331,14 @@ class ProviderService:
         import uuid
 
         provider: dict[str, Any] | None = None
+        api_key: str | None = None
 
         # DB providers use UUID ids. Built-ins use provider_type ids like "ollama".
         try:
             uuid.UUID(provider_id)
             provider = await self._repo.get_url_provider(provider_id, user_id)
+            if provider:
+                api_key = await self._repo.get_decrypted_api_key(provider_id, user_id)
         except ValueError:
             provider = self._resolve_builtin_provider(provider_id)
 
@@ -343,6 +348,7 @@ class ProviderService:
         return await self._fetch_models_by_type(
             provider.get("provider_type", ""),
             provider.get("base_url"),
+            api_key=api_key,
         )
 
     async def get_vllm_models(self, provider_id: str, user_id: str) -> list[dict[str, Any]]:
@@ -365,19 +371,42 @@ class ProviderService:
             "base_url": getattr(provider, "base_url", None),
         }
 
-    async def _fetch_models_by_type(self, provider_type: str, base_url: str | None) -> list[dict[str, Any]]:
+    async def _fetch_models_by_type(
+        self,
+        provider_type: str,
+        base_url: str | None,
+        *,
+        api_key: str | None = None,
+    ) -> list[dict[str, Any]]:
         if not base_url:
             return []
 
         if provider_type == "ollama":
             return await self._fetch_ollama_models(base_url)
         if provider_type in ("vllm", "openai_compatible", "litellm"):
-            return await self._fetch_vllm_models(base_url)
+            return await self._fetch_vllm_models(base_url, api_key=api_key)
         return []
 
-    async def test_connection(self, provider_type: str, base_url: str | None, api_key: str | None) -> dict[str, Any]:
+    async def test_connection(
+        self,
+        provider_type: str,
+        base_url: str | None,
+        api_key: str | None,
+        provider_id: str | None = None,
+        user_id: str | None = None,
+    ) -> dict[str, Any]:
         """Test connectivity to a provider. Returns {success, latency_ms, error}."""
         import time
+
+        # If provider_id is supplied, resolve persisted config and key.
+        if provider_id and user_id:
+            resolved_provider = await self._repo.get_url_provider(provider_id, user_id)
+            if resolved_provider:
+                provider_type = resolved_provider.get("provider_type") or provider_type
+                base_url = resolved_provider.get("base_url") or base_url
+                if not api_key:
+                    api_key = await self._repo.get_decrypted_api_key(provider_id, user_id)
+
         start = time.monotonic()
 
         try:
@@ -543,11 +572,12 @@ class ProviderService:
 
         ptype = provider["provider_type"]
         base_url = provider["base_url"]
+        api_key = await self._repo.get_decrypted_api_key(provider_id, user_id)
 
         if ptype == "ollama":
             models = await self._fetch_ollama_models(base_url)
         elif ptype in ("vllm", "openai_compatible", "litellm"):
-            models = await self._fetch_vllm_models(base_url)
+            models = await self._fetch_vllm_models(base_url, api_key=api_key)
         else:
             models = []
 
@@ -572,6 +602,18 @@ class ProviderService:
 
     # ── Helpers ──────────────────────────────────────────────────────────────
 
+    async def _get_provider_api_key(self, provider: dict[str, Any], user_id: str) -> str | None:
+        """Resolve decrypted API key for persisted URL providers."""
+        provider_id = provider.get("id")
+        if not provider_id or provider.get("is_builtin"):
+            return None
+
+        try:
+            return await self._repo.get_decrypted_api_key(str(provider_id), user_id)
+        except ValueError:
+            # Built-in provider ids are not UUIDs.
+            return None
+
     def _check_builtin_collision(self, data: dict[str, Any]) -> None:
         from core.env import env
         ptype = data.get("provider_type")
@@ -585,6 +627,57 @@ class ProviderService:
             raise ValueError("This URL is already used by the built-in vLLM provider.")
 
     # ── Model fetching ───────────────────────────────────────────────────────
+
+    @staticmethod
+    def _infer_vllm_reasoning_support(model_payload: dict[str, Any]) -> bool:
+        """Infer reasoning support from model metadata without model-name hardcoding."""
+
+        def _contains_reasoning_hint(value: Any) -> bool:
+            if isinstance(value, bool):
+                return value
+            if isinstance(value, str):
+                lowered = value.strip().lower()
+                return lowered in {"reasoning", "thinking", "reasoner", "cot", "chain_of_thought"}
+            if isinstance(value, list):
+                return any(_contains_reasoning_hint(item) for item in value)
+            if isinstance(value, dict):
+                for key, inner in value.items():
+                    key_l = str(key).lower()
+                    if any(token in key_l for token in ("reason", "think", "cot")):
+                        if _contains_reasoning_hint(inner):
+                            return True
+                    if _contains_reasoning_hint(inner):
+                        return True
+            return False
+
+        # Common places in OpenAI-compatible / vLLM responses.
+        candidates = [
+            model_payload.get("capabilities"),
+            model_payload.get("supported_capabilities"),
+            model_payload.get("supported_features"),
+            model_payload.get("metadata"),
+            model_payload.get("extra"),
+        ]
+        if any(_contains_reasoning_hint(candidate) for candidate in candidates):
+            return True
+
+        # Fallback: scan full payload for explicit reasoning/thinking markers.
+        return _contains_reasoning_hint(model_payload)
+
+    @staticmethod
+    def _infer_vllm_image_support(model_payload: dict[str, Any]) -> bool:
+        """Infer multimodal/image support from model metadata."""
+        for key in ("modalities", "input_modalities", "output_modalities", "capabilities"):
+            value = model_payload.get(key)
+            if isinstance(value, list):
+                lowered = {str(v).lower() for v in value}
+                if "image" in lowered or "vision" in lowered or "multimodal" in lowered:
+                    return True
+            if isinstance(value, dict):
+                for k, v in value.items():
+                    if str(k).lower() in {"image", "vision", "multimodal"} and bool(v):
+                        return True
+        return False
 
     @staticmethod
     async def _fetch_ollama_models(base_url: str) -> list[dict[str, Any]]:
@@ -650,23 +743,24 @@ class ProviderService:
             return []
 
     @staticmethod
-    async def _fetch_vllm_models(base_url: str) -> list[dict[str, Any]]:
+    async def _fetch_vllm_models(base_url: str, *, api_key: str | None = None) -> list[dict[str, Any]]:
         """Fetch models from a vLLM / OpenAI-compatible endpoint."""
         import httpx
 
         origin = ProviderService._extract_origin(base_url)
+        headers = {"Authorization": f"Bearer {api_key}"} if api_key else None
         try:
             async with httpx.AsyncClient(timeout=5.0) as client:
-                resp = await client.get(f"{origin}/v1/models")
+                resp = await client.get(f"{origin}/v1/models", headers=headers)
                 if not resp.is_success:
                     return []
                 return [
                     {
                         "name": m.get("id", ""),
                         "provider_type": "vllm",
-                        "max_input_tokens": m.get("max_model_len"),
-                        "supports_image_input": False,
-                        "supports_reasoning": False,
+                        "max_input_tokens": m.get("max_model_len") or m.get("context_length") or m.get("max_input_tokens"),
+                        "supports_image_input": ProviderService._infer_vllm_image_support(m),
+                        "supports_reasoning": ProviderService._infer_vllm_reasoning_support(m),
                     }
                     for m in resp.json().get("data", [])
                 ]

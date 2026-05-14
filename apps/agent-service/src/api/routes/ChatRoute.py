@@ -320,6 +320,7 @@ async def send_chat_message(
                 api_key = None
                 base_url = None
                 api_version = None
+                request_overrides = None
 
                 if provider:
                     logger.debug("Found provider in registry: %s", provider)
@@ -328,6 +329,9 @@ async def send_chat_message(
                         api_key = await repo.get_decrypted_api_key(provider_id, user_id)
                     base_url = provider.get("base_url") or (provider.get("user_config") or {}).get("api_base")
                     api_version = (provider.get("user_config") or {}).get("api_version")
+                    request_overrides = ((provider.get("config") or {}).get("custom_config") or {}).get(
+                        "request_overrides"
+                    )
                     provider_type = provider.get("provider_type") or llm_override["provider_type"]
                     supports_reasoning = await _resolve_model_supports_reasoning(
                         user_id=user_id,
@@ -350,6 +354,7 @@ async def send_chat_message(
                         base_url=base_url,
                         api_version=api_version,
                         supports_reasoning=supports_reasoning,
+                        request_overrides=request_overrides,
                     )
                     logger.debug("Successfully created LLM instance for model %s", model_name)
             except Exception as exc:

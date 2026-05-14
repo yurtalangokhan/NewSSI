@@ -92,6 +92,7 @@ export function EditProviderModal({ provider, open, onOpenChange }: Props) {
           provider_type: providerType,
           base_url: effectiveBaseUrl || undefined,
           api_key: effectiveApiKey,
+          provider_id: isUrlProvider ? provider.id : undefined,
         }),
       });
       const data = await res.json();
