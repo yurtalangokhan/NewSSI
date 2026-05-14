@@ -13,6 +13,7 @@ import logging
 from functools import cache
 from typing import TypeAlias
 
+import httpx
 from langchain_community.chat_models import FakeListChatModel
 from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
@@ -54,6 +55,20 @@ class FakeToolModel(FakeListChatModel):
 
 
 ModelT: TypeAlias = ChatOllama | ChatOpenAI | FakeToolModel
+
+
+@cache
+def _ollama_supports_reasoning(model_name: str, base_url: str) -> bool:
+    """Return True when Ollama reports `thinking` capability for the model."""
+    try:
+        with httpx.Client(timeout=3.0) as client:
+            resp = client.post(f"{base_url.rstrip('/')}/api/show", json={"name": model_name})
+            if resp.status_code != 200:
+                return False
+            caps = (resp.json() or {}).get("capabilities") or []
+            return isinstance(caps, list) and "thinking" in caps
+    except Exception:
+        return False
 
 
 def get_model_from_config(
@@ -124,11 +139,13 @@ def get_model(model_name: str | None = None) -> ModelT:
             logger.warning("Failed to find model %s via registry: %s", model_name, e)
 
         # Fallback: try Ollama directly
+        ollama_base_url = env.OLLAMA_BASE_URL or "http://localhost:11434"
         return ChatOllama(
             model=model_name,
             temperature=0.5,
             streaming=True,
-            base_url=env.OLLAMA_BASE_URL or "http://localhost:11434",
+            base_url=ollama_base_url,
+            reasoning=_ollama_supports_reasoning(model_name, ollama_base_url),
         )
 
     # No model specified - try to find any available model
@@ -171,6 +188,7 @@ def _get_model_direct(model_name: str) -> ModelT:
             temperature=0.5,
             streaming=True,
             base_url=env.OLLAMA_BASE_URL,
+            reasoning=_ollama_supports_reasoning(model_name, env.OLLAMA_BASE_URL),
         )
 
     # Try vLLM
