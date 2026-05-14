@@ -3,10 +3,11 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
+from api.dependencies import verify_api_key
 from domain.providers.repository import ProviderRepository
 from domain.providers.service import ProviderService, WELL_KNOWN_PROVIDERS
 
@@ -14,8 +15,6 @@ router = APIRouter(prefix="/api/admin", tags=["providers"])
 
 _repo = ProviderRepository()
 _svc = ProviderService(_repo)
-
-_DEFAULT_USER_ID = "admin"
 
 
 # ── Pydantic payloads ────────────────────────────────────────────────────────
@@ -64,34 +63,44 @@ class OllamaPullPayload(BaseModel):
 # ── URL-based providers ──────────────────────────────────────────────────────
 
 @router.get("/providers")
-async def list_providers():
-    return await _svc.list_all(_DEFAULT_USER_ID)
+async def list_providers(user_id: str | None = Depends(verify_api_key)):
+    if not user_id:
+        raise HTTPException(401, "Not authenticated")
+    return await _svc.list_all(user_id)
 
 
 @router.get("/providers/available-models")
-async def get_available_models():
-    return await _svc.get_available_models_for_user(_DEFAULT_USER_ID)
+async def get_available_models(user_id: str | None = Depends(verify_api_key)):
+    if not user_id:
+        raise HTTPException(401, "Not authenticated")
+    return await _svc.get_available_models_for_user(user_id)
 
 
 @router.post("/providers")
-async def create_provider(body: UrlProviderPayload):
+async def create_provider(body: UrlProviderPayload, user_id: str | None = Depends(verify_api_key)):
+    if not user_id:
+        raise HTTPException(401, "Not authenticated")
     try:
-        return await _svc.create_url_provider(_DEFAULT_USER_ID, body.model_dump())
+        return await _svc.create_url_provider(user_id, body.model_dump())
     except ValueError as exc:
         raise HTTPException(400, str(exc))
 
 
 @router.put("/providers/{provider_id}")
-async def update_provider(provider_id: str, body: UrlProviderPayload):
+async def update_provider(provider_id: str, body: UrlProviderPayload, user_id: str | None = Depends(verify_api_key)):
+    if not user_id:
+        raise HTTPException(401, "Not authenticated")
     try:
-        return await _svc.update_url_provider(provider_id, _DEFAULT_USER_ID, body.model_dump())
+        return await _svc.update_url_provider(provider_id, user_id, body.model_dump())
     except ValueError as exc:
         raise HTTPException(404, str(exc))
 
 
 @router.delete("/providers/{provider_id}")
-async def delete_provider(provider_id: str):
-    success = await _svc.delete_url_provider(provider_id, _DEFAULT_USER_ID)
+async def delete_provider(provider_id: str, user_id: str | None = Depends(verify_api_key)):
+    if not user_id:
+        raise HTTPException(401, "Not authenticated")
+    success = await _svc.delete_url_provider(provider_id, user_id)
     if not success:
         raise HTTPException(404, "Provider not found or cannot be deleted")
     return {"success": True}
@@ -100,38 +109,48 @@ async def delete_provider(provider_id: str):
 # ── Ordering & default model ─────────────────────────────────────────────────
 
 @router.put("/providers/order")
-async def reorder_providers(body: ReorderPayload):
-    await _svc.reorder_providers(_DEFAULT_USER_ID, body.ordered_config_ids)
+async def reorder_providers(body: ReorderPayload, user_id: str | None = Depends(verify_api_key)):
+    if not user_id:
+        raise HTTPException(401, "Not authenticated")
+    await _svc.reorder_providers(user_id, body.ordered_config_ids)
     return {"success": True}
 
 
 @router.patch("/providers/{config_id}/default-model")
-async def update_default_model(config_id: str, body: DefaultModelPayload):
-    await _svc.update_provider_default_model(config_id, _DEFAULT_USER_ID, body.model)
+async def update_default_model(config_id: str, body: DefaultModelPayload, user_id: str | None = Depends(verify_api_key)):
+    if not user_id:
+        raise HTTPException(401, "Not authenticated")
+    await _svc.update_provider_default_model(config_id, user_id, body.model)
     return {"success": True}
 
 
 # ── API-key providers ────────────────────────────────────────────────────────
 
 @router.post("/user-providers")
-async def create_user_provider(body: UserProviderPayload):
+async def create_user_provider(body: UserProviderPayload, user_id: str | None = Depends(verify_api_key)):
+    if not user_id:
+        raise HTTPException(401, "Not authenticated")
     try:
-        return await _svc.create_user_provider(_DEFAULT_USER_ID, body.model_dump())
+        return await _svc.create_user_provider(user_id, body.model_dump())
     except ValueError as exc:
         raise HTTPException(400, str(exc))
 
 
 @router.put("/user-providers/{provider_id}")
-async def update_user_provider(provider_id: str, body: UserProviderUpdatePayload):
+async def update_user_provider(provider_id: str, body: UserProviderUpdatePayload, user_id: str | None = Depends(verify_api_key)):
+    if not user_id:
+        raise HTTPException(401, "Not authenticated")
     try:
-        return await _svc.update_user_provider(provider_id, _DEFAULT_USER_ID, body.model_dump(exclude_none=True))
+        return await _svc.update_user_provider(provider_id, user_id, body.model_dump(exclude_none=True))
     except ValueError as exc:
         raise HTTPException(404, str(exc))
 
 
 @router.delete("/user-providers/{provider_id}")
-async def delete_user_provider(provider_id: str):
-    success = await _svc.delete_user_provider(provider_id, _DEFAULT_USER_ID)
+async def delete_user_provider(provider_id: str, user_id: str | None = Depends(verify_api_key)):
+    if not user_id:
+        raise HTTPException(401, "Not authenticated")
+    success = await _svc.delete_user_provider(provider_id, user_id)
     if not success:
         raise HTTPException(404, "Provider not found or cannot be deleted")
     return {"success": True}
@@ -154,27 +173,33 @@ async def get_well_known_providers():
 # ── Connection test ──────────────────────────────────────────────────────────
 
 @router.post("/providers/test-connection")
-async def test_provider_connection(body: TestConnectionPayload):
+async def test_provider_connection(body: TestConnectionPayload, user_id: str | None = Depends(verify_api_key)):
+    if not user_id:
+        raise HTTPException(401, "Not authenticated")
     return await _svc.test_connection(
         body.provider_type,
         body.base_url,
         body.api_key,
         provider_id=body.provider_id,
-        user_id=_DEFAULT_USER_ID,
+        user_id=user_id,
     )
 
 
 # ── Model discovery ──────────────────────────────────────────────────────────
 
 @router.get("/providers/{provider_id}/models")
-async def get_provider_models(provider_id: str):
-    return await _svc.get_models_for_provider(provider_id, _DEFAULT_USER_ID)
+async def get_provider_models(provider_id: str, user_id: str | None = Depends(verify_api_key)):
+    if not user_id:
+        raise HTTPException(401, "Not authenticated")
+    return await _svc.get_models_for_provider(provider_id, user_id)
 
 
 @router.post("/providers/{provider_id}/sync-models")
-async def sync_provider_models(provider_id: str):
+async def sync_provider_models(provider_id: str, user_id: str | None = Depends(verify_api_key)):
+    if not user_id:
+        raise HTTPException(401, "Not authenticated")
     try:
-        return await _svc.sync_models_for_provider(provider_id, _DEFAULT_USER_ID)
+        return await _svc.sync_models_for_provider(provider_id, user_id)
     except ValueError as exc:
         raise HTTPException(404, str(exc))
 
@@ -182,9 +207,11 @@ async def sync_provider_models(provider_id: str):
 # ── Ollama model pull ────────────────────────────────────────────────────────
 
 @router.post("/ollama/pull")
-async def pull_ollama_model(body: OllamaPullPayload):
+async def pull_ollama_model(body: OllamaPullPayload, user_id: str | None = Depends(verify_api_key)):
+    if not user_id:
+        raise HTTPException(401, "Not authenticated")
     return StreamingResponse(
-        _svc.stream_ollama_pull(body.model, body.provider_id, _DEFAULT_USER_ID),
+        _svc.stream_ollama_pull(body.model, body.provider_id, user_id),
         media_type="text/event-stream",
     )
 
@@ -192,5 +219,7 @@ async def pull_ollama_model(body: OllamaPullPayload):
 # ── vLLM model listing ───────────────────────────────────────────────────────
 
 @router.get("/vllm/models")
-async def get_vllm_models(provider_id: str):
-    return await _svc.get_vllm_models(provider_id, _DEFAULT_USER_ID)
+async def get_vllm_models(provider_id: str, user_id: str | None = Depends(verify_api_key)):
+    if not user_id:
+        raise HTTPException(401, "Not authenticated")
+    return await _svc.get_vllm_models(provider_id, user_id)

@@ -5,13 +5,17 @@ const INTERNAL_URL = process.env.INTERNAL_URL || "http://localhost:8123";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.text();
+    const headers: HeadersInit = {
+      "Content-Type": "application/json",
+    };
+    const cookie = request.headers.get("cookie");
+    if (cookie) {
+      headers["Cookie"] = cookie;
+    }
     const upstream = await fetch(`${INTERNAL_URL}/api/admin/ollama/pull`, {
       method: "POST",
       body,
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: request.headers.get("Authorization") || "",
-      },
+      headers,
     });
 
     if (!upstream.body) {
