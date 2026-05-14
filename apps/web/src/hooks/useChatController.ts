@@ -754,8 +754,10 @@ export default function useChatController({
             filterManager.timeRange,
             filterManager.selectedTags
           ),
-          modelProvider:
-            modelOverride?.name || llmManager.currentLlm.name || undefined,
+          modelProviderId:
+            modelOverride?.providerId || llmManager.currentLlm.providerId,
+          modelProviderType:
+            modelOverride?.provider || llmManager.currentLlm.provider,
           modelVersion:
             modelOverride?.modelName ||
             llmManager.currentLlm.modelName ||

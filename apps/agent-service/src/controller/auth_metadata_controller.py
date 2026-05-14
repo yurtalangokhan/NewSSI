@@ -2,16 +2,19 @@
 
 import logging
 import os
-from urllib.parse import urlencode
 from datetime import UTC, datetime
 from typing import Any
+from urllib.parse import urlencode
 
 import httpx
 import jwt
-from fastapi import Request
-from fastapi import Response
+from fastapi import Request, Response
 
 from controller.base import BaseController
+from core.db.repositories.user_settings_repo import (
+    DEFAULT_USER_SETTINGS,
+    UserSettingsRepository,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +24,7 @@ class AuthMetadataController(BaseController):
 
     def __init__(self, user_id: str = "dev-user-1"):
         self._user_id = user_id
+        self._user_settings_repo = UserSettingsRepository()
 
     async def get_auth_type(self) -> dict[str, Any]:
         keycloak_enabled = os.getenv("KEYCLOAK_ENABLED", "false").lower() == "true"
@@ -196,6 +200,12 @@ class AuthMetadataController(BaseController):
         personalization_role = self._read_attr(profile_attrs, "work_role") or ""
         personalization_name = full_name or given_name or str(email).split("@")[0]
 
+        user_settings = dict(DEFAULT_USER_SETTINGS)
+        try:
+            user_settings = await self._user_settings_repo.ensure_defaults(user_id)
+        except Exception as exc:
+            logger.warning("Failed to load user_settings for %s: %s", user_id, exc)
+
         return {
             "id": user_id,
             "email": str(email),
@@ -207,14 +217,14 @@ class AuthMetadataController(BaseController):
                 "chosen_assistants": None,
                 "visible_assistants": [],
                 "hidden_assistants": [],
-                "default_model": None,
+                "default_model": user_settings["default_model"],
                 "recent_assistants": [],
-                "auto_scroll": True,
-                "shortcut_enabled": True,
+                "auto_scroll": user_settings["auto_scroll"],
+                "shortcut_enabled": user_settings["shortcut_enabled"],
                 "temperature_override_enabled": False,
-                "theme_preference": None,
-                "chat_background": None,
-                "default_app_mode": "AUTO",
+                "theme_preference": user_settings["theme_preference"],
+                "chat_background": user_settings["chat_background"],
+                "default_app_mode": user_settings["default_app_mode"],
             },
             "team_name": None,
             "is_anonymous_user": False,
@@ -224,10 +234,10 @@ class AuthMetadataController(BaseController):
             "personalization": {
                 "name": str(personalization_name),
                 "role": str(personalization_role),
-                "memories": [],
-                "use_memories": False,
-                "enable_memory_tool": False,
-                "user_preferences": "",
+                "memories": user_settings["memories"],
+                "use_memories": user_settings["use_memories"],
+                "enable_memory_tool": user_settings["enable_memory_tool"],
+                "user_preferences": user_settings["user_preferences"],
             },
         }
 

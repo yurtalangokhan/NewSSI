@@ -186,6 +186,7 @@ from api.routes import (
     file_router,
     agent_definitions_router,
     web_search_router,
+    provider_router,
 )
 
 app.include_router(agents_router)
@@ -204,6 +205,11 @@ app.include_router(datasources_router)
 app.include_router(assistant_schemas_router)
 app.include_router(file_router)
 app.include_router(web_search_router)
+
+try:
+    app.include_router(provider_router)
+except Exception as e:
+    logger.warning(f"Provider routes not available: {e}")
 
 try:
     from api.routes.MCPProvidersRoute import router as mcp_providers_router

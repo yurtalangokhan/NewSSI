@@ -15,14 +15,15 @@ services:
 
   postgres:
     container_name: postgres
-    image: postgres:16
+    image: postgres:15
     restart: unless-stopped
     ports:
-      - "5432:5432"
+      - "8124:5432"
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres123}
       POSTGRES_DB: ${POSTGRES_DB:-agent_service}
+      PGDATA: /var/lib/postgresql/data/postgresql.conf
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
@@ -94,7 +95,7 @@ services:
       POSTGRES_USER: airbyte
       POSTGRES_PWD: ${AIRBYTE_DB_PASSWORD:-airbyte_password}
       POSTGRES_SEEDS: postgres
-      DYNAMIC_CONFIG_FILE_PATH: /etc/temporal/config/dynamicconfig/development.yaml
+      DYNAMIC_CONFIG_FILE_PATH: /etc/temporal/config/dynamicconfig/docker.yaml
       LOG_LEVEL: INFO
     healthcheck:
       test: ["CMD-SHELL", "nc -z $(hostname -i) 7233 || exit 1"]
@@ -122,6 +123,7 @@ services:
       - /tmp/airbyte_local:/tmp/airbyte_local
     environment:
       AIRBYTE_VERSION: ${AIRBYTE_VERSION:-0.50.33}
+      AIRBYTE_ROLE: ${AIRBYTE_ROLE:-}
       DATABASE_URL: jdbc:postgresql://postgres:5432/airbyte
       DATABASE_USER: airbyte
       DATABASE_PASSWORD: ${AIRBYTE_DB_PASSWORD:-airbyte_password}
@@ -136,6 +138,9 @@ services:
       LOCAL_ROOT: /tmp/airbyte_local
       DEPLOYMENT_MODE: OSS
       SECRET_PERSISTENCE: NONE
+      CONFIGS_DATABASE_MINIMUM_FLYWAY_MIGRATION_VERSION: "0.35.15.001"
+      JOBS_DATABASE_MINIMUM_FLYWAY_MIGRATION_VERSION: "0.29.15.001"
+      MICRONAUT_ENVIRONMENTS: control-plane
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8001/api/v1/health || exit 1"]
       interval: 10s
@@ -154,7 +159,7 @@ services:
         condition: service_healthy
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - ./docker-bin/docker:/usr/bin/docker:ro
+      - ../docker-bin/docker:/usr/bin/docker:ro
       - /tmp/airbyte_local:/tmp/airbyte_local
       - airbyte-workspace:/tmp/workspace
     environment:
@@ -302,7 +307,7 @@ services:
     environment:
       KC_DB: postgres
       KC_DB_URL_HOST: postgres
-      KC_DB_URL_DATABASE: ${KEYCLOAK_DB_NAME:-agent_service}
+      KC_DB_URL_DATABASE: ${KEYCLOAK_DB_NAME:-keycloak}
       KC_DB_USERNAME: ${POSTGRES_USER:-postgres}
       KC_DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres123}
       KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
@@ -350,6 +355,8 @@ services:
 
 volumes:
   postgres-data:
+    external: true
+    name: langgraph-with-ui_postgres-vanilla-data
   neo4j-data:
   neo4j-logs:
   neo4j-plugins:
@@ -357,6 +364,10 @@ volumes:
   milvus-minio-data:
   milvus-data:
   airbyte-workspace:
+    external: true
+    name: langgraph-with-ui_airbyte-workspace
   airbyte-data:
+    external: true
+    name: langgraph-with-ui_airbyte-data
   keycloak-data:
   # mysql-data:

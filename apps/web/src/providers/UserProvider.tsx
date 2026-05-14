@@ -44,7 +44,10 @@ interface UserContextType {
     themePreference: ThemePreference
   ) => Promise<void>;
   updateUserChatBackground: (chatBackground: string | null) => Promise<void>;
-  updateUserDefaultModel: (defaultModel: string | null) => Promise<void>;
+  updateUserDefaultModel: (
+    defaultModel: string | null,
+    defaultProviderId?: string | null
+  ) => Promise<void>;
   updateUserDefaultAppMode: (mode: "CHAT" | "SEARCH") => Promise<void>;
 }
 
@@ -394,7 +397,10 @@ export function UserProvider({
     }
   };
 
-  const updateUserDefaultModel = async (defaultModel: string | null) => {
+  const updateUserDefaultModel = async (
+    defaultModel: string | null,
+    defaultProviderId?: string | null
+  ) => {
     try {
       setUpToDateUser((prevUser) => {
         if (prevUser) {
@@ -414,7 +420,12 @@ export function UserProvider({
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ default_model: defaultModel }),
+        body: JSON.stringify({
+          default_model: defaultModel,
+          ...(defaultProviderId !== undefined && {
+            default_provider_id: defaultProviderId,
+          }),
+        }),
       });
 
       if (!response.ok) {

@@ -73,6 +73,21 @@ export default function PreviewModal({
     setIsLoading(true);
     setLoadError(null);
     setFileContent("");
+
+    // For files not persisted yet (e.g. image chosen in input, not sent yet),
+    // render directly from inline data URL and skip backend fetch.
+    if (presentingDocument.preview_url) {
+      setFileUrl(presentingDocument.preview_url);
+      setFileName(
+        presentingDocument.semantic_identifier || "document"
+      );
+      setMimeType(
+        presentingDocument.preview_mime_type || "application/octet-stream"
+      );
+      setIsLoading(false);
+      return;
+    }
+
     const fileIdLocal =
       presentingDocument.document_id.split("__")[1] ||
       presentingDocument.document_id;
@@ -116,7 +131,7 @@ export default function PreviewModal({
 
   useEffect(() => {
     return () => {
-      if (fileUrl) window.URL.revokeObjectURL(fileUrl);
+      if (fileUrl?.startsWith("blob:")) window.URL.revokeObjectURL(fileUrl);
     };
   }, [fileUrl]);
 

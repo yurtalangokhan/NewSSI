@@ -17,7 +17,7 @@ interface MemoriesProps {
 }
 
 export default function Memories({ memories, onSaveMemories }: MemoriesProps) {
-  const { t } = useTranslation("memories");
+  const { t } = useTranslation("common", { keyPrefix: "memories" });
   const memoriesModal = useCreateModal();
   const [targetMemoryId, setTargetMemoryId] = useState<number | null>(null);
 

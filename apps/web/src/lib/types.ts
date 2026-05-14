@@ -25,6 +25,7 @@ interface UserPreferences {
   hidden_assistants: number[];
   pinned_assistants?: number[];
   default_model: string | null;
+  default_provider_id?: string | null;
   recent_assistants: number[];
   auto_scroll: boolean;
   shortcut_enabled: boolean;
