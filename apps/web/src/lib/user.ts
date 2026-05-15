@@ -15,8 +15,13 @@ export const getCurrentUser = async (): Promise<User | null> => {
   return user;
 };
 
-export const logout = async (): Promise<Response> => {
-  window.location.assign("/auth/logout");
+export const logout = async (nextPath?: string): Promise<Response> => {
+  const logoutUrl = new URL("/auth/logout", window.location.origin);
+  if (nextPath) {
+    logoutUrl.searchParams.set("next", nextPath);
+  }
+
+  window.location.assign(logoutUrl.toString());
   return new Response(null, { status: 204 });
 };
 

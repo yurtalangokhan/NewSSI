@@ -8,7 +8,6 @@ import { SvgArrowRight, SvgUsers, SvgX } from "@opal/icons";
 import { logout } from "@/lib/user";
 import { useUser } from "@/providers/UserProvider";
 import { NewTenantInfo } from "@/lib/types";
-import { useRouter } from "next/navigation";
 import Text from "@/refresh-components/texts/Text";
 import { ErrorTextLayout } from "@/layouts/input-layouts";
 import { useTranslation } from "react-i18next";
@@ -27,7 +26,6 @@ export default function NewTenantModal({
   isInvite = false,
   onClose,
 }: NewTenantModalProps) {
-  const router = useRouter();
   const { user } = useUser();
   const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(false);
@@ -60,9 +58,7 @@ export default function NewTenantModal({
       }
 
       // Common logout and redirect for both flows
-      await logout();
-      router.push(`/auth/join?email=${encodeURIComponent(user?.email || "")}`);
-      onClose?.();
+      await logout(`/auth/join?email=${encodeURIComponent(user?.email || "")}`);
     } catch (error) {
       const message =
         error instanceof Error

@@ -115,7 +115,6 @@ export default function AccessRestricted() {
             <Button
               onClick={async () => {
                 await logout();
-                window.location.reload();
               }}
             >
               Log out
@@ -143,7 +142,6 @@ export default function AccessRestricted() {
               secondary
               onClick={async () => {
                 await logout();
-                window.location.reload();
               }}
             >
               Log out
@@ -177,7 +175,6 @@ export default function AccessRestricted() {
             <Button
               onClick={async () => {
                 await logout();
-                window.location.reload();
               }}
             >
               Log out

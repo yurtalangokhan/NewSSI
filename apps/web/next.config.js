@@ -25,12 +25,19 @@ const optimizePackageImportsConfig = isDevelopment
         "motion",
       ],
     };
+const onDemandEntriesConfig = isDevelopment
+  ? {
+      maxInactiveAge: 15 * 60 * 1000,
+      pagesBufferLength: 50,
+    }
+  : undefined;
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   productionBrowserSourceMaps: false,
   output: "standalone",
   transpilePackages: ["@onyx/opal"],
+  onDemandEntries: onDemandEntriesConfig,
   turbopack: {
     root: __dirname,
   },

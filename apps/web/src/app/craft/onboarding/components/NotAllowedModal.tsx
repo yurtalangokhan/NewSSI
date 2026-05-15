@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Text from "@/refresh-components/texts/Text";
 import { SvgLock, SvgArrowRight } from "@opal/icons";
 import { logout } from "@/lib/user";
@@ -16,14 +15,12 @@ export default function NotAllowedModal({
   open,
   onClose,
 }: NotAllowedModalProps) {
-  const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
 
   const handleCreateNewAccount = async () => {
     setIsLoading(true);
     try {
-      await logout();
-      router.push("/auth/signup");
+      await logout("/auth/signup");
     } finally {
       setIsLoading(false);
     }

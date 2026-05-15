@@ -8,7 +8,7 @@ from typing import Any
 import httpx
 from fastapi import HTTPException, status
 
-from controller.auth_controller import AuthController, get_auth_controller
+from controller.session_controller import SessionController, get_session_controller
 from controller.base import BaseController
 from core.env import env
 
@@ -16,8 +16,8 @@ from core.env import env
 class UserController(BaseController):
     """Owns user preferences and model/provider endpoints."""
 
-    def __init__(self, auth_controller: AuthController | None = None):
-        self._auth_controller = auth_controller or get_auth_controller()
+    def __init__(self, session_controller: SessionController | None = None):
+        self._session_controller = session_controller or get_session_controller()
         self._supported_roles = ["admin", "global_curator", "curator", "limited", "basic"]
 
     def _is_keycloak_enabled(self) -> bool:
@@ -333,10 +333,10 @@ class UserController(BaseController):
         return {"pinned_assistants": []}
 
     async def get_llm_provider(self) -> dict[str, Any]:
-        return await self._auth_controller.get_llm_providers()
+        return await self._session_controller.get_llm_providers()
 
     async def get_llm_built_in_options(self) -> list[dict[str, Any]]:
-        return await self._auth_controller.get_llm_built_in_options()
+        return await self._session_controller.get_llm_built_in_options()
 
     async def test_llm_default(self) -> dict[str, bool]:
         return {"success": True}
@@ -906,7 +906,7 @@ class UserController(BaseController):
         return {"success": True}
 
     async def get_ollama_models(self) -> list[dict[str, Any]]:
-        return await self._auth_controller.get_ollama_models()
+        return await self._session_controller.get_ollama_models()
 
     async def save_llm_provider(self) -> dict[str, bool]:
         return {"success": True}

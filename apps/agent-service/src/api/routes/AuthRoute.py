@@ -8,15 +8,15 @@ from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 
 from api.dependencies import verify_api_key
-from controller import AuthMetadataController, get_auth_metadata_controller
+from controller import AuthController, get_auth_controller
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["auth"])
 
 
-def _get_controller() -> AuthMetadataController:
-    return get_auth_metadata_controller()
+def _get_controller() -> AuthController:
+    return get_auth_controller()
 
 
 class User(BaseModel):
@@ -119,8 +119,8 @@ async def login(request: Request, response: Response):
 
 
 @router.post("/auth/logout")
-async def logout(response: Response):
-    return await _get_controller().logout(response=response)
+async def logout(request: Request, response: Response):
+    return await _get_controller().logout(request=request, response=response)
 
 
 @router.get("/settings")
