@@ -112,7 +112,7 @@ export function groupLlmOptions(
           option.vendor.charAt(0).toUpperCase() + option.vendor.slice(1);
         displayName = `${option.providerDisplayName}/${vendorDisplayName}`;
       } else {
-        displayName = option.providerDisplayName;
+        displayName = option.name;
       }
 
       groups.set(groupKey, {
