@@ -264,13 +264,21 @@ async def extract_and_save_memories(
 
 def tag_response_with_ltm_recall(response: Any, memories: dict) -> Any:
     """
-    Embed recalled-fact count in the AI response's additional_kwargs so that
-    chat history reconstruction can re-emit the long_term_memory_recall packet
-    after a page refresh.
+    Embed recalled-fact count and actual facts in the AI response's additional_kwargs
+    so that chat history reconstruction can re-emit the long_term_memory_recall packet
+    (with individual memory items) after a page refresh.
     """
     facts = memories.get("user_facts", [])
-    if facts and hasattr(response, "additional_kwargs"):
-        response.additional_kwargs["_ltm_recalled"] = len(facts)
+    if not facts:
+        logger.debug("[LTM-tag] no facts to tag — memories keys: %s", list(memories.keys()))
+        return response
+    if not hasattr(response, "additional_kwargs"):
+        logger.warning("[LTM-tag] response has no additional_kwargs attr (type=%s)", type(response).__name__)
+        return response
+    response.additional_kwargs["_ltm_recalled"] = len(facts)
+    response.additional_kwargs["_ltm_memories"] = list(facts)
+    logger.debug("[LTM-tag] tagged response with _ltm_recalled=%d (type=%s, ak_keys=%s)",
+                 len(facts), type(response).__name__, list(response.additional_kwargs.keys()))
     return response
 
 

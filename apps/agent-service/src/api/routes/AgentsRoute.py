@@ -235,7 +235,11 @@ async def message_generator(
     kwargs, run_id = await _handle_input(user_input, agent, user_id)
 
     thinking_processor = ThinkingTagProcessor()
-    anthropic_reasoning_started = False
+    saw_reasoning_for_current_answer = False
+    # Track the first LLM call's message ID so that subsequent LLM calls
+    # (e.g. background memory extraction) don't emit tokens to the stream.
+    first_llm_call_id: str | None = None
+    saw_visible_answer_tokens = False
 
     try:
         async for stream_event in agent.astream(
@@ -325,19 +329,36 @@ async def message_generator(
                 # Skip the regular 'message' yield for tool-related messages
                 # so they only appear in the timeline, not duplicated in chat
                 if chat_message.type == "ai" and chat_message.tool_calls:
+                    # New tool phase: allow post-tool model call tokens/reasoning through.
+                    first_llm_call_id = None
+                    saw_visible_answer_tokens = False
+                    saw_reasoning_for_current_answer = False
                     for tc in chat_message.tool_calls:
                         yield f"data: {json.dumps({'type': 'custom_tool_start', 'tool_name': tc.get('name', 'tool')})}\n\n"
                     continue
                 elif chat_message.type == "tool":
                     tool_name = getattr(message, "name", "") or ""
+                    # Keep subsequent assistant phase visible even when prior phase streamed tokens.
+                    saw_visible_answer_tokens = False
+                    saw_reasoning_for_current_answer = False
                     yield f"data: {json.dumps({'type': 'custom_tool_delta', 'tool_name': tool_name, 'response_type': 'tool_result', 'data': chat_message.content})}\n\n"
                     continue
+
+                # Some providers do not stream reasoning chunks and only attach
+                # reasoning to final AI message metadata. Emit fallback packets so
+                # live timeline matches refresh reconstruction behavior.
+                if chat_message.type == "ai" and not saw_reasoning_for_current_answer:
+                    final_reasoning = _extract_reasoning_text_from_message(message)
+                    if final_reasoning:
+                        yield f"data: {json.dumps({'type': 'reasoning_start'})}\n\n"
+                        yield f"data: {json.dumps({'type': 'reasoning_delta', 'reasoning': final_reasoning})}\n\n"
+                        saw_reasoning_for_current_answer = True
 
                 # When token streaming is enabled, the frontend already receives
                 # the assistant answer incrementally via `token` packets.
                 # Emitting the final full `message` packet as well causes the UI
                 # to render the full answer and then animate tokens on top of it.
-                if chat_message.type == "ai" and user_input.stream_tokens:
+                if chat_message.type == "ai" and user_input.stream_tokens and saw_visible_answer_tokens:
                     continue
 
                 # Strip <think>/<thinking> tags from AI responses
@@ -361,6 +382,16 @@ async def message_generator(
                 if not isinstance(msg, AIMessageChunk):
                     continue
 
+                # Filter out tokens from secondary LLM calls (e.g. memory extraction).
+                # Each model.ainvoke() produces AIMessageChunks with a unique `id`.
+                # We only stream tokens from the first (main response) call.
+                msg_id = getattr(msg, "id", None)
+                if msg_id:
+                    if first_llm_call_id is None:
+                        first_llm_call_id = msg_id
+                    elif msg_id != first_llm_call_id:
+                        continue
+
                 content = remove_tool_calls(msg.content)
                 reasoning_text = _extract_reasoning_text(msg)
                 if not content and not reasoning_text:
@@ -377,39 +408,42 @@ async def message_generator(
                             # Anthropic extended thinking block
                             thinking_text = block.get("thinking", "")
                             if thinking_text:
-                                if not anthropic_reasoning_started:
+                                if not saw_reasoning_for_current_answer:
                                     yield f"data: {json.dumps({'type': 'reasoning_start'})}\n\n"
-                                    anthropic_reasoning_started = True
+                                    saw_reasoning_for_current_answer = True
                                 yield f"data: {json.dumps({'type': 'reasoning_delta', 'reasoning': thinking_text})}\n\n"
                                 emitted_reasoning = True
                         elif btype == "text" and block.get("thought"):
                             # Google Gemini thought block (thought=True in content part)
                             thought_text = block.get("text", "")
                             if thought_text:
-                                if not anthropic_reasoning_started:
+                                if not saw_reasoning_for_current_answer:
                                     yield f"data: {json.dumps({'type': 'reasoning_start'})}\n\n"
-                                    anthropic_reasoning_started = True
+                                    saw_reasoning_for_current_answer = True
                                 yield f"data: {json.dumps({'type': 'reasoning_delta', 'reasoning': thought_text})}\n\n"
                                 emitted_reasoning = True
                         elif btype == "text":
                             text = block.get("text", "")
                             if text:
+                                saw_visible_answer_tokens = True
                                 yield f"data: {json.dumps({'type': 'token', 'content': text})}\n\n"
                     if reasoning_text and not emitted_reasoning:
-                        if not anthropic_reasoning_started:
+                        if not saw_reasoning_for_current_answer:
                             yield f"data: {json.dumps({'type': 'reasoning_start'})}\n\n"
-                            anthropic_reasoning_started = True
+                            saw_reasoning_for_current_answer = True
                         yield f"data: {json.dumps({'type': 'reasoning_delta', 'reasoning': reasoning_text})}\n\n"
                 else:
                     # Tag tabanlı modeller (DeepSeek, Qwen vb.)
                     token_str = convert_message_content_to_string(content)
                     if token_str:
                         for evt in thinking_processor.feed(token_str):
+                            if evt.get("type") == "token" and evt.get("content"):
+                                saw_visible_answer_tokens = True
                             yield f"data: {json.dumps(evt)}\n\n"
                     elif reasoning_text:
-                        if not anthropic_reasoning_started:
+                        if not saw_reasoning_for_current_answer:
                             yield f"data: {json.dumps({'type': 'reasoning_start'})}\n\n"
-                            anthropic_reasoning_started = True
+                            saw_reasoning_for_current_answer = True
                         yield f"data: {json.dumps({'type': 'reasoning_delta', 'reasoning': reasoning_text})}\n\n"
 
     except Exception as e:
@@ -464,6 +498,91 @@ def _extract_reasoning_text(message: AIMessageChunk) -> str:
     additional_kwargs = getattr(message, "additional_kwargs", {}) or {}
     response_metadata = getattr(message, "response_metadata", {}) or {}
     return _from_payload(additional_kwargs) or _from_payload(response_metadata)
+
+
+def _extract_reasoning_text_from_message(message: Any) -> str:
+    """Extract reasoning text from final AI message metadata when chunks don't carry it."""
+
+    def _from_payload(payload: Any) -> str:
+        if not isinstance(payload, dict):
+            return ""
+
+        for key in (
+            "reasoning_content",
+            "reasoning",
+            "thinking",
+            "reasoning_text",
+            "thoughts",
+            "thought",
+            "chain_of_thought",
+        ):
+            value = payload.get(key)
+            if isinstance(value, str) and value.strip():
+                return value
+            if isinstance(value, list):
+                try:
+                    text = convert_message_content_to_string(value)
+                except Exception:
+                    text = ""
+                if text:
+                    return text
+
+        nested = payload.get("content")
+        if isinstance(nested, dict):
+            return _from_payload(nested)
+
+        return ""
+
+    def _from_content(content: Any) -> str:
+        if isinstance(content, str):
+            parts: list[str] = []
+            for open_tag, close_tag in (("<think>", "</think>"), ("<thinking>", "</thinking>")):
+                start = 0
+                while True:
+                    open_pos = content.find(open_tag, start)
+                    if open_pos == -1:
+                        break
+                    search_from = open_pos + len(open_tag)
+                    close_pos = content.find(close_tag, search_from)
+                    if close_pos == -1:
+                        chunk = content[search_from:].strip()
+                        if chunk:
+                            parts.append(chunk)
+                        break
+                    chunk = content[search_from:close_pos].strip()
+                    if chunk:
+                        parts.append(chunk)
+                    start = close_pos + len(close_tag)
+            return "\n".join(parts).strip()
+
+        if isinstance(content, list):
+            parts: list[str] = []
+            for item in content:
+                if not isinstance(item, dict):
+                    continue
+                item_type = item.get("type")
+                if item_type == "thinking":
+                    text = str(item.get("thinking", "") or "").strip()
+                    if text:
+                        parts.append(text)
+                elif item_type == "text" and item.get("thought"):
+                    text = str(item.get("text", "") or "").strip()
+                    if text:
+                        parts.append(text)
+            return "\n".join(parts).strip()
+
+        return ""
+
+    additional_kwargs = getattr(message, "additional_kwargs", {}) or {}
+    response_metadata = getattr(message, "response_metadata", {}) or {}
+    content = getattr(message, "content", None)
+    if content is None and isinstance(message, dict):
+        content = message.get("content")
+    return (
+        _from_payload(additional_kwargs)
+        or _from_payload(response_metadata)
+        or _from_content(content)
+    )
 
 
 def _sse_response_example() -> dict[int | str, Any]:

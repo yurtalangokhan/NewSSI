@@ -1,5 +1,6 @@
 """Controller for chat session CRUD and metadata endpoints."""
 
+import logging
 import re
 import uuid
 from datetime import UTC, datetime
@@ -11,6 +12,8 @@ from controller.base import BaseController
 from controller.thread_controller import ThreadController, get_thread_controller
 from core.llm import get_model
 from service.CheckpointerService import get_checkpointer
+
+logger = logging.getLogger(__name__)
 
 
 class ChatController(BaseController):
@@ -560,10 +563,56 @@ class ChatController(BaseController):
 
             return _pick(additional_kwargs) or _pick(response_metadata)
 
+        def _reindex_tool_packets(
+            packets: list[dict[str, Any]],
+            start_turn: int,
+        ) -> tuple[list[dict[str, Any]], int]:
+            """Assign stable turn_index values so each reconstructed tool step stays visible."""
+            if not packets:
+                return [], start_turn
+
+            reindexed: list[dict[str, Any]] = []
+            current_turn = start_turn
+            prev_type: str | None = None
+            prev_tool: str | None = None
+
+            for packet in packets:
+                obj = packet.get("obj", {}) if isinstance(packet, dict) else {}
+                pkt_type = obj.get("type", "")
+                tool_name = obj.get("tool_name")
+
+                if reindexed:
+                    if pkt_type == "reasoning_start":
+                        current_turn += 1
+                    elif pkt_type == "reasoning_delta":
+                        pass  # Same turn as the preceding reasoning_start
+                    elif pkt_type == "custom_tool_start":
+                        current_turn += 1
+                    elif pkt_type == "custom_tool_delta":
+                        if prev_tool and tool_name and tool_name != prev_tool:
+                            current_turn += 1
+                        elif prev_type not in ("custom_tool_start", "custom_tool_delta"):
+                            current_turn += 1
+                    else:
+                        current_turn += 1
+
+                reindexed.append(
+                    {
+                        **packet,
+                        "placement": {"turn_index": current_turn, "sub_turn_index": None},
+                    }
+                )
+                prev_type = pkt_type
+                prev_tool = tool_name if isinstance(tool_name, str) else prev_tool
+
+            return reindexed, current_turn + 1
+
         try:
             state = await self._thread_controller.get_thread_state(chat_session_id)
             langgraph_messages = state.get("values", {}).get("messages", [])
             pending_tool_packets: list[dict[str, Any]] = []
+            pending_ltm_recalled_from_system = 0
+            pending_ltm_recalled_from_user = 0
             msg_idx = 0
 
             for raw_msg in langgraph_messages:
@@ -591,6 +640,18 @@ class ChatController(BaseController):
                     )
                     continue
 
+                if raw_type == "system":
+                    system_text = _extract_content(raw_msg)
+                    if "[Long-Term Memory — Previously learned facts about this user]" in system_text:
+                        facts = [
+                            line
+                            for line in system_text.splitlines()
+                            if line.strip().startswith("- ")
+                        ]
+                        if facts:
+                            pending_ltm_recalled_from_system = len(facts)
+                    continue
+
                 if raw_type == "ai":
                     tool_calls = (
                         getattr(raw_msg, "tool_calls", None)
@@ -601,6 +662,20 @@ class ChatController(BaseController):
                         reasoning_text = _extract_reasoning_from_metadata(raw_msg)
 
                     if tool_calls:
+                        # Preserve intermediate reasoning emitted before this tool call
+                        if reasoning_text:
+                            pending_tool_packets.append(
+                                {
+                                    "placement": {"turn_index": 0, "sub_turn_index": None},
+                                    "obj": {"type": "reasoning_start"},
+                                }
+                            )
+                            pending_tool_packets.append(
+                                {
+                                    "placement": {"turn_index": 0, "sub_turn_index": None},
+                                    "obj": {"type": "reasoning_delta", "reasoning": reasoning_text},
+                                }
+                            )
                         for tool_call in tool_calls:
                             tool_name = (
                                 tool_call.get("name", "tool")
@@ -625,43 +700,63 @@ class ChatController(BaseController):
                     msg_idx += 1
 
                     turn_packets: list[dict[str, Any]] = []
-                    if pending_tool_packets:
-                        turn_packets.extend(pending_tool_packets)
-                        pending_tool_packets = []
+                    turn_counter = 0
 
-                    # Reconstruct LTM recall packet from metadata stored on the AI message
+                    # Read LTM metadata from the AI message first so it can be placed
+                    # before tool packets — matching the streaming order where LTM recall
+                    # is emitted before the agent begins tool calls.
                     _extra = raw_msg.get("additional_kwargs", {}) or {} if isinstance(raw_msg, dict) else getattr(raw_msg, "additional_kwargs", {}) or {}
                     ltm_recalled = _extra.get("_ltm_recalled", 0)
+                    if not ltm_recalled and pending_ltm_recalled_from_system:
+                        ltm_recalled = pending_ltm_recalled_from_system
+                    if not ltm_recalled and pending_ltm_recalled_from_user:
+                        ltm_recalled = pending_ltm_recalled_from_user
+                    pending_ltm_recalled_from_system = 0
+                    pending_ltm_recalled_from_user = 0
                     if ltm_recalled:
+                        ltm_memories = _extra.get("_ltm_memories", [])
+                        logger.debug("[LTM-history] ai msg %d: extra_keys=%s ltm_recalled=%s",
+                                     msg_idx, list(_extra.keys()), ltm_recalled)
                         turn_packets.append(
                             {
-                                "placement": {"turn_index": 0, "sub_turn_index": None},
+                                "placement": {"turn_index": turn_counter, "sub_turn_index": None},
                                 "obj": {
                                     "type": "long_term_memory_recall",
                                     "fact_count": ltm_recalled,
-                                    "memories": [],
+                                    "memories": ltm_memories,
                                 },
                             }
                         )
+                        turn_counter += 1
+
+                    if pending_tool_packets:
+                        reindexed_tools, next_turn = _reindex_tool_packets(
+                            pending_tool_packets,
+                            turn_counter,
+                        )
+                        turn_packets.extend(reindexed_tools)
+                        pending_tool_packets = []
+                        turn_counter = next_turn
 
                     if reasoning_text:
                         turn_packets.append(
                             {
-                                "placement": {"turn_index": 0, "sub_turn_index": None},
+                                "placement": {"turn_index": turn_counter, "sub_turn_index": None},
                                 "obj": {"type": "reasoning_start"},
                             }
                         )
                         turn_packets.append(
                             {
-                                "placement": {"turn_index": 0, "sub_turn_index": None},
+                                "placement": {"turn_index": turn_counter, "sub_turn_index": None},
                                 "obj": {
                                     "type": "reasoning_delta",
                                     "reasoning": reasoning_text,
                                 },
                             }
                         )
+                        turn_counter += 1
 
-                    display_turn = 1 if turn_packets else 0
+                    display_turn = turn_counter
                     turn_packets.append(
                         {
                             "placement": {"turn_index": display_turn, "sub_turn_index": None},
@@ -711,6 +806,9 @@ class ChatController(BaseController):
                     )
                     continue
 
+                if raw_type not in ("human", "user"):
+                    continue
+
                 msg_content = _strip_think_tags(_extract_content(raw_msg))
                 parent_msg_id = msg_idx if msg_idx > 0 else None
                 msg_idx += 1
@@ -722,6 +820,10 @@ class ChatController(BaseController):
                     _extra = raw_msg.get("additional_kwargs", {}) or {}
                 else:
                     _extra = getattr(raw_msg, "additional_kwargs", {}) or {}
+                if not pending_ltm_recalled_from_user:
+                    recalled_from_user = _extra.get("_ltm_recalled", 0)
+                    if isinstance(recalled_from_user, int) and recalled_from_user > 0:
+                        pending_ltm_recalled_from_user = recalled_from_user
                 raw_files_meta = _extra.get("files_metadata", [])
                 history_files = [
                     {
@@ -759,6 +861,13 @@ class ChatController(BaseController):
                         "is_agentic": None,
                     }
                 )
+
+            # If stream/state ends without a visible AI message after tool calls,
+            # preserve those tool steps as their own history turn instead of dropping them.
+            if pending_tool_packets:
+                reindexed_tools, _ = _reindex_tool_packets(pending_tool_packets, 0)
+                packets_2d.append(reindexed_tools)
+                pending_tool_packets = []
 
             for index in range(len(messages) - 1):
                 messages[index]["latest_child_message"] = messages[index + 1]["message_id"]

@@ -133,15 +133,38 @@ function mapBackendToFrontend(packet: BackendPacket): { placement: any; obj: any
   }
 }
 
-// Packet types that represent tool/step lifecycle events (shown in timeline)
+const MEMORY_PACKET_TYPES = new Set([
+  "long_term_memory_recall", "long_term_memory_save",
+]);
+
+const REASONING_PACKET_TYPES = new Set([
+  "reasoning_start", "reasoning_delta",
+]);
+
+// Packet types that represent tool/step lifecycle events (shown in timeline).
 // Adding a new type here causes the stream parser to advance turnIndex at
 // that boundary, placing subsequent packets in a fresh timeline group.
+// MEMORY_PACKET_TYPES and REASONING_PACKET_TYPES are included here so they
+// also split from plain tool packets in shouldSplitToolTurn.
 const TOOL_PACKET_TYPES = new Set([
   "custom_tool_start", "custom_tool_delta",
   "custom_step_start",
   "search_tool_start", "search_tool_queries_delta", "search_tool_documents_delta",
-  "reasoning_start", "reasoning_delta",
+  ...Array.from(MEMORY_PACKET_TYPES),
+  ...Array.from(REASONING_PACKET_TYPES),
 ]);
+
+function shouldSplitToolTurn(prevType: string | null, nextType: string): boolean {
+  if (!prevType) return false;
+
+  // Keep memory events in their own turn group so reasoning/tool packets
+  // are rendered by their own timeline renderers instead of being swallowed
+  // by the memory renderer when LTM is enabled.
+  if (MEMORY_PACKET_TYPES.has(prevType) !== MEMORY_PACKET_TYPES.has(nextType)) return true;
+
+  // Also separate reasoning from non-reasoning tool packets.
+  return REASONING_PACKET_TYPES.has(prevType) !== REASONING_PACKET_TYPES.has(nextType);
+}
 
 export async function* handleSSEStream<T extends PacketType>(
   streamingResponse: Response,
@@ -156,6 +179,7 @@ export async function* handleSSEStream<T extends PacketType>(
   // so tool packets must have a different turn_index than message/display packets.
   let turnIndex = 0;
   let sawToolPackets = false;
+  let lastToolPacketType: string | null = null;
   // If tokens were already streamed for the current answer, skip the later
   // full "message" packet from backend to avoid duplicate text rendering.
   let sawTokenForCurrentAnswer = false;
@@ -226,11 +250,17 @@ export async function* handleSSEStream<T extends PacketType>(
               turnIndex++; // display → tool: pre-tool text gets its own group
               sawTokenForCurrentAnswer = false;
               hasMessageStartForCurrentAnswer = false;
+            } else if (shouldSplitToolTurn(lastToolPacketType, backendPacket.type)) {
+              turnIndex++;
+              sawTokenForCurrentAnswer = false;
+              hasMessageStartForCurrentAnswer = false;
             }
             sawToolPackets = true;
+            lastToolPacketType = backendPacket.type;
           } else if (sawToolPackets) {
             turnIndex++;
             sawToolPackets = false;
+            lastToolPacketType = null;
             sawTokenForCurrentAnswer = false;
             hasMessageStartForCurrentAnswer = false;
           }
