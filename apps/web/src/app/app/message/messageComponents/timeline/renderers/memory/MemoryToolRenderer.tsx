@@ -101,7 +101,7 @@ export const MemoryToolRenderer: MessageRenderer<MemoryToolPacket, {}> = ({
     <div className="flex flex-col">
       <memoriesModal.Provider>
         <MemoriesModal
-          initialTargetMemoryId={memoryId}
+          initialTargetMemoryId={memoryId != null ? String(memoryId) : null}
           initialTargetIndex={index}
           highlightFirstOnOpen
         />

@@ -38,6 +38,7 @@ class PersonaRepository(BaseRepository):
             "base_agent": row.base_agent,
             "mcp_tools": row.mcp_tools,
             "rag_config": row.rag_config,
+            "long_term_memory": bool(row.long_term_memory),
             "time_created": row.time_created.isoformat() if row.time_created else None,
             "time_updated": row.time_updated.isoformat() if row.time_updated else None,
         }
@@ -147,6 +148,7 @@ class PersonaRepository(BaseRepository):
             "base_agent",
             "mcp_tools",
             "rag_config",
+            "long_term_memory",
         }
         updates = {k: v for k, v in fields.items() if k in allowed}
         if not updates:

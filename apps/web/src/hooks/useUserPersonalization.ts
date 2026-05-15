@@ -1,31 +1,29 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { MemoryItem, User, UserPersonalization } from "@/lib/types";
+import { User, UserPersonalization } from "@/lib/types";
 
 const DEFAULT_PERSONALIZATION: UserPersonalization = {
   name: "",
   role: "",
-  memories: [],
-  use_memories: true,
-  enable_memory_tool: true,
+  long_term_memory_enabled: false,
+  extract_memory: true,
   user_preferences: "",
 };
 
 function derivePersonalizationFromUser(user: User | null): UserPersonalization {
   if (!user?.personalization) {
-    return { ...DEFAULT_PERSONALIZATION, memories: [] };
+    return { ...DEFAULT_PERSONALIZATION };
   }
 
   return {
     name: user.personalization.name ?? "",
     role: user.personalization.role ?? "",
-    memories: [...(user.personalization.memories ?? [])],
-    use_memories:
-      user.personalization.use_memories ?? DEFAULT_PERSONALIZATION.use_memories,
-    enable_memory_tool:
-      user.personalization.enable_memory_tool ??
-      DEFAULT_PERSONALIZATION.enable_memory_tool,
+    long_term_memory_enabled:
+      user.personalization.long_term_memory_enabled ??
+      DEFAULT_PERSONALIZATION.long_term_memory_enabled,
+    extract_memory:
+      user.personalization.extract_memory ?? DEFAULT_PERSONALIZATION.extract_memory,
     user_preferences: user.personalization.user_preferences ?? "",
   };
 }
@@ -128,7 +126,14 @@ export default function useUserPersonalization(
   const toggleUseMemories = useCallback((useMemories: boolean) => {
     setPersonalizationValues((prev) => ({
       ...prev,
-      use_memories: useMemories,
+      long_term_memory_enabled: useMemories,
+    }));
+  }, []);
+
+  const toggleLongTermMemory = useCallback((enabled: boolean) => {
+    setPersonalizationValues((prev) => ({
+      ...prev,
+      long_term_memory_enabled: enabled,
     }));
   }, []);
 
@@ -146,55 +151,19 @@ export default function useUserPersonalization(
     }));
   }, []);
 
-  const updateMemoryAtIndex = useCallback((index: number, value: string) => {
-    setPersonalizationValues((prev) => {
-      const updatedMemories = [...prev.memories];
-      const existing = updatedMemories[index];
-      if (existing) {
-        updatedMemories[index] = { ...existing, content: value };
-      }
-      return {
-        ...prev,
-        memories: updatedMemories,
-      };
-    });
-  }, []);
-
-  const addMemory = useCallback(() => {
-    setPersonalizationValues((prev) => ({
-      ...prev,
-      memories: [...prev.memories, { id: null, content: "" }],
-    }));
-  }, []);
-
-  const setMemories = useCallback((memories: MemoryItem[]) => {
-    setPersonalizationValues((prev) => ({
-      ...prev,
-      memories,
-    }));
-  }, []);
-
   const handleSavePersonalization = useCallback(
     async (overrides?: Partial<UserPersonalization>, silent?: boolean) => {
       setIsSavingPersonalization(true);
 
       const valuesToSave = { ...personalizationValues, ...overrides };
-      const trimmedMemories = valuesToSave.memories
-        .map((memory) => ({ ...memory, content: memory.content.trim() }))
-        .filter((memory) => memory.content.length > 0);
-
-      const updatedPersonalization: UserPersonalization = {
-        ...valuesToSave,
-        memories: trimmedMemories,
-      };
 
       try {
-        await persistPersonalization(updatedPersonalization);
-        setPersonalizationValues(updatedPersonalization);
+        await persistPersonalization(valuesToSave);
+        setPersonalizationValues(valuesToSave);
         if (!silent) {
-          onSuccess?.(updatedPersonalization);
+          onSuccess?.(valuesToSave);
         }
-        return updatedPersonalization;
+        return valuesToSave;
       } catch (error) {
         setPersonalizationValues(basePersonalization);
         if (!silent) {
@@ -218,11 +187,9 @@ export default function useUserPersonalization(
     personalizationValues,
     updatePersonalizationField,
     toggleUseMemories,
+    toggleLongTermMemory,
     toggleEnableMemoryTool,
     updateUserPreferences,
-    updateMemoryAtIndex,
-    addMemory,
-    setMemories,
     handleSavePersonalization,
     isSavingPersonalization,
   };

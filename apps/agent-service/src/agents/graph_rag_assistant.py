@@ -25,9 +25,11 @@ from agents.tools import graph_search
 from core import settings
 from core.llm import get_model_from_config
 from memory.long_term import (
+    build_event_emitters,
     build_memory_context,
     extract_and_save_memories,
     recall_memories,
+    tag_response_with_ltm_recall,
 )
 
 
@@ -144,9 +146,10 @@ async def acall_model(
     long_term_memory = configurable.get("long_term_memory", False)
     user_id = configurable.get("user_id")
     memories: dict = {}
+    on_recall, on_save = build_event_emitters(configurable)
 
     if long_term_memory and store and user_id:
-        memories = await recall_memories(store, user_id)
+        memories = await recall_memories(store, user_id, on_recall=on_recall)
         memory_context = build_memory_context(memories)
         if memory_context:
             enhanced_instructions = instructions + memory_context
@@ -163,6 +166,7 @@ async def acall_model(
         model_runnable = wrap_model(m)
 
     response = await model_runnable.ainvoke(state, config)
+    tag_response_with_ltm_recall(response, memories)
 
     # LlamaGuard safety check
     llama_guard = LlamaGuard()
@@ -185,8 +189,10 @@ async def acall_model(
 
     # Long-term memory: extract and save
     if long_term_memory and store and user_id:
+        extract_mem = configurable.get("extract_memory", True)
         await extract_and_save_memories(
-            store, user_id, list(state["messages"]) + [response], m, memories
+                store, user_id, list(state["messages"]) + [response], m, memories,
+                on_save=on_save, extract_memory=extract_mem
         )
 
     return {"messages": [response]}

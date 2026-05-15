@@ -450,6 +450,10 @@ async def send_chat_message(
             if custom_persona.get("rag_config"):
                 llm_override = llm_override or {}
                 llm_override["rag_config"] = custom_persona["rag_config"]
+            # Pass the numeric persona_id so _handle_input reads LTM settings
+            # from the correct persona, not from the underlying builtin graph key.
+            llm_override = llm_override or {}
+            llm_override["_persona_id"] = persona_id
 
     # Process file_descriptors sent by the frontend (inline base64 flow).
     # Convert each descriptor into a LangChain content block and store the raw
@@ -499,6 +503,7 @@ async def send_chat_message(
     stream_input = StreamInput(
         message=message or "",
         thread_id=session_id,
+        agent_id=str(assistant_id),
         agent_config=llm_override or {},
         file_content_blocks=file_content_blocks,
         files_metadata=files_metadata,

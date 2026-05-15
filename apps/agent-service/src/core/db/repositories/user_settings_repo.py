@@ -18,9 +18,8 @@ DEFAULT_USER_SETTINGS: dict[str, Any] = {
     "auto_scroll": True,
     "shortcut_enabled": True,
     "default_app_mode": "AUTO",
-    "memories": [],
-    "use_memories": False,
-    "enable_memory_tool": False,
+    "long_term_memory_enabled": False,
+    "extract_memory": True,
     "user_preferences": "",
     "prompt_shortcuts": [],
 }
@@ -39,9 +38,8 @@ class UserSettingsRepository(BaseRepository):
             "auto_scroll": bool(row.auto_scroll),
             "shortcut_enabled": bool(row.shortcut_enabled),
             "default_app_mode": row.default_app_mode or "AUTO",
-            "memories": row.memories or [],
-            "use_memories": bool(row.use_memories),
-            "enable_memory_tool": bool(row.enable_memory_tool),
+            "long_term_memory_enabled": bool(row.long_term_memory_enabled),
+            "extract_memory": bool(row.extract_memory),
             "user_preferences": row.user_preferences or "",
             "prompt_shortcuts": row.prompt_shortcuts or [],
         }
@@ -76,8 +74,6 @@ class UserSettingsRepository(BaseRepository):
         allowed = set(DEFAULT_USER_SETTINGS.keys())
         normalized_updates = {k: v for k, v in updates.items() if k in allowed}
 
-        if "memories" in normalized_updates and normalized_updates["memories"] is None:
-            normalized_updates["memories"] = []
         if "user_preferences" in normalized_updates and normalized_updates["user_preferences"] is None:
             normalized_updates["user_preferences"] = ""
         if "prompt_shortcuts" in normalized_updates:
@@ -106,9 +102,8 @@ class UserSettingsRepository(BaseRepository):
                     auto_scroll=seed["auto_scroll"],
                     shortcut_enabled=seed["shortcut_enabled"],
                     default_app_mode=seed["default_app_mode"],
-                    memories=seed["memories"],
-                    use_memories=seed["use_memories"],
-                    enable_memory_tool=seed["enable_memory_tool"],
+                    long_term_memory_enabled=seed["long_term_memory_enabled"],
+                    extract_memory=seed["extract_memory"],
                     user_preferences=seed["user_preferences"],
                     prompt_shortcuts=seed["prompt_shortcuts"],
                     time_updated=datetime.now(UTC),

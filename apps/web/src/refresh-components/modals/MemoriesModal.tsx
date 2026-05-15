@@ -124,8 +124,9 @@ function MemoryItem({
 interface MemoriesModalProps {
   memories?: MemoryItem[];
   onSaveMemories?: (memories: MemoryItem[]) => Promise<boolean>;
+  onDeleteMemory?: (id: string) => Promise<boolean>;
   onClose?: () => void;
-  initialTargetMemoryId?: number | null;
+  initialTargetMemoryId?: string | null;
   initialTargetIndex?: number | null;
   highlightFirstOnOpen?: boolean;
 }
@@ -133,6 +134,7 @@ interface MemoriesModalProps {
 export default function MemoriesModal({
   memories: memoriesProp,
   onSaveMemories: onSaveMemoriesProp,
+  onDeleteMemory,
   onClose,
   initialTargetMemoryId,
   initialTargetIndex,
@@ -140,6 +142,7 @@ export default function MemoriesModal({
 }: MemoriesModalProps) {
   const { t } = useTranslation("common", { keyPrefix: "memories" });
   const close = useModalClose(onClose);
+  // focusMemoryId tracks local numeric IDs from useMemoryManager (Date.now())
   const [focusMemoryId, setFocusMemoryId] = useState<number | null>(null);
 
   // Self-fetching: when no props provided, fetch from UserProvider
@@ -164,7 +167,7 @@ export default function MemoriesModal({
   const internalSaveMemories = useCallback(
     async (newMemories: MemoryItem[]): Promise<boolean> => {
       const result = await handleSavePersonalization(
-        { memories: newMemories },
+        {},
         true
       );
       return !!result;
@@ -172,22 +175,18 @@ export default function MemoriesModal({
     [handleSavePersonalization]
   );
 
-  const effectiveMemories =
-    memoriesProp ?? user?.personalization?.memories ?? [];
+  const effectiveMemories = memoriesProp ?? [];
   const effectiveSave = onSaveMemoriesProp ?? internalSaveMemories;
 
   // Drives scroll-into-view + highlight when opening from a FileTile click
-  const [highlightMemoryId, setHighlightMemoryId] = useState<number | null>(
+  const [highlightMemoryId, setHighlightMemoryId] = useState<string | null>(
     null
   );
 
   useEffect(() => {
     if (initialTargetMemoryId != null) {
-      // Direct DB id available — use it
       setHighlightMemoryId(initialTargetMemoryId);
     } else if (initialTargetIndex != null && effectiveMemories.length > 0) {
-      // Backend index is ASC (oldest-first), but the frontend displays DESC
-      // (newest-first). Convert: descIdx = totalCount - 1 - ascIdx
       const descIdx = effectiveMemories.length - 1 - initialTargetIndex;
       const target = effectiveMemories[descIdx];
       if (target) {
@@ -198,7 +197,6 @@ export default function MemoriesModal({
       effectiveMemories.length > 0 &&
       effectiveMemories[0]
     ) {
-      // Fallback: highlight the first displayed item (newest)
       setHighlightMemoryId(effectiveMemories[0].id);
     }
   }, [initialTargetMemoryId, initialTargetIndex]);
@@ -216,6 +214,7 @@ export default function MemoriesModal({
   } = useMemoryManager({
     memories: effectiveMemories,
     onSaveMemories: effectiveSave,
+    onDeleteMemory,
     onNotify: (message, type) => toast[type](message),
   });
 
@@ -279,7 +278,7 @@ export default function MemoriesModal({
                     onRemove={handleRemoveMemory}
                     shouldFocus={memory.id === focusMemoryId}
                     onFocused={() => setFocusMemoryId(null)}
-                    shouldHighlight={memory.id === highlightMemoryId}
+                    shouldHighlight={memory.dbId === highlightMemoryId}
                     onHighlighted={() => {
                       setHighlightMemoryId(null);
                     }}

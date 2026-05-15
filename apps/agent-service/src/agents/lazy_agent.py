@@ -10,6 +10,7 @@ from langgraph.graph.state import CompiledStateGraph
 from langgraph.pregel import Pregel
 
 from memory.long_term import (
+    build_event_emitters,
     build_memory_context,
     extract_and_save_memories,
     recall_memories,
@@ -92,7 +93,8 @@ class LazyLoadingAgent(ABC):
         if not long_term_memory or not store or not user_id:
             return input, memories, user_id
 
-        memories = await recall_memories(store, user_id)
+        on_recall, _ = build_event_emitters(configurable)
+        memories = await recall_memories(store, user_id, on_recall=on_recall)
         memory_context = build_memory_context(memories)
 
         if memory_context and isinstance(input, dict) and "messages" in input:
@@ -134,7 +136,8 @@ class LazyLoadingAgent(ABC):
                 output_messages = output["messages"]
             
             all_messages = list(original_messages) + list(output_messages)
-            await extract_and_save_memories(store, user_id, all_messages, model, memories)
+            extract_mem = configurable.get("extract_memory", True)
+            await extract_and_save_memories(store, user_id, all_messages, model, memories, extract_memory=extract_mem)
         except Exception as e:
             logger.warning(f"[LazyAgent] Memory save failed: {e}")
 
@@ -232,8 +235,9 @@ class LazyLoadingAgent(ABC):
                     from core.llm import get_model_from_config
 
                     model = get_model_from_config(configurable, settings.DEFAULT_MODEL)
+                    extract_mem = configurable.get("extract_memory", True)
                     await extract_and_save_memories(
-                        store, user_id, original_messages, model, memories
+                            store, user_id, original_messages, model, memories, extract_memory=extract_mem
                     )
             except Exception as e:
                 logger.warning(f"[LazyAgent] Memory save after stream_events failed: {e}")

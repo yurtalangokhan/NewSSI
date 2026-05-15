@@ -65,6 +65,11 @@ class UserInput(BaseModel):
         default=None,
         examples=["847c6285-8fc9-4560-a83f-4e6285809254"],
     )
+    agent_id: str | None = Field(
+        description="Agent identifier used for persona/agent-specific configuration.",
+        default=None,
+        examples=["chatbot", "15"],
+    )
     agent_config: dict[str, Any] = Field(
         description="Additional configuration to pass through to the agent",
         default_factory=dict,

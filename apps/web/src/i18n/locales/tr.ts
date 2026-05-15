@@ -828,6 +828,9 @@ const tr = {
       updateMemoriesLabel: "Belleği Güncelle",
       updateMemoriesDescription:
         "Onyx'in depolanan belleği oluşturmasına ve güncellemesine izin verin.",
+      longTermMemoryLabel: "Uzun Süreli Bellek",
+      longTermMemoryDescription:
+        "Konuşmalardan otomatik olarak gerçekleri çıkarın ve hatırlayın.",
       promptShortcutsTitle: "İstem Kısayolları",
       useShortcutsLabel: "İstem Kısayollarını Kullan",
       useShortcutsDescription:
@@ -1022,6 +1025,11 @@ const tr = {
     executingTool: "Araç çalıştırılıyor",
     updatingMemory: "Bellek güncelleniyor...",
     updatingMemoryActive: "Bellek güncelleniyor",
+    ltmRecalling: "Anılar hatırlanıyor...",
+    ltmSaving: "Uzun süreli belleğe kaydediliyor...",
+    ltmRecalled: "{{count}} anı hatırlandı",
+    ltmSaved: "{{count}} anı kaydedildi",
+    ltmMore: "daha fazla",
     generatingPlan: "Plan oluşturuluyor",
     generatedPlan: "Plan oluşturuldu",
     researchPlan: "Araştırma Planı",
@@ -1182,6 +1190,8 @@ const tr = {
     memoryNone: "Yok",
     memoryLongTerm: "Uzun Vadeli",
     memoryBuffer: "Tampon",
+    longTermMemoryLabel: "Uzun Süreli Bellek",
+    longTermMemoryDescription: "Bu ajan için kalıcı belleği etkinleştirin.",
     dynamic: {
       createTitle: "Dinamik Ajan Oluştur",
       createSubtitle:

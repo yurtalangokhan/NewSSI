@@ -52,6 +52,7 @@ import usePromptShortcuts from "@/hooks/usePromptShortcuts";
 import ColorSwatch from "@/refresh-components/ColorSwatch";
 import EmptyMessage from "@/refresh-components/EmptyMessage";
 import Memories from "@/sections/settings/Memories";
+import useUserMemories from "@/hooks/useUserMemories";
 import { FederatedConnectorOAuthStatus } from "@/components/chat/FederatedOAuthModal";
 import {
   CHAT_BACKGROUND_OPTIONS,
@@ -773,16 +774,33 @@ function ChatPreferencesSettings() {
     onError: () => toast.error(t("settings.chatPreferences.toastPreferencesFailed")),
   });
 
+  const {
+    memories,
+    isLoading: isLoadingMemories,
+    createMemory,
+    updateMemory,
+    deleteMemory,
+    deleteAllMemories,
+  } = useUserMemories({
+    onError: () => toast.error(t("settings.chatPreferences.toastPreferencesFailed")),
+  });
+
   // Wrapper to save memories and return success/failure
   const handleSaveMemories = useCallback(
-    async (newMemories: MemoryItem[]): Promise<boolean> => {
-      const result = await handleSavePersonalization(
-        { memories: newMemories },
-        true
-      );
-      return !!result;
+    async (newMemories: import("@/lib/types").MemoryItem[]): Promise<boolean> => {
+      try {
+        // Sync: create new (empty dbId) and update existing
+        for (const mem of newMemories) {
+          if (!mem.id) {
+            await createMemory(mem.content);
+          }
+        }
+        return true;
+      } catch {
+        return false;
+      }
     },
-    [handleSavePersonalization]
+    [createMemory]
   );
 
   return (
@@ -885,10 +903,11 @@ function ChatPreferencesSettings() {
             description={t("settings.chatPreferences.referenceMemoriesDescription")}
           >
             <Switch
-              checked={personalizationValues.use_memories}
+                checked={personalizationValues.long_term_memory_enabled}
               onCheckedChange={(checked) => {
-                toggleUseMemories(checked);
-                void handleSavePersonalization({ use_memories: checked });
+                void handleSavePersonalization({
+                    long_term_memory_enabled: checked,
+                });
               }}
             />
           </InputLayouts.Horizontal>
@@ -897,24 +916,22 @@ function ChatPreferencesSettings() {
             description={t("settings.chatPreferences.updateMemoriesDescription")}
           >
             <Switch
-              checked={personalizationValues.enable_memory_tool}
+                checked={personalizationValues.extract_memory}
               onCheckedChange={(checked) => {
-                toggleEnableMemoryTool(checked);
                 void handleSavePersonalization({
-                  enable_memory_tool: checked,
+                    extract_memory: checked,
                 });
               }}
             />
           </InputLayouts.Horizontal>
-
-          {(personalizationValues.use_memories ||
-            personalizationValues.enable_memory_tool ||
-            personalizationValues.memories.length > 0) && (
-            <Memories
-              memories={personalizationValues.memories}
-              onSaveMemories={handleSaveMemories}
-            />
-          )}
+            {(personalizationValues.long_term_memory_enabled || personalizationValues.extract_memory) &&
+              memories.length > 0 && (
+              <Memories
+                memories={memories}
+                onSaveMemories={handleSaveMemories}
+                onDeleteMemory={deleteMemory}
+              />
+            )}
         </Card>
       </Section>
 
