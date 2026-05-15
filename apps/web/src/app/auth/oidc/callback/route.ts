@@ -1,11 +1,11 @@
 import { getDomain } from "@/lib/redirectSS";
-import { buildUrl } from "@/lib/utilsSS";
+import { buildUserServiceUrl } from "@/lib/utilsSS";
 import { NextRequest, NextResponse } from "next/server";
 
 export const GET = async (request: NextRequest) => {
   // Wrapper around the FastAPI endpoint /auth/oidc/callback,
   // which adds back a redirect to the main app.
-  const url = new URL(buildUrl("/auth/oidc/callback"));
+  const url = new URL(buildUserServiceUrl("/api/auth/oidc/callback"));
   url.search = request.nextUrl.search;
   const callbackBase = getDomain(request).replace(/\/$/, "");
   url.searchParams.set(
@@ -39,7 +39,6 @@ export const GET = async (request: NextRequest) => {
     }
 
     const loginUrl = new URL("/auth/login", getDomain(request));
-    loginUrl.searchParams.set("disableAutoRedirect", "true");
     loginUrl.searchParams.set("oidcError", errorMessage);
     return NextResponse.redirect(
       loginUrl

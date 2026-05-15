@@ -51,7 +51,7 @@ export async function requireAuth(): Promise<AuthCheckResult> {
     return {
       user: null,
       authTypeMetadata,
-      redirect: "/auth/login?disableAutoRedirect=true",
+      redirect: "/auth/login",
     };
   }
 

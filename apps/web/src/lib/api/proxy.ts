@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { INTERNAL_URL } from "@/lib/constants";
 
-const BACKEND_URL = process.env.INTERNAL_URL || 'http://localhost:8080';
+const BACKEND_URL = INTERNAL_URL;
 
 export interface ProxyOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
   withCredentials?: boolean;
+  backendUrl?: string;
 }
 
 /**
@@ -16,10 +18,14 @@ export async function proxyToBackend(
   options: ProxyOptions = {}
 ): Promise<NextResponse> {
   try {
-    const { method = request.method, withCredentials = true } = options;
+    const {
+      method = request.method,
+      withCredentials = true,
+      backendUrl = BACKEND_URL,
+    } = options;
     
     // Build URL with query params
-    const url = new URL(`${BACKEND_URL}${pathname}`);
+    const url = new URL(`${backendUrl}${pathname}`);
     if (request.nextUrl.search) {
       url.search = request.nextUrl.search;
     }

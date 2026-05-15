@@ -41,7 +41,7 @@ const handleLogout = async (request: NextRequest) => {
   });
 
   const nextPath =
-    request.nextUrl.searchParams.get("next") || "/auth/login?disableAutoRedirect=true";
+    request.nextUrl.searchParams.get("next") || "/auth/login";
 
   // For OIDC, redirect to Keycloak's RP-initiated logout as a front-channel
   // courtesy step. The SSO session was already terminated server-side by the

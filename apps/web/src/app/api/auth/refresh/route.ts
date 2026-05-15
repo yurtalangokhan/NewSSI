@@ -1,5 +1,10 @@
-import { NextResponse } from 'next/server';
+import { NextRequest } from "next/server";
+import { proxyToBackend } from "@/lib/api/proxy";
+import { USER_SERVICE_URL } from "@/lib/constants";
 
-export async function POST() {
-  return NextResponse.json({ success: true });
+export async function POST(request: NextRequest) {
+  return proxyToBackend(request, "/api/auth/refresh", {
+    method: "POST",
+    backendUrl: USER_SERVICE_URL,
+  });
 }
