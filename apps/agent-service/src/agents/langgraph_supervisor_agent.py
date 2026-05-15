@@ -472,10 +472,10 @@ Analyze the user's request and delegate to the most appropriate agent(s). You ca
             try:
                 store = self._get_langgraph_store()
                 if store:
-                    from core import get_model
                     from core import settings as core_settings
+                    from core.llm import get_model_from_config
 
-                    model = get_model(configurable.get("model", core_settings.DEFAULT_MODEL))
+                    model = get_model_from_config(configurable, core_settings.DEFAULT_MODEL)
                     from memory.long_term import extract_and_save_memories
 
                     await extract_and_save_memories(

@@ -488,7 +488,8 @@ const MemoizedAppSidebarInner = memo(
     );
 
     const { isAdmin, isCurator, user } = useUser();
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
+    const activeLanguage = i18n.resolvedLanguage ?? i18n.language;
     const activeSidebarTab = useAppFocus();
     const createProjectModal = useCreateModal();
     const defaultAppMode =
@@ -526,6 +527,7 @@ const MemoizedAppSidebarInner = memo(
       defaultAppMode,
       reset,
       setAppMode,
+      activeLanguage,
     ]);
 
     const buildButton = useMemo(
@@ -541,7 +543,7 @@ const MemoizedAppSidebarInner = memo(
           </SidebarTab>
         </div>
       ),
-      [folded, posthog]
+      [folded, posthog, activeLanguage]
     );
 
     const searchChatsButton = useMemo(
@@ -554,7 +556,7 @@ const MemoizedAppSidebarInner = memo(
           }
         />
       ),
-      [folded, t]
+      [folded, t, activeLanguage]
     );
 
     const moreAgentsButton = useMemo(
@@ -575,7 +577,7 @@ const MemoizedAppSidebarInner = memo(
           </SidebarTab>
         </div>
       ),
-      [folded, activeSidebarTab, visibleAgents]
+      [folded, activeSidebarTab, visibleAgents, activeLanguage]
     );
     const newProjectButton = useMemo(
       () => (
@@ -589,7 +591,7 @@ const MemoizedAppSidebarInner = memo(
           {t("sidebar.newProject")}
         </SidebarTab>
       ),
-      [folded, createProjectModal.toggle, createProjectModal.isOpen]
+      [folded, createProjectModal.toggle, createProjectModal.isOpen, activeLanguage]
     );
     const handleShowBuildIntro = useCallback(() => {
       setShowIntroAnimation(true);
@@ -628,6 +630,7 @@ const MemoizedAppSidebarInner = memo(
         handleShowBuildIntro,
         isOnyxCraftEnabled,
         adminDefaultHref,
+        activeLanguage,
       ]
     );
 

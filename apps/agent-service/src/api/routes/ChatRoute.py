@@ -6,9 +6,12 @@ These endpoints delegate to ThreadController for CRUD and use message_generator 
 """
 
 import json
+import logging
 import uuid
 from typing import Annotated
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
@@ -18,6 +21,8 @@ from controller import ChatController, ThreadController, get_thread_controller
 from schema.schema import StreamInput
 from api.routes.AgentsRoute import message_generator
 from api.dependencies import verify_api_key
+from domain.providers.repository import ProviderRepository
+from domain.providers.service import ProviderService
 
 router = APIRouter(tags=["chat"])
 
@@ -42,6 +47,60 @@ def _truncate_name(message: str, max_length: int = 50) -> str:
     if len(name) > max_length:
         name = name[:max_length].rsplit(" ", 1)[0] + "..."
     return name or "New Chat"
+
+
+async def _resolve_provider_for_user(
+    user_id: str, provider_id: str, repo: ProviderRepository
+) -> dict[str, Any] | None:
+    provider_svc = ProviderService(repo)
+    all_providers = await provider_svc.list_all(user_id)
+    all_entries = [
+        *all_providers.get("builtin", []),
+        *all_providers.get("url_providers", []),
+        *all_providers.get("user_providers", []),
+    ]
+    for provider in all_entries:
+        if str(provider.get("id")) == str(provider_id):
+            return provider
+    return None
+
+
+async def _resolve_model_supports_reasoning(
+    *,
+    user_id: str,
+    provider_id: str,
+    provider: dict[str, Any],
+    model_name: str,
+    repo: ProviderRepository,
+) -> bool | None:
+    """Resolve model reasoning capability from provider model metadata.
+
+    Priority:
+    1) provider.config.model_configurations (persisted sync metadata)
+    2) live provider model fetch fallback (for built-ins / unsynced providers)
+    """
+    config = provider.get("config") or {}
+    model_configurations = config.get("model_configurations") or []
+    if isinstance(model_configurations, list):
+        for model in model_configurations:
+            if model.get("name") == model_name:
+                return bool(model.get("supports_reasoning", False))
+
+    try:
+        provider_svc = ProviderService(repo)
+        live_models = await provider_svc.get_models_for_provider(provider_id, user_id)
+        for model in live_models:
+            if model.get("name") == model_name:
+                return bool(model.get("supports_reasoning", False))
+    except Exception as exc:
+        logger.debug(
+            "Could not resolve model capability for provider_id=%s model=%s: %s",
+            provider_id,
+            model_name,
+            exc,
+        )
+
+    return None
 
 
 @router.get("/api/chat/get-user-chat-sessions")
@@ -225,10 +284,6 @@ async def send_chat_message(
     user_id: Annotated[str | None, Depends(verify_api_key)],
 ):
     """Send chat message with streaming - uses message_generator."""
-    import logging
-
-    logger = logging.getLogger(__name__)
-
     if not user_id:
         return StreamingResponse(
             iter([b'data: {"type": "error", "content": "Not authenticated"}\n\n']),
@@ -239,7 +294,7 @@ async def send_chat_message(
     try:
         body = await request.json()
     except Exception as e:
-        logger.error(f"Failed to parse request body: {e}")
+        logger.error("Failed to parse request body: %s", e)
         return StreamingResponse(
             iter([b"data: {'type': 'error', 'content': 'Invalid JSON'}\n\n"]),
             media_type="text/event-stream",
@@ -250,16 +305,77 @@ async def send_chat_message(
     persona_id = body.get("persona_id")
     llm_override = body.get("llm_override")
 
+    if llm_override and llm_override.get("provider_id") and llm_override.get("provider_type"):
+        model_name = llm_override.get("model") or llm_override.get("model_version")
+        provider_resolution_failed = False
+        if model_name:
+            try:
+                from core.llm_factory import get_llm_for_provider
+
+                provider_id = str(llm_override["provider_id"])
+                logger.debug("Resolving provider: provider_id=%s, provider_type=%s, model=%s", provider_id, llm_override["provider_type"], model_name)
+                repo = ProviderRepository()
+                provider = await _resolve_provider_for_user(user_id, provider_id, repo)
+
+                api_key = None
+                base_url = None
+                api_version = None
+                request_overrides = None
+
+                if provider:
+                    logger.debug("Found provider in registry: %s", provider)
+                    # Only fetch API key for DB-stored (non-builtin) providers
+                    if not provider.get("is_builtin"):
+                        api_key = await repo.get_decrypted_api_key(provider_id, user_id)
+                    base_url = provider.get("base_url") or (provider.get("user_config") or {}).get("api_base")
+                    api_version = (provider.get("user_config") or {}).get("api_version")
+                    request_overrides = ((provider.get("config") or {}).get("custom_config") or {}).get(
+                        "request_overrides"
+                    )
+                    provider_type = provider.get("provider_type") or llm_override["provider_type"]
+                    supports_reasoning = await _resolve_model_supports_reasoning(
+                        user_id=user_id,
+                        provider_id=provider_id,
+                        provider=provider,
+                        model_name=model_name,
+                        repo=repo,
+                    )
+                else:
+                    logger.warning("Provider %s not found for user %s", provider_id, user_id)
+                    provider_resolution_failed = True
+                    provider_type = llm_override["provider_type"]
+                    supports_reasoning = None
+
+                if not provider_resolution_failed:
+                    llm_override["llm_instance"] = await get_llm_for_provider(
+                        model_name,
+                        provider_type,
+                        api_key=api_key,
+                        base_url=base_url,
+                        api_version=api_version,
+                        supports_reasoning=supports_reasoning,
+                        request_overrides=request_overrides,
+                    )
+                    logger.debug("Successfully created LLM instance for model %s", model_name)
+            except Exception as exc:
+                provider_resolution_failed = True
+                logger.exception("Provider-aware LLM resolution failed: %s", exc)
+
+        if provider_resolution_failed:
+            # Prevent stale/incompatible model fallback (e.g. Gemini model routed to Ollama).
+            for key in ("model", "model_version", "provider_id", "provider_type", "llm_instance"):
+                llm_override.pop(key, None)
+
     session_id = chat_session_id
     if not session_id:
         session_id = str(uuid.uuid4())
-        logger.info(f"Generated new session_id: {session_id}")
+        logger.info("Generated new session_id: %s", session_id)
 
     try:
         uuid.UUID(session_id)
     except (ValueError, AttributeError):
         session_id = str(uuid.uuid4())
-        logger.warning(f"Invalid session_id provided, generated new: {session_id}")
+        logger.warning("Invalid session_id provided, generated new: %s", session_id)
 
     session_name = _truncate_name(message or "New Chat")
 
@@ -354,9 +470,11 @@ async def send_chat_message(
             fd_data: str | None = fd.get("data")  # base64 string or None
             fd_type: str = fd.get("type") or "document"
 
+            logger.debug("Processing file descriptor: id=%s, name=%s, mime=%s, has_data=%s, type=%s", fd_id, fd_name, fd_mime, bool(fd_data), fd_type)
             files_metadata.append({"id": fd_id, "type": fd_type, "name": fd_name})
 
             if not fd_data:
+                logger.warning("File descriptor %s has no data, skipping", fd_id)
                 continue
 
             m = fd_mime.lower().split(";")[0].strip()
@@ -364,9 +482,10 @@ async def send_chat_message(
             # Store raw bytes so the file-serve endpoint can return them
             try:
                 raw = _base64.b64decode(fd_data)
+                logger.debug("Storing file %s (%s): %d bytes", fd_id, m, len(raw))
                 _store_file(fd_id, raw, fd_mime, fd_name)
             except Exception as store_err:
-                logger.warning(f"Could not store file {fd_id} in FileService: {store_err}")
+                logger.error("Could not store file %s in FileService: %s", fd_id, store_err, exc_info=True)
 
             if m in IMAGE_MIMES:
                 file_content_blocks.append({
@@ -401,7 +520,7 @@ async def send_chat_message(
                     except Exception:
                         pass
         except Exception as e:
-            logger.error(f"Stream error: {e}")
+            logger.error("Stream error: %s", e)
             yield f'data: {{"type": "error", "content": "{str(e)}"}}\n\n'
             full_response = f"Error: {str(e)}"
 

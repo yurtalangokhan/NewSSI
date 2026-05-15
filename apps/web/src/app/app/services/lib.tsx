@@ -130,7 +130,8 @@ export interface SendMessageParams {
   // Single forced tool ID (new API uses singular, not array)
   forcedToolId?: number | null;
   // LLM override parameters
-  modelProvider?: string;
+  modelProviderId?: string;
+  modelProviderType?: string;
   modelVersion?: string;
   temperature?: number;
   // Origin of the message for telemetry tracking
@@ -152,7 +153,8 @@ export async function* sendMessage({
   deepResearch,
   enabledToolIds,
   forcedToolId,
-  modelProvider,
+  modelProviderId,
+  modelProviderType,
   modelVersion,
   temperature,
   origin,
@@ -171,11 +173,12 @@ export async function* sendMessage({
     allowed_tool_ids: enabledToolIds,
     forced_tool_id: forcedToolId ?? null,
     llm_override:
-      temperature || modelVersion
+      temperature || modelVersion || modelProviderId || modelProviderType
         ? {
             temperature,
-            model_provider: modelProvider,
-            model_version: modelVersion,
+            model: modelVersion,
+            provider_id: modelProviderId,
+            provider_type: modelProviderType,
           }
         : null,
     // Default to "unknown" for consistency with backend; callers should set explicitly

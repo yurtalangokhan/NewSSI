@@ -13,7 +13,8 @@ from langgraph.store.base import BaseStore
 
 from agents.llama_guard import LlamaGuard, LlamaGuardOutput, SafetyAssessment
 from agents.tools import calculator
-from core import get_model, settings
+from core import settings
+from core.llm import get_model_from_config
 from core.env import env
 from memory.long_term import (
     build_memory_context,
@@ -74,7 +75,7 @@ def format_safety_message(safety: LlamaGuardOutput) -> AIMessage:
 
 async def acall_model(state: AgentState, config: RunnableConfig, *, store: BaseStore) -> AgentState:
     configurable = config.get("configurable", {})
-    m = get_model(configurable.get("model", settings.DEFAULT_MODEL))
+    m = get_model_from_config(configurable, settings.DEFAULT_MODEL)
 
     # Long-term memory: recall user facts if enabled
     long_term_memory = configurable.get("long_term_memory", False)
