@@ -144,7 +144,7 @@ class MemoryPerceptron(Perceptron):
         # Initialize long-term memory if configured
         if self.get_config("long_term_memory", False):
             try:
-                from service.langgraph_store import get_langgraph_store
+                from service.LangGraphStoreService import get_langgraph_store
 
                 self._long_term_store = get_langgraph_store()
             except Exception:
