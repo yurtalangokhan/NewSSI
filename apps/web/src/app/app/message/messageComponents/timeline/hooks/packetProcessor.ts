@@ -19,6 +19,7 @@ import {
   isDisplayPacket,
 } from "@/app/app/services/packetUtils";
 import { parseToolKey } from "@/app/app/message/messageComponents/toolDisplayHelpers";
+import { getGroupSuffix } from "@/lib/search/packetCategories";
 
 // Re-export parseToolKey for consumers that import from this module
 export { parseToolKey };
@@ -108,27 +109,8 @@ export function createInitialState(nodeId: number): ProcessorState {
 function getGroupKey(packet: Packet): string {
   const turnIndex = packet.placement.turn_index;
   const tabIndex = packet.placement.tab_index ?? 0;
-  const type = packet.obj.type as PacketType;
-
-  // Keep LTM and reasoning in distinct virtual groups even when backend emits
-  // them under the same turn/tab. Otherwise renderer selection can pick only
-  // one (typically LTM), hiding live thinking updates.
-  if (
-    type === PacketType.LONG_TERM_MEMORY_RECALL ||
-    type === PacketType.LONG_TERM_MEMORY_SAVE
-  ) {
-    return `${turnIndex}-${tabIndex}-ltm`;
-  }
-
-  if (
-    type === PacketType.REASONING_START ||
-    type === PacketType.REASONING_DELTA ||
-    type === PacketType.REASONING_DONE
-  ) {
-    return `${turnIndex}-${tabIndex}-reasoning`;
-  }
-
-  return `${turnIndex}-${tabIndex}`;
+  const suffix = getGroupSuffix(packet.obj.type as string);
+  return suffix ? `${turnIndex}-${tabIndex}-${suffix}` : `${turnIndex}-${tabIndex}`;
 }
 
 function injectSectionEnd(state: ProcessorState, groupKey: string): void {

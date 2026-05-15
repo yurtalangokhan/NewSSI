@@ -568,6 +568,8 @@ class ChatController(BaseController):
             start_turn: int,
         ) -> tuple[list[dict[str, Any]], int]:
             """Assign stable turn_index values so each reconstructed tool step stays visible."""
+            from controller.step_turn_rules import should_increment_turn
+
             if not packets:
                 return [], start_turn
 
@@ -581,20 +583,12 @@ class ChatController(BaseController):
                 pkt_type = obj.get("type", "")
                 tool_name = obj.get("tool_name")
 
-                if reindexed:
-                    if pkt_type == "reasoning_start":
-                        current_turn += 1
-                    elif pkt_type == "reasoning_delta":
-                        pass  # Same turn as the preceding reasoning_start
-                    elif pkt_type == "custom_tool_start":
-                        current_turn += 1
-                    elif pkt_type == "custom_tool_delta":
-                        if prev_tool and tool_name and tool_name != prev_tool:
-                            current_turn += 1
-                        elif prev_type not in ("custom_tool_start", "custom_tool_delta"):
-                            current_turn += 1
-                    else:
-                        current_turn += 1
+                if should_increment_turn(
+                    pkt_type, prev_type, prev_tool,
+                    tool_name if isinstance(tool_name, str) else None,
+                    is_first=not reindexed,
+                ):
+                    current_turn += 1
 
                 reindexed.append(
                     {
