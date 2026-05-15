@@ -7,6 +7,7 @@ import { getProviderIcon } from "@/app/admin/configuration/llm/utils";
 import InputSelect from "@/refresh-components/inputs/InputSelect";
 import { createIcon } from "@/components/icons/icons";
 import { useTranslation } from "react-i18next";
+import { URL_PROVIDER_TYPES } from "@/lib/llmConfig/providers";
 
 interface LLMOption {
   name: string;
@@ -124,8 +125,15 @@ export default function LLMSelector({
     llmOptions.forEach((option) => {
       const providerKey = `${option.provider.toLowerCase()}/${option.providerId}`;
       if (!groups.has(providerKey)) {
+        // For cloud-based providers, use the custom provider name
+        // For URL-based providers (self-hosted), use the provider type display name
+        const isUrlBased = URL_PROVIDER_TYPES.includes(option.provider.toLowerCase());
+        const displayName = isUrlBased
+          ? option.providerDisplayName
+          : option.name;
+        
         groups.set(providerKey, {
-          displayName: option.providerDisplayName,
+          displayName,
           options: [],
         });
       }

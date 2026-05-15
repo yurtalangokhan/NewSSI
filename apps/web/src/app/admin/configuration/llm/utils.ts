@@ -25,7 +25,7 @@ import {
   OllamaFetchParams,
   OpenRouterFetchParams,
 } from "@/interfaces/llm";
-import { SvgAws, SvgOpenrouter } from "@opal/icons";
+import { SvgAws, SvgOpenrouter, SvgServer } from "@opal/icons";
 
 // Aggregator providers that host models from multiple vendors
 export const AGGREGATOR_PROVIDERS = new Set([
@@ -61,9 +61,12 @@ export const getProviderIcon = (
     microsoft: MicrosoftIconSVG,
     meta: MetaIcon,
     google: GeminiIcon,
+    google_genai: GeminiIcon,
+    google_vertexai: GeminiIcon,
     qwen: QwenIcon,
     qwq: QwenIcon,
     zai: ZAIIcon,
+    vllm: SvgServer,
     // Cloud providers - use AWS icon for Bedrock
     bedrock: SvgAws,
     bedrock_converse: SvgAws,
