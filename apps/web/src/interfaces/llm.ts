@@ -47,6 +47,11 @@ export interface LLMProviderView {
   api_base: string | null;
   api_version: string | null;
   custom_config: { [key: string]: string } | null;
+  is_public: boolean;
+  is_auto_mode: boolean;
+  groups: number[];
+  personas: number[];
+  deployment_name: string | null;
   model_configurations: ModelConfiguration[];
 }
 
@@ -55,7 +60,7 @@ export interface VisionProvider extends LLMProviderView {
 }
 
 export interface LLMProviderDescriptor {
-  id: number | string;
+  id: number;
   name: string;
   provider: string;
   provider_display_name: string;
@@ -130,71 +135,3 @@ export type FetchModelsParams =
   | OllamaFetchParams
   | OpenRouterFetchParams
   | VertexAIFetchParams;
-
-// Well-known provider types for configuration modals
-export interface WellKnownLangChainProvider {
-  name: string;
-  provider_type: string;
-  category: string;
-  known_models?: ModelConfiguration[];
-  recommended_default_model?: SimpleKnownModel | null;
-}
-
-// Per-user config for a provider
-export interface UserProviderConfig {
-  id: string;
-  default_model: string | null;
-  is_active: boolean;
-  // URL providers
-  api_key_masked?: string;
-  // API-key providers
-  api_base?: string | null;
-  api_version?: string | null;
-  custom_config?: Record<string, unknown>;
-}
-
-// URL-based provider interface (from DB providers table)
-export interface ProviderModelConfig {
-  name: string;
-  is_visible: boolean;
-  max_input_tokens: number | null;
-  supports_image_input: boolean;
-  supports_reasoning: boolean;
-}
-
-export interface UrlBasedProvider {
-  id: string;
-  name: string;
-  provider_type: "ollama" | "vllm" | "openai_compatible" | "litellm";
-  provider_kind: "url";
-  base_url: string;
-  has_api_key: boolean;
-  is_active: boolean;
-  is_builtin: boolean;
-  config: {
-    api_version?: string | null;
-    custom_config?: Record<string, string>;
-    model_configurations?: ProviderModelConfig[];
-    [key: string]: unknown;
-  };
-  user_config: UserProviderConfig;
-}
-
-// API-key provider interface (from DB user_providers table)
-export interface ApiKeyProviderDb {
-  id: string;
-  name: string;
-  provider_type: string;
-  provider_kind: "api_key";
-  is_active: boolean;
-  user_config: UserProviderConfig;
-}
-
-// Shape returned by GET /api/admin/providers
-export interface AllProvidersResponse {
-  builtin: UrlBasedProvider[];
-  url_providers: UrlBasedProvider[];
-  user_providers: ApiKeyProviderDb[];
-}
-
-export type ApiKeyProvider = ApiKeyProviderDb;

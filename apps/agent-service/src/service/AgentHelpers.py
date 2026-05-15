@@ -8,6 +8,11 @@ import from, avoiding circular dependencies.
 """
 
 from core.logger import get_logger
+
+logger = get_logger(__name__)
+import logging as _stdlib_logging
+
+logger_stdlib = _stdlib_logging.getLogger(__name__)
 from typing import Any
 from uuid import UUID, uuid4
 from datetime import UTC, datetime
@@ -275,10 +280,10 @@ async def _handle_input(
         # Map model_version from llm_override to model key
         agent_cfg = user_input.agent_config.copy()
         if "model_version" in agent_cfg and "model" not in agent_cfg:
-            agent_cfg["model"] = agent_cfg["model_version"]
+            agent_cfg["model"] = agent_cfg.pop("model_version")
         # Strip non-configurable keys sent by the frontend (temperature, model_provider, etc.)
         # but keep 'model', 'system_prompt', 'mcp_tools' and other agent-relevant keys
-        non_configurable_keys = {"temperature", "model_provider", "model_version"}
+        non_configurable_keys = {"temperature", "model_provider"}
         for k in non_configurable_keys:
             agent_cfg.pop(k, None)
         configurable.update(agent_cfg)

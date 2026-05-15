@@ -38,7 +38,7 @@ import { AuthType, NEXT_PUBLIC_CLOUD_ENABLED } from "./constants";
 import { useUser } from "@/providers/UserProvider";
 import { SEARCH_TOOL_ID } from "@/app/app/components/tools/constants";
 import { updateTemperatureOverrideForChatSession } from "@/app/app/services/lib";
-import { useAvailableModels } from "@/hooks/useAvailableModels";
+import { useLLMProviders } from "@/hooks/useLLMProviders";
 
 const CREDENTIAL_URL = "/api/manage/admin/credential";
 
@@ -476,7 +476,6 @@ export interface LlmDescriptor {
   name: string;
   provider: string;
   modelName: string;
-  providerId?: string;
 }
 
 export interface LlmManager {
@@ -540,15 +539,12 @@ export function getDefaultLlmDescriptor(
   defaultText?: DefaultModel | null
 ): LlmDescriptor | null {
   if (defaultText) {
-    const provider = llmProviders.find(
-      (p) => String(p.id) === String(defaultText.provider_id)
-    );
+    const provider = llmProviders.find((p) => p.id === defaultText.provider_id);
     if (provider) {
       return {
         name: provider.name,
         provider: provider.provider,
         modelName: defaultText.model_name,
-        providerId: String(provider.id),
       };
     }
   }
@@ -564,7 +560,6 @@ export function getDefaultLlmDescriptor(
       name: firstLlmProvider.name,
       provider: firstLlmProvider.provider,
       modelName: firstModel?.name ?? "",
-      providerId: String(firstLlmProvider.id),
     };
   }
   return null;
@@ -581,32 +576,6 @@ export function getValidLlmDescriptorForProviders(
   }
 
   if (modelName) {
-    // COMPOSITE FORMAT (backward compat): stored as "providerId:modelName" before separate default_provider_id field existed.
-    // Exclude strings with "__" because those use the older parseLlmDescriptor format ("providerName__modelName").
-    if (modelName.includes(":") && !modelName.includes("__")) {
-      const parts = modelName.split(":");
-      const providerId = parts[0];
-      const extractedModelName = parts.slice(1).join(":");
-      
-      const provider = llmProviders.find(
-        (p) => String(p.id) === providerId || p.id === providerId
-      );
-      if (provider) {
-        const model = provider.model_configurations.find(
-          (m) => m.name === extractedModelName
-        );
-        if (model) {
-          return {
-            modelName: extractedModelName,
-            name: provider.name,
-            provider: provider.provider,
-            providerId: String(provider.id),
-          };
-        }
-      }
-    }
-
-    // LEGACY FORMAT: Try parsing with "__" separator
     const model = parseLlmDescriptor(modelName);
     // If we have no parsed modelName, try to find the provider by the raw modelName string
     if (!(model.modelName && model.modelName.length > 0)) {
@@ -620,7 +589,6 @@ export function getValidLlmDescriptorForProviders(
           modelName: modelName,
           name: provider.name,
           provider: provider.provider,
-          providerId: String(provider.id),
         };
       }
     }
@@ -641,7 +609,6 @@ export function getValidLlmDescriptorForProviders(
           ...model,
           name: matchingProvider.name,
           provider: matchingProvider.provider,
-          providerId: String(matchingProvider.id),
         };
       }
       // Provider info was present but not found - fall through to default
@@ -654,12 +621,7 @@ export function getValidLlmDescriptorForProviders(
       );
 
       if (provider) {
-        return {
-          ...model,
-          provider: provider.provider,
-          name: provider.name,
-          providerId: String(provider.id),
-        };
+        return { ...model, provider: provider.provider, name: provider.name };
       }
     }
   }
@@ -680,12 +642,27 @@ export function useLlmManager(
 ): LlmManager {
   const { user } = useUser();
 
-  // Unified available-models endpoint already returns the complete provider/model list.
+  // Get all user-accessible providers via SWR (general providers - no persona filter)
+  // This includes public + all restricted providers user can access via groups
   const {
-    llmProviders,
-    isLoading: isLoadingProviders,
-  } = useAvailableModels();
-  const defaultText: DefaultModel | null = null;
+    llmProviders: allUserProviders,
+    defaultText: allUserDefaultText,
+    isLoading: isLoadingAllProviders,
+  } = useLLMProviders();
+  // Fetch persona-specific providers to enforce RBAC restrictions per assistant
+  // Only fetch if we have an agent selected
+  const personaId =
+    typeof liveAgent?.id === "number" ? liveAgent.id : undefined;
+  const {
+    llmProviders: personaProviders,
+    defaultText: personaDefaultText,
+    isLoading: isLoadingPersonaProviders,
+  } = useLLMProviders(personaId);
+
+  const llmProviders =
+    personaProviders !== undefined ? personaProviders : allUserProviders;
+  const defaultText =
+    personaProviders !== undefined ? personaDefaultText : allUserDefaultText;
 
   const [userHasManuallyOverriddenLLM, setUserHasManuallyOverriddenLLM] =
     useState(false);
@@ -742,19 +719,7 @@ export function useLlmManager(
         // current chat session, use the override
         return;
       } else if (user?.preferences?.default_model) {
-        const defaultProviderId = user.preferences.default_provider_id ?? undefined;
-        const resolved = getValidLlmDescriptor(user.preferences.default_model);
-        if (defaultProviderId && resolved.modelName) {
-          resolved.providerId = defaultProviderId;
-          const matchedProvider = llmProviders?.find(
-            (p) => String(p.id) === defaultProviderId
-          );
-          if (matchedProvider) {
-            resolved.provider = matchedProvider.provider;
-            resolved.name = matchedProvider.name;
-          }
-        }
-        setCurrentLlm(resolved);
+        setCurrentLlm(getValidLlmDescriptor(user.preferences.default_model));
       } else {
         const defaultLlm = getDefaultLlmDescriptor(llmProviders, defaultText);
         if (defaultLlm) {
@@ -894,7 +859,9 @@ export function useLlmManager(
     liveAgent: liveAgent ?? null,
     maxTemperature,
     llmProviders,
-    isLoadingProviders,
+    isLoadingProviders:
+      isLoadingAllProviders ||
+      (personaId !== undefined && isLoadingPersonaProviders),
     hasAnyProvider,
   };
 }

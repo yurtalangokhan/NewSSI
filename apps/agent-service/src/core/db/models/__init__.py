@@ -36,7 +36,6 @@ from core.db.models.mcp_tool import MCPToolModel
 from core.db.models.persona import PersonaModel
 from core.db.models.schedule import SyncScheduleModel
 from core.db.models.thread import ThreadModel
-from core.db.models.user_settings import UserSettingsModel
 
 __all__ = [
     "Base",
@@ -50,5 +49,4 @@ __all__ = [
     "MCPProviderModel",
     "MCPToolModel",
     "AgentToolsModel",
-    "UserSettingsModel",
 ]

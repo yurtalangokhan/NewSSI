@@ -7,12 +7,10 @@ from langchain.agents import create_agent
 from langchain_core.tools import BaseTool
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from langchain_mcp_adapters.sessions import StreamableHttpConnection
-from langchain_core.runnables import RunnableConfig
 from langgraph.graph.state import CompiledStateGraph
 
 from agents.lazy_agent import LazyLoadingAgent
-from core import settings
-from core.llm import get_model_from_config
+from core import get_model, settings
 
 logger = logging.getLogger(__name__)
 
@@ -63,8 +61,8 @@ class CommandAgent(LazyLoadingAgent):
         self._graph = self._create_graph()
         self._loaded = True
 
-    def _create_graph(self, configurable: dict | None = None) -> CompiledStateGraph:
-        model = get_model_from_config(configurable or {}, settings.DEFAULT_MODEL)
+    def _create_graph(self) -> CompiledStateGraph:
+        model = get_model(settings.DEFAULT_MODEL)
 
         return create_agent(
             model=model,
@@ -72,49 +70,5 @@ class CommandAgent(LazyLoadingAgent):
             name="command-agent",
             system_prompt=SYSTEM_PROMPT,
         )
-
-    def _get_runtime_graph(self, config: RunnableConfig | None) -> CompiledStateGraph:
-        configurable = (config or {}).get("configurable", {})
-        if any(k in configurable for k in ("model", "llm_instance")):
-            return self._create_graph(configurable)
-        return self._graph
-
-    async def ainvoke(
-        self,
-        input,
-        config: RunnableConfig | None = None,
-        **kwargs,
-    ):
-        await self.ensure_loaded()
-        graph = self._get_runtime_graph(config)
-        return await graph.ainvoke(input, config=config, **kwargs)
-
-    async def astream(
-        self,
-        input,
-        config: RunnableConfig | None = None,
-        **kwargs,
-    ):
-        await self.ensure_loaded()
-        graph = self._get_runtime_graph(config)
-        async for event in graph.astream(input, config=config, **kwargs):
-            yield event
-
-    async def astream_events(
-        self,
-        input,
-        config: RunnableConfig | None = None,
-        version: str = "v2",
-        **kwargs,
-    ):
-        await self.ensure_loaded()
-        graph = self._get_runtime_graph(config)
-        async for event in graph.astream_events(
-            input,
-            config=config,
-            version=version,
-            **kwargs,
-        ):
-            yield event
 
 command_agent = CommandAgent()

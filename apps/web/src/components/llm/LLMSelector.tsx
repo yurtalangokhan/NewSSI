@@ -12,7 +12,6 @@ interface LLMOption {
   name: string;
   value: string;
   icon: ReturnType<typeof getProviderIcon>;
-  providerId: string;
   modelName: string;
   providerName: string;
   provider: string;
@@ -27,7 +26,7 @@ export interface LLMSelectorProps {
   llmProviders: LLMProviderDescriptor[];
   defaultText?: DefaultModel | null;
   currentLlm: string | null;
-  onSelect: (value: string | null, providerId?: string) => void;
+  onSelect: (value: string | null) => void;
   requiresImageGeneration?: boolean;
   excludePublicProviders?: boolean;
   defaultOptionLabel?: string;
@@ -69,7 +68,7 @@ export default function LLMSelector({
           return;
         }
 
-        const key = `${provider.id}:${modelConfiguration.name}`;
+        const key = `${provider.provider}:${modelConfiguration.name}`;
         if (seenKeys.has(key)) {
           return; // Skip exact duplicate
         }
@@ -91,7 +90,6 @@ export default function LLMSelector({
             modelConfiguration.name
           ),
           icon: getProviderIcon(provider.provider, modelConfiguration.name),
-          providerId: String(provider.id),
           modelName: modelConfiguration.name,
           providerName: provider.name,
           provider: provider.provider,
@@ -122,14 +120,14 @@ export default function LLMSelector({
     >();
 
     llmOptions.forEach((option) => {
-      const providerKey = `${option.provider.toLowerCase()}/${option.providerId}`;
-      if (!groups.has(providerKey)) {
-        groups.set(providerKey, {
+      const provider = option.provider.toLowerCase();
+      if (!groups.has(provider)) {
+        groups.set(provider, {
           displayName: option.providerDisplayName,
           options: [],
         });
       }
-      groups.get(providerKey)!.options.push(option);
+      groups.get(provider)!.options.push(option);
     });
 
     // Sort groups alphabetically by display name
@@ -148,7 +146,7 @@ export default function LLMSelector({
   }, [llmOptions]);
 
   const defaultProvider = defaultText
-    ? llmProviders.find((p) => String(p.id) === String(defaultText.provider_id))
+    ? llmProviders.find((p) => p.id === defaultText.provider_id)
     : undefined;
 
   const defaultModelName = defaultText?.model_name;
@@ -170,14 +168,7 @@ export default function LLMSelector({
   return (
     <InputSelect
       value={currentLlm ? currentLlm : "default"}
-      onValueChange={(value) => {
-        if (value === "default") {
-          onSelect(null);
-          return;
-        }
-        const selected = llmOptions.find((option) => option.value === value);
-        onSelect(value, selected?.providerId);
-      }}
+      onValueChange={(value) => onSelect(value === "default" ? null : value)}
     >
       <InputSelect.Trigger id={name} name={name} placeholder={defaultLabel} />
 

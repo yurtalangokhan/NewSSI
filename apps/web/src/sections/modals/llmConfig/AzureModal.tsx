@@ -34,13 +34,18 @@ interface AzureModalValues extends BaseLLMFormValues {
   target_uri: string;
   api_base?: string;
   api_version?: string;
+  deployment_name?: string;
 }
 
+// Build the target_uri from existing provider data
 const buildTargetUri = (existingLlmProvider?: LLMProviderView): string => {
   if (!existingLlmProvider?.api_base || !existingLlmProvider?.api_version) {
     return "";
   }
-  return `${existingLlmProvider.api_base}/openai/deployments/your-deployment/chat/completions?api-version=${existingLlmProvider.api_version}`;
+
+  const deploymentName =
+    existingLlmProvider.deployment_name || "your-deployment";
+  return `${existingLlmProvider.api_base}/openai/deployments/${deploymentName}/chat/completions?api-version=${existingLlmProvider.api_version}`;
 };
 
 export function AzureModal({
@@ -108,6 +113,8 @@ export function AzureModal({
                     ...processedValues,
                     api_base: url.origin,
                     api_version: apiVersion,
+                    deployment_name:
+                      deploymentName || processedValues.deployment_name,
                   };
                 } catch (error) {
                   console.error("Failed to parse target_uri:", error);

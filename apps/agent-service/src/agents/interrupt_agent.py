@@ -12,8 +12,7 @@ from langgraph.store.base import BaseStore
 from langgraph.types import interrupt
 from pydantic import BaseModel, Field
 
-from core import settings
-from core.llm import get_model_from_config
+from core import get_model, settings
 
 # Added logger
 logger = logging.getLogger(__name__)
@@ -48,7 +47,7 @@ Don't tell the user what their sign is, you are just demonstrating your knowledg
 async def background(state: AgentState, config: RunnableConfig) -> AgentState:
     """This node is to demonstrate doing work before the interrupt"""
 
-    m = get_model_from_config(config["configurable"], settings.DEFAULT_MODEL)
+    m = get_model(config["configurable"].get("model", settings.DEFAULT_MODEL))
     model_runnable = wrap_model(m, background_prompt.format())
     response = await model_runnable.ainvoke(state, config)
 
@@ -128,7 +127,7 @@ async def determine_birthdate(
         )
 
     # If birthdate wasn't retrieved from store, proceed with extraction
-    m = get_model_from_config(config["configurable"], settings.DEFAULT_MODEL)
+    m = get_model(config["configurable"].get("model", settings.DEFAULT_MODEL))
     model_runnable = wrap_model(
         m.with_structured_output(BirthdateExtraction), birthdate_extraction_prompt.format()
     ).with_config(tags=["skip_stream"])
@@ -221,7 +220,7 @@ async def generate_response(state: AgentState, config: RunnableConfig) -> AgentS
     )
     augmented_prompt.content += f"\n\nAllowed actions for task control: {actions_str}"
 
-    m = get_model_from_config(configurable, settings.DEFAULT_MODEL)
+    m = get_model(configurable.get("model", settings.DEFAULT_MODEL))
     model_runnable = wrap_model(m, augmented_prompt)
     response = await model_runnable.ainvoke(state, config)
 

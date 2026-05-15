@@ -11,8 +11,7 @@ from langgraph.graph import END, MessagesState, StateGraph
 from langgraph.managed import RemainingSteps
 from langgraph.store.base import BaseStore
 
-from core import settings
-from core.llm import get_model_from_config
+from core import get_model, settings
 from memory.long_term import (
     build_memory_context,
     extract_and_save_memories,
@@ -156,7 +155,7 @@ async def prepare_augmented_prompt(state: AgentState, config: RunnableConfig) ->
 async def acall_model(state: AgentState, config: RunnableConfig, *, store: BaseStore) -> AgentState:
     """Generate a response based on the retrieved documents."""
     configurable = config.get("configurable", {})
-    m = get_model_from_config(configurable, settings.DEFAULT_MODEL)
+    m = get_model(configurable.get("model", settings.DEFAULT_MODEL))
 
     # Long-term memory: recall user facts if enabled
     long_term_memory = configurable.get("long_term_memory", False)

@@ -87,6 +87,7 @@ export function CustomModal({
           custom_config_list: existingLlmProvider?.custom_config
             ? Object.entries(existingLlmProvider.custom_config)
             : [],
+          deployment_name: existingLlmProvider?.deployment_name ?? null,
         };
 
         const validationSchema = buildDefaultValidationSchema().shape({
@@ -109,6 +110,7 @@ export function CustomModal({
             })
           ),
           custom_config_list: Yup.array(),
+          deployment_name: Yup.string().nullable(),
         });
 
         return (

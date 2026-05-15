@@ -445,121 +445,6 @@ class ChatController(BaseController):
                 return content.get("text", "") or str(content)
             return ""
 
-        def _extract_reasoning_from_tags(text: str) -> str:
-            if not text:
-                return ""
-
-            reasoning_parts: list[str] = []
-            for open_tag, close_tag in (("<think>", "</think>"), ("<thinking>", "</thinking>")):
-                start = 0
-                while True:
-                    open_pos = text.find(open_tag, start)
-                    if open_pos == -1:
-                        break
-
-                    search_from = open_pos + len(open_tag)
-                    close_pos = text.find(close_tag, search_from)
-                    if close_pos == -1:
-                        chunk = text[search_from:]
-                        if chunk.strip():
-                            reasoning_parts.append(chunk.strip())
-                        break
-
-                    chunk = text[search_from:close_pos]
-                    if chunk.strip():
-                        reasoning_parts.append(chunk.strip())
-                    start = close_pos + len(close_tag)
-
-            return "\n".join(reasoning_parts).strip()
-
-        def _extract_visible_and_reasoning(msg: Any) -> tuple[str, str]:
-            if hasattr(msg, "content"):
-                content = msg.content
-            elif isinstance(msg, dict):
-                content = msg.get("content", "")
-            else:
-                return "", ""
-
-            if isinstance(content, list):
-                visible_parts: list[str] = []
-                reasoning_parts: list[str] = []
-                for item in content:
-                    if isinstance(item, dict):
-                        item_type = item.get("type")
-                        if item_type == "thinking":
-                            thinking_text = str(item.get("thinking", "") or "")
-                            if thinking_text:
-                                reasoning_parts.append(thinking_text)
-                            continue
-
-                        if item_type == "text":
-                            text = str(item.get("text", "") or "")
-                            if not text:
-                                continue
-                            if item.get("thought"):
-                                reasoning_parts.append(text)
-                            else:
-                                visible_parts.append(text)
-                            continue
-
-                    if isinstance(item, str) and item:
-                        visible_parts.append(item)
-
-                visible_text = "".join(visible_parts).strip()
-                reasoning_text = "\n".join(part for part in reasoning_parts if part).strip()
-                return visible_text, reasoning_text
-
-            text = _extract_content(msg)
-            return _strip_think_tags(text), _extract_reasoning_from_tags(text)
-
-        def _extract_reasoning_from_metadata(msg: Any) -> str:
-            def _stringify(value: Any) -> str:
-                if isinstance(value, str):
-                    return value.strip()
-                if isinstance(value, list):
-                    parts: list[str] = []
-                    for item in value:
-                        if isinstance(item, str) and item:
-                            parts.append(item)
-                        elif isinstance(item, dict):
-                            text = item.get("text") or item.get("reasoning") or item.get("thinking")
-                            if isinstance(text, str) and text:
-                                parts.append(text)
-                    return "\n".join(parts).strip()
-                return ""
-
-            def _pick(payload: Any) -> str:
-                if not isinstance(payload, dict):
-                    return ""
-
-                for key in (
-                    "reasoning_content",
-                    "reasoning",
-                    "thinking",
-                    "reasoning_text",
-                    "thoughts",
-                    "thought",
-                    "chain_of_thought",
-                ):
-                    extracted = _stringify(payload.get(key))
-                    if extracted:
-                        return extracted
-
-                nested_content = payload.get("content")
-                if isinstance(nested_content, dict):
-                    return _pick(nested_content)
-
-                return ""
-
-            if isinstance(msg, dict):
-                additional_kwargs = msg.get("additional_kwargs", {}) or {}
-                response_metadata = msg.get("response_metadata", {}) or {}
-            else:
-                additional_kwargs = getattr(msg, "additional_kwargs", {}) or {}
-                response_metadata = getattr(msg, "response_metadata", {}) or {}
-
-            return _pick(additional_kwargs) or _pick(response_metadata)
-
         try:
             state = await self._thread_controller.get_thread_state(chat_session_id)
             langgraph_messages = state.get("values", {}).get("messages", [])
@@ -596,9 +481,7 @@ class ChatController(BaseController):
                         getattr(raw_msg, "tool_calls", None)
                         or (raw_msg.get("tool_calls", []) if isinstance(raw_msg, dict) else [])
                     )
-                    msg_content, reasoning_text = _extract_visible_and_reasoning(raw_msg)
-                    if not reasoning_text:
-                        reasoning_text = _extract_reasoning_from_metadata(raw_msg)
+                    msg_content = _strip_think_tags(_extract_content(raw_msg))
 
                     if tool_calls:
                         for tool_call in tool_calls:
@@ -628,23 +511,6 @@ class ChatController(BaseController):
                     if pending_tool_packets:
                         turn_packets.extend(pending_tool_packets)
                         pending_tool_packets = []
-
-                    if reasoning_text:
-                        turn_packets.append(
-                            {
-                                "placement": {"turn_index": 0, "sub_turn_index": None},
-                                "obj": {"type": "reasoning_start"},
-                            }
-                        )
-                        turn_packets.append(
-                            {
-                                "placement": {"turn_index": 0, "sub_turn_index": None},
-                                "obj": {
-                                    "type": "reasoning_delta",
-                                    "reasoning": reasoning_text,
-                                },
-                            }
-                        )
 
                     display_turn = 1 if turn_packets else 0
                     turn_packets.append(

@@ -125,10 +125,10 @@ class LLMBrain(Brain):
     async def load(self) -> None:
         """Load the LLM."""
         if self._model is None:
-            from core import settings
-            from core.llm import get_model_from_config
+            from core import get_model, settings
 
-            self._model = get_model_from_config(self._config, settings.DEFAULT_MODEL)
+            model_name = self.get_config("model", settings.DEFAULT_MODEL)
+            self._model = get_model(model_name)
 
     async def think(
         self,

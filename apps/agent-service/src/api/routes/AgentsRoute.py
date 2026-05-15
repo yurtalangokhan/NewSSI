@@ -44,75 +44,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/agents", tags=["agents"], dependencies=[Depends(verify_bearer)])
 
 
-class ThinkingTagProcessor:
-    """Tag-based thinking models (<think>...</think>) için streaming state machine."""
-
-    OPEN_TAGS = ("<thinking>", "<think>")
-    CLOSE_TAGS = ("</thinking>", "</think>")
-    MAX_TAG_LEN = max(len(t) for t in OPEN_TAGS + CLOSE_TAGS)  # = 11
-
-    def __init__(self):
-        self.in_thinking = False
-        self.reasoning_started = False
-        self.buffer = ""
-
-    def feed(self, text: str) -> list[dict]:
-        self.buffer += text
-        events: list[dict] = []
-
-        while self.buffer:
-            if not self.in_thinking:
-                pos, tag = self._find_tag(self.buffer, self.OPEN_TAGS)
-                if pos is not None:
-                    if pos > 0:
-                        events.append({"type": "token", "content": self.buffer[:pos]})
-                    if not self.reasoning_started:
-                        events.append({"type": "reasoning_start"})
-                        self.reasoning_started = True
-                    self.in_thinking = True
-                    self.buffer = self.buffer[pos + len(tag):]
-                else:
-                    safe_len = max(0, len(self.buffer) - self.MAX_TAG_LEN)
-                    if safe_len > 0:
-                        events.append({"type": "token", "content": self.buffer[:safe_len]})
-                        self.buffer = self.buffer[safe_len:]
-                    break
-            else:
-                pos, tag = self._find_tag(self.buffer, self.CLOSE_TAGS)
-                if pos is not None:
-                    if pos > 0:
-                        events.append({"type": "reasoning_delta", "reasoning": self.buffer[:pos]})
-                    self.in_thinking = False
-                    self.buffer = self.buffer[pos + len(tag):]
-                else:
-                    safe_len = max(0, len(self.buffer) - self.MAX_TAG_LEN)
-                    if safe_len > 0:
-                        events.append({"type": "reasoning_delta", "reasoning": self.buffer[:safe_len]})
-                        self.buffer = self.buffer[safe_len:]
-                    break
-
-        return events
-
-    def flush(self) -> list[dict]:
-        """Stream bitişinde kalan buffer'ı emit et."""
-        if not self.buffer:
-            return []
-        t = "reasoning_delta" if self.in_thinking else "token"
-        key = "reasoning" if self.in_thinking else "content"
-        event = {"type": t, key: self.buffer}
-        self.buffer = ""
-        return [event]
-
-    @staticmethod
-    def _find_tag(text: str, tags: tuple) -> tuple:
-        best_pos, best_tag = None, None
-        for tag in tags:
-            pos = text.find(tag)
-            if pos != -1 and (best_pos is None or pos < best_pos):
-                best_pos, best_tag = pos, tag
-        return best_pos, best_tag
-
-
 # =============================================================================
 # /info
 # =============================================================================
@@ -234,9 +165,6 @@ async def message_generator(
 
     kwargs, run_id = await _handle_input(user_input, agent, user_id)
 
-    thinking_processor = ThinkingTagProcessor()
-    anthropic_reasoning_started = False
-
     try:
         async for stream_event in agent.astream(
             **kwargs, stream_mode=["updates", "messages", "custom"], subgraphs=True
@@ -353,66 +281,22 @@ async def message_generator(
                     continue
                 if not isinstance(msg, AIMessageChunk):
                     continue
-
                 content = remove_tool_calls(msg.content)
-                reasoning_text = _extract_reasoning_text(msg)
-                if not content and not reasoning_text:
-                    continue
-
-                # Anthropic extended thinking: content list'te "thinking" type block'lar
-                if isinstance(content, list):
-                    emitted_reasoning = False
-                    for block in content:
-                        if not isinstance(block, dict):
-                            continue
-                        btype = block.get("type")
-                        if btype == "thinking":
-                            # Anthropic extended thinking block
-                            thinking_text = block.get("thinking", "")
-                            if thinking_text:
-                                if not anthropic_reasoning_started:
-                                    yield f"data: {json.dumps({'type': 'reasoning_start'})}\n\n"
-                                    anthropic_reasoning_started = True
-                                yield f"data: {json.dumps({'type': 'reasoning_delta', 'reasoning': thinking_text})}\n\n"
-                                emitted_reasoning = True
-                        elif btype == "text" and block.get("thought"):
-                            # Google Gemini thought block (thought=True in content part)
-                            thought_text = block.get("text", "")
-                            if thought_text:
-                                if not anthropic_reasoning_started:
-                                    yield f"data: {json.dumps({'type': 'reasoning_start'})}\n\n"
-                                    anthropic_reasoning_started = True
-                                yield f"data: {json.dumps({'type': 'reasoning_delta', 'reasoning': thought_text})}\n\n"
-                                emitted_reasoning = True
-                        elif btype == "text":
-                            text = block.get("text", "")
-                            if text:
-                                yield f"data: {json.dumps({'type': 'token', 'content': text})}\n\n"
-                    if reasoning_text and not emitted_reasoning:
-                        if not anthropic_reasoning_started:
-                            yield f"data: {json.dumps({'type': 'reasoning_start'})}\n\n"
-                            anthropic_reasoning_started = True
-                        yield f"data: {json.dumps({'type': 'reasoning_delta', 'reasoning': reasoning_text})}\n\n"
-                else:
-                    # Tag tabanlı modeller (DeepSeek, Qwen vb.)
+                if content:
                     token_str = convert_message_content_to_string(content)
+                    # Strip <think>/<thinking> tags from streaming tokens
+                    token_str = re.sub(r"<think>.*?</think>", "", token_str, flags=re.DOTALL)
+                    token_str = re.sub(r"<thinking>.*?</thinking>", "", token_str, flags=re.DOTALL)
+                    token_str = re.sub(r"<think>(?:(?!</think>).)*$", "", token_str, flags=re.DOTALL)
+                    token_str = re.sub(r"<thinking>(?:(?!</thinking>).)*$", "", token_str, flags=re.DOTALL)
                     if token_str:
-                        for evt in thinking_processor.feed(token_str):
-                            yield f"data: {json.dumps(evt)}\n\n"
-                    elif reasoning_text:
-                        if not anthropic_reasoning_started:
-                            yield f"data: {json.dumps({'type': 'reasoning_start'})}\n\n"
-                            anthropic_reasoning_started = True
-                        yield f"data: {json.dumps({'type': 'reasoning_delta', 'reasoning': reasoning_text})}\n\n"
-
+                        yield f"data: {json.dumps({'type': 'token', 'content': token_str})}\n\n"
     except Exception as e:
         import traceback
 
         logger.error("Error in message generator: %s\n%s", e, traceback.format_exc())
         yield f"data: {json.dumps({'type': 'error', 'content': 'Internal server error'})}\n\n"
     finally:
-        for evt in thinking_processor.flush():
-            yield f"data: {json.dumps(evt)}\n\n"
         yield "data: [DONE]\n\n"
 
 
@@ -421,42 +305,6 @@ def _create_ai_message(parts: dict) -> AIMessage:
     valid_keys = set(sig.parameters)
     filtered = {k: v for k, v in parts.items() if k in valid_keys}
     return AIMessage(**filtered)
-
-
-def _extract_reasoning_text(message: AIMessageChunk) -> str:
-    """Extract provider-specific reasoning text from chunk metadata when available."""
-
-    def _from_payload(payload: Any) -> str:
-        if not isinstance(payload, dict):
-            return ""
-
-        for key in (
-            "reasoning_content",  # Ollama (reasoning=True), DeepSeek API, OpenRouter
-            "reasoning",          # Some OpenAI-compatible providers
-            "thinking",           # Some providers
-            "reasoning_text",     # Some providers
-            "thoughts",           # Some providers
-            "thought",            # Alternative key used by some providers
-            "chain_of_thought",   # Some providers
-        ):
-            value = payload.get(key)
-            if isinstance(value, str) and value.strip():
-                return value
-            if isinstance(value, list):
-                try:
-                    return convert_message_content_to_string(value)
-                except Exception:
-                    continue
-
-        nested = payload.get("content")
-        if isinstance(nested, dict):
-            return _from_payload(nested)
-
-        return ""
-
-    additional_kwargs = getattr(message, "additional_kwargs", {}) or {}
-    response_metadata = getattr(message, "response_metadata", {}) or {}
-    return _from_payload(additional_kwargs) or _from_payload(response_metadata)
 
 
 def _sse_response_example() -> dict[int | str, Any]:
@@ -533,4 +381,3 @@ async def history(input: ChatHistoryInput) -> ChatHistory:
         return ChatHistory(messages=chat_messages)
     except Exception as e:
         logger.error(f"An exception occurred: {e}")
-        raise HTTPException(status_code=500, detail="Unexpected error")

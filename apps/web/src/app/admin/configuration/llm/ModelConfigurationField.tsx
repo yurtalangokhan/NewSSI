@@ -16,14 +16,12 @@ function ModelConfigurationRow({
   arrayHelpers,
   formikProps,
   setError,
-  t,
 }: {
   name: string;
   index: number;
   arrayHelpers: ArrayHelpers;
   formikProps: FormikProps<{ model_configurations: ModelConfiguration[] }>;
   setError: (value: string | null) => void;
-  t: (key: string, options?: Record<string, unknown>) => string;
 }) {
   const [, input] = useField(`${name}[${index}]`);
   useEffect(() => {
@@ -41,7 +39,7 @@ function ModelConfigurationRow({
         <TextFormField
           name={`${name}[${index}].name`}
           label=""
-          placeholder={t("admin.llm.modelNamePlaceholder", { index: index + 1 })}
+          placeholder={`model-name-${index + 1}`}
           removeLabel
           hideError
         />
@@ -50,7 +48,7 @@ function ModelConfigurationRow({
         <TextFormField
           name={`${name}[${index}].max_input_tokens`}
           label=""
-          placeholder={t("admin.llm.defaultPlaceholder")}
+          placeholder="Default"
           removeLabel
           hideError
           type="number"
@@ -116,7 +114,6 @@ export function ModelConfigurationField({
                   formikProps={formikProps}
                   arrayHelpers={arrayHelpers}
                   index={index}
-                  t={t}
                   setError={(message: string | null) => {
                     const newErrors = { ...errorMap };
                     if (message) {

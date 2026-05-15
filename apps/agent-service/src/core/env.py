@@ -115,7 +115,7 @@ class Env:
 
     @property
     def OLLAMA_BASE_URL(self) -> str | None:
-        return os.environ.get("OLLAMA_BASE_URL") or os.environ.get("OLLAMA_URL")
+        return os.environ.get("OLLAMA_BASE_URL")
 
     @property
     def OLLAMA_MODEL(self) -> str | None:

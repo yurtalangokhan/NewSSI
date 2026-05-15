@@ -20,30 +20,9 @@ const PROVIDER_ICONS: Record<string, IconFunctionComponent> = {
   [LLMProviderName.VERTEX_AI]: SvgGemini,
   [LLMProviderName.BEDROCK]: SvgAws,
   [LLMProviderName.AZURE]: SvgAzure,
-  google_genai: SvgGemini,
-  google_vertexai: SvgGemini,
-  azure_openai: SvgAzure,
-  azure_ai: SvgAzure,
-  aws_bedrock: SvgAws,
-  openai_compatible: SvgOpenai,
-  vllm: SvgServer,
-  ollama: SvgOllama,
   litellm: SvgLitellm,
-  openrouter: SvgOpenrouter,
-  groq: SvgCloud,
-  mistral: SvgCloud,
-  cohere: SvgCloud,
-  deepseek: SvgCloud,
-  xai: SvgCloud,
-  perplexity: SvgCloud,
-  together: SvgCloud,
-  fireworks: SvgCloud,
-  cerebras: SvgCloud,
-  huggingface: SvgCloud,
-  nvidia: SvgCloud,
-  ibm_watsonx: SvgCloud,
-  sambanova: SvgCloud,
   [LLMProviderName.OLLAMA_CHAT]: SvgOllama,
+  [LLMProviderName.OPENROUTER]: SvgOpenrouter,
 
   // fallback
   [LLMProviderName.CUSTOM]: SvgServer,
@@ -76,8 +55,6 @@ const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
   // fallback
   [LLMProviderName.CUSTOM]: "Other providers or self-hosted",
 };
-
-export const URL_PROVIDER_TYPES = ["ollama", "vllm", "openai_compatible", "litellm"];
 
 export function getProviderProductName(providerName: string): string {
   return PROVIDER_PRODUCT_NAMES[providerName] ?? providerName;

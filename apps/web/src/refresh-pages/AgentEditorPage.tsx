@@ -22,7 +22,7 @@ import * as InputLayouts from "@/layouts/input-layouts";
 import { useFormikContext } from "formik";
 import LLMSelector from "@/components/llm/LLMSelector";
 import { parseLlmDescriptor, structureValue } from "@/lib/llmConfig/utils";
-import { useAvailableModels } from "@/hooks/useAvailableModels";
+import { useLLMProviders } from "@/hooks/useLLMProviders";
 import {
   STARTER_MESSAGES_EXAMPLES,
   MAX_CHARACTERS_STARTER_MESSAGE,
@@ -527,7 +527,7 @@ export default function AgentEditorPage({
   const { mcpData, isLoading: isMcpLoading } = useMcpServersForAgentEditor();
   const { openApiTools: openApiToolsRaw, isLoading: isOpenApiLoading } =
     useOpenApiTools();
-  const { llmProviders } = useAvailableModels();
+  const { llmProviders } = useLLMProviders(existingAgent?.id);
   const mcpServers = mcpData?.mcp_servers ?? [];
   const openApiTools = openApiToolsRaw ?? [];
 
@@ -1573,7 +1573,7 @@ export default function AgentEditorPage({
                                     llmProviders
                                   )}
                                   defaultOptionLabel={t("agentEditor.defaultModelOption")}
-                                  onSelect={(selected, _providerId) =>
+                                  onSelect={(selected) =>
                                     onLlmSelect(selected, setFieldValue)
                                   }
                                 />

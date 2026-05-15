@@ -49,8 +49,8 @@ export function buildLlmOptions(
     return [];
   }
 
-  // Track seen combinations of provider instance + model name to avoid accidental
-  // collapse of different configured providers that share the same provider type.
+  // Track seen combinations of provider + exact model name to avoid true duplicates
+  // (same model appearing from multiple LLM provider configs with same provider type)
   const seenKeys = new Set<string>();
   const options: LLMOption[] = [];
 
@@ -62,8 +62,8 @@ export function buildLlmOptions(
           modelConfiguration.name === currentModelName
       )
       .forEach((modelConfiguration) => {
-        // Deduplicate by provider instance id + model name.
-        const key = `${llmProvider.id}:${modelConfiguration.name}`;
+        // Deduplicate by exact provider + model name combination
+        const key = `${llmProvider.provider}:${modelConfiguration.name}`;
         if (seenKeys.has(key)) {
           return;
         }
@@ -72,7 +72,6 @@ export function buildLlmOptions(
         options.push({
           name: llmProvider.name,
           provider: llmProvider.provider,
-          providerId: String(llmProvider.id),
           providerDisplayName:
             llmProvider.provider_display_name || llmProvider.provider,
           modelName: modelConfiguration.name,
@@ -102,7 +101,7 @@ export function groupLlmOptions(
     const groupKey =
       isAggregator && option.vendor
         ? `${provider}/${option.vendor.toLowerCase()}`
-        : `${provider}/${option.providerId || option.providerDisplayName.toLowerCase()}`;
+        : provider;
 
     if (!groups.has(groupKey)) {
       let displayName: string;
@@ -313,7 +312,6 @@ export default function LLMPopover({
       modelName: option.modelName,
       provider: option.provider,
       name: option.name,
-      providerId: option.providerId,
     } as LlmDescriptor);
     onSelect?.(structureValue(option.name, option.provider, option.modelName));
     setOpen(false);
@@ -322,9 +320,7 @@ export default function LLMPopover({
   const renderModelItem = (option: LLMOption) => {
     const isSelected =
       option.modelName === llmManager.currentLlm.modelName &&
-      (option.providerId && llmManager.currentLlm.providerId
-        ? option.providerId === llmManager.currentLlm.providerId
-        : option.provider === llmManager.currentLlm.provider);
+      option.provider === llmManager.currentLlm.provider;
 
     const capabilities: string[] = [];
     if (option.supportsReasoning) {

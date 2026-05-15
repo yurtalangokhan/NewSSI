@@ -144,7 +144,7 @@ export const CompletedHeader = React.memo(function CompletedHeader({
             aria-label={t("timeline.expandTimeline")}
             aria-expanded={isExpanded}
           >
-            {`${totalSteps} ${totalSteps === 1 ? t("timeline.stepSingular") : t("timeline.stepPlural")}`}
+            {`${totalSteps} ${totalSteps === 1 ? "step" : "steps"}`}
           </Button>
         )}
       </div>
@@ -193,7 +193,7 @@ export const CompletedHeader = React.memo(function CompletedHeader({
           aria-label={t("timeline.expandTimeline")}
           aria-expanded={isExpanded}
         >
-          {`${totalSteps} ${totalSteps === 1 ? t("timeline.stepSingular") : t("timeline.stepPlural")}`}
+          {`${totalSteps} ${totalSteps === 1 ? "step" : "steps"}`}
         </Button>
       )}
     </div>

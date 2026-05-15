@@ -4,7 +4,6 @@ import { FunctionComponent } from "react";
 export interface LLMOption {
   name: string;
   provider: string;
-  providerId?: string;
   providerDisplayName: string;
   modelName: string;
   displayName: string;

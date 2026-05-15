@@ -110,7 +110,7 @@ def store_file(file_id: str, data: bytes, mime_type: str, filename: str) -> File
         chat_file_type=chat_file_type,
     )
     _STORE[file_id] = record
-    logger.info(f"Stored file {file_id} ({mime_type}, {len(data)} bytes)")
+    logger.debug("Stored file %s (%s, %d bytes)", file_id, mime_type, len(data))
     return record
 
 
@@ -118,7 +118,6 @@ def get_file(file_id: str) -> FileRecord | None:
     """Retrieve a file record, enforcing TTL. Returns None if expired or missing."""
     record = _STORE.get(file_id)
     if record is None:
-        logger.info(f"File {file_id} not found in store or TTL expired")
         return None
     if datetime.now(UTC) - record.created_at > FILE_TTL:
         del _STORE[file_id]

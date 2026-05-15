@@ -123,10 +123,8 @@ class LazyLoadingAgent(ABC):
             return
 
         try:
-            from core import settings
-            from core.llm import get_model_from_config
-
-            model = get_model_from_config(configurable, settings.DEFAULT_MODEL)
+            from core import get_model, settings
+            model = get_model(configurable.get("model", settings.DEFAULT_MODEL))
 
             # Get the response messages from output
             output_messages = []
@@ -228,10 +226,8 @@ class LazyLoadingAgent(ABC):
             try:
                 store = self._get_langgraph_store()
                 if store:
-                    from core import settings
-                    from core.llm import get_model_from_config
-
-                    model = get_model_from_config(configurable, settings.DEFAULT_MODEL)
+                    from core import get_model, settings
+                    model = get_model(configurable.get("model", settings.DEFAULT_MODEL))
                     await extract_and_save_memories(
                         store, user_id, original_messages, model, memories
                     )

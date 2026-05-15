@@ -108,21 +108,6 @@ function mapBackendToFrontend(packet: BackendPacket): { placement: any; obj: any
           tool_name: `[step] ${(packet as any).step_name ?? "step"}`,
         },
       };
-
-    case "reasoning_start":
-      return {
-        placement: defaultPlacement,
-        obj: { type: "reasoning_start" },
-      };
-
-    case "reasoning_delta":
-      return {
-        placement: defaultPlacement,
-        obj: {
-          type: "reasoning_delta",
-          reasoning: (packet as any).reasoning ?? "",
-        },
-      };
     
     default:
       // Unknown packet type - return as-is wrapped
@@ -140,7 +125,6 @@ const TOOL_PACKET_TYPES = new Set([
   "custom_tool_start", "custom_tool_delta",
   "custom_step_start",
   "search_tool_start", "search_tool_queries_delta", "search_tool_documents_delta",
-  "reasoning_start", "reasoning_delta",
 ]);
 
 export async function* handleSSEStream<T extends PacketType>(

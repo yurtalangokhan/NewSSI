@@ -58,7 +58,8 @@ export function OpenAIModal({
           default_model_name:
             wellKnownLLMProvider?.recommended_default_model?.name ??
             DEFAULT_DEFAULT_MODEL_NAME,
-          is_auto_mode: true,
+          // Default to auto mode for new OpenAI providers
+          is_auto_mode: existingLlmProvider?.is_auto_mode ?? true,
         };
 
         const validationSchema = buildDefaultValidationSchema().shape({

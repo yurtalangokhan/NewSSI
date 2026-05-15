@@ -286,21 +286,9 @@ const AppInputBar = React.memo(
       (file: ProjectFile) => {
         if (!setPresentingDocument) return;
 
-        const fileWithData = file as ProjectFile & {
-          _inline_data?: string;
-          _mime_type?: string;
-        };
-
-        const previewUrl =
-          fileWithData._inline_data && fileWithData._mime_type
-            ? `data:${fileWithData._mime_type};base64,${fileWithData._inline_data}`
-            : undefined;
-
         const documentForViewer: MinimalOnyxDocument = {
           document_id: `project_file__${file.file_id}`,
           semantic_identifier: file.name,
-          preview_url: previewUrl,
-          preview_mime_type: fileWithData._mime_type,
         };
 
         setPresentingDocument(documentForViewer);

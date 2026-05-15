@@ -21,6 +21,4 @@ class FakeModelName(StrEnum):
     FAKE = "fake"
 
 
-# Allow dynamically discovered provider model names (vLLM/OpenAI-compatible/etc.)
-# while still keeping enum definitions for known local/test presets.
-AllModelEnum: TypeAlias = str
+AllModelEnum: TypeAlias = OllamaModelName | FakeModelName

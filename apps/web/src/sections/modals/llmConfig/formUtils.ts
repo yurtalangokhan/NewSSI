@@ -20,13 +20,17 @@ export const buildDefaultInitialValues = (
 ) => {
   const defaultModelName = modelConfigurations?.[0]?.name ?? "";
 
+  // Auto mode must be explicitly enabled by the user
+  // Default to false for new providers, preserve existing value when editing
+  const isAutoMode = existingLlmProvider?.is_auto_mode ?? false;
+
   return {
     name: existingLlmProvider?.name || "",
     default_model_name: defaultModelName,
-    is_public: true,
-    is_auto_mode: false,
-    groups: [],
-    personas: [],
+    is_public: existingLlmProvider?.is_public ?? true,
+    is_auto_mode: isAutoMode,
+    groups: existingLlmProvider?.groups ?? [],
+    personas: existingLlmProvider?.personas ?? [],
     selected_model_names: existingLlmProvider
       ? existingLlmProvider.model_configurations
           .filter((modelConfiguration) => modelConfiguration.is_visible)

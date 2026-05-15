@@ -6,7 +6,6 @@ import Text from "@/refresh-components/texts/Text";
 import { Button } from "@opal/components";
 import Modal from "@/refresh-components/Modal";
 import { useModalClose } from "../contexts/ModalContext";
-import { useTranslation } from "react-i18next";
 
 export interface ConfirmationModalProps {
   icon: React.FunctionComponent<IconProps>;
@@ -32,7 +31,6 @@ export default function ConfirmationModalLayout({
   onClose: externalOnClose,
   twoTone = true,
 }: ConfirmationModalProps) {
-  const { t } = useTranslation();
   const onClose = useModalClose(externalOnClose);
 
   return (
@@ -56,7 +54,7 @@ export default function ConfirmationModalLayout({
         <Modal.Footer>
           {!hideCancel && (
             <Button prominence="secondary" onClick={onClose}>
-              {t("modals.cancel")}
+              Cancel
             </Button>
           )}
           {submit}

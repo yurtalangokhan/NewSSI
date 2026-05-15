@@ -13,8 +13,7 @@ from langgraph.pregel import Pregel
 from agents.lazy_agent import LazyLoadingAgent
 from agents.graphs.builder import GraphBuilder
 from agents.graphs.schemas import GraphSchemaType, get_schema
-from core import settings
-from core.llm import get_model, get_model_from_config
+from core import get_model, settings
 from core.logger import get_logger
 
 logger = get_logger(__name__)
@@ -131,13 +130,9 @@ class DynamicAgent(LazyLoadingAgent):
         except Exception as e:
             logger.warning("Could not load MCP tools for DynamicAgent '%s': %s", self.name, e)
 
-    def _create_graph_from_config(
-        self,
-        *,
-        runtime_config: dict[str, Any] | None = None,
-    ) -> CompiledStateGraph | Pregel:
-        effective_config = {**self._config, **(runtime_config or {})}
-        schema_type_str = effective_config.get("graph_schema", "zero_shot")
+    def _create_graph_from_config(self) -> CompiledStateGraph | Pregel:
+        schema_type_str = self._config.get("graph_schema", "zero_shot")
+        model_name = self._config.get("model") or settings.DEFAULT_MODEL
 
         try:
             schema_type = GraphSchemaType(schema_type_str)
@@ -151,18 +146,18 @@ class DynamicAgent(LazyLoadingAgent):
             if schema and getattr(schema, "default_system_prompt", None)
             else "You are a helpful AI assistant."
         )
-        system_prompt = effective_config.get("system_prompt") or default_system_prompt
+        system_prompt = self._config.get("system_prompt") or default_system_prompt
 
         builder = GraphBuilder(
-            model=get_model_from_config(effective_config, settings.DEFAULT_MODEL),
+            model=get_model(model_name),
             system_prompt=system_prompt,
             mcp_tools_map=self._mcp_tools_map,
-            memory_enabled=effective_config.get("memory_type") == "long_term",
+            memory_enabled=self._config.get("memory_type") == "long_term",
             checkpointer=self._checkpointer if hasattr(self, "_checkpointer") else None,
         )
 
         build_config: dict[str, Any] = {}
-        rag_config = effective_config.get("rag_config") or {}
+        rag_config = self._config.get("rag_config") or {}
         rag_tools = []
         if rag_config:
             try:
@@ -172,7 +167,7 @@ class DynamicAgent(LazyLoadingAgent):
             except Exception as e:
                 logger.warning("Failed to resolve knowledge tools for DynamicAgent '%s': %s", self.name, e)
 
-        configured_mcp_tools = effective_config.get("mcp_tools", [])
+        configured_mcp_tools = self._config.get("mcp_tools", [])
         if schema_type == GraphSchemaType.ZERO_SHOT and (configured_mcp_tools or rag_tools):
             logger.info(
                 "Upgrading DynamicAgent '%s' from zero_shot to react because tools or RAG are configured",
@@ -188,25 +183,25 @@ class DynamicAgent(LazyLoadingAgent):
             build_config["supervisor_prompt"] = self._config.get(
                 "supervisor_prompt", "You are a team supervisor."
             )
-            build_config["sub_agents"] = effective_config.get("sub_agents", [])
-            build_config["model"] = effective_config.get("model")
+            build_config["sub_agents"] = self._config.get("sub_agents", [])
+            build_config["model"] = self._config.get("model")
         elif schema_type == GraphSchemaType.PIPELINE:
-            build_config["pipeline_prompt"] = effective_config.get(
+            build_config["pipeline_prompt"] = self._config.get(
                 "pipeline_prompt", "Process through all stages."
             )
-            build_config["stages"] = effective_config.get("stages", [])
-            build_config["model"] = effective_config.get("model")
+            build_config["stages"] = self._config.get("stages", [])
+            build_config["model"] = self._config.get("model")
             build_config["extra_tools"] = rag_tools
         elif schema_type == GraphSchemaType.PLAN_EXECUTE:
             build_config["system_prompt"] = system_prompt
-            build_config["mcp_tools"] = effective_config.get("mcp_tools", [])
+            build_config["mcp_tools"] = self._config.get("mcp_tools", [])
             build_config["extra_tools"] = rag_tools
         elif schema_type == GraphSchemaType.SELF_REFLECT:
             build_config["system_prompt"] = system_prompt
-            build_config["reflection_prompt"] = effective_config.get(
+            build_config["reflection_prompt"] = self._config.get(
                 "reflection_prompt", "Review and improve this response."
             )
-            build_config["max_iterations"] = effective_config.get("max_iterations", 3)
+            build_config["max_iterations"] = self._config.get("max_iterations", 3)
         else:
             build_config["system_prompt"] = system_prompt
 
@@ -220,17 +215,6 @@ class DynamicAgent(LazyLoadingAgent):
             mcp_tools_map={},
             checkpointer=self._checkpointer if hasattr(self, "_checkpointer") else None,
         ).build("zero_shot")
-
-    def _get_runtime_graph(self, config: RunnableConfig | None) -> CompiledStateGraph | Pregel:
-        configurable = (config or {}).get("configurable", {})
-        if not configurable:
-            return self._graph
-
-        # Only build an override graph if runtime model routing fields are present.
-        if any(k in configurable for k in ("model", "llm_instance", "system_prompt", "mcp_tools")):
-            return self._create_graph_from_config(runtime_config=configurable)
-
-        return self._graph
 
     async def ainvoke(
         self,
@@ -246,11 +230,10 @@ class DynamicAgent(LazyLoadingAgent):
 
         input, memories, user_id = await self._inject_memory_into_input(input, config)
 
-        graph = self._get_runtime_graph(config)
-        result = await graph.ainvoke(input, config=config, **kwargs)
+        result = await self._graph.ainvoke(input, config=config, **kwargs)
 
         if memories is not None and user_id:
-            await self._save_memory_from_output(result, original_messages, memories, user_id, config)
+            await self._save_memory_from_output(result, memories, user_id, original_messages)
 
         return result
 
@@ -269,14 +252,13 @@ class DynamicAgent(LazyLoadingAgent):
 
         input, memories, user_id = await self._inject_memory_into_input(input, config)
 
-        graph = self._get_runtime_graph(config)
-        async for event in graph.astream(input, config=config, **kwargs):
+        async for event in self._graph.astream(input, config=config, **kwargs):
             yield event
 
         if memories is not None and user_id:
             # Best-effort memory save; we don't have final output here but
             # LazyLoadingAgent._save_memory_from_output handles None gracefully.
             try:
-                await self._save_memory_from_output(None, original_messages, memories, user_id, config)
+                await self._save_memory_from_output(None, memories, user_id, original_messages)
             except Exception as e:
                 logger.warning("Memory save after stream failed: %s", e)

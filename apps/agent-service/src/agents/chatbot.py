@@ -3,8 +3,7 @@ from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, MessagesState, StateGraph
 from langgraph.store.base import BaseStore
 
-from core import settings
-from core.llm import get_model_from_config
+from core import get_model, settings
 from core.logger import get_logger
 from memory.long_term import (
     build_memory_context,
@@ -20,7 +19,7 @@ async def call_model(
 ) -> MessagesState:
     messages = state["messages"]
     configurable = config.get("configurable", {})
-    model = get_model_from_config(configurable, settings.DEFAULT_MODEL)
+    model = get_model(configurable.get("model", settings.DEFAULT_MODEL))
 
     # Long-term memory: recall user facts if enabled
     long_term_memory = configurable.get("long_term_memory", False)
