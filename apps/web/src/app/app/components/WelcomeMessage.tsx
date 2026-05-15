@@ -7,7 +7,7 @@ import {
 import AgentAvatar from "@/refresh-components/avatars/AgentAvatar";
 import Text from "@/refresh-components/texts/Text";
 import { MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useSettingsContext } from "@/providers/SettingsProvider";
 import FrostedDiv from "@/refresh-components/FrostedDiv";
 import { useTranslation } from "react-i18next";
@@ -24,21 +24,27 @@ export default function WelcomeMessage({
   const { t } = useTranslation();
   const settings = useSettingsContext();
   const enterpriseSettings = settings?.enterpriseSettings;
-  const greetings = useMemo(
-    () => [t("app.greetings.howCanIHelp"), t("app.greetings.letsGetStarted")],
-    [t]
-  );
 
-  // Use a stable default for SSR, then randomize on client after hydration
-  const [greeting, setGreeting] = useState(greetings[0]);
+  // Keep the first render identical on the server and client.
+  // Localized or randomized greetings are applied only after hydration.
+  const [greeting, setGreeting] = useState(GREETING_MESSAGES[0]);
 
   useEffect(() => {
     if (enterpriseSettings?.custom_greeting_message) {
       setGreeting(enterpriseSettings.custom_greeting_message);
     } else {
-      setGreeting(greetings[Math.floor(Math.random() * greetings.length)]);
+      const localizedGreetings = [
+        t("app.greetings.howCanIHelp"),
+        t("app.greetings.letsGetStarted"),
+      ];
+
+      setGreeting(
+        localizedGreetings[
+          Math.floor(Math.random() * localizedGreetings.length)
+        ]
+      );
     }
-  }, [enterpriseSettings?.custom_greeting_message, greetings]);
+  }, [enterpriseSettings?.custom_greeting_message, t]);
 
   let content: React.ReactNode = null;
 

@@ -1,65 +1,34 @@
-import React, { useCallback, useEffect, useState } from "react";
-import { useTranslation } from "react-i18next";
+import React, { useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@opal/components";
 import { SvgSidebar } from "@opal/icons";
-import { useTheme } from "next-themes";
 
 interface LogoSectionProps {
   folded?: boolean;
   onFoldClick?: () => void;
 }
 
-const LOGO_CACHE_BUSTER = "v=20260505-2";
-
 function LogoSection({ folded, onFoldClick }: LogoSectionProps) {
-  const { resolvedTheme } = useTheme();
-  const { t } = useTranslation();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
   const closeButton = useCallback(
     () => (
       <Button
         icon={SvgSidebar}
         prominence="tertiary"
-        tooltip={t("sidebar.closeSidebar")}
+        tooltip="Close Sidebar"
         onClick={onFoldClick}
       />
     ),
-    [onFoldClick, t]
+    [onFoldClick]
   );
-
-  if (!mounted) {
-    return (
-      <div
-        className={cn(
-          "flex px-2.5 py-2 h-[3.25rem] min-h-[3.25rem] items-center",
-          folded ? "justify-center" : "justify-between"
-        )}
-      >
-        {!folded && <div className="h-8 w-[184px]" aria-hidden="true" />}
-        {folded !== undefined && closeButton()}
-      </div>
-    );
-  }
-
-  const logoSrc =
-    resolvedTheme === "light"
-      ? `/logo.turksat.svg?${LOGO_CACHE_BUSTER}`
-      : `/logo.turksat.white.svg?${LOGO_CACHE_BUSTER}`;
 
   return (
     <div
       className={cn(
-        "flex px-2.5 py-2 h-[3.25rem] min-h-[3.25rem] items-center",
-        folded ? "justify-center" : "justify-between"
+        /* Keep top spacing consistent after removing the brand logo. */
+        "flex px-2.5 py-2 h-[3.25rem] min-h-[3.25rem]",
+        folded ? "justify-center" : "justify-end"
       )}
     >
-      {!folded && <img src={logoSrc} alt="Turksat Logo" className="h-8 w-auto" draggable={false} />}
       {folded !== undefined && closeButton()}
     </div>
   );

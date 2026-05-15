@@ -4,7 +4,7 @@ from controller.assistant_schemas_controller import (
     get_assistant_schemas_controller,
 )
 from controller.auth_controller import AuthController, get_auth_controller
-from controller.auth_metadata_controller import AuthMetadataController, get_auth_metadata_controller
+from controller.session_controller import SessionController, get_session_controller
 from controller.base import BaseController
 from controller.chat_controller import ChatController, get_chat_controller
 from controller.data_controller import DataController, get_data_controller
@@ -29,8 +29,8 @@ __all__ = [
     "get_proxy_controller",
     "AuthController",
     "get_auth_controller",
-    "AuthMetadataController",
-    "get_auth_metadata_controller",
+    "SessionController",
+    "get_session_controller",
     "ChatController",
     "get_chat_controller",
     "PersonaController",

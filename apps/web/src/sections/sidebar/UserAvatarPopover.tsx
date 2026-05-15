@@ -90,19 +90,9 @@ function SettingsPopover({
   };
 
   const handleLogout = () => {
-    logout()
-      .then((response) => {
-        if (!response?.ok) {
-          toast.error(t("userMenu.logoutFailed"));
-          return;
-        }
-
-        router.push("/auth/login?disableAutoRedirect=true");
-      })
-
-      .catch(() => {
-        toast.error(t("userMenu.logoutFailed"));
-      });
+    logout().catch(() => {
+      toast.error(t("userMenu.logoutFailed"));
+    });
   };
 
   return (
