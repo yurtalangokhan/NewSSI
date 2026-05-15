@@ -908,11 +908,13 @@ class UserController(BaseController):
         settings_updates: dict[str, Any] = {}
         if "memories" in personalization:
             settings_updates["memories"] = personalization.get("memories") or []
-        if "use_memories" in personalization:
-            settings_updates["use_memories"] = bool(personalization.get("use_memories"))
-        if "enable_memory_tool" in personalization:
-            settings_updates["enable_memory_tool"] = bool(
-                personalization.get("enable_memory_tool")
+        if "long_term_memory_enabled" in personalization:
+            settings_updates["long_term_memory_enabled"] = bool(
+                personalization.get("long_term_memory_enabled")
+            )
+        if "extract_memory" in personalization:
+            settings_updates["extract_memory"] = bool(
+                personalization.get("extract_memory")
             )
         if "user_preferences" in personalization:
             settings_updates["user_preferences"] = str(

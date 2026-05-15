@@ -823,6 +823,9 @@ const en = {
       updateMemoriesLabel: "Update Memories",
       updateMemoriesDescription:
         "Let Onyx generate and update stored memories.",
+      longTermMemoryLabel: "Long-Term Memory",
+      longTermMemoryDescription:
+        "Automatically extract and recall facts from your conversations.",
       promptShortcutsTitle: "Prompt Shortcuts",
       useShortcutsLabel: "Use Prompt Shortcuts",
       useShortcutsDescription:
@@ -1013,6 +1016,11 @@ const en = {
     executingTool: "Executing tool",
     updatingMemory: "Updating memory...",
     updatingMemoryActive: "Updating memory",
+    ltmRecalling: "Recalling memories...",
+    ltmSaving: "Saving to long-term memory...",
+    ltmRecalled: "Recalled {{count}} memories",
+    ltmSaved: "Saved {{count}} memories",
+    ltmMore: "more",
     generatingPlan: "Generating plan",
     generatedPlan: "Generated plan",
     researchPlan: "Research Plan",
@@ -1174,6 +1182,8 @@ const en = {
     memoryNone: "None",
     memoryLongTerm: "Long Term",
     memoryBuffer: "Buffer",
+    longTermMemoryLabel: "Long-Term Memory",
+    longTermMemoryDescription: "Enable persistent memory for this agent.",
     dynamic: {
       createTitle: "Create Dynamic Agent",
       createSubtitle:

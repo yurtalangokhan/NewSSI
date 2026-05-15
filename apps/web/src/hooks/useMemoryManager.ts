@@ -3,6 +3,7 @@ import { MemoryItem } from "@/lib/types";
 
 export interface LocalMemory {
   id: number;
+  dbId: string | null; // UUID from backend, null for unsaved new items
   content: string;
   isNew: boolean;
 }
@@ -13,12 +14,14 @@ export const MAX_MEMORY_COUNT = 10;
 interface UseMemoryManagerArgs {
   memories: MemoryItem[];
   onSaveMemories: (memories: MemoryItem[]) => Promise<boolean>;
+  onDeleteMemory?: (id: string) => Promise<boolean>;
   onNotify: (message: string, type: "success" | "error") => void;
 }
 
 export function useMemoryManager({
   memories,
   onSaveMemories,
+  onDeleteMemory,
   onNotify,
 }: UseMemoryManagerArgs) {
   const [localMemories, setLocalMemories] = useState<LocalMemory[]>([]);
@@ -64,9 +67,9 @@ export function useMemoryManager({
   // Initialize local memories from props
   useEffect(() => {
     const existingMemories: LocalMemory[] = memories.map((mem, index) => ({
-      id: mem.id ?? -(index + 1),
+      id: index + 1,
+      dbId: mem.id,
       content: mem.content,
-      // Memories from props are already persisted, even if backend doesn't provide IDs.
       isNew: false,
     }));
 
@@ -99,8 +102,11 @@ export function useMemoryManager({
       const newMemories: MemoryItem[] = localMemories
         .filter((m) => m.content.trim())
         .map((m) => ({
-          id: m.isNew || m.id < 0 ? null : m.id,
+          id: m.dbId ?? "",
           content: m.content,
+          source: "manual" as const,
+          time_created: "",
+          time_updated: "",
         }));
 
       const memoriesChanged =
@@ -118,7 +124,7 @@ export function useMemoryManager({
 
     const newId = Date.now();
     setLocalMemories((prev) => [
-      { id: newId, content: "", isNew: true },
+      { id: newId, dbId: null, content: "", isNew: true },
       ...prev,
     ]);
     return newId;
@@ -142,12 +148,28 @@ export function useMemoryManager({
         return;
       }
 
+      // If we have a direct delete callback and a backend ID, use it
+      if (onDeleteMemory && memory.dbId) {
+        const success = await onDeleteMemory(memory.dbId);
+        if (success) {
+          setLocalMemories((prev) => prev.filter((_, i) => i !== index));
+          onNotify("Memory deleted", "success");
+        } else {
+          onNotify("Failed to delete memory", "error");
+        }
+        return;
+      }
+
+      // Fallback: save the remaining list
       const newMemories: MemoryItem[] = localMemories
         .filter((_, i) => i !== index)
         .filter((m) => !m.isNew || m.content.trim())
         .map((m) => ({
-          id: m.isNew || m.id < 0 ? null : m.id,
+          id: m.dbId ?? "",
           content: m.content,
+          source: "manual" as const,
+          time_created: "",
+          time_updated: "",
         }));
 
       const success = await queueSave(
@@ -159,7 +181,7 @@ export function useMemoryManager({
         setLocalMemories((prev) => prev.filter((_, i) => i !== index));
       }
     },
-    [localMemories, queueSave]
+    [localMemories, onDeleteMemory, onNotify, queueSave]
   );
 
   const handleBlurMemory = useCallback(
@@ -171,8 +193,11 @@ export function useMemoryManager({
       const newMemories: MemoryItem[] = localMemories
         .filter((m) => m.content.trim())
         .map((m) => ({
-          id: m.isNew || m.id < 0 ? null : m.id,
+          id: m.dbId ?? "",
           content: m.content,
+          source: "manual" as const,
+          time_created: "",
+          time_updated: "",
         }));
 
       const memoriesChanged =

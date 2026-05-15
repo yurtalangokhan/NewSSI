@@ -22,11 +22,13 @@ import CustomToolRenderer from "./renderers/CustomToolRenderer";
 import { FileReaderToolRenderer } from "./timeline/renderers/filereader/FileReaderToolRenderer";
 import { FetchToolRenderer } from "./timeline/renderers/fetch/FetchToolRenderer";
 import { MemoryToolRenderer } from "./timeline/renderers/memory/MemoryToolRenderer";
+import { LongTermMemoryRenderer } from "./timeline/renderers/memory/LongTermMemoryRenderer";
 import { DeepResearchPlanRenderer } from "./timeline/renderers/deepresearch/DeepResearchPlanRenderer";
 import { ResearchAgentRenderer } from "./timeline/renderers/deepresearch/ResearchAgentRenderer";
 import { WebSearchToolRenderer } from "./timeline/renderers/search/WebSearchToolRenderer";
 import { InternalSearchToolRenderer } from "./timeline/renderers/search/InternalSearchToolRenderer";
 import { SearchToolStart } from "../../services/streamingModels";
+import { isLongTermMemoryPackets } from "./timeline/packetHelpers";
 
 // Different types of chat packets using discriminated unions
 interface GroupedPackets {
@@ -106,6 +108,7 @@ function isMemoryToolPacket(packet: Packet) {
   );
 }
 
+
 function isReasoningPacket(packet: Packet): packet is ReasoningPacket {
   return (
     packet.obj.type === PacketType.REASONING_START ||
@@ -175,6 +178,9 @@ export function findRenderer(
   }
   if (groupedPackets.packets.some((packet) => isMemoryToolPacket(packet))) {
     return MemoryToolRenderer;
+  }
+  if (isLongTermMemoryPackets(groupedPackets.packets)) {
+    return LongTermMemoryRenderer;
   }
   if (groupedPackets.packets.some((packet) => isReasoningPacket(packet))) {
     return ReasoningRenderer;

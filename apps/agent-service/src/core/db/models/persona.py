@@ -85,6 +85,13 @@ class PersonaModel(Base):
     base_agent: Mapped[str | None] = mapped_column(Text, nullable=True)
     # For custom agents: list of MCP tool names to bind
     mcp_tools: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    # Long-term memory toggle for this persona/agent
+    long_term_memory: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default=text("FALSE"),
+    )
     # RAG configuration: {"document_processing": [...uuids], "knowledge_graph": [...uuids]}
     rag_config: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     time_created: Mapped[datetime] = mapped_column(

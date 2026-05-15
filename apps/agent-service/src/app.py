@@ -187,6 +187,7 @@ from api.routes import (
     agent_definitions_router,
     web_search_router,
     provider_router,
+    user_memory_router,
 )
 
 app.include_router(agents_router)
@@ -197,6 +198,7 @@ app.include_router(auth_router)
 app.include_router(chat_router)
 app.include_router(persona_router)
 app.include_router(user_router)
+app.include_router(user_memory_router)
 app.include_router(schedule_router)
 app.include_router(ingest_router)
 app.include_router(proxy_router)

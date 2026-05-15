@@ -303,6 +303,13 @@ async def message_generator(
                 processed_messages.append(_create_ai_message(current_message))
 
             for message in processed_messages:
+                # Intercept long-term memory custom events (emitted by get_stream_writer)
+                if isinstance(message, dict):
+                    msg_type = message.get("type", "")
+                    if msg_type in ("long_term_memory_recall", "long_term_memory_save"):
+                        yield f"data: {json.dumps(message)}\n\n"
+                        continue
+
                 try:
                     chat_message = langchain_to_chat_message(message)
                     chat_message.run_id = str(run_id)

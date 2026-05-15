@@ -234,9 +234,8 @@ class AuthMetadataController(BaseController):
             "personalization": {
                 "name": str(personalization_name),
                 "role": str(personalization_role),
-                "memories": user_settings["memories"],
-                "use_memories": user_settings["use_memories"],
-                "enable_memory_tool": user_settings["enable_memory_tool"],
+                "extract_memory": user_settings["extract_memory"],
+                "long_term_memory_enabled": user_settings["long_term_memory_enabled"],
                 "user_preferences": user_settings["user_preferences"],
             },
         }

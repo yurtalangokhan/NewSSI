@@ -629,6 +629,21 @@ class ChatController(BaseController):
                         turn_packets.extend(pending_tool_packets)
                         pending_tool_packets = []
 
+                    # Reconstruct LTM recall packet from metadata stored on the AI message
+                    _extra = raw_msg.get("additional_kwargs", {}) or {} if isinstance(raw_msg, dict) else getattr(raw_msg, "additional_kwargs", {}) or {}
+                    ltm_recalled = _extra.get("_ltm_recalled", 0)
+                    if ltm_recalled:
+                        turn_packets.append(
+                            {
+                                "placement": {"turn_index": 0, "sub_turn_index": None},
+                                "obj": {
+                                    "type": "long_term_memory_recall",
+                                    "fact_count": ltm_recalled,
+                                    "memories": [],
+                                },
+                            }
+                        )
+
                     if reasoning_text:
                         turn_packets.append(
                             {

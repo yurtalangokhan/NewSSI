@@ -104,6 +104,20 @@ export function useTimelineHeader(
       return { headerText: t("timeline.updatingMemory"), hasPackets, userStopped };
     }
 
+    if (
+      packetType === PacketType.LONG_TERM_MEMORY_RECALL ||
+      packetType === PacketType.LONG_TERM_MEMORY_SAVE
+    ) {
+      return {
+        headerText:
+          packetType === PacketType.LONG_TERM_MEMORY_RECALL
+            ? t("timeline.ltmRecalling")
+            : t("timeline.ltmSaving"),
+        hasPackets,
+        userStopped,
+      };
+    }
+
     if (packetType === PacketType.REASONING_START) {
       return { headerText: t("timeline.thinkingActive"), hasPackets, userStopped };
     }

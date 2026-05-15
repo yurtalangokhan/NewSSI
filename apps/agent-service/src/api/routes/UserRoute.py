@@ -57,9 +57,8 @@ class SetUserPasswordPayload(BaseModel):
 class UserPersonalizationPayload(BaseModel):
     name: str | None = None
     role: str | None = None
-    memories: list[dict] | None = None
-    use_memories: bool | None = None
-    enable_memory_tool: bool | None = None
+    long_term_memory_enabled: bool | None = None
+    extract_memory: bool | None = None
     user_preferences: str | None = None
 
 

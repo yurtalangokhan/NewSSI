@@ -142,3 +142,11 @@ export const isMemoryToolPackets = (packets: Packet[]): boolean =>
       p.obj.type === PacketType.MEMORY_TOOL_START ||
       p.obj.type === PacketType.MEMORY_TOOL_NO_ACCESS
   );
+
+// Check if packets belong to long-term memory (agent-service LTM streaming)
+export const isLongTermMemoryPackets = (packets: Packet[]): boolean =>
+  packets.some(
+    (p) =>
+      p.obj.type === PacketType.LONG_TERM_MEMORY_RECALL ||
+      p.obj.type === PacketType.LONG_TERM_MEMORY_SAVE
+  );

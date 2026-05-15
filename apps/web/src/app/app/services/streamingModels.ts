@@ -39,6 +39,10 @@ export enum PacketType {
   MEMORY_TOOL_DELTA = "memory_tool_delta",
   MEMORY_TOOL_NO_ACCESS = "memory_tool_no_access",
 
+  // Long-term memory packets (agent-service)
+  LONG_TERM_MEMORY_RECALL = "long_term_memory_recall",
+  LONG_TERM_MEMORY_SAVE = "long_term_memory_save",
+
   // Reasoning packets
   REASONING_START = "reasoning_start",
   REASONING_DELTA = "reasoning_delta",
@@ -209,6 +213,18 @@ export interface MemoryToolNoAccess extends BaseObj {
   type: "memory_tool_no_access";
 }
 
+// Long-term memory packets (from agent-service LTM streaming)
+export interface LongTermMemoryRecall extends BaseObj {
+  type: "long_term_memory_recall";
+  memories: string[];
+  fact_count?: number;
+}
+
+export interface LongTermMemorySave extends BaseObj {
+  type: "long_term_memory_save";
+  saved: string[];
+}
+
 // Reasoning Packets
 export interface ReasoningStart extends BaseObj {
   type: "reasoning_start";
@@ -318,6 +334,9 @@ export type MemoryToolObj =
   | MemoryToolNoAccess
   | SectionEnd
   | PacketError;
+export type LongTermMemoryObj =
+  | LongTermMemoryRecall
+  | LongTermMemorySave;
 export type NewToolObj =
   | SearchToolObj
   | ImageGenerationToolObj
@@ -325,7 +344,8 @@ export type NewToolObj =
   | FetchToolObj
   | CustomToolObj
   | FileReaderToolObj
-  | MemoryToolObj;
+  | MemoryToolObj
+  | LongTermMemoryObj;
 
 export type ReasoningObj =
   | ReasoningStart

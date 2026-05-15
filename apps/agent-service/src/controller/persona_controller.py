@@ -166,6 +166,7 @@ class PersonaController(BaseController):
             "base_agent": persona.get("base_agent"),
             "mcp_tools": mcp_tools,
             "rag_config": rag_config,
+            "long_term_memory": bool(persona.get("long_term_memory", False)),
             "search_start_date": persona.get("search_start_date"),
         }
 
@@ -235,6 +236,7 @@ class PersonaController(BaseController):
                 base_agent=payload.get("base_agent"),
                 mcp_tools=payload.get("mcp_tools") or [],
                 rag_config=rag_config,
+                long_term_memory=bool(payload.get("long_term_memory", False)),
             )
         except Exception as exc:
             self._raise_internal_error(str(exc))
@@ -263,6 +265,7 @@ class PersonaController(BaseController):
                 base_agent=payload.get("base_agent"),
                 mcp_tools=payload.get("mcp_tools") or [],
                 rag_config=rag_config,
+                long_term_memory=bool(payload.get("long_term_memory", False)),
             )
             if not persona:
                 self._raise_not_found("Persona not found")

@@ -377,9 +377,9 @@ async def _inject_memory_context_async(messages: list, config: RunnableConfig) -
         if long_term_memory and user_id:
             store = configurable.get("store")
             if store:
-                from memory.long_term import recall_memories, build_memory_context
-
-                memories = await recall_memories(store, user_id)
+                from memory.long_term import build_event_emitters, recall_memories, build_memory_context
+                on_recall, _ = build_event_emitters(configurable)
+                memories = await recall_memories(store, user_id, on_recall=on_recall)
                 context = build_memory_context(memories)
                 if context:
                     return [SystemMessage(content=context)] + list(messages)

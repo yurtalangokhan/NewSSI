@@ -17,6 +17,7 @@ from api.routes.FileRoute import router as file_router
 from api.routes.AgentDefinitionsRoute import router as agent_definitions_router
 from api.routes.WebSearchRoute import router as web_search_router
 from api.routes.ProviderRoute import router as provider_router
+from api.routes.UserMemoryRoute import router as user_memory_router
 
 __all__ = [
     "agents_router",
@@ -36,4 +37,5 @@ __all__ = [
     "agent_definitions_router",
     "web_search_router",
     "provider_router",
+    "user_memory_router",
 ]

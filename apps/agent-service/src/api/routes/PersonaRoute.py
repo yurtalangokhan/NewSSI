@@ -54,6 +54,7 @@ class PersonaUpsertRequest(BaseModel):
     base_agent: str | None = None
     mcp_tools: list[str] = []
     rag_config: dict | None = None
+    long_term_memory: bool = False
 
 
 @router.post("/api/persona")

@@ -476,10 +476,12 @@ Analyze the user's request and delegate to the most appropriate agent(s). You ca
                     from core.llm import get_model_from_config
 
                     model = get_model_from_config(configurable, core_settings.DEFAULT_MODEL)
-                    from memory.long_term import extract_and_save_memories
-
+                    from memory.long_term import build_event_emitters, extract_and_save_memories
+                    _, on_save = build_event_emitters(configurable)
+                    extract_mem = configurable.get("extract_memory", True)
                     await extract_and_save_memories(
-                        store, user_id, original_messages, model, memories
+                        store, user_id, original_messages, model, memories,
+                            on_save=on_save, extract_memory=extract_mem
                     )
             except Exception as e:
                 logger.warning("Failed to save memories: %s", e)

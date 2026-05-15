@@ -637,6 +637,7 @@ export default function AgentEditorPage({
     graph_schema: existingAgent?.graph_schema ?? "zero_shot",
     brain_type: (existingAgent as any)?.brain_type ?? "llm",
     memory_type: (existingAgent as any)?.memory_type ?? "none",
+    long_term_memory: (existingAgent as any)?.long_term_memory ?? false,
 
     // Prompts
     instructions: existingAgent?.system_prompt ?? "",
@@ -767,6 +768,7 @@ export default function AgentEditorPage({
       graph_schema: Yup.string().oneOf(GRAPH_SCHEMA_OPTIONS.map((option) => option.value)),
       brain_type: Yup.string().oneOf(BRAIN_TYPE_OPTIONS.map((option) => option.value)),
       memory_type: Yup.string().oneOf(MEMORY_TYPE_OPTIONS.map((option) => option.value)),
+      long_term_memory: Yup.boolean(),
 
     // Prompts
     instructions: Yup.string().optional(),
@@ -953,6 +955,7 @@ export default function AgentEditorPage({
             graph_schema: dynamicGraphSchema,
             brain_type: values.brain_type,
             memory_type: values.memory_type,
+            long_term_memory: values.long_term_memory,
             system_prompt: values.instructions || null,
             model: values.llm_model_version_override || null,
             mcp_tools: dedupedMcpToolNames,
@@ -1015,6 +1018,7 @@ export default function AgentEditorPage({
         // Base agent and MCP tools for custom agents
         base_agent: effectiveBaseAgent,
         mcp_tools: dedupedMcpToolNames,
+        long_term_memory: values.long_term_memory,
       };
 
       // Call API
@@ -1273,23 +1277,16 @@ export default function AgentEditorPage({
                                 </InputSelectField>
                               </InputLayouts.Vertical>
 
-                              <InputLayouts.Vertical
-                                name="memory_type"
-                                title={t("agentEditor.memoryTypeLabel")}
-                              >
-                                <InputSelectField name="memory_type">
-                                  <InputSelect.Trigger placeholder={t("agentEditor.selectMemoryTypePlaceholder")} />
-                                  <InputSelect.Content>
-                                    {MEMORY_TYPE_OPTIONS.map((option) => (
-                                      <InputSelect.Item key={option.value} value={option.value}>
-                                        {option.label}
-                                      </InputSelect.Item>
-                                    ))}
-                                  </InputSelect.Content>
-                                </InputSelectField>
-                              </InputLayouts.Vertical>
                             </>
                           )}
+
+                          <InputLayouts.Horizontal
+                            name="long_term_memory"
+                            title={t("agentEditor.longTermMemoryLabel")}
+                            description={t("agentEditor.longTermMemoryDescription")}
+                          >
+                            <SwitchField name="long_term_memory" />
+                          </InputLayouts.Horizontal>
                         </GeneralLayouts.Section>
 
                         <GeneralLayouts.Section width="fit">
