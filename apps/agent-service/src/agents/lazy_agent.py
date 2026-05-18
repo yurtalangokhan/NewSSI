@@ -184,6 +184,7 @@ class LazyLoadingAgent(ABC):
         memories: dict,
         user_id: str | None,
         config: RunnableConfig | None = None,
+        on_save=None,
     ) -> None:
         """
         If long_term_memory is enabled, extract and save new facts from the output.
@@ -205,10 +206,13 @@ class LazyLoadingAgent(ABC):
             output_messages = []
             if isinstance(output, dict) and "messages" in output:
                 output_messages = output["messages"]
-            
+
             all_messages = list(original_messages) + list(output_messages)
             extract_mem = configurable.get("extract_memory", True)
-            await extract_and_save_memories(store, user_id, all_messages, model, memories, extract_memory=extract_mem)
+            await extract_and_save_memories(
+                store, user_id, all_messages, model, memories,
+                on_save=on_save, extract_memory=extract_mem,
+            )
         except Exception as e:
             logger.warning(f"[LazyAgent] Memory save failed: {e}")
 
@@ -236,7 +240,9 @@ class LazyLoadingAgent(ABC):
         result = self._tag_output_with_recalled_memories(result, memories)
 
         # Save memories from output
-        await self._save_memory_from_output(result, original_messages, memories, user_id, config)
+        configurable = (config or {}).get("configurable", {})
+        _, on_save = build_event_emitters(configurable)
+        await self._save_memory_from_output(result, original_messages, memories, user_id, config, on_save=on_save)
 
         return result
     
@@ -272,8 +278,11 @@ class LazyLoadingAgent(ABC):
 
         # Save memories from the last chunk
         if collected_output is not None:
+            configurable = (config or {}).get("configurable", {})
+            _, on_save = build_event_emitters(configurable)
             await self._save_memory_from_output(
-                collected_output, original_messages, memories, user_id, config
+                collected_output, original_messages, memories, user_id, config,
+                on_save=on_save,
             )
     
     async def astream_events(
@@ -297,12 +306,17 @@ class LazyLoadingAgent(ABC):
         # Inject memory context
         input, memories, user_id = await self._inject_memory_into_input(input, config)
 
+        # Collect AI response messages from events for higher-quality extraction
+        response_messages: list = []
         async for event in self._graph.astream_events(input, config=config, version=version, **kwargs):
+            # Capture AI responses from model end events
+            if event.get("event") == "on_chat_model_end":
+                output = event.get("data", {}).get("output")
+                if output is not None and hasattr(output, "content"):
+                    response_messages.append(output)
             yield event
 
-        # Save memories after streaming completes
-        # For astream_events we don't have easy access to the final output,
-        # so we save based on the original messages + any context
+        # Save memories after streaming completes using full conversation (input + response)
         configurable = (config or {}).get("configurable", {})
         if configurable.get("long_term_memory", False) and user_id:
             try:
@@ -313,8 +327,11 @@ class LazyLoadingAgent(ABC):
 
                     model = get_model_from_config(configurable, settings.DEFAULT_MODEL)
                     extract_mem = configurable.get("extract_memory", True)
+                    _, on_save = build_event_emitters(configurable)
+                    all_messages = list(original_messages) + response_messages
                     await extract_and_save_memories(
-                            store, user_id, original_messages, model, memories, extract_memory=extract_mem
+                        store, user_id, all_messages, model, memories,
+                        on_save=on_save, extract_memory=extract_mem,
                     )
             except Exception as e:
                 logger.warning(f"[LazyAgent] Memory save after stream_events failed: {e}")

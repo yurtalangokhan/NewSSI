@@ -286,7 +286,9 @@ class ConfigurableMCPAgent(LazyLoadingAgent):
         result = self._tag_output_with_recalled_memories(result, memories)
 
         # Save memories from output
-        await self._save_memory_from_output(result, original_messages, memories, user_id, config)
+        configurable = (config or {}).get("configurable", {})
+        _, on_save = build_event_emitters(configurable)
+        await self._save_memory_from_output(result, original_messages, memories, user_id, config, on_save=on_save)
         return result
     
     async def astream(
@@ -363,8 +365,10 @@ class ConfigurableMCPAgent(LazyLoadingAgent):
 
         # Save memories from the last output chunk
         if collected_output is not None:
+            configurable = (config or {}).get("configurable", {})
+            _, on_save = build_event_emitters(configurable)
             await self._save_memory_from_output(
-                collected_output, original_messages, memories, user_id, config
+                collected_output, original_messages, memories, user_id, config, on_save=on_save
             )
     
     async def astream_events(

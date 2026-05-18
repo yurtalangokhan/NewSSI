@@ -19,6 +19,7 @@ from langgraph_supervisor import create_supervisor
 from agents.lazy_agent import LazyLoadingAgent
 from core import get_model, settings
 from core.logger import get_logger
+from memory.long_term import build_event_emitters
 
 logger = get_logger(__name__)
 
@@ -427,7 +428,9 @@ IMPORTANT:
             result = await self._graph.ainvoke(input, config=config, **kwargs)
 
         # Save memories from output
-        await self._save_memory_from_output(result, original_messages, memories, user_id, config)
+        configurable = (config or {}).get("configurable", {})
+        _, on_save = build_event_emitters(configurable)
+        await self._save_memory_from_output(result, original_messages, memories, user_id, config, on_save=on_save)
         return result
 
     async def astream(
@@ -483,8 +486,10 @@ IMPORTANT:
 
         # Save memories from the last output chunk
         if collected_output is not None:
+            configurable = (config or {}).get("configurable", {})
+            _, on_save = build_event_emitters(configurable)
             await self._save_memory_from_output(
-                collected_output, original_messages, memories, user_id, config
+                collected_output, original_messages, memories, user_id, config, on_save=on_save
             )
 
     async def astream_events(

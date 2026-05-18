@@ -64,6 +64,8 @@ async def get_graph_and_config(agent_id: str) -> tuple[str, dict]:
                 runtime_cfg["mcp_tools"] = definition_cfg["mcp_tools"]
             if definition_cfg.get("rag_config"):
                 runtime_cfg["rag_config"] = definition_cfg["rag_config"]
+            if definition_cfg.get("memory_type"):
+                runtime_cfg["memory_type"] = definition_cfg["memory_type"]
 
             return graph_id, runtime_cfg
     except (ValueError, AttributeError):
@@ -313,7 +315,12 @@ async def _handle_input(
             persona_data = await PersonaRepository().get(_pid) if isinstance(_pid, int) else None
             if persona_data is None and isinstance(_pid, str):
                 persona_data = await PersonaRepository().get_by_builtin_key(_pid)
-            agent_ltm = bool(persona_data and persona_data.get("long_term_memory", False))
+            if persona_data:
+                agent_ltm = bool(persona_data.get("long_term_memory", False))
+            elif "memory_type" in configurable:
+                # UUID-based dynamic agents: persona lookup yields nothing; fall back to
+                # memory_type forwarded from AgentDefinition via get_graph_and_config.
+                agent_ltm = configurable["memory_type"] == "long_term"
         except Exception as _ltm_err:
             logger.warning(f"LTM persona lookup failed: {_ltm_err}")
     elif "memory_type" in configurable:

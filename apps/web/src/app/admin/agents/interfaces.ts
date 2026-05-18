@@ -87,6 +87,7 @@ export interface Persona extends MinimalPersonaSnapshot {
     document_processing: string[];
     knowledge_graph: string[];
   };
+  long_term_memory?: boolean;
 }
 
 export interface FullPersona extends Persona {

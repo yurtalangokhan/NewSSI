@@ -153,6 +153,8 @@ class AssistantAgentService:
                     runtime_cfg["mcp_tools"] = definition_cfg["mcp_tools"]
                 if definition_cfg.get("rag_config"):
                     runtime_cfg["rag_config"] = definition_cfg["rag_config"]
+                if definition_cfg.get("memory_type"):
+                    runtime_cfg["memory_type"] = definition_cfg["memory_type"]
 
                 return graph_id, runtime_cfg
         except (ValueError, AttributeError):

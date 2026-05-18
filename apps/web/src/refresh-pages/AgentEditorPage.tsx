@@ -637,7 +637,7 @@ export default function AgentEditorPage({
     graph_schema: existingAgent?.graph_schema ?? "zero_shot",
     brain_type: (existingAgent as any)?.brain_type ?? "llm",
     memory_type: (existingAgent as any)?.memory_type ?? "none",
-    long_term_memory: (existingAgent as any)?.long_term_memory ?? false,
+    long_term_memory: existingAgent?.long_term_memory ?? false,
 
     // Prompts
     instructions: existingAgent?.system_prompt ?? "",
