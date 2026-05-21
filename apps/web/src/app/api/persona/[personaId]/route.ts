@@ -1,46 +1,66 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from "next/server";
 
 const INTERNAL_URL = process.env.INTERNAL_URL || "http://localhost:8123";
 
-export async function GET(request: Request, { params }: { params: Promise<{ personaId: string }> }) {
+async function proxyPersonaById(
+  request: NextRequest,
+  personaId: string
+): Promise<NextResponse> {
   try {
-    const { personaId } = await params;
-    const response = await fetch(`${INTERNAL_URL}/api/persona/${personaId}`);
-    if (!response.ok) {
-      return NextResponse.json({ error: "Persona not found" }, { status: response.status });
+    const url = new URL(request.url);
+    const targetUrl = new URL(`${INTERNAL_URL}/api/persona/${personaId}`);
+
+    url.searchParams.forEach((value, key) => {
+      targetUrl.searchParams.append(key, value);
+    });
+
+    const hasBody = request.method !== "GET" && request.method !== "HEAD";
+    const forwardedHeaders = new Headers(request.headers);
+    forwardedHeaders.delete("host");
+
+    const response = await fetch(targetUrl.toString(), {
+      method: request.method,
+      headers: forwardedHeaders,
+      ...(hasBody ? ({ body: request.body, duplex: "half" } as RequestInit) : {}),
+    });
+
+    if (response.status === 204) {
+      return new NextResponse(null, { status: 204 });
     }
-    const data = await response.json();
-    return NextResponse.json(data);
+
+    return new NextResponse(response.body, {
+      status: response.status,
+      headers: new Headers(response.headers),
+    });
   } catch (error) {
-    return NextResponse.json({ error: "Failed to fetch persona" }, { status: 500 });
+    console.error("Persona by-id proxy error:", error);
+    return NextResponse.json(
+      { error: "Failed to proxy persona request" },
+      { status: 500 }
+    );
   }
 }
 
-export async function PATCH(request: Request, { params }: { params: Promise<{ personaId: string }> }) {
-  try {
-    const { personaId } = await params;
-    const body = await request.text();
-    const response = await fetch(`${INTERNAL_URL}/api/persona/${personaId}`, {
-      method: "PATCH",
-      body,
-      headers: { "Content-Type": "application/json" }
-    });
-    const data = await response.json();
-    return NextResponse.json(data, { status: response.status });
-  } catch (error) {
-    return NextResponse.json({ error: "Failed to update persona" }, { status: 500 });
-  }
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ personaId: string }> }
+) {
+  const { personaId } = await params;
+  return proxyPersonaById(request, personaId);
 }
 
-export async function DELETE(request: Request, { params }: { params: Promise<{ personaId: string }> }) {
-  try {
-    const { personaId } = await params;
-    const response = await fetch(`${INTERNAL_URL}/api/persona/${personaId}`, {
-      method: "DELETE",
-    });
-    const data = await response.json();
-    return NextResponse.json(data, { status: response.status });
-  } catch (error) {
-    return NextResponse.json({ error: "Failed to delete persona" }, { status: 500 });
-  }
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ personaId: string }> }
+) {
+  const { personaId } = await params;
+  return proxyPersonaById(request, personaId);
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ personaId: string }> }
+) {
+  const { personaId } = await params;
+  return proxyPersonaById(request, personaId);
 }

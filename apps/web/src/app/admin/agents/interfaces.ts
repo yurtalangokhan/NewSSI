@@ -52,6 +52,8 @@ export interface MinimalPersonaSnapshot {
   knowledge_sources?: ValidSources[];
   llm_model_version_override?: string;
   llm_model_provider_override?: string;
+  memory_type?: string | null;
+  long_term_memory?: boolean;
 
   uploaded_image_id?: string;
   icon_name?: string;
@@ -87,7 +89,6 @@ export interface Persona extends MinimalPersonaSnapshot {
     document_processing: string[];
     knowledge_graph: string[];
   };
-  long_term_memory?: boolean;
 }
 
 export interface FullPersona extends Persona {

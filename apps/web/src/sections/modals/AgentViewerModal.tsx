@@ -15,12 +15,14 @@ import SimpleCollapsible from "@/refresh-components/SimpleCollapsible";
 import {
   SvgActions,
   SvgBubbleText,
+  SvgClock,
   SvgExpand,
   SvgFold,
   SvgOrganization,
   SvgStar,
   SvgUser,
 } from "@opal/icons";
+import Tag from "@/refresh-components/buttons/Tag";
 import * as ExpandableCard from "@/layouts/expandable-card-layouts";
 import * as ActionsLayouts from "@/layouts/actions-layouts";
 import useMcpServersForAgentEditor from "@/hooks/useMcpServersForAgentEditor";
@@ -41,6 +43,29 @@ import { getDisplayName } from "@/lib/llmConfig/utils";
 import { useLLMProviders } from "@/hooks/useLLMProviders";
 import { Interactive } from "@opal/core";
 import { useTranslation } from "react-i18next";
+
+/**
+ * Memory section rendered inside the Actions & Tools collapsible.
+ * Shows the "Bellek" heading with a badge indicating memory type.
+ */
+function MemorySection({ longTermMemoryEnabled }: { longTermMemoryEnabled: boolean }) {
+  const { t } = useTranslation();
+  return (
+    <div className="flex flex-row items-center gap-2 px-0.5 py-1">
+      <Text mainUiBody text02 className="shrink-0">
+        {t("agentViewer.memoryTitle")}
+      </Text>
+      <Tag
+        icon={SvgClock}
+        label={
+          longTermMemoryEnabled
+            ? t("agentViewer.memoryTypeLongTerm")
+            : t("agentViewer.memoryTypeStandard")
+        }
+      />
+    </div>
+  );
+}
 
 /**
  * Read-only MCP Server card for the viewer modal.
@@ -264,6 +289,8 @@ export default function AgentViewerModal({ agent }: AgentViewerModalProps) {
     openApiTools.length > 0 ||
     builtInTools.length > 0 ||
     unknownMcpToolNames.length > 0;
+  const longTermMemoryEnabled =
+    Boolean(agent.long_term_memory) || agent.memory_type === "long_term";
   const defaultModel = getDisplayName(agent, llmProviders ?? []);
 
   return (
@@ -399,9 +426,15 @@ export default function AgentViewerModal({ agent }: AgentViewerModalProps) {
                       </ExpandableCard.Header>
                     </ExpandableCard.Root>
                   ))}
+
+                  <Separator noPadding />
+                  <MemorySection longTermMemoryEnabled={longTermMemoryEnabled} />
                 </Section>
               ) : (
-                <EmptyMessage title={t("agentViewer.noActionsMessage")} />
+                <Section gap={0.5} alignItems="start">
+                  <EmptyMessage title={t("agentViewer.noActionsMessage")} />
+                  <MemorySection longTermMemoryEnabled={longTermMemoryEnabled} />
+                </Section>
               )}
             </SimpleCollapsible.Content>
           </SimpleCollapsible>

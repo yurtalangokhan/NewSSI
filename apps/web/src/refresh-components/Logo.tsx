@@ -9,7 +9,7 @@ import {
 import { cn } from "@/lib/utils";
 import Text from "@/refresh-components/texts/Text";
 import Truncated from "@/refresh-components/texts/Truncated";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useTheme } from "next-themes";
 
 export interface LogoProps {
@@ -49,6 +49,12 @@ function TurksatWordmark({ darkMode, size, className }: { darkMode: boolean; siz
       className={cn("flex-shrink-0", className)}
       style={{ width: size, height: (size * 42) / 241 }}
       draggable={false}
+      onError={(e) => {
+        const img = e.currentTarget;
+        if (!img.src.includes("logo.turksat.black.svg")) {
+          img.src = `/logo.turksat.black.svg?${LOGO_CACHE_BUSTER}`;
+        }
+      }}
     />
   );
 }
@@ -58,15 +64,10 @@ export default function Logo({ folded, size, className }: LogoProps) {
   const unfoldedSize = size ?? LOGO_UNFOLDED_SIZE_PX;
   const settings = useSettingsContext();
   const { resolvedTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
   const logoDisplayStyle = settings.enterpriseSettings?.logo_display_style;
   const applicationName = settings.enterpriseSettings?.application_name;
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  const isDarkMode = mounted && resolvedTheme !== "light";
+  const isDarkMode = resolvedTheme === "dark";
 
   const logo = useMemo(
     () =>
@@ -81,18 +82,6 @@ export default function Logo({ folded, size, className }: LogoProps) {
       ),
     [className, folded, foldedSize, isDarkMode, unfoldedSize]
   );
-
-  if (!mounted) {
-    return (
-      <div
-        className={className}
-        style={{
-          width: folded ? foldedSize : unfoldedSize,
-          height: folded ? foldedSize : (unfoldedSize * 42) / 241,
-        }}
-      />
-    );
-  }
 
   const renderNameAndPoweredBy = (opts: {
     includeLogo: boolean;

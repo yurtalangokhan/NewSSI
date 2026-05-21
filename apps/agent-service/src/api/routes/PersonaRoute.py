@@ -4,12 +4,13 @@ Persona/Assistant routes.
 Endpoints: /api/persona/* (personas/assistants management)
 """
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from controller import PersonaController, get_persona_controller
+from service.AuthService import verify_api_key, verify_bearer
 
-router = APIRouter(tags=["persona"])
+router = APIRouter(tags=["persona"], dependencies=[Depends(verify_bearer)])
 
 
 def _get_controller() -> PersonaController:
@@ -17,7 +18,8 @@ def _get_controller() -> PersonaController:
 
 
 @router.get("/api/persona")
-async def get_personas():
+async def get_personas(user_id: str | None = Depends(verify_api_key)):
+    _ = user_id
     return await _get_controller().get_personas()
 
 
@@ -58,8 +60,13 @@ class PersonaUpsertRequest(BaseModel):
 
 
 @router.post("/api/persona")
-async def create_persona(request: PersonaUpsertRequest):
-    return await _get_controller().create_persona(request.model_dump())
+async def create_persona(
+    request: PersonaUpsertRequest,
+    user_id: str | None = Depends(verify_api_key),
+):
+    return await _get_controller().create_persona(
+        request.model_dump(), user_id=user_id
+    )
 
 
 @router.get("/api/persona/{persona_id}")
@@ -68,8 +75,14 @@ async def get_persona(persona_id: int):
 
 
 @router.patch("/api/persona/{persona_id}")
-async def update_persona(persona_id: int, request: PersonaUpsertRequest):
-    return await _get_controller().update_persona(persona_id, request.model_dump())
+async def update_persona(
+    persona_id: int,
+    request: PersonaUpsertRequest,
+    user_id: str | None = Depends(verify_api_key),
+):
+    return await _get_controller().update_persona(
+        persona_id, request.model_dump(), user_id=user_id
+    )
 
 
 @router.delete("/api/persona/{persona_id}")
