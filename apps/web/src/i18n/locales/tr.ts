@@ -945,6 +945,10 @@ const tr = {
     },
   },
   projectContextPanel: {
+    backToProject: "Projeye geri dön",
+    recentChats: "Son Sohbetler",
+    noChatsYet: "Henüz sohbet yok.",
+    lastMessage: "Son mesaj {{time}}",
     instructionsLabel: "Talimatlar",
     instructionsPlaceholder:
       "Bu projedeki yanıtı özelleştirmek için talimat ekleyin.",
@@ -1049,6 +1053,7 @@ const tr = {
     savingMemory: "Bellek kaydediliyor...",
     viewMemories: "Bellekleri Görüntüle",
     viewFullSearchTerm: "Tam Arama Terimini Görüntüle",
+    viewFullText: "Tam Metni Görüntüle",
     fullText: "Tam metin",
     imageGenerationFailed: "Görsel oluşturma başarısız",
     imageGeneration: "Görsel oluşturma",
@@ -1076,6 +1081,10 @@ const tr = {
     foldButton: "Daralt",
     editButton: "Düzenle",
     uploadImage: "Görsel Yükle",
+    conversationStarterExample1: "Bana bazı belgelerin genel bir özetini ver.",
+    conversationStarterExample2: "Bu ayın temel ürün güncellemeleri neler?",
+    conversationStarterExample3: "Bu projeyi 5 maddeyle özetle.",
+    conversationStarterExample4: "Son görüşmelerdeki aksiyon maddelerini bul.",
     enterConversationStarter: "Konuşma başlatıcı girin...",
     agentNameRequired: "Ajan adı zorunludur.",
     descriptionMaxChars:
@@ -3529,6 +3538,11 @@ const tr = {
   credentialForm: {
     updateButton: "Güncelle",
     successMessage: "Başarılı!",
+  },
+  arrayField: {
+    itemIndex: "Öğe {{index}}",
+    remove: "Kaldır",
+    addItem: "Öğe ekle",
   },
   toolPlayground: {
     noInputSchema: "Giriş şeması mevcut değil",

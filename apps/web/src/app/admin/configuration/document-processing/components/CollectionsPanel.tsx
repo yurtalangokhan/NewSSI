@@ -38,7 +38,19 @@ export default function CollectionsPanel({
     () => new Set(datasources.map((ds) => ds.id)),
     [datasources]
   );
-  const collections = allCollections;
+  const collections = useMemo(() => {
+    const byId = new Map(allCollections.map((c) => [c.uuid, c]));
+    for (const ds of datasources) {
+      if (!byId.has(ds.id)) {
+        byId.set(ds.id, {
+          uuid: ds.id,
+          name: ds.name,
+          metadata: { source: "airbyte" },
+        });
+      }
+    }
+    return Array.from(byId.values());
+  }, [allCollections, datasources]);
   const isDatasourceCollection = useCallback(
     (uuid: string) => datasourceIds.has(uuid),
     [datasourceIds]
@@ -78,6 +90,14 @@ export default function CollectionsPanel({
 
   async function handleDelete() {
     if (!selectedCollectionId || !selectedCollection) return;
+    if (selectedIsDatasource) {
+      toast.warning(
+        t("admin.documentProcessing.datasourceReadOnlyActionsBlocked", {
+          defaultValue: "Airbyte datasource koleksiyonlarında bu işlem yapılamaz.",
+        })
+      );
+      return;
+    }
     if (isCollectionMutationLocked) {
       toast.warning(
         t("admin.documentProcessing.collectionMutationLocked", {
@@ -107,6 +127,14 @@ export default function CollectionsPanel({
 
   async function handleRename() {
     if (!selectedCollectionId || !selectedCollection) return;
+    if (selectedIsDatasource) {
+      toast.warning(
+        t("admin.documentProcessing.datasourceReadOnlyActionsBlocked", {
+          defaultValue: "Airbyte datasource koleksiyonlarında bu işlem yapılamaz.",
+        })
+      );
+      return;
+    }
     if (isCollectionMutationLocked) {
       toast.warning(
         t("admin.documentProcessing.collectionMutationLocked", {
@@ -222,7 +250,12 @@ export default function CollectionsPanel({
                 danger
                 leftIcon={SvgTrash}
                 onClick={handleDelete}
-                disabled={isDeleting || isRenaming || isCollectionMutationLocked}
+                disabled={
+                  isDeleting ||
+                  isRenaming ||
+                  isCollectionMutationLocked ||
+                  selectedIsDatasource
+                }
               >
                 {isDeleting ? t("admin.documentProcessing.deleting") : t("modals.delete")}
               </Button>

@@ -539,6 +539,10 @@ class ChatController(BaseController):
                 if not isinstance(payload, dict):
                     return ""
 
+                reasoning_delta = payload.get("reasoning_delta")
+                if isinstance(reasoning_delta, str):
+                    return reasoning_delta
+
                 for key in (
                     "reasoning_content",
                     "reasoning",

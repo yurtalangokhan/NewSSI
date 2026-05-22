@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import Dropzone from "react-dropzone";
 import CardSection from "@/components/admin/CardSection";
@@ -15,6 +15,7 @@ import {
   deleteDocument,
   type RagDocument,
 } from "@/lib/langconnect";
+import { getDatasourceDetails, type ChunkInfo } from "@/lib/airbyte";
 import {
   SvgFileText,
   SvgTrash,
@@ -157,11 +158,13 @@ function DocumentRow({
   collectionId,
   onDelete,
   isCollectionMutationLocked,
+  readOnly = false,
 }: {
   doc: RagDocument;
   collectionId: string;
   onDelete: () => void;
   isCollectionMutationLocked: boolean;
+  readOnly?: boolean;
 }) {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
@@ -174,6 +177,15 @@ function DocumentRow({
     doc.id;
 
   async function handleDelete() {
+    if (readOnly) {
+      toast.warning(
+        t("admin.documentProcessing.datasourceReadOnlyActionsBlocked", {
+          defaultValue:
+            "Airbyte datasource koleksiyonlarında dosya silme işlemi yapılamaz.",
+        })
+      );
+      return;
+    }
     if (isCollectionMutationLocked) {
       toast.warning(
         t("admin.documentProcessing.collectionMutationLocked", {
@@ -248,7 +260,7 @@ function DocumentRow({
             danger
             size="md"
             onClick={handleDelete}
-            disabled={isDeleting || isCollectionMutationLocked}
+            disabled={isDeleting || isCollectionMutationLocked || readOnly}
             aria-label={t("admin.documentProcessing.deleteDocumentAria", {
               defaultValue: "Delete document",
             })}
@@ -284,9 +296,48 @@ export default function DocumentsPanel({
   isCollectionMutationLocked = false,
 }: DocumentsPanelProps) {
   const { t } = useTranslation();
-  const { documents, isLoading, mutate } = useDocuments(collectionId);
+  // readOnly = Airbyte connector koleksiyonu; chunks agent-service'ten gelir, rag-service'e istek atma
+  const { documents, isLoading, mutate } = useDocuments(readOnly ? null : collectionId);
+  const [datasourceChunks, setDatasourceChunks] = useState<ChunkInfo[]>([]);
+  const [isDatasourceChunksLoading, setIsDatasourceChunksLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isDragActive, setIsDragActive] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadDatasourceChunks() {
+      if (!readOnly || !collectionId) {
+        setDatasourceChunks([]);
+        return;
+      }
+      setIsDatasourceChunksLoading(true);
+      try {
+        const details = await getDatasourceDetails(collectionId, 1, 50);
+        if (!cancelled) {
+          setDatasourceChunks(details.chunks ?? []);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setDatasourceChunks([]);
+          toast.error(
+            e instanceof Error
+              ? e.message
+              : t("admin.documentProcessing.loadDatasourceChunksFailed", {
+                  defaultValue: "Datasource chunk bilgisi alınamadı.",
+                })
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setIsDatasourceChunksLoading(false);
+        }
+      }
+    }
+    loadDatasourceChunks();
+    return () => {
+      cancelled = true;
+    };
+  }, [collectionId, readOnly]);
 
   const handleDrop = useCallback(
     async (acceptedFiles: File[]) => {
@@ -333,6 +384,60 @@ export default function DocumentsPanel({
           {t("admin.documentProcessing.selectCollectionToManageDocuments")}
         </Text>
       </CardSection>
+    );
+  }
+
+  function renderDatasourceChunks() {
+    if (isDatasourceChunksLoading) return <ThreeDotsLoader />;
+    if (datasourceChunks.length === 0) {
+      return (
+        <Text as="p" mainContentMuted text03 className="text-center py-6">
+          {t("admin.documentProcessing.noChunks", {
+            defaultValue: "Bu datasource icin görüntülenecek chunk bulunamadı.",
+          })}
+        </Text>
+      );
+    }
+    return (
+      <div className="flex flex-col gap-2">
+        {datasourceChunks.map((chunk, idx) => {
+          const chunkId = String(chunk.metadata?.chunk_id ?? idx + 1);
+          return (
+            <div
+              key={`${chunkId}-${idx}`}
+              className="rounded-08 border border-border-01 bg-background-neutral-01 p-3"
+            >
+              <div className="mb-1 flex items-center gap-3">
+                <Text as="p" mainContentMuted text03 className="font-mono text-[10px]">
+                  {t("admin.documentProcessing.chunk", {
+                    index: idx + 1,
+                    defaultValue: "Chunk {{index}}",
+                  })}
+                </Text>
+                <StatBadge
+                  label={t("admin.documentProcessing.chunkStats.chars")}
+                  value={chunk.char_count ?? chunk.content.length}
+                />
+                <StatBadge
+                  label={t("admin.documentProcessing.chunkStats.tokens")}
+                  value={
+                    chunk.token_count ??
+                    Math.max(chunk.content.split(/\s+/).length, Math.floor(chunk.content.length / 4))
+                  }
+                />
+              </div>
+              <Text
+                as="p"
+                mainContentBody
+                text04
+                className="whitespace-pre-wrap break-words text-sm leading-relaxed"
+              >
+                {chunk.content}
+              </Text>
+            </div>
+          );
+        })}
+      </div>
     );
   }
 
@@ -483,13 +588,21 @@ export default function DocumentsPanel({
       {/* Document list */}
       <CardSection className="flex flex-col gap-3">
         <Text as="p" headingH3 text05 className="border-b border-border-01 pb-2">
-          {t("admin.documentProcessing.documents")} {" "}
-          {!isLoading && (
-            <span className="font-normal text-text-03">({documents.length})</span>
+          {readOnly
+            ? t("admin.documentProcessing.chunks", { defaultValue: "Chunks" })
+            : t("admin.documentProcessing.documents")}{" "}
+          {readOnly ? (
+            !isDatasourceChunksLoading && (
+              <span className="font-normal text-text-03">({datasourceChunks.length})</span>
+            )
+          ) : (
+            !isLoading && (
+              <span className="font-normal text-text-03">({documents.length})</span>
+            )
           )}
         </Text>
 
-        {isLoading ? (
+        {readOnly ? renderDatasourceChunks() : isLoading ? (
           <ThreeDotsLoader />
         ) : documents.length === 0 ? (
           <Text as="p" mainContentMuted text03 className="text-center py-6">
@@ -504,6 +617,7 @@ export default function DocumentsPanel({
                 collectionId={collectionId}
                 onDelete={() => mutate()}
                 isCollectionMutationLocked={isCollectionMutationLocked}
+                readOnly={readOnly}
               />
             ))}
           </div>

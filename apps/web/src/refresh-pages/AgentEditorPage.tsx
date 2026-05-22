@@ -24,7 +24,7 @@ import LLMSelector from "@/components/llm/LLMSelector";
 import { parseLlmDescriptor, structureValue } from "@/lib/llmConfig/utils";
 import { useAvailableModels } from "@/hooks/useAvailableModels";
 import {
-  STARTER_MESSAGES_EXAMPLES,
+  MAX_STARTER_MESSAGES,
   MAX_CHARACTERS_STARTER_MESSAGE,
   MAX_CHARACTERS_AGENT_DESCRIPTION,
 } from "@/lib/constants";
@@ -395,8 +395,15 @@ function MCPServerCard({
 }
 
 function StarterMessages() {
-  const max_starters = STARTER_MESSAGES_EXAMPLES.length;
+  const max_starters = MAX_STARTER_MESSAGES;
   const { t } = useTranslation();
+  const starterMessagePlaceholders = useMemo(
+    () =>
+      Array.from({ length: max_starters }, (_, i) =>
+        t(`agentEditor.conversationStarterExample${i + 1}`)
+      ),
+    [max_starters, t]
+  );
 
   const { values } = useFormikContext<{
     starter_messages: string[];
@@ -426,7 +433,7 @@ function StarterMessages() {
               key={`starter_messages.${i}`}
               name={`starter_messages.${i}`}
               placeholder={
-                STARTER_MESSAGES_EXAMPLES[i] ||
+                starterMessagePlaceholders[i] ||
                 t("agentEditor.enterConversationStarter")
               }
               onRemove={() => arrayHelpers.remove(i)}
@@ -642,7 +649,7 @@ export default function AgentEditorPage({
     // Prompts
     instructions: existingAgent?.system_prompt ?? "",
     starter_messages: Array.from(
-      { length: STARTER_MESSAGES_EXAMPLES.length },
+      { length: MAX_STARTER_MESSAGES },
       (_, i) => existingAgent?.starter_messages?.[i]?.message ?? ""
     ),
 

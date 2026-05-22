@@ -1,16 +1,14 @@
 """Collection and Document managers.
 
 These classes provide the **business-logic** layer that the API routes
-consume.  All database access is delegated to the repository classes
-under ``langconnect.database.postgres.repositories``.
-
-The ``CollectionsManager`` handles collection CRUD.
-The ``Collection`` handles document-level operations within a collection.
+consume.  Collection metadata (name, owner, etc.) lives in Postgres
+(langchain_pg_collection).  All embedding / chunk data lives in Milvus.
 """
 
 from __future__ import annotations
 
 import builtins
+import json
 import logging
 from typing import Any, Optional
 
@@ -22,12 +20,23 @@ from langconnect.database.connection import get_vectorstore
 from langconnect.database.postgres.repositories.collection_repo import (
     CollectionRepository,
 )
-from langconnect.database.postgres.repositories.document_repo import (
-    DocumentRepository,
-)
 from langconnect.models.collection import CollectionDetails
 
 logger = logging.getLogger(__name__)
+
+
+def _parse_milvus_meta(raw: Any) -> dict[str, Any]:
+    """Coerce whatever Milvus hands back for the metadata field into a plain dict."""
+    if raw is None:
+        return {}
+    if isinstance(raw, dict):
+        return raw
+    if isinstance(raw, str):
+        try:
+            return json.loads(raw) or {}
+        except Exception:
+            return {}
+    return {}
 
 
 class CollectionsManager:
@@ -96,77 +105,195 @@ class CollectionsManager:
 class Collection:
     """A collection of documents.
 
-    Use to add, delete, list, and search documents within a collection.
+    Collection metadata is kept in Postgres (langchain_pg_collection).
+    All chunk / embedding data is stored and queried from Milvus.
     """
 
     def __init__(self, collection_id: str, user_id: str) -> None:
         self.collection_id = collection_id
         self.user_id = user_id
-        self._doc_repo = DocumentRepository(collection_id, user_id)
         self._col_repo = CollectionRepository(user_id)
 
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+
     async def _get_details_or_raise(self) -> dict[str, Any]:
-        """Get collection details if it exists, otherwise raise 404."""
+        """Return collection metadata from Postgres; raise 404 if missing."""
         details = await self._col_repo.get_collection(self.collection_id)
         if not details:
             raise HTTPException(status_code=404, detail="Collection not found")
         return details
 
+    def _get_store(self, table_id: str):
+        """Return the Milvus vector store for the given table_id."""
+        return get_vectorstore(collection_name=table_id)
+
+    # ------------------------------------------------------------------
+    # Write operations
+    # ------------------------------------------------------------------
+
     async def upsert(self, documents: list[Document]) -> list[str]:
-        """Add one or more documents to the collection."""
-        from langconnect import config
-
+        """Embed and store documents in Milvus."""
         details = await self._get_details_or_raise()
-        store = get_vectorstore(collection_name=details["table_id"])
+        store = self._get_store(details["table_id"])
         ids = store.add_documents(documents)
-
-        # Milvus does not populate langchain_pg_embedding; persist chunk metadata
-        # to Postgres so list/get/chunk APIs and graph build remain functional.
-        if config.VECTOR_DB_PROVIDER.lower() != "pgvector":
-            await self._doc_repo.upsert_documents(
-                ids=[str(i) for i in ids],
-                documents=[doc.page_content for doc in documents],
-                metadatas=[doc.metadata or {} for doc in documents],
-            )
-
-        return ids
+        return [str(i) for i in ids]
 
     async def delete(self, *, file_id: Optional[str] = None) -> bool:
-        """Delete embeddings by file id."""
-        deleted_count = await self._doc_repo.delete_by_file_id(file_id)
-        logger.info("Deleted %d embeddings for file %r.", deleted_count, file_id)
-        if deleted_count == 0:
-            await self._get_details_or_raise()
+        """Delete all chunks with the given file_id from Milvus."""
+        details = await self._get_details_or_raise()
+        store = self._get_store(details["table_id"])
+        try:
+            store.delete(expr=f'{store._metadata_field}["file_id"] == "{file_id}"')
+            logger.info("Deleted Milvus chunks for file %r in collection %r.", file_id, self.collection_id)
+        except Exception as exc:
+            logger.warning("Milvus delete failed for file %r: %s", file_id, exc)
         return True
 
+    # ------------------------------------------------------------------
+    # Read operations
+    # ------------------------------------------------------------------
+
     async def list(self, *, limit: int = 10, offset: int = 0) -> list[dict[str, Any]]:
-        """List one representative chunk per file in this collection."""
-        docs = await self._doc_repo.list_documents(limit=limit, offset=offset)
-        if not docs:
-            await self._get_details_or_raise()
-        return docs
+        """List one representative chunk per unique file_id in this collection."""
+        details = await self._get_details_or_raise()
+        store = self._get_store(details["table_id"])
+
+        if store.col is None:
+            return []
+
+        try:
+            rows = store.col.query(
+                expr=f"{store._primary_field} >= 0",
+                output_fields=[store._primary_field, store._text_field, store._metadata_field],
+                limit=10_000,
+            )
+        except Exception as exc:
+            logger.warning("Milvus query failed for collection %r: %s", self.collection_id, exc)
+            return []
+
+        # Deduplicate: one representative chunk per file_id
+        seen: dict[str, dict[str, Any]] = {}
+        for row in rows:
+            meta = _parse_milvus_meta(row.get(store._metadata_field))
+            fid = meta.get("file_id") or str(row.get(store._primary_field, ""))
+            if fid not in seen:
+                seen[fid] = {
+                    "id": fid,
+                    "content": row.get(store._text_field, ""),
+                    "metadata": meta,
+                    "collection_id": self.collection_id,
+                }
+
+        all_docs = list(seen.values())
+        return all_docs[offset: offset + limit]
 
     async def count(self) -> int:
-        """Return the number of distinct documents in this collection."""
-        return await self._doc_repo.count_documents()
+        """Return the number of distinct documents (unique file_ids) in this collection."""
+        details = await self._get_details_or_raise()
+        store = self._get_store(details["table_id"])
+
+        if store.col is None:
+            return 0
+
+        try:
+            rows = store.col.query(
+                expr=f"{store._primary_field} >= 0",
+                output_fields=[store._metadata_field],
+                limit=10_000,
+            )
+        except Exception:
+            return 0
+
+        file_ids = {
+            _parse_milvus_meta(r.get(store._metadata_field)).get("file_id", str(i))
+            for i, r in enumerate(rows)
+        }
+        return len(file_ids)
 
     async def get(self, document_id: str) -> dict[str, Any]:
-        """Fetch a single chunk by its UUID, verifying collection ownership."""
-        result = await self._doc_repo.get_document(document_id)
-        if result is None:
+        """Fetch one chunk for a given file_id."""
+        details = await self._get_details_or_raise()
+        store = self._get_store(details["table_id"])
+
+        try:
+            rows = store.col.query(
+                expr=f'{store._metadata_field}["file_id"] == "{document_id}"',
+                output_fields=[store._primary_field, store._text_field, store._metadata_field],
+                limit=1,
+            )
+        except Exception:
+            rows = []
+
+        if not rows:
             raise HTTPException(status_code=404, detail="Document not found")
-        return result
+
+        row = rows[0]
+        return {
+            "id": document_id,
+            "content": row.get(store._text_field, ""),
+            "metadata": _parse_milvus_meta(row.get(store._metadata_field)),
+        }
 
     async def get_chunks(self, file_id: str) -> list[dict[str, Any]]:
-        """Fetch all chunks associated with a file_id, verifying collection ownership."""
-        return await self._doc_repo.list_chunks_by_file_id(file_id)
+        """Return all chunks for a given file_id from Milvus."""
+        details = await self._get_details_or_raise()
+        store = self._get_store(details["table_id"])
+
+        try:
+            rows = store.col.query(
+                expr=f'{store._metadata_field}["file_id"] == "{file_id}"',
+                output_fields=[store._primary_field, store._text_field, store._metadata_field],
+                limit=10_000,
+            )
+        except Exception as exc:
+            logger.warning("Milvus chunk query failed for file %r: %s", file_id, exc)
+            return []
+
+        return [
+            {
+                "id": str(row.get(store._primary_field, "")),
+                "content": row.get(store._text_field, ""),
+                "metadata": _parse_milvus_meta(row.get(store._metadata_field)),
+            }
+            for row in rows
+        ]
+
+    async def fetch_all_chunks(self) -> list[dict[str, Any]]:
+        """Return every chunk in the collection from Milvus (used by graph build)."""
+        details = await self._get_details_or_raise()
+        store = self._get_store(details["table_id"])
+
+        if store.col is None:
+            return []
+
+        try:
+            rows = store.col.query(
+                expr=f"{store._primary_field} >= 0",
+                output_fields=[store._primary_field, store._text_field, store._metadata_field],
+                limit=100_000,
+            )
+        except Exception as exc:
+            logger.warning("Milvus fetch_all_chunks failed for %r: %s", self.collection_id, exc)
+            return []
+
+        chunks = []
+        for row in rows:
+            chunks.append({
+                "id": str(row.get(store._primary_field, "")),
+                "content": row.get(store._text_field, ""),
+                "metadata": _parse_milvus_meta(row.get(store._metadata_field)),
+            })
+        logger.info("Fetched %d chunks from Milvus collection %s", len(chunks), self.collection_id)
+        return chunks
 
     async def search(
         self, query: str, *, limit: int = 4
     ) -> builtins.list[dict[str, Any]]:
         """Run a semantic similarity search in the vector store."""
         details = await self._get_details_or_raise()
-        store = get_vectorstore(collection_name=details["table_id"])
+        store = self._get_store(details["table_id"])
         results = store.similarity_search_with_score(query, k=limit)
         return [
             {

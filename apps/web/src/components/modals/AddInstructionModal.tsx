@@ -10,7 +10,7 @@ import Modal from "@/refresh-components/Modal";
 import { useTranslation } from "react-i18next";
 
 export default function AddInstructionModal() {
-  const { t } = useTranslation("modals");
+  const { t } = useTranslation();
   const modal = useModal();
   const { currentProjectDetails, upsertInstructions } = useProjectsContext();
   const [instructionText, setInstructionText] = useState("");
@@ -36,22 +36,24 @@ export default function AddInstructionModal() {
       <Modal.Content width="sm">
         <Modal.Header
           icon={SvgAddLines}
-          title={t("addInstruction.title", "Set Project Instructions")}
-          description={t("addInstruction.description", "Specify the behaviors or tone for the chat sessions in this project.")}
+          title={t("modals.addInstruction.title")}
+          description={t("modals.addInstruction.description")}
           onClose={() => modal.toggle(false)}
         />
         <Modal.Body>
           <InputTextArea
             value={instructionText}
             onChange={(event) => setInstructionText(event.target.value)}
-            placeholder={t("addInstruction.placeholder", "My goal with is to... be sure to... in your responses.")}
+            placeholder={t("modals.addInstruction.placeholder")}
           />
         </Modal.Body>
         <Modal.Footer>
           <Button secondary onClick={() => modal.toggle(false)}>
-            {t("addInstruction.cancel", "Cancel")}
+            {t("modals.cancel")}
           </Button>
-          <Button onClick={handleSubmit}>{t("addInstruction.save", "Save Instructions")}</Button>
+          <Button onClick={handleSubmit}>
+            {t("modals.addInstruction.saveButton")}
+          </Button>
         </Modal.Footer>
       </Modal.Content>
     </Modal>

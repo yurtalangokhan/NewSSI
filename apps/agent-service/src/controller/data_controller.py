@@ -47,11 +47,29 @@ class DataController(BaseController):
         except Exception:
             pass
 
+        # Collect names that need a Milvus fallback count, then query in one connection.
+        from agents.tools import _count_milvus_entities_batch
+
+        needs_milvus = [
+            row.get("name", "")
+            for row in rows
+            if not (row.get("cmetadata", {}) or {}).get("chunk_stats", {}).get("chunk_count")
+            and not row.get("doc_count")
+            and row.get("name")
+        ]
+        milvus_counts = _count_milvus_entities_batch(needs_milvus) if needs_milvus else {}
+
         results = []
         for row in rows:
             meta = row.get("cmetadata", {})
             connector_type = meta.get("connector_type", "unknown")
             ds_id = str(row["uuid"])
+            chunk_stats = meta.get("chunk_stats", {}) if isinstance(meta, dict) else {}
+            chunk_count = chunk_stats.get("chunk_count", 0)
+            if not chunk_count:
+                chunk_count = row.get("doc_count", 0)
+            if not chunk_count:
+                chunk_count = milvus_counts.get(row.get("name", ""), 0)
 
             schedule_summary = None
             mapping = mapping_map.get(ds_id)
@@ -96,7 +114,7 @@ class DataController(BaseController):
                     "streams": meta.get("streams"),
                     "sync_status": meta.get("sync_status"),
                     "sync_progress": meta.get("sync_progress"),
-                    "document_count": row.get("doc_count", 0),
+                    "document_count": chunk_count,
                     "created_at": meta.get("created_at"),
                     "last_synced_at": meta.get("last_synced_at"),
                     "schedule_summary": schedule_summary,

@@ -904,7 +904,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
                       <div className="mb-2 flex items-center gap-2 px-2">
                         <button
                           onClick={handleBackToProject}
-                          aria-label="Back to project"
+                          aria-label={t("projectContextPanel.backToProject")}
                           className="inline-flex items-center gap-1 rounded-lg px-2 py-1 hover:bg-background-tint-02 transition-colors"
                         >
                           <SvgChevronLeft size={16} className="w-4 h-4" />

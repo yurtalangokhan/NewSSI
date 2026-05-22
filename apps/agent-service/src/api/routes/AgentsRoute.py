@@ -471,6 +471,13 @@ def _extract_reasoning_text(message: AIMessageChunk) -> str:
         if not isinstance(payload, dict):
             return ""
 
+        # reasoning_delta carries per-token streaming chunks which may be
+        # whitespace-only (e.g. "\n\n" between sections). Check presence only,
+        # not strip(), so newlines and spaces are preserved.
+        reasoning_delta = payload.get("reasoning_delta")
+        if isinstance(reasoning_delta, str):
+            return reasoning_delta
+
         for key in (
             "reasoning_content",  # Ollama (reasoning=True), DeepSeek API, OpenRouter
             "reasoning",          # Some OpenAI-compatible providers

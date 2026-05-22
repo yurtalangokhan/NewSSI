@@ -4,6 +4,7 @@ import re
 from functools import lru_cache
 from threading import Lock
 from typing import Annotated
+from uuid import uuid4
 
 import numexpr
 from langchain_community.vectorstores import Milvus  # noqa: PLC0415
@@ -21,6 +22,25 @@ _VECTOR_STORE_CACHE: dict[str, Milvus] = {}
 _VECTOR_STORE_LOCK = Lock()
 
 
+def _to_milvus_collection_name(raw_name: str) -> str:
+    """Normalize arbitrary collection labels to valid Milvus collection names.
+
+    Milvus requires names to contain only letters, numbers and underscores,
+    and the first character must be a letter or underscore.
+    """
+    name = (raw_name or "").strip()
+    # Replace all unsupported characters (spaces, dashes, punctuation, etc.)
+    # with underscores and collapse consecutive underscores for readability.
+    name = re.sub(r"[^a-zA-Z0-9_]", "_", name)
+    name = re.sub(r"_+", "_", name).strip("_")
+
+    if not name:
+        name = "collection"
+    if name[0].isdigit():
+        name = f"c_{name}"
+    return name
+
+
 def _get_milvus_connection_args() -> dict:
     """Build Milvus connection args from environment."""
     return {
@@ -30,6 +50,69 @@ def _get_milvus_connection_args() -> dict:
         "password": env.get("MILVUS_PASSWORD", ""),
         "secure": False,
     }
+
+def _count_milvus_entities_batch(collection_names: list[str]) -> dict[str, int]:
+    """Count Milvus entities for multiple collections using one shared connection."""
+    names = [n for n in collection_names if n]
+    if not names:
+        return {}
+    from pymilvus import Collection, connections, utility
+
+    alias = f"milvus-batch-{uuid4().hex[:8]}"
+    result: dict[str, int] = {n: 0 for n in names}
+    try:
+        connections.connect(alias=alias, **_get_milvus_connection_args())
+        for name in names:
+            try:
+                milvus_name = _to_milvus_collection_name(name)
+                if utility.has_collection(milvus_name, using=alias):
+                    result[name] = int(
+                        Collection(name=milvus_name, using=alias).num_entities or 0
+                    )
+            except Exception:
+                pass
+    except Exception:
+        pass
+    finally:
+        try:
+            connections.disconnect(alias)
+        except Exception:
+            pass
+    return result
+
+
+def _query_milvus_collection(
+    collection_name: str, sample_limit: int = 0
+) -> tuple[int, list[dict]]:
+    """Get entity count and optional chunk samples from a Milvus collection in one connection."""
+    if not collection_name:
+        return 0, []
+    from pymilvus import Collection, connections, utility
+
+    alias = f"milvus-query-{uuid4().hex[:8]}"
+    try:
+        connections.connect(alias=alias, **_get_milvus_connection_args())
+        milvus_name = _to_milvus_collection_name(collection_name)
+        if not utility.has_collection(milvus_name, using=alias):
+            return 0, []
+        col = Collection(name=milvus_name, using=alias)
+        count = int(col.num_entities or 0)
+        rows: list[dict] = []
+        if sample_limit > 0 and count > 0:
+            queried = col.query(
+                expr="pk >= 0",
+                output_fields=["pk", "text", "metadata"],
+                limit=sample_limit,
+            )
+            rows = queried if isinstance(queried, list) else []
+        return count, rows
+    except Exception:
+        return 0, []
+    finally:
+        try:
+            connections.disconnect(alias)
+        except Exception:
+            pass
 
 
 # ============== User Context Tool ==============
@@ -168,10 +251,7 @@ def load_vector_store(collection_name: str):
         embeddings = get_embeddings()
         connection_args = _get_milvus_connection_args()
 
-        # Milvus collection names only allow [a-zA-Z0-9_] and must start with a letter/underscore
-        milvus_collection_name = collection_name.replace("-", "_")
-        if milvus_collection_name and milvus_collection_name[0].isdigit():
-            milvus_collection_name = "c_" + milvus_collection_name
+        milvus_collection_name = _to_milvus_collection_name(collection_name)
 
         vector_store = Milvus(
             embedding_function=embeddings,

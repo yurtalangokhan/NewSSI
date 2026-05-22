@@ -198,7 +198,7 @@ export default function ProjectContextPanel({
           <div className="flex flex-row gap-2 justify-between">
             <div>
               <Text as="p" headingH3 text04>
-                Files
+                {t("projectContextPanel.filesLabel")}
               </Text>
               <Text as="p" text02 secondaryBody>
                 {t("projectContextPanel.filesDescription")}

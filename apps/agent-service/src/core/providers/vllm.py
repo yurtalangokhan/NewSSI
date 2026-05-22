@@ -6,6 +6,7 @@ from langchain_openai import ChatOpenAI
 from core.env import env
 from core.logger import get_logger
 from core.providers.base import LLMProvider, ModelInfo
+from core.providers.vllm_chat import VLLMChatOpenAI
 
 logger = get_logger(__name__)
 
@@ -62,7 +63,7 @@ class VLLMProvider(LLMProvider):
         if not base_url:
             raise ValueError("VLLM_BASE_URL not configured")
 
-        return ChatOpenAI(
+        return VLLMChatOpenAI(
             model=model_name,
             temperature=0.5,
             streaming=True,

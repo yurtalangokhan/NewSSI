@@ -10,6 +10,7 @@ from copy import deepcopy
 
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_openai import AzureChatOpenAI, ChatOpenAI
+from core.providers.vllm_chat import VLLMChatOpenAI
 from langchain_ollama import ChatOllama
 from langchain_anthropic import ChatAnthropic
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -60,7 +61,9 @@ async def get_llm_for_provider(
     provider = _normalize_provider(provider_type)
 
     if provider in {"openai"} or model_name.startswith("gpt-"):
-        return ChatOpenAI(model=model_name, api_key=api_key, base_url=base_url)
+        # VLLMChatOpenAI handles reasoning fields from vLLM/OpenAI-compatible endpoints.
+        cls = VLLMChatOpenAI if base_url else ChatOpenAI
+        return cls(model=model_name, api_key=api_key, base_url=base_url)
 
     if provider in {"anthropic"} or model_name.startswith("claude-"):
         if any(model_name.lower().startswith(p) for p in _ANTHROPIC_THINKING_PREFIXES):
@@ -162,7 +165,7 @@ async def get_llm_for_provider(
         if explicit_extra_body:
             kwargs["extra_body"] = explicit_extra_body
 
-        return ChatOpenAI(
+        return VLLMChatOpenAI(
             **kwargs,
         )
 

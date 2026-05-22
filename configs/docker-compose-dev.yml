@@ -34,6 +34,11 @@ services:
 
       # Service metadata defaults
       LANGCHAIN_PROJECT: agent-service
+    networks:
+      default:
+      airbyte:
+        aliases:
+          - agent-service
 
   # ==========================================================================
   # RAG Service - Graph RAG API
@@ -117,3 +122,8 @@ services:
       - agent-service
       # - rag-service
       # - tools-service
+
+networks:
+  airbyte:
+    external: true
+    name: ${AIRBYTE_DOCKER_NETWORK:-agentic-ai-infrastructure_default}

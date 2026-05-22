@@ -21,6 +21,7 @@ from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 import jwt
 from jwt import InvalidTokenError, PyJWKClient
+from core.db.repositories.user_settings_repo import UserSettingsRepository
 
 __all__ = [
     "AuthService",
@@ -527,6 +528,12 @@ class AuthService:
         personalization_role = self._read_attr(profile_attrs, "work_role") or ""
         personalization_name = full_name or given_name or str(email).split("@")[0]
 
+        user_settings: dict[str, Any] = {}
+        try:
+            user_settings = await UserSettingsRepository().ensure_defaults(user_id)
+        except Exception:
+            logger.warning("Failed to load user settings for user %s, using defaults", user_id)
+
         return {
             "id": user_id,
             "email": str(email),
@@ -538,14 +545,14 @@ class AuthService:
                 "chosen_assistants": None,
                 "visible_assistants": [],
                 "hidden_assistants": [],
-                "default_model": None,
+                "default_model": user_settings.get("default_model"),
                 "recent_assistants": [],
-                "auto_scroll": True,
-                "shortcut_enabled": True,
+                "auto_scroll": user_settings.get("auto_scroll", True),
+                "shortcut_enabled": user_settings.get("shortcut_enabled", True),
                 "temperature_override_enabled": False,
-                "theme_preference": None,
-                "chat_background": None,
-                "default_app_mode": "AUTO",
+                "theme_preference": user_settings.get("theme_preference"),
+                "chat_background": user_settings.get("chat_background"),
+                "default_app_mode": user_settings.get("default_app_mode", "AUTO"),
             },
             "team_name": None,
             "is_anonymous_user": False,
@@ -558,7 +565,9 @@ class AuthService:
                 "memories": [],
                 "use_memories": False,
                 "enable_memory_tool": False,
-                "user_preferences": "",
+                "user_preferences": user_settings.get("user_preferences", ""),
+                "long_term_memory_enabled": user_settings.get("long_term_memory_enabled", False),
+                "extract_memory": user_settings.get("extract_memory", True),
             },
         }
 

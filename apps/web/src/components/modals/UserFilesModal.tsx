@@ -28,6 +28,7 @@ import useFilter from "@/hooks/useFilter";
 import { Button as OpalButton } from "@opal/components";
 import ScrollIndicatorDiv from "@/refresh-components/ScrollIndicatorDiv";
 import { useTranslation } from "react-i18next";
+import i18n from "@/i18n/config";
 
 function getIcon(
   file: ProjectFile,
@@ -42,9 +43,9 @@ function getIcon(
 function getDescription(file: ProjectFile): string {
   const s = String(file.status || "");
   const typeLabel = getFileExtension(file.name);
-  if (s === UserFileStatus.PROCESSING) return "Processing...";
-  if (s === UserFileStatus.UPLOADING) return "Uploading...";
-  if (s === UserFileStatus.DELETING) return "Deleting...";
+  if (s === UserFileStatus.PROCESSING) return i18n.t("app.userFiles.processing");
+  if (s === UserFileStatus.UPLOADING) return i18n.t("app.userFiles.uploading");
+  if (s === UserFileStatus.DELETING) return i18n.t("app.userFiles.deleting");
   if (s === UserFileStatus.COMPLETED) return typeLabel;
   return file.status ?? typeLabel;
 }

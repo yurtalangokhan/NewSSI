@@ -942,6 +942,10 @@ const en = {
     },
   },
   projectContextPanel: {
+    backToProject: "Back to project",
+    recentChats: "Recent Chats",
+    noChatsYet: "No chats yet.",
+    lastMessage: "Last message {{time}}",
     instructionsLabel: "Instructions",
     instructionsPlaceholder:
       "Add instructions to tailor the response in this project.",
@@ -1040,6 +1044,7 @@ const en = {
     savingMemory: "Saving memory...",
     viewMemories: "View Memories",
     viewFullSearchTerm: "View Full Search Term",
+    viewFullText: "View Full Text",
     fullText: "Full text",
     imageGenerationFailed: "Image generation failed",
     imageGeneration: "Image generation",
@@ -1067,6 +1072,10 @@ const en = {
     foldButton: "Fold",
     editButton: "Edit",
     uploadImage: "Upload Image",
+    conversationStarterExample1: "Give me an overview of some documents.",
+    conversationStarterExample2: "What are our key product updates this month?",
+    conversationStarterExample3: "Summarize this project in 5 bullet points.",
+    conversationStarterExample4: "Find action items from recent discussions.",
     enterConversationStarter: "Enter a conversation starter...",
     agentNameRequired: "Agent name is required.",
     descriptionMaxChars:
