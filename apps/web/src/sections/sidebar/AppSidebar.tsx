@@ -220,6 +220,10 @@ const MemoizedAppSidebarInner = memo(
       isLoadingMore,
       loadMore,
     } = useChatSessions();
+    const ungroupedChatSessions = useMemo(
+      () => chatSessions.filter((session) => session.project_id == null),
+      [chatSessions]
+    );
     const {
       projects,
       refreshProjects,
@@ -498,10 +502,24 @@ const MemoizedAppSidebarInner = memo(
         | "search") ?? "chat";
     const newSessionButton = useMemo(() => {
       const currentRouteAgentId = currentAgent?.external_id ?? currentAgent?.id;
-      const href =
-        combinedSettings?.settings?.disable_default_assistant && currentAgent
-          ? `/app?agentId=${currentRouteAgentId}`
-          : "/app";
+      const href = (() => {
+        if (
+          !(combinedSettings?.settings?.disable_default_assistant && currentAgent)
+        ) {
+          if (!currentProjectId) {
+            return "/app";
+          }
+          return `/app?projectId=${currentProjectId}`;
+        }
+
+        const params = new URLSearchParams({
+          agentId: String(currentRouteAgentId),
+        });
+        if (currentProjectId) {
+          params.set("projectId", String(currentProjectId));
+        }
+        return `/app?${params.toString()}`;
+      })();
       return (
         <div data-testid="AppSidebar/new-session">
           <SidebarTab
@@ -524,6 +542,7 @@ const MemoizedAppSidebarInner = memo(
       activeSidebarTab,
       combinedSettings,
       currentAgent,
+      currentProjectId,
       defaultAppMode,
       reset,
       setAppMode,
@@ -771,7 +790,7 @@ const MemoizedAppSidebarInner = memo(
 
                   {/* Recents */}
                   <RecentsSection
-                    chatSessions={chatSessions}
+                    chatSessions={ungroupedChatSessions}
                     hasMore={hasMore}
                     isLoadingMore={isLoadingMore}
                     onLoadMore={loadMore}

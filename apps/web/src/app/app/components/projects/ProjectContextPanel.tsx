@@ -190,6 +190,7 @@ export default function ProjectContextPanel({
             {t("projectContextPanel.setInstructionsButton")}
           </Button>
         </div>
+
         <div
           className="flex flex-col gap-2 "
           {...getRootProps({ onClick: (e) => e.stopPropagation() })}

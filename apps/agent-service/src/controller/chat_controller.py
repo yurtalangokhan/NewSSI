@@ -357,6 +357,7 @@ class ChatController(BaseController):
                     "time_created": thread.get("created_at"),
                     "time_updated": thread.get("updated_at"),
                     "shared_status": "private",
+                    "project_id": thread.get("project_id"),
                     "current_alternate_model": metadata.get("current_alternate_model"),
                     "current_temperature_override": metadata.get("current_temperature_override"),
                 }
@@ -369,6 +370,7 @@ class ChatController(BaseController):
         self,
         persona_id: Any = 0,
         description: str | None = None,
+        project_id: int | None = None,
     ) -> dict[str, Any]:
         thread_id = str(uuid.uuid4())
         now = datetime.now(UTC).isoformat()
@@ -380,6 +382,7 @@ class ChatController(BaseController):
                 "user_id": self._user_id,
                 "name": name,
                 "persona_id": persona_id,
+                "project_id": project_id,
             },
         )
 
@@ -391,6 +394,7 @@ class ChatController(BaseController):
             "time_created": thread.get("created_at", now),
             "time_updated": thread.get("updated_at", now),
             "shared_status": "private",
+            "project_id": thread.get("project_id"),
             "current_alternate_model": None,
             "current_temperature_override": None,
         }

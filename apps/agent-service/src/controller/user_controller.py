@@ -10,8 +10,10 @@ from fastapi import HTTPException, status
 
 from controller.session_controller import SessionController, get_session_controller
 from controller.base import BaseController
+from core.db.repositories.project_repo import ProjectRepository
 from core.db.repositories.user_settings_repo import UserSettingsRepository
 from core.env import env
+from service.StoreService import list_threads_from_store
 
 
 class UserController(BaseController):
@@ -21,6 +23,7 @@ class UserController(BaseController):
         self._session_controller = session_controller or get_session_controller()
         self._supported_roles = ["admin", "global_curator", "curator", "limited", "basic"]
         self._user_settings_repo = UserSettingsRepository()
+        self._project_repo = ProjectRepository()
 
     async def _update_user_settings(self, user_id: str, updates: dict[str, Any]) -> dict[str, Any]:
         try:
@@ -30,6 +33,18 @@ class UserController(BaseController):
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Failed to persist user settings: {exc}",
             ) from exc
+
+    async def resolve_projects_user_id(self, user_id: str | None) -> str | None:
+        if user_id:
+            return user_id
+
+        if env.get("MODE", "").lower() == "dev":
+            fallback_user = await self._project_repo.get_latest_user_id()
+            if fallback_user:
+                return fallback_user
+            return "dev-user"
+
+        return None
 
     def _is_keycloak_enabled(self) -> bool:
         return env.get("KEYCLOAK_ENABLED", "false").lower() == "true"
@@ -331,6 +346,23 @@ class UserController(BaseController):
         data = resp.json()
         return data if isinstance(data, dict) else None
 
+    @staticmethod
+    def _serialize_chat_session(thread: dict[str, Any]) -> dict[str, Any]:
+        metadata = thread.get("metadata", {}) or {}
+        session_name = metadata.get("name") or "New Chat"
+        return {
+            "id": thread.get("thread_id", ""),
+            "name": session_name,
+            "description": session_name,
+            "persona_id": metadata.get("persona_id", 0),
+            "time_created": thread.get("created_at"),
+            "time_updated": thread.get("updated_at"),
+            "shared_status": "private",
+            "project_id": thread.get("project_id"),
+            "current_alternate_model": metadata.get("current_alternate_model", ""),
+            "current_temperature_override": metadata.get("current_temperature_override"),
+        }
+
     async def get_user_assistant_preferences(self) -> dict[str, Any]:
         return {}
 
@@ -355,8 +387,141 @@ class UserController(BaseController):
     async def get_default_assistant(self) -> None:
         return None
 
-    async def get_user_projects(self) -> list[Any]:
-        return []
+    async def get_user_projects(self, user_id: str) -> list[Any]:
+        projects = await self._project_repo.list_by_user(user_id)
+        threads = await list_threads_from_store(
+            limit=1000,
+            offset=0,
+            metadata={"user_id": user_id},
+        )
+
+        sessions_by_project: dict[int, list[dict[str, Any]]] = {}
+        for thread in threads:
+            project_id = thread.get("project_id")
+            if project_id is None:
+                continue
+            sessions_by_project.setdefault(project_id, []).append(
+                self._serialize_chat_session(thread)
+            )
+
+        for project in projects:
+            project_id = project["id"]
+            project_sessions = sessions_by_project.get(project_id, [])
+            project_sessions.sort(key=lambda s: s.get("time_updated") or "", reverse=True)
+            project["chat_sessions"] = project_sessions
+
+        return projects
+
+    async def create_user_project(self, user_id: str, name: str) -> dict[str, Any]:
+        cleaned_name = (name or "").strip()
+        if not cleaned_name:
+            raise HTTPException(status_code=400, detail="Project name is required")
+        project = await self._project_repo.create_for_user(user_id=user_id, name=cleaned_name)
+        project["chat_sessions"] = []
+        return project
+
+    async def get_user_project(self, user_id: str, project_id: int) -> dict[str, Any]:
+        project = await self._project_repo.get_for_user(user_id, project_id)
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+
+        threads = await list_threads_from_store(
+            limit=1000,
+            offset=0,
+            metadata={"user_id": user_id},
+        )
+        chat_sessions = [
+            self._serialize_chat_session(thread)
+            for thread in threads
+            if thread.get("project_id") == project_id
+        ]
+        chat_sessions.sort(key=lambda s: s.get("time_updated") or "", reverse=True)
+        project["chat_sessions"] = chat_sessions
+        return project
+
+    async def rename_user_project(self, user_id: str, project_id: int, name: str) -> dict[str, Any]:
+        cleaned_name = (name or "").strip()
+        if not cleaned_name:
+            raise HTTPException(status_code=400, detail="Project name is required")
+        project = await self._project_repo.rename_for_user(
+            user_id=user_id,
+            project_id=project_id,
+            name=cleaned_name,
+        )
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+        project["chat_sessions"] = []
+        return project
+
+    async def delete_user_project(self, user_id: str, project_id: int) -> dict[str, bool]:
+        deleted = await self._project_repo.delete_for_user(user_id=user_id, project_id=project_id)
+        if not deleted:
+            raise HTTPException(status_code=404, detail="Project not found")
+        return {"success": True}
+
+    async def get_user_project_details(self, user_id: str, project_id: int) -> dict[str, Any]:
+        project = await self.get_user_project(user_id, project_id)
+        return {
+            "project": project,
+            "files": [],
+            "persona_id_to_featured": {},
+        }
+
+    async def get_user_project_instructions(self, user_id: str, project_id: int) -> dict[str, str | None]:
+        project = await self._project_repo.get_for_user(user_id, project_id)
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+        return {"instructions": project.get("instructions")}
+
+    async def upsert_user_project_instructions(
+        self,
+        user_id: str,
+        project_id: int,
+        instructions: str,
+    ) -> dict[str, str | None]:
+        project = await self._project_repo.upsert_instructions_for_user(
+            user_id=user_id,
+            project_id=project_id,
+            instructions=instructions,
+        )
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+        return {"instructions": project.get("instructions")}
+
+    async def get_project_token_count(self, user_id: str, project_id: int) -> dict[str, int]:
+        _ = user_id
+        _ = project_id
+        return {"total_tokens": 0}
+
+    async def move_chat_session_to_project(
+        self,
+        *,
+        user_id: str,
+        project_id: int,
+        chat_session_id: str,
+    ) -> dict[str, bool]:
+        moved = await self._project_repo.move_chat_session_to_project(
+            user_id=user_id,
+            project_id=project_id,
+            chat_session_id=chat_session_id,
+        )
+        if not moved:
+            raise HTTPException(status_code=404, detail="Project or chat session not found")
+        return {"success": True}
+
+    async def remove_chat_session_from_project(
+        self,
+        *,
+        user_id: str,
+        chat_session_id: str,
+    ) -> dict[str, bool]:
+        removed = await self._project_repo.remove_chat_session_from_project(
+            user_id=user_id,
+            chat_session_id=chat_session_id,
+        )
+        if not removed:
+            raise HTTPException(status_code=404, detail="Chat session not found")
+        return {"success": True}
 
     async def get_notifications(self) -> list[Any]:
         return []

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import Popover, { PopoverMenu } from "@/refresh-components/Popover";
 import { LlmDescriptor, LlmManager } from "@/lib/hooks";
+import { MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
 import { structureValue } from "@/lib/llmConfig/utils";
 import {
   getProviderIcon,
@@ -29,11 +30,15 @@ import {
 } from "@opal/icons";
 import { Section } from "@/layouts/general-layouts";
 import { OpenButton } from "@opal/components";
+import AgentAvatar from "@/refresh-components/avatars/AgentAvatar";
 import { LLMOption, LLMOptionGroup } from "./interfaces";
 import { useTranslation } from "react-i18next";
 
 export interface LLMPopoverProps {
   llmManager: LlmManager;
+  selectedAgent?: MinimalPersonaSnapshot;
+  agents?: MinimalPersonaSnapshot[];
+  onSwitchAgent?: (agent: MinimalPersonaSnapshot) => void;
   requiresImageInput?: boolean;
   folded?: boolean;
   onSelect?: (value: string) => void;
@@ -142,6 +147,9 @@ export function groupLlmOptions(
 
 export default function LLMPopover({
   llmManager,
+  selectedAgent,
+  agents,
+  onSwitchAgent,
   requiresImageInput,
   folded,
   onSelect,
@@ -207,6 +215,23 @@ export default function LLMPopover({
     }
     return result;
   }, [llmOptions, searchQuery, requiresImageInput]);
+
+  const filteredAgents = useMemo(() => {
+    if (!agents || agents.length === 0) {
+      return [];
+    }
+
+    if (!searchQuery.trim()) {
+      return agents;
+    }
+
+    const query = searchQuery.toLowerCase();
+    return agents.filter(
+      (agent) =>
+        agent.name.toLowerCase().includes(query) ||
+        agent.description?.toLowerCase().includes(query)
+    );
+  }, [agents, searchQuery]);
 
   // Group options by provider using backend-provided display names and ordering
   // For aggregator providers (bedrock, openrouter, vertex_ai), flatten to "Provider/Vendor" format
@@ -319,6 +344,14 @@ export default function LLMPopover({
     setOpen(false);
   };
 
+  const hasAgentSelection =
+    !!onSwitchAgent && !!agents && agents.length > 0 && !!selectedAgent;
+
+  const handleSelectAgent = (agent: MinimalPersonaSnapshot) => {
+    onSwitchAgent?.(agent);
+    setOpen(false);
+  };
+
   const renderModelItem = (option: LLMOption) => {
     const isSelected =
       option.modelName === llmManager.currentLlm.modelName &&
@@ -365,15 +398,25 @@ export default function LLMPopover({
             icon={
               folded
                 ? SvgRefreshCw
-                : getProviderIcon(
-                    llmManager.currentLlm.provider,
-                    llmManager.currentLlm.modelName
-                  )
+                : hasAgentSelection && selectedAgent.id !== 0
+                  ? ((props: React.SVGProps<SVGSVGElement>) => (
+                      <AgentAvatar
+                        agent={selectedAgent}
+                        size={16}
+                        {...(props as any)}
+                      />
+                    ))
+                  : getProviderIcon(
+                      llmManager.currentLlm.provider,
+                      llmManager.currentLlm.modelName
+                    )
             }
             foldable={folded}
             disabled={disabled}
           >
-            {currentLlmDisplayName}
+            {hasAgentSelection && selectedAgent.id !== 0
+              ? selectedAgent.name
+              : currentLlmDisplayName}
           </OpenButton>
         </Popover.Trigger>
       </div>
@@ -390,8 +433,30 @@ export default function LLMPopover({
             placeholder={t("app.llmPopover.searchPlaceholder")}
           />
 
-          {/* Model List with Vendor Groups */}
+          {/* Agent + model list */}
           <PopoverMenu scrollContainerRef={scrollContainerRef}>
+            {hasAgentSelection && (
+              <div className="flex flex-col gap-1">
+                <Text secondaryBody text03 className="px-2 py-1">
+                  {t("app.llmPopover.agentSectionTitle", "Agents")}
+                </Text>
+                {filteredAgents.map((agent) => (
+                  <LineItem
+                    key={`agent-${agent.id}`}
+                    selected={agent.id === selectedAgent.id}
+                    icon={(props: React.SVGProps<SVGSVGElement>) => (
+                      <AgentAvatar agent={agent} size={16} {...(props as any)} />
+                    )}
+                    onClick={() => handleSelectAgent(agent)}
+                  >
+                    {agent.id === 0
+                      ? t("app.llmPopover.defaultAgentLabel", "Default")
+                      : agent.name}
+                  </LineItem>
+                ))}
+                <div className="mx-2 my-1 border-t border-border-02" />
+              </div>
+            )}
             {isLoadingProviders
               ? [
                   <div key="loading" className="flex items-center gap-2 py-3">

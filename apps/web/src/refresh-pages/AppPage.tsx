@@ -64,7 +64,7 @@ import OnboardingFlow from "@/refresh-components/onboarding/OnboardingFlow";
 import { OnboardingStep } from "@/refresh-components/onboarding/types";
 import { useShowOnboarding } from "@/hooks/useShowOnboarding";
 import * as AppLayouts from "@/layouts/app-layouts";
-import { SvgChevronDown, SvgFileText, SvgUploadCloud } from "@opal/icons";
+import { SvgChevronDown, SvgChevronLeft, SvgFileText, SvgUploadCloud } from "@opal/icons";
 import { Button } from "@opal/components";
 import Spacer from "@/refresh-components/Spacer";
 import { DEFAULT_CONTEXT_TOKENS } from "@/lib/constants";
@@ -292,17 +292,6 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
   const { selectedAgent, setSelectedAgentFromId, liveAgent } =
     useAgentController({
       selectedChatSession: currentChatSession,
-      onAgentSelect: () => {
-        // Only remove project context if user explicitly selected an agent
-        // (i.e., agentId is present). Avoid clearing project when agentId was removed.
-        const newSearchParams = new URLSearchParams(
-          searchParams?.toString() || ""
-        );
-        if (newSearchParams.has(SEARCH_PARAM_NAMES.PERSONA_ID)) {
-          newSearchParams.delete(SEARCH_PARAM_NAMES.PROJECT_ID);
-          router.replace(`?${newSearchParams.toString()}`, { scroll: false });
-        }
-      },
     });
 
   const { deepResearchEnabled, toggleDeepResearch } = useDeepResearchToggle({
@@ -596,10 +585,28 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
         SEARCH_PARAM_NAMES.PERSONA_ID,
         String(agent.external_id ?? agent.id)
       );
-      router.push(`/app?${params.toString()}`);
+      // Preserve project context when switching agent
+      if (currentProjectId) {
+        params.set(
+          SEARCH_PARAM_NAMES.PROJECT_ID,
+          String(currentProjectId)
+        );
+      }
+      router.push(`/app?${params.toString()}`, { scroll: false });
     },
-    [router]
+    [router, currentProjectId]
   );
+
+  const handleBackToProject = useCallback(() => {
+    if (currentProjectId) {
+      const params = new URLSearchParams();
+      params.set(
+        SEARCH_PARAM_NAMES.PROJECT_ID,
+        String(currentProjectId)
+      );
+      router.push(`/app?${params.toString()}`, { scroll: false });
+    }
+  }, [currentProjectId, router]);
 
   const handleAppInputBarSubmit = useCallback(
     async (message: string) => {
@@ -607,10 +614,14 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
       // (appMode only applies to new sessions)
       if (currentChatSessionId) {
         resetInputBar();
+        const additionalContext = currentProjectDetails?.instructions
+          ? `Project Instructions:\n${currentProjectDetails.instructions}\n\n`
+          : "";
         onSubmit({
           message,
           currentMessageFiles,
           deepResearch: deepResearchEnabled,
+          additionalContext,
         });
         if (showOnboarding || !onboardingDismissed) {
           finishOnboarding();
@@ -628,6 +639,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
       currentChatSessionId,
       submitQuery,
       onChat,
+        currentProjectDetails,
       resetInputBar,
       onSubmit,
       currentMessageFiles,
@@ -884,6 +896,25 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
                 {/* ── Middle-center: AppInputBar ── */}
                 <div className="row-start-2 flex flex-col items-center">
                   <div className="relative w-full max-w-[var(--app-page-main-content-width)] flex flex-col">
+                    {/* Back button - shown when chat is opened within a project */}
+                    {appFocus.isChat() && 
+                      currentChatSessionId && 
+                      currentProjectId && 
+                      currentProjectDetails?.project && (
+                      <div className="mb-2 flex items-center gap-2 px-2">
+                        <button
+                          onClick={handleBackToProject}
+                          aria-label="Back to project"
+                          className="inline-flex items-center gap-1 rounded-lg px-2 py-1 hover:bg-background-tint-02 transition-colors"
+                        >
+                          <SvgChevronLeft size={16} className="w-4 h-4" />
+                          <span className="text-xs font-medium text-text-light">
+                            {currentProjectDetails.project.name}
+                          </span>
+                        </button>
+                      </div>
+                    )}
+
                     {/* Scroll to bottom button - positioned absolutely above AppInputBar */}
                     {appFocus.isChat() && showScrollButton && (
                       <div className="absolute top-[-3.5rem] self-center">

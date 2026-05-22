@@ -122,6 +122,7 @@ async def create_chat_session(
     return await _get_user_chat_controller(user_id).create_chat_session(
         persona_id=body.get("persona_id", 0),
         description=body.get("description"),
+        project_id=body.get("project_id"),
     )
 
 
@@ -244,6 +245,7 @@ async def get_available_context_tokens(
     return await _get_user_chat_controller(user_id).get_available_context_tokens(session_id)
 
 
+@router.get("/api/user/projects/session/{session_id}/token-count")
 @router.get("/user/projects/session/{session_id}/token-count")
 async def get_session_token_count(
     session_id: str,
@@ -254,6 +256,7 @@ async def get_session_token_count(
     return await _get_user_chat_controller(user_id).get_session_token_count(session_id)
 
 
+@router.get("/api/user/projects/session/{session_id}/files")
 @router.get("/user/projects/session/{session_id}/files")
 async def get_session_files(
     session_id: str,

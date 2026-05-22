@@ -4,7 +4,7 @@ User preferences and settings routes.
 Endpoints: /api/user/*, /api/llm/*, /admin/llm/*
 """
 
-from fastapi import APIRouter, Depends, Query, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from pydantic import BaseModel
 
 from api.dependencies import verify_api_key
@@ -88,6 +88,18 @@ class InputPromptPayload(BaseModel):
     content: str
     active: bool = True
     is_public: bool = False
+
+
+class RenameProjectPayload(BaseModel):
+    name: str
+
+
+class UpsertProjectInstructionsPayload(BaseModel):
+    instructions: str
+
+
+class MoveChatSessionPayload(BaseModel):
+    chat_session_id: str
 
 
 @router.get("/api/user/assistant/preferences")
@@ -229,8 +241,139 @@ async def get_default_assistant():
 
 
 @router.get("/api/user/projects")
-async def get_user_projects():
-    return await _get_controller().get_user_projects()
+async def get_user_projects(user_id: str | None = Depends(verify_api_key)):
+    effective_user_id = await _get_controller().resolve_projects_user_id(user_id)
+    if not effective_user_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    return await _get_controller().get_user_projects(effective_user_id)
+
+
+@router.post("/api/user/projects/create")
+async def create_user_project(
+    name: str,
+    user_id: str | None = Depends(verify_api_key),
+):
+    effective_user_id = await _get_controller().resolve_projects_user_id(user_id)
+    if not effective_user_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    return await _get_controller().create_user_project(effective_user_id, name)
+
+
+@router.get("/api/user/projects/{project_id}")
+async def get_user_project(
+    project_id: int,
+    user_id: str | None = Depends(verify_api_key),
+):
+    effective_user_id = await _get_controller().resolve_projects_user_id(user_id)
+    if not effective_user_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    return await _get_controller().get_user_project(effective_user_id, project_id)
+
+
+@router.patch("/api/user/projects/{project_id}")
+async def rename_user_project(
+    project_id: int,
+    payload: RenameProjectPayload,
+    user_id: str | None = Depends(verify_api_key),
+):
+    effective_user_id = await _get_controller().resolve_projects_user_id(user_id)
+    if not effective_user_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    return await _get_controller().rename_user_project(
+        effective_user_id,
+        project_id,
+        payload.name,
+    )
+
+
+@router.delete("/api/user/projects/{project_id}")
+async def delete_user_project(
+    project_id: int,
+    user_id: str | None = Depends(verify_api_key),
+):
+    effective_user_id = await _get_controller().resolve_projects_user_id(user_id)
+    if not effective_user_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    return await _get_controller().delete_user_project(effective_user_id, project_id)
+
+
+@router.get("/api/user/projects/{project_id}/details")
+async def get_user_project_details(
+    project_id: int,
+    user_id: str | None = Depends(verify_api_key),
+):
+    effective_user_id = await _get_controller().resolve_projects_user_id(user_id)
+    if not effective_user_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    return await _get_controller().get_user_project_details(effective_user_id, project_id)
+
+
+@router.get("/api/user/projects/{project_id}/instructions")
+async def get_user_project_instructions(
+    project_id: int,
+    user_id: str | None = Depends(verify_api_key),
+):
+    effective_user_id = await _get_controller().resolve_projects_user_id(user_id)
+    if not effective_user_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    return await _get_controller().get_user_project_instructions(effective_user_id, project_id)
+
+
+@router.post("/api/user/projects/{project_id}/instructions")
+async def upsert_user_project_instructions(
+    project_id: int,
+    payload: UpsertProjectInstructionsPayload,
+    user_id: str | None = Depends(verify_api_key),
+):
+    effective_user_id = await _get_controller().resolve_projects_user_id(user_id)
+    if not effective_user_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    return await _get_controller().upsert_user_project_instructions(
+        effective_user_id,
+        project_id,
+        payload.instructions,
+    )
+
+
+@router.get("/api/user/projects/{project_id}/token-count")
+async def get_project_token_count(
+    project_id: int,
+    user_id: str | None = Depends(verify_api_key),
+):
+    effective_user_id = await _get_controller().resolve_projects_user_id(user_id)
+    if not effective_user_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    return await _get_controller().get_project_token_count(effective_user_id, project_id)
+
+
+@router.post("/api/user/projects/{project_id}/move_chat_session")
+async def move_chat_session_to_project(
+    project_id: int,
+    payload: MoveChatSessionPayload,
+    user_id: str | None = Depends(verify_api_key),
+):
+    effective_user_id = await _get_controller().resolve_projects_user_id(user_id)
+    if not effective_user_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    return await _get_controller().move_chat_session_to_project(
+        user_id=effective_user_id,
+        project_id=project_id,
+        chat_session_id=payload.chat_session_id,
+    )
+
+
+@router.post("/api/user/projects/remove_chat_session")
+async def remove_chat_session_from_project(
+    payload: MoveChatSessionPayload,
+    user_id: str | None = Depends(verify_api_key),
+):
+    effective_user_id = await _get_controller().resolve_projects_user_id(user_id)
+    if not effective_user_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    return await _get_controller().remove_chat_session_from_project(
+        user_id=effective_user_id,
+        chat_session_id=payload.chat_session_id,
+    )
 
 
 @router.get("/api/notifications")

@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid as _uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Index, String, text
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -31,6 +31,11 @@ class ThreadModel(Base):
     )
     status: Mapped[str] = mapped_column(
         String, nullable=False, default="idle",
+    )
+    project_id: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey("project.id", ondelete="SET NULL"),
+        nullable=True,
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
