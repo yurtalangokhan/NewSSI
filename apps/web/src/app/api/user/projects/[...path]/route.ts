@@ -14,17 +14,17 @@ import { NextRequest } from "next/server";
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { path: string[] } }
+  { params }: { params: Promise<{ path: string[] }> }
 ) {
-  const pathStr = (await Promise.resolve(params)).path.join("/");
+  const pathStr = (await params).path.join("/");
   return proxyToBackend(request, `/api/user/projects/${pathStr}`);
 }
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { path: string[] } }
+  { params }: { params: Promise<{ path: string[] }> }
 ) {
-  const pathStr = (await Promise.resolve(params)).path.join("/");
+  const pathStr = (await params).path.join("/");
   return proxyToBackend(request, `/api/user/projects/${pathStr}`, {
     method: "POST",
   });
@@ -32,9 +32,9 @@ export async function POST(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { path: string[] } }
+  { params }: { params: Promise<{ path: string[] }> }
 ) {
-  const pathStr = (await Promise.resolve(params)).path.join("/");
+  const pathStr = (await params).path.join("/");
   return proxyToBackend(request, `/api/user/projects/${pathStr}`, {
     method: "PATCH",
   });
@@ -42,9 +42,9 @@ export async function PATCH(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { path: string[] } }
+  { params }: { params: Promise<{ path: string[] }> }
 ) {
-  const pathStr = (await Promise.resolve(params)).path.join("/");
+  const pathStr = (await params).path.join("/");
   return proxyToBackend(request, `/api/user/projects/${pathStr}`, {
     method: "DELETE",
   });

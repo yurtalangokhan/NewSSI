@@ -614,8 +614,8 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
       // (appMode only applies to new sessions)
       if (currentChatSessionId) {
         resetInputBar();
-        const additionalContext = currentProjectDetails?.instructions
-          ? `Project Instructions:\n${currentProjectDetails.instructions}\n\n`
+        const additionalContext = currentProjectDetails?.project?.instructions
+          ? `Project Instructions:\n${currentProjectDetails.project.instructions}\n\n`
           : "";
         onSubmit({
           message,

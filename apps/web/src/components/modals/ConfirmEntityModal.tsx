@@ -42,17 +42,17 @@ export function ConfirmEntityModal({
 
   removeConfirmationText = false,
 }: ConfirmEntityModalProps) {
-  const { t } = useTranslation("modals");
+  const { t } = useTranslation("common");
   const buttonText = actionButtonText
     ? actionButtonText
     : danger
-      ? t("delete")
-      : t("confirm");
+      ? t("modals.delete")
+      : t("modals.confirm");
   const actionText =
     action ||
     (danger
-      ? t("confirmEntity.deleteAction")
-      : t("confirmEntity.modifyAction"));
+      ? t("modals.confirmEntity.deleteAction")
+      : t("modals.confirmEntity.modifyAction"));
 
   return (
     <Modal
@@ -68,7 +68,10 @@ export function ConfirmEntityModal({
       <div className="flex flex-col gap-4">
         {!removeConfirmationText && (
           <Text as="p">
-            {t("confirmEntity.confirmation", { action: actionText, entityName })}
+            {t("modals.confirmEntity.confirmation", {
+              action: actionText,
+              entityName,
+            })}
           </Text>
         )}
 
