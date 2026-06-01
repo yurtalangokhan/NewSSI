@@ -438,7 +438,11 @@ export function ProjectsProvider({ children }: ProjectsProviderProps) {
 
           removeOptimisticFilesByTempIds(optimisticTempIds, projectId);
 
-          toast.error("Failed to upload files");
+          const errorMsg =
+            err instanceof Error && err.message
+              ? err.message
+              : "Failed to upload files";
+          toast.error(errorMsg);
 
           onFailure?.(Array.from(optimisticTempIds));
         })

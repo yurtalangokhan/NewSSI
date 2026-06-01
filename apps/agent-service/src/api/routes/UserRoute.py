@@ -4,7 +4,7 @@ User preferences and settings routes.
 Endpoints: /api/user/*, /api/llm/*, /admin/llm/*
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, Response, UploadFile
 from pydantic import BaseModel
 
 from api.dependencies import verify_api_key
@@ -102,14 +102,18 @@ class MoveChatSessionPayload(BaseModel):
     chat_session_id: str
 
 
+class FileStatusesPayload(BaseModel):
+    file_ids: list[str]
+
+
 @router.get("/api/user/assistant/preferences")
 async def get_user_assistant_preferences():
     return await _get_controller().get_user_assistant_preferences()
 
 
 @router.get("/api/user/files/recent")
-async def get_recent_files():
-    return await _get_controller().get_recent_files()
+async def get_recent_files(user_id: str | None = Depends(verify_api_key)):
+    return await _get_controller().get_recent_files(user_id)
 
 
 @router.patch("/api/user/pinned-assistants")
@@ -257,6 +261,71 @@ async def create_user_project(
     if not effective_user_id:
         raise HTTPException(status_code=401, detail="Not authenticated")
     return await _get_controller().create_user_project(effective_user_id, name)
+
+
+@router.post("/api/user/projects/file/upload")
+async def upload_project_files(
+    files: list[UploadFile] = File(...),
+    project_id: int | None = Form(default=None),
+    temp_id_map: str | None = Form(default=None),
+    user_id: str | None = Depends(verify_api_key),
+):
+    return await _get_controller().upload_user_project_files(
+        user_id=user_id,
+        files=files,
+        project_id=project_id,
+        temp_id_map_raw=temp_id_map,
+    )
+
+
+@router.get("/api/user/projects/files/{project_id}")
+async def get_files_in_project(
+    project_id: int,
+    user_id: str | None = Depends(verify_api_key),
+):
+    return await _get_controller().get_files_in_project(user_id, project_id)
+
+
+@router.post("/api/user/projects/{project_id}/files/{file_id}")
+async def link_file_to_project(
+    project_id: int,
+    file_id: str,
+    user_id: str | None = Depends(verify_api_key),
+):
+    return await _get_controller().link_file_to_project(user_id, project_id, file_id)
+
+
+@router.delete("/api/user/projects/{project_id}/files/{file_id}")
+async def unlink_file_from_project(
+    project_id: int,
+    file_id: str,
+    user_id: str | None = Depends(verify_api_key),
+):
+    return await _get_controller().unlink_file_from_project(user_id, project_id, file_id)
+
+
+@router.get("/api/user/projects/file/{file_id}")
+async def get_user_file(
+    file_id: str,
+    user_id: str | None = Depends(verify_api_key),
+):
+    return await _get_controller().get_user_file(user_id, file_id)
+
+
+@router.delete("/api/user/projects/file/{file_id}")
+async def delete_user_file(
+    file_id: str,
+    user_id: str | None = Depends(verify_api_key),
+):
+    return await _get_controller().delete_user_file(user_id, file_id)
+
+
+@router.post("/api/user/projects/file/statuses")
+async def get_user_file_statuses(
+    payload: FileStatusesPayload,
+    user_id: str | None = Depends(verify_api_key),
+):
+    return await _get_controller().get_user_file_statuses(user_id, payload.file_ids)
 
 
 @router.get("/api/user/projects/{project_id}")
