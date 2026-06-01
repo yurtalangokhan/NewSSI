@@ -1,125 +1,112 @@
 """
 Long-term memory utilities for LangGraph agents.
 
-Provides reusable helpers for reading and writing user memories
-to a LangGraph BaseStore. Memories are namespaced per user and
-per memory type (e.g. "user_facts", "preferences", "conversation_summaries").
+Thin wrapper that delegates to UserMemoryService (domain layer).
+The LangGraph BaseStore is now only a read-through cache; canonical
+storage is the user_memory PostgreSQL table.
 
-Usage in agent nodes:
-    from memory.long_term import recall_memories, save_memories, build_memory_context
+Existing public API (recall_memories, save_memories,
+build_memory_context, extract_and_save_memories) is preserved so
+agents don't need to change their call sites.
 
-    async def my_node(state, config, *, store: BaseStore):
-        configurable = config.get("configurable", {})
-        if not configurable.get("long_term_memory"):
-            # Long-term memory disabled – skip
-            ...
-        user_id = configurable.get("user_id")
-        memories = await recall_memories(store, user_id)
-        context = build_memory_context(memories)
-        # Prepend context to the system prompt …
-
-Architecture decisions:
-    - **Semantic** memory type: stores extracted user facts/preferences
-    - **Background extraction**: memory extraction runs *after* the LLM
-      responds so it doesn't add latency to the user-facing response.
-    - **Namespace**: ("memories", user_id) keeps each user's data isolated.
-    - **Key rotation**: each fact gets a stable key derived from its content
-      to avoid duplicates while allowing updates.
+New optional callback parameters (on_recall, on_save) allow agent
+nodes to emit streaming events without coupling this module to the
+SSE transport.
 """
 
 import json
 import logging
-from datetime import UTC, datetime
-from typing import Any
+from typing import Any, Callable, Coroutine
 
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from langgraph.store.base import BaseStore
 
 logger = logging.getLogger(__name__)
 
-# ── Constants ────────────────────────────────────────────────────────────────
-
+# Keep these constants exported for any code that imports them directly
 MEMORY_NAMESPACE_PREFIX = "memories"
 FACTS_KEY = "user_facts"
-MAX_FACTS = 50  # Cap to avoid unbounded growth
+MAX_FACTS = 50
 
 
 # ── Reading memories ─────────────────────────────────────────────────────────
 
 async def recall_memories(
-    store: BaseStore,
+    store: BaseStore | None,
     user_id: str,
+    *,
+    on_recall: Callable[[dict], Coroutine] | None = None,
 ) -> dict[str, Any]:
     """
-    Recall all stored long-term memories for a user.
+    Recall stored long-term memories for a user via the domain service.
 
-    Returns a dict like:
-        {
-            "user_facts": ["prefers dark mode", "works at Acme Corp", …],
-        }
+    Returns::
+        {"user_facts": ["fact 1", "fact 2", ...]}
+
+    Args:
+        store: Kept for API compatibility; ignored (service manages cache).
+        user_id: The user whose memories to recall.
+        on_recall: Optional async callback invoked when facts are found.
+                   Receives ``{"fact_count": int, "facts": list[str]}``.
     """
-    if not store or not user_id:
+    if not user_id:
         return {}
 
-    namespace = (MEMORY_NAMESPACE_PREFIX, user_id)
-    memories: dict[str, Any] = {}
-
     try:
-        result = await store.aget(namespace, key=FACTS_KEY)
-        if result and hasattr(result, "value") and result.value:
-            memories["user_facts"] = result.value.get("facts", [])
+        from domain.user_memory.service import get_user_memory_service
+
+        svc = get_user_memory_service()
+        facts = await svc.list_for_recall(user_id)
+        if facts and on_recall:
+            try:
+                await on_recall({"fact_count": len(facts), "memories": facts})
+            except Exception as cb_err:
+                logger.debug(f"[LongTermMemory] on_recall callback error: {cb_err}")
+        return {"user_facts": facts} if facts else {}
     except Exception as e:
         logger.warning(f"[LongTermMemory] Failed to recall memories for user {user_id}: {e}")
+        return {}
 
-    return memories
 
+# ── Writing memories ─────────────────────────────────────────────────────────
 
 async def save_memories(
-    store: BaseStore,
+    store: BaseStore | None,
     user_id: str,
     new_facts: list[str],
+    *,
+    on_save: Callable[[dict], Coroutine] | None = None,
 ) -> None:
     """
-    Persist new facts to the user's long-term memory store.
+    Persist new facts via the domain service (deduplication + cache invalidation).
 
-    Merges with existing facts, deduplicates, and caps at MAX_FACTS.
+    Args:
+        store: Kept for API compatibility; ignored.
+        user_id: Target user.
+        new_facts: Raw fact strings to save.
+        on_save: Optional async callback invoked after saving.
+                 Receives ``{"saved_count": int, "facts": list[str]}``.
     """
-    if not store or not user_id or not new_facts:
+    if not user_id or not new_facts:
         return
 
-    namespace = (MEMORY_NAMESPACE_PREFIX, user_id)
-
     try:
-        # Read existing facts
-        existing_facts: list[str] = []
-        result = await store.aget(namespace, key=FACTS_KEY)
-        if result and hasattr(result, "value") and result.value:
-            existing_facts = result.value.get("facts", [])
+        from domain.user_memory.service import get_user_memory_service
 
-        # Merge and deduplicate (case-insensitive)
-        seen = {f.lower().strip() for f in existing_facts}
-        merged = list(existing_facts)  # preserve originals
-        for fact in new_facts:
-            normalised = fact.lower().strip()
-            if normalised and normalised not in seen:
-                merged.append(fact.strip())
-                seen.add(normalised)
-
-        # Cap
-        merged = merged[-MAX_FACTS:]
-
-        # Write back
-        await store.aput(
-            namespace,
-            key=FACTS_KEY,
-            value={
-                "facts": merged,
-                "updated_at": datetime.now(UTC).isoformat(),
-            },
-        )
+        svc = get_user_memory_service()
+        created = await svc.add_facts(user_id, new_facts, source="auto_extracted")
+        if created and on_save:
+            try:
+                await on_save(
+                    {
+                        "saved_count": len(created),
+                        "saved": [m.content for m in created],
+                    }
+                )
+            except Exception as cb_err:
+                logger.debug(f"[LongTermMemory] on_save callback error: {cb_err}")
         logger.info(
-            f"[LongTermMemory] Saved {len(new_facts)} new fact(s) for user {user_id} "
-            f"(total: {len(merged)})"
+            f"[LongTermMemory] Saved {len(created)} new fact(s) for user {user_id}"
         )
     except Exception as e:
         logger.error(f"[LongTermMemory] Failed to save memories for user {user_id}: {e}")
@@ -170,33 +157,39 @@ If nothing to extract: []
 
 
 async def extract_and_save_memories(
-    store: BaseStore,
+    store: BaseStore | None,
     user_id: str,
     messages: list[BaseMessage],
     model: Any,
     existing_memories: dict[str, Any] | None = None,
+    *,
+    on_save: Callable[[dict], Coroutine] | None = None,
+    extract_memory: bool = True,
 ) -> None:
     """
     Use an LLM to extract user facts from the conversation and save them.
 
-    This is designed to run in the background (after the main response)
-    so it doesn't add latency.
+    Designed to run in the background (after the main response) to avoid
+    adding latency to the user-facing turn.
 
     Args:
-        store: The LangGraph BaseStore instance
-        user_id: User identifier for namespacing
-        messages: Recent conversation messages to extract from
-        model: The LLM model to use for extraction
-        existing_memories: Already-known facts (to avoid duplicates)
+        extract_memory: If False, skip extraction (gate independent of long_term_memory).
     """
-    if not store or not user_id:
+    if not user_id:
+        logger.info("[LongTermMemory] extract_and_save_memories: no user_id")
         return
 
+    if not extract_memory:
+        logger.info("[LongTermMemory] extract_and_save_memories: extract_memory gate is OFF for user %s", user_id)
+        return
+
+    logger.info("[LongTermMemory] Starting memory extraction for user %s", user_id)
+
     try:
-        # Build the extraction prompt with existing memories context
         existing_facts = []
         if existing_memories:
             existing_facts = existing_memories.get("user_facts", [])
+            logger.debug(f"[LongTermMemory] Existing {len(existing_facts)} facts found")
 
         existing_context = ""
         if existing_facts:
@@ -205,10 +198,9 @@ async def extract_and_save_memories(
                 + "\n".join(f"- {f}" for f in existing_facts)
             )
 
-        # Only look at the last few messages to keep extraction focused
         recent_messages = messages[-6:] if len(messages) > 6 else messages
+        logger.debug(f"[LongTermMemory] Processing {len(recent_messages)} recent messages (from {len(messages)} total)")
 
-        # Build conversation text for extraction
         conv_parts = []
         for msg in recent_messages:
             if isinstance(msg, HumanMessage):
@@ -217,9 +209,11 @@ async def extract_and_save_memories(
                 conv_parts.append(f"Assistant: {msg.content}")
 
         if not conv_parts:
+            logger.debug("[LongTermMemory] No conversation parts found in messages, skipping extraction")
             return
 
         conversation_text = "\n".join(conv_parts)
+        logger.debug("[LongTermMemory] Extraction input text length: %d chars", len(conversation_text))
 
         extraction_prompt = (
             f"{MEMORY_EXTRACTION_SYSTEM_PROMPT}"
@@ -228,34 +222,95 @@ async def extract_and_save_memories(
             f"Extract new facts (JSON array):"
         )
 
-        # Use the model to extract facts
         from langchain_core.messages import SystemMessage
 
+        logger.debug("[LongTermMemory] Invoking model for extraction")
         response = await model.ainvoke(
             [SystemMessage(content=extraction_prompt)],
         )
 
-        # Parse the response
         content = response.content.strip()
+        logger.debug(f"[LongTermMemory] Model response length: {len(content)} chars")
 
-        # Try to extract JSON from the response
-        # Handle cases where model wraps in ```json ... ```
         if "```" in content:
-            # Extract content between code fences
             start = content.find("[")
             end = content.rfind("]") + 1
             if start >= 0 and end > start:
                 content = content[start:end]
+                logger.debug("[LongTermMemory] Extracted JSON from markdown code block")
 
         new_facts = json.loads(content)
+        logger.debug(f"[LongTermMemory] Parsed {len(new_facts) if isinstance(new_facts, list) else 0} facts from JSON")
 
         if isinstance(new_facts, list) and new_facts:
-            # Filter out empty or very short facts
-            new_facts = [f for f in new_facts if isinstance(f, str) and len(f.strip()) > 3]
-            if new_facts:
-                await save_memories(store, user_id, new_facts)
+            filtered_facts = [f for f in new_facts if isinstance(f, str) and len(f.strip()) > 3]
+            logger.info(f"[LongTermMemory] Filtered to {len(filtered_facts)} facts (from {len(new_facts)})")
+            if filtered_facts:
+                logger.info(f"[LongTermMemory] Saving {len(filtered_facts)} facts: {filtered_facts[:3]}...")
+                await save_memories(store, user_id, filtered_facts, on_save=on_save)
+            else:
+                logger.debug(f"[LongTermMemory] All facts filtered out")
+        else:
+            logger.debug(f"[LongTermMemory] No facts extracted (parsed as: {type(new_facts).__name__})")
 
-    except json.JSONDecodeError:
-        logger.debug("[LongTermMemory] Could not parse extraction response as JSON")
+    except json.JSONDecodeError as je:
+        logger.warning(f"[LongTermMemory] Could not parse extraction response as JSON for user {user_id}: {je}")
+        logger.debug(f"[LongTermMemory] Response content was: {content[:200]}...")
     except Exception as e:
-        logger.warning(f"[LongTermMemory] Memory extraction failed for user {user_id}: {e}")
+        logger.error(f"[LongTermMemory] Memory extraction failed for user {user_id}: {type(e).__name__}: {e}")
+
+
+# ── History persistence helpers ──────────────────────────────────────────────
+
+def tag_response_with_ltm_recall(response: Any, memories: dict) -> Any:
+    """
+    Embed recalled-fact count and actual facts in the AI response's additional_kwargs
+    so that chat history reconstruction can re-emit the long_term_memory_recall packet
+    (with individual memory items) after a page refresh.
+    """
+    facts = memories.get("user_facts", [])
+    if not facts:
+        logger.debug("[LTM-tag] no facts to tag — memories keys: %s", list(memories.keys()))
+        return response
+    if not hasattr(response, "additional_kwargs"):
+        logger.warning("[LTM-tag] response has no additional_kwargs attr (type=%s)", type(response).__name__)
+        return response
+    response.additional_kwargs["_ltm_recalled"] = len(facts)
+    response.additional_kwargs["_ltm_memories"] = list(facts)
+    logger.debug("[LTM-tag] tagged response with _ltm_recalled=%d (type=%s, ak_keys=%s)",
+                 len(facts), type(response).__name__, list(response.additional_kwargs.keys()))
+    return response
+
+
+# ── Event emitter helpers ────────────────────────────────────────────────────
+
+def build_event_emitters(configurable: dict[str, Any]) -> tuple[
+    Callable[[dict], Coroutine] | None,
+    Callable[[dict], Coroutine] | None,
+]:
+    """
+    Return (on_recall, on_save) async callbacks that emit LangGraph custom events.
+
+    Usage in agent nodes::
+
+        on_recall, on_save = build_event_emitters(configurable)
+        memories = await recall_memories(store, user_id, on_recall=on_recall)
+        ...
+        await save_memories(store, user_id, new_facts, on_save=on_save)
+    """
+    if not configurable.get("long_term_memory"):
+        return None, None
+
+    from langgraph.config import get_stream_writer as _get_stream_writer
+
+    def _make_emitter(event_type: str) -> Callable[[dict], Coroutine]:
+        async def _emit(payload: dict) -> None:
+            try:
+                writer = _get_stream_writer()
+                if writer:
+                    writer({"type": event_type, **payload})
+            except Exception as e:
+                logger.debug("[LTM] emit %s failed: %s", event_type, e)
+        return _emit
+
+    return _make_emitter("long_term_memory_recall"), _make_emitter("long_term_memory_save")

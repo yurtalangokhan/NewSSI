@@ -3,12 +3,12 @@
 Provides a factory that returns a Milvus (default) or PGVector vectorstore
 instance depending on the VECTOR_DB_PROVIDER environment variable.
 
-Postgres is still used for collection metadata (langchain_pg_collection /
-langchain_pg_embedding tables) — the switch only affects where embedding
-vectors are stored and searched.
+Postgres is used only for collection metadata (langchain_pg_collection).
+All embedding / chunk data lives exclusively in Milvus.
 """
 
 import logging
+import re
 from typing import Any, Optional, Union
 
 import sqlalchemy
@@ -21,6 +21,22 @@ from langconnect import config
 logger = logging.getLogger(__name__)
 
 DBConnection = Union[sqlalchemy.engine.Engine, str]
+
+
+def to_milvus_collection_name(raw_name: str) -> str:
+    """Normalize arbitrary collection labels to valid Milvus collection names.
+
+    Milvus only allows [a-zA-Z0-9_] with a letter/underscore as the first char.
+    Must match the normalization used in agent-service so both services address
+    the same Milvus collection.
+    """
+    name = re.sub(r"[^a-zA-Z0-9_]", "_", (raw_name or "").strip())
+    name = re.sub(r"_+", "_", name).strip("_")
+    if not name:
+        name = "collection"
+    if name[0].isdigit():
+        name = f"c_{name}"
+    return name
 
 
 def _get_milvus_connection_args() -> dict[str, Any]:
@@ -68,10 +84,7 @@ def get_vectorstore(
     # Default: Milvus
     from langchain_community.vectorstores import Milvus  # noqa: PLC0415
 
-    # Milvus collection names only allow [a-zA-Z0-9_] and must start with a letter/underscore
-    milvus_collection_name = collection_name.replace("-", "_")
-    if milvus_collection_name and milvus_collection_name[0].isdigit():
-        milvus_collection_name = "c_" + milvus_collection_name
+    milvus_collection_name = to_milvus_collection_name(collection_name)
 
     connection_args = _get_milvus_connection_args()
     return Milvus(

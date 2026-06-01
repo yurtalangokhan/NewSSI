@@ -23,6 +23,10 @@ from api.routes.AgentsRoute import message_generator
 from api.dependencies import verify_api_key
 from domain.providers.repository import ProviderRepository
 from domain.providers.service import ProviderService
+from service.ChatContextService import (
+    build_effective_llm_override,
+    resolve_project_instructions,
+)
 
 router = APIRouter(tags=["chat"])
 
@@ -122,6 +126,7 @@ async def create_chat_session(
     return await _get_user_chat_controller(user_id).create_chat_session(
         persona_id=body.get("persona_id", 0),
         description=body.get("description"),
+        project_id=body.get("project_id"),
     )
 
 
@@ -244,6 +249,7 @@ async def get_available_context_tokens(
     return await _get_user_chat_controller(user_id).get_available_context_tokens(session_id)
 
 
+@router.get("/api/user/projects/session/{session_id}/token-count")
 @router.get("/user/projects/session/{session_id}/token-count")
 async def get_session_token_count(
     session_id: str,
@@ -254,6 +260,7 @@ async def get_session_token_count(
     return await _get_user_chat_controller(user_id).get_session_token_count(session_id)
 
 
+@router.get("/api/user/projects/session/{session_id}/files")
 @router.get("/user/projects/session/{session_id}/files")
 async def get_session_files(
     session_id: str,
@@ -304,6 +311,11 @@ async def send_chat_message(
     chat_session_id = body.get("chat_session_id")
     persona_id = body.get("persona_id")
     llm_override = body.get("llm_override")
+    additional_context = body.get("additional_context")
+    if isinstance(additional_context, str):
+        additional_context = additional_context.strip() or None
+    else:
+        additional_context = None
 
     if llm_override and llm_override.get("provider_id") and llm_override.get("provider_type"):
         model_name = llm_override.get("model") or llm_override.get("model_version")
@@ -389,6 +401,7 @@ async def send_chat_message(
                 "user_id": user_id,
                 "name": session_name,
                 "persona_id": persona_id,
+                "project_id": body.get("project_id"),
             }
         )
     else:
@@ -409,6 +422,9 @@ async def send_chat_message(
             needs_update = True
         if persona_id is not None and metadata.get("persona_id") != persona_id:
             metadata["persona_id"] = persona_id
+            needs_update = True
+        if body.get("project_id") is not None and metadata.get("project_id") != body.get("project_id"):
+            metadata["project_id"] = body.get("project_id")
             needs_update = True
         if llm_override:
             if llm_override.get("model"):
@@ -450,6 +466,19 @@ async def send_chat_message(
             if custom_persona.get("rag_config"):
                 llm_override = llm_override or {}
                 llm_override["rag_config"] = custom_persona["rag_config"]
+            # Pass the numeric persona_id so _handle_input reads LTM settings
+            # from the correct persona, not from the underlying builtin graph key.
+            llm_override = llm_override or {}
+            llm_override["_persona_id"] = persona_id
+
+    project_instructions = await resolve_project_instructions(
+        user_id=user_id,
+        project_id=body.get("project_id"),
+        thread_metadata=thread.get("metadata") if thread else None,
+    )
+    llm_override = build_effective_llm_override(
+        llm_override, additional_context, project_instructions
+    )
 
     # Process file_descriptors sent by the frontend (inline base64 flow).
     # Convert each descriptor into a LangChain content block and store the raw
@@ -499,6 +528,7 @@ async def send_chat_message(
     stream_input = StreamInput(
         message=message or "",
         thread_id=session_id,
+        agent_id=str(assistant_id),
         agent_config=llm_override or {},
         file_content_blocks=file_content_blocks,
         files_metadata=files_metadata,

@@ -9,6 +9,7 @@ from sqlalchemy import Boolean, DateTime, Index, Text, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
+
 from core.db.models.base import Base
 
 
@@ -37,14 +38,11 @@ class UserSettingsModel(Base):
         Text, nullable=False, default="AUTO", server_default=text("'AUTO'")
     )
 
-    memories: Mapped[list[dict]] = mapped_column(
-        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
-    )
-    use_memories: Mapped[bool] = mapped_column(
+    long_term_memory_enabled: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default=text("FALSE")
     )
-    enable_memory_tool: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=False, server_default=text("FALSE")
+    extract_memory: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default=text("TRUE")
     )
     user_preferences: Mapped[str] = mapped_column(
         Text, nullable=False, default="", server_default=text("''")

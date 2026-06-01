@@ -10,6 +10,7 @@ from copy import deepcopy
 
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_openai import AzureChatOpenAI, ChatOpenAI
+from core.providers.vllm_chat import VLLMChatOpenAI
 from langchain_ollama import ChatOllama
 from langchain_anthropic import ChatAnthropic
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -60,7 +61,9 @@ async def get_llm_for_provider(
     provider = _normalize_provider(provider_type)
 
     if provider in {"openai"} or model_name.startswith("gpt-"):
-        return ChatOpenAI(model=model_name, api_key=api_key, base_url=base_url)
+        # VLLMChatOpenAI handles reasoning fields from vLLM/OpenAI-compatible endpoints.
+        cls = VLLMChatOpenAI if base_url else ChatOpenAI
+        return cls(model=model_name, api_key=api_key, base_url=base_url)
 
     if provider in {"anthropic"} or model_name.startswith("claude-"):
         if any(model_name.lower().startswith(p) for p in _ANTHROPIC_THINKING_PREFIXES):
@@ -121,6 +124,7 @@ async def get_llm_for_provider(
 
     if provider in {"vllm", "openai_compatible", "litellm", "deepseek", "openrouter"}:
         model_kwargs: dict = {}
+        explicit_extra_body: dict | None = None
 
         if isinstance(request_overrides, dict):
             # Supports arbitrary OpenAI-compatible request options from provider config.
@@ -130,14 +134,25 @@ async def get_llm_for_provider(
 
             configured_extra_body = request_overrides.get("extra_body")
             if isinstance(configured_extra_body, dict):
-                model_kwargs = _deep_merge_dict(model_kwargs, {"extra_body": configured_extra_body})
+                explicit_extra_body = _deep_merge_dict(
+                    explicit_extra_body or {},
+                    configured_extra_body,
+                )
 
         # Capability-driven default for vLLM/Qwen-like endpoints that require
         # explicit thinking enablement via chat_template_kwargs.
         if provider == "vllm" and supports_reasoning is True:
-            model_kwargs = _deep_merge_dict(
-                model_kwargs,
-                {"extra_body": {"chat_template_kwargs": {"enable_thinking": True}}},
+            explicit_extra_body = _deep_merge_dict(
+                explicit_extra_body or {},
+                {"chat_template_kwargs": {"enable_thinking": True}},
+            )
+
+        # LangChain expects extra_body as a first-class argument for ChatOpenAI,
+        # not embedded in model_kwargs.
+        if isinstance(model_kwargs.get("extra_body"), dict):
+            explicit_extra_body = _deep_merge_dict(
+                explicit_extra_body or {},
+                model_kwargs.pop("extra_body"),
             )
 
         kwargs = {
@@ -147,8 +162,10 @@ async def get_llm_for_provider(
         }
         if model_kwargs:
             kwargs["model_kwargs"] = model_kwargs
+        if explicit_extra_body:
+            kwargs["extra_body"] = explicit_extra_body
 
-        return ChatOpenAI(
+        return VLLMChatOpenAI(
             **kwargs,
         )
 

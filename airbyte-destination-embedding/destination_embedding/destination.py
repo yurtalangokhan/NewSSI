@@ -116,6 +116,7 @@ class _BatchWriter:
     def __init__(self, config: dict[str, Any]) -> None:
         self._base_url = config["agent_service_url"].rstrip("/")
         self._datasource_id: str = config["datasource_id"]
+        self._connector_type: str = str(config.get("connector_type", "unknown"))
         self._batch_size: int = int(config.get("batch_size", 200))
         self._timeout: int = int(config.get("request_timeout_seconds", 120))
         self._buffer: list[dict[str, Any]] = []
@@ -147,20 +148,24 @@ class _BatchWriter:
     def _flush(self, is_last: bool) -> None:
         batch = self._buffer
         self._buffer = []  # release memory immediately
+        stream_name = str(batch[0].get("_stream", "unknown")) if batch else "unknown"
 
         payload = {
             "datasource_id": self._datasource_id,
+            "connector_type": self._connector_type,
+            "stream_name": stream_name,
+            "batch_id": f"{self._datasource_id}:{self._batch_index}",
             "records": batch,
             "batch_index": self._batch_index,
             "is_last_batch": is_last,
         }
 
-        url = f"{self._base_url}/ingest/batch"
+        batch_path = "/batch"
         retries = 3
         for attempt in range(1, retries + 1):
             try:
                 resp = self._session.post(
-                    url,
+                    f"{self._base_url}{batch_path}",
                     data=json.dumps(payload),
                     timeout=self._timeout,
                 )
@@ -178,7 +183,7 @@ class _BatchWriter:
                 else:
                     _emit_log(
                         "WARN",
-                        f"Batch POST returned {resp.status_code}: {resp.text[:300]} "
+                        f"Batch POST to {batch_path} returned {resp.status_code}: {resp.text[:300]} "
                         f"(attempt {attempt}/{retries})",
                     )
             except requests.RequestException as exc:

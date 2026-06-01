@@ -1,9 +1,10 @@
 "use client";
 
-import React, { memo } from "react";
+import React, { memo, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
 import { usePinnedAgents, useCurrentAgent } from "@/hooks/useAgents";
+import { useProjectsContext } from "@/providers/ProjectsContext";
 import { cn, noProp } from "@/lib/utils";
 import SidebarTab from "@/refresh-components/buttons/SidebarTab";
 import IconButton from "@/refresh-components/buttons/IconButton";
@@ -50,10 +51,18 @@ export interface AgentButtonProps {
 const AgentButton = memo(({ agent }: AgentButtonProps) => {
   const currentAgent = useCurrentAgent();
   const { pinnedAgents, togglePinnedAgent } = usePinnedAgents();
+  const { currentProjectId } = useProjectsContext();
   const { t } = useTranslation();
   const routeAgentId = agent.external_id ?? agent.id;
   const isActuallyPinned = pinnedAgents.some((a) => a.id === agent.id);
   const isCurrentAgent = currentAgent?.id === agent.id;
+  const href = useMemo(() => {
+    const params = new URLSearchParams({ agentId: String(routeAgentId) });
+    if (currentProjectId) {
+      params.set("projectId", String(currentProjectId));
+    }
+    return `/app?${params.toString()}`;
+  }, [routeAgentId, currentProjectId]);
 
   const handleClick = async () => {
     if (!isActuallyPinned) {
@@ -67,7 +76,7 @@ const AgentButton = memo(({ agent }: AgentButtonProps) => {
         <SidebarTab
           key={agent.id}
           leftIcon={() => <AgentAvatar agent={agent} />}
-          href={`/app?agentId=${routeAgentId}`}
+          href={href}
           onClick={handleClick}
           transient={isCurrentAgent}
           rightChildren={

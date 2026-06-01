@@ -14,12 +14,13 @@ import { useTranslation } from "react-i18next";
 interface MemoriesProps {
   memories: MemoryItem[];
   onSaveMemories: (memories: MemoryItem[]) => Promise<boolean>;
+  onDeleteMemory?: (id: string) => Promise<boolean>;
 }
 
-export default function Memories({ memories, onSaveMemories }: MemoriesProps) {
+export default function Memories({ memories, onSaveMemories, onDeleteMemory }: MemoriesProps) {
   const { t } = useTranslation("common", { keyPrefix: "memories" });
   const memoriesModal = useCreateModal();
-  const [targetMemoryId, setTargetMemoryId] = useState<number | null>(null);
+  const [targetMemoryId, setTargetMemoryId] = useState<string | null>(null);
 
   return (
     <>
@@ -47,7 +48,7 @@ export default function Memories({ memories, onSaveMemories }: MemoriesProps) {
           <div className="flex flex-row items-center gap-2">
             {memories.slice(0, 2).map((memory, index) => (
               <FileTile
-                key={memory.id ?? index}
+                key={memory.id}
                 description={memory.content}
                 onOpen={() => {
                   setTargetMemoryId(memory.id);
@@ -72,6 +73,7 @@ export default function Memories({ memories, onSaveMemories }: MemoriesProps) {
         <MemoriesModal
           memories={memories}
           onSaveMemories={onSaveMemories}
+          onDeleteMemory={onDeleteMemory}
           initialTargetMemoryId={targetMemoryId}
         />
       </memoriesModal.Provider>

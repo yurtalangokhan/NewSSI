@@ -15,6 +15,7 @@ import {
 } from "@/sections/sidebar/chatSearchUtils";
 import { useSettingsContext } from "@/providers/SettingsProvider";
 import { useCurrentAgent } from "@/hooks/useAgents";
+import { useProjectsContext } from "@/providers/ProjectsContext";
 import Text from "@/refresh-components/texts/Text";
 import {
   useChatSearchOptimistic,
@@ -88,6 +89,7 @@ export default function ChatSearchCommandMenu({
   const { projects } = useProjects();
   const combinedSettings = useSettingsContext();
   const currentAgent = useCurrentAgent();
+  const { currentProjectId } = useProjectsContext();
   const createProjectModal = useCreateModal();
 
   // Constants for preview limits
@@ -164,13 +166,25 @@ export default function ChatSearchCommandMenu({
   // Navigation handlers
   const handleNewSession = useCallback(() => {
     const currentRouteAgentId = currentAgent?.external_id ?? currentAgent?.id;
-    const href =
-      combinedSettings?.settings?.disable_default_assistant && currentAgent
-        ? `/app?agentId=${currentRouteAgentId}`
-        : "/app";
+    const href = (() => {
+      if (!(combinedSettings?.settings?.disable_default_assistant && currentAgent)) {
+        if (!currentProjectId) {
+          return "/app";
+        }
+        return `/app?projectId=${currentProjectId}`;
+      }
+
+      const params = new URLSearchParams({
+        agentId: String(currentRouteAgentId),
+      });
+      if (currentProjectId) {
+        params.set("projectId", String(currentProjectId));
+      }
+      return `/app?${params.toString()}`;
+    })();
     router.push(href as Route);
     setOpen(false);
-  }, [router, combinedSettings, currentAgent]);
+  }, [router, combinedSettings, currentAgent, currentProjectId]);
 
   const handleChatSelect = useCallback(
     (chatId: string) => {

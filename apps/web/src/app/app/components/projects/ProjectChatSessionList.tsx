@@ -13,8 +13,10 @@ import { cn } from "@/lib/utils";
 import { UNNAMED_CHAT } from "@/lib/constants";
 import ChatSessionSkeleton from "@/refresh-components/skeletons/ChatSessionSkeleton";
 import { SvgBubbleText } from "@opal/icons";
+import { useTranslation } from "react-i18next";
 
 export default function ProjectChatSessionList() {
+  const { t } = useTranslation();
   const {
     currentProjectDetails,
     currentProjectId,
@@ -41,7 +43,7 @@ export default function ProjectChatSessionList() {
     <div className="flex flex-col gap-2 px-2 w-full mx-auto mt-4">
       <div className="flex items-center pl-2">
         <Text as="p" text02 secondaryBody>
-          Recent Chats
+          {t("projectContextPanel.recentChats")}
         </Text>
       </div>
 
@@ -53,7 +55,7 @@ export default function ProjectChatSessionList() {
         </div>
       ) : projectChats.length === 0 ? (
         <Text as="p" text02 secondaryBody className="p-2">
-          No chats yet.
+          {t("projectContextPanel.noChatsYet")}
         </Text>
       ) : (
         <div className="flex flex-col gap-2">
@@ -138,7 +140,9 @@ export default function ProjectChatSessionList() {
                       nowrap
                       className="truncate"
                     >
-                      Last message {formatRelativeTime(chat.time_updated)}
+                      {t("projectContextPanel.lastMessage", {
+                        time: formatRelativeTime(chat.time_updated),
+                      })}
                     </Text>
                   </div>
                 </div>

@@ -47,6 +47,7 @@ class ThreadRepository(BaseRepository):
             "thread_id": str(row.thread_id),
             "metadata": row.metadata_ or {},
             "status": row.status or "idle",
+            "project_id": row.project_id,
             "created_at": row.created_at.isoformat() if row.created_at else None,
             "updated_at": row.updated_at.isoformat() if row.updated_at else None,
         }
@@ -109,6 +110,9 @@ class ThreadRepository(BaseRepository):
             "thread_id": thread["thread_id"],
             "metadata_": thread.get("metadata", {}),
             "status": thread.get("status", "idle"),
+            "project_id": thread.get("project_id")
+            if thread.get("project_id") is not None
+            else (thread.get("metadata", {}) or {}).get("project_id"),
             "created_at": _ensure_datetime(thread.get("created_at", now)),
             "updated_at": _ensure_datetime(thread.get("updated_at", now)),
         }
@@ -122,6 +126,7 @@ class ThreadRepository(BaseRepository):
                         "metadata": values["metadata_"],
                         "updated_at": values["updated_at"],
                         "status": values["status"],
+                        "project_id": values["project_id"],
                     },
                 )
                 .returning(ThreadModel)
@@ -150,6 +155,8 @@ class ThreadRepository(BaseRepository):
             current["metadata"].update(updates["metadata"])
         if "status" in updates:
             current["status"] = updates["status"]
+        if "project_id" in updates:
+            current["project_id"] = updates["project_id"]
 
         if update_timestamp:
             current["updated_at"] = datetime.now(UTC).isoformat()

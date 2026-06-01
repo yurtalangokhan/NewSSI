@@ -7,9 +7,11 @@ from core import settings
 from core.llm import get_model_from_config
 from core.logger import get_logger
 from memory.long_term import (
+    build_event_emitters,
     build_memory_context,
     extract_and_save_memories,
     recall_memories,
+    tag_response_with_ltm_recall,
 )
 
 logger = get_logger(__name__)
@@ -26,6 +28,7 @@ async def call_model(
     long_term_memory = configurable.get("long_term_memory", False)
     user_id = configurable.get("user_id")
     memories: dict = {}
+    on_recall, on_save = build_event_emitters(configurable)
 
     logger.debug(
         "long_term_memory=%s, user_id=%s, store=%s, store_type=%s",
@@ -35,9 +38,9 @@ async def call_model(
         type(store).__name__ if store else "None",
     )
 
-    if long_term_memory and store and user_id:
+    if long_term_memory and user_id:
         try:
-            memories = await recall_memories(store, user_id)
+            memories = await recall_memories(store, user_id, on_recall=on_recall)
             logger.debug("Recalled memories: %s", memories)
             memory_context = build_memory_context(memories)
             if memory_context:
@@ -56,13 +59,15 @@ async def call_model(
         )
 
     response = await model.ainvoke(messages)
+    tag_response_with_ltm_recall(response, memories)
 
     # Long-term memory: extract and save new facts
-    if long_term_memory and store and user_id:
+    if long_term_memory and user_id:
         try:
-            logger.debug("Starting memory extraction...")
+            extract_mem = configurable.get("extract_memory", True)
             await extract_and_save_memories(
-                store, user_id, list(state["messages"]) + [response], model, memories
+                    store, user_id, list(state["messages"]) + [response], model, memories,
+                    on_save=on_save, extract_memory=extract_mem
             )
             logger.debug("Memory extraction completed")
         except Exception as e:

@@ -16,23 +16,23 @@ export default function MoveCustomAgentChatModal({
   onCancel,
   onConfirm,
 }: MoveCustomAgentChatModalProps) {
-  const { t } = useTranslation("modals");
+  const { t } = useTranslation();
   const [doNotShowAgain, setDoNotShowAgain] = useState(false);
 
   return (
     <ConfirmationModalLayout
       icon={SvgAlertCircle}
-      title={t("moveCustomAgentChat.title")}
+      title={t("modals.moveCustomAgentChat.title")}
       onClose={onCancel}
       submit={
         <Button primary onClick={() => onConfirm(doNotShowAgain)}>
-          {t("moveCustomAgentChat.confirmButton")}
+          {t("modals.moveCustomAgentChat.confirmButton")}
         </Button>
       }
     >
       <div className="flex flex-col gap-4">
         <Text as="p" text03>
-          {t("moveCustomAgentChat.warning")}
+          {t("modals.moveCustomAgentChat.warning")}
         </Text>
         <div className="flex items-center gap-1">
           <Checkbox
@@ -44,7 +44,7 @@ export default function MoveCustomAgentChatModal({
             htmlFor="move-custom-agent-do-not-show"
             className="text-text-03 text-sm"
           >
-            {t("moveCustomAgentChat.doNotShowAgain")}
+            {t("modals.moveCustomAgentChat.doNotShowAgain")}
           </label>
         </div>
       </div>

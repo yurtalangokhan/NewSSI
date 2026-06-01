@@ -8,6 +8,7 @@ import Text from "@/refresh-components/texts/Text";
 import { SvgDownload, SvgMaximize2, SvgX } from "@opal/icons";
 import { Button } from "@opal/components";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
 export interface ExpandableTextDisplayProps {
   /** Title shown in header and modal */
@@ -119,6 +120,7 @@ export default function ExpandableTextDisplay({
   renderContent,
   isStreaming = false,
 }: ExpandableTextDisplayProps) {
+  const { t } = useTranslation();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isTruncated, setIsTruncated] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -312,7 +314,7 @@ export default function ExpandableTextDisplay({
               prominence="tertiary"
               size="sm"
               icon={SvgMaximize2}
-              tooltip="View Full Text"
+              tooltip={t("viewFullText")}
               onClick={() => setIsModalOpen(true)}
             />
           )}
@@ -361,7 +363,7 @@ export default function ExpandableTextDisplay({
           <div className="flex items-center justify-between p-2 bg-background-tint-01">
             <div className="px-2">
               <Text as="span" mainUiMuted text03>
-                {lineCount} {lineCount === 1 ? "line" : "lines"}
+                {t("filePreview.lines", { count: lineCount })}
               </Text>
             </div>
             <div className="flex items-center gap-1 bg-background-tint-00 p-1 rounded-12">
@@ -369,13 +371,13 @@ export default function ExpandableTextDisplay({
                 prominence="tertiary"
                 size="sm"
                 getCopyText={() => content}
-                tooltip="Copy"
+                tooltip={t("filePreview.copyContent")}
               />
               <Button
                 prominence="tertiary"
                 size="sm"
                 icon={SvgDownload}
-                tooltip="Download"
+                tooltip={t("filePreview.download")}
                 onClick={handleDownload}
               />
             </div>

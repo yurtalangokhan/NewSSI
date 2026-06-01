@@ -7,7 +7,7 @@ from fastapi import HTTPException
 from controller.base import BaseController
 from service.PersonaRepository import PersonaDB
 
-USER_ID = "dev-user"
+DEFAULT_USER_ID = "dev-user"
 
 
 def _format_tool_display_name(tool_name: str) -> str:
@@ -16,6 +16,17 @@ def _format_tool_display_name(tool_name: str) -> str:
 
 class PersonaController(BaseController):
     """Owns persona CRUD and persona-related helper endpoints."""
+
+    def _resolve_owner_email(self, persona: dict[str, Any]) -> str:
+        stored_email = persona.get("user_email")
+        if isinstance(stored_email, str) and stored_email.strip():
+            return stored_email
+
+        owner_id = str(persona.get("user_id") or DEFAULT_USER_ID)
+        if "@" in owner_id:
+            return owner_id
+
+        return "user@local.dev"
 
     def _extract_rag_tool_names(self, rag_config: dict[str, Any] | None) -> list[str]:
         rag = rag_config or {}
@@ -149,8 +160,8 @@ class PersonaController(BaseController):
             "builtin_persona": False,
             "labels": labels,
             "owner": {
-                "id": persona.get("user_id", USER_ID),
-                "email": persona.get("user_email", "dev@local.dev"),
+                "id": str(persona.get("user_id") or DEFAULT_USER_ID),
+                "email": self._resolve_owner_email(persona),
             },
             "user_file_ids": persona.get("user_file_ids") or [],
             "users": persona.get("users") or [],
@@ -166,6 +177,7 @@ class PersonaController(BaseController):
             "base_agent": persona.get("base_agent"),
             "mcp_tools": mcp_tools,
             "rag_config": rag_config,
+            "long_term_memory": bool(persona.get("long_term_memory", False)),
             "search_start_date": persona.get("search_start_date"),
         }
 
@@ -216,15 +228,20 @@ class PersonaController(BaseController):
 
         return personas
 
-    async def create_persona(self, payload: dict[str, Any]) -> dict[str, Any]:
+    async def create_persona(
+        self,
+        payload: dict[str, Any],
+        user_id: str | None = None,
+    ) -> dict[str, Any]:
         try:
             rag_config = payload.get("rag_config")
+            effective_user_id = user_id or DEFAULT_USER_ID
             persona = await PersonaDB.create(
                 name=payload["name"],
                 description=payload["description"],
                 system_prompt=payload.get("system_prompt", ""),
                 task_prompt=payload.get("task_prompt", ""),
-                user_id=USER_ID,
+                user_id=effective_user_id,
                 is_builtin=False,
                 datetime_aware=payload.get("datetime_aware", True),
                 is_public=payload.get("is_public", True),
@@ -235,13 +252,20 @@ class PersonaController(BaseController):
                 base_agent=payload.get("base_agent"),
                 mcp_tools=payload.get("mcp_tools") or [],
                 rag_config=rag_config,
+                long_term_memory=bool(payload.get("long_term_memory", False)),
             )
         except Exception as exc:
             self._raise_internal_error(str(exc))
 
         return self._serialize_custom_persona(persona)
 
-    async def update_persona(self, persona_id: int, payload: dict[str, Any]) -> dict[str, Any]:
+    async def update_persona(
+        self,
+        persona_id: int,
+        payload: dict[str, Any],
+        user_id: str | None = None,
+    ) -> dict[str, Any]:
+        _ = user_id
         try:
             existing = await PersonaDB.get(persona_id)
             if existing and existing.get("is_builtin"):
@@ -263,6 +287,7 @@ class PersonaController(BaseController):
                 base_agent=payload.get("base_agent"),
                 mcp_tools=payload.get("mcp_tools") or [],
                 rag_config=rag_config,
+                long_term_memory=bool(payload.get("long_term_memory", False)),
             )
             if not persona:
                 self._raise_not_found("Persona not found")

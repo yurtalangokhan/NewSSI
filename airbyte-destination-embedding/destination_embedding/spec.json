@@ -25,6 +25,13 @@
         "description": "UUID of the datasource collection in langchain_pg_collection.",
         "order": 1
       },
+      "connector_type": {
+        "type": "string",
+        "title": "Connector Type",
+        "description": "Optional source connector type (for metadata), e.g. mongodb.",
+        "default": "unknown",
+        "order": 2
+      },
       "batch_size": {
         "type": "integer",
         "title": "Batch Size",
@@ -32,7 +39,7 @@
         "default": 200,
         "minimum": 1,
         "maximum": 5000,
-        "order": 2
+        "order": 3
       },
       "request_timeout_seconds": {
         "type": "integer",
@@ -41,7 +48,7 @@
         "default": 120,
         "minimum": 10,
         "maximum": 600,
-        "order": 3
+        "order": 4
       }
     }
   }

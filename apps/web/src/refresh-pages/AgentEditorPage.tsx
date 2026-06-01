@@ -24,7 +24,7 @@ import LLMSelector from "@/components/llm/LLMSelector";
 import { parseLlmDescriptor, structureValue } from "@/lib/llmConfig/utils";
 import { useAvailableModels } from "@/hooks/useAvailableModels";
 import {
-  STARTER_MESSAGES_EXAMPLES,
+  MAX_STARTER_MESSAGES,
   MAX_CHARACTERS_STARTER_MESSAGE,
   MAX_CHARACTERS_AGENT_DESCRIPTION,
 } from "@/lib/constants";
@@ -395,8 +395,15 @@ function MCPServerCard({
 }
 
 function StarterMessages() {
-  const max_starters = STARTER_MESSAGES_EXAMPLES.length;
+  const max_starters = MAX_STARTER_MESSAGES;
   const { t } = useTranslation();
+  const starterMessagePlaceholders = useMemo(
+    () =>
+      Array.from({ length: max_starters }, (_, i) =>
+        t(`agentEditor.conversationStarterExample${i + 1}`)
+      ),
+    [max_starters, t]
+  );
 
   const { values } = useFormikContext<{
     starter_messages: string[];
@@ -426,7 +433,7 @@ function StarterMessages() {
               key={`starter_messages.${i}`}
               name={`starter_messages.${i}`}
               placeholder={
-                STARTER_MESSAGES_EXAMPLES[i] ||
+                starterMessagePlaceholders[i] ||
                 t("agentEditor.enterConversationStarter")
               }
               onRemove={() => arrayHelpers.remove(i)}
@@ -637,11 +644,12 @@ export default function AgentEditorPage({
     graph_schema: existingAgent?.graph_schema ?? "zero_shot",
     brain_type: (existingAgent as any)?.brain_type ?? "llm",
     memory_type: (existingAgent as any)?.memory_type ?? "none",
+    long_term_memory: existingAgent?.long_term_memory ?? false,
 
     // Prompts
     instructions: existingAgent?.system_prompt ?? "",
     starter_messages: Array.from(
-      { length: STARTER_MESSAGES_EXAMPLES.length },
+      { length: MAX_STARTER_MESSAGES },
       (_, i) => existingAgent?.starter_messages?.[i]?.message ?? ""
     ),
 
@@ -767,6 +775,7 @@ export default function AgentEditorPage({
       graph_schema: Yup.string().oneOf(GRAPH_SCHEMA_OPTIONS.map((option) => option.value)),
       brain_type: Yup.string().oneOf(BRAIN_TYPE_OPTIONS.map((option) => option.value)),
       memory_type: Yup.string().oneOf(MEMORY_TYPE_OPTIONS.map((option) => option.value)),
+      long_term_memory: Yup.boolean(),
 
     // Prompts
     instructions: Yup.string().optional(),
@@ -953,6 +962,7 @@ export default function AgentEditorPage({
             graph_schema: dynamicGraphSchema,
             brain_type: values.brain_type,
             memory_type: values.memory_type,
+            long_term_memory: values.long_term_memory,
             system_prompt: values.instructions || null,
             model: values.llm_model_version_override || null,
             mcp_tools: dedupedMcpToolNames,
@@ -1015,6 +1025,7 @@ export default function AgentEditorPage({
         // Base agent and MCP tools for custom agents
         base_agent: effectiveBaseAgent,
         mcp_tools: dedupedMcpToolNames,
+        long_term_memory: values.long_term_memory,
       };
 
       // Call API
@@ -1273,23 +1284,16 @@ export default function AgentEditorPage({
                                 </InputSelectField>
                               </InputLayouts.Vertical>
 
-                              <InputLayouts.Vertical
-                                name="memory_type"
-                                title={t("agentEditor.memoryTypeLabel")}
-                              >
-                                <InputSelectField name="memory_type">
-                                  <InputSelect.Trigger placeholder={t("agentEditor.selectMemoryTypePlaceholder")} />
-                                  <InputSelect.Content>
-                                    {MEMORY_TYPE_OPTIONS.map((option) => (
-                                      <InputSelect.Item key={option.value} value={option.value}>
-                                        {option.label}
-                                      </InputSelect.Item>
-                                    ))}
-                                  </InputSelect.Content>
-                                </InputSelectField>
-                              </InputLayouts.Vertical>
                             </>
                           )}
+
+                          <InputLayouts.Horizontal
+                            name="long_term_memory"
+                            title={t("agentEditor.longTermMemoryLabel")}
+                            description={t("agentEditor.longTermMemoryDescription")}
+                          >
+                            <SwitchField name="long_term_memory" />
+                          </InputLayouts.Horizontal>
                         </GeneralLayouts.Section>
 
                         <GeneralLayouts.Section width="fit">

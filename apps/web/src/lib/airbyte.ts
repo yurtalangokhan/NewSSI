@@ -361,6 +361,21 @@ export async function updateDatasource(
   return res.json();
 }
 
+export async function getDatasourceDetails(
+  id: string,
+  page = 1,
+  pageSize = 20
+): Promise<DataSourceDetails> {
+  const res = await fetch(
+    `/api/agent/datasources/${id}/details?page=${page}&page_size=${pageSize}`
+  );
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.detail || "Failed to fetch data source details");
+  }
+  return res.json();
+}
+
 export async function deleteDatasource(id: string): Promise<void> {
   const res = await fetch(`/api/agent/datasources/${id}`, {
     method: "DELETE",

@@ -64,6 +64,8 @@ async def get_graph_and_config(agent_id: str) -> tuple[str, dict]:
                 runtime_cfg["mcp_tools"] = definition_cfg["mcp_tools"]
             if definition_cfg.get("rag_config"):
                 runtime_cfg["rag_config"] = definition_cfg["rag_config"]
+            if definition_cfg.get("memory_type"):
+                runtime_cfg["memory_type"] = definition_cfg["memory_type"]
 
             return graph_id, runtime_cfg
     except (ValueError, AttributeError):
@@ -282,6 +284,61 @@ async def _handle_input(
         for k in non_configurable_keys:
             agent_cfg.pop(k, None)
         configurable.update(agent_cfg)
+
+    # ------------------------------------------------------------------
+    # AND-logic: long_term_memory = user toggle AND agent toggle
+    # ------------------------------------------------------------------
+    user_ltm = False
+    agent_ltm = False
+    us_data: dict = {}
+    persona_data = None
+    try:
+        from core.db.repositories.user_settings_repo import UserSettingsRepository
+
+        us_data = await UserSettingsRepository().ensure_defaults(user_id)
+        user_ltm = bool(us_data.get("long_term_memory_enabled", False))
+    except Exception as _ltm_err:
+        logger.warning(f"LTM user_settings lookup failed: {_ltm_err}")
+
+    if user_input.agent_id and not str(user_input.agent_id).startswith("dynamic-"):
+        try:
+            from core.db.repositories.persona_repo import PersonaRepository
+
+            # Prefer the original persona_id passed via agent_config (set by ChatRoute for
+            # custom personas) so we read LTM settings from the correct persona rather than
+            # the underlying graph key (e.g. "chatbot").
+            _pid = configurable.get("_persona_id") or user_input.agent_id
+            try:
+                _pid = int(_pid)
+            except (ValueError, TypeError):
+                pass
+            persona_data = await PersonaRepository().get(_pid) if isinstance(_pid, int) else None
+            if persona_data is None and isinstance(_pid, str):
+                persona_data = await PersonaRepository().get_by_builtin_key(_pid)
+            if persona_data:
+                agent_ltm = bool(persona_data.get("long_term_memory", False))
+            elif "memory_type" in configurable:
+                # UUID-based dynamic agents: persona lookup yields nothing; fall back to
+                # memory_type forwarded from AgentDefinition via get_graph_and_config.
+                agent_ltm = configurable["memory_type"] == "long_term"
+        except Exception as _ltm_err:
+            logger.warning(f"LTM persona lookup failed: {_ltm_err}")
+    elif "memory_type" in configurable:
+        agent_ltm = configurable["memory_type"] == "long_term"
+    elif "long_term_memory" in configurable:
+        agent_ltm = bool(configurable["long_term_memory"])
+
+    # Override whatever the frontend sent — DB toggles are authoritative
+    configurable["long_term_memory"] = user_ltm and agent_ltm
+
+    # Extract memory flag (independent gate for LLM extraction).
+    # Reuse persona_data already fetched above — no second DB call needed.
+    user_extract = bool(us_data.get("extract_memory", True))
+    agent_extract = True
+    if persona_data and isinstance(persona_data.get("labels"), dict):
+        agent_extract = persona_data["labels"].get("extract_memory", True)
+
+    configurable["extract_memory"] = user_extract and agent_extract
 
     config = RunnableConfig(
         configurable=configurable,

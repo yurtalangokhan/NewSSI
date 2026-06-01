@@ -6,6 +6,7 @@ All connector management is delegated to the Airbyte platform via REST API.
 """
 
 import logging
+import json
 from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
@@ -32,6 +33,27 @@ router = APIRouter(prefix="/datasources", tags=["datasources"])
 
 def _get_controller() -> DataController:
     return get_data_controller()
+
+
+def _mask_sensitive_config(config: dict[str, Any]) -> dict[str, Any]:
+    """Mask sensitive values in connector configs before returning to UI."""
+    sensitive_keys = ["password", "api_key", "secret", "token", "credentials", "private_key"]
+    masked: dict[str, Any] = {}
+    for key, value in (config or {}).items():
+        if any(s in key.lower() for s in sensitive_keys):
+            masked[key] = "****"
+        elif isinstance(value, dict):
+            masked[key] = _mask_sensitive_config(value)
+        else:
+            masked[key] = value
+    return masked
+
+
+def _format_connector_name(name: str) -> str:
+    """Format connector IDs for UI display labels."""
+    from service.AirbyteConnectorService import _format_connector_name as _fmt
+
+    return _fmt(name)
 
 
 # Valid sync mode combinations (must match Airbyte webapp + destination spec)
@@ -354,7 +376,16 @@ async def get_datasource_details(id: str, page: int = 1, page_size: int = 10):
     avg_chars = chunk_stats.get("avg_chunk_chars", 0)
     avg_tokens = chunk_stats.get("avg_chunk_tokens", 0)
 
-    # If no pre-computed stats, fall back to a simple COUNT (lightweight)
+    # If no pre-computed stats, query Milvus for count and pre-fetch samples in
+    # one connection so the fallback path below doesn't need a second round-trip.
+    milvus_prefetch: list[dict] = []
+    if not chunk_count:
+        from agents.tools import _query_milvus_collection
+
+        chunk_count, milvus_prefetch = _query_milvus_collection(
+            row.get("name", ""), sample_limit=page_size
+        )
+    # Final fallback for legacy PGVector-backed rows.
     if not chunk_count:
         chunk_count = await ds_repo.count_embeddings(id)
 
@@ -387,6 +418,51 @@ async def get_datasource_details(id: str, page: int = 1, page_size: int = 10):
                 "metadata": emb_meta,
             }
         )
+
+    # In Milvus-backed ingestion flow, PG embedding rows can be empty.
+    # Use the samples already fetched above; skip a second Milvus connection.
+    if not chunks and chunk_count:
+        milvus_rows = milvus_prefetch
+        for mr in milvus_rows:
+            raw_meta = mr.get("metadata") or {}
+            if isinstance(raw_meta, str):
+                try:
+                    raw_meta = json.loads(raw_meta) if raw_meta else {}
+                except Exception:
+                    raw_meta = {}
+            if not isinstance(raw_meta, dict):
+                raw_meta = {}
+
+            doc_text = str(mr.get("text") or "")
+            if not doc_text:
+                continue
+
+            chunks.append(
+                ChunkInfo(
+                    content=doc_text[:500] + "..." if len(doc_text) > 500 else doc_text,
+                    char_count=int(raw_meta.get("char_count", len(doc_text))),
+                    token_count=int(
+                        raw_meta.get(
+                            "token_count",
+                            max(len(doc_text.split()), int(len(doc_text) / 4)),
+                        )
+                    ),
+                    word_count=int(raw_meta.get("word_count", len(doc_text.split()))),
+                    source=raw_meta.get("source"),
+                    stream=raw_meta.get("stream"),
+                    connector_type=raw_meta.get("connector_type"),
+                    metadata={
+                        "chunk_id": str(mr.get("pk", "")),
+                        **raw_meta,
+                    },
+                )
+            )
+            samples.append(
+                {
+                    "content": doc_text[:500] + "..." if len(doc_text) > 500 else doc_text,
+                    "metadata": raw_meta,
+                }
+            )
 
     # Fetch config from Airbyte API (no longer stored locally)
     masked_config: dict[str, Any] = {}
@@ -481,7 +557,7 @@ async def get_datasource_details(id: str, page: int = 1, page_size: int = 10):
         schedule_data = None
 
     # Check Graph RAG service availability
-    from service.ingestion import is_graph_rag_available
+    from service.IngestionService import is_graph_rag_available
 
     graph_available = await is_graph_rag_available()
 

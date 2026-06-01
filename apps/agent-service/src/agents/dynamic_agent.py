@@ -16,6 +16,7 @@ from agents.graphs.schemas import GraphSchemaType, get_schema
 from core import settings
 from core.llm import get_model, get_model_from_config
 from core.logger import get_logger
+from memory.long_term import build_event_emitters
 
 logger = get_logger(__name__)
 
@@ -250,7 +251,9 @@ class DynamicAgent(LazyLoadingAgent):
         result = await graph.ainvoke(input, config=config, **kwargs)
 
         if memories is not None and user_id:
-            await self._save_memory_from_output(result, original_messages, memories, user_id, config)
+            configurable = (config or {}).get("configurable", {})
+            _, on_save = build_event_emitters(configurable)
+            await self._save_memory_from_output(result, original_messages, memories, user_id, config, on_save=on_save)
 
         return result
 
@@ -277,6 +280,8 @@ class DynamicAgent(LazyLoadingAgent):
             # Best-effort memory save; we don't have final output here but
             # LazyLoadingAgent._save_memory_from_output handles None gracefully.
             try:
-                await self._save_memory_from_output(None, original_messages, memories, user_id, config)
+                configurable = (config or {}).get("configurable", {})
+                _, on_save = build_event_emitters(configurable)
+                await self._save_memory_from_output(None, original_messages, memories, user_id, config, on_save=on_save)
             except Exception as e:
                 logger.warning("Memory save after stream failed: %s", e)

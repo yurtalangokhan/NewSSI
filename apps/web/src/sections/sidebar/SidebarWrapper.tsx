@@ -2,6 +2,7 @@ import React, { useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@opal/components";
 import { SvgSidebar } from "@opal/icons";
+import Logo from "@/refresh-components/Logo";
 
 interface LogoSectionProps {
   folded?: boolean;
@@ -24,11 +25,11 @@ function LogoSection({ folded, onFoldClick }: LogoSectionProps) {
   return (
     <div
       className={cn(
-        /* Keep top spacing consistent after removing the brand logo. */
-        "flex px-2.5 py-2 h-[3.25rem] min-h-[3.25rem]",
-        folded ? "justify-center" : "justify-end"
+        "flex items-center px-2.5 py-2 h-[3.25rem] min-h-[3.25rem]",
+        folded ? "justify-center" : "justify-between"
       )}
     >
+      {!folded && <Logo />}
       {folded !== undefined && closeButton()}
     </div>
   );

@@ -633,6 +633,9 @@ const en = {
     knowledgeSectionTitle: "Knowledge",
     noKnowledgeMessage: "No Knowledge",
     actionsAndToolsTitle: "Actions & Tools",
+    memoryTitle: "Memory",
+    memoryTypeLongTerm: "Long-Term",
+    memoryTypeStandard: "Standard",
     documentProcessingLabel: "Document Processing Collections",
     documentProcessingDescription: "{{count}} connected collection(s)",
     knowledgeGraphLabel: "Knowledge Graph Collections",
@@ -744,6 +747,8 @@ const en = {
     agentPlural: "Agents",
     actionsCount: "{{count}} Actions",
     noActions: "No Actions",
+    longTermMemoryEnabled: "Long-Term Memory: Enabled",
+    longTermMemoryDisabled: "Long-Term Memory: Disabled",
     startChat: "Start Chat",
     viewAgentStatsTooltip: "View Agent Stats",
     editAgentTooltip: "Edit Agent",
@@ -823,6 +828,9 @@ const en = {
       updateMemoriesLabel: "Update Memories",
       updateMemoriesDescription:
         "Let Onyx generate and update stored memories.",
+      longTermMemoryLabel: "Long-Term Memory",
+      longTermMemoryDescription:
+        "Automatically extract and recall facts from your conversations.",
       promptShortcutsTitle: "Prompt Shortcuts",
       useShortcutsLabel: "Use Prompt Shortcuts",
       useShortcutsDescription:
@@ -934,6 +942,10 @@ const en = {
     },
   },
   projectContextPanel: {
+    backToProject: "Back to project",
+    recentChats: "Recent Chats",
+    noChatsYet: "No chats yet.",
+    lastMessage: "Last message {{time}}",
     instructionsLabel: "Instructions",
     instructionsPlaceholder:
       "Add instructions to tailor the response in this project.",
@@ -1013,6 +1025,11 @@ const en = {
     executingTool: "Executing tool",
     updatingMemory: "Updating memory...",
     updatingMemoryActive: "Updating memory",
+    ltmRecalling: "Recalling memories...",
+    ltmSaving: "Saving to long-term memory...",
+    ltmRecalled: "Recalled {{count}} memories",
+    ltmSaved: "Saved {{count}} memories",
+    ltmMore: "more",
     generatingPlan: "Generating plan",
     generatedPlan: "Generated plan",
     researchPlan: "Research Plan",
@@ -1027,6 +1044,7 @@ const en = {
     savingMemory: "Saving memory...",
     viewMemories: "View Memories",
     viewFullSearchTerm: "View Full Search Term",
+    viewFullText: "View Full Text",
     fullText: "Full text",
     imageGenerationFailed: "Image generation failed",
     imageGeneration: "Image generation",
@@ -1054,6 +1072,10 @@ const en = {
     foldButton: "Fold",
     editButton: "Edit",
     uploadImage: "Upload Image",
+    conversationStarterExample1: "Give me an overview of some documents.",
+    conversationStarterExample2: "What are our key product updates this month?",
+    conversationStarterExample3: "Summarize this project in 5 bullet points.",
+    conversationStarterExample4: "Find action items from recent discussions.",
     enterConversationStarter: "Enter a conversation starter...",
     agentNameRequired: "Agent name is required.",
     descriptionMaxChars:
@@ -1174,6 +1196,8 @@ const en = {
     memoryNone: "None",
     memoryLongTerm: "Long Term",
     memoryBuffer: "Buffer",
+    longTermMemoryLabel: "Long-Term Memory",
+    longTermMemoryDescription: "Enable persistent memory for this agent.",
     dynamic: {
       createTitle: "Create Dynamic Agent",
       createSubtitle:

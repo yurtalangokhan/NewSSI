@@ -143,8 +143,13 @@ export default function useChatController({
   const { pinnedAgents, togglePinnedAgent } = usePinnedAgents();
   const { agentPreferences } = useAgentPreferences();
   const { forcedToolIds } = useForcedTools();
-  const { fetchProjects, setCurrentMessageFiles, beginUpload, uploadChatFiles } =
-    useProjectsContext();
+  const {
+    fetchProjects,
+    setCurrentMessageFiles,
+    beginUpload,
+    uploadChatFiles,
+    currentProjectDetails,
+  } = useProjectsContext();
   const posthog = usePostHog();
 
   // Use selectors to access only the specific fields we need
@@ -378,6 +383,21 @@ export default function useChatController({
       additionalContext,
     }: OnSubmitProps) => {
       const projectId = params(SEARCH_PARAM_NAMES.PROJECT_ID);
+      const normalizedAdditionalContext = (additionalContext || "").trim();
+      const projectInstructions =
+        currentProjectDetails?.project?.instructions?.trim() || "";
+      const projectInstructionContext = projectInstructions
+        ? `Project Instructions:\n${projectInstructions}`
+        : "";
+      const effectiveAdditionalContext = [
+        normalizedAdditionalContext,
+        projectInstructionContext &&
+        !normalizedAdditionalContext.includes(projectInstructions)
+          ? projectInstructionContext
+          : "",
+      ]
+        .filter(Boolean)
+        .join("\n\n");
       {
         const params = new URLSearchParams(searchParams?.toString() || "");
         if (params.has(SEARCH_PARAM_NAMES.PROJECT_ID)) {
@@ -773,7 +793,7 @@ export default function useChatController({
               : undefined,
           forcedToolId: effectiveForcedToolId,
           origin: messageOrigin,
-          additionalContext,
+          additionalContext: effectiveAdditionalContext || undefined,
         });
 
         const delay = (ms: number) => {
@@ -1026,6 +1046,7 @@ export default function useChatController({
       // Keep tool preference-derived values fresh
       agentPreferences,
       fetchProjects,
+      currentProjectDetails?.project?.instructions,
       // For auto-pinning agents
       pinnedAgents,
       togglePinnedAgent,

@@ -1,4 +1,8 @@
 import { PacketType } from "@/app/app/services/lib";
+import {
+  TOOL_PACKET_TYPES,
+  shouldSplitCategories,
+} from "./packetCategories";
 
 // Backend packet types from our agent-service
 interface BackendPacket {
@@ -133,15 +137,6 @@ function mapBackendToFrontend(packet: BackendPacket): { placement: any; obj: any
   }
 }
 
-// Packet types that represent tool/step lifecycle events (shown in timeline)
-// Adding a new type here causes the stream parser to advance turnIndex at
-// that boundary, placing subsequent packets in a fresh timeline group.
-const TOOL_PACKET_TYPES = new Set([
-  "custom_tool_start", "custom_tool_delta",
-  "custom_step_start",
-  "search_tool_start", "search_tool_queries_delta", "search_tool_documents_delta",
-  "reasoning_start", "reasoning_delta",
-]);
 
 export async function* handleSSEStream<T extends PacketType>(
   streamingResponse: Response,
@@ -156,6 +151,7 @@ export async function* handleSSEStream<T extends PacketType>(
   // so tool packets must have a different turn_index than message/display packets.
   let turnIndex = 0;
   let sawToolPackets = false;
+  let lastToolPacketType: string | null = null;
   // If tokens were already streamed for the current answer, skip the later
   // full "message" packet from backend to avoid duplicate text rendering.
   let sawTokenForCurrentAnswer = false;
@@ -226,11 +222,17 @@ export async function* handleSSEStream<T extends PacketType>(
               turnIndex++; // display → tool: pre-tool text gets its own group
               sawTokenForCurrentAnswer = false;
               hasMessageStartForCurrentAnswer = false;
+            } else if (lastToolPacketType && shouldSplitCategories(lastToolPacketType, backendPacket.type)) {
+              turnIndex++;
+              sawTokenForCurrentAnswer = false;
+              hasMessageStartForCurrentAnswer = false;
             }
             sawToolPackets = true;
+            lastToolPacketType = backendPacket.type;
           } else if (sawToolPackets) {
             turnIndex++;
             sawToolPackets = false;
+            lastToolPacketType = null;
             sawTokenForCurrentAnswer = false;
             hasMessageStartForCurrentAnswer = false;
           }

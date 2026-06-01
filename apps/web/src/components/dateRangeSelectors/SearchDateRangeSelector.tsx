@@ -1,7 +1,7 @@
 import { DateRangePickerValue } from "@/components/dateRangeSelectors/AdminDateRangeSelector";
 import { FiCalendar, FiChevronDown, FiXCircle } from "react-icons/fi";
 import { CustomDropdown } from "../Dropdown";
-import { timeRangeValues } from "@/app/config/timeRange";
+import { getTimeRangeValues } from "@/app/config/timeRange";
 import { TimeRangeSelector } from "@/components/filters/TimeRangeSelector";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
@@ -18,6 +18,7 @@ export function SearchDateRangeSelector({
   className?: string;
 }) {
   const { t } = useTranslation();
+  const timeRangeValues = getTimeRangeValues(t);
 
   return (
     <div>

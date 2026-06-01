@@ -100,6 +100,48 @@ class IngestService:
         words = len(text.split())
         return max(words, int(len(text) / 4))
 
+    async def _update_chunk_stats(
+        self,
+        datasource_id: str,
+        batch_index: int,
+        chunk_char_total: int,
+        chunk_token_total: int,
+        chunk_count: int,
+    ) -> None:
+        """Update rolling chunk stats in datasource metadata for UI counters."""
+        ds_repo = DatasourceRepository()
+        row = await ds_repo.get_collection(datasource_id)
+        if not row:
+            return
+
+        meta = row.get("cmetadata", {}) or {}
+        stats = meta.get("chunk_stats", {}) or {}
+
+        if batch_index == 0:
+            total_chunks = 0
+            total_chars = 0
+            total_tokens = 0
+        else:
+            total_chunks = int(stats.get("chunk_count", 0) or 0)
+            total_chars = int(stats.get("_total_chunk_chars", 0) or 0)
+            total_tokens = int(stats.get("_total_chunk_tokens", 0) or 0)
+
+        total_chunks += chunk_count
+        total_chars += chunk_char_total
+        total_tokens += chunk_token_total
+
+        avg_chars = int(total_chars / total_chunks) if total_chunks else 0
+        avg_tokens = int(total_tokens / total_chunks) if total_chunks else 0
+
+        meta["chunk_stats"] = {
+            "chunk_count": total_chunks,
+            "avg_chunk_chars": avg_chars,
+            "avg_chunk_tokens": avg_tokens,
+            "_total_chunk_chars": total_chars,
+            "_total_chunk_tokens": total_tokens,
+        }
+        await ds_repo.update_collection_metadata(datasource_id, meta)
+
     async def ingest_batch(self, req: BatchRequest) -> BatchResponse:
         datasource_id = req.datasource_id
         row = await DatasourceRepository().get_collection(datasource_id)
@@ -137,10 +179,34 @@ class IngestService:
         if not vector_store:
             raise RuntimeError(f"Could not load vector store for {collection_name}")
 
+        # Clear all existing chunks on the first batch of a new sync so that
+        # re-syncs don't accumulate duplicate entries in Milvus.
+        if req.batch_index == 0 and vector_store.col is not None:
+            try:
+                await asyncio.to_thread(
+                    vector_store.col.delete, f"{vector_store._primary_field} >= 0"
+                )
+                logger.info("Cleared existing Milvus chunks for datasource %s before re-sync", datasource_id)
+            except Exception as exc:
+                logger.warning("Failed to clear Milvus chunks for %s: %s", datasource_id, exc)
+
         chunks = self._text_splitter.split_documents(docs)
         if chunks:
             await asyncio.to_thread(vector_store.add_documents, chunks)
-            tokens = sum(self._estimate_token_count(chunk.page_content or "") for chunk in chunks)
+            chunk_char_total = 0
+            chunk_token_total = 0
+            for chunk in chunks:
+                text = chunk.page_content or ""
+                chunk_char_total += len(text)
+                chunk_token_total += self._estimate_token_count(text)
+            tokens = chunk_token_total
+            await self._update_chunk_stats(
+                datasource_id=datasource_id,
+                batch_index=req.batch_index,
+                chunk_char_total=chunk_char_total,
+                chunk_token_total=chunk_token_total,
+                chunk_count=len(chunks),
+            )
         else:
             tokens = 0
 

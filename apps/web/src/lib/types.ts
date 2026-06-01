@@ -36,16 +36,18 @@ interface UserPreferences {
 }
 
 export interface MemoryItem {
-  id: number | null;
+  id: string;
   content: string;
+  source: "manual" | "auto_extracted" | "imported";
+  time_created: string;
+  time_updated: string;
 }
 
 export interface UserPersonalization {
   name: string;
   role: string;
-  memories: MemoryItem[];
-  use_memories: boolean;
-  enable_memory_tool: boolean;
+  long_term_memory_enabled: boolean;
+  extract_memory: boolean;
   user_preferences: string;
 }
 

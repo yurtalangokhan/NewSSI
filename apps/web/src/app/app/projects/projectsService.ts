@@ -104,7 +104,10 @@ export async function uploadFiles(
   });
 
   if (!response.ok) {
-    handleRequestError("Upload files", response);
+    const errorData = await response.json().catch(() => null);
+    throw new Error(
+      errorData?.detail || `Upload files failed (Status: ${response.status})`
+    );
   }
 
   return response.json();

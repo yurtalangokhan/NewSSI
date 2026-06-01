@@ -8,8 +8,11 @@ from pydantic import TypeAdapter, ValidationError
 
 from langconnect.auth import AuthenticatedUser, resolve_user
 from langconnect.database.collections import Collection
-from langconnect.models import DocumentResponse, SearchQuery, SearchResult
-from langconnect.services.build_lock import ensure_collection_mutable
+from langconnect.models import SearchQuery, SearchResult
+from langconnect.services.build_lock import (
+    ensure_collection_mutable,
+    ensure_not_connector_managed_collection,
+)
 from langconnect.services import process_document
 
 # Create a TypeAdapter that enforces “list of dict”
@@ -28,6 +31,7 @@ async def documents_create(
     metadatas_json: str | None = Form(None),
 ):
     """Processes and indexes (adds) new document files with optional metadata."""
+    await ensure_not_connector_managed_collection(str(collection_id))
     ensure_collection_mutable(str(collection_id))
 
     # If no metadata JSON is provided, fill with None
@@ -132,7 +136,7 @@ async def documents_create(
 
 
 @router.get(
-    "/collections/{collection_id}/documents", response_model=list[DocumentResponse]
+    "/collections/{collection_id}/documents", response_model=list[dict[str, Any]]
 )
 async def documents_list(
     user: Annotated[AuthenticatedUser, Depends(resolve_user)],
@@ -141,9 +145,19 @@ async def documents_list(
     offset: int = Query(0, ge=0),
 ):
     """Lists documents within a specific collection."""
+    from langconnect.database.collections import CollectionsManager
+
+    # Connector-managed collections (e.g. Airbyte) are created without owner_id.
+    # Use internal access so the ownership filter doesn't block the read.
+    internal_col = await CollectionsManager("internal-service").get(str(collection_id))
+    if internal_col and (internal_col.get("metadata") or {}).get("connector_type"):
+        effective_user = "internal-service"
+    else:
+        effective_user = user.identity
+
     collection = Collection(
         collection_id=str(collection_id),
-        user_id=user.identity,
+        user_id=effective_user,
     )
     return await collection.list(limit=limit, offset=offset)
 
@@ -197,6 +211,7 @@ async def documents_delete(
     document_id: str,
 ):
     """Deletes a specific document from a collection by its ID."""
+    await ensure_not_connector_managed_collection(str(collection_id))
     ensure_collection_mutable(str(collection_id))
 
     collection = Collection(

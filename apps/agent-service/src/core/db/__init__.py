@@ -15,6 +15,7 @@ from core.db.repositories import (
     AirbyteMappingRepository,
     AssistantRepository,
     DatasourceRepository,
+    ProjectRepository,
     ScheduleRepository,
     ThreadRepository,
 )
@@ -29,6 +30,7 @@ __all__ = [
     "AssistantRepository",
     "ThreadRepository",
     "DatasourceRepository",
+    "ProjectRepository",
     "ScheduleRepository",
     "AirbyteMappingRepository",
 ]

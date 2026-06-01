@@ -2,16 +2,20 @@
 
 import csv
 import io
+import json
 import secrets
+from datetime import datetime, timezone
 from typing import Any
 
 import httpx
-from fastapi import HTTPException, status
+from fastapi import HTTPException, UploadFile, status
 
 from controller.session_controller import SessionController, get_session_controller
 from controller.base import BaseController
+from core.db.repositories.project_repo import ProjectRepository
 from core.db.repositories.user_settings_repo import UserSettingsRepository
 from core.env import env
+from service.StoreService import list_threads_from_store
 
 
 class UserController(BaseController):
@@ -21,6 +25,10 @@ class UserController(BaseController):
         self._session_controller = session_controller or get_session_controller()
         self._supported_roles = ["admin", "global_curator", "curator", "limited", "basic"]
         self._user_settings_repo = UserSettingsRepository()
+        self._project_repo = ProjectRepository()
+        # Minimal in-memory file store for project/recent file APIs.
+        self._recent_files_by_user: dict[str, list[dict[str, Any]]] = {}
+        self._project_files_by_user: dict[str, dict[int, list[dict[str, Any]]]] = {}
 
     async def _update_user_settings(self, user_id: str, updates: dict[str, Any]) -> dict[str, Any]:
         try:
@@ -30,6 +38,18 @@ class UserController(BaseController):
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Failed to persist user settings: {exc}",
             ) from exc
+
+    async def resolve_projects_user_id(self, user_id: str | None) -> str | None:
+        if user_id:
+            return user_id
+
+        if env.get("MODE", "").lower() == "dev":
+            fallback_user = await self._project_repo.get_latest_user_id()
+            if fallback_user:
+                return fallback_user
+            return "dev-user"
+
+        return None
 
     def _is_keycloak_enabled(self) -> bool:
         return env.get("KEYCLOAK_ENABLED", "false").lower() == "true"
@@ -171,6 +191,34 @@ class UserController(BaseController):
                 "user_preferences": "",
             },
         }
+
+    @staticmethod
+    def _now_iso() -> str:
+        return datetime.now(timezone.utc).isoformat()
+
+    @staticmethod
+    def _file_chat_type(content_type: str | None, filename: str) -> str:
+        mime = (content_type or "").lower()
+        lower_name = filename.lower()
+        if mime.startswith("image/"):
+            return "image"
+        if mime in {"text/csv", "application/csv"} or lower_name.endswith(".csv"):
+            return "csv"
+        if mime.startswith("text/") or lower_name.endswith((".txt", ".md")):
+            return "plain_text"
+        return "document"
+
+    async def _resolve_or_raise_user_id(self, user_id: str | None) -> str:
+        effective_user_id = await self.resolve_projects_user_id(user_id)
+        if not effective_user_id:
+            raise HTTPException(status_code=401, detail="Not authenticated")
+        return effective_user_id
+
+    def _project_files(self, user_id: str, project_id: int) -> list[dict[str, Any]]:
+        return self._project_files_by_user.setdefault(user_id, {}).setdefault(project_id, [])
+
+    def _recent_files(self, user_id: str) -> list[dict[str, Any]]:
+        return self._recent_files_by_user.setdefault(user_id, [])
 
     async def _ensure_realm_role_exists(self, role_name: str) -> None:
         realm = self._get_keycloak_realm()
@@ -331,11 +379,169 @@ class UserController(BaseController):
         data = resp.json()
         return data if isinstance(data, dict) else None
 
+    @staticmethod
+    def _serialize_chat_session(thread: dict[str, Any]) -> dict[str, Any]:
+        metadata = thread.get("metadata", {}) or {}
+        session_name = metadata.get("name") or "New Chat"
+        return {
+            "id": thread.get("thread_id", ""),
+            "name": session_name,
+            "description": session_name,
+            "persona_id": metadata.get("persona_id", 0),
+            "time_created": thread.get("created_at"),
+            "time_updated": thread.get("updated_at"),
+            "shared_status": "private",
+            "project_id": thread.get("project_id"),
+            "current_alternate_model": metadata.get("current_alternate_model", ""),
+            "current_temperature_override": metadata.get("current_temperature_override"),
+        }
+
     async def get_user_assistant_preferences(self) -> dict[str, Any]:
         return {}
 
-    async def get_recent_files(self) -> list[Any]:
-        return []
+    async def get_recent_files(self, user_id: str | None) -> list[Any]:
+        effective_user_id = await self._resolve_or_raise_user_id(user_id)
+        return self._recent_files(effective_user_id)
+
+    async def upload_user_project_files(
+        self,
+        user_id: str | None,
+        files: list[UploadFile],
+        project_id: int | None,
+        temp_id_map_raw: str | None,
+    ) -> dict[str, Any]:
+        effective_user_id = await self._resolve_or_raise_user_id(user_id)
+
+        if project_id is not None:
+            project = await self._project_repo.get_for_user(effective_user_id, project_id)
+            if not project:
+                raise HTTPException(status_code=404, detail="Project not found")
+
+        temp_id_map: dict[str, str] = {}
+        if temp_id_map_raw:
+            try:
+                parsed = json.loads(temp_id_map_raw)
+                if isinstance(parsed, dict):
+                    temp_id_map = {str(k): str(v) for k, v in parsed.items()}
+            except json.JSONDecodeError:
+                raise HTTPException(status_code=400, detail="Invalid temp_id_map")
+
+        uploaded: list[dict[str, Any]] = []
+        now = self._now_iso()
+        recent = self._recent_files(effective_user_id)
+
+        for upload in files:
+            file_id = secrets.token_hex(16)
+            file_name = upload.filename or file_id
+            content_type = upload.content_type or "application/octet-stream"
+            temp_id = temp_id_map.get(file_name)
+            file_obj = {
+                "id": file_id,
+                "name": file_name,
+                "project_id": project_id,
+                "user_id": effective_user_id,
+                "file_id": file_id,
+                "created_at": now,
+                "status": "COMPLETED",
+                "file_type": content_type,
+                "last_accessed_at": now,
+                "chat_file_type": self._file_chat_type(content_type, file_name),
+                "token_count": 0,
+                "chunk_count": 0,
+                "temp_id": temp_id,
+            }
+            uploaded.append(file_obj)
+
+        # Newest first in recent files.
+        self._recent_files_by_user[effective_user_id] = [*uploaded, *recent]
+
+        if project_id is not None:
+            project_files = self._project_files(effective_user_id, project_id)
+            self._project_files_by_user[effective_user_id][project_id] = [
+                *uploaded,
+                *project_files,
+            ]
+
+        return {"user_files": uploaded, "rejected_files": []}
+
+    async def get_files_in_project(self, user_id: str | None, project_id: int) -> list[dict[str, Any]]:
+        effective_user_id = await self._resolve_or_raise_user_id(user_id)
+        project = await self._project_repo.get_for_user(effective_user_id, project_id)
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+        return self._project_files(effective_user_id, project_id)
+
+    async def link_file_to_project(
+        self,
+        user_id: str | None,
+        project_id: int,
+        file_id: str,
+    ) -> dict[str, bool]:
+        effective_user_id = await self._resolve_or_raise_user_id(user_id)
+        project = await self._project_repo.get_for_user(effective_user_id, project_id)
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+
+        recent = self._recent_files(effective_user_id)
+        file_obj = next((f for f in recent if f.get("id") == file_id), None)
+        if not file_obj:
+            raise HTTPException(status_code=404, detail="File not found")
+
+        project_files = self._project_files(effective_user_id, project_id)
+        if not any(f.get("id") == file_id for f in project_files):
+            linked = {**file_obj, "project_id": project_id}
+            self._project_files_by_user[effective_user_id][project_id] = [linked, *project_files]
+        return {"success": True}
+
+    async def unlink_file_from_project(
+        self,
+        user_id: str | None,
+        project_id: int,
+        file_id: str,
+    ) -> dict[str, bool]:
+        effective_user_id = await self._resolve_or_raise_user_id(user_id)
+        project_files = self._project_files(effective_user_id, project_id)
+        self._project_files_by_user[effective_user_id][project_id] = [
+            f for f in project_files if f.get("id") != file_id
+        ]
+        return {"success": True}
+
+    async def get_user_file(self, user_id: str | None, file_id: str) -> dict[str, Any]:
+        effective_user_id = await self._resolve_or_raise_user_id(user_id)
+        file_obj = next(
+            (f for f in self._recent_files(effective_user_id) if f.get("id") == file_id),
+            None,
+        )
+        if not file_obj:
+            raise HTTPException(status_code=404, detail="File not found")
+        return file_obj
+
+    async def get_user_file_statuses(
+        self,
+        user_id: str | None,
+        file_ids: list[str],
+    ) -> list[dict[str, Any]]:
+        effective_user_id = await self._resolve_or_raise_user_id(user_id)
+        by_id = {f.get("id"): f for f in self._recent_files(effective_user_id)}
+        return [by_id[file_id] for file_id in file_ids if file_id in by_id]
+
+    async def delete_user_file(self, user_id: str | None, file_id: str) -> dict[str, Any]:
+        effective_user_id = await self._resolve_or_raise_user_id(user_id)
+
+        recent = self._recent_files(effective_user_id)
+        self._recent_files_by_user[effective_user_id] = [
+            f for f in recent if f.get("id") != file_id
+        ]
+
+        project_map = self._project_files_by_user.get(effective_user_id, {})
+        for project_id, files in list(project_map.items()):
+            project_map[project_id] = [f for f in files if f.get("id") != file_id]
+
+        return {
+            "has_associations": False,
+            "project_names": [],
+            "assistant_names": [],
+        }
 
     async def update_pinned_assistants(self, ordered_assistant_ids: list[int]) -> dict[str, Any]:
         return {"success": True, "pinned_assistants": ordered_assistant_ids}
@@ -355,8 +561,141 @@ class UserController(BaseController):
     async def get_default_assistant(self) -> None:
         return None
 
-    async def get_user_projects(self) -> list[Any]:
-        return []
+    async def get_user_projects(self, user_id: str) -> list[Any]:
+        projects = await self._project_repo.list_by_user(user_id)
+        threads = await list_threads_from_store(
+            limit=1000,
+            offset=0,
+            metadata={"user_id": user_id},
+        )
+
+        sessions_by_project: dict[int, list[dict[str, Any]]] = {}
+        for thread in threads:
+            project_id = thread.get("project_id")
+            if project_id is None:
+                continue
+            sessions_by_project.setdefault(project_id, []).append(
+                self._serialize_chat_session(thread)
+            )
+
+        for project in projects:
+            project_id = project["id"]
+            project_sessions = sessions_by_project.get(project_id, [])
+            project_sessions.sort(key=lambda s: s.get("time_updated") or "", reverse=True)
+            project["chat_sessions"] = project_sessions
+
+        return projects
+
+    async def create_user_project(self, user_id: str, name: str) -> dict[str, Any]:
+        cleaned_name = (name or "").strip()
+        if not cleaned_name:
+            raise HTTPException(status_code=400, detail="Project name is required")
+        project = await self._project_repo.create_for_user(user_id=user_id, name=cleaned_name)
+        project["chat_sessions"] = []
+        return project
+
+    async def get_user_project(self, user_id: str, project_id: int) -> dict[str, Any]:
+        project = await self._project_repo.get_for_user(user_id, project_id)
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+
+        threads = await list_threads_from_store(
+            limit=1000,
+            offset=0,
+            metadata={"user_id": user_id},
+        )
+        chat_sessions = [
+            self._serialize_chat_session(thread)
+            for thread in threads
+            if thread.get("project_id") == project_id
+        ]
+        chat_sessions.sort(key=lambda s: s.get("time_updated") or "", reverse=True)
+        project["chat_sessions"] = chat_sessions
+        return project
+
+    async def rename_user_project(self, user_id: str, project_id: int, name: str) -> dict[str, Any]:
+        cleaned_name = (name or "").strip()
+        if not cleaned_name:
+            raise HTTPException(status_code=400, detail="Project name is required")
+        project = await self._project_repo.rename_for_user(
+            user_id=user_id,
+            project_id=project_id,
+            name=cleaned_name,
+        )
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+        project["chat_sessions"] = []
+        return project
+
+    async def delete_user_project(self, user_id: str, project_id: int) -> dict[str, bool]:
+        deleted = await self._project_repo.delete_for_user(user_id=user_id, project_id=project_id)
+        if not deleted:
+            raise HTTPException(status_code=404, detail="Project not found")
+        return {"success": True}
+
+    async def get_user_project_details(self, user_id: str, project_id: int) -> dict[str, Any]:
+        project = await self.get_user_project(user_id, project_id)
+        return {
+            "project": project,
+            "files": self._project_files(user_id, project_id),
+            "persona_id_to_featured": {},
+        }
+
+    async def get_user_project_instructions(self, user_id: str, project_id: int) -> dict[str, str | None]:
+        project = await self._project_repo.get_for_user(user_id, project_id)
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+        return {"instructions": project.get("instructions")}
+
+    async def upsert_user_project_instructions(
+        self,
+        user_id: str,
+        project_id: int,
+        instructions: str,
+    ) -> dict[str, str | None]:
+        project = await self._project_repo.upsert_instructions_for_user(
+            user_id=user_id,
+            project_id=project_id,
+            instructions=instructions,
+        )
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+        return {"instructions": project.get("instructions")}
+
+    async def get_project_token_count(self, user_id: str, project_id: int) -> dict[str, int]:
+        project_files = self._project_files(user_id, project_id)
+        total_tokens = sum(int(file.get("token_count") or 0) for file in project_files)
+        return {"total_tokens": total_tokens}
+
+    async def move_chat_session_to_project(
+        self,
+        *,
+        user_id: str,
+        project_id: int,
+        chat_session_id: str,
+    ) -> dict[str, bool]:
+        moved = await self._project_repo.move_chat_session_to_project(
+            user_id=user_id,
+            project_id=project_id,
+            chat_session_id=chat_session_id,
+        )
+        if not moved:
+            raise HTTPException(status_code=404, detail="Project or chat session not found")
+        return {"success": True}
+
+    async def remove_chat_session_from_project(
+        self,
+        *,
+        user_id: str,
+        chat_session_id: str,
+    ) -> dict[str, bool]:
+        removed = await self._project_repo.remove_chat_session_from_project(
+            user_id=user_id,
+            chat_session_id=chat_session_id,
+        )
+        if not removed:
+            raise HTTPException(status_code=404, detail="Chat session not found")
+        return {"success": True}
 
     async def get_notifications(self) -> list[Any]:
         return []
@@ -908,11 +1247,13 @@ class UserController(BaseController):
         settings_updates: dict[str, Any] = {}
         if "memories" in personalization:
             settings_updates["memories"] = personalization.get("memories") or []
-        if "use_memories" in personalization:
-            settings_updates["use_memories"] = bool(personalization.get("use_memories"))
-        if "enable_memory_tool" in personalization:
-            settings_updates["enable_memory_tool"] = bool(
-                personalization.get("enable_memory_tool")
+        if "long_term_memory_enabled" in personalization:
+            settings_updates["long_term_memory_enabled"] = bool(
+                personalization.get("long_term_memory_enabled")
+            )
+        if "extract_memory" in personalization:
+            settings_updates["extract_memory"] = bool(
+                personalization.get("extract_memory")
             )
         if "user_preferences" in personalization:
             settings_updates["user_preferences"] = str(

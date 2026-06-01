@@ -52,8 +52,9 @@ export async function proxyToBackend(
       body,
     });
 
-    const responseText = await response.text();
-    const result = new NextResponse(responseText, {
+    const noContent = new Set([204, 205, 304]).has(response.status);
+    const responseText = noContent ? "" : await response.text();
+    const result = new NextResponse(noContent ? null : responseText, {
       status: response.status,
       statusText: response.statusText,
     });

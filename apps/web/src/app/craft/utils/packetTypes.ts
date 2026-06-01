@@ -129,6 +129,17 @@ export interface ParsedError {
   message: string;
 }
 
+export interface ParsedLongTermMemoryRecall {
+  type: "long_term_memory_recall";
+  memories: string[];
+  fact_count?: number;
+}
+
+export interface ParsedLongTermMemorySave {
+  type: "long_term_memory_save";
+  saved: string[];
+}
+
 export interface ParsedUnknown {
   type: "unknown";
 }
@@ -141,4 +152,6 @@ export type ParsedPacket =
   | ParsedPromptResponse
   | ParsedArtifact
   | ParsedError
+  | ParsedLongTermMemoryRecall
+  | ParsedLongTermMemorySave
   | ParsedUnknown;

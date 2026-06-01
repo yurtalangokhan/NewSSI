@@ -19,6 +19,7 @@ import {
   isDisplayPacket,
 } from "@/app/app/services/packetUtils";
 import { parseToolKey } from "@/app/app/message/messageComponents/toolDisplayHelpers";
+import { getGroupSuffix } from "@/lib/search/packetCategories";
 
 // Re-export parseToolKey for consumers that import from this module
 export { parseToolKey };
@@ -108,7 +109,8 @@ export function createInitialState(nodeId: number): ProcessorState {
 function getGroupKey(packet: Packet): string {
   const turnIndex = packet.placement.turn_index;
   const tabIndex = packet.placement.tab_index ?? 0;
-  return `${turnIndex}-${tabIndex}`;
+  const suffix = getGroupSuffix(packet.obj.type as string);
+  return suffix ? `${turnIndex}-${tabIndex}-${suffix}` : `${turnIndex}-${tabIndex}`;
 }
 
 function injectSectionEnd(state: ProcessorState, groupKey: string): void {
@@ -144,6 +146,8 @@ const CONTENT_PACKET_TYPES_SET = new Set<PacketType>([
   PacketType.FETCH_TOOL_START,
   PacketType.MEMORY_TOOL_START,
   PacketType.MEMORY_TOOL_NO_ACCESS,
+  PacketType.LONG_TERM_MEMORY_RECALL,
+  PacketType.LONG_TERM_MEMORY_SAVE,
   PacketType.REASONING_START,
   PacketType.DEEP_RESEARCH_PLAN_START,
   PacketType.RESEARCH_AGENT_START,

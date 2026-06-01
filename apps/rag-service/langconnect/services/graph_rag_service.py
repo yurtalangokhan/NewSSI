@@ -15,7 +15,6 @@ from typing import Any
 from langconnect.database.collections import Collection, CollectionsManager
 from langconnect.database.connection import get_vectorstore
 from langconnect.database.neo4j import GraphStore
-from langconnect.database.postgres.repositories.document_repo import DocumentRepository
 from langconnect.models.graph import (
     BuildProgress,
     BuildStatus,
@@ -221,12 +220,9 @@ class GraphRAGService:
             raise asyncio.CancelledError()
 
     async def _fetch_all_chunks(self) -> list[dict[str, Any]]:
-        """Fetch all document chunks from the PGVector collection."""
-        doc_repo = DocumentRepository(
-            collection_id=self.collection_id,
-            user_id=self.user_id,
-        )
-        return await doc_repo.fetch_all_chunks()
+        """Fetch all document chunks from Milvus."""
+        collection = Collection(collection_id=self.collection_id, user_id=self.user_id)
+        return await collection.fetch_all_chunks()
 
     # ------------------------------------------------------------------
     # Hybrid Search (RRF: Vector Cosine + Graph BM25)

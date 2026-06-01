@@ -270,6 +270,18 @@ class BatchRequest(BaseModel):
     """A single batch of records from destination-embedding."""
     datasource_id: str = Field(..., description="UUID of the target collection")
     records: list[dict[str, Any]] = Field(default_factory=list, description="Raw records from Airbyte source")
+    connector_type: str | None = Field(
+        default=None,
+        description="Optional source connector type (e.g. mongodb, postgres)",
+    )
+    stream_name: str = Field(
+        default="unknown",
+        description="Logical stream name for records in this batch",
+    )
+    batch_id: str = Field(
+        default="",
+        description="Optional client-generated batch identifier for logging",
+    )
     batch_index: int = Field(0, description="Sequential batch number (0-based)")
     is_last_batch: bool = Field(False, description="True if this is the final batch in the sync")
 

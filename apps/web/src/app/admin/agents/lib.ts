@@ -37,6 +37,7 @@ interface PersonaUpsertRequest {
     document_processing: string[];
     knowledge_graph: string[];
   } | null;
+  long_term_memory?: boolean;
 }
 
 export interface PersonaUpsertParameters {
@@ -74,6 +75,7 @@ export interface PersonaUpsertParameters {
     document_processing: string[];
     knowledge_graph: string[];
   };
+  long_term_memory?: boolean;
 }
 
 function buildPersonaUpsertRequest({
@@ -103,6 +105,7 @@ function buildPersonaUpsertRequest({
   base_agent,
   mcp_tools,
   rag_config,
+  long_term_memory,
 }: PersonaUpsertParameters): PersonaUpsertRequest {
   return {
     name,
@@ -132,6 +135,7 @@ function buildPersonaUpsertRequest({
     base_agent: base_agent ?? null,
     mcp_tools: mcp_tools ?? [],
     rag_config: rag_config ?? null,
+    long_term_memory: long_term_memory ?? false,
   };
 }
 

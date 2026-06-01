@@ -144,7 +144,7 @@ class MemoryPerceptron(Perceptron):
         # Initialize long-term memory if configured
         if self.get_config("long_term_memory", False):
             try:
-                from service.langgraph_store import get_langgraph_store
+                from service.LangGraphStoreService import get_langgraph_store
 
                 self._long_term_store = get_langgraph_store()
             except Exception:
@@ -165,9 +165,10 @@ class MemoryPerceptron(Perceptron):
         memory_context = {}
         if self._long_term_store and context and context.get("user_id"):
             try:
-                from memory.long_term import recall_memories
+                from memory.long_term import build_event_emitters, recall_memories
 
-                memories = await recall_memories(self._long_term_store, context["user_id"])
+                on_recall, _ = build_event_emitters(context)
+                memories = await recall_memories(self._long_term_store, context["user_id"], on_recall=on_recall)
                 memory_context = {"memories": memories}
             except Exception:
                 pass

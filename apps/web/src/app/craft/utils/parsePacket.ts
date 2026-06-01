@@ -51,6 +51,19 @@ export function parsePacket(raw: unknown): ParsedPacket {
     case "error":
       return { type: "error", message: (p.message ?? "") as string };
 
+    case "long_term_memory_recall":
+      return {
+        type: "long_term_memory_recall",
+        memories: Array.isArray(p.memories) ? (p.memories as string[]) : [],
+        fact_count: typeof p.fact_count === "number" ? p.fact_count : undefined,
+      };
+
+    case "long_term_memory_save":
+      return {
+        type: "long_term_memory_save",
+        saved: Array.isArray(p.saved) ? (p.saved as string[]) : [],
+      };
+
     default:
       return { type: "unknown" };
   }

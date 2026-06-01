@@ -63,6 +63,8 @@ function buildDynamicAgentSnapshot(
     external_id: definition.id,
     is_dynamic: true,
     graph_schema: definition.graph_schema,
+    memory_type: definition.memory_type,
+    long_term_memory: definition.memory_type === "long_term",
     mcp_tools: definition.mcp_tools,
     name: definition.name,
     description: definition.description ?? `${definition.graph_schema} dynamic agent`,
@@ -167,10 +169,12 @@ export function useAgents() {
   const agents = useMemo(() => {
     const personaAgents = data ?? [];
     const toolCatalog = availableTools ?? [];
-    const dynamicOwner: MinimalUserSnapshot = {
-      id: user?.id ?? "dev@local.dev",
-      email: user?.email ?? "dev@local.dev",
-    };
+    const dynamicOwner: MinimalUserSnapshot | null = user
+      ? {
+          id: user.id,
+          email: user.email,
+        }
+      : null;
     const dynamicAgents = (dynamicDefinitions ?? []).map((definition) =>
       buildDynamicAgentSnapshot(definition, toolCatalog, dynamicOwner)
     );

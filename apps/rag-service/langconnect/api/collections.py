@@ -6,7 +6,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from langconnect.auth import AuthenticatedUser, resolve_user
 from langconnect.database.collections import CollectionsManager
 from langconnect.models import CollectionCreate, CollectionResponse, CollectionUpdate
-from langconnect.services.build_lock import ensure_collection_mutable
+from langconnect.services.build_lock import (
+    ensure_collection_mutable,
+    ensure_not_connector_managed_collection,
+)
 
 router = APIRouter(prefix="/collections", tags=["collections"])
 
@@ -58,6 +61,7 @@ async def collections_delete(
     collection_id: UUID,
 ):
     """Deletes a specific PGVector collection by name."""
+    await ensure_not_connector_managed_collection(str(collection_id))
     ensure_collection_mutable(str(collection_id))
     await CollectionsManager(user.identity).delete(str(collection_id))
     return "Collection deleted successfully."
@@ -70,6 +74,7 @@ async def collections_update(
     collection_data: CollectionUpdate,
 ):
     """Updates a specific PGVector collection's name and/or metadata."""
+    await ensure_not_connector_managed_collection(str(collection_id))
     ensure_collection_mutable(str(collection_id))
     updated_collection = await CollectionsManager(user.identity).update(
         str(collection_id),

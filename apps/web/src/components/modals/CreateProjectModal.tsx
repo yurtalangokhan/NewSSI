@@ -75,7 +75,7 @@ export default function CreateProjectModal({
             <Button secondary onClick={() => modal.toggle(false)}>
               {t("modals.cancel")}
             </Button>
-            <Button onClick={handleSubmit}>Create Project</Button>
+            <Button onClick={handleSubmit}>{t("modals.createProject.createButton")}</Button>
           </Modal.Footer>
         </Modal.Content>
       </Modal>
