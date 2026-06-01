@@ -22,6 +22,7 @@ def _get_controller() -> AuthController:
 class User(BaseModel):
     id: str = "dev-user-1"
     email: str = "dev@local.dev"
+    username: str | None = None
     is_active: bool = True
     is_superuser: bool = True
     is_verified: bool = True

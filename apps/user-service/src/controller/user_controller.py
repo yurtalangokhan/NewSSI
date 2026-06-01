@@ -101,6 +101,33 @@ class UserController(BaseController):
             writer.writerows(users)
         return output.getvalue()
 
+    async def upsert_user_from_keycloak(
+        self,
+        keycloak_id: str,
+        email: str,
+        first_name: str | None = None,
+        last_name: str | None = None,
+        username: str | None = None,
+    ) -> dict[str, Any]:
+        """Internal method for agent-service to sync users from Keycloak OIDC."""
+        try:
+            return await self.user_service.upsert_user_from_keycloak(
+                keycloak_id=keycloak_id,
+                email=email,
+                first_name=first_name,
+                last_name=last_name,
+                username=username,
+            )
+        except ValueError as e:
+            self._raise_bad_request(str(e))
+
+    async def get_user_by_keycloak_id(self, keycloak_id: str) -> dict[str, Any]:
+        """Fetch user from user-service by Keycloak ID (subject)."""
+        user = await self.user_service.get_user_by_keycloak_id(keycloak_id)
+        if not user:
+            self._raise_not_found(f"User with keycloak_id {keycloak_id} not found")
+        return user
+
 
 _user_controller: UserController | None = None
 

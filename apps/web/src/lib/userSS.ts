@@ -133,13 +133,15 @@ export const getCurrentUserSS = async (): Promise<User | null> => {
     const cookieStore = await getCookies();
     const hasAuthCookie =
       cookieStore.has("fastapiusersauth") ||
+      cookieStore.has("access_token") ||
+      cookieStore.has("refresh_token") ||
       cookieStore.has("session") ||
       cookieStore.has("id_token");
     if (!hasAuthCookie) {
       return null;
     }
 
-    const response = await fetchUserServiceSS("/api/auth/me");
+    const response = await fetchSS("/me");
     if (response.status === 401) {
       return null;
     }

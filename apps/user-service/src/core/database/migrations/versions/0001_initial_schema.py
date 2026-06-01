@@ -18,8 +18,6 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    op.execute("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\"")
-
     op.create_table(
         "roles",
         sa.Column("name", sa.String(50), primary_key=True),
@@ -41,7 +39,7 @@ def upgrade() -> None:
 
     op.create_table(
         "users",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text("uuid_generate_v4()")),
+        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
         sa.Column("keycloak_id", sa.String(255), nullable=True, unique=True),
         sa.Column("email", sa.String(255), nullable=False, unique=True),
         sa.Column("username", sa.String(100), nullable=True),
@@ -64,7 +62,7 @@ def upgrade() -> None:
 
     op.create_table(
         "user_settings",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text("uuid_generate_v4()")),
+        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
         sa.Column("user_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True),
         sa.Column("theme_preference", sa.String(20), nullable=True),
         sa.Column("chat_background", sa.Text(), nullable=True),
@@ -85,7 +83,7 @@ def upgrade() -> None:
 
     op.create_table(
         "api_keys",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text("uuid_generate_v4()")),
+        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
         sa.Column("user_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
         sa.Column("key_hash", sa.String(255), nullable=False, unique=True),
         sa.Column("key_prefix", sa.String(20), nullable=False),
@@ -99,7 +97,7 @@ def upgrade() -> None:
 
     op.create_table(
         "sessions",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text("uuid_generate_v4()")),
+        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
         sa.Column("user_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
         sa.Column("token_hash", sa.String(255), nullable=False, unique=True),
         sa.Column("refresh_token_hash", sa.String(255), nullable=True),
@@ -112,7 +110,7 @@ def upgrade() -> None:
 
     op.create_table(
         "audit_logs",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text("uuid_generate_v4()")),
+        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
         sa.Column("user_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("users.id", ondelete="SET NULL"), nullable=True),
         sa.Column("action", sa.String(100), nullable=False),
         sa.Column("resource", sa.String(100), nullable=False),

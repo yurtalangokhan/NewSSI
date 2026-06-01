@@ -7,10 +7,9 @@ This module is the single place that both agent_routes and run_routes
 import from, avoiding circular dependencies.
 """
 
-from core.logger import get_logger
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID, uuid4
-from datetime import UTC, datetime
 
 from fastapi import HTTPException
 from langchain_core.messages import HumanMessage
@@ -20,6 +19,7 @@ from langgraph.types import Command
 
 from agents import AgentGraph
 from core import settings
+from core.logger import get_logger
 from schema import UserInput
 
 __all__ = [
@@ -47,10 +47,9 @@ async def get_graph_and_config(agent_id: str) -> tuple[str, dict]:
     # Dynamic agent tools read rag_config from RunnableConfig.configurable,
     # so expose the definition's runtime settings here.
     try:
-        from uuid import UUID as _UUID
         from agents.storage.repository import AgentDefinitionRepository
 
-        definition_uuid = _UUID(agent_id)
+        definition_uuid = UUID(agent_id)
         definition = await AgentDefinitionRepository().get_by_id(definition_uuid)
         if definition:
             definition_cfg = definition.to_config() or {}
@@ -293,9 +292,9 @@ async def _handle_input(
     us_data: dict = {}
     persona_data = None
     try:
-        from core.db.repositories.user_settings_repo import UserSettingsRepository
+        from service.UserServiceClient import get_user_settings
 
-        us_data = await UserSettingsRepository().ensure_defaults(user_id)
+        us_data = await get_user_settings(user_id)
         user_ltm = bool(us_data.get("long_term_memory_enabled", False))
     except Exception as _ltm_err:
         logger.warning(f"LTM user_settings lookup failed: {_ltm_err}")

@@ -19,9 +19,49 @@ logger = logging.getLogger(__name__)
 class ChatController(BaseController):
     """Owns non-streaming chat endpoints and delegates persistence to ThreadController."""
 
-    def __init__(self, thread_controller: ThreadController | None = None, user_id: str = "dev-user"):
+    def __init__(
+        self,
+        thread_controller: ThreadController | None = None,
+        user_id: str = "dev-user",
+        owner_ids: list[str] | None = None,
+    ):
         self._thread_controller = thread_controller or get_thread_controller()
         self._user_id = user_id
+        self._owner_ids: list[str] = []
+        for candidate in [user_id, *(owner_ids or [])]:
+            normalized = str(candidate).strip() if candidate else ""
+            if normalized and normalized not in self._owner_ids:
+                self._owner_ids.append(normalized)
+
+    def _matches_owner(self, metadata: dict[str, Any]) -> bool:
+        owner = metadata.get("user_id")
+        if owner and str(owner) in self._owner_ids:
+            return True
+
+        legacy_owner_ids = metadata.get("legacy_user_ids") or []
+        if isinstance(legacy_owner_ids, list):
+            return any(str(candidate) in self._owner_ids for candidate in legacy_owner_ids)
+
+        return False
+
+    async def _list_user_threads(self, limit: int, offset: int) -> list[dict[str, Any]]:
+        if len(self._owner_ids) <= 1:
+            return await self._thread_controller.list_threads(
+                limit=limit,
+                offset=offset,
+                metadata={"user_id": self._user_id},
+            )
+
+        threads = await self._thread_controller.list_threads(
+            limit=max(limit + offset, 1000),
+            offset=0,
+        )
+        matching_threads = [
+            thread
+            for thread in threads
+            if self._matches_owner(thread.get("metadata", {}) or {})
+        ]
+        return matching_threads[offset : offset + limit]
 
     async def _ensure_thread_belongs_to_user(self, thread_id: str, thread: dict[str, Any] | None) -> bool:
         if not thread:
@@ -36,7 +76,22 @@ class ChatController(BaseController):
             await self._thread_controller.update_thread(thread_id, metadata)
             return True
 
-        return owner == self._user_id
+        if str(owner) == self._user_id:
+            return True
+
+        if self._matches_owner(metadata):
+            legacy_owner_ids = metadata.get("legacy_user_ids") or []
+            if not isinstance(legacy_owner_ids, list):
+                legacy_owner_ids = []
+            if str(owner) != self._user_id and str(owner) not in legacy_owner_ids:
+                legacy_owner_ids.append(str(owner))
+
+            metadata["legacy_user_ids"] = legacy_owner_ids
+            metadata["user_id"] = self._user_id
+            await self._thread_controller.update_thread(thread_id, metadata)
+            return True
+
+        return False
 
     def _is_invalid_generated_title(self, title: str) -> bool:
         text = (title or "").strip().lower()
@@ -320,11 +375,7 @@ class ChatController(BaseController):
         return default_name
 
     async def get_chat_sessions(self) -> dict[str, Any]:
-        threads = await self._thread_controller.list_threads(
-            limit=100,
-            offset=0,
-            metadata={"user_id": self._user_id},
-        )
+        threads = await self._list_user_threads(limit=100, offset=0)
 
         checkpointer = get_checkpointer()
         sessions: list[dict[str, Any]] = []
@@ -908,11 +959,7 @@ class ChatController(BaseController):
         return {"success": True}
 
     async def delete_all_chat_sessions(self) -> dict[str, Any]:
-        threads = await self._thread_controller.list_threads(
-            limit=1000,
-            offset=0,
-            metadata={"user_id": self._user_id},
-        )
+        threads = await self._list_user_threads(limit=1000, offset=0)
         deleted_count = 0
 
         for thread in threads:

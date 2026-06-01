@@ -42,8 +42,13 @@ async def oidc_authorize(redirect_uri: str | None = None):
 
 
 @router.get("/oidc/callback")
-async def oidc_callback(code: str, redirect_uri: str | None = None):
-    return await get_auth_controller().oidc_callback(code, redirect_uri)
+async def oidc_callback(
+    request: Request,
+    response: Response,
+    code: str,
+    redirect_uri: str | None = None,
+):
+    return await get_auth_controller().oidc_callback(request, response, code, redirect_uri)
 
 
 @router.get("/me")

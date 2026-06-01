@@ -17,7 +17,12 @@ class AuthController(BaseController):
     async def login(self, request: Request, response: Response, email: str, password: str) -> dict[str, Any]:
         try:
             result = await self.auth_service.basic_login(email, password)
-            self._set_cookies(response, result.get("access_token", ""), result.get("refresh_token", ""))
+            self._set_cookies(
+                response,
+                result.get("access_token", ""),
+                result.get("refresh_token", ""),
+                result.get("id_token"),
+            )
             return result
         except ValueError as e:
             self._raise_bad_request(str(e))
@@ -43,14 +48,38 @@ class AuthController(BaseController):
         # - authorize_url: legacy field name
         return {"authorization_url": url, "authorize_url": url}
 
-    async def oidc_callback(self, code: str, redirect_uri: str | None = None) -> dict[str, Any]:
+    async def oidc_callback(
+        self,
+        request: Request,
+        response: Response,
+        code: str,
+        redirect_uri: str | None = None,
+    ) -> dict[str, Any]:
         uri = redirect_uri or "http://localhost:3000/auth/oidc/callback"
+        request_callback_uri = str(request.url).split("?", 1)[0]
         try:
-            return await self.auth_service.handle_oidc_callback(code, uri)
+            result = await self.auth_service.handle_oidc_callback(
+                code,
+                uri,
+                fallback_redirect_uri=request_callback_uri,
+            )
+            self._set_cookies(
+                response,
+                result.get("access_token", ""),
+                result.get("refresh_token", ""),
+                result.get("id_token"),
+            )
+            return result
         except Exception as e:
             self._raise_bad_request(f"OIDC callback failed: {e}")
 
-    def _set_cookies(self, response: Response, access_token: str, refresh_token: str):
+    def _set_cookies(
+        self,
+        response: Response,
+        access_token: str,
+        refresh_token: str,
+        id_token: str | None = None,
+    ):
         response.set_cookie(
             key="access_token",
             value=access_token,
@@ -67,6 +96,15 @@ class AuthController(BaseController):
             max_age=30 * 86400,
             secure=False,
         )
+        if id_token:
+            response.set_cookie(
+                key="id_token",
+                value=id_token,
+                httponly=True,
+                samesite="lax",
+                max_age=30 * 86400,
+                secure=False,
+            )
 
     def _clear_cookies(self, response: Response):
         response.delete_cookie("access_token")

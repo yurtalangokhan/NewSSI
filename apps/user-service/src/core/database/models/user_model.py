@@ -33,7 +33,11 @@ class UserModel(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     is_superuser: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    role: Mapped[UserRole] = mapped_column(SQLEnum(UserRole), default=UserRole.BASIC, nullable=False)
+    role: Mapped[UserRole] = mapped_column(
+        SQLEnum(UserRole, native_enum=False),
+        default=UserRole.BASIC,
+        nullable=False,
+    )
     invited: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     password_configured: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     team_name: Mapped[str | None] = mapped_column(String(255), nullable=True)

@@ -1,6 +1,6 @@
 import uvicorn
 
-from config import get_settings
+from src.config import get_settings
 
 
 def main():

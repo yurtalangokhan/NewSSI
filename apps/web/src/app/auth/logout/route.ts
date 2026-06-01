@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 const handleLogout = async (request: NextRequest) => {
   const authTypeMetadata = await getAuthTypeMetadataSS();
+  let backendLogoutSucceeded = false;
 
   // Call backend logout — this terminates the Keycloak SSO session
   // server-side via backchannel logout using the refresh_token cookie.
@@ -11,6 +12,7 @@ const handleLogout = async (request: NextRequest) => {
   // so we clear cookies manually below.
   try {
     await logoutSS(authTypeMetadata.authType, request.headers);
+    backendLogoutSucceeded = true;
   } catch {
     // Backend logout is best-effort. Cookies are cleared regardless.
   }
@@ -23,22 +25,17 @@ const handleLogout = async (request: NextRequest) => {
     "id_token",
     "access_token",
   ];
-  const cookieOptions = {
-    path: "/",
-    secure: process.env.NODE_ENV === "production",
-    httpOnly: true,
-    sameSite: "lax" as const,
+  const clearAuthCookies = (response: NextResponse) => {
+    cookiesToDelete.forEach((cookieName) => {
+      response.cookies.set(cookieName, "", {
+        path: "/",
+        maxAge: 0,
+        secure: process.env.NODE_ENV === "production",
+        httpOnly: true,
+        sameSite: "lax",
+      });
+    });
   };
-
-  const headers = new Headers();
-  cookiesToDelete.forEach((cookieName) => {
-    headers.append(
-      "Set-Cookie",
-      `${cookieName}=; Max-Age=0; ${Object.entries(cookieOptions)
-        .map(([key, value]) => `${key}=${value}`)
-        .join("; ")}`
-    );
-  });
 
   const nextPath =
     request.nextUrl.searchParams.get("next") || "/auth/login";
@@ -46,7 +43,7 @@ const handleLogout = async (request: NextRequest) => {
   // For OIDC, redirect to Keycloak's RP-initiated logout as a front-channel
   // courtesy step. The SSO session was already terminated server-side by the
   // backend, so this is a best-effort redirect to Keycloak's logout page.
-  if (authTypeMetadata.authType === AuthType.OIDC) {
+  if (authTypeMetadata.authType === AuthType.OIDC && !backendLogoutSucceeded) {
     try {
       const issuer = process.env.KEYCLOAK_ISSUER_URL?.replace(/\/$/, "");
       const clientId = process.env.KEYCLOAK_CLIENT_ID || "agenticai-web";
@@ -72,9 +69,7 @@ const handleLogout = async (request: NextRequest) => {
           logoutUrl.toString(),
           307
         );
-        headers.forEach((value, key) => {
-          redirectResponse.headers.append(key, value);
-        });
+        clearAuthCookies(redirectResponse);
         return redirectResponse;
       }
     } catch {
@@ -86,9 +81,7 @@ const handleLogout = async (request: NextRequest) => {
     new URL(nextPath, request.nextUrl.origin),
     307
   );
-  headers.forEach((value, key) => {
-    redirectResponse.headers.append(key, value);
-  });
+  clearAuthCookies(redirectResponse);
   return redirectResponse;
 };
 

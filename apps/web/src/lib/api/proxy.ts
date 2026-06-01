@@ -34,8 +34,21 @@ export async function proxyToBackend(
       'Content-Type': request.headers.get('content-type') || 'application/json',
     };
 
+    const authorization = request.headers.get('authorization');
+    if (authorization) {
+      headers['Authorization'] = authorization;
+    }
+
     if (withCredentials) {
-      const cookie = request.headers.get('cookie');
+      let cookie = request.headers.get('cookie') || '';
+      if (
+        process.env.DEBUG_AUTH_COOKIE &&
+        process.env.NODE_ENV === 'development' &&
+        !cookie.split(/;\s*/).some((c) => c.startsWith('fastapiusersauth='))
+      ) {
+        const debugCookie = `fastapiusersauth=${process.env.DEBUG_AUTH_COOKIE}`;
+        cookie = cookie ? `${cookie}; ${debugCookie}` : debugCookie;
+      }
       if (cookie) {
         headers['Cookie'] = cookie;
       }

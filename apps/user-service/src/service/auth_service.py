@@ -37,12 +37,14 @@ class AuthService:
         expires = datetime.utcnow() + timedelta(hours=1)
         payload = {
             "sub": user_id,
+            "aud": _settings.SERVICE_NAME,
             "email": email,
             "role": role,
             "exp": expires,
             "iat": datetime.utcnow(),
             "iss": "user-service",
             "type": "access",
+            "jti": secrets.token_urlsafe(12),
         }
         secret = _settings.AUTH_SECRET or "dev-secret-change-me"
         token = jwt.encode(payload, secret, algorithm="HS256")
@@ -66,7 +68,7 @@ class AuthService:
 
         return await self._build_login_response(user)
 
-    async def _build_login_response(self, user) -> dict[str, Any]:
+    async def _build_login_response(self, user, id_token: str | None = None) -> dict[str, Any]:
         access_token, expires = self._create_access_token(str(user.id), user.email, user.role.value)
         refresh_token, refresh_expires = self._create_refresh_token()
 
@@ -77,7 +79,7 @@ class AuthService:
             expires_at=expires,
         )
 
-        return {
+        payload: dict[str, Any] = {
             "access_token": access_token,
             "refresh_token": refresh_token,
             "token_type": "Bearer",
@@ -94,6 +96,45 @@ class AuthService:
                 "is_superuser": user.is_superuser,
             },
         }
+        if id_token:
+            payload["id_token"] = id_token
+        return payload
+
+    async def _build_oidc_login_response(
+        self,
+        user,
+        token_data: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Return OIDC token payload without persisting local sessions.
+
+        Keycloak is the source of truth for session lifecycle. user-service only
+        mirrors user identity and returns the tokens issued by Keycloak.
+        """
+        access_token = token_data.get("access_token", "")
+        refresh_token = token_data.get("refresh_token", "")
+        id_token = token_data.get("id_token")
+        expires_in = int(token_data.get("expires_in", 3600))
+
+        payload: dict[str, Any] = {
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "token_type": token_data.get("token_type", "Bearer"),
+            "expires_in": expires_in,
+            "user": {
+                "id": str(user.id),
+                "email": user.email,
+                "username": user.username,
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+                "role": user.role.value,
+                "is_active": user.is_active,
+                "is_verified": user.is_verified,
+                "is_superuser": user.is_superuser,
+            },
+        }
+        if id_token:
+            payload["id_token"] = id_token
+        return payload
 
     async def logout(self, refresh_token: str | None = None) -> dict[str, Any]:
         if refresh_token:
@@ -139,7 +180,18 @@ class AuthService:
     async def validate_token(self, token: str) -> dict[str, Any] | None:
         try:
             secret = _settings.AUTH_SECRET or "dev-secret-change-me"
-            payload = jwt.decode(token, secret, algorithms=["HS256"], audience="user-service")
+            payload = jwt.decode(token, secret, algorithms=["HS256"], audience=_settings.SERVICE_NAME)
+        except JWTError:
+            try:
+                # Accept legacy service tokens that were minted before the aud claim was added.
+                payload = jwt.decode(token, secret, algorithms=["HS256"], options={"verify_aud": False})
+            except JWTError:
+                return None
+
+        if payload.get("aud") not in (None, _settings.SERVICE_NAME):
+            return None
+
+        try:
             if payload.get("type") != "access":
                 return None
             return payload
@@ -155,15 +207,24 @@ class AuthService:
         state = secrets.token_urlsafe(16)
         return await self.keycloak.get_oidc_authorize_url(redirect_uri, state=state)
 
-    async def handle_oidc_callback(self, code: str, redirect_uri: str = "http://localhost:3000/auth/oidc/callback") -> dict[str, Any]:
-        token_data = await self.keycloak.handle_oidc_callback(code, redirect_uri)
+    async def handle_oidc_callback(
+        self,
+        code: str,
+        redirect_uri: str = "http://localhost:3000/auth/oidc/callback",
+        fallback_redirect_uri: str | None = None,
+    ) -> dict[str, Any]:
+        token_data = await self.keycloak.handle_oidc_callback(
+            code,
+            redirect_uri,
+            fallback_redirect_uri=fallback_redirect_uri,
+        )
 
         from jose import jwt
 
         id_token = token_data.get("id_token", "")
 
         if id_token:
-            claims = jwt.decode(id_token, options={"verify_signature": False})
+            claims = jwt.get_unverified_claims(id_token)
             keycloak_id = claims.get("sub", "")
             email = claims.get("email", "")
             username = claims.get("preferred_username", "")
@@ -187,7 +248,7 @@ class AuthService:
             if _settings.KEYCLOAK_ADMIN_EMAIL and email == _settings.KEYCLOAK_ADMIN_EMAIL:
                 user = await self.user_repo.update(user.id, is_superuser=True, role="admin")
 
-            return await self._build_login_response(user)
+            return await self._build_oidc_login_response(user, token_data)
 
         return token_data
 

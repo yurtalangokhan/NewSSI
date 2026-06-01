@@ -6,22 +6,20 @@ login, logout, OIDC token exchange, Keycloak session management,
 token validation, and API key verification.
 """
 
-from core.logger import get_logger
-
-logger = get_logger(__name__)
 import logging as _stdlib_logging
-logger_stdlib = _stdlib_logging.getLogger(__name__)
 import os
-from urllib.parse import urlencode
 from datetime import UTC, datetime
 from typing import Annotated, Any
+from urllib.parse import urlencode
 
 import httpx
+import jwt
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-import jwt
 from jwt import InvalidTokenError, PyJWKClient
-from core.db.repositories.user_settings_repo import UserSettingsRepository
+
+from core.logger import get_logger
+from service.UserServiceClient import get_user_settings
 
 __all__ = [
     "AuthService",
@@ -32,6 +30,7 @@ __all__ = [
 ]
 
 logger = get_logger(__name__)
+logger_stdlib = _stdlib_logging.getLogger(__name__)
 
 # Valid API keys (comma-separated in environment variable)
 VALID_API_KEYS: set = set()
@@ -60,6 +59,23 @@ def _extract_auth_token(
         or request.cookies.get("session")
         or request.cookies.get("id_token")
     )
+
+
+def _extract_auth_tokens(
+    http_auth: HTTPAuthorizationCredentials | None,
+    request: Request,
+) -> list[str]:
+    tokens: list[str] = []
+
+    if http_auth and http_auth.credentials:
+        tokens.append(http_auth.credentials)
+
+    for cookie_name in ("fastapiusersauth", "session", "id_token"):
+        token = request.cookies.get(cookie_name)
+        if token and token not in tokens:
+            tokens.append(token)
+
+    return tokens
 
 
 class AuthService:
@@ -207,6 +223,44 @@ class AuthService:
             return {}
         except Exception:
             return {}
+
+    async def resolve_user_identity(
+        self,
+        request: Request,
+        user_id: str | None,
+    ) -> dict[str, Any]:
+        claims = self.decode_jwt_without_verification(_extract_auth_token(None, request))
+        keycloak_id = claims.get("sub") or user_id
+
+        user_service_user = None
+        if keycloak_id:
+            try:
+                from service.UserServiceClient import get_user_by_keycloak_id
+
+                user_service_user = await get_user_by_keycloak_id(str(keycloak_id))
+            except Exception as exc:
+                logger.warning("Failed to resolve user identity from user-service: %s", exc)
+
+        primary_user_id = None
+        if isinstance(user_service_user, dict) and user_service_user.get("id"):
+            primary_user_id = str(user_service_user["id"])
+        elif user_id:
+            primary_user_id = str(user_id)
+
+        known_user_ids: list[str] = []
+        for candidate in (primary_user_id, keycloak_id, user_id):
+            if not candidate:
+                continue
+            normalized = str(candidate)
+            if normalized not in known_user_ids:
+                known_user_ids.append(normalized)
+
+        return {
+            "primary_user_id": primary_user_id,
+            "keycloak_id": str(keycloak_id) if keycloak_id else None,
+            "user_service_user": user_service_user,
+            "known_user_ids": known_user_ids,
+        }
 
     # ------------------------------------------------------------------
     # Keycloak admin API
@@ -385,6 +439,8 @@ class AuthService:
         state: str | None,
         redirect_uri_override: str | None = None,
     ) -> dict[str, Any]:
+        from service.UserServiceClient import upsert_user_from_keycloak
+
         keycloak_enabled = self.is_keycloak_enabled()
         issuer = self.get_keycloak_issuer()
         client_id = os.environ.get("KEYCLOAK_CLIENT_ID", "agenticai-web")
@@ -423,6 +479,25 @@ class AuthService:
         if not access_token:
             raise ValueError("Keycloak token response did not include access_token")
 
+        decoded_id_token = self.decode_jwt_without_verification(id_token or "")
+        keycloak_id = decoded_id_token.get("sub")
+        email = decoded_id_token.get("email") or decoded_id_token.get("preferred_username") or ""
+        first_name = decoded_id_token.get("given_name")
+        last_name = decoded_id_token.get("family_name")
+        username = decoded_id_token.get("preferred_username")
+
+        if keycloak_id:
+            try:
+                await upsert_user_from_keycloak(
+                    keycloak_id=keycloak_id,
+                    email=email,
+                    first_name=first_name,
+                    last_name=last_name,
+                    username=username,
+                )
+            except Exception as exc:
+                logger.warning(f"Failed to sync user to user-service: {exc}")
+
         redirect_url = state or "/"
         return {
             "success": True,
@@ -454,28 +529,58 @@ class AuthService:
         for cookie_name in ("id_token", "fastapiusersauth", "session"):
             claims.update(self.decode_jwt_without_verification(request.cookies.get(cookie_name)))
 
-        keycloak_profile = await self.get_keycloak_user_profile(user_id)
+        identity = await self.resolve_user_identity(request=request, user_id=user_id)
+        keycloak_id = identity.get("keycloak_id")
+        user_service_user = identity.get("user_service_user")
+        effective_user_id = str(identity.get("primary_user_id") or user_id)
+
+        # If user found in user-service, use those values with preference for Keycloak claims
+
+        keycloak_profile = await self.get_keycloak_user_profile(keycloak_id or user_id)
         profile_attrs = (keycloak_profile or {}).get("attributes") if isinstance(keycloak_profile, dict) else None
 
-        email = claims.get("email") or claims.get("preferred_username")
+        # Prioritize user-service data, fallback to claims and profile
+        email = (
+            claims.get("email") 
+            or (user_service_user and user_service_user.get("email"))
+            or claims.get("preferred_username")
+        )
+        username = (
+            claims.get("preferred_username")
+            or (user_service_user and user_service_user.get("username"))
+        )
         if not email and isinstance(keycloak_profile, dict):
             email = keycloak_profile.get("email") or keycloak_profile.get("username")
+        if not username and isinstance(keycloak_profile, dict):
+            username = keycloak_profile.get("username")
+        if not username and isinstance(email, str) and "@" in email:
+            username = email.split("@", 1)[0]
         if not email:
             email = user_id if "@" in user_id else "user@local.dev"
 
         given_name = claims.get("given_name") or claims.get("first_name")
         family_name = claims.get("family_name") or claims.get("last_name")
+        # Prefer user-service names
+        if user_service_user:
+            given_name = user_service_user.get("first_name") or given_name
+            family_name = user_service_user.get("last_name") or family_name
+
+
+        kc_first = None
+        kc_last = None
         if isinstance(keycloak_profile, dict):
-            given_name = given_name or keycloak_profile.get("firstName")
-            family_name = family_name or keycloak_profile.get("lastName")
-        full_name = claims.get("name")
-        if not full_name and given_name:
-            full_name = f"{given_name} {family_name}".strip() if family_name else str(given_name)
-        if not full_name and isinstance(keycloak_profile, dict):
             kc_first = keycloak_profile.get("firstName")
             kc_last = keycloak_profile.get("lastName")
-            if kc_first:
-                full_name = f"{kc_first} {kc_last}".strip() if kc_last else str(kc_first)
+
+        full_name = claims.get("name")
+        if user_service_user and (user_service_user.get("first_name") or user_service_user.get("last_name")):
+            first = user_service_user.get("first_name") or ""
+            last = user_service_user.get("last_name") or ""
+            full_name = f"{first} {last}".strip()
+        if kc_first:
+            full_name = f"{kc_first} {kc_last}".strip() if kc_last else str(kc_first)
+        elif not full_name and given_name:
+            full_name = f"{given_name} {family_name}".strip() if family_name else str(given_name)
 
         role = "basic"
         claim_roles: set[str] = set()
@@ -525,18 +630,24 @@ class AuthService:
         ):
             role = "admin"
 
-        personalization_role = self._read_attr(profile_attrs, "work_role") or ""
+        personalization_role = (
+            self._read_attr(profile_attrs, "work_role")
+            or self._read_attr(profile_attrs, "workRole")
+            or str(claims.get("work_role") or claims.get("workRole") or "")
+            or role
+        )
         personalization_name = full_name or given_name or str(email).split("@")[0]
 
         user_settings: dict[str, Any] = {}
         try:
-            user_settings = await UserSettingsRepository().ensure_defaults(user_id)
+            user_settings = await get_user_settings(effective_user_id)
         except Exception:
-            logger.warning("Failed to load user settings for user %s, using defaults", user_id)
+            logger.warning("Failed to load user settings for user %s, using defaults", effective_user_id)
 
         return {
-            "id": user_id,
+            "id": effective_user_id,
             "email": str(email),
+            "username": str(username) if username else None,
             "is_active": True,
             "is_superuser": role == "admin",
             "is_verified": True,
@@ -616,13 +727,21 @@ def verify_api_key(
         ),
     ],
 ) -> str | None:
-    token = _extract_auth_token(http_auth, request)
-
     if _is_keycloak_enabled():
-        if not token:
+        candidate_tokens = _extract_auth_tokens(http_auth, request)
+        if not candidate_tokens:
             return None
-        claims = _decode_keycloak_token(token)
-        return claims.get("sub") or claims.get("preferred_username") or claims.get("email")
+
+        for token in candidate_tokens:
+            try:
+                claims = _decode_keycloak_token(token)
+                return claims.get("sub") or claims.get("preferred_username") or claims.get("email")
+            except HTTPException:
+                continue
+
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid bearer token")
+
+    token = _extract_auth_token(http_auth, request)
 
     valid_keys = _get_valid_api_keys()
     if not valid_keys:

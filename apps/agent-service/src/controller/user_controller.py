@@ -4,18 +4,24 @@ import csv
 import io
 import json
 import secrets
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import httpx
 from fastapi import HTTPException, UploadFile, status
 
-from controller.session_controller import SessionController, get_session_controller
 from controller.base import BaseController
+from controller.session_controller import SessionController, get_session_controller
 from core.db.repositories.project_repo import ProjectRepository
-from core.db.repositories.user_settings_repo import UserSettingsRepository
 from core.env import env
 from service.StoreService import list_threads_from_store
+from service.UserServiceClient import (
+    create_prompt_shortcut,
+    delete_prompt_shortcut,
+    get_user_settings,
+    update_prompt_shortcut,
+    update_user_settings,
+)
 
 
 class UserController(BaseController):
@@ -24,7 +30,6 @@ class UserController(BaseController):
     def __init__(self, session_controller: SessionController | None = None):
         self._session_controller = session_controller or get_session_controller()
         self._supported_roles = ["admin", "global_curator", "curator", "limited", "basic"]
-        self._user_settings_repo = UserSettingsRepository()
         self._project_repo = ProjectRepository()
         # Minimal in-memory file store for project/recent file APIs.
         self._recent_files_by_user: dict[str, list[dict[str, Any]]] = {}
@@ -32,7 +37,7 @@ class UserController(BaseController):
 
     async def _update_user_settings(self, user_id: str, updates: dict[str, Any]) -> dict[str, Any]:
         try:
-            return await self._user_settings_repo.upsert_by_user_id(user_id, updates)
+            return await update_user_settings(user_id, updates)
         except Exception as exc:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -194,7 +199,7 @@ class UserController(BaseController):
 
     @staticmethod
     def _now_iso() -> str:
-        return datetime.now(timezone.utc).isoformat()
+        return datetime.now(UTC).isoformat()
 
     @staticmethod
     def _file_chat_type(content_type: str | None, filename: str) -> str:
@@ -703,11 +708,13 @@ class UserController(BaseController):
     async def get_input_prompts(self, user_id: str) -> list[Any]:
         if not user_id:
             return []
-        return await self._user_settings_repo.list_prompt_shortcuts(user_id)
+        settings = await get_user_settings(user_id)
+        prompts = settings.get("prompt_shortcuts") or []
+        return prompts if isinstance(prompts, list) else []
 
     async def create_input_prompt(self, *, user_id: str, payload: dict[str, Any]) -> dict[str, Any]:
         try:
-            return await self._user_settings_repo.create_prompt_shortcut(user_id, payload)
+            return await create_prompt_shortcut(user_id, payload)
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -719,11 +726,7 @@ class UserController(BaseController):
         payload: dict[str, Any],
     ) -> dict[str, Any]:
         try:
-            updated = await self._user_settings_repo.update_prompt_shortcut(
-                user_id=user_id,
-                prompt_id=prompt_id,
-                payload=payload,
-            )
+            updated = await update_prompt_shortcut(user_id, prompt_id, payload)
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -732,12 +735,9 @@ class UserController(BaseController):
         return updated
 
     async def delete_input_prompt(self, *, user_id: str, prompt_id: int) -> dict[str, bool]:
-        deleted = await self._user_settings_repo.delete_prompt_shortcut(
-            user_id=user_id,
-            prompt_id=prompt_id,
-        )
-        if not deleted:
-            raise HTTPException(status_code=404, detail="Input prompt not found")
+        deleted = await delete_prompt_shortcut(user_id, prompt_id)
+        if isinstance(deleted, dict) and deleted.get("message") == "Shortcut deleted":
+            return {"success": True}
         return {"success": True}
 
     async def get_connector_status(self) -> list[Any]:
@@ -933,7 +933,7 @@ class UserController(BaseController):
         created_user_id = str(created.get("id", ""))
         if created_user_id:
             await self._set_user_realm_role(created_user_id, role or "basic")
-            await self._user_settings_repo.ensure_defaults(created_user_id)
+            await self._update_user_settings(created_user_id, {})
 
         return {
             "success": True,

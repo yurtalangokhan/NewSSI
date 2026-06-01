@@ -140,20 +140,54 @@ class KeycloakService:
         import urllib.parse
         return f"{base_url}/realms/{self.get_realm()}/protocol/openid-connect/auth?{urllib.parse.urlencode(params)}"
 
-    async def handle_oidc_callback(self, code: str, redirect_uri: str) -> dict[str, Any]:
+    async def handle_oidc_callback(
+        self,
+        code: str,
+        redirect_uri: str,
+        fallback_redirect_uri: str | None = None,
+    ) -> dict[str, Any]:
         async with httpx.AsyncClient() as client:
             client_id = _env.KEYCLOAK_CLIENT_ID or "agenticai-web"
-            resp = await client.post(
-                f"{self.get_base_url()}/realms/{self.get_realm()}/protocol/openid-connect/token",
-                data={
+            token_url = f"{self.get_base_url()}/realms/{self.get_realm()}/protocol/openid-connect/token"
+
+            def _payload(uri: str) -> dict[str, str]:
+                return {
                     "grant_type": "authorization_code",
                     "code": code,
-                    "redirect_uri": redirect_uri,
+                    "redirect_uri": uri,
                     "client_id": client_id,
-                },
-            )
-            resp.raise_for_status()
-            return resp.json()
+                }
+
+            async def _extract_error_detail(response: httpx.Response) -> str:
+                """Extract error detail from Keycloak error response."""
+                try:
+                    error_body = response.json()
+                    if isinstance(error_body, dict):
+                        # Keycloak returns error + error_description
+                        if error_body.get("error_description"):
+                            return error_body["error_description"]
+                        if error_body.get("error"):
+                            return error_body["error"]
+                except Exception:
+                    pass
+                return f"Keycloak token exchange failed (status {response.status_code})"
+
+            resp = await client.post(token_url, data=_payload(redirect_uri))
+            if resp.is_success:
+                return resp.json()
+
+            # Some frontend flows attach a post-login redirect URI in query params,
+            # which can differ from the actual callback URI used for the auth code.
+            # Retry with the concrete callback URL when available.
+            if fallback_redirect_uri and fallback_redirect_uri != redirect_uri:
+                fallback_resp = await client.post(token_url, data=_payload(fallback_redirect_uri))
+                if fallback_resp.is_success:
+                    return fallback_resp.json()
+                resp = fallback_resp  # Use fallback response for error details
+
+            # Both attempts failed - extract error detail
+            error_detail = await _extract_error_detail(resp)
+            raise ValueError(error_detail)
 
     async def backchannel_logout(self, refresh_token: str | None = None, id_token_hint: str | None = None) -> bool:
         async with httpx.AsyncClient() as client:

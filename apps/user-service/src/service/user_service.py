@@ -207,6 +207,43 @@ class UserService:
             "updated_at": user.updated_at.isoformat() if user.updated_at else None,
         }
 
+    async def upsert_user_from_keycloak(
+        self,
+        keycloak_id: str,
+        email: str,
+        first_name: str | None = None,
+        last_name: str | None = None,
+        username: str | None = None,
+    ) -> dict[str, Any]:
+        """Create or update user from Keycloak OIDC profile.
+        
+        Called by agent-service during OIDC callback to ensure user exists in user-service.
+        """
+        user = await self.user_repo.upsert_by_keycloak_id(
+            keycloak_id=keycloak_id,
+            email=email,
+            first_name=first_name,
+            last_name=last_name,
+            username=username,
+            is_active=True,
+            is_verified=True,
+        )
+
+        # Ensure settings exist for this user
+        await self.settings_repo.ensure_defaults(user.id)
+
+        return self._user_to_dict(user)
+
+
+    async def get_user_by_keycloak_id(self, keycloak_id: str) -> dict[str, Any] | None:
+        """Fetch user by Keycloak ID (subject).
+        
+        Called by agent-service /api/me endpoint to get complete user data.
+        """
+        user = await self.user_repo.get_by_keycloak_id(keycloak_id)
+        if not user:
+            return None
+        return self._user_to_dict(user)
 
 _user_service: UserService | None = None
 

@@ -1,12 +1,19 @@
 import uuid
-from typing import Annotated
+from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Body, Depends, HTTPException
 
-from src.api.dependencies import require_admin, require_auth
+from src.api.dependencies import require_admin, require_auth, verify_internal_service_token
 from src.controller import get_user_controller
 
 router = APIRouter(prefix="/users", tags=["users"])
+
+
+async def require_internal_token(
+    is_internal: Annotated[bool, Depends(verify_internal_service_token)],
+) -> None:
+    if not is_internal:
+        raise HTTPException(status_code=403, detail="Internal service token required")
 
 
 @router.get("/me")
@@ -15,7 +22,10 @@ async def get_me(user_id: Annotated[str, Depends(require_auth)]):
 
 
 @router.patch("/me")
-async def update_me(user_id: Annotated[str, Depends(require_auth)], **updates):
+async def update_me(
+    updates: Annotated[dict[str, Any], Body(...)],
+    user_id: str = Depends(require_auth),
+):
     return await get_user_controller().update_me(uuid.UUID(user_id), **updates)
 
 
@@ -33,7 +43,10 @@ async def list_users(
 
 
 @router.post("/")
-async def create_user(user_id: str = Depends(require_admin), **payload):
+async def create_user(
+    payload: Annotated[dict[str, Any], Body(...)],
+    user_id: str = Depends(require_admin),
+):
     return await get_user_controller().create_user(**payload)
 
 
@@ -49,13 +62,43 @@ async def get_user(target_id: str, user_id: str = Depends(require_admin)):
 
 
 @router.patch("/{target_id}")
-async def update_user(target_id: str, user_id: str = Depends(require_admin), **updates):
+async def update_user(
+    target_id: str,
+    updates: Annotated[dict[str, Any], Body(...)],
+    user_id: str = Depends(require_admin),
+):
     return await get_user_controller().update_user(uuid.UUID(target_id), **updates)
 
 
 @router.delete("/{target_id}")
 async def delete_user(target_id: str, user_id: str = Depends(require_admin)):
     return await get_user_controller().delete_user(uuid.UUID(target_id))
+
+
+# Internal endpoint for agent-service to sync users from Keycloak
+@router.post("/internal/upsert-from-keycloak")
+async def upsert_user_from_keycloak(
+    payload: Annotated[dict[str, Any], Body(...)],
+    _: Annotated[None, Depends(require_internal_token)],
+):
+    """Internal endpoint for agent-service to create/update users from Keycloak OIDC.
+    
+    This is called from agent-service during OIDC callback to ensure user exists in user-service.
+    """
+    return await get_user_controller().upsert_user_from_keycloak(**payload)
+
+
+# Internal endpoint for agent-service to fetch user by Keycloak ID
+@router.get("/internal/by-keycloak-id/{keycloak_id}")
+async def get_user_by_keycloak_id(
+    keycloak_id: str,
+    _: Annotated[None, Depends(require_internal_token)],
+):
+    """Internal endpoint for agent-service to fetch user by Keycloak ID (subject).
+    
+    Used in /api/me endpoint to get complete user data from user-service.
+    """
+    return await get_user_controller().get_user_by_keycloak_id(keycloak_id)
 
 
 @router.post("/invite")
@@ -82,7 +125,11 @@ async def set_user_active(target_id: str, is_active: bool = True, user_id: str =
 
 
 @router.post("/{target_id}/password")
-async def set_user_password(target_id: str, password: str, user_id: str = Depends(require_admin)):
+async def set_user_password(
+    target_id: str,
+    password: Annotated[str, Body(...)],
+    user_id: str = Depends(require_admin),
+):
     return await get_user_controller().set_password(uuid.UUID(target_id), password)
 
 
