@@ -41,13 +41,34 @@ class ThreadRepository(BaseRepository):
     # ---- helpers --------------------------------------------------------
 
     @staticmethod
+    def _resolve_project_id(row: ThreadModel) -> int | None:
+        """Read project_id from the canonical column, falling back to legacy metadata."""
+        if row.project_id is not None:
+            return row.project_id
+
+        metadata = row.metadata_ or {}
+        metadata_project_id = metadata.get("project_id")
+        if metadata_project_id is None:
+            return None
+
+        try:
+            return int(metadata_project_id)
+        except (TypeError, ValueError):
+            logger.warning(
+                "Ignoring invalid metadata project_id=%r for thread_id=%s",
+                metadata_project_id,
+                row.thread_id,
+            )
+            return None
+
+    @staticmethod
     def _to_dict(row: ThreadModel) -> dict[str, Any]:
         """Convert an ORM row to a JSON-friendly dict."""
         return {
             "thread_id": str(row.thread_id),
             "metadata": row.metadata_ or {},
             "status": row.status or "idle",
-            "project_id": row.project_id,
+            "project_id": ThreadRepository._resolve_project_id(row),
             "created_at": row.created_at.isoformat() if row.created_at else None,
             "updated_at": row.updated_at.isoformat() if row.updated_at else None,
         }

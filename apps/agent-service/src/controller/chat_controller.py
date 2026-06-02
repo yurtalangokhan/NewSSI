@@ -33,6 +33,19 @@ class ChatController(BaseController):
             if normalized and normalized not in self._owner_ids:
                 self._owner_ids.append(normalized)
 
+    @staticmethod
+    def _thread_project_id(thread: dict[str, Any]) -> int | None:
+        project_id = thread.get("project_id")
+        if project_id is None:
+            metadata = thread.get("metadata", {}) or {}
+            project_id = metadata.get("project_id")
+        if project_id is None:
+            return None
+        try:
+            return int(project_id)
+        except (TypeError, ValueError):
+            return None
+
     def _matches_owner(self, metadata: dict[str, Any]) -> bool:
         owner = metadata.get("user_id")
         if owner and str(owner) in self._owner_ids:
@@ -408,7 +421,7 @@ class ChatController(BaseController):
                     "time_created": thread.get("created_at"),
                     "time_updated": thread.get("updated_at"),
                     "shared_status": "private",
-                    "project_id": thread.get("project_id"),
+                    "project_id": self._thread_project_id(thread),
                     "current_alternate_model": metadata.get("current_alternate_model"),
                     "current_temperature_override": metadata.get("current_temperature_override"),
                 }

@@ -139,6 +139,7 @@ export interface SendMessageParams {
   // Additional context injected into the LLM call but not stored/shown in chat.
   // Used e.g. by Chrome extension "Read this tab" feature.
   additionalContext?: string;
+  projectId?: number | null;
   // Persona/agent ID for routing to specific agent
   personaId?: string | number;
 }
@@ -159,12 +160,14 @@ export async function* sendMessage({
   temperature,
   origin,
   additionalContext,
+  projectId,
   personaId,
 }: SendMessageParams): AsyncGenerator<PacketType, void, unknown> {
   // Build payload for new send-chat-message API
   const payload = {
     message: message,
     chat_session_id: chatSessionId,
+    project_id: projectId ?? null,
     persona_id: personaId ?? null,
     parent_message_id: parentMessageId,
     file_descriptors: fileDescriptors,

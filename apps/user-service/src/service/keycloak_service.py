@@ -15,13 +15,24 @@ class KeycloakService:
 
     @staticmethod
     def is_enabled() -> bool:
-        return _env.KEYCLOAK_ENABLED
+        return _env.KEYCLOAK_ENABLED or _settings.KEYCLOAK_ENABLED
 
     def get_base_url(self) -> str:
-        return _env.KEYCLOAK_BASE_URL or f"{_env.KEYCLOAK_ISSUER_URL}/".replace(f"/realms/{_env.KEYCLOAK_REALM}/", "/")
+        base_url = _env.KEYCLOAK_BASE_URL or _settings.KEYCLOAK_BASE_URL
+        if base_url:
+            return base_url.rstrip("/")
+
+        issuer_url = _env.KEYCLOAK_ISSUER_URL or _settings.KEYCLOAK_ISSUER_URL
+        if issuer_url:
+            return issuer_url.rstrip("/").replace(f"/realms/{self.get_realm()}", "")
+
+        raise ValueError("KEYCLOAK_BASE_URL or KEYCLOAK_ISSUER_URL must be configured")
 
     def get_realm(self) -> str:
-        return _env.KEYCLOAK_REALM
+        return _env.KEYCLOAK_REALM or _settings.KEYCLOAK_REALM
+
+    def get_client_id(self) -> str:
+        return _env.KEYCLOAK_CLIENT_ID or _settings.KEYCLOAK_CLIENT_ID or "agenticai-web"
 
     async def _get_admin_token(self) -> str:
         import time
@@ -34,8 +45,8 @@ class KeycloakService:
                 f"{self.get_base_url()}/realms/{admin_realm}/protocol/openid-connect/token",
                 data={
                     "grant_type": "password",
-                    "username": _env.KEYCLOAK_ADMIN,
-                    "password": _env.KEYCLOAK_ADMIN_PASSWORD,
+                    "username": _env.KEYCLOAK_ADMIN or _settings.KEYCLOAK_ADMIN,
+                    "password": _env.KEYCLOAK_ADMIN_PASSWORD or _settings.KEYCLOAK_ADMIN_PASSWORD,
                     "client_id": "admin-cli",
                 },
             )
@@ -127,7 +138,7 @@ class KeycloakService:
         return resp.json()
 
     async def get_oidc_authorize_url(self, redirect_uri: str, state: str | None = None) -> str:
-        client_id = _env.KEYCLOAK_CLIENT_ID or "agenticai-web"
+        client_id = self.get_client_id()
         base_url = self.get_base_url()
         params = {
             "client_id": client_id,
@@ -147,7 +158,7 @@ class KeycloakService:
         fallback_redirect_uri: str | None = None,
     ) -> dict[str, Any]:
         async with httpx.AsyncClient() as client:
-            client_id = _env.KEYCLOAK_CLIENT_ID or "agenticai-web"
+            client_id = self.get_client_id()
             token_url = f"{self.get_base_url()}/realms/{self.get_realm()}/protocol/openid-connect/token"
 
             def _payload(uri: str) -> dict[str, str]:
@@ -196,7 +207,7 @@ class KeycloakService:
                 data["refresh_token"] = refresh_token
             if id_token_hint:
                 data["id_token_hint"] = id_token_hint
-            client_id = _env.KEYCLOAK_CLIENT_ID or "agenticai-web"
+            client_id = self.get_client_id()
             resp = await client.post(
                 f"{self.get_base_url()}/realms/{self.get_realm()}/protocol/openid-connect/logout",
                 data={**data, "client_id": client_id},

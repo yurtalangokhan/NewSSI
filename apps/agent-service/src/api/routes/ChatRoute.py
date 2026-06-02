@@ -8,26 +8,25 @@ These endpoints delegate to ThreadController for CRUD and use message_generator 
 import json
 import logging
 import uuid
-from typing import Annotated
-from typing import Any
-
-logger = logging.getLogger(__name__)
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
 from agents import DEFAULT_AGENT
-from controller import ChatController, ThreadController, get_thread_controller
-from schema.schema import StreamInput
-from api.routes.AgentsRoute import message_generator
 from api.dependencies import verify_api_key
+from api.routes.AgentsRoute import message_generator
+from controller import ChatController, ThreadController, get_thread_controller, get_user_controller
 from domain.providers.repository import ProviderRepository
 from domain.providers.service import ProviderService
+from schema.schema import StreamInput
 from service.AuthService import get_auth_service
 from service.ChatContextService import (
     build_effective_llm_override,
     resolve_project_instructions,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["chat"])
 
@@ -57,6 +56,15 @@ def _truncate_name(message: str, max_length: int = 50) -> str:
     if len(name) > max_length:
         name = name[:max_length].rsplit(" ", 1)[0] + "..."
     return name or "New Chat"
+
+
+def _coerce_project_id(value: Any) -> int | None:
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
 
 
 async def _resolve_provider_for_user(
@@ -324,13 +332,25 @@ async def send_chat_message(
             media_type="text/event-stream",
             status_code=401,
         )
+    identity = await get_auth_service().resolve_user_identity(request=request, user_id=user_id)
+    known_user_ids = {
+        str(candidate)
+        for candidate in (identity.get("known_user_ids") or [user_id])
+        if candidate
+    }
+    user_controller = get_user_controller()
+    project_user_id = await user_controller.resolve_projects_user_id(
+        str(identity.get("keycloak_id") or user_id)
+    )
+    if project_user_id:
+        known_user_ids.add(str(project_user_id))
 
     try:
         body = await request.json()
     except Exception as e:
         logger.error("Failed to parse request body: %s", e)
         return StreamingResponse(
-            iter([b"data: {'type': 'error', 'content': 'Invalid JSON'}\n\n"]),
+            iter([f"data: {json.dumps({'type': 'error', 'content': 'Invalid JSON'})}\n\n"]),
             media_type="text/event-stream",
         )
 
@@ -434,7 +454,7 @@ async def send_chat_message(
     else:
         metadata = thread.get("metadata", {}) or {}
         owner_id = metadata.get("user_id")
-        if owner_id and owner_id != user_id:
+        if owner_id and str(owner_id) not in known_user_ids:
             return StreamingResponse(
                 iter([b'data: {"type": "error", "content": "Forbidden"}\n\n']),
                 media_type="text/event-stream",
@@ -442,8 +462,16 @@ async def send_chat_message(
             )
         if not owner_id:
             metadata["user_id"] = user_id
+        elif str(owner_id) != user_id:
+            legacy_owner_ids = metadata.get("legacy_user_ids") or []
+            if not isinstance(legacy_owner_ids, list):
+                legacy_owner_ids = []
+            if str(owner_id) not in legacy_owner_ids:
+                legacy_owner_ids.append(str(owner_id))
+            metadata["legacy_user_ids"] = legacy_owner_ids
+            metadata["user_id"] = user_id
 
-        needs_update = False
+        needs_update = metadata.get("user_id") == user_id and str(owner_id) != user_id
         if metadata.get("name") in (None, "", "New Chat"):
             metadata["name"] = session_name
             needs_update = True
@@ -498,10 +526,15 @@ async def send_chat_message(
             llm_override = llm_override or {}
             llm_override["_persona_id"] = persona_id
 
+    thread_metadata = thread.get("metadata") if thread else None
+    resolved_project_id = _coerce_project_id(body.get("project_id"))
+    if resolved_project_id is None and isinstance(thread_metadata, dict):
+        resolved_project_id = _coerce_project_id(thread_metadata.get("project_id"))
+
     project_instructions = await resolve_project_instructions(
-        user_id=user_id,
-        project_id=body.get("project_id"),
-        thread_metadata=thread.get("metadata") if thread else None,
+        user_id=project_user_id or user_id,
+        project_id=resolved_project_id,
+        thread_metadata=thread_metadata,
     )
     llm_override = build_effective_llm_override(
         llm_override, additional_context, project_instructions
@@ -511,12 +544,36 @@ async def send_chat_message(
     # Convert each descriptor into a LangChain content block and store the raw
     # bytes in FileService so GET /api/chat/file/{id} can serve them later.
     file_descriptors: list[dict] = body.get("file_descriptors") or []
+    if resolved_project_id is not None:
+        try:
+            project_file_descriptors = user_controller.get_project_file_descriptors_for_chat(
+                list(known_user_ids),
+                resolved_project_id,
+            )
+            project_file_ids = {
+                str(fd.get("id")) for fd in project_file_descriptors if fd.get("id")
+            }
+            file_descriptors = [
+                *project_file_descriptors,
+                *[
+                    fd for fd in file_descriptors
+                    if not fd.get("id") or str(fd.get("id")) not in project_file_ids
+                ],
+            ]
+        except Exception as exc:
+            logger.warning(
+                "Failed to attach project files for project_id=%s: %s",
+                resolved_project_id,
+                exc,
+            )
     file_content_blocks: list[dict] = []
     files_metadata: list[dict] = []
 
     if file_descriptors:
         import base64 as _base64
-        from service.FileService import IMAGE_MIMES, store_file as _store_file
+
+        from service.FileService import IMAGE_MIMES
+        from service.FileService import store_file as _store_file
         from service.Utils import _extract_file_blocks
 
         for fd in file_descriptors:
@@ -578,7 +635,7 @@ async def send_chat_message(
                         pass
         except Exception as e:
             logger.error("Stream error: %s", e)
-            yield f'data: {{"type": "error", "content": "{str(e)}"}}\n\n'
+            yield f"data: {json.dumps({'type': 'error', 'content': str(e)})}\n\n"
             full_response = f"Error: {str(e)}"
 
     return StreamingResponse(

@@ -4,6 +4,7 @@ from __future__ import annotations
 from typing import Any
 
 from core.logger import get_logger
+from core.settings import settings
 from domain.providers.repository import ProviderRepository
 
 logger = get_logger(__name__)
@@ -197,8 +198,17 @@ class ProviderService:
                 "config": {},
             })
 
-        url_providers = await self._repo.list_url_providers(user_id)
-        user_providers = await self._repo.list_user_providers(user_id)
+        try:
+            url_providers = await self._repo.list_url_providers(user_id)
+        except Exception as exc:
+            logger.warning("Failed to list URL providers for user %s: %s", user_id, exc)
+            url_providers = []
+
+        try:
+            user_providers = await self._repo.list_user_providers(user_id)
+        except Exception as exc:
+            logger.warning("Failed to list API-key providers for user %s: %s", user_id, exc)
+            user_providers = []
 
         return {
             "builtin": builtin,
@@ -218,6 +228,13 @@ class ProviderService:
             *all_providers.get("url_providers", []),
         ]:
             config = provider.get("config") or {}
+            if not isinstance(config, dict):
+                logger.warning(
+                    "Ignoring invalid provider config for %s: expected dict, got %s",
+                    provider.get("id"),
+                    type(config).__name__,
+                )
+                config = {}
             model_configurations = config.get("model_configurations") or []
             if not isinstance(model_configurations, list):
                 model_configurations = []
@@ -225,12 +242,21 @@ class ProviderService:
             # Existing providers may not have synced model_configurations yet.
             # In that case, discover models live from the provider endpoint.
             if not model_configurations:
-                api_key = await self._get_provider_api_key(provider, user_id)
-                live_models = await self._fetch_models_by_type(
-                    provider.get("provider_type", ""),
-                    provider.get("base_url"),
-                    api_key=api_key,
-                )
+                try:
+                    api_key = await self._get_provider_api_key(provider, user_id)
+                    live_models = await self._fetch_models_by_type(
+                        provider.get("provider_type", ""),
+                        provider.get("base_url"),
+                        api_key=api_key,
+                    )
+                except Exception as exc:
+                    logger.warning(
+                        "Failed to fetch models for provider %s (%s): %s",
+                        provider.get("id"),
+                        provider.get("provider_type"),
+                        exc,
+                    )
+                    live_models = []
                 model_configurations = [
                     {
                         "name": m.get("name"),
@@ -245,7 +271,15 @@ class ProviderService:
                 ]
 
             # Keep an explicit default model selectable even if discovery fails.
-            default_model = (provider.get("user_config") or {}).get("default_model")
+            user_config = provider.get("user_config") or {}
+            if not isinstance(user_config, dict):
+                logger.warning(
+                    "Ignoring invalid user provider config for %s: expected dict, got %s",
+                    provider.get("id"),
+                    type(user_config).__name__,
+                )
+                user_config = {}
+            default_model = user_config.get("default_model")
             if default_model and not any(m.get("name") == default_model for m in model_configurations):
                 model_configurations.append(_known_model(default_model))
 
@@ -262,7 +296,15 @@ class ProviderService:
         # API-key providers use the well-known provider catalog as the source of
         # truth (enterprise-safe, deterministic model options).
         for provider in all_providers.get("user_providers", []):
-            default_model = (provider.get("user_config") or {}).get("default_model")
+            user_config = provider.get("user_config") or {}
+            if not isinstance(user_config, dict):
+                logger.warning(
+                    "Ignoring invalid user provider config for %s: expected dict, got %s",
+                    provider.get("id"),
+                    type(user_config).__name__,
+                )
+                user_config = {}
+            default_model = user_config.get("default_model")
             provider_type = provider.get("provider_type")
             known = _WELL_KNOWN_BY_TYPE.get(provider_type, {})
             model_configurations = [
@@ -441,8 +483,10 @@ class ProviderService:
 
     @staticmethod
     async def _test_ollama(base_url: str) -> dict[str, Any]:
-        import httpx
         from urllib.parse import urlparse
+
+        import httpx
+
         parsed = urlparse(base_url.rstrip("/"))
         origin = f"{parsed.scheme}://{parsed.netloc}" if parsed.netloc else base_url.rstrip("/")
         try:
@@ -459,8 +503,10 @@ class ProviderService:
 
     @staticmethod
     async def _test_openai_compatible(base_url: str, api_key: str | None) -> dict[str, Any]:
-        import httpx
         from urllib.parse import urlparse
+
+        import httpx
+
         parsed = urlparse(base_url.rstrip("/"))
         origin = f"{parsed.scheme}://{parsed.netloc}" if parsed.netloc else base_url.rstrip("/")
         headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
@@ -546,9 +592,9 @@ class ProviderService:
         """Stream Ollama model pull progress as SSE."""
         import httpx
 
-        if provider_id == "builtin":
+        if provider_id in {"builtin", "ollama"}:
             from core.env import env
-            base_url = env.OLLAMA_BASE_URL or "http://localhost:11434"
+            base_url = env.OLLAMA_BASE_URL or settings.OLLAMA_BASE_URL
         else:
             provider = await self._repo.get_url_provider(provider_id, user_id)
             base_url = provider["base_url"] if provider else "http://localhost:11434"
@@ -618,7 +664,7 @@ class ProviderService:
         from core.env import env
         ptype = data.get("provider_type")
         base_url = data.get("base_url", "").rstrip("/")
-        ollama_url = (env.OLLAMA_BASE_URL or "http://localhost:11434").rstrip("/")
+        ollama_url = (env.OLLAMA_BASE_URL or settings.OLLAMA_BASE_URL).rstrip("/")
         vllm_url = (env.get("VLLM_BASE_URL") or "").rstrip("/")
 
         if ptype == "ollama" and base_url == ollama_url:
@@ -683,6 +729,7 @@ class ProviderService:
     async def _fetch_ollama_models(base_url: str) -> list[dict[str, Any]]:
         """Fetch models from Ollama using /api/show capabilities (Ollama >= 0.5.0)."""
         import asyncio
+
         import httpx
 
         origin = ProviderService._extract_origin(base_url)

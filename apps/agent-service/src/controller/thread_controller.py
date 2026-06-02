@@ -65,8 +65,8 @@ class ThreadController(BaseController):
             "metadata": metadata or {},
             "status": "idle",
         }
-        await add_thread(thread)
-        return thread
+        created = await add_thread(thread)
+        return created or thread
 
     async def update_thread(
         self,
@@ -94,8 +94,6 @@ class ThreadController(BaseController):
         thread_id: str,
     ) -> dict[str, Any]:
         """Get thread state including messages."""
-        from langgraph.types import Send
-
         saver = get_checkpointer()
         empty_state = {
             "values": {"messages": []},

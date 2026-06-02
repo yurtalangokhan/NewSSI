@@ -57,6 +57,7 @@ def _extract_auth_token(
     return (
         request.cookies.get("fastapiusersauth")
         or request.cookies.get("session")
+        or request.cookies.get("access_token")
         or request.cookies.get("id_token")
     )
 
@@ -70,7 +71,7 @@ def _extract_auth_tokens(
     if http_auth and http_auth.credentials:
         tokens.append(http_auth.credentials)
 
-    for cookie_name in ("fastapiusersauth", "session", "id_token"):
+    for cookie_name in ("fastapiusersauth", "session", "access_token", "id_token"):
         token = request.cookies.get(cookie_name)
         if token and token not in tokens:
             tokens.append(token)

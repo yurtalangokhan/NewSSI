@@ -1,8 +1,10 @@
 """Controller for user settings and LLM provider endpoints."""
 
+import base64
 import csv
 import io
 import json
+import logging
 import secrets
 from datetime import UTC, datetime
 from typing import Any
@@ -23,6 +25,8 @@ from service.UserServiceClient import (
     update_user_settings,
 )
 
+logger = logging.getLogger(__name__)
+
 
 class UserController(BaseController):
     """Owns user preferences and model/provider endpoints."""
@@ -34,6 +38,7 @@ class UserController(BaseController):
         # Minimal in-memory file store for project/recent file APIs.
         self._recent_files_by_user: dict[str, list[dict[str, Any]]] = {}
         self._project_files_by_user: dict[str, dict[int, list[dict[str, Any]]]] = {}
+        self._file_payloads_by_user: dict[str, dict[str, dict[str, str]]] = {}
 
     async def _update_user_settings(self, user_id: str, updates: dict[str, Any]) -> dict[str, Any]:
         try:
@@ -46,6 +51,12 @@ class UserController(BaseController):
 
     async def resolve_projects_user_id(self, user_id: str | None) -> str | None:
         if user_id:
+            if env.get("MODE", "").lower() == "dev" and str(user_id).startswith(
+                ("user-", "dev-user")
+            ):
+                fallback_user = await self._project_repo.get_latest_user_id()
+                if fallback_user:
+                    return fallback_user
             return user_id
 
         if env.get("MODE", "").lower() == "dev":
@@ -225,6 +236,9 @@ class UserController(BaseController):
     def _recent_files(self, user_id: str) -> list[dict[str, Any]]:
         return self._recent_files_by_user.setdefault(user_id, [])
 
+    def _file_payloads(self, user_id: str) -> dict[str, dict[str, str]]:
+        return self._file_payloads_by_user.setdefault(user_id, {})
+
     async def _ensure_realm_role_exists(self, role_name: str) -> None:
         realm = self._get_keycloak_realm()
         role_resp = await self._keycloak_request(
@@ -385,6 +399,46 @@ class UserController(BaseController):
         return data if isinstance(data, dict) else None
 
     @staticmethod
+    def _thread_project_id(thread: dict[str, Any]) -> int | None:
+        project_id = thread.get("project_id")
+        if project_id is None:
+            metadata = thread.get("metadata", {}) or {}
+            project_id = metadata.get("project_id")
+        if project_id is None:
+            return None
+        try:
+            return int(project_id)
+        except (TypeError, ValueError):
+            return None
+
+    @staticmethod
+    def _normalize_owner_ids(user_id: str, owner_ids: list[str] | None = None) -> list[str]:
+        normalized: list[str] = []
+        for candidate in [user_id, *(owner_ids or [])]:
+            if not candidate:
+                continue
+            candidate_id = str(candidate)
+            if candidate_id not in normalized:
+                normalized.append(candidate_id)
+        return normalized
+
+    def _thread_belongs_to_owner_ids(
+        self,
+        thread: dict[str, Any],
+        owner_ids: list[str],
+    ) -> bool:
+        metadata = thread.get("metadata", {}) or {}
+        owner = metadata.get("user_id")
+        if owner and str(owner) in owner_ids:
+            return True
+
+        legacy_owner_ids = metadata.get("legacy_user_ids") or []
+        if isinstance(legacy_owner_ids, list):
+            return any(str(candidate) in owner_ids for candidate in legacy_owner_ids)
+
+        return False
+
+    @staticmethod
     def _serialize_chat_session(thread: dict[str, Any]) -> dict[str, Any]:
         metadata = thread.get("metadata", {}) or {}
         session_name = metadata.get("name") or "New Chat"
@@ -396,7 +450,7 @@ class UserController(BaseController):
             "time_created": thread.get("created_at"),
             "time_updated": thread.get("updated_at"),
             "shared_status": "private",
-            "project_id": thread.get("project_id"),
+            "project_id": UserController._thread_project_id(thread),
             "current_alternate_model": metadata.get("current_alternate_model", ""),
             "current_temperature_override": metadata.get("current_temperature_override"),
         }
@@ -414,11 +468,13 @@ class UserController(BaseController):
         files: list[UploadFile],
         project_id: int | None,
         temp_id_map_raw: str | None,
+        owner_ids: list[str] | None = None,
     ) -> dict[str, Any]:
         effective_user_id = await self._resolve_or_raise_user_id(user_id)
+        effective_owner_ids = self._normalize_owner_ids(effective_user_id, owner_ids)
 
         if project_id is not None:
-            project = await self._project_repo.get_for_user(effective_user_id, project_id)
+            project = await self._project_repo.get_for_user_ids(effective_owner_ids, project_id)
             if not project:
                 raise HTTPException(status_code=404, detail="Project not found")
 
@@ -439,7 +495,10 @@ class UserController(BaseController):
             file_id = secrets.token_hex(16)
             file_name = upload.filename or file_id
             content_type = upload.content_type or "application/octet-stream"
+            raw = await upload.read()
+            encoded = base64.b64encode(raw).decode("ascii")
             temp_id = temp_id_map.get(file_name)
+            chat_file_type = self._file_chat_type(content_type, file_name)
             file_obj = {
                 "id": file_id,
                 "name": file_name,
@@ -450,11 +509,24 @@ class UserController(BaseController):
                 "status": "COMPLETED",
                 "file_type": content_type,
                 "last_accessed_at": now,
-                "chat_file_type": self._file_chat_type(content_type, file_name),
-                "token_count": 0,
+                "chat_file_type": chat_file_type,
+                "token_count": max(1, len(raw) // 4),
                 "chunk_count": 0,
                 "temp_id": temp_id,
             }
+            self._file_payloads(effective_user_id)[file_id] = {
+                "data": encoded,
+                "mime_type": content_type,
+                "name": file_name,
+                "chat_file_type": chat_file_type,
+            }
+            try:
+                from service.FileService import store_file
+
+                store_file(file_id, raw, content_type, file_name)
+            except Exception:
+                # The base64 payload above is enough for chat context extraction.
+                pass
             uploaded.append(file_obj)
 
         # Newest first in recent files.
@@ -469,9 +541,17 @@ class UserController(BaseController):
 
         return {"user_files": uploaded, "rejected_files": []}
 
-    async def get_files_in_project(self, user_id: str | None, project_id: int) -> list[dict[str, Any]]:
+    async def get_files_in_project(
+        self,
+        user_id: str | None,
+        project_id: int,
+        owner_ids: list[str] | None = None,
+    ) -> list[dict[str, Any]]:
         effective_user_id = await self._resolve_or_raise_user_id(user_id)
-        project = await self._project_repo.get_for_user(effective_user_id, project_id)
+        project = await self._project_repo.get_for_user_ids(
+            self._normalize_owner_ids(effective_user_id, owner_ids),
+            project_id,
+        )
         if not project:
             raise HTTPException(status_code=404, detail="Project not found")
         return self._project_files(effective_user_id, project_id)
@@ -481,9 +561,13 @@ class UserController(BaseController):
         user_id: str | None,
         project_id: int,
         file_id: str,
+        owner_ids: list[str] | None = None,
     ) -> dict[str, bool]:
         effective_user_id = await self._resolve_or_raise_user_id(user_id)
-        project = await self._project_repo.get_for_user(effective_user_id, project_id)
+        project = await self._project_repo.get_for_user_ids(
+            self._normalize_owner_ids(effective_user_id, owner_ids),
+            project_id,
+        )
         if not project:
             raise HTTPException(status_code=404, detail="Project not found")
 
@@ -537,6 +621,7 @@ class UserController(BaseController):
         self._recent_files_by_user[effective_user_id] = [
             f for f in recent if f.get("id") != file_id
         ]
+        self._file_payloads(effective_user_id).pop(file_id, None)
 
         project_map = self._project_files_by_user.get(effective_user_id, {})
         for project_id, files in list(project_map.items()):
@@ -566,18 +651,25 @@ class UserController(BaseController):
     async def get_default_assistant(self) -> None:
         return None
 
-    async def get_user_projects(self, user_id: str) -> list[Any]:
-        projects = await self._project_repo.list_by_user(user_id)
+    async def get_user_projects(
+        self,
+        user_id: str,
+        owner_ids: list[str] | None = None,
+    ) -> list[Any]:
+        effective_owner_ids = self._normalize_owner_ids(user_id, owner_ids)
+        projects = await self._project_repo.list_by_user_ids(effective_owner_ids)
+        project_ids = {project["id"] for project in projects}
         threads = await list_threads_from_store(
             limit=1000,
             offset=0,
-            metadata={"user_id": user_id},
         )
 
         sessions_by_project: dict[int, list[dict[str, Any]]] = {}
         for thread in threads:
-            project_id = thread.get("project_id")
-            if project_id is None:
+            project_id = self._thread_project_id(thread)
+            if project_id is None or project_id not in project_ids:
+                continue
+            if not self._thread_belongs_to_owner_ids(thread, effective_owner_ids):
                 continue
             sessions_by_project.setdefault(project_id, []).append(
                 self._serialize_chat_session(thread)
@@ -599,31 +691,43 @@ class UserController(BaseController):
         project["chat_sessions"] = []
         return project
 
-    async def get_user_project(self, user_id: str, project_id: int) -> dict[str, Any]:
-        project = await self._project_repo.get_for_user(user_id, project_id)
+    async def get_user_project(
+        self,
+        user_id: str,
+        project_id: int,
+        owner_ids: list[str] | None = None,
+    ) -> dict[str, Any]:
+        effective_owner_ids = self._normalize_owner_ids(user_id, owner_ids)
+        project = await self._project_repo.get_for_user_ids(effective_owner_ids, project_id)
         if not project:
             raise HTTPException(status_code=404, detail="Project not found")
 
         threads = await list_threads_from_store(
             limit=1000,
             offset=0,
-            metadata={"user_id": user_id},
         )
         chat_sessions = [
             self._serialize_chat_session(thread)
             for thread in threads
-            if thread.get("project_id") == project_id
+            if self._thread_project_id(thread) == project_id
+            and self._thread_belongs_to_owner_ids(thread, effective_owner_ids)
         ]
         chat_sessions.sort(key=lambda s: s.get("time_updated") or "", reverse=True)
         project["chat_sessions"] = chat_sessions
         return project
 
-    async def rename_user_project(self, user_id: str, project_id: int, name: str) -> dict[str, Any]:
+    async def rename_user_project(
+        self,
+        user_id: str,
+        project_id: int,
+        name: str,
+        owner_ids: list[str] | None = None,
+    ) -> dict[str, Any]:
         cleaned_name = (name or "").strip()
         if not cleaned_name:
             raise HTTPException(status_code=400, detail="Project name is required")
-        project = await self._project_repo.rename_for_user(
-            user_id=user_id,
+        project = await self._project_repo.rename_for_user_ids(
+            user_ids=self._normalize_owner_ids(user_id, owner_ids),
             project_id=project_id,
             name=cleaned_name,
         )
@@ -632,22 +736,43 @@ class UserController(BaseController):
         project["chat_sessions"] = []
         return project
 
-    async def delete_user_project(self, user_id: str, project_id: int) -> dict[str, bool]:
-        deleted = await self._project_repo.delete_for_user(user_id=user_id, project_id=project_id)
+    async def delete_user_project(
+        self,
+        user_id: str,
+        project_id: int,
+        owner_ids: list[str] | None = None,
+    ) -> dict[str, bool]:
+        deleted = await self._project_repo.delete_for_user_ids(
+            user_ids=self._normalize_owner_ids(user_id, owner_ids),
+            project_id=project_id,
+        )
         if not deleted:
             raise HTTPException(status_code=404, detail="Project not found")
         return {"success": True}
 
-    async def get_user_project_details(self, user_id: str, project_id: int) -> dict[str, Any]:
-        project = await self.get_user_project(user_id, project_id)
+    async def get_user_project_details(
+        self,
+        user_id: str,
+        project_id: int,
+        owner_ids: list[str] | None = None,
+    ) -> dict[str, Any]:
+        project = await self.get_user_project(user_id, project_id, owner_ids)
         return {
             "project": project,
             "files": self._project_files(user_id, project_id),
             "persona_id_to_featured": {},
         }
 
-    async def get_user_project_instructions(self, user_id: str, project_id: int) -> dict[str, str | None]:
-        project = await self._project_repo.get_for_user(user_id, project_id)
+    async def get_user_project_instructions(
+        self,
+        user_id: str,
+        project_id: int,
+        owner_ids: list[str] | None = None,
+    ) -> dict[str, str | None]:
+        project = await self._project_repo.get_for_user_ids(
+            self._normalize_owner_ids(user_id, owner_ids),
+            project_id,
+        )
         if not project:
             raise HTTPException(status_code=404, detail="Project not found")
         return {"instructions": project.get("instructions")}
@@ -657,9 +782,10 @@ class UserController(BaseController):
         user_id: str,
         project_id: int,
         instructions: str,
+        owner_ids: list[str] | None = None,
     ) -> dict[str, str | None]:
-        project = await self._project_repo.upsert_instructions_for_user(
-            user_id=user_id,
+        project = await self._project_repo.upsert_instructions_for_user_ids(
+            user_ids=self._normalize_owner_ids(user_id, owner_ids),
             project_id=project_id,
             instructions=instructions,
         )
@@ -672,15 +798,52 @@ class UserController(BaseController):
         total_tokens = sum(int(file.get("token_count") or 0) for file in project_files)
         return {"total_tokens": total_tokens}
 
+    def get_project_file_descriptors_for_chat(
+        self,
+        user_id: str | list[str],
+        project_id: int | None,
+    ) -> list[dict[str, Any]]:
+        if project_id is None:
+            return []
+
+        descriptors: list[dict[str, Any]] = []
+        seen_file_ids: set[str] = set()
+        user_ids = user_id if isinstance(user_id, list) else [user_id]
+
+        for candidate_user_id in user_ids:
+            if not candidate_user_id:
+                continue
+            payloads = self._file_payloads(str(candidate_user_id))
+            for file_obj in self._project_files(str(candidate_user_id), project_id):
+                file_id = str(file_obj.get("file_id") or file_obj.get("id") or "")
+                payload = payloads.get(file_id)
+                if not file_id or not payload or file_id in seen_file_ids:
+                    continue
+                seen_file_ids.add(file_id)
+                descriptors.append(
+                    {
+                        "id": file_id,
+                        "type": payload.get("chat_file_type") or file_obj.get("chat_file_type") or "document",
+                        "name": payload.get("name") or file_obj.get("name") or file_id,
+                        "user_file_id": file_obj.get("id"),
+                        "data": payload.get("data"),
+                        "mime_type": payload.get("mime_type") or file_obj.get("file_type"),
+                        "source": "project",
+                    }
+                )
+        return descriptors
+
     async def move_chat_session_to_project(
         self,
         *,
         user_id: str,
         project_id: int,
         chat_session_id: str,
+        owner_ids: list[str] | None = None,
     ) -> dict[str, bool]:
-        moved = await self._project_repo.move_chat_session_to_project(
-            user_id=user_id,
+        moved = await self._project_repo.move_chat_session_to_project_for_user_ids(
+            primary_user_id=user_id,
+            owner_ids=self._normalize_owner_ids(user_id, owner_ids),
             project_id=project_id,
             chat_session_id=chat_session_id,
         )
@@ -693,9 +856,11 @@ class UserController(BaseController):
         *,
         user_id: str,
         chat_session_id: str,
+        owner_ids: list[str] | None = None,
     ) -> dict[str, bool]:
-        removed = await self._project_repo.remove_chat_session_from_project(
-            user_id=user_id,
+        removed = await self._project_repo.remove_chat_session_from_project_for_user_ids(
+            primary_user_id=user_id,
+            owner_ids=self._normalize_owner_ids(user_id, owner_ids),
             chat_session_id=chat_session_id,
         )
         if not removed:

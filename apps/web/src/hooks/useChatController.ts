@@ -110,6 +110,7 @@ interface UseChatControllerProps {
   searchParams: ReadonlyURLSearchParams;
   resetInputBar: () => void;
   setSelectedAgentFromId: (agentId: AgentId | null) => void;
+  onSubmitComplete?: () => void | Promise<void>;
 }
 
 async function stopChatSession(chatSessionId: string): Promise<void> {
@@ -134,6 +135,7 @@ export default function useChatController({
   selectedDocuments,
   resetInputBar,
   setSelectedAgentFromId,
+  onSubmitComplete,
 }: UseChatControllerProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -383,6 +385,11 @@ export default function useChatController({
       additionalContext,
     }: OnSubmitProps) => {
       const projectId = params(SEARCH_PARAM_NAMES.PROJECT_ID);
+      const parsedProjectIdFromUrl =
+        projectId !== null && projectId !== undefined ? parseInt(projectId) : null;
+      const activeProjectId = Number.isFinite(parsedProjectIdFromUrl)
+        ? parsedProjectIdFromUrl
+        : currentProjectDetails?.project?.id ?? null;
       const normalizedAdditionalContext = (additionalContext || "").trim();
       const projectInstructions =
         currentProjectDetails?.project?.instructions?.trim() || "";
@@ -513,7 +520,7 @@ export default function useChatController({
       );
       if (isNewSession) {
         const activePersonaId = liveAgent?.external_id ?? liveAgent?.id ?? 0;
-        const parsedProjectId = projectId ? parseInt(projectId) : null;
+        const parsedProjectId = activeProjectId;
 
         try {
           currChatSessionId = await createChatSession(
@@ -794,6 +801,7 @@ export default function useChatController({
           forcedToolId: effectiveForcedToolId,
           origin: messageOrigin,
           additionalContext: effectiveAdditionalContext || undefined,
+          projectId: activeProjectId,
         });
 
         const delay = (ms: number) => {
@@ -1021,6 +1029,7 @@ export default function useChatController({
       if (shouldAutoNameChatSessionAfterResponse) {
         handleNewSessionNaming(currChatSessionId);
       }
+      await onSubmitComplete?.();
     },
     [
       // Narrow to stable fields from managers to avoid re-creation
@@ -1046,10 +1055,12 @@ export default function useChatController({
       // Keep tool preference-derived values fresh
       agentPreferences,
       fetchProjects,
+      currentProjectDetails?.project?.id,
       currentProjectDetails?.project?.instructions,
       // For auto-pinning agents
       pinnedAgents,
       togglePinnedAgent,
+      onSubmitComplete,
     ]
   );
 

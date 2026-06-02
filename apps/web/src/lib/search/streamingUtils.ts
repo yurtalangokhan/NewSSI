@@ -10,41 +10,44 @@ interface BackendPacket {
   content?: any;
 }
 
+function extractMessageContent(content: any): string {
+  if (typeof content === "string") {
+    return content;
+  }
+
+  if (typeof content !== "object" || content === null) {
+    return "";
+  }
+
+  if (content.content !== undefined) {
+    if (typeof content.content === "string") {
+      return content.content;
+    }
+
+    if (Array.isArray(content.content)) {
+      for (const item of content.content) {
+        if (typeof item === "object" && item?.type === "text") {
+          return item.text || "";
+        }
+      }
+    }
+  }
+
+  return "";
+}
+
 // Map backend packets to frontend PacketType
-function mapBackendToFrontend(packet: BackendPacket): { placement: any; obj: any } {
+function mapBackendToFrontend(packet: BackendPacket): any {
   const defaultPlacement = { turn_index: 0, sub_turn_index: null };
   
   switch (packet.type) {
     case "message":
-      // Full message - could be ai message or tool message
-      // Extract content from nested structure
-      let messageContent = "";
-      const content = packet.content;
-      if (typeof content === "string") {
-        messageContent = content;
-      } else if (typeof content === "object" && content !== null) {
-        // Handle LangChain message format: {type: "ai", content: "...", tool_calls: [...]}
-        if (content.content !== undefined) {
-          if (typeof content.content === "string") {
-            messageContent = content.content;
-          } else if (Array.isArray(content.content)) {
-            // Handle array format [{type: "text", text: "..."}]
-            for (const item of content.content) {
-              if (typeof item === "object" && item?.type === "text") {
-                messageContent = item.text || "";
-                break;
-              }
-            }
-          }
-        }
-      }
-      
+      // Full message from providers that do not stream tokens.
       return {
         placement: defaultPlacement,
         obj: {
-          type: "message_start",
-          content: messageContent,
-          final_documents: null,
+          type: "message_delta",
+          content: extractMessageContent(packet.content),
         },
       };
     
@@ -75,10 +78,8 @@ function mapBackendToFrontend(packet: BackendPacket): { placement: any; obj: any
     case "error":
       return {
         placement: defaultPlacement,
-        obj: {
-          type: "error",
-          message: packet.content || "Unknown error",
-        },
+        error: packet.content || "Unknown error",
+        stack_trace: "",
       };
     
     case "stop":
@@ -242,11 +243,19 @@ export async function* handleSSEStream<T extends PacketType>(
             hasMessageStartForCurrentAnswer = false;
           }
 
-          if (backendPacket.type === "message") {
+          if (backendPacket.type === "token" && !hasMessageStartForCurrentAnswer) {
+            yield {
+              placement: { turn_index: turnIndex, sub_turn_index: null },
+              obj: {
+                type: "message_start",
+                content: "",
+                final_documents: null,
+              },
+            } as T;
             hasMessageStartForCurrentAnswer = true;
           }
 
-          if (backendPacket.type === "token" && !hasMessageStartForCurrentAnswer) {
+          if (backendPacket.type === "message" && !hasMessageStartForCurrentAnswer) {
             yield {
               placement: { turn_index: turnIndex, sub_turn_index: null },
               obj: {

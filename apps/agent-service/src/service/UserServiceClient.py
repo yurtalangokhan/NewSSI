@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import uuid
 from typing import Any
 
 import httpx
@@ -10,6 +11,7 @@ from fastapi import HTTPException, status
 from core.env import env
 
 DEFAULT_INTERNAL_SERVICE_TOKEN = "dev-internal-service-token-change-me"
+_USER_BY_KEYCLOAK_ID_CACHE: dict[str, dict[str, Any] | None] = {}
 
 DEFAULT_USER_SETTINGS: dict[str, Any] = {
     "theme_preference": None,
@@ -43,6 +45,15 @@ def _internal_headers() -> dict[str, str]:
     if token:
         headers["X-Internal-Service-Token"] = token
     return headers
+
+
+def _looks_like_keycloak_subject(identifier: str) -> bool:
+    """Keycloak's built-in user id is a UUID; dev placeholders should not hit user-service."""
+    try:
+        uuid.UUID(identifier)
+    except (TypeError, ValueError):
+        return False
+    return True
 
 
 async def _request(
@@ -166,15 +177,24 @@ async def upsert_user_from_keycloak(
 
 async def get_user_by_keycloak_id(keycloak_id: str) -> dict[str, Any] | None:
     """Fetch user from user-service by Keycloak ID (subject)."""
+    normalized = str(keycloak_id or "").strip()
+    if not normalized or not _looks_like_keycloak_subject(normalized):
+        return None
+    if normalized in _USER_BY_KEYCLOAK_ID_CACHE:
+        return _USER_BY_KEYCLOAK_ID_CACHE[normalized]
+
     try:
         data = await _request(
             "GET",
-            f"/api/users/internal/by-keycloak-id/{keycloak_id}",
+            f"/api/users/internal/by-keycloak-id/{normalized}",
         )
         if isinstance(data, dict):
+            _USER_BY_KEYCLOAK_ID_CACHE[normalized] = data
             return data
+        _USER_BY_KEYCLOAK_ID_CACHE[normalized] = None
         return None
     except HTTPException as exc:
         if exc.status_code == 404:
+            _USER_BY_KEYCLOAK_ID_CACHE[normalized] = None
             return None
         raise

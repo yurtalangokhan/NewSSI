@@ -112,7 +112,51 @@ describe("handleSSEStream", () => {
     });
     expect(packets[3]).toMatchObject({
       placement: { turn_index: 3 },
-      obj: { type: "message_start", content: "final" },
+      obj: { type: "message_start", content: "" },
+    });
+    expect(packets[4]).toMatchObject({
+      placement: { turn_index: 3 },
+      obj: { type: "message_delta", content: "final" },
+    });
+  });
+
+  it("renders full message packets when token streaming is unavailable", async () => {
+    const response = createStreamingResponse([
+      'data: {"type":"message","content":{"type":"ai","content":"full answer"}}\n',
+      'data: [DONE]\n',
+    ]);
+
+    const packets = [];
+    for await (const packet of handleSSEStream<any>(response)) {
+      packets.push(packet);
+    }
+
+    expect(packets).toHaveLength(3);
+    expect(packets[0]).toMatchObject({
+      obj: { type: "message_start", content: "" },
+    });
+    expect(packets[1]).toMatchObject({
+      obj: { type: "message_delta", content: "full answer" },
+    });
+    expect(packets[2]).toMatchObject({
+      obj: { type: "stop" },
+    });
+  });
+
+  it("surfaces backend error packets as streaming errors", async () => {
+    const response = createStreamingResponse([
+      'data: {"type":"error","content":"LLM failed"}\n',
+      'data: [DONE]\n',
+    ]);
+
+    const packets = [];
+    for await (const packet of handleSSEStream<any>(response)) {
+      packets.push(packet);
+    }
+
+    expect(packets[0]).toMatchObject({
+      error: "LLM failed",
+      stack_trace: "",
     });
   });
 });

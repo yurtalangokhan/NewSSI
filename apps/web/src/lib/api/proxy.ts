@@ -54,9 +54,9 @@ export async function proxyToBackend(
       }
     }
 
-    let body: string | undefined;
+    let body: BodyInit | undefined;
     if (['POST', 'PUT', 'PATCH'].includes(method)) {
-      body = await request.text();
+      body = await request.arrayBuffer();
     }
 
     const response = await fetch(url.toString(), {
