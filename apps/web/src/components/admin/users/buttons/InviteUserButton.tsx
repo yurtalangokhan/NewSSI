@@ -21,10 +21,10 @@ export const InviteUserButton = ({
 }) => {
   const { t } = useTranslation();
   const { trigger: inviteTrigger, isMutating: isInviting } = useSWRMutation(
-    "/api/manage/admin/users",
+    "/api/user-service/users/invite",
     async (url, { arg }: { arg: { emails: string[] } }) => {
       const response = await fetch(url, {
-        method: "PUT",
+        method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
@@ -53,14 +53,10 @@ export const InviteUserButton = ({
   );
 
   const { trigger: uninviteTrigger, isMutating: isUninviting } = useSWRMutation(
-    "/api/manage/admin/remove-invited-user",
-    async (url, { arg }: { arg: { user_email: string } }) => {
+    invited && user.id ? `/api/user-service/users/${user.id}` : null,
+    async (url: string) => {
       const response = await fetch(url, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(arg),
+        method: "DELETE",
       });
       if (!response.ok) {
         throw new Error(await response.text());
@@ -89,7 +85,13 @@ export const InviteUserButton = ({
   const handleConfirm = () => {
     const normalizedEmail = user.email.toLowerCase();
     if (invited) {
-      uninviteTrigger({ user_email: normalizedEmail });
+      if (!user.id) {
+        toast.error(
+          t("admin.users.singleUninviteError", { error: "Missing user id" })
+        );
+        return;
+      }
+      uninviteTrigger();
     } else {
       inviteTrigger({ emails: [normalizedEmail] });
     }
@@ -101,7 +103,11 @@ export const InviteUserButton = ({
     <>
       {showInviteModal && (
         <GenericConfirmModal
-          title={invited ? t("admin.users.uninviteUserTitle") : t("admin.users.inviteUserTitle")}
+          title={
+            invited
+              ? t("admin.users.uninviteUserTitle")
+              : t("admin.users.inviteUserTitle")
+          }
           message={
             invited
               ? t("admin.users.uninviteConfirmation", { email: user.email })
@@ -113,7 +119,9 @@ export const InviteUserButton = ({
       )}
 
       <Button onClick={() => setShowInviteModal(true)} disabled={isMutating}>
-        {invited ? t("admin.users.uninviteButton") : t("admin.users.inviteButton")}
+        {invited
+          ? t("admin.users.uninviteButton")
+          : t("admin.users.inviteButton")}
       </Button>
     </>
   );

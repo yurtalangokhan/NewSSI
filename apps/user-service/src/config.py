@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     KEYCLOAK_ADMIN: str = "admin"
     KEYCLOAK_ADMIN_PASSWORD: str = "admin123"
     KEYCLOAK_ADMIN_EMAIL: str | None = None
+    KEYCLOAK_BOOTSTRAP_ADMIN_EMAIL: str | None = None
+    KEYCLOAK_BOOTSTRAP_ADMIN_PASSWORD: str | None = None
     KEYCLOAK_CLIENT_ID: str = "agenticai-web"
     KEYCLOAK_AUDIENCE: str | None = None
 

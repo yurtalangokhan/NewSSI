@@ -26,11 +26,11 @@ export const logout = async (nextPath?: string): Promise<Response> => {
 };
 
 export const basicLogin = async (
-  email: string,
+  username: string,
   password: string
 ): Promise<Response> => {
   const params = new URLSearchParams([
-    ["username", email],
+    ["username", username],
     ["password", password],
   ]);
 
@@ -49,7 +49,8 @@ export const basicSignup = async (
   email: string,
   password: string,
   referralSource?: string,
-  captchaToken?: string
+  captchaToken?: string,
+  username?: string
 ) => {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -60,17 +61,23 @@ export const basicSignup = async (
     headers["X-Captcha-Token"] = captchaToken;
   }
 
+  const body: Record<string, string | undefined> = {
+    email,
+    username: username || email,
+    password,
+  };
+  if (referralSource) {
+    body.referral_source = referralSource;
+  }
+  if (captchaToken) {
+    body.captcha_token = captchaToken;
+  }
+
   const response = await fetch("/api/auth/register", {
     method: "POST",
     credentials: "include",
     headers,
-    body: JSON.stringify({
-      email,
-      username: email,
-      password,
-      referral_source: referralSource,
-      captcha_token: captchaToken,
-    }),
+    body: JSON.stringify(body),
   });
   return response;
 };

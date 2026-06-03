@@ -4,18 +4,16 @@ import { toast } from "@/hooks/useToast";
 import { useState } from "react";
 import { ConnectorTitle } from "@/components/admin/connectors/ConnectorTitle";
 import AddMemberForm from "./AddMemberForm";
-import { updateUserGroup, updateCuratorStatus } from "./lib";
+import { updateUserGroup } from "./lib";
 import { LoadingAnimation } from "@/components/Loading";
 import {
   User,
   UserGroup,
-  UserRole,
   USER_ROLE_LABELS,
   ConnectorStatus,
 } from "@/lib/types";
 import AddConnectorForm from "./AddConnectorForm";
 import Separator from "@/refresh-components/Separator";
-import InputSelect from "@/refresh-components/inputs/InputSelect";
 import Text from "@/components/ui/text";
 import {
   Table,
@@ -33,7 +31,6 @@ import { BookmarkIcon, RobotIcon } from "@/components/icons/icons";
 import { AddTokenRateLimitForm } from "./AddTokenRateLimitForm";
 import { GenericTokenRateLimitTable } from "@/app/admin/token-rate-limits/TokenRateLimitTables";
 import { useUser } from "@/providers/UserProvider";
-import GenericConfirmModal from "@/components/modals/GenericConfirmModal";
 import { useTranslation } from "react-i18next";
 
 interface GroupDisplayProps {
@@ -43,115 +40,8 @@ interface GroupDisplayProps {
   refreshUserGroup: () => void;
 }
 
-const UserRoleDropdown = ({
-  user,
-  group,
-  onSuccess,
-  onError,
-  isAdmin,
-}: {
-  user: User;
-  group: UserGroup;
-  onSuccess: () => void;
-  onError: (message: string) => void;
-  isAdmin: boolean;
-}) => {
-  const { t } = useTranslation();
-  const [localRole, setLocalRole] = useState(() => {
-    if (user.role === UserRole.CURATOR) {
-      return group.curator_ids.includes(user.id)
-        ? UserRole.CURATOR
-        : UserRole.BASIC;
-    }
-    return user.role;
-  });
-  const [isSettingRole, setIsSettingRole] = useState(false);
-  const [showDemoteConfirm, setShowDemoteConfirm] = useState(false);
-  const [pendingRoleChange, setPendingRoleChange] = useState<string | null>(
-    null
-  );
-  const { user: currentUser } = useUser();
-
-  const applyRoleChange = async (value: string) => {
-    if (value === localRole) return;
-    if (value === UserRole.BASIC || value === UserRole.CURATOR) {
-      setIsSettingRole(true);
-      setLocalRole(value);
-      try {
-        const response = await updateCuratorStatus(group.id, {
-          user_id: user.id,
-          is_curator: value === UserRole.CURATOR,
-        });
-        if (response.ok) {
-          onSuccess();
-          user.role = value;
-        } else {
-          const errorData = await response.json();
-          throw new Error(errorData.detail || "Failed to update user role");
-        }
-      } catch (error: any) {
-        onError(error.message);
-        setLocalRole(user.role);
-      } finally {
-        setIsSettingRole(false);
-      }
-    }
-  };
-
-  const handleChange = (value: string) => {
-    if (value === UserRole.BASIC && user.id === currentUser?.id) {
-      setPendingRoleChange(value);
-      setShowDemoteConfirm(true);
-    } else {
-      applyRoleChange(value);
-    }
-  };
-
-  const isEditable =
-    user.role === UserRole.BASIC || user.role === UserRole.CURATOR;
-
-  return (
-    <>
-      {/* Confirmation modal - only shown when users try to demote themselves */}
-      {showDemoteConfirm && pendingRoleChange && (
-        <GenericConfirmModal
-          title={t("admin.groups.removeSelfCuratorTitle")}
-          message={t("admin.groups.removeSelfCuratorMessage")}
-          confirmText={t("admin.groups.removeSelfCuratorConfirm")}
-          onClose={() => {
-            // Cancel the role change if user dismisses modal
-            setShowDemoteConfirm(false);
-            setPendingRoleChange(null);
-          }}
-          onConfirm={() => {
-            // Apply the role change if user confirms
-            setShowDemoteConfirm(false);
-            applyRoleChange(pendingRoleChange);
-            setPendingRoleChange(null);
-          }}
-        />
-      )}
-
-      {isEditable ? (
-        <InputSelect
-          value={localRole}
-          onValueChange={handleChange}
-          disabled={isSettingRole}
-        >
-          <InputSelect.Trigger placeholder={t("admin.apiKey.roleSelectPlaceholder")} />
-
-          <InputSelect.Content>
-            <InputSelect.Item value={UserRole.BASIC}>Basic</InputSelect.Item>
-            <InputSelect.Item value={UserRole.CURATOR}>
-              {t("admin.groups.roleBasic")}
-            </InputSelect.Item>
-          </InputSelect.Content>
-        </InputSelect>
-      ) : (
-        <div>{USER_ROLE_LABELS[localRole]}</div>
-      )}
-    </>
-  );
+const UserRoleDropdown = ({ user }: { user: User }) => {
+  return <div>{USER_ROLE_LABELS[user.role]}</div>;
 };
 
 export const GroupDisplay = ({
@@ -167,17 +57,14 @@ export const GroupDisplay = ({
 
   const { isAdmin } = useUser();
 
-  const onRoleChangeSuccess = () =>
-    toast.success(t("admin.groups.roleUpdatedSuccess"));
-  const onRoleChangeError = (errorMsg: string) =>
-    toast.error(t("admin.groups.roleUpdateFailed", { errorMsg }));
-
   return (
     <div>
       <div className="text-sm mb-3 flex">
         <Text className="mr-1">{t("admin.groups.statusLabel")}</Text>{" "}
         {userGroup.is_up_to_date ? (
-          <div className="text-success font-bold">{t("admin.groups.upToDate")}</div>
+          <div className="text-success font-bold">
+            {t("admin.groups.upToDate")}
+          </div>
         ) : (
           <div className="text-accent font-bold">
             <LoadingAnimation text={t("admin.groups.syncing")} />
@@ -200,7 +87,9 @@ export const GroupDisplay = ({
                   <TableHead>{t("admin.groups.emailHeader")}</TableHead>
                   <TableHead>{t("admin.groups.roleHeader")}</TableHead>
                   <TableHead className="flex w-full">
-                    <div className="ml-auto">{t("admin.groups.removeUserHeader")}</div>
+                    <div className="ml-auto">
+                      {t("admin.groups.removeUserHeader")}
+                    </div>
                   </TableHead>
                 </TableRow>
               </TableHeader>
@@ -212,13 +101,7 @@ export const GroupDisplay = ({
                         {groupMember.email}
                       </TableCell>
                       <TableCell>
-                        <UserRoleDropdown
-                          user={groupMember}
-                          group={userGroup}
-                          onSuccess={onRoleChangeSuccess}
-                          onError={onRoleChangeError}
-                          isAdmin={isAdmin}
-                        />
+                        <UserRoleDropdown user={groupMember} />
                       </TableCell>
                       <TableCell>
                         <div className="flex w-full">
@@ -306,7 +189,9 @@ export const GroupDisplay = ({
 
       <Separator />
 
-      <h2 className="text-xl font-bold mt-8">{t("admin.groups.connectorsSection")}</h2>
+      <h2 className="text-xl font-bold mt-8">
+        {t("admin.groups.connectorsSection")}
+      </h2>
       <div className="mt-2">
         {userGroup.cc_pairs.length > 0 ? (
           <>
@@ -315,7 +200,9 @@ export const GroupDisplay = ({
                 <TableRow>
                   <TableHead>{t("admin.groups.connectorHeader")}</TableHead>
                   <TableHead className="flex w-full">
-                    <div className="ml-auto">{t("admin.groups.removeConnectorHeader")}</div>
+                    <div className="ml-auto">
+                      {t("admin.groups.removeConnectorHeader")}
+                    </div>
                   </TableHead>
                 </TableRow>
               </TableHeader>
@@ -409,7 +296,9 @@ export const GroupDisplay = ({
 
       <Separator />
 
-      <h2 className="text-xl font-bold mt-8 mb-2">{t("admin.groups.documentSetsSection")}</h2>
+      <h2 className="text-xl font-bold mt-8 mb-2">
+        {t("admin.groups.documentSetsSection")}
+      </h2>
 
       <div>
         {userGroup.document_sets.length > 0 ? (
@@ -434,7 +323,9 @@ export const GroupDisplay = ({
 
       <Separator />
 
-      <h2 className="text-xl font-bold mt-8 mb-2">{t("admin.groups.agentsSection")}</h2>
+      <h2 className="text-xl font-bold mt-8 mb-2">
+        {t("admin.groups.agentsSection")}
+      </h2>
 
       <div>
         {userGroup.document_sets.length > 0 ? (
@@ -459,7 +350,9 @@ export const GroupDisplay = ({
 
       <Separator />
 
-      <h2 className="text-xl font-bold mt-8 mb-2">{t("admin.groups.tokenRateLimitsSection")}</h2>
+      <h2 className="text-xl font-bold mt-8 mb-2">
+        {t("admin.groups.tokenRateLimitsSection")}
+      </h2>
 
       <AddTokenRateLimitForm
         isOpen={addRateLimitFormVisible}

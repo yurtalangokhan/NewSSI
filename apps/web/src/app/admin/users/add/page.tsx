@@ -11,14 +11,14 @@ import Text from "@/refresh-components/texts/Text";
 
 const usersRoute = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.USERS]!;
 
-const ROLE_OPTIONS = ["basic", "admin", "limited", "curator", "global_curator"];
+const ROLE_OPTIONS = ["enduser", "admin"];
 
 export default function AddUserPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [role, setRole] = useState("basic");
+  const [role, setRole] = useState("enduser");
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -32,7 +32,7 @@ export default function AddUserPage() {
 
     setIsSubmitting(true);
     try {
-      const response = await fetch("/api/manage/admin/create-user", {
+      const response = await fetch("/api/user-service/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -75,8 +75,8 @@ export default function AddUserPage() {
         >
           <div className="flex flex-col gap-4">
             <Text as="p" mainUiMuted>
-              Create a user directly in the platform. This action also creates and syncs
-              the account in Keycloak.
+              Create a user directly in the platform. This action also creates
+              and syncs the account in Keycloak.
             </Text>
 
             <label className="flex flex-col gap-1">

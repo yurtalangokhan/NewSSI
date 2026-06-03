@@ -16,10 +16,14 @@ class SettingsController(BaseController):
     async def update_settings(self, user_id: uuid.UUID, **updates: Any) -> dict[str, Any]:
         return await self.service.update_settings(user_id, **updates)
 
-    async def create_prompt_shortcut(self, user_id: uuid.UUID, shortcut: dict[str, Any]) -> dict[str, Any]:
+    async def create_prompt_shortcut(
+        self, user_id: uuid.UUID, shortcut: dict[str, Any]
+    ) -> dict[str, Any]:
         return await self.service.create_prompt_shortcut(user_id, shortcut)
 
-    async def update_prompt_shortcut(self, user_id: uuid.UUID, shortcut_id: int, **updates: Any) -> dict[str, Any]:
+    async def update_prompt_shortcut(
+        self, user_id: uuid.UUID, shortcut_id: int, **updates: Any
+    ) -> dict[str, Any]:
         result = await self.service.update_prompt_shortcut(user_id, shortcut_id, **updates)
         if not result:
             self._raise_not_found("Shortcut not found")

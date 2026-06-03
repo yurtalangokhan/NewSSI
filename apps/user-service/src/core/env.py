@@ -49,6 +49,14 @@ class Env:
         return os.environ.get("KEYCLOAK_ADMIN_EMAIL")
 
     @property
+    def KEYCLOAK_BOOTSTRAP_ADMIN_EMAIL(self) -> str | None:
+        return os.environ.get("KEYCLOAK_BOOTSTRAP_ADMIN_EMAIL")
+
+    @property
+    def KEYCLOAK_BOOTSTRAP_ADMIN_PASSWORD(self) -> str | None:
+        return os.environ.get("KEYCLOAK_BOOTSTRAP_ADMIN_PASSWORD")
+
+    @property
     def POSTGRES_USER(self) -> str | None:
         return os.environ.get("POSTGRES_USER")
 

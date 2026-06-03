@@ -25,17 +25,19 @@ export default function ResetPasswordModal({
   const handleResetPassword = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch("/api/password/reset_password", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ user_email: user.email }),
-      });
+      const response = await fetch(
+        `/api/user-service/users/${user.id}/reset-password`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
       if (response.ok) {
         const data = await response.json();
-        setNewPassword(data.new_password);
+        setNewPassword(data.password);
         toast.success(t("admin.users.passwordResetSuccess"));
       } else {
         const errorData = await response.json();
@@ -58,7 +60,9 @@ export default function ResetPasswordModal({
           description={
             newPassword
               ? undefined
-              : t("admin.users.resetPasswordConfirmation", { email: user.email })
+              : t("admin.users.resetPasswordConfirmation", {
+                  email: user.email,
+                })
           }
         />
         <Modal.Body>

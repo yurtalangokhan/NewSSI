@@ -490,11 +490,10 @@ export function UserProvider({
         updateUserDefaultModel,
         updateUserDefaultAppMode,
         toggleAgentPinnedStatus,
-        isAdmin: upToDateUser?.role === UserRole.ADMIN,
-        // Curator status applies for either global or basic curator
-        isCurator:
-          upToDateUser?.role === UserRole.CURATOR ||
-          upToDateUser?.role === UserRole.GLOBAL_CURATOR,
+        isAdmin:
+          upToDateUser?.role === UserRole.ADMIN ||
+          upToDateUser?.is_superuser === true,
+        isCurator: false,
         isCloudSuperuser: upToDateUser?.is_cloud_superuser ?? false,
       }}
     >

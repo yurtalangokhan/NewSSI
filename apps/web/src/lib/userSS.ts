@@ -2,9 +2,7 @@ import { User } from "./types";
 import { AuthType, SERVER_SIDE_ONLY__AUTH_TYPE } from "./constants";
 import {
   UrlBuilder,
-  buildUrl,
   buildUserServiceUrl,
-  fetchSS,
   fetchUserServiceSS,
 } from "./utilsSS";
 import { cookies as getCookies } from "next/headers";
@@ -141,7 +139,7 @@ export const getCurrentUserSS = async (): Promise<User | null> => {
       return null;
     }
 
-    const response = await fetchSS("/me");
+    const response = await fetchUserServiceSS("/api/auth/me");
     if (response.status === 401) {
       return null;
     }

@@ -13,6 +13,7 @@ async def health_check():
 async def readiness_check():
     try:
         from src.core.database.engine import get_db_engine
+
         engine = get_db_engine()
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))

@@ -9,7 +9,6 @@ import SidebarWrapper from "@/sections/sidebar/SidebarWrapper";
 import { useIsKGExposed } from "@/app/admin/kg/utils";
 import { useCustomAnalyticsEnabled } from "@/lib/hooks/useCustomAnalyticsEnabled";
 import { useUser } from "@/providers/UserProvider";
-import { UserRole } from "@/lib/types";
 import {
   useBillingInformation,
   useLicense,
@@ -45,11 +44,10 @@ const custom_agents_items = (
 ) => {
   const items = [sidebarItem(ADMIN_PATHS.AGENTS, t)];
 
-  if (!isCurator) {}
+  if (!isCurator) {
+  }
 
-  items.push(
-    sidebarItem(ADMIN_PATHS.MCP_ACTIONS, t)
-  );
+  items.push(sidebarItem(ADMIN_PATHS.MCP_ACTIONS, t));
 
   if (enableEnterprise) {
     items.push(sidebarItem(ADMIN_PATHS.STANDARD_ANSWERS, t));
@@ -118,7 +116,9 @@ const collections = (
                   ]
                 : []),
               sidebarItem(ADMIN_PATHS.DOCUMENT_PROCESSING, t),
-              ...(kgExposed ? [sidebarItem(ADMIN_PATHS.KNOWLEDGE_GRAPH, t)] : []),
+              ...(kgExposed
+                ? [sidebarItem(ADMIN_PATHS.KNOWLEDGE_GRAPH, t)]
+                : []),
             ],
           },
           {
@@ -184,8 +184,7 @@ export default function AdminSidebar({
   // Falls back to build-time check if LICENSE_ENFORCEMENT_ENABLED=false
   const enableEnterprise = usePaidEnterpriseFeaturesEnabled();
 
-  const isCurator =
-    user?.role === UserRole.CURATOR || user?.role === UserRole.GLOBAL_CURATOR;
+  const isCurator = false;
 
   // Check if user has an active subscription or license for billing link text
   // Show "Plans & Billing" if they have either (even if Stripe connection fails)
@@ -223,7 +222,9 @@ export default function AdminSidebar({
           <div className="flex flex-col gap-2">
             {settings.webVersion && (
               <Text as="p" text02 secondaryBody className="px-2">
-                {t("admin.navigation.version", { version: settings.webVersion })}
+                {t("admin.navigation.version", {
+                  version: settings.webVersion,
+                })}
               </Text>
             )}
             <UserAvatarPopover />

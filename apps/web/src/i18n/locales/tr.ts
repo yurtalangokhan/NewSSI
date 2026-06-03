@@ -41,7 +41,8 @@ const tr = {
       selectAll: "Tümünü seç",
       loadMoreButton: "Daha Fazla Yükle",
       agentIdLabel: "Ajan ID: {{id}}",
-      toastDeleteSomeFailed: "Bazı sohbetler silinemedi. Lütfen tekrar deneyin.",
+      toastDeleteSomeFailed:
+        "Bazı sohbetler silinemedi. Lütfen tekrar deneyin.",
       toastDeleteAllFailed: "Tüm sohbetler silinemedi. Lütfen tekrar deneyin.",
     },
     chatSearch: {
@@ -128,17 +129,18 @@ const tr = {
     accountCreatedSigningIn: "Hesap oluşturuldu. Giriş yapılıyor...",
     signedInSuccessfully: "Başarıyla giriş yapıldı.",
     passwordMinLength: "Şifre en az {{n}} karakter olmalıdır",
-    accountAlreadyExists:
-      "Belirtilen e-posta ile zaten bir hesap mevcut.",
-    tooManyRequests:
-      "Çok fazla istek. Lütfen daha sonra tekrar deneyin.",
+    accountAlreadyExists: "Belirtilen e-posta ile zaten bir hesap mevcut.",
+    tooManyRequests: "Çok fazla istek. Lütfen daha sonra tekrar deneyin.",
     unknownError: "Bilinmeyen hata",
-    toastAccountCreated:
-      "Hesap başarıyla oluşturuldu. Lütfen giriş yapın.",
+    toastAccountCreated: "Hesap başarıyla oluşturuldu. Lütfen giriş yapın.",
     toastSignUpFailed: "Kayıt başarısız - {{error}}",
     toastLoginFailed: "Giriş başarısız - {{error}}",
     invalidCredentials: "Geçersiz e-posta veya şifre",
     noPasswordSet: "Şifre belirlemek için hesap oluşturun",
+    usernameLabel: "Kullanıcı Adı",
+    usernamePlaceholder: "kullaniciadi",
+    usernameMinLength: "Kullanıcı adı en az {{n}} karakter olmalıdır",
+    usernameRequired: "Kullanıcı adı zorunludur",
     emailLabel: "E-posta Adresi",
     emailPlaceholder: "email@sirketiniz.com",
     joinButton: "Katıl",
@@ -148,8 +150,7 @@ const tr = {
     completeSignUp: "Kaydınızı tamamlayın",
     createAccount: "Hesap oluştur",
     getStarted: "Onyx ile başlayın",
-    reauthenticateHeading:
-      "Takıma katılmak için yeniden kimlik doğrulayın",
+    reauthenticateHeading: "Takıma katılmak için yeniden kimlik doğrulayın",
     howDidYouHear: "Bizi nasıl duydunuz?",
     selectOption: "Bir seçenek seçin",
     referral: {
@@ -190,8 +191,7 @@ const tr = {
         "Şifre başarıyla sıfırlandı. Giriş sayfasına yönlendiriliyorsunuz...",
       toastUnexpectedError:
         "Beklenmedik bir hata oluştu. Lütfen tekrar deneyin.",
-      toastResetError:
-        "Şifre sıfırlama sırasında bir hata oluştu.",
+      toastResetError: "Şifre sıfırlama sırasında bir hata oluştu.",
     },
     verifyEmail: {
       verifying: "E-postanız doğrulanıyor...",
@@ -208,15 +208,12 @@ const tr = {
       message:
         "Merhaba {{email}} - e-postanızı henüz doğrulamadığınız görünüyor. Başlamak için gelen kutunuzdaki e-postamızı kontrol edin! Bir şey görmüyorsanız yeni bir e-posta talep etmek için tıklayın.",
       greeting: "Merhaba ",
-      notVerifiedYet:
-        " - e-postanızı henüz doğrulamadığınız görünüyor.",
-      checkInbox:
-        "Başlamak için gelen kutunuzdaki e-postamızı kontrol edin!",
+      notVerifiedYet: " - e-postanızı henüz doğrulamadığınız görünüyor.",
+      checkInbox: "Başlamak için gelen kutunuzdaki e-postamızı kontrol edin!",
       dontSeeIt: "Bir şey görmüyorsanız,",
       here: "buraya tıklayın",
       requestNewEmail: "yeni bir e-posta talep etmek için.",
-      toastVerificationSent:
-        "Yeni bir doğrulama e-postası gönderildi!",
+      toastVerificationSent: "Yeni bir doğrulama e-postası gönderildi!",
       toastVerificationFailed:
         "Yeni doğrulama e-postası gönderilemedi - {{error}}",
     },
@@ -226,22 +223,29 @@ const tr = {
       errorTitle: "Bir Şeyler Ters Gitti",
       backToChat: "Sohbete Dön",
       federatedProcessingDetails: "Kurulumu tamamlarken lütfen bekleyin.",
-      federatedSuccess: "{serviceName} yetkilendirmeniz başarıyla tamamlandı. Artık bu bağlayıcıyı aramada kullanabilirsiniz.",
+      federatedSuccess:
+        "{serviceName} yetkilendirmeniz başarıyla tamamlandı. Artık bu bağlayıcıyı aramada kullanabilirsiniz.",
       federatedRedirecting: "2 saniye içinde sohbete yönlendiriliyorsunuz...",
-      federatedErrorValidation: "Yapılandırma hatası - lütfen bağlayıcı ayarlarınızı kontrol edin",
-      federatedErrorClientSecret: "Kimlik doğrulama bilgileri eksik veya geçersiz",
+      federatedErrorValidation:
+        "Yapılandırma hatası - lütfen bağlayıcı ayarlarınızı kontrol edin",
+      federatedErrorClientSecret:
+        "Kimlik doğrulama bilgileri eksik veya geçersiz",
       federatedErrorOAuth: "OAuth yetkilendirmesi başarısız oldu",
-      mcpProcessingDetails: "MCP sunucu kurulumunu tamamlarken lütfen bekleyin.",
-      mcpSuccess: "{serviceName} yetkilendirmeniz başarıyla tamamlandı. Artık bu sunucunun araçlarını sohbette kullanabilirsiniz.",
+      mcpProcessingDetails:
+        "MCP sunucu kurulumunu tamamlarken lütfen bekleyin.",
+      mcpSuccess:
+        "{serviceName} yetkilendirmeniz başarıyla tamamlandı. Artık bu sunucunun araçlarını sohbette kullanabilirsiniz.",
       mcpRedirecting: "2 saniye içinde geri yönlendiriliyorsunuz...",
       mcpErrorServerNotFound: "MCP sunucu yapılandırması bulunamadı",
       mcpErrorCredentials: "Kimlik doğrulama bilgileri geçersiz",
       mcpErrorOAuth: "OAuth yetkilendirmesi başarısız oldu",
       mcpErrorValidation: "MCP sunucusuna bağlantı doğrulanamadı",
       oauthConfigProcessing: "Yetkilendirme Tamamlanıyor...",
-      oauthConfigProcessingDetails: "Kimlik bilgilerinizi güvenli şekilde kaydederken lütfen bekleyin.",
+      oauthConfigProcessingDetails:
+        "Kimlik bilgilerinizi güvenli şekilde kaydederken lütfen bekleyin.",
       oauthConfigSuccess: "Yetkilendirme Başarılı!",
-      oauthConfigSuccessDetail: "{serviceName} hesabınıza araç erişimini başarıyla yetkilendirdiniz.",
+      oauthConfigSuccessDetail:
+        "{serviceName} hesabınıza araç erişimini başarıyla yetkilendirdiniz.",
       oauthConfigError: "Yetkilendirme Başarısız",
     },
   },
@@ -257,8 +261,7 @@ const tr = {
   sidebar: {
     recentsEmptyState:
       "Bir mesaj gönderin! Sohbet geçmişiniz burada görünecek.",
-    recentsEmpty:
-      "Bir mesaj gönderin! Sohbet geçmişiniz burada görünecek.",
+    recentsEmpty: "Bir mesaj gönderin! Sohbet geçmişiniz burada görünecek.",
     agentsSectionTitle: "Ajanlar",
     projectsSectionTitle: "Projeler",
     recentsSectionTitle: "Son Sohbetler",
@@ -394,7 +397,8 @@ const tr = {
     },
     federatedOAuth: {
       title: "Uygulamalarınızı Bağlayın",
-      description: "{{applicationName}}'ın tüm bağlı verilerinizde arama yapmasına izin vererek yanıt kalitesini artırın.",
+      description:
+        "{{applicationName}}'ın tüm bağlı verilerinizde arama yapmasına izin vererek yanıt kalitesini artırın.",
       connect: "Bağlan",
       skipForNow: "Şimdilik atla",
     },
@@ -404,9 +408,12 @@ const tr = {
       manageTitle: "{{type}} Yönet",
       enterTitle: "{{type}} Girin",
       updateDescription: "{{serverName}} için {{type}} güncelleyin.",
-      enterDescription: "Kimlik doğrulamayı etkinleştirmek için {{serverName}} için {{type}} girin.",
-      validationNote: "Değişiklikler kaydedilmeden önce sunucuya karşı doğrulanacak.",
-      storageNote: "{{type}} sunucuya karşı doğrulanacak ve güvenli şekilde saklanacak.",
+      enterDescription:
+        "Kimlik doğrulamayı etkinleştirmek için {{serverName}} için {{type}} girin.",
+      validationNote:
+        "Değişiklikler kaydedilmeden önce sunucuya karşı doğrulanacak.",
+      storageNote:
+        "{{type}} sunucuya karşı doğrulanacak ve güvenli şekilde saklanacak.",
       saveError: "Kimlik bilgileri kaydedilemedi",
       saveApiKeyError: "API anahtarı kaydedilemedi",
       cancel: "İptal",
@@ -437,8 +444,7 @@ const tr = {
     },
     newTeam: {
       joinRequestSentTitle: "Katılma İsteği Gönderildi",
-      existingTeamFoundTitle:
-        "{{domain}} için mevcut bir takım bulduk",
+      existingTeamFoundTitle: "{{domain}} için mevcut bir takım bulduk",
       loadingTeamInfo: "Takım bilgileri yükleniyor...",
       joinRequestSentBody:
         "Katılma isteğiniz gönderildi. {{domain}} yöneticisi isteğinizi onaylarken kendi takımınız olarak keşfedebilirsiniz.",
@@ -449,8 +455,7 @@ const tr = {
       sendingRequest: "İstek gönderiliyor...",
       couldNotRetrieveTeam:
         "Takım bilgileri alınamadı. Lütfen daha sonra tekrar deneyin.",
-      toastInviteSent:
-        "Davet isteğiniz takım yöneticisine gönderildi.",
+      toastInviteSent: "Davet isteğiniz takım yöneticisine gönderildi.",
       toastInviteFailed: "Davet talep edilemedi",
     },
     noAgent: {
@@ -489,15 +494,13 @@ const tr = {
         "{{count}} sohbet oturumunun tamamını silmek istediğinize emin misiniz? Bu işlem geri alınamaz.",
       deletingButton: "Siliniyor...",
       noSessionsYet: "Henüz sohbet oturumu yok",
-      startNewConversationHint:
-        "Burada görmek için yeni bir konuşma başlatın",
+      startNewConversationHint: "Burada görmek için yeni bir konuşma başlatın",
       selectAll: "Tümünü seç",
       loadMoreButton: "Daha Fazla Yükle",
       agentIdLabel: "Ajan ID: {{id}}",
       toastDeleteSomeFailed:
         "Bazı sohbetler silinemedi. Lütfen tekrar deneyin.",
-      toastDeleteAllFailed:
-        "Tüm sohbetler silinemedi. Lütfen tekrar deneyin.",
+      toastDeleteAllFailed: "Tüm sohbetler silinemedi. Lütfen tekrar deneyin.",
     },
     chatSearch: {
       placeholder: "Sohbet oturumlarında ve projelerde ara...",
@@ -539,8 +542,7 @@ const tr = {
       uploadFromDevice: "Cihazınızdan bir dosya yükleyin",
       uploadFilesButton: "Dosya Yükle",
       recentFilesTitle: "Son Dosyalar",
-      recentFilesDescription:
-        "Dosya yükleyin veya son dosyalarınızdan seçin.",
+      recentFilesDescription: "Dosya yükleyin veya son dosyalarınızdan seçin.",
       allRecentFilesButton: "Tüm Son Dosyalar",
       viewFile: "Dosyayı Görüntüle",
       fileDeleted: "Dosya başarıyla silindi",
@@ -567,8 +569,7 @@ const tr = {
       description:
         "Bu sohbetteki mevcut ve gelecekteki tüm mesajlar paylaşılacak.",
       privateOptionTitle: "Özel",
-      privateOptionDescription:
-        "Yalnızca siz bu sohbete erişebilirsiniz.",
+      privateOptionDescription: "Yalnızca siz bu sohbete erişebilirsiniz.",
       organizationOptionTitle: "Organizasyonunuz",
       organizationOptionDescription:
         "Organizasyonunuzdaki herkes bu sohbeti görüntüleyebilir.",
@@ -606,8 +607,7 @@ const tr = {
       title: "Geri Bildirim",
       detailsLabel: "Ek Detay Sağlayın",
       required: "Geri bildirim gereklidir",
-      placeholder:
-        "Bu yanıt hakkında ne beğendiniz/beğenmediniz?",
+      placeholder: "Bu yanıt hakkında ne beğendiniz/beğenmediniz?",
       likePlaceholder: "Bu yanıtta ne beğendiniz?",
       dislikePlaceholder: "Bu yanıtta ne beğenmediniz?",
       submitButton: "Gönder",
@@ -671,8 +671,7 @@ const tr = {
     knowledgeGraphDescription: "Neo4j hibrit araması",
     nameColumn: "Ad",
     statusColumn: "Durum",
-    emptyState:
-      "Bu ajan için kullanılacak belge veya bağlı kaynaklar ekleyin.",
+    emptyState: "Bu ajan için kullanılacak belge veya bağlı kaynaklar ekleyin.",
     sourcesSelectedText: "{{count}} bilgi kaynağı seçildi",
     viewEditButton: "Görüntüle / Düzenle",
     searchCollectionsPlaceholder: "Koleksiyon ara...",
@@ -782,8 +781,7 @@ const tr = {
       workRolePlaceholder: "Rolünüz",
       appearanceTitle: "Görünüm",
       colorModeLabel: "Renk Modu",
-      colorModeDescription:
-        "Arayüz için tercih ettiğiniz renk modunu seçin.",
+      colorModeDescription: "Arayüz için tercih ettiğiniz renk modunu seçin.",
       chatBackgroundLabel: "Sohbet Arka Planı",
       colorModeAuto: "Otomatik",
       colorModeLight: "Açık",
@@ -800,8 +798,7 @@ const tr = {
         "Tüm sohbetleri silmek istediğinizden emin misiniz?",
       deletingButton: "Siliniyor...",
       deleteButton: "Sil",
-      toastPersonalizationUpdated:
-        "Kişiselleştirme başarıyla güncellendi",
+      toastPersonalizationUpdated: "Kişiselleştirme başarıyla güncellendi",
       toastPersonalizationFailed: "Kişiselleştirme güncellenemedi",
       toastChatsDeleted: "Tüm sohbet oturumlarınız silindi.",
       toastDeleteFailed: "Tüm sohbetler silinemedi",
@@ -844,15 +841,13 @@ const tr = {
       expansionPlaceholder:
         "Aşağıdakilerin 1-2 cümlelik kısa bir özetini sağlayın:",
       removeShortcutAriaLabel: "Kısayolu kaldır",
-      cannotDeletePublicTooltip:
-        "Genel istem kısayolları silinemez.",
+      cannotDeletePublicTooltip: "Genel istem kısayolları silinemez.",
       toastPreferencesSaved: "Tercihler kaydedildi",
       toastPreferencesFailed: "Tercihler kaydedilemedi",
       toastShortcutLoadFailed: "Kısayollar yüklenemedi",
       toastShortcutDeleted: "Kısayol silindi",
       toastShortcutDeleteFailed: "Kısayol silinemedi",
-      toastShortcutRequired:
-        "Hem kısayol hem de genişleme gereklidir",
+      toastShortcutRequired: "Hem kısayol hem de genişleme gereklidir",
       toastShortcutCreated: "Kısayol oluşturuldu",
       toastShortcutUpdated: "Kısayol güncellendi",
       toastShortcutSaveFailed: "Kısayol kaydedilemedi",
@@ -889,8 +884,7 @@ const tr = {
       confirmPasswordRequired: "Lütfen yeni şifrenizi onaylayın",
       revokeTokenTitle: "Erişim Tokenını İptal Et",
       revokeButton: "İptal Et",
-      revokeConfirmation:
-        "Bu tokenı iptal etmek istediğinizden emin misiniz?",
+      revokeConfirmation: "Bu tokenı iptal etmek istediğinizden emin misiniz?",
       revokeTokenWarning:
         "Onyx artık {{sourceName}} hesabınızdaki içeriklere erişemeyecek.",
       tokenWillLoseAccess:
@@ -927,8 +921,7 @@ const tr = {
     },
     connectors: {
       title: "Bağlayıcılar",
-      noConnectorsMessage:
-        "Organizasyonunuz için henüz bağlayıcı kurulmamış.",
+      noConnectorsMessage: "Organizasyonunuz için henüz bağlayıcı kurulmamış.",
       connectedStatus: "Bağlı",
       pausedStatus: "Duraklatıldı",
       notConnectedStatus: "Bağlı değil",
@@ -954,14 +947,12 @@ const tr = {
       "Bu projedeki yanıtı özelleştirmek için talimat ekleyin.",
     setInstructionsButton: "Talimat Belirle",
     filesLabel: "Dosyalar",
-    filesDescription:
-      "Bu projedeki sohbetler bu dosyalara erişebilir.",
+    filesDescription: "Bu projedeki sohbetler bu dosyalara erişebilir.",
     addFilesButton: "Dosya Ekle",
     viewFilesButton: "Dosyaları Görüntüle",
     viewAllButton: "Tümünü Görüntüle",
     filesCount: "{{n}} dosya",
-    dropFilesActive:
-      "Projeye eklemek için dosyaları buraya bırakın",
+    dropFilesActive: "Projeye eklemek için dosyaları buraya bırakın",
     dropFilesDefault:
       "Projede kullanmak için belge, metin veya görsel ekleyin. Sürükle & bırak desteklenir.",
     editProjectNameTooltip: "Proje adını düzenle",
@@ -969,8 +960,7 @@ const tr = {
       "Bu proje modelin bağlam sınırlarını aşıyor. Oturumlar yanıt oluşturmadan önce otomatik olarak ilgili dosyaları arayacak.",
     loadingProject: "Proje yükleniyor...",
     projectFilesTitle: "Proje Dosyaları",
-    projectFilesDescription:
-      "Bu projedeki oturumlar bu dosyalara erişebilir.",
+    projectFilesDescription: "Bu projedeki oturumlar bu dosyalara erişebilir.",
   },
   fileCard: {
     remove: "Kaldır",
@@ -1087,8 +1077,7 @@ const tr = {
     conversationStarterExample4: "Son görüşmelerdeki aksiyon maddelerini bul.",
     enterConversationStarter: "Konuşma başlatıcı girin...",
     agentNameRequired: "Ajan adı zorunludur.",
-    descriptionMaxChars:
-      "Açıklama en fazla {{count}} karakter olabilir",
+    descriptionMaxChars: "Açıklama en fazla {{count}} karakter olabilir",
     starterMaxChars:
       "Konuşma başlatma mesajı en fazla {{count}} karakter olabilir",
     agentDeletedSuccess: "Ajan başarıyla silindi",
@@ -1114,16 +1103,13 @@ const tr = {
     optionalLabel: "Opsiyonel",
     descriptionLabel: "Açıklama",
     baseAgentLabel: "Temel Ajan",
-    baseAgentDescription:
-      "Bu özel ajan için temel ajan türünü seçin.",
+    baseAgentDescription: "Bu özel ajan için temel ajan türünü seçin.",
     selectBaseAgentPlaceholder: "Temel ajan seçin",
     chatbotOption: "Chatbot - Basit konuşma ajanı",
-    mcpAgentOption:
-      "Yapılandırılabilir MCP Ajanı - MCP araç desteği ile",
+    mcpAgentOption: "Yapılandırılabilir MCP Ajanı - MCP araç desteği ile",
     dynamicAgentOption: "Dinamik Ajan - Graf şemasına dayalı ajan",
     graphSchemaLabel: "Graf Şeması",
-    graphSchemaDescription:
-      "Dinamik graf çalıştırma modelini seçin.",
+    graphSchemaDescription: "Dinamik graf çalıştırma modelini seçin.",
     selectGraphSchemaPlaceholder: "Graf şeması seçin",
     brainTypeLabel: "Beyin Türü",
     selectBrainTypePlaceholder: "Beyin türü seçin",
@@ -1139,8 +1125,7 @@ const tr = {
     conversationStartersDescription:
       "Kullanıcıların bu ajanın neler yapabileceğini ve onunla nasıl etkileşim kurabileceğini anlamalarına yardımcı olacak örnek mesajlar.",
     actionsLabel: "Eylemler",
-    actionsDescription:
-      "Bu ajanın kullanabilieceği araçlar ve yetenekler.",
+    actionsDescription: "Bu ajanın kullanabilieceği araçlar ve yetenekler.",
     imageGenerationLabel: "Görsel Oluşturma",
     imageGenerationDescription:
       "Yapay zeka destekli araçlarla görsel oluşturun ve düzenleyin.",
@@ -1184,8 +1169,7 @@ const tr = {
       "Bu ajanı kullanan kişiler artık ona erişemeyecek.",
     deleteAgentConfirmText:
       "Bu ajanı kullanan kişiler artık ona erişemeyecek. Silme işlemi geri alınamaz.",
-    deleteAgentAreYouSure:
-      "Bu ajanı silmek istediğinizden emin misiniz?",
+    deleteAgentAreYouSure: "Bu ajanı silmek istediğinizden emin misiniz?",
     agentNamePlaceholder: "Ajanınızı adlandırın",
     agentDescriptionPlaceholder: "Bu ajan ne yapar?",
     webSearchWarning:
@@ -1243,10 +1227,8 @@ const tr = {
     toastAccepted: "Daveti kabul ettiniz.",
     toastProcessing: "Ekip katılım talebiniz işleniyor...",
     toastDeclined: "Daveti reddettiniz.",
-    toastJoinFailed:
-      "Ekibe katılma başarısız. Lütfen tekrar deneyin.",
-    toastDeclineFailed:
-      "Daveti reddetme başarısız. Lütfen tekrar deneyin.",
+    toastJoinFailed: "Ekibe katılma başarısız. Lütfen tekrar deneyin.",
+    toastDeclineFailed: "Daveti reddetme başarısız. Lütfen tekrar deneyin.",
   },
   errors: {
     rateLimit: "Hız Limiti Aşıldı",
@@ -1277,8 +1259,7 @@ const tr = {
   },
   appPopup: {
     defaultTitle: "Onyx'e Hoş Geldiniz!",
-    consentError:
-      "Uygulamaya erişmek için koşulları kabul etmeniz gerekiyor.",
+    consentError: "Uygulamaya erişmek için koşulları kabul etmeniz gerekiyor.",
     startButton: "Başla",
   },
   customTool: {
@@ -1293,8 +1274,7 @@ const tr = {
   },
   sharedChat: {
     notFoundTitle: "Paylaşılan Sohbet Bulunamadı",
-    idNotFound:
-      "Belirtilen ID ile paylaşılan bir sohbet bulunamadı.",
+    idNotFound: "Belirtilen ID ile paylaşılan bir sohbet bulunamadı.",
     noMessages: "Paylaşılan sohbette mesaj bulunamadı.",
     sharedOn: "{{date}} tarihinde paylaşıldı",
     by: "{{name}} tarafından",
@@ -1358,7 +1338,8 @@ const tr = {
       errorUpdatePersona: "Ajan güncellenemedi: {{msg}}",
       deleteModalTitle: "Ajanı Sil",
       deleteModalConfirm: "Sil",
-      deleteModalBody: "{{name}} adlı ajanı silmek istediğinizden emin misiniz?",
+      deleteModalBody:
+        "{{name}} adlı ajanı silmek istediğinizden emin misiniz?",
       removeFeaturedTitle: "Öne Çıkan Ajanı Kaldır",
       setFeaturedTitle: "Öne Çıkan Ajan Olarak Ayarla",
       removeFeaturedButton: "Öne Çıkanı Kaldır",
@@ -1414,10 +1395,8 @@ const tr = {
       editProviderAria: "Sağlayıcıyı düzenle",
       setUp: "Kur",
       defaultModelUpdatedSuccess: "Varsayılan model başarıyla güncellendi!",
-      setDefaultModelFailed:
-        "Varsayılan model ayarlanamadı: {{message}}",
-      setUpProviderToStart:
-        "Sohbete başlamak için bir LLM sağlayıcısı kurun.",
+      setDefaultModelFailed: "Varsayılan model ayarlanamadı: {{message}}",
+      setUpProviderToStart: "Sohbete başlamak için bir LLM sağlayıcısı kurun.",
       availableProviders: "Mevcut Sağlayıcılar",
       addProvider: "Sağlayıcı Ekle",
       addProviderDescription:
@@ -1447,8 +1426,7 @@ const tr = {
         "API anahtarı tabanlı sağlayıcılar (OpenAI, Anthropic vb.)",
       noCloudProvidersYet: "Henüz bulut sağlayıcı yapılandırılmadı.",
       noDefault: "varsayılan yok",
-      baseUrlRequiredToTest:
-        "Bağlantıyı test etmek için Base URL gerekli",
+      baseUrlRequiredToTest: "Bağlantıyı test etmek için Base URL gerekli",
       connectionFailed: "Bağlantı başarısız",
       nameAndBaseUrlRequired: "Ad ve Base URL gerekli",
       failedToAddProvider: "Sağlayıcı eklenemedi",
@@ -1468,8 +1446,7 @@ const tr = {
       connected: "Bağlandı",
       apiKey: "API Anahtarı",
       apiKeyOptional: "API Anahtarı (isteğe bağlı)",
-      apiKeyRequiredToTest:
-        "Bağlantıyı test etmek için API Anahtarı gerekli",
+      apiKeyRequiredToTest: "Bağlantıyı test etmek için API Anahtarı gerekli",
       nameAndApiKeyRequired: "Ad ve API Anahtarı gerekli",
       leaveBlankIfNotRequired: "Gerekmiyorsa boş bırakın",
       leaveBlankForProviderDefault:
@@ -1513,7 +1490,8 @@ const tr = {
       apiKeyWillBeDeleted: "API anahtarı kaydedildiğinde silinecek.",
       undoDeleteApiKey: "Geri Al",
       apiKeyStoredSecurely: "API anahtarı güvenli şekilde saklanıyor",
-      apiKeyHiddenHint: "API anahtarı şifreli olarak saklanmaktadır ve görüntülenemez. Yeni bir tane girmek için silin.",
+      apiKeyHiddenHint:
+        "API anahtarı şifreli olarak saklanmaktadır ve görüntülenemez. Yeni bir tane girmek için silin.",
       clearApiKey: "API anahtarını sil",
       enterNewApiKey: "Yeni API anahtarı girin",
       nameRequired: "Ad gerekli",
@@ -1548,8 +1526,7 @@ const tr = {
       copyRedirectUri: "Redirect URI'yi kopyala",
       individualKeyPerUser: "Bireysel Anahtar (Kullanıcı Bazlı)",
       sharedKeyAdmin: "Paylaşılan Anahtar (Yönetici)",
-      sharedApiKeyPlaceholder:
-        "Kuruluşunuz için paylaşılan API anahtarı",
+      sharedApiKeyPlaceholder: "Kuruluşunuz için paylaşılan API anahtarı",
       sharedApiKeyHelp:
         "Kişisel API anahtarınızı kullanmayın. Bu anahtarın kuruluşunuzdaki herkesle paylaşmaya uygun olduğundan emin olun.",
       noAuthenticationText: "Bu MCP sunucusu için kimlik doğrulama yok",
@@ -1560,16 +1537,14 @@ const tr = {
       passThroughDescription:
         "Onyx, kullanıcının OAuth erişim tokenını doğrudan Authorization başlığı olarak sunucuya iletir. Sunucunun aynı sağlayıcıyla kimlik doğrulamayı desteklediğinden emin olun.",
       connecting: "Bağlanıyor...",
-      failedToSaveServerConfiguration:
-        "Sunucu yapılandırması kaydedilemedi",
+      failedToSaveServerConfiguration: "Sunucu yapılandırması kaydedilemedi",
       failedToInitiateOauth: "OAuth başlatılamadı",
       failedToSaveAuthenticationConfiguration:
         "Kimlik doğrulama yapılandırması kaydedilemedi",
     },
     embeddings: {
       alreadyChosenTitle: "{{modelName}} zaten seçili",
-      alreadyChosenDescription:
-        "Bu model zaten mevcut embedding modelinizdir.",
+      alreadyChosenDescription: "Bu model zaten mevcut embedding modelinizdir.",
       closeButton: "Kapat",
       selectModelTitle: "{{modelName}} Seç",
       selectModelBody1: "Şuna geçmek üzeresiniz:",
@@ -1591,8 +1566,7 @@ const tr = {
         "Bunun özel tanımlanmış bir embedding modeli olduğunu tespit ettik. Yapılandırmanın doğruluğunu doğrulamadan önce model dosyalarını indirmemiz gerektiği için, yapılandırmanın geçerli olup olmadığını size ancak",
       customModelWarning2:
         "belgelerinizi yeniden indekslemeye başladıktan sonra söyleyebileceğiz. Bir sorun varsa, Onayla'ya tıkladıktan sonra bu sayfada indeksleme hatası olarak görünecektir.",
-      instantSwitchTitle:
-        "Anlık geçiş yapmak istediğinizden emin misiniz?",
+      instantSwitchTitle: "Anlık geçiş yapmak istediğinizden emin misiniz?",
       instantSwitchBody:
         "Anlık geçiş, embedding modelini yeniden indeksleme olmadan hemen değiştirir. Yeniden indeksleme tamamlanana kadar aramalar kısmi bir belge kümesi üzerinde yapılacaktır.",
       instantSwitchIrreversible: "Bu işlem geri alınamaz.",
@@ -1622,14 +1596,14 @@ const tr = {
       contextualRagModification: "Contextual RAG değişikliği",
       validationErrors: "Doğrulama Hataları:",
       updateSearch: "Aramayı Güncelle",
-      failedToFetchEmbeddingModelStatus:
-        "Embedding modeli durumu alınamadı",
+      failedToFetchEmbeddingModelStatus: "Embedding modeli durumu alınamadı",
       failedToUpdateEmbeddingModel: "Embedding modeli güncellenemedi",
       selectEmbeddingModelTitle: "Bir Embedding Modeli Seçin",
       selectEmbeddingModelDescription:
         "Arka plandaki modeli güncellemenin, bağlı her kaynaktaki tüm belgelerin tamamen yeniden indekslenmesini gerektirdiğini unutmayın. Bu işlem arka planda yapılır, böylece sistem kullanılmaya devam edebilir; ancak veri kümesinin boyutuna bağlı olarak saatler veya günler sürebilir. Modeller değiştirilirken yeniden indeksleme ilerlemesini bu sayfadan izleyebilirsiniz.",
       continue: "Devam",
-      poorModelTitle: "{{modelName}} modelini seçmek istediğinizden emin misiniz?",
+      poorModelTitle:
+        "{{modelName}} modelini seçmek istediğinizden emin misiniz?",
       poorModelDescription:
         "{{modelName}} daha düşük doğruluklu bir modeldir. Şu alternatifleri öneriyoruz:",
       poorModelAltCloud: "Bulut tabanlı için Cohere embed-english-v3.0",
@@ -1641,8 +1615,7 @@ const tr = {
         "Yeniden sıralama modelini güncellemek belgelerin yeniden indekslenmesini gerektirmez. Reranker, ilk embedding aramasından sonra sonuçları yeniden sıralayarak arama kalitesini artırır. Değişiklikler tüm yeni aramalarda hemen etkili olur.",
       previous: "Önceki",
       advanced: "Gelişmiş",
-      advancedSearchConfigurationTitle:
-        "Gelişmiş Arama Yapılandırması",
+      advancedSearchConfigurationTitle: "Gelişmiş Arama Yapılandırması",
       advancedSearchConfigurationDescription:
         "Gelişmiş embedding ve arama ayarlarını yapılandırın. Değişiklikler belgelerin yeniden indekslenmesini gerektirir.",
       modelDescriptionFallback: "Özel model—açıklama mevcut değil.",
@@ -1669,7 +1642,8 @@ const tr = {
       docsReindexed: "Yeniden İndekslenen Belgeler",
       indexAttempts: {
         noAttemptsTitle: "Henüz planlanmış indeksleme denemesi yok",
-        noAttemptsDescription: "İndeksleme denemeleri arka planda planlanır ve görünmesi biraz zaman alabilir. Sayfayı yaklaşık 30 saniye içinde yenilemeyi deneyin!",
+        noAttemptsDescription:
+          "İndeksleme denemeleri arka planda planlanır ve görünmesi biraz zaman alabilir. Sayfayı yaklaşık 30 saniye içinde yenilemeyi deneyin!",
         columns: {
           timeStarted: "Başlangıç Zamanı",
           status: "Durum",
@@ -1678,13 +1652,17 @@ const tr = {
           errorMessage: "Hata Mesajı",
         },
         tooltips: {
-          totalDocs: "Bu indeksleme denemesi sırasında indekste değiştirilen toplam belge sayısı",
-          reindexActive: "Bu indeksleme denemesi tam bir yeniden indekslemedir. Kaynaktaki tüm belgeler sisteme senkronize ediliyor.",
-          reindexPast: "Bu indeksleme denemesi tam bir yeniden indekslemeydi. Kaynaktaki tüm belgeler sisteme senkronize edildi.",
+          totalDocs:
+            "Bu indeksleme denemesi sırasında indekste değiştirilen toplam belge sayısı",
+          reindexActive:
+            "Bu indeksleme denemesi tam bir yeniden indekslemedir. Kaynaktaki tüm belgeler sisteme senkronize ediliyor.",
+          reindexPast:
+            "Bu indeksleme denemesi tam bir yeniden indekslemeydi. Kaynaktaki tüm belgeler sisteme senkronize edildi.",
         },
         docsPerMinute: "Dakikada {{count}} belge",
         noDocsProcessed: "Ek belge işlenmedi",
-        removedDocs: "(ayrıca kaynakta silindiği tespit edilen {{count}} belge kaldırıldı)",
+        removedDocs:
+          "(ayrıca kaynakta silindiği tespit edilen {{count}} belge kaldırıldı)",
         viewFullTrace: "Tam İzlemeyi Görüntüle",
       },
     },
@@ -1725,21 +1703,24 @@ const tr = {
       singleUninviteError: "Kullanıcı daveti iptal edilemedi - {{error}}",
       inviteUserTitle: "Kullanıcı Davet Et",
       uninviteUserTitle: "Daveti İptal Et",
-      inviteConfirmation: "{{email}} kullanıcısını davet etmek istediğinizden emin misiniz?",
-      uninviteConfirmation: "{{email}} kullanıcısının davetini iptal etmek istediğinizden emin misiniz?",
+      inviteConfirmation:
+        "{{email}} kullanıcısını davet etmek istediğinizden emin misiniz?",
+      uninviteConfirmation:
+        "{{email}} kullanıcısının davetini iptal etmek istediğinizden emin misiniz?",
       inviteButton: "Davet Et",
       uninviteButton: "Daveti İptal Et",
       invitedEmptyState: "Davet edilen kullanıcılar burada görünecektir",
-      pendingEmptyState: "Katılma isteğinde bulunan kullanıcılar burada görünecektir",
+      pendingEmptyState:
+        "Katılma isteğinde bulunan kullanıcılar burada görünecektir",
       errorLoadingUsers: "Kullanıcılar yüklenirken hata oluştu",
       errorLoadingPendingUsers: "Bekleyen kullanıcılar yüklenirken hata oluştu",
       emailHeader: "E-posta",
       actionsHeader: "İşlemler",
       roleHeader: "Rol",
       statusHeader: "Durum",
-      noUsersFoundMatching: "\"{{query}}\" ile eşleşen kullanıcı bulunamadı",
+      noUsersFoundMatching: '"{{query}}" ile eşleşen kullanıcı bulunamadı',
       noPendingUsersFoundMatching:
-        "\"{{query}}\" ile eşleşen bekleyen kullanıcı bulunamadı",
+        '"{{query}}" ile eşleşen bekleyen kullanıcı bulunamadı',
       noUsersMatchingFilters: "Filtrelerinizle eşleşen kullanıcı bulunamadı",
       roleUpdateSuccess: "Kullanıcı rolü başarıyla güncellendi!",
       roleUpdateError: "Kullanıcı rolü güncellenemedi - {{error}}",
@@ -1775,13 +1756,8 @@ const tr = {
       emailRequired: "Gerekli",
       invalidEmailError: "{{email}} geçerli bir e-posta değil",
       roles: {
-        basic: "Temel",
+        enduser: "Son Kullanıcı",
         admin: "Yönetici",
-        global_curator: "Küresel Küratör",
-        curator: "Küratör",
-        limited: "Sınırlı",
-        ext_perm_user: "Harici Yetkili Kullanıcı",
-        slack_user: "Slack Kullanıcısı",
       },
       userEntity: "kullanıcı",
       teamEntity: "takım",
@@ -1789,18 +1765,16 @@ const tr = {
       leaveTeamSuccess: "Takımdan başarıyla ayrıldınız!",
       leaveTeamError: "Takımdan ayrılamadı - {{error}}",
       leaveButton: "Ayrıl",
-      leaveTeamDetails: "Tüm takım verilerine ve kaynaklarına erişiminizi kaybedeceksiniz.",
+      leaveTeamDetails:
+        "Tüm takım verilerine ve kaynaklarına erişiminizi kaybedeceksiniz.",
       rolesHover: {
-        basic: "Temel kullanıcılar herhangi bir yönetici işlemi gerçekleştiremez",
-        admin: "Yönetici kullanıcılar tüm yönetici işlemlerini gerçekleştirebilir",
-        global_curator:
-          "Küresel Küratör kullanıcılar, üyesi oldukları tüm gruplar için yönetici işlemleri gerçekleştirebilir",
-        curator: "Küratör rolü Gruplar sekmesinde atanmalıdır",
-        slack_user:
-          "Bu rol, Onyx'i yalnızca Slack üzerinden kullanan kullanıcılara otomatik olarak atanır",
+        enduser: "Son kullanıcılar yönetici işlemlerini gerçekleştiremez",
+        admin:
+          "Yönetici kullanıcılar tüm yönetici işlemlerini gerçekleştirebilir",
       },
       changeCuratorRoleTitle: "Küratör Rolünü Değiştir",
-      changeCuratorRoleWarning: "Uyarı: Rolü Küratör'den {{newRole}} olarak değiştirmek, tüm gruplardaki bireysel küratörlük durumlarını kaldıracaktır.",
+      changeCuratorRoleWarning:
+        "Uyarı: Rolü Küratör'den {{newRole}} olarak değiştirmek, tüm gruplardaki bireysel küratörlük durumlarını kaldıracaktır.",
       switchRoleToButton: "Rolü {{role}} Olarak Değiştir",
       editUserModal: {
         title: "Kullanıcıyı Düzenle",
@@ -1898,8 +1872,7 @@ const tr = {
         "Hiçbir kullanıcının çok fazla token harcamamasını sağlamak için kullanıcı hız sınırları belirleyin.",
       groupRateLimit:
         "Ekipleriniz için token harcamasını kontrol etmek için kullanıcı grubu hız sınırları belirleyin.",
-      enableDisable:
-        "Hız sınırlarını anında etkinleştirip devre dışı bırakın.",
+      enableDisable: "Hız sınırlarını anında etkinleştirip devre dışı bırakın.",
       createButton: "Token Hız Sınırı Oluştur",
       globalTab: "Global",
       userTab: "Kullanıcı",
@@ -2009,7 +1982,7 @@ const tr = {
         discovering: "Keşfediliyor…",
         discoverStreams: "Akışları keşfet",
         discoverStreamsHint:
-          "Mevcut akışları yüklemek için \"Akışları keşfet\" düğmesine tıklayın.",
+          'Mevcut akışları yüklemek için "Akışları keşfet" düğmesine tıklayın.',
         frequency: "Sıklık",
         customModes: {
           expression: "İfade",
@@ -2017,8 +1990,7 @@ const tr = {
           dailyTime: "Günlük Saat",
         },
         cronExpression: "Cron İfadesi (Quartz 6 alan)",
-        cronFormat:
-          "Biçim: saniye dakika saat ay-günü ay hafta-günü",
+        cronFormat: "Biçim: saniye dakika saat ay-günü ay hafta-günü",
         daysOfWeek: "Haftanın Günleri",
         hour: "Saat",
         minute: "Dakika",
@@ -2196,12 +2168,12 @@ const tr = {
       },
       selectCollectionToManageDocuments:
         "Belgeleri yönetmek için yukarıdan bir koleksiyon seçin.",
-      collectionCreated: "\"{{name}}\" koleksiyonu oluşturuldu.",
+      collectionCreated: '"{{name}}" koleksiyonu oluşturuldu.',
       collectionCreateFailed: "Koleksiyon oluşturulamadı",
       renameCollection: "Koleksiyonu Yeniden Adlandır",
       rename: "Yeniden Adlandır",
       renaming: "Yeniden adlandırılıyor…",
-      collectionRenamed: "Koleksiyon adı \"{{name}}\" olarak güncellendi.",
+      collectionRenamed: 'Koleksiyon adı "{{name}}" olarak güncellendi.',
       collectionRenameFailed: "Koleksiyon yeniden adlandırılamadı",
       collectionDeleted: "Koleksiyon silindi.",
       collectionDeleteFailed: "Koleksiyon silinemedi",
@@ -2252,7 +2224,8 @@ const tr = {
       deleteServerTitle: "MCP sunucusunu sil",
       deleteServerWarning:
         "{{name}} ile bağlı tüm araçlar kaldırılacak. Silme işlemi geri alınamaz.",
-      deleteServerConfirm: "Bu MCP sunucusunu silmek istediğinizden emin misiniz?",
+      deleteServerConfirm:
+        "Bu MCP sunucusunu silmek istediğinizden emin misiniz?",
       delete: "Sil",
       manageServerModal: "MCP Sunucusunu Yönet",
       addServerModal: "MCP Sunucusu Ekle",
@@ -2308,7 +2281,8 @@ const tr = {
         "olarak işaretlenen öğeler için önce grafik oluşturulmalıdır. Birini seçip",
       buildTab: "Oluştur",
       collectionDocuments: "Koleksiyondaki Belgeler",
-      noDocumentsForBuild: "Bu koleksiyonda belge yok. Grafik oluşturmadan önce koleksiyona belge ekleyin.",
+      noDocumentsForBuild:
+        "Bu koleksiyonda belge yok. Grafik oluşturmadan önce koleksiyona belge ekleyin.",
       graphExplorerTab: "Grafik Gezgini",
       searchTab: "Arama",
       selectCollectionForTab:
@@ -2439,8 +2413,7 @@ const tr = {
       toastDeselected: "{{name}} seçimi kaldırıldı",
       toastDeselectFailed: "Seçim kaldırılamadı",
       toastConfigured: "Sağlayıcı başarıyla yapılandırıldı",
-      errorLoadConfig:
-        "Yapılandırma yüklenemedi. Lütfen sayfayı yenileyin.",
+      errorLoadConfig: "Yapılandırma yüklenemedi. Lütfen sayfayı yenileyin.",
       forms: {
         apiKeyLabel: "API Anahtarı",
         apiKeyPlaceholder: "API anahtarınızı girin",
@@ -2472,9 +2445,11 @@ const tr = {
         vertex: {
           credentialsFileLabel: "Kimlik Bilgileri Dosyası",
           credentialsFileRequired: "Kimlik bilgileri dosyası zorunludur",
-          credentialsPlaceholder: "Kimlik bilgilerinizi yükleyin veya yapıştırın",
+          credentialsPlaceholder:
+            "Kimlik bilgilerinizi yükleyin veya yapıştırın",
           testingCredentials: "{{name}} ile kimlik bilgileri test ediliyor...",
-          credentialsValid: "Kimlik bilgileri geçerli. Yapılandırma kaydedildi.",
+          credentialsValid:
+            "Kimlik bilgileri geçerli. Yapılandırma kaydedildi.",
           credentialsInvalid: "Geçersiz kimlik bilgileri",
           credentialsHint:
             "Google Cloud'den aldığınız <link>{{link}}</link> yükleyin veya yapıştırın.",
@@ -2535,12 +2510,15 @@ const tr = {
       toastDefaultCrawlerFailed: "Tarayıcı varsayılan olarak ayarlanamadı.",
       failedToUpdateDefault: "Varsayılan sağlayıcı güncellenemedi",
       failedToUpdateCrawler: "Tarayıcı güncellenemedi",
-      selectSearchEngine: "Web aramasını etkinleştirmek için bir arama motoru seçin.",
-      connectSearchEngine: "Web aramasını ayarlamak için bir arama motoruna bağlanın.",
+      selectSearchEngine:
+        "Web aramasını etkinleştirmek için bir arama motoru seçin.",
+      connectSearchEngine:
+        "Web aramasını ayarlamak için bir arama motoruna bağlanın.",
       currentDefault: "Mevcut Varsayılan",
       currentCrawler: "Mevcut Tarayıcı",
       setAsDefault: "Varsayılan Yap",
-      contentProvidersDescription: "Arama sonucu sayfalarının tam içeriğini okumak için kullanılır.",
+      contentProvidersDescription:
+        "Arama sonucu sayfalarının tam içeriğini okumak için kullanılır.",
       googlePseIdLabel: "Arama Motoru Kimliği (ID)",
       googlePseIdPlaceholder: "Arama motoru kimliğini girin",
       googlePseIdInstructions:
@@ -2594,7 +2572,7 @@ const tr = {
       couldNotLoad:
         "Bağlayıcılar yüklenemedi. agent-service'in çalıştığından emin olun.",
       results: "Sonuçlar",
-      noResultsFor: "\"{{searchTerm}}\" için bağlayıcı bulunamadı",
+      noResultsFor: '"{{searchTerm}}" için bağlayıcı bulunamadı',
       noConnectors: "Mevcut bağlayıcı yok.",
     },
     debug: {
@@ -2674,7 +2652,8 @@ const tr = {
         "Bağlayıcının ne sıklıkta budanacağı (saat cinsinden)",
       cannotReindexWhileActive:
         "Dizinleme devam ederken yeniden dizinleme yapılamaz",
-      resumeBeforeReindex: "Yeniden dizinlemeden önce bağlayıcıyı devam ettirin",
+      resumeBeforeReindex:
+        "Yeniden dizinlemeden önce bağlayıcıyı devam ettirin",
       fixConfigBeforeReindex:
         "Yeniden dizinlemeden önce bağlayıcı yapılandırmasını düzeltin",
       statusUpdateInProgress: "Durum güncellemesi devam ediyor",
@@ -2803,8 +2782,7 @@ const tr = {
       publicLabel: "Genel",
       privateLabel: "Özel",
       deleteScheduled: '"{{name}}" belge seti silinmek üzere planlandı',
-      deleteScheduleFailed:
-        "Belge seti silme için planlanamadı - {{error}}",
+      deleteScheduleFailed: "Belge seti silme için planlanamadı - {{error}}",
       errorPrefix: "Hata",
       introTitle: "Belge Setleri",
       introDescription:
@@ -2885,7 +2863,8 @@ const tr = {
       createServerFailed: "Sunucu oluşturulamadı",
       loadServersErrorTitle: "Discord sunucuları yüklenemedi",
       registrationKeyTitle: "Kayıt Anahtarı",
-      registrationKeyDescription: "Bu anahtar yalnızca bir kez gösterilecektir!",
+      registrationKeyDescription:
+        "Bu anahtar yalnızca bir kez gösterilecektir!",
       registrationKeyInstructions:
         "Komutu kopyalayın ve sunucunuzdaki herhangi bir metin kanalından gönderin!",
       serverConfigurations: "Sunucu Yapılandırmaları",
@@ -2923,8 +2902,7 @@ const tr = {
         "Bu işlem Discord botunuzun bağlantısını keser. Botu yeniden kullanmak için tokeni tekrar girmeniz gerekir.",
       botConfigured: "Yapılandırıldı",
       botNotConfigured: "Yapılandırılmadı",
-      deleteServerConfigsFirst:
-        "Önce sunucu yapılandırmalarını silin",
+      deleteServerConfigsFirst: "Önce sunucu yapılandırmalarını silin",
       deleteDiscordToken: "Discord Tokenini Sil",
       botConfiguredMessage: "Discord bot tokeniniz yapılandırıldı.",
       botConfiguredAt: "{{date}} tarihinde eklendi.",
@@ -2965,8 +2943,7 @@ const tr = {
       selectAgent: "Ajan seçin",
       defaultAgentOption: "Varsayılan Ajan",
       unsavedChangesTitle: "Kaydedilmemiş değişiklikleriniz var",
-      unsavedChangesDescription:
-        "Kaydetmek için Güncelle düğmesine tıklayın.",
+      unsavedChangesDescription: "Kaydetmek için Güncelle düğmesine tıklayın.",
       noChannelsTitle: "Yapılandırılmış kanal yok",
       noChannelsDescription:
         "Kanal eklemek için Discord'da !sync-channels komutunu çalıştırın.",
@@ -3155,11 +3132,9 @@ const tr = {
       failedToUpdateSettings: "Ayarlar güncellenemedi. {{error}}",
       noticeHeaderRequired: "Bildirim Başlığı zorunludur",
       noticeContentRequired: "Bildirim İçeriği zorunludur",
-      noticeConsentPromptRequired:
-        "Bildirim Onay İstemi zorunludur",
+      noticeConsentPromptRequired: "Bildirim Onay İstemi zorunludur",
       failedToUploadLogo: "Logo yüklenemedi. {{error}}",
-      appearanceSettingsSaved:
-        "Görünüm ayarları başarıyla kaydedildi!",
+      appearanceSettingsSaved: "Görünüm ayarları başarıyla kaydedildi!",
       pageDescription:
         "Uygulamanın kuruluşunuz genelinde kullanıcılara nasıl görüneceğini özelleştirin.",
       applying: "Uygulanıyor...",
@@ -3173,12 +3148,10 @@ const tr = {
       answer: "Yanıt",
       deleted: "{{id}} numaralı standart yanıt silindi",
       deleteFailed: "Standart yanıt silinemedi - {{error}}",
-      searchPlaceholder:
-        "Anahtar kelime/ifade ile standart yanıt ara...",
+      searchPlaceholder: "Anahtar kelime/ifade ile standart yanıt ara...",
       allCategories: "Tüm Kategoriler",
       noMatches: "Eşleşen standart yanıt bulunamadı...",
-      ensureCategoryAssigned:
-        "Kategoriyi ilgili",
+      ensureCategoryAssigned: "Kategoriyi ilgili",
       slackBot: "Slack Botuna",
       errorLoadingAnswers: "Standart yanıtlar yüklenirken hata oluştu",
       errorLoadingCategories:
@@ -3219,8 +3192,7 @@ const tr = {
       createFailed: "Kullanıcı grubu oluşturulamadı - {{errorMsg}}",
       nameLabel: "Ad:",
       namePlaceholder: "Kullanıcı grubu için bir ad",
-      selectConnectorsTitle:
-        "Bu grubun erişeceği özel bağlayıcıları seçin:",
+      selectConnectorsTitle: "Bu grubun erişeceği özel bağlayıcıları seçin:",
       selectConnectorsDescription:
         "Seçilen bağlayıcılar tarafından indekslenen tüm belgeler bu gruptaki kullanıcılara görünür olacaktır.",
       selectUsersTitle: "Bu gruba dahil olacak kullanıcıları seçin.",
@@ -3233,8 +3205,7 @@ const tr = {
       addUsersFailed: "Kullanıcılar gruba eklenemedi - {{errorMsg}}",
       addConnectorTitle: "Yeni Bağlayıcı Ekle",
       selectConnectorsLabel: "Bağlayıcı Seç",
-      searchConnectorsToAddPlaceholder:
-        "Eklenecek bağlayıcıları ara...",
+      searchConnectorsToAddPlaceholder: "Eklenecek bağlayıcıları ara...",
       addedConnectorsSuccess: "Bağlayıcılar gruba başarıyla eklendi",
       addConnectorsFailed: "Bağlayıcılar gruba eklenemedi - {{errorMsg}}",
       addConnectorsButton: "Bağlayıcı Ekle",
@@ -3260,8 +3231,7 @@ const tr = {
       connectorHeader: "Bağlayıcı",
       removeConnectorHeader: "Bağlayıcıyı Kaldır",
       removedConnectorSuccess: "Bağlayıcı gruptan başarıyla kaldırıldı",
-      removeConnectorFailed:
-        "Bağlayıcı gruptan kaldırılamadı - {{errorMsg}}",
+      removeConnectorFailed: "Bağlayıcı gruptan kaldırılamadı - {{errorMsg}}",
       noConnectors: "Bu grupta bağlayıcı yok...",
       documentSetsSection: "Belge Setleri",
       noDocumentSets: "Bu grupta belge seti yok...",
@@ -3279,8 +3249,7 @@ const tr = {
           "Bu alan kendi analitik aracınızı Onyx'e bağlamanızı sağlar. Analitik sağlayıcınızın web snippet'ını aşağıdaki kutuya yapıştırın, kullanım olaylarını göndermeye başlayalım.",
         fetchFailed: "Ayarlar alınamadı",
         updatedSuccess: "Özel analitik scripti başarıyla güncellendi!",
-        updateFailed:
-          'Özel analitik scripti güncellenemedi: "{{errorMsg}}"',
+        updateFailed: 'Özel analitik scripti güncellenemedi: "{{errorMsg}}"',
         scriptLabel: "Script",
         scriptDescription:
           "Özel izleme/analitik başlatmak için sayfa yüklenince çalıştırılması gereken Javascript'i belirtin.",
@@ -3347,7 +3316,8 @@ const tr = {
       scheduled: "Planlandı",
       canceled: "İptal Edildi",
       invalid: "Geçersiz",
-      invalidTooltip: "Bağlayıcı geçersiz durumda. Lütfen kimlik bilgilerini güncelleyin veya yeni bir bağlayıcı oluşturun.",
+      invalidTooltip:
+        "Bağlayıcı geçersiz durumda. Lütfen kimlik bilgilerini güncelleyin veya yeni bir bağlayıcı oluşturun.",
       none: "Yok",
       notStarted: "Başlamadı",
       deleting: "Siliniyor",
@@ -3362,7 +3332,8 @@ const tr = {
       fetchError: "Bir şeyler ters gitti :(",
     },
     customEmbedding: {
-      specifyDetails: "{{provider}} Sağlayıcısı modeli için ayrıntıları belirtin",
+      specifyDetails:
+        "{{provider}} Sağlayıcısı modeli için ayrıntıları belirtin",
       modelName: "Model Adı:",
       modelNameSubtext: "{{provider}} modelinin adı",
       modelNamePlaceholder: "örn. 'all-MiniLM-L6-v2'",
@@ -3398,9 +3369,11 @@ const tr = {
   },
   agentKnowledge: {
     title: "Bilgi",
-    description: "Bu ajanın yanıtlarını bilgilendirmek için kullanacağı bağlayıcıları ve belgeleri ekleyin.",
+    description:
+      "Bu ajanın yanıtlarını bilgilendirmek için kullanacağı bağlayıcıları ve belgeleri ekleyin.",
     useKnowledge: "Bilgiyi Kullan",
-    useKnowledgeDescription: "Bu ajanın yanıtlarını bilgilendirmek için bu belgelere başvurmasına izin verin.",
+    useKnowledgeDescription:
+      "Bu ajanın yanıtlarını bilgilendirmek için bu belgelere başvurmasına izin verin.",
     documentProcessing: "Belge İşleme",
     knowledgeGraph: "Bilgi Grafiği",
     vectorSimilaritySearch: "Vektör benzerlik araması",
@@ -3410,9 +3383,12 @@ const tr = {
     searchCollections: "Koleksiyonlarda ara...",
     searchPlaceholder: "Ara...",
     noItemsAvailable: "Mevcut öğe yok.",
-    noDatasourcesFound: "Veri kaynağı bulunamadı. Veri Kaynakları sayfasından bir veri kaynağı ekleyin.",
-    noKnowledgeGraphCollections: "Oluşturulmuş bilgi grafiği olan koleksiyon yok. Önce Bilgi Grafiği sayfasından bir bilgi grafiği oluşturun.",
-    addKnowledgeDescription: "Bu ajan için kullanılacak belgeleri veya bağlı kaynakları ekleyin.",
+    noDatasourcesFound:
+      "Veri kaynağı bulunamadı. Veri Kaynakları sayfasından bir veri kaynağı ekleyin.",
+    noKnowledgeGraphCollections:
+      "Oluşturulmuş bilgi grafiği olan koleksiyon yok. Önce Bilgi Grafiği sayfasından bir bilgi grafiği oluşturun.",
+    addKnowledgeDescription:
+      "Bu ajan için kullanılacak belgeleri veya bağlı kaynakları ekleyin.",
     knowledgeSourcesSelected: "{{count}} bilgi kaynağı seçildi",
     knowledgeSourcesSelected_plural: "{{count}} bilgi kaynağı seçildi",
     viewEdit: "Görüntüle / Düzenle",
@@ -3455,16 +3431,19 @@ const tr = {
     deleteProviderError: "Sağlayıcı silinemedi: {{error}}",
     unknownError: "Bilinmeyen hata",
     autoUpdate: "Otomatik Güncelleme",
-    autoUpdateDescription: "Yeni modeller yayınlandığında mevcut modelleri otomatik olarak güncelleyin. Çoğu ekip için önerilir.",
+    autoUpdateDescription:
+      "Yeni modeller yayınlandığında mevcut modelleri otomatik olarak güncelleyin. Çoğu ekip için önerilir.",
     availableModels: "Mevcut Modeller",
-    selectModelsSubtext: "Bu sağlayıcı için kullanılabilir olmasını istediğiniz modelleri seçin.",
+    selectModelsSubtext:
+      "Bu sağlayıcı için kullanılabilir olmasını istediğiniz modelleri seçin.",
     noModelsFound: "Model bulunamadı",
     selectAllModels: "Tüm modelleri seç",
     clearAll: "Tümünü temizle ({{count}})",
     default: "Varsayılan",
     setAsDefaultModel: "Varsayılan yap",
     displayNameLabel: "Görünen Ad",
-    displayNameSubtext: "Arayüzde seçerken bu sağlayıcıyı tanımlamak için kullanabileceğiniz bir ad.",
+    displayNameSubtext:
+      "Arayüzde seçerken bu sağlayıcıyı tanımlamak için kullanabileceğiniz bir ad.",
     displayNamePlaceholder: "Görünen Ad",
     fetchAvailableModels: "Mevcut Modelleri Getir",
     unknownErrorOccurred: "Bilinmeyen bir hata oluştu",
@@ -3472,26 +3451,32 @@ const tr = {
     llmProviderObjectName: "LLM Sağlayıcısı",
     agentWhitelistLabel: "Ajan İzin Listesi",
     agentWhitelistSubtext: "Bu sağlayıcıyı belirli ajanlara kısıtlayın.",
-    agentWhitelistDisabled: "Bu LLM Sağlayıcısı herkese açık ve tüm ajanlara sunulmaktadır.",
+    agentWhitelistDisabled:
+      "Bu LLM Sağlayıcısı herkese açık ve tüm ajanlara sunulmaktadır.",
     defaultModelLabel: "Varsayılan Model",
-    defaultModelSubtext: "Aksi belirtilmedikçe bu sağlayıcı için varsayılan olarak kullanılacak model.",
+    defaultModelSubtext:
+      "Aksi belirtilmedikçe bu sağlayıcı için varsayılan olarak kullanılacak model.",
     defaultModelPlaceholder: "Örn. gpt-4o",
-    fetchModelsFirst: "Önce modelleri getirin, ardından kullanılabilir hale getirmek istediğiniz modelleri seçebileceksiniz.",
+    fetchModelsFirst:
+      "Önce modelleri getirin, ardından kullanılabilir hale getirmek istediğiniz modelleri seçebileceksiniz.",
     awsRegionLabel: "AWS Bölgesi",
     awsRegionSubtext: "Amazon Bedrock modellerinizin barındırıldığı bölge.",
     authMethod: "Kimlik Doğrulama Yöntemi",
-    authMethodDescription: "Onyx'in Bedrock ile nasıl kimlik doğrulayacağını seçin.",
+    authMethodDescription:
+      "Onyx'in Bedrock ile nasıl kimlik doğrulayacağını seçin.",
     iamRole: "IAM Rolü",
     accessKey: "Erişim Anahtarı",
     longTermApiKey: "Uzun Vadeli API Anahtarı",
-    iamRoleDescription: "AWS ortamınıza eklenmiş IAM rolünü kullanır. EC2, ECS, Lambda veya diğer AWS servisleri için önerilir.",
+    iamRoleDescription:
+      "AWS ortamınıza eklenmiş IAM rolünü kullanır. EC2, ECS, Lambda veya diğer AWS servisleri için önerilir.",
     awsAccessKeyId: "AWS Erişim Anahtarı ID",
     awsSecretAccessKey: "AWS Gizli Erişim Anahtarı",
     awsLongTermApiKey: "AWS Bedrock Uzun Vadeli API Anahtarı",
     awsLongTermApiKeyPlaceholder: "Uzun vadeli API anahtarınız",
     selectAwsRegion: "Bir AWS bölgesi seçin.",
-    completeAuthMethod: "\"Kimlik Doğrulama Yöntemi\" bölümünü tamamlayın.",
-    apiFetchRequirements: "Modelleri getirmek için API Base ve API Key gereklidir",
+    completeAuthMethod: '"Kimlik Doğrulama Yöntemi" bölümünü tamamlayın.',
+    apiFetchRequirements:
+      "Modelleri getirmek için API Base ve API Key gereklidir",
     fetchModelsFailed: "Modeller getirilemedi",
     apiKeyRequired: "API Anahtarı gereklidir",
     apiBaseRequired: "API Base URL gereklidir",
@@ -3500,13 +3485,16 @@ const tr = {
     enterApiKeyFirst: "Önce API anahtarınızı girin.",
     enterApiBaseFirst: "API base URL'sini girin.",
     ollamaApiKeyLabel: "API Anahtarı (İsteğe Bağlı)",
-    ollamaNoModels: "Model bulunamadı. Lütfen geçerli bir API base URL'si sağlayın.",
+    ollamaNoModels:
+      "Model bulunamadı. Lütfen geçerli bir API base URL'si sağlayın.",
     targetUriRequired: "Hedef URI gereklidir",
-    targetUriInvalid: "Hedef URI, api-version sorgu parametresi olan ve yolda bir dağıtım adı veya /openai/responses içeren geçerli bir URL olmalıdır",
+    targetUriInvalid:
+      "Hedef URI, api-version sorgu parametresi olan ve yolda bir dağıtım adı veya /openai/responses içeren geçerli bir URL olmalıdır",
     targetUriLabel: "Hedef URI",
     credentialsRequired: "Kimlik bilgileri dosyası gereklidir",
     credentialsLabel: "Kimlik Bilgileri Dosyası",
-    credentialsSubtext: "Google Cloud servis hesabı JSON kimlik bilgileri dosyanızı yükleyin.",
+    credentialsSubtext:
+      "Google Cloud servis hesabı JSON kimlik bilgileri dosyanızı yükleyin.",
     locationLabel: "Konum",
     providerNameRequired: "Sağlayıcı Adı gereklidir",
     modelNameRequired: "Model adı gereklidir",
@@ -3517,10 +3505,12 @@ const tr = {
     customConfigKey: "Anahtar",
     customConfigValue: "Değer",
     addNew: "Yeni Ekle",
-    customDefaultModelSubtext: "Bu sağlayıcı için varsayılan olarak kullanılacak model. Yukarıda listelenen modellerden biri olmalıdır.",
+    customDefaultModelSubtext:
+      "Bu sağlayıcı için varsayılan olarak kullanılacak model. Yukarıda listelenen modellerden biri olmalıdır.",
     systemDefault: "Sistem Varsayılanı",
     userDefault: "Kullanıcı Varsayılanı",
-    fillInAsNeeded: "Aşağıdakileri gerektiği gibi doldurun. Hangi alanların gerekli olduğunu belirlemek için yukarıda belirtilen sağlayıcının LiteLLM belgelerine bakın.",
+    fillInAsNeeded:
+      "Aşağıdakileri gerektiği gibi doldurun. Hangi alanların gerekli olduğunu belirlemek için yukarıda belirtilen sağlayıcının LiteLLM belgelerine bakın.",
     optionalApiKey: "[İsteğe Bağlı] API Anahtarı",
     optionalApiBase: "[İsteğe Bağlı] API Base",
     optionalApiVersion: "[İsteğe Bağlı] API Sürümü",
@@ -3530,8 +3520,10 @@ const tr = {
     startNewSession: "Yeni Oturum Başlat",
   },
   fileUpload: {
-    dragAndDropMultiple: "Dosyaları buraya sürükleyip bırakın veya dosyaları seçmek için tıklayın",
-    dragAndDropSingle: "Dosyayı buraya sürükleyip bırakın veya dosyayı seçmek için tıklayın",
+    dragAndDropMultiple:
+      "Dosyaları buraya sürükleyip bırakın veya dosyaları seçmek için tıklayın",
+    dragAndDropSingle:
+      "Dosyayı buraya sürükleyip bırakın veya dosyayı seçmek için tıklayın",
     selectedFiles: "Seçili Dosyalar",
     selectedFile: "Seçili Dosya",
   },
@@ -3593,7 +3585,8 @@ const tr = {
     headerValue: "Başlık Değeri",
     addHeader: "Başlık Ekle",
     onlyForYourAccount: "Yalnızca kendi hesabınız için",
-    credentialsNotShared: "Aşağıdaki kimlik bilgileri kuruluşunuzla paylaşılmayacak.",
+    credentialsNotShared:
+      "Aşağıdaki kimlik bilgileri kuruluşunuzla paylaşılmayacak.",
   },
   openApiPage: {
     authSaved: "kimlik doğrulaması başarıyla {{action}}.",
@@ -3617,16 +3610,21 @@ const tr = {
     noSummary: "Özet sağlanmadı",
     deleteTitle: "OpenAPI eylemini sil",
     deleteButton: "Sil",
-    deleteConfirmText: "Bu işlem {{name}} adlı OpenAPI eylemini ve yapılandırmasını kalıcı olarak silecek.",
-    deleteConfirmQuestion: "Bu OpenAPI eylemini silmek istediğinizden emin misiniz?",
+    deleteConfirmText:
+      "Bu işlem {{name}} adlı OpenAPI eylemini ve yapılandırmasını kalıcı olarak silecek.",
+    deleteConfirmQuestion:
+      "Bu OpenAPI eylemini silmek istediğinizden emin misiniz?",
   },
   openAPIAuth: {
-    oauthConfigLoadError: "Mevcut OAuth yapılandırması yüklenemedi. Güncellemek için bilgileri yeniden girin.",
+    oauthConfigLoadError:
+      "Mevcut OAuth yapılandırması yüklenemedi. Güncellemek için bilgileri yeniden girin.",
     loadingConfig: "Mevcut yapılandırma yükleniyor...",
     authMethodLabel: "Kimlik Doğrulama Yöntemi",
     selectMethod: "Yöntem seçin",
-    oauthDescription: "Her kullanıcı kendi kimlik bilgileriyle OAuth üzerinden kimlik doğrular.",
-    ptOauthDescription: "Onyx'i doğrulamak için kullanılan kullanıcının OAuth erişim jetonunu iletin.",
+    oauthDescription:
+      "Her kullanıcı kendi kimlik bilgileriyle OAuth üzerinden kimlik doğrular.",
+    ptOauthDescription:
+      "Onyx'i doğrulamak için kullanılan kullanıcının OAuth erişim jetonunu iletin.",
     customHeaderDescription: "Her istekle birlikte özel başlıklar gönderin.",
     authorizationUrlLabel: "Yetkilendirme URL'si",
     tokenUrlLabel: "Token URL'si",
@@ -3637,17 +3635,22 @@ const tr = {
     scopesLabel: "Kapsamlar",
     optional: "İsteğe bağlı",
     scopesPlaceholder: "örn. repo, user",
-    scopesDescription: "İstenecek OAuth kapsamlarının virgülle ayrılmış listesi.",
-    oauthPassthroughNote: "OAuth geçişi yalnızca OIDC veya OAuth kimlik doğrulamasını etkinleştirirseniz kullanılabilir.",
+    scopesDescription:
+      "İstenecek OAuth kapsamlarının virgülle ayrılmış listesi.",
+    oauthPassthroughNote:
+      "OAuth geçişi yalnızca OIDC veya OAuth kimlik doğrulamasını etkinleştirirseniz kullanılabilir.",
     useRedirectUri: "Yönlendirme URI'sini kullanın:",
     copyRedirectUri: "Yönlendirme URI'sini kopyala",
     customHeadersTitle: "Kimlik Doğrulama Başlıkları",
-    customHeadersDescription: "Bu eylemin API uç noktasına gönderilen tüm istekler için özel başlıklar belirtin.",
+    customHeadersDescription:
+      "Bu eylemin API uç noktasına gönderilen tüm istekler için özel başlıklar belirtin.",
     headerKey: "Başlık",
     headerValue: "Değer",
     addHeader: "Başlık Ekle",
-    passthroughText: "Paylaşılan kimlik sağlayıcısı olan hizmetler için geçişi kullanın.",
-    passthroughDescription: "Onyx, kullanıcının OAuth erişim jetonunu doğrudan Authorization başlığı olarak sunucuya iletecektir. Sunucunun aynı sağlayıcıyla kimlik doğrulamayı desteklediğinden emin olun.",
+    passthroughText:
+      "Paylaşılan kimlik sağlayıcısı olan hizmetler için geçişi kullanın.",
+    passthroughDescription:
+      "Onyx, kullanıcının OAuth erişim jetonunu doğrudan Authorization başlığı olarak sunucuya iletecektir. Sunucunun aynı sağlayıcıyla kimlik doğrulamayı desteklediğinden emin olun.",
     cancel: "İptal",
     connecting: "Bağlanıyor...",
     connect: "Bağlan",
@@ -3669,7 +3672,8 @@ const tr = {
     formatDefinition: "Tanımı biçimlendir",
     schemaPlaceholder: "OpenAPI şemanızı buraya girin",
     noSummary: "Özet sağlanmadı",
-    urlFoundInSchema: "Şemada URL bulundu. Yalnızca güvendiğiniz sunuculara bağlanın.",
+    urlFoundInSchema:
+      "Şemada URL bulundu. Yalnızca güvendiğiniz sunuculara bağlanın.",
     noActionsFound: "Eylem Bulunamadı",
     noActionsDescription: "Eylemleri önizlemek için OpenAPI şeması girin.",
     authenticatedAndEnabled: "Kimlik Doğrulandı ve Etkin",
@@ -3692,9 +3696,11 @@ const tr = {
     publishTitle: "Bu Ajanı Yayınla",
     publishDescription: "Bu ajanı kurumunuzdaki herkese erişilebilir kılın.",
     featureTitle: "Bu Ajanı Öne Çıkar",
-    featureDescription: "Bu ajanı ajanlara göz at listesinin en üstüne koyun ve erişimi olan yeni kullanıcılar için otomatik olarak kenar çubuğuna sabitleyin.",
+    featureDescription:
+      "Bu ajanı ajanlara göz at listesinin en üstüne koyun ve erişimi olan yeni kullanıcılar için otomatik olarak kenar çubuğuna sabitleyin.",
     addLabels: "Etiket ekle...",
-    labelsDescription: "İnsanların bu ajanı daha kolay keşfetmesi için etiketler ve kategoriler ekleyin.",
+    labelsDescription:
+      "İnsanların bu ajanı daha kolay keşfetmesi için etiketler ve kategoriler ekleyin.",
     copyLink: "Bağlantıyı Kopyala",
     cancel: "İptal",
   },
@@ -3752,7 +3758,8 @@ const tr = {
   },
   usageReports: {
     generateTitle: "Kullanım Raporları Oluştur",
-    generateDescription: "Çalışma alanındaki kullanıcılar için kullanım istatistikleri oluşturun.",
+    generateDescription:
+      "Çalışma alanındaki kullanıcılar için kullanım istatistikleri oluşturun.",
     pickDateRange: "Tarih aralığı seçin",
     last7Days: "Son 7 gün",
     last30Days: "Son 30 gün",
@@ -3761,7 +3768,8 @@ const tr = {
     generating: "Oluşturuluyor...",
     generateReport: "Rapor Oluştur",
     generatingWait: "Rapor şu anda oluşturuluyor. Lütfen bekleyin...",
-    backgroundGeneration: "Rapor oluşturma arka planda çalışır. Hazır olduğunda indirmek için aşağıdaki \"Önceki Raporlar\" bölümünü kontrol edin.",
+    backgroundGeneration:
+      'Rapor oluşturma arka planda çalışır. Hazır olduğunda indirmek için aşağıdaki "Önceki Raporlar" bölümünü kontrol edin.',
     reportGenerationInProgress: "Rapor Oluşturma Devam Ediyor",
     previousReports: "Önceki Raporlar",
     report: "Rapor",
@@ -3771,18 +3779,21 @@ const tr = {
     allTimePeriod: "Tüm zamanlar",
     autoGenerated: "Otomatik oluşturuldu",
     somethingWentWrong: "Bir şeyler yanlış gitti.",
-    reportLongTime: "Rapor oluşturma beklenenden uzun sürüyor. Rapor arka planda oluşturulmaya devam edecek. Lütfen birkaç dakika sonra tekrar kontrol edin.",
+    reportLongTime:
+      "Rapor oluşturma beklenenden uzun sürüyor. Rapor arka planda oluşturulmaya devam edecek. Lütfen birkaç dakika sonra tekrar kontrol edin.",
   },
   performanceCharts: {
     usageTitle: "Kullanım",
     usageOverTime: "Zaman içinde kullanım",
     failedFetchQuery: "Sorgu verileri alınamadı...",
     agentAnalyticsTitle: "Ajan Analitiği",
-    messagesPerDay: "Seçili ajan için günlük mesajlar ve benzersiz kullanıcılar",
+    messagesPerDay:
+      "Seçili ajan için günlük mesajlar ve benzersiz kullanıcılar",
     selectAgent: "Görüntülemek için bir ajan seçin",
     searchAgents: "Ajan ara...",
     selectAgentToView: "Analitikleri görüntülemek için bir ajan seçin",
-    noDataForAgent: "Belirtilen zaman aralığında seçili ajan için veri bulunamadı",
+    noDataForAgent:
+      "Belirtilen zaman aralığında seçili ajan için veri bulunamadı",
     failedFetchData: "Veriler alınamadı...",
     slackChannelTitle: "Slack Kanalı",
     totalVsAutoResolved: "Toplam Sorgular vs Otomatik Çözülenler",
@@ -3796,16 +3807,20 @@ const tr = {
   },
   appearanceTheme: {
     applicationDisplayName: "Uygulama Görünen Adı",
-    applicationDisplayNameDesc: "Bu ad uygulama genelinde gösterilecek ve arayüzdeki \"Onyx\" ifadesinin yerini alacak.",
+    applicationDisplayNameDesc:
+      'Bu ad uygulama genelinde gösterilecek ve arayüzdeki "Onyx" ifadesinin yerini alacak.',
     logoDisplayStyle: "Logo Görüntüleme Stili",
     logoAndName: "Logo & Ad",
     logoOnly: "Yalnızca Logo",
     nameOnly: "Yalnızca Ad",
-    logoDisplayStyleDesc: "Kenar çubuğunun üstünde neyin görüntüleneceğini seçin. Bir logo veya uygulama adı ekledikten sonra seçenekler kullanılabilir hale gelir.",
+    logoDisplayStyleDesc:
+      "Kenar çubuğunun üstünde neyin görüntüleneceğini seçin. Bir logo veya uygulama adı ekledikten sonra seçenekler kullanılabilir hale gelir.",
     logoOnly_tooltip: "Yalnızca uygulama logonuzu gösterin.",
-    logoOnly_disabled_tooltip: "Bu seçeneği etkinleştirmek için bir logo yükleyin.",
+    logoOnly_disabled_tooltip:
+      "Bu seçeneği etkinleştirmek için bir logo yükleyin.",
     nameOnly_tooltip: "Yalnızca uygulama adınızı gösterin.",
-    nameOnly_disabled_tooltip: "Bu seçeneği etkinleştirmek için bir uygulama adı girin.",
+    nameOnly_disabled_tooltip:
+      "Bu seçeneği etkinleştirmek için bir uygulama adı girin.",
     logoAndName_tooltip: "Hem uygulama logonuzu hem de adınızı gösterin.",
     applicationLogo: "Uygulama Logosu",
     update: "Güncelle",
@@ -3813,14 +3828,17 @@ const tr = {
     greetingMessageDesc: "Ana sayfaya kısa bir mesaj ekleyin.",
     chatHeaderText: "Sohbet Başlık Metni",
     chatFooterText: "Sohbet Alt Bilgi Metni",
-    chatFooterDesc: "Sorumluluk reddi veya ek bilgi için işaretleme içeriği ekleyin.",
+    chatFooterDesc:
+      "Sorumluluk reddi veya ek bilgi için işaretleme içeriği ekleyin.",
     addMarkdownContent: "İşaretleme içeriği ekleyin",
     showFirstVisitNotice: "İlk Ziyaret Bildirimi Göster",
-    showFirstVisitNoticeDesc: "Yeni kullanıcılara ilk ziyaretlerinde tek seferlik açılır pencere gösterin.",
+    showFirstVisitNoticeDesc:
+      "Yeni kullanıcılara ilk ziyaretlerinde tek seferlik açılır pencere gösterin.",
     noticeHeader: "Bildirim Başlığı",
     noticeContent: "Bildirim İçeriği",
     requireConsentToNotice: "Bildirim İçin Onay Gerekli",
-    requireConsentDesc: "Kullanıcının uygulamaya erişmeden önce bildirimi okuyup kabul etmesini zorunlu kılın.",
+    requireConsentDesc:
+      "Kullanıcının uygulamaya erişmeden önce bildirimi okuyup kabul etmesini zorunlu kılın.",
     noticeConsentPrompt: "Bildirim Onay İstemi",
     chatFooterPlaceholder: "Sohbet Alt Bilgi İçeriği",
     chatHeaderPlaceholder: "Sohbet Başlık İçeriği",
@@ -3834,23 +3852,29 @@ const tr = {
     assistant: "Asistan",
     documentSets: "Belge Setleri",
     actions: "İşlemler",
-    noChannelConfigs: "Kanala özel yapılandırma yok. Belirli kanallar için davranışı özelleştirmek amacıyla yeni bir yapılandırma ekleyin.",
-    deleteSuccess: "Slack bot yapılandırması \"{{id}}\" silindi",
+    noChannelConfigs:
+      "Kanala özel yapılandırma yok. Belirli kanallar için davranışı özelleştirmek amacıyla yeni bir yapılandırma ekleyin.",
+    deleteSuccess: 'Slack bot yapılandırması "{{id}}" silindi',
     deleteError: "Slack bot yapılandırması silinemedi - {{error}}",
     defaultConfigBadge: "Varsayılan Yapılandırma",
-    defaultConfigDesc: "Bu varsayılan yapılandırma, Slack çalışma alanınızdaki tüm kanallara ve direkt mesajlara (DM) uygulanacaktır.",
+    defaultConfigDesc:
+      "Bu varsayılan yapılandırma, Slack çalışma alanınızdaki tüm kanallara ve direkt mesajlara (DM) uygulanacaktır.",
     disableDefaultConfig: "Varsayılan Yapılandırmayı Devre Dışı Bırak",
-    disableDefaultWarning: "Uyarı: Varsayılan yapılandırmanın devre dışı bırakılması, OnyxBot'un Slack kanallarında açıkça yapılandırılmadığı sürece yanıt vermeyeceği anlamına gelir. Ayrıca OnyxBot DM'lere de yanıt vermeyecektir.",
+    disableDefaultWarning:
+      "Uyarı: Varsayılan yapılandırmanın devre dışı bırakılması, OnyxBot'un Slack kanallarında açıkça yapılandırılmadığı sürece yanıt vermeyeceği anlamına gelir. Ayrıca OnyxBot DM'lere de yanıt vermeyecektir.",
     slackChannelName: "Slack Kanal Adı",
     slackChannelPlaceholder: "Kanal adını girin (örn. genel, destek)",
     slackChannelSubtext: "Slack kanalının adını girin (# sembolü olmadan)",
     knowledgeSource: "Bilgi Kaynağı",
     allPublicKnowledge: "Tüm Genel Bilgi",
-    allPublicKnowledgeDesc: "OnyxBot'un tüm genel bağlayıcılardan gelen bilgilere dayanarak yanıt vermesini sağlayın",
+    allPublicKnowledgeDesc:
+      "OnyxBot'un tüm genel bağlayıcılardan gelen bilgilere dayanarak yanıt vermesini sağlayın",
     specificDocumentSets: "Belirli Belge Setleri",
-    specificDocumentSetsDesc: "Soruları yanıtlamak için hangi belgelerin kullanılacağını kontrol edin",
+    specificDocumentSetsDesc:
+      "Soruları yanıtlamak için hangi belgelerin kullanılacağını kontrol edin",
     searchAgent: "Arama Ajanı",
-    searchAgentDesc: "Hem belgeleri hem de soruları yanıtlamak için kullanılacak istemi kontrol edin",
+    searchAgentDesc:
+      "Hem belgeleri hem de soruları yanıtlamak için kullanılacak istemi kontrol edin",
     nonSearchAgent: "Arama Dışı Ajan",
     nonSearchAgentDesc: "Belge kullanmayan bir ajanla sohbet edin",
     searchConfig: "Arama Yapılandırması",
@@ -3859,17 +3883,22 @@ const tr = {
     answerTypeStandard: "Standart",
     answerTypeDetailed: "Ayrıntılı",
     onlyRespondIfCitations: "Yalnızca alıntılar bulunursa yanıt ver",
-    onlyRespondIfCitationsTooltip: "Ayarlanırsa, yalnızca modelin başarıyla alıntı ürettiği sorulara yanıt verilecektir",
+    onlyRespondIfCitationsTooltip:
+      "Ayarlanırsa, yalnızca modelin başarıyla alıntı ürettiği sorulara yanıt verilecektir",
     generalConfig: "Genel Yapılandırma",
     showContinueInWebUI: "Web Arayüzünde Devam Et düğmesini göster",
-    showContinueInWebUITooltip: "Ayarlanırsa, kullanıcının konuşmayı Onyx Web Arayüzünde devam ettirmesine olanak tanıyan bir düğme görüntülenecektir",
-    stillNeedHelp: "\"Hâlâ yardıma mı ihtiyacınız var?\" düğmesi ekle",
+    showContinueInWebUITooltip:
+      "Ayarlanırsa, kullanıcının konuşmayı Onyx Web Arayüzünde devam ettirmesine olanak tanıyan bir düğme görüntülenecektir",
+    stillNeedHelp: '"Hâlâ yardıma mı ihtiyacınız var?" düğmesi ekle',
     onlyRespondToQuestions: "Yalnızca sorulara yanıt ver",
-    onlyRespondToQuestionsTooltip: "Ayarlanırsa, OnyxBot yalnızca soru işareti içeren mesajlara yanıt verecektir",
+    onlyRespondToQuestionsTooltip:
+      "Ayarlanırsa, OnyxBot yalnızca soru işareti içeren mesajlara yanıt verecektir",
     respondTagOnly: "Yalnızca @OnyxBot Etiketine Yanıt Ver",
-    respondTagOnlyTooltip: "Ayarlanırsa, OnyxBot yalnızca doğrudan etiketlendiğinde yanıt verecektir",
+    respondTagOnlyTooltip:
+      "Ayarlanırsa, OnyxBot yalnızca doğrudan etiketlendiğinde yanıt verecektir",
     respondToBots: "Bot mesajlarına yanıt ver",
-    respondToBotsTooltip: "Ayarlanmazsa, OnyxBot bot mesajlarını her zaman yok sayacaktır",
+    respondToBotsTooltip:
+      "Ayarlanmazsa, OnyxBot bot mesajlarını her zaman yok sayacaktır",
     respondEphemeral: "Kullanıcıya özel (geçici) mesajla yanıt ver",
     privacyAlert: "Gizlilik Uyarısı",
     relevantConnectors: "İlgili Bağlayıcılar:",
@@ -3878,26 +3907,41 @@ const tr = {
     viewAll: "Tümünü görüntüle ",
     documentSetsLabel: "belge setleri",
     agentsLabel: "ajanlar",
-    selectDocSetsLabel: "OnyxBot'un Slack'ta soruları yanıtlarken kullanacağı belge setlerini seçin.",
-    selectSearchAgentLabel: "OnyxBot'un Slack'ta soruları yanıtlarken kullanacağı arama özellikli ajanı seçin.",
-    selectNonSearchAgentLabel: "OnyxBot'un Slack'ta soruları yanıtlarken kullanacağı arama dışı ajanı seçin.",
-    syncConnectorsNote: "Not: Bazı ajanlarınızın belge setlerinde otomatik senkronize bağlantıları var. Bu ajanları seçemezsiniz çünkü Slack'ta sorulara yanıt veremezler.",
-    stillNeedHelpTooltip: "OnyxBot'un yanıtı, kullanıcıya hâlâ yardıma ihtiyaç duyup duymadığını soran bir düğme içerecektir.",
-    configureStillNeedHelp: "Hâlâ Yardıma İhtiyacınız Var mı? Düğmesini Yapılandır",
-    optionalUsersGroupsTag: "(İsteğe Bağlı) Etiketlenecek Kullanıcılar / Gruplar",
-    usersGroupsTagSubtext: "Kullanıcı 'Hâlâ yardıma ihtiyacım var?' düğmesine tıkladığında etiketlenmesi gereken Slack kullanıcıları / grupları. E-posta sağlanmazsa kimseyi etiketlemeyiz ve yalnızca orijinal mesaja 🆘 emojisiyle tepki veririz.",
-    userEmailGroupPlaceholder: "Kullanıcı e-postası veya kullanıcı grubu adı...",
-    optionalRespondCertainUsers: "(İsteğe Bağlı) Belirli Kullanıcılara / Gruplara Yanıt Ver",
-    respondCertainUsersSubtext: "Belirtilirse, OnyxBot yanıtları yalnızca bu listedeki üyeler veya gruplara görünür olacaktır.",
-    respondEphemeralTooltip: "Ayarlanırsa, OnyxBot yalnızca kullanıcıya özel (geçici) mesajla yanıt verir. Yukarıda 'Arama' Ajanı da seçtiyseniz, bu seçeneği işaretlemek kullanıcının özel belgelerini sorgularında kullanılabilir hale getirir.",
-    privacyAlertDesc: "Lütfen dikkat edin: Özel (geçici) yanıt seçilmemişse, seçilen belge setlerindeki yalnızca genel belgeler kullanıcı sorgularına erişilebilir olacaktır. Özel (geçici) yanıt seçilmişse, kullanıcı sorguları kullanıcının önceden erişim izni verilmiş belgelerden de yararlanabilir. Kullanıcıların yanıtı kanaldaki diğerleriyle paylaşabileceğini unutmayın.",
+    selectDocSetsLabel:
+      "OnyxBot'un Slack'ta soruları yanıtlarken kullanacağı belge setlerini seçin.",
+    selectSearchAgentLabel:
+      "OnyxBot'un Slack'ta soruları yanıtlarken kullanacağı arama özellikli ajanı seçin.",
+    selectNonSearchAgentLabel:
+      "OnyxBot'un Slack'ta soruları yanıtlarken kullanacağı arama dışı ajanı seçin.",
+    syncConnectorsNote:
+      "Not: Bazı ajanlarınızın belge setlerinde otomatik senkronize bağlantıları var. Bu ajanları seçemezsiniz çünkü Slack'ta sorulara yanıt veremezler.",
+    stillNeedHelpTooltip:
+      "OnyxBot'un yanıtı, kullanıcıya hâlâ yardıma ihtiyaç duyup duymadığını soran bir düğme içerecektir.",
+    configureStillNeedHelp:
+      "Hâlâ Yardıma İhtiyacınız Var mı? Düğmesini Yapılandır",
+    optionalUsersGroupsTag:
+      "(İsteğe Bağlı) Etiketlenecek Kullanıcılar / Gruplar",
+    usersGroupsTagSubtext:
+      "Kullanıcı 'Hâlâ yardıma ihtiyacım var?' düğmesine tıkladığında etiketlenmesi gereken Slack kullanıcıları / grupları. E-posta sağlanmazsa kimseyi etiketlemeyiz ve yalnızca orijinal mesaja 🆘 emojisiyle tepki veririz.",
+    userEmailGroupPlaceholder:
+      "Kullanıcı e-postası veya kullanıcı grubu adı...",
+    optionalRespondCertainUsers:
+      "(İsteğe Bağlı) Belirli Kullanıcılara / Gruplara Yanıt Ver",
+    respondCertainUsersSubtext:
+      "Belirtilirse, OnyxBot yanıtları yalnızca bu listedeki üyeler veya gruplara görünür olacaktır.",
+    respondEphemeralTooltip:
+      "Ayarlanırsa, OnyxBot yalnızca kullanıcıya özel (geçici) mesajla yanıt verir. Yukarıda 'Arama' Ajanı da seçtiyseniz, bu seçeneği işaretlemek kullanıcının özel belgelerini sorgularında kullanılabilir hale getirir.",
+    privacyAlertDesc:
+      "Lütfen dikkat edin: Özel (geçici) yanıt seçilmemişse, seçilen belge setlerindeki yalnızca genel belgeler kullanıcı sorgularına erişilebilir olacaktır. Özel (geçici) yanıt seçilmişse, kullanıcı sorguları kullanıcının önceden erişim izni verilmiş belgelerden de yararlanabilir. Kullanıcıların yanıtı kanaldaki diğerleriyle paylaşabileceğini unutmayın.",
     update: "Güncelle",
     create: "Oluştur",
     cancel: "İptal",
-    autoSyncDocs: "Bu belge setleri otomatik senkronize edilen belgeler içerdiğinden eklenemez:",
-    deletedConfig: "Slack bot yapılandırması \"{{id}}\" silindi",
+    autoSyncDocs:
+      "Bu belge setleri otomatik senkronize edilen belgeler içerdiğinden eklenemez:",
+    deletedConfig: 'Slack bot yapılandırması "{{id}}" silindi',
     failedDeleteConfig: "Slack bot yapılandırması silinemedi - {{errorMsg}}",
-    removedDocumentSets: "Seçiminizden bir veya daha fazla belge seti kaldırıldı çünkü artık geçerli değiller. Lütfen yapılandırmanızı gözden geçirin ve güncelleyin.",
+    removedDocumentSets:
+      "Seçiminizden bir veya daha fazla belge seti kaldırıldı çünkü artık geçerli değiller. Lütfen yapılandırmanızı gözden geçirin ve güncelleyin.",
     incompatibleDocSets: "Bazı uyumsuz belge setleri {{visibility}}.",
     visible: "görünür",
     hidden: "gizli",
@@ -3918,28 +3962,39 @@ const tr = {
     confirmFileChanges: "Dosya Değişikliklerini Onayla",
     confirmDesc: "Bu değişiklikleri kaydettiğinizde şunlar gerçekleşecek:",
     filesWillBeRemoved: "{{count}} dosya kaldırılacak",
-    filesRemovedDesc: "Bu dosyalardan elde edilen belgeler Belge Dizininden temizlenecek",
+    filesRemovedDesc:
+      "Bu dosyalardan elde edilen belgeler Belge Dizininden temizlenecek",
     filesWillBeAdded: "{{count}} dosya eklenecek",
-    filesAddedDesc: "Yeni dosyalar yüklenecek, parçalanacak, gömülecek ve Belge Dizinine eklenecek",
+    filesAddedDesc:
+      "Yeni dosyalar yüklenecek, parçalanacak, gömülecek ve Belge Dizinine eklenecek",
     confirmAndSave: "Onayla ve Kaydet",
     errorLoadingFiles: "Dosyalar yüklenirken hata: {{message}}",
-    cannotRemoveAll: "Bir bağlayıcıdan tüm dosyalar kaldırılamaz. Bunu istiyorsanız bağlayıcıyı silin.",
-    filesUpdated: "Dosyalar başarıyla güncellendi! Belge dizini arka planda güncelleniyor. Yeni dosyalar dizine ekleniyor ve kaldırılan dosyalar arama sonuçlarından temizlenecek.",
+    cannotRemoveAll:
+      "Bir bağlayıcıdan tüm dosyalar kaldırılamaz. Bunu istiyorsanız bağlayıcıyı silin.",
+    filesUpdated:
+      "Dosyalar başarıyla güncellendi! Belge dizini arka planda güncelleniyor. Yeni dosyalar dizine ekleniyor ve kaldırılan dosyalar arama sonuçlarından temizlenecek.",
     failedToUpdate: "Dosyalar güncellenemedi",
   },
   googleCredentials: {
     uploadAppCredentials: "Uygulama kimlik bilgileri başarıyla yüklendi",
-    failedUploadAppCredentials: "Uygulama kimlik bilgileri yüklenemedi - {{errorMsg}}",
+    failedUploadAppCredentials:
+      "Uygulama kimlik bilgileri yüklenemedi - {{errorMsg}}",
     uploadServiceAccountKey: "Hizmet hesabı anahtarı başarıyla yüklendi",
-    failedUploadServiceAccountKey: "Hizmet hesabı anahtarı yüklenemedi - {{errorMsg}}",
+    failedUploadServiceAccountKey:
+      "Hizmet hesabı anahtarı yüklenemedi - {{errorMsg}}",
     pleaseUploadJson: "Lütfen bir JSON dosyası yükleyin",
     dropJsonHere: "JSON dosyasını buraya bırakın",
-    selectOrDragJson: "JSON kimlik bilgileri dosyasını seçin veya sürükleyin...",
+    selectOrDragJson:
+      "JSON kimlik bilgileri dosyasını seçin veya sürükleyin...",
     uploading: "{{fileName}} yükleniyor...",
-    curatorsCannotSetupGmail: "Küratörler Gmail kimlik bilgilerini ayarlayamaz. Gmail bağlayıcısı eklemek için lütfen bir yöneticiye başvurun.",
-    curatorsCannotSetupDrive: "Küratörler Google Drive kimlik bilgilerini ayarlayamaz. Google Drive bağlayıcısı eklemek için lütfen bir yöneticiye başvurun.",
-    connectGmailDesc: "Gmail'inizi bağlamak için kimlik bilgileri oluşturun (OAuth Uygulaması veya Hizmet Hesabı), JSON dosyasını indirin ve aşağıya yükleyin.",
-    connectDriveDesc: "Google Drive'ınızı bağlamak için kimlik bilgileri oluşturun (OAuth Uygulaması veya Hizmet Hesabı), JSON dosyasını indirin ve aşağıya yükleyin.",
+    curatorsCannotSetupGmail:
+      "Küratörler Gmail kimlik bilgilerini ayarlayamaz. Gmail bağlayıcısı eklemek için lütfen bir yöneticiye başvurun.",
+    curatorsCannotSetupDrive:
+      "Küratörler Google Drive kimlik bilgilerini ayarlayamaz. Google Drive bağlayıcısı eklemek için lütfen bir yöneticiye başvurun.",
+    connectGmailDesc:
+      "Gmail'inizi bağlamak için kimlik bilgileri oluşturun (OAuth Uygulaması veya Hizmet Hesabı), JSON dosyasını indirin ve aşağıya yükleyin.",
+    connectDriveDesc:
+      "Google Drive'ınızı bağlamak için kimlik bilgileri oluşturun (OAuth Uygulaması veya Hizmet Hesabı), JSON dosyasını indirin ve aşağıya yükleyin.",
     viewSetupInstructions: "Ayrıntılı kurulum talimatlarını görüntüle",
     deleteCredentials: "Kimlik Bilgilerini Sil",
     successDeletedCredentials: "{{type}} başarıyla silindi",
@@ -3947,29 +4002,40 @@ const tr = {
     serviceAccountKey: "hizmet hesabı anahtarı",
     appCredentials: "uygulama kimlik bilgileri",
     authenticationComplete: "Kimlik Doğrulama Tamamlandı",
-    gmailAuthenticatedDesc: "Gmail kimlik bilgileriniz başarıyla yüklendi ve doğrulandı.",
-    driveAuthenticatedDesc: "Google Drive kimlik bilgileriniz başarıyla yüklendi ve doğrulandı.",
+    gmailAuthenticatedDesc:
+      "Gmail kimlik bilgileriniz başarıyla yüklendi ve doğrulandı.",
+    driveAuthenticatedDesc:
+      "Google Drive kimlik bilgileriniz başarıyla yüklendi ve doğrulandı.",
     revokeAccess: "Erişimi İptal Et",
     gmailAuthentication: "Gmail Kimlik Doğrulaması",
     driveAuthentication: "Google Drive Kimlik Doğrulaması",
-    completeStep1Gmail: "Kimlik doğrulamaya devam etmeden önce lütfen OAuth kimlik bilgilerini veya Hizmet Hesabı anahtarını yükleyerek 1. Adımı tamamlayın.",
-    completeStep1Drive: "Kimlik doğrulamaya devam etmeden önce lütfen OAuth kimlik bilgilerini veya Hizmet Hesabı anahtarını yükleyerek 1. Adımı tamamlayın.",
+    completeStep1Gmail:
+      "Kimlik doğrulamaya devam etmeden önce lütfen OAuth kimlik bilgilerini veya Hizmet Hesabı anahtarını yükleyerek 1. Adımı tamamlayın.",
+    completeStep1Drive:
+      "Kimlik doğrulamaya devam etmeden önce lütfen OAuth kimlik bilgilerini veya Hizmet Hesabı anahtarını yükleyerek 1. Adımı tamamlayın.",
     primaryAdminEmail: "Birincil Yönetici E-postası:",
-    primaryAdminEmailGmailDesc: "Dizine eklemek istediğiniz Gmail hesabına sahip Google Kuruluşunun yöneticisi/sahibinin e-postasını girin.",
-    primaryAdminEmailDriveDesc: "Dizine eklemek istediğiniz Google Drive'lara sahip Google Kuruluşunun yöneticisi/sahibinin e-postasını girin.",
+    primaryAdminEmailGmailDesc:
+      "Dizine eklemek istediğiniz Gmail hesabına sahip Google Kuruluşunun yöneticisi/sahibinin e-postasını girin.",
+    primaryAdminEmailDriveDesc:
+      "Dizine eklemek istediğiniz Google Drive'lara sahip Google Kuruluşunun yöneticisi/sahibinin e-postasını girin.",
     creating: "Oluşturuluyor...",
     createCredential: "Kimlik Bilgisi Oluştur",
     createdServiceAccount: "Hizmet hesabı kimlik bilgisi başarıyla oluşturuldu",
-    failedCreateServiceAccount: "Hizmet hesabı kimlik bilgisi oluşturulamadı - {{errorMsg}}",
-    gmailOAuthDesc: "Şimdi, OAuth aracılığıyla Gmail ile kimlik doğrulamanız gerekiyor. Bu, Gmail hesabınızdaki erişiminiz olan e-postalara okuma erişimi sağlar.",
-    driveOAuthDesc: "Şimdi, OAuth aracılığıyla Google Drive ile kimlik doğrulamanız gerekiyor. Bu, Google Drive hesabınızdaki erişiminiz olan belgelere okuma erişimi sağlar.",
+    failedCreateServiceAccount:
+      "Hizmet hesabı kimlik bilgisi oluşturulamadı - {{errorMsg}}",
+    gmailOAuthDesc:
+      "Şimdi, OAuth aracılığıyla Gmail ile kimlik doğrulamanız gerekiyor. Bu, Gmail hesabınızdaki erişiminiz olan e-postalara okuma erişimi sağlar.",
+    driveOAuthDesc:
+      "Şimdi, OAuth aracılığıyla Google Drive ile kimlik doğrulamanız gerekiyor. Bu, Google Drive hesabınızdaki erişiminiz olan belgelere okuma erişimi sağlar.",
     authenticating: "Kimlik doğrulanıyor...",
     authenticateWithGmail: "Gmail ile Kimlik Doğrula",
     authenticateWithDrive: "Google Drive ile Kimlik Doğrula",
     failedAuthGmail: "Gmail ile kimlik doğrulama başarısız - {{error}}",
     failedAuthDrive: "Google Drive ile kimlik doğrulama başarısız - {{error}}",
-    revokeGmailError: "Herhangi bir bağlayıcı kimlik bilgisiyle ilişkilendirilmişken Gmail kimlik bilgisi iptal edilemez. Lütfen ilişkili tüm bağlayıcıları silip tekrar deneyin.",
-    revokeDriveError: "Herhangi bir bağlayıcı kimlik bilgisiyle ilişkilendirilmişken Google Drive kimlik bilgisi iptal edilemez. Lütfen ilişkili tüm bağlayıcıları silip tekrar deneyin.",
+    revokeGmailError:
+      "Herhangi bir bağlayıcı kimlik bilgisiyle ilişkilendirilmişken Gmail kimlik bilgisi iptal edilemez. Lütfen ilişkili tüm bağlayıcıları silip tekrar deneyin.",
+    revokeDriveError:
+      "Herhangi bir bağlayıcı kimlik bilgisiyle ilişkilendirilmişken Google Drive kimlik bilgisi iptal edilemez. Lütfen ilişkili tüm bağlayıcıları silip tekrar deneyin.",
     revokedGmail: "Gmail kimlik bilgisi başarıyla iptal edildi!",
     revokedDrive: "Google Drive kimlik bilgisi başarıyla iptal edildi!",
     mustBeValidEmail: "Geçerli bir e-posta olmalı",
@@ -4006,14 +4072,16 @@ const tr = {
     preview: "Önizleme",
     files: "Dosyalar",
     artifacts: "Yapıtlar",
-    startBuildingArtifacts: "Yapıtları görmek için bir şeyler oluşturmaya başlayın!",
+    startBuildingArtifacts:
+      "Yapıtları görmek için bir şeyler oluşturmaya başlayın!",
     loading: "Yükleniyor...",
     shared: "Paylaşıldı",
     share: "Paylaş",
     private: "Özel",
     privateDesc: "Yalnızca siz bu uygulamayı görüntüleyebilirsiniz.",
     organization: "Organizasyon",
-    organizationDesc: "Onyx'inize giriş yapmış herkes bu uygulamayı görüntüleyebilir.",
+    organizationDesc:
+      "Onyx'inize giriş yapmış herkes bu uygulamayı görüntüleyebilir.",
     downloadPdf: "PDF İndir",
     downloadPptx: "PPTX İndir",
     downloadMd: "MD dosyasını indir",
@@ -4033,18 +4101,22 @@ const tr = {
   },
   onboardingUserInfo: {
     demoDataConfig: "Demo Veri Yapılandırması",
-    demoDataDesc: "Verileriniz senkronize olurken simüle edilmiş demo veri setimizi deneyin! Simüle edilen veriler, aşağıdaki rol ve seviye seçimlerinize göre uyum sağlayacak.",
+    demoDataDesc:
+      "Verileriniz senkronize olurken simüle edilmiş demo veri setimizi deneyin! Simüle edilen veriler, aşağıdaki rol ve seviye seçimlerinize göre uyum sağlayacak.",
     selectRole: "Rolünüzü seçin:",
     level: "Seviye",
-    youWillPlay: "{{position}} pozisyonunda {{name}} adlı kişinin rolünü oynayacaksınız",
+    youWillPlay:
+      "{{position}} pozisyonunda {{name}} adlı kişinin rolünü oynayacaksınız",
   },
   userLibraryModal: {
     yourFiles: "Dosyalarınız",
-    yourFilesDesc: "Ajanınızın okuması için dosya yükleyin (Excel, Word, PowerPoint, vb.)",
+    yourFilesDesc:
+      "Ajanınızın okuması için dosya yükleyin (Excel, Word, PowerPoint, vb.)",
     loadingFiles: "Dosyalar yükleniyor...",
     failedToLoad: "Dosyalar yüklenemedi",
     noFilesYet: "Henüz dosya yüklenmedi",
-    noFilesDesc: "Ajanınızın çalışması için Excel, Word, PowerPoint veya diğer dosyaları yükleyin",
+    noFilesDesc:
+      "Ajanınızın çalışması için Excel, Word, PowerPoint veya diğer dosyaları yükleyin",
     done: "Tamam",
     newFolder: "Yeni Klasör",
     folderName: "Klasör adı",
@@ -4055,7 +4127,8 @@ const tr = {
     collapse: "Daralt",
     uploadToFolder: "Bu klasöre yükle",
     delete: "Sil",
-    syncedToSandbox: "Sandbox'a senkronize edildi - devre dışı bırakmak için tıklayın",
+    syncedToSandbox:
+      "Sandbox'a senkronize edildi - devre dışı bırakmak için tıklayın",
     notSynced: "Senkronize edilmedi - etkinleştirmek için tıklayın",
     uploading: "Yükleniyor...",
     upload: "Yükle",
@@ -4064,7 +4137,8 @@ const tr = {
   llmOnboarding: {
     apiKey: "API Anahtarı",
     defaultModel: "Varsayılan Model",
-    defaultModelDesc: "Bu model, Onyx tarafından varsayılan olarak kullanılacak.",
+    defaultModelDesc:
+      "Bu model, Onyx tarafından varsayılan olarak kullanılacak.",
     selectModel: "Bir model seçin",
     checkingApiKey: "API anahtarı kontrol ediliyor...",
     apiKeyValid: "API anahtarı geçerli.",
@@ -4095,7 +4169,8 @@ const tr = {
     iamRole: "IAM Rolü",
     accessKey: "Erişim Anahtarı",
     longTermApiKey: "Uzun Vadeli API Anahtarı",
-    iamDesc: "Onyx, kimlik doğrulamak için çalıştığı ortama bağlı IAM rolünü kullanacaktır.",
+    iamDesc:
+      "Onyx, kimlik doğrulamak için çalıştığı ortama bağlı IAM rolünü kullanacaktır.",
     awsAccessKeyId: "AWS Erişim Anahtarı ID'si",
     awsSecretAccessKey: "AWS Gizli Erişim Anahtarı",
     checkingCredentials: "Kimlik bilgileri kontrol ediliyor...",
@@ -4112,7 +4187,8 @@ const tr = {
     apiBaseUrl: "API Temel URL'si",
     selfHostedOllamaBaseUrl: "Kendi barındırılan Ollama API temel URL'niz.",
     connectLlmTitle: "LLM modellerinizi bağlayın",
-    connectLlmSubtitle: "Onyx hem kendi barındırılan modelleri hem de popüler sağlayıcıları destekler.",
+    connectLlmSubtitle:
+      "Onyx hem kendi barındırılan modelleri hem de popüler sağlayıcıları destekler.",
     viewInAdminPanel: "Yönetici Panelinde Görüntüle",
     customLLMProvider: "Özel LLM Sağlayıcısı",
     liteLLMCompatible: "LiteLLM Uyumlu API'ler",
@@ -4121,7 +4197,8 @@ const tr = {
     setupClaude: "Claude Kurulumu",
     setupClaudeDesc: "Anthropic'e bağlanın ve Claude modellerinizi kurun.",
     setupAzure: "Azure OpenAI Kurulumu",
-    setupAzureDesc: "Microsoft Azure'a bağlanın ve Azure OpenAI modellerinizi kurun.",
+    setupAzureDesc:
+      "Microsoft Azure'a bağlanın ve Azure OpenAI modellerinizi kurun.",
     setupBedrock: "Amazon Bedrock Kurulumu",
     setupBedrockDesc: "AWS'ye bağlanın ve Amazon Bedrock modellerinizi kurun.",
     setupOllama: "Ollama Kurulumu",
@@ -4129,9 +4206,11 @@ const tr = {
     setupOpenAI: "GPT Kurulumu",
     setupOpenAIDesc: "OpenAI'ye bağlanın ve ChatGPT modellerinizi kurun.",
     setupOpenRouter: "OpenRouter Kurulumu",
-    setupOpenRouterDesc: "OpenRouter'a bağlanın ve OpenRouter modellerinizi kurun.",
+    setupOpenRouterDesc:
+      "OpenRouter'a bağlanın ve OpenRouter modellerinizi kurun.",
     setupVertex: "Gemini Kurulumu",
-    setupVertexDesc: "Google Cloud Vertex AI'ye bağlanın ve Gemini modellerinizi kurun.",
+    setupVertexDesc:
+      "Google Cloud Vertex AI'ye bağlanın ve Gemini modellerinizi kurun.",
   },
   nameStep: {
     whatShouldOnyxCallYou: "Onyx sizi ne diye çağırmalı?",
@@ -4139,31 +4218,39 @@ const tr = {
     yourName: "Adınız",
   },
   connectorMultiSelect: {
-    allDocumentsDesc: "Seçilen bağlayıcılar tarafından dizine eklenen tüm belgeler bu belge setinin parçası olacak.",
+    allDocumentsDesc:
+      "Seçilen bağlayıcılar tarafından dizine eklenen tüm belgeler bu belge setinin parçası olacak.",
     allConnectorsSelected: "Tüm bağlayıcılar seçildi",
-    allConnectorsSelectedDesc: "Mevcut tüm bağlayıcılar seçildi. Farklı bağlayıcılar eklemek için aşağıdakilerden kaldırın.",
+    allConnectorsSelectedDesc:
+      "Mevcut tüm bağlayıcılar seçildi. Farklı bağlayıcılar eklemek için aşağıdakilerden kaldırın.",
     noMatchingConnectors: "Eşleşen bağlayıcı bulunamadı",
-    noPrivateConnectors: "Özel bağlayıcı mevcut değil. Önce özel bir bağlayıcı oluşturun.",
+    noPrivateConnectors:
+      "Özel bağlayıcı mevcut değil. Önce özel bir bağlayıcı oluşturun.",
     noMoreConnectors: "Başka bağlayıcı mevcut değil",
-    noConnectorsSelected: "Bağlayıcı seçilmedi. Yukarıdan arayın ve bağlayıcı seçin.",
+    noConnectorsSelected:
+      "Bağlayıcı seçilmedi. Yukarıdan arayın ve bağlayıcı seçin.",
   },
   federatedConnectorSelector: {
-    federatedConnectorsDesc: "Seçilen birleşik bağlayıcılardan gelen belgeler, sorgular sırasında gerçek zamanlı olarak aranacak.",
+    federatedConnectorsDesc:
+      "Seçilen birleşik bağlayıcılardan gelen belgeler, sorgular sırasında gerçek zamanlı olarak aranacak.",
     allFederatedSelected: "Tüm birleşik bağlayıcılar seçildi",
     noMatchingFederated: "Eşleşen birleşik bağlayıcı bulunamadı",
     noMoreFederated: "Başka birleşik bağlayıcı mevcut değil",
-    noFederatedSelected: "Birleşik bağlayıcı seçilmedi. Yukarıdan arayın ve bağlayıcı seçin.",
+    noFederatedSelected:
+      "Birleşik bağlayıcı seçilmedi. Yukarıdan arayın ve bağlayıcı seçin.",
   },
   documentSetForm: {
     nameRequired: "Küme için bir ad girin",
-    atLeastOneConnector: "Lütfen en az bir bağlayıcı seçin (normal veya birleşik)",
+    atLeastOneConnector:
+      "Lütfen en az bir bağlayıcı seçin (normal veya birleşik)",
     nameLabel: "Ad:",
     namePlaceholder: "Belge kümesi için bir ad",
     descriptionLabel: "Açıklama:",
     descriptionPlaceholder: "Belge kümesinin ne temsil ettiğini açıklayın",
     connectorsFor: "{{label}} için kullanılabilir bağlayıcılar",
     connectorsNotFor: "{{label}} için kullanılamayan bağlayıcılar",
-    nonVisibleDesc: "Yalnızca eklemeye çalıştığınız gruba doğrudan atanmış bağlayıcılar kullanılabilir.",
+    nonVisibleDesc:
+      "Yalnızca eklemeye çalıştığınız gruba doğrudan atanmış bağlayıcılar kullanılabilir.",
     pickConnectors: "Bağlayıcılarınızı seçin",
     searchConnectors: "Bağlayıcı ara...",
     federatedLabel: "Birleşik Bağlayıcılar",
@@ -4178,8 +4265,10 @@ const tr = {
   changeCredentials: {
     modifyKeyTitle: "{{provider}} anahtarınızı değiştirin",
     modifyConfigTitle: "{{provider}} Yapılandırmanızı değiştirin",
-    modifyDesc: "Yeni bir API anahtarı sağlayarak yapılandırmanızı değiştirebilirsiniz.",
-    modifyDescWithUrl: "Yeni bir API anahtarı veya API URL'si sağlayarak yapılandırmanızı değiştirebilirsiniz.",
+    modifyDesc:
+      "Yeni bir API anahtarı sağlayarak yapılandırmanızı değiştirebilirsiniz.",
+    modifyDescWithUrl:
+      "Yeni bir API anahtarı veya API URL'si sağlayarak yapılandırmanızı değiştirebilirsiniz.",
     apiKey: "API Anahtarı",
     uploadJson: "JSON Dosyası Yükle",
     uploadedFile: "Yüklenen dosya: {{name}}",
@@ -4187,13 +4276,16 @@ const tr = {
     apiUrl: "API URL'si",
     pasteApiUrl: "API URL'nizi buraya yapıştırın",
     testModel: "Test Modeli",
-    liteLlmNote: "LiteLLM proxy kullandığınız için bağlantıyı test etmek için bir model adına ihtiyacımız var.",
+    liteLlmNote:
+      "LiteLLM proxy kullandığınız için bağlantıyı test etmek için bir model adına ihtiyacımız var.",
     pasteModelName: "Model adınızı buraya yapıştırın",
     updateConfig: "Yapılandırmayı Güncelle",
     deleteConfig: "Yapılandırmayı Sil",
     canDelete: "Yapılandırmanızı silebilirsiniz.",
-    deleteNote: "Bu yalnızca farklı bir gömme türüne geçmiş olmanız durumunda mümkündür!",
-    failedParseJson: "JSON dosyası ayrıştırılamadı. Lütfen geçerli bir JSON olduğundan emin olun.",
+    deleteNote:
+      "Bu yalnızca farklı bir gömme türüne geçmiş olmanız durumunda mümkündür!",
+    failedParseJson:
+      "JSON dosyası ayrıştırılamadı. Lütfen geçerli bir JSON olduğundan emin olun.",
     unknownError: "Bilinmeyen bir hata oluştu",
     unknownFileError: "Dosya işlenirken bilinmeyen bir hata oluştu.",
     providerTypeInvalid: "Sağlayıcı türü geçersiz veya eksik.",
@@ -4227,7 +4319,8 @@ const tr = {
     apiKeyRequired: "API Anahtarı gereklidir",
     modelNameRequired: "Model adı gereklidir",
     targetUriRequired: "Hedef URI gereklidir",
-    targetUriValidation: "Hedef URI, api-version sorgu parametresi ile geçerli bir URL olmalı ve ya yolda bir dağıtım adı (/openai/deployments/{name}/...) ya da gerçek zamanlı için /openai/responses içermelidir",
+    targetUriValidation:
+      "Hedef URI, api-version sorgu parametresi ile geçerli bir URL olmalı ve ya yolda bir dağıtım adı (/openai/deployments/{name}/...) ya da gerçek zamanlı için /openai/responses içermelidir",
     credentialsRequired: "Kimlik bilgileri dosyası gereklidir",
     regionRequired: "AWS bölgesi gereklidir",
   },

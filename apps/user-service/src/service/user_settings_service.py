@@ -33,7 +33,9 @@ class UserSettingsService:
         settings = await self.repo.ensure_defaults(user_id)
         return self._settings_to_dict(settings)
 
-    async def create_prompt_shortcut(self, user_id: uuid.UUID, shortcut: dict[str, Any]) -> dict[str, Any]:
+    async def create_prompt_shortcut(
+        self, user_id: uuid.UUID, shortcut: dict[str, Any]
+    ) -> dict[str, Any]:
         settings = await self.repo.get_by_user_id(user_id)
         if not settings:
             settings = await self.repo.ensure_defaults(user_id)
@@ -46,7 +48,9 @@ class UserSettingsService:
         await self.repo.upsert(user_id, prompt_shortcuts=shortcuts)
         return shortcut
 
-    async def update_prompt_shortcut(self, user_id: uuid.UUID, shortcut_id: int, **updates: Any) -> dict[str, Any] | None:
+    async def update_prompt_shortcut(
+        self, user_id: uuid.UUID, shortcut_id: int, **updates: Any
+    ) -> dict[str, Any] | None:
         settings = await self.repo.get_by_user_id(user_id)
         if not settings:
             return None

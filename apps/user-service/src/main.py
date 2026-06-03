@@ -33,7 +33,13 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    from src.api.routes import api_keys_router, auth_router, roles_router, settings_router, user_router
+    from src.api.routes import (
+        api_keys_router,
+        auth_router,
+        roles_router,
+        settings_router,
+        user_router,
+    )
 
     app.include_router(auth_router, prefix="/api")
     app.include_router(user_router, prefix="/api")
@@ -42,6 +48,7 @@ def create_app() -> FastAPI:
     app.include_router(roles_router, prefix="/api")
 
     from src.api.routes.health import router as health_router
+
     app.include_router(health_router, prefix="/health")
 
     return app

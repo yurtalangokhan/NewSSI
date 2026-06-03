@@ -8,7 +8,7 @@ from .base_repository import BaseRepository
 
 
 class RoleRepository(BaseRepository):
-    SUPPORTED_ROLES = ["admin", "global_curator", "curator", "limited", "basic"]
+    SUPPORTED_ROLES = ["admin", "enduser"]
 
     async def get_by_name(self, name: str) -> RoleModel | None:
         async with self._session() as session:
@@ -20,9 +20,20 @@ class RoleRepository(BaseRepository):
             result = await session.execute(select(RoleModel).order_by(RoleModel.name))
             return list(result.scalars().all())
 
-    async def create(self, name: str, description: str | None = None, permissions: list[str] | None = None, is_builtin: bool = False) -> RoleModel:
+    async def create(
+        self,
+        name: str,
+        description: str | None = None,
+        permissions: list[str] | None = None,
+        is_builtin: bool = False,
+    ) -> RoleModel:
         async with self._session() as session:
-            role = RoleModel(name=name, description=description, permissions=permissions or [], is_builtin=is_builtin)
+            role = RoleModel(
+                name=name,
+                description=description,
+                permissions=permissions or [],
+                is_builtin=is_builtin,
+            )
             session.add(role)
             await session.flush()
             await session.refresh(role)

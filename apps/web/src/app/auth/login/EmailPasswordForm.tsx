@@ -37,8 +37,7 @@ export default function EmailPasswordForm({
   defaultEmail,
   isJoin = false,
 }: EmailPasswordFormProps) {
-  const { user, authTypeMetadata } = useUser();
-  const passwordMinLength = authTypeMetadata?.passwordMinLength ?? 8;
+  const { user } = useUser();
   const { t } = useTranslation();
   const [isWorking, setIsWorking] = useState<boolean>(false);
   const [apiStatus, setApiStatus] = useState<APIFormFieldState>("loading");
@@ -67,26 +66,29 @@ export default function EmailPasswordForm({
 
       <Formik
         initialValues={{
-          email: defaultEmail ? defaultEmail.toLowerCase() : "",
+          username: "",
           password: "",
+          ...(isSignup ? { email: defaultEmail ? defaultEmail.toLowerCase() : "" } : {}),
         }}
         validateOnChange={true}
         validateOnBlur={true}
         validationSchema={Yup.object().shape({
-          email: Yup.string()
-            .email()
-            .required()
-            .transform((value) => value.toLowerCase()),
+          username: Yup.string()
+            .required(t("auth.usernameRequired")),
+          ...(isSignup
+            ? {
+                email: Yup.string()
+                  .email()
+                  .required()
+                  .transform((value) => value.toLowerCase()),
+              }
+            : {}),
           password: Yup.string()
-            .min(
-              passwordMinLength,
-              t("auth.passwordMinLength", { n: passwordMinLength })
-            )
             .required(),
         })}
-        onSubmit={async (values: { email: string; password: string }) => {
-          // Ensure email is lowercase
-          const email: string = values.email.toLowerCase();
+        onSubmit={async (values: { username: string; password: string; email?: string }) => {
+          const username: string = values.username;
+          const email: string = values.email?.toLowerCase() || "";
           setShowApiMessage(true);
           setApiStatus("loading");
           setErrorMessage("");
@@ -102,7 +104,8 @@ export default function EmailPasswordForm({
               email,
               values.password,
               referralSource,
-              captchaToken
+              captchaToken,
+              username
             );
 
             if (!response.ok) {
@@ -129,7 +132,7 @@ export default function EmailPasswordForm({
             }
           }
 
-          const loginResponse = await basicLogin(email, values.password);
+          const loginResponse = await basicLogin(username, values.password);
           if (loginResponse.ok) {
             setApiStatus("success");
             if (isSignup && shouldVerify) {
@@ -170,12 +173,12 @@ export default function EmailPasswordForm({
       >
         {({ isSubmitting, isValid, dirty, values }) => {
           return (
-            <Form className="gap-y-3">
+            <Form className="flex flex-col gap-5 w-full">
               <FormikField<string>
-                name="email"
-                render={(field, helper, meta, state) => (
-                  <FormField name="email" state={state} className="w-full">
-                    <FormField.Label>{t("auth.emailLabel")}</FormField.Label>
+                name="username"
+                render={(field, helper, _meta, state) => (
+                  <FormField name="username" state={state} className="w-full">
+                    <FormField.Label className="text-white font-medium text-sm mb-2 block">{t("auth.usernameLabel")}</FormField.Label>
                     <FormField.Control>
                       <InputTypeIn
                         {...field}
@@ -187,9 +190,9 @@ export default function EmailPasswordForm({
                           }
                           field.onChange(e);
                         }}
-                        placeholder={t("auth.emailPlaceholder")}
+                        placeholder={t("auth.usernamePlaceholder")}
                         onClear={() => helper.setValue("")}
-                        data-testid="email"
+                        data-testid="username"
                         variant={apiStatus === "error" ? "error" : undefined}
                         showClearButton={false}
                       />
@@ -197,12 +200,40 @@ export default function EmailPasswordForm({
                   </FormField>
                 )}
               />
+              {isSignup && (
+                <FormikField<string>
+                  name="email"
+                  render={(field, helper, _meta, state) => (
+                    <FormField name="email" state={state} className="w-full">
+                      <FormField.Label className="text-white font-medium text-sm mb-2 block">{t("auth.emailLabel")}</FormField.Label>
+                      <FormField.Control>
+                        <InputTypeIn
+                          {...field}
+                          onChange={(e) => {
+                            if (showApiMessage && apiStatus === "error") {
+                              setShowApiMessage(false);
+                              setErrorMessage("");
+                              setApiStatus("loading");
+                            }
+                            field.onChange(e);
+                          }}
+                          placeholder={t("auth.emailPlaceholder")}
+                          onClear={() => helper.setValue("")}
+                          data-testid="email"
+                          variant={apiStatus === "error" ? "error" : undefined}
+                          showClearButton={false}
+                        />
+                      </FormField.Control>
+                    </FormField>
+                  )}
+                />
+              )}
 
               <FormikField<string>
                 name="password"
-                render={(field, helper, meta, state) => (
+                render={(field, helper, _meta, state) => (
                   <FormField name="password" state={state} className="w-full">
-                    <FormField.Label>Password</FormField.Label>
+                    <FormField.Label className="text-white font-medium text-sm mb-2 block">Password</FormField.Label>
                     <FormField.Control>
                       <PasswordInputTypeIn
                         {...field}
@@ -219,17 +250,9 @@ export default function EmailPasswordForm({
                         data-testid="password"
                         error={apiStatus === "error"}
                         showClearButton={false}
+                        style={{ color: 'var(--text-05)' }}
                       />
                     </FormField.Control>
-                    {isSignup && !showApiMessage && (
-                      <FormField.Message
-                        messages={{
-                          idle: t("auth.passwordMinLength", { n: passwordMinLength }),
-                          error: meta.error,
-                          success: t("auth.passwordMinLength", { n: passwordMinLength }),
-                        }}
-                      />
-                    )}
                     {showApiMessage && (
                       <FormField.APIMessage
                         state={apiStatus}
@@ -242,7 +265,7 @@ export default function EmailPasswordForm({
 
               <Button
                 type="submit"
-                className="w-full mt-1"
+                className="w-full mt-3 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-semibold rounded-lg transition-all duration-200 hover:shadow-lg"
                 disabled={isSubmitting || !isValid || !dirty}
                 rightIcon={SvgArrowRightCircle}
               >
@@ -251,9 +274,9 @@ export default function EmailPasswordForm({
               {user?.is_anonymous_user && (
                 <Link
                   href="/app"
-                  className="text-xs text-action-link-05 cursor-pointer text-center w-full font-medium mx-auto"
+                  className="text-xs text-white/60 cursor-pointer text-center w-full font-medium mx-auto py-3 hover:text-white transition-colors duration-200"
                 >
-                  <span className="hover:border-b hover:border-dotted hover:border-action-link-05">
+                  <span className="hover:border-b hover:border-dotted hover:border-white">
                     {t("auth.continueAsGuest")}
                   </span>
                 </Link>

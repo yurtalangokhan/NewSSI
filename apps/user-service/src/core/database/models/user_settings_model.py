@@ -12,7 +12,13 @@ class UserSettingsModel(Base):
     __tablename__ = "user_settings"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False, index=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        unique=True,
+        nullable=False,
+        index=True,
+    )
     theme_preference: Mapped[str | None] = mapped_column(String(20), nullable=True)
     chat_background: Mapped[str | None] = mapped_column(Text, nullable=True)
     default_model: Mapped[str | None] = mapped_column(String(255), nullable=True)
@@ -25,7 +31,11 @@ class UserSettingsModel(Base):
     enable_memory_tool: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     user_preferences: Mapped[str] = mapped_column(Text, default="", nullable=False)
     prompt_shortcuts: Mapped[list] = mapped_column(JSONB, default=list, nullable=False)
-    time_created: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
-    time_updated: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    time_created: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )
+    time_updated: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+    )
 
     user: Mapped["UserModel"] = relationship("UserModel", back_populates="settings")

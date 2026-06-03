@@ -14,9 +14,11 @@ class AuthController(BaseController):
     async def get_auth_type(self) -> dict[str, Any]:
         return self.auth_service.get_auth_type()
 
-    async def login(self, request: Request, response: Response, email: str, password: str) -> dict[str, Any]:
+    async def login(
+        self, request: Request, response: Response, username: str, password: str
+    ) -> dict[str, Any]:
         try:
-            result = await self.auth_service.basic_login(email, password)
+            result = await self.auth_service.basic_login(username, password)
             self._set_cookies(
                 response,
                 result.get("access_token", ""),
@@ -111,6 +113,41 @@ class AuthController(BaseController):
         response.delete_cookie("refresh_token")
         response.delete_cookie("id_token")
         response.delete_cookie("fastapiusersauth")
+
+    async def register(
+        self,
+        request: Request,
+        response: Response,
+        username: str,
+        email: str,
+        password: str,
+        first_name: str | None = None,
+        last_name: str | None = None,
+    ) -> dict[str, Any]:
+        try:
+            result = await self.auth_service.register(
+                username, email, password, first_name, last_name
+            )
+            self._set_cookies(
+                response,
+                result.get("access_token", ""),
+                result.get("refresh_token", ""),
+                result.get("id_token"),
+            )
+            return result
+        except ValueError as e:
+            self._raise_bad_request(str(e))
+
+    async def sync_users_from_keycloak(self) -> dict[str, Any]:
+        """Sync users and roles from Keycloak to user-service DB."""
+        try:
+            from src.service import get_user_service
+
+            user_service = get_user_service()
+            result = await user_service.sync_users_from_keycloak()
+            return result
+        except Exception as e:
+            self._raise_bad_request(f"Sync failed: {str(e)}")
 
 
 _auth_controller: AuthController | None = None

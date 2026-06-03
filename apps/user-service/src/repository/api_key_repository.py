@@ -24,20 +24,26 @@ class ApiKeyRepository(BaseRepository):
 
     async def get_by_hash(self, key_hash: str) -> ApiKeyModel | None:
         async with self._session() as session:
-            result = await session.execute(select(ApiKeyModel).where(ApiKeyModel.key_hash == key_hash))
+            result = await session.execute(
+                select(ApiKeyModel).where(ApiKeyModel.key_hash == key_hash)
+            )
             return result.scalar_one_or_none()
 
     async def find_by_prefix_and_active(self, key_prefix: str) -> list[ApiKeyModel]:
         async with self._session() as session:
             result = await session.execute(
-                select(ApiKeyModel).where(ApiKeyModel.key_prefix == key_prefix, ApiKeyModel.is_active)
+                select(ApiKeyModel).where(
+                    ApiKeyModel.key_prefix == key_prefix, ApiKeyModel.is_active
+                )
             )
             return list(result.scalars().all())
 
     async def list_by_user(self, user_id: uuid.UUID) -> list[ApiKeyModel]:
         async with self._session() as session:
             result = await session.execute(
-                select(ApiKeyModel).where(ApiKeyModel.user_id == user_id).order_by(ApiKeyModel.created_at.desc())
+                select(ApiKeyModel)
+                .where(ApiKeyModel.user_id == user_id)
+                .order_by(ApiKeyModel.created_at.desc())
             )
             return list(result.scalars().all())
 
@@ -64,7 +70,9 @@ class ApiKeyRepository(BaseRepository):
     async def update_last_used(self, key_id: uuid.UUID) -> None:
         async with self._session() as session:
             await session.execute(
-                update(ApiKeyModel).where(ApiKeyModel.id == key_id).values(last_used_at=datetime.utcnow())
+                update(ApiKeyModel)
+                .where(ApiKeyModel.id == key_id)
+                .values(last_used_at=datetime.utcnow())
             )
 
     async def delete(self, key_id: uuid.UUID) -> bool:
@@ -74,5 +82,7 @@ class ApiKeyRepository(BaseRepository):
 
     async def delete_by_user(self, user_id: uuid.UUID) -> int:
         async with self._session() as session:
-            result = await session.execute(delete(ApiKeyModel).where(ApiKeyModel.user_id == user_id))
+            result = await session.execute(
+                delete(ApiKeyModel).where(ApiKeyModel.user_id == user_id)
+            )
             return result.rowcount

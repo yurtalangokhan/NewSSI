@@ -18,8 +18,6 @@ export interface PageProps {
 
 export default async function Page(props: PageProps) {
   const searchParams = await props.searchParams;
-  const autoRedirectToSignupDisabled =
-    searchParams?.autoRedirectToSignup === "false";
   const nextUrl: string | null = Array.isArray(searchParams?.next)
     ? searchParams?.next[0] ?? null
     : searchParams?.next ?? null;
@@ -41,17 +39,6 @@ export default async function Page(props: PageProps) {
     ]);
   } catch (e) {
     console.log(`Some fetch failed for the login page - ${e}`);
-  }
-
-  // if there are no users, redirect to signup page for initial setup
-  // (only for auth types that support self-service signup)
-  if (
-    authTypeMetadata &&
-    !authTypeMetadata.hasUsers &&
-    !autoRedirectToSignupDisabled &&
-    authTypeMetadata.authType === AuthType.BASIC
-  ) {
-    return redirect("/auth/signup");
   }
 
   // if user is already logged in, take them to the main app page

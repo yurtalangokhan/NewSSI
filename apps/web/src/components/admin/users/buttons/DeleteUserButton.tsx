@@ -20,7 +20,7 @@ const DeleteUserButton = ({
 }) => {
   const { t } = useTranslation();
   const { trigger, isMutating } = useSWRMutation(
-    "/api/manage/admin/delete-user",
+    `/api/user-service/users/${user.id}`,
     userMutationFetcher,
     {
       onSuccess: () => {
@@ -40,7 +40,7 @@ const DeleteUserButton = ({
           entityType={t("admin.users.userEntity")}
           entityName={user.email}
           onClose={() => setShowDeleteModal(false)}
-          onSubmit={() => trigger({ user_email: user.email, method: "DELETE" })}
+          onSubmit={() => trigger({ method: "DELETE" })}
           additionalDetails="All data associated with this user will be deleted (including personas, tools and chat sessions)."
         />
       )}

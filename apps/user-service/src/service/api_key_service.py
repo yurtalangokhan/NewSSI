@@ -18,6 +18,7 @@ def _get_fernet() -> Fernet:
         key = _settings.ENCRYPTION_KEY or "UKtf1bGCDl8smcVDRM9YekfivWNlsjSB-Mh0d993z40="
         if isinstance(key, str):
             import base64
+
             key_bytes = base64.urlsafe_b64decode(key + "==")
             _fernet = Fernet(key_bytes)
         else:

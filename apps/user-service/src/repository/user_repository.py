@@ -24,12 +24,16 @@ class UserRepository(BaseRepository):
 
     async def get_by_email(self, email: str) -> UserModel | None:
         async with self._session() as session:
-            result = await session.execute(select(UserModel).where(func.lower(UserModel.email) == func.lower(email)))
+            result = await session.execute(
+                select(UserModel).where(func.lower(UserModel.email) == func.lower(email))
+            )
             return result.scalar_one_or_none()
 
     async def get_by_keycloak_id(self, keycloak_id: str) -> UserModel | None:
         async with self._session() as session:
-            result = await session.execute(select(UserModel).where(UserModel.keycloak_id == keycloak_id))
+            result = await session.execute(
+                select(UserModel).where(UserModel.keycloak_id == keycloak_id)
+            )
             return result.scalar_one_or_none()
 
     async def get_by_username(self, username: str) -> UserModel | None:
@@ -62,6 +66,7 @@ class UserRepository(BaseRepository):
         limit: int = 20,
         query: str | None = None,
         role: str | None = None,
+        roles: list[str] | None = None,
         is_active: bool | None = None,
         invited: bool | None = None,
     ) -> tuple[list[UserModel], int]:
@@ -71,22 +76,30 @@ class UserRepository(BaseRepository):
 
             if query:
                 search = f"%{query.lower()}%"
-                stmt = stmt.where(or_(
-                    func.lower(UserModel.email).like(search),
-                    func.lower(UserModel.first_name).like(search),
-                    func.lower(UserModel.last_name).like(search),
-                    func.lower(UserModel.username).like(search),
-                ))
-                count_stmt = count_stmt.where(or_(
-                    func.lower(UserModel.email).like(search),
-                    func.lower(UserModel.first_name).like(search),
-                    func.lower(UserModel.last_name).like(search),
-                    func.lower(UserModel.username).like(search),
-                ))
+                stmt = stmt.where(
+                    or_(
+                        func.lower(UserModel.email).like(search),
+                        func.lower(UserModel.first_name).like(search),
+                        func.lower(UserModel.last_name).like(search),
+                        func.lower(UserModel.username).like(search),
+                    )
+                )
+                count_stmt = count_stmt.where(
+                    or_(
+                        func.lower(UserModel.email).like(search),
+                        func.lower(UserModel.first_name).like(search),
+                        func.lower(UserModel.last_name).like(search),
+                        func.lower(UserModel.username).like(search),
+                    )
+                )
 
             if role:
                 stmt = stmt.where(UserModel.role == role)
                 count_stmt = count_stmt.where(UserModel.role == role)
+
+            if roles:
+                stmt = stmt.where(UserModel.role.in_(roles))
+                count_stmt = count_stmt.where(UserModel.role.in_(roles))
 
             if is_active is not None:
                 stmt = stmt.where(UserModel.is_active == is_active)
@@ -111,7 +124,9 @@ class UserRepository(BaseRepository):
     async def exists_by_email(self, email: str) -> bool:
         async with self._session() as session:
             result = await session.execute(
-                select(func.count(UserModel.id)).where(func.lower(UserModel.email) == func.lower(email))
+                select(func.count(UserModel.id)).where(
+                    func.lower(UserModel.email) == func.lower(email)
+                )
             )
             return result.scalar_one() > 0
 
@@ -124,7 +139,9 @@ class UserRepository(BaseRepository):
 
     async def upsert_by_keycloak_id(self, keycloak_id: str, **kwargs) -> UserModel:
         async with self._session() as session:
-            result = await session.execute(select(UserModel).where(UserModel.keycloak_id == keycloak_id))
+            result = await session.execute(
+                select(UserModel).where(UserModel.keycloak_id == keycloak_id)
+            )
             user = result.scalar_one_or_none()
             if user:
                 for key, value in kwargs.items():

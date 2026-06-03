@@ -65,7 +65,9 @@ async def update_prompt_shortcut(
     updates: Annotated[dict[str, Any], Body(...)],
     user_id: str = Depends(require_auth),
 ):
-    return await get_settings_controller().update_prompt_shortcut(uuid.UUID(user_id), shortcut_id, **updates)
+    return await get_settings_controller().update_prompt_shortcut(
+        uuid.UUID(user_id), shortcut_id, **updates
+    )
 
 
 @router.delete("/prompt-shortcuts/{shortcut_id}")

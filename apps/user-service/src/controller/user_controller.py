@@ -34,10 +34,19 @@ class UserController(BaseController):
         limit: int = 20,
         query: str | None = None,
         role: str | None = None,
+        roles: list[str] | None = None,
         is_active: bool | None = None,
         invited: bool | None = None,
     ) -> dict[str, Any]:
-        users, total = await self.user_service.list_users(skip, limit, query, role, is_active, invited)
+        users, total = await self.user_service.list_users(
+            skip,
+            limit,
+            query,
+            role,
+            roles,
+            is_active,
+            invited,
+        )
         return {"users": users, "total": total, "skip": skip, "limit": limit}
 
     async def create_user(self, **payload: Any) -> dict[str, Any]:
@@ -47,10 +56,13 @@ class UserController(BaseController):
             self._raise_bad_request(str(e))
 
     async def update_user(self, user_id: uuid.UUID, **updates: Any) -> dict[str, Any]:
-        user = await self.user_service.update_user(user_id, **updates)
-        if not user:
-            self._raise_not_found("User not found")
-        return user
+        try:
+            user = await self.user_service.update_user(user_id, **updates)
+            if not user:
+                self._raise_not_found("User not found")
+            return user
+        except ValueError as e:
+            self._raise_bad_request(str(e))
 
     async def delete_user(self, user_id: uuid.UUID) -> dict[str, str]:
         success = await self.user_service.delete_user(user_id)
@@ -94,6 +106,7 @@ class UserController(BaseController):
         users, _ = await self.user_service.list_users(0, 10000, query=query)
         import csv
         import io
+
         output = io.StringIO()
         if users:
             writer = csv.DictWriter(output, fieldnames=users[0].keys())

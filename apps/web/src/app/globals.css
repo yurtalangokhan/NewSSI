@@ -242,21 +242,54 @@
     animation-delay: 1.6s;
   }
 
-  .auth-login-shell input,
-  .auth-login-shell textarea,
-  .auth-login-shell select,
   .auth-login-shell p,
   .auth-login-shell span,
   .auth-login-shell label {
     color: #ffffff;
   }
 
+  .auth-login-shell h2,
+  .auth-login-shell h3,
+  .auth-login-shell h4 {
+    color: #ffffff;
+  }
+
+  .auth-login-shell input,
+  .auth-login-shell textarea,
+  .auth-login-shell select {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    border: none !important;
+    border-radius: 0.75rem !important;
+    padding: 0.875rem 1.125rem !important;
+    font-size: 0.875rem !important;
+    transition: all 0.2s ease !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+  }
+
+  .auth-login-shell input:focus,
+  .auth-login-shell textarea:focus,
+  .auth-login-shell select:focus {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    outline: none !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12), 0 0 0 2px rgba(255, 255, 255, 0.2) !important;
+    transform: translateY(-1px) !important;
+  }
+
+  .auth-login-shell input::placeholder,
+  .auth-login-shell textarea::placeholder {
+    color: #a0a0a0 !important;
+    font-weight: 500 !important;
+  }
+
   .auth-login-shell input:-webkit-autofill,
   .auth-login-shell input:-webkit-autofill:hover,
   .auth-login-shell input:-webkit-autofill:focus {
-    -webkit-text-fill-color: #ffffff;
-    box-shadow: 0 0 0px 1000px rgba(8, 26, 42, 0.9) inset;
-    transition: background-color 5000s ease-in-out 0s;
+    -webkit-text-fill-color: #000000 !important;
+    -webkit-box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12), 0 0 0px 1000px #ffffff inset !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12), 0 0 0px 1000px #ffffff inset !important;
+    transition: all 0.2s ease !important;
   }
 }
 

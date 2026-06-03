@@ -31,7 +31,9 @@ class AuditLogRepository(BaseRepository):
             await session.refresh(log)
             return log
 
-    async def list_by_user(self, user_id: uuid.UUID, limit: int = 100, offset: int = 0) -> list[AuditLogModel]:
+    async def list_by_user(
+        self, user_id: uuid.UUID, limit: int = 100, offset: int = 0
+    ) -> list[AuditLogModel]:
         async with self._session() as session:
             result = await session.execute(
                 select(AuditLogModel)
@@ -42,7 +44,9 @@ class AuditLogRepository(BaseRepository):
             )
             return list(result.scalars().all())
 
-    async def list_by_action(self, action: str, limit: int = 100, offset: int = 0) -> list[AuditLogModel]:
+    async def list_by_action(
+        self, action: str, limit: int = 100, offset: int = 0
+    ) -> list[AuditLogModel]:
         async with self._session() as session:
             result = await session.execute(
                 select(AuditLogModel)
@@ -56,6 +60,9 @@ class AuditLogRepository(BaseRepository):
     async def list_recent(self, limit: int = 100, offset: int = 0) -> list[AuditLogModel]:
         async with self._session() as session:
             result = await session.execute(
-                select(AuditLogModel).order_by(AuditLogModel.created_at.desc()).offset(offset).limit(limit)
+                select(AuditLogModel)
+                .order_by(AuditLogModel.created_at.desc())
+                .offset(offset)
+                .limit(limit)
             )
             return list(result.scalars().all())

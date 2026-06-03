@@ -1,8 +1,10 @@
+import uuid
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
+from src.core.database.models.user_model import is_admin_role
 from src.repository import UserRepository
 from src.service import get_auth_service
 
@@ -14,6 +16,7 @@ async def get_current_user_id(
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_security)],
 ) -> str | None:
     from src.config import get_settings
+
     settings = get_settings()
     token = None
 
@@ -57,11 +60,10 @@ async def require_admin(
     request: Request,
     user_id: Annotated[str, Depends(require_auth)],
 ) -> str:
-    import uuid
     try:
         repo = UserRepository()
         user = await repo.get_by_id(uuid.UUID(user_id))
-        if user and (user.role.value == "admin" or user.is_superuser):
+        if user and (is_admin_role(user.role) or user.is_superuser):
             return user_id
     except Exception:
         pass
@@ -71,6 +73,7 @@ async def require_admin(
 
 async def verify_internal_service_token(request: Request) -> bool:
     from src.config import get_settings
+
     token = request.headers.get("X-Internal-Service-Token")
     if not token:
         return False
