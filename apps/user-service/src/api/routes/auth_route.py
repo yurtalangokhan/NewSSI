@@ -30,11 +30,8 @@ async def logout(request: Request, response: Response):
 
 
 @router.post("/refresh")
-async def refresh(
-    response: Response,
-    refresh_token: Annotated[str | None, Form(...)] = None,
-):
-    return await get_auth_controller().refresh(refresh_token)
+async def refresh(request: Request, response: Response):
+    return await get_auth_controller().refresh(request, response)
 
 
 @router.get("/oidc/authorize")

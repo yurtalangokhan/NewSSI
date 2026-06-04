@@ -3,15 +3,10 @@
 import { useState } from "react";
 import SimpleTabs from "@/refresh-components/SimpleTabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import InvitedUserTable from "@/components/admin/users/InvitedUserTable";
 import SignedUpUserTable from "@/components/admin/users/SignedUpUserTable";
-import Modal from "@/refresh-components/Modal";
-import { toast } from "@/hooks/useToast";
 import * as SettingsLayouts from "@/layouts/settings-layouts";
 import { errorHandlingFetcher } from "@/lib/fetcher";
-import useSWR, { mutate } from "swr";
-import BulkAdd, { EmailInviteStatus } from "@/components/admin/users/BulkAdd";
-import Text from "@/refresh-components/texts/Text";
+import useSWR from "swr";
 import { InvitedUserSnapshot } from "@/lib/types";
 import { NEXT_PUBLIC_CLOUD_ENABLED } from "@/lib/constants";
 import PendingUsersTable from "@/components/admin/users/PendingUsersTable";
@@ -19,7 +14,7 @@ import CreateButton from "@/refresh-components/buttons/CreateButton";
 import Button from "@/refresh-components/buttons/Button";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
 import { Spinner } from "@/components/Spinner";
-import { SvgDownloadCloud, SvgUserPlus } from "@opal/icons";
+import { SvgDownloadCloud } from "@opal/icons";
 import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
 import { useTranslation } from "react-i18next";
 
@@ -101,16 +96,6 @@ function UsersTables({
   };
 
   const {
-    data: invitedUsers,
-    error: invitedUsersError,
-    isLoading: invitedUsersLoading,
-    mutate: invitedUsersMutate,
-  } = useSWR<InvitedUserSnapshot[]>(
-    "/api/user-service/users/invited",
-    errorHandlingFetcher
-  );
-
-  const {
     data: pendingUsers,
     error: pendingUsersError,
     isLoading: pendingUsersLoading,
@@ -119,9 +104,6 @@ function UsersTables({
     NEXT_PUBLIC_CLOUD_ENABLED ? "/api/tenants/users/pending" : null,
     errorHandlingFetcher
   );
-
-  const invitedUsersCount =
-    invitedUsers === undefined ? null : invitedUsers.length;
   const pendingUsersCount =
     pendingUsers === undefined ? null : pendingUsers.length;
   // Show loading animation only during the initial data fetch
@@ -161,32 +143,6 @@ function UsersTables({
                   setCurrentUsersCount(null);
                 }
               }}
-            />
-          </CardContent>
-        </Card>
-      ),
-    },
-    invited: {
-      name: t("admin.users.invitedUsersTab"),
-      content: (
-        <Card className="w-full">
-          <CardHeader>
-            <div className="flex justify-between items-center gap-1">
-              <CardTitle>{t("admin.users.invitedUsersTitle")}</CardTitle>
-              <CountDisplay
-                label={t("admin.users.totalInvitedLabel")}
-                value={invitedUsersCount}
-                isLoading={invitedUsersLoading}
-              />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <InvitedUserTable
-              users={invitedUsers || []}
-              mutate={invitedUsersMutate}
-              error={invitedUsersError}
-              isLoading={invitedUsersLoading}
-              q={q}
             />
           </CardContent>
         </Card>
@@ -254,56 +210,11 @@ function SearchableTables() {
 
 function AddUserButton() {
   const { t } = useTranslation();
-  const [bulkAddUsersModal, setBulkAddUsersModal] = useState(false);
-
-  const onSuccess = (emailInviteStatus: EmailInviteStatus) => {
-    mutate(
-      (key) =>
-        typeof key === "string" && key.startsWith("/api/user-service/users")
-    );
-    setBulkAddUsersModal(false);
-    if (emailInviteStatus === "NOT_CONFIGURED") {
-      toast.warning(t("admin.users.emailNotConfiguredWarning"));
-    } else if (emailInviteStatus === "SEND_FAILED") {
-      toast.warning(t("admin.users.emailSendFailedWarning"));
-    } else {
-      toast.success(t("admin.users.usersInvitedSuccess"));
-    }
-  };
-
-  const onFailure = async (res: Response) => {
-    const error = (await res.json()).detail;
-    toast.error(t("admin.users.inviteFailedError", { error }));
-  };
-
-  const handleInviteClick = () => {
-    setBulkAddUsersModal(true);
-  };
 
   return (
-    <>
-      <CreateButton primary onClick={handleInviteClick}>
-        {t("admin.users.inviteUsersButton")}
-      </CreateButton>
-
-      {bulkAddUsersModal && (
-        <Modal open onOpenChange={() => setBulkAddUsersModal(false)}>
-          <Modal.Content>
-            <Modal.Header
-              icon={SvgUserPlus}
-              title={t("admin.users.bulkAddTitle")}
-              onClose={() => setBulkAddUsersModal(false)}
-            />
-            <Modal.Body>
-              <div className="flex flex-col gap-2">
-                <Text as="p">{t("admin.users.bulkAddDescription")}</Text>
-                <BulkAdd onSuccess={onSuccess} onFailure={onFailure} />
-              </div>
-            </Modal.Body>
-          </Modal.Content>
-        </Modal>
-      )}
-    </>
+    <CreateButton primary href="/admin/users/add">
+      {t("admin.users.addUserButton")}
+    </CreateButton>
   );
 }
 

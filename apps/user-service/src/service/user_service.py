@@ -239,12 +239,15 @@ class UserService:
         if not user:
             return False
 
-        # Delete from Keycloak first (source of truth)
+        # Delete from DB first, then from Keycloak
+        deleted = await self.user_repo.delete(user_id)
+        if not deleted:
+            return False
+
         if self.keycloak.is_enabled() and user.keycloak_id:
             await self.keycloak.delete_user(user.keycloak_id)
 
-        # Then delete from DB
-        return await self.user_repo.delete(user_id)
+        return True
 
     async def set_user_active(self, user_id: uuid.UUID, active: bool) -> dict[str, Any] | None:
         # Get current user first

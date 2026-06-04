@@ -289,6 +289,37 @@ class KeycloakService:
                 detail = f"Authentication failed (status {resp.status_code})"
             raise ValueError(detail)
 
+    async def refresh_token_grant(self, refresh_token: str) -> dict[str, Any]:
+        """Exchange a refresh token for a new set of tokens from Keycloak.
+
+        POSTs to Keycloak's token endpoint with grant_type=refresh_token.
+        Returns { access_token, refresh_token, id_token, expires_in, token_type }.
+        Raises ValueError on authentication failure.
+        """
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                f"{self.get_base_url()}/realms/{self.get_realm()}/protocol/openid-connect/token",
+                data={
+                    "grant_type": "refresh_token",
+                    "client_id": self.get_client_id(),
+                    "refresh_token": refresh_token,
+                },
+            )
+            if resp.is_success:
+                return resp.json()
+
+            try:
+                error_body = resp.json()
+                if isinstance(error_body, dict):
+                    detail = (
+                        error_body.get("error_description")
+                        or error_body.get("error")
+                        or f"Token refresh failed (status {resp.status_code})"
+                    )
+            except Exception:
+                detail = f"Token refresh failed (status {resp.status_code})"
+            raise ValueError(detail)
+
     async def backchannel_logout(
         self, refresh_token: str | None = None, id_token_hint: str | None = None
     ) -> bool:

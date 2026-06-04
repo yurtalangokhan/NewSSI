@@ -34,11 +34,21 @@ class AuthController(BaseController):
         self._clear_cookies(response)
         return await self.auth_service.logout(refresh_token)
 
-    async def refresh(self, refresh_token: str | None = None) -> dict[str, Any]:
+    async def refresh(
+        self, request: Request, response: Response
+    ) -> dict[str, Any]:
+        refresh_token = request.cookies.get("refresh_token")
         if not refresh_token:
             self._raise_bad_request("Refresh token required")
         try:
-            return await self.auth_service.refresh_access_token(refresh_token)
+            result = await self.auth_service.refresh_access_token(refresh_token)
+            self._set_cookies(
+                response,
+                result.get("access_token", ""),
+                result.get("refresh_token", ""),
+                result.get("id_token"),
+            )
+            return result
         except ValueError as e:
             self._raise_unauthorized(str(e))
 

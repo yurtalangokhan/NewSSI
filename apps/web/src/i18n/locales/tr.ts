@@ -1689,6 +1689,15 @@ const tr = {
       emailSendFailedWarning:
         "Kullanıcılar eklendi, ancak e-posta gönderimi başarısız oldu. SMTP yapılandırmanızı kontrol edip tekrar deneyin.",
       usersInvitedSuccess: "Kullanıcılar davet edildi!",
+      addUserButton: "Kullanıcı Ekle",
+      createSuccess: "Kullanıcı oluşturuldu ve Keycloak ile senkronlandı",
+      createError: "Kullanıcı oluşturulamadı - {{error}}",
+      createDescription:
+        "Kullanıcıyı doğrudan platformda oluşturun. Bu işlem hesabı Keycloak içinde de oluşturur ve senkronlar.",
+      addUserPageTitle: "Kullanıcılar - Kullanıcı Ekle",
+      creatingButton: "Oluşturuluyor...",
+      createPasswordLabel: "Şifre",
+      createPasswordPlaceholder: "Başlangıç şifresi belirleyin",
       inviteFailedError: "Kullanıcılar davet edilemedi - {{error}}",
       downloadFailedError: "Tüm kullanıcılar indirilemedi - {{error}}",
       deactivatedSuccess: "Kullanıcı devre dışı bırakıldı!",

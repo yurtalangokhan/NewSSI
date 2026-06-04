@@ -72,6 +72,7 @@ import { ProjectFile, useProjectsContext } from "@/providers/ProjectsContext";
 import { useAppParams } from "@/hooks/appNavigation";
 import { projectFilesToFileDescriptors } from "@/app/app/services/fileUtils";
 import { UserFileStatus } from "@/app/app/projects/projectsService";
+import { authenticatedFetch } from "@/lib/fetcher";
 
 const SYSTEM_MESSAGE_ID = -3;
 
@@ -114,7 +115,7 @@ interface UseChatControllerProps {
 }
 
 async function stopChatSession(chatSessionId: string): Promise<void> {
-  const response = await fetch(`/api/chat/stop-chat-session/${chatSessionId}`, {
+  const response = await authenticatedFetch(`/api/chat/stop-chat-session/${chatSessionId}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -1125,7 +1126,7 @@ export default function useChatController({
       }
 
       try {
-        const response = await fetch("/api/chat/seed-chat-session-from-slack", {
+        const response = await authenticatedFetch("/api/chat/seed-chat-session-from-slack", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -1156,7 +1157,7 @@ export default function useChatController({
     if (!liveAgent?.id) return; // avoid calling with undefined persona id
 
     async function fetchMaxTokens() {
-      const response = await fetch(
+      const response = await authenticatedFetch(
         `/api/chat/max-selected-document-tokens?persona_id=${liveAgent?.id}`
       );
       if (response.ok) {

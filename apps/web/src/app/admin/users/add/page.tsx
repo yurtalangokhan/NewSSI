@@ -8,13 +8,17 @@ import { toast } from "@/hooks/useToast";
 import Button from "@/refresh-components/buttons/Button";
 import CreateButton from "@/refresh-components/buttons/CreateButton";
 import Text from "@/refresh-components/texts/Text";
+import { authenticatedFetch } from "@/lib/fetcher";
+import { useTranslation } from "react-i18next";
 
 const usersRoute = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.USERS]!;
 
 const ROLE_OPTIONS = ["enduser", "admin"];
 
 export default function AddUserPage() {
+  const { t } = useTranslation();
   const router = useRouter();
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -23,8 +27,14 @@ export default function AddUserPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const disabled = useMemo(() => {
-    return isSubmitting || !email.trim() || !email.includes("@");
-  }, [email, isSubmitting]);
+    return (
+      isSubmitting ||
+      !username.trim() ||
+      !email.trim() ||
+      !email.includes("@") ||
+      password.trim().length < 8
+    );
+  }, [email, isSubmitting, password, username]);
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -32,10 +42,11 @@ export default function AddUserPage() {
 
     setIsSubmitting(true);
     try {
-      const response = await fetch("/api/user-service/users", {
+      const response = await authenticatedFetch("/api/user-service/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          username: username.trim(),
           email: email.trim(),
           first_name: firstName.trim() || undefined,
           last_name: lastName.trim() || undefined,
@@ -50,12 +61,12 @@ export default function AddUserPage() {
         throw new Error(detail);
       }
 
-      toast.success("User created and synced with Keycloak");
+      toast.success(t("admin.users.createSuccess"));
       router.push("/admin/users");
       router.refresh();
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      toast.error(`Failed to create user - ${message}`);
+      toast.error(t("admin.users.createError", { error: message }));
     } finally {
       setIsSubmitting(false);
     }
@@ -64,7 +75,7 @@ export default function AddUserPage() {
   return (
     <SettingsLayouts.Root>
       <SettingsLayouts.Header
-        title={`${usersRoute.title} - Add User`}
+        title={t("admin.users.addUserPageTitle")}
         icon={usersRoute.icon}
         separator
       />
@@ -75,13 +86,27 @@ export default function AddUserPage() {
         >
           <div className="flex flex-col gap-4">
             <Text as="p" mainUiMuted>
-              Create a user directly in the platform. This action also creates
-              and syncs the account in Keycloak.
+              {t("admin.users.createDescription")}
             </Text>
 
             <label className="flex flex-col gap-1">
               <Text as="p" mainUiBody>
-                Email
+                {t("auth.usernameLabel", { defaultValue: "Username" })}
+              </Text>
+              <input
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="h-10 rounded border border-border-subtle bg-background px-3"
+                placeholder="newuser"
+                autoComplete="username"
+                required
+              />
+            </label>
+
+            <label className="flex flex-col gap-1">
+              <Text as="p" mainUiBody>
+                {t("auth.emailLabel", { defaultValue: "Email" })}
               </Text>
               <input
                 type="email"
@@ -96,7 +121,7 @@ export default function AddUserPage() {
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <label className="flex flex-col gap-1">
                 <Text as="p" mainUiBody>
-                  First Name
+                  {t("admin.users.editUserModal.firstNameLabel")}
                 </Text>
                 <input
                   type="text"
@@ -109,7 +134,7 @@ export default function AddUserPage() {
 
               <label className="flex flex-col gap-1">
                 <Text as="p" mainUiBody>
-                  Last Name
+                  {t("admin.users.editUserModal.lastNameLabel")}
                 </Text>
                 <input
                   type="text"
@@ -124,7 +149,7 @@ export default function AddUserPage() {
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <label className="flex flex-col gap-1">
                 <Text as="p" mainUiBody>
-                  Role
+                  {t("admin.users.roleHeader")}
                 </Text>
                 <select
                   value={role}
@@ -141,24 +166,28 @@ export default function AddUserPage() {
 
               <label className="flex flex-col gap-1">
                 <Text as="p" mainUiBody>
-                  Password (optional)
+                  {t("admin.users.createPasswordLabel")}
                 </Text>
                 <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="h-10 rounded border border-border-subtle bg-background px-3"
-                  placeholder="Leave empty to set later"
+                  placeholder={t("admin.users.createPasswordPlaceholder")}
+                  autoComplete="new-password"
+                  required
                 />
               </label>
             </div>
 
             <div className="mt-2 flex gap-2">
               <Button type="button" onClick={() => router.push("/admin/users")}>
-                Cancel
+                {t("admin.users.editUserModal.cancelButton")}
               </Button>
               <CreateButton primary type="submit" disabled={disabled}>
-                {isSubmitting ? "Creating..." : "Create User"}
+                {isSubmitting
+                  ? t("admin.users.creatingButton")
+                  : t("admin.users.addUserButton")}
               </CreateButton>
             </div>
           </div>

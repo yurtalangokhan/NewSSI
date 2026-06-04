@@ -7,17 +7,21 @@ import { toast } from "@/hooks/useToast";
 import { LoadingAnimation } from "@/components/Loading";
 import { SvgUser } from "@opal/icons";
 import { useTranslation } from "react-i18next";
+import DeleteUserButton from "./buttons/DeleteUserButton";
+import { authenticatedFetch } from "@/lib/fetcher";
 
 export interface EditUserModalProps {
   user: User;
   onClose: () => void;
   onSuccess: () => void;
+  canDelete?: boolean;
 }
 
 export default function EditUserModal({
   user,
   onClose,
   onSuccess,
+  canDelete = true,
 }: EditUserModalProps) {
   const { t } = useTranslation();
   const fullNameParts = (user.full_name || "")
@@ -59,7 +63,7 @@ export default function EditUserModal({
     setIsSaving(true);
     try {
       if (isProfileChanged) {
-        const profileRes = await fetch(`/api/user-service/users/${user.id}`, {
+        const profileRes = await authenticatedFetch(`/api/user-service/users/${user.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -77,7 +81,7 @@ export default function EditUserModal({
       }
 
       if (isPasswordChanged) {
-        const passRes = await fetch(
+        const passRes = await authenticatedFetch(
           `/api/user-service/users/${user.id}/password`,
           {
             method: "POST",
@@ -178,19 +182,32 @@ export default function EditUserModal({
               />
             </div>
 
-            <div className="mt-2 flex items-center gap-2">
-              <Button onClick={onClose} tertiary>
-                {t("admin.users.editUserModal.cancelButton")}
-              </Button>
-              <Button onClick={handleSave} disabled={isSaving}>
-                {isSaving ? (
-                  <LoadingAnimation
-                    text={t("admin.users.editUserModal.savingButton")}
-                  />
-                ) : (
-                  t("admin.users.editUserModal.save")
+            <div className="mt-2 flex items-center justify-between gap-2">
+              <div>
+                {canDelete && (
+                  <DeleteUserButton
+                    user={user}
+                    mutate={onSuccess}
+                    onSuccess={onClose}
+                  >
+                    {t("admin.users.deleteUserButton")}
+                  </DeleteUserButton>
                 )}
-              </Button>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button onClick={onClose} tertiary>
+                  {t("admin.users.editUserModal.cancelButton")}
+                </Button>
+                <Button onClick={handleSave} disabled={isSaving}>
+                  {isSaving ? (
+                    <LoadingAnimation
+                      text={t("admin.users.editUserModal.savingButton")}
+                    />
+                  ) : (
+                    t("admin.users.editUserModal.save")
+                  )}
+                </Button>
+              </div>
             </div>
           </div>
         </Modal.Body>

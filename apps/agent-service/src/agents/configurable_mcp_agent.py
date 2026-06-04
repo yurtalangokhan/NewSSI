@@ -7,6 +7,7 @@ import logging
 import os
 import re
 from typing import Any
+from urllib.parse import urlparse
 
 from langchain_core.messages import SystemMessage
 from langchain_core.runnables import RunnableConfig
@@ -86,31 +87,44 @@ class ConfigurableMCPAgent(LazyLoadingAgent):
     
     async def _load_mcp_tools(self, mcp_url: str | None = None) -> None:
         """Load tools from MCP server."""
-        try:
-            from langchain_mcp_adapters.client import MultiServerMCPClient
-            
-            url = mcp_url or getattr(settings, "TOOLS_SERVICE_URL", None) or settings.MCP_SERVER_URL
-            
-            client = MultiServerMCPClient(
-                connections={
-                    "mcp-tools": {
-                        "transport": "streamable_http",
-                        "url": url,
+        from langchain_mcp_adapters.client import MultiServerMCPClient
+
+        url = mcp_url or getattr(settings, "TOOLS_SERVICE_URL", None) or settings.MCP_SERVER_URL
+
+        candidate_urls = [url]
+        parsed = urlparse(url)
+        if parsed.hostname == "tools-service":
+            localhost_url = parsed._replace(netloc=f"localhost:{parsed.port or 8003}").geturl()
+            if localhost_url not in candidate_urls:
+                candidate_urls.append(localhost_url)
+
+        last_error: Exception | None = None
+        for candidate_url in candidate_urls:
+            try:
+                client = MultiServerMCPClient(
+                    connections={
+                        "mcp-tools": {
+                            "transport": "streamable_http",
+                            "url": candidate_url,
+                        }
                     }
-                }
-            )
-            
-            # New API: directly call get_tools() without context manager
-            tools = await client.get_tools()
-            
-            # Store tools by name for easy lookup
-            for tool in tools:
-                self._mcp_tools[tool.name] = tool
-            
-            logger.info(f"Loaded {len(tools)} MCP tools: {list(self._mcp_tools.keys())}")
-            
-        except Exception as e:
-            logger.warning(f"Could not load MCP tools: {e}")
+                )
+
+                tools = await client.get_tools()
+                self._mcp_tools = {tool.name: tool for tool in tools}
+                logger.info(
+                    "Loaded %s MCP tools from %s: %s",
+                    len(tools),
+                    candidate_url,
+                    list(self._mcp_tools.keys()),
+                )
+                return
+            except Exception as exc:
+                last_error = exc
+                logger.warning("Could not load MCP tools from %s: %s", candidate_url, exc)
+
+        if last_error is not None:
+            logger.warning(f"Could not load MCP tools: {last_error}")
 
     async def _prepare_memory_context(
         self,
@@ -180,8 +194,6 @@ class ConfigurableMCPAgent(LazyLoadingAgent):
         if memory_context:
             system_prompt = f"{system_prompt}\n{memory_context}"
         mcp_tool_names = configurable.get("mcp_tools", [])
-        if mcp_tool_names:
-            system_prompt = f"{system_prompt}\n{TOOL_USAGE_GUARDRAIL}"
         return configurable, system_prompt, mcp_tool_names
 
     def _create_agent_graph(
@@ -210,6 +222,14 @@ class ConfigurableMCPAgent(LazyLoadingAgent):
                 agent_tools.append(self._mcp_tools[tool_name])
             else:
                 logger.warning(f"Tool '{tool_name}' not found in MCP cache")
+
+        if agent_tools:
+            system_prompt = f"{system_prompt}\n{TOOL_USAGE_GUARDRAIL}"
+        elif mcp_tool_names:
+            logger.warning(
+                "Requested MCP tools were unavailable; continuing without tool guardrail: %s",
+                mcp_tool_names,
+            )
 
         # Append any extra tools (e.g. database_search, graph_search)
         if extra_tools:

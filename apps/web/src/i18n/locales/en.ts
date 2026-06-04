@@ -1674,6 +1674,15 @@ const en = {
       emailSendFailedWarning:
         "Users added, but email sending failed. Check your SMTP configuration and try again.",
       usersInvitedSuccess: "Users invited!",
+      addUserButton: "Add User",
+      createSuccess: "User created and synced with Keycloak",
+      createError: "Failed to create user - {{error}}",
+      createDescription:
+        "Create a user directly in the platform. This action also creates and syncs the account in Keycloak.",
+      addUserPageTitle: "Users - Add User",
+      creatingButton: "Creating...",
+      createPasswordLabel: "Password",
+      createPasswordPlaceholder: "Set an initial password",
       inviteFailedError: "Failed to invite users - {{error}}",
       downloadFailedError: "Failed to download all users - {{error}}",
       deactivatedSuccess: "User deactivated!",

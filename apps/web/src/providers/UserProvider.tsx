@@ -17,7 +17,6 @@ import { getCurrentUser } from "@/lib/user";
 import { usePostHog } from "posthog-js/react";
 import { CombinedSettings } from "@/interfaces/settings";
 import { SettingsContext } from "@/providers/SettingsProvider";
-import { useTokenRefresh } from "@/hooks/useTokenRefresh";
 import { AuthTypeMetadata } from "@/lib/userSS";
 import { updateUserPersonalization as persistPersonalization } from "@/lib/userSettings";
 import { useTheme } from "next-themes";
@@ -123,9 +122,6 @@ export function UserProvider({
       console.error("Error fetching current user:", error);
     }
   };
-
-  // Use the custom token refresh hook
-  useTokenRefresh(upToDateUser, authTypeMetadata, fetchUser);
 
   // Sync user's theme preference from DB to next-themes on load
   const { setTheme, theme } = useTheme();

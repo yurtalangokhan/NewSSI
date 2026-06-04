@@ -278,7 +278,7 @@ export function usePinnedAgents() {
 
     // If pinned_assistants is null/undefined (never set), show featured personas
     // If it's an empty array (user explicitly unpinned all), show nothing
-    const pinnedIds = user?.preferences.pinned_assistants;
+    const pinnedIds = user?.preferences?.pinned_assistants;
     if (pinnedIds === null || pinnedIds === undefined) {
       return agents.filter((agent) => agent.featured && agent.id !== 0);
     }

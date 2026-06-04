@@ -9,6 +9,7 @@ import { useSendAuthRequiredMessage } from "@/lib/extension/utils";
 import Text from "@/refresh-components/texts/Text";
 import Button from "@/refresh-components/buttons/Button";
 import Message from "@/refresh-components/messages/Message";
+import Link from "next/link";
 import { useTranslation } from "react-i18next";
 
 interface LoginPageProps {
@@ -92,6 +93,14 @@ export default function LoginPage({
           {NEXT_PUBLIC_FORGOT_PASSWORD_ENABLED && (
             <Button href="/auth/forgot-password" className="w-full">{t("auth.resetPasswordLink")}</Button>
           )}
+          <div className="flex items-center justify-center gap-2 pt-2">
+            <Text as="p" text03 mainUiMuted>
+              {t("auth.noAccount", { defaultValue: "Hesabınız mı yok?" })}
+            </Text>
+            <Link href="/auth/signup" className="text-link font-medium">
+              {t("auth.signupLink", { defaultValue: "Kaydol" })}
+            </Link>
+          </div>
         </div>
       )}
 
@@ -116,6 +125,14 @@ export default function LoginPage({
           )}
 
           <EmailPasswordForm nextUrl={effectiveNextUrl} />
+          <div className="flex items-center justify-center gap-2 pt-2">
+            <Text as="p" text03 mainUiMuted>
+              {t("auth.noAccount", { defaultValue: "Hesabınız mı yok?" })}
+            </Text>
+            <Link href="/auth/signup" className="text-link font-medium">
+              {t("auth.signupLink", { defaultValue: "Kaydol" })}
+            </Link>
+          </div>
         </div>
       )}
 
@@ -140,6 +157,14 @@ export default function LoginPage({
           )}
 
           <EmailPasswordForm nextUrl={effectiveNextUrl} />
+          <div className="flex items-center justify-center gap-2 pt-2">
+            <Text as="p" text03 mainUiMuted>
+              {t("auth.noAccount", { defaultValue: "Hesabınız mı yok?" })}
+            </Text>
+            <Link href="/auth/signup" className="text-link font-medium">
+              {t("auth.signupLink", { defaultValue: "Kaydol" })}
+            </Link>
+          </div>
         </div>
       )}
     </div>

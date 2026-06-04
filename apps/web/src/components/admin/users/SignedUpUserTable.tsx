@@ -14,7 +14,6 @@ import {
 } from "@/components/ui/table";
 import { TableHeader } from "@/components/ui/table";
 import UserRoleDropdown from "./buttons/UserRoleDropdown";
-import DeleteUserButton from "./buttons/DeleteUserButton";
 import DeactivateUserButton from "./buttons/DeactivateUserButton";
 import usePaginatedFetch from "@/hooks/usePaginatedFetch";
 import { ThreeDotsLoader } from "@/components/Loading";
@@ -36,7 +35,6 @@ import Popover from "@/refresh-components/Popover";
 import {
   SvgKey,
   SvgLogOut,
-  SvgMinusCircle,
   SvgMoreHorizontal,
 } from "@opal/icons";
 import { Button as OpalButton } from "@opal/components";
@@ -274,16 +272,6 @@ export default function SignedUpUserTable({
               </LeaveOrganizationButton>
             ) : (
               <>
-                {!user.is_active && (
-                  <DeleteUserButton
-                    user={user}
-                    mutate={refresh}
-                    className={buttonClassName}
-                  >
-                    <SvgMinusCircle className="mr-2" size={16} />
-                    <span>{t("admin.users.deleteUserButton")}</span>
-                  </DeleteUserButton>
-                )}
                 <DeactivateUserButton
                   user={user}
                   deactivate={user.is_active}
@@ -413,6 +401,7 @@ export default function SignedUpUserTable({
           user={editUser}
           onClose={() => setEditUser(null)}
           onSuccess={refresh}
+          canDelete={!(NEXT_PUBLIC_CLOUD_ENABLED && editUser.id === currentUser?.id)}
         />
       )}
     </>

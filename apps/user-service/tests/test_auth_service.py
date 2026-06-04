@@ -7,6 +7,17 @@ from src.config import get_settings
 from src.service.auth_service import AuthService
 
 
+def test_hash_password_generates_bcrypt_hash():
+    hashed = AuthService.hash_password("test123")
+
+    assert hashed.startswith("$2")
+    assert AuthService.verify_password("test123", hashed)
+
+
+def test_verify_password_rejects_invalid_hashes():
+    assert AuthService.verify_password("test123", "not-a-valid-hash") is False
+
+
 @pytest.mark.asyncio
 async def test_validate_token_accepts_current_service_tokens():
     auth_service = AuthService()

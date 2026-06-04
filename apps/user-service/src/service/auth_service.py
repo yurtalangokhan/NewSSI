@@ -3,8 +3,8 @@ import secrets
 from datetime import datetime, timedelta
 from typing import Any
 
+import bcrypt
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 
 from src.config import get_settings
 from src.core.database.models.user_model import normalize_user_role
@@ -13,7 +13,6 @@ from src.repository import SessionRepository, UserRepository
 from .keycloak_service import get_keycloak_service
 
 _settings = get_settings()
-_pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 class AuthService:
@@ -24,11 +23,14 @@ class AuthService:
 
     @staticmethod
     def hash_password(password: str) -> str:
-        return _pwd_context.hash(password)
+        return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
     @staticmethod
     def verify_password(plain: str, hashed: str) -> bool:
-        return _pwd_context.verify(plain, hashed)
+        try:
+            return bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))
+        except ValueError:
+            return False
 
     @staticmethod
     def _hash_token(token: str) -> str:
@@ -223,6 +225,9 @@ class AuthService:
         return {"message": "Logged out successfully"}
 
     async def refresh_access_token(self, refresh_token: str) -> dict[str, Any]:
+        if self.keycloak.is_enabled():
+            return await self._keycloak_refresh_token(refresh_token)
+
         session = await self.session_repo.get_by_refresh_token_hash(self._hash_token(refresh_token))
         if not session:
             raise ValueError("Invalid refresh token")
@@ -254,6 +259,38 @@ class AuthService:
             "token_type": "Bearer",
             "expires_in": 3600,
         }
+
+    async def _keycloak_refresh_token(self, refresh_token: str) -> dict[str, Any]:
+        """Refresh tokens via Keycloak's refresh_token grant."""
+        token_data = await self.keycloak.refresh_token_grant(refresh_token)
+
+        id_token = token_data.get("id_token", "")
+        if not id_token:
+            raise ValueError("Token refresh failed — no id_token received")
+
+        from jose import jwt
+
+        claims = jwt.get_unverified_claims(id_token)
+        keycloak_id = claims.get("sub", "")
+        if not keycloak_id:
+            raise ValueError("Token refresh failed — no subject in token")
+
+        user_email = claims.get("email", "")
+        user_username = claims.get("preferred_username", "")
+        first_name = claims.get("given_name", "")
+        last_name = claims.get("family_name", "")
+
+        user = await self.user_repo.upsert_by_keycloak_id(
+            keycloak_id,
+            email=user_email,
+            username=user_username,
+            first_name=first_name,
+            last_name=last_name,
+            is_active=True,
+            is_verified=True,
+        )
+
+        return await self._build_oidc_login_response(user, token_data)
 
     async def validate_token(self, token: str) -> dict[str, Any] | None:
         try:
