@@ -5,10 +5,15 @@ WORKDIR /app
 RUN pip install --upgrade pip uv
 
 COPY pyproject.toml uv.lock* ./
-RUN uv sync --frozen --no-dev
+
+# Install only dependencies (not the project)
+RUN uv sync --frozen --no-dev --no-install-project
 
 COPY src/ src/
-COPY alembic.ini .
+COPY README.md alembic.ini ./
+
+# Install the project itself
+RUN uv pip install -e .
 
 ENV PYTHONPATH=/app
 

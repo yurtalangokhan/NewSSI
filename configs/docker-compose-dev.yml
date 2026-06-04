@@ -35,7 +35,6 @@ services:
       # Service metadata defaults
       LANGCHAIN_PROJECT: agent-service
     networks:
-      default:
       airbyte:
         aliases:
           - agent-service
@@ -60,6 +59,10 @@ services:
     environment:
       # Keep permissive CORS in local setup
       ALLOW_ORIGINS: '["*"]'
+    networks:
+      airbyte:
+        aliases:
+          - rag-service
 
   # ==========================================================================
   # Tools Service - MCP Tools Server
@@ -81,6 +84,31 @@ services:
       MCP_PORT: "8003"
     volumes:
       - ./workspace:/workspace
+    networks:
+      airbyte:
+        aliases:
+          - tools-service
+
+  # ==========================================================================
+  # User Service - Auth & User Management
+  # ==========================================================================
+
+  user-service:
+    container_name: user-service-rf
+    build:
+      context: ../apps/user-service
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8090:8090"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    env_file:
+      - ../apps/user-service/.env
+    networks:
+      airbyte:
+        aliases:
+          - user-service
 
   # ==========================================================================
   # Web - Frontend (Onyx)
@@ -101,25 +129,13 @@ services:
       - "host.docker.internal:host-gateway"
     env_file:
       - ../apps/web/.env
-    environment:
-      # Backend URLs
-      INTERNAL_URL: http://agent-service:8080
-      AGENT_SERVICE_URL: http://agent-service:8080
-      LANGCONNECT_URL: http://rag-service:8080
-      MCP_INTERNAL_URL: http://tools-service:8003
-      MCP_SERVER_URL: http://tools-service:8003
-      
-      # Auth
-      AUTH_TYPE: oidc
-      
-      # Feature Flags
-      NEXT_PUBLIC_CLOUD_ENABLED: "false"
-      NEXT_PUBLIC_ENABLE_PAID_EE_FEATURES: "false"
-      NEXT_PUBLIC_TEST_ENV: "false"
-      SHOW_EXTRA_CONNECTORS: "false"
-      EE_ENABLED: "false"
+    networks:
+      airbyte:
+        aliases:
+          - web
     depends_on:
       - agent-service
+      - user-service
       # - rag-service
       # - tools-service
 
