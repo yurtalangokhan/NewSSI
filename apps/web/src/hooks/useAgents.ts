@@ -286,7 +286,7 @@ export function usePinnedAgents() {
     return pinnedIds
       .map((id) => agents.find((agent) => agentIdsMatch(agent, id)))
       .filter((agent): agent is MinimalPersonaSnapshot => !!agent);
-  }, [agents, user?.preferences.pinned_assistants]);
+  }, [agents, user?.preferences?.pinned_assistants]);
 
   // Sync server data → local state when server data changes
   // Only sync when agents have loaded (to avoid syncing empty during initial load)
