@@ -411,6 +411,10 @@ class ConfigurableMCPAgent(LazyLoadingAgent):
 
         # Recall memory and merge context into system prompt (avoid extra SystemMessage).
         input, memories, user_id, memory_context = await self._prepare_memory_context(input, config)
+        recall_event = self._build_memory_recall_event(memories)
+
+        if recall_event is not None:
+            yield {"event": "custom", "data": recall_event}
 
         configurable, system_prompt, mcp_tool_names = self._resolve_config(config, memory_context)
         rag_config: dict = configurable.get("rag_config") or {}

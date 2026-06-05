@@ -20,6 +20,7 @@ from agents import get_agent_or_lazy
 from controller import RunController, get_run_controller
 from core.logger import get_logger
 from service.AuthService import extract_user_id_from_token, verify_bearer
+from service.UserServiceClient import get_user_settings
 from service.Schemas import ThreadHistoryRequest, ThreadState
 from service.Utils import convert_input_messages
 
@@ -98,6 +99,30 @@ async def stream_run(
     agent = get_agent_or_lazy(assistant_id)
     logger.debug("stream_run: Got agent type: %s", type(agent).__name__)
 
+    assistant_config: dict[str, Any] = {}
+    stored_assistant = await get_assistant_from_store(assistant_id)
+    if stored_assistant:
+        assistant_config = stored_assistant.get("config", {}) or {}
+
+    user_ltm_enabled = False
+    agent_ltm_enabled = bool(assistant_config.get("long_term_memory", False))
+    if user_id:
+        try:
+            user_settings = await get_user_settings(user_id)
+            user_ltm_enabled = bool(user_settings.get("long_term_memory_enabled", False))
+        except Exception as exc:
+            logger.debug("stream_run: failed to load user LTM settings for %s: %s", user_id, exc)
+
+    resolved_config: dict[str, Any] = dict(assistant_config)
+    resolved_config.update(
+        {
+            "thread_id": thread_id,
+            "user_id": user_id,
+            "model": request_obj.model or assistant_config.get("model") or "ollama",
+            "long_term_memory": user_ltm_enabled and agent_ltm_enabled,
+        }
+    )
+
     from langchain_core.runnables import RunnableConfig
     import uuid
 
@@ -108,11 +133,7 @@ async def stream_run(
     )
 
     config = RunnableConfig(
-        configurable={
-            "thread_id": thread_id,
-            "user_id": user_id,
-            "model": request_obj.model or "ollama",
-        },
+        configurable=resolved_config,
         tags=request_obj.stream_tokens and ["stream-tokens"] or [],
     )
 

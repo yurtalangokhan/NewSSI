@@ -288,7 +288,7 @@ async def _handle_input(
     # AND-logic: long_term_memory = user toggle AND agent toggle
     # ------------------------------------------------------------------
     user_ltm = False
-    agent_ltm = False
+    agent_ltm = bool(configurable.get("long_term_memory", False))
     us_data: dict = {}
     persona_data = None
     try:
@@ -314,7 +314,7 @@ async def _handle_input(
             persona_data = await PersonaRepository().get(_pid) if isinstance(_pid, int) else None
             if persona_data is None and isinstance(_pid, str):
                 persona_data = await PersonaRepository().get_by_builtin_key(_pid)
-            if persona_data:
+            if persona_data and not persona_data.get("is_builtin"):
                 agent_ltm = bool(persona_data.get("long_term_memory", False))
             elif "memory_type" in configurable:
                 # UUID-based dynamic agents: persona lookup yields nothing; fall back to
@@ -324,11 +324,10 @@ async def _handle_input(
             logger.warning(f"LTM persona lookup failed: {_ltm_err}")
     elif "memory_type" in configurable:
         agent_ltm = configurable["memory_type"] == "long_term"
-    elif "long_term_memory" in configurable:
-        agent_ltm = bool(configurable["long_term_memory"])
 
-    # Override whatever the frontend sent — DB toggles are authoritative
-    configurable["long_term_memory"] = user_ltm and agent_ltm
+    # Agent-configured LTM is authoritative for recall/save so memory-enabled
+    # agents can always participate in long-term memory across new chats.
+    configurable["long_term_memory"] = agent_ltm
 
     # Extract memory flag (independent gate for LLM extraction).
     # Reuse persona_data already fetched above — no second DB call needed.

@@ -155,6 +155,11 @@ class RunService:
                         break
 
                     event_type = event.get("event")
+                    if event_type in {"custom", "on_custom_event"}:
+                        payload = event.get("data", {})
+                        if isinstance(payload, dict):
+                            yield f"data: {json.dumps(payload)}\n\n"
+                        continue
                     if event_type == "on_chat_model_stream":
                         chunk = event.get("data", {}).get("chunk")
                         if chunk and chunk.content:

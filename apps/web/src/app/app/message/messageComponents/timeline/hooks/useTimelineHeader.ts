@@ -49,6 +49,22 @@ export function useTimelineHeader(
       return { headerText: t("timeline.thinking"), hasPackets, userStopped };
     }
 
+    const ltmPacket = currentStep.packets.find(
+      (packet) =>
+        packet.obj.type === PacketType.LONG_TERM_MEMORY_RECALL ||
+        packet.obj.type === PacketType.LONG_TERM_MEMORY_SAVE
+    );
+    if (ltmPacket) {
+      return {
+        headerText:
+          ltmPacket.obj.type === PacketType.LONG_TERM_MEMORY_RECALL
+            ? t("timeline.ltmRecalling")
+            : t("timeline.ltmSaving"),
+        hasPackets,
+        userStopped,
+      };
+    }
+
     const firstPacket = currentStep.packets[0];
     if (!firstPacket) {
       return { headerText: t("timeline.thinking"), hasPackets, userStopped };
@@ -102,20 +118,6 @@ export function useTimelineHeader(
       packetType === PacketType.MEMORY_TOOL_NO_ACCESS
     ) {
       return { headerText: t("timeline.updatingMemory"), hasPackets, userStopped };
-    }
-
-    if (
-      packetType === PacketType.LONG_TERM_MEMORY_RECALL ||
-      packetType === PacketType.LONG_TERM_MEMORY_SAVE
-    ) {
-      return {
-        headerText:
-          packetType === PacketType.LONG_TERM_MEMORY_RECALL
-            ? t("timeline.ltmRecalling")
-            : t("timeline.ltmSaving"),
-        hasPackets,
-        userStopped,
-      };
     }
 
     if (packetType === PacketType.REASONING_START) {
