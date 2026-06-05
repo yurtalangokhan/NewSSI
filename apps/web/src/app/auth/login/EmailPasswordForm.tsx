@@ -60,6 +60,27 @@ export default function EmailPasswordForm({
     [isSignup, isJoin, errorMessage, t]
   );
 
+  const readErrorMessage = async (response: Response): Promise<string> => {
+    try {
+      const payload = await response.json();
+      const detail = payload?.detail;
+      if (typeof detail === "string") {
+        return detail;
+      }
+      if (typeof detail === "object" && detail?.reason) {
+        return detail.reason;
+      }
+    } catch {
+      // Fall back to raw text below.
+    }
+
+    try {
+      return (await response.text()).trim();
+    } catch {
+      return "";
+    }
+  };
+
   return (
     <>
       {isWorking && <Spinner />}
@@ -100,26 +121,36 @@ export default function EmailPasswordForm({
             // Get captcha token for signup (if captcha is enabled)
             const captchaToken = await getCaptchaToken("signup");
 
-            const response = await basicSignup(
-              email,
-              values.password,
-              referralSource,
-              captchaToken,
-              username
-            );
+            let response: Response;
+            try {
+              response = await basicSignup(
+                email,
+                values.password,
+                referralSource,
+                captchaToken,
+                username
+              );
+            } catch {
+              setIsWorking(false);
+              const errorMsg = t("auth.unknownError");
+              setErrorMessage(errorMsg);
+              setApiStatus("error");
+              toast.error(t("auth.toastSignUpFailed", { error: errorMsg }));
+              return;
+            }
 
             if (!response.ok) {
               setIsWorking(false);
 
-              const errorDetail: any = (await response.json()).detail;
+              const errorDetail = await readErrorMessage(response);
               let errorMsg: string = t("auth.unknownError");
-              if (typeof errorDetail === "object" && errorDetail.reason) {
-                errorMsg = errorDetail.reason;
-              } else if (errorDetail === "REGISTER_USER_ALREADY_EXISTS") {
+              if (errorDetail === "REGISTER_USER_ALREADY_EXISTS") {
                 errorMsg = t("auth.accountAlreadyExists");
               }
               if (response.status === 429) {
                 errorMsg = t("auth.tooManyRequests");
+              } else if (errorDetail) {
+                errorMsg = errorDetail;
               }
               setErrorMessage(errorMsg);
               setApiStatus("error");
@@ -132,7 +163,18 @@ export default function EmailPasswordForm({
             }
           }
 
-          const loginResponse = await basicLogin(username, values.password);
+          let loginResponse: Response;
+          try {
+            loginResponse = await basicLogin(username, values.password);
+          } catch {
+            setIsWorking(false);
+            const errorMsg = t("auth.unknownError");
+            setErrorMessage(errorMsg);
+            setApiStatus("error");
+            toast.error(t("auth.toastLoginFailed", { error: errorMsg }));
+            return;
+          }
+
           if (loginResponse.ok) {
             setApiStatus("success");
             if (isSignup && shouldVerify) {
@@ -153,13 +195,13 @@ export default function EmailPasswordForm({
             }
           } else {
             setIsWorking(false);
-            const errorDetail: any = (await loginResponse.json()).detail;
+            const errorDetail = await readErrorMessage(loginResponse);
             let errorMsg: string = t("auth.unknownError");
             if (errorDetail === "LOGIN_BAD_CREDENTIALS") {
               errorMsg = t("auth.invalidCredentials");
             } else if (errorDetail === "NO_WEB_LOGIN_AND_HAS_NO_PASSWORD") {
               errorMsg = t("auth.noPasswordSet");
-            } else if (typeof errorDetail === "string") {
+            } else if (errorDetail) {
               errorMsg = errorDetail;
             }
             if (loginResponse.status === 429) {

@@ -5,6 +5,8 @@ import { NextRequest, NextResponse } from "next/server";
 const handleLogout = async (request: NextRequest) => {
   const authTypeMetadata = await getAuthTypeMetadataSS();
   let backendLogoutSucceeded = false;
+  const publicWebOrigin =
+    process.env.WEB_DOMAIN?.replace(/\/$/, "") || request.nextUrl.origin;
 
   // Call backend logout — this terminates the Keycloak SSO session
   // server-side via backchannel logout using the refresh_token cookie.
@@ -50,10 +52,9 @@ const handleLogout = async (request: NextRequest) => {
       const idTokenHint = request.cookies.get("id_token")?.value;
 
       if (issuer) {
-        const webDomain = process.env.WEB_DOMAIN?.replace(/\/$/, "");
         const postLogoutRedirectUri = new URL(
           nextPath,
-          webDomain || request.nextUrl.origin
+          publicWebOrigin
         ).toString();
         const logoutUrl = new URL(`${issuer}/protocol/openid-connect/logout`);
         logoutUrl.searchParams.set("client_id", clientId);
@@ -78,7 +79,7 @@ const handleLogout = async (request: NextRequest) => {
   }
 
   const redirectResponse = NextResponse.redirect(
-    new URL(nextPath, request.nextUrl.origin),
+    new URL(nextPath, publicWebOrigin),
     307
   );
   clearAuthCookies(redirectResponse);
