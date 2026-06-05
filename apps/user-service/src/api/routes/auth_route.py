@@ -1,7 +1,7 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Form, Request, Response
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from src.api.dependencies import require_admin, require_auth
 from src.controller import get_auth_controller
@@ -62,6 +62,8 @@ async def get_me(user_id: Annotated[str, Depends(require_auth)]):
 
 
 class RegisterRequest(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
     username: str
     email: str
     password: str

@@ -19,16 +19,26 @@ const DEFAULT_AUTH_ERROR_MSG =
 
 const DEFAULT_ERROR_MSG = "An error occurred while fetching the data.";
 
+let refreshTokenPromise: Promise<boolean> | null = null;
+
 async function tryRefreshToken(): Promise<boolean> {
-  try {
-    const res = await fetch("/api/auth/refresh", {
-      method: "POST",
-      credentials: "include",
-    });
-    return res.ok;
-  } catch {
-    return false;
+  if (!refreshTokenPromise) {
+    refreshTokenPromise = (async () => {
+      try {
+        const res = await fetch("/api/auth/refresh", {
+          method: "POST",
+          credentials: "include",
+        });
+        return res.ok;
+      } catch {
+        return false;
+      } finally {
+        refreshTokenPromise = null;
+      }
+    })();
   }
+
+  return await refreshTokenPromise;
 }
 
 function handleAuthError(status: 401 | 403): never {

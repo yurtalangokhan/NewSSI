@@ -98,6 +98,8 @@ class UserService:
         hashed_password = AuthService.hash_password(password) if password else None
         normalized_email = email.lower()
         normalized_username = username or normalized_email.split("@")[0]
+        keycloak_first_name = (first_name or normalized_username).strip()
+        keycloak_last_name = (last_name or "User").strip()
 
         created_keycloak_id = False
         if self.keycloak.is_enabled() and not keycloak_id:
@@ -110,10 +112,11 @@ class UserService:
                 keycloak_payload: dict[str, Any] = {
                     "email": normalized_email,
                     "username": normalized_username,
-                    "firstName": first_name,
-                    "lastName": last_name,
+                    "firstName": keycloak_first_name,
+                    "lastName": keycloak_last_name,
                     "enabled": True,
                     "emailVerified": True,
+                    "requiredActions": [],
                 }
                 if password:
                     keycloak_payload["credentials"] = [
@@ -134,15 +137,19 @@ class UserService:
             keycloak_payload: dict[str, Any] = {
                 "email": normalized_email,
                 "username": normalized_username,
-                "firstName": first_name,
-                "lastName": last_name,
+                "firstName": keycloak_first_name,
+                "lastName": keycloak_last_name,
                 "enabled": True,
                 "emailVerified": True,
+                "requiredActions": [],
             }
             if password:
                 await self.keycloak.set_password(keycloak_id, password, temporary=False)
 
             await self.keycloak.update_user(keycloak_id, keycloak_payload)
+
+        if self.keycloak.is_enabled() and created_keycloak_id and keycloak_id and password:
+            await self.keycloak.set_password(keycloak_id, password, temporary=False)
 
         try:
             user = await self.user_repo.create(

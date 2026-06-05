@@ -1,6 +1,7 @@
 import hashlib
 import secrets
-from datetime import datetime, timedelta
+import uuid
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import bcrypt
@@ -37,14 +38,14 @@ class AuthService:
         return hashlib.sha256(token.encode()).hexdigest()
 
     def _create_access_token(self, user_id: str, email: str, role: str) -> tuple[str, datetime]:
-        expires = datetime.utcnow() + timedelta(hours=1)
+        expires = datetime.now(timezone.utc) + timedelta(hours=1)
         payload = {
             "sub": user_id,
             "aud": _settings.SERVICE_NAME,
             "email": email,
             "role": role,
             "exp": expires,
-            "iat": datetime.utcnow(),
+            "iat": datetime.now(timezone.utc),
             "iss": "user-service",
             "type": "access",
             "jti": secrets.token_urlsafe(12),
@@ -55,18 +56,28 @@ class AuthService:
 
     def _create_refresh_token(self) -> tuple[str, datetime]:
         token = secrets.token_urlsafe(32)
-        expires = datetime.utcnow() + timedelta(days=30)
+        expires = datetime.now(timezone.utc) + timedelta(days=30)
         return token, expires
 
     async def basic_login(self, username: str, password: str) -> dict[str, Any]:
         if self.keycloak.is_enabled():
             return await self._keycloak_password_login(username, password)
 
+        local_login = await self._local_basic_login(username, password)
+        if local_login:
+            return local_login
+
+        raise ValueError("Invalid credentials")
+
+    async def _local_basic_login(self, username: str, password: str) -> dict[str, Any] | None:
         user = await self.user_repo.get_by_email(username)
+        if not user:
+            user = await self.user_repo.get_by_username(username)
+
         if not user or not user.hashed_password:
-            raise ValueError("Invalid credentials")
+            return None
         if not self.verify_password(password, user.hashed_password):
-            raise ValueError("Invalid credentials")
+            return None
         if not user.is_active:
             raise ValueError("User account is disabled")
 
@@ -135,7 +146,7 @@ class AuthService:
 
         user_service = get_user_service()
 
-        await user_service.create_user(
+        created_user = await user_service.create_user(
             email=email,
             username=username,
             first_name=first_name,
@@ -144,7 +155,48 @@ class AuthService:
             role="enduser",
         )
 
-        return await self.basic_login(username, password)
+        if self.keycloak.is_enabled():
+            # In OIDC mode, always return Keycloak-issued tokens to keep all services
+            # on the same token validation path.
+            return await self._keycloak_password_login(username, password)
+
+        return await self._build_login_response_from_record(created_user)
+
+    async def _build_login_response_from_record(
+        self, user: dict[str, Any], id_token: str | None = None
+    ) -> dict[str, Any]:
+        role = normalize_user_role(user.get("role", "enduser"))
+        access_token, expires = self._create_access_token(str(user["id"]), user["email"], role)
+        refresh_token, _refresh_expires = self._create_refresh_token()
+        user_id = uuid.UUID(str(user["id"]))
+
+        payload: dict[str, Any] = {
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "token_type": "Bearer",
+            "expires_in": 3600,
+            "user": {
+                "id": str(user_id),
+                "email": user["email"],
+                "username": user.get("username"),
+                "first_name": user.get("first_name"),
+                "last_name": user.get("last_name"),
+                "role": role,
+                "is_active": user.get("is_active"),
+                "is_verified": user.get("is_verified"),
+                "is_superuser": user.get("is_superuser"),
+            },
+        }
+        if id_token:
+            payload["id_token"] = id_token
+
+        await self.session_repo.create(
+            user_id=user_id,
+            token_hash=self._hash_token(access_token),
+            refresh_token_hash=self._hash_token(refresh_token),
+            expires_at=expires,
+        )
+        return payload
 
     async def _build_login_response(self, user, id_token: str | None = None) -> dict[str, Any]:
         role = normalize_user_role(user.role)
@@ -225,40 +277,41 @@ class AuthService:
         return {"message": "Logged out successfully"}
 
     async def refresh_access_token(self, refresh_token: str) -> dict[str, Any]:
+        session = await self.session_repo.get_by_refresh_token_hash(self._hash_token(refresh_token))
+        if session:
+            current_time = datetime.now(timezone.utc)
+            if session.expires_at < current_time:
+                await self.session_repo.delete_by_refresh_token_hash(self._hash_token(refresh_token))
+                raise ValueError("Refresh token expired")
+
+            user = await self.user_repo.get_by_id(session.user_id)
+            if not user or not user.is_active:
+                raise ValueError("User not found or inactive")
+
+            await self.session_repo.delete_by_refresh_token_hash(self._hash_token(refresh_token))
+
+            role = normalize_user_role(user.role)
+            access_token, expires = self._create_access_token(str(user.id), user.email, role)
+            new_refresh, _ = self._create_refresh_token()
+
+            await self.session_repo.create(
+                user_id=user.id,
+                token_hash=self._hash_token(access_token),
+                refresh_token_hash=self._hash_token(new_refresh),
+                expires_at=expires,
+            )
+
+            return {
+                "access_token": access_token,
+                "refresh_token": new_refresh,
+                "token_type": "Bearer",
+                "expires_in": 3600,
+            }
+
         if self.keycloak.is_enabled():
             return await self._keycloak_refresh_token(refresh_token)
 
-        session = await self.session_repo.get_by_refresh_token_hash(self._hash_token(refresh_token))
-        if not session:
-            raise ValueError("Invalid refresh token")
-
-        if session.expires_at < datetime.utcnow():
-            await self.session_repo.delete_by_refresh_token_hash(self._hash_token(refresh_token))
-            raise ValueError("Refresh token expired")
-
-        user = await self.user_repo.get_by_id(session.user_id)
-        if not user or not user.is_active:
-            raise ValueError("User not found or inactive")
-
-        await self.session_repo.delete_by_refresh_token_hash(self._hash_token(refresh_token))
-
-        role = normalize_user_role(user.role)
-        access_token, expires = self._create_access_token(str(user.id), user.email, role)
-        new_refresh, _ = self._create_refresh_token()
-
-        await self.session_repo.create(
-            user_id=user.id,
-            token_hash=self._hash_token(access_token),
-            refresh_token_hash=self._hash_token(new_refresh),
-            expires_at=expires,
-        )
-
-        return {
-            "access_token": access_token,
-            "refresh_token": new_refresh,
-            "token_type": "Bearer",
-            "expires_in": 3600,
-        }
+        raise ValueError("Invalid refresh token")
 
     async def _keycloak_refresh_token(self, refresh_token: str) -> dict[str, Any]:
         """Refresh tokens via Keycloak's refresh_token grant."""

@@ -50,7 +50,9 @@ export const basicSignup = async (
   password: string,
   referralSource?: string,
   captchaToken?: string,
-  username?: string
+  username?: string,
+  firstName?: string,
+  lastName?: string
 ) => {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -65,6 +67,8 @@ export const basicSignup = async (
     email,
     username: username || email,
     password,
+    first_name: firstName,
+    last_name: lastName,
   };
   if (referralSource) {
     body.referral_source = referralSource;

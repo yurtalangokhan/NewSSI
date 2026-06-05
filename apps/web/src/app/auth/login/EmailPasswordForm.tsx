@@ -89,7 +89,7 @@ export default function EmailPasswordForm({
         initialValues={{
           username: "",
           password: "",
-          ...(isSignup ? { email: defaultEmail ? defaultEmail.toLowerCase() : "" } : {}),
+          ...(isSignup ? { email: defaultEmail ? defaultEmail.toLowerCase() : "", firstName: "", lastName: "" } : {}),
         }}
         validateOnChange={true}
         validateOnBlur={true}
@@ -102,12 +102,14 @@ export default function EmailPasswordForm({
                   .email()
                   .required()
                   .transform((value) => value.toLowerCase()),
+                firstName: Yup.string(),
+                lastName: Yup.string(),
               }
             : {}),
           password: Yup.string()
             .required(),
         })}
-        onSubmit={async (values: { username: string; password: string; email?: string }) => {
+        onSubmit={async (values: { username: string; password: string; email?: string; firstName?: string; lastName?: string }) => {
           const username: string = values.username;
           const email: string = values.email?.toLowerCase() || "";
           setShowApiMessage(true);
@@ -128,7 +130,9 @@ export default function EmailPasswordForm({
                 values.password,
                 referralSource,
                 captchaToken,
-                username
+                username,
+                values.firstName,
+                values.lastName
               );
             } catch {
               setIsWorking(false);
@@ -142,15 +146,33 @@ export default function EmailPasswordForm({
             if (!response.ok) {
               setIsWorking(false);
 
-              const errorDetail = await readErrorMessage(response);
               let errorMsg: string = t("auth.unknownError");
-              if (errorDetail === "REGISTER_USER_ALREADY_EXISTS") {
-                errorMsg = t("auth.accountAlreadyExists");
+              let errorDetail: any = null;
+              try {
+                const responseData: any = await response.json();
+                errorDetail = responseData.detail;
+
+                if (typeof errorDetail === "object") {
+                  if (errorDetail.reason) {
+                    errorMsg = errorDetail.reason;
+                  } else if (Array.isArray(errorDetail)) {
+                    // Handle Pydantic validation errors (array format)
+                    const messages = errorDetail
+                      .map((err: any) => err.msg || err.message || String(err))
+                      .filter(Boolean);
+                    errorMsg = messages.join(", ");
+                  }
+                } else if (errorDetail === "REGISTER_USER_ALREADY_EXISTS") {
+                  errorMsg = t("auth.accountAlreadyExists");
+                } else if (typeof errorDetail === "string") {
+                  errorMsg = errorDetail;
+                }
+              } catch (e) {
+                // If JSON parsing fails, keep the unknown error message
               }
+
               if (response.status === 429) {
                 errorMsg = t("auth.tooManyRequests");
-              } else if (errorDetail) {
-                errorMsg = errorDetail;
               }
               setErrorMessage(errorMsg);
               setApiStatus("error");
@@ -160,6 +182,25 @@ export default function EmailPasswordForm({
             } else {
               setApiStatus("success");
               toast.success(t("auth.toastAccountCreated"));
+
+              if (isSignup && shouldVerify) {
+                await requestEmailVerification(email);
+                // Use window.location.href to force a full page reload,
+                // ensuring app re-initializes with the new state (including
+                // server-side provider values)
+                window.location.href = "/auth/waiting-on-verification";
+                return;
+              }
+
+              // The searchparam is purely for multi tenant developement purposes.
+              // It replicates the behavior of the case where a user
+              // has signed up with email / password as the only user to an instance
+              // and has just completed verification
+              const validatedNextUrl = validateInternalRedirect(nextUrl);
+              window.location.href = validatedNextUrl
+                ? validatedNextUrl
+                : `/app${isSignup && !isJoin ? "?new_team=true" : ""}`;
+              return;
             }
           }
 
@@ -269,6 +310,61 @@ export default function EmailPasswordForm({
                     </FormField>
                   )}
                 />
+              )}
+
+              {isSignup && (
+                <div className="flex gap-3 w-full">
+                  <FormikField<string>
+                    name="firstName"
+                    render={(field, helper, _meta, state) => (
+                      <FormField name="firstName" state={state} className="w-full">
+                        <FormField.Label className="text-white font-medium text-sm mb-2 block">{t("auth.firstNameLabel") || "First Name"}</FormField.Label>
+                        <FormField.Control>
+                          <InputTypeIn
+                            {...field}
+                            onChange={(e) => {
+                              if (showApiMessage && apiStatus === "error") {
+                                setShowApiMessage(false);
+                                setErrorMessage("");
+                                setApiStatus("loading");
+                              }
+                              field.onChange(e);
+                            }}
+                            placeholder="John"
+                            onClear={() => helper.setValue("")}
+                            data-testid="firstName"
+                            showClearButton={false}
+                          />
+                        </FormField.Control>
+                      </FormField>
+                    )}
+                  />
+                  <FormikField<string>
+                    name="lastName"
+                    render={(field, helper, _meta, state) => (
+                      <FormField name="lastName" state={state} className="w-full">
+                        <FormField.Label className="text-white font-medium text-sm mb-2 block">{t("auth.lastNameLabel") || "Last Name"}</FormField.Label>
+                        <FormField.Control>
+                          <InputTypeIn
+                            {...field}
+                            onChange={(e) => {
+                              if (showApiMessage && apiStatus === "error") {
+                                setShowApiMessage(false);
+                                setErrorMessage("");
+                                setApiStatus("loading");
+                              }
+                              field.onChange(e);
+                            }}
+                            placeholder="Doe"
+                            onClear={() => helper.setValue("")}
+                            data-testid="lastName"
+                            showClearButton={false}
+                          />
+                        </FormField.Control>
+                      </FormField>
+                    )}
+                  />
+                </div>
               )}
 
               <FormikField<string>

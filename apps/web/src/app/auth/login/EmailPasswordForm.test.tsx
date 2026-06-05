@@ -123,16 +123,10 @@ describe("Email/Password Signup Workflow", () => {
     fetchSpy.mockRestore();
   });
 
-  test("allows user to sign up and login with valid credentials", async () => {
+  test("allows user to sign up and redirect with valid credentials", async () => {
     const user = setupUser();
 
     // Mock POST /api/auth/register
-    fetchSpy.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({}),
-    } as Response);
-
-    // Mock POST /api/auth/login (after successful signup)
     fetchSpy.mockResolvedValueOnce({
       ok: true,
       json: async () => ({}),
@@ -173,25 +167,13 @@ describe("Email/Password Signup Workflow", () => {
       email: "newuser@example.com",
       username: "newuser@example.com",
       password: "securepassword123",
-      referral_source: undefined,
     });
 
-    // Verify login API was called after successful signup
     await waitFor(() => {
-      expect(fetchSpy).toHaveBeenCalledWith(
-        "/api/auth/login",
-        expect.objectContaining({
-          method: "POST",
-        })
-      );
+      expect(window.location.href).toBe("/app?new_team=true");
     });
 
-    // Verify success message is shown
-    await waitFor(() => {
-      expect(
-        screen.getByText(/account created\. signing in/i)
-      ).toBeInTheDocument();
-    });
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
   });
 
   test("shows error when email already exists", async () => {

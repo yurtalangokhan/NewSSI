@@ -1,4 +1,7 @@
 from datetime import datetime, timedelta
+from types import SimpleNamespace
+from unittest.mock import AsyncMock
+import uuid
 
 import pytest
 from jose import jwt
@@ -81,3 +84,35 @@ def test_resolve_role_detects_admin_from_client_roles():
     resolved = AuthService._resolve_role(roles)
 
     assert resolved == "admin"
+
+
+@pytest.mark.asyncio
+async def test_basic_login_raises_when_keycloak_auth_fails_in_oidc_mode():
+    auth_service = AuthService()
+    auth_service.keycloak = SimpleNamespace(is_enabled=lambda: True)
+    auth_service.session_repo.create = AsyncMock()
+    auth_service.keycloak.password_grant = AsyncMock(
+        side_effect=ValueError("Account is not fully set up")
+    )
+
+    user = SimpleNamespace(
+        id=uuid.uuid4(),
+        email="newuser@example.com",
+        username="newuser",
+        first_name=None,
+        last_name=None,
+        role="enduser",
+        is_active=True,
+        is_verified=False,
+        is_superuser=False,
+        hashed_password=AuthService.hash_password("securepassword123"),
+    )
+    auth_service.user_repo.get_by_email = AsyncMock(return_value=user)
+    auth_service.user_repo.get_by_username = AsyncMock(return_value=None)
+
+    with pytest.raises(ValueError, match="Account is not fully set up"):
+        await auth_service.basic_login("newuser@example.com", "securepassword123")
+
+    auth_service.user_repo.get_by_email.assert_not_called()
+    auth_service.user_repo.get_by_username.assert_not_called()
+    auth_service.keycloak.password_grant.assert_awaited_once()
