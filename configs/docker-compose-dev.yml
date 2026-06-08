@@ -26,6 +26,7 @@ services:
       - /tmp/airbyte_local:/tmp/airbyte_local:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
+      - "${KEYCLOAK_PUBLIC_HOSTNAME:-keycloak.localhost}:host-gateway"
     env_file:
       - ../apps/agent-service/.env
     environment:
@@ -34,6 +35,12 @@ services:
 
       # Service metadata defaults
       LANGCHAIN_PROJECT: agent-service
+      KEYCLOAK_ENABLED: "true"
+      KEYCLOAK_BASE_URL: http://${KEYCLOAK_PUBLIC_HOSTNAME:-keycloak.localhost}:${KEYCLOAK_PUBLIC_PORT:-8085}
+      KEYCLOAK_ISSUER_URL: http://${KEYCLOAK_PUBLIC_HOSTNAME:-keycloak.localhost}:${KEYCLOAK_PUBLIC_PORT:-8085}/realms/agenticai
+      KEYCLOAK_REALM: agenticai
+      KEYCLOAK_CLIENT_ID: agenticai-web
+      KEYCLOAK_AUDIENCE: agent-service
     networks:
       airbyte:
         aliases:
@@ -103,8 +110,16 @@ services:
       - "8090:8090"
     extra_hosts:
       - "host.docker.internal:host-gateway"
+      - "${KEYCLOAK_PUBLIC_HOSTNAME:-keycloak.localhost}:host-gateway"
     env_file:
       - ../apps/user-service/.env
+    environment:
+      KEYCLOAK_ENABLED: "true"
+      KEYCLOAK_BASE_URL: http://${KEYCLOAK_PUBLIC_HOSTNAME:-keycloak.localhost}:${KEYCLOAK_PUBLIC_PORT:-8085}
+      KEYCLOAK_ISSUER_URL: http://${KEYCLOAK_PUBLIC_HOSTNAME:-keycloak.localhost}:${KEYCLOAK_PUBLIC_PORT:-8085}/realms/agenticai
+      KEYCLOAK_REALM: agenticai
+      KEYCLOAK_CLIENT_ID: agenticai-web
+      KEYCLOAK_AUDIENCE: agent-service
     networks:
       airbyte:
         aliases:
@@ -119,16 +134,22 @@ services:
     build:
       context: ../apps/web
       dockerfile: Dockerfile
-      args:
-        INTERNAL_URL: http://agent-service:8080
     image: web:local
     restart: unless-stopped
     ports:
       - "8126:3000"
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    env_file:
-      - ../apps/web/.env
+      - "${KEYCLOAK_PUBLIC_HOSTNAME:-keycloak.localhost}:host-gateway"
+    environment:
+      AUTH_TYPE: oidc
+      WEB_DOMAIN: http://localhost:3000
+      INTERNAL_URL: http://kong:8000
+      USER_SERVICE_URL: http://kong:8000
+      AGENT_SERVICE_URL: http://kong:8000
+      KEYCLOAK_BASE_URL: http://${KEYCLOAK_PUBLIC_HOSTNAME:-keycloak.localhost}:${KEYCLOAK_PUBLIC_PORT:-8085}
+      KEYCLOAK_ISSUER_URL: http://${KEYCLOAK_PUBLIC_HOSTNAME:-keycloak.localhost}:${KEYCLOAK_PUBLIC_PORT:-8085}/realms/agenticai
+      KEYCLOAK_CLIENT_ID: agenticai-web
     networks:
       airbyte:
         aliases:
@@ -136,8 +157,9 @@ services:
     depends_on:
       - agent-service
       - user-service
-      # - rag-service
-      # - tools-service
+      - rag-service
+      - tools-service
+
 
 networks:
   airbyte:

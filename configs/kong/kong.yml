@@ -1,0 +1,184 @@
+_format_version: "3.0"
+_transform: true
+
+# ============================================================================
+# Shared OIDC plugin configuration anchor
+# ============================================================================
+x-oidc: &oidc
+  name: openid-connect
+  config:
+    issuer: http://keycloak.localhost:8085/realms/agenticai
+    client_id: agenticai-web
+    auth_methods:
+      - bearer
+      - cookie
+    bearer_only: true
+    run_on_preflight: false
+    audience_required: false
+
+# ============================================================================
+# Upstream Services
+# ============================================================================
+
+services:
+  # --------------------------------------------------------------------------
+  # User Service — mixed auth (some routes exempt)
+  # --------------------------------------------------------------------------
+  - name: user-service
+    url: http://user-service:8090
+    routes:
+      # Auth routes — NO OIDC plugin (handles login/callback/refresh)
+      - name: user-service-auth
+        paths:
+          - /api/auth
+        strip_path: false
+
+      # Protected routes — all require valid Keycloak token
+      - name: user-service-users
+        paths:
+          - /api/users
+        strip_path: false
+        plugins:
+          - <<: *oidc
+
+      - name: user-service-settings
+        paths:
+          - /api/settings
+        strip_path: false
+        plugins:
+          - <<: *oidc
+
+      - name: user-service-api-keys
+        paths:
+          - /api/api-keys
+        strip_path: false
+        plugins:
+          - <<: *oidc
+
+      - name: user-service-roles
+        paths:
+          - /api/roles
+        strip_path: false
+        plugins:
+          - <<: *oidc
+
+      - name: user-service-enterprise-settings
+        paths:
+          - /api/enterprise-settings
+        strip_path: false
+        plugins:
+          - <<: *oidc
+
+      # Health — no auth
+      - name: user-service-health
+        paths:
+          - /health
+        strip_path: false
+
+  # --------------------------------------------------------------------------
+  # Agent Service — all routes require valid Keycloak token
+  # --------------------------------------------------------------------------
+  - name: agent-service
+    url: http://agent-service:8080
+    plugins:
+      - <<: *oidc
+    routes:
+      - name: agent-service-user
+        paths:
+          - /api/user
+        strip_path: false
+      - name: agent-service-chat
+        paths:
+          - /api/chat
+        strip_path: false
+      - name: agent-service-admin
+        paths:
+          - /api/admin
+        strip_path: false
+      - name: agent-service-llm
+        paths:
+          - /api/llm
+        strip_path: false
+      - name: agent-service-admin-llm
+        paths:
+          - /admin/llm
+        strip_path: false
+      - name: agent-service-proxy
+        paths:
+          - /api/proxy
+        strip_path: false
+      - name: agent-service-agent-definitions
+        paths:
+          - /agent-definitions
+        strip_path: false
+      - name: agent-service-api-agent-definitions
+        paths:
+          - /api/agent-definitions
+        strip_path: false
+      - name: agent-service-datasources
+        paths:
+          - /datasources
+        strip_path: false
+      - name: agent-service-agents
+        paths:
+          - /agents
+        strip_path: false
+      - name: agent-service-assistants
+        paths:
+          - /assistants
+        strip_path: false
+      - name: agent-service-threads
+        paths:
+          - /threads
+        strip_path: false
+      - name: agent-service-mcp-providers
+        paths:
+          - /mcp-providers
+        strip_path: false
+      - name: agent-service-mcp-tools
+        paths:
+          - /mcp-tools
+        strip_path: false
+      - name: agent-service-api-threads
+        paths:
+          - /api/threads
+        strip_path: false
+
+  # --------------------------------------------------------------------------
+  # RAG Service — all routes require valid Keycloak token
+  # (path-prefixed to avoid conflicts with agent-service routes)
+  # --------------------------------------------------------------------------
+  - name: rag-service
+    url: http://rag-service:8080
+    plugins:
+      - <<: *oidc
+    routes:
+      - name: rag-service-collections
+        paths:
+          - /api/rag/collections
+        strip_path: true
+      - name: rag-service-graph
+        paths:
+          - /api/rag/graph
+        strip_path: true
+      - name: rag-service-datasources
+        paths:
+          - /api/rag/datasources
+        strip_path: true
+      - name: rag-service-health
+        paths:
+          - /api/rag/health
+        strip_path: true
+
+  # --------------------------------------------------------------------------
+  # Tools Service (MCP) — requires valid Keycloak token
+  # --------------------------------------------------------------------------
+  - name: tools-service
+    url: http://tools-service:8003
+    plugins:
+      - <<: *oidc
+    routes:
+      - name: tools-service-mcp
+        paths:
+          - /api/mcp
+        strip_path: true

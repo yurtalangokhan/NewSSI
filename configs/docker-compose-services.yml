@@ -294,6 +294,39 @@ services:
   # Keycloak - Identity Provider
   # ==========================================================================
 
+  kong:
+    container_name: kong
+    image: kong:3.8
+    restart: unless-stopped
+    depends_on:
+      keycloak:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+      - "8001:8001"
+    extra_hosts:
+      - "${KEYCLOAK_PUBLIC_HOSTNAME:-keycloak.localhost}:host-gateway"
+    volumes:
+      - ./kong/kong.yml:/etc/kong/kong.yml:ro
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /etc/kong/kong.yml
+      KONG_DNS_ORDER: LAST,A,CNAME
+      KONG_LOG_LEVEL: info
+      KONG_ADMIN_LISTEN: 0.0.0.0:8001
+      KONG_PROXY_LISTEN: 0.0.0.0:8000
+      KONG_ADMIN_ACCESS_LOG: /dev/stdout
+      KONG_ADMIN_ERROR_LOG: /dev/stderr
+      KONG_PROXY_ACCESS_LOG: /dev/stdout
+      KONG_PROXY_ERROR_LOG: /dev/stderr
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8001/status >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
   keycloak:
     container_name: keycloak
     image: quay.io/keycloak/keycloak:26.1
@@ -313,8 +346,51 @@ services:
       KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin123}
       KC_HEALTH_ENABLED: "true"
+      KC_HOSTNAME: ${KEYCLOAK_PUBLIC_HOSTNAME:-keycloak.localhost}
+      KC_HOSTNAME_PORT: ${KEYCLOAK_PUBLIC_PORT:-8085}
+      KC_HOSTNAME_STRICT: "false"
+      KC_HOSTNAME_STRICT_HTTPS: "false"
     volumes:
       - keycloak-data:/opt/keycloak/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/health/ready >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+
+  keycloak-bootstrap:
+    container_name: keycloak-bootstrap
+    image: alpine:3.20
+    restart: "no"
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    extra_hosts:
+      - "keycloak.localhost:host-gateway"
+    environment:
+      KEYCLOAK_BASE_URL: http://keycloak.localhost:8085
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin123}
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-agenticai}
+      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-agenticai-web}
+      KEYCLOAK_REDIRECT_URI: ${KEYCLOAK_REDIRECT_URI:-*}
+      KEYCLOAK_WEB_ORIGIN: ${KEYCLOAK_WEB_ORIGIN:-*}
+      KEYCLOAK_POST_LOGOUT_REDIRECT_URIS: ${KEYCLOAK_POST_LOGOUT_REDIRECT_URIS:-+}
+      KEYCLOAK_TEST_USER: ${KEYCLOAK_TEST_USER:-devuser}
+      KEYCLOAK_TEST_EMAIL: ${KEYCLOAK_TEST_EMAIL:-devuser@local.dev}
+      KEYCLOAK_TEST_PASSWORD: ${KEYCLOAK_TEST_PASSWORD:-DevPass123!}
+      KEYCLOAK_DEFAULT_ADMIN_USER: ${KEYCLOAK_DEFAULT_ADMIN_USER:-agentic-admin}
+      KEYCLOAK_DEFAULT_ADMIN_EMAIL: ${KEYCLOAK_DEFAULT_ADMIN_EMAIL:-admin@agenticai.local}
+      KEYCLOAK_DEFAULT_ADMIN_PASSWORD: ${KEYCLOAK_DEFAULT_ADMIN_PASSWORD:-AdminPass123!}
+      KEYCLOAK_DEFAULT_ADMIN_FIRST_NAME: ${KEYCLOAK_DEFAULT_ADMIN_FIRST_NAME:-Agentic}
+      KEYCLOAK_DEFAULT_ADMIN_LAST_NAME: ${KEYCLOAK_DEFAULT_ADMIN_LAST_NAME:-Admin}
+      KEYCLOAK_DEFAULT_ADMIN_REALM_ROLE: ${KEYCLOAK_DEFAULT_ADMIN_REALM_ROLE:-admin}
+    volumes:
+      - ../scripts/bootstrap_keycloak.sh:/scripts/bootstrap_keycloak.sh:ro
+    command:
+      - sh
+      - -c
+      - apk add --no-cache bash curl jq >/dev/null && bash /scripts/bootstrap_keycloak.sh
 
   # mongo:
   #   image: mongo:7
