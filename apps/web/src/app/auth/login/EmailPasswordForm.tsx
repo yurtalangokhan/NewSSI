@@ -102,8 +102,8 @@ export default function EmailPasswordForm({
                   .email()
                   .required()
                   .transform((value) => value.toLowerCase()),
-                firstName: Yup.string(),
-                lastName: Yup.string(),
+                firstName: Yup.string().trim().required(),
+                lastName: Yup.string().trim().required(),
               }
             : {}),
           password: Yup.string()
@@ -131,8 +131,8 @@ export default function EmailPasswordForm({
                 referralSource,
                 captchaToken,
                 username,
-                values.firstName,
-                values.lastName
+                values.firstName?.trim() || "",
+                values.lastName?.trim() || ""
               );
             } catch {
               setIsWorking(false);

@@ -98,8 +98,11 @@ class UserService:
         hashed_password = AuthService.hash_password(password) if password else None
         normalized_email = email.lower()
         normalized_username = username or normalized_email.split("@")[0]
-        keycloak_first_name = (first_name or normalized_username).strip()
-        keycloak_last_name = (last_name or "User").strip()
+        normalized_first_name = (first_name or "").strip() or normalized_username
+        normalized_last_name = (last_name or "").strip() or "User"
+
+        keycloak_first_name = normalized_first_name
+        keycloak_last_name = normalized_last_name
 
         created_keycloak_id = False
         if self.keycloak.is_enabled() and not keycloak_id:
@@ -155,8 +158,8 @@ class UserService:
             user = await self.user_repo.create(
                 email=normalized_email,
                 username=normalized_username,
-                first_name=first_name,
-                last_name=last_name,
+                first_name=normalized_first_name,
+                last_name=normalized_last_name,
                 role=role_value,
                 hashed_password=hashed_password,
                 invited=invited,

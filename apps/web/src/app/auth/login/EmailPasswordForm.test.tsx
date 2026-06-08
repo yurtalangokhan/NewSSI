@@ -135,10 +135,16 @@ describe("Email/Password Signup Workflow", () => {
     render(<EmailPasswordForm isSignup={true} />);
 
     // User fills out the signup form
+    const usernameInput = screen.getByTestId("username");
     const emailInput = screen.getByPlaceholderText(/email@yourcompany.com/i);
+    const firstNameInput = screen.getByTestId("firstName");
+    const lastNameInput = screen.getByTestId("lastName");
     const passwordInput = screen.getByPlaceholderText(/∗/);
 
+    await user.type(usernameInput, "newuser");
     await user.type(emailInput, "newuser@example.com");
+    await user.type(firstNameInput, "John");
+    await user.type(lastNameInput, "Doe");
     await user.type(passwordInput, "securepassword123");
 
     // User submits the signup form
@@ -165,8 +171,10 @@ describe("Email/Password Signup Workflow", () => {
     const signupBody = JSON.parse(signupCallArgs[1].body);
     expect(signupBody).toEqual({
       email: "newuser@example.com",
-      username: "newuser@example.com",
+      username: "newuser",
       password: "securepassword123",
+      first_name: "John",
+      last_name: "Doe",
     });
 
     await waitFor(() => {
@@ -189,10 +197,16 @@ describe("Email/Password Signup Workflow", () => {
     render(<EmailPasswordForm isSignup={true} />);
 
     // User fills out form with existing email
+    const usernameInput = screen.getByTestId("username");
     const emailInput = screen.getByPlaceholderText(/email@yourcompany.com/i);
+    const firstNameInput = screen.getByTestId("firstName");
+    const lastNameInput = screen.getByTestId("lastName");
     const passwordInput = screen.getByPlaceholderText(/∗/);
 
+    await user.type(usernameInput, "existinguser");
     await user.type(emailInput, "existing@example.com");
+    await user.type(firstNameInput, "Jane");
+    await user.type(lastNameInput, "Doe");
     await user.type(passwordInput, "password123");
 
     // User submits
@@ -224,10 +238,16 @@ describe("Email/Password Signup Workflow", () => {
     render(<EmailPasswordForm isSignup={true} />);
 
     // User fills out form
+    const usernameInput = screen.getByTestId("username");
     const emailInput = screen.getByPlaceholderText(/email@yourcompany.com/i);
+    const firstNameInput = screen.getByTestId("firstName");
+    const lastNameInput = screen.getByTestId("lastName");
     const passwordInput = screen.getByPlaceholderText(/∗/);
 
+    await user.type(usernameInput, "rateuser");
     await user.type(emailInput, "user@example.com");
+    await user.type(firstNameInput, "Rate");
+    await user.type(lastNameInput, "Limited");
     await user.type(passwordInput, "password123");
 
     // User submits

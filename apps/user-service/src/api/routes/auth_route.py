@@ -67,8 +67,8 @@ class RegisterRequest(BaseModel):
     username: str
     email: str
     password: str
-    first_name: str | None = None
-    last_name: str | None = None
+    first_name: str
+    last_name: str
 
 
 @router.post("/register")

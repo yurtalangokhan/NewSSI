@@ -1,13 +1,12 @@
 import { User } from "./types";
+import { authenticatedFetch } from "@/lib/fetcher";
 
 export const checkUserIsNoAuthUser = (userId: string) => {
   return userId === "__no_auth_user__";
 };
 
 export const getCurrentUser = async (): Promise<User | null> => {
-  const response = await fetch("/api/me", {
-    credentials: "include",
-  });
+  const response = await authenticatedFetch("/api/me");
   if (!response.ok) {
     return null;
   }
@@ -51,8 +50,8 @@ export const basicSignup = async (
   referralSource?: string,
   captchaToken?: string,
   username?: string,
-  firstName?: string,
-  lastName?: string
+  firstName: string,
+  lastName: string
 ) => {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -63,7 +62,7 @@ export const basicSignup = async (
     headers["X-Captcha-Token"] = captchaToken;
   }
 
-  const body: Record<string, string | undefined> = {
+  const body: Record<string, string> = {
     email,
     username: username || email,
     password,

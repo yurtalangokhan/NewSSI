@@ -264,14 +264,14 @@ class ChatController(BaseController):
             return ""
         return title[:80]
 
-    async def _extract_first_ai_response(self, session_id: str) -> str:
-        """Return the first assistant response text for the session, if present."""
+    async def _extract_first_human_message(self, session_id: str) -> str:
+        """Return the first human message text for the session, if present."""
         state = await self._thread_controller.get_thread_state(session_id)
         messages = state.get("values", {}).get("messages", [])
 
         for msg in messages:
             msg_type = getattr(msg, "type", None) or (msg.get("type", "") if isinstance(msg, dict) else "")
-            if msg_type not in ("ai", "assistant"):
+            if msg_type not in ("human", "user"):
                 continue
 
             content = getattr(msg, "content", "") if hasattr(msg, "content") else msg.get("content", "")
@@ -295,24 +295,28 @@ class ChatController(BaseController):
 
         return ""
 
-    async def _generate_title_from_ai_response(self, ai_response: str) -> str:
-        """Generate a concise session title (2-5 words) from the assistant response."""
-        if not ai_response:
+    async def _generate_title_from_question(
+        self,
+        human_message: str,
+        model_name: str | None = None,
+    ) -> str:
+        """Generate a concise session title (3-6 words) from the user's question."""
+        if not human_message:
             return ""
 
-        target_language = self._detect_response_language(ai_response)
+        target_language = self._detect_response_language(human_message)
 
         system_prompt = (
-            "You generate chat titles. "
-            "Return a concise 2-5 word title that summarizes the assistant response. "
-            "Rules: return only the title, no explanation, no quotes, no trailing punctuation. "
-            "Do not copy the opening words of the response verbatim. "
-            f"Language requirement: the title must be in {target_language}."
+            "You generate short chat session titles. "
+            "Given the user's first message, return a concise title of 3 to 6 words that captures the main topic or intent. "
+            "Rules: return ONLY the title — no explanation, no quotes, no punctuation at the end. "
+            "Do not copy the message verbatim; summarize its core topic. "
+            f"Write the title in {target_language}."
         )
-        user_prompt = f"Assistant response:\n{ai_response}"
+        user_prompt = f"User message:\n{human_message[:500]}"
 
         try:
-            model = get_model()
+            model = get_model(model_name)
             result = await model.ainvoke(
                 [
                     SystemMessage(content=system_prompt),
@@ -338,50 +342,33 @@ class ChatController(BaseController):
             normalized = self._normalize_title(content)
             if self._is_invalid_generated_title(normalized):
                 return ""
-            if self._is_trivial_prefix_title(normalized, ai_response):
-                return ""
             return normalized[:80] if normalized else ""
         except Exception:
             return ""
 
-    async def _derive_session_name(self, session_id: str, default_name: str = "New Chat") -> str:
+    async def _derive_session_name(
+        self,
+        session_id: str,
+        default_name: str = "New Chat",
+        model_name: str | None = None,
+    ) -> str:
         checkpointer = get_checkpointer()
         if not checkpointer:
             return default_name
 
         try:
-            ai_response = await self._extract_first_ai_response(session_id)
-            if ai_response:
-                summary = await self._generate_title_from_ai_response(ai_response)
-                if summary:
-                    return summary
+            human_message = await self._extract_first_human_message(session_id)
+            if human_message:
+                title = await self._generate_title_from_question(human_message, model_name=model_name)
+                if title:
+                    return title
 
-                fallback_summary = self._heuristic_title_from_ai_response(ai_response)
-                if fallback_summary:
-                    return fallback_summary
-
-            state = await self._thread_controller.get_thread_state(session_id)
-            messages = state.get("values", {}).get("messages", [])
-            for msg in messages:
-                msg_type = getattr(msg, "type", None) or (msg.get("type", "") if isinstance(msg, dict) else "")
-                if msg_type not in ("human", "user"):
-                    continue
-
-                content = getattr(msg, "content", "") if hasattr(msg, "content") else msg.get("content", "")
-                if isinstance(content, list):
-                    for item in content:
-                        if isinstance(item, dict) and item.get("type") == "text":
-                            content = item.get("text", "")
-                            break
-                        if isinstance(item, str):
-                            content = item
-                            break
-                if not isinstance(content, str):
-                    content = str(content or "")
-
-                content = " ".join(content.strip().split())
-                if content:
-                    return content[:50]
+                # Fallback: clean truncation of the question (readable, no word-splitting)
+                words = human_message.split()
+                fallback = " ".join(words[:8])
+                if len(words) > 8:
+                    fallback += "…"
+                return fallback[:80] if fallback else default_name
         except Exception:
             return default_name
 
@@ -999,7 +986,11 @@ class ChatController(BaseController):
         metadata["name"] = (
             trimmed_name
             if trimmed_name
-            else await self._derive_session_name(session_id, default_name=metadata.get("name", "New Chat") or "New Chat")
+            else await self._derive_session_name(
+                session_id,
+                default_name=metadata.get("name", "New Chat") or "New Chat",
+                model_name=metadata.get("current_alternate_model"),
+            )
         )
         await self._thread_controller.update_thread(session_id, metadata, update_timestamp=False)
         return {"success": True}

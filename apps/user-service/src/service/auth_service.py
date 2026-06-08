@@ -104,8 +104,8 @@ class AuthService:
             raise ValueError("Authentication failed — no subject in token")
 
         user_username = claims.get("preferred_username", "")
-        first_name = claims.get("given_name", "")
-        last_name = claims.get("family_name", "")
+        first_name = (claims.get("given_name") or "").strip() or None
+        last_name = (claims.get("family_name") or "").strip() or None
 
         role_claims = self._extract_roles_from_claims(claims)
         role = self._resolve_role(role_claims)
@@ -146,11 +146,16 @@ class AuthService:
 
         user_service = get_user_service()
 
+        normalized_first_name = (first_name or "").strip()
+        normalized_last_name = (last_name or "").strip()
+        if not normalized_first_name or not normalized_last_name:
+            raise ValueError("first_name and last_name are required")
+
         created_user = await user_service.create_user(
             email=email,
             username=username,
-            first_name=first_name,
-            last_name=last_name,
+            first_name=normalized_first_name,
+            last_name=normalized_last_name,
             password=password,
             role="enduser",
         )
@@ -330,8 +335,8 @@ class AuthService:
 
         user_email = claims.get("email", "")
         user_username = claims.get("preferred_username", "")
-        first_name = claims.get("given_name", "")
-        last_name = claims.get("family_name", "")
+        first_name = (claims.get("given_name") or "").strip() or None
+        last_name = (claims.get("family_name") or "").strip() or None
 
         user = await self.user_repo.upsert_by_keycloak_id(
             keycloak_id,
@@ -436,8 +441,8 @@ class AuthService:
             keycloak_id = claims.get("sub", "")
             email = claims.get("email", "")
             username = claims.get("preferred_username", "")
-            first_name = claims.get("given_name", "")
-            last_name = claims.get("family_name", "")
+            first_name = (claims.get("given_name") or "").strip() or None
+            last_name = (claims.get("family_name") or "").strip() or None
 
             role_claims = self._extract_roles_from_claims(claims)
             role = self._resolve_role(role_claims)
