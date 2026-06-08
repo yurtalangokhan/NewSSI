@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 
-from api.dependencies import verify_api_key
+from api.dependencies import verify_api_key, verify_bearer
 from controller import AuthController, get_auth_controller
 
 logger = logging.getLogger(__name__)
@@ -199,6 +199,6 @@ async def oidc_callback(
     return redirect_response
 
 
-@router.get("/api/admin/mcp/servers")
+@router.get("/api/admin/mcp/servers", dependencies=[Depends(verify_bearer)])
 async def get_mcp_servers():
     return await _get_controller().get_mcp_servers()

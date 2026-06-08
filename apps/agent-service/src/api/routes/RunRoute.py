@@ -20,6 +20,7 @@ from agents import get_agent_or_lazy
 from controller import RunController, get_run_controller
 from core.logger import get_logger
 from service.AuthService import extract_user_id_from_token, verify_bearer
+from service.StoreService import get_assistant_from_store
 from service.UserServiceClient import get_user_settings
 from service.Schemas import ThreadHistoryRequest, ThreadState
 from service.Utils import convert_input_messages
@@ -50,6 +51,7 @@ class StreamInput:
     input: dict | None = None
     model: str | None = None
     stream_tokens: bool = True
+    user_id: str | None = None
 
 
 async def _parse_input(request: Request) -> tuple[dict, str, str, str | None, str]:
@@ -81,14 +83,15 @@ async def stream_run(
     """Stream runs for a thread using SDK-compatible format."""
     logger.debug("stream_run called for thread_id: %s", thread_id)
 
-    api_key = request.headers.get("x-api-key")
-    user_id = extract_user_id_from_token(api_key) if api_key else None
+    # Extract user_id from request body first, then fall back to x-api-key header
+    user_id = request_obj.user_id
+    if not user_id:
+        api_key = request.headers.get("x-api-key")
+        user_id = extract_user_id_from_token(api_key) if api_key else None
 
     stored = None
     assistant_id = request_obj.assistant_id
     if not assistant_id:
-        from service.StoreService import get_assistant_from_store
-
         stored = await get_assistant_from_store(thread_id)
         assistant_id = stored.get("assistant_id") if stored else None
 

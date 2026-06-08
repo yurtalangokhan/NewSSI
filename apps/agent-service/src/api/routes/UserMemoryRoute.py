@@ -11,7 +11,7 @@ import logging
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import Response
 
 from api.dependencies import verify_api_key
@@ -23,10 +23,21 @@ from domain.user_memory.schemas import (
     MemoryUpdate,
 )
 from domain.user_memory.service import get_user_memory_service
+from service.AuthService import get_auth_service, get_primary_user_id
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["user-memory"])
+
+
+async def _resolve_memory_user_id(request: Request, user_id: str | None) -> str:
+    if not user_id:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+    identity = await get_auth_service().resolve_user_identity(request=request, user_id=user_id)
+    effective_user_id = get_primary_user_id(identity, user_id)
+    if not effective_user_id:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+    return effective_user_id
 
 
 # ---------------------------------------------------------------------------
@@ -36,14 +47,14 @@ router = APIRouter(tags=["user-memory"])
 
 @router.get("/api/user/memories", response_model=MemoryListResponse)
 async def list_memories(
+    request: Request,
     user_id: Annotated[str | None, Depends(verify_api_key)],
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=50, ge=1, le=200),
 ) -> MemoryListResponse:
-    if not user_id:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+    effective_user_id = await _resolve_memory_user_id(request, user_id)
     svc = get_user_memory_service()
-    result = await svc.list_for_ui(user_id, page=page, page_size=page_size)
+    result = await svc.list_for_ui(effective_user_id, page=page, page_size=page_size)
     items = [MemoryRead.model_validate(r) for r in result["items"]]
     return MemoryListResponse(items=items, total=result["total"])
 
@@ -59,14 +70,14 @@ async def list_memories(
     status_code=status.HTTP_201_CREATED,
 )
 async def create_memory(
+    request: Request,
     body: MemoryCreate,
     user_id: Annotated[str | None, Depends(verify_api_key)],
 ) -> MemoryRead:
-    if not user_id:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+    effective_user_id = await _resolve_memory_user_id(request, user_id)
     svc = get_user_memory_service()
     try:
-        row = await svc.create(user_id, body.content)
+        row = await svc.create(effective_user_id, body.content)
     except Exception as exc:
         logger.warning(f"[UserMemoryRoute] create failed: {exc}")
         raise HTTPException(
@@ -83,14 +94,14 @@ async def create_memory(
 
 @router.patch("/api/user/memories/{memory_id}", response_model=MemoryRead)
 async def update_memory(
+    request: Request,
     memory_id: UUID,
     body: MemoryUpdate,
     user_id: Annotated[str | None, Depends(verify_api_key)],
 ) -> MemoryRead:
-    if not user_id:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+    effective_user_id = await _resolve_memory_user_id(request, user_id)
     svc = get_user_memory_service()
-    row = await svc.update(str(memory_id), user_id, body.content)
+    row = await svc.update(str(memory_id), effective_user_id, body.content)
     if row is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Memory not found")
     return MemoryRead.model_validate(row)
@@ -103,13 +114,13 @@ async def update_memory(
 
 @router.delete("/api/user/memories/{memory_id}")
 async def delete_memory(
+    request: Request,
     memory_id: UUID,
     user_id: Annotated[str | None, Depends(verify_api_key)],
 ) -> Response:
-    if not user_id:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+    effective_user_id = await _resolve_memory_user_id(request, user_id)
     svc = get_user_memory_service()
-    deleted = await svc.delete(str(memory_id), user_id)
+    deleted = await svc.delete(str(memory_id), effective_user_id)
     if not deleted:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Memory not found")
     return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -122,10 +133,10 @@ async def delete_memory(
 
 @router.delete("/api/user/memories", response_model=DeleteAllResponse)
 async def delete_all_memories(
+    request: Request,
     user_id: Annotated[str | None, Depends(verify_api_key)],
 ) -> DeleteAllResponse:
-    if not user_id:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+    effective_user_id = await _resolve_memory_user_id(request, user_id)
     svc = get_user_memory_service()
-    count = await svc.delete_all(user_id)
+    count = await svc.delete_all(effective_user_id)
     return DeleteAllResponse(deleted=count)

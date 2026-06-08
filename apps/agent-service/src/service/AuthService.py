@@ -24,6 +24,7 @@ from service.UserServiceClient import get_user_settings
 __all__ = [
     "AuthService",
     "get_auth_service",
+    "get_primary_user_id",
     "verify_bearer",
     "extract_user_id_from_token",
     "verify_api_key",
@@ -714,6 +715,14 @@ def _decode_keycloak_token(token: str) -> dict:
 
 def extract_user_id_from_token(token: str) -> str | None:
     return AuthService.extract_user_id_from_token(token)
+
+
+def get_primary_user_id(identity: dict[str, Any] | None, fallback_user_id: str | None) -> str | None:
+    if identity and identity.get("primary_user_id"):
+        return str(identity["primary_user_id"])
+    if fallback_user_id:
+        return str(fallback_user_id)
+    return None
 
 
 def verify_api_key(

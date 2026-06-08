@@ -20,7 +20,7 @@ from controller import ChatController, ThreadController, get_thread_controller, 
 from domain.providers.repository import ProviderRepository
 from domain.providers.service import ProviderService
 from schema.schema import StreamInput
-from service.AuthService import get_auth_service
+from service.AuthService import get_auth_service, get_primary_user_id
 from service.ChatContextService import (
     build_effective_llm_override,
     resolve_project_instructions,
@@ -65,6 +65,13 @@ def _coerce_project_id(value: Any) -> int | None:
         return int(value)
     except (TypeError, ValueError):
         return None
+
+
+def _resolve_effective_chat_user_id(identity: dict[str, Any], user_id: str | None) -> str:
+    effective_user_id = get_primary_user_id(identity, user_id)
+    if not effective_user_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    return effective_user_id
 
 
 async def _resolve_provider_for_user(
@@ -333,14 +340,23 @@ async def send_chat_message(
             status_code=401,
         )
     identity = await get_auth_service().resolve_user_identity(request=request, user_id=user_id)
+    try:
+        effective_user_id = _resolve_effective_chat_user_id(identity, user_id)
+    except HTTPException:
+        return StreamingResponse(
+            iter([b'data: {"type": "error", "content": "Not authenticated"}\n\n']),
+            media_type="text/event-stream",
+            status_code=401,
+        )
     known_user_ids = {
         str(candidate)
-        for candidate in (identity.get("known_user_ids") or [user_id])
+        for candidate in (identity.get("known_user_ids") or [effective_user_id])
         if candidate
     }
+    known_user_ids.add(effective_user_id)
     user_controller = get_user_controller()
     project_user_id = await user_controller.resolve_projects_user_id(
-        str(identity.get("keycloak_id") or user_id)
+        str(identity.get("keycloak_id") or effective_user_id)
     )
     if project_user_id:
         known_user_ids.add(str(project_user_id))
@@ -374,7 +390,7 @@ async def send_chat_message(
                 provider_id = str(llm_override["provider_id"])
                 logger.debug("Resolving provider: provider_id=%s, provider_type=%s, model=%s", provider_id, llm_override["provider_type"], model_name)
                 repo = ProviderRepository()
-                provider = await _resolve_provider_for_user(user_id, provider_id, repo)
+                provider = await _resolve_provider_for_user(effective_user_id, provider_id, repo)
 
                 api_key = None
                 base_url = None
@@ -385,7 +401,7 @@ async def send_chat_message(
                     logger.debug("Found provider in registry: %s", provider)
                     # Only fetch API key for DB-stored (non-builtin) providers
                     if not provider.get("is_builtin"):
-                        api_key = await repo.get_decrypted_api_key(provider_id, user_id)
+                        api_key = await repo.get_decrypted_api_key(provider_id, effective_user_id)
                     base_url = provider.get("base_url") or (provider.get("user_config") or {}).get("api_base")
                     api_version = (provider.get("user_config") or {}).get("api_version")
                     request_overrides = ((provider.get("config") or {}).get("custom_config") or {}).get(
@@ -393,14 +409,14 @@ async def send_chat_message(
                     )
                     provider_type = provider.get("provider_type") or llm_override["provider_type"]
                     supports_reasoning = await _resolve_model_supports_reasoning(
-                        user_id=user_id,
+                        user_id=effective_user_id,
                         provider_id=provider_id,
                         provider=provider,
                         model_name=model_name,
                         repo=repo,
                     )
                 else:
-                    logger.warning("Provider %s not found for user %s", provider_id, user_id)
+                    logger.warning("Provider %s not found for user %s", provider_id, effective_user_id)
                     provider_resolution_failed = True
                     provider_type = llm_override["provider_type"]
                     supports_reasoning = None
@@ -445,7 +461,7 @@ async def send_chat_message(
         thread = await thread_ctrl.create_thread(
             thread_id=session_id,
             metadata={
-                "user_id": user_id,
+                "user_id": effective_user_id,
                 "name": session_name,
                 "persona_id": persona_id,
                 "project_id": body.get("project_id"),
@@ -461,17 +477,17 @@ async def send_chat_message(
                 status_code=403,
             )
         if not owner_id:
-            metadata["user_id"] = user_id
-        elif str(owner_id) != user_id:
+            metadata["user_id"] = effective_user_id
+        elif str(owner_id) != effective_user_id:
             legacy_owner_ids = metadata.get("legacy_user_ids") or []
             if not isinstance(legacy_owner_ids, list):
                 legacy_owner_ids = []
             if str(owner_id) not in legacy_owner_ids:
                 legacy_owner_ids.append(str(owner_id))
             metadata["legacy_user_ids"] = legacy_owner_ids
-            metadata["user_id"] = user_id
+            metadata["user_id"] = effective_user_id
 
-        needs_update = metadata.get("user_id") == user_id and str(owner_id) != user_id
+        needs_update = metadata.get("user_id") == effective_user_id and str(owner_id) != effective_user_id
         if metadata.get("name") in (None, "", "New Chat"):
             metadata["name"] = session_name
             needs_update = True
@@ -532,7 +548,7 @@ async def send_chat_message(
         resolved_project_id = _coerce_project_id(thread_metadata.get("project_id"))
 
     project_instructions = await resolve_project_instructions(
-        user_id=project_user_id or user_id,
+        user_id=project_user_id or effective_user_id,
         project_id=resolved_project_id,
         thread_metadata=thread_metadata,
     )
@@ -621,7 +637,7 @@ async def send_chat_message(
     async def generate_stream():
         full_response = ""
         try:
-            async for chunk in message_generator(stream_input, assistant_id, user_id):
+            async for chunk in message_generator(stream_input, assistant_id, effective_user_id):
                 yield chunk
 
                 if isinstance(chunk, str) and "data:" in chunk:
