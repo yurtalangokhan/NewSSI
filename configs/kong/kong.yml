@@ -7,7 +7,9 @@ _transform: true
 x-oidc: &oidc
   name: openid-connect
   config:
-    issuer: http://keycloak.localhost:8085/realms/agenticai
+    # Must match Keycloak's KC_HOSTNAME (JWT `iss` claim).
+    # Update KEYCLOAK_PUBLIC_HOSTNAME in configs/.env to change.
+    issuer: http://10.101.90.13:8085/realms/agenticai
     client_id: agenticai-web
     auth_methods:
       - bearer

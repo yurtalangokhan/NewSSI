@@ -307,7 +307,10 @@ services:
       - "8000:8000"
       - "8001:8001"
     extra_hosts:
-      - "${KEYCLOAK_PUBLIC_HOSTNAME:-keycloak.localhost}:host-gateway"
+      # Maps to Docker host for OIDC discovery when KC_HOSTNAME uses a hostname.
+      # When KEYCLOAK_PUBLIC_HOSTNAME is an IP (e.g. 10.101.90.13), this entry
+      # is a no-op — Kong reaches that IP directly via the network.
+      - "keycloak.localhost:host-gateway"
     volumes:
       - ./kong/kong.yml:/etc/kong/kong.yml:ro
     environment:
