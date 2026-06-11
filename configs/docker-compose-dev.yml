@@ -41,6 +41,13 @@ services:
       KEYCLOAK_REALM: agenticai
       KEYCLOAK_CLIENT_ID: agenticai-web
       KEYCLOAK_AUDIENCE: agent-service
+
+      # All service-to-service traffic through Kong
+      USER_SERVICE_URL: http://kong:8000/internal/user-service
+      RAG_SERVICE_API_URL: http://kong:8000/internal/rag-service
+      RAG_API_URL: http://kong:8000/internal/rag-service
+      MCP_SERVER_URL: http://kong:8000/internal/mcp
+      TOOLS_SERVICE_URL: http://kong:8000/internal/mcp
     networks:
       airbyte:
         aliases:

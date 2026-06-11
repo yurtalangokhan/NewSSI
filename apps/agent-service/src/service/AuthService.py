@@ -160,7 +160,7 @@ class AuthService:
                 "leeway": leeway,
             }
 
-            claims = jwt.decode(**base_decode_kwargs, options={"verify_aud": False})
+            claims = jwt.decode(**base_decode_kwargs, options={"verify_aud": False, "verify_iss": False})
 
             if not audiences:
                 return claims
