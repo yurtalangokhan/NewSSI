@@ -1,3 +1,4 @@
+import logging
 import secrets
 import uuid
 from typing import Any
@@ -7,6 +8,8 @@ from src.repository import SessionRepository, UserRepository, UserSettingsReposi
 
 from .auth_service import AuthService
 from .keycloak_service import get_keycloak_service
+
+logger = logging.getLogger(__name__)
 
 _KEYCLOAK_ROLES = ["admin", "enduser"]
 
@@ -101,8 +104,10 @@ class UserService:
         normalized_first_name = (first_name or "").strip() or normalized_username
         normalized_last_name = (last_name or "").strip() or "User"
 
-        keycloak_first_name = normalized_first_name
-        keycloak_last_name = normalized_last_name
+        # Ensure firstName and lastName are never empty for Keycloak
+        # (Keycloak may require these as non-empty for User Profile validation)
+        keycloak_first_name = normalized_first_name or normalized_username
+        keycloak_last_name = normalized_last_name or "User"
 
         created_keycloak_id = False
         if self.keycloak.is_enabled() and not keycloak_id:
@@ -111,6 +116,11 @@ class UserService:
                 keycloak_id = existing_keycloak_user.get("id")
                 if not keycloak_id:
                     raise ValueError("Existing Keycloak user has no id")
+                logger.info(
+                    f"Using existing Keycloak user {keycloak_id} for email {normalized_email} "
+                    f"(firstName={existing_keycloak_user.get('firstName')}, "
+                    f"lastName={existing_keycloak_user.get('lastName')})"
+                )
             else:
                 keycloak_payload: dict[str, Any] = {
                     "email": normalized_email,
@@ -127,6 +137,11 @@ class UserService:
                     ]
                 else:
                     keycloak_payload["requiredActions"] = ["UPDATE_PASSWORD"]
+
+                logger.info(
+                    f"Creating Keycloak user for {normalized_email}: "
+                    f"firstName={keycloak_first_name}, lastName={keycloak_last_name}"
+                )
 
                 keycloak_id = await self.keycloak.create_user(keycloak_payload)
                 if not keycloak_id:
@@ -222,14 +237,32 @@ class UserService:
         # Update Keycloak first (source of truth)
         if self.keycloak.is_enabled() and user.keycloak_id:
             payload = {}
+            # ALWAYS preserve firstName and lastName when updating user
+            # to prevent Keycloak from clearing these required attributes
             if "first_name" in filtered:
-                payload["firstName"] = filtered["first_name"]
+                first_name = filtered["first_name"]
+                # Ensure firstName is never empty
+                payload["firstName"] = first_name or user.username or "User"
+            elif user.first_name:
+                # Preserve existing firstName if not being updated
+                payload["firstName"] = user.first_name
+
             if "last_name" in filtered:
-                payload["lastName"] = filtered["last_name"]
+                last_name = filtered["last_name"]
+                # Ensure lastName is never empty
+                payload["lastName"] = last_name or "User"
+            elif user.last_name:
+                # Preserve existing lastName if not being updated
+                payload["lastName"] = user.last_name
+
             if "email" in filtered:
                 payload["email"] = filtered["email"]
                 payload["username"] = filtered["email"]
             if payload:
+                logger.info(
+                    f"Updating Keycloak user {user.keycloak_id} for {user.email}: "
+                    f"firstName={payload.get('firstName')}, lastName={payload.get('lastName')}"
+                )
                 await self.keycloak.update_user(user.keycloak_id, payload)
 
             if "role" in filtered:
@@ -267,7 +300,17 @@ class UserService:
 
         # Update Keycloak first (source of truth)
         if self.keycloak.is_enabled() and user.keycloak_id:
-            await self.keycloak.update_user(user.keycloak_id, {"enabled": active})
+            # Always preserve firstName and lastName when updating enabled status
+            payload = {"enabled": active}
+            if user.first_name:
+                payload["firstName"] = user.first_name
+            if user.last_name:
+                payload["lastName"] = user.last_name
+            logger.info(
+                f"Setting active={active} for Keycloak user {user.keycloak_id} ({user.email}): "
+                f"firstName={payload.get('firstName')}, lastName={payload.get('lastName')}"
+            )
+            await self.keycloak.update_user(user.keycloak_id, payload)
 
         # Then update DB to mirror Keycloak
         user = await self.user_repo.update(user_id, is_active=active)

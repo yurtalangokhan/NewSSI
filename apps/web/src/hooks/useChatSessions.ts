@@ -112,6 +112,12 @@ function usePendingSessions(): ChatSession[] {
 }
 
 function dedupeChatSessionsById(sessions: ChatSession[]): ChatSession[] {
+  const toTimestamp = (value?: string | null): number => {
+    if (!value) return 0;
+    const parsed = Date.parse(value);
+    return Number.isNaN(parsed) ? 0 : parsed;
+  };
+
   const byId = new Map<string, ChatSession>();
   for (const session of sessions) {
     if (!isValidChatSession(session)) {
@@ -124,16 +130,23 @@ function dedupeChatSessionsById(sessions: ChatSession[]): ChatSession[] {
       continue;
     }
 
-    const existingTime = existing.time_updated || "";
-    const currentTime = session.time_updated || "";
+    const existingTime = toTimestamp(existing.time_updated);
+    const currentTime = toTimestamp(session.time_updated);
     if (currentTime >= existingTime) {
       byId.set(session.id, session);
     }
   }
   return Array.from(byId.values()).sort(
-    (left, right) =>
-      new Date(right.time_updated || 0).getTime() -
-      new Date(left.time_updated || 0).getTime()
+    (left, right) => {
+      const diff =
+        toTimestamp(right.time_updated) - toTimestamp(left.time_updated);
+      if (diff !== 0) {
+        return diff;
+      }
+
+      // Stable deterministic fallback when timestamps are equal/invalid.
+      return right.id.localeCompare(left.id);
+    }
   );
 }
 
