@@ -305,7 +305,7 @@ services:
         condition: service_healthy
     ports:
       - "8000:8000"
-      - "8001:8001"
+      - "8101:8001"
     extra_hosts:
       # Maps to Docker host for OIDC discovery when KC_HOSTNAME uses a hostname.
       # When KEYCLOAK_PUBLIC_HOSTNAME is an IP (e.g. 10.101.90.13), this entry
@@ -325,7 +325,7 @@ services:
       KONG_PROXY_ACCESS_LOG: /dev/stdout
       KONG_PROXY_ERROR_LOG: /dev/stderr
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:8001/status >/dev/null || exit 1"]
+      test: ["CMD", "kong", "health"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -349,14 +349,12 @@ services:
       KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin123}
       KC_HEALTH_ENABLED: "true"
-      KC_HOSTNAME: ${KEYCLOAK_PUBLIC_HOSTNAME:-10.101.90.13}
-      KC_HOSTNAME_PORT: ${KEYCLOAK_PUBLIC_PORT:-8085}
+      KC_HOSTNAME: http://${KEYCLOAK_PUBLIC_HOSTNAME:-10.101.90.13}:${KEYCLOAK_PUBLIC_PORT:-8085}
       KC_HOSTNAME_STRICT: "false"
-      KC_HOSTNAME_STRICT_HTTPS: "false"
     volumes:
       - keycloak-data:/opt/keycloak/data
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/health/ready >/dev/null || exit 1"]
+      test: ["CMD-SHELL", "read comm < /proc/1/comm; [ \"$$comm\" = \"java\" ]"]
       interval: 10s
       timeout: 5s
       retries: 15

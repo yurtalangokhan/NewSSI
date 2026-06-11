@@ -20,8 +20,6 @@ services:
       context: ../apps/agent-service
       dockerfile: docker/Dockerfile.service
     restart: unless-stopped
-    ports:
-      - "8125:8080"
     volumes:
       - /tmp/airbyte_local:/tmp/airbyte_local:ro
     extra_hosts:
@@ -48,8 +46,6 @@ services:
       dockerfile: Dockerfile
     image: rag-service:local
     restart: unless-stopped
-    ports:
-      - "8084:8080"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     env_file:
@@ -72,8 +68,6 @@ services:
       dockerfile: Dockerfile
     image: tools-service:local
     restart: unless-stopped
-    ports:
-      - "8003:8003"
     env_file:
       - ../apps/tools-service/.env.production
     environment:
@@ -96,8 +90,6 @@ services:
       context: ../apps/user-service
       dockerfile: Dockerfile
     restart: unless-stopped
-    ports:
-      - "8090:8090"
     extra_hosts:
       - "host.docker.internal:host-gateway"
       - "${KEYCLOAK_PUBLIC_HOSTNAME:-keycloak.localhost}:host-gateway"

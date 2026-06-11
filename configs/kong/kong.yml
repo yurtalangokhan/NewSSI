@@ -4,10 +4,11 @@ _transform: true
 # Kong OSS 3.8 JWT authentication.
 #
 # Routing strategy:
-# 1. Public endpoints (/api/auth, /health, /auth, /api/users/internal) - no JWT required
+# 1. Public endpoints (/api/auth, /health, /auth) - no JWT required
 # 2. Protected endpoints - Kong JWT plugin verifies RS256 signature plus exp claim
-# 3. Expired/invalid tokens return 401 from Kong, so web can redirect to login
-# 4. Backend services only decode claims for authorization decisions
+# 3. Internal service-to-service traffic must use /internal/* routes (no JWT)
+# 4. Expired/invalid tokens return 401 from Kong, so web can redirect to login
+# 5. Backend services decode claims for authorization decisions
 
 services:
   # --------------------------------------------------------------------------
@@ -23,24 +24,7 @@ services:
         strip_path: false
         preserve_host: true
 
-      # Internal service-to-service endpoints with JWT.
-      - name: user-service-users-internal
-        paths:
-          - /api/users/internal
-        strip_path: false
-        preserve_host: true
-        plugins: *jwt_plugin
-
-      # Internal service-to-service endpoints.
-      # Authorization is enforced by Kong JWT plugin (same as public endpoints).
-      - name: user-service-settings-internal
-        paths:
-          - /api/users/me/settings/internal
-        strip_path: false
-        preserve_host: true
-        plugins: *jwt_plugin
-
-      # User-service endpoints
+      # Shared JWT policy for protected external endpoints.
       - name: user-service-users
         paths:
           - /api/users
@@ -58,6 +42,8 @@ services:
               cookie_names:
                 - access_token
                 - fastapiusersauth
+
+      # User-service endpoints
 
       - name: user-service-settings
         paths:

@@ -47,11 +47,11 @@ export const basicLogin = async (
 export const basicSignup = async (
   email: string,
   password: string,
+  firstName: string,
+  lastName: string,
   referralSource?: string,
   captchaToken?: string,
-  username?: string,
-  firstName: string,
-  lastName: string
+  username?: string
 ) => {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",

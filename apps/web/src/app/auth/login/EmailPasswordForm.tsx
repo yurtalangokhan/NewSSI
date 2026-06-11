@@ -128,11 +128,11 @@ export default function EmailPasswordForm({
               response = await basicSignup(
                 email,
                 values.password,
+                values.firstName?.trim() || "",
+                values.lastName?.trim() || "",
                 referralSource,
                 captchaToken,
-                username,
-                values.firstName?.trim() || "",
-                values.lastName?.trim() || ""
+                username
               );
             } catch {
               setIsWorking(false);
