@@ -647,7 +647,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
       currentChatSessionId,
       submitQuery,
       onChat,
-        currentProjectDetails,
+      currentProjectDetails,
       resetInputBar,
       onSubmit,
       currentMessageFiles,

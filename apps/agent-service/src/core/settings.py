@@ -112,6 +112,13 @@ class Settings(BaseSettings):
     AIRBYTE_API_URL: str | None = None
     AIRBYTE_LOCAL_OUTPUT_PATH: str = "/tmp/airbyte_local"
 
+    MINIO_HOST: str = "localhost"
+    MINIO_PORT: int = 10000
+    MINIO_ACCESS_KEY: str = "minioadmin"
+    MINIO_SECRET_KEY: str = "minioadmin"
+    MINIO_BUCKET: str = "agent-service-documents"
+    MINIO_SECURE: bool = False
+
     @computed_field
     @property
     def BASE_URL(self) -> str:

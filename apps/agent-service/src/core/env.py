@@ -14,6 +14,10 @@ import os
 from functools import cache
 from typing import Any
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 
 class Env:
     """

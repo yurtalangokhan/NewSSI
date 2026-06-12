@@ -88,6 +88,7 @@ class OllamaProvider(LLMProvider):
                             max_input_tokens=ctx_len,
                             supports_image_input="vision" in caps_list,
                             supports_reasoning=supports_reasoning,
+                            is_remote=bool(m.get("remote_model")),
                         )
                     )
 

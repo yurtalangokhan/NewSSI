@@ -460,7 +460,34 @@ class UserController(BaseController):
 
     async def get_recent_files(self, user_id: str | None) -> list[Any]:
         effective_user_id = await self._resolve_or_raise_user_id(user_id)
-        return self._recent_files(effective_user_id)
+        recent = self._recent_files(effective_user_id)
+        if recent:
+            return recent
+
+        from core.db.repositories.document_repo import DocumentRepository
+
+        docs = await DocumentRepository().list_by_user(effective_user_id, limit=50)
+        now = self._now_iso()
+        hydrated = []
+        for doc in docs:
+            hydrated.append({
+                "id": doc["file_id"],
+                "name": doc["filename"],
+                "project_id": doc["project_id"],
+                "user_id": doc["user_id"],
+                "file_id": doc["file_id"],
+                "created_at": doc["created_at"] or now,
+                "status": "COMPLETED",
+                "file_type": doc["mime_type"],
+                "last_accessed_at": doc["created_at"] or now,
+                "chat_file_type": doc["chat_file_type"],
+                "token_count": 0,
+                "chunk_count": 0,
+                "temp_id": None,
+                "minio_object_key": doc["minio_object_key"],
+            })
+        self._recent_files_by_user[effective_user_id] = hydrated
+        return hydrated
 
     async def upload_user_project_files(
         self,
@@ -527,6 +554,35 @@ class UserController(BaseController):
             except Exception:
                 # The base64 payload above is enough for chat context extraction.
                 pass
+
+            # Persist to MinIO + DB for durable storage
+            try:
+                from core.db.repositories.document_repo import DocumentRepository
+                from service.MinioService import upload_file as minio_upload
+
+                object_key = minio_upload(
+                    user_id=effective_user_id,
+                    file_id=file_id,
+                    filename=file_name,
+                    data=raw,
+                    mime_type=content_type,
+                )
+                await DocumentRepository().create(
+                    file_id=file_id,
+                    user_id=effective_user_id,
+                    filename=file_name,
+                    mime_type=content_type,
+                    chat_file_type=chat_file_type,
+                    size_bytes=len(raw),
+                    minio_object_key=object_key,
+                    project_id=project_id,
+                )
+                # Enrich payload with minio key so ChatRoute can fetch without base64
+                self._file_payloads(effective_user_id)[file_id]["minio_object_key"] = object_key
+                file_obj["minio_object_key"] = object_key
+            except Exception as minio_err:
+                logger.warning("MinIO/DB persist failed for file %s: %s", file_id, minio_err)
+
             uploaded.append(file_obj)
 
         # Newest first in recent files.
@@ -554,7 +610,8 @@ class UserController(BaseController):
         )
         if not project:
             raise HTTPException(status_code=404, detail="Project not found")
-        return self._project_files(effective_user_id, project_id)
+
+        return await self._hydrate_project_files(effective_user_id, project_id)
 
     async def link_file_to_project(
         self,
@@ -571,15 +628,41 @@ class UserController(BaseController):
         if not project:
             raise HTTPException(status_code=404, detail="Project not found")
 
-        recent = self._recent_files(effective_user_id)
-        file_obj = next((f for f in recent if f.get("id") == file_id), None)
-        if not file_obj:
-            raise HTTPException(status_code=404, detail="File not found")
+        from core.db.repositories.document_repo import DocumentRepository
 
-        project_files = self._project_files(effective_user_id, project_id)
-        if not any(f.get("id") == file_id for f in project_files):
-            linked = {**file_obj, "project_id": project_id}
-            self._project_files_by_user[effective_user_id][project_id] = [linked, *project_files]
+        doc_repo = DocumentRepository()
+        await doc_repo.update_project_id(file_id, project_id)
+
+        file_obj = next(
+            (f for f in self._recent_files(effective_user_id) if f.get("id") == file_id),
+            None,
+        )
+        if not file_obj:
+            doc = await doc_repo.get_by_file_id(file_id)
+            if doc:
+                file_obj = {
+                    "id": doc["file_id"],
+                    "name": doc["filename"],
+                    "project_id": project_id,
+                    "user_id": doc["user_id"],
+                    "file_id": doc["file_id"],
+                    "created_at": doc["created_at"] or self._now_iso(),
+                    "status": "COMPLETED",
+                    "file_type": doc["mime_type"],
+                    "last_accessed_at": doc["created_at"] or self._now_iso(),
+                    "chat_file_type": doc["chat_file_type"],
+                    "token_count": 0,
+                    "chunk_count": 0,
+                    "temp_id": None,
+                    "minio_object_key": doc["minio_object_key"],
+                }
+
+        if file_obj:
+            project_files = self._project_files(effective_user_id, project_id)
+            if not any(f.get("id") == file_id for f in project_files):
+                linked = {**file_obj, "project_id": project_id}
+                self._project_files_by_user[effective_user_id][project_id] = [linked, *project_files]
+
         return {"success": True}
 
     async def unlink_file_from_project(
@@ -589,6 +672,11 @@ class UserController(BaseController):
         file_id: str,
     ) -> dict[str, bool]:
         effective_user_id = await self._resolve_or_raise_user_id(user_id)
+
+        from core.db.repositories.document_repo import DocumentRepository
+
+        await DocumentRepository().update_project_id(file_id, None)
+
         project_files = self._project_files(effective_user_id, project_id)
         self._project_files_by_user[effective_user_id][project_id] = [
             f for f in project_files if f.get("id") != file_id
@@ -601,9 +689,30 @@ class UserController(BaseController):
             (f for f in self._recent_files(effective_user_id) if f.get("id") == file_id),
             None,
         )
-        if not file_obj:
+        if file_obj:
+            return file_obj
+
+        from core.db.repositories.document_repo import DocumentRepository
+
+        doc = await DocumentRepository().get_by_file_id(file_id)
+        if not doc:
             raise HTTPException(status_code=404, detail="File not found")
-        return file_obj
+        return {
+            "id": doc["file_id"],
+            "name": doc["filename"],
+            "project_id": doc["project_id"],
+            "user_id": doc["user_id"],
+            "file_id": doc["file_id"],
+            "created_at": doc["created_at"] or self._now_iso(),
+            "status": "COMPLETED",
+            "file_type": doc["mime_type"],
+            "last_accessed_at": doc["created_at"] or self._now_iso(),
+            "chat_file_type": doc["chat_file_type"],
+            "token_count": 0,
+            "chunk_count": 0,
+            "temp_id": None,
+            "minio_object_key": doc["minio_object_key"],
+        }
 
     async def get_user_file_statuses(
         self,
@@ -612,20 +721,60 @@ class UserController(BaseController):
     ) -> list[dict[str, Any]]:
         effective_user_id = await self._resolve_or_raise_user_id(user_id)
         by_id = {f.get("id"): f for f in self._recent_files(effective_user_id)}
-        return [by_id[file_id] for file_id in file_ids if file_id in by_id]
+        found = [by_id[file_id] for file_id in file_ids if file_id in by_id]
+
+        missing = [fid for fid in file_ids if fid not in by_id]
+        if missing:
+            from core.db.repositories.document_repo import DocumentRepository
+
+            for file_id in missing:
+                doc = await DocumentRepository().get_by_file_id(file_id)
+                if doc:
+                    found.append({
+                        "id": doc["file_id"],
+                        "name": doc["filename"],
+                        "project_id": doc["project_id"],
+                        "user_id": doc["user_id"],
+                        "file_id": doc["file_id"],
+                        "created_at": doc["created_at"] or self._now_iso(),
+                        "status": "COMPLETED",
+                        "file_type": doc["mime_type"],
+                        "last_accessed_at": doc["created_at"] or self._now_iso(),
+                        "chat_file_type": doc["chat_file_type"],
+                        "token_count": 0,
+                        "chunk_count": 0,
+                        "temp_id": None,
+                        "minio_object_key": doc["minio_object_key"],
+                    })
+
+        return found
 
     async def delete_user_file(self, user_id: str | None, file_id: str) -> dict[str, Any]:
         effective_user_id = await self._resolve_or_raise_user_id(user_id)
 
-        recent = self._recent_files(effective_user_id)
+        from core.db.repositories.document_repo import DocumentRepository
+
+        doc_repo = DocumentRepository()
+        doc = await doc_repo.get_by_file_id(file_id)
+
+        in_memory = self._recent_files(effective_user_id)
         self._recent_files_by_user[effective_user_id] = [
-            f for f in recent if f.get("id") != file_id
+            f for f in in_memory if f.get("id") != file_id
         ]
         self._file_payloads(effective_user_id).pop(file_id, None)
 
         project_map = self._project_files_by_user.get(effective_user_id, {})
-        for project_id, files in list(project_map.items()):
-            project_map[project_id] = [f for f in files if f.get("id") != file_id]
+        for pid, files in list(project_map.items()):
+            project_map[pid] = [f for f in files if f.get("id") != file_id]
+
+        if doc:
+            try:
+                from service.MinioService import delete_file as minio_delete
+
+                minio_delete(doc["minio_object_key"])
+            except Exception:
+                logger.warning("Failed to delete MinIO object for file %s", file_id)
+            await doc_repo.delete_by_file_id(file_id)
 
         return {
             "has_associations": False,
@@ -750,6 +899,41 @@ class UserController(BaseController):
             raise HTTPException(status_code=404, detail="Project not found")
         return {"success": True}
 
+    async def _hydrate_project_files(
+        self, user_id: str, project_id: int
+    ) -> list[dict[str, Any]]:
+        from core.db.repositories.document_repo import DocumentRepository
+
+        cache = self._project_files(user_id, project_id)
+        cache_ids = {f.get("id") for f in cache}
+
+        now = self._now_iso()
+        merged = list(cache)
+
+        for doc in await DocumentRepository().list_by_project(project_id):
+            if doc["file_id"] in cache_ids:
+                continue
+            cache_ids.add(doc["file_id"])
+            merged.append({
+                "id": doc["file_id"],
+                "name": doc["filename"],
+                "project_id": doc["project_id"],
+                "user_id": doc["user_id"],
+                "file_id": doc["file_id"],
+                "created_at": doc["created_at"] or now,
+                "status": "COMPLETED",
+                "file_type": doc["mime_type"],
+                "last_accessed_at": doc["created_at"] or now,
+                "chat_file_type": doc["chat_file_type"],
+                "token_count": 0,
+                "chunk_count": 0,
+                "temp_id": None,
+                "minio_object_key": doc["minio_object_key"],
+            })
+
+        self._project_files_by_user.setdefault(user_id, {})[project_id] = merged
+        return merged
+
     async def get_user_project_details(
         self,
         user_id: str,
@@ -759,7 +943,7 @@ class UserController(BaseController):
         project = await self.get_user_project(user_id, project_id, owner_ids)
         return {
             "project": project,
-            "files": self._project_files(user_id, project_id),
+            "files": await self._hydrate_project_files(user_id, project_id),
             "persona_id_to_featured": {},
         }
 
@@ -798,10 +982,11 @@ class UserController(BaseController):
         total_tokens = sum(int(file.get("token_count") or 0) for file in project_files)
         return {"total_tokens": total_tokens}
 
-    def get_project_file_descriptors_for_chat(
+    async def get_project_file_descriptors_for_chat(
         self,
         user_id: str | list[str],
         project_id: int | None,
+        file_ids: list[str] | None = None,
     ) -> list[dict[str, Any]]:
         if project_id is None:
             return []
@@ -813,12 +998,37 @@ class UserController(BaseController):
         for candidate_user_id in user_ids:
             if not candidate_user_id:
                 continue
+
+            project_files = await self._hydrate_project_files(str(candidate_user_id), project_id)
             payloads = self._file_payloads(str(candidate_user_id))
-            for file_obj in self._project_files(str(candidate_user_id), project_id):
+
+            for file_obj in project_files:
                 file_id = str(file_obj.get("file_id") or file_obj.get("id") or "")
-                payload = payloads.get(file_id)
-                if not file_id or not payload or file_id in seen_file_ids:
+                if not file_id or file_id in seen_file_ids:
                     continue
+                if file_ids is not None and file_id not in file_ids:
+                    continue
+                payload = payloads.get(file_id)
+
+                if not payload:
+                    object_key = file_obj.get("minio_object_key")
+                    if object_key:
+                        try:
+                            from service.MinioService import download_file
+
+                            raw = download_file(object_key)
+                            encoded = base64.b64encode(raw).decode("ascii")
+                            payload = {
+                                "data": encoded,
+                                "mime_type": file_obj.get("file_type") or "application/octet-stream",
+                                "name": file_obj.get("name") or file_id,
+                                "chat_file_type": file_obj.get("chat_file_type") or "document",
+                            }
+                            payloads[file_id] = payload
+                        except Exception:
+                            logger.warning("Failed to download file %s from MinIO", file_id)
+                            continue
+
                 seen_file_ids.add(file_id)
                 descriptors.append(
                     {

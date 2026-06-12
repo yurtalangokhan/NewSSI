@@ -15,6 +15,7 @@ export interface LLMOption {
   version?: string | null;
   supportsReasoning?: boolean;
   supportsImageInput?: boolean;
+  isRemote?: boolean;
 }
 
 export interface LLMOptionGroup {

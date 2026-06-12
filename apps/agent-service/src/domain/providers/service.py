@@ -16,6 +16,7 @@ def _known_model(
     supports_image_input: bool = False,
     supports_reasoning: bool = False,
     max_input_tokens: int | None = None,
+    is_remote: bool = False,
 ) -> dict[str, Any]:
     return {
         "name": name,
@@ -24,6 +25,7 @@ def _known_model(
         "max_input_tokens": max_input_tokens,
         "supports_image_input": supports_image_input,
         "supports_reasoning": supports_reasoning,
+        "is_remote": is_remote,
     }
 
 
@@ -265,6 +267,7 @@ class ProviderService:
                         "max_input_tokens": m.get("max_input_tokens"),
                         "supports_image_input": m.get("supports_image_input", False),
                         "supports_reasoning": m.get("supports_reasoning", False),
+                        "is_remote": m.get("is_remote", False),
                     }
                     for m in live_models
                     if m.get("name")
@@ -634,6 +637,7 @@ class ProviderService:
                 "max_input_tokens": m.get("max_input_tokens"),
                 "supports_image_input": m.get("supports_image_input", False),
                 "supports_reasoning": m.get("supports_reasoning", False),
+                "is_remote": m.get("is_remote", False),
             }
             for m in models
         ]
@@ -782,6 +786,7 @@ class ProviderService:
                         "max_input_tokens": show.get("ctx_len"),
                         "supports_image_input": show.get("supports_image_input", False),
                         "supports_reasoning": show.get("supports_reasoning", False),
+                        "is_remote": bool(m.get("remote_model")),
                     }
                     for m, show in zip(raw_models, show_results)
                 ]

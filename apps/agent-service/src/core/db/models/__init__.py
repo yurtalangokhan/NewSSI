@@ -28,6 +28,7 @@ Tables managed here
 
 from core.db.models.agent_tools import AgentToolsModel
 from core.db.models.airbyte_mapping import AirbyteMappingModel
+from core.db.models.document import DocumentModel
 from core.db.models.assistant import AssistantModel
 from core.db.models.base import Base
 from core.db.models.collection import PgCollection, PgEmbedding
@@ -51,4 +52,5 @@ __all__ = [
     "MCPProviderModel",
     "MCPToolModel",
     "AgentToolsModel",
+    "DocumentModel",
 ]

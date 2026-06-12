@@ -560,28 +560,6 @@ async def send_chat_message(
     # Convert each descriptor into a LangChain content block and store the raw
     # bytes in FileService so GET /api/chat/file/{id} can serve them later.
     file_descriptors: list[dict] = body.get("file_descriptors") or []
-    if resolved_project_id is not None:
-        try:
-            project_file_descriptors = user_controller.get_project_file_descriptors_for_chat(
-                list(known_user_ids),
-                resolved_project_id,
-            )
-            project_file_ids = {
-                str(fd.get("id")) for fd in project_file_descriptors if fd.get("id")
-            }
-            file_descriptors = [
-                *project_file_descriptors,
-                *[
-                    fd for fd in file_descriptors
-                    if not fd.get("id") or str(fd.get("id")) not in project_file_ids
-                ],
-            ]
-        except Exception as exc:
-            logger.warning(
-                "Failed to attach project files for project_id=%s: %s",
-                resolved_project_id,
-                exc,
-            )
     file_content_blocks: list[dict] = []
     files_metadata: list[dict] = []
 
@@ -603,6 +581,23 @@ async def send_chat_message(
             files_metadata.append({"id": fd_id, "type": fd_type, "name": fd_name})
 
             if not fd_data:
+                # Try to recover file bytes from MinIO (e.g. after service restart)
+                try:
+                    from core.db.repositories.document_repo import DocumentRepository
+                    from service.MinioService import download_file as minio_download
+
+                    db_doc = await DocumentRepository().get_by_file_id(fd_id)
+                    if db_doc and db_doc.get("minio_object_key"):
+                        raw_bytes = minio_download(db_doc["minio_object_key"])
+                        import base64 as _b64_inner
+                        fd_data = _b64_inner.b64encode(raw_bytes).decode("ascii")
+                        fd_mime = db_doc.get("mime_type") or fd_mime
+                        fd_name = db_doc.get("filename") or fd_name
+                        logger.debug("Recovered file %s from MinIO (%d bytes)", fd_id, len(raw_bytes))
+                except Exception as _minio_err:
+                    logger.warning("Could not recover file %s from MinIO: %s", fd_id, _minio_err)
+
+            if not fd_data:
                 logger.warning("File descriptor %s has no data, skipping", fd_id)
                 continue
 
@@ -615,6 +610,36 @@ async def send_chat_message(
                 _store_file(fd_id, raw, fd_mime, fd_name)
             except Exception as store_err:
                 logger.error("Could not store file %s in FileService: %s", fd_id, store_err, exc_info=True)
+
+            # Persist to MinIO + DB (best-effort, only if not already saved)
+            try:
+                from core.db.repositories.document_repo import DocumentRepository
+                from service.FileService import mime_to_chat_file_type
+                from service.MinioService import upload_file as minio_upload
+
+                doc_repo = DocumentRepository()
+                existing = await doc_repo.get_by_file_id(fd_id)
+                if existing is None:
+                    object_key = minio_upload(
+                        user_id=effective_user_id,
+                        file_id=fd_id,
+                        filename=fd_name,
+                        data=raw,
+                        mime_type=fd_mime,
+                    )
+                    await doc_repo.create(
+                        file_id=fd_id,
+                        user_id=effective_user_id,
+                        filename=fd_name,
+                        mime_type=fd_mime,
+                        chat_file_type=mime_to_chat_file_type(fd_mime),
+                        size_bytes=len(raw),
+                        minio_object_key=object_key,
+                        thread_id=session_id,
+                        project_id=resolved_project_id,
+                    )
+            except Exception as _persist_err:
+                logger.warning("MinIO/DB persist for inline file %s failed: %s", fd_id, _persist_err)
 
             if m in IMAGE_MIMES:
                 file_content_blocks.append({

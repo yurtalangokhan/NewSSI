@@ -12,6 +12,7 @@ export enum LLMProviderName {
 export interface ModelConfiguration {
   name: string;
   is_visible: boolean;
+  is_remote?: boolean;
   max_input_tokens: number | null;
   supports_image_input: boolean;
   supports_reasoning: boolean;
@@ -157,6 +158,7 @@ export interface UserProviderConfig {
 export interface ProviderModelConfig {
   name: string;
   is_visible: boolean;
+  is_remote?: boolean;
   max_input_tokens: number | null;
   supports_image_input: boolean;
   supports_reasoning: boolean;
