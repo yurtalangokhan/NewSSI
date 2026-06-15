@@ -9,6 +9,7 @@ import { useSendAuthRequiredMessage } from "@/lib/extension/utils";
 import Text from "@/refresh-components/texts/Text";
 import Button from "@/refresh-components/buttons/Button";
 import Message from "@/refresh-components/messages/Message";
+import Link from "next/link";
 import { useTranslation } from "react-i18next";
 
 interface LoginPageProps {
@@ -38,7 +39,7 @@ export default function LoginPage({
     nextUrl ?? (isFirstUser ? "/app?new_team=true" : null);
 
   return (
-    <div className="flex flex-col w-full justify-center">
+    <div className="flex flex-col w-full justify-center gap-0">
       {verified && (
         <Message
           success
@@ -52,15 +53,16 @@ export default function LoginPage({
           error
           close={false}
           text={oidcError}
-          className="w-full mb-4"
+          className="w-full mb-3"
         />
       )}
       {authUrl &&
         authTypeMetadata &&
         authTypeMetadata.authType !== AuthType.CLOUD &&
-        // basic auth is handled below w/ the EmailPasswordForm
-        authTypeMetadata.authType !== AuthType.BASIC && (
-          <div className="flex flex-col w-full gap-4">
+        // basic/oidc auth is handled below w/ the EmailPasswordForm
+        authTypeMetadata.authType !== AuthType.BASIC &&
+        authTypeMetadata.authType !== AuthType.OIDC && (
+          <div className="flex flex-col w-full gap-3">
             <LoginText />
             <SignInButton
               authorizeUrl={authUrl}
@@ -70,7 +72,7 @@ export default function LoginPage({
         )}
 
       {authTypeMetadata?.authType === AuthType.CLOUD && (
-        <div className="w-full justify-center flex flex-col gap-6">
+        <div className="w-full justify-center flex flex-col gap-4">
           <LoginText />
           {authUrl && authTypeMetadata && (
             <>
@@ -79,23 +81,31 @@ export default function LoginPage({
                 authType={authTypeMetadata?.authType}
               />
               <div className="flex flex-row items-center w-full gap-2">
-                <div className="flex-1 border-t border-text-01" />
+                <div className="flex-1 border-t border-border" />
                 <Text as="p" text03 mainUiMuted>
                   {t("auth.orDivider")}
                 </Text>
-                <div className="flex-1 border-t border-text-01" />
+                <div className="flex-1 border-t border-border" />
               </div>
             </>
           )}
           <EmailPasswordForm shouldVerify={true} nextUrl={effectiveNextUrl} />
           {NEXT_PUBLIC_FORGOT_PASSWORD_ENABLED && (
-            <Button href="/auth/forgot-password">{t("auth.resetPasswordLink")}</Button>
+            <Button href="/auth/forgot-password" className="w-full">{t("auth.resetPasswordLink")}</Button>
           )}
+          <div className="flex items-center justify-center gap-2 pt-2">
+            <Text as="p" text03 mainUiMuted>
+              {t("auth.noAccount", { defaultValue: "Hesabınız mı yok?" })}
+            </Text>
+            <Link href="/auth/signup" className="text-link font-medium">
+              {t("auth.signupLink", { defaultValue: "Kaydol" })}
+            </Link>
+          </div>
         </div>
       )}
 
       {authTypeMetadata?.authType === AuthType.BASIC && (
-        <div className="flex flex-col w-full gap-6">
+        <div className="flex flex-col w-full gap-4">
           <LoginText />
 
           {authTypeMetadata?.oauthEnabled && authUrl && (
@@ -105,35 +115,57 @@ export default function LoginPage({
                 authType={AuthType.GOOGLE_OAUTH}
               />
               <div className="flex flex-row items-center w-full gap-2">
-                <div className="flex-1 border-t border-text-01" />
+                <div className="flex-1 border-t border-border" />
                 <Text as="p" text03 mainUiMuted>
                   {t("auth.orDivider")}
                 </Text>
-                <div className="flex-1 border-t border-text-01" />
+                <div className="flex-1 border-t border-border" />
               </div>
             </>
           )}
 
           <EmailPasswordForm nextUrl={effectiveNextUrl} />
+          <div className="flex items-center justify-center gap-2 pt-2">
+            <Text as="p" text03 mainUiMuted>
+              {t("auth.noAccount", { defaultValue: "Hesabınız mı yok?" })}
+            </Text>
+            <Link href="/auth/signup" className="text-link font-medium">
+              {t("auth.signupLink", { defaultValue: "Kaydol" })}
+            </Link>
+          </div>
         </div>
       )}
 
-      {!hidePageRedirect && (
-        <p className="text-center mt-4 text-white/90">
-          {t("auth.noAccountPrompt")}{" "}
-          <span
-            onClick={() => {
-              if (typeof window !== "undefined" && window.top) {
-                window.top.location.href = "/auth/signup";
-              } else {
-                window.location.href = "/auth/signup";
-              }
-            }}
-            className="text-white font-medium cursor-pointer underline"
-          >
-            {t("auth.createAccountLink")}
-          </span>
-        </p>
+      {authTypeMetadata?.authType === AuthType.OIDC && (
+        <div className="flex flex-col w-full gap-4">
+          <LoginText />
+
+          {authUrl && (
+            <>
+              <SignInButton
+                authorizeUrl={authUrl}
+                authType={AuthType.OIDC}
+              />
+              <div className="flex flex-row items-center w-full gap-2">
+                <div className="flex-1 border-t border-border" />
+                <Text as="p" text03 mainUiMuted>
+                  {t("auth.orDivider")}
+                </Text>
+                <div className="flex-1 border-t border-border" />
+              </div>
+            </>
+          )}
+
+          <EmailPasswordForm nextUrl={effectiveNextUrl} />
+          <div className="flex items-center justify-center gap-2 pt-2">
+            <Text as="p" text03 mainUiMuted>
+              {t("auth.noAccount", { defaultValue: "Hesabınız mı yok?" })}
+            </Text>
+            <Link href="/auth/signup" className="text-link font-medium">
+              {t("auth.signupLink", { defaultValue: "Kaydol" })}
+            </Link>
+          </div>
+        </div>
       )}
     </div>
   );

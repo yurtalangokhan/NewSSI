@@ -12,7 +12,6 @@ import {
   ConnectorStatus,
   DocumentSetSummary,
   UserGroup,
-  UserRole,
   FederatedConnectorConfig,
 } from "@/lib/types";
 import { TextFormField } from "@/components/Field";
@@ -20,9 +19,7 @@ import Button from "@/refresh-components/buttons/Button";
 import { usePaidEnterpriseFeaturesEnabled } from "@/components/settings/usePaidEnterpriseFeaturesEnabled";
 import { IsPublicGroupSelector } from "@/components/IsPublicGroupSelector";
 import React, { useEffect, useState } from "react";
-import { useUser } from "@/providers/UserProvider";
 import { ConnectorMultiSelect } from "@/components/ConnectorMultiSelect";
-import { NonSelectableConnectors } from "@/components/NonSelectableConnectors";
 import { FederatedConnectorSelector } from "@/components/FederatedConnectorSelector";
 import { useFederatedConnectors } from "@/lib/hooks";
 import { useTranslation } from "react-i18next";
@@ -36,7 +33,6 @@ interface SetCreationPopupProps {
 
 export const DocumentSetCreationForm = ({
   ccPairs,
-  userGroups,
   onClose,
   existingDocumentSet,
 }: SetCreationPopupProps) => {
@@ -44,7 +40,6 @@ export const DocumentSetCreationForm = ({
   const isPaidEnterpriseFeaturesEnabled = usePaidEnterpriseFeaturesEnabled();
   const isUpdate = existingDocumentSet !== undefined;
   const [localCcPairs, setLocalCcPairs] = useState(ccPairs);
-  const { user } = useUser();
   const { data: federatedConnectors } = useFederatedConnectors();
 
   useEffect(() => {
@@ -133,41 +128,7 @@ export const DocumentSetCreationForm = ({
         }}
       >
         {(props) => {
-          // Filter visible cc pairs for curator role
-          const visibleCcPairs =
-            user?.role === UserRole.CURATOR
-              ? localCcPairs.filter(
-                  (ccPair) =>
-                    ccPair.access_type === "public" ||
-                    (ccPair.groups.length > 0 &&
-                      props.values.groups.every((group) =>
-                        ccPair.groups.includes(group)
-                      ))
-                )
-              : localCcPairs;
-
-          // Filter non-visible cc pairs for curator role
-          const nonVisibleCcPairs =
-            user?.role === UserRole.CURATOR
-              ? localCcPairs.filter(
-                  (ccPair) =>
-                    !(ccPair.access_type === "public") &&
-                    (ccPair.groups.length === 0 ||
-                      !props.values.groups.every((group) =>
-                        ccPair.groups.includes(group)
-                      ))
-                )
-              : [];
-
-          // Deselect filtered out cc pairs
-          if (user?.role === UserRole.CURATOR) {
-            const visibleCcPairIds = visibleCcPairs.map(
-              (ccPair) => ccPair.cc_pair_id
-            );
-            props.values.cc_pair_ids = props.values.cc_pair_ids.filter((id) =>
-              visibleCcPairIds.includes(id)
-            );
-          }
+          const visibleCcPairs = localCcPairs;
 
           return (
             <Form className="space-y-6 w-full ">
@@ -195,45 +156,16 @@ export const DocumentSetCreationForm = ({
               <div className="my-6 border-t border-border-02" />
 
               <div className="space-y-6">
-                {user?.role === UserRole.CURATOR ? (
-                  <>
-                    <ConnectorMultiSelect
-                      name="cc_pair_ids"
-                      label={t("documentSetForm.connectorsFor", {
-                        label: userGroups && userGroups.length > 1
-                          ? "the selected group"
-                          : "the group you curate",
-                      })}
-                      connectors={visibleCcPairs}
-                      selectedIds={props.values.cc_pair_ids}
-                      onChange={(selectedIds) => {
-                        props.setFieldValue("cc_pair_ids", selectedIds);
-                      }}
-                      placeholder={t("documentSetForm.searchConnectors")}
-                    />
-
-                    <NonSelectableConnectors
-                      connectors={nonVisibleCcPairs}
-                      title={t("documentSetForm.connectorsNotFor", {
-                        label: userGroups && userGroups.length > 1
-                          ? `group${props.values.groups.length > 1 ? "s" : ""} you have selected`
-                          : "group you curate",
-                      })}
-                      description={t("documentSetForm.nonVisibleDesc")}
-                    />
-                  </>
-                ) : (
-                  <ConnectorMultiSelect
-                    name="cc_pair_ids"
-                    label={t("documentSetForm.pickConnectors")}
-                    connectors={visibleCcPairs}
-                    selectedIds={props.values.cc_pair_ids}
-                    onChange={(selectedIds) => {
-                      props.setFieldValue("cc_pair_ids", selectedIds);
-                    }}
-                    placeholder={t("documentSetForm.searchConnectors")}
-                  />
-                )}
+                <ConnectorMultiSelect
+                  name="cc_pair_ids"
+                  label={t("documentSetForm.pickConnectors")}
+                  connectors={visibleCcPairs}
+                  selectedIds={props.values.cc_pair_ids}
+                  onChange={(selectedIds) => {
+                    props.setFieldValue("cc_pair_ids", selectedIds);
+                  }}
+                  placeholder={t("documentSetForm.searchConnectors")}
+                />
 
                 {/* Federated Connectors Section */}
                 {federatedConnectors && federatedConnectors.length > 0 && (
@@ -263,7 +195,9 @@ export const DocumentSetCreationForm = ({
                   className="w-56 mx-auto"
                   primary
                 >
-                  {isUpdate ? t("documentSetForm.update") : t("documentSetForm.create")}
+                  {isUpdate
+                    ? t("documentSetForm.update")
+                    : t("documentSetForm.create")}
                 </Button>
               </div>
             </Form>

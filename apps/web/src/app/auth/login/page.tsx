@@ -18,9 +18,6 @@ export interface PageProps {
 
 export default async function Page(props: PageProps) {
   const searchParams = await props.searchParams;
-  const autoRedirectDisabled = searchParams?.disableAutoRedirect === "true";
-  const autoRedirectToSignupDisabled =
-    searchParams?.autoRedirectToSignup === "false";
   const nextUrl: string | null = Array.isArray(searchParams?.next)
     ? searchParams?.next[0] ?? null
     : searchParams?.next ?? null;
@@ -44,17 +41,6 @@ export default async function Page(props: PageProps) {
     console.log(`Some fetch failed for the login page - ${e}`);
   }
 
-  // if there are no users, redirect to signup page for initial setup
-  // (only for auth types that support self-service signup)
-  if (
-    authTypeMetadata &&
-    !authTypeMetadata.hasUsers &&
-    !autoRedirectToSignupDisabled &&
-    authTypeMetadata.authType === AuthType.BASIC
-  ) {
-    return redirect("/auth/signup");
-  }
-
   // if user is already logged in, take them to the main app page
   if (currentUser && currentUser.is_active && !currentUser.is_anonymous_user) {
     console.log("Login page: User is logged in, redirecting to chat", {
@@ -69,7 +55,7 @@ export default async function Page(props: PageProps) {
 
     // Add a query parameter to indicate this is a redirect from login
     // This will help prevent redirect loops
-    return redirect("/app?from=login");
+    return redirect("/app");
   }
 
   // get where to send the user to authenticate
@@ -90,7 +76,7 @@ export default async function Page(props: PageProps) {
     }
   }
 
-  if (authTypeMetadata?.autoRedirect && authUrl && !autoRedirectDisabled) {
+  if (authTypeMetadata?.autoRedirect && authUrl && !oidcError) {
     return redirect(authUrl as Route);
   }
 

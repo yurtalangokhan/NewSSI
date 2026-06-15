@@ -1,4 +1,5 @@
-import type { HTMLAttributes } from "react";
+import type { ComponentPropsWithoutRef, ElementType, ReactNode } from "react";
+import React from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -56,8 +57,11 @@ const colors = {
   },
 };
 
-export interface TextProps extends Omit<HTMLAttributes<HTMLElement>, "as"> {
+type TextElement = "p" | "span" | "li";
+
+export interface TextBaseProps {
   nowrap?: boolean;
+  children?: ReactNode;
 
   // Fonts
   headingH1?: boolean;
@@ -92,44 +96,50 @@ export interface TextProps extends Omit<HTMLAttributes<HTMLElement>, "as"> {
   textDark05?: boolean;
 
   // Tag type override
-  as?: "p" | "span" | "li";
+  as?: TextElement;
 }
 
-export default function Text({
-  nowrap,
-  headingH1,
-  headingH2,
-  headingH3,
-  headingH3Muted,
-  mainContentBody,
-  mainContentMuted,
-  mainContentEmphasis,
-  mainContentMono,
-  mainUiBody,
-  mainUiMuted,
-  mainUiAction,
-  mainUiMono,
-  secondaryBody,
-  secondaryAction,
-  secondaryMono,
-  figureSmallLabel,
-  figureSmallValue,
-  figureKeystroke,
-  text05,
-  text04,
-  text03,
-  text02,
-  text01,
-  inverted,
-  textLight03,
-  textLight05,
-  textDark03,
-  textDark05,
-  children,
-  className,
-  as,
-  ...rest
-}: TextProps) {
+export type TextProps<T extends TextElement = "span"> = TextBaseProps &
+  Omit<ComponentPropsWithoutRef<T>, keyof TextBaseProps>;
+
+function TextImpl(
+  {
+    nowrap,
+    headingH1,
+    headingH2,
+    headingH3,
+    headingH3Muted,
+    mainContentBody,
+    mainContentMuted,
+    mainContentEmphasis,
+    mainContentMono,
+    mainUiBody,
+    mainUiMuted,
+    mainUiAction,
+    mainUiMono,
+    secondaryBody,
+    secondaryAction,
+    secondaryMono,
+    figureSmallLabel,
+    figureSmallValue,
+    figureKeystroke,
+    text05,
+    text04,
+    text03,
+    text02,
+    text01,
+    inverted,
+    textLight03,
+    textLight05,
+    textDark03,
+    textDark05,
+    children,
+    className,
+    as = "span",
+    ...rest
+  }: TextProps,
+  ref: React.Ref<HTMLElement>
+) {
   const font = headingH1
     ? "headingH1"
     : headingH2
@@ -188,19 +198,23 @@ export default function Text({
                     ? "textDark05"
                     : "text05";
 
-  const Tag = as ?? "span";
-
-  return (
-    <Tag
-      {...rest}
-      className={cn(
+  return React.createElement(
+    as as ElementType,
+    {
+      ref,
+      ...rest,
+      className: cn(
         fonts[font],
         inverted ? colors.inverted[color] : colors[color],
         nowrap && "whitespace-nowrap",
         className
-      )}
-    >
-      {children}
-    </Tag>
+      ),
+    },
+    children
   );
 }
+
+const Text = React.forwardRef(TextImpl);
+Text.displayName = "Text";
+
+export default Text;

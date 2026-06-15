@@ -39,9 +39,14 @@ def _normalize_model_name(model_name: str | None) -> str | None:
 
     lower_name = normalized.lower()
     if lower_name in {"ollama", "default", "provider", "builtin"}:
-        return env.OLLAMA_MODEL or "llama3.1:8b"
+        return env.OLLAMA_MODEL or settings.OLLAMA_MODEL
 
     return normalized
+
+
+def _ollama_base_url() -> str:
+    """Resolve Ollama URL from runtime env, falling back to settings loaded from .env."""
+    return env.OLLAMA_BASE_URL or settings.OLLAMA_BASE_URL
 
 
 class FakeToolModel(FakeListChatModel):
@@ -139,7 +144,7 @@ def get_model(model_name: str | None = None) -> ModelT:
             logger.warning("Failed to find model %s via registry: %s", model_name, e)
 
         # Fallback: try Ollama directly
-        ollama_base_url = env.OLLAMA_BASE_URL or "http://localhost:11434"
+        ollama_base_url = _ollama_base_url()
         return ChatOllama(
             model=model_name,
             temperature=0.5,
@@ -182,13 +187,14 @@ def get_model(model_name: str | None = None) -> ModelT:
 def _get_model_direct(model_name: str) -> ModelT:
     """Get a model instance without async calls (sync fallback)."""
     # Try Ollama first
-    if env.OLLAMA_BASE_URL:
+    ollama_base_url = _ollama_base_url()
+    if ollama_base_url:
         return ChatOllama(
             model=model_name,
             temperature=0.5,
             streaming=True,
-            base_url=env.OLLAMA_BASE_URL,
-            reasoning=_ollama_supports_reasoning(model_name, env.OLLAMA_BASE_URL),
+            base_url=ollama_base_url,
+            reasoning=_ollama_supports_reasoning(model_name, ollama_base_url),
         )
 
     # Try vLLM
@@ -212,9 +218,10 @@ def get_embedding_model():
     """Get an embedding model instance."""
     from langchain_ollama import ChatOllama
 
-    embed_model = env.OLLAMA_EMBED_MODEL or "nomic-embed-text"
+    embed_model = env.OLLAMA_EMBED_MODEL or settings.OLLAMA_EMBED_MODEL
 
-    if env.OLLAMA_BASE_URL:
-        return ChatOllama(model=embed_model, base_url=env.OLLAMA_BASE_URL)
+    ollama_base_url = _ollama_base_url()
+    if ollama_base_url:
+        return ChatOllama(model=embed_model, base_url=ollama_base_url)
 
     return ChatOllama(model=embed_model)

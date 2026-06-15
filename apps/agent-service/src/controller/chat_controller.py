@@ -19,9 +19,62 @@ logger = logging.getLogger(__name__)
 class ChatController(BaseController):
     """Owns non-streaming chat endpoints and delegates persistence to ThreadController."""
 
-    def __init__(self, thread_controller: ThreadController | None = None, user_id: str = "dev-user"):
+    def __init__(
+        self,
+        thread_controller: ThreadController | None = None,
+        user_id: str = "dev-user",
+        owner_ids: list[str] | None = None,
+    ):
         self._thread_controller = thread_controller or get_thread_controller()
         self._user_id = user_id
+        self._owner_ids: list[str] = []
+        for candidate in [user_id, *(owner_ids or [])]:
+            normalized = str(candidate).strip() if candidate else ""
+            if normalized and normalized not in self._owner_ids:
+                self._owner_ids.append(normalized)
+
+    @staticmethod
+    def _thread_project_id(thread: dict[str, Any]) -> int | None:
+        project_id = thread.get("project_id")
+        if project_id is None:
+            metadata = thread.get("metadata", {}) or {}
+            project_id = metadata.get("project_id")
+        if project_id is None:
+            return None
+        try:
+            return int(project_id)
+        except (TypeError, ValueError):
+            return None
+
+    def _matches_owner(self, metadata: dict[str, Any]) -> bool:
+        owner = metadata.get("user_id")
+        if owner and str(owner) in self._owner_ids:
+            return True
+
+        legacy_owner_ids = metadata.get("legacy_user_ids") or []
+        if isinstance(legacy_owner_ids, list):
+            return any(str(candidate) in self._owner_ids for candidate in legacy_owner_ids)
+
+        return False
+
+    async def _list_user_threads(self, limit: int, offset: int) -> list[dict[str, Any]]:
+        if len(self._owner_ids) <= 1:
+            return await self._thread_controller.list_threads(
+                limit=limit,
+                offset=offset,
+                metadata={"user_id": self._user_id},
+            )
+
+        threads = await self._thread_controller.list_threads(
+            limit=max(limit + offset, 1000),
+            offset=0,
+        )
+        matching_threads = [
+            thread
+            for thread in threads
+            if self._matches_owner(thread.get("metadata", {}) or {})
+        ]
+        return matching_threads[offset : offset + limit]
 
     async def _ensure_thread_belongs_to_user(self, thread_id: str, thread: dict[str, Any] | None) -> bool:
         if not thread:
@@ -36,7 +89,22 @@ class ChatController(BaseController):
             await self._thread_controller.update_thread(thread_id, metadata)
             return True
 
-        return owner == self._user_id
+        if str(owner) == self._user_id:
+            return True
+
+        if self._matches_owner(metadata):
+            legacy_owner_ids = metadata.get("legacy_user_ids") or []
+            if not isinstance(legacy_owner_ids, list):
+                legacy_owner_ids = []
+            if str(owner) != self._user_id and str(owner) not in legacy_owner_ids:
+                legacy_owner_ids.append(str(owner))
+
+            metadata["legacy_user_ids"] = legacy_owner_ids
+            metadata["user_id"] = self._user_id
+            await self._thread_controller.update_thread(thread_id, metadata)
+            return True
+
+        return False
 
     def _is_invalid_generated_title(self, title: str) -> bool:
         text = (title or "").strip().lower()
@@ -196,14 +264,14 @@ class ChatController(BaseController):
             return ""
         return title[:80]
 
-    async def _extract_first_ai_response(self, session_id: str) -> str:
-        """Return the first assistant response text for the session, if present."""
+    async def _extract_first_human_message(self, session_id: str) -> str:
+        """Return the first human message text for the session, if present."""
         state = await self._thread_controller.get_thread_state(session_id)
         messages = state.get("values", {}).get("messages", [])
 
         for msg in messages:
             msg_type = getattr(msg, "type", None) or (msg.get("type", "") if isinstance(msg, dict) else "")
-            if msg_type not in ("ai", "assistant"):
+            if msg_type not in ("human", "user"):
                 continue
 
             content = getattr(msg, "content", "") if hasattr(msg, "content") else msg.get("content", "")
@@ -227,24 +295,28 @@ class ChatController(BaseController):
 
         return ""
 
-    async def _generate_title_from_ai_response(self, ai_response: str) -> str:
-        """Generate a concise session title (2-5 words) from the assistant response."""
-        if not ai_response:
+    async def _generate_title_from_question(
+        self,
+        human_message: str,
+        model_name: str | None = None,
+    ) -> str:
+        """Generate a concise session title (3-6 words) from the user's question."""
+        if not human_message:
             return ""
 
-        target_language = self._detect_response_language(ai_response)
+        target_language = self._detect_response_language(human_message)
 
         system_prompt = (
-            "You generate chat titles. "
-            "Return a concise 2-5 word title that summarizes the assistant response. "
-            "Rules: return only the title, no explanation, no quotes, no trailing punctuation. "
-            "Do not copy the opening words of the response verbatim. "
-            f"Language requirement: the title must be in {target_language}."
+            "You generate short chat session titles. "
+            "Given the user's first message, return a concise title of 3 to 6 words that captures the main topic or intent. "
+            "Rules: return ONLY the title — no explanation, no quotes, no punctuation at the end. "
+            "Do not copy the message verbatim; summarize its core topic. "
+            f"Write the title in {target_language}."
         )
-        user_prompt = f"Assistant response:\n{ai_response}"
+        user_prompt = f"User message:\n{human_message[:500]}"
 
         try:
-            model = get_model()
+            model = get_model(model_name)
             result = await model.ainvoke(
                 [
                     SystemMessage(content=system_prompt),
@@ -270,61 +342,40 @@ class ChatController(BaseController):
             normalized = self._normalize_title(content)
             if self._is_invalid_generated_title(normalized):
                 return ""
-            if self._is_trivial_prefix_title(normalized, ai_response):
-                return ""
             return normalized[:80] if normalized else ""
         except Exception:
             return ""
 
-    async def _derive_session_name(self, session_id: str, default_name: str = "New Chat") -> str:
+    async def _derive_session_name(
+        self,
+        session_id: str,
+        default_name: str = "New Chat",
+        model_name: str | None = None,
+    ) -> str:
         checkpointer = get_checkpointer()
         if not checkpointer:
             return default_name
 
         try:
-            ai_response = await self._extract_first_ai_response(session_id)
-            if ai_response:
-                summary = await self._generate_title_from_ai_response(ai_response)
-                if summary:
-                    return summary
+            human_message = await self._extract_first_human_message(session_id)
+            if human_message:
+                title = await self._generate_title_from_question(human_message, model_name=model_name)
+                if title:
+                    return title
 
-                fallback_summary = self._heuristic_title_from_ai_response(ai_response)
-                if fallback_summary:
-                    return fallback_summary
-
-            state = await self._thread_controller.get_thread_state(session_id)
-            messages = state.get("values", {}).get("messages", [])
-            for msg in messages:
-                msg_type = getattr(msg, "type", None) or (msg.get("type", "") if isinstance(msg, dict) else "")
-                if msg_type not in ("human", "user"):
-                    continue
-
-                content = getattr(msg, "content", "") if hasattr(msg, "content") else msg.get("content", "")
-                if isinstance(content, list):
-                    for item in content:
-                        if isinstance(item, dict) and item.get("type") == "text":
-                            content = item.get("text", "")
-                            break
-                        if isinstance(item, str):
-                            content = item
-                            break
-                if not isinstance(content, str):
-                    content = str(content or "")
-
-                content = " ".join(content.strip().split())
-                if content:
-                    return content[:50]
+                # Fallback: clean truncation of the question (readable, no word-splitting)
+                words = human_message.split()
+                fallback = " ".join(words[:8])
+                if len(words) > 8:
+                    fallback += "…"
+                return fallback[:80] if fallback else default_name
         except Exception:
             return default_name
 
         return default_name
 
     async def get_chat_sessions(self) -> dict[str, Any]:
-        threads = await self._thread_controller.list_threads(
-            limit=100,
-            offset=0,
-            metadata={"user_id": self._user_id},
-        )
+        threads = await self._list_user_threads(limit=100, offset=0)
 
         checkpointer = get_checkpointer()
         sessions: list[dict[str, Any]] = []
@@ -357,7 +408,7 @@ class ChatController(BaseController):
                     "time_created": thread.get("created_at"),
                     "time_updated": thread.get("updated_at"),
                     "shared_status": "private",
-                    "project_id": thread.get("project_id"),
+                    "project_id": self._thread_project_id(thread),
                     "current_alternate_model": metadata.get("current_alternate_model"),
                     "current_temperature_override": metadata.get("current_temperature_override"),
                 }
@@ -908,11 +959,7 @@ class ChatController(BaseController):
         return {"success": True}
 
     async def delete_all_chat_sessions(self) -> dict[str, Any]:
-        threads = await self._thread_controller.list_threads(
-            limit=1000,
-            offset=0,
-            metadata={"user_id": self._user_id},
-        )
+        threads = await self._list_user_threads(limit=1000, offset=0)
         deleted_count = 0
 
         for thread in threads:
@@ -939,7 +986,11 @@ class ChatController(BaseController):
         metadata["name"] = (
             trimmed_name
             if trimmed_name
-            else await self._derive_session_name(session_id, default_name=metadata.get("name", "New Chat") or "New Chat")
+            else await self._derive_session_name(
+                session_id,
+                default_name=metadata.get("name", "New Chat") or "New Chat",
+                model_name=metadata.get("current_alternate_model"),
+            )
         )
         await self._thread_controller.update_thread(session_id, metadata, update_timestamp=False)
         return {"success": True}

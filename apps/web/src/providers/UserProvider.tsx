@@ -17,7 +17,6 @@ import { getCurrentUser } from "@/lib/user";
 import { usePostHog } from "posthog-js/react";
 import { CombinedSettings } from "@/interfaces/settings";
 import { SettingsContext } from "@/providers/SettingsProvider";
-import { useTokenRefresh } from "@/hooks/useTokenRefresh";
 import { AuthTypeMetadata } from "@/lib/userSS";
 import { updateUserPersonalization as persistPersonalization } from "@/lib/userSettings";
 import { useTheme } from "next-themes";
@@ -123,9 +122,6 @@ export function UserProvider({
       console.error("Error fetching current user:", error);
     }
   };
-
-  // Use the custom token refresh hook
-  useTokenRefresh(upToDateUser, authTypeMetadata, fetchUser);
 
   // Sync user's theme preference from DB to next-themes on load
   const { setTheme, theme } = useTheme();
@@ -490,11 +486,10 @@ export function UserProvider({
         updateUserDefaultModel,
         updateUserDefaultAppMode,
         toggleAgentPinnedStatus,
-        isAdmin: upToDateUser?.role === UserRole.ADMIN,
-        // Curator status applies for either global or basic curator
-        isCurator:
-          upToDateUser?.role === UserRole.CURATOR ||
-          upToDateUser?.role === UserRole.GLOBAL_CURATOR,
+        isAdmin:
+          upToDateUser?.role === UserRole.ADMIN ||
+          upToDateUser?.is_superuser === true,
+        isCurator: false,
         isCloudSuperuser: upToDateUser?.is_cloud_superuser ?? false,
       }}
     >

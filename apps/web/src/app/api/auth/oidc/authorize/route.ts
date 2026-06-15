@@ -1,10 +1,10 @@
-import { buildUrl } from "@/lib/utilsSS";
+import { buildUserServiceUrl } from "@/lib/utilsSS";
 import { getDomain } from "@/lib/redirectSS";
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 
 export const GET = async (request: NextRequest) => {
-  const target = new URL(buildUrl("/auth/oidc/authorize"));
+  const target = new URL(buildUserServiceUrl("/api/auth/oidc/authorize"));
   const callbackBase = getDomain(request).replace(/\/$/, "");
   const dynamicRedirectUri = `${callbackBase}/auth/oidc/callback`;
 
@@ -31,6 +31,25 @@ export const GET = async (request: NextRequest) => {
     const location = response.headers.get("location");
     if (location) {
       return NextResponse.redirect(location, { status: response.status });
+    }
+  }
+
+  // Some backends return JSON with authorization URL instead of redirecting directly.
+  if (response.ok) {
+    try {
+      const payload = await response.json();
+      const authorizationUrl =
+        payload?.authorization_url || payload?.authorize_url;
+      const shouldRedirect =
+        request.nextUrl.searchParams.get("redirect") === "true";
+
+      if (shouldRedirect && authorizationUrl) {
+        return NextResponse.redirect(authorizationUrl, { status: 307 });
+      }
+
+      return NextResponse.json(payload, { status: response.status });
+    } catch {
+      // Fall through to raw response body handling.
     }
   }
 

@@ -12,6 +12,9 @@ class DummyStreamGraph:
     async def astream(self, input, config=None, **kwargs) -> AsyncGenerator[tuple[str, dict], None]:
         yield ("updates", {"agent": {"messages": []}})
 
+    async def astream_events(self, input, config=None, version="v2", **kwargs) -> AsyncGenerator[dict, None]:
+        yield {"event": "on_chain_end", "data": {"output": "done"}}
+
 
 class TestConfigurableMCPAgent:
     @pytest.mark.asyncio
@@ -54,6 +57,44 @@ class TestConfigurableMCPAgent:
                 "memories": ["User likes tea"],
             },
         )
+
+    @pytest.mark.asyncio
+    async def test_astream_events_emits_memory_recall_custom_event(self):
+        """Configurable MCP agent should emit recalled memory before graph events."""
+        agent = ConfigurableMCPAgent()
+        agent._loaded = True
+        agent._graph = DummyStreamGraph()
+        agent._save_memory_from_output = AsyncMock()
+
+        with patch.object(
+            agent,
+            "_prepare_memory_context",
+            new=AsyncMock(
+                return_value=(
+                    {"messages": []},
+                    {"user_facts": ["User likes tea"]},
+                    "user-1",
+                    "[Long-Term Memory — Previously learned facts about this user]",
+                )
+            ),
+        ):
+            with patch.object(agent, "_create_agent_graph", return_value=DummyStreamGraph()):
+                events = [
+                    event
+                    async for event in agent.astream_events(
+                        {"messages": []},
+                        config={"configurable": {"long_term_memory": True, "user_id": "user-1"}},
+                    )
+                ]
+
+        assert events[0] == {
+            "event": "custom",
+            "data": {
+                "type": "long_term_memory_recall",
+                "fact_count": 1,
+                "memories": ["User likes tea"],
+            },
+        }
 
     def test_build_compact_memory_context_sanitizes_tag_like_text(self):
         agent = ConfigurableMCPAgent()

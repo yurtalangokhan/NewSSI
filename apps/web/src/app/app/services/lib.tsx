@@ -24,12 +24,13 @@ import { SEARCH_PARAM_NAMES } from "./searchParams";
 import { WEB_SEARCH_TOOL_ID } from "@/app/app/components/tools/constants";
 import { SEARCH_TOOL_ID } from "@/app/app/components/tools/constants";
 import { Packet } from "./streamingModels";
+import { authenticatedFetch } from "@/lib/fetcher";
 
 export async function updateLlmOverrideForChatSession(
   chatSessionId: string,
   newAlternateModel: string
 ) {
-  const response = await fetch("/api/chat/update-chat-session-model", {
+  const response = await authenticatedFetch("/api/chat/update-chat-session-model", {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
@@ -46,7 +47,7 @@ export async function updateTemperatureOverrideForChatSession(
   chatSessionId: string,
   newTemperature: number
 ) {
-  const response = await fetch("/api/chat/update-chat-session-temperature", {
+  const response = await authenticatedFetch("/api/chat/update-chat-session-temperature", {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
@@ -64,7 +65,7 @@ export async function createChatSession(
   description: string | null,
   projectId: number | null
 ): Promise<string> {
-  const createChatSessionResponse = await fetch(
+  const createChatSessionResponse = await authenticatedFetch(
     "/api/chat/create-chat-session",
     {
       method: "POST",
@@ -139,6 +140,7 @@ export interface SendMessageParams {
   // Additional context injected into the LLM call but not stored/shown in chat.
   // Used e.g. by Chrome extension "Read this tab" feature.
   additionalContext?: string;
+  projectId?: number | null;
   // Persona/agent ID for routing to specific agent
   personaId?: string | number;
 }
@@ -159,12 +161,14 @@ export async function* sendMessage({
   temperature,
   origin,
   additionalContext,
+  projectId,
   personaId,
 }: SendMessageParams): AsyncGenerator<PacketType, void, unknown> {
   // Build payload for new send-chat-message API
   const payload = {
     message: message,
     chat_session_id: chatSessionId,
+    project_id: projectId ?? null,
     persona_id: personaId ?? null,
     parent_message_id: parentMessageId,
     file_descriptors: fileDescriptors,
@@ -188,7 +192,7 @@ export async function* sendMessage({
 
   const body = JSON.stringify(payload);
 
-  const response = await fetch(`/api/chat/send-chat-message`, {
+  const response = await authenticatedFetch(`/api/chat/send-chat-message`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -205,7 +209,7 @@ export async function* sendMessage({
 }
 
 export async function nameChatSession(chatSessionId: string) {
-  const response = await fetch("/api/chat/rename-chat-session", {
+  const response = await authenticatedFetch("/api/chat/rename-chat-session", {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
@@ -219,7 +223,7 @@ export async function nameChatSession(chatSessionId: string) {
 }
 
 export async function patchMessageToBeLatest(messageId: number) {
-  const response = await fetch("/api/chat/set-message-as-latest", {
+  const response = await authenticatedFetch("/api/chat/set-message-as-latest", {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
@@ -237,7 +241,7 @@ export async function handleChatFeedback(
   feedbackDetails: string,
   predefinedFeedback: string | undefined
 ) {
-  const response = await fetch("/api/chat/create-chat-message-feedback", {
+  const response = await authenticatedFetch("/api/chat/create-chat-message-feedback", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -253,7 +257,7 @@ export async function handleChatFeedback(
 }
 
 export async function removeChatFeedback(messageId: number) {
-  const response = await fetch(
+  const response = await authenticatedFetch(
     `/api/chat/remove-chat-message-feedback?chat_message_id=${messageId}`,
     {
       method: "DELETE",
@@ -269,7 +273,7 @@ export async function renameChatSession(
   chatSessionId: string,
   newName: string
 ) {
-  const response = await fetch(`/api/chat/rename-chat-session`, {
+  const response = await authenticatedFetch(`/api/chat/rename-chat-session`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
@@ -283,7 +287,7 @@ export async function renameChatSession(
 }
 
 export async function deleteChatSession(chatSessionId: string) {
-  const response = await fetch(
+  const response = await authenticatedFetch(
     `/api/chat/delete-chat-session/${chatSessionId}`,
     {
       method: "DELETE",
@@ -293,7 +297,7 @@ export async function deleteChatSession(chatSessionId: string) {
 }
 
 export async function deleteAllChatSessions() {
-  const response = await fetch(`/api/chat/delete-all-chat-sessions`, {
+  const response = await authenticatedFetch(`/api/chat/delete-all-chat-sessions`, {
     method: "DELETE",
     headers: {
       "Content-Type": "application/json",
@@ -305,7 +309,7 @@ export async function deleteAllChatSessions() {
 export async function getAvailableContextTokens(
   chatSessionId: string
 ): Promise<number> {
-  const response = await fetch(
+  const response = await authenticatedFetch(
     `/api/chat/available-context-tokens/${chatSessionId}`
   );
   if (!response.ok) {
@@ -472,7 +476,7 @@ export async function uploadFilesForChat(
     formData.append("files", file);
   });
 
-  const response = await fetch("/api/chat/file", {
+  const response = await authenticatedFetch("/api/chat/file", {
     method: "POST",
     body: formData,
   });

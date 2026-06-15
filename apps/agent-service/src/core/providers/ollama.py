@@ -1,12 +1,14 @@
 """Ollama LLM Provider implementation."""
 
 import asyncio
+
 import httpx
 from langchain_ollama import ChatOllama
 
 from core.env import env
 from core.logger import get_logger
 from core.providers.base import LLMProvider, ModelInfo
+from core.settings import settings
 
 logger = get_logger(__name__)
 
@@ -27,7 +29,7 @@ class OllamaProvider(LLMProvider):
 
     @property
     def base_url(self) -> str:
-        return env.OLLAMA_BASE_URL or "http://localhost:11434"
+        return env.OLLAMA_BASE_URL or settings.OLLAMA_BASE_URL
 
     async def get_available_models(self) -> list[ModelInfo]:
         """Fetch models and capabilities from Ollama /api/tags + /api/show."""
@@ -86,6 +88,7 @@ class OllamaProvider(LLMProvider):
                             max_input_tokens=ctx_len,
                             supports_image_input="vision" in caps_list,
                             supports_reasoning=supports_reasoning,
+                            is_remote=bool(m.get("remote_model")),
                         )
                     )
 

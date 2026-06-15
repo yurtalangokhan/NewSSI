@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { INTERNAL_URL } from "@/lib/constants";
 
-const BACKEND_URL = process.env.INTERNAL_URL || 'http://localhost:8080';
+const BACKEND_URL = INTERNAL_URL;
 
 export interface ProxyOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
   withCredentials?: boolean;
+  backendUrl?: string;
 }
 
 /**
@@ -16,10 +18,14 @@ export async function proxyToBackend(
   options: ProxyOptions = {}
 ): Promise<NextResponse> {
   try {
-    const { method = request.method, withCredentials = true } = options;
+    const {
+      method = request.method,
+      withCredentials = true,
+      backendUrl = BACKEND_URL,
+    } = options;
     
     // Build URL with query params
-    const url = new URL(`${BACKEND_URL}${pathname}`);
+    const url = new URL(`${backendUrl}${pathname}`);
     if (request.nextUrl.search) {
       url.search = request.nextUrl.search;
     }
@@ -28,16 +34,29 @@ export async function proxyToBackend(
       'Content-Type': request.headers.get('content-type') || 'application/json',
     };
 
+    const authorization = request.headers.get('authorization');
+    if (authorization) {
+      headers['Authorization'] = authorization;
+    }
+
     if (withCredentials) {
-      const cookie = request.headers.get('cookie');
+      let cookie = request.headers.get('cookie') || '';
+      if (
+        process.env.DEBUG_AUTH_COOKIE &&
+        process.env.NODE_ENV === 'development' &&
+        !cookie.split(/;\s*/).some((c) => c.startsWith('fastapiusersauth='))
+      ) {
+        const debugCookie = `fastapiusersauth=${process.env.DEBUG_AUTH_COOKIE}`;
+        cookie = cookie ? `${cookie}; ${debugCookie}` : debugCookie;
+      }
       if (cookie) {
         headers['Cookie'] = cookie;
       }
     }
 
-    let body: string | undefined;
+    let body: BodyInit | undefined;
     if (['POST', 'PUT', 'PATCH'].includes(method)) {
-      body = await request.text();
+      body = await request.arrayBuffer();
     }
 
     const response = await fetch(url.toString(), {

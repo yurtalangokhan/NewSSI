@@ -8,25 +8,25 @@ These endpoints delegate to ThreadController for CRUD and use message_generator 
 import json
 import logging
 import uuid
-from typing import Annotated
-from typing import Any
-
-logger = logging.getLogger(__name__)
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
 from agents import DEFAULT_AGENT
-from controller import ChatController, ThreadController, get_thread_controller
-from schema.schema import StreamInput
-from api.routes.AgentsRoute import message_generator
 from api.dependencies import verify_api_key
+from api.routes.AgentsRoute import message_generator
+from controller import ChatController, ThreadController, get_thread_controller, get_user_controller
 from domain.providers.repository import ProviderRepository
 from domain.providers.service import ProviderService
+from schema.schema import StreamInput
+from service.AuthService import get_auth_service, get_primary_user_id
 from service.ChatContextService import (
     build_effective_llm_override,
     resolve_project_instructions,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["chat"])
 
@@ -35,8 +35,13 @@ def _get_thread_controller() -> ThreadController:
     return get_thread_controller()
 
 
-def _get_user_chat_controller(user_id: str) -> ChatController:
-    return ChatController(thread_controller=_get_thread_controller(), user_id=user_id)
+async def _get_user_chat_controller(request: Request, user_id: str) -> ChatController:
+    identity = await get_auth_service().resolve_user_identity(request=request, user_id=user_id)
+    return ChatController(
+        thread_controller=_get_thread_controller(),
+        user_id=str(identity.get("primary_user_id") or user_id),
+        owner_ids=identity.get("known_user_ids") or [user_id],
+    )
 
 
 PERSONA_ID_TO_AGENT: dict[int, str] = {
@@ -51,6 +56,22 @@ def _truncate_name(message: str, max_length: int = 50) -> str:
     if len(name) > max_length:
         name = name[:max_length].rsplit(" ", 1)[0] + "..."
     return name or "New Chat"
+
+
+def _coerce_project_id(value: Any) -> int | None:
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _resolve_effective_chat_user_id(identity: dict[str, Any], user_id: str | None) -> str:
+    effective_user_id = get_primary_user_id(identity, user_id)
+    if not effective_user_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    return effective_user_id
 
 
 async def _resolve_provider_for_user(
@@ -108,10 +129,13 @@ async def _resolve_model_supports_reasoning(
 
 
 @router.get("/api/chat/get-user-chat-sessions")
-async def get_chat_sessions(user_id: Annotated[str | None, Depends(verify_api_key)]):
+async def get_chat_sessions(
+    request: Request,
+    user_id: Annotated[str | None, Depends(verify_api_key)],
+):
     if not user_id:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    return await _get_user_chat_controller(user_id).get_chat_sessions()
+    return await (await _get_user_chat_controller(request, user_id)).get_chat_sessions()
 
 
 @router.post("/api/chat/create-chat-session")
@@ -123,7 +147,7 @@ async def create_chat_session(
         raise HTTPException(status_code=401, detail="Not authenticated")
 
     body = await request.json()
-    return await _get_user_chat_controller(user_id).create_chat_session(
+    return await (await _get_user_chat_controller(request, user_id)).create_chat_session(
         persona_id=body.get("persona_id", 0),
         description=body.get("description"),
         project_id=body.get("project_id"),
@@ -132,6 +156,7 @@ async def create_chat_session(
 
 @router.get("/api/chat/get-chat-session/{chat_session_id}")
 async def get_chat_session(
+    request: Request,
     chat_session_id: str,
     user_id: Annotated[str | None, Depends(verify_api_key)],
 ):
@@ -139,7 +164,7 @@ async def get_chat_session(
         raise HTTPException(status_code=401, detail="Not authenticated")
 
     try:
-        return await _get_user_chat_controller(user_id).get_chat_session(chat_session_id)
+        return await (await _get_user_chat_controller(request, user_id)).get_chat_session(chat_session_id)
     except PermissionError as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
 
@@ -147,12 +172,13 @@ async def get_chat_session(
 @router.post("/api/chat/delete-chat-session/{chat_session_id}")
 @router.delete("/api/chat/delete-chat-session/{chat_session_id}")
 async def delete_chat_session(
+    request: Request,
     chat_session_id: str,
     user_id: Annotated[str | None, Depends(verify_api_key)],
 ):
     if not user_id:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    result = await _get_user_chat_controller(user_id).delete_chat_session(chat_session_id)
+    result = await (await _get_user_chat_controller(request, user_id)).delete_chat_session(chat_session_id)
     if result.get("success") is False and result.get("error") == "Forbidden":
         raise HTTPException(status_code=403, detail="Forbidden")
     return result
@@ -160,10 +186,13 @@ async def delete_chat_session(
 
 @router.post("/api/chat/delete-all-chat-sessions")
 @router.delete("/api/chat/delete-all-chat-sessions")
-async def delete_all_chat_sessions(user_id: Annotated[str | None, Depends(verify_api_key)]):
+async def delete_all_chat_sessions(
+    request: Request,
+    user_id: Annotated[str | None, Depends(verify_api_key)],
+):
     if not user_id:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    return await _get_user_chat_controller(user_id).delete_all_chat_sessions()
+    return await (await _get_user_chat_controller(request, user_id)).delete_all_chat_sessions()
 
 
 @router.put("/api/chat/rename-chat-session")
@@ -176,7 +205,7 @@ async def rename_chat_session(
         raise HTTPException(status_code=401, detail="Not authenticated")
 
     body = await request.json()
-    result = await _get_user_chat_controller(user_id).rename_chat_session(
+    result = await (await _get_user_chat_controller(request, user_id)).rename_chat_session(
         session_id=body.get("chat_session_id"),
         name=body.get("name"),
     )
@@ -194,7 +223,7 @@ async def update_chat_session_model(
         raise HTTPException(status_code=401, detail="Not authenticated")
 
     body = await request.json()
-    result = await _get_user_chat_controller(user_id).update_chat_session_model(
+    result = await (await _get_user_chat_controller(request, user_id)).update_chat_session_model(
         session_id=body.get("chat_session_id"),
         model=body.get("model"),
     )
@@ -212,7 +241,7 @@ async def update_chat_session_temperature(
         raise HTTPException(status_code=401, detail="Not authenticated")
 
     body = await request.json()
-    result = await _get_user_chat_controller(user_id).update_chat_session_temperature(
+    result = await (await _get_user_chat_controller(request, user_id)).update_chat_session_temperature(
         session_id=body.get("chat_session_id"),
         temperature=body.get("temperature"),
     )
@@ -223,66 +252,79 @@ async def update_chat_session_temperature(
 
 @router.post("/api/chat/stop-chat-session/{chat_session_id}")
 async def stop_chat_session(
+    request: Request,
     chat_session_id: str,
     user_id: Annotated[str | None, Depends(verify_api_key)],
 ):
     if not user_id:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    return await _get_user_chat_controller(user_id).stop_chat_session(chat_session_id)
+    return await (await _get_user_chat_controller(request, user_id)).stop_chat_session(chat_session_id)
 
 
 @router.put("/api/chat/set-message-as-latest")
-async def set_message_as_latest(user_id: Annotated[str | None, Depends(verify_api_key)]):
+async def set_message_as_latest(
+    request: Request,
+    user_id: Annotated[str | None, Depends(verify_api_key)],
+):
     if not user_id:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    return await _get_user_chat_controller(user_id).set_message_as_latest()
+    return await (await _get_user_chat_controller(request, user_id)).set_message_as_latest()
 
 
 @router.get("/api/chat/available-context-tokens")
 @router.get("/api/chat/available-context-tokens/{session_id}")
 async def get_available_context_tokens(
+    request: Request,
     session_id: str = None,
     user_id: Annotated[str | None, Depends(verify_api_key)] = None,
 ):
     if not user_id:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    return await _get_user_chat_controller(user_id).get_available_context_tokens(session_id)
+    return await (await _get_user_chat_controller(request, user_id)).get_available_context_tokens(session_id)
 
 
 @router.get("/api/user/projects/session/{session_id}/token-count")
 @router.get("/user/projects/session/{session_id}/token-count")
 async def get_session_token_count(
+    request: Request,
     session_id: str,
     user_id: Annotated[str | None, Depends(verify_api_key)],
 ):
     if not user_id:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    return await _get_user_chat_controller(user_id).get_session_token_count(session_id)
+    return await (await _get_user_chat_controller(request, user_id)).get_session_token_count(session_id)
 
 
 @router.get("/api/user/projects/session/{session_id}/files")
 @router.get("/user/projects/session/{session_id}/files")
 async def get_session_files(
+    request: Request,
     session_id: str,
     user_id: Annotated[str | None, Depends(verify_api_key)],
 ):
     if not user_id:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    return await _get_user_chat_controller(user_id).get_session_files(session_id)
+    return await (await _get_user_chat_controller(request, user_id)).get_session_files(session_id)
 
 
 @router.post("/api/chat/create-chat-message-feedback")
-async def create_chat_message_feedback(user_id: Annotated[str | None, Depends(verify_api_key)]):
+async def create_chat_message_feedback(
+    request: Request,
+    user_id: Annotated[str | None, Depends(verify_api_key)],
+):
     if not user_id:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    return await _get_user_chat_controller(user_id).create_chat_message_feedback()
+    return await (await _get_user_chat_controller(request, user_id)).create_chat_message_feedback()
 
 
 @router.delete("/api/chat/remove-chat-message-feedback")
-async def remove_chat_message_feedback(user_id: Annotated[str | None, Depends(verify_api_key)]):
+async def remove_chat_message_feedback(
+    request: Request,
+    user_id: Annotated[str | None, Depends(verify_api_key)],
+):
     if not user_id:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    return await _get_user_chat_controller(user_id).remove_chat_message_feedback()
+    return await (await _get_user_chat_controller(request, user_id)).remove_chat_message_feedback()
 
 
 @router.post("/api/chat/send-chat-message")
@@ -297,13 +339,34 @@ async def send_chat_message(
             media_type="text/event-stream",
             status_code=401,
         )
+    identity = await get_auth_service().resolve_user_identity(request=request, user_id=user_id)
+    try:
+        effective_user_id = _resolve_effective_chat_user_id(identity, user_id)
+    except HTTPException:
+        return StreamingResponse(
+            iter([b'data: {"type": "error", "content": "Not authenticated"}\n\n']),
+            media_type="text/event-stream",
+            status_code=401,
+        )
+    known_user_ids = {
+        str(candidate)
+        for candidate in (identity.get("known_user_ids") or [effective_user_id])
+        if candidate
+    }
+    known_user_ids.add(effective_user_id)
+    user_controller = get_user_controller()
+    project_user_id = await user_controller.resolve_projects_user_id(
+        str(identity.get("keycloak_id") or effective_user_id)
+    )
+    if project_user_id:
+        known_user_ids.add(str(project_user_id))
 
     try:
         body = await request.json()
     except Exception as e:
         logger.error("Failed to parse request body: %s", e)
         return StreamingResponse(
-            iter([b"data: {'type': 'error', 'content': 'Invalid JSON'}\n\n"]),
+            iter([f"data: {json.dumps({'type': 'error', 'content': 'Invalid JSON'})}\n\n"]),
             media_type="text/event-stream",
         )
 
@@ -327,7 +390,7 @@ async def send_chat_message(
                 provider_id = str(llm_override["provider_id"])
                 logger.debug("Resolving provider: provider_id=%s, provider_type=%s, model=%s", provider_id, llm_override["provider_type"], model_name)
                 repo = ProviderRepository()
-                provider = await _resolve_provider_for_user(user_id, provider_id, repo)
+                provider = await _resolve_provider_for_user(effective_user_id, provider_id, repo)
 
                 api_key = None
                 base_url = None
@@ -338,7 +401,7 @@ async def send_chat_message(
                     logger.debug("Found provider in registry: %s", provider)
                     # Only fetch API key for DB-stored (non-builtin) providers
                     if not provider.get("is_builtin"):
-                        api_key = await repo.get_decrypted_api_key(provider_id, user_id)
+                        api_key = await repo.get_decrypted_api_key(provider_id, effective_user_id)
                     base_url = provider.get("base_url") or (provider.get("user_config") or {}).get("api_base")
                     api_version = (provider.get("user_config") or {}).get("api_version")
                     request_overrides = ((provider.get("config") or {}).get("custom_config") or {}).get(
@@ -346,14 +409,14 @@ async def send_chat_message(
                     )
                     provider_type = provider.get("provider_type") or llm_override["provider_type"]
                     supports_reasoning = await _resolve_model_supports_reasoning(
-                        user_id=user_id,
+                        user_id=effective_user_id,
                         provider_id=provider_id,
                         provider=provider,
                         model_name=model_name,
                         repo=repo,
                     )
                 else:
-                    logger.warning("Provider %s not found for user %s", provider_id, user_id)
+                    logger.warning("Provider %s not found for user %s", provider_id, effective_user_id)
                     provider_resolution_failed = True
                     provider_type = llm_override["provider_type"]
                     supports_reasoning = None
@@ -398,7 +461,7 @@ async def send_chat_message(
         thread = await thread_ctrl.create_thread(
             thread_id=session_id,
             metadata={
-                "user_id": user_id,
+                "user_id": effective_user_id,
                 "name": session_name,
                 "persona_id": persona_id,
                 "project_id": body.get("project_id"),
@@ -407,16 +470,24 @@ async def send_chat_message(
     else:
         metadata = thread.get("metadata", {}) or {}
         owner_id = metadata.get("user_id")
-        if owner_id and owner_id != user_id:
+        if owner_id and str(owner_id) not in known_user_ids:
             return StreamingResponse(
                 iter([b'data: {"type": "error", "content": "Forbidden"}\n\n']),
                 media_type="text/event-stream",
                 status_code=403,
             )
         if not owner_id:
-            metadata["user_id"] = user_id
+            metadata["user_id"] = effective_user_id
+        elif str(owner_id) != effective_user_id:
+            legacy_owner_ids = metadata.get("legacy_user_ids") or []
+            if not isinstance(legacy_owner_ids, list):
+                legacy_owner_ids = []
+            if str(owner_id) not in legacy_owner_ids:
+                legacy_owner_ids.append(str(owner_id))
+            metadata["legacy_user_ids"] = legacy_owner_ids
+            metadata["user_id"] = effective_user_id
 
-        needs_update = False
+        needs_update = metadata.get("user_id") == effective_user_id and str(owner_id) != effective_user_id
         if metadata.get("name") in (None, "", "New Chat"):
             metadata["name"] = session_name
             needs_update = True
@@ -471,10 +542,15 @@ async def send_chat_message(
             llm_override = llm_override or {}
             llm_override["_persona_id"] = persona_id
 
+    thread_metadata = thread.get("metadata") if thread else None
+    resolved_project_id = _coerce_project_id(body.get("project_id"))
+    if resolved_project_id is None and isinstance(thread_metadata, dict):
+        resolved_project_id = _coerce_project_id(thread_metadata.get("project_id"))
+
     project_instructions = await resolve_project_instructions(
-        user_id=user_id,
-        project_id=body.get("project_id"),
-        thread_metadata=thread.get("metadata") if thread else None,
+        user_id=project_user_id or effective_user_id,
+        project_id=resolved_project_id,
+        thread_metadata=thread_metadata,
     )
     llm_override = build_effective_llm_override(
         llm_override, additional_context, project_instructions
@@ -489,7 +565,9 @@ async def send_chat_message(
 
     if file_descriptors:
         import base64 as _base64
-        from service.FileService import IMAGE_MIMES, store_file as _store_file
+
+        from service.FileService import IMAGE_MIMES
+        from service.FileService import store_file as _store_file
         from service.Utils import _extract_file_blocks
 
         for fd in file_descriptors:
@@ -501,6 +579,23 @@ async def send_chat_message(
 
             logger.debug("Processing file descriptor: id=%s, name=%s, mime=%s, has_data=%s, type=%s", fd_id, fd_name, fd_mime, bool(fd_data), fd_type)
             files_metadata.append({"id": fd_id, "type": fd_type, "name": fd_name})
+
+            if not fd_data:
+                # Try to recover file bytes from MinIO (e.g. after service restart)
+                try:
+                    from core.db.repositories.document_repo import DocumentRepository
+                    from service.MinioService import download_file as minio_download
+
+                    db_doc = await DocumentRepository().get_by_file_id(fd_id)
+                    if db_doc and db_doc.get("minio_object_key"):
+                        raw_bytes = minio_download(db_doc["minio_object_key"])
+                        import base64 as _b64_inner
+                        fd_data = _b64_inner.b64encode(raw_bytes).decode("ascii")
+                        fd_mime = db_doc.get("mime_type") or fd_mime
+                        fd_name = db_doc.get("filename") or fd_name
+                        logger.debug("Recovered file %s from MinIO (%d bytes)", fd_id, len(raw_bytes))
+                except Exception as _minio_err:
+                    logger.warning("Could not recover file %s from MinIO: %s", fd_id, _minio_err)
 
             if not fd_data:
                 logger.warning("File descriptor %s has no data, skipping", fd_id)
@@ -515,6 +610,36 @@ async def send_chat_message(
                 _store_file(fd_id, raw, fd_mime, fd_name)
             except Exception as store_err:
                 logger.error("Could not store file %s in FileService: %s", fd_id, store_err, exc_info=True)
+
+            # Persist to MinIO + DB (best-effort, only if not already saved)
+            try:
+                from core.db.repositories.document_repo import DocumentRepository
+                from service.FileService import mime_to_chat_file_type
+                from service.MinioService import upload_file as minio_upload
+
+                doc_repo = DocumentRepository()
+                existing = await doc_repo.get_by_file_id(fd_id)
+                if existing is None:
+                    object_key = minio_upload(
+                        user_id=effective_user_id,
+                        file_id=fd_id,
+                        filename=fd_name,
+                        data=raw,
+                        mime_type=fd_mime,
+                    )
+                    await doc_repo.create(
+                        file_id=fd_id,
+                        user_id=effective_user_id,
+                        filename=fd_name,
+                        mime_type=fd_mime,
+                        chat_file_type=mime_to_chat_file_type(fd_mime),
+                        size_bytes=len(raw),
+                        minio_object_key=object_key,
+                        thread_id=session_id,
+                        project_id=resolved_project_id,
+                    )
+            except Exception as _persist_err:
+                logger.warning("MinIO/DB persist for inline file %s failed: %s", fd_id, _persist_err)
 
             if m in IMAGE_MIMES:
                 file_content_blocks.append({
@@ -537,7 +662,7 @@ async def send_chat_message(
     async def generate_stream():
         full_response = ""
         try:
-            async for chunk in message_generator(stream_input, assistant_id, user_id):
+            async for chunk in message_generator(stream_input, assistant_id, effective_user_id):
                 yield chunk
 
                 if isinstance(chunk, str) and "data:" in chunk:
@@ -551,7 +676,7 @@ async def send_chat_message(
                         pass
         except Exception as e:
             logger.error("Stream error: %s", e)
-            yield f'data: {{"type": "error", "content": "{str(e)}"}}\n\n'
+            yield f"data: {json.dumps({'type': 'error', 'content': str(e)})}\n\n"
             full_response = f"Error: {str(e)}"
 
     return StreamingResponse(

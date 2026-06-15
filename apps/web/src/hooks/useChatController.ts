@@ -72,6 +72,7 @@ import { ProjectFile, useProjectsContext } from "@/providers/ProjectsContext";
 import { useAppParams } from "@/hooks/appNavigation";
 import { projectFilesToFileDescriptors } from "@/app/app/services/fileUtils";
 import { UserFileStatus } from "@/app/app/projects/projectsService";
+import { authenticatedFetch } from "@/lib/fetcher";
 
 const SYSTEM_MESSAGE_ID = -3;
 
@@ -110,10 +111,11 @@ interface UseChatControllerProps {
   searchParams: ReadonlyURLSearchParams;
   resetInputBar: () => void;
   setSelectedAgentFromId: (agentId: AgentId | null) => void;
+  onSubmitComplete?: () => void | Promise<void>;
 }
 
 async function stopChatSession(chatSessionId: string): Promise<void> {
-  const response = await fetch(`/api/chat/stop-chat-session/${chatSessionId}`, {
+  const response = await authenticatedFetch(`/api/chat/stop-chat-session/${chatSessionId}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -134,6 +136,7 @@ export default function useChatController({
   selectedDocuments,
   resetInputBar,
   setSelectedAgentFromId,
+  onSubmitComplete,
 }: UseChatControllerProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -383,6 +386,11 @@ export default function useChatController({
       additionalContext,
     }: OnSubmitProps) => {
       const projectId = params(SEARCH_PARAM_NAMES.PROJECT_ID);
+      const parsedProjectIdFromUrl =
+        projectId !== null && projectId !== undefined ? parseInt(projectId) : null;
+      const activeProjectId = Number.isFinite(parsedProjectIdFromUrl)
+        ? parsedProjectIdFromUrl
+        : currentProjectDetails?.project?.id ?? null;
       const normalizedAdditionalContext = (additionalContext || "").trim();
       const projectInstructions =
         currentProjectDetails?.project?.instructions?.trim() || "";
@@ -513,7 +521,7 @@ export default function useChatController({
       );
       if (isNewSession) {
         const activePersonaId = liveAgent?.external_id ?? liveAgent?.id ?? 0;
-        const parsedProjectId = projectId ? parseInt(projectId) : null;
+        const parsedProjectId = activeProjectId;
 
         try {
           currChatSessionId = await createChatSession(
@@ -794,6 +802,7 @@ export default function useChatController({
           forcedToolId: effectiveForcedToolId,
           origin: messageOrigin,
           additionalContext: effectiveAdditionalContext || undefined,
+          projectId: activeProjectId,
         });
 
         const delay = (ms: number) => {
@@ -1021,6 +1030,7 @@ export default function useChatController({
       if (shouldAutoNameChatSessionAfterResponse) {
         handleNewSessionNaming(currChatSessionId);
       }
+      await onSubmitComplete?.();
     },
     [
       // Narrow to stable fields from managers to avoid re-creation
@@ -1046,10 +1056,12 @@ export default function useChatController({
       // Keep tool preference-derived values fresh
       agentPreferences,
       fetchProjects,
+      currentProjectDetails?.project?.id,
       currentProjectDetails?.project?.instructions,
       // For auto-pinning agents
       pinnedAgents,
       togglePinnedAgent,
+      onSubmitComplete,
     ]
   );
 
@@ -1114,7 +1126,7 @@ export default function useChatController({
       }
 
       try {
-        const response = await fetch("/api/chat/seed-chat-session-from-slack", {
+        const response = await authenticatedFetch("/api/chat/seed-chat-session-from-slack", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -1145,7 +1157,7 @@ export default function useChatController({
     if (!liveAgent?.id) return; // avoid calling with undefined persona id
 
     async function fetchMaxTokens() {
-      const response = await fetch(
+      const response = await authenticatedFetch(
         `/api/chat/max-selected-document-tokens?persona_id=${liveAgent?.id}`
       );
       if (response.ok) {

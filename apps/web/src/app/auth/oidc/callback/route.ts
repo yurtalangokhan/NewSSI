@@ -1,11 +1,11 @@
 import { getDomain } from "@/lib/redirectSS";
-import { buildUrl } from "@/lib/utilsSS";
+import { buildUserServiceUrl } from "@/lib/utilsSS";
 import { NextRequest, NextResponse } from "next/server";
 
 export const GET = async (request: NextRequest) => {
   // Wrapper around the FastAPI endpoint /auth/oidc/callback,
   // which adds back a redirect to the main app.
-  const url = new URL(buildUrl("/auth/oidc/callback"));
+  const url = new URL(buildUserServiceUrl("/api/auth/oidc/callback"));
   url.search = request.nextUrl.search;
   const callbackBase = getDomain(request).replace(/\/$/, "");
   url.searchParams.set(
@@ -27,8 +27,9 @@ export const GET = async (request: NextRequest) => {
           return single ? [single] : [];
         })();
 
-  if (response.status === 401) {
-    let errorMessage = "OIDC callback failed";
+  // Handle any non-success response
+  if (!response.ok) {
+    let errorMessage = `Authentication error (status ${response.status})`;
     try {
       const errorBody = await response.json();
       if (errorBody?.detail) {
@@ -38,16 +39,22 @@ export const GET = async (request: NextRequest) => {
       // Ignore parse failures and keep generic message.
     }
 
-    const loginUrl = new URL("/auth/login", getDomain(request));
-    loginUrl.searchParams.set("disableAutoRedirect", "true");
-    loginUrl.searchParams.set("oidcError", errorMessage);
-    return NextResponse.redirect(
-      loginUrl
-    );
+    // For 401, redirect to login with error. For others, go to error page.
+    if (response.status === 401) {
+      const loginUrl = new URL("/auth/login", getDomain(request));
+      loginUrl.searchParams.set("oidcError", errorMessage);
+      return NextResponse.redirect(loginUrl);
+    } else {
+      const errorUrl = new URL("/auth/error", getDomain(request));
+      errorUrl.searchParams.set("error", errorMessage);
+      return NextResponse.redirect(errorUrl);
+    }
   }
 
   if (setCookieHeaders.length === 0) {
-    return NextResponse.redirect(new URL("/auth/error", getDomain(request)));
+    const errorUrl = new URL("/auth/error", getDomain(request));
+    errorUrl.searchParams.set("error", "No session cookies received from authentication service");
+    return NextResponse.redirect(errorUrl);
   }
 
   // Get the redirect URL from the backend's 'Location' header, or default to '/'

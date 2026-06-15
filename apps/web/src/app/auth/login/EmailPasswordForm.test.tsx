@@ -123,7 +123,7 @@ describe("Email/Password Signup Workflow", () => {
     fetchSpy.mockRestore();
   });
 
-  test("allows user to sign up and login with valid credentials", async () => {
+  test("allows user to sign up and redirect with valid credentials", async () => {
     const user = setupUser();
 
     // Mock POST /api/auth/register
@@ -132,19 +132,19 @@ describe("Email/Password Signup Workflow", () => {
       json: async () => ({}),
     } as Response);
 
-    // Mock POST /api/auth/login (after successful signup)
-    fetchSpy.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({}),
-    } as Response);
-
     render(<EmailPasswordForm isSignup={true} />);
 
     // User fills out the signup form
+    const usernameInput = screen.getByTestId("username");
     const emailInput = screen.getByPlaceholderText(/email@yourcompany.com/i);
+    const firstNameInput = screen.getByTestId("firstName");
+    const lastNameInput = screen.getByTestId("lastName");
     const passwordInput = screen.getByPlaceholderText(/∗/);
 
+    await user.type(usernameInput, "newuser");
     await user.type(emailInput, "newuser@example.com");
+    await user.type(firstNameInput, "John");
+    await user.type(lastNameInput, "Doe");
     await user.type(passwordInput, "securepassword123");
 
     // User submits the signup form
@@ -171,27 +171,17 @@ describe("Email/Password Signup Workflow", () => {
     const signupBody = JSON.parse(signupCallArgs[1].body);
     expect(signupBody).toEqual({
       email: "newuser@example.com",
-      username: "newuser@example.com",
+      username: "newuser",
       password: "securepassword123",
-      referral_source: undefined,
+      first_name: "John",
+      last_name: "Doe",
     });
 
-    // Verify login API was called after successful signup
     await waitFor(() => {
-      expect(fetchSpy).toHaveBeenCalledWith(
-        "/api/auth/login",
-        expect.objectContaining({
-          method: "POST",
-        })
-      );
+      expect(window.location.href).toBe("/app?new_team=true");
     });
 
-    // Verify success message is shown
-    await waitFor(() => {
-      expect(
-        screen.getByText(/account created\. signing in/i)
-      ).toBeInTheDocument();
-    });
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
   });
 
   test("shows error when email already exists", async () => {
@@ -207,10 +197,16 @@ describe("Email/Password Signup Workflow", () => {
     render(<EmailPasswordForm isSignup={true} />);
 
     // User fills out form with existing email
+    const usernameInput = screen.getByTestId("username");
     const emailInput = screen.getByPlaceholderText(/email@yourcompany.com/i);
+    const firstNameInput = screen.getByTestId("firstName");
+    const lastNameInput = screen.getByTestId("lastName");
     const passwordInput = screen.getByPlaceholderText(/∗/);
 
+    await user.type(usernameInput, "existinguser");
     await user.type(emailInput, "existing@example.com");
+    await user.type(firstNameInput, "Jane");
+    await user.type(lastNameInput, "Doe");
     await user.type(passwordInput, "password123");
 
     // User submits
@@ -242,10 +238,16 @@ describe("Email/Password Signup Workflow", () => {
     render(<EmailPasswordForm isSignup={true} />);
 
     // User fills out form
+    const usernameInput = screen.getByTestId("username");
     const emailInput = screen.getByPlaceholderText(/email@yourcompany.com/i);
+    const firstNameInput = screen.getByTestId("firstName");
+    const lastNameInput = screen.getByTestId("lastName");
     const passwordInput = screen.getByPlaceholderText(/∗/);
 
+    await user.type(usernameInput, "rateuser");
     await user.type(emailInput, "user@example.com");
+    await user.type(firstNameInput, "Rate");
+    await user.type(lastNameInput, "Limited");
     await user.type(passwordInput, "password123");
 
     // User submits

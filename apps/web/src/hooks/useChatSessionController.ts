@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useCallback, useState } from "react";
+import { useEffect, useCallback, useRef, useState } from "react";
 import { ReadonlyURLSearchParams } from "next/navigation";
 import {
   nameChatSession,
@@ -78,6 +78,7 @@ export default function useChatSessionController({
   refreshChatSessions,
   onSubmit,
 }: UseChatSessionControllerProps) {
+  const latestFetchRequestRef = useRef(0);
   const [currentSessionFileTokenCount, setCurrentSessionFileTokenCount] =
     useState<number>(0);
   const [projectFiles, setProjectFiles] = useState<ProjectFile[]>([]);
@@ -113,6 +114,14 @@ export default function useChatSessionController({
 
   // Fetch chat messages for the chat session
   useEffect(() => {
+    latestFetchRequestRef.current += 1;
+    const requestId = latestFetchRequestRef.current;
+    const abortController = new AbortController();
+
+    const isStaleRequest = () =>
+      requestId !== latestFetchRequestRef.current ||
+      abortController.signal.aborted;
+
     const priorChatSessionId = chatSessionIdRef.current;
     const loadedSessionId = loadedIdSessionRef.current;
     chatSessionIdRef.current = existingChatSessionId;
@@ -153,6 +162,8 @@ export default function useChatSessionController({
 
     async function initialSessionFetch() {
       if (existingChatSessionId === null) {
+        if (isStaleRequest()) return;
+
         // Clear the current session in the store to show intro messages
         setCurrentSession(null);
 
@@ -175,28 +186,26 @@ export default function useChatSessionController({
         return;
       }
 
+      if (isStaleRequest()) return;
+
       // Set the current session first, then set fetching state to prevent intro flash
       setCurrentSession(existingChatSessionId);
       setIsFetchingChatMessages(existingChatSessionId, true);
 
       const response = await fetch(
-        `/api/chat/get-chat-session/${existingChatSessionId}`
+        `/api/chat/get-chat-session/${existingChatSessionId}`,
+        { signal: abortController.signal }
       );
 
+      if (!response.ok || isStaleRequest()) {
+        return;
+      }
+
       const session = await response.json();
+      if (isStaleRequest()) return;
+
       const chatSession = session as BackendChatSession;
-      
-      // Debug logging
-      console.log('[ChatSessionController] Fetched chat session:', {
-        chatSessionId: chatSession.chat_session_id,
-        messageCount: chatSession.messages?.length || 0,
-        messages: chatSession.messages?.map((m: any) => ({
-          type: m.message_type,
-          content: m.message?.substring(0, 100),
-          contentLen: m.message?.length
-        }))
-      });
-      
+
       setSelectedAgentFromId(chatSession.persona_id);
 
       // Ensure the current session is set to the actual session ID from the response
@@ -210,18 +219,7 @@ export default function useChatSessionController({
         chatSession.packets
       );
       const newMessageHistory = getLatestMessageChain(newMessageMap);
-      
-      // Debug logging
-      console.log('[ChatSessionController] Processed message history:', {
-        messageCount: newMessageHistory.length,
-        messages: newMessageHistory.map((m: any) => ({
-          nodeId: m.nodeId,
-          type: m.type,
-          content: m.message?.substring(0, 100),
-          contentLen: m.message?.length,
-          packetsLen: m.packets?.length || 0
-        }))
-      });
+      if (isStaleRequest()) return;
 
       // Update message history except for edge where where
       // last message is an error and we're on a new chat.
@@ -252,11 +250,13 @@ export default function useChatSessionController({
           const total = await getSessionProjectTokenCount(
             chatSession.chat_session_id
           );
+          if (isStaleRequest()) return;
           setCurrentSessionFileTokenCount(total || 0);
         } else {
           setCurrentSessionFileTokenCount(0);
         }
       } catch (e) {
+        if (isStaleRequest()) return;
         setCurrentSessionFileTokenCount(0);
       }
 
@@ -266,11 +266,13 @@ export default function useChatSessionController({
           const files = await getProjectFilesForSession(
             chatSession.chat_session_id
           );
+          if (isStaleRequest()) return;
           setProjectFiles(files || []);
         } else {
           setProjectFiles([]);
         }
       } catch (e) {
+        if (isStaleRequest()) return;
         setProjectFiles([]);
       }
 
@@ -296,10 +298,12 @@ export default function useChatSessionController({
         // Force re-name if the chat session doesn't have one
         if (!chatSession.description) {
           await nameChatSession(existingChatSessionId);
+          if (isStaleRequest()) return;
           refreshChatSessions();
         }
       } else if (newMessageHistory.length >= 2 && !chatSession.description) {
         await nameChatSession(existingChatSessionId);
+        if (isStaleRequest()) return;
         refreshChatSessions();
       }
     }
@@ -319,7 +323,11 @@ export default function useChatSessionController({
         !existingChatSession?.chatState ||
         existingChatSession.chatState === "input"
       ) {
-        initialSessionFetch();
+        initialSessionFetch().catch((error) => {
+          if ((error as Error)?.name !== "AbortError") {
+            console.error("Failed to fetch chat session:", error);
+          }
+        });
       } else {
         // no need to fetch if the chat session is currently streaming (it would be )
         // out of date).
@@ -340,6 +348,10 @@ export default function useChatSessionController({
         window.history.replaceState({}, "", newUrl);
       }
     }
+
+    return () => {
+      abortController.abort();
+    };
   }, [
     existingChatSessionId,
     searchParams?.get(SEARCH_PARAM_NAMES.PERSONA_ID),

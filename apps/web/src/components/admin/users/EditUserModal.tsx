@@ -7,22 +7,30 @@ import { toast } from "@/hooks/useToast";
 import { LoadingAnimation } from "@/components/Loading";
 import { SvgUser } from "@opal/icons";
 import { useTranslation } from "react-i18next";
+import DeleteUserButton from "./buttons/DeleteUserButton";
+import { authenticatedFetch } from "@/lib/fetcher";
 
 export interface EditUserModalProps {
   user: User;
   onClose: () => void;
   onSuccess: () => void;
+  canDelete?: boolean;
 }
 
 export default function EditUserModal({
   user,
   onClose,
   onSuccess,
+  canDelete = true,
 }: EditUserModalProps) {
   const { t } = useTranslation();
-  const fullNameParts = (user.full_name || "").trim().split(/\s+/).filter(Boolean);
+  const fullNameParts = (user.full_name || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
   const initialFirstName = user.first_name || fullNameParts[0] || "";
-  const initialLastName = fullNameParts.length > 1 ? fullNameParts.slice(1).join(" ") : "";
+  const initialLastName =
+    fullNameParts.length > 1 ? fullNameParts.slice(1).join(" ") : "";
 
   const [firstName, setFirstName] = useState(initialFirstName);
   const [lastName, setLastName] = useState(initialLastName);
@@ -30,10 +38,16 @@ export default function EditUserModal({
   const [isSaving, setIsSaving] = useState(false);
 
   const isProfileChanged = useMemo(() => {
-    return (firstName || "") !== initialFirstName || (lastName || "") !== initialLastName;
+    return (
+      (firstName || "") !== initialFirstName ||
+      (lastName || "") !== initialLastName
+    );
   }, [firstName, initialFirstName, initialLastName, lastName]);
 
-  const isPasswordChanged = useMemo(() => password.trim().length > 0, [password]);
+  const isPasswordChanged = useMemo(
+    () => password.trim().length > 0,
+    [password]
+  );
 
   const handleSave = async () => {
     if (!isProfileChanged && !isPasswordChanged) {
@@ -49,11 +63,10 @@ export default function EditUserModal({
     setIsSaving(true);
     try {
       if (isProfileChanged) {
-        const profileRes = await fetch("/api/manage/admin/update-user-profile", {
+        const profileRes = await authenticatedFetch(`/api/user-service/users/${user.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            user_email: user.email,
             first_name: firstName.trim() || null,
             last_name: lastName.trim() || null,
           }),
@@ -61,24 +74,29 @@ export default function EditUserModal({
 
         if (!profileRes.ok) {
           const err = await profileRes.json().catch(() => ({}));
-          throw new Error(err.detail || t("admin.users.editUserModal.updateProfileFailed"));
+          throw new Error(
+            err.detail || t("admin.users.editUserModal.updateProfileFailed")
+          );
         }
       }
 
       if (isPasswordChanged) {
-        const passRes = await fetch("/api/manage/admin/set-user-password", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            user_email: user.email,
-            password: password.trim(),
-            temporary: false,
-          }),
-        });
+        const passRes = await authenticatedFetch(
+          `/api/user-service/users/${user.id}/password`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              password: password.trim(),
+            }),
+          }
+        );
 
         if (!passRes.ok) {
           const err = await passRes.json().catch(() => ({}));
-          throw new Error(err.detail || t("admin.users.editUserModal.setPasswordFailed"));
+          throw new Error(
+            err.detail || t("admin.users.editUserModal.setPasswordFailed")
+          );
         }
       }
 
@@ -86,7 +104,11 @@ export default function EditUserModal({
       onSuccess();
       onClose();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t("admin.users.editUserModal.updateFailed"));
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : t("admin.users.editUserModal.updateFailed")
+      );
     } finally {
       setIsSaving(false);
     }
@@ -125,7 +147,9 @@ export default function EditUserModal({
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
                   className="h-10 rounded border border-border-subtle bg-background px-3"
-                  placeholder={t("admin.users.editUserModal.firstNamePlaceholder")}
+                  placeholder={t(
+                    "admin.users.editUserModal.firstNamePlaceholder"
+                  )}
                 />
               </div>
 
@@ -138,7 +162,9 @@ export default function EditUserModal({
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
                   className="h-10 rounded border border-border-subtle bg-background px-3"
-                  placeholder={t("admin.users.editUserModal.lastNamePlaceholder")}
+                  placeholder={t(
+                    "admin.users.editUserModal.lastNamePlaceholder"
+                  )}
                 />
               </div>
             </div>
@@ -156,13 +182,32 @@ export default function EditUserModal({
               />
             </div>
 
-            <div className="mt-2 flex items-center gap-2">
-              <Button onClick={onClose} tertiary>
-                {t("admin.users.editUserModal.cancelButton")}
-              </Button>
-              <Button onClick={handleSave} disabled={isSaving}>
-                {isSaving ? <LoadingAnimation text={t("admin.users.editUserModal.savingButton")} /> : t("admin.users.editUserModal.save")}
-              </Button>
+            <div className="mt-2 flex items-center justify-between gap-2">
+              <div>
+                {canDelete && (
+                  <DeleteUserButton
+                    user={user}
+                    mutate={onSuccess}
+                    onSuccess={onClose}
+                  >
+                    {t("admin.users.deleteUserButton")}
+                  </DeleteUserButton>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <Button onClick={onClose} tertiary>
+                  {t("admin.users.editUserModal.cancelButton")}
+                </Button>
+                <Button onClick={handleSave} disabled={isSaving}>
+                  {isSaving ? (
+                    <LoadingAnimation
+                      text={t("admin.users.editUserModal.savingButton")}
+                    />
+                  ) : (
+                    t("admin.users.editUserModal.save")
+                  )}
+                </Button>
+              </div>
             </div>
           </div>
         </Modal.Body>

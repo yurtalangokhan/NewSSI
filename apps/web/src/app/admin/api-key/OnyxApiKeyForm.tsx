@@ -32,13 +32,17 @@ export default function OnyxApiKeyForm({
       <Modal.Content width="sm" height="lg">
         <Modal.Header
           icon={SvgKey}
-          title={isUpdate ? t("admin.apiKey.updateTitle") : t("admin.apiKey.createTitle")}
+          title={
+            isUpdate
+              ? t("admin.apiKey.updateTitle")
+              : t("admin.apiKey.createTitle")
+          }
           onClose={onClose}
         />
         <Formik
           initialValues={{
             name: apiKey?.api_key_name || "",
-            role: apiKey?.api_key_role || UserRole.BASIC.toString(),
+            role: apiKey?.api_key_role || UserRole.ENDUSER.toString(),
           }}
           onSubmit={async (values, formikHelpers) => {
             formikHelpers.setSubmitting(true);
@@ -86,7 +90,9 @@ export default function OnyxApiKeyForm({
                   name="name"
                   render={(field, helper, _meta, state) => (
                     <FormField name="name" state={state} className="w-full">
-                      <FormField.Label>{t("admin.apiKey.nameLabel")}</FormField.Label>
+                      <FormField.Label>
+                        {t("admin.apiKey.nameLabel")}
+                      </FormField.Label>
                       <FormField.Control>
                         <InputTypeIn
                           {...field}
@@ -103,19 +109,17 @@ export default function OnyxApiKeyForm({
                   name="role"
                   render={(field, helper, _meta, state) => (
                     <FormField name="role" state={state} className="w-full">
-                      <FormField.Label>{t("admin.apiKey.roleLabel")}</FormField.Label>
+                      <FormField.Label>
+                        {t("admin.apiKey.roleLabel")}
+                      </FormField.Label>
                       <FormField.Control>
                         <InputComboBox
                           value={field.value}
                           onValueChange={(value) => helper.setValue(value)}
                           options={[
                             {
-                              label: USER_ROLE_LABELS[UserRole.LIMITED],
-                              value: UserRole.LIMITED.toString(),
-                            },
-                            {
-                              label: USER_ROLE_LABELS[UserRole.BASIC],
-                              value: UserRole.BASIC.toString(),
+                              label: USER_ROLE_LABELS[UserRole.ENDUSER],
+                              value: UserRole.ENDUSER.toString(),
                             },
                             {
                               label: USER_ROLE_LABELS[UserRole.ADMIN],
@@ -136,7 +140,9 @@ export default function OnyxApiKeyForm({
 
               <Modal.Footer>
                 <Button type="submit" disabled={isSubmitting}>
-                  {isUpdate ? t("admin.apiKey.updateSubmitButton") : t("admin.apiKey.createSubmitButton")}
+                  {isUpdate
+                    ? t("admin.apiKey.updateSubmitButton")
+                    : t("admin.apiKey.createSubmitButton")}
                 </Button>
               </Modal.Footer>
             </Form>

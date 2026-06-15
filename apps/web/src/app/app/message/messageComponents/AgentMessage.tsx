@@ -23,7 +23,7 @@ export type RegenerationFactory = (regenerationRequest: {
 }) => (modelOverride: LlmDescriptor) => Promise<void>;
 
 export interface AgentMessageProps {
-  rawPackets: Packet[];
+  rawPackets?: Packet[];
   packetCount?: number; // Tracked separately for React memo comparison (avoids reading from mutated array)
   chatState: FullChatState;
   nodeId: number;
@@ -75,7 +75,7 @@ function arePropsEqual(
 }
 
 const AgentMessage = React.memo(function AgentMessage({
-  rawPackets,
+  rawPackets = [],
   chatState,
   nodeId,
   messageId,

@@ -20,22 +20,17 @@ services:
       context: ../apps/agent-service
       dockerfile: docker/Dockerfile.service
     restart: unless-stopped
-    ports:
-      - "8125:8080"
     volumes:
       - /tmp/airbyte_local:/tmp/airbyte_local:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
+      - "${KEYCLOAK_PUBLIC_HOSTNAME:-keycloak.localhost}:host-gateway"
     env_file:
-      - ../apps/agent-service/.env
+      - ../apps/agent-service/.env.production
     environment:
-      # Keep local path stable for docker-mounted Airbyte output
       AIRBYTE_LOCAL_OUTPUT_PATH: /tmp/airbyte_local
-
-      # Service metadata defaults
       LANGCHAIN_PROJECT: agent-service
     networks:
-      default:
       airbyte:
         aliases:
           - agent-service
@@ -51,15 +46,16 @@ services:
       dockerfile: Dockerfile
     image: rag-service:local
     restart: unless-stopped
-    ports:
-      - "8084:8080"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     env_file:
-      - ../apps/rag-service/.env
+      - ../apps/rag-service/.env.production
     environment:
-      # Keep permissive CORS in local setup
       ALLOW_ORIGINS: '["*"]'
+    networks:
+      airbyte:
+        aliases:
+          - rag-service
 
   # ==========================================================================
   # Tools Service - MCP Tools Server
@@ -72,15 +68,37 @@ services:
       dockerfile: Dockerfile
     image: tools-service:local
     restart: unless-stopped
-    ports:
-      - "8003:8003"
     env_file:
-      - ../apps/tools-service/.env
+      - ../apps/tools-service/.env.production
     environment:
       MCP_HOST: "0.0.0.0"
       MCP_PORT: "8003"
     volumes:
       - ./workspace:/workspace
+    networks:
+      airbyte:
+        aliases:
+          - tools-service
+
+  # ==========================================================================
+  # User Service - Auth & User Management
+  # ==========================================================================
+
+  user-service:
+    container_name: user-service-rf
+    build:
+      context: ../apps/user-service
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+      - "${KEYCLOAK_PUBLIC_HOSTNAME:-keycloak.localhost}:host-gateway"
+    env_file:
+      - ../apps/user-service/.env.production
+    networks:
+      airbyte:
+        aliases:
+          - user-service
 
   # ==========================================================================
   # Web - Frontend (Onyx)
@@ -91,37 +109,25 @@ services:
     build:
       context: ../apps/web
       dockerfile: Dockerfile
-      args:
-        INTERNAL_URL: http://agent-service:8080
     image: web:local
     restart: unless-stopped
     ports:
       - "8126:3000"
+    env_file:
+      - ../apps/web/.env.production
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    env_file:
-      - ../apps/web/.env
-    environment:
-      # Backend URLs
-      INTERNAL_URL: http://agent-service:8080
-      AGENT_SERVICE_URL: http://agent-service:8080
-      LANGCONNECT_URL: http://rag-service:8080
-      MCP_INTERNAL_URL: http://tools-service:8003
-      MCP_SERVER_URL: http://tools-service:8003
-      
-      # Auth
-      AUTH_TYPE: oidc
-      
-      # Feature Flags
-      NEXT_PUBLIC_CLOUD_ENABLED: "false"
-      NEXT_PUBLIC_ENABLE_PAID_EE_FEATURES: "false"
-      NEXT_PUBLIC_TEST_ENV: "false"
-      SHOW_EXTRA_CONNECTORS: "false"
-      EE_ENABLED: "false"
+      - "${KEYCLOAK_PUBLIC_HOSTNAME:-10.101.90.13}:host-gateway"
+    networks:
+      airbyte:
+        aliases:
+          - web
     depends_on:
       - agent-service
-      # - rag-service
-      # - tools-service
+      - user-service
+      - rag-service
+      - tools-service
+
 
 networks:
   airbyte:

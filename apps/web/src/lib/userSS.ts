@@ -1,6 +1,10 @@
 import { User } from "./types";
 import { AuthType, SERVER_SIDE_ONLY__AUTH_TYPE } from "./constants";
-import { UrlBuilder, buildUrl, fetchSS } from "./utilsSS";
+import {
+  UrlBuilder,
+  buildUserServiceUrl,
+  fetchUserServiceSS,
+} from "./utilsSS";
 import { cookies as getCookies } from "next/headers";
 
 export interface AuthTypeMetadata {
@@ -15,7 +19,7 @@ export interface AuthTypeMetadata {
 
 export const getAuthTypeMetadataSS = async (): Promise<AuthTypeMetadata> => {
   try {
-    const response = await fetchSS("/auth/type");
+    const response = await fetchUserServiceSS("/api/auth/type");
     if (!response.ok) {
       throw new Error(`Failed auth/type fetch: ${response.status}`);
     }
@@ -35,7 +39,7 @@ export const getAuthTypeMetadataSS = async (): Promise<AuthTypeMetadata> => {
 };
 
 const getOIDCAuthUrlSS = async (nextUrl: string | null): Promise<string> => {
-  const url = UrlBuilder.fromClientUrl("/api/auth/oidc/authorize");
+  const url = new UrlBuilder("/api/auth/oidc/authorize");
   if (nextUrl) {
     url.addParam("next", nextUrl);
   }
@@ -45,7 +49,7 @@ const getOIDCAuthUrlSS = async (nextUrl: string | null): Promise<string> => {
 };
 
 const getGoogleOAuthUrlSS = async (nextUrl: string | null): Promise<string> => {
-  const url = UrlBuilder.fromClientUrl("/api/auth/oauth/authorize");
+  const url = new UrlBuilder("/api/auth/oauth/authorize");
   if (nextUrl) {
     url.addParam("next", nextUrl);
   }
@@ -94,14 +98,14 @@ export const getAuthUrlSS = async (
 };
 
 const logoutStandardSS = async (headers: Headers): Promise<Response> => {
-  return await fetch(buildUrl("/auth/logout"), {
+  return await fetch(buildUserServiceUrl("/api/auth/logout"), {
     method: "POST",
     headers: headers,
   });
 };
 
 const logoutSAMLSS = async (headers: Headers): Promise<Response> => {
-  return await fetch(buildUrl("/auth/saml/logout"), {
+  return await fetch(buildUserServiceUrl("/api/auth/saml/logout"), {
     method: "POST",
     headers: headers,
   });
@@ -127,13 +131,15 @@ export const getCurrentUserSS = async (): Promise<User | null> => {
     const cookieStore = await getCookies();
     const hasAuthCookie =
       cookieStore.has("fastapiusersauth") ||
+      cookieStore.has("access_token") ||
+      cookieStore.has("refresh_token") ||
       cookieStore.has("session") ||
       cookieStore.has("id_token");
     if (!hasAuthCookie) {
       return null;
     }
 
-    const response = await fetchSS("/me");
+    const response = await fetchUserServiceSS("/api/auth/me");
     if (response.status === 401) {
       return null;
     }

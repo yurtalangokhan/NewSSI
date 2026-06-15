@@ -1,0 +1,344 @@
+from typing import Any
+from urllib.parse import quote
+
+import httpx
+
+from src.config import get_settings
+from src.core.env import get_env
+
+_env = get_env()
+_settings = get_settings()
+
+
+class KeycloakService:
+    _admin_token_cache: str | None = None
+    _admin_token_expires: float = 0
+
+    @staticmethod
+    def is_enabled() -> bool:
+        return _env.KEYCLOAK_ENABLED or _settings.KEYCLOAK_ENABLED
+
+    def get_base_url(self) -> str:
+        base_url = _env.KEYCLOAK_BASE_URL or _settings.KEYCLOAK_BASE_URL
+        if base_url:
+            return base_url.rstrip("/")
+
+        issuer_url = _env.KEYCLOAK_ISSUER_URL or _settings.KEYCLOAK_ISSUER_URL
+        if issuer_url:
+            return issuer_url.rstrip("/").replace(f"/realms/{self.get_realm()}", "")
+
+        raise ValueError("KEYCLOAK_BASE_URL or KEYCLOAK_ISSUER_URL must be configured")
+
+    def get_realm(self) -> str:
+        return _env.KEYCLOAK_REALM or _settings.KEYCLOAK_REALM
+
+    def get_client_id(self) -> str:
+        return _env.KEYCLOAK_CLIENT_ID or _settings.KEYCLOAK_CLIENT_ID or "agenticai-web"
+
+    async def _get_admin_token(self) -> str:
+        import time
+
+        if self._admin_token_cache and time.time() < self._admin_token_expires - 60:
+            return self._admin_token_cache
+
+        admin_realm = "master"
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                f"{self.get_base_url()}/realms/{admin_realm}/protocol/openid-connect/token",
+                data={
+                    "grant_type": "password",
+                    "username": _env.KEYCLOAK_ADMIN or _settings.KEYCLOAK_ADMIN,
+                    "password": _env.KEYCLOAK_ADMIN_PASSWORD or _settings.KEYCLOAK_ADMIN_PASSWORD,
+                    "client_id": "admin-cli",
+                },
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            self._admin_token_cache = str(data["access_token"])
+            self._admin_token_expires = time.time() + data.get("expires_in", 300)
+            return self._admin_token_cache
+
+    async def _keycloak_request(
+        self, method: str, path: str, token: str | None = None, **kwargs
+    ) -> httpx.Response:
+        headers = kwargs.pop("headers", {})
+        headers["Authorization"] = f"Bearer {token or await self._get_admin_token()}"
+
+        async with httpx.AsyncClient() as client:
+            url = f"{self.get_base_url()}/admin/realms/{self.get_realm()}{path}"
+            resp = await client.request(method, url, headers=headers, **kwargs)
+            return resp
+
+    async def get_user_profile(self, keycloak_id: str) -> dict[str, Any]:
+        resp = await self._keycloak_request("GET", f"/users/{keycloak_id}")
+        if resp.status_code == 404:
+            return {}
+        resp.raise_for_status()
+        return resp.json()
+
+    async def list_users(self, first: int = 0, max: int = 1000) -> list[dict[str, Any]]:
+        resp = await self._keycloak_request("GET", f"/users?first={first}&max={max}")
+        resp.raise_for_status()
+        return resp.json()
+
+    async def get_user_by_email(self, email: str) -> dict[str, Any] | None:
+        resp = await self._keycloak_request("GET", f"/users?email={quote(email)}&exact=true")
+        resp.raise_for_status()
+        users = resp.json()
+        return users[0] if users else None
+
+    async def create_user(self, payload: dict[str, Any]) -> str | None:
+        resp = await self._keycloak_request("POST", "/users", json=payload)
+        if resp.status_code in (200, 201):
+            location = resp.headers.get("Location")
+            if location:
+                return location.split("/")[-1]
+        resp.raise_for_status()
+        return None
+
+    async def update_user(self, keycloak_id: str, payload: dict[str, Any]) -> bool:
+        resp = await self._keycloak_request("PUT", f"/users/{keycloak_id}", json=payload)
+        return resp.status_code in (200, 204)
+
+    async def delete_user(self, keycloak_id: str) -> bool:
+        resp = await self._keycloak_request("DELETE", f"/users/{keycloak_id}")
+        return resp.status_code in (200, 204)
+
+    async def set_password(self, keycloak_id: str, password: str, temporary: bool = False) -> bool:
+        resp = await self._keycloak_request(
+            "PUT",
+            f"/users/{keycloak_id}/reset-password",
+            json={
+                "type": "password",
+                "value": password,
+                "temporary": temporary,
+            },
+        )
+        return resp.status_code in (200, 204)
+
+    async def get_realm_role(self, role_name: str) -> dict[str, Any] | None:
+        resp = await self._keycloak_request("GET", f"/roles/{role_name}")
+        if resp.status_code == 404:
+            return None
+        resp.raise_for_status()
+        return resp.json()
+
+    async def create_realm_role(self, role_name: str, description: str | None = None) -> bool:
+        resp = await self._keycloak_request(
+            "POST",
+            "/roles",
+            json={
+                "name": role_name,
+                "description": description or f"AgenticAI {role_name} role",
+            },
+        )
+        return resp.status_code in (200, 201, 204, 409)
+
+    async def get_realm_roles(self) -> list[dict[str, Any]]:
+        resp = await self._keycloak_request("GET", "/roles")
+        resp.raise_for_status()
+        return resp.json()
+
+    async def set_realm_role(self, keycloak_id: str, role_name: str) -> bool:
+        role = await self.get_realm_role(role_name)
+        if not role:
+            if role_name not in ("admin", "enduser"):
+                return False
+            await self.create_realm_role(role_name)
+            role = await self.get_realm_role(role_name)
+            if not role:
+                return False
+
+        current_roles_resp = await self._keycloak_request(
+            "GET", f"/users/{keycloak_id}/role-mappings/realm"
+        )
+        current_roles = current_roles_resp.json()
+        supported = [
+            "admin",
+            "enduser",
+            "global_curator",
+            "curator",
+            "limited",
+            "basic",
+            "ext_perm_user",
+            "slack_user",
+        ]
+        roles_to_remove = [r for r in current_roles if r["name"] in supported]
+
+        if roles_to_remove:
+            await self._keycloak_request(
+                "DELETE", f"/users/{keycloak_id}/role-mappings/realm", json=roles_to_remove
+            )
+
+        await self._keycloak_request(
+            "POST", f"/users/{keycloak_id}/role-mappings/realm", json=[role]
+        )
+        return True
+
+    async def get_user_realm_roles(self, keycloak_id: str) -> list[dict[str, Any]]:
+        resp = await self._keycloak_request("GET", f"/users/{keycloak_id}/role-mappings/realm")
+        resp.raise_for_status()
+        return resp.json()
+
+    async def get_user_info(self, access_token: str) -> dict[str, Any] | None:
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(
+                f"{self.get_base_url()}/realms/{self.get_realm()}/protocol/openid-connect/userinfo",
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+            if resp.status_code != 200:
+                return None
+            return resp.json()
+
+    async def get_oidc_authorize_url(self, redirect_uri: str, state: str | None = None) -> str:
+        client_id = self.get_client_id()
+        base_url = self.get_base_url()
+        params = {
+            "client_id": client_id,
+            "response_type": "code",
+            "scope": "openid profile email",
+            "redirect_uri": redirect_uri,
+        }
+        if state:
+            params["state"] = state
+        import urllib.parse
+
+        return f"{base_url}/realms/{self.get_realm()}/protocol/openid-connect/auth?{urllib.parse.urlencode(params)}"
+
+    async def handle_oidc_callback(
+        self,
+        code: str,
+        redirect_uri: str,
+        fallback_redirect_uri: str | None = None,
+    ) -> dict[str, Any]:
+        async with httpx.AsyncClient() as client:
+            client_id = self.get_client_id()
+            token_url = (
+                f"{self.get_base_url()}/realms/{self.get_realm()}/protocol/openid-connect/token"
+            )
+
+            def _payload(uri: str) -> dict[str, str]:
+                return {
+                    "grant_type": "authorization_code",
+                    "code": code,
+                    "redirect_uri": uri,
+                    "client_id": client_id,
+                }
+
+            async def _extract_error_detail(response: httpx.Response) -> str:
+                """Extract error detail from Keycloak error response."""
+                try:
+                    error_body = response.json()
+                    if isinstance(error_body, dict):
+                        # Keycloak returns error + error_description
+                        if error_body.get("error_description"):
+                            return error_body["error_description"]
+                        if error_body.get("error"):
+                            return error_body["error"]
+                except Exception:
+                    pass
+                return f"Keycloak token exchange failed (status {response.status_code})"
+
+            resp = await client.post(token_url, data=_payload(redirect_uri))
+            if resp.is_success:
+                return resp.json()
+
+            # Some frontend flows attach a post-login redirect URI in query params,
+            # which can differ from the actual callback URI used for the auth code.
+            # Retry with the concrete callback URL when available.
+            if fallback_redirect_uri and fallback_redirect_uri != redirect_uri:
+                fallback_resp = await client.post(token_url, data=_payload(fallback_redirect_uri))
+                if fallback_resp.is_success:
+                    return fallback_resp.json()
+                resp = fallback_resp  # Use fallback response for error details
+
+            # Both attempts failed - extract error detail
+            error_detail = await _extract_error_detail(resp)
+            raise ValueError(error_detail)
+
+    async def password_grant(self, username: str, password: str) -> dict[str, Any]:
+        """Direct Access Grant — authenticate with username/password against Keycloak.
+
+        POSTs to Keycloak's token endpoint with grant_type=password.
+        Returns Keycloak token payload { access_token, refresh_token, id_token, expires_in, token_type }.
+        Raises ValueError on authentication failure.
+        """
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                f"{self.get_base_url()}/realms/{self.get_realm()}/protocol/openid-connect/token",
+                data={
+                    "grant_type": "password",
+                    "client_id": self.get_client_id(),
+                    "username": username,
+                    "password": password,
+                    "scope": "openid profile email",
+                },
+            )
+            if resp.is_success:
+                return resp.json()
+
+            try:
+                error_body = resp.json()
+                if isinstance(error_body, dict):
+                    detail = (
+                        error_body.get("error_description")
+                        or error_body.get("error")
+                        or f"Authentication failed (status {resp.status_code})"
+                    )
+            except Exception:
+                detail = f"Authentication failed (status {resp.status_code})"
+            raise ValueError(detail)
+
+    async def refresh_token_grant(self, refresh_token: str) -> dict[str, Any]:
+        """Exchange a refresh token for a new set of tokens from Keycloak.
+
+        POSTs to Keycloak's token endpoint with grant_type=refresh_token.
+        Returns { access_token, refresh_token, id_token, expires_in, token_type }.
+        Raises ValueError on authentication failure.
+        """
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                f"{self.get_base_url()}/realms/{self.get_realm()}/protocol/openid-connect/token",
+                data={
+                    "grant_type": "refresh_token",
+                    "client_id": self.get_client_id(),
+                    "refresh_token": refresh_token,
+                },
+            )
+            if resp.is_success:
+                return resp.json()
+
+            try:
+                error_body = resp.json()
+                if isinstance(error_body, dict):
+                    detail = (
+                        error_body.get("error_description")
+                        or error_body.get("error")
+                        or f"Token refresh failed (status {resp.status_code})"
+                    )
+            except Exception:
+                detail = f"Token refresh failed (status {resp.status_code})"
+            raise ValueError(detail)
+
+    async def backchannel_logout(
+        self, refresh_token: str | None = None, id_token_hint: str | None = None
+    ) -> bool:
+        async with httpx.AsyncClient() as client:
+            data = {}
+            if refresh_token:
+                data["refresh_token"] = refresh_token
+            if id_token_hint:
+                data["id_token_hint"] = id_token_hint
+            client_id = self.get_client_id()
+            resp = await client.post(
+                f"{self.get_base_url()}/realms/{self.get_realm()}/protocol/openid-connect/logout",
+                data={**data, "client_id": client_id},
+            )
+            return resp.status_code in (200, 204, 400)
+
+
+_keycloak_service = KeycloakService()
+
+
+def get_keycloak_service() -> KeycloakService:
+    return _keycloak_service

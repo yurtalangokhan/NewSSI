@@ -51,7 +51,7 @@ export async function requireAuth(): Promise<AuthCheckResult> {
     return {
       user: null,
       authTypeMetadata,
-      redirect: "/auth/login?disableAutoRedirect=true",
+      redirect: "/auth/login",
     };
   }
 
@@ -70,12 +70,7 @@ export async function requireAuth(): Promise<AuthCheckResult> {
   };
 }
 
-// Allowlist of roles that can access admin pages (all roles except BASIC)
-const ADMIN_ALLOWED_ROLES = [
-  UserRole.ADMIN,
-  UserRole.CURATOR,
-  UserRole.GLOBAL_CURATOR,
-];
+const ADMIN_ALLOWED_ROLES = [UserRole.ADMIN];
 
 /**
  * Requires that the user is authenticated AND has admin role.
@@ -106,7 +101,11 @@ export async function requireAdminAuth(): Promise<AuthCheckResult> {
   const { user, authTypeMetadata } = authResult;
 
   // Check if user has an allowed role
-  if (user && !ADMIN_ALLOWED_ROLES.includes(user.role)) {
+  if (
+    user &&
+    !ADMIN_ALLOWED_ROLES.includes(user.role) &&
+    user.is_superuser !== true
+  ) {
     return {
       user,
       authTypeMetadata,

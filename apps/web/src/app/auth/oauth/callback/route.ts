@@ -1,11 +1,11 @@
 import { getDomain } from "@/lib/redirectSS";
-import { buildUrl } from "@/lib/utilsSS";
+import { buildUserServiceUrl } from "@/lib/utilsSS";
 import { NextRequest, NextResponse } from "next/server";
 
 export const GET = async (request: NextRequest) => {
-  // Wrapper around the FastAPI endpoint /auth/oauth/callback,
+  // Wrapper around the FastAPI endpoint /api/auth/oauth/callback,
   // which adds back a redirect to the main app.
-  const url = new URL(buildUrl("/auth/oauth/callback"));
+  const url = new URL(buildUserServiceUrl("/api/auth/oauth/callback"));
   url.search = request.nextUrl.search;
   const cookieHeader = request.headers.get("cookie") || "";
 

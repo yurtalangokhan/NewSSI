@@ -89,6 +89,7 @@ export function buildLlmOptions(
           version: modelConfiguration.version || null,
           supportsReasoning: modelConfiguration.supports_reasoning || false,
           supportsImageInput: modelConfiguration.supports_image_input || false,
+          isRemote: modelConfiguration.is_remote || false,
         });
       });
   });
@@ -366,6 +367,9 @@ export default function LLMPopover({
     if (option.supportsImageInput) {
       capabilities.push(t("app.llmPopover.capabilityVision"));
     }
+    if (option.isRemote) {
+      capabilities.push("Cloud");
+    }
     const description =
       capabilities.length > 0 ? capabilities.join(", ") : undefined;
 
@@ -384,7 +388,14 @@ export default function LLMPopover({
             ) : null
           }
         >
-          {option.displayName}
+          <span className="inline-flex items-center gap-1.5">
+            {option.displayName}
+            {option.isRemote && (
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded-08 bg-background-tint-02 text-text-03 font-figure-small-label leading-none">
+                Cloud
+              </span>
+            )}
+          </span>
         </LineItem>
       </div>
     );

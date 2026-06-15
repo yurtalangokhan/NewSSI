@@ -107,7 +107,7 @@ async def delete_assistant_from_store(assistant_id: str) -> bool:
 # ------------------------------------------------------------------
 
 async def add_thread(thread: dict):
-    await _thread_repo().add_thread(thread)
+    return await _thread_repo().add_thread(thread)
 
 
 async def get_thread_from_store(thread_id: str) -> dict | None:

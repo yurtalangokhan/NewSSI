@@ -9,6 +9,8 @@ export enum AuthType {
 export const HOST_URL = process.env.WEB_DOMAIN || "http://localhost:3000";
 
 export const INTERNAL_URL = process.env.INTERNAL_URL || "http://localhost:8123";
+export const USER_SERVICE_URL =
+  process.env.USER_SERVICE_URL || "http://localhost:8090";
 
 // Documentation URLs
 export const DOCS_BASE_URL = "https://docs.onyx.app";

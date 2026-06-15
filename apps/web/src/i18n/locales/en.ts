@@ -148,8 +148,7 @@ const en = {
     accountCreatedSigningIn: "Account created. Signing in...",
     signedInSuccessfully: "Signed in successfully.",
     passwordMinLength: "Password must be at least {{n}} characters",
-    accountAlreadyExists:
-      "An account already exists with the specified email.",
+    accountAlreadyExists: "An account already exists with the specified email.",
     tooManyRequests: "Too many requests. Please try again later.",
     unknownError: "Unknown error",
     toastAccountCreated: "Account created successfully. Please log in.",
@@ -157,15 +156,21 @@ const en = {
     toastLoginFailed: "Failed to login - {{error}}",
     invalidCredentials: "Invalid email or password",
     noPasswordSet: "Create an account to set a password",
+    usernameLabel: "Username",
+    usernamePlaceholder: "username",
+    usernameMinLength: "Username must be at least {{n}} characters",
+    usernameRequired: "Username is required",
     emailLabel: "Email Address",
     emailPlaceholder: "email@yourcompany.com",
+    firstNameLabel: "First Name",
+    lastNameLabel: "Last Name",
     joinButton: "Join",
     createAccountButton: "Create Account",
     signInButton: "Sign In",
     continueAsGuest: "or continue as guest",
     completeSignUp: "Complete your sign up",
     createAccount: "Create account",
-    getStarted: "Get started with Onyx",
+    getStarted: "Get started",
     reauthenticateHeading: "Re-authenticate to join team",
     howDidYouHear: "How did you hear about us?",
     selectOption: "Select an option",
@@ -187,8 +192,7 @@ const en = {
       emailLabel: "Email",
       resetButton: "Reset Password",
       backToLogin: "Back to Login",
-      toastEmailSent:
-        "Password reset email sent. Please check your inbox.",
+      toastEmailSent: "Password reset email sent. Please check your inbox.",
       toastError: "An error occurred. Please try again.",
     },
     resetPassword: {
@@ -203,10 +207,8 @@ const en = {
       resetButton: "Reset Password",
       backToLogin: "Back to Login",
       toastMissingToken: "Invalid or missing reset token.",
-      toastResetSuccess:
-        "Password reset successfully. Redirecting to login...",
-      toastUnexpectedError:
-        "An unexpected error occurred. Please try again.",
+      toastResetSuccess: "Password reset successfully. Redirecting to login...",
+      toastUnexpectedError: "An unexpected error occurred. Please try again.",
       toastResetError: "An error occurred during password reset.",
     },
     verifyEmail: {
@@ -224,10 +226,8 @@ const en = {
       message:
         "Hey {{email}} - it looks like you haven't verified your email yet. Check your inbox for an email from us to get started! If you don't see anything, click here to request a new email.",
       greeting: "Hey ",
-      notVerifiedYet:
-        " - it looks like you haven't verified your email yet.",
-      checkInbox:
-        "Check your inbox for an email from us to get started!",
+      notVerifiedYet: " - it looks like you haven't verified your email yet.",
+      checkInbox: "Check your inbox for an email from us to get started!",
       dontSeeIt: "If you don't see anything, click",
       here: "here",
       requestNewEmail: "to request a new email.",
@@ -241,22 +241,29 @@ const en = {
       errorTitle: "Something Went Wrong",
       backToChat: "Back to Chat",
       federatedProcessingDetails: "Please wait while we complete the setup.",
-      federatedSuccess: "Your {serviceName} authorization completed successfully. You can now use this connector for search.",
+      federatedSuccess:
+        "Your {serviceName} authorization completed successfully. You can now use this connector for search.",
       federatedRedirecting: "Redirecting to chat in 2 seconds...",
-      federatedErrorValidation: "Configuration error - please check your connector settings",
-      federatedErrorClientSecret: "Authentication credentials are missing or invalid",
+      federatedErrorValidation:
+        "Configuration error - please check your connector settings",
+      federatedErrorClientSecret:
+        "Authentication credentials are missing or invalid",
       federatedErrorOAuth: "OAuth authorization failed",
-      mcpProcessingDetails: "Please wait while we complete the MCP server setup.",
-      mcpSuccess: "Your {serviceName} authorization completed successfully. You can now use this server's tools in chat.",
+      mcpProcessingDetails:
+        "Please wait while we complete the MCP server setup.",
+      mcpSuccess:
+        "Your {serviceName} authorization completed successfully. You can now use this server's tools in chat.",
       mcpRedirecting: "Redirecting back in 2 seconds...",
       mcpErrorServerNotFound: "MCP server configuration not found",
       mcpErrorCredentials: "Authentication credentials are invalid",
       mcpErrorOAuth: "OAuth authorization failed",
       mcpErrorValidation: "Could not validate connection to MCP server",
       oauthConfigProcessing: "Completing Authorization...",
-      oauthConfigProcessingDetails: "Please wait while we securely store your credentials.",
+      oauthConfigProcessingDetails:
+        "Please wait while we securely store your credentials.",
       oauthConfigSuccess: "Authorization Successful!",
-      oauthConfigSuccessDetail: "You have successfully authorized the tool to access your {serviceName} account.",
+      oauthConfigSuccessDetail:
+        "You have successfully authorized the tool to access your {serviceName} account.",
       oauthConfigError: "Authorization Failed",
     },
   },
@@ -272,8 +279,7 @@ const en = {
   sidebar: {
     recentsEmptyState:
       "Try sending a message! Your chat history will appear here.",
-    recentsEmpty:
-      "Try sending a message! Your chat history will appear here.",
+    recentsEmpty: "Try sending a message! Your chat history will appear here.",
     agentsSectionTitle: "Agents",
     projectsSectionTitle: "Projects",
     recentsSectionTitle: "Recents",
@@ -392,13 +398,11 @@ const en = {
       title: "Set Project Instructions",
       description:
         "Specify the behaviors or tone for the chat sessions in this project.",
-      placeholder:
-        "My goal with is to... be sure to... in your responses.",
+      placeholder: "My goal with is to... be sure to... in your responses.",
       saveButton: "Save Instructions",
     },
     confirmEntity: {
-      confirmation:
-        "Are you sure you want to {{action}} {{entityName}}?",
+      confirmation: "Are you sure you want to {{action}} {{entityName}}?",
       deleteButton: "Delete",
       confirmButton: "Confirm",
       deleteAction: "delete",
@@ -410,7 +414,8 @@ const en = {
     },
     federatedOAuth: {
       title: "Connect Your Apps",
-      description: "Improve answer quality by letting {{applicationName}} search all your connected data.",
+      description:
+        "Improve answer quality by letting {{applicationName}} search all your connected data.",
       connect: "Connect",
       skipForNow: "Skip for now",
     },
@@ -420,9 +425,12 @@ const en = {
       manageTitle: "Manage {{type}}",
       enterTitle: "Enter {{type}}",
       updateDescription: "Update your {{type}} for {{serverName}}.",
-      enterDescription: "Enter your {{type}} for {{serverName}} to enable authentication.",
-      validationNote: "Changes will be validated against the server before being saved.",
-      storageNote: "Your {{type}} will be validated against the server and stored securely.",
+      enterDescription:
+        "Enter your {{type}} for {{serverName}} to enable authentication.",
+      validationNote:
+        "Changes will be validated against the server before being saved.",
+      storageNote:
+        "Your {{type}} will be validated against the server and stored securely.",
       saveError: "Failed to save credentials",
       saveApiKeyError: "Failed to save API key",
       cancel: "Cancel",
@@ -453,8 +461,7 @@ const en = {
     },
     newTeam: {
       joinRequestSentTitle: "Join Request Sent",
-      existingTeamFoundTitle:
-        "We found an existing team for {{domain}}",
+      existingTeamFoundTitle: "We found an existing team for {{domain}}",
       loadingTeamInfo: "Loading team information...",
       joinRequestSentBody:
         "Your join request has been sent. You can explore as your own team while waiting for an admin of {{domain}} to approve your request.",
@@ -465,8 +472,7 @@ const en = {
       sendingRequest: "Sending request...",
       couldNotRetrieveTeam:
         "Could not retrieve team information. Please try again later.",
-      toastInviteSent:
-        "Your invite request has been sent to the team admin.",
+      toastInviteSent: "Your invite request has been sent to the team admin.",
       toastInviteFailed: "Failed to request an invite",
     },
     noAgent: {
@@ -505,15 +511,12 @@ const en = {
         "Are you sure you want to delete all {{count}} chat sessions? This action cannot be undone.",
       deletingButton: "Deleting...",
       noSessionsYet: "No chat sessions yet",
-      startNewConversationHint:
-        "Start a new conversation to see it here",
+      startNewConversationHint: "Start a new conversation to see it here",
       selectAll: "Select all",
       loadMoreButton: "Load More",
       agentIdLabel: "Agent ID: {{id}}",
-      toastDeleteSomeFailed:
-        "Failed to delete some chats. Please try again.",
-      toastDeleteAllFailed:
-        "Failed to delete all chats. Please try again.",
+      toastDeleteSomeFailed: "Failed to delete some chats. Please try again.",
+      toastDeleteAllFailed: "Failed to delete all chats. Please try again.",
     },
     chatSearch: {
       placeholder: "Search chat sessions, projects...",
@@ -590,8 +593,7 @@ const en = {
       addLabelsPlaceholder: "Add labels...",
       labelsHelperText:
         "Add labels and categories to help people better discover this agent.",
-      agentIsPublicMessage:
-        "This agent is public to your organization.",
+      agentIsPublicMessage: "This agent is public to your organization.",
       agentIsPublicDescription:
         "Everyone in your organization has access to this agent.",
       copyLinkButton: "Copy Link",
@@ -665,8 +667,7 @@ const en = {
     knowledgeGraphDescription: "Neo4j hybrid search",
     nameColumn: "Name",
     statusColumn: "Status",
-    emptyState:
-      "Add documents or connected sources to use for this agent.",
+    emptyState: "Add documents or connected sources to use for this agent.",
     sourcesSelectedText: "{{count}} knowledge source(s) selected",
     viewEditButton: "View / Edit",
     searchCollectionsPlaceholder: "Search collections...",
@@ -771,13 +772,11 @@ const en = {
       fullNameDescription: "We'll display this name in the app.",
       fullNamePlaceholder: "Your name",
       workRoleLabel: "Work Role",
-      workRoleDescription:
-        "Share your role to better tailor responses.",
+      workRoleDescription: "Share your role to better tailor responses.",
       workRolePlaceholder: "Your role",
       appearanceTitle: "Appearance",
       colorModeLabel: "Color Mode",
-      colorModeDescription:
-        "Select your preferred color mode for the UI.",
+      colorModeDescription: "Select your preferred color mode for the UI.",
       chatBackgroundLabel: "Chat Background",
       colorModeAuto: "Auto",
       colorModeLight: "Light",
@@ -786,19 +785,15 @@ const en = {
       dangerZoneTitle: "Danger Zone",
       deleteAllChatsButton: "Delete All Chats",
       deleteChatsModalTitle: "Delete All Chats",
-      deleteChatsModalDescription:
-        "Permanently delete all your chat sessions.",
+      deleteChatsModalDescription: "Permanently delete all your chat sessions.",
       deleteChatsConfirmation1:
         "All your chat sessions and history will be permanently deleted. Deletion cannot be undone.",
-      deleteChatsConfirmation2:
-        "Are you sure you want to delete all chats?",
+      deleteChatsConfirmation2: "Are you sure you want to delete all chats?",
       deletingButton: "Deleting...",
       deleteButton: "Delete",
-      toastPersonalizationUpdated:
-        "Personalization updated successfully",
+      toastPersonalizationUpdated: "Personalization updated successfully",
       toastPersonalizationFailed: "Failed to update personalization",
-      toastChatsDeleted:
-        "All your chat sessions have been deleted.",
+      toastChatsDeleted: "All your chat sessions have been deleted.",
       toastDeleteFailed: "Failed to delete all chat sessions",
     },
     chatPreferences: {
@@ -839,15 +834,13 @@ const en = {
       expansionPlaceholder:
         "Provide a concise 1–2 sentence summary of the following:",
       removeShortcutAriaLabel: "Remove shortcut",
-      cannotDeletePublicTooltip:
-        "Cannot delete public prompt-shortcuts.",
+      cannotDeletePublicTooltip: "Cannot delete public prompt-shortcuts.",
       toastPreferencesSaved: "Preferences saved",
       toastPreferencesFailed: "Failed to save preferences",
       toastShortcutLoadFailed: "Failed to load shortcuts",
       toastShortcutDeleted: "Shortcut deleted",
       toastShortcutDeleteFailed: "Failed to delete shortcut",
-      toastShortcutRequired:
-        "Both shortcut and expansion are required",
+      toastShortcutRequired: "Both shortcut and expansion are required",
       toastShortcutCreated: "Shortcut created",
       toastShortcutUpdated: "Shortcut updated",
       toastShortcutSaveFailed: "Failed to save shortcut",
@@ -879,22 +872,19 @@ const en = {
       updatingButton: "Updating...",
       updateButton: "Update",
       currentPasswordRequired: "Current password is required",
-      newPasswordMinLength:
-        "Password must be at least {{n}} characters",
+      newPasswordMinLength: "Password must be at least {{n}} characters",
       passwordsMustMatch: "Passwords do not match",
       confirmPasswordRequired: "Please confirm your new password",
       revokeTokenTitle: "Revoke Access Token",
       revokeButton: "Revoke",
-      revokeConfirmation:
-        "Are you sure you want to revoke this token?",
+      revokeConfirmation: "Are you sure you want to revoke this token?",
       revokeTokenWarning:
         "Onyx will no longer be able to access or search content from your {{sourceName}} account.",
       tokenWillLoseAccess:
         "Any application using the token will lose access to Onyx. This action cannot be undone.",
       toastPasswordUpdated: "Password updated successfully",
       toastPasswordFailed: "Failed to change password",
-      toastPasswordError:
-        "An error occurred while changing the password",
+      toastPasswordError: "An error occurred while changing the password",
       toastTokenLoadFailed: "Failed to load tokens",
       toastTokenRequired: "Token name is required",
       toastTokenCreated: "Token created successfully",
@@ -924,8 +914,7 @@ const en = {
     },
     connectors: {
       title: "Connectors",
-      noConnectorsMessage:
-        "No connectors set up for your organization.",
+      noConnectorsMessage: "No connectors set up for your organization.",
       connectedStatus: "Connected",
       pausedStatus: "Paused",
       notConnectedStatus: "Not connected",
@@ -951,8 +940,7 @@ const en = {
       "Add instructions to tailor the response in this project.",
     setInstructionsButton: "Set Instructions",
     filesLabel: "Files",
-    filesDescription:
-      "Chats in this project can access these files.",
+    filesDescription: "Chats in this project can access these files.",
     addFilesButton: "Add Files",
     viewFilesButton: "View files",
     viewAllButton: "View All",
@@ -1078,8 +1066,7 @@ const en = {
     conversationStarterExample4: "Find action items from recent discussions.",
     enterConversationStarter: "Enter a conversation starter...",
     agentNameRequired: "Agent name is required.",
-    descriptionMaxChars:
-      "Description must be {{count}} characters or less",
+    descriptionMaxChars: "Description must be {{count}} characters or less",
     starterMaxChars:
       "Conversation starter must be {{count}} characters or less",
     agentDeletedSuccess: "Agent deleted successfully",
@@ -1104,17 +1091,13 @@ const en = {
     optionalLabel: "Optional",
     descriptionLabel: "Description",
     baseAgentLabel: "Base Agent",
-    baseAgentDescription:
-      "Choose the base agent type for this custom agent.",
+    baseAgentDescription: "Choose the base agent type for this custom agent.",
     selectBaseAgentPlaceholder: "Select base agent",
     chatbotOption: "Chatbot - Simple conversational agent",
-    mcpAgentOption:
-      "Configurable MCP Agent - With MCP tool support",
-    dynamicAgentOption:
-      "Dynamic Agent - Graph schema based agent",
+    mcpAgentOption: "Configurable MCP Agent - With MCP tool support",
+    dynamicAgentOption: "Dynamic Agent - Graph schema based agent",
     graphSchemaLabel: "Graph Schema",
-    graphSchemaDescription:
-      "Select the dynamic graph execution pattern.",
+    graphSchemaDescription: "Select the dynamic graph execution pattern.",
     selectGraphSchemaPlaceholder: "Select graph schema",
     brainTypeLabel: "Brain Type",
     selectBrainTypePlaceholder: "Select brain type",
@@ -1145,8 +1128,7 @@ const en = {
     externalMcpTools: "External MCP Tools",
     toolsServiceLabel: "Tools Service",
     advancedOptionsLabel: "Advanced Options",
-    advancedOptionsDescription:
-      "Fine-tune agent prompts and knowledge.",
+    advancedOptionsDescription: "Fine-tune agent prompts and knowledge.",
     shareThisAgentLabel: "Share This Agent",
     shareThisAgentDescription:
       "with other users, groups, or everyone in your organization.",
@@ -1176,8 +1158,7 @@ const en = {
     deleteAgentTitle: "Delete Agent",
     deleteAgentConfirmText:
       "Anyone using this agent will no longer be able to access it. Deletion cannot be undone.",
-    deleteAgentAreYouSure:
-      "Are you sure you want to delete this agent?",
+    deleteAgentAreYouSure: "Are you sure you want to delete this agent?",
     agentNamePlaceholder: "Name your agent",
     agentDescriptionPlaceholder: "What does this agent do?",
     webSearchWarning:
@@ -1235,10 +1216,8 @@ const en = {
     toastAccepted: "You have accepted the invitation.",
     toastProcessing: "Processing your team join request...",
     toastDeclined: "You have declined the invitation.",
-    toastJoinFailed:
-      "Failed to join the team. Please try again.",
-    toastDeclineFailed:
-      "Failed to decline the invitation. Please try again.",
+    toastJoinFailed: "Failed to join the team. Please try again.",
+    toastDeclineFailed: "Failed to decline the invitation. Please try again.",
   },
   errors: {
     rateLimit: "Rate Limit Exceeded",
@@ -1269,8 +1248,7 @@ const en = {
   },
   appPopup: {
     defaultTitle: "Welcome to Onyx!",
-    consentError:
-      "You need to agree to the terms to access the application.",
+    consentError: "You need to agree to the terms to access the application.",
     startButton: "Start",
   },
   customTool: {
@@ -1285,15 +1263,13 @@ const en = {
   },
   sharedChat: {
     notFoundTitle: "Shared Chat Not Found",
-    idNotFound:
-      "Did not find a shared chat with the specified ID.",
+    idNotFound: "Did not find a shared chat with the specified ID.",
     noMessages: "No messages found in shared chat.",
     sharedOn: "Shared on {{date}}",
     by: "by {{name}}",
   },
   authPages: {
-    loginAdminNote:
-      "Need access? Reach out to your IT admin to get access.",
+    loginAdminNote: "Need access? Reach out to your IT admin to get access.",
     impersonate: {
       title: "Impersonate User",
       apiKeyLabel: "API Key",
@@ -1309,8 +1285,7 @@ const en = {
       inviteOption: "Be invited to an existing Onyx team",
       createTeamOption: "Create a new Onyx team",
       createOrgButton: "Create New Organization",
-      differentEmailText:
-        "Have an account with a different email?",
+      differentEmailText: "Have an account with a different email?",
       signInLink: "Sign in",
     },
     authError: {
@@ -1327,8 +1302,7 @@ const en = {
         "If you continue to experience problems please reach out to the Onyx team at",
     },
     errorDisplay: {
-      anonymousAccess:
-        "Your team does not have anonymous access enabled.",
+      anonymousAccess: "Your team does not have anonymous access enabled.",
       genericError: "An error occurred.",
     },
   },
@@ -1401,7 +1375,8 @@ const en = {
       deleteProviderBodyPrefix: "All LLM models from provider",
       deleteProviderBodySuffix:
         "will be removed and unavailable for future chats. Chat history will be preserved.",
-      connectAnotherProvider: "Connect another provider to continue using chats.",
+      connectAnotherProvider:
+        "Connect another provider to continue using chats.",
       defaultTag: "Default",
       deleteProviderAria: "Delete provider",
       editProviderAria: "Edit provider",
@@ -1501,7 +1476,8 @@ const en = {
       apiKeyWillBeDeleted: "API key will be deleted on save.",
       undoDeleteApiKey: "Undo",
       apiKeyStoredSecurely: "API key is stored securely",
-      apiKeyHiddenHint: "API key is encrypted and cannot be displayed. Delete it to enter a new one.",
+      apiKeyHiddenHint:
+        "API key is encrypted and cannot be displayed. Delete it to enter a new one.",
       clearApiKey: "Delete API key",
       enterNewApiKey: "Enter new API key",
       nameRequired: "Name is required",
@@ -1547,8 +1523,7 @@ const en = {
       passThroughDescription:
         "Onyx will forward the user's OAuth access token directly to the server as an Authorization header. Make sure the server supports authentication with the same provider.",
       connecting: "Connecting...",
-      failedToSaveServerConfiguration:
-        "Failed to save server configuration",
+      failedToSaveServerConfiguration: "Failed to save server configuration",
       failedToInitiateOauth: "Failed to initiate OAuth",
       failedToSaveAuthenticationConfiguration:
         "Failed to save authentication configuration",
@@ -1578,8 +1553,7 @@ const en = {
         "We've detected that this is a custom-specified embedding model. Since we have to download the model files before verifying the configuration's correctness, we won't be able to let you know if the configuration is valid until",
       customModelWarning2:
         "we start re-indexing your documents. If there is an issue, it will show up on this page as an indexing error after clicking Confirm.",
-      instantSwitchTitle:
-        "Are you sure you want to do an instant switch?",
+      instantSwitchTitle: "Are you sure you want to do an instant switch?",
       instantSwitchBody:
         "Instant switching will immediately change the embedding model without re-indexing. Searches will be over a partial set of documents (starting with 0 documents) until re-indexing is complete.",
       instantSwitchIrreversible: "This is not reversible.",
@@ -1628,8 +1602,7 @@ const en = {
         "Updating the reranking model does not require re-indexing documents. The reranker helps improve search quality by reordering results after the initial embedding search. Changes will take effect immediately for all new searches.",
       previous: "Previous",
       advanced: "Advanced",
-      advancedSearchConfigurationTitle:
-        "Advanced Search Configuration",
+      advancedSearchConfigurationTitle: "Advanced Search Configuration",
       advancedSearchConfigurationDescription:
         "Configure advanced embedding and search settings. Changes will require re-indexing documents.",
       modelDescriptionFallback: "Custom model—no description is available.",
@@ -1656,7 +1629,8 @@ const en = {
       docsReindexed: "Docs Re-Indexed",
       indexAttempts: {
         noAttemptsTitle: "No indexing attempts scheduled yet",
-        noAttemptsDescription: "Index attempts are scheduled in the background, and may take some time to appear. Try refreshing the page in ~30 seconds!",
+        noAttemptsDescription:
+          "Index attempts are scheduled in the background, and may take some time to appear. Try refreshing the page in ~30 seconds!",
         columns: {
           timeStarted: "Time Started",
           status: "Status",
@@ -1665,13 +1639,17 @@ const en = {
           errorMessage: "Error Message",
         },
         tooltips: {
-          totalDocs: "Total number of documents replaced in the index during this indexing attempt",
-          reindexActive: "This index attempt is a full re-index. All documents from the source are being synced into the system.",
-          reindexPast: "This index attempt was a full re-index. All documents from the source were synced into the system.",
+          totalDocs:
+            "Total number of documents replaced in the index during this indexing attempt",
+          reindexActive:
+            "This index attempt is a full re-index. All documents from the source are being synced into the system.",
+          reindexPast:
+            "This index attempt was a full re-index. All documents from the source were synced into the system.",
         },
         docsPerMinute: "{{count}} docs / min",
         noDocsProcessed: "No additional docs processed",
-        removedDocs: "(also removed {{count}} docs that were detected as deleted in the source)",
+        removedDocs:
+          "(also removed {{count}} docs that were detected as deleted in the source)",
         viewFullTrace: "View Full Trace",
       },
     },
@@ -1698,6 +1676,15 @@ const en = {
       emailSendFailedWarning:
         "Users added, but email sending failed. Check your SMTP configuration and try again.",
       usersInvitedSuccess: "Users invited!",
+      addUserButton: "Add User",
+      createSuccess: "User created and synced with Keycloak",
+      createError: "Failed to create user - {{error}}",
+      createDescription:
+        "Create a user directly in the platform. This action also creates and syncs the account in Keycloak.",
+      addUserPageTitle: "Users - Add User",
+      creatingButton: "Creating...",
+      createPasswordLabel: "Password",
+      createPasswordPlaceholder: "Set an initial password",
       inviteFailedError: "Failed to invite users - {{error}}",
       downloadFailedError: "Failed to download all users - {{error}}",
       deactivatedSuccess: "User deactivated!",
@@ -1724,9 +1711,9 @@ const en = {
       actionsHeader: "Actions",
       roleHeader: "Role",
       statusHeader: "Status",
-      noUsersFoundMatching: "No users found matching \"{{query}}\"",
+      noUsersFoundMatching: 'No users found matching "{{query}}"',
       noPendingUsersFoundMatching:
-        "No pending users found matching \"{{query}}\"",
+        'No pending users found matching "{{query}}"',
       noUsersMatchingFilters: "No users found matching your filters",
       roleUpdateSuccess: "User role updated successfully!",
       roleUpdateError: "Unable to update user role - {{error}}",
@@ -1762,13 +1749,8 @@ const en = {
       emailRequired: "Required",
       invalidEmailError: "{{email}} is not a valid email",
       roles: {
-        basic: "Basic",
+        enduser: "End User",
         admin: "Admin",
-        global_curator: "Global Curator",
-        curator: "Curator",
-        limited: "Limited",
-        ext_perm_user: "External Permissioned User",
-        slack_user: "Slack User",
       },
       userEntity: "user",
       teamEntity: "team",
@@ -1778,16 +1760,12 @@ const en = {
       leaveButton: "Leave",
       leaveTeamDetails: "You will lose access to all team data and resources.",
       rolesHover: {
-        basic: "Basic users can't perform any admin actions",
+        enduser: "End users can't perform any admin actions",
         admin: "Admin users can perform all admin actions",
-        global_curator:
-          "Global Curator users can perform admin actions for all groups they are a member of",
-        curator: "Curator role must be assigned in the Groups tab",
-        slack_user:
-          "This role is automatically assigned to users who only use Onyx via Slack",
       },
       changeCuratorRoleTitle: "Change Curator Role",
-      changeCuratorRoleWarning: "Warning: Switching roles from Curator to {{newRole}} will remove their status as individual curators from all groups.",
+      changeCuratorRoleWarning:
+        "Warning: Switching roles from Curator to {{newRole}} will remove their status as individual curators from all groups.",
       switchRoleToButton: "Switch Role to {{role}}",
       editUserModal: {
         title: "Edit User",
@@ -1839,8 +1817,7 @@ const en = {
       },
     },
     apiKey: {
-      description:
-        "API Keys allow you to access Onyx APIs programmatically.",
+      description: "API Keys allow you to access Onyx APIs programmatically.",
       descriptionWithButton:
         "Click the button below to generate a new API Key.",
       createButton: "Create API Key",
@@ -1982,7 +1959,8 @@ const en = {
         triggerSyncFailed: "Failed to trigger sync",
         deleteFailed: "Delete failed",
       },
-      confirmDeleteDetails: "All indexed documents will be permanently removed.",
+      confirmDeleteDetails:
+        "All indexed documents will be permanently removed.",
       manage: {
         title: "Manage - {{name}}",
         tabs: {
@@ -1994,7 +1972,7 @@ const en = {
         discovering: "Discovering…",
         discoverStreams: "Discover Streams",
         discoverStreamsHint:
-          "Click the \"Discover Streams\" button to load available streams.",
+          'Click the "Discover Streams" button to load available streams.',
         frequency: "Frequency",
         customModes: {
           expression: "Expression",
@@ -2154,7 +2132,8 @@ const en = {
         web: "Web",
       },
       textInput: {
-        description: "Add a document to the collection by entering text directly.",
+        description:
+          "Add a document to the collection by entering text directly.",
         titlePlaceholder: "Document title (optional)",
         contentPlaceholder: "Enter document content here...",
         add: "Add Document",
@@ -2179,12 +2158,12 @@ const en = {
       },
       selectCollectionToManageDocuments:
         "Select a collection above to manage documents.",
-      collectionCreated: "Collection \"{{name}}\" created.",
+      collectionCreated: 'Collection "{{name}}" created.',
       collectionCreateFailed: "Failed to create collection",
       renameCollection: "Rename Collection",
       rename: "Rename",
       renaming: "Renaming…",
-      collectionRenamed: "Collection renamed to \"{{name}}\".",
+      collectionRenamed: 'Collection renamed to "{{name}}".',
       collectionRenameFailed: "Failed to rename collection",
       collectionDeleted: "Collection deleted.",
       collectionDeleteFailed: "Failed to delete collection",
@@ -2291,7 +2270,8 @@ const en = {
         "marked items must have a graph built first. Select one and go to the",
       buildTab: "Build",
       collectionDocuments: "Documents in Collection",
-      noDocumentsForBuild: "This collection has no documents. Add documents before building a graph.",
+      noDocumentsForBuild:
+        "This collection has no documents. Add documents before building a graph.",
       graphExplorerTab: "Graph Explorer",
       searchTab: "Search",
       selectCollectionForTab: "Please select a collection to use this tab.",
@@ -2394,7 +2374,8 @@ const en = {
       searchNodesPlaceholder: "Search nodes...",
       clusterMatched: "{{count}} cluster matched - highlighted in red",
       settlingLayout: "Settling layout...",
-      overviewHint: "Click cluster to expand - Right click node for neighborhood",
+      overviewHint:
+        "Click cluster to expand - Right click node for neighborhood",
       expandHint: "Viewing cluster contents - Right click for neighborhood",
       neighborhoodHint: "Ego-graph view - Click nodes to explore",
       largeGraphHint:
@@ -2424,7 +2405,8 @@ const en = {
         apiKeyLabel: "API Key",
         apiKeyPlaceholder: "Enter your API key",
         apiKeyPlaceholderLoading: "Loading...",
-        apiKeyPlaceholderSelect: "Enter new API key or select existing provider",
+        apiKeyPlaceholderSelect:
+          "Enter new API key or select existing provider",
         apiKeyHint: "Enter a new API key or select an existing provider.",
         apiKeyRequired: "API Key is required",
         testingApiKey: "Testing API key with {{name}}...",
@@ -2541,7 +2523,8 @@ const en = {
       currentDefault: "Current Default",
       currentCrawler: "Current Crawler",
       setAsDefault: "Set as Default",
-      contentProvidersDescription: "Used to read the full contents of search result pages.",
+      contentProvidersDescription:
+        "Used to read the full contents of search result pages.",
       googlePseIdLabel: "Search Engine ID",
       googlePseIdPlaceholder: "Enter search engine ID",
       googlePseIdInstructions:
@@ -2595,7 +2578,7 @@ const en = {
       couldNotLoad:
         "Could not load connectors. Make sure agent-service is running.",
       results: "Results",
-      noResultsFor: "No connectors found for \"{{searchTerm}}\"",
+      noResultsFor: 'No connectors found for "{{searchTerm}}"',
       noConnectors: "No connectors available.",
     },
     debug: {
@@ -2642,7 +2625,8 @@ const en = {
     connector: {
       propertyValueMustBeNumber: "Property value must be a valid number",
       propertyValueMustBeInteger: "Property value must be an integer",
-      propertyValueMin1: "Property value must be greater than or equal to 1 minute",
+      propertyValueMin1:
+        "Property value must be greater than or equal to 1 minute",
       propertyValueRequired: "Property value is required",
       propertyValueMin5m:
         "Property value must be greater than or equal to 0.083 hours (5 minutes)",
@@ -2656,20 +2640,25 @@ const en = {
       connectorNameUpdated: "Connector name updated successfully",
       failedToUpdateName: "Failed to update connector name",
       invalidRefreshFrequency: "Invalid refresh frequency: must be an integer",
-      refreshFrequencyUpdated: "Connector refresh frequency updated successfully",
+      refreshFrequencyUpdated:
+        "Connector refresh frequency updated successfully",
       failedToUpdateRefreshFrequency:
         "Failed to update connector refresh frequency",
-      invalidPruningFrequency: "Invalid pruning frequency: must be a valid number",
-      pruningFrequencyUpdated: "Connector pruning frequency updated successfully",
+      invalidPruningFrequency:
+        "Invalid pruning frequency: must be a valid number",
+      pruningFrequencyUpdated:
+        "Connector pruning frequency updated successfully",
       failedToUpdatePruningFrequency:
         "Failed to update connector pruning frequency",
       unknownError: "Unknown error",
       deletionDetails:
         "Deleting this connector schedules a deletion job that removes its indexed documents and deletes it for every user.",
       refreshFrequencyTitle: "Refresh Frequency",
-      refreshFrequencyDetails: "How often the connector should refresh (in minutes)",
+      refreshFrequencyDetails:
+        "How often the connector should refresh (in minutes)",
       pruningFrequencyTitle: "Pruning Frequency",
-      pruningFrequencyDetails: "How often the connector should be pruned (in hours)",
+      pruningFrequencyDetails:
+        "How often the connector should be pruned (in hours)",
       cannotReindexWhileActive:
         "Cannot re-index while indexing is already in progress",
       resumeBeforeReindex: "Resume the connector before re-indexing",
@@ -3083,8 +3072,7 @@ const en = {
       teamContextTitle: "Team Context",
       teamContextDescription:
         "Users can also provide additional individual context in their personal settings.",
-      teamContextPlaceholder:
-        "Describe your team and how Onyx should behave.",
+      teamContextPlaceholder: "Describe your team and how Onyx should behave.",
       systemPromptTitle: "System Prompt",
       systemPromptDescription:
         "Base prompt for all chats, agents, and projects. Modify with caution: Significant changes may degrade response quality.",
@@ -3349,7 +3337,8 @@ const en = {
     },
     federatedForm: {
       loadingCredentialSchema: "Loading credential schema...",
-      retrievingRequiredFields: "Retrieving required fields for this connector type",
+      retrievingRequiredFields:
+        "Retrieving required fields for this connector type",
       manage: "Manage",
       validate: "Validate",
       validating: "Validating...",
@@ -3366,7 +3355,8 @@ const en = {
     },
     clientLayout: {
       warning: "Warning:",
-      trialWarning: "Your trial ends in less than 5 days and no payment method has been added.",
+      trialWarning:
+        "Your trial ends in less than 5 days and no payment method has been added.",
       updateBilling: "Update Billing Information",
     },
     standardAnswer: {
@@ -3381,7 +3371,8 @@ const en = {
       scheduled: "Scheduled",
       canceled: "Canceled",
       invalid: "Invalid",
-      invalidTooltip: "Connector is in an invalid state. Please update the credentials or create a new connector.",
+      invalidTooltip:
+        "Connector is in an invalid state. Please update the credentials or create a new connector.",
       none: "None",
       notStarted: "Not Started",
       deleting: "Deleting",
@@ -3432,9 +3423,11 @@ const en = {
   },
   agentKnowledge: {
     title: "Knowledge",
-    description: "Add specific connectors and documents for this agent to use to inform its responses.",
+    description:
+      "Add specific connectors and documents for this agent to use to inform its responses.",
     useKnowledge: "Use Knowledge",
-    useKnowledgeDescription: "Let this agent reference these documents to inform its responses.",
+    useKnowledgeDescription:
+      "Let this agent reference these documents to inform its responses.",
     documentProcessing: "Document Processing",
     knowledgeGraph: "Knowledge Graph",
     vectorSimilaritySearch: "Vector similarity search",
@@ -3444,9 +3437,12 @@ const en = {
     searchCollections: "Search collections...",
     searchPlaceholder: "Search...",
     noItemsAvailable: "No items available.",
-    noDatasourcesFound: "No datasources found. Add a datasource in the Data Sources page.",
-    noKnowledgeGraphCollections: "No collections with a built knowledge graph. Build a knowledge graph from the Knowledge Graph page first.",
-    addKnowledgeDescription: "Add documents or connected sources to use for this agent.",
+    noDatasourcesFound:
+      "No datasources found. Add a datasource in the Data Sources page.",
+    noKnowledgeGraphCollections:
+      "No collections with a built knowledge graph. Build a knowledge graph from the Knowledge Graph page first.",
+    addKnowledgeDescription:
+      "Add documents or connected sources to use for this agent.",
     knowledgeSourcesSelected: "{{count}} knowledge source selected",
     knowledgeSourcesSelected_plural: "{{count}} knowledge sources selected",
     viewEdit: "View / Edit",
@@ -3489,16 +3485,19 @@ const en = {
     deleteProviderError: "Failed to delete provider: {{error}}",
     unknownError: "Unknown error",
     autoUpdate: "Auto Update",
-    autoUpdateDescription: "Automatically update the available models when new models are released. Recommended for most teams.",
+    autoUpdateDescription:
+      "Automatically update the available models when new models are released. Recommended for most teams.",
     availableModels: "Available Models",
-    selectModelsSubtext: "Select which models to make available for this provider.",
+    selectModelsSubtext:
+      "Select which models to make available for this provider.",
     noModelsFound: "No models found",
     selectAllModels: "Select all models",
     clearAll: "Clear all ({{count}})",
     default: "Default",
     setAsDefaultModel: "Set as default",
     displayNameLabel: "Display Name",
-    displayNameSubtext: "A name which you can use to identify this provider when selecting it in the UI.",
+    displayNameSubtext:
+      "A name which you can use to identify this provider when selecting it in the UI.",
     displayNamePlaceholder: "Display Name",
     fetchAvailableModels: "Fetch Available Models",
     unknownErrorOccurred: "Unknown error occurred",
@@ -3506,11 +3505,14 @@ const en = {
     llmProviderObjectName: "LLM Provider",
     agentWhitelistLabel: "Agent Whitelist",
     agentWhitelistSubtext: "Restrict this provider to specific agents.",
-    agentWhitelistDisabled: "This LLM Provider is public and available to all agents.",
+    agentWhitelistDisabled:
+      "This LLM Provider is public and available to all agents.",
     defaultModelLabel: "Default Model",
-    defaultModelSubtext: "The model to use by default for this provider unless otherwise specified.",
+    defaultModelSubtext:
+      "The model to use by default for this provider unless otherwise specified.",
     defaultModelPlaceholder: "E.g. gpt-4o",
-    fetchModelsFirst: "Fetch available models first, then you'll be able to select the models you want to make available.",
+    fetchModelsFirst:
+      "Fetch available models first, then you'll be able to select the models you want to make available.",
     awsRegionLabel: "AWS Region",
     awsRegionSubtext: "Region where your Amazon Bedrock models are hosted.",
     authMethod: "Authentication Method",
@@ -3518,13 +3520,14 @@ const en = {
     iamRole: "IAM Role",
     accessKey: "Access Key",
     longTermApiKey: "Long-term API Key",
-    iamRoleDescription: "Uses the IAM role attached to your AWS environment. Recommended for EC2, ECS, Lambda, or other AWS services.",
+    iamRoleDescription:
+      "Uses the IAM role attached to your AWS environment. Recommended for EC2, ECS, Lambda, or other AWS services.",
     awsAccessKeyId: "AWS Access Key ID",
     awsSecretAccessKey: "AWS Secret Access Key",
     awsLongTermApiKey: "AWS Bedrock Long-term API Key",
     awsLongTermApiKeyPlaceholder: "Your long-term API key",
     selectAwsRegion: "Select an AWS region.",
-    completeAuthMethod: "Complete the \"Authentication Method\" section.",
+    completeAuthMethod: 'Complete the "Authentication Method" section.',
     apiFetchRequirements: "API Base and API Key are required to fetch models",
     fetchModelsFailed: "Failed to fetch models",
     apiKeyRequired: "API Key is required",
@@ -3536,11 +3539,13 @@ const en = {
     ollamaApiKeyLabel: "API Key (Optional)",
     ollamaNoModels: "No models found. Please provide a valid API base URL.",
     targetUriRequired: "Target URI is required",
-    targetUriInvalid: "Target URI must be a valid URL with api-version query parameter and either a deployment name in the path or /openai/responses",
+    targetUriInvalid:
+      "Target URI must be a valid URL with api-version query parameter and either a deployment name in the path or /openai/responses",
     targetUriLabel: "Target URI",
     credentialsRequired: "Credentials file is required",
     credentialsLabel: "Credentials File",
-    credentialsSubtext: "Upload your Google Cloud service account JSON credentials file.",
+    credentialsSubtext:
+      "Upload your Google Cloud service account JSON credentials file.",
     locationLabel: "Location",
     providerNameRequired: "Provider Name is required",
     modelNameRequired: "Model name is required",
@@ -3551,10 +3556,12 @@ const en = {
     customConfigKey: "Key",
     customConfigValue: "Value",
     addNew: "Add New",
-    customDefaultModelSubtext: "The model to use by default for this provider. Must be one of the models listed above.",
+    customDefaultModelSubtext:
+      "The model to use by default for this provider. Must be one of the models listed above.",
     systemDefault: "System Default",
     userDefault: "User Default",
-    fillInAsNeeded: "Fill in the following as needed. Refer to the LiteLLM documentation for the provider specified above to determine which fields are required.",
+    fillInAsNeeded:
+      "Fill in the following as needed. Refer to the LiteLLM documentation for the provider specified above to determine which fields are required.",
     optionalApiKey: "[Optional] API Key",
     optionalApiBase: "[Optional] API Base",
     optionalApiVersion: "[Optional] API Version",
@@ -3564,7 +3571,8 @@ const en = {
     startNewSession: "Start New Session",
   },
   fileUpload: {
-    dragAndDropMultiple: "Drag and drop some files here, or click to select files",
+    dragAndDropMultiple:
+      "Drag and drop some files here, or click to select files",
     dragAndDropSingle: "Drag and drop a file here, or click to select a file",
     selectedFiles: "Selected Files",
     selectedFile: "Selected File",
@@ -3627,7 +3635,8 @@ const en = {
     headerValue: "Header Value",
     addHeader: "Add Header",
     onlyForYourAccount: "Only for your own account",
-    credentialsNotShared: "The following credentials will not be shared with your organization.",
+    credentialsNotShared:
+      "The following credentials will not be shared with your organization.",
   },
   openApiPage: {
     authSaved: "authentication {{action}} successfully.",
@@ -3651,16 +3660,21 @@ const en = {
     noSummary: "No summary provided",
     deleteTitle: "Delete OpenAPI action",
     deleteButton: "Delete",
-    deleteConfirmText: "This will permanently delete the OpenAPI action {{name}} and its configuration.",
-    deleteConfirmQuestion: "Are you sure you want to delete this OpenAPI action?",
+    deleteConfirmText:
+      "This will permanently delete the OpenAPI action {{name}} and its configuration.",
+    deleteConfirmQuestion:
+      "Are you sure you want to delete this OpenAPI action?",
   },
   openAPIAuth: {
-    oauthConfigLoadError: "Failed to load existing OAuth configuration. Re-enter the details to update it.",
+    oauthConfigLoadError:
+      "Failed to load existing OAuth configuration. Re-enter the details to update it.",
     loadingConfig: "Loading existing configuration...",
     authMethodLabel: "Authentication Method",
     selectMethod: "Select method",
-    oauthDescription: "Each user authenticates via OAuth with their own credentials.",
-    ptOauthDescription: "Forward the user's OAuth access token used to authenticate Onyx.",
+    oauthDescription:
+      "Each user authenticates via OAuth with their own credentials.",
+    ptOauthDescription:
+      "Forward the user's OAuth access token used to authenticate Onyx.",
     customHeaderDescription: "Send custom headers with every request.",
     authorizationUrlLabel: "Authorization URL",
     tokenUrlLabel: "Token URL",
@@ -3672,16 +3686,20 @@ const en = {
     optional: "Optional",
     scopesPlaceholder: "e.g. repo, user",
     scopesDescription: "Comma-separated list of OAuth scopes to request.",
-    oauthPassthroughNote: "OAuth passthrough is only available if you enable OIDC or OAuth authentication.",
+    oauthPassthroughNote:
+      "OAuth passthrough is only available if you enable OIDC or OAuth authentication.",
     useRedirectUri: "Use redirect URI:",
     copyRedirectUri: "Copy redirect URI",
     customHeadersTitle: "Authentication Headers",
-    customHeadersDescription: "Specify custom headers for all requests sent to this action's API endpoint.",
+    customHeadersDescription:
+      "Specify custom headers for all requests sent to this action's API endpoint.",
     headerKey: "Header",
     headerValue: "Value",
     addHeader: "Add Header",
-    passthroughText: "Use pass-through for services with shared identity provider.",
-    passthroughDescription: "Onyx will forward the user's OAuth access token directly to the server as an Authorization header. Make sure the server supports authentication with the same provider.",
+    passthroughText:
+      "Use pass-through for services with shared identity provider.",
+    passthroughDescription:
+      "Onyx will forward the user's OAuth access token directly to the server as an Authorization header. Make sure the server supports authentication with the same provider.",
     cancel: "Cancel",
     connecting: "Connecting...",
     connect: "Connect",
@@ -3703,7 +3721,8 @@ const en = {
     formatDefinition: "Format definition",
     schemaPlaceholder: "Enter your OpenAPI schema here",
     noSummary: "No summary provided",
-    urlFoundInSchema: "URL found in the schema. Only connect to servers you trust.",
+    urlFoundInSchema:
+      "URL found in the schema. Only connect to servers you trust.",
     noActionsFound: "No Actions Found",
     noActionsDescription: "Provide OpenAPI schema to preview actions here.",
     authenticatedAndEnabled: "Authenticated & Enabled",
@@ -3722,13 +3741,17 @@ const en = {
     you: "You",
     owner: "Owner",
     agentIsPublic: "This agent is public to your organization.",
-    agentIsPublicDescription: "Everyone in your organization has access to this agent.",
+    agentIsPublicDescription:
+      "Everyone in your organization has access to this agent.",
     publishTitle: "Publish This Agent",
-    publishDescription: "Make this agent available to everyone in your organization.",
+    publishDescription:
+      "Make this agent available to everyone in your organization.",
     featureTitle: "Feature This Agent",
-    featureDescription: "Show this agent at the top of the explore agents list and automatically pin it to the sidebar for new users with access.",
+    featureDescription:
+      "Show this agent at the top of the explore agents list and automatically pin it to the sidebar for new users with access.",
     addLabels: "Add labels...",
-    labelsDescription: "Add labels and categories to help people better discover this agent.",
+    labelsDescription:
+      "Add labels and categories to help people better discover this agent.",
     copyLink: "Copy Link",
     cancel: "Cancel",
   },
@@ -3787,7 +3810,8 @@ const en = {
   },
   usageReports: {
     generateTitle: "Generate Usage Reports",
-    generateDescription: "Generate usage statistics for users in the workspace.",
+    generateDescription:
+      "Generate usage statistics for users in the workspace.",
     pickDateRange: "Pick a date range",
     last7Days: "Last 7 days",
     last30Days: "Last 30 days",
@@ -3796,7 +3820,8 @@ const en = {
     generating: "Generating...",
     generateReport: "Generate Report",
     generatingWait: "A report is currently being generated. Please wait...",
-    backgroundGeneration: "Report generation runs in the background. Check the \"Previous Reports\" section below to download when ready.",
+    backgroundGeneration:
+      'Report generation runs in the background. Check the "Previous Reports" section below to download when ready.',
     reportGenerationInProgress: "Report Generation In Progress",
     previousReports: "Previous Reports",
     report: "Report",
@@ -3806,7 +3831,8 @@ const en = {
     allTimePeriod: "All time",
     autoGenerated: "Auto generated",
     somethingWentWrong: "Something went wrong.",
-    reportLongTime: "Report generation is taking longer than expected. The report will continue generating in the background. Please check back in a few minutes.",
+    reportLongTime:
+      "Report generation is taking longer than expected. The report will continue generating in the background. Please check back in a few minutes.",
   },
   performanceCharts: {
     usageTitle: "Usage",
@@ -3817,7 +3843,8 @@ const en = {
     selectAgent: "Select an agent to display",
     searchAgents: "Search agents...",
     selectAgentToView: "Select an agent to view analytics",
-    noDataForAgent: "No data found for selected agent in the specified time range",
+    noDataForAgent:
+      "No data found for selected agent in the specified time range",
     failedFetchData: "Failed to fetch data...",
     slackChannelTitle: "Slack Channel",
     totalVsAutoResolved: "Total Queries vs Auto Resolved",
@@ -3831,16 +3858,19 @@ const en = {
   },
   appearanceTheme: {
     applicationDisplayName: "Application Display Name",
-    applicationDisplayNameDesc: "This name will show across the app and replace \"Onyx\" in the UI.",
+    applicationDisplayNameDesc:
+      'This name will show across the app and replace "Onyx" in the UI.',
     logoDisplayStyle: "Logo Display Style",
     logoAndName: "Logo & Name",
     logoOnly: "Logo Only",
     nameOnly: "Name Only",
-    logoDisplayStyleDesc: "Choose what to display at the top of the sidebar. Options become available once you add a logo or application name.",
+    logoDisplayStyleDesc:
+      "Choose what to display at the top of the sidebar. Options become available once you add a logo or application name.",
     logoOnly_tooltip: "Show only your application logo.",
     logoOnly_disabled_tooltip: "Upload a logo to enable this option.",
     nameOnly_tooltip: "Show only your application name.",
-    nameOnly_disabled_tooltip: "Enter an application name to enable this option.",
+    nameOnly_disabled_tooltip:
+      "Enter an application name to enable this option.",
     logoAndName_tooltip: "Show both your application logo and name.",
     applicationLogo: "Application Logo",
     update: "Update",
@@ -3848,14 +3878,17 @@ const en = {
     greetingMessageDesc: "Add a short message to the home page.",
     chatHeaderText: "Chat Header Text",
     chatFooterText: "Chat Footer Text",
-    chatFooterDesc: "Add markdown content for disclaimers or additional information.",
+    chatFooterDesc:
+      "Add markdown content for disclaimers or additional information.",
     addMarkdownContent: "Add markdown content",
     showFirstVisitNotice: "Show First Visit Notice",
-    showFirstVisitNoticeDesc: "Show a one-time pop-up for new users at their first visit.",
+    showFirstVisitNoticeDesc:
+      "Show a one-time pop-up for new users at their first visit.",
     noticeHeader: "Notice Header",
     noticeContent: "Notice Content",
     requireConsentToNotice: "Require Consent to Notice",
-    requireConsentDesc: "Require the user to read and agree to the notice before accessing the application.",
+    requireConsentDesc:
+      "Require the user to read and agree to the notice before accessing the application.",
     noticeConsentPrompt: "Notice Consent Prompt",
     chatFooterPlaceholder: "Chat Footer Content",
     chatHeaderPlaceholder: "Chat Header Content",
@@ -3869,23 +3902,30 @@ const en = {
     assistant: "Assistant",
     documentSets: "Document Sets",
     actions: "Actions",
-    noChannelConfigs: "No channel-specific configurations. Add a new configuration to customize behavior for specific channels.",
-    deleteSuccess: "Slack bot config \"{{id}}\" deleted",
+    noChannelConfigs:
+      "No channel-specific configurations. Add a new configuration to customize behavior for specific channels.",
+    deleteSuccess: 'Slack bot config "{{id}}" deleted',
     deleteError: "Failed to delete Slack bot config - {{error}}",
     defaultConfigBadge: "Default Configuration",
-    defaultConfigDesc: "This default configuration will apply to all channels and direct messages (DMs) in your Slack workspace.",
+    defaultConfigDesc:
+      "This default configuration will apply to all channels and direct messages (DMs) in your Slack workspace.",
     disableDefaultConfig: "Disable Default Configuration",
-    disableDefaultWarning: "Warning: Disabling the default configuration means OnyxBot won't respond in Slack channels unless they are explicitly configured. Additionally, OnyxBot will not respond to DMs.",
+    disableDefaultWarning:
+      "Warning: Disabling the default configuration means OnyxBot won't respond in Slack channels unless they are explicitly configured. Additionally, OnyxBot will not respond to DMs.",
     slackChannelName: "Slack Channel Name",
     slackChannelPlaceholder: "Enter channel name (e.g., general, support)",
-    slackChannelSubtext: "Enter the name of the Slack channel (without the # symbol)",
+    slackChannelSubtext:
+      "Enter the name of the Slack channel (without the # symbol)",
     knowledgeSource: "Knowledge Source",
     allPublicKnowledge: "All Public Knowledge",
-    allPublicKnowledgeDesc: "Let OnyxBot respond based on information from all public connectors",
+    allPublicKnowledgeDesc:
+      "Let OnyxBot respond based on information from all public connectors",
     specificDocumentSets: "Specific Document Sets",
-    specificDocumentSetsDesc: "Control which documents to use for answering questions",
+    specificDocumentSetsDesc:
+      "Control which documents to use for answering questions",
     searchAgent: "Search Agent",
-    searchAgentDesc: "Control both the documents and the prompt to use for answering questions",
+    searchAgentDesc:
+      "Control both the documents and the prompt to use for answering questions",
     nonSearchAgent: "Non-Search Agent",
     nonSearchAgentDesc: "Chat with an agent that does not use documents",
     searchConfig: "Search Configuration",
@@ -3894,17 +3934,22 @@ const en = {
     answerTypeStandard: "Standard",
     answerTypeDetailed: "Detailed",
     onlyRespondIfCitations: "Only respond if citations found",
-    onlyRespondIfCitationsTooltip: "If set, will only answer questions where the model successfully produces citations",
+    onlyRespondIfCitationsTooltip:
+      "If set, will only answer questions where the model successfully produces citations",
     generalConfig: "General Configuration",
     showContinueInWebUI: "Show Continue in Web UI button",
-    showContinueInWebUITooltip: "If set, will show a button at the bottom of the response that allows the user to continue the conversation in the Onyx Web UI",
-    stillNeedHelp: "Give a \"Still need help?\" button",
+    showContinueInWebUITooltip:
+      "If set, will show a button at the bottom of the response that allows the user to continue the conversation in the Onyx Web UI",
+    stillNeedHelp: 'Give a "Still need help?" button',
     onlyRespondToQuestions: "Only respond to questions",
-    onlyRespondToQuestionsTooltip: "If set, OnyxBot will only respond to messages that contain a question mark",
+    onlyRespondToQuestionsTooltip:
+      "If set, OnyxBot will only respond to messages that contain a question mark",
     respondTagOnly: "Respond to @OnyxBot Only",
-    respondTagOnlyTooltip: "If set, OnyxBot will only respond when directly tagged",
+    respondTagOnlyTooltip:
+      "If set, OnyxBot will only respond when directly tagged",
     respondToBots: "Respond to Bot messages",
-    respondToBotsTooltip: "If not set, OnyxBot will always ignore messages from Bots",
+    respondToBotsTooltip:
+      "If not set, OnyxBot will always ignore messages from Bots",
     respondEphemeral: "Respond to user in a private (ephemeral) message",
     privacyAlert: "Privacy Alert",
     relevantConnectors: "Relevant Connectors:",
@@ -3913,30 +3958,42 @@ const en = {
     viewAll: "View all ",
     documentSetsLabel: "document sets",
     agentsLabel: "agents",
-    selectDocSetsLabel: "Select the document sets OnyxBot will use while answering questions in Slack.",
-    selectSearchAgentLabel: "Select the search-enabled agent OnyxBot will use while answering questions in Slack.",
-    selectNonSearchAgentLabel: "Select the non-search agent OnyxBot will use while answering questions in Slack.",
-    syncConnectorsNote: "Note: Some of your agents have auto-synced connectors in their document sets. You cannot select these agents as they will not be able to answer questions in Slack.",
-    stillNeedHelpTooltip: "OnyxBot's response will include a button at the bottom of the response that asks the user if they still need help.",
+    selectDocSetsLabel:
+      "Select the document sets OnyxBot will use while answering questions in Slack.",
+    selectSearchAgentLabel:
+      "Select the search-enabled agent OnyxBot will use while answering questions in Slack.",
+    selectNonSearchAgentLabel:
+      "Select the non-search agent OnyxBot will use while answering questions in Slack.",
+    syncConnectorsNote:
+      "Note: Some of your agents have auto-synced connectors in their document sets. You cannot select these agents as they will not be able to answer questions in Slack.",
+    stillNeedHelpTooltip:
+      "OnyxBot's response will include a button at the bottom of the response that asks the user if they still need help.",
     configureStillNeedHelp: "Configure Still Need Help Button",
     optionalUsersGroupsTag: "(Optional) Users / Groups to Tag",
-    usersGroupsTagSubtext: "The Slack users / groups we should tag if the user clicks the \"Still need help?\" button. If no emails are provided, we will not tag anyone and will just react with a 🆘 emoji to the original message.",
+    usersGroupsTagSubtext:
+      'The Slack users / groups we should tag if the user clicks the "Still need help?" button. If no emails are provided, we will not tag anyone and will just react with a 🆘 emoji to the original message.',
     userEmailGroupPlaceholder: "User email or user group name...",
     optionalRespondCertainUsers: "(Optional) Respond to Certain Users / Groups",
-    respondCertainUsersSubtext: "If specified, OnyxBot responses will only be visible to the members or groups in this list.",
-    respondEphemeralTooltip: "If set, OnyxBot will respond only to the user in a private (ephemeral) message. If you also chose 'Search' Agent above, selecting this option will make documents that are private to the user available for their queries.",
-    privacyAlertDesc: "Please note that if the private (ephemeral) response is *not selected*, only public documents within the selected document sets will be accessible for user queries. If the private (ephemeral) response *is selected*, user quries can also leverage documents that the user has already been granted access to. Note that users will be able to share the response with others in the channel, so please ensure that this is aligned with your company sharing policies.",
+    respondCertainUsersSubtext:
+      "If specified, OnyxBot responses will only be visible to the members or groups in this list.",
+    respondEphemeralTooltip:
+      "If set, OnyxBot will respond only to the user in a private (ephemeral) message. If you also chose 'Search' Agent above, selecting this option will make documents that are private to the user available for their queries.",
+    privacyAlertDesc:
+      "Please note that if the private (ephemeral) response is *not selected*, only public documents within the selected document sets will be accessible for user queries. If the private (ephemeral) response *is selected*, user quries can also leverage documents that the user has already been granted access to. Note that users will be able to share the response with others in the channel, so please ensure that this is aligned with your company sharing policies.",
     update: "Update",
     create: "Create",
     cancel: "Cancel",
-    autoSyncDocs: "These document sets cannot be attached as they have auto-synced docs:",
-    deletedConfig: "Slack bot config \"{{id}}\" deleted",
+    autoSyncDocs:
+      "These document sets cannot be attached as they have auto-synced docs:",
+    deletedConfig: 'Slack bot config "{{id}}" deleted',
     failedDeleteConfig: "Failed to delete Slack bot config - {{errorMsg}}",
-    removedDocumentSets: "We removed one or more document sets from your selection because they are no longer valid. Please review and update your configuration.",
+    removedDocumentSets:
+      "We removed one or more document sets from your selection because they are no longer valid. Please review and update your configuration.",
     incompatibleDocSets: "Some incompatible document sets are {{visibility}}.",
     visible: "visible",
     hidden: "hidden",
-    disabledDocSetTooltip: "Unable to use this document set because it contains a connector with auto-sync permissions. OnyxBot's responses in this channel are visible to all Slack users, so mirroring the asker's permissions could inadvertently expose private information.",
+    disabledDocSetTooltip:
+      "Unable to use this document set because it contains a connector with auto-sync permissions. OnyxBot's responses in this channel are visible to all Slack users, so mirroring the asker's permissions could inadvertently expose private information.",
   },
   inlineFileManagement: {
     files: "Files",
@@ -3954,28 +4011,38 @@ const en = {
     confirmFileChanges: "Confirm File Changes",
     confirmDesc: "When you save these changes, the following will happen:",
     filesWillBeRemoved: "{{count}} file(s) will be removed",
-    filesRemovedDesc: "Documents from these files will be pruned from the Document Index",
+    filesRemovedDesc:
+      "Documents from these files will be pruned from the Document Index",
     filesWillBeAdded: "{{count}} file(s) will be added",
-    filesAddedDesc: "New files will be uploaded, chunked, embedded, and indexed in the Document Index",
+    filesAddedDesc:
+      "New files will be uploaded, chunked, embedded, and indexed in the Document Index",
     confirmAndSave: "Confirm & Save",
     errorLoadingFiles: "Error loading files: {{message}}",
-    cannotRemoveAll: "Cannot remove all files from a connector. Delete the connector if this is desired.",
-    filesUpdated: "Files updated successfully! Document index is being updated in the background. New files are being indexed and removed files will be pruned from the search results.",
+    cannotRemoveAll:
+      "Cannot remove all files from a connector. Delete the connector if this is desired.",
+    filesUpdated:
+      "Files updated successfully! Document index is being updated in the background. New files are being indexed and removed files will be pruned from the search results.",
     failedToUpdate: "Failed to update files",
   },
   googleCredentials: {
     uploadAppCredentials: "Successfully uploaded app credentials",
-    failedUploadAppCredentials: "Failed to upload app credentials - {{errorMsg}}",
+    failedUploadAppCredentials:
+      "Failed to upload app credentials - {{errorMsg}}",
     uploadServiceAccountKey: "Successfully uploaded service account key",
-    failedUploadServiceAccountKey: "Failed to upload service account key - {{errorMsg}}",
+    failedUploadServiceAccountKey:
+      "Failed to upload service account key - {{errorMsg}}",
     pleaseUploadJson: "Please upload a JSON file",
     dropJsonHere: "Drop JSON file here",
     selectOrDragJson: "Select or drag JSON credentials file...",
     uploading: "Uploading {{fileName}}...",
-    curatorsCannotSetupGmail: "Curators are unable to set up the Gmail credentials. To add a Gmail connector, please contact an administrator.",
-    curatorsCannotSetupDrive: "Curators are unable to set up the Google Drive credentials. To add a Google Drive connector, please contact an administrator.",
-    connectGmailDesc: "To connect your Gmail, create credentials (either OAuth App or Service Account), download the JSON file, and upload it below.",
-    connectDriveDesc: "To connect your Google Drive, create credentials (either OAuth App or Service Account), download the JSON file, and upload it below.",
+    curatorsCannotSetupGmail:
+      "Curators are unable to set up the Gmail credentials. To add a Gmail connector, please contact an administrator.",
+    curatorsCannotSetupDrive:
+      "Curators are unable to set up the Google Drive credentials. To add a Google Drive connector, please contact an administrator.",
+    connectGmailDesc:
+      "To connect your Gmail, create credentials (either OAuth App or Service Account), download the JSON file, and upload it below.",
+    connectDriveDesc:
+      "To connect your Google Drive, create credentials (either OAuth App or Service Account), download the JSON file, and upload it below.",
     viewSetupInstructions: "View detailed setup instructions",
     deleteCredentials: "Delete Credentials",
     successDeletedCredentials: "Successfully deleted {{type}}",
@@ -3983,29 +4050,40 @@ const en = {
     serviceAccountKey: "service account key",
     appCredentials: "app credentials",
     authenticationComplete: "Authentication Complete",
-    gmailAuthenticatedDesc: "Your Gmail credentials have been successfully uploaded and authenticated.",
-    driveAuthenticatedDesc: "Your Google Drive credentials have been successfully uploaded and authenticated.",
+    gmailAuthenticatedDesc:
+      "Your Gmail credentials have been successfully uploaded and authenticated.",
+    driveAuthenticatedDesc:
+      "Your Google Drive credentials have been successfully uploaded and authenticated.",
     revokeAccess: "Revoke Access",
     gmailAuthentication: "Gmail Authentication",
     driveAuthentication: "Google Drive Authentication",
-    completeStep1Gmail: "Please complete Step 1 by uploading either OAuth credentials or a Service Account key before proceeding with authentication.",
-    completeStep1Drive: "Please complete Step 1 by uploading either OAuth credentials or a Service Account key before proceeding with authentication.",
+    completeStep1Gmail:
+      "Please complete Step 1 by uploading either OAuth credentials or a Service Account key before proceeding with authentication.",
+    completeStep1Drive:
+      "Please complete Step 1 by uploading either OAuth credentials or a Service Account key before proceeding with authentication.",
     primaryAdminEmail: "Primary Admin Email:",
-    primaryAdminEmailGmailDesc: "Enter the email of an admin/owner of the Google Organization that owns the Gmail account(s) you want to index.",
-    primaryAdminEmailDriveDesc: "Enter the email of an admin/owner of the Google Organization that owns the Google Drive(s) you want to index.",
+    primaryAdminEmailGmailDesc:
+      "Enter the email of an admin/owner of the Google Organization that owns the Gmail account(s) you want to index.",
+    primaryAdminEmailDriveDesc:
+      "Enter the email of an admin/owner of the Google Organization that owns the Google Drive(s) you want to index.",
     creating: "Creating...",
     createCredential: "Create Credential",
     createdServiceAccount: "Successfully created service account credential",
-    failedCreateServiceAccount: "Failed to create service account credential - {{errorMsg}}",
-    gmailOAuthDesc: "Next, you need to authenticate with Gmail via OAuth. This gives us read access to the emails you have access to in your Gmail account.",
-    driveOAuthDesc: "Next, you need to authenticate with Google Drive via OAuth. This gives us read access to the documents you have access to in your Google Drive account.",
+    failedCreateServiceAccount:
+      "Failed to create service account credential - {{errorMsg}}",
+    gmailOAuthDesc:
+      "Next, you need to authenticate with Gmail via OAuth. This gives us read access to the emails you have access to in your Gmail account.",
+    driveOAuthDesc:
+      "Next, you need to authenticate with Google Drive via OAuth. This gives us read access to the documents you have access to in your Google Drive account.",
     authenticating: "Authenticating...",
     authenticateWithGmail: "Authenticate with Gmail",
     authenticateWithDrive: "Authenticate with Google Drive",
     failedAuthGmail: "Failed to authenticate with Gmail - {{error}}",
     failedAuthDrive: "Failed to authenticate with Google Drive - {{error}}",
-    revokeGmailError: "Cannot revoke the Gmail credential while any connector is still associated with the credential. Please delete all associated connectors, then try again.",
-    revokeDriveError: "Cannot revoke the Google Drive credential while any connector is still associated with the credential. Please delete all associated connectors, then try again.",
+    revokeGmailError:
+      "Cannot revoke the Gmail credential while any connector is still associated with the credential. Please delete all associated connectors, then try again.",
+    revokeDriveError:
+      "Cannot revoke the Google Drive credential while any connector is still associated with the credential. Please delete all associated connectors, then try again.",
     revokedGmail: "Successfully revoked the Gmail credential!",
     revokedDrive: "Successfully revoked the Google Drive credential!",
     mustBeValidEmail: "Must be a valid email",
@@ -4069,18 +4147,22 @@ const en = {
   },
   onboardingUserInfo: {
     demoDataConfig: "Demo Data Configuration",
-    demoDataDesc: "While you wait for your data to sync, try out our simulated demo dataset! The simulated data will adapt to your role and level choices below.",
+    demoDataDesc:
+      "While you wait for your data to sync, try out our simulated demo dataset! The simulated data will adapt to your role and level choices below.",
     selectRole: "Select your role:",
     level: "Level",
-    youWillPlay: "You will play the role of {{position}} named {{name}} working at",
+    youWillPlay:
+      "You will play the role of {{position}} named {{name}} working at",
   },
   userLibraryModal: {
     yourFiles: "Your Files",
-    yourFilesDesc: "Upload files for your agent to read (Excel, Word, PowerPoint, etc.)",
+    yourFilesDesc:
+      "Upload files for your agent to read (Excel, Word, PowerPoint, etc.)",
     loadingFiles: "Loading files...",
     failedToLoad: "Failed to load files",
     noFilesYet: "No files uploaded yet",
-    noFilesDesc: "Upload Excel, Word, PowerPoint, or other files for your agent to work with",
+    noFilesDesc:
+      "Upload Excel, Word, PowerPoint, or other files for your agent to work with",
     done: "Done",
     newFolder: "New Folder",
     folderName: "Folder name",
@@ -4131,7 +4213,8 @@ const en = {
     iamRole: "IAM Role",
     accessKey: "Access Key",
     longTermApiKey: "Long-term API Key",
-    iamDesc: "Onyx will use the IAM role attached to the environment it's running in to authenticate.",
+    iamDesc:
+      "Onyx will use the IAM role attached to the environment it's running in to authenticate.",
     awsAccessKeyId: "AWS Access Key ID",
     awsSecretAccessKey: "AWS Secret Access Key",
     checkingCredentials: "Checking credentials...",
@@ -4148,7 +4231,8 @@ const en = {
     apiBaseUrl: "API Base URL",
     selfHostedOllamaBaseUrl: "Your self-hosted Ollama API base URL.",
     connectLlmTitle: "Connect your LLM models",
-    connectLlmSubtitle: "Onyx supports both self-hosted models and popular providers.",
+    connectLlmSubtitle:
+      "Onyx supports both self-hosted models and popular providers.",
     viewInAdminPanel: "View in Admin Panel",
     customLLMProvider: "Custom LLM Provider",
     liteLLMCompatible: "LiteLLM Compatible APIs",
@@ -4157,7 +4241,8 @@ const en = {
     setupClaude: "Set up Claude",
     setupClaudeDesc: "Connect to Anthropic and set up your Claude models.",
     setupAzure: "Set up Azure OpenAI",
-    setupAzureDesc: "Connect to Microsoft Azure and set up your Azure OpenAI models.",
+    setupAzureDesc:
+      "Connect to Microsoft Azure and set up your Azure OpenAI models.",
     setupBedrock: "Set up Amazon Bedrock",
     setupBedrockDesc: "Connect to AWS and set up your Amazon Bedrock models.",
     setupOllama: "Set up Ollama",
@@ -4165,9 +4250,11 @@ const en = {
     setupOpenAI: "Set up GPT",
     setupOpenAIDesc: "Connect to OpenAI and set up your ChatGPT models.",
     setupOpenRouter: "Set up OpenRouter",
-    setupOpenRouterDesc: "Connect to OpenRouter and set up your OpenRouter models.",
+    setupOpenRouterDesc:
+      "Connect to OpenRouter and set up your OpenRouter models.",
     setupVertex: "Set up Gemini",
-    setupVertexDesc: "Connect to Google Cloud Vertex AI and set up your Gemini models.",
+    setupVertexDesc:
+      "Connect to Google Cloud Vertex AI and set up your Gemini models.",
   },
   nameStep: {
     whatShouldOnyxCallYou: "What should Onyx call you?",
@@ -4175,31 +4262,39 @@ const en = {
     yourName: "Your name",
   },
   connectorMultiSelect: {
-    allDocumentsDesc: "All documents indexed by the selected connectors will be part of this document set.",
+    allDocumentsDesc:
+      "All documents indexed by the selected connectors will be part of this document set.",
     allConnectorsSelected: "All connectors selected",
-    allConnectorsSelectedDesc: "All available connectors have been selected. Remove connectors below to add different ones.",
+    allConnectorsSelectedDesc:
+      "All available connectors have been selected. Remove connectors below to add different ones.",
     noMatchingConnectors: "No matching connectors found",
-    noPrivateConnectors: "No private connectors available. Create a private connector first.",
+    noPrivateConnectors:
+      "No private connectors available. Create a private connector first.",
     noMoreConnectors: "No more connectors available",
-    noConnectorsSelected: "No connectors selected. Search and select connectors above.",
+    noConnectorsSelected:
+      "No connectors selected. Search and select connectors above.",
   },
   federatedConnectorSelector: {
-    federatedConnectorsDesc: "Documents from selected federated connectors will be searched in real-time during queries.",
+    federatedConnectorsDesc:
+      "Documents from selected federated connectors will be searched in real-time during queries.",
     allFederatedSelected: "All federated connectors selected",
     noMatchingFederated: "No matching federated connectors found",
     noMoreFederated: "No more federated connectors available",
-    noFederatedSelected: "No federated connectors selected. Search and select connectors above.",
+    noFederatedSelected:
+      "No federated connectors selected. Search and select connectors above.",
   },
   documentSetForm: {
     nameRequired: "Please enter a name for the set",
-    atLeastOneConnector: "Please select at least one connector (regular or federated)",
+    atLeastOneConnector:
+      "Please select at least one connector (regular or federated)",
     nameLabel: "Name:",
     namePlaceholder: "A name for the document set",
     descriptionLabel: "Description:",
     descriptionPlaceholder: "Describe what the document set represents",
     connectorsFor: "Connectors available to {{label}}",
     connectorsNotFor: "Connectors not available to the {{label}}",
-    nonVisibleDesc: "Only connectors that are directly assigned to the group you are trying to add the document set to will be available.",
+    nonVisibleDesc:
+      "Only connectors that are directly assigned to the group you are trying to add the document set to will be available.",
     pickConnectors: "Pick your connectors",
     searchConnectors: "Search for connectors...",
     federatedLabel: "Federated Connectors",
@@ -4215,7 +4310,8 @@ const en = {
     modifyKeyTitle: "Modify your {{provider}} key",
     modifyConfigTitle: "Modify your {{provider}} Configuration",
     modifyDesc: "You can modify your configuration by providing a new API key.",
-    modifyDescWithUrl: "You can modify your configuration by providing a new API key or API URL.",
+    modifyDescWithUrl:
+      "You can modify your configuration by providing a new API key or API URL.",
     apiKey: "API Key",
     uploadJson: "Upload JSON File",
     uploadedFile: "Uploaded file: {{name}}",
@@ -4223,13 +4319,16 @@ const en = {
     apiUrl: "API URL",
     pasteApiUrl: "Paste your API URL here",
     testModel: "Test Model",
-    liteLlmNote: "Since you are using a liteLLM proxy, we'll need a model name to test the connection with.",
+    liteLlmNote:
+      "Since you are using a liteLLM proxy, we'll need a model name to test the connection with.",
     pasteModelName: "Paste your model name here",
     updateConfig: "Update Configuration",
     deleteConfig: "Delete Configuration",
     canDelete: "You can delete your configuration.",
-    deleteNote: "This is only possible if you have already switched to a different embedding type!",
-    failedParseJson: "Failed to parse JSON file. Please ensure it's a valid JSON.",
+    deleteNote:
+      "This is only possible if you have already switched to a different embedding type!",
+    failedParseJson:
+      "Failed to parse JSON file. Please ensure it's a valid JSON.",
     unknownError: "An unknown error occurred",
     unknownFileError: "An unknown error occurred while processing the file.",
     providerTypeInvalid: "Provider type is invalid or missing.",
@@ -4263,7 +4362,8 @@ const en = {
     apiKeyRequired: "API Key is required",
     modelNameRequired: "Model name is required",
     targetUriRequired: "Target URI is required",
-    targetUriValidation: "Target URI must be a valid URL with api-version query parameter and either a deployment name in the path (/openai/deployments/{name}/...) or /openai/responses for realtime",
+    targetUriValidation:
+      "Target URI must be a valid URL with api-version query parameter and either a deployment name in the path (/openai/deployments/{name}/...) or /openai/responses for realtime",
     credentialsRequired: "Credentials file is required",
     regionRequired: "AWS region is required",
   },

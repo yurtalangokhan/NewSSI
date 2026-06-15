@@ -1,19 +1,10 @@
-import { NextResponse } from 'next/server';
+import { proxyToBackend } from "@/lib/api/proxy";
+import { NextRequest } from "next/server";
 
-const INTERNAL_URL = process.env.INTERNAL_URL || "http://localhost:8123";
-
-export async function GET(request: Request, { params }: { params: Promise<{ chatSessionId: string }> }) {
-  try {
-    const { chatSessionId } = await params;
-    const cookie = request.headers.get("cookie") || "";
-    const response = await fetch(`${INTERNAL_URL}/api/chat/get-chat-session/${chatSessionId}`, {
-      headers: {
-        ...(cookie ? { Cookie: cookie } : {}),
-      },
-    });
-    const data = await response.json();
-    return NextResponse.json(data);
-  } catch (error) {
-    return NextResponse.json({ error: "Failed to fetch chat session" }, { status: 500 });
-  }
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ chatSessionId: string }> }
+) {
+  const { chatSessionId } = await params;
+  return proxyToBackend(request, `/api/chat/get-chat-session/${chatSessionId}`);
 }

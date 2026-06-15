@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { HOST_URL, INTERNAL_URL } from "./constants";
+import { HOST_URL, INTERNAL_URL, USER_SERVICE_URL } from "./constants";
 import { processCookies } from "@/lib/userSS";
 
 export function buildClientUrl(path: string) {
@@ -14,6 +14,13 @@ export function buildUrl(path: string) {
     return `${INTERNAL_URL}${path}`;
   }
   return `${INTERNAL_URL}/${path}`;
+}
+
+export function buildUserServiceUrl(path: string) {
+  if (path.startsWith("/")) {
+    return `${USER_SERVICE_URL}${path}`;
+  }
+  return `${USER_SERVICE_URL}/${path}`;
 }
 
 export class UrlBuilder {
@@ -71,4 +78,20 @@ export async function fetchSS(url: string, options?: RequestInit) {
   };
 
   return fetch(buildUrl(url), init);
+}
+
+export async function fetchUserServiceSS(url: string, options?: RequestInit) {
+  const cookieString = processCookies(await cookies());
+
+  const init: RequestInit = {
+    credentials: "include",
+    cache: "no-store",
+    ...options,
+    headers: {
+      ...options?.headers,
+      cookie: cookieString,
+    },
+  };
+
+  return fetch(buildUserServiceUrl(url), init);
 }

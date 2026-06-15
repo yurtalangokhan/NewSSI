@@ -1,10 +1,6 @@
 "use client";
 
-import {
-  type User,
-  UserRole,
-  USER_ROLE_LABELS,
-} from "@/lib/types";
+import { type User, UserRole, USER_ROLE_LABELS } from "@/lib/types";
 import { ReactNode, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import CenteredPageSelector from "./CenteredPageSelector";
@@ -18,7 +14,6 @@ import {
 } from "@/components/ui/table";
 import { TableHeader } from "@/components/ui/table";
 import UserRoleDropdown from "./buttons/UserRoleDropdown";
-import DeleteUserButton from "./buttons/DeleteUserButton";
 import DeactivateUserButton from "./buttons/DeactivateUserButton";
 import usePaginatedFetch from "@/hooks/usePaginatedFetch";
 import { ThreeDotsLoader } from "@/components/Loading";
@@ -36,9 +31,12 @@ import { LeaveOrganizationButton } from "./buttons/LeaveOrganizationButton";
 import { NEXT_PUBLIC_CLOUD_ENABLED } from "@/lib/constants";
 import ResetPasswordModal from "./ResetPasswordModal";
 import EditUserModal from "./EditUserModal";
-import { LogOut, UserMinus } from "lucide-react";
 import Popover from "@/refresh-components/Popover";
-import { SvgKey, SvgMoreHorizontal } from "@opal/icons";
+import {
+  SvgKey,
+  SvgLogOut,
+  SvgMoreHorizontal,
+} from "@opal/icons";
 import { Button as OpalButton } from "@opal/components";
 const ITEMS_PER_PAGE = 10;
 const PAGES_PER_BATCH = 2;
@@ -68,7 +66,8 @@ export default function SignedUpUserTable({
   const [filters, setFilters] = useState<{
     is_active?: boolean;
     roles?: UserRole[];
-  }>({});
+    invited?: boolean;
+  }>({ invited: false });
 
   const [selectedRoles, setSelectedRoles] = useState<UserRole[]>([]);
   const [resetPasswordUser, setResetPasswordUser] = useState<User | null>(null);
@@ -86,7 +85,7 @@ export default function SignedUpUserTable({
   } = usePaginatedFetch<User>({
     itemsPerPage: ITEMS_PER_PAGE,
     pagesPerBatch: PAGES_PER_BATCH,
-    endpoint: "/api/manage/users/accepted",
+    endpoint: "/api/user-service/users",
     query: q,
     filter: filters,
   });
@@ -176,9 +175,15 @@ export default function SignedUpUserTable({
             <InputSelect.Trigger />
 
             <InputSelect.Content>
-              <InputSelect.Item value="all">{t("admin.users.allStatus")}</InputSelect.Item>
-              <InputSelect.Item value="true">{t("admin.users.activeStatus")}</InputSelect.Item>
-              <InputSelect.Item value="false">{t("admin.users.inactiveStatus")}</InputSelect.Item>
+              <InputSelect.Item value="all">
+                {t("admin.users.allStatus")}
+              </InputSelect.Item>
+              <InputSelect.Item value="true">
+                {t("admin.users.activeStatus")}
+              </InputSelect.Item>
+              <InputSelect.Item value="false">
+                {t("admin.users.inactiveStatus")}
+              </InputSelect.Item>
             </InputSelect.Content>
           </InputSelect>
 
@@ -186,29 +191,29 @@ export default function SignedUpUserTable({
             <SelectTrigger className="w-[260px] h-[34px] bg-neutral">
               <SelectValue>
                 {filters.roles?.length
-                  ? t("admin.users.rolesSelected", { count: filters.roles.length })
+                  ? t("admin.users.rolesSelected", {
+                      count: filters.roles.length,
+                    })
                   : t("admin.users.allRoles")}
               </SelectValue>
             </SelectTrigger>
             <SelectContent className="bg-background-tint-00">
-              {Object.entries(USER_ROLE_LABELS)
-                .filter(([role]) => role !== UserRole.EXT_PERM_USER)
-                .map(([role, label]) => (
-                  <div
-                    key={role}
-                    className="flex items-center space-x-2 px-2 py-1.5 cursor-pointer hover:bg-background-200"
-                    onClick={() => toggleRole(role as UserRole)}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={
-                        filters.roles?.includes(role as UserRole) || false
-                      }
-                      onChange={(e) => e.stopPropagation()}
-                    />
-                    <label className="text-sm font-normal">{t(`admin.users.roles.${role}`)}</label>
-                  </div>
-                ))}
+              {Object.entries(USER_ROLE_LABELS).map(([role]) => (
+                <div
+                  key={role}
+                  className="flex items-center space-x-2 px-2 py-1.5 cursor-pointer hover:bg-background-200"
+                  onClick={() => toggleRole(role as UserRole)}
+                >
+                  <input
+                    type="checkbox"
+                    checked={filters.roles?.includes(role as UserRole) || false}
+                    onChange={(e) => e.stopPropagation()}
+                  />
+                  <label className="text-sm font-normal">
+                    {t(`admin.users.roles.${role}`)}
+                  </label>
+                </div>
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -231,9 +236,6 @@ export default function SignedUpUserTable({
   );
 
   const renderUserRoleDropdown = (user: User) => {
-    if (user.role === UserRole.SLACK_USER) {
-      return <p className="ml-2">{t("admin.users.slackUserRole")}</p>;
-    }
     return (
       <UserRoleDropdown
         user={user}
@@ -265,21 +267,11 @@ export default function SignedUpUserTable({
                 mutate={refresh}
                 className={buttonClassName}
               >
-                <LogOut className="mr-2 h-4 w-4" />
+                <SvgLogOut className="mr-2" size={16} />
                 <span>{t("admin.users.leaveOrganization")}</span>
               </LeaveOrganizationButton>
             ) : (
               <>
-                {!user.is_active && (
-                  <DeleteUserButton
-                    user={user}
-                    mutate={refresh}
-                    className={buttonClassName}
-                  >
-                    <UserMinus className="mr-2 h-4 w-4" />
-                    <span>{t("admin.users.deleteUserButton")}</span>
-                  </DeleteUserButton>
-                )}
                 <DeactivateUserButton
                   user={user}
                   deactivate={user.is_active}
@@ -287,7 +279,9 @@ export default function SignedUpUserTable({
                   className={buttonClassName}
                 >
                   {/*<UserX className="mr-2 h-4 w-4" />*/}
-                  {user.is_active ? t("admin.users.deactivateUserButton") : t("admin.users.activateUserButton")}
+                  {user.is_active
+                    ? t("admin.users.deactivateUserButton")
+                    : t("admin.users.activateUserButton")}
                 </DeactivateUserButton>
               </>
             )}
@@ -300,7 +294,10 @@ export default function SignedUpUserTable({
                 {t("admin.users.resetPasswordButton")}
               </Button>
             )}
-            <Button className={buttonClassName} onClick={() => onEditUser(user)}>
+            <Button
+              className={buttonClassName}
+              onClick={() => onEditUser(user)}
+            >
               Edit User
             </Button>
           </div>
@@ -330,8 +327,12 @@ export default function SignedUpUserTable({
         <TableHeader>
           <TableRow>
             <TableHead>{t("admin.users.emailHeader")}</TableHead>
-            <TableHead className="text-center">{t("admin.users.roleHeader")}</TableHead>
-            <TableHead className="text-center">{t("admin.users.statusHeader")}</TableHead>
+            <TableHead className="text-center">
+              {t("admin.users.roleHeader")}
+            </TableHead>
+            <TableHead className="text-center">
+              {t("admin.users.statusHeader")}
+            </TableHead>
             <TableHead>
               <div className="flex">
                 <div className="ml-auto">{t("admin.users.actionsHeader")}</div>
@@ -367,7 +368,11 @@ export default function SignedUpUserTable({
                     {renderUserRoleDropdown(user)}
                   </TableCell>
                   <TableCell className="text-center w-[140px]">
-                    <i>{user.is_active ? t("admin.users.activeStatus") : t("admin.users.inactiveStatus")}</i>
+                    <i>
+                      {user.is_active
+                        ? t("admin.users.activeStatus")
+                        : t("admin.users.inactiveStatus")}
+                    </i>
                   </TableCell>
                   <TableCell className="text-right  w-[300px] ">
                     {renderActionButtons(user)}
@@ -396,6 +401,7 @@ export default function SignedUpUserTable({
           user={editUser}
           onClose={() => setEditUser(null)}
           onSuccess={refresh}
+          canDelete={!(NEXT_PUBLIC_CLOUD_ENABLED && editUser.id === currentUser?.id)}
         />
       )}
     </>

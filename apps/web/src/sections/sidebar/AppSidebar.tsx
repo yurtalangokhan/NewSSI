@@ -103,10 +103,6 @@ function buildVisibleAgents(
 
 const SKELETON_WIDTHS_BASE = ["w-4/5", "w-4/5", "w-3/5"];
 
-function shuffleWidths(): string[] {
-  return [...SKELETON_WIDTHS_BASE].sort(() => Math.random() - 0.5);
-}
-
 interface RecentsSectionProps {
   chatSessions: ChatSession[];
   hasMore: boolean;
@@ -128,8 +124,8 @@ function RecentsSection({
     },
   });
 
-  // Re-shuffle skeleton widths each time loaded session count changes
-  const skeletonWidths = useMemo(shuffleWidths, [chatSessions.length]);
+  // Use consistent skeleton widths to avoid hydration mismatch
+  const skeletonWidths = SKELETON_WIDTHS_BASE;
 
   // Sentinel ref for IntersectionObserver-based infinite scroll
   const sentinelRef = useRef<HTMLDivElement | null>(null);

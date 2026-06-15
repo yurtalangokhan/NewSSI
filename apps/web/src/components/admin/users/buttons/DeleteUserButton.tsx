@@ -12,23 +12,26 @@ const DeleteUserButton = ({
   mutate,
   className,
   children,
+  onSuccess,
 }: {
   user: User;
   mutate: () => void;
   className?: string;
   children?: React.ReactNode;
+  onSuccess?: () => void;
 }) => {
   const { t } = useTranslation();
   const { trigger, isMutating } = useSWRMutation(
-    "/api/manage/admin/delete-user",
+    `/api/user-service/users/${user.id}`,
     userMutationFetcher,
     {
       onSuccess: () => {
         mutate();
-        toast.success("User deleted successfully!");
+        onSuccess?.();
+        toast.success(t("admin.users.deletedSuccess"));
       },
       onError: (errorMsg) =>
-        toast.error(`Unable to delete user - ${errorMsg.message}`),
+        toast.error(t("admin.users.deleteError", { error: errorMsg.message })),
     }
   );
 
@@ -40,8 +43,8 @@ const DeleteUserButton = ({
           entityType={t("admin.users.userEntity")}
           entityName={user.email}
           onClose={() => setShowDeleteModal(false)}
-          onSubmit={() => trigger({ user_email: user.email, method: "DELETE" })}
-          additionalDetails="All data associated with this user will be deleted (including personas, tools and chat sessions)."
+          onSubmit={() => trigger({ method: "DELETE" })}
+          additionalDetails={t("admin.users.deleteAdditionalDetails")}
         />
       )}
 

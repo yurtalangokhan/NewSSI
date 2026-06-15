@@ -20,6 +20,7 @@ interface LLMOption {
   providerDisplayName: string;
   supportsImageInput: boolean;
   vendor: string | null;
+  isRemote?: boolean;
 }
 
 export interface LLMSelectorProps {
@@ -100,6 +101,7 @@ export default function LLMSelector({
             provider.provider_display_name || provider.provider,
           supportsImageInput,
           vendor: modelConfiguration.vendor || null,
+          isRemote: modelConfiguration.is_remote || false,
         };
 
         options.push(option);
@@ -213,6 +215,7 @@ export default function LLMSelector({
                     icon={createIcon(option.icon)}
                   >
                     {option.name}
+                    {option.isRemote ? " (Cloud)" : ""}
                   </InputSelect.Item>
                 ))}
               </InputSelect.Group>
@@ -224,6 +227,7 @@ export default function LLMSelector({
                 icon={createIcon(option.icon)}
               >
                 {option.name}
+                {option.isRemote ? " (Cloud)" : ""}
               </InputSelect.Item>
             ))}
       </InputSelect.Content>

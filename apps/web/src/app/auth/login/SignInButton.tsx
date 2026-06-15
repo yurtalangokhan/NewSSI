@@ -59,7 +59,7 @@ export default function SignInButton({
       secondary={
         authType === AuthType.GOOGLE_OAUTH || authType === AuthType.CLOUD
       }
-      className="!w-full"
+      className="w-full"
       leftIcon={icon}
       onClick={handleSignIn}
     >

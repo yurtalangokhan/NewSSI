@@ -1,0 +1,59 @@
+version: "3.9"
+
+services:
+  user-service-db:
+    image: postgres:16-alpine
+    container_name: user-service-db
+    environment:
+      POSTGRES_USER: user_service
+      POSTGRES_PASSWORD: user_service_pass
+      POSTGRES_DB: user_service
+    ports:
+      - "5436:5432"
+    volumes:
+      - user-service-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user_service"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  user-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: user-service
+    ports:
+      - "8090:8090"
+    environment:
+      SERVICE_NAME: user-service
+      SERVICE_HOST: 0.0.0.0
+      SERVICE_PORT: 8090
+      POSTGRES_USER: user_service
+      POSTGRES_PASSWORD: user_service_pass
+      POSTGRES_HOST: user-service-db
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: user_service
+      KEYCLOAK_ENABLED: "true"
+      KEYCLOAK_ISSUER_URL: http://keycloak:8080/realms/agenticai
+      KEYCLOAK_BASE_URL: http://keycloak:8080
+      KEYCLOAK_REALM: agenticai
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin123
+      KEYCLOAK_ADMIN_EMAIL: admin@agenticai.local
+      KEYCLOAK_BOOTSTRAP_ADMIN_EMAIL: admin@agenticai.local
+      KEYCLOAK_BOOTSTRAP_ADMIN_PASSWORD: admin123
+      KEYCLOAK_CLIENT_ID: agenticai-web
+      KEYCLOAK_AUDIENCE: agent-service
+      AUTH_SECRET: dev-auth-secret-change-in-production-32chars
+      ENCRYPTION_KEY: UKtf1bGCDl8smcVDRM9YekfivWNlsjSB-Mh0d993z40=
+      INTERNAL_SERVICE_TOKEN: dev-internal-service-token-change-me
+      LOG_LEVEL: INFO
+    depends_on:
+      user-service-db:
+        condition: service_healthy
+    volumes:
+      - ./src:/app/src
+
+volumes:
+  user-service-db-data:

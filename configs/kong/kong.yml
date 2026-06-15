@@ -1,0 +1,226 @@
+_format_version: "3.0"
+_transform: true
+
+# Kong OSS 3.8 JWT authentication.
+#
+# Routing strategy:
+# 1. Public endpoints (/api/auth, /health, /auth) - no JWT required
+# 2. Protected endpoints - Kong JWT plugin verifies RS256 signature plus exp claim
+# 3. Internal service-to-service traffic must use /internal/* routes (no JWT)
+# 4. Expired/invalid tokens return 401 from Kong, so web can redirect to login
+# 5. Backend services decode claims for authorization decisions
+
+services:
+  # --------------------------------------------------------------------------
+  # User Service
+  # --------------------------------------------------------------------------
+  - name: user-service
+    url: http://user-service:8090
+    routes:
+      # Public auth endpoints (login/logout/refresh/me/type/oidc)
+      - name: user-service-auth
+        paths:
+          - /api/auth
+        strip_path: false
+        preserve_host: true
+
+      # Shared JWT policy for protected external endpoints.
+      - name: user-service-users
+        paths:
+          - /api/users
+        strip_path: false
+        preserve_host: true
+        plugins: &jwt_plugin
+          - name: jwt
+            config:
+              key_claim_name: iss
+              claims_to_verify:
+                - exp
+              header_names:
+                - authorization
+              uri_param_names: []
+              cookie_names:
+                - access_token
+                - fastapiusersauth
+
+      # User-service endpoints
+
+      - name: user-service-settings
+        paths:
+          - /api/users/me/settings
+        strip_path: false
+        preserve_host: true
+        plugins: *jwt_plugin
+
+      - name: user-service-api-keys
+        paths:
+          - /api/users/me/api-keys
+        strip_path: false
+        preserve_host: true
+        plugins: *jwt_plugin
+
+      - name: user-service-roles
+        paths:
+          - /api/roles
+        strip_path: false
+        preserve_host: true
+        plugins: *jwt_plugin
+
+      # Health
+      - name: user-service-health
+        paths:
+          - /health
+        strip_path: false
+        preserve_host: true
+
+  # --------------------------------------------------------------------------
+  # Agent Service
+  # --------------------------------------------------------------------------
+  - name: agent-service
+    url: http://agent-service:8123
+    routes:
+      - name: agent-service-api-health-public
+        paths:
+          - /api/health
+        strip_path: false
+        preserve_host: true
+
+      - name: agent-service-api
+        paths:
+          - /api/agents
+          - /api/admin
+          - /api/chat
+          - /api/content
+          - /api/datasources
+          - /api/federated
+          - /api/input_prompt
+          - /api/llm
+          - /api/manage
+          - /api/mcp
+          - /api/notifications
+          - /api/password
+          - /api/persona
+          - /api/providers
+          - /api/query
+          - /api/search
+          - /api/streaming
+          - /api/threads
+          - /api/user
+          - /api/vllm
+        strip_path: false
+        preserve_host: true
+        plugins: *jwt_plugin
+
+      # Public auth endpoints for login/logout/oidc flow.
+      - name: agent-service-auth-public
+        paths:
+          - /auth
+        strip_path: false
+        preserve_host: true
+
+      # Non-/api endpoints exposed by agent-service.
+      - name: agent-service-non-api
+        paths:
+          - /me
+          - /settings
+          - /enterprise-settings
+          - /admin
+          - /llm
+          - /agents
+          - /assistants
+          - /threads
+          - /datasources
+          - /agent-definitions
+          - /mcp-providers
+          - /mcp-tools
+          - /search-providers
+          - /content-providers
+          - /schemas
+          - /brains
+          - /memory
+        strip_path: false
+        preserve_host: true
+        plugins: *jwt_plugin
+
+  # --------------------------------------------------------------------------
+  # RAG Service
+  # --------------------------------------------------------------------------
+  - name: rag-service
+    url: http://rag-service:8083
+    routes:
+      - name: rag-service-api
+        paths:
+          - /api/rag
+        strip_path: true
+        preserve_host: true
+        plugins: *jwt_plugin
+
+  # --------------------------------------------------------------------------
+  # Tools Service (MCP)
+  # --------------------------------------------------------------------------
+  - name: tools-service-mcp
+    # FastMCP HTTP transport is mounted at /mcp.
+    # With strip_path=true, /api/mcp -> /mcp upstream.
+    url: http://tools-service:8003/mcp
+    routes:
+      - name: tools-service-mcp
+        paths:
+          - /api/mcp
+        strip_path: true
+        preserve_host: true
+        plugins: *jwt_plugin
+
+  # --------------------------------------------------------------------------
+  # Internal routes (no JWT) — for service-to-service communication.
+  # Services authenticate via X-Internal-Service-Token at the application
+  # layer, so these routes bypass Kong's JWT validation entirely.
+  #
+  # strip_path=true removes the /internal/{service} prefix so the upstream
+  # receives the original internal path (e.g. /api/users/internal/...).
+  # --------------------------------------------------------------------------
+
+  - name: internal-user-service
+    url: http://user-service:8090
+    routes:
+      - name: internal-user-service-all
+        paths:
+          - /internal/user-service
+        strip_path: true
+        preserve_host: true
+
+  - name: internal-rag-service
+    url: http://rag-service:8080
+    routes:
+      - name: internal-rag-service-all
+        paths:
+          - /internal/rag-service
+        strip_path: true
+        preserve_host: true
+
+  - name: internal-tools-service
+    url: http://tools-service:8003/mcp
+    routes:
+      - name: internal-tools-service-all
+        paths:
+          - /internal/mcp
+        strip_path: true
+        preserve_host: true
+
+consumers:
+  - username: keycloak-agenticai
+    custom_id: keycloak-agenticai
+    jwt_secrets:
+      - key: http://10.101.90.13:8085/realms/agenticai
+        algorithm: RS256
+        rsa_public_key: |
+          -----BEGIN PUBLIC KEY-----
+          MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA1jepzAtM2HaScxi1hpeb
+          HrTcfsqxbrBJna+5cT5qsNCrUltQmnILy0EIt9Rfo3BWuC30KewDgSO0KbV6HuAN
+          1KV3bzx/K4vSSzp86nqpGywdV/zRP2Esn4+3A8ttKMqaZrmCRyu5QpOZGme9pxRh
+          MmNJ85/8lBd2+l7ze1NboX2q6mPLTxRiMiFzpYTXevhvlQYzQyJl1BU+9q+fjlL9
+          pSm+v2ZXIahOZfMGbdJ+GD4O06zY0fEMHMXN7bk7+c+FiuLr3M+xHKTaJNKaW7mZ
+          ZtIWxvQdEMWP2HFaPzOtahwqM+87kEgCCtYZyu12N9fOg5hL/vzAezv0iooldX20
+          KwIDAQAB
+          -----END PUBLIC KEY-----
+        secret: kong-jwt-dummy-secret
+

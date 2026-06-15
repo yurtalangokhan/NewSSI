@@ -10,7 +10,7 @@ const EMAIL_REGEX = /[^@]+@[^.]+\.[^.]/;
 
 const addUsers = async (url: string, { arg }: { arg: Array<string> }) => {
   return await fetch(url, {
-    method: "PUT",
+    method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
@@ -92,7 +92,7 @@ const AddUserForm = withFormik<FormProps, FormValues>({
   handleSubmit: async (values: FormValues, formikBag) => {
     const emails = normalizeEmails(values.emails);
     formikBag.setSubmitting(true);
-    await addUsers("/api/manage/admin/users", { arg: emails })
+    await addUsers("/api/user-service/users/invite", { arg: emails })
       .then(async (res) => {
         if (res.ok) {
           const data = await res.json();

@@ -23,7 +23,7 @@ interface PaginationConfig {
   endpoint: string;
   query?: string;
   filter?: Record<string, string | boolean | number | string[] | Date>;
-  refreshIntervalInMs?: number;
+  refreshIntervalInMs?: number; // 0 or undefined to disable polling
 }
 
 interface PaginatedHookReturnData<T extends PaginatedType> {
@@ -43,7 +43,7 @@ function usePaginatedFetch<T extends PaginatedType>({
   endpoint,
   query,
   filter,
-  refreshIntervalInMs = 5000,
+  refreshIntervalInMs = 0, // Disabled by default; set to > 0 to enable periodic polling
 }: PaginationConfig): PaginatedHookReturnData<T> {
   const router = useRouter();
   const currentPath = usePathname();

@@ -51,13 +51,19 @@ const Page = async (props: {
   }
   const cloud = authTypeMetadata?.authType === AuthType.CLOUD;
 
-  // only enable this page if basic login is enabled
-  if (authTypeMetadata?.authType !== AuthType.BASIC && !cloud) {
+  // only enable this page if basic or oidc login is enabled
+  if (
+    authTypeMetadata?.authType !== AuthType.BASIC &&
+    authTypeMetadata?.authType !== AuthType.OIDC &&
+    !cloud
+  ) {
     return redirect("/app");
   }
 
+  const oidc = authTypeMetadata?.authType === AuthType.OIDC;
+
   let authUrl: string | null = null;
-  if (cloud && authTypeMetadata) {
+  if ((cloud || oidc) && authTypeMetadata) {
     authUrl = await getAuthUrlSS(authTypeMetadata.authType, null);
   }
 
@@ -70,15 +76,15 @@ const Page = async (props: {
         <div
           className={cn(
             "flex w-full flex-col justify-start",
-            cloud ? "" : "gap-6"
+            (cloud || oidc) ? "" : "gap-6"
           )}
         >
           <div className="w-full">
-            <SignupHeader cloud={cloud} />
+            <SignupHeader cloud={cloud || oidc} />
           </div>
-          {cloud && authUrl && (
+          {(cloud || oidc) && authUrl && (
             <div className="w-full justify-center mt-6">
-              <SignInButton authorizeUrl={authUrl} authType={AuthType.CLOUD} />
+              <SignInButton authorizeUrl={authUrl} authType={cloud ? AuthType.CLOUD : AuthType.OIDC} />
               <SignupOrDivider />
             </div>
           )}

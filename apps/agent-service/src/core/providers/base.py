@@ -27,6 +27,9 @@ class ModelInfo:
     supports_reasoning: bool = False
     """Whether the model supports reasoning/thinking."""
 
+    is_remote: bool = False
+    """Whether this model is a cloud proxy model (requires internet access)."""
+
     provider_type: str = "unknown"
     """The provider type (ollama, vllm, etc.)."""
 

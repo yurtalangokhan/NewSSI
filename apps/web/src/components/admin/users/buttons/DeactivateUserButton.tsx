@@ -20,9 +20,7 @@ const DeactivateUserButton = ({
 }) => {
   const { t } = useTranslation();
   const { trigger, isMutating } = useSWRMutation(
-    deactivate
-      ? "/api/manage/admin/deactivate-user"
-      : "/api/manage/admin/activate-user",
+    `/api/user-service/users/${user.id}/active`,
     userMutationFetcher,
     {
       onSuccess: () => {
@@ -39,7 +37,7 @@ const DeactivateUserButton = ({
   return (
     <Button
       className={className}
-      onClick={() => trigger({ user_email: user.email })}
+      onClick={() => trigger({ is_active: !deactivate })}
       disabled={isMutating}
       leftIcon={SvgXCircle}
       tertiary

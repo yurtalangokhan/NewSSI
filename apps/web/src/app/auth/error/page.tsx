@@ -3,11 +3,14 @@
 import AuthFlowContainer from "@/components/auth/AuthFlowContainer";
 import Button from "@/refresh-components/buttons/Button";
 import { useTranslation } from "react-i18next";
+import { useSearchParams } from "next/navigation";
 
 import { NEXT_PUBLIC_CLOUD_ENABLED } from "@/lib/constants";
 
 const Page = () => {
   const { t } = useTranslation();
+  const searchParams = useSearchParams();
+  const errorMessage = searchParams.get("error");
 
   return (
     <AuthFlowContainer>
@@ -16,27 +19,36 @@ const Page = () => {
           {t("authPages.authError.title")}
         </h2>
         <p className="text-text-700 text-center">
-          {t("authPages.authError.description")}
+          {errorMessage || t("authPages.authError.description")}
         </p>
-        <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg p-4 shadow-sm">
-          <h3 className="text-red-800 dark:text-red-400 font-semibold mb-2">
-            {t("authPages.authError.possibleIssuesTitle")}
-          </h3>
-          <ul className="space-y-2">
-            <li className="flex items-center text-red-700 dark:text-red-400">
-              <div className="w-2 h-2 bg-red-500 dark:bg-red-400 rounded-full mr-2"></div>
-              {t("authPages.authError.issue1")}
-            </li>
-            <li className="flex items-center text-red-700 dark:text-red-400">
-              <div className="w-2 h-2 bg-red-500 dark:bg-red-400 rounded-full mr-2"></div>
-              {t("authPages.authError.issue2")}
-            </li>
-            <li className="flex items-center text-red-700 dark:text-red-400">
-              <div className="w-2 h-2 bg-red-500 dark:bg-red-400 rounded-full mr-2"></div>
-              {t("authPages.authError.issue3")}
-            </li>
-          </ul>
-        </div>
+        {!errorMessage && (
+          <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg p-4 shadow-sm">
+            <h3 className="text-red-800 dark:text-red-400 font-semibold mb-2">
+              {t("authPages.authError.possibleIssuesTitle")}
+            </h3>
+            <ul className="space-y-2">
+              <li className="flex items-center text-red-700 dark:text-red-400">
+                <div className="w-2 h-2 bg-red-500 dark:bg-red-400 rounded-full mr-2"></div>
+                {t("authPages.authError.issue1")}
+              </li>
+              <li className="flex items-center text-red-700 dark:text-red-400">
+                <div className="w-2 h-2 bg-red-500 dark:bg-red-400 rounded-full mr-2"></div>
+                {t("authPages.authError.issue2")}
+              </li>
+              <li className="flex items-center text-red-700 dark:text-red-400">
+                <div className="w-2 h-2 bg-red-500 dark:bg-red-400 rounded-full mr-2"></div>
+                {t("authPages.authError.issue3")}
+              </li>
+            </ul>
+          </div>
+        )}
+        {errorMessage && (
+          <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg p-4 shadow-sm">
+            <p className="text-red-700 dark:text-red-400 text-sm font-mono break-words">
+              {errorMessage}
+            </p>
+          </div>
+        )}
 
         <Button href="/auth/login" className="w-full">
           {t("authPages.authError.returnButton")}

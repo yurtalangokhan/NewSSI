@@ -245,6 +245,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
     setCurrentMessageFiles,
     currentProjectId,
     currentProjectDetails,
+    refreshCurrentProjectDetails,
     lastFailedFiles,
     clearLastFailedFiles,
   } = useProjectsContext();
@@ -449,6 +450,12 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
   const autoScrollEnabled = user?.preferences?.auto_scroll !== false;
   const isStreaming = currentChatState === "streaming";
 
+  const refreshProjectDetailsAfterSubmit = useCallback(async () => {
+    if (currentProjectId) {
+      await refreshCurrentProjectDetails();
+    }
+  }, [currentProjectId, refreshCurrentProjectDetails]);
+
   const { onSubmit, stopGenerating, handleMessageSpecificFileUpload } =
     useChatController({
       filterManager,
@@ -460,6 +467,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
       searchParams,
       resetInputBar,
       setSelectedAgentFromId,
+      onSubmitComplete: refreshProjectDetailsAfterSubmit,
     });
 
   const { onMessageSelection, currentSessionFileTokenCount } =
@@ -639,7 +647,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
       currentChatSessionId,
       submitQuery,
       onChat,
-        currentProjectDetails,
+      currentProjectDetails,
       resetInputBar,
       onSubmit,
       currentMessageFiles,

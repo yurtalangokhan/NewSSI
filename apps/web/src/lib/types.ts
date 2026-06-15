@@ -52,33 +52,18 @@ export interface UserPersonalization {
 }
 
 export enum UserRole {
-  LIMITED = "limited",
-  BASIC = "basic",
+  ENDUSER = "enduser",
   ADMIN = "admin",
-  CURATOR = "curator",
-  GLOBAL_CURATOR = "global_curator",
-  EXT_PERM_USER = "ext_perm_user",
-  SLACK_USER = "slack_user",
 }
 
 export const USER_ROLE_LABELS: Record<UserRole, string> = {
-  [UserRole.BASIC]: "Basic",
+  [UserRole.ENDUSER]: "End User",
   [UserRole.ADMIN]: "Admin",
-  [UserRole.GLOBAL_CURATOR]: "Global Curator",
-  [UserRole.CURATOR]: "Curator",
-  [UserRole.LIMITED]: "Limited",
-  [UserRole.EXT_PERM_USER]: "External Permissioned User",
-  [UserRole.SLACK_USER]: "Slack User",
 };
 
 export const INVALID_ROLE_HOVER_TEXT: Partial<Record<UserRole, string>> = {
-  [UserRole.BASIC]: "Basic users can't perform any admin actions",
+  [UserRole.ENDUSER]: "End users can't perform any admin actions",
   [UserRole.ADMIN]: "Admin users can perform all admin actions",
-  [UserRole.GLOBAL_CURATOR]:
-    "Global Curator users can perform admin actions for all groups they are a member of",
-  [UserRole.CURATOR]: "Curator role must be assigned in the Groups tab",
-  [UserRole.SLACK_USER]:
-    "This role is automatically assigned to users who only use Onyx via Slack",
 };
 
 export interface User {
@@ -134,6 +119,7 @@ export interface AcceptedUserSnapshot {
 }
 
 export interface InvitedUserSnapshot {
+  id?: string;
   email: string;
 }
 

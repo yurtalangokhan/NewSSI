@@ -191,7 +191,7 @@ const AppInputBar = React.memo(
       classification === "search";
 
     const { forcedToolIds, setForcedToolIds } = useForcedTools();
-    const { currentMessageFiles, setCurrentMessageFiles } =
+    const { currentMessageFiles, setCurrentMessageFiles, allCurrentProjectFiles } =
       useProjectsContext();
 
     const currentIndexingFiles = useMemo(() => {
@@ -719,6 +719,7 @@ const AppInputBar = React.memo(
                     />
                   )}
                   selectedFileIds={currentMessageFiles.map((f) => f.id)}
+                  projectFiles={allCurrentProjectFiles}
                 />
 
                 {/* Controls that load in when data is ready */}

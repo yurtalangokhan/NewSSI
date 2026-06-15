@@ -1,0 +1,185 @@
+_format_version: "3.0"
+_transform: true
+
+# ============================================================================
+# Local Kong config — mirrors production kong.yml structure, but without JWT
+# validation (no Keycloak public key locally). All routes forward transparently.
+#
+# For production: swap host.docker.internal → Docker service names,
+# enable JWT plugin (see kong.yml).
+# ============================================================================
+
+services:
+  # --------------------------------------------------------------------------
+  # User Service
+  # --------------------------------------------------------------------------
+  - name: user-service
+    url: http://host.docker.internal:8090
+    routes:
+      - name: user-service-auth
+        paths:
+          - /api/auth
+        strip_path: false
+        preserve_host: true
+
+      - name: user-service-users-internal
+        paths:
+          - /api/users/internal
+        strip_path: false
+        preserve_host: true
+
+      - name: user-service-settings-internal
+        paths:
+          - /api/users/me/settings/internal
+        strip_path: false
+        preserve_host: true
+
+      - name: user-service-users
+        paths:
+          - /api/users
+        strip_path: false
+        preserve_host: true
+
+      - name: user-service-settings
+        paths:
+          - /api/users/me/settings
+        strip_path: false
+        preserve_host: true
+
+      - name: user-service-api-keys
+        paths:
+          - /api/users/me/api-keys
+        strip_path: false
+        preserve_host: true
+
+      - name: user-service-roles
+        paths:
+          - /api/roles
+        strip_path: false
+        preserve_host: true
+
+      - name: user-service-health
+        paths:
+          - /health
+        strip_path: false
+        preserve_host: true
+
+  # --------------------------------------------------------------------------
+  # Agent Service
+  # --------------------------------------------------------------------------
+  - name: agent-service
+    url: http://host.docker.internal:8123
+    routes:
+      - name: agent-service-api-health-public
+        paths:
+          - /api/health
+        strip_path: false
+        preserve_host: true
+
+      - name: agent-service-api
+        paths:
+          - /api/agents
+          - /api/admin
+          - /api/chat
+          - /api/content
+          - /api/datasources
+          - /api/federated
+          - /api/input_prompt
+          - /api/llm
+          - /api/manage
+          - /api/mcp
+          - /api/notifications
+          - /api/password
+          - /api/persona
+          - /api/providers
+          - /api/query
+          - /api/search
+          - /api/streaming
+          - /api/threads
+          - /api/user
+          - /api/vllm
+        strip_path: false
+        preserve_host: true
+
+      - name: agent-service-auth-public
+        paths:
+          - /auth
+        strip_path: false
+        preserve_host: true
+
+      - name: agent-service-non-api
+        paths:
+          - /me
+          - /settings
+          - /enterprise-settings
+          - /admin
+          - /llm
+          - /agents
+          - /assistants
+          - /threads
+          - /datasources
+          - /agent-definitions
+          - /mcp-providers
+          - /mcp-tools
+          - /search-providers
+          - /content-providers
+          - /schemas
+          - /brains
+          - /memory
+        strip_path: false
+        preserve_host: true
+
+  # --------------------------------------------------------------------------
+  # RAG Service
+  # --------------------------------------------------------------------------
+  - name: rag-service
+    url: http://host.docker.internal:8083
+    routes:
+      - name: rag-service-api
+        paths:
+          - /api/rag
+        strip_path: true
+        preserve_host: true
+
+  # --------------------------------------------------------------------------
+  # Tools Service (MCP)
+  # --------------------------------------------------------------------------
+  - name: tools-service-mcp
+    url: http://host.docker.internal:8002/mcp
+    routes:
+      - name: tools-service-mcp
+        paths:
+          - /api/mcp
+        strip_path: true
+        preserve_host: true
+
+  # --------------------------------------------------------------------------
+  # Internal routes (no JWT) — for service-to-service communication.
+  # --------------------------------------------------------------------------
+
+  - name: internal-user-service
+    url: http://host.docker.internal:8090
+    routes:
+      - name: internal-user-service-all
+        paths:
+          - /internal/user-service
+        strip_path: true
+        preserve_host: true
+
+  - name: internal-rag-service
+    url: http://host.docker.internal:8083
+    routes:
+      - name: internal-rag-service-all
+        paths:
+          - /internal/rag-service
+        strip_path: true
+        preserve_host: true
+
+  - name: internal-tools-service
+    url: http://host.docker.internal:8002/mcp
+    routes:
+      - name: internal-tools-service-all
+        paths:
+          - /internal/mcp
+        strip_path: true
+        preserve_host: true

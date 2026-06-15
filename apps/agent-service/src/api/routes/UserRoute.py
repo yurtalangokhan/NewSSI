@@ -4,17 +4,56 @@ User preferences and settings routes.
 Endpoints: /api/user/*, /api/llm/*, /admin/llm/*
 """
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, Response, UploadFile
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Query,
+    Request,
+    Response,
+    UploadFile,
+)
 from pydantic import BaseModel
 
 from api.dependencies import verify_api_key
 from controller import UserController, get_user_controller
+from service.AuthService import get_auth_service
 
 router = APIRouter(tags=["user"])
 
 
 def _get_controller() -> UserController:
     return get_user_controller()
+
+
+async def _resolve_project_identity(
+    request: Request,
+    user_id: str | None,
+) -> tuple[str, list[str]]:
+    controller = _get_controller()
+    if not user_id:
+        effective_user_id = await controller.resolve_projects_user_id(None)
+        if not effective_user_id:
+            raise HTTPException(status_code=401, detail="Not authenticated")
+        return effective_user_id, [effective_user_id]
+
+    identity = await get_auth_service().resolve_user_identity(request=request, user_id=user_id)
+    primary_user_id = str(identity.get("primary_user_id") or user_id)
+    effective_user_id = await controller.resolve_projects_user_id(primary_user_id)
+    if not effective_user_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    owner_ids: list[str] = []
+    for candidate in [effective_user_id, *(identity.get("known_user_ids") or []), user_id]:
+        if not candidate:
+            continue
+        candidate_id = str(candidate)
+        if candidate_id not in owner_ids:
+            owner_ids.append(candidate_id)
+
+    return effective_user_id, owner_ids
 
 
 class PinnedAssistantsUpdate(BaseModel):
@@ -112,8 +151,12 @@ async def get_user_assistant_preferences():
 
 
 @router.get("/api/user/files/recent")
-async def get_recent_files(user_id: str | None = Depends(verify_api_key)):
-    return await _get_controller().get_recent_files(user_id)
+async def get_recent_files(
+    request: Request,
+    user_id: str | None = Depends(verify_api_key),
+):
+    effective_user_id, _ = await _resolve_project_identity(request, user_id)
+    return await _get_controller().get_recent_files(effective_user_id)
 
 
 @router.patch("/api/user/pinned-assistants")
@@ -245,203 +288,230 @@ async def get_default_assistant():
 
 
 @router.get("/api/user/projects")
-async def get_user_projects(user_id: str | None = Depends(verify_api_key)):
-    effective_user_id = await _get_controller().resolve_projects_user_id(user_id)
-    if not effective_user_id:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    return await _get_controller().get_user_projects(effective_user_id)
+async def get_user_projects(
+    request: Request,
+    user_id: str | None = Depends(verify_api_key),
+):
+    effective_user_id, owner_ids = await _resolve_project_identity(request, user_id)
+    return await _get_controller().get_user_projects(effective_user_id, owner_ids)
 
 
 @router.post("/api/user/projects/create")
 async def create_user_project(
+    request: Request,
     name: str,
     user_id: str | None = Depends(verify_api_key),
 ):
-    effective_user_id = await _get_controller().resolve_projects_user_id(user_id)
-    if not effective_user_id:
-        raise HTTPException(status_code=401, detail="Not authenticated")
+    effective_user_id, _ = await _resolve_project_identity(request, user_id)
     return await _get_controller().create_user_project(effective_user_id, name)
 
 
 @router.post("/api/user/projects/file/upload")
 async def upload_project_files(
+    request: Request,
     files: list[UploadFile] = File(...),
     project_id: int | None = Form(default=None),
     temp_id_map: str | None = Form(default=None),
     user_id: str | None = Depends(verify_api_key),
 ):
+    effective_user_id, owner_ids = await _resolve_project_identity(request, user_id)
     return await _get_controller().upload_user_project_files(
-        user_id=user_id,
+        user_id=effective_user_id,
         files=files,
         project_id=project_id,
         temp_id_map_raw=temp_id_map,
+        owner_ids=owner_ids,
     )
 
 
 @router.get("/api/user/projects/files/{project_id}")
 async def get_files_in_project(
+    request: Request,
     project_id: int,
     user_id: str | None = Depends(verify_api_key),
 ):
-    return await _get_controller().get_files_in_project(user_id, project_id)
+    effective_user_id, owner_ids = await _resolve_project_identity(request, user_id)
+    return await _get_controller().get_files_in_project(
+        effective_user_id,
+        project_id,
+        owner_ids,
+    )
 
 
 @router.post("/api/user/projects/{project_id}/files/{file_id}")
 async def link_file_to_project(
+    request: Request,
     project_id: int,
     file_id: str,
     user_id: str | None = Depends(verify_api_key),
 ):
-    return await _get_controller().link_file_to_project(user_id, project_id, file_id)
+    effective_user_id, owner_ids = await _resolve_project_identity(request, user_id)
+    return await _get_controller().link_file_to_project(
+        effective_user_id,
+        project_id,
+        file_id,
+        owner_ids,
+    )
 
 
 @router.delete("/api/user/projects/{project_id}/files/{file_id}")
 async def unlink_file_from_project(
+    request: Request,
     project_id: int,
     file_id: str,
     user_id: str | None = Depends(verify_api_key),
 ):
-    return await _get_controller().unlink_file_from_project(user_id, project_id, file_id)
+    effective_user_id, _ = await _resolve_project_identity(request, user_id)
+    return await _get_controller().unlink_file_from_project(effective_user_id, project_id, file_id)
 
 
 @router.get("/api/user/projects/file/{file_id}")
 async def get_user_file(
+    request: Request,
     file_id: str,
     user_id: str | None = Depends(verify_api_key),
 ):
-    return await _get_controller().get_user_file(user_id, file_id)
+    effective_user_id, _ = await _resolve_project_identity(request, user_id)
+    return await _get_controller().get_user_file(effective_user_id, file_id)
 
 
 @router.delete("/api/user/projects/file/{file_id}")
 async def delete_user_file(
+    request: Request,
     file_id: str,
     user_id: str | None = Depends(verify_api_key),
 ):
-    return await _get_controller().delete_user_file(user_id, file_id)
+    effective_user_id, _ = await _resolve_project_identity(request, user_id)
+    return await _get_controller().delete_user_file(effective_user_id, file_id)
 
 
 @router.post("/api/user/projects/file/statuses")
 async def get_user_file_statuses(
+    request: Request,
     payload: FileStatusesPayload,
     user_id: str | None = Depends(verify_api_key),
 ):
-    return await _get_controller().get_user_file_statuses(user_id, payload.file_ids)
+    effective_user_id, _ = await _resolve_project_identity(request, user_id)
+    return await _get_controller().get_user_file_statuses(effective_user_id, payload.file_ids)
 
 
 @router.get("/api/user/projects/{project_id}")
 async def get_user_project(
+    request: Request,
     project_id: int,
     user_id: str | None = Depends(verify_api_key),
 ):
-    effective_user_id = await _get_controller().resolve_projects_user_id(user_id)
-    if not effective_user_id:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    return await _get_controller().get_user_project(effective_user_id, project_id)
+    effective_user_id, owner_ids = await _resolve_project_identity(request, user_id)
+    return await _get_controller().get_user_project(effective_user_id, project_id, owner_ids)
 
 
 @router.patch("/api/user/projects/{project_id}")
 async def rename_user_project(
+    request: Request,
     project_id: int,
     payload: RenameProjectPayload,
     user_id: str | None = Depends(verify_api_key),
 ):
-    effective_user_id = await _get_controller().resolve_projects_user_id(user_id)
-    if not effective_user_id:
-        raise HTTPException(status_code=401, detail="Not authenticated")
+    effective_user_id, owner_ids = await _resolve_project_identity(request, user_id)
     return await _get_controller().rename_user_project(
         effective_user_id,
         project_id,
         payload.name,
+        owner_ids,
     )
 
 
 @router.delete("/api/user/projects/{project_id}")
 async def delete_user_project(
+    request: Request,
     project_id: int,
     user_id: str | None = Depends(verify_api_key),
 ):
-    effective_user_id = await _get_controller().resolve_projects_user_id(user_id)
-    if not effective_user_id:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    return await _get_controller().delete_user_project(effective_user_id, project_id)
+    effective_user_id, owner_ids = await _resolve_project_identity(request, user_id)
+    return await _get_controller().delete_user_project(effective_user_id, project_id, owner_ids)
 
 
 @router.get("/api/user/projects/{project_id}/details")
 async def get_user_project_details(
+    request: Request,
     project_id: int,
     user_id: str | None = Depends(verify_api_key),
 ):
-    effective_user_id = await _get_controller().resolve_projects_user_id(user_id)
-    if not effective_user_id:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    return await _get_controller().get_user_project_details(effective_user_id, project_id)
+    effective_user_id, owner_ids = await _resolve_project_identity(request, user_id)
+    return await _get_controller().get_user_project_details(
+        effective_user_id,
+        project_id,
+        owner_ids,
+    )
 
 
 @router.get("/api/user/projects/{project_id}/instructions")
 async def get_user_project_instructions(
+    request: Request,
     project_id: int,
     user_id: str | None = Depends(verify_api_key),
 ):
-    effective_user_id = await _get_controller().resolve_projects_user_id(user_id)
-    if not effective_user_id:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    return await _get_controller().get_user_project_instructions(effective_user_id, project_id)
+    effective_user_id, owner_ids = await _resolve_project_identity(request, user_id)
+    return await _get_controller().get_user_project_instructions(
+        effective_user_id,
+        project_id,
+        owner_ids,
+    )
 
 
 @router.post("/api/user/projects/{project_id}/instructions")
 async def upsert_user_project_instructions(
+    request: Request,
     project_id: int,
     payload: UpsertProjectInstructionsPayload,
     user_id: str | None = Depends(verify_api_key),
 ):
-    effective_user_id = await _get_controller().resolve_projects_user_id(user_id)
-    if not effective_user_id:
-        raise HTTPException(status_code=401, detail="Not authenticated")
+    effective_user_id, owner_ids = await _resolve_project_identity(request, user_id)
     return await _get_controller().upsert_user_project_instructions(
         effective_user_id,
         project_id,
         payload.instructions,
+        owner_ids,
     )
 
 
 @router.get("/api/user/projects/{project_id}/token-count")
 async def get_project_token_count(
+    request: Request,
     project_id: int,
     user_id: str | None = Depends(verify_api_key),
 ):
-    effective_user_id = await _get_controller().resolve_projects_user_id(user_id)
-    if not effective_user_id:
-        raise HTTPException(status_code=401, detail="Not authenticated")
+    effective_user_id, _ = await _resolve_project_identity(request, user_id)
     return await _get_controller().get_project_token_count(effective_user_id, project_id)
 
 
 @router.post("/api/user/projects/{project_id}/move_chat_session")
 async def move_chat_session_to_project(
+    request: Request,
     project_id: int,
     payload: MoveChatSessionPayload,
     user_id: str | None = Depends(verify_api_key),
 ):
-    effective_user_id = await _get_controller().resolve_projects_user_id(user_id)
-    if not effective_user_id:
-        raise HTTPException(status_code=401, detail="Not authenticated")
+    effective_user_id, owner_ids = await _resolve_project_identity(request, user_id)
     return await _get_controller().move_chat_session_to_project(
         user_id=effective_user_id,
         project_id=project_id,
         chat_session_id=payload.chat_session_id,
+        owner_ids=owner_ids,
     )
 
 
 @router.post("/api/user/projects/remove_chat_session")
 async def remove_chat_session_from_project(
+    request: Request,
     payload: MoveChatSessionPayload,
     user_id: str | None = Depends(verify_api_key),
 ):
-    effective_user_id = await _get_controller().resolve_projects_user_id(user_id)
-    if not effective_user_id:
-        raise HTTPException(status_code=401, detail="Not authenticated")
+    effective_user_id, owner_ids = await _resolve_project_identity(request, user_id)
     return await _get_controller().remove_chat_session_from_project(
         user_id=effective_user_id,
         chat_session_id=payload.chat_session_id,
+        owner_ids=owner_ids,
     )
 
 
