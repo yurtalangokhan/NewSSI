@@ -1,20 +1,22 @@
-"""Auth to resolve user object - Simple API Key based authentication."""
+"""Auth to resolve user object - API Key based authentication with Keycloak JWT support."""
 
 import os
-from typing import Annotated, Optional
+from typing import Annotated, Any, Optional
 
+import jwt
 from fastapi import Depends, Request
 from fastapi.exceptions import HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from jwt import InvalidTokenError, PyJWKClient
 from starlette.authentication import BaseUser
+
+from langconnect import config
 
 security = HTTPBearer(auto_error=False)
 
 # Internal service token for service-to-service communication
-INTERNAL_SERVICE_TOKEN = os.environ.get(
-    "INTERNAL_SERVICE_TOKEN", "internal-service-key-2026"
-)
-IS_TESTING = os.environ.get("IS_TESTING", "").lower() == "true"
+INTERNAL_SERVICE_TOKEN = config.INTERNAL_SERVICE_TOKEN or "internal-service-key-2026"
+IS_TESTING = config.IS_TESTING
 ALLOW_LOCAL_INTERNAL_BYPASS = (
     os.environ.get("ALLOW_LOCAL_INTERNAL_BYPASS", "").lower() == "true"
 )
@@ -98,15 +100,98 @@ def verify_api_key(credentials: str) -> str | None:
     return None
 
 
+def decode_keycloak_token(token: str) -> dict[str, Any]:
+    """Decode and verify a Keycloak JWT token using JWKS.
+
+    Args:
+        token: The JWT token string to decode.
+
+    Returns:
+        Decoded claims dictionary from the validated token.
+
+    Raises:
+        HTTPException: If the token is invalid or validation fails.
+    """
+    issuer = config.KEYCLOAK_ISSUER_URL.rstrip("/")
+    jwks_url = f"{issuer}/protocol/openid-connect/certs"
+
+    # Build audience list from KEYCLOAK_AUDIENCE and KEYCLOAK_CLIENT_ID
+    audiences: list[str] = []
+    if config.KEYCLOAK_AUDIENCE:
+        audiences = [
+            a.strip()
+            for a in config.KEYCLOAK_AUDIENCE.split(",")
+            if a.strip()
+        ]
+    if config.KEYCLOAK_CLIENT_ID and config.KEYCLOAK_CLIENT_ID not in audiences:
+        audiences.append(config.KEYCLOAK_CLIENT_ID)
+
+    try:
+        jwks_client = PyJWKClient(jwks_url, cache_keys=True)
+        signing_key = jwks_client.get_signing_key_from_jwt(token)
+
+        claims = jwt.decode(
+            jwt=token,
+            key=signing_key.key,
+            algorithms=["RS256", "RS384", "RS512"],
+            issuer=issuer,
+            audience=audiences if audiences else None,
+            leeway=config.KEYCLOAK_TOKEN_LEEWAY_SECONDS,
+            options={
+                "verify_aud": bool(audiences),
+                "verify_iss": True,
+                "verify_exp": True,
+            },
+        )
+        return claims
+    except InvalidTokenError as exc:
+        raise HTTPException(
+            status_code=401,
+            detail=f"Invalid bearer token: {exc}",
+        ) from exc
+
+
 def resolve_user(
     request: Request,
     credentials: Annotated[
         Optional[HTTPAuthorizationCredentials], Depends(security)
     ] = None,
 ) -> AuthenticatedUser | None:
-    """Resolve user from the credentials or allow internal service access."""
+    """Resolve user from the credentials or allow internal service access.
 
-    # Check for internal service token (service-to-service communication)
+    Tries Keycloak JWT validation first (if enabled), then falls through
+    to API key validation.
+    """
+
+    if credentials:
+        if credentials.scheme != "Bearer":
+            raise HTTPException(status_code=401, detail="Invalid authentication scheme")
+
+        if not credentials.credentials:
+            raise HTTPException(status_code=401, detail="Invalid credentials")
+
+        # Validate Keycloak JWTs before considering legacy API keys. When Keycloak
+        # is enabled, invalid Bearer tokens must fail closed instead of falling
+        # through to dev/API-key auth.
+        if config.KEYCLOAK_ENABLED and config.KEYCLOAK_ISSUER_URL:
+            claims = decode_keycloak_token(credentials.credentials)
+            sub = claims.get("sub", "")
+            email = (
+                claims.get("email", "")
+                or claims.get("preferred_username", "")
+                or sub
+            )
+            if not sub:
+                raise HTTPException(status_code=401, detail="Invalid bearer token")
+            return AuthenticatedUser(sub, email)
+
+        user_id = verify_api_key(credentials.credentials)
+        if user_id:
+            return AuthenticatedUser(user_id, user_id)
+
+        raise HTTPException(status_code=401, detail="Invalid API key")
+
+    # Machine-only service calls may still use the internal service token.
     internal_token = request.headers.get("X-Internal-Service-Token")
     if internal_token == INTERNAL_SERVICE_TOKEN:
         return AuthenticatedUser("internal-service", "Internal Service")
@@ -124,8 +209,8 @@ def resolve_user(
 
     # If no credentials provided - check if we allow anonymous
     if not credentials:
-        if IS_TESTING:
-            raise HTTPException(status_code=403, detail="API key required")
+        if IS_TESTING or (config.KEYCLOAK_ENABLED and config.KEYCLOAK_ISSUER_URL):
+            raise HTTPException(status_code=401, detail="Bearer token required")
 
         # For development, allow access
         valid_keys = _get_valid_api_keys()
@@ -133,15 +218,4 @@ def resolve_user(
             return AuthenticatedUser("dev-user", "Dev User")
         raise HTTPException(status_code=403, detail="API key required")
 
-    if credentials.scheme != "Bearer":
-        raise HTTPException(status_code=401, detail="Invalid authentication scheme")
-
-    if not credentials.credentials:
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-
-    # Verify the API key
-    user_id = verify_api_key(credentials.credentials)
-    if user_id:
-        return AuthenticatedUser(user_id, user_id)
-
-    raise HTTPException(status_code=401, detail="Invalid API key")
+    raise HTTPException(status_code=401, detail="Bearer token required")

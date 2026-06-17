@@ -35,6 +35,7 @@ dependencies = [
     "langchain-experimental>=0.3.0",
     "sqlalchemy[asyncio]>=2.0",
     "alembic>=1.13",
+    "PyJWT>=2.10.1",
 ]
 
 [project.packages]
