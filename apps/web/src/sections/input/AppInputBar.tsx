@@ -58,6 +58,7 @@ import Spacer from "@/refresh-components/Spacer";
 import { useTranslation } from "react-i18next";
 import Popover from "@/refresh-components/Popover";
 import LineItem from "@/refresh-components/buttons/LineItem";
+import { useAppBackground } from "@/providers/AppBackgroundProvider";
 
 const LINE_HEIGHT = 24;
 const MIN_INPUT_HEIGHT = 44;
@@ -78,20 +79,34 @@ export function SourceChip({
   onClick,
   truncateTitle = true,
 }: SourceChipProps) {
+  const {
+    foregroundMutedTextClass,
+    foregroundMutedTextStyle,
+    foregroundBorderStyle,
+    appBackground,
+  } = useAppBackground();
+
   return (
     <div
       onClick={onClick ? onClick : undefined}
       className={cn(
-        "flex-none flex items-center px-1 bg-background-neutral-01 text-xs text-text-04 border border-border-01 rounded-08 box-border gap-x-1 h-6",
+        "flex-none flex items-center px-1 bg-background-neutral-01 text-xs border rounded-08 box-border gap-x-1 h-6",
         onClick && "cursor-pointer"
       )}
+      style={{
+        color: appBackground?.isDarkBackground
+          ? "var(--text-inverted-03)"
+          : "var(--text-04)",
+        ...foregroundBorderStyle,
+      }}
     >
       {icon}
       {truncateTitle ? truncateString(title, 20) : title}
       {onRemove && (
         <SvgX
           size={12}
-          className="text-text-01 ml-auto cursor-pointer"
+          className={cn("ml-auto cursor-pointer", foregroundMutedTextClass)}
+          style={foregroundMutedTextStyle}
           onClick={(e: React.MouseEvent<SVGSVGElement>) => {
             e.stopPropagation();
             onRemove();
@@ -191,8 +206,11 @@ const AppInputBar = React.memo(
       classification === "search";
 
     const { forcedToolIds, setForcedToolIds } = useForcedTools();
-    const { currentMessageFiles, setCurrentMessageFiles, allCurrentProjectFiles } =
-      useProjectsContext();
+    const {
+      currentMessageFiles,
+      setCurrentMessageFiles,
+      allCurrentProjectFiles,
+    } = useProjectsContext();
 
     const currentIndexingFiles = useMemo(() => {
       return currentMessageFiles.filter(
@@ -244,6 +262,7 @@ const AppInputBar = React.memo(
     );
 
     const combinedSettings = useContext(SettingsContext);
+    const { appBackground, foregroundTextStyle } = useAppBackground();
 
     // Track previous message to detect when lines might decrease
     const prevMessageRef = useRef("");
@@ -523,7 +542,9 @@ const AppInputBar = React.memo(
                     "outline-none",
                     "bg-transparent",
                     "resize-none",
-                    "placeholder:text-text-03",
+                    appBackground?.isDarkBackground
+                      ? "placeholder:text-text-inverted-03"
+                      : "placeholder:text-text-03",
                     "whitespace-pre-wrap",
                     "break-word",
                     "overscroll-contain",
@@ -538,7 +559,11 @@ const AppInputBar = React.memo(
                         ]
                   )}
                   autoFocus
-                  style={{ scrollbarWidth: "thin" }}
+                  style={{
+                    scrollbarWidth: "thin",
+                    ...foregroundTextStyle,
+                    caretColor: foregroundTextStyle.color,
+                  }}
                   role="textarea"
                   aria-multiline
                   placeholder={

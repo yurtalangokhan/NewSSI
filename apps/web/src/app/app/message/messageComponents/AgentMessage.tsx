@@ -14,6 +14,8 @@ import { LlmDescriptor, LlmManager } from "@/lib/hooks";
 import { Message } from "@/app/app/interfaces";
 import Text from "@/refresh-components/texts/Text";
 import { AgentTimeline } from "@/app/app/message/messageComponents/timeline/AgentTimeline";
+import { cn } from "@/lib/utils";
+import { useAppBackground } from "@/providers/AppBackgroundProvider";
 
 // Type for the regeneration factory function passed from ChatUI
 export type RegenerationFactory = (regenerationRequest: {
@@ -90,11 +92,17 @@ const AgentMessage = React.memo(function AgentMessage({
 }: AgentMessageProps) {
   const markdownRef = useRef<HTMLDivElement>(null);
   const finalAnswerRef = useRef<HTMLDivElement>(null);
+  const { foregroundTextClass, foregroundTextStyle } = useAppBackground();
 
   // Debug: log packets info
-  console.log('[AgentMessage] rawPackets:', rawPackets?.length || 0, 'packetCount:', rawPackets?.length || 0);
+  console.log(
+    "[AgentMessage] rawPackets:",
+    rawPackets?.length || 0,
+    "packetCount:",
+    rawPackets?.length || 0
+  );
 
-  // If packets are empty but we have finalMessageText (historical message), 
+  // If packets are empty but we have finalMessageText (historical message),
   // create synthetic packets for rendering
   const effectivePackets = useMemo((): Packet[] => {
     if (rawPackets.length > 0) {
@@ -227,7 +235,10 @@ const AgentMessage = React.memo(function AgentMessage({
       {/* Row 2: Display content + MessageToolbar */}
       <div
         ref={markdownRef}
-        className="overflow-x-visible focus:outline-none select-text cursor-text px-3"
+        className={cn(
+          "overflow-x-visible focus:outline-none select-text cursor-text px-3",
+          foregroundTextClass
+        )}
         onCopy={(e) => {
           if (markdownRef.current) {
             handleCopy(e, markdownRef as RefObject<HTMLDivElement>);
@@ -266,7 +277,13 @@ const AgentMessage = React.memo(function AgentMessage({
         {/* Show stopped message when user cancelled and no display content */}
         {pacedDisplayGroups.length === 0 &&
           stopReason === StopReason.USER_CANCELLED && (
-            <Text as="p" secondaryBody text04>
+            <Text
+              as="p"
+              secondaryBody
+              text04
+              className={foregroundTextClass}
+              style={foregroundTextStyle}
+            >
               User has stopped generation
             </Text>
           )}

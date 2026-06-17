@@ -15,6 +15,14 @@ interface AppBackgroundContextType {
   appBackgroundUrl: string | null;
   /** Whether a background is currently active */
   hasBackground: boolean;
+  foregroundTextClass: string;
+  foregroundMutedTextClass: string;
+  foregroundIconClass: string;
+  foregroundBorderClass: string;
+  foregroundTextStyle: React.CSSProperties;
+  foregroundMutedTextStyle: React.CSSProperties;
+  foregroundIconStyle: React.CSSProperties;
+  foregroundBorderStyle: React.CSSProperties;
 }
 
 const AppBackgroundContext = createContext<
@@ -34,11 +42,46 @@ export function AppBackgroundProvider({
     const hasBackground =
       !!appBackground && appBackground.src !== CHAT_BACKGROUND_NONE;
     const appBackgroundUrl = hasBackground ? appBackground.src : null;
+    const isDarkBackground = appBackground?.isDarkBackground === true;
+    const foregroundTextClass = isDarkBackground
+      ? "text-text-inverted-05"
+      : "text-text-05";
+    const foregroundMutedTextClass = isDarkBackground
+      ? "text-text-inverted-03"
+      : "text-text-03";
+    const foregroundIconClass = isDarkBackground
+      ? "stroke-text-inverted-05"
+      : "stroke-text-05";
+    const foregroundBorderClass = isDarkBackground
+      ? "border-text-inverted-03"
+      : "border-border-01";
+    const foregroundTextStyle = {
+      color: isDarkBackground ? "var(--text-inverted-05)" : "var(--text-05)",
+    };
+    const foregroundMutedTextStyle = {
+      color: isDarkBackground ? "var(--text-inverted-03)" : "var(--text-03)",
+    };
+    const foregroundIconStyle = {
+      stroke: isDarkBackground ? "var(--text-inverted-05)" : "var(--text-05)",
+    };
+    const foregroundBorderStyle = {
+      borderColor: isDarkBackground
+        ? "var(--text-inverted-03)"
+        : "var(--border-01)",
+    };
 
     return {
       appBackground,
       appBackgroundUrl,
       hasBackground,
+      foregroundTextClass,
+      foregroundMutedTextClass,
+      foregroundIconClass,
+      foregroundBorderClass,
+      foregroundTextStyle,
+      foregroundMutedTextStyle,
+      foregroundIconStyle,
+      foregroundBorderStyle,
     };
   }, [user?.preferences?.chat_background]);
 

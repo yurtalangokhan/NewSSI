@@ -19,6 +19,7 @@ import Button from "@/refresh-components/buttons/Button";
 import { PopoverSearchInput } from "@/sections/sidebar/ChatButton";
 import LineItem from "@/refresh-components/buttons/LineItem";
 import { SvgFolder, SvgFolderIn, SvgShare, SvgTrash } from "@opal/icons";
+import { useAppBackground } from "@/providers/AppBackgroundProvider";
 // Constants
 const DEFAULT_PERSONA_ID = 0;
 const LS_HIDE_MOVE_CUSTOM_AGENT_MODAL_KEY = "onyx:hideMoveCustomAgentModal";
@@ -65,6 +66,7 @@ export function ChatSessionMorePopup({
 
   const [showMoveOptions, setShowMoveOptions] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const { foregroundIconClass, foregroundMutedTextClass } = useAppBackground();
 
   const filteredProjects = projects.filter((project) =>
     project.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -146,6 +148,8 @@ export function ChatSessionMorePopup({
           <LineItem
             key="share"
             icon={SvgShare}
+            iconClassName={foregroundIconClass}
+            textClassName={foregroundMutedTextClass}
             onClick={noProp(() => showShareModal(chatSession))}
           >
             Share
@@ -154,6 +158,8 @@ export function ChatSessionMorePopup({
         <LineItem
           key="move"
           icon={SvgFolderIn}
+          iconClassName={foregroundIconClass}
+          textClassName={foregroundMutedTextClass}
           onClick={noProp(() => setShowMoveOptions(true))}
         >
           Move to Project
@@ -162,6 +168,8 @@ export function ChatSessionMorePopup({
           <LineItem
             key="remove"
             icon={SvgFolder}
+            iconClassName={foregroundIconClass}
+            textClassName={foregroundMutedTextClass}
             onClick={noProp(() => handleRemoveChatSessionFromProject())}
           >
             {`Remove from ${
@@ -173,6 +181,8 @@ export function ChatSessionMorePopup({
         <LineItem
           key="delete"
           icon={SvgTrash}
+          iconClassName={foregroundIconClass}
+          textClassName={foregroundMutedTextClass}
           onClick={noProp(() => setIsDeleteModalOpen(true))}
           danger
         >
@@ -233,7 +243,10 @@ export function ChatSessionMorePopup({
                   : "opacity-0 pointer-events-none"
               )}
             >
-              <FiMoreHorizontal size={iconSize} />
+              <FiMoreHorizontal
+                size={iconSize}
+                className={foregroundIconClass}
+              />
             </div>
           </Popover.Trigger>
           <Popover.Content

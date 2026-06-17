@@ -69,6 +69,8 @@ export interface LineItemProps
 
   selected?: boolean;
   icon?: React.FunctionComponent<IconProps>;
+  iconClassName?: string;
+  textClassName?: string;
   description?: string;
   rightChildren?: React.ReactNode;
   href?: string;
@@ -139,6 +141,8 @@ export default function LineItem({
   skeleton,
   emphasized,
   icon: Icon,
+  iconClassName,
+  textClassName,
   description,
   children,
   rightChildren,
@@ -203,7 +207,13 @@ export default function LineItem({
             !!(children && description) && "mt-0.5"
           )}
         >
-          <Icon className={cn("h-[1rem] w-[1rem]", iconClassNames[variant])} />
+          <Icon
+            className={cn(
+              "h-[1rem] w-[1rem]",
+              iconClassNames[variant],
+              iconClassName
+            )}
+          />
         </div>
       )}
       <Section alignItems="start" gap={0}>
@@ -212,7 +222,11 @@ export default function LineItem({
             <Section flexDirection="row" gap={0.5}>
               <Truncated
                 mainUiMuted
-                className={cn("text-left w-full", textClassNames[variant])}
+                className={cn(
+                  "text-left w-full",
+                  textClassNames[variant],
+                  textClassName
+                )}
               >
                 {children}
               </Truncated>

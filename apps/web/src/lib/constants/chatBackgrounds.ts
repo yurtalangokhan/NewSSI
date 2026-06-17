@@ -7,6 +7,7 @@ export interface ChatBackgroundOption {
   src: string;
   thumbnail: string;
   label: string;
+  isDarkBackground?: boolean;
 }
 
 // Curated collection of scenic backgrounds that work well as chat backgrounds
@@ -16,36 +17,42 @@ export const CHAT_BACKGROUND_OPTIONS: ChatBackgroundOption[] = [
     src: CHAT_BACKGROUND_NONE,
     thumbnail: CHAT_BACKGROUND_NONE,
     label: "None",
+    isDarkBackground: false,
   },
   {
     id: "clouds",
     src: "/chat-backgrounds/clouds.jpg",
     thumbnail: "/chat-backgrounds/thumbnails/clouds.jpg",
     label: "Clouds",
+    isDarkBackground: false,
   },
   {
     id: "hills",
     src: "/chat-backgrounds/hills.jpg",
     thumbnail: "/chat-backgrounds/thumbnails/hills.jpg",
     label: "Hills",
+    isDarkBackground: false,
   },
   {
     id: "plant",
     src: "/chat-backgrounds/plant.jpg",
     thumbnail: "/chat-backgrounds/thumbnails/plant.jpg",
     label: "Plants",
+    isDarkBackground: false,
   },
   {
     id: "mountains",
     src: "/chat-backgrounds/mountains.jpg",
     thumbnail: "/chat-backgrounds/thumbnails/mountains.jpg",
     label: "Mountains",
+    isDarkBackground: false,
   },
   {
     id: "night",
     src: "/chat-backgrounds/night.jpg",
     thumbnail: "/chat-backgrounds/thumbnails/night.jpg",
     label: "Night",
+    isDarkBackground: true,
   },
 ];
 

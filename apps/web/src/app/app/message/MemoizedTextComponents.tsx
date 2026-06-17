@@ -7,7 +7,13 @@ import {
   MinimalOnyxDocument,
   OnyxDocument,
 } from "@/lib/search/interfaces";
-import React, { memo, JSX, useMemo, useCallback } from "react";
+import React, {
+  memo,
+  JSX,
+  useMemo,
+  useCallback,
+  type CSSProperties,
+} from "react";
 import { SourceIcon } from "@/components/SourceIcon";
 import { WebResultIcon } from "@/components/WebResultIcon";
 import { SubQuestionDetail, CitationMap } from "../interfaces";
@@ -219,15 +225,17 @@ export const MemoizedLink = memo(
 
 interface MemoizedParagraphProps {
   className?: string;
+  style?: CSSProperties;
   children?: React.ReactNode;
 }
 
 export const MemoizedParagraph = memo(function MemoizedParagraph({
   className,
+  style,
   children,
 }: MemoizedParagraphProps) {
   return (
-    <Text as="p" mainContentBody className={className}>
+    <Text as="p" mainContentBody className={className} style={style}>
       {children}
     </Text>
   );

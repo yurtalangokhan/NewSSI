@@ -4,10 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import Text from "@/refresh-components/texts/Text";
 import { useTranslation } from "react-i18next";
 
-import {
-  ChatPacket,
-  StopReason,
-} from "../../../services/streamingModels";
+import { ChatPacket, StopReason } from "../../../services/streamingModels";
 import { MessageRenderer, FullChatState } from "../interfaces";
 import {
   isFinalAnswerComplete,
@@ -15,6 +12,7 @@ import {
 } from "../../../services/packetUtils";
 import { useMarkdownRenderer } from "../markdownUtils";
 import { BlinkingBar } from "../../BlinkingBar";
+import { useAppBackground } from "@/providers/AppBackgroundProvider";
 
 // Control the rate of packet streaming (packets per second)
 const PACKET_DELAY_MS = 10;
@@ -43,6 +41,7 @@ export const MessageTextRenderer: MessageRenderer<
     useState(initialPacketCount);
 
   const fullContent = useMemo(() => getTextContent(packets), [packets]);
+  const { foregroundTextStyle, foregroundMutedTextStyle } = useAppBackground();
 
   // Animation effect - gradually increase displayed packets at controlled rate
   useEffect(() => {
@@ -92,7 +91,8 @@ export const MessageTextRenderer: MessageRenderer<
     // the [*]() is a hack to show a blinking dot when the packet is not complete
     stopPacketSeen ? content : content + " [*]() ",
     state,
-    "font-main-content-body"
+    "font-main-content-body",
+    foregroundTextStyle
   );
 
   const { t } = useTranslation();
@@ -107,7 +107,12 @@ export const MessageTextRenderer: MessageRenderer<
           <>
             {renderedContent}
             {wasUserCancelled && (
-              <Text as="p" secondaryBody text04>
+              <Text
+                as="p"
+                secondaryBody
+                text04
+                style={foregroundMutedTextStyle}
+              >
                 {t("messageText.userStoppedGeneration")}
               </Text>
             )}
