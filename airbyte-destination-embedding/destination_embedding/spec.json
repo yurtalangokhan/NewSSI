@@ -32,6 +32,13 @@
         "default": "unknown",
         "order": 2
       },
+      "agent_token": {
+        "type": "string",
+        "title": "Agent Service Bearer Token",
+        "description": "Optional bearer token sent to agent-service ingestion endpoints.",
+        "airbyte_secret": true,
+        "order": 3
+      },
       "batch_size": {
         "type": "integer",
         "title": "Batch Size",
@@ -39,7 +46,7 @@
         "default": 200,
         "minimum": 1,
         "maximum": 5000,
-        "order": 3
+        "order": 4
       },
       "request_timeout_seconds": {
         "type": "integer",
@@ -48,7 +55,7 @@
         "default": 120,
         "minimum": 10,
         "maximum": 600,
-        "order": 4
+        "order": 5
       }
     }
   }

@@ -4,9 +4,14 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 
+from api.dependencies import require_user
 from service.MCPToolService import MCPToolService
 
-router = APIRouter(prefix="/mcp-tools", tags=["mcp-tools"])
+router = APIRouter(
+    prefix="/mcp-tools",
+    tags=["mcp-tools"],
+    dependencies=[Depends(require_user)],
+)
 
 
 def _get_service() -> MCPToolService:

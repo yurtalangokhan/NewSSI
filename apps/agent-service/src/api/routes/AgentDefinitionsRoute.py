@@ -17,7 +17,7 @@ import logging
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
 from agents.storage.repository import AgentDefinitionRepository
@@ -27,14 +27,14 @@ from domain.agents.service import (
     GraphSchemaService,
     MemoryTypeService,
 )
-from service.AuthService import verify_bearer
-from fastapi import Depends
+from api.dependencies import require_user
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/agent-definitions",
     tags=["agent-definitions"],
+    dependencies=[Depends(require_user)],
 )
 
 

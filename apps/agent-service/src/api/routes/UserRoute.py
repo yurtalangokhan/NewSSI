@@ -4,24 +4,24 @@ User preferences and settings routes.
 Endpoints: /api/user/*, /api/llm/*, /admin/llm/*
 """
 
+from typing import Annotated
+
 from fastapi import (
     APIRouter,
     Depends,
     File,
     Form,
     HTTPException,
-    Query,
     Request,
-    Response,
     UploadFile,
 )
 from pydantic import BaseModel
 
-from api.dependencies import verify_api_key
+from api.dependencies import AuthenticatedUser, require_user
 from controller import UserController, get_user_controller
 from service.AuthService import get_auth_service
 
-router = APIRouter(tags=["user"])
+router = APIRouter(tags=["user"], dependencies=[Depends(require_user)])
 
 
 def _get_controller() -> UserController:
@@ -30,23 +30,17 @@ def _get_controller() -> UserController:
 
 async def _resolve_project_identity(
     request: Request,
-    user_id: str | None,
+    user: AuthenticatedUser,
 ) -> tuple[str, list[str]]:
     controller = _get_controller()
-    if not user_id:
-        effective_user_id = await controller.resolve_projects_user_id(None)
-        if not effective_user_id:
-            raise HTTPException(status_code=401, detail="Not authenticated")
-        return effective_user_id, [effective_user_id]
-
-    identity = await get_auth_service().resolve_user_identity(request=request, user_id=user_id)
-    primary_user_id = str(identity.get("primary_user_id") or user_id)
+    identity = await get_auth_service().resolve_user_identity(request=request, user_id=user.user_id)
+    primary_user_id = str(identity.get("primary_user_id") or user.user_id)
     effective_user_id = await controller.resolve_projects_user_id(primary_user_id)
     if not effective_user_id:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
     owner_ids: list[str] = []
-    for candidate in [effective_user_id, *(identity.get("known_user_ids") or []), user_id]:
+    for candidate in [effective_user_id, *(identity.get("known_user_ids") or []), user.user_id]:
         if not candidate:
             continue
         candidate_id = str(candidate)
@@ -58,39 +52,6 @@ async def _resolve_project_identity(
 
 class PinnedAssistantsUpdate(BaseModel):
     ordered_assistant_ids: list[int] = []
-
-
-class UserEmailPayload(BaseModel):
-    user_email: str
-
-
-class SetUserRolePayload(BaseModel):
-    user_email: str
-    new_role: str
-
-
-class BulkInvitePayload(BaseModel):
-    emails: list[str]
-
-
-class CreateUserPayload(BaseModel):
-    email: str
-    role: str = "basic"
-    first_name: str | None = None
-    last_name: str | None = None
-    password: str | None = None
-
-
-class UpdateUserProfilePayload(BaseModel):
-    user_email: str
-    first_name: str | None = None
-    last_name: str | None = None
-
-
-class SetUserPasswordPayload(BaseModel):
-    user_email: str
-    password: str
-    temporary: bool = False
 
 
 class UserPersonalizationPayload(BaseModel):
@@ -153,9 +114,9 @@ async def get_user_assistant_preferences():
 @router.get("/api/user/files/recent")
 async def get_recent_files(
     request: Request,
-    user_id: str | None = Depends(verify_api_key),
+    user: Annotated[AuthenticatedUser, Depends(require_user)],
 ):
-    effective_user_id, _ = await _resolve_project_identity(request, user_id)
+    effective_user_id, _ = await _resolve_project_identity(request, user)
     return await _get_controller().get_recent_files(effective_user_id)
 
 
@@ -173,12 +134,10 @@ async def get_pinned_assistants():
 @router.patch("/api/user/personalization")
 async def update_user_personalization(
     payload: UserPersonalizationPayload,
-    user_id: str | None = Depends(verify_api_key),
+    user: Annotated[AuthenticatedUser, Depends(require_user)],
 ):
-    if not user_id:
-        return {"success": False, "detail": "Not authenticated"}
     return await _get_controller().update_user_personalization(
-        user_id=user_id,
+        user_id=user.user_id,
         personalization=payload.model_dump(exclude_none=True),
     )
 
@@ -186,12 +145,10 @@ async def update_user_personalization(
 @router.patch("/api/user/theme-preference")
 async def update_user_theme_preference(
     payload: ThemePreferencePayload,
-    user_id: str | None = Depends(verify_api_key),
+    user: Annotated[AuthenticatedUser, Depends(require_user)],
 ):
-    if not user_id:
-        return {"success": False, "detail": "Not authenticated"}
     return await _get_controller().update_user_theme_preference(
-        user_id=user_id,
+        user_id=user.user_id,
         theme_preference=payload.theme_preference,
     )
 
@@ -199,12 +156,10 @@ async def update_user_theme_preference(
 @router.patch("/api/user/chat-background")
 async def update_user_chat_background(
     payload: ChatBackgroundPayload,
-    user_id: str | None = Depends(verify_api_key),
+    user: Annotated[AuthenticatedUser, Depends(require_user)],
 ):
-    if not user_id:
-        return {"success": False, "detail": "Not authenticated"}
     return await _get_controller().update_user_chat_background(
-        user_id=user_id,
+        user_id=user.user_id,
         chat_background=payload.chat_background,
     )
 
@@ -212,12 +167,10 @@ async def update_user_chat_background(
 @router.patch("/api/user/default-model")
 async def update_user_default_model(
     payload: DefaultModelPayload,
-    user_id: str | None = Depends(verify_api_key),
+    user: Annotated[AuthenticatedUser, Depends(require_user)],
 ):
-    if not user_id:
-        return {"success": False, "detail": "Not authenticated"}
     return await _get_controller().update_user_default_model(
-        user_id=user_id,
+        user_id=user.user_id,
         default_model=payload.default_model,
         default_provider_id=payload.default_provider_id,
     )
@@ -226,12 +179,10 @@ async def update_user_default_model(
 @router.patch("/api/auto-scroll")
 async def update_user_auto_scroll(
     payload: AutoScrollPayload,
-    user_id: str | None = Depends(verify_api_key),
+    user: Annotated[AuthenticatedUser, Depends(require_user)],
 ):
-    if not user_id:
-        return {"success": False, "detail": "Not authenticated"}
     return await _get_controller().update_user_auto_scroll(
-        user_id=user_id,
+        user_id=user.user_id,
         auto_scroll=payload.auto_scroll,
     )
 
@@ -239,12 +190,10 @@ async def update_user_auto_scroll(
 @router.patch("/api/shortcut-enabled")
 async def update_user_shortcut_enabled(
     shortcut_enabled: bool,
-    user_id: str | None = Depends(verify_api_key),
+    user: Annotated[AuthenticatedUser, Depends(require_user)],
 ):
-    if not user_id:
-        return {"success": False, "detail": "Not authenticated"}
     return await _get_controller().update_user_shortcut_enabled(
-        user_id=user_id,
+        user_id=user.user_id,
         shortcut_enabled=shortcut_enabled,
     )
 
@@ -252,12 +201,10 @@ async def update_user_shortcut_enabled(
 @router.patch("/api/user/default-app-mode")
 async def update_user_default_app_mode(
     payload: DefaultAppModePayload,
-    user_id: str | None = Depends(verify_api_key),
+    user: Annotated[AuthenticatedUser, Depends(require_user)],
 ):
-    if not user_id:
-        return {"success": False, "detail": "Not authenticated"}
     return await _get_controller().update_user_default_app_mode(
-        user_id=user_id,
+        user_id=user.user_id,
         default_app_mode=payload.default_app_mode,
     )
 
@@ -290,9 +237,9 @@ async def get_default_assistant():
 @router.get("/api/user/projects")
 async def get_user_projects(
     request: Request,
-    user_id: str | None = Depends(verify_api_key),
+    user: Annotated[AuthenticatedUser, Depends(require_user)],
 ):
-    effective_user_id, owner_ids = await _resolve_project_identity(request, user_id)
+    effective_user_id, owner_ids = await _resolve_project_identity(request, user)
     return await _get_controller().get_user_projects(effective_user_id, owner_ids)
 
 
@@ -300,21 +247,21 @@ async def get_user_projects(
 async def create_user_project(
     request: Request,
     name: str,
-    user_id: str | None = Depends(verify_api_key),
+    user: Annotated[AuthenticatedUser, Depends(require_user)],
 ):
-    effective_user_id, _ = await _resolve_project_identity(request, user_id)
+    effective_user_id, _ = await _resolve_project_identity(request, user)
     return await _get_controller().create_user_project(effective_user_id, name)
 
 
 @router.post("/api/user/projects/file/upload")
 async def upload_project_files(
     request: Request,
+    user: Annotated[AuthenticatedUser, Depends(require_user)],
     files: list[UploadFile] = File(...),
     project_id: int | None = Form(default=None),
     temp_id_map: str | None = Form(default=None),
-    user_id: str | None = Depends(verify_api_key),
 ):
-    effective_user_id, owner_ids = await _resolve_project_identity(request, user_id)
+    effective_user_id, owner_ids = await _resolve_project_identity(request, user)
     return await _get_controller().upload_user_project_files(
         user_id=effective_user_id,
         files=files,
@@ -328,9 +275,9 @@ async def upload_project_files(
 async def get_files_in_project(
     request: Request,
     project_id: int,
-    user_id: str | None = Depends(verify_api_key),
+    user: Annotated[AuthenticatedUser, Depends(require_user)],
 ):
-    effective_user_id, owner_ids = await _resolve_project_identity(request, user_id)
+    effective_user_id, owner_ids = await _resolve_project_identity(request, user)
     return await _get_controller().get_files_in_project(
         effective_user_id,
         project_id,
@@ -343,9 +290,9 @@ async def link_file_to_project(
     request: Request,
     project_id: int,
     file_id: str,
-    user_id: str | None = Depends(verify_api_key),
+    user: Annotated[AuthenticatedUser, Depends(require_user)],
 ):
-    effective_user_id, owner_ids = await _resolve_project_identity(request, user_id)
+    effective_user_id, owner_ids = await _resolve_project_identity(request, user)
     return await _get_controller().link_file_to_project(
         effective_user_id,
         project_id,
@@ -359,9 +306,9 @@ async def unlink_file_from_project(
     request: Request,
     project_id: int,
     file_id: str,
-    user_id: str | None = Depends(verify_api_key),
+    user: Annotated[AuthenticatedUser, Depends(require_user)],
 ):
-    effective_user_id, _ = await _resolve_project_identity(request, user_id)
+    effective_user_id, _ = await _resolve_project_identity(request, user)
     return await _get_controller().unlink_file_from_project(effective_user_id, project_id, file_id)
 
 
@@ -369,9 +316,9 @@ async def unlink_file_from_project(
 async def get_user_file(
     request: Request,
     file_id: str,
-    user_id: str | None = Depends(verify_api_key),
+    user: Annotated[AuthenticatedUser, Depends(require_user)],
 ):
-    effective_user_id, _ = await _resolve_project_identity(request, user_id)
+    effective_user_id, _ = await _resolve_project_identity(request, user)
     return await _get_controller().get_user_file(effective_user_id, file_id)
 
 
@@ -379,9 +326,9 @@ async def get_user_file(
 async def delete_user_file(
     request: Request,
     file_id: str,
-    user_id: str | None = Depends(verify_api_key),
+    user: Annotated[AuthenticatedUser, Depends(require_user)],
 ):
-    effective_user_id, _ = await _resolve_project_identity(request, user_id)
+    effective_user_id, _ = await _resolve_project_identity(request, user)
     return await _get_controller().delete_user_file(effective_user_id, file_id)
 
 
@@ -389,9 +336,9 @@ async def delete_user_file(
 async def get_user_file_statuses(
     request: Request,
     payload: FileStatusesPayload,
-    user_id: str | None = Depends(verify_api_key),
+    user: Annotated[AuthenticatedUser, Depends(require_user)],
 ):
-    effective_user_id, _ = await _resolve_project_identity(request, user_id)
+    effective_user_id, _ = await _resolve_project_identity(request, user)
     return await _get_controller().get_user_file_statuses(effective_user_id, payload.file_ids)
 
 
@@ -399,9 +346,9 @@ async def get_user_file_statuses(
 async def get_user_project(
     request: Request,
     project_id: int,
-    user_id: str | None = Depends(verify_api_key),
+    user: Annotated[AuthenticatedUser, Depends(require_user)],
 ):
-    effective_user_id, owner_ids = await _resolve_project_identity(request, user_id)
+    effective_user_id, owner_ids = await _resolve_project_identity(request, user)
     return await _get_controller().get_user_project(effective_user_id, project_id, owner_ids)
 
 
@@ -410,9 +357,9 @@ async def rename_user_project(
     request: Request,
     project_id: int,
     payload: RenameProjectPayload,
-    user_id: str | None = Depends(verify_api_key),
+    user: Annotated[AuthenticatedUser, Depends(require_user)],
 ):
-    effective_user_id, owner_ids = await _resolve_project_identity(request, user_id)
+    effective_user_id, owner_ids = await _resolve_project_identity(request, user)
     return await _get_controller().rename_user_project(
         effective_user_id,
         project_id,
@@ -425,9 +372,9 @@ async def rename_user_project(
 async def delete_user_project(
     request: Request,
     project_id: int,
-    user_id: str | None = Depends(verify_api_key),
+    user: Annotated[AuthenticatedUser, Depends(require_user)],
 ):
-    effective_user_id, owner_ids = await _resolve_project_identity(request, user_id)
+    effective_user_id, owner_ids = await _resolve_project_identity(request, user)
     return await _get_controller().delete_user_project(effective_user_id, project_id, owner_ids)
 
 
@@ -435,9 +382,9 @@ async def delete_user_project(
 async def get_user_project_details(
     request: Request,
     project_id: int,
-    user_id: str | None = Depends(verify_api_key),
+    user: Annotated[AuthenticatedUser, Depends(require_user)],
 ):
-    effective_user_id, owner_ids = await _resolve_project_identity(request, user_id)
+    effective_user_id, owner_ids = await _resolve_project_identity(request, user)
     return await _get_controller().get_user_project_details(
         effective_user_id,
         project_id,
@@ -449,9 +396,9 @@ async def get_user_project_details(
 async def get_user_project_instructions(
     request: Request,
     project_id: int,
-    user_id: str | None = Depends(verify_api_key),
+    user: Annotated[AuthenticatedUser, Depends(require_user)],
 ):
-    effective_user_id, owner_ids = await _resolve_project_identity(request, user_id)
+    effective_user_id, owner_ids = await _resolve_project_identity(request, user)
     return await _get_controller().get_user_project_instructions(
         effective_user_id,
         project_id,
@@ -464,9 +411,9 @@ async def upsert_user_project_instructions(
     request: Request,
     project_id: int,
     payload: UpsertProjectInstructionsPayload,
-    user_id: str | None = Depends(verify_api_key),
+    user: Annotated[AuthenticatedUser, Depends(require_user)],
 ):
-    effective_user_id, owner_ids = await _resolve_project_identity(request, user_id)
+    effective_user_id, owner_ids = await _resolve_project_identity(request, user)
     return await _get_controller().upsert_user_project_instructions(
         effective_user_id,
         project_id,
@@ -479,9 +426,9 @@ async def upsert_user_project_instructions(
 async def get_project_token_count(
     request: Request,
     project_id: int,
-    user_id: str | None = Depends(verify_api_key),
+    user: Annotated[AuthenticatedUser, Depends(require_user)],
 ):
-    effective_user_id, _ = await _resolve_project_identity(request, user_id)
+    effective_user_id, _ = await _resolve_project_identity(request, user)
     return await _get_controller().get_project_token_count(effective_user_id, project_id)
 
 
@@ -490,9 +437,9 @@ async def move_chat_session_to_project(
     request: Request,
     project_id: int,
     payload: MoveChatSessionPayload,
-    user_id: str | None = Depends(verify_api_key),
+    user: Annotated[AuthenticatedUser, Depends(require_user)],
 ):
-    effective_user_id, owner_ids = await _resolve_project_identity(request, user_id)
+    effective_user_id, owner_ids = await _resolve_project_identity(request, user)
     return await _get_controller().move_chat_session_to_project(
         user_id=effective_user_id,
         project_id=project_id,
@@ -505,9 +452,9 @@ async def move_chat_session_to_project(
 async def remove_chat_session_from_project(
     request: Request,
     payload: MoveChatSessionPayload,
-    user_id: str | None = Depends(verify_api_key),
+    user: Annotated[AuthenticatedUser, Depends(require_user)],
 ):
-    effective_user_id, owner_ids = await _resolve_project_identity(request, user_id)
+    effective_user_id, owner_ids = await _resolve_project_identity(request, user)
     return await _get_controller().remove_chat_session_from_project(
         user_id=effective_user_id,
         chat_session_id=payload.chat_session_id,
@@ -521,21 +468,17 @@ async def get_notifications():
 
 
 @router.get("/api/input_prompt")
-async def get_input_prompts(user_id: str | None = Depends(verify_api_key)):
-    if not user_id:
-        return []
-    return await _get_controller().get_input_prompts(user_id)
+async def get_input_prompts(user: Annotated[AuthenticatedUser, Depends(require_user)]):
+    return await _get_controller().get_input_prompts(user.user_id)
 
 
 @router.post("/api/input_prompt")
 async def create_input_prompt(
     payload: InputPromptPayload,
-    user_id: str | None = Depends(verify_api_key),
+    user: Annotated[AuthenticatedUser, Depends(require_user)],
 ):
-    if not user_id:
-        return {"success": False, "detail": "Not authenticated"}
     return await _get_controller().create_input_prompt(
-        user_id=user_id,
+        user_id=user.user_id,
         payload=payload.model_dump(),
     )
 
@@ -544,12 +487,10 @@ async def create_input_prompt(
 async def update_input_prompt(
     prompt_id: int,
     payload: InputPromptPayload,
-    user_id: str | None = Depends(verify_api_key),
+    user: Annotated[AuthenticatedUser, Depends(require_user)],
 ):
-    if not user_id:
-        return {"success": False, "detail": "Not authenticated"}
     return await _get_controller().update_input_prompt(
-        user_id=user_id,
+        user_id=user.user_id,
         prompt_id=prompt_id,
         payload=payload.model_dump(),
     )
@@ -558,11 +499,9 @@ async def update_input_prompt(
 @router.delete("/api/input_prompt/{prompt_id}")
 async def delete_input_prompt(
     prompt_id: int,
-    user_id: str | None = Depends(verify_api_key),
+    user: Annotated[AuthenticatedUser, Depends(require_user)],
 ):
-    if not user_id:
-        return {"success": False, "detail": "Not authenticated"}
-    return await _get_controller().delete_input_prompt(user_id=user_id, prompt_id=prompt_id)
+    return await _get_controller().delete_input_prompt(user_id=user.user_id, prompt_id=prompt_id)
 
 
 @router.get("/api/manage/connector-status")
@@ -578,107 +517,6 @@ async def get_federated_oauth_status():
 @router.get("/api/manage/admin/valid-domains")
 async def get_valid_domains():
     return await _get_controller().get_valid_domains()
-
-
-@router.get("/api/manage/users/accepted")
-async def get_accepted_users(
-    page_num: int = 0,
-    page_size: int = 20,
-    q: str | None = None,
-    is_active: bool | None = None,
-    role: list[str] | None = Query(default=None),
-):
-    return await _get_controller().list_accepted_users_paginated(
-        page_num=page_num,
-        page_size=page_size,
-        query=q,
-        is_active=is_active,
-        roles=role,
-    )
-
-
-@router.get("/api/manage/users/invited")
-async def get_invited_users():
-    return await _get_controller().get_invited_users()
-
-
-@router.get("/api/manage/users")
-async def get_all_users(include_api_keys: bool = False):
-    return await _get_controller().get_all_users(include_api_keys)
-
-
-@router.put("/api/manage/admin/users")
-async def invite_users(payload: BulkInvitePayload):
-    return await _get_controller().invite_users(payload.emails)
-
-
-@router.post("/api/manage/admin/create-user")
-async def create_user(payload: CreateUserPayload):
-    return await _get_controller().create_user(
-        email=payload.email,
-        role=payload.role,
-        first_name=payload.first_name,
-        last_name=payload.last_name,
-        password=payload.password,
-    )
-
-
-@router.patch("/api/manage/admin/update-user-profile")
-async def update_user_profile(payload: UpdateUserProfilePayload):
-    return await _get_controller().update_user_profile(
-        user_email=payload.user_email,
-        first_name=payload.first_name,
-        last_name=payload.last_name,
-    )
-
-
-@router.patch("/api/manage/admin/set-user-password")
-async def set_user_password(payload: SetUserPasswordPayload):
-    return await _get_controller().set_user_password(
-        user_email=payload.user_email,
-        password=payload.password,
-        temporary=payload.temporary,
-    )
-
-
-@router.put("/api/manage/admin/remove-invited-user")
-async def remove_invited_user(payload: UserEmailPayload):
-    return await _get_controller().remove_invited_user(payload.user_email)
-
-
-@router.patch("/api/manage/set-user-role")
-async def set_user_role(payload: SetUserRolePayload):
-    return await _get_controller().set_user_role(payload.user_email, payload.new_role)
-
-
-@router.patch("/api/manage/admin/deactivate-user")
-async def deactivate_user(payload: UserEmailPayload):
-    return await _get_controller().set_user_active(payload.user_email, False)
-
-
-@router.patch("/api/manage/admin/activate-user")
-async def activate_user(payload: UserEmailPayload):
-    return await _get_controller().set_user_active(payload.user_email, True)
-
-
-@router.delete("/api/manage/admin/delete-user")
-async def delete_user(payload: UserEmailPayload):
-    return await _get_controller().delete_user(payload.user_email)
-
-
-@router.put("/api/password/reset_password")
-async def reset_user_password(payload: UserEmailPayload):
-    return await _get_controller().reset_user_password(payload.user_email)
-
-
-@router.get("/api/manage/users/download")
-async def download_users():
-    csv_data, filename = await _get_controller().download_users_csv()
-    return Response(
-        content=csv_data,
-        media_type="text/csv",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
-    )
 
 
 @router.get("/api/federated")

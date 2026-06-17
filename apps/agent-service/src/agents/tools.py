@@ -364,8 +364,12 @@ def graph_search_func(
         headers = {
             "Content-Type": "application/json",
             "User-Agent": "python-httpx",
-            "X-Internal-Service-Token": _LANGCONNECT_SERVICE_TOKEN,
         }
+        access_token = str(configurable.get("access_token") or "").strip()
+        if access_token:
+            headers["Authorization"] = f"Bearer {access_token}"
+        else:
+            headers["X-Internal-Service-Token"] = _LANGCONNECT_SERVICE_TOKEN
 
         for collection_uuid in collection_ids:
             try:

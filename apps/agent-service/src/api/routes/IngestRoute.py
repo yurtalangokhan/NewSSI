@@ -21,14 +21,18 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
+from api.dependencies import require_user_or_internal_service_token
 from controller import IngestController, get_ingest_controller
 from service.Schemas import BatchRequest, BatchResponse, SourcePreviewRequest
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(tags=["ingestion"])
+router = APIRouter(
+    tags=["ingestion"],
+    dependencies=[Depends(require_user_or_internal_service_token)],
+)
 
 
 def _get_controller() -> IngestController:
@@ -73,4 +77,3 @@ async def source_preview(req: SourcePreviewRequest):
     """
     ctrl = _get_controller()
     return await ctrl.source_preview(req)
-

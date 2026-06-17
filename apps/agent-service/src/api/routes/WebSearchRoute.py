@@ -5,12 +5,12 @@ from typing import Any
 from fastapi import APIRouter, Depends
 
 from controller import WebSearchController, get_web_search_controller
-from service.AuthService import verify_bearer
+from api.dependencies import require_user
 
 router = APIRouter(
     prefix="/api/admin/web-search",
     tags=["web-search"],
-    dependencies=[Depends(verify_bearer)],
+    dependencies=[Depends(require_user)],
 )
 
 

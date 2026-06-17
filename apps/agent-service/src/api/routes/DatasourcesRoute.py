@@ -5,16 +5,17 @@ REST API endpoints for managing data sources using Airbyte OSS connectors.
 All connector management is delegated to the Airbyte platform via REST API.
 """
 
-import logging
 import json
+import logging
 from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 
 from controller import DataController, get_data_controller
-from core.db import AirbyteMappingRepository, DatasourceRepository
+from core.db import DatasourceRepository
+from api.dependencies import require_user
 from service.Schemas import (
     ChunkInfo,
     ConnectorSpecResponse,
@@ -28,7 +29,7 @@ from service.SyncQueueService import SyncJob, get_sync_queue
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/datasources", tags=["datasources"])
+router = APIRouter(prefix="/datasources", tags=["datasources"], dependencies=[Depends(require_user)])
 
 
 def _get_controller() -> DataController:
@@ -838,8 +839,8 @@ async def get_sync_status(id: str):
 @router.get("/{id}/sync-history")
 async def get_sync_history(id: str, limit: int = Query(20, ge=1, le=100)):
     """Return recent sync job history for a data source from Airbyte."""
-    from service.AirbyteMappingRepository import AirbyteMappingDB
     from service.AirbyteApiClientService import get_airbyte_client
+    from service.AirbyteMappingRepository import AirbyteMappingDB
 
     mapping = await AirbyteMappingDB.get(id)
     if not mapping:

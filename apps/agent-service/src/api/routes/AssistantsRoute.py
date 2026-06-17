@@ -11,7 +11,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException
 
 from controller import AgentController, get_agent_controller
-from service.AuthService import verify_bearer
+from api.dependencies import require_user
 from service.Schemas import (
     AssistantCreateRequest,
     AssistantSearchRequest,
@@ -22,7 +22,7 @@ from core.logger import get_logger
 
 logger = get_logger(__name__)
 
-router = APIRouter(prefix="/assistants", tags=["assistants"], dependencies=[Depends(verify_bearer)])
+router = APIRouter(prefix="/assistants", tags=["assistants"], dependencies=[Depends(require_user)])
 
 
 # =============================================================================

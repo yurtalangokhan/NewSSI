@@ -1,92 +1,22 @@
-"""Auth controller — thin orchestrator delegating to AuthService."""
+"""Auth-adjacent controller for token-backed agent-service routes."""
 
-import logging
 import os
 from typing import Any
 
-from fastapi import Request, Response
+from fastapi import Request
 
 from controller.base import BaseController
-from service.AuthService import get_auth_service
-
-logger = logging.getLogger(__name__)
+from service.AuthService import AuthenticatedUser, get_auth_service
 
 
 class AuthController(BaseController):
-    """Controller for authentication endpoints.
-
-    Thin orchestrator: delegates all business logic to AuthService.
-    Manages HTTP-specific concerns (cookie setting).
-    """
+    """Controller for user context endpoints that consume existing tokens."""
 
     def __init__(self):
         self._auth_service = get_auth_service()
 
-    async def get_auth_type(self) -> dict[str, Any]:
-        return await self._auth_service.get_auth_type()
-
-    async def get_current_user(self, request: Request, user_id: str) -> dict[str, Any]:
-        return await self._auth_service.get_current_user(request=request, user_id=user_id)
-
-    async def login(self, username: str, password: str, response: Response) -> dict[str, Any]:
-        result = await self._auth_service.basic_login(username=username, password=password)
-
-        if not result.get("success"):
-            response.status_code = 400
-            return result
-
-        session_token = str(result.get("user_id") or "dev-session")
-        response.set_cookie(
-            "session",
-            session_token,
-            httponly=True,
-            samesite="lax",
-            path="/",
-        )
-        return result
-
-    async def logout(self, request: Request, response: Response) -> dict[str, Any]:
-        await self._auth_service.logout(
-            refresh_token=request.cookies.get("refresh_token"),
-            id_token_hint=request.cookies.get("id_token"),
-        )
-
-        for cookie_name in ("session", "fastapiusersauth", "id_token", "refresh_token", "access_token"):
-            response.delete_cookie(cookie_name, path="/", samesite="lax")
-
-        return {"success": True}
-
-    async def get_auth_type(self) -> dict[str, Any]:
-        return await self._auth_service.get_auth_type()
-
-    async def get_current_user(self, request: Request, user_id: str) -> dict[str, Any]:
-        return await self._auth_service.get_current_user(request=request, user_id=user_id)
-
-    async def login(self, username: str, password: str, response: Response) -> dict[str, Any]:
-        result = await self._auth_service.basic_login(username=username, password=password)
-
-        if result.get("success"):
-            response.set_cookie("session", "dev-session", httponly=True, samesite="lax")
-
-        if not result.get("success"):
-            response.status_code = 400
-
-        return result
-
-    async def logout(self, request: Request, response: Response) -> dict[str, Any]:
-        refresh_token = request.cookies.get("refresh_token")
-        id_token_hint = request.cookies.get("id_token")
-
-        await self._auth_service.logout(
-            refresh_token=refresh_token,
-            id_token_hint=id_token_hint,
-        )
-
-        cookies_to_delete = ["session", "fastapiusersauth", "id_token", "refresh_token", "access_token"]
-        for cookie_name in cookies_to_delete:
-            response.delete_cookie(cookie_name, path="/", samesite="lax")
-
-        return {"success": True}
+    async def get_current_user(self, request: Request, user: AuthenticatedUser) -> dict[str, Any]:
+        return await self._auth_service.get_current_user(request=request, user=user)
 
     async def get_settings(self) -> dict[str, Any]:
         return {
@@ -108,58 +38,6 @@ class AuthController(BaseController):
 
     async def health_check(self) -> dict[str, Any]:
         return {"status": "ok"}
-
-    async def refresh_auth(self) -> dict[str, Any]:
-        return {"success": True}
-
-    async def get_oidc_authorize_url(
-        self,
-        next_url: str | None = None,
-        redirect_uri_override: str | None = None,
-    ) -> dict[str, str]:
-        return await self._auth_service.get_oidc_authorize_url(
-            next_url=next_url,
-            redirect_uri_override=redirect_uri_override,
-        )
-
-    async def handle_oidc_callback(
-        self,
-        code: str,
-        state: str | None,
-        response: Response,
-        redirect_uri_override: str | None = None,
-    ) -> dict[str, Any]:
-        result = await self._auth_service.handle_oidc_callback(
-            code=code,
-            state=state,
-            redirect_uri_override=redirect_uri_override,
-        )
-
-        access_token = result.get("access_token")
-        id_token = result.get("id_token")
-        refresh_token = result.get("refresh_token")
-        expires_in = result.get("expires_in", 3600)
-
-        response.set_cookie(
-            "fastapiusersauth", access_token, httponly=True, samesite="lax",
-            max_age=expires_in, path="/",
-        )
-        response.set_cookie(
-            "session", access_token, httponly=True, samesite="lax",
-            max_age=expires_in, path="/",
-        )
-        if refresh_token:
-            response.set_cookie(
-                "refresh_token", refresh_token, httponly=True, samesite="lax",
-                max_age=7 * 24 * 3600, path="/",
-            )
-        if id_token:
-            response.set_cookie(
-                "id_token", id_token, httponly=True, samesite="lax",
-                max_age=expires_in, path="/",
-            )
-
-        return result
 
     async def get_mcp_servers(self) -> dict[str, Any]:
         mcp_servers = []

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from contextvars import ContextVar
 from typing import Any
 
 import httpx
@@ -12,6 +13,10 @@ from core.env import env
 
 DEFAULT_INTERNAL_SERVICE_TOKEN = "dev-internal-service-token-change-me"
 _USER_BY_KEYCLOAK_ID_CACHE: dict[str, dict[str, Any] | None] = {}
+_CURRENT_ACCESS_TOKEN: ContextVar[str | None] = ContextVar(
+    "user_service_access_token",
+    default=None,
+)
 
 DEFAULT_USER_SETTINGS: dict[str, Any] = {
     "theme_preference": None,
@@ -25,6 +30,7 @@ DEFAULT_USER_SETTINGS: dict[str, Any] = {
     "use_memories": False,
     "enable_memory_tool": False,
     "user_preferences": "",
+    "work_role": "",
     "prompt_shortcuts": [],
     "long_term_memory_enabled": False,
     "extract_memory": True,
@@ -35,13 +41,32 @@ def _user_service_base_url() -> str:
     return str(env.get("USER_SERVICE_URL", "http://localhost:8090")).rstrip("/")
 
 
-def _internal_headers() -> dict[str, str]:
+def set_current_access_token(access_token: str | None) -> None:
+    _CURRENT_ACCESS_TOKEN.set(access_token)
+
+
+def get_current_access_token() -> str | None:
+    return _CURRENT_ACCESS_TOKEN.get()
+
+
+def _service_headers(
+    *,
+    access_token: str | None = None,
+    include_internal_token: bool = False,
+) -> dict[str, str]:
+    resolved_access_token = (access_token or get_current_access_token() or "").strip()
+    headers: dict[str, str] = {"Content-Type": "application/json"}
+    if resolved_access_token:
+        headers["Authorization"] = f"Bearer {resolved_access_token}"
+
+    if not include_internal_token:
+        return headers
+
     token = str(
         env.get("INTERNAL_SERVICE_TOKEN")
         or env.get("USER_SERVICE_INTERNAL_TOKEN")
         or DEFAULT_INTERNAL_SERVICE_TOKEN
     ).strip()
-    headers: dict[str, str] = {"Content-Type": "application/json"}
     if token:
         headers["X-Internal-Service-Token"] = token
     return headers
@@ -61,6 +86,8 @@ async def _request(
     path: str,
     *,
     json_body: dict[str, Any] | None = None,
+    access_token: str | None = None,
+    include_internal_token: bool = False,
     timeout: float = 15.0,
 ) -> Any:
     url = f"{_user_service_base_url()}{path}"
@@ -69,7 +96,10 @@ async def _request(
             resp = await client.request(
                 method,
                 url,
-                headers=_internal_headers(),
+                headers=_service_headers(
+                    access_token=access_token,
+                    include_internal_token=include_internal_token,
+                ),
                 json=json_body,
             )
     except httpx.HTTPError as exc:
@@ -93,20 +123,11 @@ async def _request(
         return {}
 
 
-async def get_user_settings(user_id: str) -> dict[str, Any]:
-    data = await _request("GET", f"/api/users/me/settings/internal/users/{user_id}/settings")
-    if isinstance(data, dict):
-        merged = dict(DEFAULT_USER_SETTINGS)
-        merged.update(data)
-        return merged
-    return dict(DEFAULT_USER_SETTINGS)
-
-
-async def update_user_settings(user_id: str, updates: dict[str, Any]) -> dict[str, Any]:
+async def get_user_settings(user_id: str, access_token: str | None = None) -> dict[str, Any]:
     data = await _request(
-        "PATCH",
+        "GET",
         f"/api/users/me/settings/internal/users/{user_id}/settings",
-        json_body=updates,
+        access_token=access_token,
     )
     if isinstance(data, dict):
         merged = dict(DEFAULT_USER_SETTINGS)
@@ -115,11 +136,65 @@ async def update_user_settings(user_id: str, updates: dict[str, Any]) -> dict[st
     return dict(DEFAULT_USER_SETTINGS)
 
 
-async def create_prompt_shortcut(user_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+async def get_current_user(access_token: str) -> dict[str, Any] | None:
+    data = await _request(
+        "GET",
+        "/api/auth/me",
+        access_token=access_token,
+    )
+    if isinstance(data, dict):
+        return data
+    return None
+
+
+async def update_user_settings(
+    user_id: str,
+    updates: dict[str, Any],
+    access_token: str | None = None,
+) -> dict[str, Any]:
+    data = await _request(
+        "PATCH",
+        f"/api/users/me/settings/internal/users/{user_id}/settings",
+        json_body=updates,
+        access_token=access_token,
+    )
+    if isinstance(data, dict):
+        merged = dict(DEFAULT_USER_SETTINGS)
+        merged.update(data)
+        return merged
+    return dict(DEFAULT_USER_SETTINGS)
+
+
+async def update_user_profile(
+    user_id: str,
+    updates: dict[str, Any],
+    access_token: str | None = None,
+) -> dict[str, Any]:
+    data = await _request(
+        "PATCH",
+        f"/api/users/internal/users/{user_id}",
+        json_body=updates,
+        access_token=access_token,
+    )
+    _USER_BY_KEYCLOAK_ID_CACHE.pop(str(user_id), None)
+    if isinstance(data, dict):
+        keycloak_id = data.get("keycloak_id")
+        if keycloak_id:
+            _USER_BY_KEYCLOAK_ID_CACHE.pop(str(keycloak_id), None)
+        return data
+    return {}
+
+
+async def create_prompt_shortcut(
+    user_id: str,
+    payload: dict[str, Any],
+    access_token: str | None = None,
+) -> dict[str, Any]:
     data = await _request(
         "POST",
         f"/api/users/me/settings/internal/users/{user_id}/settings/prompt-shortcuts",
         json_body=payload,
+        access_token=access_token,
     )
     if isinstance(data, dict):
         return data
@@ -130,21 +205,28 @@ async def update_prompt_shortcut(
     user_id: str,
     prompt_id: int,
     payload: dict[str, Any],
+    access_token: str | None = None,
 ) -> dict[str, Any]:
     data = await _request(
         "PATCH",
         f"/api/users/me/settings/internal/users/{user_id}/settings/prompt-shortcuts/{prompt_id}",
         json_body=payload,
+        access_token=access_token,
     )
     if isinstance(data, dict):
         return data
     return {}
 
 
-async def delete_prompt_shortcut(user_id: str, prompt_id: int) -> dict[str, Any]:
+async def delete_prompt_shortcut(
+    user_id: str,
+    prompt_id: int,
+    access_token: str | None = None,
+) -> dict[str, Any]:
     data = await _request(
         "DELETE",
         f"/api/users/me/settings/internal/users/{user_id}/settings/prompt-shortcuts/{prompt_id}",
+        access_token=access_token,
     )
     if isinstance(data, dict):
         return data
@@ -157,6 +239,7 @@ async def upsert_user_from_keycloak(
     first_name: str | None = None,
     last_name: str | None = None,
     username: str | None = None,
+    access_token: str | None = None,
 ) -> dict[str, Any]:
     """Create or update user in user-microservice from Keycloak profile."""
     data = await _request(
@@ -169,32 +252,43 @@ async def upsert_user_from_keycloak(
             "last_name": last_name,
             "username": username,
         },
+        access_token=access_token,
+        include_internal_token=access_token is None,
     )
     if isinstance(data, dict):
         return data
     return {}
 
 
-async def get_user_by_keycloak_id(keycloak_id: str) -> dict[str, Any] | None:
+async def get_user_by_keycloak_id(
+    keycloak_id: str,
+    access_token: str | None = None,
+) -> dict[str, Any] | None:
     """Fetch user from user-service by Keycloak ID (subject)."""
     normalized = str(keycloak_id or "").strip()
     if not normalized or not _looks_like_keycloak_subject(normalized):
         return None
-    if normalized in _USER_BY_KEYCLOAK_ID_CACHE:
+    effective_access_token = (access_token or get_current_access_token() or "").strip()
+    use_cache = not effective_access_token
+    if use_cache and normalized in _USER_BY_KEYCLOAK_ID_CACHE:
         return _USER_BY_KEYCLOAK_ID_CACHE[normalized]
 
     try:
         data = await _request(
             "GET",
             f"/api/users/internal/by-keycloak-id/{normalized}",
+            access_token=effective_access_token,
         )
         if isinstance(data, dict):
-            _USER_BY_KEYCLOAK_ID_CACHE[normalized] = data
+            if use_cache:
+                _USER_BY_KEYCLOAK_ID_CACHE[normalized] = data
             return data
-        _USER_BY_KEYCLOAK_ID_CACHE[normalized] = None
+        if use_cache:
+            _USER_BY_KEYCLOAK_ID_CACHE[normalized] = None
         return None
     except HTTPException as exc:
         if exc.status_code == 404:
-            _USER_BY_KEYCLOAK_ID_CACHE[normalized] = None
+            if use_cache:
+                _USER_BY_KEYCLOAK_ID_CACHE[normalized] = None
             return None
         raise

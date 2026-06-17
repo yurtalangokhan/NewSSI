@@ -4,9 +4,14 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 
+from api.dependencies import require_user
 from service.MCPProviderService import MCPProviderService
 
-router = APIRouter(prefix="/mcp-providers", tags=["mcp-providers"])
+router = APIRouter(
+    prefix="/mcp-providers",
+    tags=["mcp-providers"],
+    dependencies=[Depends(require_user)],
+)
 
 
 def _get_service() -> MCPProviderService:
