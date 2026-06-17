@@ -1,4 +1,5 @@
 from .keycloak_service import KeycloakService, get_keycloak_service
+from .ldap_service import LdapService, get_ldap_service
 from .auth_service import AuthService, get_auth_service
 from .user_service import UserService, get_user_service
 from .user_settings_service import UserSettingsService, get_user_settings_service
@@ -8,6 +9,8 @@ from .audit_service import AuditService, get_audit_service
 __all__ = [
     "KeycloakService",
     "get_keycloak_service",
+    "LdapService",
+    "get_ldap_service",
     "AuthService",
     "get_auth_service",
     "UserService",

@@ -148,6 +148,36 @@ class AuthController(BaseController):
         except ValueError as e:
             self._raise_bad_request(str(e))
 
+    async def ldap_login(
+        self, request: Request, response: Response, username: str, password: str
+    ) -> dict[str, Any]:
+        try:
+            result = await self.auth_service.ldap_signup_signin(username, password)
+            self._set_cookies(
+                response,
+                result.get("access_token", ""),
+                result.get("refresh_token", ""),
+                result.get("id_token"),
+            )
+            return result
+        except ValueError as e:
+            self._raise_bad_request(str(e))
+
+    async def search_ldap_users(
+        self, filter_str: str = "(objectClass=person)", attributes: list[str] | None = None
+    ) -> list[dict[str, Any]]:
+        try:
+            return await self.auth_service.search_ldap_users(filter_str, attributes)
+        except ValueError as e:
+            self._raise_bad_request(str(e))
+
+    async def validate_ldap_user(self, username: str) -> dict[str, Any]:
+        try:
+            exists = await self.auth_service.validate_ldap_user(username)
+            return {"username": username, "exists": exists}
+        except ValueError as e:
+            self._raise_bad_request(str(e))
+
     async def sync_users_from_keycloak(self) -> dict[str, Any]:
         """Sync users and roles from Keycloak to user-service DB."""
         try:

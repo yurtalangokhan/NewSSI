@@ -146,6 +146,12 @@ export default function LoginPage({
                 authorizeUrl={authUrl}
                 authType={AuthType.OIDC}
               />
+              <Link
+                href="/auth/ldap/login"
+                className="text-link font-medium text-sm text-center w-full hover:underline"
+              >
+                {t("auth.continueWithLdap", { defaultValue: "Continue with LDAP" })}
+              </Link>
               <div className="flex flex-row items-center w-full gap-2">
                 <div className="flex-1 border-t border-border" />
                 <Text as="p" text03 mainUiMuted>

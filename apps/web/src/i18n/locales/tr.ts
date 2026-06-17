@@ -9,7 +9,7 @@ const tr = {
     releaseToUpload: "Dosyalarınızı yüklemek için bırakın",
   },
   app: {
-    title: "Onyx",
+    title: "Yapay Zeka Platformu",
     description: "Belgeleriniz için soru-cevap platformu",
     userFiles: {
       searchPlaceholder: "Dosya ara...",
@@ -113,7 +113,7 @@ const tr = {
   },
   auth: {
     welcomeHeading: "{{appName}}'a Hoş Geldiniz",
-    tagline: "İş için açık kaynaklı yapay zeka platformunuz",
+    tagline: "İş için yapay zeka platformunuz",
     emailVerifiedMessage:
       "E-posta adresiniz doğrulandı! Devam etmek için giriş yapın.",
     orDivider: "veya",
@@ -128,7 +128,6 @@ const tr = {
     creatingAccount: "Hesap oluşturuluyor...",
     accountCreatedSigningIn: "Hesap oluşturuldu. Giriş yapılıyor...",
     signedInSuccessfully: "Başarıyla giriş yapıldı.",
-    passwordMinLength: "Şifre en az {{n}} karakter olmalıdır",
     accountAlreadyExists: "Belirtilen e-posta ile zaten bir hesap mevcut.",
     tooManyRequests: "Çok fazla istek. Lütfen daha sonra tekrar deneyin.",
     unknownError: "Bilinmeyen hata",
@@ -141,10 +140,13 @@ const tr = {
     usernamePlaceholder: "kullaniciadi",
     usernameMinLength: "Kullanıcı adı en az {{n}} karakter olmalıdır",
     usernameRequired: "Kullanıcı adı zorunludur",
+    passwordRequired: "Şifre zorunludur",
     emailLabel: "E-posta Adresi",
     emailPlaceholder: "email@sirketiniz.com",
     firstNameLabel: "Adı",
     lastNameLabel: "Soyadı",
+    firstNameRequired: "Ad zorunludur",
+    lastNameRequired: "Soyad zorunludur",
     joinButton: "Katıl",
     createAccountButton: "Hesap Oluştur",
     signInButton: "Giriş Yap",
@@ -450,7 +452,7 @@ const tr = {
       loadingTeamInfo: "Takım bilgileri yükleniyor...",
       joinRequestSentBody:
         "Katılma isteğiniz gönderildi. {{domain}} yöneticisi isteğinizi onaylarken kendi takımınız olarak keşfedebilirsiniz.",
-      tryOnyxWhileWaiting: "Beklerken Onyx'i deneyin",
+      tryWhileWaiting: "Beklerken uygulamayı deneyin",
       joinRequestInfo:
         "Katılma isteğiniz {{domain}}'in herhangi bir yöneticisi tarafından onaylanabilir.",
       continueWithNewTeam: "Yeni takımla devam et",
@@ -881,7 +883,7 @@ const tr = {
       updatingButton: "Güncelleniyor...",
       updateButton: "Güncelle",
       currentPasswordRequired: "Mevcut şifre zorunludur",
-      newPasswordMinLength: "Şifre en az {{n}} karakter olmalıdır",
+      newPasswordRequired: "Yeni şifre zorunludur",
       passwordsMustMatch: "Şifreler eşleşmelidir",
       confirmPasswordRequired: "Lütfen yeni şifrenizi onaylayın",
       revokeTokenTitle: "Erişim Tokenını İptal Et",
@@ -1802,7 +1804,7 @@ const tr = {
         save: "Değişiklikleri Kaydet",
         savingButton: "Kaydediliyor",
         noChanges: "Kaydedilecek değişiklik yok",
-        passwordTooShort: "Şifre en az 8 karakter olmalıdır",
+        nameRequired: "Ad ve soyad zorunludur",
         updateProfileFailed: "Kullanıcı profili güncellenemedi",
         setPasswordFailed: "Kullanıcı şifresi ayarlanamadı",
         updateSuccess: "Kullanıcı başarıyla güncellendi",
@@ -4181,7 +4183,7 @@ const tr = {
     accessKey: "Erişim Anahtarı",
     longTermApiKey: "Uzun Vadeli API Anahtarı",
     iamDesc:
-      "Onyx, kimlik doğrulamak için çalıştığı ortama bağlı IAM rolünü kullanacaktır.",
+      "Uygulama, kimlik doğrulamak için çalıştığı ortama bağlı IAM rolünü kullanacaktır.",
     awsAccessKeyId: "AWS Erişim Anahtarı ID'si",
     awsSecretAccessKey: "AWS Gizli Erişim Anahtarı",
     checkingCredentials: "Kimlik bilgileri kontrol ediliyor...",
@@ -4224,7 +4226,7 @@ const tr = {
       "Google Cloud Vertex AI'ye bağlanın ve Gemini modellerinizi kurun.",
   },
   nameStep: {
-    whatShouldOnyxCallYou: "Onyx sizi ne diye çağırmalı?",
+    whatShouldAppCallYou: "{{appName}} sizi ne diye çağırmalı?",
     nameDisplayDesc: "Bu adı uygulamada görüntüleyeceğiz.",
     yourName: "Adınız",
   },

@@ -1,7 +1,7 @@
 import hashlib
 import secrets
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import bcrypt
@@ -12,6 +12,7 @@ from src.core.database.models.user_model import normalize_user_role
 from src.repository import SessionRepository, UserRepository
 
 from .keycloak_service import get_keycloak_service
+from .ldap_service import get_ldap_service
 
 _settings = get_settings()
 
@@ -21,6 +22,7 @@ class AuthService:
         self.session_repo = SessionRepository()
         self.user_repo = UserRepository()
         self.keycloak = get_keycloak_service()
+        self.ldap = get_ldap_service()
 
     @staticmethod
     def hash_password(password: str) -> str:
@@ -38,14 +40,14 @@ class AuthService:
         return hashlib.sha256(token.encode()).hexdigest()
 
     def _create_access_token(self, user_id: str, email: str, role: str) -> tuple[str, datetime]:
-        expires = datetime.now(timezone.utc) + timedelta(hours=1)
+        expires = datetime.now(UTC) + timedelta(hours=1)
         payload = {
             "sub": user_id,
             "aud": _settings.SERVICE_NAME,
             "email": email,
             "role": role,
             "exp": expires,
-            "iat": datetime.now(timezone.utc),
+            "iat": datetime.now(UTC),
             "iss": "user-service",
             "type": "access",
             "jti": secrets.token_urlsafe(12),
@@ -56,7 +58,7 @@ class AuthService:
 
     def _create_refresh_token(self) -> tuple[str, datetime]:
         token = secrets.token_urlsafe(32)
-        expires = datetime.now(timezone.utc) + timedelta(days=30)
+        expires = datetime.now(UTC) + timedelta(days=30)
         return token, expires
 
     async def basic_login(self, username: str, password: str) -> dict[str, Any]:
@@ -68,6 +70,96 @@ class AuthService:
             return local_login
 
         raise ValueError("Invalid credentials")
+
+    async def ldap_signup_signin(self, username: str, password: str) -> dict[str, Any]:
+        """LDAP-authenticated signup/signin: LDAP -> DB -> Keycloak -> tokens.
+
+        1. Authenticate user against LDAP
+        2. Create or update user in local DB (no password stored)
+        3. If Keycloak enabled, ensure user exists in Keycloak with password synced
+        4. Get tokens from Keycloak (or issue local JWT if KC disabled)
+        """
+        if not self.ldap.is_enabled():
+            raise ValueError("LDAP authentication is not enabled")
+
+        ldap_attrs = await self.ldap.authenticate(username, password)
+        if not ldap_attrs:
+            raise ValueError("LDAP authentication failed — invalid credentials")
+
+        user_fields = self._map_ldap_attributes(ldap_attrs)
+        email = user_fields.get("email") or f"{username}@ldap.local"
+        ldap_username = user_fields.get("username") or username
+
+        user = await self.user_repo.get_by_email(email)
+        if not user:
+            user = await self.user_repo.get_by_username(ldap_username)
+
+        if user:
+            update_kwargs: dict[str, Any] = {}
+            if user_fields.get("first_name") is not None:
+                update_kwargs["first_name"] = user_fields["first_name"]
+            if user_fields.get("last_name") is not None:
+                update_kwargs["last_name"] = user_fields["last_name"]
+            if user_fields.get("email") is not None:
+                update_kwargs["email"] = user_fields["email"]
+            if user_fields.get("username") is not None:
+                update_kwargs["username"] = user_fields["username"]
+            if update_kwargs:
+                user = await self.user_repo.update(user.id, **update_kwargs)
+        else:
+            user = await self.user_repo.create(
+                email=email,
+                username=ldap_username,
+                first_name=user_fields.get("first_name"),
+                last_name=user_fields.get("last_name"),
+                role="enduser",
+                is_active=True,
+                is_verified=True,
+            )
+
+        if self.keycloak.is_enabled():
+            kc_user = await self.keycloak.get_user_by_email(email)
+            if kc_user:
+                kc_id = kc_user.get("id")
+                await self.keycloak.set_password(kc_id, password, temporary=False)
+                if not user.keycloak_id:
+                    user = await self.user_repo.update(user.id, keycloak_id=kc_id)
+            else:
+                kc_id = await self.keycloak.create_user({
+                    "email": email,
+                    "username": ldap_username,
+                    "firstName": user_fields.get("first_name") or ldap_username,
+                    "lastName": user_fields.get("last_name") or "User",
+                    "enabled": True,
+                    "emailVerified": True,
+                    "credentials": [
+                        {"type": "password", "value": password, "temporary": False},
+                    ],
+                })
+                if kc_id:
+                    user = await self.user_repo.update(user.id, keycloak_id=kc_id)
+
+            token_data = await self.keycloak.password_grant(ldap_username, password)
+            return await self._build_oidc_login_response(user, token_data)
+
+        return await self._build_login_response(user)
+
+    def _map_ldap_attributes(self, ldap_attrs: dict[str, Any]) -> dict[str, Any]:
+        return self.ldap._map_ldap_entry(ldap_attrs)
+
+    async def search_ldap_users(
+        self,
+        filter_str: str = "(objectClass=person)",
+        attributes: list[str] | None = None,
+    ) -> list[dict[str, Any]]:
+        if not self.ldap.is_enabled():
+            raise ValueError("LDAP is not enabled")
+        return await self.ldap.search_users(filter_str, attributes)
+
+    async def validate_ldap_user(self, username: str) -> bool:
+        if not self.ldap.is_enabled():
+            raise ValueError("LDAP is not enabled")
+        return await self.ldap.validate_user(username)
 
     async def _local_basic_login(self, username: str, password: str) -> dict[str, Any] | None:
         user = await self.user_repo.get_by_email(username)
@@ -284,7 +376,7 @@ class AuthService:
     async def refresh_access_token(self, refresh_token: str) -> dict[str, Any]:
         session = await self.session_repo.get_by_refresh_token_hash(self._hash_token(refresh_token))
         if session:
-            current_time = datetime.now(timezone.utc)
+            current_time = datetime.now(UTC)
             if session.expires_at < current_time:
                 await self.session_repo.delete_by_refresh_token_hash(self._hash_token(refresh_token))
                 raise ValueError("Refresh token expired")
@@ -379,6 +471,30 @@ class AuthService:
         if not self.keycloak.is_enabled():
             return None
 
+        claims = await self.keycloak.validate_token_jwks(token)
+        if claims:
+            keycloak_id = claims.get("sub", "")
+            if keycloak_id:
+                user = await self.user_repo.get_by_keycloak_id(keycloak_id)
+                if not user and claims.get("email"):
+                    user = await self.user_repo.upsert_by_keycloak_id(
+                        keycloak_id,
+                        email=claims["email"],
+                        username=claims.get("preferred_username"),
+                        first_name=claims.get("given_name"),
+                        last_name=claims.get("family_name"),
+                        is_active=True,
+                        is_verified=True,
+                    )
+                if user and user.is_active:
+                    return {
+                        "sub": str(user.id),
+                        "keycloak_sub": keycloak_id,
+                        "email": user.email,
+                        "role": normalize_user_role(user.role),
+                        "type": "access",
+                    }
+
         user_info = await self.keycloak.get_user_info(token)
         if not user_info:
             return None
@@ -410,9 +526,25 @@ class AuthService:
         }
 
     def get_auth_type(self) -> dict[str, Any]:
+        base_metadata = {
+            "autoRedirect": False,
+            "requiresVerification": False,
+            "anonymousUserEnabled": True,
+            "hasUsers": True,
+        }
         if self.keycloak.is_enabled():
-            return {"authType": "oidc", "keycloakEnabled": True}
-        return {"authType": "basic", "keycloakEnabled": False}
+            return {
+                **base_metadata,
+                "authType": "oidc",
+                "keycloakEnabled": True,
+                "oauthEnabled": True,
+            }
+        return {
+            **base_metadata,
+            "authType": "basic",
+            "keycloakEnabled": False,
+            "oauthEnabled": False,
+        }
 
     async def get_oidc_authorize_url(
         self, redirect_uri: str = "http://localhost:3000/auth/oidc/callback"

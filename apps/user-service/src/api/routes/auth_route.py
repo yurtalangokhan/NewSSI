@@ -1,7 +1,7 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Form, Request, Response
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 
 from src.api.dependencies import require_admin, require_auth
 from src.controller import get_auth_controller
@@ -70,6 +70,14 @@ class RegisterRequest(BaseModel):
     first_name: str
     last_name: str
 
+    @field_validator("first_name", "last_name")
+    @classmethod
+    def names_must_not_be_blank(cls, value: str) -> str:
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError("first_name and last_name are required")
+        return stripped
+
 
 @router.post("/register")
 async def register(
@@ -98,3 +106,40 @@ async def sync_users(admin_id: Annotated[str, Depends(require_admin)]):
     - Syncs realm roles
     """
     return await get_auth_controller().sync_users_from_keycloak()
+
+
+@router.post("/ldap/login")
+async def ldap_login(
+    request: Request,
+    response: Response,
+    username: str = Form(...),
+    password: str = Form(...),
+):
+    return await get_auth_controller().ldap_login(request, response, username, password)
+
+
+class LdapSearchRequest(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    filter: str = "(objectClass=person)"
+    attributes: list[str] | None = None
+
+
+@router.post("/ldap/search")
+async def ldap_search(
+    _: Annotated[str, Depends(require_admin)],
+    body: LdapSearchRequest,
+):
+    return await get_auth_controller().search_ldap_users(body.filter, body.attributes)
+
+
+class LdapValidateRequest(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    username: str
+
+
+@router.post("/ldap/validate")
+async def ldap_validate(
+    _: Annotated[str, Depends(require_admin)],
+    body: LdapValidateRequest,
+):
+    return await get_auth_controller().validate_ldap_user(body.username)
