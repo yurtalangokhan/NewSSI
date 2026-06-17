@@ -3,7 +3,8 @@ _transform: true
 
 # ============================================================================
 # Local Kong config — mirrors production kong.yml structure, but without JWT
-# validation (no Keycloak public key locally). All routes forward transparently.
+# validation (no Keycloak public key locally). All routes forward transparently;
+# upstream services still validate Bearer tokens for protected routes.
 #
 # For production: swap host.docker.internal → Docker service names,
 # enable JWT plugin (see kong.yml).
@@ -101,12 +102,6 @@ services:
         strip_path: false
         preserve_host: true
 
-      - name: agent-service-auth-public
-        paths:
-          - /auth
-        strip_path: false
-        preserve_host: true
-
       - name: agent-service-non-api
         paths:
           - /me
@@ -154,7 +149,8 @@ services:
         preserve_host: true
 
   # --------------------------------------------------------------------------
-  # Internal routes (no JWT) — for service-to-service communication.
+  # Internal routes — local transparent forwarding for service-to-service
+  # communication. Protected upstream services still require Bearer tokens.
   # --------------------------------------------------------------------------
 
   - name: internal-user-service

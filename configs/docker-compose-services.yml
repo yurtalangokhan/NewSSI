@@ -299,8 +299,6 @@ services:
     image: kong:3.8
     restart: unless-stopped
     depends_on:
-      keycloak:
-        condition: service_healthy
       postgres:
         condition: service_healthy
     ports:
@@ -311,14 +309,14 @@ services:
       # When KEYCLOAK_PUBLIC_HOSTNAME is an IP (e.g. 10.101.90.13), this entry
       # is a no-op — Kong reaches that IP directly via the network.
       - "keycloak.localhost:host-gateway"
-      # Backend services run on the host (not in Docker); kong.local.yml uses
-      # host.docker.internal to reach them.
+      # Backend services run on the host when launched from VS Code; kong.yml
+      # uses host.docker.internal to reach them while keeping JWT enabled.
       - "host.docker.internal:host-gateway"
     volumes:
-      - ./kong/kong.local.yml:/etc/kong/kong.local.yml:ro
+      - ./kong/kong.yml:/etc/kong/kong.yml:ro
     environment:
       KONG_DATABASE: "off"
-      KONG_DECLARATIVE_CONFIG: /etc/kong/kong.local.yml
+      KONG_DECLARATIVE_CONFIG: /etc/kong/kong.yml
       KONG_DNS_ORDER: LAST,A,CNAME
       KONG_LOG_LEVEL: info
       KONG_ADMIN_LISTEN: 0.0.0.0:8001
@@ -377,6 +375,7 @@ services:
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin123}
       KEYCLOAK_REALM: ${KEYCLOAK_REALM:-agenticai}
       KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-agenticai-web}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:-}
       KEYCLOAK_REDIRECT_URI: ${KEYCLOAK_REDIRECT_URI:-*}
       KEYCLOAK_WEB_ORIGIN: ${KEYCLOAK_WEB_ORIGIN:-*}
       KEYCLOAK_POST_LOGOUT_REDIRECT_URIS: ${KEYCLOAK_POST_LOGOUT_REDIRECT_URIS:-+}
