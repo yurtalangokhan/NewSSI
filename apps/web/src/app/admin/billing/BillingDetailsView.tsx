@@ -28,6 +28,7 @@ import {
   claimLicense,
   refreshLicenseCache,
 } from "@/lib/billing/svc";
+import { APP_SUPPORT_EMAIL } from "@/lib/appInfo";
 import { formatDateShort } from "@/lib/dateUtils";
 import { humanReadableFormatShort } from "@/lib/time";
 import { NEXT_PUBLIC_CLOUD_ENABLED } from "@/lib/constants";
@@ -236,7 +237,7 @@ function SubscriptionCard({
               Your plan is managed through sales.
               <br />
               <a
-                href="mailto:support@onyx.app?subject=Billing%20change%20request"
+                href={`mailto:${APP_SUPPORT_EMAIL}?subject=Billing%20change%20request`}
                 className="underline"
               >
                 Contact billing

@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { useSearchParams } from "next/navigation";
 
 import { NEXT_PUBLIC_CLOUD_ENABLED } from "@/lib/constants";
+import { APP_SUPPORT_EMAIL } from "@/lib/appInfo";
 
 const Page = () => {
   const { t } = useTranslation();
@@ -58,8 +59,8 @@ const Page = () => {
           {NEXT_PUBLIC_CLOUD_ENABLED && (
             <span className="block mt-1 text-blue-600">
               {t("authPages.authError.cloudSupportNote")}{" "}
-              <a href="mailto:support@onyx.app" className="text-blue-600">
-                support@onyx.app
+              <a href={`mailto:${APP_SUPPORT_EMAIL}`} className="text-blue-600">
+                {APP_SUPPORT_EMAIL}
               </a>
             </span>
           )}

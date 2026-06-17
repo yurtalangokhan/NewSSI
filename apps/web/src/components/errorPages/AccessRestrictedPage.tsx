@@ -13,6 +13,7 @@ import { useSettingsContext } from "@/providers/SettingsProvider";
 import { ApplicationStatus } from "@/interfaces/settings";
 import Text from "@/refresh-components/texts/Text";
 import { SvgLock } from "@opal/icons";
+import { APP_NAME, APP_SUPPORT_EMAIL } from "@/lib/appInfo";
 
 const linkClassName = "text-action-link-05 hover:text-action-link-06 underline";
 
@@ -63,9 +64,9 @@ export default function AccessRestricted() {
     ? getSeatLimitMessage()
     : showRenewalMessage
       ? NEXT_PUBLIC_CLOUD_ENABLED
-        ? "Your access to Onyx has been temporarily suspended due to a lapse in your subscription."
-        : "Your access to Onyx has been temporarily suspended due to a lapse in your license."
-      : "An Enterprise license is required to use Onyx. Your data is protected and will be available once a license is activated.";
+        ? `Your access to ${APP_NAME} has been temporarily suspended due to a lapse in your subscription.`
+        : `Your access to ${APP_NAME} has been temporarily suspended due to a lapse in your license.`
+      : `An Enterprise license is required to use ${APP_NAME}. Your data is protected and will be available once a license is activated.`;
 
   const handleResubscribe = async () => {
     setIsLoading(true);
@@ -124,8 +125,8 @@ export default function AccessRestricted() {
       ) : NEXT_PUBLIC_CLOUD_ENABLED ? (
         <>
           <Text text03>
-            To reinstate your access and continue benefiting from Onyx&apos;s
-            powerful features, please update your payment information.
+            To reinstate your access and continue benefiting from {APP_NAME}
+            &apos;s powerful features, please update your payment information.
           </Text>
 
           <Text text03>
@@ -154,7 +155,7 @@ export default function AccessRestricted() {
         <>
           <Text text03>
             {hadPreviousLicense
-              ? "To reinstate your access and continue using Onyx, please contact your system administrator to renew your license."
+              ? `To reinstate your access and continue using ${APP_NAME}, please contact your system administrator to renew your license.`
               : "To get started, please contact your system administrator to obtain an Enterprise license."}
           </Text>
 
@@ -165,8 +166,8 @@ export default function AccessRestricted() {
             </Link>{" "}
             page to {hadPreviousLicense ? "renew" : "activate"} your license,
             sign up through Stripe or reach out to{" "}
-            <a className={linkClassName} href="mailto:support@onyx.app">
-              support@onyx.app
+            <a className={linkClassName} href={`mailto:${APP_SUPPORT_EMAIL}`}>
+              {APP_SUPPORT_EMAIL}
             </a>{" "}
             for billing assistance.
           </Text>

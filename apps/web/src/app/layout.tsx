@@ -32,6 +32,7 @@ import { fetchAppSidebarMetadata } from "@/lib/appSidebarSS";
 import StatsOverlayLoader from "@/components/dev/StatsOverlayLoader";
 import PerformanceMeasureGuard from "@/components/dev/PerformanceMeasureGuard";
 import AppHealthBanner from "@/sections/AppHealthBanner";
+import { getAppName } from "@/lib/appInfo";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -53,7 +54,7 @@ export async function generateMetadata(): Promise<Metadata> {
   }
 
   return {
-    title: enterpriseSettings?.application_name || "Onyx",
+    title: getAppName(enterpriseSettings?.application_name),
     description: "Question answering for your documents",
     icons: {
       icon: logoLocation,

@@ -24,6 +24,7 @@ import BillingDetailsView from "./BillingDetailsView";
 import LicenseActivationCard from "./LicenseActivationCard";
 import "./billing.css";
 import { useTranslation } from "react-i18next";
+import { APP_SUPPORT_EMAIL } from "@/lib/appInfo";
 
 // ----------------------------------------------------------------------------
 // Types
@@ -41,8 +42,6 @@ interface ViewConfig {
 // FooterLinks (inlined)
 // ----------------------------------------------------------------------------
 
-const SUPPORT_EMAIL = "support@onyx.app";
-
 function FooterLinks({
   hasSubscription,
   onActivateLicense,
@@ -57,7 +56,7 @@ function FooterLinks({
   const licenseText = hasSubscription
     ? t("admin.billing.updateLicenseKey")
     : t("admin.billing.activateLicenseKey");
-  const billingHelpHref = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(
+  const billingHelpHref = `mailto:${APP_SUPPORT_EMAIL}?subject=${encodeURIComponent(
     `[Billing] support for ${user?.email ?? "unknown"}`
   )}`;
 
@@ -250,7 +249,9 @@ export default function BillingPage() {
       case "plans":
         return {
           icon: hasSubscription ? SvgWallet : SvgArrowUpCircle,
-          title: hasSubscription ? t("admin.billing.viewPlansTitle") : t("admin.billing.upgradePlanTitle"),
+          title: hasSubscription
+            ? t("admin.billing.viewPlansTitle")
+            : t("admin.billing.upgradePlanTitle"),
           showBackButton: !!(
             hasSubscription ||
             (isSelfHosted && licenseData?.has_license)
