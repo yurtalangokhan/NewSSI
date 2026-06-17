@@ -102,12 +102,11 @@ export default function EmailPasswordForm({
                   .email()
                   .required()
                   .transform((value) => value.toLowerCase()),
-                firstName: Yup.string().trim().required(),
-                lastName: Yup.string().trim().required(),
+                firstName: Yup.string().trim().required(t("auth.firstNameRequired")),
+                lastName: Yup.string().trim().required(t("auth.lastNameRequired")),
               }
             : {}),
-          password: Yup.string()
-            .required(),
+          password: Yup.string().required(t("auth.passwordRequired")),
         })}
         onSubmit={async (values: { username: string; password: string; email?: string; firstName?: string; lastName?: string }) => {
           const username: string = values.username;

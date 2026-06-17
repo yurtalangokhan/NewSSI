@@ -70,6 +70,7 @@ export interface User {
   id: string;
   email: string;
   first_name?: string | null;
+  last_name?: string | null;
   full_name?: string | null;
   is_active: boolean;
   is_superuser: boolean;

@@ -12,19 +12,27 @@ const DEFAULT_PERSONALIZATION: UserPersonalization = {
 };
 
 function derivePersonalizationFromUser(user: User | null): UserPersonalization {
-  if (!user?.personalization) {
-    return { ...DEFAULT_PERSONALIZATION };
-  }
+  const fallbackName =
+    user?.personalization?.name?.trim() ||
+    user?.full_name?.trim() ||
+    [user?.first_name?.trim(), user?.last_name?.trim()]
+      .filter(Boolean)
+      .join(" ")
+      .trim() ||
+    user?.first_name?.trim() ||
+    "";
+  const fallbackRole = user?.personalization?.role?.trim() || "";
 
   return {
-    name: user.personalization.name ?? "",
-    role: user.personalization.role ?? "",
+    name: fallbackName,
+    role: fallbackRole,
     long_term_memory_enabled:
-      user.personalization.long_term_memory_enabled ??
+      user?.personalization?.long_term_memory_enabled ??
       DEFAULT_PERSONALIZATION.long_term_memory_enabled,
     extract_memory:
-      user.personalization.extract_memory ?? DEFAULT_PERSONALIZATION.extract_memory,
-    user_preferences: user.personalization.user_preferences ?? "",
+      user?.personalization?.extract_memory ??
+      DEFAULT_PERSONALIZATION.extract_memory,
+    user_preferences: user?.personalization?.user_preferences ?? "",
   };
 }
 

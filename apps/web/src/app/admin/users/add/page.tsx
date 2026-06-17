@@ -32,9 +32,11 @@ export default function AddUserPage() {
       !username.trim() ||
       !email.trim() ||
       !email.includes("@") ||
-      password.trim().length < 8
+      !firstName.trim() ||
+      !lastName.trim() ||
+      !password.trim()
     );
-  }, [email, isSubmitting, password, username]);
+  }, [email, firstName, isSubmitting, lastName, password, username]);
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -48,8 +50,8 @@ export default function AddUserPage() {
         body: JSON.stringify({
           username: username.trim(),
           email: email.trim(),
-          first_name: firstName.trim() || undefined,
-          last_name: lastName.trim() || undefined,
+          first_name: firstName.trim(),
+          last_name: lastName.trim(),
           role,
           password: password.trim() || undefined,
         }),
@@ -129,6 +131,7 @@ export default function AddUserPage() {
                   onChange={(e) => setFirstName(e.target.value)}
                   className="h-10 rounded border border-border-subtle bg-background px-3"
                   placeholder="John"
+                  required
                 />
               </label>
 
@@ -142,6 +145,7 @@ export default function AddUserPage() {
                   onChange={(e) => setLastName(e.target.value)}
                   className="h-10 rounded border border-border-subtle bg-background px-3"
                   placeholder="Doe"
+                  required
                 />
               </label>
             </div>

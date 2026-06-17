@@ -2,6 +2,7 @@ import { User } from "./types";
 import { AuthType, SERVER_SIDE_ONLY__AUTH_TYPE } from "./constants";
 import {
   UrlBuilder,
+  fetchSS,
   buildUserServiceUrl,
   fetchUserServiceSS,
 } from "./utilsSS";
@@ -12,7 +13,6 @@ export interface AuthTypeMetadata {
   autoRedirect: boolean;
   requiresVerification: boolean;
   anonymousUserEnabled: boolean | null;
-  passwordMinLength: number;
   hasUsers: boolean;
   oauthEnabled: boolean;
 }
@@ -31,7 +31,6 @@ export const getAuthTypeMetadataSS = async (): Promise<AuthTypeMetadata> => {
       autoRedirect: false,
       requiresVerification: false,
       anonymousUserEnabled: true,
-      passwordMinLength: 8,
       hasUsers: true,
       oauthEnabled: false,
     };
@@ -139,7 +138,7 @@ export const getCurrentUserSS = async (): Promise<User | null> => {
       return null;
     }
 
-    const response = await fetchUserServiceSS("/api/auth/me");
+    const response = await fetchSS("/me");
     if (response.status === 401) {
       return null;
     }
@@ -152,7 +151,9 @@ export const getCurrentUserSS = async (): Promise<User | null> => {
   }
 };
 
-export const processCookies = (cookies: { getAll(): { name: string; value: string }[] }): string => {
+export const processCookies = (cookies: {
+  getAll(): { name: string; value: string }[];
+}): string => {
   let cookieString = cookies
     .getAll()
     .map((cookie) => `${cookie.name}=${cookie.value}`)

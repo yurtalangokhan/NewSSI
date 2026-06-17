@@ -180,7 +180,7 @@ export default function NewTeamModal() {
                   className="w-full"
                   rightIcon={SvgArrowRight}
                 >
-                  {t("newTeam.tryOnyxWhileWaiting")}
+                  {t("newTeam.tryWhileWaiting")}
                 </Button>
               </div>
             </div>
