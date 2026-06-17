@@ -3,18 +3,11 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Body, Depends, HTTPException
 
-from src.api.dependencies import require_auth, verify_internal_service_token
+from src.api.dependencies import require_auth
 from src.controller import get_settings_controller
 from src.repository import UserRepository
 
 router = APIRouter(prefix="/users/me/settings", tags=["settings"])
-
-
-async def require_internal_token(
-    is_internal: Annotated[bool, Depends(verify_internal_service_token)],
-) -> None:
-    if not is_internal:
-        raise HTTPException(status_code=403, detail="Internal service token required")
 
 
 async def _resolve_target_user_id(target_id: str) -> uuid.UUID:
@@ -36,6 +29,21 @@ async def _resolve_target_user_id(target_id: str) -> uuid.UUID:
         return by_keycloak_id.id
 
     raise HTTPException(status_code=404, detail="Target user not found")
+
+
+async def _authorize_target_user_id(target_id: str, authenticated_user_id: str) -> uuid.UUID:
+    from src.core.database.models.user_model import is_admin_role
+
+    resolved_user_id = await _resolve_target_user_id(target_id)
+    authenticated_uuid = uuid.UUID(authenticated_user_id)
+    if resolved_user_id == authenticated_uuid:
+        return resolved_user_id
+
+    user = await UserRepository().get_by_id(authenticated_uuid)
+    if user and (is_admin_role(user.role) or user.is_superuser):
+        return resolved_user_id
+
+    raise HTTPException(status_code=403, detail="Forbidden")
 
 
 @router.get("/")
@@ -78,9 +86,9 @@ async def delete_prompt_shortcut(shortcut_id: int, user_id: Annotated[str, Depen
 @router.get("/internal/users/{target_id}/settings")
 async def get_settings_internal(
     target_id: str,
-    _: Annotated[None, Depends(require_internal_token)],
+    authenticated_user_id: Annotated[str, Depends(require_auth)],
 ):
-    resolved_user_id = await _resolve_target_user_id(target_id)
+    resolved_user_id = await _authorize_target_user_id(target_id, authenticated_user_id)
     return await get_settings_controller().get_settings(resolved_user_id)
 
 
@@ -88,9 +96,9 @@ async def get_settings_internal(
 async def update_settings_internal(
     target_id: str,
     updates: Annotated[dict[str, Any], Body(...)],
-    _: str = Depends(require_internal_token),
+    authenticated_user_id: Annotated[str, Depends(require_auth)],
 ):
-    resolved_user_id = await _resolve_target_user_id(target_id)
+    resolved_user_id = await _authorize_target_user_id(target_id, authenticated_user_id)
     return await get_settings_controller().update_settings(resolved_user_id, **updates)
 
 
@@ -98,9 +106,9 @@ async def update_settings_internal(
 async def create_prompt_shortcut_internal(
     target_id: str,
     shortcut: Annotated[dict[str, Any], Body(...)],
-    _: str = Depends(require_internal_token),
+    authenticated_user_id: Annotated[str, Depends(require_auth)],
 ):
-    resolved_user_id = await _resolve_target_user_id(target_id)
+    resolved_user_id = await _authorize_target_user_id(target_id, authenticated_user_id)
     return await get_settings_controller().create_prompt_shortcut(resolved_user_id, shortcut)
 
 
@@ -109,9 +117,9 @@ async def update_prompt_shortcut_internal(
     target_id: str,
     shortcut_id: int,
     updates: Annotated[dict[str, Any], Body(...)],
-    _: str = Depends(require_internal_token),
+    authenticated_user_id: Annotated[str, Depends(require_auth)],
 ):
-    resolved_user_id = await _resolve_target_user_id(target_id)
+    resolved_user_id = await _authorize_target_user_id(target_id, authenticated_user_id)
     return await get_settings_controller().update_prompt_shortcut(
         resolved_user_id, shortcut_id, **updates
     )
@@ -121,7 +129,7 @@ async def update_prompt_shortcut_internal(
 async def delete_prompt_shortcut_internal(
     target_id: str,
     shortcut_id: int,
-    _: Annotated[None, Depends(require_internal_token)],
+    authenticated_user_id: Annotated[str, Depends(require_auth)],
 ):
-    resolved_user_id = await _resolve_target_user_id(target_id)
+    resolved_user_id = await _authorize_target_user_id(target_id, authenticated_user_id)
     return await get_settings_controller().delete_prompt_shortcut(resolved_user_id, shortcut_id)

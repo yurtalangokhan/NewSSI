@@ -381,6 +381,40 @@ class UserService:
 
         return self._user_to_dict(user)
 
+    async def change_password(
+        self,
+        user_id: uuid.UUID,
+        old_password: str,
+        new_password: str,
+    ) -> dict[str, Any] | None:
+        user = await self.user_repo.get_by_id(user_id)
+        if not user:
+            return None
+
+        if not new_password:
+            raise ValueError("New password is required")
+
+        if self.keycloak.is_enabled() and user.keycloak_id:
+            username = user.username or user.email
+            try:
+                await self.keycloak.password_grant(username, old_password)
+            except ValueError:
+                if username != user.email:
+                    try:
+                        await self.keycloak.password_grant(user.email, old_password)
+                    except ValueError as exc:
+                        raise ValueError("Current password is incorrect") from exc
+                else:
+                    raise ValueError("Current password is incorrect") from None
+        else:
+            if not user.hashed_password or not AuthService.verify_password(
+                old_password,
+                user.hashed_password,
+            ):
+                raise ValueError("Current password is incorrect")
+
+        return await self.set_password(user_id, new_password)
+
     def _user_to_dict(self, user) -> dict[str, Any]:
         return {
             "id": str(user.id),
@@ -388,6 +422,7 @@ class UserService:
             "username": user.username,
             "first_name": user.first_name,
             "last_name": user.last_name,
+            "full_name": f"{user.first_name or ''} {user.last_name or ''}".strip() or None,
             "is_active": user.is_active,
             "is_verified": user.is_verified,
             "is_superuser": user.is_superuser,

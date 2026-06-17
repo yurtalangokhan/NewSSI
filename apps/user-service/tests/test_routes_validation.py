@@ -51,6 +51,15 @@ class TestUserRoute:
         # Should not get 422
         assert response.status_code != 422
 
+    def test_change_me_password_requires_body(self, client):
+        """change_me_password should accept old/new password in body."""
+        response = client.post(
+            "/users/me/password",
+            json={"old_password": "old", "new_password": "new"},
+        )
+        # Should not get 422 for missing params
+        assert response.status_code != 422
+
 
 class TestSettingsRoute:
     """Validate settings_route.py endpoints."""

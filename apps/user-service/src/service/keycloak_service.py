@@ -1,13 +1,19 @@
+import os
+import time
 from typing import Any
 from urllib.parse import quote
 
 import httpx
+import jwt
+from jwt import PyJWKClient
 
 from src.config import get_settings
 from src.core.env import get_env
 
 _env = get_env()
 _settings = get_settings()
+
+_JWKS_CLIENT: PyJWKClient | None = None
 
 
 class KeycloakService:
@@ -35,9 +41,75 @@ class KeycloakService:
     def get_client_id(self) -> str:
         return _env.KEYCLOAK_CLIENT_ID or _settings.KEYCLOAK_CLIENT_ID or "agenticai-web"
 
-    async def _get_admin_token(self) -> str:
-        import time
+    def get_client_secret(self) -> str | None:
+        secret = _env.KEYCLOAK_CLIENT_SECRET or _settings.KEYCLOAK_CLIENT_SECRET
+        return secret.strip() if secret and secret.strip() else None
 
+    def _client_credentials_payload(self) -> dict[str, str]:
+        payload = {"client_id": self.get_client_id()}
+        client_secret = self.get_client_secret()
+        if client_secret:
+            payload["client_secret"] = client_secret
+        return payload
+
+    def get_issuer_url(self) -> str | None:
+        issuer = _env.KEYCLOAK_ISSUER_URL or _settings.KEYCLOAK_ISSUER_URL
+        return issuer.rstrip("/") if issuer else None
+
+    def _get_jwks_client(self) -> PyJWKClient | None:
+        global _JWKS_CLIENT
+        issuer = self.get_issuer_url()
+        if not issuer:
+            return None
+        if _JWKS_CLIENT is None:
+            jwks_url = f"{issuer}/protocol/openid-connect/certs"
+            _JWKS_CLIENT = PyJWKClient(jwks_url, cache_keys=True)
+        return _JWKS_CLIENT
+
+    def _audiences(self) -> list[str]:
+        raw = _env.KEYCLOAK_AUDIENCE or _settings.KEYCLOAK_AUDIENCE or ""
+        audiences = [a.strip() for a in raw.split(",") if a.strip()]
+        client_id = self.get_client_id()
+        if client_id and client_id not in audiences:
+            audiences.append(client_id)
+        return audiences
+
+    async def validate_token_jwks(self, token: str) -> dict[str, Any] | None:
+        """Validate a Keycloak JWT using JWKS (local, no network call to userinfo).
+
+        Returns the decoded claims on success, None otherwise.
+        """
+        jwks_client = self._get_jwks_client()
+        if jwks_client is None:
+            return None
+
+        issuer = self.get_issuer_url()
+        if not issuer:
+            return None
+
+        audiences = self._audiences()
+        try:
+            signing_key = jwks_client.get_signing_key_from_jwt(token)
+            claims: dict[str, Any] = jwt.decode(
+                jwt=token,
+                key=signing_key.key,
+                algorithms=["RS256", "RS384", "RS512"],
+                issuer=issuer,
+                audience=audiences if audiences else None,
+                leeway=int(os.environ.get("KEYCLOAK_TOKEN_LEEWAY_SECONDS", "120")),
+                options={
+                    "verify_aud": bool(audiences),
+                    "verify_iss": True,
+                    "verify_exp": True,
+                },
+            )
+            return claims
+        except jwt.InvalidTokenError:
+            return None
+        except Exception:
+            return None
+
+    async def _get_admin_token(self) -> str:
         if self._admin_token_cache and time.time() < self._admin_token_expires - 60:
             return self._admin_token_cache
 
@@ -212,7 +284,6 @@ class KeycloakService:
         fallback_redirect_uri: str | None = None,
     ) -> dict[str, Any]:
         async with httpx.AsyncClient() as client:
-            client_id = self.get_client_id()
             token_url = (
                 f"{self.get_base_url()}/realms/{self.get_realm()}/protocol/openid-connect/token"
             )
@@ -222,7 +293,7 @@ class KeycloakService:
                     "grant_type": "authorization_code",
                     "code": code,
                     "redirect_uri": uri,
-                    "client_id": client_id,
+                    **self._client_credentials_payload(),
                 }
 
             async def _extract_error_detail(response: httpx.Response) -> str:
@@ -268,7 +339,7 @@ class KeycloakService:
                 f"{self.get_base_url()}/realms/{self.get_realm()}/protocol/openid-connect/token",
                 data={
                     "grant_type": "password",
-                    "client_id": self.get_client_id(),
+                    **self._client_credentials_payload(),
                     "username": username,
                     "password": password,
                     "scope": "openid profile email",
@@ -301,7 +372,7 @@ class KeycloakService:
                 f"{self.get_base_url()}/realms/{self.get_realm()}/protocol/openid-connect/token",
                 data={
                     "grant_type": "refresh_token",
-                    "client_id": self.get_client_id(),
+                    **self._client_credentials_payload(),
                     "refresh_token": refresh_token,
                 },
             )
@@ -329,10 +400,9 @@ class KeycloakService:
                 data["refresh_token"] = refresh_token
             if id_token_hint:
                 data["id_token_hint"] = id_token_hint
-            client_id = self.get_client_id()
             resp = await client.post(
                 f"{self.get_base_url()}/realms/{self.get_realm()}/protocol/openid-connect/logout",
-                data={**data, "client_id": client_id},
+                data={**data, **self._client_credentials_payload()},
             )
             return resp.status_code in (200, 204, 400)
 

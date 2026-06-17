@@ -44,6 +44,7 @@ services:
       KEYCLOAK_BOOTSTRAP_ADMIN_EMAIL: admin@agenticai.local
       KEYCLOAK_BOOTSTRAP_ADMIN_PASSWORD: admin123
       KEYCLOAK_CLIENT_ID: agenticai-web
+      KEYCLOAK_CLIENT_SECRET: ""
       KEYCLOAK_AUDIENCE: agent-service
       AUTH_SECRET: dev-auth-secret-change-in-production-32chars
       ENCRYPTION_KEY: UKtf1bGCDl8smcVDRM9YekfivWNlsjSB-Mh0d993z40=

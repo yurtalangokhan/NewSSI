@@ -81,5 +81,8 @@ async def verify_internal_service_token(request: Request) -> bool:
     return token == settings.INTERNAL_SERVICE_TOKEN
 
 
-def get_current_user_optional(request: Request) -> str | None:
-    return None
+async def get_current_user_optional(
+    request: Request,
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_security)],
+) -> str | None:
+    return await get_current_user_id(request, credentials)

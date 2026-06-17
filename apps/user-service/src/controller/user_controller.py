@@ -28,6 +28,20 @@ class UserController(BaseController):
             self._raise_not_found("User not found")
         return user
 
+    async def change_password(
+        self,
+        user_id: uuid.UUID,
+        old_password: str,
+        new_password: str,
+    ) -> dict[str, Any]:
+        try:
+            user = await self.user_service.change_password(user_id, old_password, new_password)
+            if not user:
+                self._raise_not_found("User not found")
+            return user
+        except ValueError as e:
+            self._raise_bad_request(str(e))
+
     async def list_users(
         self,
         skip: int = 0,
