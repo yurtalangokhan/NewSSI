@@ -15,11 +15,8 @@ from langconnect import config
 security = HTTPBearer(auto_error=False)
 
 # Internal service token for service-to-service communication
-INTERNAL_SERVICE_TOKEN = config.INTERNAL_SERVICE_TOKEN or "internal-service-key-2026"
+INTERNAL_SERVICE_TOKEN = config.INTERNAL_SERVICE_TOKEN
 IS_TESTING = config.IS_TESTING
-ALLOW_LOCAL_INTERNAL_BYPASS = (
-    os.environ.get("ALLOW_LOCAL_INTERNAL_BYPASS", "").lower() == "true"
-)
 
 # Valid API keys from environment
 VALID_API_KEYS: set = set()
@@ -195,17 +192,6 @@ def resolve_user(
     internal_token = request.headers.get("X-Internal-Service-Token")
     if internal_token == INTERNAL_SERVICE_TOKEN:
         return AuthenticatedUser("internal-service", "Internal Service")
-
-    if ALLOW_LOCAL_INTERNAL_BYPASS:
-        client_host = request.client.host if request.client else None
-        user_agent = request.headers.get("User-Agent", "")
-        if client_host and (
-            client_host.startswith("172.")
-            or client_host.startswith("192.168.")
-            or client_host == "127.0.0.1"
-        ):
-            if "httpx" in user_agent.lower() or "python" in user_agent.lower():
-                return AuthenticatedUser("internal-service", "Internal Service")
 
     # If no credentials provided - check if we allow anonymous
     if not credentials:

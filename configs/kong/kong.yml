@@ -4,12 +4,18 @@ _transform: true
 # Kong OSS 3.8 JWT authentication.
 #
 # Routing strategy:
-# 1. Public endpoints (/api/auth, /health, /auth) - no JWT required
-# 2. Protected endpoints - Kong JWT plugin verifies RS256 signature plus exp claim
+# 1. Public endpoints (/api/auth, /health) - no JWT required at Kong level.
+#    Service-level auth dependencies (require_auth) handle granular protection
+#    (e.g. /api/auth/logout, /api/auth/refresh, /api/auth/me are protected at
+#    the service layer even though Kong passes them through).
+# 2. Protected endpoints - Kong JWT plugin verifies RS256 signature plus exp
+#    claim for defense-in-depth. Backend services also validate independently.
 # 3. Internal service-to-service traffic uses /internal/* routes and still
-#    carries Authorization: Bearer tokens for user-scoped requests
-# 4. Expired/invalid tokens return 401 from Kong, so web can redirect to login
-# 5. Backend services also validate tokens for direct/gateway-less requests
+#    carries Authorization: Bearer tokens for user-scoped requests.
+#    X-Internal-Service-Token is reserved for machine-only flows.
+# 4. Expired/invalid tokens return 401 from Kong, so web can redirect to login.
+# 5. Backend services also validate tokens for direct/gateway-less requests.
+#    This ensures the system works identically with or without Kong.
 
 services:
   # --------------------------------------------------------------------------
@@ -45,6 +51,12 @@ services:
                 - fastapiusersauth
 
       # User-service endpoints
+      - name: user-service-internal-api
+        paths:
+          - /api/internal
+        strip_path: false
+        preserve_host: true
+        plugins: *jwt_plugin
 
       - name: user-service-settings
         paths:
@@ -94,6 +106,7 @@ services:
           - /api/content
           - /api/datasources
           - /api/federated
+          - /api/input_promt
           - /api/input_prompt
           - /api/llm
           - /api/manage
@@ -180,6 +193,16 @@ services:
       - name: internal-user-service-all
         paths:
           - /internal/user-service
+        strip_path: true
+        preserve_host: true
+        plugins: *jwt_plugin
+
+  - name: internal-agent-service
+    url: http://host.docker.internal:8123
+    routes:
+      - name: internal-agent-service-all
+        paths:
+          - /internal/agent-service
         strip_path: true
         preserve_host: true
         plugins: *jwt_plugin
