@@ -4,7 +4,7 @@ import {
   getAuthTypeMetadataSS,
   getCurrentUserSS,
 } from "@/lib/userSS";
-import { AuthType } from "@/lib/constants";
+import { getLoginPath } from "@/lib/auth/loginRoute";
 
 /**
  * Result of an authentication check.
@@ -51,7 +51,7 @@ export async function requireAuth(): Promise<AuthCheckResult> {
     return {
       user: null,
       authTypeMetadata,
-      redirect: "/auth/login",
+      redirect: getLoginPath(authTypeMetadata),
     };
   }
 

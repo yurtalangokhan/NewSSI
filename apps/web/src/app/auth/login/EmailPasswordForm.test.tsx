@@ -43,14 +43,16 @@ describe("Email/Password Login Workflow", () => {
     render(<EmailPasswordForm isSignup={false} />);
 
     // User fills out the form using placeholder text
-    const emailInput = screen.getByPlaceholderText(/email@yourcompany.com/i);
+    const emailInput = screen.getByTestId("username");
     const passwordInput = screen.getByPlaceholderText(/∗/);
 
     await user.type(emailInput, "test@example.com");
     await user.type(passwordInput, "password123");
 
     // User submits the form
-    const loginButton = screen.getByRole("button", { name: /sign in/i });
+    const loginButton = screen.getByRole("button", {
+      name: /auth\.signInButton/i,
+    });
     await user.click(loginButton);
 
     // After successful login, user should be redirected to /chat
@@ -89,20 +91,22 @@ describe("Email/Password Login Workflow", () => {
     render(<EmailPasswordForm isSignup={false} />);
 
     // User fills out form with invalid credentials
-    const emailInput = screen.getByPlaceholderText(/email@yourcompany.com/i);
+    const emailInput = screen.getByTestId("username");
     const passwordInput = screen.getByPlaceholderText(/∗/);
 
     await user.type(emailInput, "wrong@example.com");
     await user.type(passwordInput, "wrongpassword");
 
     // User submits
-    const loginButton = screen.getByRole("button", { name: /sign in/i });
+    const loginButton = screen.getByRole("button", {
+      name: /auth\.signInButton/i,
+    });
     await user.click(loginButton);
 
     // Verify field-level error message is displayed (not the toast)
     await waitFor(() => {
       expect(
-        screen.getByText(/^Invalid email or password$/i)
+        screen.getByText(/^auth\.invalidCredentials$/i)
       ).toBeInTheDocument();
     });
   });
@@ -136,7 +140,7 @@ describe("Email/Password Signup Workflow", () => {
 
     // User fills out the signup form
     const usernameInput = screen.getByTestId("username");
-    const emailInput = screen.getByPlaceholderText(/email@yourcompany.com/i);
+    const emailInput = screen.getByTestId("email");
     const firstNameInput = screen.getByTestId("firstName");
     const lastNameInput = screen.getByTestId("lastName");
     const passwordInput = screen.getByPlaceholderText(/∗/);
@@ -149,7 +153,7 @@ describe("Email/Password Signup Workflow", () => {
 
     // User submits the signup form
     const signupButton = screen.getByRole("button", {
-      name: /create account/i,
+      name: /auth\.createAccountButton/i,
     });
     await user.click(signupButton);
 
@@ -198,7 +202,7 @@ describe("Email/Password Signup Workflow", () => {
 
     // User fills out form with existing email
     const usernameInput = screen.getByTestId("username");
-    const emailInput = screen.getByPlaceholderText(/email@yourcompany.com/i);
+    const emailInput = screen.getByTestId("email");
     const firstNameInput = screen.getByTestId("firstName");
     const lastNameInput = screen.getByTestId("lastName");
     const passwordInput = screen.getByPlaceholderText(/∗/);
@@ -211,16 +215,14 @@ describe("Email/Password Signup Workflow", () => {
 
     // User submits
     const signupButton = screen.getByRole("button", {
-      name: /create account/i,
+      name: /auth\.createAccountButton/i,
     });
     await user.click(signupButton);
 
     // Verify field-level error message is displayed (not the toast)
     await waitFor(() => {
       expect(
-        screen.getByText(
-          /^An account already exists with the specified email\.$/i
-        )
+        screen.getByText(/^auth\.accountAlreadyExists$/i)
       ).toBeInTheDocument();
     });
   });
@@ -239,7 +241,7 @@ describe("Email/Password Signup Workflow", () => {
 
     // User fills out form
     const usernameInput = screen.getByTestId("username");
-    const emailInput = screen.getByPlaceholderText(/email@yourcompany.com/i);
+    const emailInput = screen.getByTestId("email");
     const firstNameInput = screen.getByTestId("firstName");
     const lastNameInput = screen.getByTestId("lastName");
     const passwordInput = screen.getByPlaceholderText(/∗/);
@@ -252,15 +254,13 @@ describe("Email/Password Signup Workflow", () => {
 
     // User submits
     const signupButton = screen.getByRole("button", {
-      name: /create account/i,
+      name: /auth\.createAccountButton/i,
     });
     await user.click(signupButton);
 
     // Verify field-level rate limit message is displayed (not the toast)
     await waitFor(() => {
-      expect(
-        screen.getByText(/^Too many requests\. Please try again later\.$/i)
-      ).toBeInTheDocument();
+      expect(screen.getByText(/^auth\.tooManyRequests$/i)).toBeInTheDocument();
     });
   });
 });

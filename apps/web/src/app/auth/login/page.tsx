@@ -11,6 +11,7 @@ import AuthFlowContainer from "@/components/auth/AuthFlowContainer";
 import LoginPage from "./LoginPage";
 import { LoginAdminNote } from "./LoginAdminNote";
 import { AuthType } from "@/lib/constants";
+import { buildLoginPath } from "@/lib/auth/loginRoute";
 
 export interface PageProps {
   searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -56,6 +57,10 @@ export default async function Page(props: PageProps) {
     // Add a query parameter to indicate this is a redirect from login
     // This will help prevent redirect loops
     return redirect("/app");
+  }
+
+  if (authTypeMetadata?.externalKeycloak) {
+    return redirect(buildLoginPath(authTypeMetadata, nextUrl) as Route);
   }
 
   // get where to send the user to authenticate
