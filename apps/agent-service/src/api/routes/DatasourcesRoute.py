@@ -13,9 +13,9 @@ from uuid import uuid4
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 
+from api.dependencies import require_user
 from controller import DataController, get_data_controller
 from core.db import DatasourceRepository
-from api.dependencies import require_user
 from service.Schemas import (
     ChunkInfo,
     ConnectorSpecResponse,

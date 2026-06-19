@@ -10,8 +10,8 @@ import logging
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from controller import ThreadController, get_thread_controller
 from api.dependencies import require_user
+from controller import ThreadController, get_thread_controller
 from service.CheckpointerService import get_checkpointer
 from service.Schemas import (
     ThreadCreateRequest,

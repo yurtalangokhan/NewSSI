@@ -4,8 +4,8 @@ from typing import Any
 
 from fastapi import APIRouter, Depends
 
-from controller import WebSearchController, get_web_search_controller
 from api.dependencies import require_user
+from controller import WebSearchController, get_web_search_controller
 
 router = APIRouter(
     prefix="/api/admin/web-search",

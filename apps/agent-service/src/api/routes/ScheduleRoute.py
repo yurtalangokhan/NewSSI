@@ -11,8 +11,8 @@ import logging
 
 from fastapi import APIRouter, Depends
 
-from controller import ScheduleController, get_schedule_controller
 from api.dependencies import require_user
+from controller import ScheduleController, get_schedule_controller
 from service.ScheduleModels import (
     ScheduleRunStatus,
     SyncScheduleInput,

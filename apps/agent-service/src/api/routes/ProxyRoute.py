@@ -11,13 +11,12 @@ Endpoints:
 
 import logging
 import os
-from typing import Any
 
 from fastapi import APIRouter, Body, Depends, Query
 
+from api.dependencies import require_user
 from controller import ProxyController, get_proxy_controller
 from core import settings
-from api.dependencies import require_user
 
 logger = logging.getLogger(__name__)
 

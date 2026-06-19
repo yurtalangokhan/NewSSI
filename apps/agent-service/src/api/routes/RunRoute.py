@@ -17,17 +17,17 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
 from agents import get_agent_or_lazy
+from api.dependencies import require_user
 from controller import RunController, get_run_controller
 from core.logger import get_logger
-from api.dependencies import require_user
 from service.AuthService import extract_user_id_from_token
+from service.Schemas import ThreadHistoryRequest, ThreadState
 from service.StoreService import get_assistant_from_store
 from service.UserServiceClient import get_user_settings
-from service.Schemas import ThreadHistoryRequest, ThreadState
 from service.Utils import convert_input_messages
 
 if TYPE_CHECKING:
-    from langchain_core.runnables import RunnableConfig
+    pass
 
 logger = get_logger(__name__)
 
@@ -135,8 +135,9 @@ async def stream_run(
     except Exception:
         pass
 
-    from langchain_core.runnables import RunnableConfig
     import uuid
+
+    from langchain_core.runnables import RunnableConfig
 
     run_id = str(uuid.uuid4())
     input_messages = convert_input_messages(request_obj.input or {})

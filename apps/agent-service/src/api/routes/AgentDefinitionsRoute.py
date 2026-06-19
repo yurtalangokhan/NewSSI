@@ -21,13 +21,13 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
 from agents.storage.repository import AgentDefinitionRepository
+from api.dependencies import require_user
 from domain.agents.service import (
     AgentDefinitionService,
     BrainTypeService,
     GraphSchemaService,
     MemoryTypeService,
 )
-from api.dependencies import require_user
 
 logger = logging.getLogger(__name__)
 

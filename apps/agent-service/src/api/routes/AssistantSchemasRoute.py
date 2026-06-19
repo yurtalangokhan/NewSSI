@@ -10,8 +10,8 @@ import logging
 
 from fastapi import APIRouter, Depends
 
-from controller import AssistantSchemasController, get_assistant_schemas_controller
 from api.dependencies import require_user
+from controller import AssistantSchemasController, get_assistant_schemas_controller
 
 logger = logging.getLogger(__name__)
 
