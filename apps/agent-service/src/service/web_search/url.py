@@ -1,14 +1,10 @@
 import ipaddress
+import logging
 import socket
 from typing import Any
-from urllib.parse import parse_qs
-from urllib.parse import urlencode
-from urllib.parse import urlparse
-from urllib.parse import urlunparse
+from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 import requests
-
-import logging
 
 logger = logging.getLogger(__name__)
 

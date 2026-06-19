@@ -381,7 +381,6 @@ async def send_chat_message(request: Request):
     body = await request.json()
     message = body.get("message", "")
     chat_session_id = body.get("chat_session_id")
-    parent_message_id = body.get("parent_message_id")
 
     model = body.get("model_override", {}).get("model_version", OLLAMA_MODEL)
 
@@ -507,9 +506,19 @@ async def get_input_prompts():
     return []
 
 
+@app.get("/api/input_promt")
+async def get_input_prompts_typo_alias():
+    return await get_input_prompts()
+
+
 @app.get("/input_prompt")
 async def get_input_prompts_no_prefix():
     return []
+
+
+@app.get("/input_promt")
+async def get_input_prompts_no_prefix_typo_alias():
+    return await get_input_prompts_no_prefix()
 
 
 @app.get("/api/manage/connector-status")

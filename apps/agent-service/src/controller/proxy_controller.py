@@ -48,8 +48,9 @@ class ProxyController(BaseController):
     async def get_builtin_mcp_tools(self, tools_service_url: str) -> dict[str, Any]:
         """Get list of available MCP tools from the built-in tools-service."""
         try:
-            from langchain_mcp_adapters.client import MultiServerMCPClient
             import json
+
+            from langchain_mcp_adapters.client import MultiServerMCPClient
 
             def serialize_input_schema(schema: Any) -> dict[str, Any]:
                 """Safely serialize input_schema to JSON-compatible dict."""

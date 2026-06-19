@@ -76,8 +76,6 @@ class DataController(BaseController):
             if mapping:
                 try:
                     from service.AirbyteApiClientService import get_airbyte_client
-                    from service.ScheduleModels import PRESET_CRON_MAP, SchedulePreset
-                    from service.ScheduleRepository import ScheduleRepository
 
                     client = get_airbyte_client()
                     conn_data = await client.get_connection(mapping["connection_id"])
@@ -157,8 +155,8 @@ class DataController(BaseController):
         content_fields: list[str] | None = None,
     ) -> dict[str, Any]:
         """Create a new data source."""
-        from uuid import uuid4
         from datetime import UTC, datetime
+        from uuid import uuid4
 
         from service.AirbyteApiClientService import get_airbyte_client
         from service.AirbyteConnectorService import find_connector_by_name

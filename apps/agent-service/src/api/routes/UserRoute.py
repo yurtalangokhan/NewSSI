@@ -1,7 +1,9 @@
 """
-User preferences and settings routes.
+User project, file, and LLM provider routes.
 
-Endpoints: /api/user/*, /api/llm/*, /admin/llm/*
+Endpoints:
+  User-related (projects, files) — stay in agent-service (coupled with chat/file infra).
+  LLM provider endpoints — agent infrastructure.
 """
 
 from typing import Annotated
@@ -33,7 +35,11 @@ async def _resolve_project_identity(
     user: AuthenticatedUser,
 ) -> tuple[str, list[str]]:
     controller = _get_controller()
-    identity = await get_auth_service().resolve_user_identity(request=request, user_id=user.user_id)
+    identity = await get_auth_service().resolve_user_identity(
+        request=request,
+        user_id=user.user_id,
+        user=user,
+    )
     primary_user_id = str(identity.get("primary_user_id") or user.user_id)
     effective_user_id = await controller.resolve_projects_user_id(primary_user_id)
     if not effective_user_id:
@@ -48,46 +54,6 @@ async def _resolve_project_identity(
             owner_ids.append(candidate_id)
 
     return effective_user_id, owner_ids
-
-
-class PinnedAssistantsUpdate(BaseModel):
-    ordered_assistant_ids: list[int] = []
-
-
-class UserPersonalizationPayload(BaseModel):
-    name: str | None = None
-    role: str | None = None
-    long_term_memory_enabled: bool | None = None
-    extract_memory: bool | None = None
-    user_preferences: str | None = None
-
-
-class ThemePreferencePayload(BaseModel):
-    theme_preference: str
-
-
-class ChatBackgroundPayload(BaseModel):
-    chat_background: str | None = None
-
-
-class DefaultModelPayload(BaseModel):
-    default_model: str | None = None
-    default_provider_id: str | None = None
-
-
-class AutoScrollPayload(BaseModel):
-    auto_scroll: bool
-
-
-class DefaultAppModePayload(BaseModel):
-    default_app_mode: str
-
-
-class InputPromptPayload(BaseModel):
-    prompt: str
-    content: str
-    active: bool = True
-    is_public: bool = False
 
 
 class RenameProjectPayload(BaseModel):
@@ -106,11 +72,6 @@ class FileStatusesPayload(BaseModel):
     file_ids: list[str]
 
 
-@router.get("/api/user/assistant/preferences")
-async def get_user_assistant_preferences():
-    return await _get_controller().get_user_assistant_preferences()
-
-
 @router.get("/api/user/files/recent")
 async def get_recent_files(
     request: Request,
@@ -118,95 +79,6 @@ async def get_recent_files(
 ):
     effective_user_id, _ = await _resolve_project_identity(request, user)
     return await _get_controller().get_recent_files(effective_user_id)
-
-
-@router.patch("/api/user/pinned-assistants")
-async def update_pinned_assistants(request: Request, update: PinnedAssistantsUpdate):
-    _ = request
-    return await _get_controller().update_pinned_assistants(update.ordered_assistant_ids)
-
-
-@router.get("/api/user/pinned-assistants")
-async def get_pinned_assistants():
-    return await _get_controller().get_pinned_assistants()
-
-
-@router.patch("/api/user/personalization")
-async def update_user_personalization(
-    payload: UserPersonalizationPayload,
-    user: Annotated[AuthenticatedUser, Depends(require_user)],
-):
-    return await _get_controller().update_user_personalization(
-        user_id=user.user_id,
-        personalization=payload.model_dump(exclude_none=True),
-    )
-
-
-@router.patch("/api/user/theme-preference")
-async def update_user_theme_preference(
-    payload: ThemePreferencePayload,
-    user: Annotated[AuthenticatedUser, Depends(require_user)],
-):
-    return await _get_controller().update_user_theme_preference(
-        user_id=user.user_id,
-        theme_preference=payload.theme_preference,
-    )
-
-
-@router.patch("/api/user/chat-background")
-async def update_user_chat_background(
-    payload: ChatBackgroundPayload,
-    user: Annotated[AuthenticatedUser, Depends(require_user)],
-):
-    return await _get_controller().update_user_chat_background(
-        user_id=user.user_id,
-        chat_background=payload.chat_background,
-    )
-
-
-@router.patch("/api/user/default-model")
-async def update_user_default_model(
-    payload: DefaultModelPayload,
-    user: Annotated[AuthenticatedUser, Depends(require_user)],
-):
-    return await _get_controller().update_user_default_model(
-        user_id=user.user_id,
-        default_model=payload.default_model,
-        default_provider_id=payload.default_provider_id,
-    )
-
-
-@router.patch("/api/auto-scroll")
-async def update_user_auto_scroll(
-    payload: AutoScrollPayload,
-    user: Annotated[AuthenticatedUser, Depends(require_user)],
-):
-    return await _get_controller().update_user_auto_scroll(
-        user_id=user.user_id,
-        auto_scroll=payload.auto_scroll,
-    )
-
-
-@router.patch("/api/shortcut-enabled")
-async def update_user_shortcut_enabled(
-    shortcut_enabled: bool,
-    user: Annotated[AuthenticatedUser, Depends(require_user)],
-):
-    return await _get_controller().update_user_shortcut_enabled(
-        user_id=user.user_id,
-        shortcut_enabled=shortcut_enabled,
-    )
-
-
-@router.patch("/api/user/default-app-mode")
-async def update_user_default_app_mode(
-    payload: DefaultAppModePayload,
-    user: Annotated[AuthenticatedUser, Depends(require_user)],
-):
-    return await _get_controller().update_user_default_app_mode(
-        user_id=user.user_id,
-        default_app_mode=payload.default_app_mode,
-    )
 
 
 @router.get("/api/llm/persona/{persona_id}/providers")
@@ -460,78 +332,6 @@ async def remove_chat_session_from_project(
         chat_session_id=payload.chat_session_id,
         owner_ids=owner_ids,
     )
-
-
-@router.get("/api/notifications")
-async def get_notifications():
-    return await _get_controller().get_notifications()
-
-
-@router.get("/api/input_prompt")
-async def get_input_prompts(user: Annotated[AuthenticatedUser, Depends(require_user)]):
-    return await _get_controller().get_input_prompts(user.user_id)
-
-
-@router.post("/api/input_prompt")
-async def create_input_prompt(
-    payload: InputPromptPayload,
-    user: Annotated[AuthenticatedUser, Depends(require_user)],
-):
-    return await _get_controller().create_input_prompt(
-        user_id=user.user_id,
-        payload=payload.model_dump(),
-    )
-
-
-@router.patch("/api/input_prompt/{prompt_id}")
-async def update_input_prompt(
-    prompt_id: int,
-    payload: InputPromptPayload,
-    user: Annotated[AuthenticatedUser, Depends(require_user)],
-):
-    return await _get_controller().update_input_prompt(
-        user_id=user.user_id,
-        prompt_id=prompt_id,
-        payload=payload.model_dump(),
-    )
-
-
-@router.delete("/api/input_prompt/{prompt_id}")
-async def delete_input_prompt(
-    prompt_id: int,
-    user: Annotated[AuthenticatedUser, Depends(require_user)],
-):
-    return await _get_controller().delete_input_prompt(user_id=user.user_id, prompt_id=prompt_id)
-
-
-@router.get("/api/manage/connector-status")
-async def get_connector_status():
-    return await _get_controller().get_connector_status()
-
-
-@router.get("/api/federated/oauth-status")
-async def get_federated_oauth_status():
-    return await _get_controller().get_federated_oauth_status()
-
-
-@router.get("/api/manage/admin/valid-domains")
-async def get_valid_domains():
-    return await _get_controller().get_valid_domains()
-
-
-@router.get("/api/federated")
-async def get_federated():
-    return await _get_controller().get_federated()
-
-
-@router.get("/api/query/valid-tags")
-async def get_valid_tags():
-    return await _get_controller().get_valid_tags()
-
-
-@router.get("/api/manage/document-set")
-async def get_document_sets():
-    return await _get_controller().get_document_sets()
 
 
 @router.get("/admin/llm/provider")

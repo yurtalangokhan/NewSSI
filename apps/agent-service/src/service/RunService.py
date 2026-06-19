@@ -17,13 +17,14 @@ from langchain_core.runnables import RunnableConfig
 
 from service.ActiveRunsService import (
     RunContext,
-    cancel_run as active_cancel_run,
     get_run_context,
     register_run,
     unregister_run,
 )
+from service.ActiveRunsService import (
+    cancel_run as active_cancel_run,
+)
 from service.CheckpointerService import get_checkpointer
-from service.Utils import convert_input_messages
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +57,6 @@ class RunService:
 
     @staticmethod
     async def _force_close_llm_connection(config: RunnableConfig) -> None:
-        import httpx
         from langchain_ollama import ChatOllama
 
         configurable = config.get("configurable", {})

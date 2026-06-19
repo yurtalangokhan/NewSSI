@@ -11,6 +11,7 @@ from core.logger import get_logger
 
 logger = get_logger(__name__)
 import logging as _stdlib_logging
+
 logger_stdlib = _stdlib_logging.getLogger(__name__)
 from typing import Any
 
@@ -36,6 +37,7 @@ class PersonaDB:
         have not been run (e.g. fresh dev setup). It is idempotent.
         """
         from sqlalchemy import text
+
         from core.db.engine import get_db_engine
 
         engine = get_db_engine()

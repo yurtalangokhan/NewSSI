@@ -1,9 +1,10 @@
 """Ingest controller - handles batch document ingestion and chunking."""
 
+from typing import Any
+
 from controller.base import BaseController
 from service.IngestService import IngestService
 from service.Schemas import BatchRequest, BatchResponse, SourcePreviewRequest
-from typing import Any
 
 
 class IngestController(BaseController):

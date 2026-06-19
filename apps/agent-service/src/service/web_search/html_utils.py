@@ -1,11 +1,10 @@
+import logging
 import re
 from copy import copy
 from dataclasses import dataclass
+from enum import Enum
 from io import BytesIO
 from typing import IO
-
-import logging
-from enum import Enum
 
 import bs4
 

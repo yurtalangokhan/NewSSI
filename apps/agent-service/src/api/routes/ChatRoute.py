@@ -36,7 +36,11 @@ def _get_thread_controller() -> ThreadController:
 
 
 async def _get_user_chat_controller(request: Request, user: AuthenticatedUser) -> ChatController:
-    identity = await get_auth_service().resolve_user_identity(request=request, user_id=user.user_id)
+    identity = await get_auth_service().resolve_user_identity(
+        request=request,
+        user_id=user.user_id,
+        user=user,
+    )
     return ChatController(
         thread_controller=_get_thread_controller(),
         user_id=str(identity.get("primary_user_id") or user.user_id),
@@ -298,7 +302,11 @@ async def send_chat_message(
     user: Annotated[AuthenticatedUser, Depends(require_user)],
 ):
     """Send chat message with streaming - uses message_generator."""
-    identity = await get_auth_service().resolve_user_identity(request=request, user_id=user.user_id)
+    identity = await get_auth_service().resolve_user_identity(
+        request=request,
+        user_id=user.user_id,
+        user=user,
+    )
     try:
         effective_user_id = _resolve_effective_chat_user_id(identity, user.user_id)
     except HTTPException:

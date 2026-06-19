@@ -5,9 +5,10 @@ from __future__ import annotations
 from collections.abc import AsyncGenerator
 from typing import Any
 
+from langchain_core.runnables import RunnableConfig
+
 from controller.base import BaseController
 from service.RunService import RunService
-from langchain_core.runnables import RunnableConfig
 
 
 class RunController(BaseController):

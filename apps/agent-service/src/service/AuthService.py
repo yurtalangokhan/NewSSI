@@ -154,9 +154,13 @@ class AuthService:
         client = AuthService.get_jwks_client()
         try:
             return client.get_signing_key_from_jwt(token)
-        except jwt.PyJWKClientError:
+        except jwt.PyJWKClientError as exc:
             _refresh_jwks()
-            return AuthService.get_jwks_client().get_signing_key_from_jwt(token)
+            try:
+                return AuthService.get_jwks_client().get_signing_key_from_jwt(token)
+            except jwt.PyJWKClientError as refreshed_exc:
+                logger.warning("Keycloak signing key not found after JWKS refresh: %s", refreshed_exc)
+                raise exc from refreshed_exc
 
     # ------------------------------------------------------------------
     # Token validation
@@ -189,6 +193,11 @@ class AuthService:
                 },
             )
             return claims
+        except jwt.PyJWKClientError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"Unable to resolve token signing key: {exc}",
+            ) from exc
         except InvalidTokenError as exc:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -285,7 +294,10 @@ class AuthService:
             "preferred_username": username,
             "role": role,
             "type": "access",
+            "user_service_user": user_data,
         }
+        if user_data.get("keycloak_id"):
+            claims["keycloak_id"] = user_data["keycloak_id"]
 
         return AuthenticatedUser(
             user_id=user_id,
@@ -316,21 +328,25 @@ class AuthService:
         self,
         request: Request,
         user_id: str | None,
+        user: AuthenticatedUser | None = None,
     ) -> dict[str, Any]:
         token = _extract_auth_token(None, request)
-        keycloak_id = None
+        user_service_user = None
+        keycloak_id = user.claims.get("keycloak_id") if user else None
+        if user and isinstance(user.claims.get("user_service_user"), dict):
+            user_service_user = user.claims["user_service_user"]
+
         if token and self.is_keycloak_enabled():
             try:
                 claims = self.decode_keycloak_token(token)
-                keycloak_id = claims.get("sub")
+                keycloak_id = keycloak_id or claims.get("sub")
             except HTTPException:
                 pass
 
         if not keycloak_id:
             keycloak_id = user_id
 
-        user_service_user = None
-        if keycloak_id:
+        if not user_service_user and keycloak_id and str(keycloak_id) != str(user_id):
             try:
                 from service.UserServiceClient import get_user_by_keycloak_id
 
@@ -360,7 +376,7 @@ class AuthService:
         }
 
     async def get_current_user(self, request: Request, user: AuthenticatedUser) -> dict[str, Any]:
-        identity = await self.resolve_user_identity(request=request, user_id=user.user_id)
+        identity = await self.resolve_user_identity(request=request, user_id=user.user_id, user=user)
         keycloak_id = identity.get("keycloak_id")
         user_service_user = identity.get("user_service_user")
         effective_user_id = str(identity.get("primary_user_id") or user.user_id)
@@ -601,6 +617,9 @@ async def require_user(
             )
         try:
             claims = _decode_keycloak_token(token)
+            user = await AuthService.authenticate_with_user_service(token)
+            if user:
+                return user
             return AuthService.build_authenticated_user(claims, token)
         except HTTPException as exc:
             user = await AuthService.authenticate_with_user_service(token)

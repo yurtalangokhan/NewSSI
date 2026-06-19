@@ -3,6 +3,8 @@ User Memory REST API.
 
 Endpoints: /api/user/memories
 CRUD for the user_memory domain (long-term memory facts).
+
+After Phase 2, this route proxies to user-service via UserMemoryService.
 """
 
 from __future__ import annotations
@@ -31,7 +33,11 @@ router = APIRouter(tags=["user-memory"])
 
 
 async def _resolve_memory_user_id(request: Request, user: AuthenticatedUser) -> str:
-    identity = await get_auth_service().resolve_user_identity(request=request, user_id=user.user_id)
+    identity = await get_auth_service().resolve_user_identity(
+        request=request,
+        user_id=user.user_id,
+        user=user,
+    )
     effective_user_id = get_primary_user_id(identity, user.user_id)
     if not effective_user_id:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
@@ -53,7 +59,7 @@ async def list_memories(
     effective_user_id = await _resolve_memory_user_id(request, user)
     svc = get_user_memory_service()
     result = await svc.list_for_ui(effective_user_id, page=page, page_size=page_size)
-    items = [MemoryRead.model_validate(r) for r in result["items"]]
+    items = [MemoryRead(**r) for r in result["items"]]
     return MemoryListResponse(items=items, total=result["total"])
 
 
@@ -82,7 +88,7 @@ async def create_memory(
             status_code=status.HTTP_409_CONFLICT,
             detail="Memory with this content already exists.",
         ) from exc
-    return MemoryRead.model_validate(row)
+    return MemoryRead(**row)
 
 
 # ---------------------------------------------------------------------------
@@ -102,7 +108,7 @@ async def update_memory(
     row = await svc.update(str(memory_id), effective_user_id, body.content)
     if row is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Memory not found")
-    return MemoryRead.model_validate(row)
+    return MemoryRead(**row)
 
 
 # ---------------------------------------------------------------------------

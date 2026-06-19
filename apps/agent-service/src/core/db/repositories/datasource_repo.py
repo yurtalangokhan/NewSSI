@@ -63,6 +63,7 @@ def _parse_meta(raw: Any) -> dict[str, Any]:
 def _get_milvus_store(collection_name: str):
     """Return a LangChain Milvus store for the given raw collection name."""
     from langchain_community.vectorstores import Milvus
+
     from agents.tools import get_embeddings  # noqa: PLC0415
 
     milvus_name = _to_milvus_collection_name(collection_name)

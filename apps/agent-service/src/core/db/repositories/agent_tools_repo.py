@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 import uuid as _uuid
-from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import delete, select, update

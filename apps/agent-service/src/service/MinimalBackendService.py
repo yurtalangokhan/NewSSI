@@ -124,6 +124,11 @@ async def get_input_prompts():
     return []
 
 
+@app.get("/api/input_promt")
+async def get_input_prompts_typo_alias():
+    return await get_input_prompts()
+
+
 @app.get("/api/manage/connector-status")
 async def get_connector_status():
     return []

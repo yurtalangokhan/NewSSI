@@ -11,19 +11,15 @@ Two consumers:
   one-shot navigation per URL.
 """
 
+import logging
 from collections.abc import Iterator
 from contextlib import contextmanager
 
-from playwright.sync_api import BrowserContext
-from playwright.sync_api import Playwright
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import BrowserContext, Playwright, sync_playwright
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from pydantic import BaseModel
 
-import logging
-
-from service.web_search.url import SSRFException
-from service.web_search.url import validate_outbound_http_url
+from service.web_search.url import SSRFException, validate_outbound_http_url
 
 logger = logging.getLogger(__name__)
 
