@@ -15,6 +15,8 @@ export async function GET() {
         anonymousUserEnabled: true,
         hasUsers: true,
         oauthEnabled: false,
+        externalKeycloak: false,
+        external_keycloak: false,
       },
       { status: 200 }
     );

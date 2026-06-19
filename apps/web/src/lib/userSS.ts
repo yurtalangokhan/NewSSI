@@ -15,6 +15,8 @@ export interface AuthTypeMetadata {
   anonymousUserEnabled: boolean | null;
   hasUsers: boolean;
   oauthEnabled: boolean;
+  externalKeycloak: boolean;
+  external_keycloak?: boolean;
 }
 
 export const getAuthTypeMetadataSS = async (): Promise<AuthTypeMetadata> => {
@@ -33,6 +35,8 @@ export const getAuthTypeMetadataSS = async (): Promise<AuthTypeMetadata> => {
       anonymousUserEnabled: true,
       hasUsers: true,
       oauthEnabled: false,
+      externalKeycloak: false,
+      external_keycloak: false,
     };
   }
 };
@@ -138,7 +142,7 @@ export const getCurrentUserSS = async (): Promise<User | null> => {
       return null;
     }
 
-    const response = await fetchSS("/me");
+    const response = await fetchUserServiceSS("/api/auth/me");
     if (response.status === 401) {
       return null;
     }
