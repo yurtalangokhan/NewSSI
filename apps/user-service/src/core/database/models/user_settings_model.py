@@ -34,6 +34,7 @@ class UserSettingsModel(Base):
     user_preferences: Mapped[str] = mapped_column(Text, default="", nullable=False)
     work_role: Mapped[str] = mapped_column(Text, default="", nullable=False)
     prompt_shortcuts: Mapped[list] = mapped_column(JSONB, default=list, nullable=False)
+    pinned_assistants: Mapped[list] = mapped_column(JSONB, default=list, nullable=False)
     time_created: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.utcnow, nullable=False
     )

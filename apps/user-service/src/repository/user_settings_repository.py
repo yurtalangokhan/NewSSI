@@ -21,6 +21,7 @@ class UserSettingsRepository(BaseRepository):
         "user_preferences": "",
         "work_role": "",
         "prompt_shortcuts": [],
+        "pinned_assistants": [],
     }
 
     async def get_by_user_id(self, user_id: uuid.UUID) -> UserSettingsModel | None:
@@ -53,6 +54,7 @@ class UserSettingsRepository(BaseRepository):
                 "user_preferences",
                 "work_role",
                 "prompt_shortcuts",
+                "pinned_assistants",
             }
             filtered = {k: v for k, v in updates.items() if k in allowed_keys and v is not None}
             if "user_preferences" in filtered:

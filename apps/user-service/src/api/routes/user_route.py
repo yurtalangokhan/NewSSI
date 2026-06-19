@@ -4,7 +4,11 @@ from typing import Annotated
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from pydantic import BaseModel, field_validator
 
-from src.api.dependencies import require_admin, require_auth
+from src.api.dependencies import (
+    require_admin,
+    require_auth,
+    require_auth_or_internal_service_token,
+)
 from src.controller import get_user_controller
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -110,7 +114,16 @@ async def _authorize_target_user_id(target_id: str, authenticated_user_id: str) 
     from src.repository import UserRepository
 
     resolved_user_id = await _resolve_target_user_id(target_id)
-    authenticated_uuid = uuid.UUID(authenticated_user_id)
+
+    # Internal service token has full access (machine-only flows)
+    if authenticated_user_id == "internal-service":
+        return resolved_user_id
+
+    try:
+        authenticated_uuid = uuid.UUID(authenticated_user_id)
+    except ValueError:
+        raise HTTPException(status_code=403, detail="Forbidden") from None
+
     if resolved_user_id == authenticated_uuid:
         return resolved_user_id
 
@@ -214,11 +227,12 @@ async def download_csv(query: str | None = None, user_id: str = Depends(require_
 @router.post("/internal/upsert-from-keycloak")
 async def upsert_user_from_keycloak(
     payload: Annotated[KeycloakUpsertRequest, Body(...)],
-    authenticated_user_id: Annotated[str, Depends(require_auth)],
+    authenticated_user_id: Annotated[str, Depends(require_auth_or_internal_service_token)],
 ):
     """Internal endpoint for agent-service to create/update users from Keycloak OIDC.
 
     This is called from agent-service during OIDC callback to ensure user exists in user-service.
+    Accepts X-Internal-Service-Token for machine-only flows (no user context).
     """
     await _authorize_target_user_id(payload.keycloak_id, authenticated_user_id)
     return await get_user_controller().upsert_user_from_keycloak(
@@ -230,11 +244,12 @@ async def upsert_user_from_keycloak(
 @router.get("/internal/by-keycloak-id/{keycloak_id}")
 async def get_user_by_keycloak_id(
     keycloak_id: str,
-    authenticated_user_id: Annotated[str, Depends(require_auth)],
+    authenticated_user_id: Annotated[str, Depends(require_auth_or_internal_service_token)],
 ):
     """Internal endpoint for agent-service to fetch user by Keycloak ID (subject).
 
     Used in /api/me endpoint to get complete user data from user-service.
+    Accepts X-Internal-Service-Token for machine-only flows.
     """
     await _authorize_target_user_id(keycloak_id, authenticated_user_id)
     return await get_user_controller().get_user_by_keycloak_id(keycloak_id)
@@ -244,7 +259,7 @@ async def get_user_by_keycloak_id(
 async def update_user_internal(
     target_id: str,
     updates: Annotated[InternalUserUpdateRequest, Body(...)],
-    authenticated_user_id: Annotated[str, Depends(require_auth)],
+    authenticated_user_id: Annotated[str, Depends(require_auth_or_internal_service_token)],
 ):
     resolved_user_id = await _authorize_target_user_id(target_id, authenticated_user_id)
     return await get_user_controller().update_user(

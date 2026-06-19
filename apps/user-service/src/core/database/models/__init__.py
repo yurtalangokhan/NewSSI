@@ -1,6 +1,7 @@
 from .base import Base
 from .user_model import UserModel
 from .user_settings_model import UserSettingsModel
+from .user_memory_model import UserMemoryModel
 from .api_key_model import ApiKeyModel
 from .session_model import SessionModel
 from .role_model import RoleModel
@@ -10,6 +11,7 @@ __all__ = [
     "Base",
     "UserModel",
     "UserSettingsModel",
+    "UserMemoryModel",
     "ApiKeyModel",
     "SessionModel",
     "RoleModel",

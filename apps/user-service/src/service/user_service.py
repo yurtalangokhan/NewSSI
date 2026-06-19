@@ -26,7 +26,7 @@ class UserService:
         user = await self.user_repo.get_by_id(user_id)
         if not user:
             return None
-        return self._user_to_dict(user)
+        return await self._user_to_app_dict(user)
 
     async def get_user_by_email(self, email: str) -> dict[str, Any] | None:
         user = await self.user_repo.get_by_email(email)
@@ -434,6 +434,36 @@ class UserService:
             "created_at": user.created_at.isoformat() if user.created_at else None,
             "updated_at": user.updated_at.isoformat() if user.updated_at else None,
         }
+
+    async def _user_to_app_dict(self, user) -> dict[str, Any]:
+        payload = self._user_to_dict(user)
+        settings = await self.settings_repo.ensure_defaults(user.id)
+        full_name = f"{user.first_name or ''} {user.last_name or ''}".strip() or None
+        payload["preferences"] = {
+            "chosen_assistants": None,
+            "visible_assistants": [],
+            "hidden_assistants": [],
+            "default_model": settings.default_model,
+            "default_provider_id": settings.default_provider_id,
+            "recent_assistants": [],
+            "auto_scroll": settings.auto_scroll,
+            "shortcut_enabled": settings.shortcut_enabled,
+            "temperature_override_enabled": False,
+            "theme_preference": settings.theme_preference,
+            "chat_background": settings.chat_background,
+            "default_app_mode": settings.default_app_mode,
+        }
+        payload["personalization"] = {
+            "name": full_name or user.username or user.email.split("@", 1)[0],
+            "role": settings.work_role or "",
+            "memories": settings.memories or [],
+            "use_memories": settings.use_memories,
+            "enable_memory_tool": settings.enable_memory_tool,
+            "user_preferences": settings.user_preferences or "",
+            "long_term_memory_enabled": settings.long_term_memory_enabled,
+            "extract_memory": settings.extract_memory,
+        }
+        return payload
 
     @staticmethod
     def _resolve_role_from_realm_roles(realm_roles: list[dict[str, Any]]) -> str:
