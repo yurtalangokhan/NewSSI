@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     POSTGRES_DB: str | None = None
 
     KEYCLOAK_ENABLED: bool = False
+    EXTERNAL_KEYCLOAK: bool = False
     KEYCLOAK_ISSUER_URL: str | None = None
     KEYCLOAK_BASE_URL: str | None = None
     KEYCLOAK_REALM: str = "agenticai"
@@ -42,7 +43,9 @@ class Settings(BaseSettings):
     LDAP_BASE_DN: str = "dc=example,dc=com"
     LDAP_USER_SEARCH_FILTER: str = "(&(objectClass=person)(uid={{username}}))"
     LDAP_USER_SEARCH_BASE: str = ""
-    LDAP_ATTRIBUTE_MAP: str = '{"username": "uid", "email": "mail", "first_name": "givenName", "last_name": "sn"}'
+    LDAP_ATTRIBUTE_MAP: str = (
+        '{"username": "uid", "email": "mail", "first_name": "givenName", "last_name": "sn"}'
+    )
 
     CORS_ALLOWED_ORIGINS: str = "http://localhost:3000,http://localhost:8123"
 

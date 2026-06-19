@@ -61,7 +61,16 @@ class AuthService:
         expires = datetime.now(UTC) + timedelta(days=30)
         return token, expires
 
+    @staticmethod
+    def _normalize_login_identifier(identifier: str) -> str:
+        return identifier.strip()
+
+    @staticmethod
+    def _is_email_identifier(identifier: str) -> bool:
+        return "@" in identifier
+
     async def basic_login(self, username: str, password: str) -> dict[str, Any]:
+        username = self._normalize_login_identifier(username)
         if self.keycloak.is_enabled():
             return await self._keycloak_password_login(username, password)
 
@@ -125,17 +134,19 @@ class AuthService:
                 if not user.keycloak_id:
                     user = await self.user_repo.update(user.id, keycloak_id=kc_id)
             else:
-                kc_id = await self.keycloak.create_user({
-                    "email": email,
-                    "username": ldap_username,
-                    "firstName": user_fields.get("first_name") or ldap_username,
-                    "lastName": user_fields.get("last_name") or "User",
-                    "enabled": True,
-                    "emailVerified": True,
-                    "credentials": [
-                        {"type": "password", "value": password, "temporary": False},
-                    ],
-                })
+                kc_id = await self.keycloak.create_user(
+                    {
+                        "email": email,
+                        "username": ldap_username,
+                        "firstName": user_fields.get("first_name") or ldap_username,
+                        "lastName": user_fields.get("last_name") or "User",
+                        "enabled": True,
+                        "emailVerified": True,
+                        "credentials": [
+                            {"type": "password", "value": password, "temporary": False},
+                        ],
+                    }
+                )
                 if kc_id:
                     user = await self.user_repo.update(user.id, keycloak_id=kc_id)
 
@@ -162,6 +173,7 @@ class AuthService:
         return await self.ldap.validate_user(username)
 
     async def _local_basic_login(self, username: str, password: str) -> dict[str, Any] | None:
+        username = self._normalize_login_identifier(username)
         user = await self.user_repo.get_by_email(username)
         if not user:
             user = await self.user_repo.get_by_username(username)
@@ -181,7 +193,14 @@ class AuthService:
         Used when KEYCLOAK_ENABLED=True and user submits username/password
         through the login form (no OIDC redirect).
         """
-        token_data = await self.keycloak.password_grant(username, password)
+        username = self._normalize_login_identifier(username)
+        try:
+            token_data = await self.keycloak.password_grant(username, password)
+        except ValueError as original_error:
+            fallback_username = await self._resolve_keycloak_username(username)
+            if not fallback_username or fallback_username == username:
+                raise original_error
+            token_data = await self.keycloak.password_grant(fallback_username, password)
 
         id_token = token_data.get("id_token", "")
         if not id_token:
@@ -220,6 +239,22 @@ class AuthService:
             user = await self.user_repo.update(user.id, is_superuser=True, role="admin")
 
         return await self._build_oidc_login_response(user, token_data)
+
+    async def _resolve_keycloak_username(self, login_identifier: str) -> str | None:
+        """Resolve an email login identifier to a Keycloak username when possible."""
+        if not self._is_email_identifier(login_identifier):
+            return None
+
+        user = await self.user_repo.get_by_email(login_identifier)
+        if user and user.username:
+            return user.username
+
+        if not self.keycloak.has_admin_access():
+            return None
+
+        keycloak_user = await self.keycloak.get_user_by_email(login_identifier)
+        username = keycloak_user.get("username") if keycloak_user else None
+        return username if isinstance(username, str) and username.strip() else None
 
     async def register(
         self,
@@ -378,7 +413,9 @@ class AuthService:
         if session:
             current_time = datetime.now(UTC)
             if session.expires_at < current_time:
-                await self.session_repo.delete_by_refresh_token_hash(self._hash_token(refresh_token))
+                await self.session_repo.delete_by_refresh_token_hash(
+                    self._hash_token(refresh_token)
+                )
                 raise ValueError("Refresh token expired")
 
             user = await self.user_repo.get_by_id(session.user_id)
@@ -444,7 +481,9 @@ class AuthService:
 
     async def validate_token(self, token: str) -> dict[str, Any] | None:
         try:
-            secret = _settings.AUTH_SECRET or "dev-secret-change-me"
+            if not _settings.AUTH_SECRET:
+                return None
+            secret = _settings.AUTH_SECRET
             payload = jwt.decode(
                 token, secret, algorithms=["HS256"], audience=_settings.SERVICE_NAME
             )
@@ -531,6 +570,8 @@ class AuthService:
             "requiresVerification": False,
             "anonymousUserEnabled": True,
             "hasUsers": True,
+            "externalKeycloak": False,
+            "external_keycloak": False,
         }
         if self.keycloak.is_enabled():
             return {

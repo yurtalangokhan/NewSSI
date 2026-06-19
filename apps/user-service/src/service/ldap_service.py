@@ -47,7 +47,12 @@ class LdapService:
         try:
             return json.loads(raw)
         except (json.JSONDecodeError, TypeError):
-            return {"username": "uid", "email": "mail", "first_name": "givenName", "last_name": "sn"}
+            return {
+                "username": "uid",
+                "email": "mail",
+                "first_name": "givenName",
+                "last_name": "sn",
+            }
 
     async def authenticate(self, username: str, password: str) -> dict[str, Any] | None:
         server = self._get_server()

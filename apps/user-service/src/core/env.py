@@ -17,6 +17,10 @@ class Env:
         return os.environ.get("KEYCLOAK_ENABLED", "false").lower() == "true"
 
     @property
+    def EXTERNAL_KEYCLOAK(self) -> bool:
+        return os.environ.get("EXTERNAL_KEYCLOAK", "false").lower() == "true"
+
+    @property
     def KEYCLOAK_ISSUER_URL(self) -> str | None:
         return os.environ.get("KEYCLOAK_ISSUER_URL")
 

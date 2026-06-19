@@ -19,10 +19,25 @@ _JWKS_CLIENT: PyJWKClient | None = None
 class KeycloakService:
     _admin_token_cache: str | None = None
     _admin_token_expires: float = 0
+    _admin_token_cache_key: str | None = None
 
     @staticmethod
     def is_enabled() -> bool:
         return _env.KEYCLOAK_ENABLED or _settings.KEYCLOAK_ENABLED
+
+    @staticmethod
+    def has_admin_access() -> bool:
+        """Whether the Keycloak admin REST API is accessible.
+
+        This is a capability hint only. External Keycloak may still expose the
+        admin REST API through the configured client's service account, but
+        username/password admin credentials are intentionally ignored there.
+        """
+        if _env.EXTERNAL_KEYCLOAK or _settings.EXTERNAL_KEYCLOAK:
+            return bool(KeycloakService().get_client_secret())
+        return KeycloakService()._admin_credentials_configured() or bool(
+            KeycloakService().get_client_secret()
+        )
 
     def get_base_url(self) -> str:
         base_url = _env.KEYCLOAK_BASE_URL or _settings.KEYCLOAK_BASE_URL
@@ -51,6 +66,25 @@ class KeycloakService:
         if client_secret:
             payload["client_secret"] = client_secret
         return payload
+
+    @staticmethod
+    def is_external_keycloak() -> bool:
+        return _env.EXTERNAL_KEYCLOAK or _settings.EXTERNAL_KEYCLOAK
+
+    @staticmethod
+    def _settings_field_was_configured(field_name: str) -> bool:
+        return field_name in getattr(_settings, "model_fields_set", set())
+
+    def _admin_credentials_configured(self) -> bool:
+        if self.is_external_keycloak():
+            return False
+        username_configured = bool(_env.get("KEYCLOAK_ADMIN")) or self._settings_field_was_configured(
+            "KEYCLOAK_ADMIN"
+        )
+        password_configured = bool(
+            _env.get("KEYCLOAK_ADMIN_PASSWORD")
+        ) or self._settings_field_was_configured("KEYCLOAK_ADMIN_PASSWORD")
+        return username_configured and password_configured
 
     def get_issuer_url(self) -> str | None:
         issuer = _env.KEYCLOAK_ISSUER_URL or _settings.KEYCLOAK_ISSUER_URL
@@ -109,10 +143,25 @@ class KeycloakService:
         except Exception:
             return None
 
-    async def _get_admin_token(self) -> str:
-        if self._admin_token_cache and time.time() < self._admin_token_expires - 60:
+    async def _get_cached_admin_token(self, cache_key: str) -> str | None:
+        if (
+            self._admin_token_cache
+            and self._admin_token_cache_key == cache_key
+            and time.time() < self._admin_token_expires - 60
+        ):
             return self._admin_token_cache
+        return None
 
+    def _cache_admin_token(self, cache_key: str, token_data: dict[str, Any]) -> str:
+        self._admin_token_cache = str(token_data["access_token"])
+        self._admin_token_cache_key = cache_key
+        self._admin_token_expires = time.time() + token_data.get("expires_in", 300)
+        return self._admin_token_cache
+
+    async def _get_password_admin_token(self) -> str:
+        cached = await self._get_cached_admin_token("password-admin")
+        if cached:
+            return cached
         admin_realm = "master"
         async with httpx.AsyncClient() as client:
             resp = await client.post(
@@ -125,10 +174,31 @@ class KeycloakService:
                 },
             )
             resp.raise_for_status()
-            data = resp.json()
-            self._admin_token_cache = str(data["access_token"])
-            self._admin_token_expires = time.time() + data.get("expires_in", 300)
-            return self._admin_token_cache
+            return self._cache_admin_token("password-admin", resp.json())
+
+    async def _get_service_account_admin_token(self) -> str:
+        if not self.get_client_secret():
+            raise ValueError("Keycloak service account is not configured")
+        cached = await self._get_cached_admin_token("service-account")
+        if cached:
+            return cached
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                f"{self.get_base_url()}/realms/{self.get_realm()}/protocol/openid-connect/token",
+                data={
+                    "grant_type": "client_credentials",
+                    **self._client_credentials_payload(),
+                },
+            )
+            resp.raise_for_status()
+            return self._cache_admin_token("service-account", resp.json())
+
+    async def _get_admin_token(self) -> str:
+        if self.is_external_keycloak():
+            return await self._get_service_account_admin_token()
+        if self._admin_credentials_configured():
+            return await self._get_password_admin_token()
+        return await self._get_service_account_admin_token()
 
     async def _keycloak_request(
         self, method: str, path: str, token: str | None = None, **kwargs
@@ -141,20 +211,29 @@ class KeycloakService:
             resp = await client.request(method, url, headers=headers, **kwargs)
             return resp
 
-    async def get_user_profile(self, keycloak_id: str) -> dict[str, Any]:
-        resp = await self._keycloak_request("GET", f"/users/{keycloak_id}")
+    async def get_user_profile(self, keycloak_id: str, token: str | None = None) -> dict[str, Any]:
+        resp = await self._keycloak_request("GET", f"/users/{keycloak_id}", token=token)
         if resp.status_code == 404:
             return {}
         resp.raise_for_status()
         return resp.json()
 
-    async def list_users(self, first: int = 0, max: int = 1000) -> list[dict[str, Any]]:
-        resp = await self._keycloak_request("GET", f"/users?first={first}&max={max}")
+    async def list_users(
+        self,
+        first: int = 0,
+        max: int = 1000,
+        token: str | None = None,
+    ) -> list[dict[str, Any]]:
+        resp = await self._keycloak_request("GET", f"/users?first={first}&max={max}", token=token)
         resp.raise_for_status()
         return resp.json()
 
-    async def get_user_by_email(self, email: str) -> dict[str, Any] | None:
-        resp = await self._keycloak_request("GET", f"/users?email={quote(email)}&exact=true")
+    async def get_user_by_email(self, email: str, token: str | None = None) -> dict[str, Any] | None:
+        resp = await self._keycloak_request(
+            "GET",
+            f"/users?email={quote(email)}&exact=true",
+            token=token,
+        )
         resp.raise_for_status()
         users = resp.json()
         return users[0] if users else None
@@ -188,8 +267,8 @@ class KeycloakService:
         )
         return resp.status_code in (200, 204)
 
-    async def get_realm_role(self, role_name: str) -> dict[str, Any] | None:
-        resp = await self._keycloak_request("GET", f"/roles/{role_name}")
+    async def get_realm_role(self, role_name: str, token: str | None = None) -> dict[str, Any] | None:
+        resp = await self._keycloak_request("GET", f"/roles/{role_name}", token=token)
         if resp.status_code == 404:
             return None
         resp.raise_for_status()
@@ -206,8 +285,8 @@ class KeycloakService:
         )
         return resp.status_code in (200, 201, 204, 409)
 
-    async def get_realm_roles(self) -> list[dict[str, Any]]:
-        resp = await self._keycloak_request("GET", "/roles")
+    async def get_realm_roles(self, token: str | None = None) -> list[dict[str, Any]]:
+        resp = await self._keycloak_request("GET", "/roles", token=token)
         resp.raise_for_status()
         return resp.json()
 
@@ -247,8 +326,16 @@ class KeycloakService:
         )
         return True
 
-    async def get_user_realm_roles(self, keycloak_id: str) -> list[dict[str, Any]]:
-        resp = await self._keycloak_request("GET", f"/users/{keycloak_id}/role-mappings/realm")
+    async def get_user_realm_roles(
+        self,
+        keycloak_id: str,
+        token: str | None = None,
+    ) -> list[dict[str, Any]]:
+        resp = await self._keycloak_request(
+            "GET",
+            f"/users/{keycloak_id}/role-mappings/realm",
+            token=token,
+        )
         resp.raise_for_status()
         return resp.json()
 

@@ -15,6 +15,7 @@ _DEFAULT_SETTINGS = {
     "user_preferences": "",
     "work_role": "",
     "prompt_shortcuts": [],
+    "pinned_assistants": [],
 }
 
 
@@ -99,6 +100,7 @@ class UserSettingsService:
             "user_preferences": settings.user_preferences or "",
             "work_role": settings.work_role or "",
             "prompt_shortcuts": settings.prompt_shortcuts or [],
+            "pinned_assistants": settings.pinned_assistants or [],
             "time_created": settings.time_created.isoformat() if settings.time_created else None,
             "time_updated": settings.time_updated.isoformat() if settings.time_updated else None,
         }
