@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 import os
 from typing import Any
 
@@ -10,9 +9,9 @@ from langchain_core.runnables import RunnableConfig
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.pregel import Pregel
 
-from agents.lazy_agent import LazyLoadingAgent
 from agents.graphs.builder import GraphBuilder
 from agents.graphs.schemas import GraphSchemaType, get_schema
+from agents.lazy_agent import LazyLoadingAgent
 from core import settings
 from core.llm import get_model, get_model_from_config
 from core.logger import get_logger
@@ -22,15 +21,15 @@ logger = get_logger(__name__)
 
 # Per-definition-ID cache so we don't reload MCP tools on every request.
 # Key = definition_id (str UUID), Value = loaded DynamicAgent instance.
-_agent_cache: dict[str, "DynamicAgent"] = {}
+_agent_cache: dict[str, DynamicAgent] = {}
 
 
-def get_cached_agent(definition_id: str) -> "DynamicAgent | None":
+def get_cached_agent(definition_id: str) -> DynamicAgent | None:
     """Return a previously loaded DynamicAgent if present in cache."""
     return _agent_cache.get(definition_id)
 
 
-def cache_agent(definition_id: str, agent: "DynamicAgent") -> None:
+def cache_agent(definition_id: str, agent: DynamicAgent) -> None:
     """Store a loaded DynamicAgent in cache."""
     _agent_cache[definition_id] = agent
 

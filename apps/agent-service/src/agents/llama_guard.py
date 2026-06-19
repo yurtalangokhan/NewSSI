@@ -1,10 +1,9 @@
 from enum import Enum
 
-from langchain_core.messages import AIMessage, AnyMessage, HumanMessage
+from langchain_core.messages import AnyMessage, HumanMessage
 from langchain_core.prompts import PromptTemplate
 from pydantic import BaseModel, Field
 
-from core import get_model
 from core.env import env
 from core.logger import get_logger
 

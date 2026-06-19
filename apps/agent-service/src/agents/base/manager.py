@@ -6,7 +6,7 @@ from typing import Any
 
 from langchain_core.runnables import RunnableConfig
 
-from agents.base.agent import BaseAgent, AgentResult
+from agents.base.agent import BaseAgent
 
 
 @dataclass

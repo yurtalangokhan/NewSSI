@@ -1,7 +1,6 @@
 """Agent configuration loader - loads JSON/YAML configs."""
 
 import json
-import os
 from pathlib import Path
 from typing import Any
 

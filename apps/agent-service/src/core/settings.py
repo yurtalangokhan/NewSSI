@@ -1,5 +1,4 @@
 from enum import StrEnum
-from typing import Any
 
 from pydantic import AliasChoices, Field, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict

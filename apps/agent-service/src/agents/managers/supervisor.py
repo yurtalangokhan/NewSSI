@@ -11,7 +11,7 @@ from langgraph.prebuilt import create_react_agent
 from langgraph.pregel import Pregel
 from langgraph_supervisor import create_supervisor
 
-from agents.base.manager import AgentManager, SupervisorManager, TaskResult, DelegateRequest
+from agents.base.manager import DelegateRequest, SupervisorManager, TaskResult
 from agents.perceptrons.mcp_perceptron import MCPPerceptron
 
 logger = logging.getLogger(__name__)

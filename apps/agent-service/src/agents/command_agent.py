@@ -4,10 +4,10 @@ import logging
 from datetime import datetime
 
 from langchain.agents import create_agent
+from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import BaseTool
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from langchain_mcp_adapters.sessions import StreamableHttpConnection
-from langchain_core.runnables import RunnableConfig
 from langgraph.graph.state import CompiledStateGraph
 
 from agents.lazy_agent import LazyLoadingAgent

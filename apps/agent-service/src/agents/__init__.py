@@ -25,64 +25,61 @@ from agents.agents import (
 
 # New module exports - from base
 from agents.base.agent import (
-    BaseAgent,
-    LazyLoadingAgent,
     AgentMetadata,
     AgentResult,
+    BaseAgent,
+    LazyLoadingAgent,
 )
-
 from agents.base.brain import (
     Brain,
-    LLMBrain,
     GuardBrain,
+    LLMBrain,
     ReasoningResult,
 )
-
-from agents.base.perceptron import (
-    Perceptron,
-    ToolPerceptron,
-    MemoryPerceptron,
-    VectorPerceptron,
-    PerceptionResult,
-)
-
 from agents.base.manager import (
     AgentManager,
-    SupervisorManager,
-    PipelineManager,
-    HierarchicalManager,
-    TaskResult,
     DelegateRequest,
+    HierarchicalManager,
+    PipelineManager,
+    SupervisorManager,
+    TaskResult,
 )
-
-# From perceptrons
-from agents.perceptrons import MCPPerceptron, CompositePerceptron
-
-# Registry
-from agents.registry import AgentRegistry, agent, agent_factory
+from agents.base.perceptron import (
+    MemoryPerceptron,
+    PerceptionResult,
+    Perceptron,
+    ToolPerceptron,
+    VectorPerceptron,
+)
 
 # Configs
 from agents.configs import (
+    delete_agent_config,
+    list_config_names,
     load_agent_config,
     load_agent_configs,
     save_agent_config,
-    delete_agent_config,
-    list_config_names,
 )
 
 # Managers
 from agents.managers import (
     DynamicFlatSupervisor,
-    get_supervisor,
     DynamicPipelineSupervisor,
     get_pipeline,
+    get_supervisor,
 )
+
+# From perceptrons
+from agents.perceptrons import CompositePerceptron, MCPPerceptron
+
+# Registry
+from agents.registry import AgentRegistry, agent, agent_factory
 
 # Storage
 from agents.storage import (
     AgentDefinitionModel,
-    AgentInstanceModel,
     AgentDefinitionRepository,
+    AgentInstanceModel,
     AgentInstanceRepository,
 )
 

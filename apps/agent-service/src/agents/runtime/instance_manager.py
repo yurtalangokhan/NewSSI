@@ -85,7 +85,7 @@ def create_agent_from_config(config: dict[str, Any]) -> Any:
     Returns:
         Agent instance
     """
-    from agents.managers import get_supervisor, get_pipeline
+    from agents.managers import get_pipeline, get_supervisor
 
     agent_type = config.get("type", "manager")
     name = config.get("name", "unnamed")

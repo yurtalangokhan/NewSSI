@@ -6,7 +6,7 @@ from typing import Any
 
 from langchain_core.tools import BaseTool
 
-from agents.base.perceptron import Perceptron, PerceptionResult
+from agents.base.perceptron import PerceptionResult, Perceptron
 
 logger = logging.getLogger(__name__)
 

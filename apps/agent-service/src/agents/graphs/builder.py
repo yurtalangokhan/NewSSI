@@ -13,9 +13,7 @@ from langgraph.prebuilt import create_react_agent
 from langgraph.pregel import Pregel
 
 from agents.graphs.schemas import (
-    GraphSchema,
     GraphSchemaType,
-    SubAgentConfig,
     get_schema,
 )
 
@@ -139,7 +137,6 @@ class GraphBuilder:
         workflow = StateGraph(MessagesState)
         workflow.add_node("model", call_model)
         workflow.set_entry_point("model")
-        from langgraph.graph import END
         workflow.add_edge("model", END)
 
         return workflow.compile(checkpointer=self.checkpointer)
@@ -377,7 +374,11 @@ async def _inject_memory_context_async(messages: list, config: RunnableConfig) -
         if long_term_memory and user_id:
             store = configurable.get("store")
             if store:
-                from memory.long_term import build_event_emitters, recall_memories, build_memory_context
+                from memory.long_term import (
+                    build_event_emitters,
+                    build_memory_context,
+                    recall_memories,
+                )
                 on_recall, _ = build_event_emitters(configurable)
                 memories = await recall_memories(store, user_id, on_recall=on_recall)
                 context = build_memory_context(memories)

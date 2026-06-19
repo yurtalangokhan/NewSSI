@@ -1,15 +1,15 @@
 """Perceptron implementations."""
 
 from agents.base.perceptron import (
+    MemoryPerceptron,
+    PerceptionResult,
     Perceptron,
     ToolPerceptron,
-    MemoryPerceptron,
     VectorPerceptron,
-    PerceptionResult,
 )
 from agents.perceptrons.mcp_perceptron import (
-    MCPPerceptron,
     CompositePerceptron,
+    MCPPerceptron,
 )
 
 __all__ = [

@@ -1,8 +1,8 @@
 """Agent registry module."""
 
 from agents.registry.registry import (
-    AgentRegistry,
     AgentRegistration,
+    AgentRegistry,
     agent,
     agent_factory,
 )
