@@ -1,3 +1,4 @@
+import uuid
 from typing import Any
 
 from fastapi import HTTPException
@@ -26,14 +27,25 @@ class RoleController(BaseController):
         name: str,
         description: str | None = None,
         permissions: list[str] | None = None,
+        user_id: str | None = None,
     ) -> dict[str, Any]:
+        from src.service import get_audit_service
+
         try:
-            return await self.service.create_role(
+            result = await self.service.create_role(
                 name=name,
                 description=description,
                 permissions=permissions,
                 is_builtin=False,
             )
+            audit = get_audit_service()
+            await audit.log(
+                action="role:create",
+                resource=f"role:{name}",
+                user_id=_safe_uuid(user_id),
+                details={"name": name, "description": description, "permissions": permissions},
+            )
+            return result
         except ValueError as e:
             raise HTTPException(status_code=409, detail=str(e)) from e
 
@@ -42,7 +54,10 @@ class RoleController(BaseController):
         name: str,
         description: str | None = None,
         permissions: list[str] | None = None,
+        user_id: str | None = None,
     ) -> dict[str, Any]:
+        from src.service import get_audit_service
+
         try:
             role = await self.service.update_role(
                 name=name,
@@ -53,15 +68,31 @@ class RoleController(BaseController):
             self._raise_bad_request(str(e))
         if not role:
             self._raise_not_found(f"Role '{name}' not found")
+        audit = get_audit_service()
+        await audit.log(
+            action="role:update",
+            resource=f"role:{name}",
+            user_id=_safe_uuid(user_id),
+            details={"description": description, "permissions": permissions},
+        )
         return role
 
-    async def delete_role(self, name: str) -> dict[str, Any]:
+    async def delete_role(self, name: str, user_id: str | None = None) -> dict[str, Any]:
+        from src.service import get_audit_service
+
         try:
             success = await self.service.delete_role(name)
         except ValueError as e:
             self._raise_bad_request(str(e))
         if not success:
             self._raise_not_found(f"Role '{name}' not found")
+        audit = get_audit_service()
+        await audit.log(
+            action="role:delete",
+            resource=f"role:{name}",
+            user_id=_safe_uuid(user_id),
+            details={"name": name},
+        )
         return {"message": "Role deleted"}
 
     async def get_role_permissions(self, name: str) -> dict[str, Any]:
@@ -74,23 +105,49 @@ class RoleController(BaseController):
         return result
 
     async def set_role_permissions(
-        self, name: str, permissions: list[str]
+        self, name: str, permissions: list[str], user_id: str | None = None
     ) -> dict[str, Any]:
+        from src.service import get_audit_service
+
         try:
             result = await self.service.set_role_permissions(name, permissions)
         except ValueError as e:
             self._raise_bad_request(str(e))
         if not result:
             self._raise_not_found(f"Role '{name}' not found")
+        audit = get_audit_service()
+        await audit.log(
+            action="role:set_permissions",
+            resource=f"role:{name}",
+            user_id=_safe_uuid(user_id),
+            details={"name": name, "permissions": permissions},
+        )
         return result
 
-    async def sync_to_keycloak(self) -> dict[str, Any]:
+    async def sync_to_keycloak(self, user_id: str | None = None) -> dict[str, Any]:
+        from src.service import get_audit_service
+
         try:
-            return await self.service.sync_to_keycloak()
+            result = await self.service.sync_to_keycloak()
+            audit = get_audit_service()
+            await audit.log(
+                action="role:sync_keycloak",
+                resource="keycloak:roles",
+                user_id=_safe_uuid(user_id),
+                details={},
+            )
+            return result
         except Exception as e:
-            raise HTTPException(
-                status_code=500, detail=f"Keycloak sync failed: {e}"
-            ) from e
+            raise HTTPException(status_code=500, detail=f"Keycloak sync failed: {e}") from e
+
+
+def _safe_uuid(val: str | None) -> uuid.UUID | None:
+    if not val:
+        return None
+    try:
+        return uuid.UUID(val)
+    except (ValueError, AttributeError):
+        return None
 
 
 _role_controller_instance: RoleController | None = None

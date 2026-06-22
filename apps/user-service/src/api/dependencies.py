@@ -71,6 +71,68 @@ async def require_admin(
     raise HTTPException(status_code=403, detail="Admin access required")
 
 
+def require_permission(permission: str):
+    """Factory that returns a FastAPI dependency requiring a specific permission.
+
+    Usage: ``user_id: str = Depends(require_permission("role:manage"))``
+
+    Checks the current user's role from the database and verifies the role
+    includes the required permission. Superusers bypass the check.
+    Denied access is recorded in the audit log.
+    """
+    async def _require_permission(
+        request: Request,
+        user_id: Annotated[str, Depends(require_auth)],
+    ) -> str:
+        from src.repository import RoleRepository, UserRepository
+        from src.service import get_audit_service
+
+        try:
+            repo = UserRepository()
+            user = await repo.get_by_id(uuid.UUID(user_id))
+            if not user:
+                raise HTTPException(status_code=401, detail="User not found")
+
+            if user.is_superuser:
+                return user_id
+
+            role = await RoleRepository().get_by_name(user.role)
+            if role and (
+                role.permissions == ["*"] or permission in role.permissions
+            ):
+                return user_id
+        except HTTPException:
+            raise
+        except Exception:
+            pass
+
+        audit = get_audit_service()
+        await audit.log(
+            action="permission:denied",
+            resource=f"permission:{permission}",
+            user_id=_safe_uuid(user_id),
+            details={"permission": permission},
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+        )
+
+        raise HTTPException(
+            status_code=403,
+            detail=f"Missing required permission: {permission}",
+        )
+
+    return _require_permission
+
+
+def _safe_uuid(val: str | None) -> uuid.UUID | None:
+    if not val:
+        return None
+    try:
+        return uuid.UUID(val)
+    except (ValueError, AttributeError):
+        return None
+
+
 async def verify_internal_service_token(request: Request) -> bool:
     from src.config import get_settings
 

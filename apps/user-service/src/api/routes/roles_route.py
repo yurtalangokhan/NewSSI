@@ -24,6 +24,7 @@ async def create_role(
         name=name,
         description=description,
         permissions=permissions,
+        user_id=user_id,
     )
 
 
@@ -45,13 +46,14 @@ async def update_role(
         name=role_name,
         description=description,
         permissions=permissions,
+        user_id=user_id,
     )
 
 
 @router.delete("/{role_name}")
 async def delete_role(role_name: str, user_id: str = Depends(require_admin)):
     ctrl = get_role_controller()
-    return await ctrl.delete_role(role_name)
+    return await ctrl.delete_role(role_name, user_id=user_id)
 
 
 @router.get("/{role_name}/permissions")
@@ -70,7 +72,7 @@ async def set_role_permissions(
     user_id: str = Depends(require_admin),
 ):
     ctrl = get_role_controller()
-    return await ctrl.set_role_permissions(role_name, permissions)
+    return await ctrl.set_role_permissions(role_name, permissions, user_id=user_id)
 
 
 @router.post("/sync-keycloak")
@@ -78,4 +80,4 @@ async def sync_roles_to_keycloak(
     user_id: str = Depends(require_admin),
 ):
     ctrl = get_role_controller()
-    return await ctrl.sync_to_keycloak()
+    return await ctrl.sync_to_keycloak(user_id=user_id)
