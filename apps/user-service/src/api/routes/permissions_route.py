@@ -6,7 +6,7 @@ from src.controller.permission_controller import get_permission_controller
 router = APIRouter(prefix="/permissions", tags=["permissions"])
 
 
-@router.get("/")
+@router.get("")
 async def list_permissions(
     service: str | None = Query(None),
     _user_id: str = Depends(require_auth),

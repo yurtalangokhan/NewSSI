@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Body, Depends
 
-from src.api.dependencies import require_admin, require_auth
+from src.api.dependencies import require_auth, require_permission
 from src.controller.role_controller import get_role_controller
 
 router = APIRouter(prefix="/roles", tags=["roles"])
@@ -17,7 +17,7 @@ async def create_role(
     name: str,
     description: str | None = None,
     permissions: list[str] | None = None,
-    user_id: str = Depends(require_admin),
+    user_id: str = Depends(require_permission("role:manage")),
 ):
     ctrl = get_role_controller()
     return await ctrl.create_role(
@@ -39,7 +39,7 @@ async def update_role(
     role_name: str,
     description: str | None = None,
     permissions: list[str] | None = None,
-    user_id: str = Depends(require_admin),
+    user_id: str = Depends(require_permission("role:manage")),
 ):
     ctrl = get_role_controller()
     return await ctrl.update_role(
@@ -51,7 +51,7 @@ async def update_role(
 
 
 @router.delete("/{role_name}")
-async def delete_role(role_name: str, user_id: str = Depends(require_admin)):
+async def delete_role(role_name: str, user_id: str = Depends(require_permission("role:manage"))):
     ctrl = get_role_controller()
     return await ctrl.delete_role(role_name, user_id=user_id)
 
@@ -69,7 +69,7 @@ async def get_role_permissions(
 async def set_role_permissions(
     role_name: str,
     permissions: list[str] = Body(..., embed=True),
-    user_id: str = Depends(require_admin),
+    user_id: str = Depends(require_permission("role:manage")),
 ):
     ctrl = get_role_controller()
     return await ctrl.set_role_permissions(role_name, permissions, user_id=user_id)
@@ -77,7 +77,7 @@ async def set_role_permissions(
 
 @router.post("/sync-keycloak")
 async def sync_roles_to_keycloak(
-    user_id: str = Depends(require_admin),
+    user_id: str = Depends(require_permission("role:manage")),
 ):
     ctrl = get_role_controller()
     return await ctrl.sync_to_keycloak(user_id=user_id)
