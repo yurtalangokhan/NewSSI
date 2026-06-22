@@ -1,19 +1,19 @@
 from .base import Base
 from .user_model import UserModel
 from .user_settings_model import UserSettingsModel
-from .user_memory_model import UserMemoryModel
 from .api_key_model import ApiKeyModel
 from .session_model import SessionModel
 from .role_model import RoleModel
 from .audit_log_model import AuditLogModel
+from .permission_model import PermissionModel
 
 __all__ = [
     "Base",
     "UserModel",
     "UserSettingsModel",
-    "UserMemoryModel",
     "ApiKeyModel",
     "SessionModel",
     "RoleModel",
     "AuditLogModel",
+    "PermissionModel",
 ]

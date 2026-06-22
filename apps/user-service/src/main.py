@@ -33,56 +33,25 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
+    from src.api.routes import (
+        api_keys_router,
+        auth_router,
+        permissions_router,
+        roles_router,
+        settings_router,
+        user_router,
+    )
+
+    app.include_router(auth_router, prefix="/api")
+    app.include_router(user_router, prefix="/api")
+    app.include_router(settings_router, prefix="/api")
+    app.include_router(api_keys_router, prefix="/api")
+    app.include_router(roles_router, prefix="/api")
+    app.include_router(permissions_router, prefix="/api")
+
     from src.api.routes.health import router as health_router
 
     app.include_router(health_router, prefix="/health")
-
-    # External Keycloak mode — Keycloak auth with local app-user/profile storage.
-    if settings.EXTERNAL_KEYCLOAK:
-        from src.api.routes import (
-            auth_base_router,
-            internal_settings_router,
-            internal_user_memory_router,
-            permissions_router,
-            roles_router,
-            settings_router,
-            user_memory_router,
-            user_router,
-        )
-
-        app.include_router(auth_base_router, prefix="/api")
-        app.include_router(user_router, prefix="/api")
-        app.include_router(settings_router, prefix="/api")
-        app.include_router(internal_settings_router, prefix="/api")
-        app.include_router(user_memory_router, prefix="/api")
-        app.include_router(internal_user_memory_router, prefix="/api")
-        app.include_router(roles_router, prefix="/api")
-        app.include_router(permissions_router, prefix="/api")
-    else:
-        # Own Keycloak mode — full auth + user CRUD via admin API
-        from src.api.routes import (
-            api_keys_router,
-            auth_base_router,
-            auth_own_router,
-            internal_settings_router,
-            internal_user_memory_router,
-            permissions_router,
-            roles_router,
-            settings_router,
-            user_memory_router,
-            user_router,
-        )
-
-        app.include_router(auth_base_router, prefix="/api")
-        app.include_router(auth_own_router, prefix="/api")
-        app.include_router(user_router, prefix="/api")
-        app.include_router(settings_router, prefix="/api")
-        app.include_router(internal_settings_router, prefix="/api")
-        app.include_router(user_memory_router, prefix="/api")
-        app.include_router(internal_user_memory_router, prefix="/api")
-        app.include_router(api_keys_router, prefix="/api")
-        app.include_router(roles_router, prefix="/api")
-        app.include_router(permissions_router, prefix="/api")
 
     return app
 

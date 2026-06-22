@@ -3,9 +3,7 @@ _transform: true
 
 # ============================================================================
 # Local Kong config — mirrors production kong.yml structure, but without JWT
-# validation (no Keycloak public key locally). All routes forward transparently;
-# upstream services still validate Bearer tokens for protected routes via their
-# own auth dependencies (require_auth, require_admin, resolve_user).
+# validation (no Keycloak public key locally). All routes forward transparently.
 #
 # For production: swap host.docker.internal → Docker service names,
 # enable JWT plugin (see kong.yml).
@@ -27,12 +25,6 @@ services:
       - name: user-service-users-internal
         paths:
           - /api/users/internal
-        strip_path: false
-        preserve_host: true
-
-      - name: user-service-internal-api
-        paths:
-          - /api/internal
         strip_path: false
         preserve_host: true
 
@@ -98,7 +90,6 @@ services:
           - /api/content
           - /api/datasources
           - /api/federated
-          - /api/input_promt
           - /api/input_prompt
           - /api/llm
           - /api/manage
@@ -113,6 +104,12 @@ services:
           - /api/threads
           - /api/user
           - /api/vllm
+        strip_path: false
+        preserve_host: true
+
+      - name: agent-service-auth-public
+        paths:
+          - /auth
         strip_path: false
         preserve_host: true
 
@@ -163,8 +160,7 @@ services:
         preserve_host: true
 
   # --------------------------------------------------------------------------
-  # Internal routes — local transparent forwarding for service-to-service
-  # communication. Protected upstream services still require Bearer tokens.
+  # Internal routes (no JWT) — for service-to-service communication.
   # --------------------------------------------------------------------------
 
   - name: internal-user-service
@@ -173,15 +169,6 @@ services:
       - name: internal-user-service-all
         paths:
           - /internal/user-service
-        strip_path: true
-        preserve_host: true
-
-  - name: internal-agent-service
-    url: http://host.docker.internal:8123
-    routes:
-      - name: internal-agent-service-all
-        paths:
-          - /internal/agent-service
         strip_path: true
         preserve_host: true
 
