@@ -23,7 +23,6 @@ from core.db.repositories.persona_repo import PersonaRepository
 from core.db.repositories.project_repo import ProjectRepository
 from core.db.repositories.schedule_repo import ScheduleRepository
 from core.db.repositories.thread_repo import ThreadRepository
-from core.db.repositories.user_settings_repo import UserSettingsRepository
 
 __all__ = [
     "BaseRepository",
@@ -37,5 +36,4 @@ __all__ = [
     "MCPProviderRepository",
     "MCPToolRepository",
     "AgentToolsRepository",
-    "UserSettingsRepository",
 ]
