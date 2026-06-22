@@ -171,6 +171,7 @@ async def api_health_check():
 
 from api.routes import (
     agent_definitions_router,
+    agent_tools_router,
     agents_router,
     assistant_schemas_router,
     assistants_router,
@@ -179,13 +180,14 @@ from api.routes import (
     datasources_router,
     file_router,
     ingest_router,
+    mcp_providers_router,
+    mcp_tools_router,
     persona_router,
     provider_router,
     proxy_router,
     run_router,
     schedule_router,
     threads_router,
-    user_memory_router,
     user_router,
     web_search_router,
 )
@@ -198,7 +200,6 @@ app.include_router(auth_router)
 app.include_router(chat_router)
 app.include_router(persona_router)
 app.include_router(user_router)
-app.include_router(user_memory_router)
 app.include_router(schedule_router)
 app.include_router(ingest_router)
 app.include_router(proxy_router)
@@ -207,19 +208,7 @@ app.include_router(datasources_router)
 app.include_router(assistant_schemas_router)
 app.include_router(file_router)
 app.include_router(web_search_router)
-
-try:
-    app.include_router(provider_router)
-except Exception as e:
-    logger.warning(f"Provider routes not available: {e}")
-
-try:
-    from api.routes.AgentToolsRoute import router as agent_tools_router
-    from api.routes.MCPProvidersRoute import router as mcp_providers_router
-    from api.routes.MCPToolsRoute import router as mcp_tools_router
-
-    app.include_router(mcp_providers_router)
-    app.include_router(mcp_tools_router)
-    app.include_router(agent_tools_router)
-except ImportError as e:
-    logger.warning(f"Some MCP routes not available: {e}")
+app.include_router(provider_router)
+app.include_router(mcp_providers_router)
+app.include_router(mcp_tools_router)
+app.include_router(agent_tools_router)

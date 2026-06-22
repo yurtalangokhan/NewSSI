@@ -41,6 +41,13 @@ if config.config_file_name is not None:
 target_metadata = Base.metadata
 
 
+def exclude_embedding(obj, name, type_, reflected, compare_to):
+    """Exclude langchain_pg_embedding from autogenerate — PGVector manages it at runtime."""
+    if type_ == "table" and name == "langchain_pg_embedding":
+        return False
+    return True
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -67,6 +74,7 @@ def run_migrations_offline() -> None:
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
         version_table=VERSION_TABLE,
+        include_object=exclude_embedding,
     )
 
     with context.begin_transaction():
@@ -87,6 +95,7 @@ def do_run_migrations(connection: Connection) -> None:
         # render_as_batch keeps ALTER TABLE compatible with certain DBs
         render_as_batch=True,
         version_table=VERSION_TABLE,
+        include_object=exclude_embedding,
     )
 
     with context.begin_transaction():

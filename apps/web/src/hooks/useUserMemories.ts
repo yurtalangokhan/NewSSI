@@ -27,8 +27,9 @@ export default function useUserMemories(options?: UseUserMemoriesOptions) {
   const fetchMemories = useCallback(async (offset = 0, limit = 50) => {
     setIsLoading(true);
     try {
+      const page = Math.floor(offset / limit) + 1;
       const res = await fetch(
-        `/api/user/memories?offset=${offset}&limit=${limit}`
+        `/api/user-service/users/me/memories?page=${page}&page_size=${limit}`
       );
       if (!res.ok) throw new Error("Failed to fetch memories");
       const data: MemoryListResponse = await res.json();
@@ -49,7 +50,7 @@ export default function useUserMemories(options?: UseUserMemoriesOptions) {
     async (content: string): Promise<MemoryItem | null> => {
       setIsMutating(true);
       try {
-        const res = await fetch("/api/user/memories", {
+        const res = await fetch("/api/user-service/users/me/memories", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ content }),
@@ -73,7 +74,7 @@ export default function useUserMemories(options?: UseUserMemoriesOptions) {
     async (id: string, content: string): Promise<MemoryItem | null> => {
       setIsMutating(true);
       try {
-        const res = await fetch(`/api/user/memories/${id}`, {
+        const res = await fetch(`/api/user-service/users/me/memories/${id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ content }),
@@ -96,7 +97,7 @@ export default function useUserMemories(options?: UseUserMemoriesOptions) {
     async (id: string): Promise<boolean> => {
       setIsMutating(true);
       try {
-        const res = await fetch(`/api/user/memories/${id}`, {
+        const res = await fetch(`/api/user-service/users/me/memories/${id}`, {
           method: "DELETE",
         });
         if (!res.ok) throw new Error("Failed to delete memory");
@@ -116,7 +117,7 @@ export default function useUserMemories(options?: UseUserMemoriesOptions) {
   const deleteAllMemories = useCallback(async (): Promise<number> => {
     setIsMutating(true);
     try {
-      const res = await fetch("/api/user/memories", { method: "DELETE" });
+      const res = await fetch("/api/user-service/users/me/memories", { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to delete all memories");
       const data: { deleted: number } = await res.json();
       setMemories([]);

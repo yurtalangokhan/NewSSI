@@ -42,9 +42,6 @@ agent_tables=(
   mcp_provider
   mcp_tool
   agent_definitions
-  agent_instances
-  agent_sub_agents
-  agent_pipeline_stages
   agent_tools
   datasource_airbyte_mapping
   sync_schedules

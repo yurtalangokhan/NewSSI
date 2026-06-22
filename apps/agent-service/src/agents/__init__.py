@@ -79,8 +79,6 @@ from agents.registry import AgentRegistry, agent, agent_factory
 from agents.storage import (
     AgentDefinitionModel,
     AgentDefinitionRepository,
-    AgentInstanceModel,
-    AgentInstanceRepository,
 )
 
 __all__ = [
@@ -134,7 +132,5 @@ __all__ = [
     "get_pipeline",
     # Storage
     "AgentDefinitionModel",
-    "AgentInstanceModel",
     "AgentDefinitionRepository",
-    "AgentInstanceRepository",
 ]

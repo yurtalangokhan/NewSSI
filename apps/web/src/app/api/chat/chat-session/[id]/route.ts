@@ -10,7 +10,7 @@ export async function GET(
   
   try {
     // Proxy to backend for chat session share status
-    const response = await fetch(`${INTERNAL_URL}/api/chat/chat-session/${id}`);
+    const response = await fetch(`${INTERNAL_URL}/api/chat/get-chat-session/${id}`);
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error) {
