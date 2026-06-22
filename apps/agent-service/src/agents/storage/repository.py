@@ -4,16 +4,15 @@ import logging
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import select, delete, update
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import delete, select, update
 
-from core.db.repositories.base import BaseRepository
 from agents.storage.models import (
     AgentDefinitionModel,
     AgentInstanceModel,
-    SubAgentModel,
     PipelineStageModel,
+    SubAgentModel,
 )
+from core.db.repositories.base import BaseRepository
 
 logger = logging.getLogger(__name__)
 

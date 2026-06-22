@@ -38,7 +38,9 @@ class UserRepository(BaseRepository):
 
     async def get_by_username(self, username: str) -> UserModel | None:
         async with self._session() as session:
-            result = await session.execute(select(UserModel).where(UserModel.username == username))
+            result = await session.execute(
+                select(UserModel).where(func.lower(UserModel.username) == func.lower(username))
+            )
             return result.scalar_one_or_none()
 
     async def update(self, user_id: uuid.UUID, **kwargs) -> UserModel | None:
@@ -143,7 +145,15 @@ class UserRepository(BaseRepository):
                 select(UserModel).where(UserModel.keycloak_id == keycloak_id)
             )
             user = result.scalar_one_or_none()
+            if not user and kwargs.get("email"):
+                result = await session.execute(
+                    select(UserModel).where(
+                        func.lower(UserModel.email) == func.lower(str(kwargs["email"]))
+                    )
+                )
+                user = result.scalar_one_or_none()
             if user:
+                kwargs["keycloak_id"] = keycloak_id
                 for key, value in kwargs.items():
                     if value is not None and hasattr(user, key):
                         setattr(user, key, value)

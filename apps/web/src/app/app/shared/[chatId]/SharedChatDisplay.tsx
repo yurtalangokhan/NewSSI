@@ -9,7 +9,7 @@ import { getLatestMessageChain } from "@/app/app/services/messageTree";
 import HumanMessage from "@/app/app/message/HumanMessage";
 import AgentMessage from "@/app/app/message/messageComponents/AgentMessage";
 import { Callout } from "@/components/ui/callout";
-import OnyxInitializingLoader from "@/components/OnyxInitializingLoader";
+import InitializingLoader from "@/components/InitializingLoader";
 import { Persona } from "@/app/admin/agents/interfaces";
 import { MinimalOnyxDocument } from "@/lib/search/interfaces";
 import TextViewModal from "@/sections/modals/TextViewModal";
@@ -17,6 +17,7 @@ import { UNNAMED_CHAT } from "@/lib/constants";
 import Text from "@/refresh-components/texts/Text";
 import useOnMount from "@/hooks/useOnMount";
 import SharedAppInputBar from "@/sections/input/SharedAppInputBar";
+import { useAppBackground } from "@/providers/AppBackgroundProvider";
 
 export interface SharedChatDisplayProps {
   chatSession: BackendChatSession | null;
@@ -32,6 +33,12 @@ export default function SharedChatDisplay({
     useState<MinimalOnyxDocument | null>(null);
 
   const isMounted = useOnMount();
+  const {
+    foregroundTextClass,
+    foregroundMutedTextClass,
+    foregroundTextStyle,
+    foregroundMutedTextStyle,
+  } = useAppBackground();
 
   if (!chatSession) {
     return (
@@ -75,17 +82,35 @@ export default function SharedChatDisplay({
       <div className="flex flex-col h-full w-full overflow-hidden">
         <div className="flex-1 flex flex-col items-center overflow-y-auto">
           <div className="sticky top-0 z-10 flex items-center justify-between w-full bg-background-tint-01 px-8 py-4">
-            <Text as="p" text04 headingH2>
+            <Text
+              as="p"
+              text04
+              headingH2
+              className={foregroundTextClass}
+              style={foregroundTextStyle}
+            >
               {chatSession.description || UNNAMED_CHAT}
             </Text>
             <div className="flex flex-col items-end">
-              <Text as="p" text03 secondaryBody>
+              <Text
+                as="p"
+                text03
+                secondaryBody
+                className={foregroundMutedTextClass}
+                style={foregroundMutedTextStyle}
+              >
                 {t("sharedChat.sharedOn", {
                   date: humanReadableFormat(chatSession.time_created),
                 })}
               </Text>
               {chatSession.owner_name && (
-                <Text as="p" text03 secondaryBody>
+                <Text
+                  as="p"
+                  text03
+                  secondaryBody
+                  className={foregroundMutedTextClass}
+                  style={foregroundMutedTextStyle}
+                >
                   {t("sharedChat.by", { name: chatSession.owner_name })}
                 </Text>
               )}
@@ -138,7 +163,7 @@ export default function SharedChatDisplay({
             </div>
           ) : (
             <div className="h-full w-full flex items-center justify-center">
-              <OnyxInitializingLoader />
+              <InitializingLoader />
             </div>
           )}
         </div>

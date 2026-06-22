@@ -4,7 +4,7 @@ This is a simplified backend for development purposes.
 """
 
 
-from fastapi import FastAPI, Response
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -45,16 +45,6 @@ class User(BaseModel):
     password_configured: bool = True
 
 
-class AuthTypeMetadata(BaseModel):
-    authType: str = "basic"
-    autoRedirect: bool = False
-    requiresVerification: bool = False
-    anonymousUserEnabled: bool = True
-    passwordMinLength: int = 8
-    hasUsers: bool = True
-    oauthEnabled: bool = False
-
-
 class Settings(BaseModel):
     auto_scroll: bool = True
     application_status: str = "active"
@@ -80,12 +70,6 @@ async def api_health_check():
     return {"status": "ok"}
 
 
-# Auth endpoints
-@app.get("/auth/type")
-async def get_auth_type():
-    return AuthTypeMetadata()
-
-
 @app.get("/me")
 async def get_current_user():
     return User()
@@ -94,28 +78,6 @@ async def get_current_user():
 @app.get("/api/me")
 async def get_api_me():
     return User()
-
-
-@app.post("/auth/login")
-async def login(response: Response):
-    response.set_cookie("session", "dev-session", httponly=True, samesite="lax")
-    return {"success": True, "user_id": "dev-user-1"}
-
-
-@app.post("/auth/logout")
-async def logout(response: Response):
-    response.delete_cookie("session")
-    return {"success": True}
-
-
-@app.post("/auth/refresh")
-async def refresh_auth():
-    return {"success": True}
-
-
-@app.post("/api/auth/refresh")
-async def api_refresh_auth():
-    return {"success": True}
 
 
 # Settings endpoints
@@ -160,6 +122,11 @@ async def get_notifications():
 @app.get("/api/input_prompt")
 async def get_input_prompts():
     return []
+
+
+@app.get("/api/input_promt")
+async def get_input_prompts_typo_alias():
+    return await get_input_prompts()
 
 
 @app.get("/api/manage/connector-status")

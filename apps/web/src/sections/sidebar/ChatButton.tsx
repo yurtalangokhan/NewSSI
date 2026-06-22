@@ -44,6 +44,7 @@ import {
 } from "@opal/icons";
 import useOnMount from "@/hooks/useOnMount";
 import { useTranslation } from "react-i18next";
+import { useAppBackground } from "@/providers/AppBackgroundProvider";
 
 export interface PopoverSearchInputProps {
   setShowMoveOptions: (show: boolean) => void;
@@ -114,6 +115,8 @@ const ChatButton = memo(
       [activeSidebarTab, chatSession.id]
     );
     const mounted = useOnMount();
+    const { foregroundIconClass, foregroundMutedTextClass } =
+      useAppBackground();
     const [displayName, setDisplayName] = useState(
       chatSession.name || UNNAMED_CHAT
     );
@@ -193,6 +196,8 @@ const ChatButton = memo(
           <LineItem
             key="share"
             icon={SvgShare}
+            iconClassName={foregroundIconClass}
+            textClassName={foregroundMutedTextClass}
             onClick={noProp(() => setShowShareModal(true))}
           >
             {t("sidebar.share")}
@@ -200,6 +205,8 @@ const ChatButton = memo(
           <LineItem
             key="rename"
             icon={SvgEdit}
+            iconClassName={foregroundIconClass}
+            textClassName={foregroundMutedTextClass}
             onClick={noProp(() => setRenaming(true))}
           >
             {t("sidebar.rename")}
@@ -207,6 +214,8 @@ const ChatButton = memo(
           <LineItem
             key="move"
             icon={SvgFolderIn}
+            iconClassName={foregroundIconClass}
+            textClassName={foregroundMutedTextClass}
             onClick={noProp(() => setShowMoveOptions(true))}
           >
             {t("sidebar.moveToProject")}
@@ -215,6 +224,8 @@ const ChatButton = memo(
             <LineItem
               key="remove"
               icon={SvgFolder}
+              iconClassName={foregroundIconClass}
+              textClassName={foregroundMutedTextClass}
               onClick={noProp(() => handleRemoveFromProject())}
             >
               {t("sidebar.removeFromProject", { name: project.name })}
@@ -224,6 +235,8 @@ const ChatButton = memo(
           <LineItem
             key="delete"
             icon={SvgTrash}
+            iconClassName={foregroundIconClass}
+            textClassName={foregroundMutedTextClass}
             danger
             onClick={noProp(() => setDeleteConfirmationModalOpen(true))}
           >
@@ -389,6 +402,7 @@ const ChatButton = memo(
           <div>
             <IconButton
               icon={SvgMoreHorizontal}
+              iconClassName={foregroundIconClass}
               className={cn(
                 !popoverOpen && "hidden",
                 !renaming && "group-hover/SidebarTab:flex"

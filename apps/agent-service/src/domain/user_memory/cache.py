@@ -21,7 +21,7 @@ class LongTermMemoryCache:
     The store holds a warm copy for fast in-process recall.
     """
 
-    def __init__(self, store: "BaseStore") -> None:
+    def __init__(self, store: BaseStore) -> None:
         self._store = store
 
     def _namespace(self, user_id: str) -> tuple[str, str]:

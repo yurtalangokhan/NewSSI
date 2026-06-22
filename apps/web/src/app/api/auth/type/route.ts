@@ -13,9 +13,10 @@ export async function GET() {
         autoRedirect: false,
         requiresVerification: false,
         anonymousUserEnabled: true,
-        passwordMinLength: 8,
         hasUsers: true,
         oauthEnabled: false,
+        externalKeycloak: false,
+        external_keycloak: false,
       },
       { status: 200 }
     );

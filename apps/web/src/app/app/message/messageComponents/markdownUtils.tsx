@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, JSX } from "react";
+import React, { useCallback, useMemo, JSX, type CSSProperties } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
@@ -48,15 +48,16 @@ export const processContent = (content: string): string => {
 export const useMarkdownComponents = (
   state: FullChatState | undefined,
   processedContent: string,
-  className?: string
+  className?: string,
+  foregroundStyle?: CSSProperties
 ) => {
   const paragraphCallback = useCallback(
     (props: any) => (
-      <MemoizedParagraph className={className}>
+      <MemoizedParagraph className={className} style={foregroundStyle}>
         {props.children}
       </MemoizedParagraph>
     ),
-    [className]
+    [className, foregroundStyle]
   );
 
   const anchorCallback = useCallback(
@@ -156,10 +157,11 @@ export const useMarkdownComponents = (
 export const renderMarkdown = (
   content: string,
   markdownComponents: any,
-  textSize: string = "text-base"
+  textSize: string = "text-base",
+  foregroundStyle?: CSSProperties
 ): JSX.Element => {
   return (
-    <div dir="auto">
+    <div dir="auto" style={foregroundStyle}>
       <ReactMarkdown
         className={`prose dark:prose-invert font-main-content-body max-w-full ${textSize}`}
         components={markdownComponents}
@@ -182,18 +184,26 @@ export const renderMarkdown = (
 export const useMarkdownRenderer = (
   content: string,
   state: FullChatState | undefined,
-  textSize: string
+  textSize: string,
+  foregroundStyle?: CSSProperties
 ) => {
   const processedContent = useMemo(() => processContent(content), [content]);
   const markdownComponents = useMarkdownComponents(
     state,
     processedContent,
-    textSize
+    textSize,
+    foregroundStyle
   );
 
   const renderedContent = useMemo(
-    () => renderMarkdown(processedContent, markdownComponents, textSize),
-    [processedContent, markdownComponents, textSize]
+    () =>
+      renderMarkdown(
+        processedContent,
+        markdownComponents,
+        textSize,
+        foregroundStyle
+      ),
+    [processedContent, markdownComponents, textSize, foregroundStyle]
   );
 
   return {

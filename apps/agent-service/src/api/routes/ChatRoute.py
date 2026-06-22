@@ -14,7 +14,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
 from agents import DEFAULT_AGENT
-from api.dependencies import verify_api_key
+from api.dependencies import AuthenticatedUser, require_user
 from api.routes.AgentsRoute import message_generator
 from controller import ChatController, ThreadController, get_thread_controller, get_user_controller
 from domain.providers.repository import ProviderRepository
@@ -35,12 +35,16 @@ def _get_thread_controller() -> ThreadController:
     return get_thread_controller()
 
 
-async def _get_user_chat_controller(request: Request, user_id: str) -> ChatController:
-    identity = await get_auth_service().resolve_user_identity(request=request, user_id=user_id)
+async def _get_user_chat_controller(request: Request, user: AuthenticatedUser) -> ChatController:
+    identity = await get_auth_service().resolve_user_identity(
+        request=request,
+        user_id=user.user_id,
+        user=user,
+    )
     return ChatController(
         thread_controller=_get_thread_controller(),
-        user_id=str(identity.get("primary_user_id") or user_id),
-        owner_ids=identity.get("known_user_ids") or [user_id],
+        user_id=str(identity.get("primary_user_id") or user.user_id),
+        owner_ids=identity.get("known_user_ids") or [user.user_id],
     )
 
 
@@ -131,23 +135,18 @@ async def _resolve_model_supports_reasoning(
 @router.get("/api/chat/get-user-chat-sessions")
 async def get_chat_sessions(
     request: Request,
-    user_id: Annotated[str | None, Depends(verify_api_key)],
+    user: Annotated[AuthenticatedUser, Depends(require_user)],
 ):
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    return await (await _get_user_chat_controller(request, user_id)).get_chat_sessions()
+    return await (await _get_user_chat_controller(request, user)).get_chat_sessions()
 
 
 @router.post("/api/chat/create-chat-session")
 async def create_chat_session(
     request: Request,
-    user_id: Annotated[str | None, Depends(verify_api_key)],
+    user: Annotated[AuthenticatedUser, Depends(require_user)],
 ):
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-
     body = await request.json()
-    return await (await _get_user_chat_controller(request, user_id)).create_chat_session(
+    return await (await _get_user_chat_controller(request, user)).create_chat_session(
         persona_id=body.get("persona_id", 0),
         description=body.get("description"),
         project_id=body.get("project_id"),
@@ -158,13 +157,10 @@ async def create_chat_session(
 async def get_chat_session(
     request: Request,
     chat_session_id: str,
-    user_id: Annotated[str | None, Depends(verify_api_key)],
+    user: Annotated[AuthenticatedUser, Depends(require_user)],
 ):
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-
     try:
-        return await (await _get_user_chat_controller(request, user_id)).get_chat_session(chat_session_id)
+        return await (await _get_user_chat_controller(request, user)).get_chat_session(chat_session_id)
     except PermissionError as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
 
@@ -174,11 +170,9 @@ async def get_chat_session(
 async def delete_chat_session(
     request: Request,
     chat_session_id: str,
-    user_id: Annotated[str | None, Depends(verify_api_key)],
+    user: Annotated[AuthenticatedUser, Depends(require_user)],
 ):
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    result = await (await _get_user_chat_controller(request, user_id)).delete_chat_session(chat_session_id)
+    result = await (await _get_user_chat_controller(request, user)).delete_chat_session(chat_session_id)
     if result.get("success") is False and result.get("error") == "Forbidden":
         raise HTTPException(status_code=403, detail="Forbidden")
     return result
@@ -188,24 +182,19 @@ async def delete_chat_session(
 @router.delete("/api/chat/delete-all-chat-sessions")
 async def delete_all_chat_sessions(
     request: Request,
-    user_id: Annotated[str | None, Depends(verify_api_key)],
+    user: Annotated[AuthenticatedUser, Depends(require_user)],
 ):
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    return await (await _get_user_chat_controller(request, user_id)).delete_all_chat_sessions()
+    return await (await _get_user_chat_controller(request, user)).delete_all_chat_sessions()
 
 
 @router.put("/api/chat/rename-chat-session")
 @router.patch("/api/chat/rename-chat-session")
 async def rename_chat_session(
     request: Request,
-    user_id: Annotated[str | None, Depends(verify_api_key)],
+    user: Annotated[AuthenticatedUser, Depends(require_user)],
 ):
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-
     body = await request.json()
-    result = await (await _get_user_chat_controller(request, user_id)).rename_chat_session(
+    result = await (await _get_user_chat_controller(request, user)).rename_chat_session(
         session_id=body.get("chat_session_id"),
         name=body.get("name"),
     )
@@ -217,13 +206,10 @@ async def rename_chat_session(
 @router.put("/api/chat/update-chat-session-model")
 async def update_chat_session_model(
     request: Request,
-    user_id: Annotated[str | None, Depends(verify_api_key)],
+    user: Annotated[AuthenticatedUser, Depends(require_user)],
 ):
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-
     body = await request.json()
-    result = await (await _get_user_chat_controller(request, user_id)).update_chat_session_model(
+    result = await (await _get_user_chat_controller(request, user)).update_chat_session_model(
         session_id=body.get("chat_session_id"),
         model=body.get("model"),
     )
@@ -235,13 +221,10 @@ async def update_chat_session_model(
 @router.put("/api/chat/update-chat-session-temperature")
 async def update_chat_session_temperature(
     request: Request,
-    user_id: Annotated[str | None, Depends(verify_api_key)],
+    user: Annotated[AuthenticatedUser, Depends(require_user)],
 ):
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-
     body = await request.json()
-    result = await (await _get_user_chat_controller(request, user_id)).update_chat_session_temperature(
+    result = await (await _get_user_chat_controller(request, user)).update_chat_session_temperature(
         session_id=body.get("chat_session_id"),
         temperature=body.get("temperature"),
     )
@@ -254,33 +237,27 @@ async def update_chat_session_temperature(
 async def stop_chat_session(
     request: Request,
     chat_session_id: str,
-    user_id: Annotated[str | None, Depends(verify_api_key)],
+    user: Annotated[AuthenticatedUser, Depends(require_user)],
 ):
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    return await (await _get_user_chat_controller(request, user_id)).stop_chat_session(chat_session_id)
+    return await (await _get_user_chat_controller(request, user)).stop_chat_session(chat_session_id)
 
 
 @router.put("/api/chat/set-message-as-latest")
 async def set_message_as_latest(
     request: Request,
-    user_id: Annotated[str | None, Depends(verify_api_key)],
+    user: Annotated[AuthenticatedUser, Depends(require_user)],
 ):
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    return await (await _get_user_chat_controller(request, user_id)).set_message_as_latest()
+    return await (await _get_user_chat_controller(request, user)).set_message_as_latest()
 
 
 @router.get("/api/chat/available-context-tokens")
 @router.get("/api/chat/available-context-tokens/{session_id}")
 async def get_available_context_tokens(
     request: Request,
+    user: Annotated[AuthenticatedUser, Depends(require_user)],
     session_id: str = None,
-    user_id: Annotated[str | None, Depends(verify_api_key)] = None,
 ):
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    return await (await _get_user_chat_controller(request, user_id)).get_available_context_tokens(session_id)
+    return await (await _get_user_chat_controller(request, user)).get_available_context_tokens(session_id)
 
 
 @router.get("/api/user/projects/session/{session_id}/token-count")
@@ -288,11 +265,9 @@ async def get_available_context_tokens(
 async def get_session_token_count(
     request: Request,
     session_id: str,
-    user_id: Annotated[str | None, Depends(verify_api_key)],
+    user: Annotated[AuthenticatedUser, Depends(require_user)],
 ):
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    return await (await _get_user_chat_controller(request, user_id)).get_session_token_count(session_id)
+    return await (await _get_user_chat_controller(request, user)).get_session_token_count(session_id)
 
 
 @router.get("/api/user/projects/session/{session_id}/files")
@@ -300,48 +275,40 @@ async def get_session_token_count(
 async def get_session_files(
     request: Request,
     session_id: str,
-    user_id: Annotated[str | None, Depends(verify_api_key)],
+    user: Annotated[AuthenticatedUser, Depends(require_user)],
 ):
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    return await (await _get_user_chat_controller(request, user_id)).get_session_files(session_id)
+    return await (await _get_user_chat_controller(request, user)).get_session_files(session_id)
 
 
 @router.post("/api/chat/create-chat-message-feedback")
 async def create_chat_message_feedback(
     request: Request,
-    user_id: Annotated[str | None, Depends(verify_api_key)],
+    user: Annotated[AuthenticatedUser, Depends(require_user)],
 ):
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    return await (await _get_user_chat_controller(request, user_id)).create_chat_message_feedback()
+    return await (await _get_user_chat_controller(request, user)).create_chat_message_feedback()
 
 
 @router.delete("/api/chat/remove-chat-message-feedback")
 async def remove_chat_message_feedback(
     request: Request,
-    user_id: Annotated[str | None, Depends(verify_api_key)],
+    user: Annotated[AuthenticatedUser, Depends(require_user)],
 ):
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    return await (await _get_user_chat_controller(request, user_id)).remove_chat_message_feedback()
+    return await (await _get_user_chat_controller(request, user)).remove_chat_message_feedback()
 
 
 @router.post("/api/chat/send-chat-message")
 async def send_chat_message(
     request: Request,
-    user_id: Annotated[str | None, Depends(verify_api_key)],
+    user: Annotated[AuthenticatedUser, Depends(require_user)],
 ):
     """Send chat message with streaming - uses message_generator."""
-    if not user_id:
-        return StreamingResponse(
-            iter([b'data: {"type": "error", "content": "Not authenticated"}\n\n']),
-            media_type="text/event-stream",
-            status_code=401,
-        )
-    identity = await get_auth_service().resolve_user_identity(request=request, user_id=user_id)
+    identity = await get_auth_service().resolve_user_identity(
+        request=request,
+        user_id=user.user_id,
+        user=user,
+    )
     try:
-        effective_user_id = _resolve_effective_chat_user_id(identity, user_id)
+        effective_user_id = _resolve_effective_chat_user_id(identity, user.user_id)
     except HTTPException:
         return StreamingResponse(
             iter([b'data: {"type": "error", "content": "Not authenticated"}\n\n']),

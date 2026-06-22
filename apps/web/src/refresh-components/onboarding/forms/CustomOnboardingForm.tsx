@@ -17,6 +17,7 @@ import {
 import { OnboardingActions, OnboardingState } from "../types";
 import { buildInitialValues } from "../components/llmConnectionHelpers";
 import ConnectionProviderIcon from "@/refresh-components/ConnectionProviderIcon";
+import { APP_NAME } from "@/lib/appInfo";
 
 // Field name constants
 const FIELD_PROVIDER = "provider";
@@ -315,7 +316,7 @@ function CustomFormFields(props: OnboardingFormChildProps<CustomFormValues>) {
             </FormField.Control>
             <FormField.Message
               messages={{
-                idle: "This model will be used by Onyx by default for this provider. This must be one of the models listed above.",
+                idle: `This model will be used by ${APP_NAME} by default for this provider. This must be one of the models listed above.`,
                 error: meta.error,
               }}
             />

@@ -18,6 +18,7 @@ import { buildInitialValues } from "../components/llmConnectionHelpers";
 import ConnectionProviderIcon from "@/refresh-components/ConnectionProviderIcon";
 import InlineExternalLink from "@/refresh-components/InlineExternalLink";
 import { ProviderIcon } from "@/app/admin/configuration/llm/ProviderIcon";
+import { APP_NAME } from "@/lib/appInfo";
 
 // Field name constants
 const FIELD_API_KEY = "api_key";
@@ -118,7 +119,7 @@ function OpenAIFormFields(props: OnboardingFormChildProps<OpenAIFormValues>) {
             </FormField.Control>
             <FormField.Message
               messages={{
-                idle: "This model will be used by Onyx by default.",
+                idle: `This model will be used by ${APP_NAME} by default.`,
                 error: meta.error,
               }}
             />

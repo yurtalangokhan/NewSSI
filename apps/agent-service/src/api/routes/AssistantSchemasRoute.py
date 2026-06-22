@@ -10,12 +10,12 @@ import logging
 
 from fastapi import APIRouter, Depends
 
+from api.dependencies import require_user
 from controller import AssistantSchemasController, get_assistant_schemas_controller
-from service.AuthService import verify_bearer
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(dependencies=[Depends(verify_bearer)])
+router = APIRouter(dependencies=[Depends(require_user)])
 
 
 def _get_controller() -> AssistantSchemasController:

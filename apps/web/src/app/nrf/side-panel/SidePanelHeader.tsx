@@ -13,7 +13,7 @@ export default function SidePanelHeader({
   onNewChat,
   chatSessionId,
 }: SidePanelHeaderProps) {
-  const handleOpenInOnyx = () => {
+  const handleOpenInApp = () => {
     const path = chatSessionId ? `/app?chatId=${chatSessionId}` : "/app";
     window.open(`${window.location.origin}${path}`, "_blank");
   };
@@ -30,9 +30,9 @@ export default function SidePanelHeader({
         />
         <IconButton
           icon={SvgExternalLink}
-          onClick={handleOpenInOnyx}
+          onClick={handleOpenInApp}
           tertiary
-          tooltip="Open in Onyx"
+          tooltip="Open in app"
         />
       </div>
     </header>

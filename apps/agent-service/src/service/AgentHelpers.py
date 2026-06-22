@@ -255,6 +255,14 @@ async def _handle_input(
             logger.warning(f"Failed to get model from thread metadata: {e}")
 
     configurable: dict[str, Any] = {"thread_id": thread_id, "user_id": user_id}
+    try:
+        from service.UserServiceClient import get_current_access_token
+
+        access_token = get_current_access_token()
+        if access_token:
+            configurable["access_token"] = access_token
+    except Exception:
+        pass
     if selected_model is not None:
         configurable["model"] = selected_model
 

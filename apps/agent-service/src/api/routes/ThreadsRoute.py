@@ -7,11 +7,10 @@ GET /threads/{id}/state, PATCH /threads/{id}, DELETE /threads/{id}
 
 import asyncio
 import logging
-import uuid
-from datetime import UTC, datetime
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
+from api.dependencies import require_user
 from controller import ThreadController, get_thread_controller
 from service.CheckpointerService import get_checkpointer
 from service.Schemas import (
@@ -22,7 +21,7 @@ from service.Schemas import (
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/threads", tags=["threads"])
+router = APIRouter(prefix="/threads", tags=["threads"], dependencies=[Depends(require_user)])
 
 
 def _get_controller() -> ThreadController:

@@ -20,6 +20,7 @@ interface LoginPageProps {
   hidePageRedirect?: boolean;
   verified?: boolean;
   isFirstUser?: boolean;
+  externalKeycloakLogin?: boolean;
 }
 
 export default function LoginPage({
@@ -30,6 +31,7 @@ export default function LoginPage({
   hidePageRedirect,
   verified,
   isFirstUser,
+  externalKeycloakLogin = false,
 }: LoginPageProps) {
   useSendAuthRequiredMessage();
   const { t } = useTranslation();
@@ -49,12 +51,7 @@ export default function LoginPage({
         />
       )}
       {oidcError && (
-        <Message
-          error
-          close={false}
-          text={oidcError}
-          className="w-full mb-3"
-        />
+        <Message error close={false} text={oidcError} className="w-full mb-3" />
       )}
       {authUrl &&
         authTypeMetadata &&
@@ -91,7 +88,9 @@ export default function LoginPage({
           )}
           <EmailPasswordForm shouldVerify={true} nextUrl={effectiveNextUrl} />
           {NEXT_PUBLIC_FORGOT_PASSWORD_ENABLED && (
-            <Button href="/auth/forgot-password" className="w-full">{t("auth.resetPasswordLink")}</Button>
+            <Button href="/auth/forgot-password" className="w-full">
+              {t("auth.resetPasswordLink")}
+            </Button>
           )}
           <div className="flex items-center justify-center gap-2 pt-2">
             <Text as="p" text03 mainUiMuted>
@@ -136,37 +135,51 @@ export default function LoginPage({
         </div>
       )}
 
-      {authTypeMetadata?.authType === AuthType.OIDC && (
-        <div className="flex flex-col w-full gap-4">
-          <LoginText />
-
-          {authUrl && (
-            <>
-              <SignInButton
-                authorizeUrl={authUrl}
-                authType={AuthType.OIDC}
-              />
-              <div className="flex flex-row items-center w-full gap-2">
-                <div className="flex-1 border-t border-border" />
-                <Text as="p" text03 mainUiMuted>
-                  {t("auth.orDivider")}
-                </Text>
-                <div className="flex-1 border-t border-border" />
-              </div>
-            </>
-          )}
-
-          <EmailPasswordForm nextUrl={effectiveNextUrl} />
-          <div className="flex items-center justify-center gap-2 pt-2">
-            <Text as="p" text03 mainUiMuted>
-              {t("auth.noAccount", { defaultValue: "Hesabınız mı yok?" })}
-            </Text>
-            <Link href="/auth/signup" className="text-link font-medium">
-              {t("auth.signupLink", { defaultValue: "Kaydol" })}
-            </Link>
+      {authTypeMetadata?.authType === AuthType.OIDC &&
+        externalKeycloakLogin && (
+          <div className="flex flex-col w-full gap-4">
+            <LoginText />
+            <EmailPasswordForm nextUrl={effectiveNextUrl} />
           </div>
-        </div>
-      )}
+        )}
+
+      {authTypeMetadata?.authType === AuthType.OIDC &&
+        !externalKeycloakLogin && (
+          <div className="flex flex-col w-full gap-4">
+            <LoginText />
+
+            {authUrl && (
+              <>
+                <SignInButton authorizeUrl={authUrl} authType={AuthType.OIDC} />
+                <Link
+                  href="/auth/ldap/login"
+                  className="text-link font-medium text-sm text-center w-full hover:underline"
+                >
+                  {t("auth.continueWithLdap", {
+                    defaultValue: "Continue with LDAP",
+                  })}
+                </Link>
+                <div className="flex flex-row items-center w-full gap-2">
+                  <div className="flex-1 border-t border-border" />
+                  <Text as="p" text03 mainUiMuted>
+                    {t("auth.orDivider")}
+                  </Text>
+                  <div className="flex-1 border-t border-border" />
+                </div>
+              </>
+            )}
+
+            <EmailPasswordForm nextUrl={effectiveNextUrl} />
+            <div className="flex items-center justify-center gap-2 pt-2">
+              <Text as="p" text03 mainUiMuted>
+                {t("auth.noAccount", { defaultValue: "Hesabınız mı yok?" })}
+              </Text>
+              <Link href="/auth/signup" className="text-link font-medium">
+                {t("auth.signupLink", { defaultValue: "Kaydol" })}
+              </Link>
+            </div>
+          </div>
+        )}
     </div>
   );
 }

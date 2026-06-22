@@ -1,28 +1,41 @@
-"""UserMemoryService — business logic for the user_memory domain."""
+"""UserMemoryService — business logic for the user_memory domain.
+
+After Phase 2 migration, all DB persistence goes through user-service
+via HTTP. The LangGraph store (LongTermMemoryCache) stays in agent-service
+for fast recall performance.
+"""
 
 from __future__ import annotations
 
 import logging
 from typing import TYPE_CHECKING
 
-from core.db.models.user_memory import UserMemoryModel
-from core.db.repositories.UserMemoryRepository import UserMemoryRepository
 from domain.user_memory.cache import LongTermMemoryCache
+from service.UserServiceClient import (
+    add_facts_to_user,
+    create_user_memory,
+    delete_all_user_memories,
+    delete_user_memory,
+    get_current_access_token,
+    get_user_memories,
+    get_user_memories_for_recall,
+    update_user_memory,
+)
 
 if TYPE_CHECKING:
     pass
 
 logger = logging.getLogger(__name__)
 
-MAX_FACTS = 50  # hard cap per user
-
 
 class UserMemoryService:
-    """Orchestrates DB persistence and LangGraph store caching for user memories."""
+    """Orchestrates HTTP calls to user-service and LangGraph store caching."""
 
-    def __init__(self, repo: UserMemoryRepository, cache: LongTermMemoryCache) -> None:
-        self.repo = repo
+    def __init__(self, cache: LongTermMemoryCache) -> None:
         self.cache = cache
+
+    def _get_token(self) -> str | None:
+        return get_current_access_token()
 
     # ------------------------------------------------------------------
     # Agent runtime: recall
@@ -32,14 +45,13 @@ class UserMemoryService:
         """Return fact strings for injection into system prompt.
 
         1) Cache hit → return immediately.
-        2) Cache miss → load from DB, warm cache, return.
+        2) Cache miss → load from user-service, warm cache, return.
         """
         cached = await self.cache.get(user_id)
         if cached is not None:
             return cached
 
-        rows = await self.repo.list_by_user(user_id, limit=MAX_FACTS)
-        facts = [r.content for r in rows]
+        facts = await get_user_memories_for_recall(user_id)
         await self.cache.set(user_id, facts)
         return facts
 
@@ -49,65 +61,59 @@ class UserMemoryService:
 
     async def add_facts(
         self, user_id: str, contents: list[str], source: str = "auto_extracted"
-    ) -> list[UserMemoryModel]:
-        """Normalise, dedupe, persist, and invalidate cache."""
+    ) -> list[dict]:
+        """Normalise, dedupe locally, persist via user-service, invalidate cache."""
         if not contents:
             return []
 
-        # Local dedupe before hitting DB
         seen: set[str] = set()
-        unique_items: list[tuple[str, str]] = []
+        unique_contents: list[str] = []
         for raw in contents:
             normalised = raw.strip()
             key = normalised.lower()
             if normalised and key not in seen:
                 seen.add(key)
-                unique_items.append((normalised, source))
+                unique_contents.append(normalised)
 
-        created = await self.repo.bulk_create(user_id, unique_items)
+        created = await add_facts_to_user(user_id, unique_contents, source=source)
         if created:
             await self.cache.invalidate(user_id)
         return created
 
     # ------------------------------------------------------------------
-    # UI: paginated list (always from DB, no cache)
+    # UI: paginated list (always from user-service, no cache)
     # ------------------------------------------------------------------
 
     async def list_for_ui(
         self, user_id: str, page: int = 1, page_size: int = 50
     ) -> dict:
-        """Return a paginated list for the settings UI."""
-        rows = await self.repo.list_by_user(user_id)
-        total = len(rows)
-        start = (page - 1) * page_size
-        end = start + page_size
-        return {"items": rows[start:end], "total": total}
+        return await get_user_memories(user_id, page=page, page_size=page_size)
 
     # ------------------------------------------------------------------
     # UI: CRUD operations (manual memories)
     # ------------------------------------------------------------------
 
-    async def create(self, user_id: str, content: str) -> UserMemoryModel:
-        row = await self.repo.create(user_id, content.strip(), source="manual")
+    async def create(self, user_id: str, content: str) -> dict:
+        row = await create_user_memory(user_id, content.strip())
         await self.cache.invalidate(user_id)
         return row
 
     async def update(
         self, memory_id: str, user_id: str, content: str
-    ) -> UserMemoryModel | None:
-        row = await self.repo.update(memory_id, user_id, content.strip())
+    ) -> dict | None:
+        row = await update_user_memory(memory_id, user_id, content.strip())
         if row:
             await self.cache.invalidate(user_id)
         return row
 
     async def delete(self, memory_id: str, user_id: str) -> bool:
-        deleted = await self.repo.delete(memory_id, user_id)
+        deleted = await delete_user_memory(memory_id, user_id)
         if deleted:
             await self.cache.invalidate(user_id)
         return deleted
 
     async def delete_all(self, user_id: str) -> int:
-        count = await self.repo.delete_all(user_id)
+        count = await delete_all_user_memories(user_id)
         if count:
             await self.cache.invalidate(user_id)
         return count
@@ -132,6 +138,5 @@ def get_user_memory_service() -> UserMemoryService:
 
         store = get_langgraph_store()
         cache = LongTermMemoryCache(store)
-        repo = UserMemoryRepository()
-        _service = UserMemoryService(repo=repo, cache=cache)
+        _service = UserMemoryService(cache=cache)
     return _service

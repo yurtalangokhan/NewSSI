@@ -85,7 +85,7 @@ class DynamicFlatSupervisor(LazyLoadingAgent):
                 f"Dynamic Flat Supervisor initialized with {len(self._mcp_tools)} MCP tools available"
             )
 
-        except Exception as e:
+        except Exception:
             logger.error("error")
             # Create a minimal fallback graph
             self._default_graph = self._create_fallback_graph()

@@ -4,9 +4,10 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 
+from api.dependencies import require_user
 from service.AgentToolsService import AgentToolsService
 
-router = APIRouter(prefix="/assistants", tags=["agent-tools"])
+router = APIRouter(prefix="/assistants", tags=["agent-tools"], dependencies=[Depends(require_user)])
 
 
 def _get_service() -> AgentToolsService:

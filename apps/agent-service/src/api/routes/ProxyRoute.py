@@ -11,17 +11,16 @@ Endpoints:
 
 import logging
 import os
-from typing import Any
 
 from fastapi import APIRouter, Body, Depends, Query
 
+from api.dependencies import require_user
 from controller import ProxyController, get_proxy_controller
 from core import settings
-from service.AuthService import verify_bearer
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/proxy", tags=["proxy"], dependencies=[Depends(verify_bearer)])
+router = APIRouter(prefix="/api/proxy", tags=["proxy"], dependencies=[Depends(require_user)])
 
 
 def _get_controller() -> ProxyController:

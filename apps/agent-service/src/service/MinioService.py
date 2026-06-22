@@ -33,7 +33,7 @@ def _build_object_key(user_id: str, file_id: str, filename: str) -> str:
 
 
 @lru_cache(maxsize=1)
-def _get_client() -> "Minio":
+def _get_client() -> Minio:
     """Return a cached MinIO client, ensuring the bucket exists."""
     from minio import Minio
     from minio.error import S3Error

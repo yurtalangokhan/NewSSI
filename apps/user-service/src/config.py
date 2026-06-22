@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     POSTGRES_DB: str | None = None
 
     KEYCLOAK_ENABLED: bool = False
+    EXTERNAL_KEYCLOAK: bool = False
     KEYCLOAK_ISSUER_URL: str | None = None
     KEYCLOAK_BASE_URL: str | None = None
     KEYCLOAK_REALM: str = "agenticai"
@@ -26,11 +27,25 @@ class Settings(BaseSettings):
     KEYCLOAK_BOOTSTRAP_ADMIN_EMAIL: str | None = None
     KEYCLOAK_BOOTSTRAP_ADMIN_PASSWORD: str | None = None
     KEYCLOAK_CLIENT_ID: str = "agenticai-web"
+    KEYCLOAK_CLIENT_SECRET: str | None = None
     KEYCLOAK_AUDIENCE: str | None = None
 
     AUTH_SECRET: str | None = None
     ENCRYPTION_KEY: str | None = None
     INTERNAL_SERVICE_TOKEN: str | None = None
+
+    LDAP_ENABLED: bool = False
+    LDAP_HOST: str = "localhost"
+    LDAP_PORT: int = 389
+    LDAP_USE_TLS: bool = False
+    LDAP_BIND_DN: str = ""
+    LDAP_BIND_PASSWORD: str = ""
+    LDAP_BASE_DN: str = "dc=example,dc=com"
+    LDAP_USER_SEARCH_FILTER: str = "(&(objectClass=person)(uid={{username}}))"
+    LDAP_USER_SEARCH_BASE: str = ""
+    LDAP_ATTRIBUTE_MAP: str = (
+        '{"username": "uid", "email": "mail", "first_name": "givenName", "last_name": "sn"}'
+    )
 
     CORS_ALLOWED_ORIGINS: str = "http://localhost:3000,http://localhost:8123"
 

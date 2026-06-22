@@ -17,20 +17,21 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
 from agents import get_agent_or_lazy
+from api.dependencies import require_user
 from controller import RunController, get_run_controller
 from core.logger import get_logger
-from service.AuthService import extract_user_id_from_token, verify_bearer
+from service.AuthService import extract_user_id_from_token
+from service.Schemas import ThreadHistoryRequest, ThreadState
 from service.StoreService import get_assistant_from_store
 from service.UserServiceClient import get_user_settings
-from service.Schemas import ThreadHistoryRequest, ThreadState
 from service.Utils import convert_input_messages
 
 if TYPE_CHECKING:
-    from langchain_core.runnables import RunnableConfig
+    pass
 
 logger = get_logger(__name__)
 
-router = APIRouter(tags=["threads"], dependencies=[Depends(verify_bearer)])
+router = APIRouter(tags=["threads"], dependencies=[Depends(require_user)])
 
 
 def _get_controller() -> RunController:
@@ -125,9 +126,18 @@ async def stream_run(
             "long_term_memory": user_ltm_enabled and agent_ltm_enabled,
         }
     )
+    try:
+        from service.UserServiceClient import get_current_access_token
+
+        access_token = get_current_access_token()
+        if access_token:
+            resolved_config["access_token"] = access_token
+    except Exception:
+        pass
+
+    import uuid
 
     from langchain_core.runnables import RunnableConfig
-    import uuid
 
     run_id = str(uuid.uuid4())
     input_messages = convert_input_messages(request_obj.input or {})

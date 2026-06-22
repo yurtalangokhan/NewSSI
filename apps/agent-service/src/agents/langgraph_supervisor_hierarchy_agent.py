@@ -565,7 +565,7 @@ IMPORTANT:
         if self._mcp_cleanup:
             try:
                 await self._mcp_cleanup()
-            except Exception as e:
+            except Exception:
                 logger.error("error")
 
 

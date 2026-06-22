@@ -1,6 +1,7 @@
 import { getAuthTypeMetadataSS, logoutSS } from "@/lib/userSS";
 import { AuthType } from "@/lib/constants";
 import { NextRequest, NextResponse } from "next/server";
+import { getLoginPath } from "@/lib/auth/loginRoute";
 
 const handleLogout = async (request: NextRequest) => {
   const authTypeMetadata = await getAuthTypeMetadataSS();
@@ -40,7 +41,7 @@ const handleLogout = async (request: NextRequest) => {
   };
 
   const nextPath =
-    request.nextUrl.searchParams.get("next") || "/auth/login";
+    request.nextUrl.searchParams.get("next") || getLoginPath(authTypeMetadata);
 
   // For OIDC, redirect to Keycloak's RP-initiated logout as a front-channel
   // courtesy step. The SSO session was already terminated server-side by the
@@ -68,7 +69,7 @@ const handleLogout = async (request: NextRequest) => {
 
         const redirectResponse = NextResponse.redirect(
           logoutUrl.toString(),
-          307
+          303
         );
         clearAuthCookies(redirectResponse);
         return redirectResponse;
@@ -80,7 +81,7 @@ const handleLogout = async (request: NextRequest) => {
 
   const redirectResponse = NextResponse.redirect(
     new URL(nextPath, publicWebOrigin),
-    307
+    303
   );
   clearAuthCookies(redirectResponse);
   return redirectResponse;

@@ -1,8 +1,9 @@
 """Abstract base classes for agents."""
 
 from abc import ABC, abstractmethod
+from collections.abc import AsyncGenerator
 from dataclasses import dataclass, field
-from typing import Any, AsyncGenerator
+from typing import Any
 
 from langchain_core.runnables import RunnableConfig
 

@@ -26,8 +26,14 @@ export default function AuthFlowContainer({
     <div className="auth-login-shell p-4 flex flex-col items-center justify-center min-h-screen relative overflow-hidden text-white">
       <div className="auth-login-bg-gradient" aria-hidden="true" />
       <div className="auth-login-bg-grid" aria-hidden="true" />
-      <div className="auth-login-bg-glow auth-login-bg-glow-1" aria-hidden="true" />
-      <div className="auth-login-bg-glow auth-login-bg-glow-2" aria-hidden="true" />
+      <div
+        className="auth-login-bg-glow auth-login-bg-glow-1"
+        aria-hidden="true"
+      />
+      <div
+        className="auth-login-bg-glow auth-login-bg-glow-2"
+        aria-hidden="true"
+      />
 
       {/* Header with Language Switcher */}
       <div className="absolute top-6 right-6 z-20">
@@ -49,19 +55,9 @@ export default function AuthFlowContainer({
 
         <div className="w-full">{children}</div>
       </div>
-      {authState === "login" && (
+      {authState === "login" && footerContent && (
         <div className="text-sm mt-6 text-center w-full text-white/80 mainUiBody mx-auto">
-          {footerContent ?? (
-            <>
-              New to AgenticAI Platform?{" "}
-              <Link
-                href="/auth/signup"
-                className="text-white mainUiAction underline transition-colors duration-200"
-              >
-                Create an Account
-              </Link>
-            </>
-          )}
+          {footerContent}
         </div>
       )}
       {authState === "signup" && (

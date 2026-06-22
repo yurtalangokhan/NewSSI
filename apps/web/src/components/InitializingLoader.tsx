@@ -4,8 +4,9 @@ import { useContext } from "react";
 import Logo from "@/refresh-components/Logo";
 import { SettingsContext } from "@/providers/SettingsProvider";
 import { useTranslation } from "react-i18next";
+import { getAppName } from "@/lib/appInfo";
 
-export default function OnyxInitializingLoader() {
+export default function InitializingLoader() {
   const { t } = useTranslation("admin");
   const settings = useContext(SettingsContext);
 
@@ -14,8 +15,9 @@ export default function OnyxInitializingLoader() {
       <Logo folded size={96} className="mx-auto mb-3" />
       <p className="text-lg text-text font-semibold">
         {t("initializingLoader", {
-          applicationName:
-            settings?.enterpriseSettings?.application_name ?? "Onyx",
+          applicationName: getAppName(
+            settings?.enterpriseSettings?.application_name
+          ),
         })}
       </p>
     </div>

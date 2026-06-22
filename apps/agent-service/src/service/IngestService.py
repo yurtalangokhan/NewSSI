@@ -11,11 +11,11 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
-from agents.tools import load_vector_store
-from core.db import AirbyteMappingRepository, DatasourceRepository
 from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
+from agents.tools import load_vector_store
+from core.db import DatasourceRepository
 from service.AirbyteApiClientService import get_airbyte_client
 from service.AirbyteMappingRepository import AirbyteMappingDB
 from service.Schemas import BatchRequest, BatchResponse, SourcePreviewRequest

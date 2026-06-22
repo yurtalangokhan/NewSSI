@@ -1,5 +1,7 @@
 import { getDomain } from "@/lib/redirectSS";
 import { buildUserServiceUrl } from "@/lib/utilsSS";
+import { getLoginPath } from "@/lib/auth/loginRoute";
+import { getAuthTypeMetadataSS } from "@/lib/userSS";
 import { NextRequest, NextResponse } from "next/server";
 
 export const GET = async (request: NextRequest) => {
@@ -8,10 +10,7 @@ export const GET = async (request: NextRequest) => {
   const url = new URL(buildUserServiceUrl("/api/auth/oidc/callback"));
   url.search = request.nextUrl.search;
   const callbackBase = getDomain(request).replace(/\/$/, "");
-  url.searchParams.set(
-    "redirect_uri",
-    `${callbackBase}/auth/oidc/callback`
-  );
+  url.searchParams.set("redirect_uri", `${callbackBase}/auth/oidc/callback`);
   const cookieHeader = request.headers.get("cookie") || "";
 
   // Set 'redirect' to 'manual' to prevent automatic redirection
@@ -20,8 +19,11 @@ export const GET = async (request: NextRequest) => {
     headers: cookieHeader ? { cookie: cookieHeader } : undefined,
   });
   const setCookieHeaders =
-    typeof (response.headers as Headers & { getSetCookie?: () => string[] }).getSetCookie === "function"
-      ? (response.headers as Headers & { getSetCookie: () => string[] }).getSetCookie()
+    typeof (response.headers as Headers & { getSetCookie?: () => string[] })
+      .getSetCookie === "function"
+      ? (
+          response.headers as Headers & { getSetCookie: () => string[] }
+        ).getSetCookie()
       : (() => {
           const single = response.headers.get("set-cookie");
           return single ? [single] : [];
@@ -41,7 +43,11 @@ export const GET = async (request: NextRequest) => {
 
     // For 401, redirect to login with error. For others, go to error page.
     if (response.status === 401) {
-      const loginUrl = new URL("/auth/login", getDomain(request));
+      const authTypeMetadata = await getAuthTypeMetadataSS();
+      const loginUrl = new URL(
+        getLoginPath(authTypeMetadata),
+        getDomain(request)
+      );
       loginUrl.searchParams.set("oidcError", errorMessage);
       return NextResponse.redirect(loginUrl);
     } else {
@@ -53,7 +59,10 @@ export const GET = async (request: NextRequest) => {
 
   if (setCookieHeaders.length === 0) {
     const errorUrl = new URL("/auth/error", getDomain(request));
-    errorUrl.searchParams.set("error", "No session cookies received from authentication service");
+    errorUrl.searchParams.set(
+      "error",
+      "No session cookies received from authentication service"
+    );
     return NextResponse.redirect(errorUrl);
   }
 

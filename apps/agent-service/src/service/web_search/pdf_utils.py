@@ -5,7 +5,7 @@ from __future__ import annotations
 import io
 import logging
 from collections.abc import Callable, Sequence
-from typing import Any, IO
+from typing import IO, Any
 
 logger = logging.getLogger(__name__)
 

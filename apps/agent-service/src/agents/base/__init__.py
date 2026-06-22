@@ -8,24 +8,24 @@ from agents.base.agent import (
 )
 from agents.base.brain import (
     Brain,
-    LLMBrain,
     GuardBrain,
+    LLMBrain,
     ReasoningResult,
-)
-from agents.base.perceptron import (
-    Perceptron,
-    ToolPerceptron,
-    MemoryPerceptron,
-    VectorPerceptron,
-    PerceptionResult,
 )
 from agents.base.manager import (
     AgentManager,
-    SupervisorManager,
-    PipelineManager,
-    HierarchicalManager,
-    TaskResult,
     DelegateRequest,
+    HierarchicalManager,
+    PipelineManager,
+    SupervisorManager,
+    TaskResult,
+)
+from agents.base.perceptron import (
+    MemoryPerceptron,
+    PerceptionResult,
+    Perceptron,
+    ToolPerceptron,
+    VectorPerceptron,
 )
 
 __all__ = [

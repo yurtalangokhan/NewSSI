@@ -117,7 +117,9 @@ function PATModal({
             onClick={onCreate}
             disabled={isCreating || !newTokenName.trim()}
           >
-            {isCreating ? t("settings.pat.creatingButton") : t("settings.pat.createButton")}
+            {isCreating
+              ? t("settings.pat.creatingButton")
+              : t("settings.pat.createButton")}
           </Button>
         )
       }
@@ -165,11 +167,19 @@ function PATModal({
                 onValueChange={setExpirationDays}
                 disabled={isCreating}
               >
-                <InputSelect.Trigger placeholder={t("settings.pat.selectExpirationPlaceholder")} />
+                <InputSelect.Trigger
+                  placeholder={t("settings.pat.selectExpirationPlaceholder")}
+                />
                 <InputSelect.Content>
-                  <InputSelect.Item value="7">{t("settings.pat.7daysOption")}</InputSelect.Item>
-                  <InputSelect.Item value="30">{t("settings.pat.30daysOption")}</InputSelect.Item>
-                  <InputSelect.Item value="365">{t("settings.pat.365daysOption")}</InputSelect.Item>
+                  <InputSelect.Item value="7">
+                    {t("settings.pat.7daysOption")}
+                  </InputSelect.Item>
+                  <InputSelect.Item value="30">
+                    {t("settings.pat.30daysOption")}
+                  </InputSelect.Item>
+                  <InputSelect.Item value="365">
+                    {t("settings.pat.365daysOption")}
+                  </InputSelect.Item>
                   <InputSelect.Item value="null">
                     {t("settings.pat.noExpirationOption")}
                   </InputSelect.Item>
@@ -204,8 +214,10 @@ function GeneralSettings() {
     updatePersonalizationField,
     handleSavePersonalization,
   } = useUserPersonalization(user, updateUserPersonalization, {
-    onSuccess: () => toast.success(t("settings.general.toastPersonalizationUpdated")),
-    onError: () => toast.error(t("settings.general.toastPersonalizationFailed")),
+    onSuccess: () =>
+      toast.success(t("settings.general.toastPersonalizationUpdated")),
+    onError: () =>
+      toast.error(t("settings.general.toastPersonalizationFailed")),
   });
 
   // Track initial values to detect changes
@@ -216,7 +228,7 @@ function GeneralSettings() {
   useEffect(() => {
     initialNameRef.current = personalizationValues.name;
     initialRoleRef.current = personalizationValues.role;
-  }, [user?.personalization]);
+  }, [personalizationValues.name, personalizationValues.role]);
 
   const handleDeleteAllChats = useCallback(async () => {
     setIsDeleting(true);
@@ -251,14 +263,14 @@ function GeneralSettings() {
               }}
               disabled={isDeleting}
             >
-              {isDeleting ? t("settings.general.deletingButton") : t("settings.general.deleteButton")}
+              {isDeleting
+                ? t("settings.general.deletingButton")
+                : t("settings.general.deleteButton")}
             </Button>
           }
         >
           <Section gap={0.5} alignItems="start">
-            <Text>
-              {t("settings.general.deleteChatsConfirmation1")}
-            </Text>
+            <Text>{t("settings.general.deleteChatsConfirmation1")}</Text>
             <Text>{t("settings.general.deleteChatsConfirmation2")}</Text>
           </Section>
         </ConfirmationModalLayout>
@@ -381,7 +393,9 @@ function GeneralSettings() {
                 </InputSelect.Content>
               </InputSelect>
             </InputLayouts.Horizontal>
-            <InputLayouts.Vertical title={t("settings.general.chatBackgroundLabel")}>
+            <InputLayouts.Vertical
+              title={t("settings.general.chatBackgroundLabel")}
+            >
               <div className="flex flex-wrap gap-2">
                 {CHAT_BACKGROUND_OPTIONS.map((bg) => {
                   const currentBackgroundId =
@@ -405,7 +419,9 @@ function GeneralSettings() {
                     >
                       {isNone ? (
                         <div className="absolute inset-0 bg-background flex items-center justify-center">
-                          <span className="text-xs text-text-02">{t("settings.general.colorModeNone")}</span>
+                          <span className="text-xs text-text-02">
+                            {t("settings.general.colorModeNone")}
+                          </span>
                         </div>
                       ) : (
                         <div
@@ -686,7 +702,9 @@ function PromptShortcuts() {
               >
                 <InputTypeIn
                   prefixText="/"
-                  placeholder={t("settings.chatPreferences.shortcutPlaceholder")}
+                  placeholder={t(
+                    "settings.chatPreferences.shortcutPlaceholder"
+                  )}
                   value={shortcut.prompt}
                   onChange={(e) =>
                     handleUpdateShortcut(index, "prompt", e.target.value)
@@ -710,16 +728,22 @@ function PromptShortcuts() {
                     onClick={() => void handleRemoveShortcut(index)}
                     prominence="tertiary"
                     disabled={(shortcut.isNew && isEmpty) || shortcut.is_public}
-                    aria-label={t("settings.chatPreferences.removeShortcutAriaLabel")}
+                    aria-label={t(
+                      "settings.chatPreferences.removeShortcutAriaLabel"
+                    )}
                     tooltip={
                       shortcut.is_public
-                        ? t("settings.chatPreferences.cannotDeletePublicTooltip")
+                        ? t(
+                            "settings.chatPreferences.cannotDeletePublicTooltip"
+                          )
                         : undefined
                     }
                   />
                 </Section>
                 <InputTextArea
-                  placeholder={t("settings.chatPreferences.expansionPlaceholder")}
+                  placeholder={t(
+                    "settings.chatPreferences.expansionPlaceholder"
+                  )}
                   value={shortcut.content}
                   onChange={(e) =>
                     handleUpdateShortcut(index, "content", e.target.value)
@@ -770,8 +794,10 @@ function ChatPreferencesSettings() {
     updateUserPreferences,
     handleSavePersonalization,
   } = useUserPersonalization(user, updateUserPersonalization, {
-    onSuccess: () => toast.success(t("settings.chatPreferences.toastPreferencesSaved")),
-    onError: () => toast.error(t("settings.chatPreferences.toastPreferencesFailed")),
+    onSuccess: () =>
+      toast.success(t("settings.chatPreferences.toastPreferencesSaved")),
+    onError: () =>
+      toast.error(t("settings.chatPreferences.toastPreferencesFailed")),
   });
 
   const {
@@ -782,12 +808,15 @@ function ChatPreferencesSettings() {
     deleteMemory,
     deleteAllMemories,
   } = useUserMemories({
-    onError: () => toast.error(t("settings.chatPreferences.toastPreferencesFailed")),
+    onError: () =>
+      toast.error(t("settings.chatPreferences.toastPreferencesFailed")),
   });
 
   // Wrapper to save memories and return success/failure
   const handleSaveMemories = useCallback(
-    async (newMemories: import("@/lib/types").MemoryItem[]): Promise<boolean> => {
+    async (
+      newMemories: import("@/lib/types").MemoryItem[]
+    ): Promise<boolean> => {
       try {
         // Sync: create new (empty dbId) and update existing
         for (const mem of newMemories) {
@@ -848,7 +877,9 @@ function ChatPreferencesSettings() {
             >
               <InputLayouts.Horizontal
                 title={t("settings.chatPreferences.defaultAppModeLabel")}
-                description={t("settings.chatPreferences.defaultAppModeDescription")}
+                description={t(
+                  "settings.chatPreferences.defaultAppModeDescription"
+                )}
                 center
                 disabled={!searchUiEnabled}
               >
@@ -861,8 +892,12 @@ function ChatPreferencesSettings() {
                 >
                   <InputSelect.Trigger />
                   <InputSelect.Content>
-                    <InputSelect.Item value="CHAT">{t("settings.chatPreferences.chatModeOption")}</InputSelect.Item>
-                    <InputSelect.Item value="SEARCH">{t("settings.chatPreferences.searchModeOption")}</InputSelect.Item>
+                    <InputSelect.Item value="CHAT">
+                      {t("settings.chatPreferences.chatModeOption")}
+                    </InputSelect.Item>
+                    <InputSelect.Item value="SEARCH">
+                      {t("settings.chatPreferences.searchModeOption")}
+                    </InputSelect.Item>
                   </InputSelect.Content>
                 </InputSelect>
               </InputLayouts.Horizontal>
@@ -874,10 +909,14 @@ function ChatPreferencesSettings() {
       <Section gap={0.75}>
         <InputLayouts.Vertical
           title={t("settings.chatPreferences.personalPreferencesTitle")}
-          description={t("settings.chatPreferences.personalPreferencesDescription")}
+          description={t(
+            "settings.chatPreferences.personalPreferencesDescription"
+          )}
         >
           <InputTextArea
-            placeholder={t("settings.chatPreferences.personalPreferencesPlaceholder")}
+            placeholder={t(
+              "settings.chatPreferences.personalPreferencesPlaceholder"
+            )}
             value={personalizationValues.user_preferences}
             onChange={(e) => updateUserPreferences(e.target.value)}
             onBlur={() => void handleSavePersonalization()}
@@ -900,32 +939,37 @@ function ChatPreferencesSettings() {
         <Card>
           <InputLayouts.Horizontal
             title={t("settings.chatPreferences.referenceMemoriesLabel")}
-            description={t("settings.chatPreferences.referenceMemoriesDescription")}
+            description={t(
+              "settings.chatPreferences.referenceMemoriesDescription"
+            )}
           >
             <Switch
-                checked={personalizationValues.long_term_memory_enabled}
+              checked={personalizationValues.long_term_memory_enabled}
               onCheckedChange={(checked) => {
                 void handleSavePersonalization({
-                    long_term_memory_enabled: checked,
+                  long_term_memory_enabled: checked,
                 });
               }}
             />
           </InputLayouts.Horizontal>
           <InputLayouts.Horizontal
             title={t("settings.chatPreferences.updateMemoriesLabel")}
-            description={t("settings.chatPreferences.updateMemoriesDescription")}
+            description={t(
+              "settings.chatPreferences.updateMemoriesDescription"
+            )}
           >
             <Switch
-                checked={personalizationValues.extract_memory}
+              checked={personalizationValues.extract_memory}
               onCheckedChange={(checked) => {
                 void handleSavePersonalization({
-                    extract_memory: checked,
+                  extract_memory: checked,
                 });
               }}
             />
           </InputLayouts.Horizontal>
-            {(personalizationValues.long_term_memory_enabled || personalizationValues.extract_memory) &&
-              memories.length > 0 && (
+          {(personalizationValues.long_term_memory_enabled ||
+            personalizationValues.extract_memory) &&
+            memories.length > 0 && (
               <Memories
                 memories={memories}
                 onSaveMemories={handleSaveMemories}
@@ -964,20 +1008,22 @@ function ChatPreferencesSettings() {
 
 function AccountsAccessSettings() {
   const { t } = useTranslation();
-  const { user, authTypeMetadata } = useUser();
+  const { user } = useUser();
   const authType = useAuthType();
   const [showPasswordModal, setShowPasswordModal] = useState(false);
 
   const passwordValidationSchema = Yup.object().shape({
-    currentPassword: Yup.string().required(t("settings.accounts.currentPasswordRequired")),
-    newPassword: Yup.string()
-      .min(
-        authTypeMetadata.passwordMinLength,
-        t("settings.accounts.newPasswordMinLength", { n: authTypeMetadata.passwordMinLength })
-      )
-      .required(t("settings.accounts.currentPasswordRequired")),
+    currentPassword: Yup.string().required(
+      t("settings.accounts.currentPasswordRequired")
+    ),
+    newPassword: Yup.string().required(
+      t("settings.accounts.newPasswordRequired")
+    ),
     confirmPassword: Yup.string()
-      .oneOf([Yup.ref("newPassword")], t("settings.accounts.passwordsMustMatch"))
+      .oneOf(
+        [Yup.ref("newPassword")],
+        t("settings.accounts.passwordsMustMatch")
+      )
       .required(t("settings.accounts.confirmPasswordRequired")),
   });
 
@@ -1056,7 +1102,9 @@ function AccountsAccessSettings() {
         await mutate();
       } else {
         const errorData = await response.json();
-        toast.error(errorData.detail || t("settings.accounts.toastTokenCreateFailed"));
+        toast.error(
+          errorData.detail || t("settings.accounts.toastTokenCreateFailed")
+        );
       }
     } catch (error) {
       toast.error(t("settings.accounts.toastTokenCreateError"));
@@ -1097,7 +1145,7 @@ function AccountsAccessSettings() {
       confirmPassword: string;
     }) => {
       try {
-        const response = await fetch("/api/password/change-password", {
+        const response = await fetch("/api/user-service/users/me/password", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -1113,7 +1161,9 @@ function AccountsAccessSettings() {
           setShowPasswordModal(false);
         } else {
           const errorData = await response.json();
-          toast.error(errorData.detail || t("settings.accounts.toastPasswordFailed"));
+          toast.error(
+            errorData.detail || t("settings.accounts.toastPasswordFailed")
+          );
         }
       } catch (error) {
         toast.error(t("settings.accounts.toastPasswordError"));
@@ -1154,9 +1204,7 @@ function AccountsAccessSettings() {
           }
         >
           <Section gap={0.5} alignItems="start">
-            <Text>
-              {t("settings.accounts.tokenWillLoseAccess")}
-            </Text>
+            <Text>{t("settings.accounts.tokenWillLoseAccess")}</Text>
             <Text>{t("settings.accounts.revokeConfirmation")}</Text>
           </Section>
         </ConfirmationModalLayout>
@@ -1201,7 +1249,9 @@ function AccountsAccessSettings() {
                       }
                     }}
                   >
-                    {isSubmitting ? t("settings.accounts.updatingButton") : t("settings.accounts.updateButton")}
+                    {isSubmitting
+                      ? t("settings.accounts.updatingButton")
+                      : t("settings.accounts.updateButton")}
                   </Button>
                 }
                 onClose={() => {
@@ -1355,14 +1405,25 @@ function AccountsAccessSettings() {
                           (expiresDate.getTime() - now.getTime()) /
                             (1000 * 60 * 60 * 24)
                         );
-                        expiryText = daysUntilExpiry === 1
-                          ? t("settings.accounts.expiresInDays", { days: daysUntilExpiry })
-                          : t("settings.accounts.expiresInDaysPlural", { days: daysUntilExpiry });
+                        expiryText =
+                          daysUntilExpiry === 1
+                            ? t("settings.accounts.expiresInDays", {
+                                days: daysUntilExpiry,
+                              })
+                            : t("settings.accounts.expiresInDaysPlural", {
+                                days: daysUntilExpiry,
+                              });
                       }
 
-                      const middleText = `${daysSinceCreation === 1
-                          ? t("settings.accounts.createdDaysAgo", { days: daysSinceCreation })
-                          : t("settings.accounts.createdDaysAgoPlural", { days: daysSinceCreation })} - ${expiryText}`;
+                      const middleText = `${
+                        daysSinceCreation === 1
+                          ? t("settings.accounts.createdDaysAgo", {
+                              days: daysSinceCreation,
+                            })
+                          : t("settings.accounts.createdDaysAgoPlural", {
+                              days: daysSinceCreation,
+                            })
+                      } - ${expiryText}`;
 
                       return (
                         <Interactive.Container
@@ -1426,7 +1487,11 @@ function IndexedConnectorCard({ source, isActive }: IndexedConnectorCardProps) {
       <Content
         icon={sourceMetadata.icon}
         title={sourceMetadata.displayName}
-        description={isActive ? t("settings.connectors.connectedStatus") : t("settings.connectors.pausedStatus")}
+        description={
+          isActive
+            ? t("settings.connectors.connectedStatus")
+            : t("settings.connectors.pausedStatus")
+        }
         sizePreset="main-content"
         variant="section"
       />
@@ -1476,7 +1541,9 @@ function FederatedConnectorCard({
       {showDisconnectConfirmation && (
         <ConfirmationModalLayout
           icon={SvgUnplug}
-          title={t("settings.connectors.disconnectTitle", { sourceName: sourceMetadata.displayName })}
+          title={t("settings.connectors.disconnectTitle", {
+            sourceName: sourceMetadata.displayName,
+          })}
           onClose={() => setShowDisconnectConfirmation(false)}
           submit={
             <Button
@@ -1484,16 +1551,22 @@ function FederatedConnectorCard({
               onClick={() => void handleDisconnect()}
               disabled={isDisconnecting}
             >
-              {isDisconnecting ? t("settings.connectors.disconnectingButton") : t("settings.connectors.disconnectButton")}
+              {isDisconnecting
+                ? t("settings.connectors.disconnectingButton")
+                : t("settings.connectors.disconnectButton")}
             </Button>
           }
         >
           <Section gap={0.5} alignItems="start">
             <Text>
-              {t("settings.connectors.disconnectConfirm1", { sourceName: sourceMetadata.displayName })}
+              {t("settings.connectors.disconnectConfirm1", {
+                sourceName: sourceMetadata.displayName,
+              })}
             </Text>
             <Text>
-              {t("settings.connectors.disconnectConfirm2", { sourceName: sourceMetadata.displayName })}
+              {t("settings.connectors.disconnectConfirm2", {
+                sourceName: sourceMetadata.displayName,
+              })}
             </Text>
           </Section>
         </ConfirmationModalLayout>
@@ -1504,7 +1577,9 @@ function FederatedConnectorCard({
           icon={sourceMetadata.icon}
           title={sourceMetadata.displayName}
           description={
-            connector.has_oauth_token ? t("settings.connectors.connectedStatus") : t("settings.connectors.notConnectedStatus")
+            connector.has_oauth_token
+              ? t("settings.connectors.connectedStatus")
+              : t("settings.connectors.notConnectedStatus")
           }
           sizePreset="main-content"
           variant="section"

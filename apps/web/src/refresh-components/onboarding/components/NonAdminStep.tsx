@@ -9,8 +9,11 @@ import { Button as OpalButton } from "@opal/components";
 import InputAvatar from "@/refresh-components/inputs/InputAvatar";
 import { cn } from "@/lib/utils";
 import { SvgCheckCircle, SvgEdit, SvgUser, SvgX } from "@opal/icons";
+import { useTranslation } from "react-i18next";
+import { APP_NAME } from "@/lib/appInfo";
 
 export default function NonAdminStep() {
+  const { t } = useTranslation();
   const inputRef = useRef<HTMLInputElement>(null);
   const { user, refreshUser } = useUser();
   const [name, setName] = useState("");
@@ -18,13 +21,19 @@ export default function NonAdminStep() {
   const [isEditing, setIsEditing] = useState(true);
   const [savedName, setSavedName] = useState("");
 
+  const profileName =
+    user?.full_name?.trim() ||
+    [user?.first_name, user?.last_name].filter(Boolean).join(" ").trim() ||
+    user?.personalization?.name?.trim() ||
+    "";
+
   // Initialize name from user if available
   useEffect(() => {
-    if (user?.personalization?.name && !savedName) {
-      setSavedName(user.personalization.name);
+    if (profileName && !savedName) {
+      setSavedName(profileName);
       setIsEditing(false);
     }
-  }, [user?.personalization?.name, savedName]);
+  }, [profileName, savedName]);
 
   const containerClasses = cn(
     "flex items-center justify-between w-full p-3 bg-background-tint-00 rounded-16 border border-border-01 mb-4"
@@ -81,7 +90,7 @@ export default function NonAdminStep() {
             </div>
             <div>
               <Text as="p" text04 mainUiAction>
-                What should Onyx call you?
+                {t("nameStep.whatShouldAppCallYou", { appName: APP_NAME })}
               </Text>
               <Text as="p" text03 secondaryBody>
                 We will display this name in the app.

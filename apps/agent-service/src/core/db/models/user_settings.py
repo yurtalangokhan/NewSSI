@@ -9,7 +9,6 @@ from sqlalchemy import Boolean, DateTime, Index, Text, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
-
 from core.db.models.base import Base
 
 

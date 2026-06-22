@@ -1,7 +1,8 @@
 """Schedule controller - handles sync schedule CRUD operations."""
 
+from typing import Any
+
 from controller.base import BaseController
-from service.ScheduleService import ScheduleService
 from service.ScheduleModels import (
     ScheduleRunStatus,
     SyncScheduleInput,
@@ -9,7 +10,7 @@ from service.ScheduleModels import (
     SyncScheduleResponse,
     SyncScheduleUpdate,
 )
-from typing import Any
+from service.ScheduleService import ScheduleService
 
 
 class ScheduleController(BaseController):

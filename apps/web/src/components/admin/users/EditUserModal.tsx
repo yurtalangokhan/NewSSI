@@ -30,7 +30,8 @@ export default function EditUserModal({
     .filter(Boolean);
   const initialFirstName = user.first_name || fullNameParts[0] || "";
   const initialLastName =
-    fullNameParts.length > 1 ? fullNameParts.slice(1).join(" ") : "";
+    user.last_name ||
+    (fullNameParts.length > 1 ? fullNameParts.slice(1).join(" ") : "");
 
   const [firstName, setFirstName] = useState(initialFirstName);
   const [lastName, setLastName] = useState(initialLastName);
@@ -55,8 +56,8 @@ export default function EditUserModal({
       return;
     }
 
-    if (isPasswordChanged && password.trim().length < 8) {
-      toast.error(t("admin.users.editUserModal.passwordTooShort"));
+    if (!firstName.trim() || !lastName.trim()) {
+      toast.error(t("admin.users.editUserModal.nameRequired"));
       return;
     }
 
@@ -150,6 +151,7 @@ export default function EditUserModal({
                   placeholder={t(
                     "admin.users.editUserModal.firstNamePlaceholder"
                   )}
+                  required
                 />
               </div>
 
@@ -165,6 +167,7 @@ export default function EditUserModal({
                   placeholder={t(
                     "admin.users.editUserModal.lastNamePlaceholder"
                   )}
+                  required
                 />
               </div>
             </div>

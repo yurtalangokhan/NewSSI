@@ -19,20 +19,19 @@ from langchain_core.runnables import RunnableConfig
 from langgraph.types import Interrupt
 
 from agents import DEFAULT_AGENT, AgentGraph, get_agent, get_all_agent_info
-from service.AssistantAgentService import AssistantAgentService
+from api.dependencies import require_user
 from core import settings
 from schema import (
     ChatHistory,
     ChatHistoryInput,
     ChatMessage,
-    Feedback,
-    FeedbackResponse,
     ServiceMetadata,
     StreamInput,
     UserInput,
 )
 from service.AgentHelpers import _handle_input
-from service.AuthService import extract_user_id_from_token, verify_bearer
+from service.AssistantAgentService import AssistantAgentService
+from service.AuthService import extract_user_id_from_token
 from service.Utils import (
     convert_message_content_to_string,
     langchain_to_chat_message,
@@ -41,7 +40,7 @@ from service.Utils import (
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/agents", tags=["agents"], dependencies=[Depends(verify_bearer)])
+router = APIRouter(prefix="/agents", tags=["agents"], dependencies=[Depends(require_user)])
 
 
 class ThinkingTagProcessor:

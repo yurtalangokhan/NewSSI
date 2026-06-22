@@ -17,6 +17,10 @@ class Env:
         return os.environ.get("KEYCLOAK_ENABLED", "false").lower() == "true"
 
     @property
+    def EXTERNAL_KEYCLOAK(self) -> bool:
+        return os.environ.get("EXTERNAL_KEYCLOAK", "false").lower() == "true"
+
+    @property
     def KEYCLOAK_ISSUER_URL(self) -> str | None:
         return os.environ.get("KEYCLOAK_ISSUER_URL")
 
@@ -39,6 +43,10 @@ class Env:
     @property
     def KEYCLOAK_CLIENT_ID(self) -> str:
         return os.environ.get("KEYCLOAK_CLIENT_ID", "agenticai-web")
+
+    @property
+    def KEYCLOAK_CLIENT_SECRET(self) -> str | None:
+        return os.environ.get("KEYCLOAK_CLIENT_SECRET")
 
     @property
     def KEYCLOAK_AUDIENCE(self) -> str | None:
@@ -87,6 +95,52 @@ class Env:
     @property
     def INTERNAL_SERVICE_TOKEN(self) -> str | None:
         return os.environ.get("INTERNAL_SERVICE_TOKEN")
+
+    @property
+    def LDAP_ENABLED(self) -> bool:
+        return os.environ.get("LDAP_ENABLED", "false").lower() == "true"
+
+    @property
+    def LDAP_HOST(self) -> str:
+        return os.environ.get("LDAP_HOST", "localhost")
+
+    @property
+    def LDAP_PORT(self) -> int:
+        return int(os.environ.get("LDAP_PORT", "389"))
+
+    @property
+    def LDAP_USE_TLS(self) -> bool:
+        return os.environ.get("LDAP_USE_TLS", "false").lower() == "true"
+
+    @property
+    def LDAP_BIND_DN(self) -> str | None:
+        return os.environ.get("LDAP_BIND_DN")
+
+    @property
+    def LDAP_BIND_PASSWORD(self) -> str | None:
+        return os.environ.get("LDAP_BIND_PASSWORD")
+
+    @property
+    def LDAP_BASE_DN(self) -> str:
+        return os.environ.get("LDAP_BASE_DN", "dc=example,dc=com")
+
+    @property
+    def LDAP_USER_SEARCH_FILTER(self) -> str:
+        return os.environ.get(
+            "LDAP_USER_SEARCH_FILTER",
+            "(&(objectClass=person)(uid={{username}}))",
+        )
+
+    @property
+    def LDAP_USER_SEARCH_BASE(self) -> str | None:
+        return os.environ.get("LDAP_USER_SEARCH_BASE")
+
+    @property
+    def LDAP_ATTRIBUTE_MAP(self) -> str:
+        return os.environ.get(
+            "LDAP_ATTRIBUTE_MAP",
+            '{"username": "uid", "email": "mail", "first_name": "givenName", "last_name": "sn"}',
+        )
 
 
 _env = Env()

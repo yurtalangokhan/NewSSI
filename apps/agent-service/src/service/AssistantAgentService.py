@@ -92,7 +92,6 @@ class AssistantAgentService:
     def list_agents(self) -> list[dict[str, Any]]:
         """List all available agents from the agents module."""
         from agents import get_all_agent_info
-        from schema import AgentInfo
 
         agents = get_all_agent_info()
         return [{"key": agent.key, "description": agent.description} for agent in agents]

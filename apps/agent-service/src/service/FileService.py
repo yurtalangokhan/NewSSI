@@ -187,8 +187,8 @@ class _PPTXToTextParser:
     """Parse PPTX into one Document per slide."""
 
     def parse(self, blob: Blob) -> list[Any]:
-        from pptx import Presentation
         from langchain_core.documents.base import Document
+        from pptx import Presentation
 
         prs = Presentation(io.BytesIO(blob.as_bytes()))
         docs = []
@@ -243,6 +243,7 @@ def _extract_text_from_record(record: FileRecord) -> str | None:
             "application/msword",
         ):
             import tempfile
+
             from langchain_community.document_loaders import Docx2txtLoader
 
             with tempfile.NamedTemporaryFile(suffix=".docx", delete=True) as tmp:

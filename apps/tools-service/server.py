@@ -32,10 +32,11 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from src.core.registry import ToolRegistry
 from src.core.database import close_db_pool
+from src.core.auth import KeycloakTokenVerifier
 
 
 # Initialize FastMCP server
-mcp = FastMCP("open-agent-tools")
+mcp = FastMCP("open-agent-tools", auth=KeycloakTokenVerifier())
 
 # Initialize the tool registry with plugin discovery
 registry = ToolRegistry(mcp)

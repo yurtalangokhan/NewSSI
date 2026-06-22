@@ -12,7 +12,7 @@ _convert_chunk_to_generation_chunk (streaming) and _create_chat_result
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 from langchain_core.outputs import ChatGenerationChunk, ChatResult
 from langchain_openai import ChatOpenAI
@@ -33,7 +33,7 @@ class VLLMChatOpenAI(ChatOpenAI):
     def _create_chat_result(
         self,
         response: Any,
-        generation_info: Optional[dict] = None,
+        generation_info: dict | None = None,
     ) -> ChatResult:
         result = super()._create_chat_result(response, generation_info)
 
@@ -76,8 +76,8 @@ class VLLMChatOpenAI(ChatOpenAI):
         self,
         chunk: dict,
         default_chunk_class: type,
-        base_generation_info: Optional[dict],
-    ) -> Optional[ChatGenerationChunk]:
+        base_generation_info: dict | None,
+    ) -> ChatGenerationChunk | None:
         gen_chunk = super()._convert_chunk_to_generation_chunk(
             chunk, default_chunk_class, base_generation_info
         )

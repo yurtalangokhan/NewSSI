@@ -820,6 +820,7 @@ dependencies = [
     { name = "ddgs" },
     { name = "fastmcp" },
     { name = "httpx" },
+    { name = "pyjwt" },
     { name = "pymupdf" },
 ]
 
@@ -837,6 +838,7 @@ requires-dist = [
     { name = "fastmcp", specifier = ">=2.0.0" },
     { name = "flake8", marker = "extra == 'dev'", specifier = ">=7.0.0" },
     { name = "httpx", specifier = ">=0.27.0" },
+    { name = "pyjwt", specifier = ">=2.10.0" },
     { name = "pylint", marker = "extra == 'dev'", specifier = ">=3.0.0" },
     { name = "pymupdf", specifier = ">=1.24.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0.0" },

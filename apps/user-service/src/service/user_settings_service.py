@@ -10,8 +10,12 @@ _DEFAULT_SETTINGS = {
     "memories": [],
     "use_memories": False,
     "enable_memory_tool": False,
+    "long_term_memory_enabled": False,
+    "extract_memory": True,
     "user_preferences": "",
+    "work_role": "",
     "prompt_shortcuts": [],
+    "pinned_assistants": [],
 }
 
 
@@ -91,8 +95,12 @@ class UserSettingsService:
             "memories": settings.memories or [],
             "use_memories": settings.use_memories,
             "enable_memory_tool": settings.enable_memory_tool,
+            "long_term_memory_enabled": settings.long_term_memory_enabled,
+            "extract_memory": settings.extract_memory,
             "user_preferences": settings.user_preferences or "",
+            "work_role": settings.work_role or "",
             "prompt_shortcuts": settings.prompt_shortcuts or [],
+            "pinned_assistants": settings.pinned_assistants or [],
             "time_created": settings.time_created.isoformat() if settings.time_created else None,
             "time_updated": settings.time_updated.isoformat() if settings.time_updated else None,
         }

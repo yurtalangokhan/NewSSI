@@ -16,7 +16,8 @@ SSE transport.
 
 import json
 import logging
-from typing import Any, Callable, Coroutine
+from collections.abc import Callable, Coroutine
+from typing import Any
 
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from langgraph.store.base import BaseStore
@@ -100,7 +101,7 @@ async def save_memories(
                 await on_save(
                     {
                         "saved_count": len(created),
-                        "saved": [m.content for m in created],
+                        "saved": [m["content"] for m in created],
                     }
                 )
             except Exception as cb_err:
@@ -249,7 +250,7 @@ async def extract_and_save_memories(
                 logger.info(f"[LongTermMemory] Saving {len(filtered_facts)} facts: {filtered_facts[:3]}...")
                 await save_memories(store, user_id, filtered_facts, on_save=on_save)
             else:
-                logger.debug(f"[LongTermMemory] All facts filtered out")
+                logger.debug("[LongTermMemory] All facts filtered out")
         else:
             logger.debug(f"[LongTermMemory] No facts extracted (parsed as: {type(new_facts).__name__})")
 

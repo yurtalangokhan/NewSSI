@@ -6,23 +6,21 @@ POST /assistants, PUT|PATCH /assistants/{id}, DELETE /assistants/{id}
 """
 
 from datetime import UTC, datetime
-from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 
+from api.dependencies import require_user
 from controller import AgentController, get_agent_controller
-from service.AuthService import verify_bearer
+from core.logger import get_logger
 from service.Schemas import (
     AssistantCreateRequest,
     AssistantSearchRequest,
     AssistantUpdateRequest,
 )
 
-from core.logger import get_logger
-
 logger = get_logger(__name__)
 
-router = APIRouter(prefix="/assistants", tags=["assistants"], dependencies=[Depends(verify_bearer)])
+router = APIRouter(prefix="/assistants", tags=["assistants"], dependencies=[Depends(require_user)])
 
 
 # =============================================================================

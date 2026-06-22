@@ -6,7 +6,7 @@ Holds business logic for Airbyte sync schedule management.
 from __future__ import annotations
 
 import logging
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import Any
 
 from croniter import croniter

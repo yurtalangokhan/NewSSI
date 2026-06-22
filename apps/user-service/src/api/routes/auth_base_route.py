@@ -1,7 +1,6 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Form, Request, Response
-from pydantic import BaseModel, ConfigDict
 
 from src.api.dependencies import require_admin, require_auth
 from src.controller import get_auth_controller
@@ -25,12 +24,20 @@ async def login(
 
 
 @router.post("/logout")
-async def logout(request: Request, response: Response):
+async def logout(
+    request: Request,
+    response: Response,
+    user_id: Annotated[str, Depends(require_auth)],
+):
     return await get_auth_controller().logout(request, response)
 
 
 @router.post("/refresh")
-async def refresh(request: Request, response: Response):
+async def refresh(
+    request: Request,
+    response: Response,
+    user_id: Annotated[str, Depends(require_auth)],
+):
     return await get_auth_controller().refresh(request, response)
 
 
@@ -50,51 +57,14 @@ async def oidc_callback(
 
 
 @router.get("/me")
-async def get_me(user_id: Annotated[str, Depends(require_auth)]):
-    from src.service import get_user_service
-
-    user = await get_user_service().get_current_user(user_id)
-    if not user:
-        from fastapi import HTTPException
-
-        raise HTTPException(status_code=404, detail="User not found")
-    return user
-
-
-class RegisterRequest(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-
-    username: str
-    email: str
-    password: str
-    first_name: str
-    last_name: str
-
-
-@router.post("/register")
-async def register(
+async def get_me(
     request: Request,
-    response: Response,
-    body: RegisterRequest,
+    user_id: Annotated[str, Depends(require_auth)],
 ):
-    return await get_auth_controller().register(
-        request,
-        response,
-        username=body.username,
-        email=body.email,
-        password=body.password,
-        first_name=body.first_name,
-        last_name=body.last_name,
-    )
+    return await get_auth_controller().get_me(request, user_id)
 
 
 @router.post("/sync-users")
 async def sync_users(admin_id: Annotated[str, Depends(require_admin)]):
-    """Sync all users and roles from Keycloak to user-service DB.
-
-    Admin-only endpoint. Performs one-time or periodic sync:
-    - Creates/updates users from Keycloak
-    - Deletes orphaned users (in DB but not in Keycloak)
-    - Syncs realm roles
-    """
+    """Sync users and roles from Keycloak into the local application DB."""
     return await get_auth_controller().sync_users_from_keycloak()

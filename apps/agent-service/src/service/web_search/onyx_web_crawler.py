@@ -1,26 +1,26 @@
 from __future__ import annotations
 
+import logging
 from collections.abc import Sequence
 from concurrent.futures import ThreadPoolExecutor
 
 import requests
 
-import logging
-
-from service.web_search.html_utils import ParsedHTML
-from service.web_search.html_utils import web_html_cleanup
-from service.web_search.models import WebContent
-from service.web_search.models import WebContentProvider
-from service.web_search.playwright_fetch import fetch_rendered_html
-from service.web_search.playwright_fetch import looks_like_cloudflare_challenge
-from service.web_search.playwright_fetch import RenderedPage
-from service.web_search.url import ssrf_safe_get
-from service.web_search.url import SSRFException
-from service.web_search.web_content import decode_html_bytes
-from service.web_search.web_content import extract_pdf_text
-from service.web_search.web_content import is_pdf_resource
-from service.web_search.web_content import title_from_pdf_metadata
-from service.web_search.web_content import title_from_url
+from service.web_search.html_utils import ParsedHTML, web_html_cleanup
+from service.web_search.models import WebContent, WebContentProvider
+from service.web_search.playwright_fetch import (
+    RenderedPage,
+    fetch_rendered_html,
+    looks_like_cloudflare_challenge,
+)
+from service.web_search.url import SSRFException, ssrf_safe_get
+from service.web_search.web_content import (
+    decode_html_bytes,
+    extract_pdf_text,
+    is_pdf_resource,
+    title_from_pdf_metadata,
+    title_from_url,
+)
 
 logger = logging.getLogger(__name__)
 

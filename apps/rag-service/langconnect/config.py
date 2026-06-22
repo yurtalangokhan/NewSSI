@@ -11,6 +11,15 @@ IS_TESTING = env("IS_TESTING", cast=str, default="").lower() == "true"
 # Simple Auth configuration
 VALID_API_KEYS = env("VALID_API_KEYS", cast=str, default="")
 
+# Keycloak JWKS-based token validation
+KEYCLOAK_ENABLED = env("KEYCLOAK_ENABLED", cast=bool, default=False)
+KEYCLOAK_ISSUER_URL = env("KEYCLOAK_ISSUER_URL", cast=str, default="")
+KEYCLOAK_AUDIENCE = env("KEYCLOAK_AUDIENCE", cast=str, default="")
+KEYCLOAK_CLIENT_ID = env("KEYCLOAK_CLIENT_ID", cast=str, default="agenticai-web")
+KEYCLOAK_CLIENT_SECRET = env("KEYCLOAK_CLIENT_SECRET", cast=str, default="")
+KEYCLOAK_TOKEN_LEEWAY_SECONDS = env("KEYCLOAK_TOKEN_LEEWAY_SECONDS", cast=int, default=120)
+INTERNAL_SERVICE_TOKEN = env("INTERNAL_SERVICE_TOKEN", cast=str, default="")
+
 # Embedding configuration
 EMBEDDING_PROVIDER = env("EMBEDDING_PROVIDER", cast=str, default="ollama")
 OLLAMA_BASE_URL = env(

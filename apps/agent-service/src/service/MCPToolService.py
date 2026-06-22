@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from core.db.repositories import MCPToolRepository, MCPProviderRepository
+from core.db.repositories import MCPProviderRepository, MCPToolRepository
 
 logger = logging.getLogger(__name__)
 

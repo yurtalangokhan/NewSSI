@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import sys
 import time
 from pathlib import Path
@@ -124,6 +125,13 @@ class _BatchWriter:
         self._batch_index: int = 0
         self._session = requests.Session()
         self._session.headers.update({"Content-Type": "application/json"})
+        agent_token = str(
+            config.get("agent_token")
+            or os.environ.get("AIRBYTE_DESTINATION_AGENT_TOKEN")
+            or ""
+        ).strip()
+        if agent_token:
+            self._session.headers.update({"Authorization": f"Bearer {agent_token}"})
 
     # ---- public API ------------------------------------------------------
 

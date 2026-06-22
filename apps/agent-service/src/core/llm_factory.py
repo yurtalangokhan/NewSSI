@@ -8,14 +8,14 @@ from __future__ import annotations
 
 from copy import deepcopy
 
-from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_openai import AzureChatOpenAI, ChatOpenAI
-from core.providers.vllm_chat import VLLMChatOpenAI
-from langchain_ollama import ChatOllama
 from langchain_anthropic import ChatAnthropic
+from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_groq import ChatGroq
+from langchain_ollama import ChatOllama
+from langchain_openai import AzureChatOpenAI, ChatOpenAI
 
+from core.providers.vllm_chat import VLLMChatOpenAI
 
 # Claude models that support extended thinking (claude-3-7+, claude-4 family).
 # Temperature must be 1 when thinking is enabled (Anthropic requirement).

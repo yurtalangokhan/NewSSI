@@ -24,6 +24,26 @@ export const logout = async (nextPath?: string): Promise<Response> => {
   return new Response(null, { status: 204 });
 };
 
+export const ldapLogin = async (
+  username: string,
+  password: string
+): Promise<Response> => {
+  const params = new URLSearchParams([
+    ["username", username],
+    ["password", password],
+  ]);
+
+  const response = await fetch("/api/auth/ldap/login", {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: params,
+  });
+  return response;
+};
+
 export const basicLogin = async (
   username: string,
   password: string

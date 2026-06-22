@@ -20,9 +20,10 @@ from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 
+from core.db.engine import _build_url  # noqa: E402
+
 # ── Import the shared metadata so Alembic can diff models vs DB ──
 from core.db.models import Base  # noqa: E402
-from core.db.engine import _build_url  # noqa: E402
 
 # Alembic Config object — gives access to alembic.ini values.
 config = context.config

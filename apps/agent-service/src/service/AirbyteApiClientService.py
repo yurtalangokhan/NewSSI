@@ -12,17 +12,16 @@ retry, and timeout handling.
 from __future__ import annotations
 
 import asyncio
-from core.logger import get_logger
-
-logger = get_logger(__name__)
 import logging as _stdlib_logging
-logger_stdlib = _stdlib_logging.getLogger(__name__)
 import os
 from typing import Any
 
 import httpx
 
+from core.logger import get_logger
+
 logger = get_logger(__name__)
+logger_stdlib = _stdlib_logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Custom exception
@@ -311,15 +310,23 @@ class AirbyteAPIClient:
         agent_service_url = os.environ.get(
             "AIRBYTE_DESTINATION_AGENT_URL", "http://agent-service:8080"
         )
+        agent_token = (
+            os.environ.get("AIRBYTE_DESTINATION_AGENT_TOKEN")
+            or os.environ.get("INTERNAL_SERVICE_TOKEN")
+        )
+        destination_config = {
+            "agent_service_url": agent_service_url,
+            "datasource_id": datasource_id,
+            "batch_size": int(os.environ.get("AIRBYTE_EMBED_BATCH_SIZE", "200")),
+            "request_timeout_seconds": 120,
+        }
+        if agent_token:
+            destination_config["agent_token"] = agent_token
+
         dest = await self.create_destination(
             name=dest_name,
             destination_definition_id=embedding_def["destinationDefinitionId"],
-            config={
-                "agent_service_url": agent_service_url,
-                "datasource_id": datasource_id,
-                "batch_size": int(os.environ.get("AIRBYTE_EMBED_BATCH_SIZE", "200")),
-                "request_timeout_seconds": 120,
-            },
+            config=destination_config,
         )
         logger.info("Created embedding destination %s for datasource %s", dest["destinationId"], datasource_id)
         return dest["destinationId"]

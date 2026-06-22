@@ -197,8 +197,9 @@ def _extract_file_blocks(data_b64: str, mime: str, filename: str) -> list[dict]:
             text = extract_text_from_pdf(data_b64)
         else:
             raw = base64.b64decode(data_b64)
-            from service.FileService import FileRecord, _extract_text_from_record
             from datetime import UTC, datetime
+
+            from service.FileService import FileRecord, _extract_text_from_record
 
             # Build a temporary record for the extraction machinery
             tmp = FileRecord(

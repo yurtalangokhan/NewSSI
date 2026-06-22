@@ -9,8 +9,9 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends
 
+from api.dependencies import require_user
 from controller import ScheduleController, get_schedule_controller
 from service.ScheduleModels import (
     ScheduleRunStatus,
@@ -22,7 +23,7 @@ from service.ScheduleModels import (
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(tags=["sync-schedules"])
+router = APIRouter(tags=["sync-schedules"], dependencies=[Depends(require_user)])
 
 
 def _get_controller() -> ScheduleController:

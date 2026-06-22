@@ -14,9 +14,10 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
 
+from api.dependencies import require_user
 from service.FileService import (
     FileRecord,
     get_file,
@@ -27,7 +28,7 @@ from service.FileService import (
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(tags=["files"])
+router = APIRouter(tags=["files"], dependencies=[Depends(require_user)])
 
 # XLSX / XLS MIME types that should be served as CSV for frontend table rendering
 _EXCEL_MIMES = {
@@ -125,4 +126,3 @@ async def get_chat_file_text(file_id: str) -> Response:
         media_type="text/plain; charset=utf-8",
         headers={"Cache-Control": "private, max-age=3600"},
     )
-

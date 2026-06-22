@@ -20,6 +20,7 @@ from langfuse import Langfuse  # type: ignore[import-untyped]
 
 from agents import get_agent, get_all_agent_info, load_agent
 from core import settings
+from core import settings as core_settings
 from core.db import close_db_engine, get_db_engine
 from core.db.schema_bootstrap import ensure_schema
 from core.logger import configure_logging
@@ -27,9 +28,8 @@ from memory import initialize_database, initialize_store
 from service.AirbyteSyncListenerService import get_sync_listener
 from service.CheckpointerService import set_global_checkpointer
 from service.LangGraphStoreService import set_global_langgraph_store
-from service.SyncQueueService import get_sync_queue
 from service.MCPProviderService import MCPProviderService
-from core import settings as core_settings
+from service.SyncQueueService import get_sync_queue
 
 warnings.filterwarnings("ignore", category=LangChainBetaWarning)
 configure_logging()
@@ -170,24 +170,24 @@ async def api_health_check():
 # =============================================================================
 
 from api.routes import (
+    agent_definitions_router,
     agents_router,
+    assistant_schemas_router,
     assistants_router,
-    threads_router,
     auth_router,
     chat_router,
-    persona_router,
-    user_router,
-    schedule_router,
+    datasources_router,
+    file_router,
     ingest_router,
+    persona_router,
+    provider_router,
     proxy_router,
     run_router,
-    datasources_router,
-    assistant_schemas_router,
-    file_router,
-    agent_definitions_router,
-    web_search_router,
-    provider_router,
+    schedule_router,
+    threads_router,
     user_memory_router,
+    user_router,
+    web_search_router,
 )
 
 app.include_router(agents_router)
@@ -214,9 +214,9 @@ except Exception as e:
     logger.warning(f"Provider routes not available: {e}")
 
 try:
+    from api.routes.AgentToolsRoute import router as agent_tools_router
     from api.routes.MCPProvidersRoute import router as mcp_providers_router
     from api.routes.MCPToolsRoute import router as mcp_tools_router
-    from api.routes.AgentToolsRoute import router as agent_tools_router
 
     app.include_router(mcp_providers_router)
     app.include_router(mcp_tools_router)

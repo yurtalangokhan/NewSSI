@@ -4,7 +4,6 @@ A simple agent that allows users to configure system prompt and select MCP tools
 """
 
 import logging
-import os
 import re
 from typing import Any
 from urllib.parse import urlparse

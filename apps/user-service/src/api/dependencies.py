@@ -81,5 +81,32 @@ async def verify_internal_service_token(request: Request) -> bool:
     return token == settings.INTERNAL_SERVICE_TOKEN
 
 
-def get_current_user_optional(request: Request) -> str | None:
-    return None
+async def get_current_user_optional(
+    request: Request,
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_security)],
+) -> str | None:
+    return await get_current_user_id(request, credentials)
+
+
+async def require_auth_or_internal_service_token(
+    request: Request,
+    user_id: Annotated[str | None, Depends(get_current_user_id)],
+) -> str:
+    """Accept either a valid user JWT or X-Internal-Service-Token.
+
+    Used on internal routes that must work both for user-scoped calls
+    (when agent-service forwards the user's Bearer token) and for
+    machine-only flows (when no user context exists, e.g. Airbyte
+    ingestion, Keycloak sync).
+    """
+    if user_id:
+        return user_id
+
+    from src.config import get_settings
+
+    settings = get_settings()
+    token = request.headers.get("X-Internal-Service-Token")
+    if token and settings.INTERNAL_SERVICE_TOKEN and token == settings.INTERNAL_SERVICE_TOKEN:
+        return "internal-service"
+
+    raise HTTPException(status_code=401, detail="Authentication required")

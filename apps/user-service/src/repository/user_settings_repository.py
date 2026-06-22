@@ -16,8 +16,12 @@ class UserSettingsRepository(BaseRepository):
         "memories": [],
         "use_memories": False,
         "enable_memory_tool": False,
+        "long_term_memory_enabled": False,
+        "extract_memory": True,
         "user_preferences": "",
+        "work_role": "",
         "prompt_shortcuts": [],
+        "pinned_assistants": [],
     }
 
     async def get_by_user_id(self, user_id: uuid.UUID) -> UserSettingsModel | None:
@@ -45,10 +49,18 @@ class UserSettingsRepository(BaseRepository):
                 "memories",
                 "use_memories",
                 "enable_memory_tool",
+                "long_term_memory_enabled",
+                "extract_memory",
                 "user_preferences",
+                "work_role",
                 "prompt_shortcuts",
+                "pinned_assistants",
             }
             filtered = {k: v for k, v in updates.items() if k in allowed_keys and v is not None}
+            if "user_preferences" in filtered:
+                filtered["user_preferences"] = str(filtered["user_preferences"] or "")
+            if "work_role" in filtered:
+                filtered["work_role"] = str(filtered["work_role"] or "").strip()
 
             if settings:
                 for key, value in filtered.items():

@@ -4,18 +4,25 @@ _transform: true
 # Kong OSS 3.8 JWT authentication.
 #
 # Routing strategy:
-# 1. Public endpoints (/api/auth, /health, /auth) - no JWT required
-# 2. Protected endpoints - Kong JWT plugin verifies RS256 signature plus exp claim
-# 3. Internal service-to-service traffic must use /internal/* routes (no JWT)
-# 4. Expired/invalid tokens return 401 from Kong, so web can redirect to login
-# 5. Backend services decode claims for authorization decisions
+# 1. Public endpoints (/api/auth, /health) - no JWT required at Kong level.
+#    Service-level auth dependencies (require_auth) handle granular protection
+#    (e.g. /api/auth/logout, /api/auth/refresh, /api/auth/me are protected at
+#    the service layer even though Kong passes them through).
+# 2. Protected endpoints - Kong JWT plugin verifies RS256 signature plus exp
+#    claim for defense-in-depth. Backend services also validate independently.
+# 3. Internal service-to-service traffic uses /internal/* routes and still
+#    carries Authorization: Bearer tokens for user-scoped requests.
+#    X-Internal-Service-Token is reserved for machine-only flows.
+# 4. Expired/invalid tokens return 401 from Kong, so web can redirect to login.
+# 5. Backend services also validate tokens for direct/gateway-less requests.
+#    This ensures the system works identically with or without Kong.
 
 services:
   # --------------------------------------------------------------------------
   # User Service
   # --------------------------------------------------------------------------
   - name: user-service
-    url: http://user-service:8090
+    url: http://host.docker.internal:8090
     routes:
       # Public auth endpoints (login/logout/refresh/me/type/oidc)
       - name: user-service-auth
@@ -44,6 +51,12 @@ services:
                 - fastapiusersauth
 
       # User-service endpoints
+      - name: user-service-internal-api
+        paths:
+          - /api/internal
+        strip_path: false
+        preserve_host: true
+        plugins: *jwt_plugin
 
       - name: user-service-settings
         paths:
@@ -77,7 +90,7 @@ services:
   # Agent Service
   # --------------------------------------------------------------------------
   - name: agent-service
-    url: http://agent-service:8123
+    url: http://host.docker.internal:8123
     routes:
       - name: agent-service-api-health-public
         paths:
@@ -93,6 +106,7 @@ services:
           - /api/content
           - /api/datasources
           - /api/federated
+          - /api/input_promt
           - /api/input_prompt
           - /api/llm
           - /api/manage
@@ -110,13 +124,6 @@ services:
         strip_path: false
         preserve_host: true
         plugins: *jwt_plugin
-
-      # Public auth endpoints for login/logout/oidc flow.
-      - name: agent-service-auth-public
-        paths:
-          - /auth
-        strip_path: false
-        preserve_host: true
 
       # Non-/api endpoints exposed by agent-service.
       - name: agent-service-non-api
@@ -146,7 +153,7 @@ services:
   # RAG Service
   # --------------------------------------------------------------------------
   - name: rag-service
-    url: http://rag-service:8083
+    url: http://host.docker.internal:8083
     routes:
       - name: rag-service-api
         paths:
@@ -161,7 +168,7 @@ services:
   - name: tools-service-mcp
     # FastMCP HTTP transport is mounted at /mcp.
     # With strip_path=true, /api/mcp -> /mcp upstream.
-    url: http://tools-service:8003/mcp
+    url: http://host.docker.internal:8002/mcp
     routes:
       - name: tools-service-mcp
         paths:
@@ -171,40 +178,54 @@ services:
         plugins: *jwt_plugin
 
   # --------------------------------------------------------------------------
-  # Internal routes (no JWT) — for service-to-service communication.
-  # Services authenticate via X-Internal-Service-Token at the application
-  # layer, so these routes bypass Kong's JWT validation entirely.
+  # Internal routes — gateway-prefixed service-to-service communication.
+  # User-scoped calls must carry Authorization: Bearer and are validated here
+  # and again by the upstream service when called directly without Kong.
+  # X-Internal-Service-Token is reserved for machine-only application flows.
   #
   # strip_path=true removes the /internal/{service} prefix so the upstream
   # receives the original internal path (e.g. /api/users/internal/...).
   # --------------------------------------------------------------------------
 
   - name: internal-user-service
-    url: http://user-service:8090
+    url: http://host.docker.internal:8090
     routes:
       - name: internal-user-service-all
         paths:
           - /internal/user-service
         strip_path: true
         preserve_host: true
+        plugins: *jwt_plugin
+
+  - name: internal-agent-service
+    url: http://host.docker.internal:8123
+    routes:
+      - name: internal-agent-service-all
+        paths:
+          - /internal/agent-service
+        strip_path: true
+        preserve_host: true
+        plugins: *jwt_plugin
 
   - name: internal-rag-service
-    url: http://rag-service:8080
+    url: http://host.docker.internal:8083
     routes:
       - name: internal-rag-service-all
         paths:
           - /internal/rag-service
         strip_path: true
         preserve_host: true
+        plugins: *jwt_plugin
 
   - name: internal-tools-service
-    url: http://tools-service:8003/mcp
+    url: http://host.docker.internal:8002/mcp
     routes:
       - name: internal-tools-service-all
         paths:
           - /internal/mcp
         strip_path: true
         preserve_host: true
+        plugins: *jwt_plugin
 
 consumers:
   - username: keycloak-agenticai
@@ -223,4 +244,3 @@ consumers:
           KwIDAQAB
           -----END PUBLIC KEY-----
         secret: kong-jwt-dummy-secret
-

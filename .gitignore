@@ -9,3 +9,4 @@ __pycache__
 node_modules
 uv-lock-out
 agent-service-toolkit
+.tmp

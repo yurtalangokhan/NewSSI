@@ -11,6 +11,7 @@ import { Button } from "@opal/components";
 import { SvgEdit } from "@opal/icons";
 import { useTranslation } from "react-i18next";
 import FileDisplay from "./FileDisplay";
+import { useAppBackground } from "@/providers/AppBackgroundProvider";
 
 interface MessageEditingProps {
   content: string;
@@ -139,6 +140,7 @@ const HumanMessage = React.memo(function HumanMessage({
 
   const [isEditing, setIsEditing] = useState(false);
   const { t } = useTranslation();
+  const { foregroundTextClass, foregroundTextStyle } = useAppBackground();
 
   // Use nodeId for switching (finding position in siblings)
   const indexInSiblings = otherMessagesCanSwitchTo?.indexOf(nodeId);
@@ -213,7 +215,8 @@ const HumanMessage = React.memo(function HumanMessage({
               >
                 <Text
                   as="p"
-                  className="inline-block align-middle"
+                  className={`inline-block align-middle ${foregroundTextClass}`}
+                  style={foregroundTextStyle}
                   mainContentBody
                 >
                   {content}
@@ -254,7 +257,9 @@ const HumanMessage = React.memo(function HumanMessage({
                 tooltip={t("humanMessage.editTooltip")}
               />
             </div>
-            <div className="ml-auto rounded-lg p-1">{content}</div>
+            <div className="ml-auto rounded-lg p-1" style={foregroundTextStyle}>
+              {content}
+            </div>
           </>
         )}
         <div className="md:min-w-[100%] flex justify-end order-1 mt-1">

@@ -10,7 +10,7 @@ import { toast } from "@/hooks/useToast";
 import { SEARCH_PARAM_NAMES } from "@/app/app/services/searchParams";
 import { useFederatedConnectors, useFilters, useLlmManager } from "@/lib/hooks";
 import { useForcedTools } from "@/lib/hooks/useForcedTools";
-import OnyxInitializingLoader from "@/components/OnyxInitializingLoader";
+import InitializingLoader from "@/components/InitializingLoader";
 import { OnyxDocument, MinimalOnyxDocument } from "@/lib/search/interfaces";
 import { useSettingsContext } from "@/providers/SettingsProvider";
 import Dropzone from "react-dropzone";
@@ -64,7 +64,12 @@ import OnboardingFlow from "@/refresh-components/onboarding/OnboardingFlow";
 import { OnboardingStep } from "@/refresh-components/onboarding/types";
 import { useShowOnboarding } from "@/hooks/useShowOnboarding";
 import * as AppLayouts from "@/layouts/app-layouts";
-import { SvgChevronDown, SvgChevronLeft, SvgFileText, SvgUploadCloud } from "@opal/icons";
+import {
+  SvgChevronDown,
+  SvgChevronLeft,
+  SvgFileText,
+  SvgUploadCloud,
+} from "@opal/icons";
 import { Button } from "@opal/components";
 import Spacer from "@/refresh-components/Spacer";
 import { DEFAULT_CONTEXT_TOKENS } from "@/lib/constants";
@@ -595,10 +600,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
       );
       // Preserve project context when switching agent
       if (currentProjectId) {
-        params.set(
-          SEARCH_PARAM_NAMES.PROJECT_ID,
-          String(currentProjectId)
-        );
+        params.set(SEARCH_PARAM_NAMES.PROJECT_ID, String(currentProjectId));
       }
       router.push(`/app?${params.toString()}`, { scroll: false });
     },
@@ -608,10 +610,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
   const handleBackToProject = useCallback(() => {
     if (currentProjectId) {
       const params = new URLSearchParams();
-      params.set(
-        SEARCH_PARAM_NAMES.PROJECT_ID,
-        String(currentProjectId)
-      );
+      params.set(SEARCH_PARAM_NAMES.PROJECT_ID, String(currentProjectId));
       router.push(`/app?${params.toString()}`, { scroll: false });
     }
   }, [currentProjectId, router]);
@@ -772,7 +771,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
           : "1fr auto 1fr",
   };
 
-  if (!isReady) return <OnyxInitializingLoader />;
+  if (!isReady) return <InitializingLoader />;
 
   return (
     <>
@@ -905,23 +904,23 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
                 <div className="row-start-2 flex flex-col items-center">
                   <div className="relative w-full max-w-[var(--app-page-main-content-width)] flex flex-col">
                     {/* Back button - shown when chat is opened within a project */}
-                    {appFocus.isChat() && 
-                      currentChatSessionId && 
-                      currentProjectId && 
+                    {appFocus.isChat() &&
+                      currentChatSessionId &&
+                      currentProjectId &&
                       currentProjectDetails?.project && (
-                      <div className="mb-2 flex items-center gap-2 px-2">
-                        <button
-                          onClick={handleBackToProject}
-                          aria-label={t("projectContextPanel.backToProject")}
-                          className="inline-flex items-center gap-1 rounded-lg px-2 py-1 hover:bg-background-tint-02 transition-colors"
-                        >
-                          <SvgChevronLeft size={16} className="w-4 h-4" />
-                          <span className="text-xs font-medium text-text-light">
-                            {currentProjectDetails.project.name}
-                          </span>
-                        </button>
-                      </div>
-                    )}
+                        <div className="mb-2 flex items-center gap-2 px-2">
+                          <button
+                            onClick={handleBackToProject}
+                            aria-label={t("projectContextPanel.backToProject")}
+                            className="inline-flex items-center gap-1 rounded-lg px-2 py-1 hover:bg-background-tint-02 transition-colors"
+                          >
+                            <SvgChevronLeft size={16} className="w-4 h-4" />
+                            <span className="text-xs font-medium text-text-light">
+                              {currentProjectDetails.project.name}
+                            </span>
+                          </button>
+                        </div>
+                      )}
 
                     {/* Scroll to bottom button - positioned absolutely above AppInputBar */}
                     {appFocus.isChat() && showScrollButton && (

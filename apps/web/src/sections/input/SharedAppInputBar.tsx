@@ -11,15 +11,26 @@ import {
   SvgEditBig,
 } from "@opal/icons";
 import { useTranslation } from "react-i18next";
+import { cn } from "@/lib/utils";
+import { useAppBackground } from "@/providers/AppBackgroundProvider";
 
 export default function SharedAppInputBar() {
   const { t } = useTranslation();
+  const { foregroundMutedTextClass, foregroundMutedTextStyle } =
+    useAppBackground();
   return (
     <div className="relative w-full">
       <div className="w-full flex flex-col shadow-01 bg-background-neutral-00 rounded-16">
         {/* Textarea area */}
         <div className="flex flex-row items-center w-full">
-          <Text text03 className="w-full px-3 pt-3 pb-2 select-none">
+          <Text
+            text03
+            className={cn(
+              "w-full px-3 pt-3 pb-2 select-none",
+              foregroundMutedTextClass
+            )}
+            style={foregroundMutedTextStyle}
+          >
             {t("sharedInput.placeholder")}
           </Text>
         </div>
