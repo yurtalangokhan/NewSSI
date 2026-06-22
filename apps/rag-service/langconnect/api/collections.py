@@ -3,7 +3,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from langconnect.auth import AuthenticatedUser, resolve_user
+from langconnect.auth import AuthenticatedUser, require_permission, resolve_user
 from langconnect.database.collections import CollectionsManager
 from langconnect.models import CollectionCreate, CollectionResponse, CollectionUpdate
 from langconnect.services.build_lock import (
@@ -21,7 +21,7 @@ router = APIRouter(prefix="/collections", tags=["collections"])
 )
 async def collections_create(
     collection_data: CollectionCreate,
-    user: Annotated[AuthenticatedUser, Depends(resolve_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("collection:create"))],
 ):
     """Creates a new PGVector collection by name with optional metadata."""
     collection_info = await CollectionsManager(user.identity).create(
@@ -57,7 +57,7 @@ async def collections_get(
 
 @router.delete("/{collection_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def collections_delete(
-    user: Annotated[AuthenticatedUser, Depends(resolve_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("collection:delete"))],
     collection_id: UUID,
 ):
     """Deletes a specific PGVector collection by name."""
@@ -69,7 +69,7 @@ async def collections_delete(
 
 @router.patch("/{collection_id}", response_model=CollectionResponse)
 async def collections_update(
-    user: Annotated[AuthenticatedUser, Depends(resolve_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("collection:update"))],
     collection_id: UUID,
     collection_data: CollectionUpdate,
 ):

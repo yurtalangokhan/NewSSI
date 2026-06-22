@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Upload
 from langchain_core.documents import Document
 from pydantic import TypeAdapter, ValidationError
 
-from langconnect.auth import AuthenticatedUser, resolve_user
+from langconnect.auth import AuthenticatedUser, require_permission, resolve_user
 from langconnect.database.collections import Collection
 from langconnect.models import SearchQuery, SearchResult
 from langconnect.services.build_lock import (
@@ -25,7 +25,7 @@ router = APIRouter(tags=["documents"])
 
 @router.post("/collections/{collection_id}/documents", response_model=dict[str, Any])
 async def documents_create(
-    user: Annotated[AuthenticatedUser, Depends(resolve_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("document:create"))],
     collection_id: UUID,
     files: list[UploadFile] = File(...),
     metadatas_json: str | None = Form(None),
@@ -206,7 +206,7 @@ async def documents_list_chunks(
     response_model=dict[str, bool],
 )
 async def documents_delete(
-    user: Annotated[AuthenticatedUser, Depends(resolve_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("document:delete"))],
     collection_id: UUID,
     document_id: str,
 ):

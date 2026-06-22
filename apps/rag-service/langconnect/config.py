@@ -19,6 +19,7 @@ KEYCLOAK_CLIENT_ID = env("KEYCLOAK_CLIENT_ID", cast=str, default="agenticai-web"
 KEYCLOAK_CLIENT_SECRET = env("KEYCLOAK_CLIENT_SECRET", cast=str, default="")
 KEYCLOAK_TOKEN_LEEWAY_SECONDS = env("KEYCLOAK_TOKEN_LEEWAY_SECONDS", cast=int, default=120)
 INTERNAL_SERVICE_TOKEN = env("INTERNAL_SERVICE_TOKEN", cast=str, default="")
+USER_SERVICE_URL = env("USER_SERVICE_URL", cast=str, default="http://user-service:8090")
 
 # Embedding configuration
 EMBEDDING_PROVIDER = env("EMBEDDING_PROVIDER", cast=str, default="ollama")

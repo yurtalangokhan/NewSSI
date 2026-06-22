@@ -1,5 +1,7 @@
 """Auth to resolve user object - API Key based authentication with Keycloak JWT support."""
 
+from __future__ import annotations
+
 import os
 from typing import Annotated, Any, Optional
 
@@ -205,3 +207,51 @@ def resolve_user(
         raise HTTPException(status_code=403, detail="API key required")
 
     raise HTTPException(status_code=401, detail="Bearer token required")
+
+
+async def require_permission(permission: str):
+    """Factory returning a FastAPI dependency that authenticates and checks a permission.
+
+    Usage: ``user = Depends(require_permission("collection:create"))``
+
+    Authenticates via resolve_user, then calls user-service to verify the user's
+    role includes the required permission. Dev mode and internal-service bypass.
+    """
+    import httpx
+
+    async def _check(
+        request: Request,
+        credentials: Annotated[
+            Optional[HTTPAuthorizationCredentials], Depends(security)
+        ] = None,
+    ) -> AuthenticatedUser:
+        user = resolve_user(request=request, credentials=credentials)
+
+        if user.identity in ("dev-user", "internal-service"):
+            return user
+
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                headers: dict[str, str] = {}
+                if user.identity == "internal-service":
+                    headers["X-Internal-Service-Token"] = config.INTERNAL_SERVICE_TOKEN
+                elif credentials:
+                    headers["Authorization"] = f"Bearer {credentials.credentials}"
+
+                resp = await client.get(
+                    f"{config.USER_SERVICE_URL}/api/users/internal/{user.identity}/permissions",
+                    headers=headers,
+                )
+                if resp.status_code == 200:
+                    perms = resp.json().get("permissions", [])
+                    if perms == ["*"] or permission in perms:
+                        return user
+        except Exception:
+            pass
+
+        raise HTTPException(
+            status_code=403,
+            detail=f"Missing required permission: {permission}",
+        )
+
+    return _check

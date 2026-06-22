@@ -14,7 +14,7 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 
-from langconnect.auth import AuthenticatedUser, resolve_user
+from langconnect.auth import AuthenticatedUser, require_permission, resolve_user
 from langconnect.database.collections import Collection
 from langconnect.database.neo4j import GraphStore
 from langconnect.models.graph import (
@@ -52,7 +52,7 @@ router = APIRouter(prefix="/graph", tags=["graph-rag"])
 async def build_graph(
     request: GraphBuildRequest,
     background_tasks: BackgroundTasks,
-    user: Annotated[AuthenticatedUser, Depends(resolve_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("collection:update"))],
 ):
     """Trigger knowledge graph construction from a vector collection.
 
@@ -123,7 +123,7 @@ async def get_build_status(
 @router.post("/build/{collection_id}/pause", response_model=GraphBuildResponse)
 async def pause_build(
     collection_id: str,
-    user: Annotated[AuthenticatedUser, Depends(resolve_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("collection:update"))],
 ):
     """Pause a currently running graph build."""
     progress = request_pause_build(collection_id)
@@ -142,7 +142,7 @@ async def pause_build(
 @router.post("/build/{collection_id}/resume", response_model=GraphBuildResponse)
 async def resume_build(
     collection_id: str,
-    user: Annotated[AuthenticatedUser, Depends(resolve_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("collection:update"))],
 ):
     """Resume a paused graph build."""
     progress = request_resume_build(collection_id)
@@ -161,7 +161,7 @@ async def resume_build(
 @router.post("/build/{collection_id}/stop", response_model=GraphBuildResponse)
 async def stop_build(
     collection_id: str,
-    user: Annotated[AuthenticatedUser, Depends(resolve_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("collection:update"))],
 ):
     """Request cancellation for a currently running graph build."""
     progress = request_stop_build(collection_id)
@@ -485,7 +485,7 @@ async def execute_cypher(
 @router.delete("/collections/{collection_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_graph(
     collection_id: str,
-    user: Annotated[AuthenticatedUser, Depends(resolve_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("collection:delete"))],
 ):
     """Delete the entire knowledge graph for a collection."""
     store = GraphStore(collection_id)
