@@ -669,7 +669,6 @@ def require_permission(permission: str):
     Authenticates via require_user, then fetches the user's resolved permissions
     from user-service and verifies membership. Dev mode and internal-service bypass.
     """
-    from service.UserServiceClient import get_user_permissions
 
     async def _check_permission(
         user: AuthenticatedUser = Depends(require_user),
@@ -678,6 +677,8 @@ def require_permission(permission: str):
             return user
 
         try:
+            from service.UserServiceClient import get_user_permissions
+
             perm_data = await get_user_permissions(user.user_id, user.access_token)
             user_perms = perm_data.get("permissions", [])
             if user_perms == ["*"] or permission in user_perms:

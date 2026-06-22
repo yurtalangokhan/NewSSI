@@ -209,7 +209,7 @@ def resolve_user(
     raise HTTPException(status_code=401, detail="Bearer token required")
 
 
-async def require_permission(permission: str):
+def require_permission(permission: str):
     """Factory returning a FastAPI dependency that authenticates and checks a permission.
 
     Usage: ``user = Depends(require_permission("collection:create"))``
@@ -217,7 +217,6 @@ async def require_permission(permission: str):
     Authenticates via resolve_user, then calls user-service to verify the user's
     role includes the required permission. Dev mode and internal-service bypass.
     """
-    import httpx
 
     async def _check(
         request: Request,
@@ -225,6 +224,8 @@ async def require_permission(permission: str):
             Optional[HTTPAuthorizationCredentials], Depends(security)
         ] = None,
     ) -> AuthenticatedUser:
+        import httpx
+
         user = resolve_user(request=request, credentials=credentials)
 
         if user.identity in ("dev-user", "internal-service"):

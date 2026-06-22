@@ -260,6 +260,29 @@ async def upsert_user_from_keycloak(
 
 
 # ---------------------------------------------------------------------------
+# Permission check — proxied to user-service internal API
+# ---------------------------------------------------------------------------
+
+
+async def get_user_permissions(
+    user_id: str, access_token: str | None = None
+) -> dict[str, list[str]]:
+    """Return the resolved permission list for a user.
+
+    Calls GET /api/users/internal/{user_id}/permissions on user-service.
+    Returns ``{"permissions": [...]}``, or ``{"permissions": []}`` on failure.
+    """
+    data = await _request(
+        "GET",
+        f"/api/users/internal/{user_id}/permissions",
+        access_token=access_token,
+    )
+    if isinstance(data, dict):
+        return data
+    return {"permissions": []}
+
+
+# ---------------------------------------------------------------------------
 # User memory operations — proxied to user-service internal API
 # ---------------------------------------------------------------------------
 
