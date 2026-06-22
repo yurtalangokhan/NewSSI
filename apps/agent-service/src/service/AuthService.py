@@ -30,6 +30,7 @@ __all__ = [
     "get_auth_service",
     "AuthenticatedUser",
     "require_user",
+    "require_permission",
     "require_user_or_internal_service_token",
     "get_primary_user_id",
     "verify_bearer",
@@ -658,6 +659,38 @@ async def require_user(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Invalid bearer token",
     )
+
+
+def require_permission(permission: str):
+    """Factory returning a FastAPI dependency requiring a specific permission.
+
+    Usage: ``user = Depends(require_permission("datasource:create"))``
+
+    Authenticates via require_user, then fetches the user's resolved permissions
+    from user-service and verifies membership. Dev mode and internal-service bypass.
+    """
+    from service.UserServiceClient import get_user_permissions
+
+    async def _check_permission(
+        user: AuthenticatedUser = Depends(require_user),
+    ) -> AuthenticatedUser:
+        if user.user_id in ("dev-user", "internal-service"):
+            return user
+
+        try:
+            perm_data = await get_user_permissions(user.user_id, user.access_token)
+            user_perms = perm_data.get("permissions", [])
+            if user_perms == ["*"] or permission in user_perms:
+                return user
+        except Exception:
+            pass
+
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Missing required permission: {permission}",
+        )
+
+    return _check_permission
 
 
 async def require_user_or_internal_service_token(
