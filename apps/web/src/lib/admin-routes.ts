@@ -58,6 +58,7 @@ export const ADMIN_PATHS = {
   KNOWLEDGE_GRAPH: "/admin/kg",
   USERS: "/admin/users",
   API_KEYS: "/admin/api-key",
+  ROLES: "/admin/roles",
   TOKEN_RATE_LIMITS: "/admin/token-rate-limits",
   USAGE: "/admin/performance/usage",
   QUERY_HISTORY: "/admin/performance/query-history",
@@ -227,6 +228,11 @@ export const ADMIN_ROUTE_CONFIG: Record<string, AdminRouteConfig> = {
     sidebarLabel: "API Keys",
     titleKey: "admin.navigation.routes.apiKeys.title",
     sidebarLabelKey: "admin.navigation.routes.apiKeys.sidebar",
+  },
+  [ADMIN_PATHS.ROLES]: {
+    icon: SvgShield,
+    title: "Roles & Permissions",
+    sidebarLabel: "Roles & Permissions",
   },
   [ADMIN_PATHS.TOKEN_RATE_LIMITS]: {
     icon: SvgShield,

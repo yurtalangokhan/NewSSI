@@ -4,7 +4,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from api.dependencies import require_user
+from api.dependencies import AuthenticatedUser, require_permission, require_user
 from service.MCPToolService import MCPToolService
 
 router = APIRouter(
@@ -77,6 +77,7 @@ async def list_tools_by_provider(
 @router.post("/sync")
 async def sync_all_tools(
     service: MCPToolService = Depends(_get_service),
+    _user: AuthenticatedUser = Depends(require_permission("mcp_tool:sync")),
 ) -> dict[str, int]:
     return await service.sync_all_providers()
 
@@ -85,6 +86,7 @@ async def sync_all_tools(
 async def sync_provider_tools(
     provider_id: str,
     service: MCPToolService = Depends(_get_service),
+    _user: AuthenticatedUser = Depends(require_permission("mcp_tool:sync")),
 ) -> dict[str, Any]:
     count = await service.sync_tools_from_provider(provider_id)
     return {"provider_id": provider_id, "tools_synced": count}
@@ -94,6 +96,7 @@ async def sync_provider_tools(
 async def delete_tool(
     tool_id: str,
     service: MCPToolService = Depends(_get_service),
+    _user: AuthenticatedUser = Depends(require_permission("mcp_tool:sync")),
 ) -> dict[str, Any]:
     deleted = await service.delete_tool(tool_id)
     if not deleted:

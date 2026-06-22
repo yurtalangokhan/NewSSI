@@ -43,6 +43,8 @@ def create_app() -> FastAPI:
             auth_base_router,
             internal_settings_router,
             internal_user_memory_router,
+            permissions_router,
+            roles_router,
             settings_router,
             user_memory_router,
             user_router,
@@ -54,6 +56,8 @@ def create_app() -> FastAPI:
         app.include_router(internal_settings_router, prefix="/api")
         app.include_router(user_memory_router, prefix="/api")
         app.include_router(internal_user_memory_router, prefix="/api")
+        app.include_router(roles_router, prefix="/api")
+        app.include_router(permissions_router, prefix="/api")
     else:
         # Own Keycloak mode — full auth + user CRUD via admin API
         from src.api.routes import (
@@ -62,6 +66,7 @@ def create_app() -> FastAPI:
             auth_own_router,
             internal_settings_router,
             internal_user_memory_router,
+            permissions_router,
             roles_router,
             settings_router,
             user_memory_router,
@@ -77,6 +82,7 @@ def create_app() -> FastAPI:
         app.include_router(internal_user_memory_router, prefix="/api")
         app.include_router(api_keys_router, prefix="/api")
         app.include_router(roles_router, prefix="/api")
+        app.include_router(permissions_router, prefix="/api")
 
     return app
 

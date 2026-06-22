@@ -66,6 +66,12 @@ services:
         strip_path: false
         preserve_host: true
 
+      - name: user-service-permissions
+        paths:
+          - /api/permissions
+        strip_path: false
+        preserve_host: true
+
       - name: user-service-health
         paths:
           - /health

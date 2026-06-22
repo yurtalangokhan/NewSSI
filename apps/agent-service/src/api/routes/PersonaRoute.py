@@ -9,7 +9,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
-from api.dependencies import AuthenticatedUser, require_user
+from api.dependencies import AuthenticatedUser, require_permission, require_user
 from controller import PersonaController, get_persona_controller
 
 router = APIRouter(tags=["persona"], dependencies=[Depends(require_user)])
@@ -92,5 +92,7 @@ async def delete_persona(persona_id: int):
 
 
 @router.post("/api/admin/persona/upload-image")
-async def upload_persona_image():
+async def upload_persona_image(
+    _user: AuthenticatedUser = Depends(require_permission("persona:create")),
+):
     return await _get_controller().upload_persona_image()

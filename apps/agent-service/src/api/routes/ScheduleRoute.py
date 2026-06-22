@@ -11,7 +11,7 @@ import logging
 
 from fastapi import APIRouter, Depends
 
-from api.dependencies import require_user
+from api.dependencies import AuthenticatedUser, require_permission, require_user
 from controller import ScheduleController, get_schedule_controller
 from service.ScheduleModels import (
     ScheduleRunStatus,
@@ -39,7 +39,11 @@ async def list_all_schedules():
 
 
 @router.post("/datasources/{datasource_id}/schedule", response_model=SyncScheduleResponse)
-async def create_schedule(datasource_id: str, body: SyncScheduleInput):
+async def create_schedule(
+    datasource_id: str,
+    body: SyncScheduleInput,
+    _user: AuthenticatedUser = Depends(require_permission("schedule:create")),
+):
     """Create a sync schedule by setting cron on the Airbyte connection."""
     ctrl = _get_controller()
     return await ctrl.create_schedule(datasource_id, body)
@@ -53,14 +57,21 @@ async def get_schedule(datasource_id: str):
 
 
 @router.put("/datasources/{datasource_id}/schedule", response_model=SyncScheduleResponse)
-async def update_schedule(datasource_id: str, body: SyncScheduleUpdate):
+async def update_schedule(
+    datasource_id: str,
+    body: SyncScheduleUpdate,
+    _user: AuthenticatedUser = Depends(require_permission("schedule:update")),
+):
     """Update an existing sync schedule."""
     ctrl = _get_controller()
     return await ctrl.update_schedule(datasource_id, body)
 
 
 @router.delete("/datasources/{datasource_id}/schedule")
-async def delete_schedule(datasource_id: str):
+async def delete_schedule(
+    datasource_id: str,
+    _user: AuthenticatedUser = Depends(require_permission("schedule:delete")),
+):
     """Remove the sync schedule (set Airbyte connection to manual)."""
     ctrl = _get_controller()
     return await ctrl.delete_schedule(datasource_id)

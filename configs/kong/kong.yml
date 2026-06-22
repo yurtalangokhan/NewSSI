@@ -79,6 +79,13 @@ services:
         preserve_host: true
         plugins: *jwt_plugin
 
+      - name: user-service-permissions
+        paths:
+          - /api/permissions
+        strip_path: false
+        preserve_host: true
+        plugins: *jwt_plugin
+
       # Health
       - name: user-service-health
         paths:

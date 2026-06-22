@@ -13,7 +13,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 
-from api.dependencies import require_user
+from api.dependencies import AuthenticatedUser, require_permission, require_user
 from controller import DataController, get_data_controller
 from core.db import DatasourceRepository
 from service.Schemas import (
@@ -195,7 +195,10 @@ async def list_datasources():
 
 
 @router.post("", response_model=DataSourceResponse)
-async def create_datasource(input: DataSourceInput):
+async def create_datasource(
+    input: DataSourceInput,
+    _user: AuthenticatedUser = Depends(require_permission("datasource:create")),
+):
     """Create a new data source.
 
     1. Create Airbyte source + connection + destination
@@ -588,7 +591,11 @@ async def get_datasource_details(id: str, page: int = 1, page_size: int = 10):
 
 
 @router.put("/{id}", response_model=DataSourceDetails)
-async def update_datasource(id: str, input: DataSourceUpdateInput):
+async def update_datasource(
+    id: str,
+    input: DataSourceUpdateInput,
+    _user: AuthenticatedUser = Depends(require_permission("datasource:update")),
+):
     """Update a data source's name, configuration, streams, and/or sync mode.
 
     Updates the Airbyte source config, connection streams/sync mode, and local metadata.
@@ -730,7 +737,11 @@ async def update_datasource(id: str, input: DataSourceUpdateInput):
 
 
 @router.post("/{id}/sync")
-async def sync_datasource(id: str, background_tasks: BackgroundTasks):
+async def sync_datasource(
+    id: str,
+    background_tasks: BackgroundTasks,
+    _user: AuthenticatedUser = Depends(require_permission("datasource:sync")),
+):
     """Trigger synchronization for a data source.
 
     If the datasource has an Airbyte connection, triggers via Airbyte API.
@@ -896,7 +907,10 @@ async def get_sync_history(id: str, limit: int = Query(20, ge=1, le=100)):
 
 
 @router.delete("/{id}")
-async def delete_datasource(id: str):
+async def delete_datasource(
+    id: str,
+    _user: AuthenticatedUser = Depends(require_permission("datasource:delete")),
+):
     """Delete a data source, its embeddings, and Airbyte objects."""
     ds_repo = DatasourceRepository()
 
