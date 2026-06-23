@@ -7,13 +7,16 @@ import { ADMIN_PATHS, ADMIN_ROUTE_CONFIG } from "@/lib/admin-routes";
 import { toast } from "@/hooks/useToast";
 import Button from "@/refresh-components/buttons/Button";
 import CreateButton from "@/refresh-components/buttons/CreateButton";
+import InputSelect from "@/refresh-components/inputs/InputSelect";
+import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
+import PasswordInputTypeIn from "@/refresh-components/inputs/PasswordInputTypeIn";
 import Text from "@/refresh-components/texts/Text";
 import { authenticatedFetch } from "@/lib/fetcher";
 import { useTranslation } from "react-i18next";
+import { errorHandlingFetcher } from "@/lib/fetcher";
+import useSWR from "swr";
 
 const usersRoute = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.USERS]!;
-
-const ROLE_OPTIONS = ["enduser", "admin"];
 
 export default function AddUserPage() {
   const { t } = useTranslation();
@@ -25,6 +28,11 @@ export default function AddUserPage() {
   const [role, setRole] = useState("enduser");
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const { data: roles } = useSWR<{ roles: { name: string }[] }>(
+    "/api/user-service/roles/",
+    errorHandlingFetcher
+  );
 
   const disabled = useMemo(() => {
     return (
@@ -91,97 +99,87 @@ export default function AddUserPage() {
               {t("admin.users.createDescription")}
             </Text>
 
-            <label className="flex flex-col gap-1">
+            <div className="flex flex-col gap-1">
               <Text as="p" mainUiBody>
                 {t("auth.usernameLabel", { defaultValue: "Username" })}
               </Text>
-              <input
-                type="text"
+              <InputTypeIn
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="h-10 rounded border border-border-subtle bg-background px-3"
                 placeholder="newuser"
                 autoComplete="username"
                 required
               />
-            </label>
+            </div>
 
-            <label className="flex flex-col gap-1">
+            <div className="flex flex-col gap-1">
               <Text as="p" mainUiBody>
                 {t("auth.emailLabel", { defaultValue: "Email" })}
               </Text>
-              <input
+              <InputTypeIn
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="h-10 rounded border border-border-subtle bg-background px-3"
                 placeholder="user@example.com"
                 required
               />
-            </label>
-
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <label className="flex flex-col gap-1">
-                <Text as="p" mainUiBody>
-                  {t("admin.users.editUserModal.firstNameLabel")}
-                </Text>
-                <input
-                  type="text"
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                  className="h-10 rounded border border-border-subtle bg-background px-3"
-                  placeholder="John"
-                  required
-                />
-              </label>
-
-              <label className="flex flex-col gap-1">
-                <Text as="p" mainUiBody>
-                  {t("admin.users.editUserModal.lastNameLabel")}
-                </Text>
-                <input
-                  type="text"
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                  className="h-10 rounded border border-border-subtle bg-background px-3"
-                  placeholder="Doe"
-                  required
-                />
-              </label>
             </div>
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <label className="flex flex-col gap-1">
+              <div className="flex flex-col gap-1">
+                <Text as="p" mainUiBody>
+                  {t("admin.users.editUserModal.firstNameLabel")}
+                </Text>
+                <InputTypeIn
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  placeholder="John"
+                  required
+                />
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <Text as="p" mainUiBody>
+                  {t("admin.users.editUserModal.lastNameLabel")}
+                </Text>
+                <InputTypeIn
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  placeholder="Doe"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="flex flex-col gap-1">
                 <Text as="p" mainUiBody>
                   {t("admin.users.roleHeader")}
                 </Text>
-                <select
-                  value={role}
-                  onChange={(e) => setRole(e.target.value)}
-                  className="h-10 rounded border border-border-subtle bg-background px-3"
-                >
-                  {ROLE_OPTIONS.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                <InputSelect value={role} onValueChange={setRole}>
+                  <InputSelect.Trigger />
+                  <InputSelect.Content>
+                    {roles?.roles?.map((r) => (
+                      <InputSelect.Item key={r.name} value={r.name}>
+                        {t(`admin.users.roles.${r.name}`)}
+                      </InputSelect.Item>
+                    ))}
+                  </InputSelect.Content>
+                </InputSelect>
+              </div>
 
-              <label className="flex flex-col gap-1">
+              <div className="flex flex-col gap-1">
                 <Text as="p" mainUiBody>
                   {t("admin.users.createPasswordLabel")}
                 </Text>
-                <input
-                  type="password"
+                <PasswordInputTypeIn
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="h-10 rounded border border-border-subtle bg-background px-3"
                   placeholder={t("admin.users.createPasswordPlaceholder")}
                   autoComplete="new-password"
                   required
                 />
-              </label>
+              </div>
             </div>
 
             <div className="mt-2 flex gap-2">

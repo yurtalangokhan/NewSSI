@@ -175,7 +175,7 @@ export default function AdminSidebar({
   const { kgExposed } = useIsKGExposed();
   const pathname = usePathname();
   const { customAnalyticsEnabled } = useCustomAnalyticsEnabled();
-  const { user } = useUser();
+  const { user, hasAllPermissions, isPermissionsLoading } = useUser();
   const settings = useSettingsContext();
   const { data: billingData } = useBillingInformation();
   const { data: licenseData } = useLicense();
@@ -203,7 +203,16 @@ export default function AdminSidebar({
     kgExposed,
     customAnalyticsEnabled,
     hasSubscription
-  );
+  )
+    .map((collection) => ({
+      ...collection,
+      items: isPermissionsLoading
+        ? []
+        : collection.items.filter((item) =>
+            hasAllPermissions(item.requiredPermissions)
+          ),
+    }))
+    .filter((collection) => collection.items.length > 0);
 
   return (
     <SidebarWrapper>

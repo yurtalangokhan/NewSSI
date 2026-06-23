@@ -8,7 +8,6 @@ import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
 import InputComboBox from "@/refresh-components/inputs/InputComboBox";
 import { FormikField } from "@/refresh-components/form/FormikField";
 import { FormField } from "@/refresh-components/form/FormField";
-import { USER_ROLE_LABELS, UserRole } from "@/lib/types";
 import { APIKey } from "./types";
 import { SvgKey } from "@opal/icons";
 import { useTranslation } from "react-i18next";
@@ -42,15 +41,14 @@ export default function OnyxApiKeyForm({
         <Formik
           initialValues={{
             name: apiKey?.api_key_name || "",
-            role: apiKey?.api_key_role || UserRole.ENDUSER.toString(),
+            role: apiKey?.api_key_role || "enduser",
           }}
           onSubmit={async (values, formikHelpers) => {
             formikHelpers.setSubmitting(true);
 
-            // Prepare the payload with the UserRole
             const payload = {
               ...values,
-              role: values.role as UserRole, // Assign the role directly as a UserRole type
+              role: values.role,
             };
 
             let response;
@@ -118,12 +116,12 @@ export default function OnyxApiKeyForm({
                           onValueChange={(value) => helper.setValue(value)}
                           options={[
                             {
-                              label: USER_ROLE_LABELS[UserRole.ENDUSER],
-                              value: UserRole.ENDUSER.toString(),
+                              label: "End User",
+                              value: "enduser",
                             },
                             {
-                              label: USER_ROLE_LABELS[UserRole.ADMIN],
-                              value: UserRole.ADMIN.toString(),
+                              label: "Admin",
+                              value: "admin",
                             },
                           ]}
                           placeholder={t("admin.apiKey.roleSelectPlaceholder")}

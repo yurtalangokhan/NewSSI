@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Button from "@/refresh-components/buttons/Button";
 import Checkbox from "@/refresh-components/inputs/Checkbox";
 import Modal from "@/refresh-components/Modal";
@@ -24,6 +24,8 @@ import {
 import useSWR from "swr";
 import useSWRMutation from "swr/mutation";
 import { useTranslation } from "react-i18next";
+import { useUser } from "@/providers/UserProvider";
+import { getSelectedRoleName } from "@/lib/auth/roleSelection";
 
 const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.ROLES]!;
 
@@ -233,7 +235,9 @@ function CreateRoleModal({
 }
 
 function RolePermissionEditor() {
-  const [selectedRole, setSelectedRole] = useState<string>("enterprise-admin");
+  const { hasPermission } = useUser();
+  const canManageRoles = hasPermission("role:manage");
+  const [selectedRole, setSelectedRole] = useState<string>("");
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [editingDescription, setEditingDescription] = useState(false);
   const [descriptionDraft, setDescriptionDraft] = useState("");
@@ -260,6 +264,14 @@ function RolePermissionEditor() {
   } = useSWR("/api/user-service/roles/", rolesFetcher, {
     dedupingInterval: 30000,
   });
+
+  useEffect(() => {
+    const roles = rolesData?.roles ?? [];
+    const nextSelectedRole = getSelectedRoleName(roles, selectedRole);
+    if (nextSelectedRole !== selectedRole) {
+      setSelectedRole(nextSelectedRole);
+    }
+  }, [rolesData, selectedRole]);
 
   const { data: permsData, isLoading: permsLoading } = useSWR<{
     permissions: Permission[];
@@ -320,6 +332,7 @@ function RolePermissionEditor() {
 
   const handleDeleteRoleAction = useCallback(
     async (roleName: string) => {
+      if (!canManageRoles) return;
       setIsDeleting(true);
       try {
         await deleteRole(`/api/user-service/roles/${roleName}`);
@@ -339,7 +352,7 @@ function RolePermissionEditor() {
         setIsDeleting(false);
       }
     },
-    [selectedRole, mutateRoles, rolesData]
+    [canManageRoles, selectedRole, mutateRoles, rolesData]
   );
 
   const selectedRoleData = useMemo(() => {
@@ -349,6 +362,7 @@ function RolePermissionEditor() {
   const isRoleLocked = selectedRole
     ? UNEDITABLE_ROLES.has(selectedRole)
     : false;
+  const canMutateSelectedRole = canManageRoles && !isRoleLocked;
 
   const groupedPermissions = useMemo(() => {
     if (!permsData?.permissions) return {};
@@ -397,7 +411,7 @@ function RolePermissionEditor() {
 
   const handleToggle = useCallback(
     (name: string) => {
-      if (isRoleLocked) return;
+      if (!canMutateSelectedRole) return;
       mutateRolePerms(
         (prev) => {
           const perms = prev?.permissions ?? [];
@@ -412,12 +426,12 @@ function RolePermissionEditor() {
         { revalidate: false }
       );
     },
-    [mutateRolePerms, selectedRole, isRoleLocked]
+    [mutateRolePerms, selectedRole, canMutateSelectedRole]
   );
 
   const handleSelectAll = useCallback(
     (entityPerms: Permission[], checked: boolean) => {
-      if (isRoleLocked) return;
+      if (!canMutateSelectedRole) return;
       mutateRolePerms(
         (prev) => {
           const current = new Set(prev?.permissions ?? []);
@@ -430,12 +444,13 @@ function RolePermissionEditor() {
         { revalidate: false }
       );
     },
-    [mutateRolePerms, selectedRole, isRoleLocked]
+    [mutateRolePerms, selectedRole, canMutateSelectedRole]
   );
 
   const handleSave = useCallback(() => {
+    if (!canMutateSelectedRole) return;
     savePermissions({ permissions: Array.from(selectedPermsSet) });
-  }, [selectedPermsSet, savePermissions]);
+  }, [canMutateSelectedRole, selectedPermsSet, savePermissions]);
 
   const handleStartEditDescription = useCallback(() => {
     setDescriptionDraft(selectedRoleData?.description ?? "");
@@ -443,15 +458,22 @@ function RolePermissionEditor() {
   }, [selectedRoleData]);
 
   const handleSaveDescription = useCallback(() => {
+    if (!canMutateSelectedRole) return;
     handleUpdateDescription(descriptionDraft);
     setEditingDescription(false);
-  }, [descriptionDraft, handleUpdateDescription]);
+  }, [canMutateSelectedRole, descriptionDraft, handleUpdateDescription]);
 
   const handleDeleteConfirm = useCallback(() => {
     if (deleteConfirmRole) handleDeleteRoleAction(deleteConfirmRole);
   }, [deleteConfirmRole, handleDeleteRoleAction]);
 
-  const allLoading = rolesLoading || permsLoading || rolePermsLoading;
+  const hasRoles = (rolesData?.roles ?? []).length > 0;
+  const waitingForInitialRole = hasRoles && !selectedRole;
+  const allLoading =
+    rolesLoading ||
+    permsLoading ||
+    waitingForInitialRole ||
+    (Boolean(selectedRole) && rolePermsLoading);
 
   if (allLoading) {
     return (
@@ -473,23 +495,25 @@ function RolePermissionEditor() {
               onSelect={() => setSelectedRole(role.name)}
             />
           ))}
-          <Button
-            leftIcon={SvgPlus}
-            secondary
-            onClick={() => setCreateModalOpen(true)}
-          />
+          {canManageRoles && (
+            <Button
+              leftIcon={SvgPlus}
+              secondary
+              onClick={() => setCreateModalOpen(true)}
+            />
+          )}
         </div>
         <div className="flex items-center gap-2">
           <Button
             leftIcon={SvgCheck}
-            disabled={isSaving || isRoleLocked}
+            disabled={isSaving || !canMutateSelectedRole}
             onClick={handleSave}
           >
             {isSaving ? "Saving..." : "Save"}
           </Button>
           <Button
             leftIcon={SvgRefreshCw}
-            disabled={isSyncing}
+            disabled={isSyncing || !canManageRoles}
             onClick={() => syncToKeycloak()}
           >
             {isSyncing ? "Syncing..." : "Sync"}
@@ -529,7 +553,7 @@ function RolePermissionEditor() {
                 <Text secondaryBody text-04 className="truncate italic">
                   {selectedRoleData.description || "No description"}
                 </Text>
-                {!isRoleLocked && (
+                {canMutateSelectedRole && (
                   <button
                     onClick={handleStartEditDescription}
                     className="text-03 hover:text-01 shrink-0"
@@ -540,7 +564,7 @@ function RolePermissionEditor() {
               </div>
             )}
           </div>
-          {!isRoleLocked && (
+          {canMutateSelectedRole && (
             <Button
               leftIcon={SvgTrash}
               secondary
@@ -593,7 +617,7 @@ function RolePermissionEditor() {
               <Card key={entity} className="mb-2">
                 <CardHeader className="flex flex-row items-center justify-between">
                   <div className="flex items-center gap-3">
-                    {!isRoleLocked && (
+                    {canMutateSelectedRole && (
                       <Checkbox
                         checked={allSelected}
                         onCheckedChange={(checked) =>
@@ -616,10 +640,10 @@ function RolePermissionEditor() {
                         key={perm.name}
                         className={cn(
                           "flex items-center gap-2 py-1.5 px-2 rounded-06 hover:bg-background-neutral-02",
-                          isRoleLocked ? "" : "cursor-pointer"
+                          canMutateSelectedRole ? "cursor-pointer" : ""
                         )}
                       >
-                        {!isRoleLocked && (
+                        {canMutateSelectedRole && (
                           <Checkbox
                             checked={selectedPermsSet.has(perm.name)}
                             onCheckedChange={() => handleToggle(perm.name)}

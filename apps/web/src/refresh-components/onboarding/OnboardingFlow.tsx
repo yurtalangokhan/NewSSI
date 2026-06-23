@@ -6,7 +6,6 @@ import FinalStep from "./steps/FinalStep";
 import { OnboardingActions, OnboardingState, OnboardingStep } from "./types";
 import { WellKnownLLMProviderDescriptor } from "@/interfaces/llm";
 import { useUser } from "@/providers/UserProvider";
-import { UserRole } from "@/lib/types";
 import NonAdminStep from "./components/NonAdminStep";
 
 type OnboardingFlowProps = {
@@ -29,7 +28,7 @@ const OnboardingFlowInner = ({
   const { user } = useUser();
   const hasStarted = onboardingState.currentStep !== OnboardingStep.Welcome;
 
-  return user?.role === UserRole.ADMIN ? (
+  return user?.role !== "enduser" ? (
     showOnboarding ? (
       <div
         className="flex flex-col items-center justify-center w-full max-w-[var(--app-page-main-content-width)] gap-2 mb-4"

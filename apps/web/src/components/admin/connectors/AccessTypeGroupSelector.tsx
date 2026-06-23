@@ -4,7 +4,7 @@ import { FieldArray, ArrayHelpers, ErrorMessage, useField } from "formik";
 import Text from "@/refresh-components/texts/Text";
 import Button from "@/refresh-components/buttons/Button";
 import Separator from "@/refresh-components/Separator";
-import { UserGroup, UserRole } from "@/lib/types";
+import { UserGroup } from "@/lib/types";
 import { useUserGroups } from "@/lib/hooks";
 import {
   AccessType,
@@ -47,7 +47,7 @@ export function AccessTypeGroupSelector({
 
   useEffect(() => {
     if (user && userGroups && isPaidEnterpriseFeaturesEnabled) {
-      const isUserAdmin = user.role === UserRole.ADMIN;
+      const isUserAdmin = user.role !== "enduser";
       if (!isPaidEnterpriseFeaturesEnabled) {
         access_type_helpers.setValue("public");
         return;

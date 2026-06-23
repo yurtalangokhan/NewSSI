@@ -3,16 +3,12 @@
 import React, {
   createContext,
   useContext,
+  useCallback,
   useState,
   useEffect,
   useRef,
 } from "react";
-import {
-  User,
-  UserPersonalization,
-  UserRole,
-  ThemePreference,
-} from "@/lib/types";
+import { User, UserPersonalization, ThemePreference } from "@/lib/types";
 import { getCurrentUser } from "@/lib/user";
 import { usePostHog } from "posthog-js/react";
 import { CombinedSettings } from "@/interfaces/settings";
@@ -20,11 +16,24 @@ import { SettingsContext } from "@/providers/SettingsProvider";
 import { AuthTypeMetadata } from "@/lib/userSS";
 import { updateUserPersonalization as persistPersonalization } from "@/lib/userSettings";
 import { useTheme } from "next-themes";
+import { isAdminUser } from "@/lib/auth/roles";
+import {
+  hasAnyPermission as hasAnyPermissionValue,
+  hasAllPermissions as hasAllPermissionsValue,
+  hasPermission as hasPermissionValue,
+} from "@/lib/auth/permissions";
+import { authenticatedFetch } from "@/lib/fetcher";
 
 interface UserContextType {
   user: User | null;
   isAdmin: boolean;
   isCurator: boolean;
+  permissions: string[];
+  permissionsError: string | null;
+  isPermissionsLoading: boolean;
+  hasPermission: (permission: string) => boolean;
+  hasAnyPermission: (permissions: readonly string[]) => boolean;
+  hasAllPermissions: (permissions: readonly string[]) => boolean;
   refreshUser: () => Promise<void>;
   isCloudSuperuser: boolean;
   authTypeMetadata: AuthTypeMetadata;
@@ -93,6 +102,9 @@ export function UserProvider({
   const [upToDateUser, setUpToDateUser] = useState<User | null>(
     mergeUserPreferences(user, settings)
   );
+  const [permissions, setPermissions] = useState<string[]>([]);
+  const [permissionsError, setPermissionsError] = useState<string | null>(null);
+  const [isPermissionsLoading, setIsPermissionsLoading] = useState(false);
 
   useEffect(() => {
     setUpToDateUser(mergeUserPreferences(user, updatedSettings));
@@ -122,6 +134,56 @@ export function UserProvider({
       console.error("Error fetching current user:", error);
     }
   };
+
+  const fetchPermissions = useCallback(async () => {
+    if (!upToDateUser?.id) {
+      setPermissions([]);
+      setPermissionsError(null);
+      setIsPermissionsLoading(false);
+      return;
+    }
+
+    setIsPermissionsLoading(true);
+    setPermissionsError(null);
+    try {
+      const response = await authenticatedFetch(
+        "/api/user-service/users/me/permissions"
+      );
+      if (!response.ok) {
+        throw new Error("Failed to fetch permissions");
+      }
+      const payload = (await response.json()) as { permissions?: string[] };
+      setPermissions(payload.permissions ?? []);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to fetch permissions";
+      setPermissions([]);
+      setPermissionsError(message);
+    } finally {
+      setIsPermissionsLoading(false);
+    }
+  }, [upToDateUser?.id]);
+
+  useEffect(() => {
+    fetchPermissions();
+  }, [fetchPermissions]);
+
+  const hasPermission = useCallback(
+    (permission: string) => hasPermissionValue(permissions, permission),
+    [permissions]
+  );
+
+  const hasAnyPermission = useCallback(
+    (requiredPermissions: readonly string[]) =>
+      hasAnyPermissionValue(permissions, requiredPermissions),
+    [permissions]
+  );
+
+  const hasAllPermissions = useCallback(
+    (requiredPermissions: readonly string[]) =>
+      hasAllPermissionsValue(permissions, requiredPermissions),
+    [permissions]
+  );
 
   // Sync user's theme preference from DB to next-themes on load
   const { setTheme, theme } = useTheme();
@@ -486,10 +548,14 @@ export function UserProvider({
         updateUserDefaultModel,
         updateUserDefaultAppMode,
         toggleAgentPinnedStatus,
-        isAdmin:
-          upToDateUser?.role === UserRole.ADMIN ||
-          upToDateUser?.is_superuser === true,
+        isAdmin: isAdminUser(upToDateUser),
         isCurator: false,
+        permissions,
+        permissionsError,
+        isPermissionsLoading,
+        hasPermission,
+        hasAnyPermission,
+        hasAllPermissions,
         isCloudSuperuser: upToDateUser?.is_cloud_superuser ?? false,
       }}
     >

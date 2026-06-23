@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Table,
@@ -7,13 +7,14 @@ import {
   TableBody,
   TableCell,
 } from "@/components/ui/table";
-import CenteredPageSelector from "./CenteredPageSelector";
+import CenteredPageSelector from "@/components/admin/users/CenteredPageSelector";
 import { ThreeDotsLoader } from "@/components/Loading";
 import { InvitedUserSnapshot } from "@/lib/types";
 import { TableHeader } from "@/components/ui/table";
-import { InviteUserButton } from "./buttons/InviteUserButton";
+import { InviteUserButton } from "@/components/admin/users/buttons/InviteUserButton";
 import { ErrorCallout } from "@/components/ErrorCallout";
 import { FetchError } from "@/lib/fetcher";
+import Text from "@/refresh-components/texts/Text";
 
 const USERS_PER_PAGE = 10;
 
@@ -25,25 +26,35 @@ interface Props {
   q: string;
 }
 
-const InvitedUserTable = ({ users, mutate, error, isLoading, q }: Props) => {
+function InvitedUserTable({ users, mutate, error, isLoading, q }: Props) {
   const { t } = useTranslation();
   const [currentPageNum, setCurrentPageNum] = useState<number>(1);
 
-  if (!users.length)
-    return <p>{t("admin.users.invitedEmptyState")}</p>;
+  useEffect(() => {
+    setCurrentPageNum(1);
+  }, [q]);
 
-  const totalPages = Math.ceil(users.length / USERS_PER_PAGE);
+  const filteredUsers = useMemo(() => {
+    const normalizedQuery = q.trim().toLowerCase();
+    if (!normalizedQuery) return users;
+    return users.filter((user) =>
+      user.email.toLowerCase().includes(normalizedQuery)
+    );
+  }, [q, users]);
 
-  // Filter users based on the search query
-  const filteredUsers = q
-    ? users.filter((user) => user.email.includes(q))
-    : users;
-
-  // Get the current page of users
+  const totalPages = Math.ceil(filteredUsers.length / USERS_PER_PAGE);
   const currentPageOfUsers = filteredUsers.slice(
     (currentPageNum - 1) * USERS_PER_PAGE,
     currentPageNum * USERS_PER_PAGE
   );
+
+  if (!users.length) {
+    return (
+      <Text as="p" mainUiMuted text03>
+        {t("admin.users.invitedEmptyState")}
+      </Text>
+    );
+  }
 
   if (isLoading) {
     return <ThreeDotsLoader />;
@@ -65,7 +76,9 @@ const InvitedUserTable = ({ users, mutate, error, isLoading, q }: Props) => {
           <TableRow>
             <TableHead>{t("admin.users.emailHeader")}</TableHead>
             <TableHead>
-              <div className="flex justify-end">{t("admin.users.actionsHeader")}</div>
+              <div className="flex justify-end">
+                {t("admin.users.actionsHeader")}
+              </div>
             </TableHead>
           </TableRow>
         </TableHeader>
@@ -73,7 +86,9 @@ const InvitedUserTable = ({ users, mutate, error, isLoading, q }: Props) => {
           {currentPageOfUsers.length ? (
             currentPageOfUsers.map((user) => (
               <TableRow key={user.email}>
-                <TableCell>{user.email}</TableCell>
+                <TableCell>
+                  <Text mainUiBody>{user.email}</Text>
+                </TableCell>
                 <TableCell>
                   <div className="flex justify-end">
                     <InviteUserButton
@@ -88,7 +103,9 @@ const InvitedUserTable = ({ users, mutate, error, isLoading, q }: Props) => {
           ) : (
             <TableRow>
               <TableCell colSpan={2} className="h-24 text-center">
-                {t("admin.users.noUsersFoundMatching", { query: q })}
+                <Text mainUiMuted text03>
+                  {t("admin.users.noUsersFoundMatching", { query: q })}
+                </Text>
               </TableCell>
             </TableRow>
           )}
@@ -103,6 +120,6 @@ const InvitedUserTable = ({ users, mutate, error, isLoading, q }: Props) => {
       ) : null}
     </>
   );
-};
+}
 
 export default InvitedUserTable;

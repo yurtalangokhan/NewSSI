@@ -20,6 +20,7 @@ export const logout = async (nextPath?: string): Promise<Response> => {
     logoutUrl.searchParams.set("next", nextPath);
   }
 
+  window.sessionStorage.setItem("logout_in_progress", "true");
   window.location.assign(logoutUrl.toString());
   return new Response(null, { status: 204 });
 };

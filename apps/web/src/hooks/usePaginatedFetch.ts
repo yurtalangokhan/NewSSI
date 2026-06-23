@@ -35,6 +35,7 @@ interface PaginatedHookReturnData<T extends PaginatedType> {
   totalItems: number;
   goToPage: (page: number) => void;
   refresh: () => Promise<void>;
+  updateItem: (itemId: T["id"], updater: (item: T) => T) => void;
 }
 
 function usePaginatedFetch<T extends PaginatedType>({
@@ -231,9 +232,35 @@ function usePaginatedFetch<T extends PaginatedType>({
     await fetchBatchData(batchNum);
   }, [currentPage, pagesPerBatch, fetchBatchData]);
 
+  const updateItem = useCallback((itemId: T["id"], updater: (item: T) => T) => {
+    setCachedBatches((prev) => {
+      let didUpdate = false;
+      const nextBatches = Object.fromEntries(
+        Object.entries(prev).map(([batchNumber, pages]) => [
+          batchNumber,
+          pages.map((page) =>
+            page.map((item) => {
+              if (item.id !== itemId) return item;
+              didUpdate = true;
+              return updater(item);
+            })
+          ),
+        ])
+      );
+
+      return didUpdate ? nextBatches : prev;
+    });
+
+    setCurrentPageData(
+      (prev) =>
+        prev?.map((item) => (item.id === itemId ? updater(item) : item)) ?? prev
+    );
+  }, []);
+
   // Cache invalidation
   useEffect(() => {
     setCachedBatches({});
+    setCurrentPageData(null);
     setTotalItems(0);
     goToPage(1);
     setError(null);
@@ -246,6 +273,7 @@ function usePaginatedFetch<T extends PaginatedType>({
     totalItems,
     goToPage,
     refresh,
+    updateItem,
     isLoading,
     error,
   };

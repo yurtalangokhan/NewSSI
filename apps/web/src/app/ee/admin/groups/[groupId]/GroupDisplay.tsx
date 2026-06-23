@@ -2,6 +2,7 @@
 
 import { toast } from "@/hooks/useToast";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ConnectorTitle } from "@/components/admin/connectors/ConnectorTitle";
 import AddMemberForm from "./AddMemberForm";
 import { updateUserGroup } from "./lib";
@@ -9,7 +10,6 @@ import { LoadingAnimation } from "@/components/Loading";
 import {
   User,
   UserGroup,
-  USER_ROLE_LABELS,
   ConnectorStatus,
 } from "@/lib/types";
 import AddConnectorForm from "./AddConnectorForm";
@@ -31,7 +31,6 @@ import { BookmarkIcon, RobotIcon } from "@/components/icons/icons";
 import { AddTokenRateLimitForm } from "./AddTokenRateLimitForm";
 import { GenericTokenRateLimitTable } from "@/app/admin/token-rate-limits/TokenRateLimitTables";
 import { useUser } from "@/providers/UserProvider";
-import { useTranslation } from "react-i18next";
 
 interface GroupDisplayProps {
   users: User[];
@@ -41,7 +40,8 @@ interface GroupDisplayProps {
 }
 
 const UserRoleDropdown = ({ user }: { user: User }) => {
-  return <div>{USER_ROLE_LABELS[user.role]}</div>;
+  const { t } = useTranslation();
+  return <div>{t(`admin.users.roles.${user.role}`)}</div>;
 };
 
 export const GroupDisplay = ({

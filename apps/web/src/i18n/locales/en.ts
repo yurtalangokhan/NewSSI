@@ -1752,7 +1752,8 @@ const en = {
       invalidEmailError: "{{email}} is not a valid email",
       roles: {
         enduser: "End User",
-        admin: "Admin",
+        "enterprise-admin": "Enterprise Admin",
+        "system-admin": "System Admin",
       },
       userEntity: "user",
       teamEntity: "team",
@@ -1763,7 +1764,8 @@ const en = {
       leaveTeamDetails: "You will lose access to all team data and resources.",
       rolesHover: {
         enduser: "End users can't perform any admin actions",
-        admin: "Admin users can perform all admin actions",
+        "enterprise-admin": "Enterprise admins can perform operational admin tasks",
+        "system-admin": "System admins can perform all admin actions",
       },
       changeCuratorRoleTitle: "Change Curator Role",
       changeCuratorRoleWarning:
