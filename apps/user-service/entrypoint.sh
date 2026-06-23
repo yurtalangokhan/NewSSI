@@ -2,8 +2,9 @@
 set -e
 
 echo "Waiting for PostgreSQL..."
-until python -c "
+until uv run python -c "
 import psycopg
+import os
 import sys
 try:
     psycopg.connect(f'host={os.environ[\"POSTGRES_HOST\"]} port={os.environ[\"POSTGRES_PORT\"]} user={os.environ[\"POSTGRES_USER\"]} password={os.environ[\"POSTGRES_PASSWORD\"]}')

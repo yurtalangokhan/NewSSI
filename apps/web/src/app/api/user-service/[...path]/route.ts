@@ -3,8 +3,13 @@ import { NextRequest } from "next/server";
 import { proxyToBackend } from "@/lib/api/proxy";
 import { USER_SERVICE_URL } from "@/lib/constants";
 
-function buildUserServicePath(path: string[]) {
-  return `/api/${path.join("/")}`;
+// Preserve trailing slash from the original URL to avoid FastAPI 307 redirect
+function buildUserServicePath(path: string[], request: NextRequest) {
+  let result = `/api/${path.join("/")}`;
+  if (request.nextUrl.pathname.endsWith("/") && !result.endsWith("/")) {
+    result += "/";
+  }
+  return result;
 }
 
 export async function GET(
@@ -12,7 +17,7 @@ export async function GET(
   { params }: { params: Promise<{ path: string[] }> }
 ) {
   const { path } = await params;
-  return proxyToBackend(request, buildUserServicePath(path), {
+  return proxyToBackend(request, buildUserServicePath(path, request), {
     backendUrl: USER_SERVICE_URL,
   });
 }
@@ -22,7 +27,7 @@ export async function POST(
   { params }: { params: Promise<{ path: string[] }> }
 ) {
   const { path } = await params;
-  return proxyToBackend(request, buildUserServicePath(path), {
+  return proxyToBackend(request, buildUserServicePath(path, request), {
     backendUrl: USER_SERVICE_URL,
   });
 }
@@ -32,7 +37,7 @@ export async function PUT(
   { params }: { params: Promise<{ path: string[] }> }
 ) {
   const { path } = await params;
-  return proxyToBackend(request, buildUserServicePath(path), {
+  return proxyToBackend(request, buildUserServicePath(path, request), {
     backendUrl: USER_SERVICE_URL,
   });
 }
@@ -42,7 +47,7 @@ export async function PATCH(
   { params }: { params: Promise<{ path: string[] }> }
 ) {
   const { path } = await params;
-  return proxyToBackend(request, buildUserServicePath(path), {
+  return proxyToBackend(request, buildUserServicePath(path, request), {
     backendUrl: USER_SERVICE_URL,
   });
 }
@@ -52,7 +57,7 @@ export async function DELETE(
   { params }: { params: Promise<{ path: string[] }> }
 ) {
   const { path } = await params;
-  return proxyToBackend(request, buildUserServicePath(path), {
+  return proxyToBackend(request, buildUserServicePath(path, request), {
     backendUrl: USER_SERVICE_URL,
   });
 }
