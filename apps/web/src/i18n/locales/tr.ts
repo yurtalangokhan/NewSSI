@@ -1770,7 +1770,8 @@ const tr = {
       invalidEmailError: "{{email}} geçerli bir e-posta değil",
       roles: {
         enduser: "Son Kullanıcı",
-        admin: "Yönetici",
+        "enterprise-admin": "Kurumsal Yönetici",
+        "system-admin": "Sistem Yöneticisi",
       },
       userEntity: "kullanıcı",
       teamEntity: "takım",
@@ -1782,8 +1783,10 @@ const tr = {
         "Tüm takım verilerine ve kaynaklarına erişiminizi kaybedeceksiniz.",
       rolesHover: {
         enduser: "Son kullanıcılar yönetici işlemlerini gerçekleştiremez",
-        admin:
-          "Yönetici kullanıcılar tüm yönetici işlemlerini gerçekleştirebilir",
+        "enterprise-admin":
+          "Kurumsal yöneticiler operasyonel yönetici işlemlerini gerçekleştirebilir",
+        "system-admin":
+          "Sistem yöneticileri tüm yönetici işlemlerini gerçekleştirebilir",
       },
       changeCuratorRoleTitle: "Küratör Rolünü Değiştir",
       changeCuratorRoleWarning:

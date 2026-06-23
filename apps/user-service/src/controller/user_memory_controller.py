@@ -9,9 +9,7 @@ class UserMemoryController(BaseController):
     def __init__(self):
         self.service = get_user_memory_service()
 
-    async def list_memories(
-        self, user_id: uuid.UUID, page: int = 1, page_size: int = 50
-    ) -> dict:
+    async def list_memories(self, user_id: uuid.UUID, page: int = 1, page_size: int = 50) -> dict:
         return await self.service.list_for_ui(user_id, page=page, page_size=page_size)
 
     async def list_for_recall(self, user_id: uuid.UUID) -> list[str]:
@@ -28,9 +26,7 @@ class UserMemoryController(BaseController):
     ) -> list[dict]:
         return await self.service.add_facts(user_id, contents, source=source)
 
-    async def update_memory(
-        self, user_id: uuid.UUID, memory_id: uuid.UUID, content: str
-    ) -> dict:
+    async def update_memory(self, user_id: uuid.UUID, memory_id: uuid.UUID, content: str) -> dict:
         result = await self.service.update(memory_id, user_id, content)
         if not result:
             self._raise_not_found("Memory not found")

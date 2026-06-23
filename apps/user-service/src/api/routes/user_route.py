@@ -5,9 +5,9 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from pydantic import BaseModel, field_validator
 
 from src.api.dependencies import (
-    require_admin,
     require_auth,
     require_auth_or_internal_service_token,
+    require_permission,
 )
 from src.controller import get_user_controller
 
@@ -110,8 +110,7 @@ async def _resolve_target_user_id(target_id: str) -> uuid.UUID:
 
 
 async def _authorize_target_user_id(target_id: str, authenticated_user_id: str) -> uuid.UUID:
-    from src.core.database.models.user_model import is_admin_role
-    from src.repository import UserRepository
+    from src.repository import RoleRepository, UserRepository
 
     resolved_user_id = await _resolve_target_user_id(target_id)
 
@@ -128,8 +127,12 @@ async def _authorize_target_user_id(target_id: str, authenticated_user_id: str) 
         return resolved_user_id
 
     user = await UserRepository().get_by_id(authenticated_uuid)
-    if user and (is_admin_role(user.role) or user.is_superuser):
-        return resolved_user_id
+    if user:
+        if user.is_superuser:
+            return resolved_user_id
+        role = await RoleRepository().get_by_name(user.role)
+        if role and role.is_admin:
+            return resolved_user_id
 
     raise HTTPException(status_code=403, detail="Forbidden")
 
@@ -137,6 +140,11 @@ async def _authorize_target_user_id(target_id: str, authenticated_user_id: str) 
 @router.get("/me")
 async def get_me(user_id: Annotated[str, Depends(require_auth)]):
     return await get_user_controller().get_me(uuid.UUID(user_id))
+
+
+@router.get("/me/permissions")
+async def get_me_permissions(user_id: Annotated[str, Depends(require_auth)]):
+    return await get_user_controller().get_user_permissions(uuid.UUID(user_id))
 
 
 @router.patch("/me")
@@ -174,7 +182,7 @@ async def list_users(
     roles: Annotated[list[str] | None, Query()] = None,
     is_active: bool | None = None,
     invited: bool | None = None,
-    user_id: str = Depends(require_admin),  # noqa: ARG001
+    user_id: str = Depends(require_permission("user:list")),  # noqa: ARG001
 ):
     resolved_limit = page_size or limit
     resolved_skip = page_num * resolved_limit if page_num is not None else skip
@@ -197,20 +205,25 @@ async def list_users(
 @router.post("/")
 async def create_user(
     payload: Annotated[UserCreateRequest, Body(...)],
-    user_id: str = Depends(require_admin),  # noqa: ARG001
+    user_id: str = Depends(require_permission("user:create")),  # noqa: ARG001
 ):
     return await get_user_controller().create_user(**payload.model_dump(exclude_unset=True))
 
 
 @router.get("/invited")
-async def get_invited_users(user_id: str = Depends(require_admin)):  # noqa: ARG001
+async def get_invited_users(
+    user_id: str = Depends(require_permission("user:list")),  # noqa: ARG001
+):
     from src.service import get_user_service
 
     return await get_user_service().get_invited_users()
 
 
 @router.get("/download/csv")
-async def download_csv(query: str | None = None, user_id: str = Depends(require_admin)):  # noqa: ARG001
+async def download_csv(
+    query: str | None = None,
+    user_id: str = Depends(require_permission("user:list")),  # noqa: ARG001
+):
     csv = await get_user_controller().download_users_csv(query)
     import io
 
@@ -268,10 +281,19 @@ async def update_user_internal(
     )
 
 
+@router.get("/internal/{target_id}/permissions")
+async def get_user_permissions_internal(
+    target_id: str,
+    authenticated_user_id: Annotated[str, Depends(require_auth_or_internal_service_token)],
+):
+    resolved_user_id = await _authorize_target_user_id(target_id, authenticated_user_id)
+    return await get_user_controller().get_user_permissions(resolved_user_id)
+
+
 @router.post("/invite")
 async def invite_users(
     payload: Annotated[UserInviteRequest, Body(...)],
-    user_id: str = Depends(require_admin),  # noqa: ARG001
+    user_id: str = Depends(require_permission("user:create")),  # noqa: ARG001
 ):
     return await get_user_controller().invite_users(payload.emails)
 
@@ -280,13 +302,16 @@ async def invite_users(
 async def set_user_role(
     target_id: str,
     payload: Annotated[UserRoleRequest, Body(...)],
-    user_id: str = Depends(require_admin),  # noqa: ARG001
+    user_id: str = Depends(require_permission("user:update")),  # noqa: ARG001
 ):
     return await get_user_controller().set_user_role(uuid.UUID(target_id), payload.role)
 
 
 @router.post("/{target_id}/reset-password")
-async def reset_user_password(target_id: str, user_id: str = Depends(require_admin)):  # noqa: ARG001
+async def reset_user_password(
+    target_id: str,
+    user_id: str = Depends(require_permission("user:update")),  # noqa: ARG001
+):
     return await get_user_controller().reset_password(uuid.UUID(target_id))
 
 
@@ -294,7 +319,7 @@ async def reset_user_password(target_id: str, user_id: str = Depends(require_adm
 async def set_user_active(
     target_id: str,
     payload: Annotated[UserActiveRequest, Body(...)],
-    user_id: str = Depends(require_admin),  # noqa: ARG001
+    user_id: str = Depends(require_permission("user:update")),  # noqa: ARG001
 ):
     return await get_user_controller().set_user_active(uuid.UUID(target_id), payload.is_active)
 
@@ -303,13 +328,16 @@ async def set_user_active(
 async def set_user_password(
     target_id: str,
     payload: Annotated[UserPasswordRequest, Body(...)],
-    user_id: str = Depends(require_admin),  # noqa: ARG001
+    user_id: str = Depends(require_permission("user:update")),  # noqa: ARG001
 ):
     return await get_user_controller().set_password(uuid.UUID(target_id), payload.password)
 
 
 @router.get("/{target_id}")
-async def get_user(target_id: str, user_id: str = Depends(require_admin)):  # noqa: ARG001
+async def get_user(
+    target_id: str,
+    user_id: str = Depends(require_permission("user:read")),  # noqa: ARG001
+):
     return await get_user_controller().get_user(uuid.UUID(target_id))
 
 
@@ -317,7 +345,7 @@ async def get_user(target_id: str, user_id: str = Depends(require_admin)):  # no
 async def update_user(
     target_id: str,
     updates: Annotated[UserUpdateRequest, Body(...)],
-    user_id: str = Depends(require_admin),  # noqa: ARG001
+    user_id: str = Depends(require_permission("user:update")),  # noqa: ARG001
 ):
     return await get_user_controller().update_user(
         uuid.UUID(target_id),
@@ -326,5 +354,8 @@ async def update_user(
 
 
 @router.delete("/{target_id}")
-async def delete_user(target_id: str, user_id: str = Depends(require_admin)):  # noqa: ARG001
+async def delete_user(
+    target_id: str,
+    user_id: str = Depends(require_permission("user:delete")),  # noqa: ARG001
+):
     return await get_user_controller().delete_user(uuid.UUID(target_id))

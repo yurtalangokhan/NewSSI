@@ -51,21 +51,6 @@ export interface UserPersonalization {
   user_preferences: string;
 }
 
-export enum UserRole {
-  ENDUSER = "enduser",
-  ADMIN = "admin",
-}
-
-export const USER_ROLE_LABELS: Record<UserRole, string> = {
-  [UserRole.ENDUSER]: "End User",
-  [UserRole.ADMIN]: "Admin",
-};
-
-export const INVALID_ROLE_HOVER_TEXT: Partial<Record<UserRole, string>> = {
-  [UserRole.ENDUSER]: "End users can't perform any admin actions",
-  [UserRole.ADMIN]: "Admin users can perform all admin actions",
-};
-
 export interface User {
   id: string;
   email: string;
@@ -75,7 +60,7 @@ export interface User {
   is_active: boolean;
   is_superuser: boolean;
   is_verified: boolean;
-  role: UserRole;
+  role: string;
   preferences: UserPreferences;
   current_token_created_at?: Date;
   current_token_expiry_length?: number;
@@ -115,7 +100,7 @@ export interface AllUsersResponse {
 export interface AcceptedUserSnapshot {
   id: string;
   email: string;
-  role: UserRole;
+  role: string;
   is_active: boolean;
 }
 

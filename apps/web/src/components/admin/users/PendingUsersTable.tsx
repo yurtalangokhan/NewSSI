@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "@/hooks/useToast";
 import {
@@ -8,7 +8,7 @@ import {
   TableBody,
   TableCell,
 } from "@/components/ui/table";
-import CenteredPageSelector from "./CenteredPageSelector";
+import CenteredPageSelector from "@/components/admin/users/CenteredPageSelector";
 import { ThreeDotsLoader } from "@/components/Loading";
 import { InvitedUserSnapshot } from "@/lib/types";
 import { TableHeader } from "@/components/ui/table";
@@ -17,6 +17,7 @@ import { ErrorCallout } from "@/components/ErrorCallout";
 import { FetchError } from "@/lib/fetcher";
 import { ConfirmEntityModal } from "@/components/modals/ConfirmEntityModal";
 import { SvgCheck } from "@opal/icons";
+import Text from "@/refresh-components/texts/Text";
 const USERS_PER_PAGE = 10;
 
 interface Props {
@@ -27,26 +28,36 @@ interface Props {
   q: string;
 }
 
-const PendingUsersTable = ({ users, mutate, error, isLoading, q }: Props) => {
+function PendingUsersTable({ users, mutate, error, isLoading, q }: Props) {
   const { t } = useTranslation();
   const [currentPageNum, setCurrentPageNum] = useState<number>(1);
   const [userToApprove, setUserToApprove] = useState<string | null>(null);
 
-  if (!users.length)
-    return <p>{t("admin.users.pendingEmptyState")}</p>;
+  useEffect(() => {
+    setCurrentPageNum(1);
+  }, [q]);
 
-  const totalPages = Math.ceil(users.length / USERS_PER_PAGE);
+  const filteredUsers = useMemo(() => {
+    const normalizedQuery = q.trim().toLowerCase();
+    if (!normalizedQuery) return users;
+    return users.filter((user) =>
+      user.email.toLowerCase().includes(normalizedQuery)
+    );
+  }, [q, users]);
 
-  // Filter users based on the search query
-  const filteredUsers = q
-    ? users.filter((user) => user.email.includes(q))
-    : users;
-
-  // Get the current page of users
+  const totalPages = Math.ceil(filteredUsers.length / USERS_PER_PAGE);
   const currentPageOfUsers = filteredUsers.slice(
     (currentPageNum - 1) * USERS_PER_PAGE,
     currentPageNum * USERS_PER_PAGE
   );
+
+  if (!users.length) {
+    return (
+      <Text as="p" mainUiMuted text03>
+        {t("admin.users.pendingEmptyState")}
+      </Text>
+    );
+  }
 
   if (isLoading) {
     return <ThreeDotsLoader />;
@@ -88,7 +99,9 @@ const PendingUsersTable = ({ users, mutate, error, isLoading, q }: Props) => {
           onSubmit={() => handleAcceptRequest(userToApprove)}
           actionButtonText={t("admin.users.approveButton")}
           action={t("admin.users.approveAction")}
-          additionalDetails={t("admin.users.approveDetails", { user: userToApprove })}
+          additionalDetails={t("admin.users.approveDetails", {
+            user: userToApprove,
+          })}
           removeConfirmationText
         />
       )}
@@ -97,7 +110,9 @@ const PendingUsersTable = ({ users, mutate, error, isLoading, q }: Props) => {
           <TableRow>
             <TableHead>{t("admin.users.emailHeader")}</TableHead>
             <TableHead>
-              <div className="flex justify-end">{t("admin.users.actionsHeader")}</div>
+              <div className="flex justify-end">
+                {t("admin.users.actionsHeader")}
+              </div>
             </TableHead>
           </TableRow>
         </TableHeader>
@@ -105,7 +120,9 @@ const PendingUsersTable = ({ users, mutate, error, isLoading, q }: Props) => {
           {currentPageOfUsers.length ? (
             currentPageOfUsers.map((user) => (
               <TableRow key={user.email}>
-                <TableCell>{user.email}</TableCell>
+                <TableCell>
+                  <Text mainUiBody>{user.email}</Text>
+                </TableCell>
                 <TableCell>
                   <div className="flex justify-end">
                     <Button
@@ -122,7 +139,9 @@ const PendingUsersTable = ({ users, mutate, error, isLoading, q }: Props) => {
           ) : (
             <TableRow>
               <TableCell colSpan={2} className="h-24 text-center">
-                {t("admin.users.noPendingUsersFoundMatching", { query: q })}
+                <Text mainUiMuted text03>
+                  {t("admin.users.noPendingUsersFoundMatching", { query: q })}
+                </Text>
               </TableCell>
             </TableRow>
           )}
@@ -137,6 +156,6 @@ const PendingUsersTable = ({ users, mutate, error, isLoading, q }: Props) => {
       ) : null}
     </>
   );
-};
+}
 
 export default PendingUsersTable;

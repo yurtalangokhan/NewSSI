@@ -10,6 +10,7 @@ from collections.abc import Sequence
 
 import sqlalchemy as sa
 from alembic import op
+from sqlalchemy import inspect
 from sqlalchemy.dialects import postgresql
 
 revision: str = "0005"
@@ -19,15 +20,17 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    op.add_column(
-        "user_settings",
-        sa.Column(
-            "pinned_assistants",
-            postgresql.JSONB(),
-            nullable=False,
-            server_default=sa.text("'[]'::jsonb"),
-        ),
-    )
+    columns = {column["name"] for column in inspect(op.get_bind()).get_columns("user_settings")}
+    if "pinned_assistants" not in columns:
+        op.add_column(
+            "user_settings",
+            sa.Column(
+                "pinned_assistants",
+                postgresql.JSONB(),
+                nullable=False,
+                server_default=sa.text("'[]'::jsonb"),
+            ),
+        )
 
 
 def downgrade() -> None:

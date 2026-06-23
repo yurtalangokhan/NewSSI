@@ -22,6 +22,7 @@ class RoleService:
                 "description": r.description,
                 "permissions": r.permissions,
                 "is_builtin": r.is_builtin,
+                "is_admin": r.is_admin,
             }
             for r in roles
         ]
@@ -35,6 +36,7 @@ class RoleService:
             "description": role.description,
             "permissions": role.permissions,
             "is_builtin": role.is_builtin,
+            "is_admin": role.is_admin,
         }
 
     async def create_role(
@@ -57,6 +59,7 @@ class RoleService:
             "description": role.description,
             "permissions": role.permissions,
             "is_builtin": role.is_builtin,
+            "is_admin": role.is_admin,
         }
 
     async def update_role(
@@ -78,6 +81,7 @@ class RoleService:
             "description": role.description,
             "permissions": role.permissions,
             "is_builtin": role.is_builtin,
+            "is_admin": role.is_admin,
         }
 
     async def delete_role(self, name: str) -> bool:
@@ -152,17 +156,13 @@ class RoleService:
                 if role.permissions == ["*"]:
                     child_roles = [{"name": p.name} for p in permissions]
                 else:
-                    child_roles = [
-                        {"name": p} for p in role.permissions if p in permission_map
-                    ]
+                    child_roles = [{"name": p} for p in role.permissions if p in permission_map]
 
                 if child_roles:
                     await self.keycloak.set_role_composites(role.name, child_roles)
                     stats["composite_roles_updated"] += 1
             except Exception as e:
-                stats["errors"].append(
-                    f"Failed to sync composite role '{role.name}': {e}"
-                )
+                stats["errors"].append(f"Failed to sync composite role '{role.name}': {e}")
 
         return stats
 

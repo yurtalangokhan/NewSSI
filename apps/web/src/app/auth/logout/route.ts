@@ -40,8 +40,9 @@ const handleLogout = async (request: NextRequest) => {
     });
   };
 
+  const requestedNextPath = request.nextUrl.searchParams.get("next");
   const nextPath =
-    request.nextUrl.searchParams.get("next") || getLoginPath(authTypeMetadata);
+    requestedNextPath || `${getLoginPath(authTypeMetadata)}?logged_out=true`;
 
   // For OIDC, redirect to Keycloak's RP-initiated logout as a front-channel
   // courtesy step. The SSO session was already terminated server-side by the

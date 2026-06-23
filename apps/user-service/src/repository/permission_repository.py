@@ -45,10 +45,12 @@ class PermissionRepository(BaseRepository):
                 key = f"{service}:{entity}"
                 if key not in seen:
                     seen.add(key)
-                    entities.append({
-                        "service": service,
-                        "entity": entity,
-                    })
+                    entities.append(
+                        {
+                            "service": service,
+                            "entity": entity,
+                        }
+                    )
             return entities
 
     async def count_by_service(self) -> list[dict]:

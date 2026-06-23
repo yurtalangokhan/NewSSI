@@ -181,10 +181,10 @@ class ExternalAuthService:
                     roles.extend(str(r) for r in client_roles if r is not None)
 
         role_map = {
-            "admin": "admin",
-            "super_admin": "admin",
-            "superuser": "admin",
-            "realm-admin": "admin",
+            "admin": "system-admin",
+            "super_admin": "system-admin",
+            "superuser": "system-admin",
+            "realm-admin": "system-admin",
         }
         for role in roles:
             normalized = role.strip().lower()
@@ -227,6 +227,7 @@ class ExternalAuthService:
             role=role,
             is_active=True,
             is_verified=bool(claims.get("email_verified", True)),
+            is_external_keycloak_user=True,
         )
         await self.settings_repo.ensure_defaults(user.id)
         return user

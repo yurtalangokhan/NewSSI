@@ -1,7 +1,8 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import delete, func, or_, select
+from sqlalchemy import delete, func, or_, select, text
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.database.models import UserModel
 
@@ -9,6 +10,8 @@ from .base_repository import BaseRepository
 
 
 class UserRepository(BaseRepository):
+    _has_external_keycloak_user_column: bool | None = None
+
     async def create(self, **kwargs) -> UserModel:
         async with self._session() as session:
             user = UserModel(**kwargs)
@@ -71,6 +74,7 @@ class UserRepository(BaseRepository):
         roles: list[str] | None = None,
         is_active: bool | None = None,
         invited: bool | None = None,
+        include_external_keycloak_users: bool = True,
     ) -> tuple[list[UserModel], int]:
         async with self._session() as session:
             stmt = select(UserModel)
@@ -110,6 +114,16 @@ class UserRepository(BaseRepository):
             if invited is not None:
                 stmt = stmt.where(UserModel.invited == invited)
                 count_stmt = count_stmt.where(UserModel.invited == invited)
+
+            if (
+                not include_external_keycloak_users
+                and await self._external_keycloak_user_column_exists(session)
+            ):
+                stmt = stmt.where(UserModel.is_external_keycloak_user.is_(False))
+                count_stmt = count_stmt.where(UserModel.is_external_keycloak_user.is_(False))
+            elif not include_external_keycloak_users:
+                stmt = stmt.where(UserModel.keycloak_id.is_(None))
+                count_stmt = count_stmt.where(UserModel.keycloak_id.is_(None))
 
             count_result = await session.execute(count_stmt)
             total = count_result.scalar_one()
@@ -165,3 +179,23 @@ class UserRepository(BaseRepository):
             await session.flush()
             await session.refresh(user)
             return user
+
+    async def _external_keycloak_user_column_exists(self, session: AsyncSession) -> bool:
+        if self._has_external_keycloak_user_column is not None:
+            return self._has_external_keycloak_user_column
+
+        result = await session.execute(
+            text(
+                """
+                SELECT EXISTS (
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_schema = current_schema()
+                      AND table_name = 'users'
+                      AND column_name = 'is_external_keycloak_user'
+                )
+                """
+            )
+        )
+        self._has_external_keycloak_user_column = bool(result.scalar_one())
+        return self._has_external_keycloak_user_column

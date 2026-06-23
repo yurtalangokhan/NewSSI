@@ -3,15 +3,13 @@ import secrets
 import uuid
 from typing import Any
 
-from src.core.database.models.user_model import UserRole, normalize_user_role
-from src.repository import SessionRepository, UserRepository, UserSettingsRepository
+from src.core.database.models.user_model import normalize_user_role
+from src.repository import RoleRepository, SessionRepository, UserRepository, UserSettingsRepository
 
 from .auth_service import AuthService
 from .keycloak_service import get_keycloak_service
 
 logger = logging.getLogger(__name__)
-
-_KEYCLOAK_ROLES = ["admin", "enduser"]
 
 
 class UserService:
@@ -19,6 +17,7 @@ class UserService:
         self.user_repo = UserRepository()
         self.settings_repo = UserSettingsRepository()
         self.session_repo = SessionRepository()
+        self.role_repo = RoleRepository()
         self.keycloak = get_keycloak_service()
         self.auth = AuthService()
 
@@ -27,6 +26,23 @@ class UserService:
         if not user:
             return None
         return await self._user_to_app_dict(user)
+
+    async def get_user_permissions(self, user_id: uuid.UUID) -> dict[str, list[str]] | None:
+        user = await self.user_repo.get_by_id(user_id)
+        if not user:
+            return None
+
+        if user.is_superuser:
+            return {"permissions": ["*"]}
+
+        role = await self.role_repo.get_by_name(user.role)
+        if not role:
+            return {"permissions": []}
+
+        if role.permissions == ["*"]:
+            return {"permissions": ["*"]}
+
+        return {"permissions": list(role.permissions or [])}
 
     async def get_user_by_email(self, email: str) -> dict[str, Any] | None:
         user = await self.user_repo.get_by_email(email)
@@ -48,7 +64,7 @@ class UserService:
             try:
                 realm_roles = await self.keycloak.get_user_realm_roles(user.keycloak_id)
                 if realm_roles:
-                    keycloak_role = self._resolve_role_from_realm_roles(realm_roles)
+                    keycloak_role = await self._resolve_role_from_realm_roles(realm_roles)
                     # Sync Keycloak role to DB if different
                     if keycloak_role != user.role:
                         await self.user_repo.update(uid, role=keycloak_role)
@@ -68,6 +84,7 @@ class UserService:
         is_active: bool | None = None,
         invited: bool | None = None,
     ) -> tuple[list[dict[str, Any]], int]:
+        include_external_keycloak_users = self._external_keycloak_enabled()
         users, total = await self.user_repo.list_paginated(
             skip,
             limit,
@@ -76,11 +93,17 @@ class UserService:
             roles,
             is_active,
             invited,
+            include_external_keycloak_users,
         )
         return [self._user_to_dict(u) for u in users], total
 
     async def get_invited_users(self) -> list[dict[str, Any]]:
-        users, _ = await self.user_repo.list_paginated(0, 1000, invited=True)
+        users, _ = await self.user_repo.list_paginated(
+            0,
+            1000,
+            invited=True,
+            include_external_keycloak_users=self._external_keycloak_enabled(),
+        )
         return [self._user_to_dict(u) for u in users]
 
     async def create_user(
@@ -97,7 +120,7 @@ class UserService:
         if await self.user_repo.exists_by_email(email):
             raise ValueError(f"User with email {email} already exists")
 
-        role_value = role if role in [r.value for r in UserRole] else UserRole.ENDUSER.value
+        role_value = role if await self.role_repo.exists(role) else "enduser"
         hashed_password = AuthService.hash_password(password) if password else None
         normalized_email = email.lower()
         normalized_username = username or normalized_email.split("@")[0]
@@ -180,6 +203,7 @@ class UserService:
                 invited=invited,
                 password_configured=bool(password),
                 keycloak_id=keycloak_id,
+                is_external_keycloak_user=False,
             )
         except Exception:
             if created_keycloak_id and keycloak_id:
@@ -203,7 +227,7 @@ class UserService:
                 username=None,
                 first_name=None,
                 last_name=None,
-                role=UserRole.ENDUSER.value,
+                role="enduser",
                 invited=True,
             )
             users.append(user)
@@ -226,7 +250,7 @@ class UserService:
             if existing and existing.id != user_id:
                 raise ValueError(f"User with email {filtered['email']} already exists")
 
-        if "role" in updates and updates["role"] in [r.value for r in UserRole]:
+        if "role" in updates and await self.role_repo.exists(updates["role"]):
             filtered["role"] = updates["role"]
 
         # Get current user first
@@ -320,7 +344,7 @@ class UserService:
         return self._user_to_dict(user)
 
     async def set_user_role(self, user_id: uuid.UUID, role: str) -> dict[str, Any] | None:
-        if role not in _KEYCLOAK_ROLES:
+        if not await self.role_repo.exists(role):
             raise ValueError(f"Invalid role: {role}")
 
         user = await self.user_repo.get_by_id(user_id)
@@ -333,7 +357,7 @@ class UserService:
             # Verify role was set correctly by reading back from Keycloak
             try:
                 realm_roles = await self.keycloak.get_user_realm_roles(user.keycloak_id)
-                actual_role = self._resolve_role_from_realm_roles(realm_roles)
+                actual_role = await self._resolve_role_from_realm_roles(realm_roles)
                 # Sync verified role to DB
                 user = await self.user_repo.update(user_id, role=actual_role)
             except Exception:
@@ -429,6 +453,7 @@ class UserService:
             "role": normalize_user_role(user.role),
             "invited": user.invited,
             "password_configured": user.password_configured,
+            "is_external_keycloak_user": getattr(user, "is_external_keycloak_user", False),
             "team_name": user.team_name,
             "keycloak_id": user.keycloak_id,
             "created_at": user.created_at.isoformat() if user.created_at else None,
@@ -465,17 +490,18 @@ class UserService:
         }
         return payload
 
-    @staticmethod
-    def _resolve_role_from_realm_roles(realm_roles: list[dict[str, Any]]) -> str:
+    async def _resolve_role_from_realm_roles(self, realm_roles: list[dict[str, Any]]) -> str:
         """
-        Extract admin role from Keycloak realm roles.
-        Looks for admin-like roles and returns 'admin' if found, else 'enduser'.
+        Resolve user role from Keycloak realm roles.
+        Picks the first realm role that exists in the local roles DB.
+        Falls back to 'enduser'.
         """
+        all_roles = await self.role_repo.get_all()
+        valid_role_names = {r.name for r in all_roles}
         role_names = [r.get("name", "").lower() for r in realm_roles if isinstance(r, dict)]
-        admin_indicators = {"admin", "super_admin", "superuser", "realm-admin"}
-        for role in role_names:
-            if role in admin_indicators:
-                return "admin"
+        for name in role_names:
+            if name in valid_role_names:
+                return name
         return "enduser"
 
     async def upsert_user_from_keycloak(
@@ -498,6 +524,7 @@ class UserService:
             username=username,
             is_active=True,
             is_verified=True,
+            is_external_keycloak_user=self._external_keycloak_enabled(),
         )
 
         # Ensure settings exist for this user
@@ -541,7 +568,8 @@ class UserService:
         try:
             # Step 1: Ensure realm roles exist in Keycloak
             await self._ensure_keycloak_roles()
-            report["roles_synced"] = len(_KEYCLOAK_ROLES)
+            all_roles = await self.role_repo.get_all()
+            report["roles_synced"] = len(all_roles)
 
             # Step 2: Get all users from Keycloak
             keycloak_users = await self.keycloak.list_users(first=0, max=10000)
@@ -561,7 +589,7 @@ class UserService:
 
                     # Fetch user's roles from Keycloak
                     realm_roles = await self.keycloak.get_user_realm_roles(keycloak_id)
-                    role = self._resolve_role_from_realm_roles(realm_roles)
+                    role = await self._resolve_role_from_realm_roles(realm_roles)
 
                     # Check if user exists in DB
                     existing_user = await self.user_repo.get_by_keycloak_id(keycloak_id)
@@ -575,6 +603,7 @@ class UserService:
                             username=kc_user.get("username"),
                             is_active=kc_user.get("enabled", True),
                             role=role,
+                            is_external_keycloak_user=self._external_keycloak_enabled(),
                         )
                         report["keycloak_users_updated"] += 1
                     else:
@@ -588,6 +617,7 @@ class UserService:
                             is_active=kc_user.get("enabled", True),
                             is_verified=True,
                             role=role,
+                            is_external_keycloak_user=self._external_keycloak_enabled(),
                         )
                         await self.settings_repo.ensure_defaults(user.id)
                         report["keycloak_users_created"] += 1
@@ -618,14 +648,19 @@ class UserService:
         return report
 
     async def _ensure_keycloak_roles(self) -> None:
-        """Ensure all required realm roles exist in Keycloak."""
-        for role_name in _KEYCLOAK_ROLES:
-            existing_role = await self.keycloak.get_realm_role(role_name)
+        """Ensure all known DB roles exist as realm roles in Keycloak."""
+        all_roles = await self.role_repo.get_all()
+        for role in all_roles:
+            existing_role = await self.keycloak.get_realm_role(role.name)
             if not existing_role:
                 await self.keycloak.create_realm_role(
-                    role_name,
-                    description=f"AgenticAI {role_name} role",
+                    role.name,
+                    description=role.description or f"AgenticAI {role.name} role",
                 )
+
+    def _external_keycloak_enabled(self) -> bool:
+        is_external_keycloak = getattr(self.keycloak, "is_external_keycloak", None)
+        return bool(is_external_keycloak()) if callable(is_external_keycloak) else False
 
 
 _user_service: UserService | None = None

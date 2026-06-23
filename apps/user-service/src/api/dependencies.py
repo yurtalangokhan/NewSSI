@@ -4,8 +4,7 @@ from typing import Annotated
 from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from src.core.database.models.user_model import is_admin_role
-from src.repository import UserRepository
+from src.repository import RoleRepository, UserRepository
 from src.service import get_auth_service
 
 _security = HTTPBearer(auto_error=False)
@@ -63,8 +62,15 @@ async def require_admin(
     try:
         repo = UserRepository()
         user = await repo.get_by_id(uuid.UUID(user_id))
-        if user and (is_admin_role(user.role) or user.is_superuser):
+        if not user:
+            raise HTTPException(status_code=403, detail="Admin access required")
+        if user.is_superuser:
             return user_id
+        role = await RoleRepository().get_by_name(user.role)
+        if role and role.is_admin:
+            return user_id
+    except HTTPException:
+        raise
     except Exception:
         pass
 
@@ -80,6 +86,7 @@ def require_permission(permission: str):
     includes the required permission. Superusers bypass the check.
     Denied access is recorded in the audit log.
     """
+
     async def _require_permission(
         request: Request,
         user_id: Annotated[str, Depends(require_auth)],
@@ -97,9 +104,7 @@ def require_permission(permission: str):
                 return user_id
 
             role = await RoleRepository().get_by_name(user.role)
-            if role and (
-                role.permissions == ["*"] or permission in role.permissions
-            ):
+            if role and (role.permissions == ["*"] or permission in role.permissions):
                 return user_id
         except HTTPException:
             raise
