@@ -78,9 +78,9 @@ class KeycloakService:
     def _admin_credentials_configured(self) -> bool:
         if self.is_external_keycloak():
             return False
-        username_configured = bool(_env.get("KEYCLOAK_ADMIN")) or self._settings_field_was_configured(
-            "KEYCLOAK_ADMIN"
-        )
+        username_configured = bool(
+            _env.get("KEYCLOAK_ADMIN")
+        ) or self._settings_field_was_configured("KEYCLOAK_ADMIN")
         password_configured = bool(
             _env.get("KEYCLOAK_ADMIN_PASSWORD")
         ) or self._settings_field_was_configured("KEYCLOAK_ADMIN_PASSWORD")
@@ -228,7 +228,9 @@ class KeycloakService:
         resp.raise_for_status()
         return resp.json()
 
-    async def get_user_by_email(self, email: str, token: str | None = None) -> dict[str, Any] | None:
+    async def get_user_by_email(
+        self, email: str, token: str | None = None
+    ) -> dict[str, Any] | None:
         resp = await self._keycloak_request(
             "GET",
             f"/users?email={quote(email)}&exact=true",
@@ -267,7 +269,9 @@ class KeycloakService:
         )
         return resp.status_code in (200, 204)
 
-    async def get_realm_role(self, role_name: str, token: str | None = None) -> dict[str, Any] | None:
+    async def get_realm_role(
+        self, role_name: str, token: str | None = None
+    ) -> dict[str, Any] | None:
         resp = await self._keycloak_request("GET", f"/roles/{role_name}", token=token)
         if resp.status_code == 404:
             return None
@@ -293,8 +297,6 @@ class KeycloakService:
     async def set_realm_role(self, keycloak_id: str, role_name: str) -> bool:
         role = await self.get_realm_role(role_name)
         if not role:
-            if role_name not in ("admin", "enduser"):
-                return False
             await self.create_realm_role(role_name)
             role = await self.get_realm_role(role_name)
             if not role:
@@ -304,17 +306,7 @@ class KeycloakService:
             "GET", f"/users/{keycloak_id}/role-mappings/realm"
         )
         current_roles = current_roles_resp.json()
-        supported = [
-            "admin",
-            "enduser",
-            "global_curator",
-            "curator",
-            "limited",
-            "basic",
-            "ext_perm_user",
-            "slack_user",
-        ]
-        roles_to_remove = [r for r in current_roles if r["name"] in supported]
+        roles_to_remove = [r for r in current_roles if r["name"] != role_name]
 
         if roles_to_remove:
             await self._keycloak_request(

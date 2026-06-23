@@ -1,13 +1,13 @@
 from fastapi import APIRouter, Body, Depends
 
-from src.api.dependencies import require_auth, require_permission
+from src.api.dependencies import require_permission
 from src.controller.role_controller import get_role_controller
 
 router = APIRouter(prefix="/roles", tags=["roles"])
 
 
 @router.get("/")
-async def list_roles(user_id: str = Depends(require_auth)):
+async def list_roles(_user_id: str = Depends(require_permission("role:list"))):
     ctrl = get_role_controller()
     return await ctrl.list_roles()
 
@@ -29,7 +29,7 @@ async def create_role(
 
 
 @router.get("/{role_name}")
-async def get_role(role_name: str, user_id: str = Depends(require_auth)):
+async def get_role(role_name: str, _user_id: str = Depends(require_permission("role:read"))):
     ctrl = get_role_controller()
     return await ctrl.get_role(role_name)
 
@@ -59,7 +59,7 @@ async def delete_role(role_name: str, user_id: str = Depends(require_permission(
 @router.get("/{role_name}/permissions")
 async def get_role_permissions(
     role_name: str,
-    user_id: str = Depends(require_auth),
+    _user_id: str = Depends(require_permission("role:read")),
 ):
     ctrl = get_role_controller()
     return await ctrl.get_role_permissions(role_name)

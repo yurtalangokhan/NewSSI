@@ -8,8 +8,6 @@ from .base_repository import BaseRepository
 
 
 class RoleRepository(BaseRepository):
-    SUPPORTED_ROLES = ["admin", "enduser"]
-
     async def get_by_name(self, name: str) -> RoleModel | None:
         async with self._session() as session:
             result = await session.execute(select(RoleModel).where(RoleModel.name == name))

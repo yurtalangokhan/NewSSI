@@ -2,7 +2,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Form, Request, Response
 
-from src.api.dependencies import require_admin, require_auth
+from src.api.dependencies import require_auth, require_permission
 from src.controller import get_auth_controller
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -36,7 +36,6 @@ async def logout(
 async def refresh(
     request: Request,
     response: Response,
-    user_id: Annotated[str, Depends(require_auth)],
 ):
     return await get_auth_controller().refresh(request, response)
 
@@ -65,6 +64,8 @@ async def get_me(
 
 
 @router.post("/sync-users")
-async def sync_users(admin_id: Annotated[str, Depends(require_admin)]):
+async def sync_users(
+    _admin_id: Annotated[str, Depends(require_permission("user:manage"))],
+):
     """Sync users and roles from Keycloak into the local application DB."""
     return await get_auth_controller().sync_users_from_keycloak()
