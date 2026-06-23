@@ -27,7 +27,7 @@ async def _resolve_target_user_id(target_id: str) -> uuid.UUID:
 
 
 async def _authorize_target_user_id(target_id: str, authenticated_user_id: str) -> uuid.UUID:
-    from src.core.database.models.user_model import is_admin_role
+    from src.repository import RoleRepository
 
     resolved_user_id = await _resolve_target_user_id(target_id)
     if authenticated_user_id == "internal-service":
@@ -39,8 +39,12 @@ async def _authorize_target_user_id(target_id: str, authenticated_user_id: str) 
     if resolved_user_id == authenticated_uuid:
         return resolved_user_id
     user = await UserRepository().get_by_id(authenticated_uuid)
-    if user and (is_admin_role(user.role) or user.is_superuser):
-        return resolved_user_id
+    if user:
+        if user.is_superuser:
+            return resolved_user_id
+        role = await RoleRepository().get_by_name(user.role)
+        if role and role.is_admin:
+            return resolved_user_id
     raise HTTPException(status_code=403, detail="Forbidden")
 
 

@@ -9,12 +9,14 @@ const DeactivateUserButton = ({
   user,
   deactivate,
   mutate,
+  onSuccess,
   className,
   children,
 }: {
   user: User;
   deactivate: boolean;
   mutate: () => void;
+  onSuccess?: (user: User) => void;
   className?: string;
   children?: string;
 }) => {
@@ -23,8 +25,11 @@ const DeactivateUserButton = ({
     `/api/user-service/users/${user.id}/active`,
     userMutationFetcher,
     {
-      onSuccess: () => {
-        mutate();
+      onSuccess: (updatedUser: User) => {
+        onSuccess?.(updatedUser);
+        if (!onSuccess) {
+          mutate();
+        }
         toast.success(
           deactivate
             ? t("admin.users.deactivatedSuccess")

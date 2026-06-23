@@ -1,7 +1,6 @@
 import { usePaidEnterpriseFeaturesEnabled } from "@/components/settings/usePaidEnterpriseFeaturesEnabled";
 import React, { useState, useEffect } from "react";
 import { FormikProps } from "formik";
-import { UserRole } from "@/lib/types";
 import { useUserGroups } from "@/lib/hooks";
 import { BooleanFormField } from "@/components/Field";
 import { useUser } from "@/providers/UserProvider";
@@ -36,7 +35,7 @@ export const IsPublicGroupSelector = <T extends IsPublicGroupSelectorFormType>({
 
   useEffect(() => {
     if (user && userGroups && isPaidEnterpriseFeaturesEnabled) {
-      const isUserAdmin = user.role === UserRole.ADMIN;
+      const isUserAdmin = user.role !== "enduser";
       if (!isUserAdmin && userGroups.length > 0) {
         formikProps.setFieldValue("is_public", false);
       }

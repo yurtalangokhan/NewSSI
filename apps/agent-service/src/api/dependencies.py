@@ -3,6 +3,7 @@
 from service.AuthService import (
     AuthenticatedUser,
     extract_user_id_from_token,
+    require_permission,
     require_user,
     require_user_or_internal_service_token,
     verify_api_key,
@@ -11,6 +12,7 @@ from service.AuthService import (
 
 __all__ = [
     "AuthenticatedUser",
+    "require_permission",
     "require_user",
     "require_user_or_internal_service_token",
     "verify_bearer",

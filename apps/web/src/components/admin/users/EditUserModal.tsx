@@ -1,19 +1,21 @@
 import { useMemo, useState } from "react";
 import Modal from "@/refresh-components/Modal";
 import Button from "@/refresh-components/buttons/Button";
+import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
+import PasswordInputTypeIn from "@/refresh-components/inputs/PasswordInputTypeIn";
 import Text from "@/refresh-components/texts/Text";
 import { User } from "@/lib/types";
 import { toast } from "@/hooks/useToast";
 import { LoadingAnimation } from "@/components/Loading";
 import { SvgUser } from "@opal/icons";
 import { useTranslation } from "react-i18next";
-import DeleteUserButton from "./buttons/DeleteUserButton";
+import DeleteUserButton from "@/components/admin/users/buttons/DeleteUserButton";
 import { authenticatedFetch } from "@/lib/fetcher";
 
 export interface EditUserModalProps {
   user: User;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (user?: User) => void;
   canDelete?: boolean;
 }
 
@@ -63,15 +65,20 @@ export default function EditUserModal({
 
     setIsSaving(true);
     try {
+      let updatedUser: User | undefined;
+
       if (isProfileChanged) {
-        const profileRes = await authenticatedFetch(`/api/user-service/users/${user.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            first_name: firstName.trim() || null,
-            last_name: lastName.trim() || null,
-          }),
-        });
+        const profileRes = await authenticatedFetch(
+          `/api/user-service/users/${user.id}`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              first_name: firstName.trim() || null,
+              last_name: lastName.trim() || null,
+            }),
+          }
+        );
 
         if (!profileRes.ok) {
           const err = await profileRes.json().catch(() => ({}));
@@ -79,6 +86,8 @@ export default function EditUserModal({
             err.detail || t("admin.users.editUserModal.updateProfileFailed")
           );
         }
+
+        updatedUser = (await profileRes.json()) as User;
       }
 
       if (isPasswordChanged) {
@@ -102,7 +111,7 @@ export default function EditUserModal({
       }
 
       toast.success(t("admin.users.editUserModal.updateSuccess"));
-      onSuccess();
+      onSuccess(updatedUser ?? user);
       onClose();
     } catch (error) {
       toast.error(
@@ -130,11 +139,11 @@ export default function EditUserModal({
               <Text as="p" text03>
                 {t("admin.users.editUserModal.emailLabel")}
               </Text>
-              <input
-                type="text"
+              <InputTypeIn
                 value={user.email}
                 readOnly
-                className="h-10 rounded border border-border-subtle bg-background-100 px-3 opacity-70"
+                variant="readOnly"
+                showClearButton={false}
               />
             </div>
 
@@ -143,11 +152,9 @@ export default function EditUserModal({
                 <Text as="p" text03>
                   {t("admin.users.editUserModal.firstNameLabel")}
                 </Text>
-                <input
-                  type="text"
+                <InputTypeIn
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
-                  className="h-10 rounded border border-border-subtle bg-background px-3"
                   placeholder={t(
                     "admin.users.editUserModal.firstNamePlaceholder"
                   )}
@@ -159,11 +166,9 @@ export default function EditUserModal({
                 <Text as="p" text03>
                   {t("admin.users.editUserModal.lastNameLabel")}
                 </Text>
-                <input
-                  type="text"
+                <InputTypeIn
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
-                  className="h-10 rounded border border-border-subtle bg-background px-3"
                   placeholder={t(
                     "admin.users.editUserModal.lastNamePlaceholder"
                   )}
@@ -176,11 +181,9 @@ export default function EditUserModal({
               <Text as="p" text03>
                 {t("admin.users.editUserModal.passwordLabel")}
               </Text>
-              <input
-                type="password"
+              <PasswordInputTypeIn
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="h-10 rounded border border-border-subtle bg-background px-3"
                 placeholder={t("admin.users.editUserModal.passwordPlaceholder")}
               />
             </div>

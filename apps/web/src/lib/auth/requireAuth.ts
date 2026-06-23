@@ -1,10 +1,12 @@
-import { User, UserRole } from "@/lib/types";
+import { User } from "@/lib/types";
 import {
   AuthTypeMetadata,
   getAuthTypeMetadataSS,
   getCurrentUserSS,
+  hasAuthSessionCookieSS,
 } from "@/lib/userSS";
 import { getLoginPath } from "@/lib/auth/loginRoute";
+import { isAdminUser } from "@/lib/auth/roles";
 
 /**
  * Result of an authentication check.
@@ -37,11 +39,13 @@ export async function requireAuth(): Promise<AuthCheckResult> {
   // Fetch auth information
   let user: User | null = null;
   let authTypeMetadata: AuthTypeMetadata | null = null;
+  let hasAuthCookie = false;
 
   try {
-    [authTypeMetadata, user] = await Promise.all([
+    [authTypeMetadata, user, hasAuthCookie] = await Promise.all([
       getAuthTypeMetadataSS(),
       getCurrentUserSS(),
+      hasAuthSessionCookieSS(),
     ]);
   } catch (e) {
     console.log(`Failed to fetch auth information - ${e}`);
@@ -51,7 +55,7 @@ export async function requireAuth(): Promise<AuthCheckResult> {
     return {
       user: null,
       authTypeMetadata,
-      redirect: getLoginPath(authTypeMetadata),
+      redirect: hasAuthCookie ? "/error/401" : getLoginPath(authTypeMetadata),
     };
   }
 
@@ -69,8 +73,6 @@ export async function requireAuth(): Promise<AuthCheckResult> {
     authTypeMetadata,
   };
 }
-
-const ADMIN_ALLOWED_ROLES = [UserRole.ADMIN];
 
 /**
  * Requires that the user is authenticated AND has admin role.
@@ -100,16 +102,11 @@ export async function requireAdminAuth(): Promise<AuthCheckResult> {
 
   const { user, authTypeMetadata } = authResult;
 
-  // Check if user has an allowed role
-  if (
-    user &&
-    !ADMIN_ALLOWED_ROLES.includes(user.role) &&
-    user.is_superuser !== true
-  ) {
+  if (!isAdminUser(user)) {
     return {
       user,
       authTypeMetadata,
-      redirect: "/app",
+      redirect: "/error/403",
     };
   }
 

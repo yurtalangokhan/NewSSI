@@ -43,7 +43,12 @@ async function tryRefreshToken(): Promise<boolean> {
 
 function handleAuthError(status: 401 | 403): never {
   if (typeof window !== "undefined") {
-    window.location.href = "/auth/login";
+    if (status === 401 && window.sessionStorage.getItem("logout_in_progress")) {
+      window.location.href = "/auth/login";
+      throw new RedirectError(DEFAULT_AUTH_ERROR_MSG, status, null);
+    }
+
+    window.location.href = `/error/${status}`;
   }
   throw new RedirectError(DEFAULT_AUTH_ERROR_MSG, status, null);
 }
@@ -75,7 +80,7 @@ export async function authenticatedFetch(
   }
 
   if (res.status === 403) {
-    console.error("[Auth] Access forbidden (403), redirecting to login");
+    console.error("[Auth] Access forbidden (403), redirecting to error page");
     handleAuthError(403);
   }
 
@@ -93,11 +98,7 @@ export const errorHandlingFetcher = async <T>(url: string): Promise<T> => {
   }
 
   if (!res.ok) {
-    const error = new FetchError(
-      DEFAULT_ERROR_MSG,
-      res.status,
-      payload
-    );
+    const error = new FetchError(DEFAULT_ERROR_MSG, res.status, payload);
     throw error;
   }
 

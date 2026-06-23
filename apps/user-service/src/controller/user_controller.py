@@ -22,6 +22,12 @@ class UserController(BaseController):
             self._raise_not_found("User not found")
         return user
 
+    async def get_user_permissions(self, user_id: uuid.UUID) -> dict[str, list[str]]:
+        permissions = await self.user_service.get_user_permissions(user_id)
+        if not permissions:
+            self._raise_not_found("User not found")
+        return permissions
+
     async def update_me(self, user_id: uuid.UUID, **updates: Any) -> dict[str, Any]:
         user = await self.user_service.update_user(user_id, **updates)
         if not user:

@@ -11,6 +11,7 @@ import Button from "@/refresh-components/buttons/Button";
 import Message from "@/refresh-components/messages/Message";
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
+import { useEffect } from "react";
 
 interface LoginPageProps {
   authUrl: string | null;
@@ -28,13 +29,17 @@ export default function LoginPage({
   authTypeMetadata,
   nextUrl,
   oidcError,
-  hidePageRedirect,
+  hidePageRedirect: _hidePageRedirect,
   verified,
   isFirstUser,
   externalKeycloakLogin = false,
 }: LoginPageProps) {
   useSendAuthRequiredMessage();
   const { t } = useTranslation();
+
+  useEffect(() => {
+    window.sessionStorage.removeItem("logout_in_progress");
+  }, []);
 
   // Honor any existing nextUrl; only default to new team flow for first users with no nextUrl
   const effectiveNextUrl =

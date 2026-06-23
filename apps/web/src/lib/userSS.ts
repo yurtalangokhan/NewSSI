@@ -1,11 +1,6 @@
 import { User } from "./types";
 import { AuthType, SERVER_SIDE_ONLY__AUTH_TYPE } from "./constants";
-import {
-  UrlBuilder,
-  fetchSS,
-  buildUserServiceUrl,
-  fetchUserServiceSS,
-} from "./utilsSS";
+import { UrlBuilder, buildUserServiceUrl, fetchUserServiceSS } from "./utilsSS";
 import { cookies as getCookies } from "next/headers";
 
 export interface AuthTypeMetadata {
@@ -131,14 +126,7 @@ export const logoutSS = async (
 export const getCurrentUserSS = async (): Promise<User | null> => {
   try {
     // Avoid noisy backend 401 calls when there is clearly no authenticated session.
-    const cookieStore = await getCookies();
-    const hasAuthCookie =
-      cookieStore.has("fastapiusersauth") ||
-      cookieStore.has("access_token") ||
-      cookieStore.has("refresh_token") ||
-      cookieStore.has("session") ||
-      cookieStore.has("id_token");
-    if (!hasAuthCookie) {
+    if (!(await hasAuthSessionCookieSS())) {
       return null;
     }
 
@@ -153,6 +141,17 @@ export const getCurrentUserSS = async (): Promise<User | null> => {
   } catch {
     return null;
   }
+};
+
+export const hasAuthSessionCookieSS = async (): Promise<boolean> => {
+  const cookieStore = await getCookies();
+  return (
+    cookieStore.has("fastapiusersauth") ||
+    cookieStore.has("access_token") ||
+    cookieStore.has("refresh_token") ||
+    cookieStore.has("session") ||
+    cookieStore.has("id_token")
+  );
 };
 
 export const processCookies = (cookies: {

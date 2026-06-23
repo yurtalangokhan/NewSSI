@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation";
+import HttpErrorPage from "@/components/errorPages/HttpErrorPage";
 
 export default function NotFound() {
-  redirect("/auth/login");
+  return <HttpErrorPage code={404} />;
 }

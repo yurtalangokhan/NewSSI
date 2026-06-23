@@ -15,12 +15,25 @@ services:
   # User Service
   # --------------------------------------------------------------------------
   - name: user-service
-    url: http://user-service:8090
+    url: http://host.docker.internal:8090
     routes:
       # Public auth endpoints (login/logout/refresh/me/type/oidc)
       - name: user-service-auth
         paths:
           - /api/auth
+        strip_path: false
+        preserve_host: true
+
+      # Internal endpoints (no JWT — service-to-service calls)
+      - name: user-service-users-internal
+        paths:
+          - /api/users/internal
+        strip_path: false
+        preserve_host: true
+
+      - name: user-service-settings-internal
+        paths:
+          - /api/users/me/settings/internal
         strip_path: false
         preserve_host: true
 
@@ -42,8 +55,6 @@ services:
               cookie_names:
                 - access_token
                 - fastapiusersauth
-
-      # User-service endpoints
 
       - name: user-service-settings
         paths:
@@ -84,7 +95,7 @@ services:
   # Agent Service
   # --------------------------------------------------------------------------
   - name: agent-service
-    url: http://agent-service:8123
+    url: http://host.docker.internal:8123
     routes:
       - name: agent-service-api-health-public
         paths:
@@ -153,7 +164,7 @@ services:
   # RAG Service
   # --------------------------------------------------------------------------
   - name: rag-service
-    url: http://rag-service:8083
+    url: http://host.docker.internal:8083
     routes:
       - name: rag-service-api
         paths:
@@ -166,9 +177,7 @@ services:
   # Tools Service (MCP)
   # --------------------------------------------------------------------------
   - name: tools-service-mcp
-    # FastMCP HTTP transport is mounted at /mcp.
-    # With strip_path=true, /api/mcp -> /mcp upstream.
-    url: http://tools-service:8003/mcp
+    url: http://host.docker.internal:8003/mcp
     routes:
       - name: tools-service-mcp
         paths:
@@ -187,7 +196,7 @@ services:
   # --------------------------------------------------------------------------
 
   - name: internal-user-service
-    url: http://user-service:8090
+    url: http://host.docker.internal:8090
     routes:
       - name: internal-user-service-all
         paths:
@@ -196,7 +205,7 @@ services:
         preserve_host: true
 
   - name: internal-rag-service
-    url: http://rag-service:8080
+    url: http://host.docker.internal:8080
     routes:
       - name: internal-rag-service-all
         paths:
@@ -205,7 +214,7 @@ services:
         preserve_host: true
 
   - name: internal-tools-service
-    url: http://tools-service:8003/mcp
+    url: http://host.docker.internal:8003/mcp
     routes:
       - name: internal-tools-service-all
         paths:
@@ -230,4 +239,3 @@ consumers:
           KwIDAQAB
           -----END PUBLIC KEY-----
         secret: kong-jwt-dummy-secret
-

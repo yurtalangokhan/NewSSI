@@ -119,13 +119,14 @@ class AuthService:
             role=role,
             is_active=True,
             is_verified=True,
+            is_external_keycloak_user=self._external_keycloak_enabled(),
         )
 
         bootstrap_admin_email = (
             _settings.KEYCLOAK_BOOTSTRAP_ADMIN_EMAIL or _settings.KEYCLOAK_ADMIN_EMAIL
         )
         if bootstrap_admin_email and user_email == bootstrap_admin_email:
-            user = await self.user_repo.update(user.id, is_superuser=True, role="admin")
+            user = await self.user_repo.update(user.id, is_superuser=True, role="system-admin")
 
         return await self._build_oidc_login_response(user, token_data)
 
@@ -285,8 +286,14 @@ class AuthService:
         session = await self.session_repo.get_by_refresh_token_hash(self._hash_token(refresh_token))
         if session:
             current_time = datetime.now(UTC)
-            if session.expires_at < current_time:
-                await self.session_repo.delete_by_refresh_token_hash(self._hash_token(refresh_token))
+            # created_at may be naive (from datetime.utcnow); make it aware for comparison
+            created = session.created_at
+            if created.tzinfo is None:
+                created = created.replace(tzinfo=UTC)
+            if current_time > created + timedelta(days=30):
+                await self.session_repo.delete_by_refresh_token_hash(
+                    self._hash_token(refresh_token)
+                )
                 raise ValueError("Refresh token expired")
 
             user = await self.user_repo.get_by_id(session.user_id)
@@ -492,16 +499,20 @@ class AuthService:
     @staticmethod
     def _resolve_role(roles: list[str]) -> str:
         role_map = {
-            "admin": "admin",
-            "super_admin": "admin",
-            "superuser": "admin",
-            "realm-admin": "admin",
+            "admin": "system-admin",
+            "super_admin": "system-admin",
+            "superuser": "system-admin",
+            "realm-admin": "system-admin",
         }
         for role in roles:
             normalized = role.strip().lower()
             if normalized in role_map:
                 return role_map[normalized]
         return "enduser"
+
+    def _external_keycloak_enabled(self) -> bool:
+        is_external_keycloak = getattr(self.keycloak, "is_external_keycloak", None)
+        return bool(is_external_keycloak()) if callable(is_external_keycloak) else False
 
 
 _auth_service: AuthService | None = None

@@ -1,7 +1,9 @@
 "use client";
 
-import { withFormik, FormikProps, FormikErrors, Form, Field } from "formik";
+import { withFormik, FormikProps, FormikErrors, Form } from "formik";
 import Button from "@/refresh-components/buttons/Button";
+import InputTextAreaField from "@/refresh-components/form/InputTextAreaField";
+import Text from "@/refresh-components/texts/Text";
 import { useTranslation } from "react-i18next";
 import i18n from "@/i18n/config";
 
@@ -49,11 +51,12 @@ const AddUserFormRenderer = ({
   const { t } = useTranslation();
   return (
     <Form className="w-full" onSubmit={handleSubmit}>
-      <Field
+      <InputTextAreaField
         id="emails"
         name="emails"
-        as="textarea"
-        className="w-full p-4"
+        className="w-full"
+        autoResize
+        maxRows={8}
         onKeyDown={(e: React.KeyboardEvent<HTMLTextAreaElement>) => {
           if (e.key === "Enter") {
             e.preventDefault();
@@ -62,7 +65,9 @@ const AddUserFormRenderer = ({
         }}
       />
       {touched.emails && errors.emails && (
-        <div className="text-error text-sm">{errors.emails}</div>
+        <Text as="p" secondaryBody className="text-error">
+          {errors.emails}
+        </Text>
       )}
       <Button type="submit" disabled={isSubmitting} className="self-end">
         {t("admin.users.addButton")}

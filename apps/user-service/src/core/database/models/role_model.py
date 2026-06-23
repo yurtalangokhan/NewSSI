@@ -14,6 +14,7 @@ class RoleModel(Base):
     description: Mapped[str | None] = mapped_column(String(255), nullable=True)
     permissions: Mapped[list] = mapped_column(JSONB, default=list, nullable=False)
     is_builtin: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    is_admin: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.utcnow, nullable=False
     )

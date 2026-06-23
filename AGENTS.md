@@ -200,3 +200,4 @@ Central `.env` is at `configs/.env` — references the real network addresses. P
 - The old `AGENTS.md` at `legacy/open-agent-platform/AGENTS.md` documents a completely different codebase (Turbo/Yarn/Next 15) — ignore it.
 - `providers/` is empty.
 - The web app's `lib/opal/` is excluded from the main `tsconfig.json` (`"exclude": ["lib/opal"]`). Type-check it separately if needed.
+- Dont push the commits to remote branch and dont create merge request.
