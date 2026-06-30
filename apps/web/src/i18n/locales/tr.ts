@@ -123,6 +123,8 @@ const tr = {
     continueWithGoogle: "Google ile devam et",
     continueWithOidc: "OIDC SSO ile devam et",
     continueWithSaml: "SAML SSO ile devam et",
+    externalSsoLink: "IdP SSO ile devam et",
+    spSsoLink: "SP Keycloak SSO ile devam et",
     signingIn: "Giriş yapılıyor...",
     joining: "Katılınıyor...",
     creatingAccount: "Hesap oluşturuluyor...",

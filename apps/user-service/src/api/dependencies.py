@@ -4,7 +4,7 @@ from typing import Annotated
 from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from src.repository import RoleRepository, UserRepository
+from src.repository import CompositeRoleRepository, UserRepository
 from src.service import get_auth_service
 
 _security = HTTPBearer(auto_error=False)
@@ -66,7 +66,7 @@ async def require_admin(
             raise HTTPException(status_code=403, detail="Admin access required")
         if user.is_superuser:
             return user_id
-        role = await RoleRepository().get_by_name(user.role)
+        role = await CompositeRoleRepository().get_by_name(user.role)
         if role and role.is_admin:
             return user_id
     except HTTPException:
@@ -75,6 +75,29 @@ async def require_admin(
         pass
 
     raise HTTPException(status_code=403, detail="Admin access required")
+
+
+async def require_system_admin(
+    request: Request,
+    user_id: Annotated[str, Depends(require_auth)],
+) -> str:
+    try:
+        repo = UserRepository()
+        user = await repo.get_by_id(uuid.UUID(user_id))
+        if not user:
+            raise HTTPException(status_code=403, detail="System admin access required")
+        if user.is_superuser:
+            return user_id
+
+        role = await CompositeRoleRepository().get_by_name(user.role)
+        if role and (role.name == "system-admin" or role.permissions == ["*"]):
+            return user_id
+    except HTTPException:
+        raise
+    except Exception:
+        pass
+
+    raise HTTPException(status_code=403, detail="System admin access required")
 
 
 def require_permission(permission: str):
@@ -91,7 +114,7 @@ def require_permission(permission: str):
         request: Request,
         user_id: Annotated[str, Depends(require_auth)],
     ) -> str:
-        from src.repository import RoleRepository, UserRepository
+        from src.repository import CompositeRoleRepository, UserRepository
         from src.service import get_audit_service
 
         try:
@@ -103,9 +126,18 @@ def require_permission(permission: str):
             if user.is_superuser:
                 return user_id
 
-            role = await RoleRepository().get_by_name(user.role)
-            if role and (role.permissions == ["*"] or permission in role.permissions):
-                return user_id
+            role = await CompositeRoleRepository().get_by_name(user.role)
+            if role:
+                if role.permissions == ["*"] or permission in (role.permissions or []):
+                    return user_id
+                # Check role permissions via role_ids
+                role_ids = role.role_ids or []
+                if role_ids:
+                    from src.service.coarse_role_service import get_role_service
+
+                    role_perms = await get_role_service().get_aggregated_permissions(role_ids)
+                    if "*" in role_perms or permission in role_perms:
+                        return user_id
         except HTTPException:
             raise
         except Exception:

@@ -6,15 +6,15 @@ from fastapi import HTTPException
 from .base import BaseController
 
 
-class RoleController(BaseController):
+class CompositeRoleController(BaseController):
     def __init__(self):
-        from src.service.role_service import get_role_service
+        from src.service.role_service import get_composite_role_service
 
-        self.service = get_role_service()
+        self.service = get_composite_role_service()
 
     async def list_roles(self) -> dict[str, Any]:
         roles = await self.service.list_roles()
-        return {"roles": roles}
+        return {"composite_roles": roles, "roles": roles}
 
     async def get_role(self, name: str) -> dict[str, Any]:
         role = await self.service.get_role(name)
@@ -27,6 +27,7 @@ class RoleController(BaseController):
         name: str,
         description: str | None = None,
         permissions: list[str] | None = None,
+        role_ids: list[str] | None = None,
         user_id: str | None = None,
     ) -> dict[str, Any]:
         from src.service import get_audit_service
@@ -36,6 +37,7 @@ class RoleController(BaseController):
                 name=name,
                 description=description,
                 permissions=permissions,
+                role_ids=role_ids,
                 is_builtin=False,
             )
             audit = get_audit_service()
@@ -54,6 +56,7 @@ class RoleController(BaseController):
         name: str,
         description: str | None = None,
         permissions: list[str] | None = None,
+        role_ids: list[str] | None = None,
         user_id: str | None = None,
     ) -> dict[str, Any]:
         from src.service import get_audit_service
@@ -63,6 +66,7 @@ class RoleController(BaseController):
                 name=name,
                 description=description,
                 permissions=permissions,
+                role_ids=role_ids,
             )
         except ValueError as e:
             self._raise_bad_request(str(e))
@@ -73,7 +77,7 @@ class RoleController(BaseController):
             action="role:update",
             resource=f"role:{name}",
             user_id=_safe_uuid(user_id),
-            details={"description": description, "permissions": permissions},
+            details={"description": description, "permissions": permissions, "role_ids": role_ids},
         )
         return role
 
@@ -124,6 +128,32 @@ class RoleController(BaseController):
         )
         return result
 
+    async def get_role_role_ids(self, name: str) -> dict[str, Any]:
+        result = await self.service.get_role_role_ids(name)
+        if not result:
+            self._raise_not_found(f"Role '{name}' not found")
+        return result
+
+    async def set_role_role_ids(
+        self, name: str, role_ids: list[str], user_id: str | None = None
+    ) -> dict[str, Any]:
+        from src.service import get_audit_service
+
+        try:
+            result = await self.service.set_role_role_ids(name, role_ids)
+        except ValueError as e:
+            self._raise_bad_request(str(e))
+        if not result:
+            self._raise_not_found(f"Role '{name}' not found")
+        audit = get_audit_service()
+        await audit.log(
+            action="role:set_role_ids",
+            resource=f"role:{name}",
+            user_id=_safe_uuid(user_id),
+            details={"name": name, "role_ids": role_ids},
+        )
+        return result
+
     async def sync_to_keycloak(self, user_id: str | None = None) -> dict[str, Any]:
         from src.service import get_audit_service
 
@@ -150,11 +180,11 @@ def _safe_uuid(val: str | None) -> uuid.UUID | None:
         return None
 
 
-_role_controller_instance: RoleController | None = None
+_composite_role_controller_instance: CompositeRoleController | None = None
 
 
-def get_role_controller() -> RoleController:
-    global _role_controller_instance
-    if _role_controller_instance is None:
-        _role_controller_instance = RoleController()
-    return _role_controller_instance
+def get_composite_role_controller() -> CompositeRoleController:
+    global _composite_role_controller_instance
+    if _composite_role_controller_instance is None:
+        _composite_role_controller_instance = CompositeRoleController()
+    return _composite_role_controller_instance

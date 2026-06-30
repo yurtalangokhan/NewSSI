@@ -2,20 +2,24 @@ from typing import Any
 
 from sqlalchemy import delete, select
 
-from src.core.database.models import RoleModel
+from src.core.database.models import CompositeRoleModel
 
 from .base_repository import BaseRepository
 
 
-class RoleRepository(BaseRepository):
-    async def get_by_name(self, name: str) -> RoleModel | None:
+class CompositeRoleRepository(BaseRepository):
+    async def get_by_name(self, name: str) -> CompositeRoleModel | None:
         async with self._session() as session:
-            result = await session.execute(select(RoleModel).where(RoleModel.name == name))
+            result = await session.execute(
+                select(CompositeRoleModel).where(CompositeRoleModel.name == name)
+            )
             return result.scalar_one_or_none()
 
-    async def get_all(self) -> list[RoleModel]:
+    async def get_all(self) -> list[CompositeRoleModel]:
         async with self._session() as session:
-            result = await session.execute(select(RoleModel).order_by(RoleModel.name))
+            result = await session.execute(
+                select(CompositeRoleModel).order_by(CompositeRoleModel.name)
+            )
             return list(result.scalars().all())
 
     async def create(
@@ -23,13 +27,15 @@ class RoleRepository(BaseRepository):
         name: str,
         description: str | None = None,
         permissions: list[str] | None = None,
+        role_ids: list[str] | None = None,
         is_builtin: bool = False,
-    ) -> RoleModel:
+    ) -> CompositeRoleModel:
         async with self._session() as session:
-            role = RoleModel(
+            role = CompositeRoleModel(
                 name=name,
                 description=description,
                 permissions=permissions or [],
+                role_ids=role_ids or [],
                 is_builtin=is_builtin,
             )
             session.add(role)
@@ -37,9 +43,11 @@ class RoleRepository(BaseRepository):
             await session.refresh(role)
             return role
 
-    async def update(self, name: str, **updates: Any) -> RoleModel | None:
+    async def update(self, name: str, **updates: Any) -> CompositeRoleModel | None:
         async with self._session() as session:
-            result = await session.execute(select(RoleModel).where(RoleModel.name == name))
+            result = await session.execute(
+                select(CompositeRoleModel).where(CompositeRoleModel.name == name)
+            )
             role = result.scalar_one_or_none()
             if not role:
                 return None
@@ -52,7 +60,9 @@ class RoleRepository(BaseRepository):
 
     async def delete(self, name: str) -> bool:
         async with self._session() as session:
-            result = await session.execute(delete(RoleModel).where(RoleModel.name == name))
+            result = await session.execute(
+                delete(CompositeRoleModel).where(CompositeRoleModel.name == name)
+            )
             return result.rowcount > 0
 
     async def exists(self, name: str) -> bool:

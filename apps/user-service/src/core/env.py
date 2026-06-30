@@ -53,6 +53,66 @@ class Env:
         return os.environ.get("KEYCLOAK_AUDIENCE")
 
     @property
+    def KEYCLOAK_LOGIN_CLIENT_ID(self) -> str | None:
+        return os.environ.get("KEYCLOAK_LOGIN_CLIENT_ID")
+
+    @property
+    def KEYCLOAK_REDIRECT_URI(self) -> str | None:
+        return os.environ.get("KEYCLOAK_REDIRECT_URI")
+
+    @property
+    def KEYCLOAK_REDIRECT_URIS(self) -> str | None:
+        return os.environ.get("KEYCLOAK_REDIRECT_URIS")
+
+    @property
+    def KEYCLOAK_WEB_ORIGINS(self) -> str | None:
+        return os.environ.get("KEYCLOAK_WEB_ORIGINS")
+
+    @property
+    def KEYCLOAK_POST_LOGOUT_REDIRECT_URIS(self) -> str | None:
+        return os.environ.get("KEYCLOAK_POST_LOGOUT_REDIRECT_URIS")
+
+    @property
+    def EXTERNAL_KEYCLOAK_ALIAS(self) -> str:
+        return os.environ.get("EXTERNAL_KEYCLOAK_ALIAS", "external-keycloak")
+
+    @property
+    def EXTERNAL_KEYCLOAK_DISPLAY_NAME(self) -> str:
+        return os.environ.get("EXTERNAL_KEYCLOAK_DISPLAY_NAME", "External Keycloak")
+
+    @property
+    def EXTERNAL_KEYCLOAK_BASE_URL(self) -> str | None:
+        return os.environ.get("EXTERNAL_KEYCLOAK_BASE_URL")
+
+    @property
+    def EXTERNAL_KEYCLOAK_ISSUER_URL(self) -> str | None:
+        return os.environ.get("EXTERNAL_KEYCLOAK_ISSUER_URL")
+
+    @property
+    def EXTERNAL_KEYCLOAK_BACKEND_ISSUER_URL(self) -> str | None:
+        return os.environ.get("EXTERNAL_KEYCLOAK_BACKEND_ISSUER_URL")
+
+    @property
+    def EXTERNAL_KEYCLOAK_REALM(self) -> str | None:
+        return os.environ.get("EXTERNAL_KEYCLOAK_REALM")
+
+    @property
+    def EXTERNAL_KEYCLOAK_CLIENT_ID(self) -> str | None:
+        return os.environ.get("EXTERNAL_KEYCLOAK_CLIENT_ID")
+
+    @property
+    def EXTERNAL_KEYCLOAK_CLIENT_SECRET(self) -> str | None:
+        return os.environ.get("EXTERNAL_KEYCLOAK_CLIENT_SECRET")
+
+    @property
+    def EXTERNAL_KEYCLOAK_ADMIN(self) -> str | None:
+        return os.environ.get("EXTERNAL_KEYCLOAK_ADMIN")
+
+    @property
+    def EXTERNAL_KEYCLOAK_ADMIN_PASSWORD(self) -> str | None:
+        return os.environ.get("EXTERNAL_KEYCLOAK_ADMIN_PASSWORD")
+
+    @property
     def KEYCLOAK_ADMIN_EMAIL(self) -> str | None:
         return os.environ.get("KEYCLOAK_ADMIN_EMAIL")
 

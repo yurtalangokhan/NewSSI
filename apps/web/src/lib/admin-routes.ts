@@ -67,6 +67,7 @@ export const ADMIN_PATHS = {
   BILLING: "/admin/billing",
   INDEX_MIGRATION: "/admin/document-index-migration",
   DEBUG: "/admin/debug",
+  SYSTEM_SETTINGS: "/admin/system-settings",
   SYSTEM_INFO: "/admin/systeminfo",
   // Prefix-only entries (used in SETTINGS_LAYOUT_PREFIXES but have no
   // single page header of their own)
@@ -305,6 +306,12 @@ export const ADMIN_ROUTE_CONFIG: Record<string, AdminRouteConfig> = {
     title: "Debug Logs",
     sidebarLabel: "Debug Logs",
     requiredPermissions: ["audit_log:read"],
+  },
+  [ADMIN_PATHS.SYSTEM_SETTINGS]: {
+    icon: SvgShield,
+    title: "System Settings",
+    sidebarLabel: "System Settings",
+    requiredPermissions: ["*"],
   },
   [ADMIN_PATHS.SYSTEM_INFO]: {
     icon: SvgServer,

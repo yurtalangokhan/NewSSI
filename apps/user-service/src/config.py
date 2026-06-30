@@ -27,8 +27,23 @@ class Settings(BaseSettings):
     KEYCLOAK_BOOTSTRAP_ADMIN_EMAIL: str | None = None
     KEYCLOAK_BOOTSTRAP_ADMIN_PASSWORD: str | None = None
     KEYCLOAK_CLIENT_ID: str = "agenticai-web"
+    KEYCLOAK_LOGIN_CLIENT_ID: str = "agenticai-web"
     KEYCLOAK_CLIENT_SECRET: str | None = None
     KEYCLOAK_AUDIENCE: str | None = None
+    KEYCLOAK_REDIRECT_URI: str = "*"
+    KEYCLOAK_REDIRECT_URIS: str | None = None
+    KEYCLOAK_WEB_ORIGINS: str | None = None
+    KEYCLOAK_POST_LOGOUT_REDIRECT_URIS: str = "+"
+    EXTERNAL_KEYCLOAK_ALIAS: str = "external-keycloak"
+    EXTERNAL_KEYCLOAK_DISPLAY_NAME: str = "External Keycloak"
+    EXTERNAL_KEYCLOAK_BASE_URL: str | None = None
+    EXTERNAL_KEYCLOAK_ISSUER_URL: str | None = None
+    EXTERNAL_KEYCLOAK_BACKEND_ISSUER_URL: str | None = None
+    EXTERNAL_KEYCLOAK_REALM: str | None = None
+    EXTERNAL_KEYCLOAK_CLIENT_ID: str | None = None
+    EXTERNAL_KEYCLOAK_CLIENT_SECRET: str | None = None
+    EXTERNAL_KEYCLOAK_ADMIN: str | None = None
+    EXTERNAL_KEYCLOAK_ADMIN_PASSWORD: str | None = None
 
     AUTH_SECRET: str | None = None
     ENCRYPTION_KEY: str | None = None

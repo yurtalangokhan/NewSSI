@@ -173,6 +173,18 @@ services:
         preserve_host: true
         plugins: *jwt_plugin
 
+      # Local web proxy compatibility: apps/web strips /api/rag before calling
+      # LANGCONNECT_URL. When LANGCONNECT_URL points at Kong, these routes let
+      # already-stripped RAG paths still reach rag-service.
+      - name: rag-service-stripped-api
+        paths:
+          - /collections
+          - /graph
+          - /datasources/knowledge-selector
+        strip_path: false
+        preserve_host: true
+        plugins: *jwt_plugin
+
   # --------------------------------------------------------------------------
   # Tools Service (MCP)
   # --------------------------------------------------------------------------
@@ -205,7 +217,7 @@ services:
         preserve_host: true
 
   - name: internal-rag-service
-    url: http://host.docker.internal:8080
+    url: http://host.docker.internal:8083
     routes:
       - name: internal-rag-service-all
         paths:
