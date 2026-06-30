@@ -153,6 +153,7 @@ const collections = (
               ...(settings?.settings.opensearch_indexing_enabled
                 ? [sidebarItem(ADMIN_PATHS.INDEX_MIGRATION, t)]
                 : []),
+              sidebarItem(ADMIN_PATHS.SYSTEM_SETTINGS, t),
             ],
           },
         ]

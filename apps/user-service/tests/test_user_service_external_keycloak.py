@@ -33,7 +33,11 @@ def _user(**overrides):
 
 def _service(external_keycloak: bool) -> UserService:
     service = UserService()
-    service.keycloak = SimpleNamespace(is_external_keycloak=lambda: external_keycloak)
+    service.keycloak = SimpleNamespace(
+        is_external_keycloak=lambda: external_keycloak,
+        get_external_keycloak_alias=lambda: "external-keycloak",
+        user_has_federated_identity=AsyncMock(return_value=external_keycloak),
+    )
     service.user_repo = SimpleNamespace(
         list_paginated=AsyncMock(return_value=([_user()], 1)),
         upsert_by_keycloak_id=AsyncMock(return_value=_user()),
@@ -101,6 +105,7 @@ async def test_upsert_user_from_keycloak_marks_users_from_external_keycloak():
         is_active=True,
         is_verified=True,
         is_external_keycloak_user=True,
+        role="enduser",
     )
 
 

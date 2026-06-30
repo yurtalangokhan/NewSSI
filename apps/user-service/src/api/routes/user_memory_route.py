@@ -2,7 +2,7 @@ import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from src.api.dependencies import require_auth, require_auth_or_internal_service_token
+from src.api.dependencies import require_auth_or_internal_service_token, require_permission
 from src.controller import get_user_memory_controller
 from src.repository import UserRepository
 
@@ -27,7 +27,7 @@ async def _resolve_target_user_id(target_id: str) -> uuid.UUID:
 
 
 async def _authorize_target_user_id(target_id: str, authenticated_user_id: str) -> uuid.UUID:
-    from src.repository import RoleRepository
+    from src.repository import CompositeRoleRepository
 
     resolved_user_id = await _resolve_target_user_id(target_id)
     if authenticated_user_id == "internal-service":
@@ -42,7 +42,7 @@ async def _authorize_target_user_id(target_id: str, authenticated_user_id: str) 
     if user:
         if user.is_superuser:
             return resolved_user_id
-        role = await RoleRepository().get_by_name(user.role)
+        role = await CompositeRoleRepository().get_by_name(user.role)
         if role and role.is_admin:
             return resolved_user_id
     raise HTTPException(status_code=403, detail="Forbidden")
@@ -57,7 +57,7 @@ async def _authorize_target_user_id(target_id: str, authenticated_user_id: str) 
 async def list_memories(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=50, ge=1, le=200),
-    user_id: str = Depends(require_auth),
+    user_id: str = Depends(require_permission("memory:read")),
 ):
     return await get_user_memory_controller().list_memories(
         uuid.UUID(user_id), page=page, page_size=page_size
@@ -67,7 +67,7 @@ async def list_memories(
 @router.post("/", status_code=201)
 async def create_memory(
     body: dict,
-    user_id: str = Depends(require_auth),
+    user_id: str = Depends(require_permission("memory:create")),
 ):
     content = body.get("content", "").strip()
     if not content:
@@ -78,7 +78,7 @@ async def create_memory(
 @router.get("/{memory_id}")
 async def get_memory(
     memory_id: uuid.UUID,
-    user_id: str = Depends(require_auth),
+    user_id: str = Depends(require_permission("memory:read")),
 ):
     return await get_user_memory_controller().get_memory(uuid.UUID(user_id), memory_id)
 
@@ -87,7 +87,7 @@ async def get_memory(
 async def update_memory(
     memory_id: uuid.UUID,
     body: dict,
-    user_id: str = Depends(require_auth),
+    user_id: str = Depends(require_permission("memory:update")),
 ):
     content = body.get("content", "").strip()
     if not content:
@@ -98,14 +98,14 @@ async def update_memory(
 @router.delete("/{memory_id}", status_code=204)
 async def delete_memory(
     memory_id: uuid.UUID,
-    user_id: str = Depends(require_auth),
+    user_id: str = Depends(require_permission("memory:delete")),
 ):
     return await get_user_memory_controller().delete_memory(uuid.UUID(user_id), memory_id)
 
 
 @router.delete("/")
 async def delete_all_memories(
-    user_id: str = Depends(require_auth),
+    user_id: str = Depends(require_permission("memory:delete")),
 ):
     return await get_user_memory_controller().delete_all_memories(uuid.UUID(user_id))
 

@@ -23,6 +23,16 @@ async def login(
     return await get_auth_controller().login(request, response, username, password)
 
 
+@router.post("/external/login")
+async def external_login(
+    request: Request,
+    response: Response,
+    username: str = Form(...),
+    password: str = Form(...),
+):
+    return await get_auth_controller().external_login(request, response, username, password)
+
+
 @router.post("/logout")
 async def logout(
     request: Request,
@@ -41,8 +51,11 @@ async def refresh(
 
 
 @router.get("/oidc/authorize")
-async def oidc_authorize(redirect_uri: str | None = None):
-    return await get_auth_controller().oidc_authorize(redirect_uri)
+async def oidc_authorize(
+    redirect_uri: str | None = None,
+    kc_idp_hint: str | None = None,
+):
+    return await get_auth_controller().oidc_authorize(redirect_uri, kc_idp_hint)
 
 
 @router.get("/oidc/callback")

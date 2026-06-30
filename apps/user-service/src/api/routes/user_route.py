@@ -20,7 +20,6 @@ class UserCreateRequest(BaseModel):
     first_name: str
     last_name: str
     role: str = "enduser"
-    password: str | None = None
     invited: bool = False
     keycloak_id: str | None = None
 
@@ -110,7 +109,7 @@ async def _resolve_target_user_id(target_id: str) -> uuid.UUID:
 
 
 async def _authorize_target_user_id(target_id: str, authenticated_user_id: str) -> uuid.UUID:
-    from src.repository import RoleRepository, UserRepository
+    from src.repository import CompositeRoleRepository, UserRepository
 
     resolved_user_id = await _resolve_target_user_id(target_id)
 
@@ -130,7 +129,7 @@ async def _authorize_target_user_id(target_id: str, authenticated_user_id: str) 
     if user:
         if user.is_superuser:
             return resolved_user_id
-        role = await RoleRepository().get_by_name(user.role)
+        role = await CompositeRoleRepository().get_by_name(user.role)
         if role and role.is_admin:
             return resolved_user_id
 

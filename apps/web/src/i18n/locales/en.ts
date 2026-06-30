@@ -142,6 +142,8 @@ const en = {
     continueWithGoogle: "Continue with Google",
     continueWithOidc: "Continue with OIDC SSO",
     continueWithSaml: "Continue with SAML SSO",
+    externalSsoLink: "Continue with IdP SSO",
+    spSsoLink: "Continue with SP Keycloak SSO",
     signingIn: "Signing in...",
     joining: "Joining...",
     creatingAccount: "Creating account...",
@@ -1764,7 +1766,8 @@ const en = {
       leaveTeamDetails: "You will lose access to all team data and resources.",
       rolesHover: {
         enduser: "End users can't perform any admin actions",
-        "enterprise-admin": "Enterprise admins can perform operational admin tasks",
+        "enterprise-admin":
+          "Enterprise admins can perform operational admin tasks",
         "system-admin": "System admins can perform all admin actions",
       },
       changeCuratorRoleTitle: "Change Curator Role",

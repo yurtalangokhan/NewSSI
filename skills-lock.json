@@ -7,11 +7,23 @@
       "skillPath": "fastapi/.agents/skills/fastapi/SKILL.md",
       "computedHash": "d4959aa639b0a14476edf58cd3e58559dd8d7498a8bd634066c9f77e7169e6f5"
     },
+    "fastapi-expert": {
+      "source": "jeffallan/claude-skills",
+      "sourceType": "github",
+      "skillPath": "skills/fastapi-expert/SKILL.md",
+      "computedHash": "eb70cfcb3a06badfbdf51262ecb31b868a983963b9d6654e02856752828b312f"
+    },
     "frontend-design": {
       "source": "anthropics/skills",
       "sourceType": "github",
       "skillPath": "skills/frontend-design/SKILL.md",
       "computedHash": "4eabc66183767153e404b39d1b839b1c37f2d82d86f0a0d7e880a579d8d62336"
+    },
+    "nextjs-developer": {
+      "source": "jeffallan/claude-skills",
+      "sourceType": "github",
+      "skillPath": "skills/nextjs-developer/SKILL.md",
+      "computedHash": "e53bdeaf766e6d5d29d1328f424777a8236f80f489134f1661bbda6c8c4149e9"
     }
   }
 }
