@@ -1,15 +1,13 @@
-import hashlib
 import secrets
 import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-import bcrypt
 from jose import JWTError, jwt
 
 from src.config import get_settings
 from src.core.database.models.user_model import normalize_user_role
-from src.repository import SessionRepository, UserRepository
+from src.repository import UserRepository
 
 from .keycloak_service import get_keycloak_service
 
@@ -18,24 +16,8 @@ _settings = get_settings()
 
 class AuthService:
     def __init__(self):
-        self.session_repo = SessionRepository()
         self.user_repo = UserRepository()
         self.keycloak = get_keycloak_service()
-
-    @staticmethod
-    def hash_password(password: str) -> str:
-        return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
-
-    @staticmethod
-    def verify_password(plain: str, hashed: str) -> bool:
-        try:
-            return bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))
-        except ValueError:
-            return False
-
-    @staticmethod
-    def _hash_token(token: str) -> str:
-        return hashlib.sha256(token.encode()).hexdigest()
 
     def _create_access_token(self, user_id: str, email: str, role: str) -> tuple[str, datetime]:
         expires = datetime.now(UTC) + timedelta(hours=1)
@@ -60,75 +42,18 @@ class AuthService:
         return token, expires
 
     async def basic_login(self, username: str, password: str) -> dict[str, Any]:
-        if self.keycloak.is_enabled():
-            return await self._keycloak_password_login(username, password)
+        if not self.keycloak.is_enabled():
+            raise ValueError("Username/password login is disabled; use Keycloak login")
 
-        local_login = await self._local_basic_login(username, password)
-        if local_login:
-            return local_login
-
-        raise ValueError("Invalid credentials")
-
-    async def _local_basic_login(self, username: str, password: str) -> dict[str, Any] | None:
-        user = await self.user_repo.get_by_email(username)
-        if not user:
-            user = await self.user_repo.get_by_username(username)
-
-        if not user or not user.hashed_password:
-            return None
-        if not self.verify_password(password, user.hashed_password):
-            return None
-        if not user.is_active:
-            raise ValueError("User account is disabled")
-
-        return await self._build_login_response(user)
-
-    async def _keycloak_password_login(self, username: str, password: str) -> dict[str, Any]:
-        """Authenticate via Keycloak Direct Access Grant (password grant).
-
-        Used when KEYCLOAK_ENABLED=True and user submits username/password
-        through the login form (no OIDC redirect).
-        """
         token_data = await self.keycloak.password_grant(username, password)
+        return await self._upsert_user_from_token_data(token_data, fallback_username=username)
 
-        id_token = token_data.get("id_token", "")
-        if not id_token:
-            raise ValueError("Authentication failed — no id_token received")
+    async def external_keycloak_login(self, username: str, password: str) -> dict[str, Any]:
+        if not self.keycloak.is_enabled():
+            raise ValueError("External Keycloak login is disabled")
 
-        from jose import jwt
-
-        claims = jwt.get_unverified_claims(id_token)
-        keycloak_id = claims.get("sub", "")
-        user_email = claims.get("email", "")
-        if not keycloak_id:
-            raise ValueError("Authentication failed — no subject in token")
-
-        user_username = claims.get("preferred_username", "")
-        first_name = (claims.get("given_name") or "").strip() or None
-        last_name = (claims.get("family_name") or "").strip() or None
-
-        role_claims = self._extract_roles_from_claims(claims)
-        role = self._resolve_role(role_claims)
-
-        user = await self.user_repo.upsert_by_keycloak_id(
-            keycloak_id,
-            email=user_email or username,
-            username=user_username or username,
-            first_name=first_name,
-            last_name=last_name,
-            role=role,
-            is_active=True,
-            is_verified=True,
-            is_external_keycloak_user=self._external_keycloak_enabled(),
-        )
-
-        bootstrap_admin_email = (
-            _settings.KEYCLOAK_BOOTSTRAP_ADMIN_EMAIL or _settings.KEYCLOAK_ADMIN_EMAIL
-        )
-        if bootstrap_admin_email and user_email == bootstrap_admin_email:
-            user = await self.user_repo.update(user.id, is_superuser=True, role="system-admin")
-
-        return await self._build_oidc_login_response(user, token_data)
+        token_data = await self.keycloak.external_broker_password_login(username, password)
+        return await self._upsert_user_from_token_data(token_data, fallback_username=username)
 
     async def register(
         self,
@@ -138,42 +63,14 @@ class AuthService:
         first_name: str | None = None,
         last_name: str | None = None,
     ) -> dict[str, Any]:
-        """Register a new user with username+password.
-
-        1. Creates user in Keycloak (if enabled) + local DB via UserService
-        2. Auto-logs in and returns tokens
-        """
-        from src.service import get_user_service
-
-        user_service = get_user_service()
-
-        normalized_first_name = (first_name or "").strip()
-        normalized_last_name = (last_name or "").strip()
-        if not normalized_first_name or not normalized_last_name:
-            raise ValueError("first_name and last_name are required")
-
-        created_user = await user_service.create_user(
-            email=email,
-            username=username,
-            first_name=normalized_first_name,
-            last_name=normalized_last_name,
-            password=password,
-            role="enduser",
-        )
-
-        if self.keycloak.is_enabled():
-            # In OIDC mode, always return Keycloak-issued tokens to keep all services
-            # on the same token validation path.
-            return await self._keycloak_password_login(username, password)
-
-        return await self._build_login_response_from_record(created_user)
+        raise ValueError("User registration is managed by Keycloak")
 
     async def _build_login_response_from_record(
         self, user: dict[str, Any], id_token: str | None = None
     ) -> dict[str, Any]:
         role = normalize_user_role(user.get("role", "enduser"))
-        access_token, expires = self._create_access_token(str(user["id"]), user["email"], role)
-        refresh_token, _refresh_expires = self._create_refresh_token()
+        access_token, _expires = self._create_access_token(str(user["id"]), user["email"], role)
+        refresh_token, _ = self._create_refresh_token()
         user_id = uuid.UUID(str(user["id"]))
 
         payload: dict[str, Any] = {
@@ -191,30 +88,18 @@ class AuthService:
                 "is_active": user.get("is_active"),
                 "is_verified": user.get("is_verified"),
                 "is_superuser": user.get("is_superuser"),
+                "groups": user.get("groups", []) or [],
             },
         }
         if id_token:
             payload["id_token"] = id_token
 
-        await self.session_repo.create(
-            user_id=user_id,
-            token_hash=self._hash_token(access_token),
-            refresh_token_hash=self._hash_token(refresh_token),
-            expires_at=expires,
-        )
         return payload
 
     async def _build_login_response(self, user, id_token: str | None = None) -> dict[str, Any]:
         role = normalize_user_role(user.role)
-        access_token, expires = self._create_access_token(str(user.id), user.email, role)
-        refresh_token, refresh_expires = self._create_refresh_token()
-
-        await self.session_repo.create(
-            user_id=user.id,
-            token_hash=self._hash_token(access_token),
-            refresh_token_hash=self._hash_token(refresh_token),
-            expires_at=expires,
-        )
+        access_token, _expires = self._create_access_token(str(user.id), user.email, role)
+        refresh_token, _ = self._create_refresh_token()
 
         payload: dict[str, Any] = {
             "access_token": access_token,
@@ -231,6 +116,7 @@ class AuthService:
                 "is_active": user.is_active,
                 "is_verified": user.is_verified,
                 "is_superuser": user.is_superuser,
+                "groups": getattr(user, "groups", []) or [],
             },
         }
         if id_token:
@@ -267,63 +153,111 @@ class AuthService:
                 "is_active": user.is_active,
                 "is_verified": user.is_verified,
                 "is_superuser": user.is_superuser,
+                "groups": getattr(user, "groups", []) or [],
             },
         }
         if id_token:
             payload["id_token"] = id_token
         return payload
 
-    async def logout(self, refresh_token: str | None = None) -> dict[str, Any]:
-        if refresh_token:
-            await self.session_repo.delete_by_refresh_token_hash(self._hash_token(refresh_token))
+    async def _upsert_user_from_token_data(
+        self,
+        token_data: dict[str, Any],
+        fallback_username: str | None = None,
+    ) -> dict[str, Any]:
+        id_token = token_data.get("id_token", "")
+        if not id_token:
+            raise ValueError("Authentication failed — no id_token received")
 
+        claims = jwt.get_unverified_claims(id_token)
+        keycloak_id = str(claims.get("sub") or "")
+        if not keycloak_id:
+            raise ValueError("Authentication failed — no subject in token")
+
+        user_email = str(claims.get("email") or fallback_username or "").strip()
+        user_username = str(
+            claims.get("preferred_username") or fallback_username or user_email
+        ).strip()
+        first_name = (claims.get("given_name") or "").strip() or None
+        last_name = (claims.get("family_name") or "").strip() or None
+        role_claims = self._extract_roles_from_claims(claims)
+        role = self._resolve_role(role_claims)
+        is_external_user = await self._is_external_keycloak_user(keycloak_id)
+        if is_external_user:
+            role = "enduser"
+
+        user = await self.user_repo.upsert_by_keycloak_id(
+            keycloak_id,
+            email=user_email or user_username,
+            username=user_username,
+            first_name=first_name,
+            last_name=last_name,
+            role=role,
+            groups=self._extract_groups_from_claims(claims),
+            is_active=True,
+            is_verified=True,
+            is_external_keycloak_user=is_external_user,
+        )
+
+        bootstrap_admin_email = (
+            _settings.KEYCLOAK_BOOTSTRAP_ADMIN_EMAIL or _settings.KEYCLOAK_ADMIN_EMAIL
+        )
+        if bootstrap_admin_email and user_email == bootstrap_admin_email:
+            user = await self.user_repo.update(user.id, is_superuser=True, role="system-admin")
+
+        return await self._build_oidc_login_response(user, token_data)
+
+    async def _upsert_external_user_from_claims(self, claims: dict[str, Any]):
+        external_subject = str(claims.get("sub") or "").strip()
+        if not external_subject:
+            raise ValueError("External authentication failed — no subject in token")
+
+        user_email = str(claims.get("email") or "").strip().lower()
+        user_username = str(
+            claims.get("preferred_username") or user_email or external_subject
+        ).strip()
+        if not user_email:
+            user_email = f"{user_username}@external-keycloak.local"
+
+        first_name = (claims.get("given_name") or "").strip() or None
+        last_name = (claims.get("family_name") or "").strip() or None
+        groups = self._extract_groups_from_claims(claims)
+
+        sp_user = await self.keycloak.ensure_sp_user_for_external_identity(
+            external_subject=external_subject,
+            username=user_username,
+            email=user_email,
+            first_name=first_name,
+            last_name=last_name,
+        )
+        keycloak_id = str(sp_user.get("id") or "")
+        if not keycloak_id:
+            raise ValueError("External authentication failed — SP user was not created")
+
+        return await self.user_repo.upsert_by_keycloak_id(
+            keycloak_id,
+            email=user_email,
+            username=user_username,
+            first_name=first_name,
+            last_name=last_name,
+            role="enduser",
+            groups=groups,
+            is_active=True,
+            is_verified=True,
+            is_external_keycloak_user=True,
+        )
+
+    async def logout(self, refresh_token: str | None = None) -> dict[str, Any]:
         if self.keycloak.is_enabled():
             await self.keycloak.backchannel_logout(refresh_token=refresh_token)
 
         return {"message": "Logged out successfully"}
 
     async def refresh_access_token(self, refresh_token: str) -> dict[str, Any]:
-        session = await self.session_repo.get_by_refresh_token_hash(self._hash_token(refresh_token))
-        if session:
-            current_time = datetime.now(UTC)
-            # created_at may be naive (from datetime.utcnow); make it aware for comparison
-            created = session.created_at
-            if created.tzinfo is None:
-                created = created.replace(tzinfo=UTC)
-            if current_time > created + timedelta(days=30):
-                await self.session_repo.delete_by_refresh_token_hash(
-                    self._hash_token(refresh_token)
-                )
-                raise ValueError("Refresh token expired")
-
-            user = await self.user_repo.get_by_id(session.user_id)
-            if not user or not user.is_active:
-                raise ValueError("User not found or inactive")
-
-            await self.session_repo.delete_by_refresh_token_hash(self._hash_token(refresh_token))
-
-            role = normalize_user_role(user.role)
-            access_token, expires = self._create_access_token(str(user.id), user.email, role)
-            new_refresh, _ = self._create_refresh_token()
-
-            await self.session_repo.create(
-                user_id=user.id,
-                token_hash=self._hash_token(access_token),
-                refresh_token_hash=self._hash_token(new_refresh),
-                expires_at=expires,
-            )
-
-            return {
-                "access_token": access_token,
-                "refresh_token": new_refresh,
-                "token_type": "Bearer",
-                "expires_in": 3600,
-            }
-
         if self.keycloak.is_enabled():
             return await self._keycloak_refresh_token(refresh_token)
 
-        raise ValueError("Invalid refresh token")
+        raise ValueError("Refresh token management is handled by Keycloak")
 
     async def _keycloak_refresh_token(self, refresh_token: str) -> dict[str, Any]:
         """Refresh tokens via Keycloak's refresh_token grant."""
@@ -351,13 +285,16 @@ class AuthService:
             username=user_username,
             first_name=first_name,
             last_name=last_name,
+            groups=self._extract_groups_from_claims(claims),
             is_active=True,
             is_verified=True,
+            is_external_keycloak_user=await self._is_external_keycloak_user(keycloak_id),
         )
 
         return await self._build_oidc_login_response(user, token_data)
 
     async def validate_token(self, token: str) -> dict[str, Any] | None:
+        # 1. Try local HS256 decode (legacy user-service tokens)
         try:
             secret = _settings.AUTH_SECRET or "dev-secret-change-me"
             payload = jwt.decode(
@@ -365,7 +302,6 @@ class AuthService:
             )
         except JWTError:
             try:
-                # Accept legacy service tokens that were minted before the aud claim was added.
                 payload = jwt.decode(
                     token, secret, algorithms=["HS256"], options={"verify_aud": False}
                 )
@@ -375,57 +311,108 @@ class AuthService:
         if payload:
             if payload.get("aud") not in (None, _settings.SERVICE_NAME):
                 return None
-
-            try:
-                if payload.get("type") != "access":
-                    return None
-                return payload
-            except JWTError:
+            if payload.get("type") != "access":
                 return None
+            return payload
 
         if not self.keycloak.is_enabled():
             return None
 
+        # 2. Try JWKS validation against internal Keycloak (fast path for
+        #    internal-KC-issued tokens — no network call to userinfo).
+        jwks_claims = await self.keycloak.validate_token_jwks(token)
+        if jwks_claims:
+            keycloak_id = jwks_claims.get("sub")
+            if keycloak_id:
+                user = await self.user_repo.get_by_keycloak_id(keycloak_id)
+                if not user:
+                    user = await self.user_repo.upsert_by_keycloak_id(
+                        keycloak_id,
+                        email=jwks_claims.get("email", ""),
+                        username=jwks_claims.get("preferred_username"),
+                        first_name=jwks_claims.get("given_name"),
+                        last_name=jwks_claims.get("family_name"),
+                        role="enduser",
+                        is_active=True,
+                        is_verified=True,
+                    )
+                if user and user.is_active:
+                    return {
+                        "sub": str(user.id),
+                        "keycloak_sub": keycloak_id,
+                        "email": user.email,
+                        "role": normalize_user_role(user.role),
+                        "type": "access",
+                    }
+
+        # 3. Try userinfo introspection against internal Keycloak
         user_info = await self.keycloak.get_user_info(token)
-        if not user_info:
-            return None
+        if user_info:
+            keycloak_id = user_info.get("sub")
+            if keycloak_id:
+                user = await self.user_repo.get_by_keycloak_id(keycloak_id)
+                if not user and user_info.get("email"):
+                    user = await self.user_repo.upsert_by_keycloak_id(
+                        keycloak_id,
+                        email=user_info["email"],
+                        username=user_info.get("preferred_username"),
+                        first_name=user_info.get("given_name"),
+                        last_name=user_info.get("family_name"),
+                        role="enduser",
+                        is_active=True,
+                        is_verified=True,
+                    )
+                if user and user.is_active:
+                    return {
+                        "sub": str(user.id),
+                        "keycloak_sub": keycloak_id,
+                        "email": user.email,
+                        "role": normalize_user_role(user.role),
+                        "type": "access",
+                    }
 
-        keycloak_id = user_info.get("sub")
-        if not keycloak_id:
-            return None
+        # 4. External Keycloak fallback — userinfo against external IdP
+        if self._external_keycloak_enabled():
+            external_user_info = await self.keycloak.get_external_user_info(token)
+            if external_user_info:
+                user = await self._upsert_external_user_from_claims(external_user_info)
+                return {
+                    "sub": str(user.id),
+                    "keycloak_sub": user.keycloak_id,
+                    "external_keycloak_sub": external_user_info.get("sub"),
+                    "email": user.email,
+                    "role": normalize_user_role(user.role),
+                    "type": "access",
+                }
 
-        user = await self.user_repo.get_by_keycloak_id(keycloak_id)
-        if not user and user_info.get("email"):
-            user = await self.user_repo.upsert_by_keycloak_id(
-                keycloak_id,
-                email=user_info["email"],
-                username=user_info.get("preferred_username"),
-                first_name=user_info.get("given_name"),
-                last_name=user_info.get("family_name"),
-                is_active=True,
-                is_verified=True,
-            )
-        if not user or not user.is_active:
-            return None
-
-        return {
-            "sub": str(user.id),
-            "keycloak_sub": keycloak_id,
-            "email": user.email,
-            "role": normalize_user_role(user.role),
-            "type": "access",
-        }
+        return None
 
     def get_auth_type(self) -> dict[str, Any]:
         if self.keycloak.is_enabled():
-            return {"authType": "oidc", "keycloakEnabled": True}
+            external_keycloak = self._external_keycloak_enabled()
+            return {
+                "authType": "oidc",
+                "keycloakEnabled": True,
+                "oauthEnabled": True,
+                "externalKeycloak": external_keycloak,
+                "external_keycloak": external_keycloak,
+                "externalKeycloakAlias": self.keycloak.get_external_keycloak_alias()
+                if external_keycloak
+                else None,
+            }
         return {"authType": "basic", "keycloakEnabled": False}
 
     async def get_oidc_authorize_url(
-        self, redirect_uri: str = "http://localhost:3000/auth/oidc/callback"
+        self,
+        redirect_uri: str = "http://localhost:3000/auth/oidc/callback",
+        idp_hint: str | None = None,
     ) -> str:
         state = secrets.token_urlsafe(16)
-        return await self.keycloak.get_oidc_authorize_url(redirect_uri, state=state)
+        return await self.keycloak.get_oidc_authorize_url(
+            redirect_uri,
+            state=state,
+            idp_hint=idp_hint,
+        )
 
     async def handle_oidc_callback(
         self,
@@ -453,6 +440,9 @@ class AuthService:
 
             role_claims = self._extract_roles_from_claims(claims)
             role = self._resolve_role(role_claims)
+            is_external_user = await self._is_external_keycloak_user(keycloak_id)
+            if is_external_user:
+                role = "enduser"
 
             user = await self.user_repo.upsert_by_keycloak_id(
                 keycloak_id,
@@ -461,15 +451,19 @@ class AuthService:
                 first_name=first_name,
                 last_name=last_name,
                 role=role,
+                groups=self._extract_groups_from_claims(claims),
                 is_active=True,
                 is_verified=True,
+                is_external_keycloak_user=is_external_user,
             )
 
             bootstrap_admin_email = (
                 _settings.KEYCLOAK_BOOTSTRAP_ADMIN_EMAIL or _settings.KEYCLOAK_ADMIN_EMAIL
             )
             if bootstrap_admin_email and email == bootstrap_admin_email:
-                user = await self.user_repo.update(user.id, is_superuser=True, role="admin")
+                user = await self.user_repo.update(user.id, is_superuser=True, role="system-admin")
+            elif is_external_user:
+                await self.keycloak.set_realm_role(keycloak_id, "enduser")
 
             return await self._build_oidc_login_response(user, token_data)
 
@@ -510,9 +504,34 @@ class AuthService:
                 return role_map[normalized]
         return "enduser"
 
+    @staticmethod
+    def _extract_groups_from_claims(claims: dict[str, Any]) -> list[str]:
+        raw_groups = claims.get("groups", claims.get("group", []))
+        if isinstance(raw_groups, str):
+            raw_groups = [raw_groups]
+        if not isinstance(raw_groups, list):
+            return []
+        return [str(group) for group in raw_groups if group is not None and str(group).strip()]
+
     def _external_keycloak_enabled(self) -> bool:
         is_external_keycloak = getattr(self.keycloak, "is_external_keycloak", None)
         return bool(is_external_keycloak()) if callable(is_external_keycloak) else False
+
+    async def _is_external_keycloak_user(self, keycloak_id: str) -> bool:
+        if not self._external_keycloak_enabled():
+            return False
+        user_has_federated_identity = getattr(self.keycloak, "user_has_federated_identity", None)
+        if not callable(user_has_federated_identity):
+            return False
+        try:
+            return bool(
+                await user_has_federated_identity(
+                    keycloak_id,
+                    self.keycloak.get_external_keycloak_alias(),
+                )
+            )
+        except Exception:
+            return False
 
 
 _auth_service: AuthService | None = None

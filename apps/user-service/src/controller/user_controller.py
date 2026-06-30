@@ -117,10 +117,13 @@ class UserController(BaseController):
             self._raise_bad_request(str(e))
 
     async def set_password(self, user_id: uuid.UUID, password: str) -> dict[str, Any]:
-        user = await self.user_service.set_password(user_id, password)
-        if not user:
-            self._raise_not_found("User not found")
-        return user
+        try:
+            user = await self.user_service.set_password(user_id, password)
+            if not user:
+                self._raise_not_found("User not found")
+            return user
+        except ValueError as e:
+            self._raise_bad_request(str(e))
 
     async def download_users_csv(self, query: str | None = None) -> str:
         users, _ = await self.user_service.list_users(0, 10000, query=query)

@@ -20,12 +20,14 @@ def _get_controller() -> PersonaController:
 
 
 @router.get("/api/persona")
-async def get_personas():
+async def get_personas(_user: AuthenticatedUser = Depends(require_permission("persona:read"))):
     return await _get_controller().get_personas()
 
 
 @router.get("/api/persona/labels")
-async def get_persona_labels():
+async def get_persona_labels(
+    _user: AuthenticatedUser = Depends(require_permission("persona:read")),
+):
     return await _get_controller().get_persona_labels()
 
 
@@ -63,7 +65,7 @@ class PersonaUpsertRequest(BaseModel):
 @router.post("/api/persona")
 async def create_persona(
     request: PersonaUpsertRequest,
-    user: Annotated[AuthenticatedUser, Depends(require_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("persona:create"))],
 ):
     return await _get_controller().create_persona(
         request.model_dump(), user_id=user.user_id
@@ -71,7 +73,10 @@ async def create_persona(
 
 
 @router.get("/api/persona/{persona_id}")
-async def get_persona(persona_id: int):
+async def get_persona(
+    persona_id: int,
+    _user: AuthenticatedUser = Depends(require_permission("persona:read")),
+):
     return await _get_controller().get_persona(persona_id)
 
 
@@ -79,7 +84,7 @@ async def get_persona(persona_id: int):
 async def update_persona(
     persona_id: int,
     request: PersonaUpsertRequest,
-    user: Annotated[AuthenticatedUser, Depends(require_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("persona:update"))],
 ):
     return await _get_controller().update_persona(
         persona_id, request.model_dump(), user_id=user.user_id
@@ -87,7 +92,10 @@ async def update_persona(
 
 
 @router.delete("/api/persona/{persona_id}")
-async def delete_persona(persona_id: int):
+async def delete_persona(
+    persona_id: int,
+    _user: AuthenticatedUser = Depends(require_permission("persona:delete")),
+):
     return await _get_controller().delete_persona(persona_id)
 
 

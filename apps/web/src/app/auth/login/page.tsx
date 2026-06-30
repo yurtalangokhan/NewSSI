@@ -67,7 +67,6 @@ export default async function Page(props: PageProps) {
   let authUrl: string | null = null;
   if (authTypeMetadata) {
     try {
-      // For BASIC auth with OAuth enabled, fetch the OAuth URL
       if (
         authTypeMetadata.authType === AuthType.BASIC &&
         authTypeMetadata.oauthEnabled

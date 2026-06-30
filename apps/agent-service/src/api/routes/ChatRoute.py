@@ -14,7 +14,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
 from agents import DEFAULT_AGENT
-from api.dependencies import AuthenticatedUser, require_user
+from api.dependencies import AuthenticatedUser, require_permission
 from api.routes.AgentsRoute import message_generator
 from controller import ChatController, ThreadController, get_thread_controller, get_user_controller
 from domain.providers.repository import ProviderRepository
@@ -135,7 +135,7 @@ async def _resolve_model_supports_reasoning(
 @router.get("/api/chat/get-user-chat-sessions")
 async def get_chat_sessions(
     request: Request,
-    user: Annotated[AuthenticatedUser, Depends(require_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("chat:read"))],
 ):
     return await (await _get_user_chat_controller(request, user)).get_chat_sessions()
 
@@ -143,7 +143,7 @@ async def get_chat_sessions(
 @router.post("/api/chat/create-chat-session")
 async def create_chat_session(
     request: Request,
-    user: Annotated[AuthenticatedUser, Depends(require_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("chat:send"))],
 ):
     body = await request.json()
     return await (await _get_user_chat_controller(request, user)).create_chat_session(
@@ -157,7 +157,7 @@ async def create_chat_session(
 async def get_chat_session(
     request: Request,
     chat_session_id: str,
-    user: Annotated[AuthenticatedUser, Depends(require_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("chat:read"))],
 ):
     try:
         return await (await _get_user_chat_controller(request, user)).get_chat_session(chat_session_id)
@@ -170,7 +170,7 @@ async def get_chat_session(
 async def delete_chat_session(
     request: Request,
     chat_session_id: str,
-    user: Annotated[AuthenticatedUser, Depends(require_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("chat:delete"))],
 ):
     result = await (await _get_user_chat_controller(request, user)).delete_chat_session(chat_session_id)
     if result.get("success") is False and result.get("error") == "Forbidden":
@@ -182,7 +182,7 @@ async def delete_chat_session(
 @router.delete("/api/chat/delete-all-chat-sessions")
 async def delete_all_chat_sessions(
     request: Request,
-    user: Annotated[AuthenticatedUser, Depends(require_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("chat:delete"))],
 ):
     return await (await _get_user_chat_controller(request, user)).delete_all_chat_sessions()
 
@@ -191,7 +191,7 @@ async def delete_all_chat_sessions(
 @router.patch("/api/chat/rename-chat-session")
 async def rename_chat_session(
     request: Request,
-    user: Annotated[AuthenticatedUser, Depends(require_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("chat:send"))],
 ):
     body = await request.json()
     result = await (await _get_user_chat_controller(request, user)).rename_chat_session(
@@ -206,7 +206,7 @@ async def rename_chat_session(
 @router.put("/api/chat/update-chat-session-model")
 async def update_chat_session_model(
     request: Request,
-    user: Annotated[AuthenticatedUser, Depends(require_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("chat:send"))],
 ):
     body = await request.json()
     result = await (await _get_user_chat_controller(request, user)).update_chat_session_model(
@@ -221,7 +221,7 @@ async def update_chat_session_model(
 @router.put("/api/chat/update-chat-session-temperature")
 async def update_chat_session_temperature(
     request: Request,
-    user: Annotated[AuthenticatedUser, Depends(require_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("chat:send"))],
 ):
     body = await request.json()
     result = await (await _get_user_chat_controller(request, user)).update_chat_session_temperature(
@@ -237,7 +237,7 @@ async def update_chat_session_temperature(
 async def stop_chat_session(
     request: Request,
     chat_session_id: str,
-    user: Annotated[AuthenticatedUser, Depends(require_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("chat:send"))],
 ):
     return await (await _get_user_chat_controller(request, user)).stop_chat_session(chat_session_id)
 
@@ -245,7 +245,7 @@ async def stop_chat_session(
 @router.put("/api/chat/set-message-as-latest")
 async def set_message_as_latest(
     request: Request,
-    user: Annotated[AuthenticatedUser, Depends(require_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("chat:send"))],
 ):
     return await (await _get_user_chat_controller(request, user)).set_message_as_latest()
 
@@ -254,7 +254,7 @@ async def set_message_as_latest(
 @router.get("/api/chat/available-context-tokens/{session_id}")
 async def get_available_context_tokens(
     request: Request,
-    user: Annotated[AuthenticatedUser, Depends(require_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("chat:read"))],
     session_id: str = None,
 ):
     return await (await _get_user_chat_controller(request, user)).get_available_context_tokens(session_id)
@@ -265,7 +265,7 @@ async def get_available_context_tokens(
 async def get_session_token_count(
     request: Request,
     session_id: str,
-    user: Annotated[AuthenticatedUser, Depends(require_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("chat:read"))],
 ):
     return await (await _get_user_chat_controller(request, user)).get_session_token_count(session_id)
 
@@ -275,7 +275,7 @@ async def get_session_token_count(
 async def get_session_files(
     request: Request,
     session_id: str,
-    user: Annotated[AuthenticatedUser, Depends(require_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("chat:read"))],
 ):
     return await (await _get_user_chat_controller(request, user)).get_session_files(session_id)
 
@@ -283,7 +283,7 @@ async def get_session_files(
 @router.post("/api/chat/create-chat-message-feedback")
 async def create_chat_message_feedback(
     request: Request,
-    user: Annotated[AuthenticatedUser, Depends(require_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("chat:send"))],
 ):
     return await (await _get_user_chat_controller(request, user)).create_chat_message_feedback()
 
@@ -291,7 +291,7 @@ async def create_chat_message_feedback(
 @router.delete("/api/chat/remove-chat-message-feedback")
 async def remove_chat_message_feedback(
     request: Request,
-    user: Annotated[AuthenticatedUser, Depends(require_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("chat:delete"))],
 ):
     return await (await _get_user_chat_controller(request, user)).remove_chat_message_feedback()
 
@@ -299,7 +299,7 @@ async def remove_chat_message_feedback(
 @router.post("/api/chat/send-chat-message")
 async def send_chat_message(
     request: Request,
-    user: Annotated[AuthenticatedUser, Depends(require_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("chat:send"))],
 ):
     """Send chat message with streaming - uses message_generator."""
     identity = await get_auth_service().resolve_user_identity(

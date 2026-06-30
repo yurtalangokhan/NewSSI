@@ -6,6 +6,16 @@ from controller.base import BaseController
 from core.db.repositories import AssistantRepository
 from service.AssistantAgentService import AssistantAgentService
 
+# Agent-level permission checking
+class AgentPermissionError(Exception):
+    def __init__(self, action: str, agent_id: str = None):
+        self.action = action
+        self.agent_id = agent_id
+        if agent_id:
+            super().__init__(f"Permission denied: {action} on agent '{agent_id}'")
+        else:
+            super().__init__(f"Permission denied: {action}")
+
 
 class AgentController(BaseController):
     """Controller for agents and assistants domain.

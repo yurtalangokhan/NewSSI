@@ -328,8 +328,10 @@ database_search.name = "Database_Search"
 
 # LangConnect API base URL (service-to-service within Docker network)
 _LANGCONNECT_BASE_URL = os.environ.get("RAG_SERVICE_API_URL", "http://langconnect-api:8080")
+
+# LANGCONNECT_SERVICE_TOKEN is deprecated - use INTERNAL_SERVICE_TOKEN instead
 _LANGCONNECT_SERVICE_TOKEN = os.environ.get(
-    "LANGCONNECT_SERVICE_TOKEN", "internal-service-key-2026"
+    "INTERNAL_SERVICE_TOKEN", ""
 )
 
 

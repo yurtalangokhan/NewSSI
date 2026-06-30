@@ -10,7 +10,7 @@ import logging
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from api.dependencies import require_user
+from api.dependencies import require_permission, require_user
 from controller import ThreadController, get_thread_controller
 from service.CheckpointerService import get_checkpointer
 from service.Schemas import (
@@ -69,6 +69,7 @@ def _sanitize_checkpoint_values(values: dict) -> dict:
 @router.post("/search")
 async def search_threads(
     request: ThreadSearchRequest = ThreadSearchRequest(),
+    _user=Depends(require_permission("thread:search")),
 ) -> list[dict]:
     """Search / List threads."""
     ctrl = _get_controller()
@@ -94,7 +95,10 @@ async def search_threads(
 
 
 @router.post("")
-async def create_thread(request: ThreadCreateRequest) -> dict:
+async def create_thread(
+    request: ThreadCreateRequest,
+    _user=Depends(require_permission("thread:create")),
+) -> dict:
     """Create a new thread."""
     return await _get_controller().create_thread(
         thread_id=request.thread_id,
@@ -103,7 +107,10 @@ async def create_thread(request: ThreadCreateRequest) -> dict:
 
 
 @router.get("/{thread_id}")
-async def get_thread(thread_id: str) -> dict:
+async def get_thread(
+    thread_id: str,
+    _user=Depends(require_permission("thread:read")),
+) -> dict:
     """Get a thread."""
     t = await _get_controller().get_thread(thread_id)
     if not t:
@@ -112,7 +119,10 @@ async def get_thread(thread_id: str) -> dict:
 
 
 @router.get("/{thread_id}/state")
-async def get_thread_state(thread_id: str) -> dict:
+async def get_thread_state(
+    thread_id: str,
+    _user=Depends(require_permission("thread:read")),
+) -> dict:
     """
     Get thread state including messages.
     Compatible with @langchain/langgraph-sdk client.threads.getState()
@@ -121,7 +131,11 @@ async def get_thread_state(thread_id: str) -> dict:
 
 
 @router.patch("/{thread_id}")
-async def update_thread(thread_id: str, request: ThreadUpdateRequest) -> dict:
+async def update_thread(
+    thread_id: str,
+    request: ThreadUpdateRequest,
+    _user=Depends(require_permission("thread:update")),
+) -> dict:
     """Update a thread."""
     t = await _get_controller().update_thread(thread_id, request.metadata)
     if not t:
@@ -130,7 +144,10 @@ async def update_thread(thread_id: str, request: ThreadUpdateRequest) -> dict:
 
 
 @router.delete("/{thread_id}")
-async def delete_thread(thread_id: str) -> dict:
+async def delete_thread(
+    thread_id: str,
+    _user=Depends(require_permission("thread:delete")),
+) -> dict:
     """Delete a thread."""
     if await _get_controller().delete_thread(thread_id):
         return {"status": "ok"}

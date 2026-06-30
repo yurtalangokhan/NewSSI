@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Upload
 from langchain_core.documents import Document
 from pydantic import TypeAdapter, ValidationError
 
-from langconnect.auth import AuthenticatedUser, require_permission, resolve_user
+from langconnect.auth import AuthenticatedUser, require_permission
 from langconnect.database.collections import Collection
 from langconnect.models import SearchQuery, SearchResult
 from langconnect.services.build_lock import (
@@ -139,7 +139,7 @@ async def documents_create(
     "/collections/{collection_id}/documents", response_model=list[dict[str, Any]]
 )
 async def documents_list(
-    user: Annotated[AuthenticatedUser, Depends(resolve_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("document:read"))],
     collection_id: UUID,
     limit: int = Query(10, ge=1, le=100),
     offset: int = Query(0, ge=0),
@@ -167,7 +167,7 @@ async def documents_list(
     response_model=dict[str, Any],
 )
 async def documents_list_chunks(
-    user: Annotated[AuthenticatedUser, Depends(resolve_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("document:read"))],
     collection_id: UUID,
     document_id: str,
 ):
@@ -231,7 +231,7 @@ async def documents_delete(
     "/collections/{collection_id}/documents/search", response_model=list[SearchResult]
 )
 async def documents_search(
-    user: Annotated[AuthenticatedUser, Depends(resolve_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("document:search"))],
     collection_id: UUID,
     search_query: SearchQuery,
 ):

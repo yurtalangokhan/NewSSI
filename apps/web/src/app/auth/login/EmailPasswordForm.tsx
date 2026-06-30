@@ -1,7 +1,7 @@
 "use client";
 
 import { toast } from "@/hooks/useToast";
-import { basicLogin, basicSignup } from "@/lib/user";
+import { basicLogin, basicSignup, externalKeycloakLogin } from "@/lib/user";
 import Button from "@/refresh-components/buttons/Button";
 import { Form, Formik } from "formik";
 import * as Yup from "yup";
@@ -27,6 +27,7 @@ interface EmailPasswordFormProps {
   nextUrl?: string | null;
   defaultEmail?: string | null;
   isJoin?: boolean;
+  loginProvider?: "sp" | "external";
 }
 
 export default function EmailPasswordForm({
@@ -36,6 +37,7 @@ export default function EmailPasswordForm({
   nextUrl,
   defaultEmail,
   isJoin = false,
+  loginProvider = "sp",
 }: EmailPasswordFormProps) {
   const { user } = useUser();
   const { t } = useTranslation();
@@ -89,26 +91,41 @@ export default function EmailPasswordForm({
         initialValues={{
           username: "",
           password: "",
-          ...(isSignup ? { email: defaultEmail ? defaultEmail.toLowerCase() : "", firstName: "", lastName: "" } : {}),
+          ...(isSignup
+            ? {
+                email: defaultEmail ? defaultEmail.toLowerCase() : "",
+                firstName: "",
+                lastName: "",
+              }
+            : {}),
         }}
         validateOnChange={true}
         validateOnBlur={true}
         validationSchema={Yup.object().shape({
-          username: Yup.string()
-            .required(t("auth.usernameRequired")),
+          username: Yup.string().required(t("auth.usernameRequired")),
           ...(isSignup
             ? {
                 email: Yup.string()
                   .email()
                   .required()
                   .transform((value) => value.toLowerCase()),
-                firstName: Yup.string().trim().required(t("auth.firstNameRequired")),
-                lastName: Yup.string().trim().required(t("auth.lastNameRequired")),
+                firstName: Yup.string()
+                  .trim()
+                  .required(t("auth.firstNameRequired")),
+                lastName: Yup.string()
+                  .trim()
+                  .required(t("auth.lastNameRequired")),
               }
             : {}),
           password: Yup.string().required(t("auth.passwordRequired")),
         })}
-        onSubmit={async (values: { username: string; password: string; email?: string; firstName?: string; lastName?: string }) => {
+        onSubmit={async (values: {
+          username: string;
+          password: string;
+          email?: string;
+          firstName?: string;
+          lastName?: string;
+        }) => {
           const username: string = values.username;
           const email: string = values.email?.toLowerCase() || "";
           setShowApiMessage(true);
@@ -205,7 +222,10 @@ export default function EmailPasswordForm({
 
           let loginResponse: Response;
           try {
-            loginResponse = await basicLogin(username, values.password);
+            loginResponse =
+              loginProvider === "external"
+                ? await externalKeycloakLogin(username, values.password)
+                : await basicLogin(username, values.password);
           } catch {
             setIsWorking(false);
             const errorMsg = t("auth.unknownError");
@@ -260,7 +280,9 @@ export default function EmailPasswordForm({
                 name="username"
                 render={(field, helper, _meta, state) => (
                   <FormField name="username" state={state} className="w-full">
-                    <FormField.Label className="text-white font-medium text-sm mb-2 block">{t("auth.usernameLabel")}</FormField.Label>
+                    <FormField.Label className="text-white font-medium text-sm mb-2 block">
+                      {t("auth.usernameLabel")}
+                    </FormField.Label>
                     <FormField.Control>
                       <InputTypeIn
                         {...field}
@@ -287,7 +309,9 @@ export default function EmailPasswordForm({
                   name="email"
                   render={(field, helper, _meta, state) => (
                     <FormField name="email" state={state} className="w-full">
-                      <FormField.Label className="text-white font-medium text-sm mb-2 block">{t("auth.emailLabel")}</FormField.Label>
+                      <FormField.Label className="text-white font-medium text-sm mb-2 block">
+                        {t("auth.emailLabel")}
+                      </FormField.Label>
                       <FormField.Control>
                         <InputTypeIn
                           {...field}
@@ -316,8 +340,14 @@ export default function EmailPasswordForm({
                   <FormikField<string>
                     name="firstName"
                     render={(field, helper, _meta, state) => (
-                      <FormField name="firstName" state={state} className="w-full">
-                        <FormField.Label className="text-white font-medium text-sm mb-2 block">{t("auth.firstNameLabel") || "First Name"}</FormField.Label>
+                      <FormField
+                        name="firstName"
+                        state={state}
+                        className="w-full"
+                      >
+                        <FormField.Label className="text-white font-medium text-sm mb-2 block">
+                          {t("auth.firstNameLabel") || "First Name"}
+                        </FormField.Label>
                         <FormField.Control>
                           <InputTypeIn
                             {...field}
@@ -341,8 +371,14 @@ export default function EmailPasswordForm({
                   <FormikField<string>
                     name="lastName"
                     render={(field, helper, _meta, state) => (
-                      <FormField name="lastName" state={state} className="w-full">
-                        <FormField.Label className="text-white font-medium text-sm mb-2 block">{t("auth.lastNameLabel") || "Last Name"}</FormField.Label>
+                      <FormField
+                        name="lastName"
+                        state={state}
+                        className="w-full"
+                      >
+                        <FormField.Label className="text-white font-medium text-sm mb-2 block">
+                          {t("auth.lastNameLabel") || "Last Name"}
+                        </FormField.Label>
                         <FormField.Control>
                           <InputTypeIn
                             {...field}
@@ -370,7 +406,9 @@ export default function EmailPasswordForm({
                 name="password"
                 render={(field, helper, _meta, state) => (
                   <FormField name="password" state={state} className="w-full">
-                    <FormField.Label className="text-white font-medium text-sm mb-2 block">Password</FormField.Label>
+                    <FormField.Label className="text-white font-medium text-sm mb-2 block">
+                      Password
+                    </FormField.Label>
                     <FormField.Control>
                       <PasswordInputTypeIn
                         {...field}
@@ -387,7 +425,7 @@ export default function EmailPasswordForm({
                         data-testid="password"
                         error={apiStatus === "error"}
                         showClearButton={false}
-                        style={{ color: 'var(--text-05)' }}
+                        style={{ color: "var(--text-05)" }}
                       />
                     </FormField.Control>
                     {showApiMessage && (
@@ -406,7 +444,11 @@ export default function EmailPasswordForm({
                 disabled={isSubmitting || !isValid || !dirty}
                 rightIcon={SvgArrowRightCircle}
               >
-                {isJoin ? t("auth.joinButton") : isSignup ? t("auth.createAccountButton") : t("auth.signInButton")}
+                {isJoin
+                  ? t("auth.joinButton")
+                  : isSignup
+                    ? t("auth.createAccountButton")
+                    : t("auth.signInButton")}
               </Button>
               {user?.is_anonymous_user && (
                 <Link

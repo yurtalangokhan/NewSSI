@@ -1,8 +1,19 @@
-import { INTERNAL_URL } from "@/lib/constants";
 import { NextRequest, NextResponse } from "next/server";
+import { getBackendUrl } from "@/lib/api/routeBackendUrl";
 
-/* NextJS is annoying and makes use use a separate function for
-each request type >:( */
+/*
+ * Catch-all API proxy that routes requests directly to the appropriate
+ * backend service based on URL prefix, bypassing the Kong API gateway.
+ *
+ * Kong is only used for auth routes and internal endpoints.  All other
+ * /api/ traffic is forwarded directly to the target microservice, which
+ * validates the JWT itself via JWKS / userinfo fallback.  This avoids
+ * hard dependencies on Kong's static JWT plugin configuration (which
+ * only accepts tokens from the internal Keycloak issuer).
+ *
+ * Service endpoints that already OWN a dedicated Next.js route handler
+ * (e.g. /api/agent/*, /api/rag/*, /api/auth/*) are NOT caught here.
+ */
 
 export async function GET(
   request: NextRequest,
@@ -63,8 +74,6 @@ export async function OPTIONS(
 async function handleRequest(request: NextRequest, path: string[]) {
   if (
     process.env.NODE_ENV !== "development" &&
-    // NOTE: Set this environment variable to 'true' for preview environments
-    // Where you want finer-grained control over API access
     process.env.OVERRIDE_API_PRODUCTION !== "true"
   ) {
     return NextResponse.json(
@@ -77,24 +86,18 @@ async function handleRequest(request: NextRequest, path: string[]) {
   }
 
   try {
-    const backendUrl = new URL(`${INTERNAL_URL}/api/${path.join("/")}`);
+    const backendUrl = getBackendUrl(path);
 
-    // Get the URL parameters from the request
     const urlParams = new URLSearchParams(request.url.split("?")[1]);
-
-    // Append the URL parameters to the backend URL
     urlParams.forEach((value, key) => {
       backendUrl.searchParams.append(key, value);
     });
 
-    // Build headers, optionally injecting debug auth cookie
     const headers = new Headers(request.headers);
     if (
       process.env.DEBUG_AUTH_COOKIE &&
       process.env.NODE_ENV === "development"
     ) {
-      // Inject the debug auth cookie for local development against remote backend
-      // Get from cloud site: DevTools → Application → Cookies → fastapiusersauth
       const existingCookies = headers.get("cookie") || "";
       const debugCookie = `fastapiusersauth=${process.env.DEBUG_AUTH_COOKIE}`;
       headers.set(
@@ -123,12 +126,10 @@ async function handleRequest(request: NextRequest, path: string[]) {
     const responseHeaders = new Headers(response.headers);
     responseHeaders.delete("set-cookie");
 
-    // Check if the response is a stream
     if (
       response.headers.get("Transfer-Encoding") === "chunked" ||
       response.headers.get("Content-Type")?.includes("stream")
     ) {
-      // If it's a stream, create a TransformStream to pass the data through
       const { readable, writable } = new TransformStream();
       response.body?.pipeTo(writable);
 

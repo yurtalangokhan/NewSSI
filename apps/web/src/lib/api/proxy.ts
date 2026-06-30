@@ -1,12 +1,88 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { INTERNAL_URL } from "@/lib/constants";
+import { NextRequest, NextResponse } from "next/server";
+import { INTERNAL_URL, USER_SERVICE_URL } from "@/lib/constants";
 
 const BACKEND_URL = INTERNAL_URL;
 
+export function getCookieValue(
+  cookieHeader: string,
+  name: string
+): string | null {
+  for (const part of cookieHeader.split(/;\s*/)) {
+    const [key, ...valueParts] = part.split("=");
+    if (key === name) {
+      return decodeURIComponent(valueParts.join("="));
+    }
+  }
+  return null;
+}
+
+export interface AuthRefreshResult {
+  accessToken: string | null;
+  cookieHeader: string;
+  setCookies: string[];
+}
+
+export async function refreshAuthCookies(
+  cookieHeader: string
+): Promise<AuthRefreshResult | null> {
+  if (!getCookieValue(cookieHeader, "refresh_token")) {
+    return null;
+  }
+
+  const response = await fetch(`${USER_SERVICE_URL}/api/auth/refresh`, {
+    method: "POST",
+    headers: cookieHeader ? { Cookie: cookieHeader } : undefined,
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    return null;
+  }
+
+  let accessToken: string | null = null;
+  try {
+    const payload = await response.clone().json();
+    accessToken =
+      typeof payload?.access_token === "string" ? payload.access_token : null;
+  } catch {
+    accessToken = null;
+  }
+
+  const setCookies = response.headers.getSetCookie();
+  let refreshedCookieHeader = cookieHeader;
+  for (const cookie of setCookies) {
+    const nameValue = cookie.split(";", 1)[0];
+    if (!nameValue) {
+      continue;
+    }
+    const [name, ...valueParts] = nameValue.split("=");
+    const value = valueParts.join("=");
+    if (!name || !value) {
+      continue;
+    }
+    const encoded = `${name}=${value}`;
+    const parts = refreshedCookieHeader
+      .split(/;\s*/)
+      .filter((part) => part && !part.startsWith(`${name}=`));
+    parts.push(encoded);
+    refreshedCookieHeader = parts.join("; ");
+    if (name === "access_token") {
+      accessToken = decodeURIComponent(value);
+    }
+  }
+
+  return {
+    accessToken,
+    cookieHeader: refreshedCookieHeader,
+    setCookies,
+  };
+}
+
 export interface ProxyOptions {
-  method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
+  method?: "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
   withCredentials?: boolean;
   backendUrl?: string;
+  refreshOnUnauthorized?: boolean;
 }
 
 /**
@@ -22,48 +98,84 @@ export async function proxyToBackend(
       method = request.method,
       withCredentials = true,
       backendUrl = BACKEND_URL,
+      refreshOnUnauthorized = true,
     } = options;
-    
+
     // Build URL with query params
     const url = new URL(`${backendUrl}${pathname}`);
     if (request.nextUrl.search) {
       url.search = request.nextUrl.search;
     }
 
-    const headers: HeadersInit = {
-      'Content-Type': request.headers.get('content-type') || 'application/json',
-    };
-
-    const authorization = request.headers.get('authorization');
-    if (authorization) {
-      headers['Authorization'] = authorization;
-    }
-
-    if (withCredentials) {
-      let cookie = request.headers.get('cookie') || '';
-      if (
-        process.env.DEBUG_AUTH_COOKIE &&
-        process.env.NODE_ENV === 'development' &&
-        !cookie.split(/;\s*/).some((c) => c.startsWith('fastapiusersauth='))
-      ) {
-        const debugCookie = `fastapiusersauth=${process.env.DEBUG_AUTH_COOKIE}`;
-        cookie = cookie ? `${cookie}; ${debugCookie}` : debugCookie;
-      }
-      if (cookie) {
-        headers['Cookie'] = cookie;
-      }
-    }
-
+    const requestCookie = request.headers.get("cookie") || "";
     let body: BodyInit | undefined;
-    if (['POST', 'PUT', 'PATCH'].includes(method)) {
+    if (["POST", "PUT", "PATCH"].includes(method)) {
       body = await request.arrayBuffer();
     }
 
-    const response = await fetch(url.toString(), {
+    const buildHeaders = (
+      cookieHeader: string,
+      accessTokenOverride?: string | null
+    ): HeadersInit => {
+      const headers: HeadersInit = {
+        "Content-Type":
+          request.headers.get("content-type") || "application/json",
+      };
+
+      const authorization = request.headers.get("authorization");
+      if (authorization && !accessTokenOverride) {
+        headers["Authorization"] = authorization;
+      } else {
+        const cookieAccessToken =
+          accessTokenOverride || getCookieValue(cookieHeader, "access_token");
+        if (cookieAccessToken) {
+          headers["Authorization"] = `Bearer ${cookieAccessToken}`;
+        }
+      }
+
+      if (withCredentials) {
+        let cookie = cookieHeader;
+        if (
+          process.env.DEBUG_AUTH_COOKIE &&
+          process.env.NODE_ENV === "development" &&
+          !cookie.split(/;\s*/).some((c) => c.startsWith("fastapiusersauth="))
+        ) {
+          const debugCookie = `fastapiusersauth=${process.env.DEBUG_AUTH_COOKIE}`;
+          cookie = cookie ? `${cookie}; ${debugCookie}` : debugCookie;
+        }
+        if (cookie) {
+          headers["Cookie"] = cookie;
+        }
+      }
+
+      return headers;
+    };
+
+    const initialRefresh =
+      !getCookieValue(requestCookie, "access_token") &&
+      getCookieValue(requestCookie, "refresh_token")
+        ? await refreshAuthCookies(requestCookie)
+        : null;
+    const initialCookieHeader = initialRefresh?.cookieHeader ?? requestCookie;
+    const initialAccessToken = initialRefresh?.accessToken ?? null;
+
+    let response = await fetch(url.toString(), {
       method,
-      headers,
+      headers: buildHeaders(initialCookieHeader, initialAccessToken),
       body,
     });
+
+    const refreshed =
+      refreshOnUnauthorized && response.status === 401
+        ? await refreshAuthCookies(initialCookieHeader)
+        : null;
+    if (refreshed?.accessToken) {
+      response = await fetch(url.toString(), {
+        method,
+        headers: buildHeaders(refreshed.cookieHeader, refreshed.accessToken),
+        body,
+      });
+    }
 
     const noContent = new Set([204, 205, 304]).has(response.status);
     const responseText = noContent ? "" : await response.text();
@@ -74,21 +186,27 @@ export async function proxyToBackend(
 
     // Copy headers
     response.headers.forEach((value, key) => {
-      if (key.toLowerCase() !== 'content-encoding') {
+      if (key.toLowerCase() !== "content-encoding") {
         result.headers.set(key, value);
       }
     });
 
     // Forward set-cookie headers
-    response.headers.getSetCookie().forEach(cookie => {
-      result.headers.append('Set-Cookie', cookie);
+    response.headers.getSetCookie().forEach((cookie) => {
+      result.headers.append("Set-Cookie", cookie);
+    });
+    initialRefresh?.setCookies.forEach((cookie) => {
+      result.headers.append("Set-Cookie", cookie);
+    });
+    refreshed?.setCookies.forEach((cookie) => {
+      result.headers.append("Set-Cookie", cookie);
     });
 
     return result;
   } catch (error) {
     console.error(`Proxy error for ${pathname}:`, error);
     return NextResponse.json(
-      { error: 'Backend service unavailable' },
+      { error: "Backend service unavailable" },
       { status: 503 }
     );
   }

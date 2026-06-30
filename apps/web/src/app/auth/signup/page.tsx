@@ -6,6 +6,7 @@ import {
   getAuthUrlSS,
 } from "@/lib/userSS";
 import { redirect } from "next/navigation";
+import type { Route } from "next";
 import EmailPasswordForm from "../login/EmailPasswordForm";
 import SignInButton from "@/app/auth/login/SignInButton";
 import AuthFlowContainer from "@/components/auth/AuthFlowContainer";
@@ -65,6 +66,10 @@ const Page = async (props: {
   let authUrl: string | null = null;
   if ((cloud || oidc) && authTypeMetadata) {
     authUrl = await getAuthUrlSS(authTypeMetadata.authType, null);
+  }
+
+  if (oidc && authUrl) {
+    return redirect(authUrl as Route);
   }
 
   return (

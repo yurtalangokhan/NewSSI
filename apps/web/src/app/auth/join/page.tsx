@@ -6,6 +6,7 @@ import {
   getAuthUrlSS,
 } from "@/lib/userSS";
 import { redirect } from "next/navigation";
+import type { Route } from "next";
 import EmailPasswordForm from "../login/EmailPasswordForm";
 import SignInButton from "@/app/auth/login/SignInButton";
 import { JoinHeading, OrDivider } from "./JoinAuthUI";
@@ -24,10 +25,6 @@ const Page = async (props: {
   const defaultEmail = Array.isArray(searchParams?.email)
     ? searchParams?.email[0]
     : searchParams?.email || null;
-
-  const teamName = Array.isArray(searchParams?.team)
-    ? searchParams?.team[0]
-    : searchParams?.team || "your team";
 
   // catch cases where the backend is completely unreachable here
   // without try / catch, will just raise an exception and the page
@@ -52,17 +49,20 @@ const Page = async (props: {
   }
   const cloud = authTypeMetadata?.authType === AuthType.CLOUD;
 
-  // only enable this page if basic login is enabled
-  if (authTypeMetadata?.authType !== AuthType.BASIC && !cloud) {
+  const oidc = authTypeMetadata?.authType === AuthType.OIDC;
+
+  // only enable this page if an interactive auth flow is enabled
+  if (authTypeMetadata?.authType !== AuthType.BASIC && !cloud && !oidc) {
     return redirect("/app");
   }
 
   let authUrl: string | null = null;
-  if (cloud && authTypeMetadata) {
+  if ((cloud || oidc) && authTypeMetadata) {
     authUrl = await getAuthUrlSS(authTypeMetadata.authType, null);
   }
-  const emailDomain = defaultEmail?.split("@")[1];
-
+  if (oidc && authUrl) {
+    return redirect(authUrl as Route);
+  }
   return (
     <AuthFlowContainer authState="join">
       <AuthErrorDisplay searchParams={searchParams} />

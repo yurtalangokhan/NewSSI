@@ -10,7 +10,7 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends
 
-from langconnect.auth import AuthenticatedUser, resolve_user
+from langconnect.auth import AuthenticatedUser, require_permission
 from langconnect.database.collections import CollectionsManager
 from langconnect.database.neo4j import GraphStore
 
@@ -21,7 +21,7 @@ router = APIRouter(prefix="/datasources", tags=["datasources"])
 
 @router.get("/knowledge-selector")
 async def knowledge_selector(
-    user: Annotated[AuthenticatedUser, Depends(resolve_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("datasource:read"))],
 ) -> dict[str, list[dict[str, Any]]]:
     """Return categorised knowledge sources for the agent editor.
 

@@ -4,7 +4,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from api.dependencies import require_user
+from api.dependencies import require_permission, require_user
 from service.AgentToolsService import AgentToolsService
 
 router = APIRouter(prefix="/assistants", tags=["agent-tools"], dependencies=[Depends(require_user)])
@@ -18,6 +18,7 @@ def _get_service() -> AgentToolsService:
 async def get_agent_tools(
     agent_id: int,
     service: AgentToolsService = Depends(_get_service),
+    _user=Depends(require_permission("mcp_tool:read")),
 ) -> list[dict[str, Any]]:
     return await service.get_tools_for_agent(agent_id)
 
@@ -27,6 +28,7 @@ async def add_tools_to_agent(
     agent_id: int,
     request: dict[str, Any],
     service: AgentToolsService = Depends(_get_service),
+    _user=Depends(require_permission("assistant:update")),
 ) -> list[dict[str, Any]]:
     tool_ids = request.get("tool_ids", [])
     if not tool_ids:
@@ -39,6 +41,7 @@ async def add_tool_to_agent(
     agent_id: int,
     tool_id: str,
     service: AgentToolsService = Depends(_get_service),
+    _user=Depends(require_permission("assistant:update")),
 ) -> dict[str, Any]:
     return await service.add_tool_to_agent(agent_id, tool_id)
 
@@ -48,6 +51,7 @@ async def remove_tool_from_agent(
     agent_id: int,
     tool_id: str,
     service: AgentToolsService = Depends(_get_service),
+    _user=Depends(require_permission("assistant:update")),
 ) -> dict[str, Any]:
     removed = await service.remove_tool_from_agent(agent_id, tool_id)
     if not removed:
@@ -60,6 +64,7 @@ async def reorder_agent_tools(
     agent_id: int,
     request: dict[str, Any],
     service: AgentToolsService = Depends(_get_service),
+    _user=Depends(require_permission("assistant:update")),
 ) -> list[dict[str, Any]]:
     tool_ids = request.get("tool_ids", [])
     return await service.reorder_tools(agent_id, tool_ids)

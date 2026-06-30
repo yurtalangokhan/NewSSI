@@ -22,6 +22,7 @@ def _get_service() -> MCPToolService:
 async def list_tools(
     service: MCPToolService = Depends(_get_service),
     include_inactive: bool = False,
+    _user: AuthenticatedUser = Depends(require_permission("mcp_tool:read")),
 ) -> list[dict[str, Any]]:
     return await service.list_tools(include_inactive)
 
@@ -29,6 +30,7 @@ async def list_tools(
 @router.get("/available")
 async def list_available_tools(
     service: MCPToolService = Depends(_get_service),
+    _user: AuthenticatedUser = Depends(require_permission("mcp_tool:read")),
 ) -> list[dict[str, Any]]:
     tools = await service.list_tools(include_inactive=False)
     categories = await service.list_categories()
@@ -42,6 +44,7 @@ async def list_available_tools(
 @router.get("/categories")
 async def list_categories(
     service: MCPToolService = Depends(_get_service),
+    _user: AuthenticatedUser = Depends(require_permission("mcp_tool:read")),
 ) -> list[str]:
     return await service.list_categories()
 
@@ -50,6 +53,7 @@ async def list_categories(
 async def get_tools_by_category(
     category: str,
     service: MCPToolService = Depends(_get_service),
+    _user: AuthenticatedUser = Depends(require_permission("mcp_tool:read")),
 ) -> list[dict[str, Any]]:
     return await service.get_tools_by_category(category)
 
@@ -58,6 +62,7 @@ async def get_tools_by_category(
 async def get_tool(
     tool_id: str,
     service: MCPToolService = Depends(_get_service),
+    _user: AuthenticatedUser = Depends(require_permission("mcp_tool:read")),
 ) -> dict[str, Any]:
     tool = await service.get_tool(tool_id)
     if not tool:
@@ -70,6 +75,7 @@ async def list_tools_by_provider(
     provider_id: str,
     service: MCPToolService = Depends(_get_service),
     include_inactive: bool = False,
+    _user: AuthenticatedUser = Depends(require_permission("mcp_tool:read")),
 ) -> list[dict[str, Any]]:
     return await service.list_tools_by_provider(provider_id, include_inactive)
 

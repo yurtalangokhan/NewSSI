@@ -14,7 +14,7 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 
-from langconnect.auth import AuthenticatedUser, require_permission, resolve_user
+from langconnect.auth import AuthenticatedUser, require_permission
 from langconnect.database.collections import Collection
 from langconnect.database.neo4j import GraphStore
 from langconnect.models.graph import (
@@ -52,7 +52,7 @@ router = APIRouter(prefix="/graph", tags=["graph-rag"])
 async def build_graph(
     request: GraphBuildRequest,
     background_tasks: BackgroundTasks,
-    user: Annotated[AuthenticatedUser, Depends(require_permission("collection:update"))],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("graph:build"))],
 ):
     """Trigger knowledge graph construction from a vector collection.
 
@@ -106,7 +106,7 @@ async def build_graph(
 @router.get("/build/{collection_id}/status", response_model=BuildProgress | None)
 async def get_build_status(
     collection_id: str,
-    user: Annotated[AuthenticatedUser, Depends(resolve_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("graph:read"))],
 ):
     """Get the current build progress for a collection.
 
@@ -123,7 +123,7 @@ async def get_build_status(
 @router.post("/build/{collection_id}/pause", response_model=GraphBuildResponse)
 async def pause_build(
     collection_id: str,
-    user: Annotated[AuthenticatedUser, Depends(require_permission("collection:update"))],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("graph:build"))],
 ):
     """Pause a currently running graph build."""
     progress = request_pause_build(collection_id)
@@ -142,7 +142,7 @@ async def pause_build(
 @router.post("/build/{collection_id}/resume", response_model=GraphBuildResponse)
 async def resume_build(
     collection_id: str,
-    user: Annotated[AuthenticatedUser, Depends(require_permission("collection:update"))],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("graph:build"))],
 ):
     """Resume a paused graph build."""
     progress = request_resume_build(collection_id)
@@ -161,7 +161,7 @@ async def resume_build(
 @router.post("/build/{collection_id}/stop", response_model=GraphBuildResponse)
 async def stop_build(
     collection_id: str,
-    user: Annotated[AuthenticatedUser, Depends(require_permission("collection:update"))],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("graph:build"))],
 ):
     """Request cancellation for a currently running graph build."""
     progress = request_stop_build(collection_id)
@@ -184,7 +184,7 @@ async def stop_build(
 
 @router.get("/collections")
 async def list_graph_collections(
-    user: Annotated[AuthenticatedUser, Depends(resolve_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("graph:read"))],
 ):
     """Return the list of collection IDs that have a knowledge graph built."""
     ids = await GraphStore.list_graph_collection_ids()
@@ -194,7 +194,7 @@ async def list_graph_collections(
 @router.get("/collections/{collection_id}/nodes")
 async def list_nodes(
     collection_id: str,
-    user: Annotated[AuthenticatedUser, Depends(resolve_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("graph:read"))],
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
     label: str | None = Query(None),
@@ -208,7 +208,7 @@ async def list_nodes(
 @router.get("/collections/{collection_id}/edges")
 async def list_edges(
     collection_id: str,
-    user: Annotated[AuthenticatedUser, Depends(resolve_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("graph:read"))],
     limit: int = Query(200, ge=1, le=1000),
     offset: int = Query(0, ge=0),
 ):
@@ -221,7 +221,7 @@ async def list_edges(
 @router.get("/collections/{collection_id}/data", response_model=GraphData)
 async def get_graph_data(
     collection_id: str,
-    user: Annotated[AuthenticatedUser, Depends(resolve_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("graph:read"))],
     node_limit: int = Query(200, ge=1, le=1000),
     edge_limit: int = Query(500, ge=1, le=2000),
 ):
@@ -241,7 +241,7 @@ async def get_graph_data(
 )
 async def get_scalable_graph_data(
     collection_id: str,
-    user: Annotated[AuthenticatedUser, Depends(resolve_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("graph:read"))],
     mode: str = Query("auto", regex="^(auto|overview|expand|neighborhood|full)$"),
     node_limit: int = Query(500, ge=1, le=5000),
     edge_limit: int = Query(1000, ge=1, le=10000),
@@ -275,7 +275,7 @@ async def get_scalable_graph_data(
 )
 async def get_neighborhood(
     collection_id: str,
-    user: Annotated[AuthenticatedUser, Depends(resolve_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("graph:read"))],
     node_id: str = Query(...),
     depth: int = Query(1, ge=1, le=3),
     limit: int = Query(50, ge=1, le=500),
@@ -291,7 +291,7 @@ async def get_neighborhood(
 )
 async def expand_cluster(
     collection_id: str,
-    user: Annotated[AuthenticatedUser, Depends(resolve_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("graph:read"))],
     label: str = Query(...),
     node_limit: int = Query(200, ge=1, le=1000),
     edge_limit: int = Query(500, ge=1, le=2000),
@@ -308,7 +308,7 @@ async def expand_cluster(
 @router.get("/collections/{collection_id}/stats", response_model=GraphStats)
 async def get_graph_stats(
     collection_id: str,
-    user: Annotated[AuthenticatedUser, Depends(resolve_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("graph:read"))],
     scope_label: str | None = Query(
         None, description="Scope stats to this label group",
     ),
@@ -324,7 +324,7 @@ async def get_graph_stats(
 )
 async def get_labels_paginated(
     collection_id: str,
-    user: Annotated[AuthenticatedUser, Depends(resolve_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("graph:read"))],
     page: int = Query(1, ge=1),
     page_size: int = Query(25, ge=1, le=100),
     search: str | None = Query(None),
@@ -356,7 +356,7 @@ async def get_labels_paginated(
 )
 async def get_relationship_types_paginated(
     collection_id: str,
-    user: Annotated[AuthenticatedUser, Depends(resolve_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("graph:read"))],
     page: int = Query(1, ge=1),
     page_size: int = Query(25, ge=1, le=100),
     search: str | None = Query(None),
@@ -403,7 +403,7 @@ async def get_relationship_types_paginated(
 @router.post("/search", response_model=GraphSearchResult)
 async def search_graph(
     query: GraphSearchQuery,
-    user: Annotated[AuthenticatedUser, Depends(resolve_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("graph:search"))],
 ):
     """Hybrid search: combines vector similarity + graph traversal with RRF scoring."""
     service = GraphRAGService(
@@ -422,7 +422,7 @@ async def search_graph(
 async def search_entities(
     collection_id: str,
     q: str = Query(..., min_length=1),
-    user: Annotated[AuthenticatedUser, Depends(resolve_user)] = None,
+    user: Annotated[AuthenticatedUser, Depends(require_permission("graph:search"))] = None,
     limit: int = Query(10, ge=1, le=100),
 ):
     """Search entities by name (full-text) in the knowledge graph."""
@@ -436,7 +436,7 @@ async def search_entity_clusters(
     q: str = Query(..., min_length=1),
     scope_label: str | None = Query(None, description="If provided, returns counts for offset-based subclusters"),
     chunk_size: int = Query(200, description="Chunk size for subclusters (should match node_limit of expand)"),
-    user: Annotated[AuthenticatedUser, Depends(resolve_user)] = None,
+    user: Annotated[AuthenticatedUser, Depends(require_permission("graph:search"))] = None,
 ):
     """Return ``{label: count}`` or ``{chunk_id: count}`` for clusters that contain entities matching *q*.
 
@@ -455,7 +455,7 @@ async def search_entity_clusters(
 @router.post("/cypher")
 async def execute_cypher(
     request: CypherQueryRequest,
-    user: Annotated[AuthenticatedUser, Depends(resolve_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("graph:search"))],
 ):
     """Execute a Cypher query scoped to a collection (read-only recommended)."""
     store = GraphStore(request.collection_id)
@@ -485,7 +485,7 @@ async def execute_cypher(
 @router.delete("/collections/{collection_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_graph(
     collection_id: str,
-    user: Annotated[AuthenticatedUser, Depends(require_permission("collection:delete"))],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("graph:delete"))],
 ):
     """Delete the entire knowledge graph for a collection."""
     store = GraphStore(collection_id)

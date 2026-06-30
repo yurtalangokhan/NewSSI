@@ -253,6 +253,23 @@ class AuthService:
         return sorted(roles)
 
     @staticmethod
+    def _extract_permissions(claims: dict[str, Any]) -> set[str]:
+        permissions: set[str] = set()
+
+        direct_permissions = claims.get("permissions")
+        if isinstance(direct_permissions, list):
+            permissions.update(str(p) for p in direct_permissions if p is not None)
+        elif isinstance(direct_permissions, str):
+            permissions.add(direct_permissions)
+
+        return permissions
+
+    @staticmethod
+    def has_permission(claims: dict[str, Any], permission: str) -> bool:
+        permissions = AuthService._extract_permissions(claims)
+        return "*" in permissions or permission in permissions
+
+    @staticmethod
     def build_authenticated_user(
         claims: dict[str, Any],
         access_token: str | None = None,
@@ -347,7 +364,7 @@ class AuthService:
         if not keycloak_id:
             keycloak_id = user_id
 
-        if not user_service_user and keycloak_id and str(keycloak_id) != str(user_id):
+        if not user_service_user and keycloak_id:
             try:
                 from service.UserServiceClient import get_user_by_keycloak_id
 
@@ -618,15 +635,12 @@ async def require_user(
             )
         try:
             claims = _decode_keycloak_token(token)
-            user = await AuthService.authenticate_with_user_service(token)
-            if user:
-                return user
             return AuthService.build_authenticated_user(claims, token)
-        except HTTPException as exc:
+        except HTTPException:
             user = await AuthService.authenticate_with_user_service(token)
             if user:
                 return user
-            raise exc
+            raise
 
     valid_keys = _get_valid_api_keys()
     if not valid_keys:
@@ -667,8 +681,15 @@ def require_permission(permission: str):
     Usage: ``user = Depends(require_permission("datasource:create"))``
 
     Authenticates via require_user, then fetches the user's resolved permissions
-    from user-service and verifies membership. Dev mode and internal-service bypass.
+    from user-service (the source of truth) and verifies membership.
+    Dev mode and internal-service bypass.
+
+    Fine-grained permissions live ONLY in the user-service database, not in the
+    JWT. The JWT contains only coarse client roles for service-level grouping.
     """
+
+    _user_permission_cache: dict[str, tuple[list[str], float]] = {}
+    _CACHE_TTL = 30.0
 
     async def _check_permission(
         user: AuthenticatedUser = Depends(require_user),
@@ -676,15 +697,30 @@ def require_permission(permission: str):
         if user.user_id in ("dev-user", "internal-service"):
             return user
 
-        try:
-            from service.UserServiceClient import get_user_permissions
+        import time
 
-            perm_data = await get_user_permissions(user.user_id, user.access_token)
-            user_perms = perm_data.get("permissions", [])
-            if user_perms == ["*"] or permission in user_perms:
-                return user
-        except Exception:
-            pass
+        user_service_user = user.claims.get("user_service_user")
+        permission_user_id = (
+            str(user_service_user["id"])
+            if isinstance(user_service_user, dict) and user_service_user.get("id")
+            else user.user_id
+        )
+
+        cached = _user_permission_cache.get(permission_user_id)
+        if cached and time.monotonic() - cached[1] < _CACHE_TTL:
+            user_perms = cached[0]
+        else:
+            try:
+                from service.UserServiceClient import get_user_permissions
+
+                perm_data = await get_user_permissions(permission_user_id, user.access_token)
+                user_perms = perm_data.get("permissions", [])
+                _user_permission_cache[permission_user_id] = (user_perms, time.monotonic())
+            except Exception:
+                user_perms = []
+
+        if user_perms == ["*"] or permission in user_perms:
+            return user
 
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
