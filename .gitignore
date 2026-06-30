@@ -13,4 +13,4 @@ agent-service-toolkit
 .ruff_cache
 .pytest_cache
 .opencode/
-.codex
+.codex/
