@@ -29,6 +29,21 @@ class AuthController(BaseController):
         except ValueError as e:
             self._raise_bad_request(str(e))
 
+    async def external_login(
+        self, request: Request, response: Response, username: str, password: str
+    ) -> dict[str, Any]:
+        try:
+            result = await self.auth_service.external_keycloak_login(username, password)
+            self._set_cookies(
+                response,
+                result.get("access_token", ""),
+                result.get("refresh_token") or "",
+                result.get("id_token"),
+            )
+            return result
+        except ValueError as e:
+            self._raise_bad_request(str(e))
+
     async def logout(self, request: Request, response: Response) -> dict[str, Any]:
         refresh_token = request.cookies.get("refresh_token")
         self._clear_cookies(response)
@@ -50,9 +65,13 @@ class AuthController(BaseController):
         except ValueError as e:
             self._raise_unauthorized(str(e))
 
-    async def oidc_authorize(self, redirect_uri: str | None = None) -> dict[str, Any]:
+    async def oidc_authorize(
+        self,
+        redirect_uri: str | None = None,
+        kc_idp_hint: str | None = None,
+    ) -> dict[str, Any]:
         uri = redirect_uri or "http://localhost:3000/auth/oidc/callback"
-        url = await self.auth_service.get_oidc_authorize_url(uri)
+        url = await self.auth_service.get_oidc_authorize_url(uri, idp_hint=kc_idp_hint)
         # Return both formats for compatibility:
         # - authorization_url: JSON response field
         # - authorize_url: legacy field name
@@ -98,14 +117,15 @@ class AuthController(BaseController):
             max_age=3600,
             secure=False,
         )
-        response.set_cookie(
-            key="refresh_token",
-            value=refresh_token,
-            httponly=True,
-            samesite="lax",
-            max_age=30 * 86400,
-            secure=False,
-        )
+        if refresh_token:
+            response.set_cookie(
+                key="refresh_token",
+                value=refresh_token,
+                httponly=True,
+                samesite="lax",
+                max_age=30 * 86400,
+                secure=False,
+            )
         if id_token:
             response.set_cookie(
                 key="id_token",

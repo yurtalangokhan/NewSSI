@@ -12,6 +12,7 @@ export interface AuthTypeMetadata {
   oauthEnabled: boolean;
   externalKeycloak: boolean;
   external_keycloak?: boolean;
+  externalKeycloakAlias?: string | null;
 }
 
 export const getAuthTypeMetadataSS = async (): Promise<AuthTypeMetadata> => {
@@ -36,10 +37,16 @@ export const getAuthTypeMetadataSS = async (): Promise<AuthTypeMetadata> => {
   }
 };
 
-const getOIDCAuthUrlSS = async (nextUrl: string | null): Promise<string> => {
+const getOIDCAuthUrlSS = async (
+  nextUrl: string | null,
+  idpHint?: string | null
+): Promise<string> => {
   const url = new UrlBuilder("/api/auth/oidc/authorize");
   if (nextUrl) {
     url.addParam("next", nextUrl);
+  }
+  if (idpHint) {
+    url.addParam("kc_idp_hint", idpHint);
   }
   url.addParam("redirect", true);
 
@@ -73,7 +80,8 @@ const getSAMLAuthUrlSS = async (nextUrl: string | null): Promise<string> => {
 
 export const getAuthUrlSS = async (
   authType: AuthType,
-  nextUrl: string | null
+  nextUrl: string | null,
+  idpHint?: string | null
 ): Promise<string> => {
   // Returns the auth url for the given auth type
 
@@ -90,7 +98,7 @@ export const getAuthUrlSS = async (
       return await getSAMLAuthUrlSS(nextUrl);
     }
     case AuthType.OIDC: {
-      return await getOIDCAuthUrlSS(nextUrl);
+      return await getOIDCAuthUrlSS(nextUrl, idpHint);
     }
   }
 };
@@ -152,6 +160,11 @@ export const hasAuthSessionCookieSS = async (): Promise<boolean> => {
     cookieStore.has("session") ||
     cookieStore.has("id_token")
   );
+};
+
+export const hasRefreshTokenCookieSS = async (): Promise<boolean> => {
+  const cookieStore = await getCookies();
+  return cookieStore.has("refresh_token");
 };
 
 export const processCookies = (cookies: {

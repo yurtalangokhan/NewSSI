@@ -3,8 +3,10 @@ from .auth_own_route import router as auth_own_router
 from .user_route import router as user_router
 from .settings_route import internal_router as internal_settings_router
 from .settings_route import router as settings_router
+from .system_settings_route import router as system_settings_router
 from .user_memory_route import internal_router as internal_user_memory_router
 from .user_memory_route import router as user_memory_router
 from .api_keys_route import router as api_keys_router
+from .coarse_roles_route import router as coarse_roles_router
 from .roles_route import router as roles_router
 from .permissions_route import router as permissions_router

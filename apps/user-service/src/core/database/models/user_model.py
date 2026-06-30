@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import Boolean, DateTime, String
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
@@ -31,6 +31,7 @@ class UserModel(Base):
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     is_superuser: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     role: Mapped[str] = mapped_column(String(50), default="enduser", nullable=False)
+    groups: Mapped[list[str]] = mapped_column(JSONB, default=list, nullable=False)
     invited: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     password_configured: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     is_external_keycloak_user: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
@@ -47,9 +48,6 @@ class UserModel(Base):
     )
     api_keys: Mapped[list["ApiKeyModel"]] = relationship(
         "ApiKeyModel", back_populates="user", lazy="selectin"
-    )
-    sessions: Mapped[list["SessionModel"]] = relationship(
-        "SessionModel", back_populates="user", lazy="selectin"
     )
     audit_logs: Mapped[list["AuditLogModel"]] = relationship(
         "AuditLogModel", back_populates="user", lazy="selectin"

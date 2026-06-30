@@ -3,7 +3,7 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Body, Depends, HTTPException
 
-from src.api.dependencies import require_auth, require_auth_or_internal_service_token
+from src.api.dependencies import require_auth_or_internal_service_token, require_permission
 from src.controller import get_settings_controller
 from src.repository import UserRepository
 
@@ -33,7 +33,7 @@ async def _resolve_target_user_id(target_id: str) -> uuid.UUID:
 
 
 async def _authorize_target_user_id(target_id: str, authenticated_user_id: str) -> uuid.UUID:
-    from src.repository import RoleRepository
+    from src.repository import CompositeRoleRepository
 
     resolved_user_id = await _resolve_target_user_id(target_id)
 
@@ -53,7 +53,7 @@ async def _authorize_target_user_id(target_id: str, authenticated_user_id: str) 
     if user:
         if user.is_superuser:
             return resolved_user_id
-        role = await RoleRepository().get_by_name(user.role)
+        role = await CompositeRoleRepository().get_by_name(user.role)
         if role and role.is_admin:
             return resolved_user_id
 
@@ -61,14 +61,14 @@ async def _authorize_target_user_id(target_id: str, authenticated_user_id: str) 
 
 
 @router.get("/")
-async def get_settings(user_id: Annotated[str, Depends(require_auth)]):
+async def get_settings(user_id: Annotated[str, Depends(require_permission("settings:read"))]):
     return await get_settings_controller().get_settings(uuid.UUID(user_id))
 
 
 @router.patch("/")
 async def update_settings(
     updates: Annotated[dict[str, Any], Body(...)],
-    user_id: str = Depends(require_auth),
+    user_id: str = Depends(require_permission("settings:update")),
 ):
     return await get_settings_controller().update_settings(uuid.UUID(user_id), **updates)
 
@@ -76,7 +76,7 @@ async def update_settings(
 @router.post("/prompt-shortcuts")
 async def create_prompt_shortcut(
     shortcut: Annotated[dict[str, Any], Body(...)],
-    user_id: str = Depends(require_auth),
+    user_id: str = Depends(require_permission("settings:update")),
 ):
     return await get_settings_controller().create_prompt_shortcut(uuid.UUID(user_id), shortcut)
 
@@ -85,7 +85,7 @@ async def create_prompt_shortcut(
 async def update_prompt_shortcut(
     shortcut_id: int,
     updates: Annotated[dict[str, Any], Body(...)],
-    user_id: str = Depends(require_auth),
+    user_id: str = Depends(require_permission("settings:update")),
 ):
     return await get_settings_controller().update_prompt_shortcut(
         uuid.UUID(user_id), shortcut_id, **updates
@@ -93,7 +93,10 @@ async def update_prompt_shortcut(
 
 
 @router.delete("/prompt-shortcuts/{shortcut_id}")
-async def delete_prompt_shortcut(shortcut_id: int, user_id: Annotated[str, Depends(require_auth)]):
+async def delete_prompt_shortcut(
+    shortcut_id: int,
+    user_id: Annotated[str, Depends(require_permission("settings:update"))],
+):
     return await get_settings_controller().delete_prompt_shortcut(uuid.UUID(user_id), shortcut_id)
 
 

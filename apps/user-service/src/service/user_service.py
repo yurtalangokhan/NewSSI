@@ -1,12 +1,15 @@
 import logging
-import secrets
 import uuid
 from typing import Any
 
 from src.core.database.models.user_model import normalize_user_role
-from src.repository import RoleRepository, SessionRepository, UserRepository, UserSettingsRepository
+from src.repository import (
+    CompositeRoleRepository,
+    UserRepository,
+    UserSettingsRepository,
+)
 
-from .auth_service import AuthService
+from .coarse_role_service import get_role_service
 from .keycloak_service import get_keycloak_service
 
 logger = logging.getLogger(__name__)
@@ -16,10 +19,8 @@ class UserService:
     def __init__(self):
         self.user_repo = UserRepository()
         self.settings_repo = UserSettingsRepository()
-        self.session_repo = SessionRepository()
-        self.role_repo = RoleRepository()
+        self.role_repo = CompositeRoleRepository()
         self.keycloak = get_keycloak_service()
-        self.auth = AuthService()
 
     async def get_user(self, user_id: uuid.UUID) -> dict[str, Any] | None:
         user = await self.user_repo.get_by_id(user_id)
@@ -42,7 +43,17 @@ class UserService:
         if role.permissions == ["*"]:
             return {"permissions": ["*"]}
 
-        return {"permissions": list(role.permissions or [])}
+        # Aggregate: direct perms + coarse role perms
+        perms = set(role.permissions or [])
+        coarse_names = getattr(role, "role_ids", None) or []
+        if coarse_names:
+            cr_svc = get_role_service()
+            coarse_perms = await cr_svc.get_aggregated_permissions(coarse_names)
+            if "*" in coarse_perms:
+                return {"permissions": ["*"]}
+            perms.update(coarse_perms)
+
+        return {"permissions": sorted(perms)}
 
     async def get_user_by_email(self, email: str) -> dict[str, Any] | None:
         user = await self.user_repo.get_by_email(email)
@@ -62,13 +73,11 @@ class UserService:
         # Fetch role from Keycloak if available (source of truth)
         if self.keycloak.is_enabled() and user.keycloak_id:
             try:
-                realm_roles = await self.keycloak.get_user_realm_roles(user.keycloak_id)
-                if realm_roles:
-                    keycloak_role = await self._resolve_role_from_realm_roles(realm_roles)
-                    # Sync Keycloak role to DB if different
-                    if keycloak_role != user.role:
-                        await self.user_repo.update(uid, role=keycloak_role)
-                        user.role = keycloak_role
+                keycloak_role = await self._resolve_role_from_keycloak(user.keycloak_id)
+                # Sync Keycloak role to DB if different
+                if keycloak_role and keycloak_role != user.role:
+                    await self.user_repo.update(uid, role=keycloak_role)
+                    user.role = keycloak_role
             except Exception:
                 pass
 
@@ -113,7 +122,6 @@ class UserService:
         first_name: str | None = None,
         last_name: str | None = None,
         role: str = "enduser",
-        password: str | None = None,
         invited: bool = False,
         keycloak_id: str | None = None,
     ) -> dict[str, Any]:
@@ -121,7 +129,6 @@ class UserService:
             raise ValueError(f"User with email {email} already exists")
 
         role_value = role if await self.role_repo.exists(role) else "enduser"
-        hashed_password = AuthService.hash_password(password) if password else None
         normalized_email = email.lower()
         normalized_username = username or normalized_email.split("@")[0]
         normalized_first_name = (first_name or "").strip() or normalized_username
@@ -154,13 +161,6 @@ class UserService:
                     "emailVerified": True,
                     "requiredActions": [],
                 }
-                if password:
-                    keycloak_payload["credentials"] = [
-                        {"type": "password", "value": password, "temporary": False}
-                    ]
-                else:
-                    keycloak_payload["requiredActions"] = ["UPDATE_PASSWORD"]
-
                 logger.info(
                     f"Creating Keycloak user for {normalized_email}: "
                     f"firstName={keycloak_first_name}, lastName={keycloak_last_name}"
@@ -184,13 +184,7 @@ class UserService:
                 "emailVerified": True,
                 "requiredActions": [],
             }
-            if password:
-                await self.keycloak.set_password(keycloak_id, password, temporary=False)
-
             await self.keycloak.update_user(keycloak_id, keycloak_payload)
-
-        if self.keycloak.is_enabled() and created_keycloak_id and keycloak_id and password:
-            await self.keycloak.set_password(keycloak_id, password, temporary=False)
 
         try:
             user = await self.user_repo.create(
@@ -199,9 +193,9 @@ class UserService:
                 first_name=normalized_first_name,
                 last_name=normalized_last_name,
                 role=role_value,
-                hashed_password=hashed_password,
+                hashed_password=None,
                 invited=invited,
-                password_configured=bool(password),
+                password_configured=False,
                 keycloak_id=keycloak_id,
                 is_external_keycloak_user=False,
             )
@@ -290,9 +284,8 @@ class UserService:
                 await self.keycloak.update_user(user.keycloak_id, payload)
 
             if "role" in filtered:
-                await self.keycloak.set_realm_role(
-                    user.keycloak_id, normalize_user_role(filtered["role"])
-                )
+                role_name = normalize_user_role(filtered["role"])
+                await self.keycloak.set_realm_role(user.keycloak_id, role_name)
 
         # Then update DB to mirror Keycloak
         user = await self.user_repo.update(user_id, **filtered)
@@ -356,10 +349,9 @@ class UserService:
             await self.keycloak.set_realm_role(user.keycloak_id, role)
             # Verify role was set correctly by reading back from Keycloak
             try:
-                realm_roles = await self.keycloak.get_user_realm_roles(user.keycloak_id)
-                actual_role = await self._resolve_role_from_realm_roles(realm_roles)
+                actual_role = await self._resolve_role_from_keycloak(user.keycloak_id)
                 # Sync verified role to DB
-                user = await self.user_repo.update(user_id, role=actual_role)
+                user = await self.user_repo.update(user_id, role=actual_role or role)
             except Exception:
                 # Fallback: just update DB with requested role
                 user = await self.user_repo.update(user_id, role=role)
@@ -370,40 +362,10 @@ class UserService:
         return self._user_to_dict(user)
 
     async def reset_password(self, user_id: uuid.UUID) -> tuple[str, dict[str, Any]]:
-        user = await self.user_repo.get_by_id(user_id)
-        if not user:
-            raise ValueError("User not found")
-
-        new_password = secrets.token_urlsafe(10)
-        hashed = AuthService.hash_password(new_password)
-
-        # Update Keycloak first (source of truth)
-        if self.keycloak.is_enabled() and user.keycloak_id:
-            await self.keycloak.set_password(user.keycloak_id, new_password, temporary=False)
-
-        # Then update DB to mirror Keycloak
-        await self.user_repo.update(
-            user_id, hashed_password=hashed, password_configured=True, invited=False
-        )
-
-        return new_password, self._user_to_dict(await self.user_repo.get_by_id(user_id))
+        raise ValueError("Password management is handled by Keycloak")
 
     async def set_password(self, user_id: uuid.UUID, password: str) -> dict[str, Any] | None:
-        user = await self.user_repo.get_by_id(user_id)
-        if not user:
-            return None
-
-        # Update Keycloak first (source of truth)
-        if self.keycloak.is_enabled() and user.keycloak_id:
-            await self.keycloak.set_password(user.keycloak_id, password, temporary=False)
-
-        # Then update DB to mirror Keycloak
-        hashed = AuthService.hash_password(password)
-        user = await self.user_repo.update(
-            user_id, hashed_password=hashed, password_configured=True, invited=False
-        )
-
-        return self._user_to_dict(user)
+        raise ValueError("Password management is handled by Keycloak")
 
     async def change_password(
         self,
@@ -411,33 +373,7 @@ class UserService:
         old_password: str,
         new_password: str,
     ) -> dict[str, Any] | None:
-        user = await self.user_repo.get_by_id(user_id)
-        if not user:
-            return None
-
-        if not new_password:
-            raise ValueError("New password is required")
-
-        if self.keycloak.is_enabled() and user.keycloak_id:
-            username = user.username or user.email
-            try:
-                await self.keycloak.password_grant(username, old_password)
-            except ValueError:
-                if username != user.email:
-                    try:
-                        await self.keycloak.password_grant(user.email, old_password)
-                    except ValueError as exc:
-                        raise ValueError("Current password is incorrect") from exc
-                else:
-                    raise ValueError("Current password is incorrect") from None
-        else:
-            if not user.hashed_password or not AuthService.verify_password(
-                old_password,
-                user.hashed_password,
-            ):
-                raise ValueError("Current password is incorrect")
-
-        return await self.set_password(user_id, new_password)
+        raise ValueError("Password management is handled by Keycloak")
 
     def _user_to_dict(self, user) -> dict[str, Any]:
         return {
@@ -454,6 +390,7 @@ class UserService:
             "invited": user.invited,
             "password_configured": user.password_configured,
             "is_external_keycloak_user": getattr(user, "is_external_keycloak_user", False),
+            "groups": getattr(user, "groups", []) or [],
             "team_name": user.team_name,
             "keycloak_id": user.keycloak_id,
             "created_at": user.created_at.isoformat() if user.created_at else None,
@@ -490,19 +427,22 @@ class UserService:
         }
         return payload
 
-    async def _resolve_role_from_realm_roles(self, realm_roles: list[dict[str, Any]]) -> str:
+    async def _resolve_role_from_roles(self, roles: list[dict[str, Any]]) -> str:
         """
-        Resolve user role from Keycloak realm roles.
-        Picks the first realm role that exists in the local roles DB.
+        Resolve user role from Keycloak role mappings.
+        Picks the first role that exists in the local roles DB.
         Falls back to 'enduser'.
         """
         all_roles = await self.role_repo.get_all()
         valid_role_names = {r.name for r in all_roles}
-        role_names = [r.get("name", "").lower() for r in realm_roles if isinstance(r, dict)]
+        role_names = [r.get("name", "").lower() for r in roles if isinstance(r, dict)]
         for name in role_names:
             if name in valid_role_names:
                 return name
         return "enduser"
+
+    async def _resolve_role_from_realm_roles(self, realm_roles: list[dict[str, Any]]) -> str:
+        return await self._resolve_role_from_roles(realm_roles)
 
     async def upsert_user_from_keycloak(
         self,
@@ -516,16 +456,20 @@ class UserService:
 
         Called by agent-service during OIDC callback to ensure user exists in user-service.
         """
-        user = await self.user_repo.upsert_by_keycloak_id(
-            keycloak_id=keycloak_id,
-            email=email,
-            first_name=first_name,
-            last_name=last_name,
-            username=username,
-            is_active=True,
-            is_verified=True,
-            is_external_keycloak_user=self._external_keycloak_enabled(),
-        )
+        is_external_user = await self._is_external_keycloak_user(keycloak_id)
+        updates: dict[str, Any] = {
+            "email": email,
+            "first_name": first_name,
+            "last_name": last_name,
+            "username": username,
+            "is_active": True,
+            "is_verified": True,
+            "is_external_keycloak_user": is_external_user,
+        }
+        if is_external_user:
+            updates["role"] = "enduser"
+
+        user = await self.user_repo.upsert_by_keycloak_id(keycloak_id=keycloak_id, **updates)
 
         # Ensure settings exist for this user
         await self.settings_repo.ensure_defaults(user.id)
@@ -587,9 +531,13 @@ class UserService:
                     if not email:
                         continue
 
-                    # Fetch user's roles from Keycloak
-                    realm_roles = await self.keycloak.get_user_realm_roles(keycloak_id)
-                    role = await self._resolve_role_from_realm_roles(realm_roles)
+                    # Prefer client-role assignments; fall back to legacy realm roles.
+                    is_external_user = await self._is_external_keycloak_user(keycloak_id)
+                    role = (
+                        "enduser"
+                        if is_external_user
+                        else await self._resolve_role_from_keycloak(keycloak_id) or "enduser"
+                    )
 
                     # Check if user exists in DB
                     existing_user = await self.user_repo.get_by_keycloak_id(keycloak_id)
@@ -603,7 +551,7 @@ class UserService:
                             username=kc_user.get("username"),
                             is_active=kc_user.get("enabled", True),
                             role=role,
-                            is_external_keycloak_user=self._external_keycloak_enabled(),
+                            is_external_keycloak_user=is_external_user,
                         )
                         report["keycloak_users_updated"] += 1
                     else:
@@ -617,7 +565,7 @@ class UserService:
                             is_active=kc_user.get("enabled", True),
                             is_verified=True,
                             role=role,
-                            is_external_keycloak_user=self._external_keycloak_enabled(),
+                            is_external_keycloak_user=is_external_user,
                         )
                         await self.settings_repo.ensure_defaults(user.id)
                         report["keycloak_users_created"] += 1
@@ -648,7 +596,7 @@ class UserService:
         return report
 
     async def _ensure_keycloak_roles(self) -> None:
-        """Ensure all known DB roles exist as realm roles in Keycloak."""
+        """Ensure all known DB roles exist in Keycloak during the migration window."""
         all_roles = await self.role_repo.get_all()
         for role in all_roles:
             existing_role = await self.keycloak.get_realm_role(role.name)
@@ -658,9 +606,35 @@ class UserService:
                     description=role.description or f"AgenticAI {role.name} role",
                 )
 
+    async def _resolve_role_from_keycloak(self, keycloak_id: str) -> str | None:
+        realm_roles = await self.keycloak.get_user_realm_roles(keycloak_id)
+        if realm_roles:
+            return await self._resolve_role_from_roles(realm_roles)
+
+        client_roles = await self.keycloak.get_user_client_roles(keycloak_id)
+        if client_roles:
+            return await self._resolve_role_from_roles(client_roles)
+        return None
+
     def _external_keycloak_enabled(self) -> bool:
         is_external_keycloak = getattr(self.keycloak, "is_external_keycloak", None)
         return bool(is_external_keycloak()) if callable(is_external_keycloak) else False
+
+    async def _is_external_keycloak_user(self, keycloak_id: str) -> bool:
+        if not self._external_keycloak_enabled():
+            return False
+        user_has_federated_identity = getattr(self.keycloak, "user_has_federated_identity", None)
+        if not callable(user_has_federated_identity):
+            return False
+        try:
+            return bool(
+                await user_has_federated_identity(
+                    keycloak_id,
+                    self.keycloak.get_external_keycloak_alias(),
+                )
+            )
+        except Exception:
+            return False
 
 
 _user_service: UserService | None = None
