@@ -1,6 +1,6 @@
-import { User } from "@/lib/types";
 import {
   AuthTypeMetadata,
+  getAuthUrlSS,
   getAuthTypeMetadataSS,
   getCurrentUserSS,
 } from "@/lib/userSS";
@@ -9,6 +9,7 @@ import type { Route } from "next";
 import AuthFlowContainer from "@/components/auth/AuthFlowContainer";
 import LoginPage from "@/app/auth/login/LoginPage";
 import { buildLoginPath } from "@/lib/auth/loginRoute";
+import type { User } from "@/lib/types";
 
 export interface PageProps {
   searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -19,10 +20,6 @@ export default async function Page(props: PageProps) {
   const nextUrl: string | null = Array.isArray(searchParams?.next)
     ? searchParams?.next[0] ?? null
     : searchParams?.next ?? null;
-  const oidcError: string | null = Array.isArray(searchParams?.oidcError)
-    ? searchParams?.oidcError[0] ?? null
-    : searchParams?.oidcError ?? null;
-
   let authTypeMetadata: AuthTypeMetadata | null = null;
   let currentUser: User | null = null;
   try {
@@ -46,14 +43,21 @@ export default async function Page(props: PageProps) {
     return redirect("/app");
   }
 
+  const spAuthUrl = await getAuthUrlSS(authTypeMetadata.authType, nextUrl);
+  const externalAuthUrl = await getAuthUrlSS(
+    authTypeMetadata.authType,
+    nextUrl,
+    authTypeMetadata.externalKeycloakAlias
+  );
+
   return (
     <div className="flex flex-col">
-      <AuthFlowContainer>
+      <AuthFlowContainer authState="login">
         <LoginPage
-          authUrl={null}
+          authUrl={externalAuthUrl}
+          spAuthUrl={spAuthUrl}
           authTypeMetadata={authTypeMetadata}
           nextUrl={nextUrl}
-          oidcError={oidcError}
           hidePageRedirect={true}
           externalKeycloakLogin={true}
         />

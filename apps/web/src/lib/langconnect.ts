@@ -2,7 +2,7 @@
  * LangConnect RAG service types, SWR hooks, and API functions.
  *
  * All calls go through /api/rag/[...path] (Next.js API route proxy).
- * That proxy injects X-Internal-Service-Token so RAG auth passes.
+ * That proxy forwards the user's auth cookie or bearer token to RAG.
  *
  * Pattern mirrors lib/airbyte.ts from the Onyx codebase.
  */
@@ -292,13 +292,12 @@ export function useDocumentChunks(
   collectionId: string | null,
   documentId: string | null
 ) {
-  const { data, error, isLoading, mutate } =
-    useSWR<RagDocumentChunksResponse>(
-      collectionId && documentId
-        ? `${RAG}/collections/${collectionId}/documents/${documentId}/chunks`
-        : null,
-      errorHandlingFetcher
-    );
+  const { data, error, isLoading, mutate } = useSWR<RagDocumentChunksResponse>(
+    collectionId && documentId
+      ? `${RAG}/collections/${collectionId}/documents/${documentId}/chunks`
+      : null,
+    errorHandlingFetcher
+  );
   return {
     chunks: data?.chunks ?? [],
     stats: data?.stats ?? null,
@@ -312,14 +311,11 @@ export function useGraphBuildStatus(
   collectionId: string | null,
   active: boolean
 ) {
-  const { data, error, isLoading, mutate } =
-    useSWR<GraphBuildStatusResponse>(
-      active && collectionId
-        ? `${RAG}/graph/build/${collectionId}/status`
-        : null,
-      errorHandlingFetcher,
-      { refreshInterval: 2_000 }
-    );
+  const { data, error, isLoading, mutate } = useSWR<GraphBuildStatusResponse>(
+    active && collectionId ? `${RAG}/graph/build/${collectionId}/status` : null,
+    errorHandlingFetcher,
+    { refreshInterval: 2_000 }
+  );
   return { status: data ?? null, isLoading, error, mutate };
 }
 
@@ -400,10 +396,10 @@ export async function uploadDocuments(
   if (metadatas && metadatas.length > 0) {
     formData.append("metadatas_json", JSON.stringify(metadatas));
   }
-  const res = await fetch(
-    `${RAG}/collections/${collectionId}/documents`,
-    { method: "POST", body: formData }
-  );
+  const res = await fetch(`${RAG}/collections/${collectionId}/documents`, {
+    method: "POST",
+    body: formData,
+  });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err?.detail || "Failed to upload documents");
@@ -628,7 +624,8 @@ export async function fetchGraphRelTypesPaginated(
   if (params.search) query.set("search", params.search);
   if (params.scopeLabel) query.set("scope_label", params.scopeLabel);
   params.labelFilter?.forEach((l) => query.append("label_filter", l));
-  if (params.scopeSkip != null) query.set("scope_skip", String(params.scopeSkip));
+  if (params.scopeSkip != null)
+    query.set("scope_skip", String(params.scopeSkip));
   if (params.scopeLimit != null)
     query.set("scope_limit", String(params.scopeLimit));
   const res = await fetch(

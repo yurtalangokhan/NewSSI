@@ -19,7 +19,7 @@ from fastapi import (
 )
 from pydantic import BaseModel
 
-from api.dependencies import AuthenticatedUser, require_user
+from api.dependencies import AuthenticatedUser, require_permission, require_user
 from controller import UserController, get_user_controller
 from service.AuthService import get_auth_service
 
@@ -75,41 +75,52 @@ class FileStatusesPayload(BaseModel):
 @router.get("/api/user/files/recent")
 async def get_recent_files(
     request: Request,
-    user: Annotated[AuthenticatedUser, Depends(require_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("project:read"))],
 ):
     effective_user_id, _ = await _resolve_project_identity(request, user)
     return await _get_controller().get_recent_files(effective_user_id)
 
 
 @router.get("/api/llm/persona/{persona_id}/providers")
-async def get_persona_llm_providers(persona_id: int):
+async def get_persona_llm_providers(
+    persona_id: int,
+    _user: Annotated[AuthenticatedUser, Depends(require_permission("provider:read"))],
+):
     return await _get_controller().get_persona_providers(persona_id)
 
 
 @router.get("/api/llm/provider")
-async def get_llm_provider():
+async def get_llm_provider(
+    _user: Annotated[AuthenticatedUser, Depends(require_permission("provider:read"))],
+):
     return await _get_controller().get_llm_provider()
 
 
 @router.get("/api/admin/llm/built-in/options")
-async def get_llm_built_in_options():
+async def get_llm_built_in_options(
+    _user: Annotated[AuthenticatedUser, Depends(require_permission("provider:read"))],
+):
     return await _get_controller().get_llm_built_in_options()
 
 
 @router.post("/api/admin/llm/test/default")
-async def test_llm_default():
+async def test_llm_default(
+    _user: Annotated[AuthenticatedUser, Depends(require_permission("provider:read"))],
+):
     return await _get_controller().test_llm_default()
 
 
 @router.get("/api/admin/default-assistant")
-async def get_default_assistant():
+async def get_default_assistant(
+    _user: Annotated[AuthenticatedUser, Depends(require_permission("assistant:read"))],
+):
     return await _get_controller().get_default_assistant()
 
 
 @router.get("/api/user/projects")
 async def get_user_projects(
     request: Request,
-    user: Annotated[AuthenticatedUser, Depends(require_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("project:read"))],
 ):
     effective_user_id, owner_ids = await _resolve_project_identity(request, user)
     return await _get_controller().get_user_projects(effective_user_id, owner_ids)
@@ -119,7 +130,7 @@ async def get_user_projects(
 async def create_user_project(
     request: Request,
     name: str,
-    user: Annotated[AuthenticatedUser, Depends(require_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("project:create"))],
 ):
     effective_user_id, _ = await _resolve_project_identity(request, user)
     return await _get_controller().create_user_project(effective_user_id, name)
@@ -128,7 +139,7 @@ async def create_user_project(
 @router.post("/api/user/projects/file/upload")
 async def upload_project_files(
     request: Request,
-    user: Annotated[AuthenticatedUser, Depends(require_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("project:update"))],
     files: list[UploadFile] = File(...),
     project_id: int | None = Form(default=None),
     temp_id_map: str | None = Form(default=None),
@@ -147,7 +158,7 @@ async def upload_project_files(
 async def get_files_in_project(
     request: Request,
     project_id: int,
-    user: Annotated[AuthenticatedUser, Depends(require_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("project:read"))],
 ):
     effective_user_id, owner_ids = await _resolve_project_identity(request, user)
     return await _get_controller().get_files_in_project(
@@ -162,7 +173,7 @@ async def link_file_to_project(
     request: Request,
     project_id: int,
     file_id: str,
-    user: Annotated[AuthenticatedUser, Depends(require_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("project:update"))],
 ):
     effective_user_id, owner_ids = await _resolve_project_identity(request, user)
     return await _get_controller().link_file_to_project(
@@ -178,7 +189,7 @@ async def unlink_file_from_project(
     request: Request,
     project_id: int,
     file_id: str,
-    user: Annotated[AuthenticatedUser, Depends(require_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("project:update"))],
 ):
     effective_user_id, _ = await _resolve_project_identity(request, user)
     return await _get_controller().unlink_file_from_project(effective_user_id, project_id, file_id)
@@ -188,7 +199,7 @@ async def unlink_file_from_project(
 async def get_user_file(
     request: Request,
     file_id: str,
-    user: Annotated[AuthenticatedUser, Depends(require_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("project:read"))],
 ):
     effective_user_id, _ = await _resolve_project_identity(request, user)
     return await _get_controller().get_user_file(effective_user_id, file_id)
@@ -198,7 +209,7 @@ async def get_user_file(
 async def delete_user_file(
     request: Request,
     file_id: str,
-    user: Annotated[AuthenticatedUser, Depends(require_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("project:delete"))],
 ):
     effective_user_id, _ = await _resolve_project_identity(request, user)
     return await _get_controller().delete_user_file(effective_user_id, file_id)
@@ -208,7 +219,7 @@ async def delete_user_file(
 async def get_user_file_statuses(
     request: Request,
     payload: FileStatusesPayload,
-    user: Annotated[AuthenticatedUser, Depends(require_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("project:read"))],
 ):
     effective_user_id, _ = await _resolve_project_identity(request, user)
     return await _get_controller().get_user_file_statuses(effective_user_id, payload.file_ids)
@@ -218,7 +229,7 @@ async def get_user_file_statuses(
 async def get_user_project(
     request: Request,
     project_id: int,
-    user: Annotated[AuthenticatedUser, Depends(require_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("project:read"))],
 ):
     effective_user_id, owner_ids = await _resolve_project_identity(request, user)
     return await _get_controller().get_user_project(effective_user_id, project_id, owner_ids)
@@ -229,7 +240,7 @@ async def rename_user_project(
     request: Request,
     project_id: int,
     payload: RenameProjectPayload,
-    user: Annotated[AuthenticatedUser, Depends(require_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("project:update"))],
 ):
     effective_user_id, owner_ids = await _resolve_project_identity(request, user)
     return await _get_controller().rename_user_project(
@@ -244,7 +255,7 @@ async def rename_user_project(
 async def delete_user_project(
     request: Request,
     project_id: int,
-    user: Annotated[AuthenticatedUser, Depends(require_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("project:delete"))],
 ):
     effective_user_id, owner_ids = await _resolve_project_identity(request, user)
     return await _get_controller().delete_user_project(effective_user_id, project_id, owner_ids)
@@ -254,7 +265,7 @@ async def delete_user_project(
 async def get_user_project_details(
     request: Request,
     project_id: int,
-    user: Annotated[AuthenticatedUser, Depends(require_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("project:read"))],
 ):
     effective_user_id, owner_ids = await _resolve_project_identity(request, user)
     return await _get_controller().get_user_project_details(
@@ -268,7 +279,7 @@ async def get_user_project_details(
 async def get_user_project_instructions(
     request: Request,
     project_id: int,
-    user: Annotated[AuthenticatedUser, Depends(require_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("project:read"))],
 ):
     effective_user_id, owner_ids = await _resolve_project_identity(request, user)
     return await _get_controller().get_user_project_instructions(
@@ -283,7 +294,7 @@ async def upsert_user_project_instructions(
     request: Request,
     project_id: int,
     payload: UpsertProjectInstructionsPayload,
-    user: Annotated[AuthenticatedUser, Depends(require_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("project:update"))],
 ):
     effective_user_id, owner_ids = await _resolve_project_identity(request, user)
     return await _get_controller().upsert_user_project_instructions(
@@ -298,7 +309,7 @@ async def upsert_user_project_instructions(
 async def get_project_token_count(
     request: Request,
     project_id: int,
-    user: Annotated[AuthenticatedUser, Depends(require_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("project:read"))],
 ):
     effective_user_id, _ = await _resolve_project_identity(request, user)
     return await _get_controller().get_project_token_count(effective_user_id, project_id)
@@ -309,7 +320,7 @@ async def move_chat_session_to_project(
     request: Request,
     project_id: int,
     payload: MoveChatSessionPayload,
-    user: Annotated[AuthenticatedUser, Depends(require_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("project:update"))],
 ):
     effective_user_id, owner_ids = await _resolve_project_identity(request, user)
     return await _get_controller().move_chat_session_to_project(
@@ -324,7 +335,7 @@ async def move_chat_session_to_project(
 async def remove_chat_session_from_project(
     request: Request,
     payload: MoveChatSessionPayload,
-    user: Annotated[AuthenticatedUser, Depends(require_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("project:update"))],
 ):
     effective_user_id, owner_ids = await _resolve_project_identity(request, user)
     return await _get_controller().remove_chat_session_from_project(
@@ -335,35 +346,50 @@ async def remove_chat_session_from_project(
 
 
 @router.get("/admin/llm/provider")
-async def get_admin_llm_provider():
+async def get_admin_llm_provider(
+    _user: Annotated[AuthenticatedUser, Depends(require_permission("provider:read"))],
+):
     return await _get_controller().get_admin_llm_provider()
 
 
 @router.post("/api/admin/llm/test")
-async def test_llm():
+async def test_llm(
+    _user: Annotated[AuthenticatedUser, Depends(require_permission("provider:read"))],
+):
     return await _get_controller().test_llm()
 
 
 @router.post("/api/admin/llm/default")
-async def set_default_llm():
+async def set_default_llm(
+    _user: Annotated[AuthenticatedUser, Depends(require_permission("provider:update"))],
+):
     return await _get_controller().set_default_llm()
 
 
 @router.get("/api/admin/llm/ollama/available-models")
-async def get_ollama_models():
+async def get_ollama_models(
+    _user: Annotated[AuthenticatedUser, Depends(require_permission("provider:read"))],
+):
     return await _get_controller().get_ollama_models()
 
 
 @router.put("/api/admin/llm/provider")
-async def save_llm_provider():
+async def save_llm_provider(
+    _user: Annotated[AuthenticatedUser, Depends(require_permission("provider:update"))],
+):
     return await _get_controller().save_llm_provider()
 
 
 @router.post("/api/admin/llm/provider")
-async def create_llm_provider():
+async def create_llm_provider(
+    _user: Annotated[AuthenticatedUser, Depends(require_permission("provider:create"))],
+):
     return await _get_controller().create_llm_provider()
 
 
 @router.get("/llm/persona/{persona_id}/providers")
-async def get_persona_providers(persona_id: int):
+async def get_persona_providers(
+    persona_id: int,
+    _user: Annotated[AuthenticatedUser, Depends(require_permission("provider:read"))],
+):
     return await _get_controller().get_persona_providers(persona_id)

@@ -1,14 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getCookieValue, refreshAuthCookies } from "@/lib/api/proxy";
 
 // LANGCONNECT_URL is the canonical env var for the RAG service (see configs/.env)
 const LANGCONNECT_URL =
   process.env.LANGCONNECT_URL ||
   process.env.RAG_SERVICE_URL ||
   "http://localhost:8083";
-
-// Matches INTERNAL_SERVICE_TOKEN in legacy/langconnect/langconnect/auth.py
-const INTERNAL_SERVICE_TOKEN =
-  process.env.INTERNAL_SERVICE_TOKEN || "internal-service-key-2026";
 
 /**
  * Proxy to LangConnect RAG service.
@@ -33,35 +30,69 @@ async function proxyToRagService(
       targetUrl.searchParams.append(key, value);
     });
 
-    const hasBody =
-      request.method !== "GET" && request.method !== "HEAD";
+    const requestCookie = request.headers.get("cookie") || "";
+    const hasBody = request.method !== "GET" && request.method !== "HEAD";
+    const requestBody = hasBody ? await request.arrayBuffer() : undefined;
 
-    // Forward all headers as-is so multipart boundary is preserved.
-    // Do NOT override Content-Type here.
-    const forwardedHeaders = new Headers(request.headers);
-    // Remove host header to avoid upstream confusion
-    forwardedHeaders.delete("host");
-    // Authenticate as internal service so RAG auth passes regardless of VALID_API_KEYS
-    forwardedHeaders.set("X-Internal-Service-Token", INTERNAL_SERVICE_TOKEN);
+    const buildHeaders = (
+      cookieHeader: string,
+      accessTokenOverride?: string | null
+    ) => {
+      // Forward all headers as-is so multipart boundary is preserved.
+      // Do NOT override Content-Type here.
+      const forwardedHeaders = new Headers(request.headers);
+      forwardedHeaders.delete("host");
+      forwardedHeaders.delete("content-length");
 
-    const response = await fetch(targetUrl.toString(), {
-      method: request.method,
-      headers: forwardedHeaders,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ...(hasBody ? { body: request.body, duplex: "half" } as any : {}),
-    });
+      const accessToken =
+        accessTokenOverride || getCookieValue(cookieHeader, "access_token");
+      if (accessToken && !request.headers.get("authorization")) {
+        forwardedHeaders.set("authorization", `Bearer ${accessToken}`);
+      }
+      if (cookieHeader) {
+        forwardedHeaders.set("cookie", cookieHeader);
+      }
+
+      return forwardedHeaders;
+    };
+
+    const execute = (
+      cookieHeader: string,
+      accessTokenOverride?: string | null
+    ) =>
+      fetch(targetUrl.toString(), {
+        method: request.method,
+        headers: buildHeaders(cookieHeader, accessTokenOverride),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ...(hasBody ? ({ body: requestBody, duplex: "half" } as any) : {}),
+      });
+
+    let response = await execute(requestCookie);
+    const refreshed =
+      response.status === 401 ? await refreshAuthCookies(requestCookie) : null;
+    if (refreshed?.accessToken) {
+      response = await execute(refreshed.cookieHeader, refreshed.accessToken);
+    }
 
     // Return 204 with no body
     if (response.status === 204) {
-      return new NextResponse(null, { status: 204 });
+      const proxyResponse = new NextResponse(null, { status: 204 });
+      for (const cookie of refreshed?.setCookies ?? []) {
+        proxyResponse.headers.append("set-cookie", cookie);
+      }
+      return proxyResponse;
     }
 
     // Stream the response body back with the original status/headers
     const responseHeaders = new Headers(response.headers);
-    return new NextResponse(response.body, {
+    const proxyResponse = new NextResponse(response.body, {
       status: response.status,
       headers: responseHeaders,
     });
+    for (const cookie of refreshed?.setCookies ?? []) {
+      proxyResponse.headers.append("set-cookie", cookie);
+    }
+    return proxyResponse;
   } catch (error) {
     console.error("RAG service proxy error:", error);
     return NextResponse.json(

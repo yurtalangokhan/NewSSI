@@ -9,7 +9,7 @@ from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from api.dependencies import require_user
+from api.dependencies import require_permission, require_user
 from controller import AgentController, get_agent_controller
 from core.logger import get_logger
 from service.Schemas import (
@@ -58,6 +58,7 @@ def _get_controller() -> AgentController:
 @router.post("/search")
 async def search_assistants(
     request: AssistantSearchRequest = AssistantSearchRequest(),
+    _user=Depends(require_permission("assistant:search")),
 ) -> list[dict]:
     """
     Search for assistants. Returns all available agents as assistants.
@@ -98,7 +99,10 @@ async def search_assistants(
 
 
 @router.get("/{assistant_id}")
-async def get_assistant(assistant_id: str) -> dict:
+async def get_assistant(
+    assistant_id: str,
+    _user=Depends(require_permission("assistant:read")),
+) -> dict:
     """
     Get a specific assistant by ID.
     Compatible with @langchain/langgraph-sdk client.assistants.get()
@@ -118,7 +122,10 @@ async def get_assistant(assistant_id: str) -> dict:
 
 
 @router.post("")
-async def create_assistant(request: AssistantCreateRequest) -> dict:
+async def create_assistant(
+    request: AssistantCreateRequest,
+    _user=Depends(require_permission("assistant:create")),
+) -> dict:
     """
     Create a new assistant.
     Compatible with @langchain/langgraph-sdk client.assistants.create()
@@ -141,7 +148,11 @@ async def create_assistant(request: AssistantCreateRequest) -> dict:
 
 @router.put("/{assistant_id}")
 @router.patch("/{assistant_id}")
-async def update_assistant(assistant_id: str, request: AssistantUpdateRequest) -> dict:
+async def update_assistant(
+    assistant_id: str,
+    request: AssistantUpdateRequest,
+    _user=Depends(require_permission("assistant:update")),
+) -> dict:
     """
     Update an assistant.
     Compatible with @langchain/langgraph-sdk client.assistants.update()
@@ -169,7 +180,10 @@ async def update_assistant(assistant_id: str, request: AssistantUpdateRequest) -
 
 
 @router.delete("/{assistant_id}")
-async def delete_assistant(assistant_id: str) -> dict:
+async def delete_assistant(
+    assistant_id: str,
+    _user=Depends(require_permission("assistant:delete")),
+) -> dict:
     """
     Delete an assistant.
     Compatible with @langchain/langgraph-sdk client.assistants.delete()

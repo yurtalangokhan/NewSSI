@@ -21,7 +21,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
 from agents.storage.repository import AgentDefinitionRepository
-from api.dependencies import require_user
+from api.dependencies import require_permission, require_user
 from domain.agents.service import (
     AgentDefinitionService,
     BrainTypeService,
@@ -133,19 +133,19 @@ def _get_service() -> AgentDefinitionService:
 
 
 @router.get("/schemas/list")
-async def list_schemas() -> list[dict[str, Any]]:
+async def list_schemas(_user=Depends(require_permission("agent:list"))) -> list[dict[str, Any]]:
     """Return all available graph schemas with their capabilities."""
     return GraphSchemaService.get_available_schemas()
 
 
 @router.get("/brains/list")
-async def list_brain_types() -> list[dict[str, Any]]:
+async def list_brain_types(_user=Depends(require_permission("agent:list"))) -> list[dict[str, Any]]:
     """Return all available brain types."""
     return BrainTypeService.get_available_brain_types()
 
 
 @router.get("/memory/list")
-async def list_memory_types() -> list[dict[str, Any]]:
+async def list_memory_types(_user=Depends(require_permission("agent:list"))) -> list[dict[str, Any]]:
     """Return all available memory types."""
     return MemoryTypeService.get_available_memory_types()
 
@@ -158,6 +158,7 @@ async def list_memory_types() -> list[dict[str, Any]]:
 @router.post("", status_code=status.HTTP_201_CREATED)
 async def create_agent_definition(
     body: CreateAgentDefinitionRequest,
+    _user=Depends(require_permission("agent:create")),
 ) -> dict[str, Any]:
     """Create a new agent definition."""
     service = _get_service()
@@ -190,6 +191,7 @@ async def create_agent_definition(
 async def list_agent_definitions(
     graph_schema: str | None = None,
     active_only: bool = True,
+    _user=Depends(require_permission("agent:list")),
 ) -> list[dict[str, Any]]:
     """List all agent definitions, optionally filtered by graph_schema."""
     service = _get_service()
@@ -201,7 +203,10 @@ async def list_agent_definitions(
 
 
 @router.get("/{definition_id}")
-async def get_agent_definition(definition_id: UUID) -> dict[str, Any]:
+async def get_agent_definition(
+    definition_id: UUID,
+    _user=Depends(require_permission("agent:read")),
+) -> dict[str, Any]:
     """Get a single agent definition by ID."""
     service = _get_service()
     definition = await service.get_agent_definition(definition_id)
@@ -217,6 +222,7 @@ async def get_agent_definition(definition_id: UUID) -> dict[str, Any]:
 async def update_agent_definition(
     definition_id: UUID,
     body: UpdateAgentDefinitionRequest,
+    _user=Depends(require_permission("agent:update")),
 ) -> dict[str, Any]:
     """Update an agent definition. Only provided fields are updated."""
     service = _get_service()
@@ -242,7 +248,10 @@ async def update_agent_definition(
 
 
 @router.delete("/{definition_id}", status_code=status.HTTP_200_OK)
-async def delete_agent_definition(definition_id: UUID) -> dict[str, str]:
+async def delete_agent_definition(
+    definition_id: UUID,
+    _user=Depends(require_permission("agent:delete")),
+) -> dict[str, str]:
     """Delete an agent definition."""
     service = _get_service()
     deleted = await service.delete_agent_definition(definition_id)

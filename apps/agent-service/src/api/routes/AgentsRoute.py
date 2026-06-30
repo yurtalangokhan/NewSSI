@@ -19,7 +19,7 @@ from langchain_core.runnables import RunnableConfig
 from langgraph.types import Interrupt
 
 from agents import DEFAULT_AGENT, AgentGraph, get_agent, get_all_agent_info
-from api.dependencies import require_user
+from api.dependencies import require_permission, require_user
 from core import settings
 from schema import (
     ChatHistory,
@@ -118,7 +118,7 @@ class ThinkingTagProcessor:
 
 
 @router.get("/info")
-async def info() -> ServiceMetadata:
+async def info(_user=Depends(require_permission("agent:list"))) -> ServiceMetadata:
     from core.providers.registry import provider_registry
 
     provider_registry.initialize()
@@ -149,6 +149,7 @@ async def invoke(
     request: Request,
     user_input: UserInput,
     agent_id: str = DEFAULT_AGENT,
+    _user=Depends(require_permission("agent:invoke")),
 ) -> ChatMessage:
     """
     Invoke an agent with user input to retrieve a final response.
@@ -616,6 +617,7 @@ async def stream(
     request: Request,
     user_input: StreamInput,
     agent_id: str = DEFAULT_AGENT,
+    _user=Depends(require_permission("agent:stream")),
 ) -> StreamingResponse:
     """
     Stream an agent's response to a user input, including intermediate messages and tokens.
@@ -653,7 +655,10 @@ async def stream(
 
 
 @router.post("/history")
-async def history(input: ChatHistoryInput) -> ChatHistory:
+async def history(
+    input: ChatHistoryInput,
+    _user=Depends(require_permission("chat:read")),
+) -> ChatHistory:
     """Get chat history."""
     agent: AgentGraph = get_agent(DEFAULT_AGENT)
     try:

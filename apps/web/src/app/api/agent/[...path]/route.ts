@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getCookieValue, refreshAuthCookies } from "@/lib/api/proxy";
 
 const AGENT_SERVICE_URL =
   process.env.AGENT_SERVICE_URL ||
@@ -22,22 +23,53 @@ async function proxyToAgentService(
       targetUrl.searchParams.append(key, value);
     });
 
-    const headers = new Headers(request.headers);
-    headers.delete("host");
-    headers.delete("content-length");
+    const requestCookie = request.headers.get("cookie") || "";
+    const requestBody =
+      request.method === "GET" || request.method === "HEAD"
+        ? undefined
+        : await request.arrayBuffer();
 
-    const response = await fetch(targetUrl, {
-      method: request.method,
-      headers,
-      body:
-        request.method === "GET" || request.method === "HEAD"
-          ? undefined
-          : request.body,
-      signal: request.signal,
-      redirect: "manual",
-      // @ts-ignore - Required by undici for stream request bodies in Node runtime.
-      duplex: "half",
-    });
+    const buildHeaders = (
+      cookieHeader: string,
+      accessTokenOverride?: string | null
+    ) => {
+      const headers = new Headers(request.headers);
+      headers.delete("host");
+      headers.delete("content-length");
+
+      const accessToken =
+        accessTokenOverride || getCookieValue(cookieHeader, "access_token");
+      if (accessToken && !request.headers.get("authorization")) {
+        headers.set("authorization", `Bearer ${accessToken}`);
+      }
+      if (cookieHeader) {
+        headers.set("cookie", cookieHeader);
+      }
+
+      return headers;
+    };
+
+    const execute = (
+      cookieHeader: string,
+      accessTokenOverride?: string | null
+    ) =>
+      fetch(targetUrl, {
+        method: request.method,
+        headers: buildHeaders(cookieHeader, accessTokenOverride),
+        body: requestBody,
+        signal: request.signal,
+        redirect: "manual",
+        // @ts-ignore - Required by undici for stream request bodies in Node runtime.
+        duplex: "half",
+      });
+
+    let response = await execute(requestCookie);
+
+    const refreshed =
+      response.status === 401 ? await refreshAuthCookies(requestCookie) : null;
+    if (refreshed?.accessToken) {
+      response = await execute(refreshed.cookieHeader, refreshed.accessToken);
+    }
 
     const setCookies =
       // @ts-ignore - undici provides getSetCookie in Node runtime.
@@ -58,6 +90,9 @@ async function proxyToAgentService(
       if (cookie) {
         proxyResponse.headers.append("set-cookie", cookie);
       }
+    }
+    for (const cookie of refreshed?.setCookies ?? []) {
+      proxyResponse.headers.append("set-cookie", cookie);
     }
 
     return proxyResponse;

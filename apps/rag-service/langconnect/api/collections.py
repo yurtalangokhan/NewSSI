@@ -3,7 +3,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from langconnect.auth import AuthenticatedUser, require_permission, resolve_user
+from langconnect.auth import AuthenticatedUser, require_permission
 from langconnect.database.collections import CollectionsManager
 from langconnect.models import CollectionCreate, CollectionResponse, CollectionUpdate
 from langconnect.services.build_lock import (
@@ -33,7 +33,9 @@ async def collections_create(
 
 
 @router.get("", response_model=list[CollectionResponse])
-async def collections_list(user: Annotated[AuthenticatedUser, Depends(resolve_user)]):
+async def collections_list(
+    user: Annotated[AuthenticatedUser, Depends(require_permission("collection:list"))],
+):
     """Lists all available PGVector collections (name and UUID)."""
     return [
         CollectionResponse(**c) for c in await CollectionsManager(user.identity).list()
@@ -42,7 +44,7 @@ async def collections_list(user: Annotated[AuthenticatedUser, Depends(resolve_us
 
 @router.get("/{collection_id}", response_model=CollectionResponse)
 async def collections_get(
-    user: Annotated[AuthenticatedUser, Depends(resolve_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("collection:read"))],
     collection_id: UUID,
 ):
     """Retrieves details (name and UUID) of a specific PGVector collection."""

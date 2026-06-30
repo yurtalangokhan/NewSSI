@@ -4,7 +4,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from api.dependencies import require_user
+from api.dependencies import require_permission, require_user
 from service.MCPProviderService import MCPProviderService
 
 router = APIRouter(
@@ -22,6 +22,7 @@ def _get_service() -> MCPProviderService:
 async def list_providers(
     service: MCPProviderService = Depends(_get_service),
     include_inactive: bool = False,
+    _user=Depends(require_permission("mcp_provider:read")),
 ) -> list[dict[str, Any]]:
     return await service.list_providers(include_inactive)
 
@@ -30,6 +31,7 @@ async def list_providers(
 async def get_provider(
     provider_id: str,
     service: MCPProviderService = Depends(_get_service),
+    _user=Depends(require_permission("mcp_provider:read")),
 ) -> dict[str, Any]:
     provider = await service.get_provider(provider_id)
     if not provider:
@@ -41,6 +43,7 @@ async def get_provider(
 async def create_provider(
     request: dict[str, Any],
     service: MCPProviderService = Depends(_get_service),
+    _user=Depends(require_permission("mcp_provider:create")),
 ) -> dict[str, Any]:
     return await service.create_provider(
         name=request.get("name", ""),
@@ -56,6 +59,7 @@ async def create_provider(
 async def sync_provider_tools(
     provider_id: str,
     service: MCPProviderService = Depends(_get_service),
+    _user=Depends(require_permission("mcp_provider:sync")),
 ) -> dict[str, Any]:
     from service.MCPToolService import MCPToolService
 
@@ -69,6 +73,7 @@ async def update_provider(
     provider_id: str,
     request: dict[str, Any],
     service: MCPProviderService = Depends(_get_service),
+    _user=Depends(require_permission("mcp_provider:update")),
 ) -> dict[str, Any]:
     updated = await service.update_provider(provider_id, **request)
     if not updated:
@@ -80,6 +85,7 @@ async def update_provider(
 async def delete_provider(
     provider_id: str,
     service: MCPProviderService = Depends(_get_service),
+    _user=Depends(require_permission("mcp_provider:delete")),
 ) -> dict[str, Any]:
     deleted = await service.delete_provider(provider_id)
     if not deleted:

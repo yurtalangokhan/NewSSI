@@ -1,12 +1,9 @@
-from unittest.mock import AsyncMock
-
 import pytest
 from fastapi import HTTPException
 from starlette.requests import Request
 
 from api.routes.ChatRoute import _resolve_effective_chat_user_id
-from api.routes.UserMemoryRoute import _resolve_memory_user_id
-from service.AuthService import get_primary_user_id
+from service.AuthService import AuthService, AuthenticatedUser, get_primary_user_id
 
 
 def _build_request() -> Request:
@@ -14,6 +11,20 @@ def _build_request() -> Request:
         return {"type": "http.request", "body": b"", "more_body": False}
 
     return Request({"type": "http", "method": "GET", "headers": []}, receive)
+
+
+def _build_request_with_access_token(token: str) -> Request:
+    async def receive() -> dict:
+        return {"type": "http.request", "body": b"", "more_body": False}
+
+    return Request(
+        {
+            "type": "http",
+            "method": "GET",
+            "headers": [(b"cookie", f"access_token={token}".encode())],
+        },
+        receive,
+    )
 
 
 def test_get_primary_user_id_prefers_identity_primary() -> None:
@@ -34,24 +45,40 @@ def test_resolve_effective_chat_user_id_raises_without_any_user_id() -> None:
 
 
 @pytest.mark.asyncio
-async def test_resolve_memory_user_id_uses_primary_user_id(monkeypatch: pytest.MonkeyPatch) -> None:
-    auth_service = AsyncMock()
-    auth_service.resolve_user_identity = AsyncMock(
-        return_value={"primary_user_id": "internal-user", "known_user_ids": ["internal-user", "kc-sub"]}
+async def test_resolve_user_identity_fetches_local_user_when_keycloak_sub_matches_user_id(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    keycloak_id = "6b2d0c3f-7a6c-4d30-a61b-b5efe840c6e4"
+    local_user_id = "f8263659-f37c-4bb1-946f-cb50e9f9cfb1"
+    token = "keycloak-access-token"
+
+    monkeypatch.setattr(AuthService, "is_keycloak_enabled", staticmethod(lambda: True))
+    monkeypatch.setattr(
+        AuthService,
+        "decode_keycloak_token",
+        staticmethod(lambda _token: {"sub": keycloak_id}),
     )
-    monkeypatch.setattr("api.routes.UserMemoryRoute.get_auth_service", lambda: auth_service)
 
-    effective_user_id = await _resolve_memory_user_id(_build_request(), "kc-sub")
+    async def fake_get_user_by_keycloak_id(resolved_keycloak_id: str, access_token: str | None):
+        assert resolved_keycloak_id == keycloak_id
+        assert access_token == token
+        return {"id": local_user_id, "keycloak_id": keycloak_id, "email": "demo@demo.com"}
 
-    assert effective_user_id == "internal-user"
+    monkeypatch.setattr(
+        "service.UserServiceClient.get_user_by_keycloak_id",
+        fake_get_user_by_keycloak_id,
+    )
 
+    identity = await AuthService().resolve_user_identity(
+        request=_build_request_with_access_token(token),
+        user_id=keycloak_id,
+        user=AuthenticatedUser(
+            user_id=keycloak_id,
+            email="demo@demo.com",
+            claims={"sub": keycloak_id},
+            access_token=token,
+        ),
+    )
 
-@pytest.mark.asyncio
-async def test_resolve_memory_user_id_falls_back_to_raw_user_id(monkeypatch: pytest.MonkeyPatch) -> None:
-    auth_service = AsyncMock()
-    auth_service.resolve_user_identity = AsyncMock(return_value={"primary_user_id": None, "known_user_ids": ["kc-sub"]})
-    monkeypatch.setattr("api.routes.UserMemoryRoute.get_auth_service", lambda: auth_service)
-
-    effective_user_id = await _resolve_memory_user_id(_build_request(), "kc-sub")
-
-    assert effective_user_id == "kc-sub"
+    assert identity["primary_user_id"] == local_user_id
+    assert identity["known_user_ids"] == [local_user_id, keycloak_id]

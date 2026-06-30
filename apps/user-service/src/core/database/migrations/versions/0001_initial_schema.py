@@ -135,29 +135,6 @@ def upgrade() -> None:
     op.create_index("ix_api_keys_key_prefix", "api_keys", ["key_prefix"])
 
     op.create_table(
-        "sessions",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column(
-            "user_id",
-            postgresql.UUID(as_uuid=True),
-            sa.ForeignKey("users.id", ondelete="CASCADE"),
-            nullable=False,
-        ),
-        sa.Column("token_hash", sa.String(255), nullable=False, unique=True),
-        sa.Column("refresh_token_hash", sa.String(255), nullable=True),
-        sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False),
-        sa.Column(
-            "created_at",
-            sa.DateTime(timezone=True),
-            nullable=False,
-            server_default=sa.text("now()"),
-        ),
-    )
-    op.create_index("ix_sessions_user_id", "sessions", ["user_id"])
-    op.create_index("ix_sessions_token_hash", "sessions", ["token_hash"])
-    op.create_index("ix_sessions_refresh_token_hash", "sessions", ["refresh_token_hash"])
-
-    op.create_table(
         "audit_logs",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
         sa.Column(
@@ -186,7 +163,6 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     op.drop_table("audit_logs")
-    op.drop_table("sessions")
     op.drop_table("api_keys")
     op.drop_table("user_settings")
     op.drop_table("users")

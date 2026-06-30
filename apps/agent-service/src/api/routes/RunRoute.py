@@ -10,6 +10,7 @@ Open Agent Platform's chat interface.
 
 from __future__ import annotations
 
+import uuid
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
@@ -17,7 +18,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
 from agents import get_agent_or_lazy
-from api.dependencies import require_user
+from api.dependencies import require_permission, require_user
 from controller import RunController, get_run_controller
 from core.logger import get_logger
 from service.AuthService import extract_user_id_from_token
@@ -62,14 +63,13 @@ async def _parse_input(request: Request) -> tuple[dict, str, str, str | None, st
     except Exception:
         body = {}
 
-    assistant_id = body.get("assistant_id")
     user_input = body.get("input", {})
     if isinstance(user_input, str):
         user_input = {"messages": [{"type": "human", "content": user_input}]}
 
     model = body.get("model")
     thread_id = body.get("thread_id", "")
-    run_id = str(uuid_module.uuid4())
+    run_id = str(uuid.uuid4())
 
     api_key = request.headers.get("x-api-key")
     user_id = extract_user_id_from_token(api_key) if api_key else None
@@ -79,7 +79,10 @@ async def _parse_input(request: Request) -> tuple[dict, str, str, str | None, st
 
 @router.post("/threads/{thread_id}/runs/stream")
 async def stream_run(
-    request: Request, thread_id: str, request_obj: StreamInput
+    request: Request,
+    thread_id: str,
+    request_obj: StreamInput,
+    _user=Depends(require_permission("run:create")),
 ) -> StreamingResponse:
     """Stream runs for a thread using SDK-compatible format."""
     logger.debug("stream_run called for thread_id: %s", thread_id)
@@ -135,8 +138,6 @@ async def stream_run(
     except Exception:
         pass
 
-    import uuid
-
     from langchain_core.runnables import RunnableConfig
 
     run_id = str(uuid.uuid4())
@@ -162,7 +163,11 @@ async def stream_run(
 
 
 @router.post("/threads/{thread_id}/runs/{run_id}/cancel")
-async def cancel_run_endpoint(thread_id: str, run_id: str) -> dict:
+async def cancel_run_endpoint(
+    thread_id: str,
+    run_id: str,
+    _user=Depends(require_permission("run:cancel")),
+) -> dict:
     """Cancel an active run."""
     logger.info("cancel_run_endpoint called for thread_id=%s, run_id=%s", thread_id, run_id)
     ctrl = _get_controller()
@@ -175,7 +180,11 @@ async def cancel_run_endpoint(thread_id: str, run_id: str) -> dict:
 
 
 @router.post("/threads/{thread_id}/history")
-async def get_thread_history(thread_id: str, request: ThreadHistoryRequest) -> list[ThreadState]:
+async def get_thread_history(
+    thread_id: str,
+    request: ThreadHistoryRequest,
+    _user=Depends(require_permission("run:read")),
+) -> list[ThreadState]:
     """Get thread history specific checkpointer states."""
     ctrl = _get_controller()
     return await ctrl.get_thread_history(thread_id, request.limit, request.before)

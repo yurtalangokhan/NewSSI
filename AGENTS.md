@@ -33,8 +33,8 @@ make typecheck      # mypy src/
 
 | service | port |
 |---|---|
-| agent-service | 8080 |
-| rag-service | 8080 |
+| agent-service | 8123 |
+| rag-service | 8083 |
 | tools-service | 8003 |
 | user-service | 8090 |
 | web (next dev) | 3000 |

@@ -6,9 +6,12 @@ import os
 import time
 from typing import Any
 
+import httpx
 import jwt
 from fastmcp.server.auth import AccessToken, TokenVerifier
 from jwt import InvalidTokenError, PyJWKClient
+
+_PERMISSION_CACHE: dict[str, tuple[float, list[str]]] = {}
 
 
 def _get_valid_api_keys() -> set:
@@ -20,6 +23,39 @@ def _get_valid_api_keys() -> set:
 
 def _get_internal_service_token() -> str:
     return (os.environ.get("INTERNAL_SERVICE_TOKEN") or "").strip()
+
+
+def _user_service_base_url() -> str:
+    return (os.environ.get("USER_SERVICE_URL") or "http://localhost:8090").rstrip("/")
+
+
+def _permission_cache_ttl() -> float:
+    return float(os.environ.get("USER_PERMISSION_CACHE_TTL_SECONDS", "30"))
+
+
+async def _get_user_service_permissions(token: str, subject: str) -> list[str]:
+    now = time.monotonic()
+    cached = _PERMISSION_CACHE.get(subject)
+    if cached and cached[0] > now:
+        return cached[1]
+
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.get(
+                f"{_user_service_base_url()}/api/users/internal/{subject}/permissions",
+                headers={"Authorization": f"Bearer {token}"},
+            )
+        resp.raise_for_status()
+        data = resp.json()
+    except (httpx.HTTPError, ValueError):
+        return []
+
+    raw_permissions = data.get("permissions", []) if isinstance(data, dict) else []
+    permissions = sorted(
+        str(permission) for permission in raw_permissions if permission is not None
+    )
+    _PERMISSION_CACHE[subject] = (now + _permission_cache_ttl(), permissions)
+    return permissions
 
 
 class KeycloakTokenVerifier(TokenVerifier):
@@ -36,7 +72,7 @@ class KeycloakTokenVerifier(TokenVerifier):
             "TOOLS_SERVICE_URL",
             "http://localhost:8003/mcp",
         )
-        super().__init__(base_url=base_url)
+        super().__init__(base_url=base_url, required_scopes=["tool:execute"])
         self._issuer = (os.environ.get("KEYCLOAK_ISSUER_URL") or "").rstrip("/")
         self._audience = os.environ.get("KEYCLOAK_AUDIENCE", "")
         self._client_id = os.environ.get("KEYCLOAK_CLIENT_ID", "agenticai-web")
@@ -88,10 +124,11 @@ class KeycloakTokenVerifier(TokenVerifier):
                 if subject:
                     exp = claims.get("exp")
                     expires_at = int(exp) if isinstance(exp, int) else int(time.time()) + 300
+                    scopes = await _get_user_service_permissions(token, subject)
                     return AccessToken(
                         token=token,
                         client_id=subject,
-                        scopes=[],
+                        scopes=scopes,
                         expires_at=expires_at,
                         claims=claims,
                     )
@@ -107,7 +144,7 @@ class KeycloakTokenVerifier(TokenVerifier):
             return AccessToken(
                 token=token,
                 client_id="internal-service",
-                scopes=[],
+                scopes=["tool:execute"],
                 expires_at=expires_at,
                 claims={"sub": "internal-service", "iss": "tools-service"},
             )
@@ -119,7 +156,7 @@ class KeycloakTokenVerifier(TokenVerifier):
             return AccessToken(
                 token=token,
                 client_id=token,
-                scopes=[],
+                scopes=["tool:execute"],
                 expires_at=expires_at,
                 claims={"sub": token, "iss": "tools-service"},
             )
@@ -132,7 +169,7 @@ class KeycloakTokenVerifier(TokenVerifier):
                 return AccessToken(
                     token=token,
                     client_id=key,
-                    scopes=[],
+                    scopes=["tool:execute"],
                     expires_at=expires_at,
                     claims={"sub": key, "iss": "tools-service"},
                 )

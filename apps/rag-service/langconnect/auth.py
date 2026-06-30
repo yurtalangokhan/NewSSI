@@ -39,15 +39,25 @@ def _get_valid_api_keys() -> set:
 class AuthenticatedUser(BaseUser):
     """An authenticated user following the Starlette authentication model."""
 
-    def __init__(self, user_id: str, display_name: str) -> None:
+    def __init__(
+        self,
+        user_id: str,
+        display_name: str,
+        access_token: str | None = None,
+        claims: dict[str, Any] | None = None,
+    ) -> None:
         """Initialize the AuthenticatedUser.
 
         Args:
             user_id: Unique identifier for the user.
             display_name: Display name for the user.
+            access_token: User bearer token used for downstream permission checks.
+            claims: Decoded JWT claims used for permission checks.
         """
         self.user_id = user_id
         self._display_name = display_name
+        self.access_token = access_token
+        self.claims = claims or {}
 
     @property
     def is_authenticated(self) -> bool:
@@ -118,9 +128,7 @@ def decode_keycloak_token(token: str) -> dict[str, Any]:
     audiences: list[str] = []
     if config.KEYCLOAK_AUDIENCE:
         audiences = [
-            a.strip()
-            for a in config.KEYCLOAK_AUDIENCE.split(",")
-            if a.strip()
+            a.strip() for a in config.KEYCLOAK_AUDIENCE.split(",") if a.strip()
         ]
     if config.KEYCLOAK_CLIENT_ID and config.KEYCLOAK_CLIENT_ID not in audiences:
         audiences.append(config.KEYCLOAK_CLIENT_ID)
@@ -150,7 +158,71 @@ def decode_keycloak_token(token: str) -> dict[str, Any]:
         ) from exc
 
 
-def resolve_user(
+def _extract_auth_token(
+    request: Request,
+    credentials: HTTPAuthorizationCredentials | None,
+) -> str | None:
+    if credentials and credentials.credentials:
+        return credentials.credentials
+
+    return (
+        request.cookies.get("fastapiusersauth")
+        or request.cookies.get("access_token")
+        or request.cookies.get("id_token")
+        or request.cookies.get("session")
+    )
+
+
+def _claim_permissions(claims: dict[str, Any]) -> set[str]:
+    permissions: set[str] = set()
+
+    direct_permissions = claims.get("permissions")
+    if isinstance(direct_permissions, list):
+        permissions.update(str(p) for p in direct_permissions if p is not None)
+    elif isinstance(direct_permissions, str):
+        permissions.add(direct_permissions)
+
+    client_id = config.KEYCLOAK_CLIENT_ID or "agenticai-web"
+    resource_access = claims.get("resource_access")
+    if isinstance(resource_access, dict):
+        client_mapping = resource_access.get(client_id)
+        if isinstance(client_mapping, dict):
+            client_roles = client_mapping.get("roles") or []
+            if isinstance(client_roles, list):
+                permissions.update(str(role) for role in client_roles if role is not None)
+
+    realm_access = claims.get("realm_access")
+    if isinstance(realm_access, dict):
+        realm_roles = realm_access.get("roles") or []
+        if isinstance(realm_roles, list):
+            permissions.update(str(role) for role in realm_roles if role is not None)
+
+    return permissions
+
+
+def _claims_have_permission(claims: dict[str, Any], permission: str) -> bool:
+    permissions = _claim_permissions(claims)
+    return "*" in permissions or permission in permissions
+
+
+async def _get_user_service_user(token: str) -> dict[str, Any] | None:
+    import httpx
+
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            response = await client.get(
+                f"{config.USER_SERVICE_URL.rstrip('/')}/api/auth/me",
+                headers={"Authorization": f"Bearer {token}"},
+            )
+        if response.status_code == 200:
+            data = response.json()
+            return data if isinstance(data, dict) else None
+    except Exception:
+        return None
+    return None
+
+
+async def resolve_user(
     request: Request,
     credentials: Annotated[
         Optional[HTTPAuthorizationCredentials], Depends(security)
@@ -162,37 +234,46 @@ def resolve_user(
     to API key validation.
     """
 
-    if credentials:
-        if credentials.scheme != "Bearer":
-            raise HTTPException(status_code=401, detail="Invalid authentication scheme")
+    token = _extract_auth_token(request, credentials)
 
-        if not credentials.credentials:
-            raise HTTPException(status_code=401, detail="Invalid credentials")
+    if credentials and credentials.scheme != "Bearer":
+        raise HTTPException(status_code=401, detail="Invalid authentication scheme")
 
+    if token:
         # Validate Keycloak JWTs before considering legacy API keys. When Keycloak
         # is enabled, invalid Bearer tokens must fail closed instead of falling
         # through to dev/API-key auth.
         if config.KEYCLOAK_ENABLED and config.KEYCLOAK_ISSUER_URL:
-            claims = decode_keycloak_token(credentials.credentials)
+            claims = decode_keycloak_token(token)
             sub = claims.get("sub", "")
-            email = (
-                claims.get("email", "")
-                or claims.get("preferred_username", "")
-                or sub
-            )
             if not sub:
                 raise HTTPException(status_code=401, detail="Invalid bearer token")
-            return AuthenticatedUser(sub, email)
 
-        user_id = verify_api_key(credentials.credentials)
+            user_data = await _get_user_service_user(token)
+            if user_data:
+                user_id = str(user_data.get("id") or sub)
+                email = str(
+                    user_data.get("email")
+                    or claims.get("email")
+                    or claims.get("preferred_username")
+                    or sub
+                )
+                return AuthenticatedUser(user_id, email, access_token=token, claims=claims)
+
+            email = (
+                claims.get("email", "") or claims.get("preferred_username", "") or sub
+            )
+            return AuthenticatedUser(str(sub), email, access_token=token, claims=claims)
+
+        user_id = verify_api_key(token)
         if user_id:
-            return AuthenticatedUser(user_id, user_id)
+            return AuthenticatedUser(user_id, user_id, access_token=token)
 
         raise HTTPException(status_code=401, detail="Invalid API key")
 
     # Machine-only service calls may still use the internal service token.
     internal_token = request.headers.get("X-Internal-Service-Token")
-    if internal_token == INTERNAL_SERVICE_TOKEN:
+    if INTERNAL_SERVICE_TOKEN and internal_token == INTERNAL_SERVICE_TOKEN:
         return AuthenticatedUser("internal-service", "Internal Service")
 
     # If no credentials provided - check if we allow anonymous
@@ -216,7 +297,13 @@ def require_permission(permission: str):
 
     Authenticates via resolve_user, then calls user-service to verify the user's
     role includes the required permission. Dev mode and internal-service bypass.
+
+    Fine-grained permissions live ONLY in the user-service database, not in the
+    JWT. The JWT contains only coarse client roles for service-level grouping.
     """
+
+    _user_permission_cache: dict[str, tuple[list[str], float]] = {}
+    _CACHE_TTL = 30.0
 
     async def _check(
         request: Request,
@@ -224,31 +311,39 @@ def require_permission(permission: str):
             Optional[HTTPAuthorizationCredentials], Depends(security)
         ] = None,
     ) -> AuthenticatedUser:
-        import httpx
+        import time
 
-        user = resolve_user(request=request, credentials=credentials)
+        user = await resolve_user(request=request, credentials=credentials)
 
         if user.identity in ("dev-user", "internal-service"):
             return user
 
-        try:
-            async with httpx.AsyncClient(timeout=5.0) as client:
-                headers: dict[str, str] = {}
-                if user.identity == "internal-service":
-                    headers["X-Internal-Service-Token"] = config.INTERNAL_SERVICE_TOKEN
-                elif credentials:
-                    headers["Authorization"] = f"Bearer {credentials.credentials}"
+        cached = _user_permission_cache.get(user.identity)
+        if cached and time.monotonic() - cached[1] < _CACHE_TTL:
+            user_perms = cached[0]
+        else:
+            try:
+                import httpx
 
-                resp = await client.get(
-                    f"{config.USER_SERVICE_URL}/api/users/internal/{user.identity}/permissions",
-                    headers=headers,
-                )
-                if resp.status_code == 200:
-                    perms = resp.json().get("permissions", [])
-                    if perms == ["*"] or permission in perms:
-                        return user
-        except Exception:
-            pass
+                async with httpx.AsyncClient(timeout=5.0) as client:
+                    headers: dict[str, str] = {}
+                    if user.access_token:
+                        headers["Authorization"] = f"Bearer {user.access_token}"
+
+                    resp = await client.get(
+                        f"{config.USER_SERVICE_URL}/api/users/internal/{user.identity}/permissions",
+                        headers=headers,
+                    )
+                    if resp.status_code == 200:
+                        user_perms = resp.json().get("permissions", [])
+                    else:
+                        user_perms = []
+                    _user_permission_cache[user.identity] = (user_perms, time.monotonic())
+            except Exception:
+                user_perms = []
+
+        if user_perms == ["*"] or permission in user_perms:
+            return user
 
         raise HTTPException(
             status_code=403,

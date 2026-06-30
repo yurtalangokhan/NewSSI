@@ -23,6 +23,58 @@ class DummyThreadController:
         return self._thread
 
 
+class DummyThreadListController:
+    def __init__(self, threads: list[dict]):
+        self._threads = threads
+        self.list_calls: list[dict] = []
+
+    async def list_threads(self, limit: int = 100, offset: int = 0, metadata: dict | None = None):
+        self.list_calls.append({"limit": limit, "offset": offset, "metadata": metadata})
+        if metadata:
+            return [
+                thread
+                for thread in self._threads
+                if all(
+                    (thread.get("metadata", {}) or {}).get(key) == value
+                    for key, value in metadata.items()
+                )
+            ][offset : offset + limit]
+        return self._threads[offset : offset + limit]
+
+
+@pytest.mark.asyncio
+async def test_get_chat_sessions_includes_legacy_keycloak_owner_ids():
+    threads = [
+        {
+            "thread_id": "legacy-thread",
+            "metadata": {
+                "user_id": "keycloak-subject",
+                "persona_id": 1,
+                "name": "Legacy Chat",
+            },
+            "created_at": "2026-01-01T00:00:00+00:00",
+            "updated_at": "2026-01-01T00:00:00+00:00",
+        },
+        {
+            "thread_id": "other-thread",
+            "metadata": {"user_id": "other-user", "persona_id": 1, "name": "Other"},
+            "created_at": "2026-01-01T00:00:00+00:00",
+            "updated_at": "2026-01-01T00:00:00+00:00",
+        },
+    ]
+    thread_controller = DummyThreadListController(threads)
+    controller = ChatController(
+        thread_controller=thread_controller,
+        user_id="local-user-id",
+        owner_ids=["local-user-id", "keycloak-subject"],
+    )
+
+    result = await controller.get_chat_sessions()
+
+    assert [session["id"] for session in result["sessions"]] == ["legacy-thread"]
+    assert thread_controller.list_calls[0]["metadata"] is None
+
+
 @pytest.mark.asyncio
 async def test_get_chat_session_skips_system_memory_messages_and_replays_ltm_packet():
     memory_context = (

@@ -8,6 +8,23 @@ from service import AuthService
 from service.AuthService import require_user
 
 
+def test_has_permission_reads_only_legacy_permissions_claim(monkeypatch):
+    monkeypatch.setattr(AuthService.settings, "KEYCLOAK_CLIENT_ID", "agenticai-web")
+
+    assert AuthService.AuthService.has_permission(
+        {"permissions": ["agent:invoke"]},
+        "agent:invoke",
+    )
+    assert not AuthService.AuthService.has_permission(
+        {"resource_access": {"agenticai-web": {"roles": ["thread:create"]}}},
+        "thread:create",
+    )
+    assert not AuthService.AuthService.has_permission(
+        {"realm_access": {"roles": ["*"]}},
+        "agent:delete",
+    )
+
+
 def _request_with_access_token(token: str) -> Request:
     return Request(
         {

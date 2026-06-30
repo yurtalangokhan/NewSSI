@@ -17,7 +17,7 @@ from core.db import AirbyteMappingRepository, DatasourceRepository
 # LangConnect base URL for Graph RAG rebuild requests
 LANGCONNECT_BASE_URL = os.environ.get("RAG_SERVICE_API_URL", "http://langconnect-api:8083")
 # Internal service token for authenticating with LangConnect
-LANGCONNECT_SERVICE_TOKEN = os.environ.get("LANGCONNECT_SERVICE_TOKEN", "")
+_LANGCONNECT_SERVICE_TOKEN = os.environ.get("INTERNAL_SERVICE_TOKEN", "")
 
 logger = logging.getLogger(__name__)
 
@@ -231,10 +231,8 @@ async def _trigger_graph_rag_rebuild(datasource_id: str) -> None:
     await _update_graph_status(datasource_id, "graph_rebuilding")
 
     headers: dict[str, str] = {"Content-Type": "application/json"}
-    if LANGCONNECT_SERVICE_TOKEN:
-        headers["Authorization"] = f"Bearer {LANGCONNECT_SERVICE_TOKEN}"
-    else:
-        headers["X-Internal-Service"] = "agent-service"
+    if _LANGCONNECT_SERVICE_TOKEN:
+        headers["X-Internal-Service-Token"] = _LANGCONNECT_SERVICE_TOKEN
 
     payload = {"collection_id": datasource_id}
 

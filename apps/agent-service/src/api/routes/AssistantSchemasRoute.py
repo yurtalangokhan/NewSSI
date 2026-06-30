@@ -10,7 +10,7 @@ import logging
 
 from fastapi import APIRouter, Depends
 
-from api.dependencies import require_user
+from api.dependencies import require_permission, require_user
 from controller import AssistantSchemasController, get_assistant_schemas_controller
 
 logger = logging.getLogger(__name__)
@@ -24,7 +24,10 @@ def _get_controller() -> AssistantSchemasController:
 
 
 @router.get("/assistants/{assistant_id}/schemas")
-async def get_assistant_schemas(assistant_id: str) -> dict:
+async def get_assistant_schemas(
+    assistant_id: str,
+    _user=Depends(require_permission("assistant:read")),
+) -> dict:
     """
     Get schemas for an assistant's configuration.
     Returns graph-specific config schemas with x_oap_ui_config metadata
