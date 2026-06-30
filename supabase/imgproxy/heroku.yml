@@ -1,5 +1,0 @@
-build:
-  config:
-    IMGPROXY_TAG: latest
-  docker:
-    web: heroku/Dockerfile
