@@ -10,3 +10,7 @@ node_modules
 uv-lock-out
 agent-service-toolkit
 .tmp
+.ruff_cache
+.pytest_cache
+.opencode/
+.codex
