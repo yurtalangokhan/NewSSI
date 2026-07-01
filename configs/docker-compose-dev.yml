@@ -117,7 +117,7 @@ services:
       - ../apps/web/.env.production
     extra_hosts:
       - "host.docker.internal:host-gateway"
-      - "${KEYCLOAK_PUBLIC_HOSTNAME:-10.101.90.13}:host-gateway"
+      - "${KEYCLOAK_PUBLIC_HOSTNAME:-keycloak.localhost}:host-gateway"
     networks:
       airbyte:
         aliases:

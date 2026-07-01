@@ -70,8 +70,10 @@ class AuthController(BaseController):
         redirect_uri: str | None = None,
         kc_idp_hint: str | None = None,
     ) -> dict[str, Any]:
-        uri = redirect_uri or "http://localhost:3000/auth/oidc/callback"
-        url = await self.auth_service.get_oidc_authorize_url(uri, idp_hint=kc_idp_hint)
+        url = await self.auth_service.get_oidc_authorize_url(
+            redirect_uri,
+            idp_hint=kc_idp_hint,
+        )
         # Return both formats for compatibility:
         # - authorization_url: JSON response field
         # - authorize_url: legacy field name
@@ -84,12 +86,11 @@ class AuthController(BaseController):
         code: str,
         redirect_uri: str | None = None,
     ) -> dict[str, Any]:
-        uri = redirect_uri or "http://localhost:3000/auth/oidc/callback"
         request_callback_uri = str(request.url).split("?", 1)[0]
         try:
             result = await self.auth_service.handle_oidc_callback(
                 code,
-                uri,
+                redirect_uri,
                 fallback_redirect_uri=request_callback_uri,
             )
             self._set_cookies(

@@ -31,11 +31,11 @@ RUN uv pip install --system \
 RUN mkdir -p /workspace && chmod 777 /workspace
 
 # Expose port
-EXPOSE 8001
+EXPOSE 8003
 
 # Environment variables
 ENV MCP_HOST=0.0.0.0
-ENV MCP_PORT=8001
+ENV MCP_PORT=8003
 ENV WORKSPACE_DIR=/workspace
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1

@@ -8,6 +8,13 @@ const handleLogout = async (request: NextRequest) => {
   let backendLogoutSucceeded = false;
   const publicWebOrigin =
     process.env.WEB_DOMAIN?.replace(/\/$/, "") || request.nextUrl.origin;
+  const useSecureCookies = (() => {
+    try {
+      return new URL(publicWebOrigin).protocol === "https:";
+    } catch {
+      return request.nextUrl.protocol === "https:";
+    }
+  })();
 
   // Call backend logout — this terminates the Keycloak SSO session
   // server-side via backchannel logout using the refresh_token cookie.
@@ -33,7 +40,7 @@ const handleLogout = async (request: NextRequest) => {
       response.cookies.set(cookieName, "", {
         path: "/",
         maxAge: 0,
-        secure: process.env.NODE_ENV === "production",
+        secure: useSecureCookies,
         httpOnly: true,
         sameSite: "lax",
       });

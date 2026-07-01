@@ -7,7 +7,7 @@ import logging
 import uuid
 from typing import Any
 
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, or_, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from langconnect import config
@@ -69,9 +69,14 @@ class CollectionRepository(BaseRepository):
             stmt = select(PgCollection)
 
             if not self._is_internal:
-                # JSON operator ->> returns text
+                # JSON operator ->> returns text. Include internal/legacy rows so
+                # collections created by ingestion jobs remain visible in the UI.
                 stmt = stmt.where(
-                    PgCollection.cmetadata["owner_id"].as_string() == self.user_id
+                    or_(
+                        PgCollection.cmetadata["owner_id"].as_string() == self.user_id,
+                        PgCollection.cmetadata["owner_id"].as_string() == "internal-service",
+                        PgCollection.cmetadata["owner_id"].as_string().is_(None),
+                    )
                 )
 
             stmt = stmt.order_by(PgCollection.cmetadata["name"].as_string())
@@ -88,7 +93,11 @@ class CollectionRepository(BaseRepository):
             )
             if not self._is_internal:
                 stmt = stmt.where(
-                    PgCollection.cmetadata["owner_id"].as_string() == self.user_id
+                    or_(
+                        PgCollection.cmetadata["owner_id"].as_string() == self.user_id,
+                        PgCollection.cmetadata["owner_id"].as_string() == "internal-service",
+                        PgCollection.cmetadata["owner_id"].as_string().is_(None),
+                    )
                 )
 
             result = await session.execute(stmt)

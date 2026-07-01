@@ -159,7 +159,7 @@ class Env:
 
     @property
     def MCP_SERVER_URL(self) -> str:
-        return os.environ.get("MCP_SERVER_URL", "http://localhost:8002/mcp")
+        return os.environ.get("MCP_SERVER_URL", "http://localhost:8003/mcp")
 
     @property
     def GITHUB_PAT(self) -> str | None:

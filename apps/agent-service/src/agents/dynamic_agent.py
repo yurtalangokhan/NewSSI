@@ -106,14 +106,17 @@ class DynamicAgent(LazyLoadingAgent):
                 or getattr(settings, "MCP_SERVER_URL", None)
                 or os.environ.get("TOOLS_SERVICE_URL")
                 or os.environ.get("MCP_SERVER_URL")
-                or "http://localhost:8002/mcp"
+                or "http://localhost:8003/mcp"
             )
+            token = (os.environ.get("INTERNAL_SERVICE_TOKEN") or "").strip()
+            headers = {"Authorization": f"Bearer {token}"} if token else None
 
             client = MultiServerMCPClient(
                 connections={
                     "mcp-tools": {
                         "transport": "streamable_http",
                         "url": mcp_url,
+                        **({"headers": headers} if headers else {}),
                     }
                 }
             )

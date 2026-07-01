@@ -15,7 +15,7 @@ services:
   # User Service
   # --------------------------------------------------------------------------
   - name: user-service
-    url: http://host.docker.internal:8090
+    url: http://user-service:8090
     routes:
       # Public auth endpoints (login/logout/refresh/me/type/oidc)
       - name: user-service-auth
@@ -95,7 +95,7 @@ services:
   # Agent Service
   # --------------------------------------------------------------------------
   - name: agent-service
-    url: http://host.docker.internal:8123
+    url: http://agent-service:8123
     routes:
       - name: agent-service-api-health-public
         paths:
@@ -164,7 +164,7 @@ services:
   # RAG Service
   # --------------------------------------------------------------------------
   - name: rag-service
-    url: http://host.docker.internal:8083
+    url: http://rag-service:8083
     routes:
       - name: rag-service-api
         paths:
@@ -189,7 +189,7 @@ services:
   # Tools Service (MCP)
   # --------------------------------------------------------------------------
   - name: tools-service-mcp
-    url: http://host.docker.internal:8003/mcp
+    url: http://tools-service:8003/mcp
     routes:
       - name: tools-service-mcp
         paths:
@@ -208,7 +208,7 @@ services:
   # --------------------------------------------------------------------------
 
   - name: internal-user-service
-    url: http://host.docker.internal:8090
+    url: http://user-service:8090
     routes:
       - name: internal-user-service-all
         paths:
@@ -217,7 +217,7 @@ services:
         preserve_host: true
 
   - name: internal-rag-service
-    url: http://host.docker.internal:8083
+    url: http://rag-service:8083
     routes:
       - name: internal-rag-service-all
         paths:
@@ -226,7 +226,7 @@ services:
         preserve_host: true
 
   - name: internal-tools-service
-    url: http://host.docker.internal:8003/mcp
+    url: http://tools-service:8003/mcp
     routes:
       - name: internal-tools-service-all
         paths:
@@ -238,7 +238,7 @@ consumers:
   - username: keycloak-agenticai
     custom_id: keycloak-agenticai
     jwt_secrets:
-      - key: http://10.101.90.13:8085/realms/agenticai
+      - key: __KEYCLOAK_ISSUER_URL__
         algorithm: RS256
         rsa_public_key: |
           -----BEGIN PUBLIC KEY-----

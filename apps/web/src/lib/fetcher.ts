@@ -26,7 +26,13 @@ interface RefreshTokenResult {
   status: number | null;
 }
 
+interface AuthTypeMetadata {
+  externalKeycloak?: boolean;
+  external_keycloak?: boolean;
+}
+
 let refreshTokenPromise: Promise<RefreshTokenResult> | null = null;
+let loginPathPromise: Promise<string> | null = null;
 
 async function tryRefreshToken(): Promise<RefreshTokenResult> {
   if (!refreshTokenPromise) {
@@ -48,15 +54,46 @@ async function tryRefreshToken(): Promise<RefreshTokenResult> {
   return await refreshTokenPromise;
 }
 
-export function getLoginRedirectUrl(): string {
+async function getLoginPath(): Promise<string> {
+  if (!loginPathPromise) {
+    loginPathPromise = (async () => {
+      try {
+        const res = await fetch("/api/auth/type", {
+          credentials: "include",
+          cache: "no-store",
+        });
+
+        if (!res.ok) {
+          return "/auth/login";
+        }
+
+        const authTypeMetadata = (await res.json()) as AuthTypeMetadata;
+        return authTypeMetadata.externalKeycloak ||
+          authTypeMetadata.external_keycloak
+          ? "/auth/ee/login"
+          : "/auth/login";
+      } catch {
+        return "/auth/login";
+      } finally {
+        loginPathPromise = null;
+      }
+    })();
+  }
+
+  return await loginPathPromise;
+}
+
+export async function getLoginRedirectUrl(): Promise<string> {
+  const loginPath = await getLoginPath();
+
   if (typeof window === "undefined") {
-    return "/auth/login";
+    return loginPath;
   }
 
   const nextUrl = `${window.location.pathname}${window.location.search}`;
-  return nextUrl === "/auth/login"
-    ? "/auth/login"
-    : `/auth/login?next=${encodeURIComponent(nextUrl)}`;
+  return nextUrl === loginPath
+    ? loginPath
+    : `${loginPath}?next=${encodeURIComponent(nextUrl)}`;
 }
 
 function navigateTo(url: string) {
@@ -67,17 +104,17 @@ function navigateTo(url: string) {
   }
 }
 
-function redirectToLogin(status: 401 | 403): never {
+async function redirectToLogin(status: 401 | 403): Promise<never> {
   if (typeof window !== "undefined") {
-    navigateTo(getLoginRedirectUrl());
+    navigateTo(await getLoginRedirectUrl());
   }
   throw new RedirectError(DEFAULT_AUTH_ERROR_MSG, status, null);
 }
 
-function handleAuthError(status: 401 | 403): never {
+async function handleAuthError(status: 401 | 403): Promise<never> {
   if (typeof window !== "undefined") {
     if (status === 401 && window.sessionStorage.getItem("logout_in_progress")) {
-      redirectToLogin(status);
+      await redirectToLogin(status);
     }
 
     navigateTo(`/error/${status}`);
@@ -102,13 +139,13 @@ export async function authenticatedFetch(
     if (!refreshed.ok) {
       if (refreshed.status === 401) {
         console.error("[Auth] Session expired, redirecting to login");
-        redirectToLogin(401);
+        await redirectToLogin(401);
       }
 
       console.error(
         "[Auth] No refresh token available, redirecting to error page"
       );
-      handleAuthError(401);
+      await handleAuthError(401);
     }
 
     console.log("[Auth] Token refreshed successfully");
@@ -116,13 +153,13 @@ export async function authenticatedFetch(
 
     if (res.status === 401) {
       console.error("[Auth] Unauthorized after token refresh");
-      handleAuthError(401);
+      await handleAuthError(401);
     }
   }
 
   if (res.status === 403) {
     console.error("[Auth] Access forbidden (403), redirecting to error page");
-    handleAuthError(403);
+    await handleAuthError(403);
   }
 
   return res;

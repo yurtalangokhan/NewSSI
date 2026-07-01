@@ -15,6 +15,13 @@ function response(status: number) {
   });
 }
 
+function jsonResponse(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
 function fetchMock() {
   return global.fetch as jest.MockedFunction<typeof fetch>;
 }
@@ -60,14 +67,17 @@ describe("authenticatedFetch", () => {
   it("redirects to login when refresh token is expired or invalid", async () => {
     fetchMock()
       .mockResolvedValueOnce(response(401))
-      .mockResolvedValueOnce(response(401));
+      .mockResolvedValueOnce(response(401))
+      // /api/auth/type
+      .mockResolvedValueOnce(jsonResponse({ externalKeycloak: true }));
 
     await expect(authenticatedFetch("/api/me")).rejects.toBeInstanceOf(
       RedirectError
     );
 
-    expect(getLoginRedirectUrl()).toBe(
-      `/auth/login?next=${encodeURIComponent("/app?view=chat")}`
+    fetchMock().mockResolvedValueOnce(jsonResponse({ externalKeycloak: true }));
+    await expect(getLoginRedirectUrl()).resolves.toBe(
+      `/auth/ee/login?next=${encodeURIComponent("/app?view=chat")}`
     );
     expect(consoleErrorSpy).toHaveBeenCalledWith(
       "[Auth] Session expired, redirecting to login"

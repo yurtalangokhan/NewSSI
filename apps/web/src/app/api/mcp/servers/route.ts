@@ -1,6 +1,7 @@
-import { NextResponse } from 'next/server';
+import { NextResponse } from "next/server";
 
-const TOOLS_SERVICE_URL = process.env.TOOLS_SERVICE_URL || "http://localhost:8002/mcp";
+const TOOLS_SERVICE_URL =
+  process.env.TOOLS_SERVICE_URL || "http://localhost:8003/mcp";
 
 export async function GET() {
   // Return the tools-service as a default MCP server
@@ -13,7 +14,7 @@ export async function GET() {
         description: "Built-in tools from tools-service",
         server_url: TOOLS_SERVICE_URL,
         transport: "streamable_http",
-      }
-    ]
+      },
+    ],
   });
 }

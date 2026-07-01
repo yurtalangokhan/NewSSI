@@ -88,6 +88,6 @@ class MCPProviderService:
         return await self._repo.deactivate(provider_id)
 
     async def initialize_builtin(
-        self, default_url: str = "http://localhost:8002/mcp"
+        self, default_url: str = "http://localhost:8003/mcp"
     ) -> dict[str, Any]:
         return await self.register_builtin_provider(name="tool-service", url=default_url)

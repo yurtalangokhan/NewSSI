@@ -97,13 +97,16 @@ class DynamicPipelineSupervisor(LazyLoadingAgent):
         try:
             from langchain_mcp_adapters.client import MultiServerMCPClient
 
-            mcp_url = os.environ.get("MCP_SERVER_URL", "http://mcp-server:8002/mcp")
+            mcp_url = os.environ.get("MCP_SERVER_URL", "http://tools-service:8003/mcp")
+            token = (os.environ.get("INTERNAL_SERVICE_TOKEN") or "").strip()
+            headers = {"Authorization": f"Bearer {token}"} if token else None
 
             client = MultiServerMCPClient(
                 connections={
                     "mcp-tools": {
                         "transport": "streamable_http",
                         "url": mcp_url,
+                        **({"headers": headers} if headers else {}),
                     }
                 }
             )

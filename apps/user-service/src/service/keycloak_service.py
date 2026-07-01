@@ -1,7 +1,7 @@
 import os
 import time
 from typing import Any
-from urllib.parse import quote
+from urllib.parse import quote, urlparse
 
 import httpx
 import jwt
@@ -152,6 +152,28 @@ class KeycloakService(KeycloakBrokerMixin):
             _env.KEYCLOAK_CLIENT_SECRET or _settings.KEYCLOAK_CLIENT_SECRET,
         )
         return secret.strip() if secret and secret.strip() else None
+
+    def get_oidc_redirect_uri(self) -> str:
+        redirect_uri = self._str_config(
+            "KEYCLOAK_REDIRECT_URI",
+            _env.KEYCLOAK_REDIRECT_URI or _settings.KEYCLOAK_REDIRECT_URI,
+        )
+        if redirect_uri and "*" not in redirect_uri:
+            return redirect_uri
+
+        for candidate in self._login_client_redirect_uris():
+            if "*" not in candidate:
+                return candidate
+
+            parsed = urlparse(candidate)
+            if parsed.scheme and parsed.netloc:
+                wildcard_base = candidate.split("*", 1)[0].rstrip("/")
+                return f"{wildcard_base}/auth/oidc/callback"
+
+        raise ValueError(
+            "KEYCLOAK_REDIRECT_URI or KEYCLOAK_REDIRECT_URIS must contain an "
+            "absolute callback URL"
+        )
 
     def is_external_keycloak(self) -> bool:
         return self._external_bool_config(
@@ -1974,9 +1996,14 @@ class KeycloakService(KeycloakBrokerMixin):
                 data["refresh_token"] = refresh_token
             if id_token_hint:
                 data["id_token_hint"] = id_token_hint
+            credentials = (
+                self._login_client_credentials_payload()
+                if refresh_token or id_token_hint
+                else self._client_credentials_payload()
+            )
             resp = await client.post(
                 f"{self.get_base_url()}/realms/{self.get_realm()}/protocol/openid-connect/logout",
-                data={**data, **self._client_credentials_payload()},
+                data={**data, **credentials},
             )
             return resp.status_code in (200, 204, 400)
 

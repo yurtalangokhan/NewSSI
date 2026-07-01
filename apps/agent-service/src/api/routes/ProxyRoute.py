@@ -31,7 +31,7 @@ def _get_controller() -> ProxyController:
 @router.get("/mcp/tools")
 async def get_mcp_tools(
     url: str = Query(
-        default="http://mcp-server:8002/mcp",
+        default="http://tools-service:8003/mcp",
         description="MCP Server URL",
     ),
 ) -> dict:
@@ -66,7 +66,7 @@ async def get_rag_collections() -> dict:
 async def get_builtin_mcp_tools() -> dict:
     """
     Get list of available MCP tools from the built-in tools-service.
-    Uses TOOLS_SERVICE_URL from settings (default: http://localhost:8002/mcp).
+    Uses TOOLS_SERVICE_URL from settings (default: http://localhost:8003/mcp).
     """
     tools_service_url = getattr(settings, "TOOLS_SERVICE_URL", None) or settings.MCP_SERVER_URL
     ctrl = _get_controller()

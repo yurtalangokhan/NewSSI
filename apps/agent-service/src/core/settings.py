@@ -72,11 +72,11 @@ class Settings(BaseSettings):
     COMPATIBLE_BASE_URL: str | None = None
 
     MCP_SERVER_URL: str = Field(
-        default="http://localhost:8002/mcp",
+        default="http://localhost:8003/mcp",
         validation_alias=AliasChoices("MCP_SERVER_URL", "TOOLS_SERVICE_URL"),
     )
     TOOLS_SERVICE_URL: str = Field(
-        default="http://localhost:8002/mcp",
+        default="http://localhost:8003/mcp",
         validation_alias=AliasChoices("TOOLS_SERVICE_URL", "MCP_SERVER_URL"),
     )
     GITHUB_PAT: str | None = None
