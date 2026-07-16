@@ -27,6 +27,7 @@ Tables managed here
 """
 
 from core.db.models.agent_tools import AgentToolsModel
+from core.db.models.agent_group import AgentGroupModel
 from core.db.models.airbyte_mapping import AirbyteMappingModel
 from core.db.models.assistant import AssistantModel
 from core.db.models.base import Base
@@ -52,5 +53,6 @@ __all__ = [
     "MCPProviderModel",
     "MCPToolModel",
     "AgentToolsModel",
+    "AgentGroupModel",
     "DocumentModel",
 ]

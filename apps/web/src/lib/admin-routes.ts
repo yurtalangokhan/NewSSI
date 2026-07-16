@@ -342,3 +342,11 @@ export function sidebarItem(
     requiredPermissions: config.requiredPermissions ?? [],
   };
 }
+
+export function getAdminRouteConfigForPathname(pathname: string) {
+  const matchingPath = Object.keys(ADMIN_ROUTE_CONFIG)
+    .filter((path) => pathname === path || pathname.startsWith(`${path}/`))
+    .sort((a, b) => b.length - a.length)[0];
+
+  return matchingPath ? ADMIN_ROUTE_CONFIG[matchingPath] : null;
+}
