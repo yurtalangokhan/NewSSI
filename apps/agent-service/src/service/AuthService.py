@@ -160,7 +160,9 @@ class AuthService:
             try:
                 return AuthService.get_jwks_client().get_signing_key_from_jwt(token)
             except jwt.PyJWKClientError as refreshed_exc:
-                logger.warning("Keycloak signing key not found after JWKS refresh: %s", refreshed_exc)
+                logger.warning(
+                    "Keycloak signing key not found after JWKS refresh: %s", refreshed_exc
+                )
                 raise exc from refreshed_exc
 
     # ------------------------------------------------------------------
@@ -394,7 +396,9 @@ class AuthService:
         }
 
     async def get_current_user(self, request: Request, user: AuthenticatedUser) -> dict[str, Any]:
-        identity = await self.resolve_user_identity(request=request, user_id=user.user_id, user=user)
+        identity = await self.resolve_user_identity(
+            request=request, user_id=user.user_id, user=user
+        )
         keycloak_id = identity.get("keycloak_id")
         user_service_user = identity.get("user_service_user")
         effective_user_id = str(identity.get("primary_user_id") or user.user_id)
@@ -402,9 +406,7 @@ class AuthService:
         keycloak_profile = await self.get_keycloak_user_profile(keycloak_id or user.user_id)
 
         email = (
-            user.email
-            or (user_service_user and user_service_user.get("email"))
-            or user.username
+            user.email or (user_service_user and user_service_user.get("email")) or user.username
         )
         username = user.username or (user_service_user and user_service_user.get("username"))
         if not email and isinstance(keycloak_profile, dict):
@@ -438,9 +440,7 @@ class AuthService:
         if kc_first:
             full_name = f"{kc_first} {kc_last}".strip() if kc_last else str(kc_first)
         elif not full_name and given_name:
-            full_name = (
-                f"{given_name} {family_name}".strip() if family_name else str(given_name)
-            )
+            full_name = f"{given_name} {family_name}".strip() if family_name else str(given_name)
 
         role = "basic"
         if any(r in {"admin", "super_admin", "superuser"} for r in user.roles):
@@ -608,6 +608,31 @@ def get_primary_user_id(
     return None
 
 
+def _has_valid_internal_service_token(request: Request) -> bool:
+    internal_token = (settings.INTERNAL_SERVICE_TOKEN or "").strip()
+    if not internal_token:
+        return False
+
+    header_token = (request.headers.get("X-Internal-Service-Token") or "").strip()
+    if header_token == internal_token:
+        return True
+
+    authorization = (request.headers.get("Authorization") or "").strip()
+    if authorization.lower().startswith("bearer "):
+        return authorization[7:].strip() == internal_token
+
+    return False
+
+
+def _internal_service_user(token: str | None = None) -> AuthenticatedUser:
+    return AuthenticatedUser(
+        user_id="internal-service",
+        email="internal@service.local",
+        roles=["internal"],
+        access_token=token,
+    )
+
+
 # ------------------------------------------------------------------
 # Primary FastAPI dependencies (use these in routes)
 # ------------------------------------------------------------------
@@ -688,16 +713,11 @@ def require_permission(permission: str):
     JWT. The JWT contains only coarse client roles for service-level grouping.
     """
 
-    _user_permission_cache: dict[str, tuple[list[str], float]] = {}
-    _CACHE_TTL = 30.0
-
     async def _check_permission(
         user: AuthenticatedUser = Depends(require_user),
     ) -> AuthenticatedUser:
         if user.user_id in ("dev-user", "internal-service"):
             return user
-
-        import time
 
         user_service_user = user.claims.get("user_service_user")
         permission_user_id = (
@@ -706,20 +726,13 @@ def require_permission(permission: str):
             else user.user_id
         )
 
-        cached = _user_permission_cache.get(permission_user_id)
-        if cached and time.monotonic() - cached[1] < _CACHE_TTL:
-            user_perms = cached[0]
-        else:
-            try:
-                from service.UserServiceClient import get_user_permissions
+        from service.AuthorizationClient import get_authorization_client
 
-                perm_data = await get_user_permissions(permission_user_id, user.access_token)
-                user_perms = perm_data.get("permissions", [])
-                _user_permission_cache[permission_user_id] = (user_perms, time.monotonic())
-            except Exception:
-                user_perms = []
-
-        if user_perms == ["*"] or permission in user_perms:
+        if await get_authorization_client().has_permission(
+            permission_user_id,
+            permission,
+            user.access_token,
+        ):
             return user
 
         raise HTTPException(
@@ -738,16 +751,8 @@ async def require_user_or_internal_service_token(
     ],
 ) -> AuthenticatedUser:
     """Like require_user, but also accepts the INTERNAL_SERVICE_TOKEN header."""
-    internal_token = settings.INTERNAL_SERVICE_TOKEN or ""
-    token = _extract_auth_token(http_auth, request)
-
-    if token and internal_token and token == internal_token:
-        return AuthenticatedUser(
-            user_id="internal-service",
-            email="internal@service.local",
-            roles=["internal"],
-            access_token=token,
-        )
+    if _has_valid_internal_service_token(request):
+        return _internal_service_user(settings.INTERNAL_SERVICE_TOKEN)
 
     return await require_user(request=request, http_auth=http_auth)
 
@@ -841,10 +846,7 @@ def verify_bearer_or_internal_service_token(
     ],
 ) -> None:
     """Deprecated: use require_user_or_internal_service_token instead."""
-    token = _extract_auth_token(http_auth, request)
-    internal_token = settings.INTERNAL_SERVICE_TOKEN or ""
-
-    if token and internal_token and token == internal_token:
+    if _has_valid_internal_service_token(request):
         return
 
     verify_bearer(request=request, http_auth=http_auth)

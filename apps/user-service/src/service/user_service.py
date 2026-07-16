@@ -22,6 +22,14 @@ class UserService:
         self.role_repo = CompositeRoleRepository()
         self.keycloak = get_keycloak_service()
 
+    async def _logout_keycloak_sessions(self, user) -> None:
+        if not self.keycloak.is_enabled() or not getattr(user, "keycloak_id", None):
+            return
+
+        logged_out = await self.keycloak.logout_user_sessions(user.keycloak_id)
+        if not logged_out:
+            raise ValueError("Failed to invalidate active Keycloak sessions")
+
     async def get_user(self, user_id: uuid.UUID) -> dict[str, Any] | None:
         user = await self.user_repo.get_by_id(user_id)
         if not user:
@@ -54,6 +62,15 @@ class UserService:
             perms.update(coarse_perms)
 
         return {"permissions": sorted(perms)}
+
+    async def user_has_permission(self, user_id: uuid.UUID, permission: str) -> dict[str, Any]:
+        permission_data = await self.get_user_permissions(user_id)
+        if permission_data is None:
+            return {"allowed": False, "permissions": []}
+
+        permissions = permission_data.get("permissions", [])
+        allowed = permissions == ["*"] or permission in permissions
+        return {"allowed": allowed, "permission": permission}
 
     async def get_user_by_email(self, email: str) -> dict[str, Any] | None:
         user = await self.user_repo.get_by_email(email)
@@ -286,6 +303,7 @@ class UserService:
             if "role" in filtered:
                 role_name = normalize_user_role(filtered["role"])
                 await self.keycloak.set_realm_role(user.keycloak_id, role_name)
+                await self._logout_keycloak_sessions(user)
 
         # Then update DB to mirror Keycloak
         user = await self.user_repo.update(user_id, **filtered)
@@ -328,6 +346,8 @@ class UserService:
                 f"firstName={payload.get('firstName')}, lastName={payload.get('lastName')}"
             )
             await self.keycloak.update_user(user.keycloak_id, payload)
+            if not active and user.is_active:
+                await self._logout_keycloak_sessions(user)
 
         # Then update DB to mirror Keycloak
         user = await self.user_repo.update(user_id, is_active=active)
@@ -347,6 +367,8 @@ class UserService:
         # Set role in Keycloak first (source of truth)
         if self.keycloak.is_enabled() and user.keycloak_id:
             await self.keycloak.set_realm_role(user.keycloak_id, role)
+            if role != user.role:
+                await self._logout_keycloak_sessions(user)
             # Verify role was set correctly by reading back from Keycloak
             try:
                 actual_role = await self._resolve_role_from_keycloak(user.keycloak_id)

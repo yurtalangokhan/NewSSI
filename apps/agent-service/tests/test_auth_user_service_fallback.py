@@ -5,7 +5,7 @@ from fastapi import HTTPException
 from starlette.requests import Request
 
 from service import AuthService
-from service.AuthService import require_user
+from service.AuthService import require_user, require_user_or_internal_service_token
 
 
 def test_has_permission_reads_only_legacy_permissions_claim(monkeypatch):
@@ -32,6 +32,17 @@ def _request_with_access_token(token: str) -> Request:
             "method": "GET",
             "path": "/me",
             "headers": [(b"cookie", f"access_token={token}".encode())],
+        }
+    )
+
+
+def _request_with_internal_token(token: str) -> Request:
+    return Request(
+        {
+            "type": "http",
+            "method": "POST",
+            "path": "/api/ingest/batch",
+            "headers": [(b"x-internal-service-token", token.encode())],
         }
     )
 
@@ -69,3 +80,17 @@ async def test_require_user_falls_back_to_user_service_token_validation(monkeypa
     assert user.username == user_service_user["username"]
     assert "admin" in user.roles
     assert user.access_token == "user-service-token"
+
+
+@pytest.mark.asyncio
+async def test_require_user_or_internal_service_token_accepts_internal_header(monkeypatch):
+    monkeypatch.setattr(AuthService.settings, "INTERNAL_SERVICE_TOKEN", "internal-token")
+
+    user = await require_user_or_internal_service_token(
+        _request_with_internal_token("internal-token"),
+        None,
+    )
+
+    assert user.user_id == "internal-service"
+    assert user.email == "internal@service.local"
+    assert user.roles == ["internal"]

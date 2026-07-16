@@ -15,6 +15,7 @@ from starlette.authentication import BaseUser
 from langconnect import config
 
 security = HTTPBearer(auto_error=False)
+HTTP_OK = 200
 
 # Internal service token for service-to-service communication
 INTERNAL_SERVICE_TOKEN = config.INTERNAL_SERVICE_TOKEN
@@ -30,9 +31,7 @@ def _get_valid_api_keys() -> set:
     if not VALID_API_KEYS:
         api_keys_env = os.environ.get("VALID_API_KEYS", "")
         if api_keys_env:
-            VALID_API_KEYS = set(
-                k.strip() for k in api_keys_env.split(",") if k.strip()
-            )
+            VALID_API_KEYS = {k.strip() for k in api_keys_env.split(",") if k.strip()}
     return VALID_API_KEYS
 
 
@@ -76,8 +75,7 @@ class AuthenticatedUser(BaseUser):
 
 
 def verify_api_key(credentials: str) -> str | None:
-    """
-    Verify the API key and return user_id.
+    """Verify the API key and return user_id.
 
     Args:
         credentials: API key string
@@ -91,8 +89,7 @@ def verify_api_key(credentials: str) -> str | None:
     # distinct users without requiring a configured keyring.
     if not valid_keys:
         if IS_TESTING:
-            if credentials.startswith("api-key:"):
-                credentials = credentials[8:]
+            credentials = credentials.removeprefix("api-key:")
             return credentials or None
         return "dev-user"
 
@@ -189,7 +186,9 @@ def _claim_permissions(claims: dict[str, Any]) -> set[str]:
         if isinstance(client_mapping, dict):
             client_roles = client_mapping.get("roles") or []
             if isinstance(client_roles, list):
-                permissions.update(str(role) for role in client_roles if role is not None)
+                permissions.update(
+                    str(role) for role in client_roles if role is not None
+                )
 
     realm_access = claims.get("realm_access")
     if isinstance(realm_access, dict):
@@ -214,7 +213,7 @@ async def _get_user_service_user(token: str) -> dict[str, Any] | None:
                 f"{config.USER_SERVICE_URL.rstrip('/')}/api/auth/me",
                 headers={"Authorization": f"Bearer {token}"},
             )
-        if response.status_code == 200:
+        if response.status_code == HTTP_OK:
             data = response.json()
             return data if isinstance(data, dict) else None
     except Exception:
@@ -233,7 +232,6 @@ async def resolve_user(
     Tries Keycloak JWT validation first (if enabled), then falls through
     to API key validation.
     """
-
     token = _extract_auth_token(request, credentials)
 
     if credentials and credentials.scheme != "Bearer":
@@ -258,7 +256,9 @@ async def resolve_user(
                     or claims.get("preferred_username")
                     or sub
                 )
-                return AuthenticatedUser(user_id, email, access_token=token, claims=claims)
+                return AuthenticatedUser(
+                    user_id, email, access_token=token, claims=claims
+                )
 
             email = (
                 claims.get("email", "") or claims.get("preferred_username", "") or sub
@@ -302,47 +302,24 @@ def require_permission(permission: str):
     JWT. The JWT contains only coarse client roles for service-level grouping.
     """
 
-    _user_permission_cache: dict[str, tuple[list[str], float]] = {}
-    _CACHE_TTL = 30.0
-
     async def _check(
         request: Request,
         credentials: Annotated[
             Optional[HTTPAuthorizationCredentials], Depends(security)
         ] = None,
     ) -> AuthenticatedUser:
-        import time
-
         user = await resolve_user(request=request, credentials=credentials)
 
         if user.identity in ("dev-user", "internal-service"):
             return user
 
-        cached = _user_permission_cache.get(user.identity)
-        if cached and time.monotonic() - cached[1] < _CACHE_TTL:
-            user_perms = cached[0]
-        else:
-            try:
-                import httpx
+        from langconnect.authorization import get_authorization_client
 
-                async with httpx.AsyncClient(timeout=5.0) as client:
-                    headers: dict[str, str] = {}
-                    if user.access_token:
-                        headers["Authorization"] = f"Bearer {user.access_token}"
-
-                    resp = await client.get(
-                        f"{config.USER_SERVICE_URL}/api/users/internal/{user.identity}/permissions",
-                        headers=headers,
-                    )
-                    if resp.status_code == 200:
-                        user_perms = resp.json().get("permissions", [])
-                    else:
-                        user_perms = []
-                    _user_permission_cache[user.identity] = (user_perms, time.monotonic())
-            except Exception:
-                user_perms = []
-
-        if user_perms == ["*"] or permission in user_perms:
+        if await get_authorization_client().has_permission(
+            user.identity,
+            permission,
+            user.access_token,
+        ):
             return user
 
         raise HTTPException(

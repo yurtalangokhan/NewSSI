@@ -1,8 +1,7 @@
 import json
-import os
 
 from langchain_core.embeddings import Embeddings
-from starlette.config import Config, undefined
+from starlette.config import Config
 
 env = Config()
 
@@ -17,9 +16,14 @@ KEYCLOAK_ISSUER_URL = env("KEYCLOAK_ISSUER_URL", cast=str, default="")
 KEYCLOAK_AUDIENCE = env("KEYCLOAK_AUDIENCE", cast=str, default="")
 KEYCLOAK_CLIENT_ID = env("KEYCLOAK_CLIENT_ID", cast=str, default="agenticai-web")
 KEYCLOAK_CLIENT_SECRET = env("KEYCLOAK_CLIENT_SECRET", cast=str, default="")
-KEYCLOAK_TOKEN_LEEWAY_SECONDS = env("KEYCLOAK_TOKEN_LEEWAY_SECONDS", cast=int, default=120)
+KEYCLOAK_TOKEN_LEEWAY_SECONDS = env(
+    "KEYCLOAK_TOKEN_LEEWAY_SECONDS", cast=int, default=120
+)
 INTERNAL_SERVICE_TOKEN = env("INTERNAL_SERVICE_TOKEN", cast=str, default="")
 USER_SERVICE_URL = env("USER_SERVICE_URL", cast=str, default="http://user-service:8090")
+USER_PERMISSION_CACHE_TTL_SECONDS = env(
+    "USER_PERMISSION_CACHE_TTL_SECONDS", cast=float, default=30.0
+)
 
 # Embedding configuration
 EMBEDDING_PROVIDER = env("EMBEDDING_PROVIDER", cast=str, default="ollama")
@@ -42,11 +46,11 @@ def get_embeddings() -> Embeddings:
         from langchain_ollama import OllamaEmbeddings
 
         return OllamaEmbeddings(model=OLLAMA_EMBED_MODEL, base_url=OLLAMA_BASE_URL)
-    else:
-        # Default to OpenAI
-        from langchain_openai import OpenAIEmbeddings
 
-        return OpenAIEmbeddings()
+    # Default to OpenAI
+    from langchain_openai import OpenAIEmbeddings
+
+    return OpenAIEmbeddings()
 
 
 DEFAULT_EMBEDDINGS = get_embeddings()
@@ -95,9 +99,10 @@ def parse_allowed_origins(raw_value: str | None) -> list[str]:
     if normalized.startswith("[") and normalized.endswith("]"):
         normalized = normalized[1:-1]
 
-    parts = [part.strip().strip('"\'') for part in normalized.split(",")]
+    parts = [part.strip().strip("\"'") for part in normalized.split(",")]
     parsed_parts = [part for part in parts if part]
     return parsed_parts or ["http://localhost:3000"]
+
 
 # Neo4j configuration
 NEO4J_URI = env("NEO4J_URI", cast=str, default="bolt://localhost:7687")
