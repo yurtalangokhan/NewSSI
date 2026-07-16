@@ -1,6 +1,7 @@
 from typing import Any
 
 from src.repository import PermissionRepository
+from src.service.permission_sync_service import get_permission_sync_service
 
 from .base import BaseController
 
@@ -47,6 +48,9 @@ class PermissionController(BaseController):
     async def list_services(self) -> dict[str, Any]:
         counts = await self.repo.count_by_service()
         return {"services": counts}
+
+    async def sync_permissions(self) -> dict[str, Any]:
+        return await get_permission_sync_service().sync_permissions()
 
 
 _permission_controller_instance: PermissionController | None = None

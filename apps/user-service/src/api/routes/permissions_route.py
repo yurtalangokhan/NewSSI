@@ -31,6 +31,14 @@ async def list_services(
     return await ctrl.list_services()
 
 
+@router.post("/sync")
+async def sync_permissions(
+    _user_id: str = Depends(require_permission("permission:manage")),
+):
+    ctrl = get_permission_controller()
+    return await ctrl.sync_permissions()
+
+
 @router.get("/{permission_name}")
 async def get_permission(
     permission_name: str,
