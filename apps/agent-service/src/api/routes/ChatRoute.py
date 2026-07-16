@@ -19,7 +19,7 @@ from api.routes.AgentsRoute import message_generator
 from controller import ChatController, ThreadController, get_thread_controller, get_user_controller
 from domain.providers.repository import ProviderRepository
 from domain.providers.service import ProviderService
-from schema.schema import StreamInput
+from models.chat import StreamInput
 from service.AuthService import get_auth_service, get_primary_user_id
 from service.ChatContextService import (
     build_effective_llm_override,

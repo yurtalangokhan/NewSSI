@@ -1,6 +1,7 @@
 """API routes - FastAPI route modules."""
 
 from api.routes.AgentDefinitionsRoute import router as agent_definitions_router
+from api.routes.AgentGroupsRoute import router as agent_groups_router
 from api.routes.AgentsRoute import router as agents_router
 from api.routes.AgentToolsRoute import router as agent_tools_router
 from api.routes.AssistantSchemasRoute import router as assistant_schemas_router
@@ -37,6 +38,7 @@ __all__ = [
     "assistant_schemas_router",
     "file_router",
     "agent_definitions_router",
+    "agent_groups_router",
     "agent_tools_router",
     "mcp_providers_router",
     "mcp_tools_router",

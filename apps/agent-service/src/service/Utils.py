@@ -15,7 +15,7 @@ from langchain_core.messages import (
 )
 from pypdf import PdfReader
 
-from schema import ChatMessage
+from models.chat import ChatMessage
 
 logger = logging.getLogger(__name__)
 

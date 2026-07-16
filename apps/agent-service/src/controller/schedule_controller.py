@@ -3,7 +3,7 @@
 from typing import Any
 
 from controller.base import BaseController
-from service.ScheduleModels import (
+from models.schedules import (
     ScheduleRunStatus,
     SyncScheduleInput,
     SyncScheduleListItem,

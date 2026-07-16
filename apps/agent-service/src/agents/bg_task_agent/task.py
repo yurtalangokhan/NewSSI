@@ -5,7 +5,7 @@ from langchain_core.messages import BaseMessage
 from langgraph.types import StreamWriter
 
 from agents.utils import CustomData
-from schema.task_data import TaskData
+from models.task_data import TaskData
 
 
 class Task:

@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from api.dependencies import require_permission, require_user
 from controller import AgentController, get_agent_controller
 from core.logger import get_logger
-from service.Schemas import (
+from models.assistants import (
     AssistantCreateRequest,
     AssistantSearchRequest,
     AssistantUpdateRequest,

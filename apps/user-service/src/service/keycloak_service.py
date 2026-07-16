@@ -171,8 +171,7 @@ class KeycloakService(KeycloakBrokerMixin):
                 return f"{wildcard_base}/auth/oidc/callback"
 
         raise ValueError(
-            "KEYCLOAK_REDIRECT_URI or KEYCLOAK_REDIRECT_URIS must contain an "
-            "absolute callback URL"
+            "KEYCLOAK_REDIRECT_URI or KEYCLOAK_REDIRECT_URIS must contain an absolute callback URL"
         )
 
     def is_external_keycloak(self) -> bool:
@@ -414,8 +413,7 @@ class KeycloakService(KeycloakBrokerMixin):
             )
             and self._external_str_config(
                 "EXTERNAL_KEYCLOAK_ADMIN_PASSWORD",
-                _env.EXTERNAL_KEYCLOAK_ADMIN_PASSWORD
-                or _settings.EXTERNAL_KEYCLOAK_ADMIN_PASSWORD,
+                _env.EXTERNAL_KEYCLOAK_ADMIN_PASSWORD or _settings.EXTERNAL_KEYCLOAK_ADMIN_PASSWORD,
             )
         )
 
@@ -573,9 +571,7 @@ class KeycloakService(KeycloakBrokerMixin):
             action = "created"
 
         attributes = dict(current.get("attributes") or {})
-        attributes["post.logout.redirect.uris"] = (
-            self._login_client_post_logout_redirect_uris()
-        )
+        attributes["post.logout.redirect.uris"] = self._login_client_post_logout_redirect_uris()
         payload = {
             **current,
             "clientId": client_id,
@@ -791,8 +787,7 @@ class KeycloakService(KeycloakBrokerMixin):
         return {
             "role": default_role_name,
             "includes_enduser": any(
-                isinstance(role, dict) and role.get("name") == "enduser"
-                for role in composites
+                isinstance(role, dict) and role.get("name") == "enduser" for role in composites
             ),
         }
 
@@ -1111,6 +1106,11 @@ class KeycloakService(KeycloakBrokerMixin):
 
     async def delete_user(self, keycloak_id: str) -> bool:
         resp = await self._keycloak_request("DELETE", f"/users/{keycloak_id}")
+        return resp.status_code in (200, 204)
+
+    async def logout_user_sessions(self, keycloak_id: str) -> bool:
+        """Terminate all active sessions for a Keycloak user."""
+        resp = await self._keycloak_request("POST", f"/users/{keycloak_id}/logout")
         return resp.status_code in (200, 204)
 
     async def set_password(self, keycloak_id: str, password: str, temporary: bool = False) -> bool:

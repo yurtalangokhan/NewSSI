@@ -939,60 +939,11 @@ export default function AgentEditorPage({
           ? "configurable-mcp-agent"
           : values.base_agent || "chatbot";
 
-      if (effectiveBaseAgent === "dynamic-agent") {
-        const dynamicGraphSchema =
-          values.graph_schema === "zero_shot" && (dedupedMcpToolNames.length > 0 || hasKnowledge)
-            ? "react"
-            : values.graph_schema;
-
-        const dynamicAgentId = existingAgent?.external_id ?? null;
-        const dynamicMethod = dynamicAgentId ? "PUT" : "POST";
-        const dynamicEndpoint = dynamicAgentId
-          ? `/api/agent-definitions/${dynamicAgentId}`
-          : "/api/agent-definitions";
-
-        const dynamicResponse = await fetch(dynamicEndpoint, {
-          method: dynamicMethod,
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            name: values.name,
-            description: values.description || null,
-            graph_schema: dynamicGraphSchema,
-            brain_type: values.brain_type,
-            memory_type: values.memory_type,
-            long_term_memory: values.long_term_memory,
-            system_prompt: values.instructions || null,
-            model: values.llm_model_version_override || null,
-            mcp_tools: dedupedMcpToolNames,
-            rag_config:
-              ragConfig ?? {
-                document_processing: [],
-                knowledge_graph: [],
-              },
-            tags: [],
-          }),
-        });
-
-        if (!dynamicResponse.ok) {
-          const errorText = await dynamicResponse.text();
-          toast.error(
-            `${t("agentEditor.failedToDynamicAgent", { action: dynamicAgentId ? t("agentEditor.actionUpdate") : t("agentEditor.actionCreate") })} - ${errorText}`
-          );
-          return;
-        }
-
-        const createdDynamicAgent = await dynamicResponse.json();
-        toast.success(
-          `${t("agentEditor.agentSuccess", { name: createdDynamicAgent.name, action: dynamicAgentId ? t("agentEditor.actionUpdated") : t("agentEditor.actionCreated") })}`
-        );
-        await refreshAgents();
-        appRouter({ agentId: createdDynamicAgent.id });
-        return;
-      }
-
       // Build submission data
+      const dynamicGraphSchema =
+        values.graph_schema === "zero_shot" && (dedupedMcpToolNames.length > 0 || hasKnowledge)
+          ? "react"
+          : values.graph_schema;
       const submissionData: PersonaUpsertParameters = {
         name: values.name,
         description: values.description,
@@ -1024,6 +975,15 @@ export default function AgentEditorPage({
 
         // Base agent and MCP tools for custom agents
         base_agent: effectiveBaseAgent,
+        graph_schema: dynamicGraphSchema,
+        brain_type: values.brain_type,
+        memory_type: values.memory_type,
+        sub_agents: [],
+        supervisor_prompt: null,
+        stages: [],
+        pipeline_prompt: null,
+        reflection_prompt: null,
+        max_iterations: 3,
         mcp_tools: dedupedMcpToolNames,
         long_term_memory: values.long_term_memory,
       };
@@ -1119,7 +1079,7 @@ export default function AgentEditorPage({
               ? (GRAPH_SCHEMA_CAPABILITIES[values.graph_schema] ?? { supports_tools: true, supports_rag: true })
               : null;
             const schemaSupportsTools = !isDynamicAgent || (schemaCapabilities?.supports_tools ?? true);
-            const schemaSupportsRag = !isDynamicAgent || (schemaCapabilities?.supports_rag ?? true);
+            const schemaSupportsRag = true;
 
             return (
               <>

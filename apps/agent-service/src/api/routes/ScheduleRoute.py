@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends
 
 from api.dependencies import AuthenticatedUser, require_permission, require_user
 from controller import ScheduleController, get_schedule_controller
-from service.ScheduleModels import (
+from models.schedules import (
     ScheduleRunStatus,
     SyncScheduleInput,
     SyncScheduleListItem,

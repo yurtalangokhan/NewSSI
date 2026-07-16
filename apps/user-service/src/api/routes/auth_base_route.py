@@ -37,7 +37,6 @@ async def external_login(
 async def logout(
     request: Request,
     response: Response,
-    user_id: Annotated[str, Depends(require_auth)],
 ):
     return await get_auth_controller().logout(request, response)
 

@@ -38,6 +38,7 @@ export interface MinimalPersonaSnapshot {
   external_id?: string | null;
   is_dynamic?: boolean;
   graph_schema?: string | null;
+  brain_type?: string | null;
   mcp_tools?: string[];
   name: string;
   description: string;
@@ -89,6 +90,12 @@ export interface Persona extends MinimalPersonaSnapshot {
     document_processing: string[];
     knowledge_graph: string[];
   };
+  sub_agents?: Array<Record<string, unknown>>;
+  supervisor_prompt?: string | null;
+  stages?: Array<Record<string, unknown>>;
+  pipeline_prompt?: string | null;
+  reflection_prompt?: string | null;
+  max_iterations?: number;
 }
 
 export interface FullPersona extends Persona {
@@ -97,6 +104,7 @@ export interface FullPersona extends Persona {
 
 export interface DynamicAgentDefinition {
   id: string;
+  persona_id?: number | null;
   name: string;
   agent_type: string;
   description: string | null;

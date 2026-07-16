@@ -185,6 +185,7 @@ export async function proxyToBackend(
     };
 
     const initialRefresh =
+      pathname !== "/api/auth/refresh" &&
       !getCookieValue(requestCookie, "access_token") &&
       getCookieValue(requestCookie, "refresh_token")
         ? await refreshAuthCookies(requestCookie)

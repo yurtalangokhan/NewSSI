@@ -1,13 +1,18 @@
 "use client";
 
 import AdminSidebar from "@/sections/sidebar/AdminSidebar";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useSettingsContext } from "@/providers/SettingsProvider";
 import { ApplicationStatus } from "@/interfaces/settings";
 import Button from "@/refresh-components/buttons/Button";
 import { cn } from "@/lib/utils";
-import { ADMIN_PATHS } from "@/lib/admin-routes";
+import {
+  ADMIN_PATHS,
+  getAdminRouteConfigForPathname,
+} from "@/lib/admin-routes";
 import { useTranslation } from "react-i18next";
+import { useEffect } from "react";
+import { useUser } from "@/providers/UserProvider";
 
 export interface ClientLayoutProps {
   children: React.ReactNode;
@@ -34,7 +39,19 @@ export function ClientLayout({
 }: ClientLayoutProps) {
   const { t } = useTranslation("admin");
   const pathname = usePathname();
+  const router = useRouter();
   const settings = useSettingsContext();
+  const { hasAllPermissions, isPermissionsLoading } = useUser();
+  const routeConfig = getAdminRouteConfigForPathname(pathname);
+  const requiredPermissions = routeConfig?.requiredPermissions ?? [];
+  const canViewRoute =
+    isPermissionsLoading || hasAllPermissions(requiredPermissions);
+
+  useEffect(() => {
+    if (!isPermissionsLoading && !canViewRoute) {
+      router.replace("/error/403");
+    }
+  }, [canViewRoute, isPermissionsLoading, router]);
 
   // Certain admin panels have their own custom sidebar.
   // For those pages, we skip rendering the default `AdminSidebar` and let those individual pages render their own.
@@ -46,6 +63,10 @@ export function ClientLayout({
   const hasOwnLayout = SETTINGS_LAYOUT_PREFIXES.some((prefix) =>
     pathname.startsWith(prefix)
   );
+
+  if (!canViewRoute) {
+    return null;
+  }
 
   return (
     <div className="h-screen w-screen flex overflow-hidden">

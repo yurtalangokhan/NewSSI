@@ -20,7 +20,7 @@ from langgraph.types import Command
 from agents import AgentGraph
 from core import settings
 from core.logger import get_logger
-from schema import UserInput
+from models.chat import UserInput
 
 __all__ = [
     "get_graph_and_config",
@@ -82,6 +82,26 @@ async def get_graph_and_config(agent_id: str) -> tuple[str, dict]:
                 mcp_tools = persona.get("mcp_tools", [])
                 rag_config = persona.get("rag_config") or {}
 
+                if base_agent == "dynamic-agent":
+                    from agents.storage.repository import AgentDefinitionRepository
+
+                    definition = await AgentDefinitionRepository().get_by_persona_id(
+                        int(agent_id)
+                    )
+                    if definition:
+                        definition_cfg = definition.to_config() or {}
+                        runtime_cfg: dict[str, Any] = {}
+                        for key in (
+                            "model",
+                            "system_prompt",
+                            "mcp_tools",
+                            "rag_config",
+                            "memory_type",
+                        ):
+                            if definition_cfg.get(key):
+                                runtime_cfg[key] = definition_cfg[key]
+                        return str(definition.id), runtime_cfg
+
                 if base_agent:
                     graph_id = base_agent
 
@@ -136,6 +156,29 @@ async def get_configured_agent(agent_id: str, agent_config: dict) -> AgentGraph:
 
     # Merge configs (agent_config takes precedence)
     merged_config = {**stored_config, **agent_config}
+
+    try:
+        from agents.storage.repository import AgentDefinitionRepository
+
+        definition_uuid = UUID(graph_id)
+        definition = await AgentDefinitionRepository().get_by_id(definition_uuid)
+        if definition:
+            from agents.dynamic_agent import (
+                DynamicAgent,
+                cache_agent,
+                get_cached_agent,
+            )
+
+            definition_id = str(definition.id)
+            cached = get_cached_agent(definition_id)
+            if cached is not None:
+                return cached
+
+            dynamic_agent = DynamicAgent(definition.to_config())
+            cache_agent(definition_id, dynamic_agent)
+            return dynamic_agent
+    except (ValueError, AttributeError):
+        pass
 
     # Get the base agent
     agent_entry = agents.get(graph_id)
@@ -295,7 +338,6 @@ async def _handle_input(
     # ------------------------------------------------------------------
     # AND-logic: long_term_memory = user toggle AND agent toggle
     # ------------------------------------------------------------------
-    user_ltm = False
     agent_ltm = bool(configurable.get("long_term_memory", False))
     us_data: dict = {}
     persona_data = None
@@ -303,7 +345,6 @@ async def _handle_input(
         from service.UserServiceClient import get_user_settings
 
         us_data = await get_user_settings(user_id)
-        user_ltm = bool(us_data.get("long_term_memory_enabled", False))
     except Exception as _ltm_err:
         logger.warning(f"LTM user_settings lookup failed: {_ltm_err}")
 

@@ -4,7 +4,7 @@ from fastapi import APIRouter, Body, Depends
 
 from src.api.dependencies import require_system_admin
 from src.controller.system_settings_controller import get_system_settings_controller
-from src.schema.system_settings import KeycloakConfigUpdate, KeycloakRealmSessionUpdate
+from src.models.system_settings import KeycloakConfigUpdate, KeycloakRealmSessionUpdate
 
 router = APIRouter(prefix="/system-settings", tags=["system-settings"])
 
