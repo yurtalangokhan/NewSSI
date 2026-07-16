@@ -17,10 +17,15 @@ from fastapi import (
     Request,
     UploadFile,
 )
-from pydantic import BaseModel
 
 from api.dependencies import AuthenticatedUser, require_permission, require_user
 from controller import UserController, get_user_controller
+from models.users import (
+    FileStatusesPayload,
+    MoveChatSessionPayload,
+    RenameProjectPayload,
+    UpsertProjectInstructionsPayload,
+)
 from service.AuthService import get_auth_service
 
 router = APIRouter(tags=["user"], dependencies=[Depends(require_user)])
@@ -54,22 +59,6 @@ async def _resolve_project_identity(
             owner_ids.append(candidate_id)
 
     return effective_user_id, owner_ids
-
-
-class RenameProjectPayload(BaseModel):
-    name: str
-
-
-class UpsertProjectInstructionsPayload(BaseModel):
-    instructions: str
-
-
-class MoveChatSessionPayload(BaseModel):
-    chat_session_id: str
-
-
-class FileStatusesPayload(BaseModel):
-    file_ids: list[str]
 
 
 @router.get("/api/user/files/recent")

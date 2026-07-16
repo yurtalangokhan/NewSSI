@@ -1,4 +1,9 @@
-import { ADMIN_PATHS, ADMIN_ROUTE_CONFIG, sidebarItem } from "./admin-routes";
+import {
+  ADMIN_PATHS,
+  ADMIN_ROUTE_CONFIG,
+  getAdminRouteConfigForPathname,
+  sidebarItem,
+} from "./admin-routes";
 import { hasAllPermissions } from "@/lib/auth/permissions";
 
 describe("admin route permissions", () => {
@@ -30,5 +35,15 @@ describe("admin route permissions", () => {
     );
 
     expect(visible.map((item) => item.link)).toEqual([ADMIN_PATHS.ROLES]);
+  });
+
+  it("resolves nested admin pages to the nearest route permission config", () => {
+    expect(
+      getAdminRouteConfigForPathname("/admin/users/add")?.requiredPermissions
+    ).toEqual(["user:list"]);
+    expect(
+      getAdminRouteConfigForPathname("/admin/documents/sets/new")
+        ?.requiredPermissions
+    ).toEqual(["collection:list"]);
   });
 });

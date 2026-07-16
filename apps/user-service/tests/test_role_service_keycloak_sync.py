@@ -1,3 +1,8 @@
+from types import SimpleNamespace
+from unittest.mock import AsyncMock
+
+import pytest
+
 from src.service.role_service import (
     ALL_COARSE_ROLE_NAMES,
     COARSE_SERVICE_ROLES,
@@ -82,3 +87,47 @@ async def test_build_coarse_composite_children_contains_tool_user():
     assert "tool-user" in names
     assert "agent-enduser" in names
     assert "rag-enduser" in names
+
+
+@pytest.mark.asyncio
+async def test_set_role_permissions_invalidates_sessions_for_assigned_users():
+    role_service = CompositeRoleService()
+    role = SimpleNamespace(
+        name="analyst",
+        description="Analyst",
+        permissions=["document:read"],
+        role_ids=[],
+        is_builtin=False,
+        is_admin=False,
+    )
+    role_service.permission_repo = SimpleNamespace(
+        get_all=AsyncMock(return_value=[SimpleNamespace(name="document:read")])
+    )
+    role_service.role_repo = SimpleNamespace(update=AsyncMock(return_value=role))
+    role_service.keycloak = SimpleNamespace(
+        is_enabled=lambda: True,
+        logout_user_sessions=AsyncMock(return_value=True),
+    )
+    role_service._sync_role_to_keycloak = AsyncMock()
+    role_service._users_with_role = AsyncMock(
+        return_value=[SimpleNamespace(email="analyst@example.com", keycloak_id="kc-analyst")]
+    )
+
+    result = await role_service.set_role_permissions("analyst", ["document:read"])
+
+    assert result["permissions"] == ["document:read"]
+    role_service.keycloak.logout_user_sessions.assert_awaited_once_with("kc-analyst")
+
+
+@pytest.mark.asyncio
+async def test_delete_role_rejects_assigned_roles():
+    role_service = CompositeRoleService()
+    role_service.role_repo = SimpleNamespace(
+        get_by_name=AsyncMock(return_value=SimpleNamespace(name="analyst", is_builtin=False))
+    )
+    role_service._users_with_role = AsyncMock(
+        return_value=[SimpleNamespace(email="analyst@example.com")]
+    )
+
+    with pytest.raises(ValueError, match="users are assigned"):
+        await role_service.delete_role("analyst")

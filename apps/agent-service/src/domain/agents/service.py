@@ -4,7 +4,7 @@ import logging
 from typing import Any
 from uuid import UUID
 
-from schema import AgentInfo
+from models.agents import AgentInfo
 
 logger = logging.getLogger(__name__)
 
@@ -65,6 +65,7 @@ class AgentDefinitionService:
     async def create_agent_definition(
         self,
         name: str,
+        persona_id: int | None = None,
         graph_schema: str = "zero_shot",
         brain_type: str = "llm",
         memory_type: str = "none",
@@ -101,6 +102,7 @@ class AgentDefinitionService:
 
         return await self._repo.create(
             name=name,
+            persona_id=persona_id,
             agent_type="dynamic",
             description=description,
             graph_schema=graph_schema,
@@ -121,6 +123,9 @@ class AgentDefinitionService:
 
     async def get_agent_definition(self, id: UUID):
         return await self._repo.get_by_id(id)
+
+    async def get_agent_definition_by_persona_id(self, persona_id: int):
+        return await self._repo.get_by_persona_id(persona_id)
 
     async def get_agent_definition_by_name(self, name: str):
         return await self._repo.get_by_name(name)
@@ -248,4 +253,3 @@ class MemoryTypeService:
     @staticmethod
     def get_available_memory_types() -> list[dict[str, Any]]:
         return MemoryTypeService.MEMORY_TYPES
-

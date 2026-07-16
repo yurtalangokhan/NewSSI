@@ -139,7 +139,7 @@ class Settings(BaseSettings):
     @property
     def AVAILABLE_MODELS(self) -> set[str]:
         """Available LLM models."""
-        from schema.models import FakeModelName, OllamaModelName
+        from models.llm import FakeModelName, OllamaModelName
 
         models = {m.value for m in OllamaModelName}
         models.add(FakeModelName.FAKE.value)

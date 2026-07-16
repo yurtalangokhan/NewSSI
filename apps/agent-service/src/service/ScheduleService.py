@@ -12,9 +12,7 @@ from typing import Any
 from croniter import croniter
 
 from core.db import DatasourceRepository
-from service.AirbyteApiClientService import get_airbyte_client
-from service.AirbyteMappingRepository import AirbyteMappingDB
-from service.ScheduleModels import (
+from models.schedules import (
     PRESET_CRON_MAP,
     SchedulePreset,
     ScheduleRunStatus,
@@ -23,6 +21,8 @@ from service.ScheduleModels import (
     SyncScheduleResponse,
     SyncScheduleUpdate,
 )
+from service.AirbyteApiClientService import get_airbyte_client
+from service.AirbyteMappingRepository import AirbyteMappingDB
 from service.SyncQueueService import get_sync_queue
 
 logger = logging.getLogger(__name__)

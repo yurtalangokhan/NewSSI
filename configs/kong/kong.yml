@@ -15,7 +15,7 @@ services:
   # User Service
   # --------------------------------------------------------------------------
   - name: user-service
-    url: http://user-service:8090
+    url: __USER_SERVICE_UPSTREAM_URL__
     routes:
       # Public auth endpoints (login/logout/refresh/me/type/oidc)
       - name: user-service-auth
@@ -73,6 +73,7 @@ services:
       - name: user-service-roles
         paths:
           - /api/roles
+          - /api/coarse-roles
         strip_path: false
         preserve_host: true
         plugins: *jwt_plugin
@@ -95,7 +96,7 @@ services:
   # Agent Service
   # --------------------------------------------------------------------------
   - name: agent-service
-    url: http://agent-service:8123
+    url: __AGENT_SERVICE_UPSTREAM_URL__
     routes:
       - name: agent-service-api-health-public
         paths:
@@ -106,6 +107,7 @@ services:
       - name: agent-service-api
         paths:
           - /api/agents
+          - /api/agent-groups
           - /api/admin
           - /api/chat
           - /api/content
@@ -118,6 +120,7 @@ services:
           - /api/notifications
           - /api/password
           - /api/persona
+          - /api/proxy
           - /api/providers
           - /api/query
           - /api/search
@@ -160,11 +163,21 @@ services:
         preserve_host: true
         plugins: *jwt_plugin
 
+  - name: agent-service-mcp-compat
+    url: __AGENT_SERVICE_UPSTREAM_URL__/api/proxy
+    routes:
+      - name: agent-service-mcp-compat
+        paths:
+          - /mcp
+        strip_path: false
+        preserve_host: true
+        plugins: *jwt_plugin
+
   # --------------------------------------------------------------------------
   # RAG Service
   # --------------------------------------------------------------------------
   - name: rag-service
-    url: http://rag-service:8083
+    url: __RAG_SERVICE_UPSTREAM_URL__
     routes:
       - name: rag-service-api
         paths:
@@ -189,7 +202,7 @@ services:
   # Tools Service (MCP)
   # --------------------------------------------------------------------------
   - name: tools-service-mcp
-    url: http://tools-service:8003/mcp
+    url: __TOOLS_SERVICE_UPSTREAM_URL__/mcp
     routes:
       - name: tools-service-mcp
         paths:
@@ -208,7 +221,7 @@ services:
   # --------------------------------------------------------------------------
 
   - name: internal-user-service
-    url: http://user-service:8090
+    url: __USER_SERVICE_UPSTREAM_URL__
     routes:
       - name: internal-user-service-all
         paths:
@@ -217,7 +230,7 @@ services:
         preserve_host: true
 
   - name: internal-rag-service
-    url: http://rag-service:8083
+    url: __RAG_SERVICE_UPSTREAM_URL__
     routes:
       - name: internal-rag-service-all
         paths:
@@ -226,7 +239,7 @@ services:
         preserve_host: true
 
   - name: internal-tools-service
-    url: http://tools-service:8003/mcp
+    url: __TOOLS_SERVICE_UPSTREAM_URL__/mcp
     routes:
       - name: internal-tools-service-all
         paths:

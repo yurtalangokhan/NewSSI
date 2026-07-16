@@ -21,11 +21,11 @@ from langgraph.types import Interrupt
 from agents import DEFAULT_AGENT, AgentGraph, get_agent, get_all_agent_info
 from api.dependencies import require_permission, require_user
 from core import settings
-from schema import (
+from models.agents import ServiceMetadata
+from models.chat import (
     ChatHistory,
     ChatHistoryInput,
     ChatMessage,
-    ServiceMetadata,
     StreamInput,
     UserInput,
 )

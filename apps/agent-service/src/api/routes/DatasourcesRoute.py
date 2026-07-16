@@ -16,14 +16,13 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from api.dependencies import AuthenticatedUser, require_permission, require_user
 from controller import DataController, get_data_controller
 from core.db import DatasourceRepository
-from service.Schemas import (
+from models.connectors import ConnectorSpecResponse, StreamInfo
+from models.datasources import (
     ChunkInfo,
-    ConnectorSpecResponse,
     DataSourceDetails,
     DataSourceInput,
     DataSourceResponse,
     DataSourceUpdateInput,
-    StreamInfo,
 )
 from service.SyncQueueService import SyncJob, get_sync_queue
 

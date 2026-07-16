@@ -17,8 +17,8 @@ from contextlib import contextmanager
 
 from playwright.sync_api import BrowserContext, Playwright, sync_playwright
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
-from pydantic import BaseModel
 
+from models.web_search import RenderedPage
 from service.web_search.url import SSRFException, validate_outbound_http_url
 
 logger = logging.getLogger(__name__)
@@ -61,15 +61,6 @@ DEFAULT_BOT_CHALLENGE_GRACE_MS = 5000
 # Total per-navigation budget for Playwright `goto` / wait_for_load_state.
 # Generous because we *want* to absorb a Cloudflare interstitial.
 DEFAULT_NAVIGATION_TIMEOUT_MS = 30000
-
-
-class RenderedPage(BaseModel):
-    """Result of a successful Playwright navigation."""
-
-    html: str
-    final_url: str
-    last_modified: str | None = None
-    status: int | None = None
 
 
 def start_playwright() -> tuple[Playwright, BrowserContext]:

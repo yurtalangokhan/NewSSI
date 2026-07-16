@@ -18,7 +18,6 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, Field
 
 from agents.storage.repository import AgentDefinitionRepository
 from api.dependencies import require_permission, require_user
@@ -27,6 +26,10 @@ from domain.agents.service import (
     BrainTypeService,
     GraphSchemaService,
     MemoryTypeService,
+)
+from models.agent_definitions import (
+    CreateAgentDefinitionRequest,
+    UpdateAgentDefinitionRequest,
 )
 
 logger = logging.getLogger(__name__)
@@ -38,67 +41,11 @@ router = APIRouter(
 )
 
 
-# ---------------------------------------------------------------------------
-# Pydantic schemas
-# ---------------------------------------------------------------------------
-
-
-class SubAgentRequest(BaseModel):
-    name: str
-    system_prompt: str = "You are a helpful agent."
-    mcp_tools: list[str] = Field(default_factory=list)
-    model: str | None = None
-
-
-class StageRequest(BaseModel):
-    name: str
-    system_prompt: str = "Process this input."
-    mcp_tools: list[str] = Field(default_factory=list)
-    model: str | None = None
-
-
-class CreateAgentDefinitionRequest(BaseModel):
-    name: str
-    graph_schema: str = "zero_shot"
-    brain_type: str = "llm"
-    memory_type: str = "none"
-    system_prompt: str | None = None
-    model: str | None = None
-    mcp_tools: list[str] = Field(default_factory=list)
-    rag_config: dict[str, list[str]] = Field(default_factory=dict)
-    sub_agents: list[SubAgentRequest] = Field(default_factory=list)
-    supervisor_prompt: str | None = None
-    stages: list[StageRequest] = Field(default_factory=list)
-    pipeline_prompt: str | None = None
-    reflection_prompt: str | None = None
-    max_iterations: int = 3
-    description: str | None = None
-    tags: list[str] = Field(default_factory=list)
-
-
-class UpdateAgentDefinitionRequest(BaseModel):
-    graph_schema: str | None = None
-    brain_type: str | None = None
-    memory_type: str | None = None
-    system_prompt: str | None = None
-    model: str | None = None
-    mcp_tools: list[str] | None = None
-    rag_config: dict[str, list[str]] | None = None
-    sub_agents: list[dict[str, Any]] | None = None
-    supervisor_prompt: str | None = None
-    stages: list[dict[str, Any]] | None = None
-    pipeline_prompt: str | None = None
-    reflection_prompt: str | None = None
-    max_iterations: int | None = None
-    description: str | None = None
-    tags: list[str] | None = None
-    is_active: bool | None = None
-
-
 def _definition_to_dict(d) -> dict[str, Any]:
     """Serialize an AgentDefinitionModel to a response dict."""
     return {
         "id": str(d.id),
+        "persona_id": d.persona_id,
         "name": d.name,
         "agent_type": d.agent_type,
         "description": d.description,
@@ -165,6 +112,7 @@ async def create_agent_definition(
     try:
         definition = await service.create_agent_definition(
             name=body.name,
+            persona_id=None,
             graph_schema=body.graph_schema,
             brain_type=body.brain_type,
             memory_type=body.memory_type,

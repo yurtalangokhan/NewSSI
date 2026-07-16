@@ -13,6 +13,8 @@ import { useState, useMemo } from "react";
 import AgentCard from "@/sections/cards/AgentCard";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
 import { useAgents } from "@/hooks/useAgents";
+import Tabs from "@/refresh-components/Tabs";
+import AgentAccessGroupsTab from "./AgentAccessGroupsTab";
 
 function AgentCatalog({
   agents,
@@ -47,12 +49,12 @@ function AgentCatalog({
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-3">
         <Title>{t("admin.agents.catalogTitle")}</Title>
-        <CreateButton href="/app/agents/create?admin=true">{t("admin.agents.createButton")}</CreateButton>
+        <CreateButton href="/app/agents/create?admin=true">
+          {t("admin.agents.createButton")}
+        </CreateButton>
       </div>
 
-      <Text>
-        {t("admin.agents.catalogDescription")}
-      </Text>
+      <Text>{t("admin.agents.catalogDescription")}</Text>
 
       <InputTypeIn
         placeholder={t("admin.agents.searchPlaceholder")}
@@ -113,6 +115,7 @@ export default function Page() {
     isLoading: isCatalogLoading,
     error: catalogError,
   } = useAgents();
+  const [activeTab, setActiveTab] = useState("catalog");
 
   return (
     <SettingsLayouts.Root>
@@ -137,11 +140,22 @@ export default function Page() {
         )}
 
         {!isCatalogLoading && !catalogError && (
-          <MainContent
-            catalogAgents={catalogAgents}
-            searchQuery={searchQuery}
-            onSearchQueryChange={setSearchQuery}
-          />
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <Tabs.List variant="contained">
+              <Tabs.Trigger value="catalog">Agents</Tabs.Trigger>
+              <Tabs.Trigger value="access-groups">Access groups</Tabs.Trigger>
+            </Tabs.List>
+            <Tabs.Content value="catalog">
+              <MainContent
+                catalogAgents={catalogAgents}
+                searchQuery={searchQuery}
+                onSearchQueryChange={setSearchQuery}
+              />
+            </Tabs.Content>
+            <Tabs.Content value="access-groups">
+              <AgentAccessGroupsTab agents={catalogAgents} />
+            </Tabs.Content>
+          </Tabs>
         )}
       </SettingsLayouts.Body>
     </SettingsLayouts.Root>

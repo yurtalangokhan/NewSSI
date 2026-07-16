@@ -26,6 +26,7 @@ class AgentDefinitionModel(Base):
         primary_key=True,
         default=uuid4,
     )
+    persona_id: Mapped[int | None] = mapped_column(Integer, nullable=True, unique=True)
     name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
     agent_type: Mapped[str] = mapped_column(String(50), nullable=False, default="dynamic")
     description: Mapped[str] = mapped_column(Text, nullable=True)
@@ -91,6 +92,7 @@ class AgentDefinitionModel(Base):
     )
 
     __table_args__ = (
+        Index("ix_agent_definitions_persona_id", "persona_id"),
         Index("ix_agent_definitions_type", "agent_type"),
         Index("ix_agent_definitions_graph_schema", "graph_schema"),
         Index("ix_agent_definitions_active", "is_active"),
@@ -116,5 +118,4 @@ class AgentDefinitionModel(Base):
             "reflection_prompt": self.reflection_prompt,
             "max_iterations": self.max_iterations or 3,
         }
-
 

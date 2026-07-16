@@ -18,6 +18,7 @@ class AgentDefinitionRepository(BaseRepository):
     async def create(
         self,
         name: str,
+        persona_id: int | None = None,
         agent_type: str = "dynamic",
         description: str | None = None,
         graph_schema: str = "zero_shot",
@@ -40,6 +41,7 @@ class AgentDefinitionRepository(BaseRepository):
         async with self._session() as session:
             definition = AgentDefinitionModel(
                 name=name,
+                persona_id=persona_id,
                 agent_type=agent_type,
                 description=description,
                 graph_schema=graph_schema,
@@ -77,6 +79,15 @@ class AgentDefinitionRepository(BaseRepository):
             result = await session.execute(stmt)
             return result.scalar_one_or_none()
 
+    async def get_by_persona_id(self, persona_id: int) -> AgentDefinitionModel | None:
+        """Get the dynamic agent definition attached to a persona."""
+        async with self._session() as session:
+            stmt = select(AgentDefinitionModel).where(
+                AgentDefinitionModel.persona_id == persona_id
+            )
+            result = await session.execute(stmt)
+            return result.scalar_one_or_none()
+
     async def list_all(
         self,
         agent_type: str | None = None,
@@ -92,7 +103,7 @@ class AgentDefinitionRepository(BaseRepository):
             if graph_schema:
                 stmt = stmt.where(AgentDefinitionModel.graph_schema == graph_schema)
             if active_only:
-                stmt = stmt.where(AgentDefinitionModel.is_active == True)
+                stmt = stmt.where(AgentDefinitionModel.is_active)
 
             stmt = stmt.order_by(AgentDefinitionModel.name)
             result = await session.execute(stmt)
@@ -142,4 +153,3 @@ class AgentDefinitionRepository(BaseRepository):
             )
             result = await session.execute(stmt)
             return result.rowcount > 0
-

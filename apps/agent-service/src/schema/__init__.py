@@ -1,25 +1,24 @@
-from schema.models import AllModelEnum
-from schema.schema import (
-    AgentInfo,
+from models.agents import AgentInfo, ServiceMetadata
+from models.chat import (
     ChatHistory,
     ChatHistoryInput,
     ChatMessage,
     Feedback,
     FeedbackResponse,
-    ServiceMetadata,
     StreamInput,
     UserInput,
 )
+from models.llm import AllModelEnum
 
 __all__ = [
     "AgentInfo",
     "AllModelEnum",
-    "UserInput",
+    "ChatHistory",
+    "ChatHistoryInput",
     "ChatMessage",
-    "ServiceMetadata",
-    "StreamInput",
     "Feedback",
     "FeedbackResponse",
-    "ChatHistoryInput",
-    "ChatHistory",
+    "ServiceMetadata",
+    "StreamInput",
+    "UserInput",
 ]

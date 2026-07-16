@@ -70,6 +70,18 @@ async def test_refresh_token_grant_uses_login_client_credentials(monkeypatch):
     }
 
 
+@pytest.mark.asyncio
+async def test_logout_user_sessions_uses_keycloak_admin_logout_endpoint(monkeypatch):
+    service = KeycloakService()
+    response = SimpleNamespace(status_code=204)
+    request = AsyncMock(return_value=response)
+    monkeypatch.setattr(service, "_keycloak_request", request)
+
+    assert await service.logout_user_sessions("kc-user-id") is True
+
+    request.assert_awaited_once_with("POST", "/users/kc-user-id/logout")
+
+
 def test_external_idp_payload_uses_frontend_issuer_and_backend_endpoints(monkeypatch):
     monkeypatch.setenv("EXTERNAL_KEYCLOAK_CLIENT_ID", "idp-client")
     monkeypatch.setenv("EXTERNAL_KEYCLOAK_CLIENT_SECRET", "idp-secret")

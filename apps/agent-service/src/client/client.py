@@ -5,12 +5,12 @@ from typing import Any
 
 import httpx
 
-from schema import (
+from models.agents import ServiceMetadata
+from models.chat import (
     ChatHistory,
     ChatHistoryInput,
     ChatMessage,
     Feedback,
-    ServiceMetadata,
     StreamInput,
     UserInput,
 )

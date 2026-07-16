@@ -137,6 +137,11 @@ class UserRepository(BaseRepository):
             result = await session.execute(select(UserModel).order_by(UserModel.created_at.desc()))
             return list(result.scalars().all())
 
+    async def list_by_role(self, role: str) -> list[UserModel]:
+        async with self._session() as session:
+            result = await session.execute(select(UserModel).where(UserModel.role == role))
+            return list(result.scalars().all())
+
     async def exists_by_email(self, email: str) -> bool:
         async with self._session() as session:
             result = await session.execute(
