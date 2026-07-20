@@ -1,6 +1,6 @@
 from typing import Any
 
-from src.schema.system_settings import KeycloakConfigUpdate, KeycloakRealmSessionUpdate
+from src.models.system_settings import KeycloakConfigUpdate, KeycloakRealmSessionUpdate
 
 from .base import BaseController
 
