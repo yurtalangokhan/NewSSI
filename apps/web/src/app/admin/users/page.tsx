@@ -20,6 +20,7 @@ import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
 import { useTranslation } from "react-i18next";
 import { toast } from "@/hooks/useToast";
 import useDebouncedValue from "@/hooks/useDebouncedValue";
+import AdminOverviewPanel from "@/components/admin/AdminOverviewPanel";
 
 const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.USERS]!;
 
@@ -111,6 +112,14 @@ function UsersTables({
   );
   const pendingUsersCount =
     pendingUsers === undefined ? null : pendingUsers.length;
+  const {
+    data: rolesData,
+    isLoading: rolesLoading,
+  } = useSWR<{ roles: { name: string }[] }>(
+    "/api/user-service/roles/",
+    errorHandlingFetcher
+  );
+
   // Show loading animation only during the initial data fetch
   const tabs = SimpleTabs.generateTabs({
     current: {
@@ -196,7 +205,57 @@ function UsersTables({
     }),
   });
 
-  return <SimpleTabs tabs={tabs} defaultValue="current" />;
+  return (
+    <>
+      <AdminOverviewPanel
+        icon={route.icon}
+        title={t("admin.users.workspaceTitle")}
+        description={t("admin.users.workspaceDescription")}
+        metrics={[
+          {
+            label: t("admin.users.matchingUsersLabel"),
+            value: currentUsersLoading
+              ? "..."
+              : (currentUsersCount ?? 0).toLocaleString(),
+            tone:
+              !currentUsersLoading && (currentUsersCount ?? 0) > 0
+                ? "success"
+                : "warning",
+          },
+          {
+            label: t("admin.users.pendingRequestsLabel"),
+            value: NEXT_PUBLIC_CLOUD_ENABLED
+              ? pendingUsersLoading
+                ? "..."
+                : (pendingUsersCount ?? 0).toLocaleString()
+              : t("admin.users.notAvailable"),
+            tone:
+              NEXT_PUBLIC_CLOUD_ENABLED && (pendingUsersCount ?? 0) > 0
+                ? "warning"
+                : "neutral",
+          },
+          {
+            label: t("admin.users.rolesAvailableLabel"),
+            value: rolesLoading
+              ? "..."
+              : String(rolesData?.roles?.length ?? 0),
+          },
+        ]}
+        actions={[
+          {
+            label: t("admin.users.addUserButton"),
+            href: "/admin/users/add",
+            primary: true,
+          },
+          {
+            label: t("admin.navigation.routes.roles.sidebar"),
+            href: ADMIN_PATHS.ROLES,
+          },
+        ]}
+      />
+      <SimpleTabs tabs={tabs} defaultValue="current" />
+    </>
+  );
 }
 
 function SearchableTables() {

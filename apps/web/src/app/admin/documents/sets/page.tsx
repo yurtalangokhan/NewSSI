@@ -43,6 +43,7 @@ import CreateButton from "@/refresh-components/buttons/CreateButton";
 import { SourceIcon } from "@/components/SourceIcon";
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
+import AdminOverviewPanel from "@/components/admin/AdminOverviewPanel";
 
 const numToDisplay = 50;
 
@@ -444,6 +445,57 @@ export default function Page() {
         separator
       />
       <SettingsLayouts.Body>
+        <AdminOverviewPanel
+          icon={route.icon}
+          title={t("admin.documentSets.workspaceTitle", {
+            defaultValue: "Document set workspace",
+          })}
+          description={t("admin.documentSets.workspaceDescription", {
+            defaultValue:
+              "Group documents into reusable collections for agents, retrieval workflows, and governed access.",
+          })}
+          metrics={[
+            {
+              label: t("admin.documentSets.structureLabel", {
+                defaultValue: "Structure",
+              }),
+              value: t("admin.documentSets.sets", {
+                defaultValue: "Sets",
+              }),
+            },
+            {
+              label: t("admin.documentSets.sourceLabel", {
+                defaultValue: "Source",
+              }),
+              value: t("admin.navigation.routes.documentExplorer.sidebar", {
+                defaultValue: "Explorer",
+              }),
+            },
+            {
+              label: t("admin.documentSets.downstreamLabel", {
+                defaultValue: "Downstream",
+              }),
+              value: t("admin.navigation.routes.agents.sidebar", {
+                defaultValue: "Agents",
+              }),
+            },
+          ]}
+          actions={[
+            {
+              label: t("admin.navigation.routes.documentExplorer.sidebar", {
+                defaultValue: "Explorer",
+              }),
+              href: ADMIN_PATHS.DOCUMENT_EXPLORER,
+            },
+            {
+              label: t("admin.documentSets.newDocumentSet", {
+                defaultValue: "New Document Set",
+              }),
+              href: `${ADMIN_PATHS.DOCUMENT_SETS}/new`,
+              primary: true,
+            },
+          ]}
+        />
         <Main />
       </SettingsLayouts.Body>
     </SettingsLayouts.Root>

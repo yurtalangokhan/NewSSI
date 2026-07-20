@@ -22,6 +22,8 @@ import {
   SvgX,
 } from "@opal/icons";
 import type { IconFunctionComponent } from "@opal/types";
+import AdminOverviewPanel from "@/components/admin/AdminOverviewPanel";
+import { useTranslation } from "react-i18next";
 
 const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.SYSTEM_SETTINGS]!;
 
@@ -253,6 +255,7 @@ function Panel({
 }
 
 export default function SystemSettingsPage() {
+  const { t } = useTranslation();
   const [configForm, setConfigForm] = useState({
     keycloak_enabled: false,
     keycloak_base_url: "",
@@ -367,6 +370,47 @@ export default function SystemSettingsPage() {
       <SettingsLayouts.Header icon={route.icon} title={route.title} separator />
       <SettingsLayouts.Body>
         <div className="flex flex-col gap-4">
+          <AdminOverviewPanel
+            icon={route.icon}
+            title={t("admin.systemSettings.workspaceTitle")}
+            description={t("admin.systemSettings.workspaceDescription")}
+            metrics={[
+              {
+                label: t("admin.systemSettings.keycloakLabel"),
+                value: data?.keycloak.enabled
+                  ? t("admin.systemSettings.enabled")
+                  : t("admin.systemSettings.disabled"),
+                tone: data?.keycloak.enabled ? "success" : "warning",
+              },
+              {
+                label: t("admin.systemSettings.externalIdpLabel"),
+                value: data?.external_keycloak.enabled
+                  ? t("admin.systemSettings.enabled")
+                  : t("admin.systemSettings.disabled"),
+                tone: data?.external_keycloak.enabled ? "success" : "neutral",
+              },
+              {
+                label: t("admin.systemSettings.realmSessionLabel"),
+                value: data?.keycloak.realm_session.reachable
+                  ? t("admin.systemSettings.reachable")
+                  : t("admin.systemSettings.needsReview"),
+                tone: data?.keycloak.realm_session.reachable
+                  ? "success"
+                  : "warning",
+              },
+            ]}
+            actions={[
+              {
+                label: t("admin.navigation.routes.roles.sidebar"),
+                href: ADMIN_PATHS.ROLES,
+              },
+              {
+                label: t("admin.navigation.routes.users.sidebar"),
+                href: ADMIN_PATHS.USERS,
+                primary: true,
+              },
+            ]}
+          />
           <section className="rounded-08 border border-border-01 bg-background-neutral-00 px-4 py-4">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex flex-col gap-1">

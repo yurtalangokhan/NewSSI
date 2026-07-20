@@ -10,6 +10,7 @@ import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
 import CreateButton from "@/refresh-components/buttons/CreateButton";
 import { DOCS_ADMINS_PATH } from "@/lib/constants";
 import { useTranslation } from "react-i18next";
+import AdminOverviewPanel from "@/components/admin/AdminOverviewPanel";
 
 function Main() {
   const { t } = useTranslation();
@@ -70,11 +71,59 @@ function Main() {
 
 export default function Page() {
   const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.SLACK_BOTS]!;
+  const { t } = useTranslation();
 
   return (
     <SettingsLayouts.Root>
       <SettingsLayouts.Header icon={route.icon} title={route.title} separator />
       <SettingsLayouts.Body>
+        <AdminOverviewPanel
+          icon={route.icon}
+          title={t("admin.bots.workspaceTitle", {
+            defaultValue: "Slack bot workspace",
+          })}
+          description={t("admin.bots.workspaceDescription", {
+            defaultValue:
+              "Manage Slack bot connections, channel routing, and chat entry points for workspace users.",
+          })}
+          metrics={[
+            {
+              label: t("admin.bots.integrationLabel", {
+                defaultValue: "Integration",
+              }),
+              value: "Slack",
+            },
+            {
+              label: t("admin.bots.routingLabel", {
+                defaultValue: "Routing",
+              }),
+              value: t("admin.bots.channels", {
+                defaultValue: "Channels",
+              }),
+            },
+            {
+              label: t("admin.bots.agentLayerLabel", {
+                defaultValue: "Agent layer",
+              }),
+              value: t("admin.navigation.routes.agents.sidebar", {
+                defaultValue: "Agents",
+              }),
+            },
+          ]}
+          actions={[
+            {
+              label: t("admin.bots.newSlackBotButton"),
+              href: "/admin/bots/new",
+              primary: true,
+            },
+            {
+              label: t("admin.navigation.routes.agents.sidebar", {
+                defaultValue: "Agents",
+              }),
+              href: ADMIN_PATHS.AGENTS,
+            },
+          ]}
+        />
         <InstantSSRAutoRefresh />
         <Main />
       </SettingsLayouts.Body>

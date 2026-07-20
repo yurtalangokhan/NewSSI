@@ -15,6 +15,7 @@ import { authenticatedFetch } from "@/lib/fetcher";
 import { useTranslation } from "react-i18next";
 import { errorHandlingFetcher } from "@/lib/fetcher";
 import useSWR from "swr";
+import AdminOverviewPanel from "@/components/admin/AdminOverviewPanel";
 
 const usersRoute = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.USERS]!;
 
@@ -90,6 +91,53 @@ export default function AddUserPage() {
         separator
       />
       <SettingsLayouts.Body>
+        <AdminOverviewPanel
+          icon={usersRoute.icon}
+          title={t("admin.users.addUserWorkspaceTitle", {
+            defaultValue: "Create user",
+          })}
+          description={t("admin.users.addUserWorkspaceDescription", {
+            defaultValue:
+              "Add a user account, assign the initial access profile, and return to the user table when finished.",
+          })}
+          metrics={[
+            {
+              label: t("admin.users.identityLabel", {
+                defaultValue: "Identity",
+              }),
+              value: t("admin.users.required", {
+                defaultValue: "Required",
+              }),
+            },
+            {
+              label: t("admin.users.initialRoleLabel", {
+                defaultValue: "Initial role",
+              }),
+              value: role,
+            },
+            {
+              label: t("admin.users.availableRolesLabel", {
+                defaultValue: "Available roles",
+              }),
+              value: roles?.roles ? String(roles.roles.length) : "...",
+            },
+          ]}
+          actions={[
+            {
+              label: t("admin.navigation.routes.users.sidebar", {
+                defaultValue: "Users",
+              }),
+              href: ADMIN_PATHS.USERS,
+            },
+            {
+              label: t("admin.navigation.routes.roles.sidebar", {
+                defaultValue: "Roles & Permissions",
+              }),
+              href: ADMIN_PATHS.ROLES,
+              primary: true,
+            },
+          ]}
+        />
         <form
           onSubmit={onSubmit}
           className="max-w-xl rounded-lg border border-border-subtle bg-background-100 p-6"

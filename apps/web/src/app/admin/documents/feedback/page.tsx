@@ -8,6 +8,7 @@ import Title from "@/components/ui/title";
 import * as SettingsLayouts from "@/layouts/settings-layouts";
 import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
 import { useTranslation } from "react-i18next";
+import AdminOverviewPanel from "@/components/admin/AdminOverviewPanel";
 
 function Main() {
   const { t } = useTranslation();
@@ -63,12 +64,66 @@ function Main() {
 }
 
 export default function Page() {
+  const { t } = useTranslation();
   const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.DOCUMENT_FEEDBACK]!;
 
   return (
     <SettingsLayouts.Root>
-      <SettingsLayouts.Header icon={route.icon} title={route.title} separator />
+      <SettingsLayouts.Header
+        icon={route.icon}
+        title={route.title}
+        separator
+      />
       <SettingsLayouts.Body>
+        <AdminOverviewPanel
+          icon={route.icon}
+          title={t("admin.documentsFeedback.workspaceTitle", {
+            defaultValue: "Document feedback workspace",
+          })}
+          description={t("admin.documentsFeedback.workspaceDescription", {
+            defaultValue:
+              "Review highly liked and disliked documents so retrieval quality improvements have a clear starting point.",
+          })}
+          metrics={[
+            {
+              label: t("admin.documentsFeedback.positiveSignalLabel", {
+                defaultValue: "Positive signal",
+              }),
+              value: t("admin.documentsFeedback.mostLikedTitle"),
+              tone: "success",
+            },
+            {
+              label: t("admin.documentsFeedback.negativeSignalLabel", {
+                defaultValue: "Negative signal",
+              }),
+              value: t("admin.documentsFeedback.mostDislikedTitle"),
+              tone: "warning",
+            },
+            {
+              label: t("admin.documentsFeedback.nextStepLabel", {
+                defaultValue: "Next step",
+              }),
+              value: t("admin.navigation.routes.documentExplorer.sidebar", {
+                defaultValue: "Explorer",
+              }),
+            },
+          ]}
+          actions={[
+            {
+              label: t("admin.navigation.routes.documentExplorer.sidebar", {
+                defaultValue: "Explorer",
+              }),
+              href: ADMIN_PATHS.DOCUMENT_EXPLORER,
+            },
+            {
+              label: t("admin.navigation.routes.searchSettings.sidebar", {
+                defaultValue: "Search Settings",
+              }),
+              href: ADMIN_PATHS.SEARCH_SETTINGS,
+              primary: true,
+            },
+          ]}
+        />
         <Main />
       </SettingsLayouts.Body>
     </SettingsLayouts.Root>

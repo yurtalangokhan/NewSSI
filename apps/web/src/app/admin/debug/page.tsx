@@ -18,6 +18,7 @@ import { Spinner } from "@/components/Spinner";
 import { SvgDownloadCloud } from "@opal/icons";
 import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
 import { useTranslation } from "react-i18next";
+import AdminOverviewPanel from "@/components/admin/AdminOverviewPanel";
 
 const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.DEBUG]!;
 
@@ -118,10 +119,64 @@ function Main() {
 }
 
 export default function Page() {
+  const { t } = useTranslation();
+
   return (
     <SettingsLayouts.Root>
       <SettingsLayouts.Header icon={route.icon} title={route.title} separator />
       <SettingsLayouts.Body>
+        <AdminOverviewPanel
+          icon={route.icon}
+          title={t("admin.debug.workspaceTitle", {
+            defaultValue: "Diagnostics workspace",
+          })}
+          description={t("admin.debug.workspaceDescription", {
+            defaultValue:
+              "Review log categories and download diagnostics when platform behavior needs investigation.",
+          })}
+          metrics={[
+            {
+              label: t("admin.debug.logCategoriesLabel", {
+                defaultValue: "Log categories",
+              }),
+              value: t("admin.debug.availableBelow", {
+                defaultValue: "Available below",
+              }),
+            },
+            {
+              label: t("admin.debug.exportLabel", {
+                defaultValue: "Export",
+              }),
+              value: t("admin.debug.downloadLogs", {
+                defaultValue: "Download logs",
+              }),
+            },
+            {
+              label: t("admin.debug.sensitiveLabel", {
+                defaultValue: "Sensitive",
+              }),
+              value: t("admin.debug.adminOnly", {
+                defaultValue: "Admin only",
+              }),
+              tone: "warning",
+            },
+          ]}
+          actions={[
+            {
+              label: t("admin.navigation.routes.systemInfo.sidebar", {
+                defaultValue: "System Information",
+              }),
+              href: ADMIN_PATHS.SYSTEM_INFO,
+            },
+            {
+              label: t("admin.navigation.routes.systemSettings.sidebar", {
+                defaultValue: "System Settings",
+              }),
+              href: ADMIN_PATHS.SYSTEM_SETTINGS,
+              primary: true,
+            },
+          ]}
+        />
         <Main />
       </SettingsLayouts.Body>
     </SettingsLayouts.Root>

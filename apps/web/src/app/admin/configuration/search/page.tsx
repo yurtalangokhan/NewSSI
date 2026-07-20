@@ -21,6 +21,7 @@ import { ErrorCallout } from "@/components/ErrorCallout";
 import { useToastFromQuery } from "@/hooks/useToast";
 import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
 import { useTranslation } from "react-i18next";
+import AdminOverviewPanel from "@/components/admin/AdminOverviewPanel";
 
 const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.SEARCH_SETTINGS]!;
 
@@ -153,6 +154,58 @@ export default function Page() {
         separator
       />
       <SettingsLayouts.Body>
+        <AdminOverviewPanel
+          icon={route.icon}
+          title={t("admin.search.workspaceTitle", {
+            defaultValue: "Search quality workspace",
+          })}
+          description={t("admin.search.workspaceDescription", {
+            defaultValue:
+              "Review embedding configuration, reindexing needs, and the retrieval settings that shape answer quality.",
+          })}
+          metrics={[
+            {
+              label: t("admin.search.embeddingLabel", {
+                defaultValue: "Embedding model",
+              }),
+              value: t("admin.search.configurable", {
+                defaultValue: "Configurable",
+              }),
+            },
+            {
+              label: t("admin.search.indexHealthLabel", {
+                defaultValue: "Index health",
+              }),
+              value: t("admin.search.reviewBelow", {
+                defaultValue: "Review below",
+              }),
+              tone: "warning",
+            },
+            {
+              label: t("admin.search.relatedContentLabel", {
+                defaultValue: "Related content",
+              }),
+              value: t("admin.navigation.routes.documentProcessing.sidebar", {
+                defaultValue: "Document Processing",
+              }),
+            },
+          ]}
+          actions={[
+            {
+              label: t("admin.navigation.routes.documentProcessing.sidebar", {
+                defaultValue: "Document Processing",
+              }),
+              href: ADMIN_PATHS.DOCUMENT_PROCESSING,
+            },
+            {
+              label: t("admin.search.updateButton", {
+                defaultValue: "Update",
+              }),
+              href: "/admin/embeddings",
+              primary: true,
+            },
+          ]}
+        />
         <Main />
       </SettingsLayouts.Body>
     </SettingsLayouts.Root>

@@ -14,6 +14,7 @@ import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
 import { FiChevronDown, FiChevronRight } from "react-icons/fi";
 import Text from "@/refresh-components/texts/Text";
 import { useTranslation } from "react-i18next";
+import AdminOverviewPanel from "@/components/admin/AdminOverviewPanel";
 
 export default function Status() {
   const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.INDEXING_STATUS]!;
@@ -88,6 +89,52 @@ export default function Status() {
         separator
       />
       <SettingsLayouts.Body>
+        <AdminOverviewPanel
+          icon={route.icon}
+          title={t("admin.indexingStatus.workspaceTitle", {
+            defaultValue: "Connector control room",
+          })}
+          description={t("admin.indexingStatus.workspaceDescription", {
+            defaultValue:
+              "Monitor connected sources, expand by connector type, and jump straight into adding the next data source.",
+          })}
+          metrics={[
+            {
+              label: t("admin.indexingStatus.connectedSourcesLabel", {
+                defaultValue: "Connected sources",
+              }),
+              value: isLoading ? "..." : String(datasources?.length ?? 0),
+              tone: (datasources?.length ?? 0) > 0 ? "success" : "warning",
+            },
+            {
+              label: t("admin.indexingStatus.connectorTypesLabel", {
+                defaultValue: "Connector types",
+              }),
+              value: isLoading ? "..." : String(groups.length),
+            },
+            {
+              label: t("admin.indexingStatus.viewModeLabel", {
+                defaultValue: "View mode",
+              }),
+              value: t("admin.indexingStatus.groupedByType", {
+                defaultValue: "Grouped by type",
+              }),
+            },
+          ]}
+          actions={[
+            {
+              label: t("admin.indexingStatus.addConnector"),
+              href: ADMIN_PATHS.ADD_CONNECTOR,
+              primary: true,
+            },
+            {
+              label: t("admin.documentProcessing.title", {
+                defaultValue: "Document Processing",
+              }),
+              href: ADMIN_PATHS.DOCUMENT_PROCESSING,
+            },
+          ]}
+        />
         <div className="flex items-center gap-3 mb-4">
           <div className="flex-1 max-w-sm">
             <InputTypeIn
