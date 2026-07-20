@@ -1,6 +1,6 @@
 """Graph RAG Assistant – hybrid retrieval agent using vector + knowledge graph.
 
-Combines PGVector similarity search with Neo4j BM25 graph search using
+Combines Milvus vector similarity search with Neo4j BM25 graph search using
 entity-centric Reciprocal Rank Fusion (RRF) for ranking.  All retrieval
 is handled by LangConnect's hybrid search API (POST /graph/search).
 """

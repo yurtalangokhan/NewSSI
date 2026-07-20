@@ -15,7 +15,7 @@ class CollectionDetails(TypedDict):
     uuid: str
     name: str
     metadata: dict[str, Any]
-    # Temporary field used internally to workaround an issue with PGVector
+    # Internal vector-store collection name used by legacy and Milvus flows.
     table_id: NotRequired[str]
 
 
@@ -43,12 +43,11 @@ class CollectionUpdate(BaseModel):
 
 
 class CollectionResponse(BaseModel):
-    """Schema for representing a collection from PGVector."""
+    """Schema for representing a vector collection."""
 
-    # PGVector table has uuid (id), name (str), and cmetadata (JSONB)
-    # We get these from list/get db functions
+    # Collection metadata is stored in Postgres; chunks/embeddings live in Milvus.
     uuid: str = Field(
-        ..., description="The unique identifier of the collection in PGVector."
+        ..., description="The unique identifier of the vector collection."
     )
     name: str = Field(..., description="The name of the collection.")
     metadata: dict[str, Any] = Field(

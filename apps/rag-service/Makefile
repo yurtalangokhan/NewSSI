@@ -1,53 +1,49 @@
-.PHONY: format lint lint-fix build up up-dev down logs restart clean help test
+.PHONY: install dev-install run test lint format fix typecheck clean build up up-dev down logs restart
 
-format:
-	ruff format .
-	ruff check --fix .
+install:
+	uv sync --frozen
 
-unsafe_fixes:
-	ruff check --fix --unsafe-fixes .
+dev-install:
+	uv sync --frozen --all-groups
 
-lint:
-	ruff check .
-	ruff format --diff
+run:
+	uv run uvicorn langconnect.server:APP --reload --host 0.0.0.0 --port 8083
 
 TEST_FILE ?= tests/unit_tests
 
 test:
 	IS_TESTING=true uv run pytest $(TEST_FILE)
 
-help:
-	@echo "Available commands:"
-	@echo "  make format    - Format code with ruff"
-	@echo "  make lint      - Check code with ruff"
-	@echo "  make lint-fix  - Fix linting issues with ruff"
-	@echo "  make test      - Run unit tests"
-	@echo "  make build     - Build Docker images"
-	@echo "  make up        - Start all services in detached mode"
-	@echo "  make up-dev    - Start all services with live reload"
-	@echo "  make down      - Stop all services"
-	@echo "  make logs      - View logs of all services"
-	@echo "  make restart   - Restart all services"
-	@echo "  make clean     - Remove containers, volumes, and images"
+lint:
+	uv run ruff check .
 
-build:
-	docker-compose build
+format:
+	uv run ruff format .
+	uv run ruff check --fix .
 
-up:
-	docker-compose up -d
+fix:
+	uv run ruff check --fix .
 
-up-dev:
-	docker-compose up
-
-down:
-	docker-compose down
-
-logs:
-	docker-compose logs -f
-
-restart:
-	docker-compose restart
+typecheck:
+	uv run mypy langconnect/
 
 clean:
-	docker-compose down -v
-	docker rmi langconnect-api:latest 2>/dev/null || true
+	rm -rf .ruff_cache .mypy_cache .pytest_cache __pycache__ **/__pycache__ langconnect/**/*.pyc
+
+build:
+	docker compose build
+
+up:
+	docker compose up -d
+
+up-dev:
+	docker compose up
+
+down:
+	docker compose down
+
+logs:
+	docker compose logs -f
+
+restart:
+	docker compose restart

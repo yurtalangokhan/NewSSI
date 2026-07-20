@@ -23,7 +23,7 @@ async def collections_create(
     collection_data: CollectionCreate,
     user: Annotated[AuthenticatedUser, Depends(require_permission("collection:create"))],
 ):
-    """Creates a new PGVector collection by name with optional metadata."""
+    """Creates a new vector collection by name with optional metadata."""
     collection_info = await CollectionsManager(user.identity).create(
         collection_data.name, collection_data.metadata
     )
@@ -36,7 +36,7 @@ async def collections_create(
 async def collections_list(
     user: Annotated[AuthenticatedUser, Depends(require_permission("collection:list"))],
 ):
-    """Lists all available PGVector collections (name and UUID)."""
+    """Lists all available vector collections (name and UUID)."""
     return [
         CollectionResponse(**c) for c in await CollectionsManager(user.identity).list()
     ]
@@ -47,7 +47,7 @@ async def collections_get(
     user: Annotated[AuthenticatedUser, Depends(require_permission("collection:read"))],
     collection_id: UUID,
 ):
-    """Retrieves details (name and UUID) of a specific PGVector collection."""
+    """Retrieves details (name and UUID) of a specific vector collection."""
     collection = await CollectionsManager(user.identity).get(str(collection_id))
     if not collection:
         raise HTTPException(
@@ -62,7 +62,7 @@ async def collections_delete(
     user: Annotated[AuthenticatedUser, Depends(require_permission("collection:delete"))],
     collection_id: UUID,
 ):
-    """Deletes a specific PGVector collection by name."""
+    """Deletes a specific vector collection by name."""
     await ensure_not_connector_managed_collection(str(collection_id))
     ensure_collection_mutable(str(collection_id))
     await CollectionsManager(user.identity).delete(str(collection_id))
@@ -75,7 +75,7 @@ async def collections_update(
     collection_id: UUID,
     collection_data: CollectionUpdate,
 ):
-    """Updates a specific PGVector collection's name and/or metadata."""
+    """Updates a specific vector collection's name and/or metadata."""
     await ensure_not_connector_managed_collection(str(collection_id))
     ensure_collection_mutable(str(collection_id))
     updated_collection = await CollectionsManager(user.identity).update(
