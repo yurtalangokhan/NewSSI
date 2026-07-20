@@ -16,48 +16,71 @@ Active code is in `apps/`. The `supabase/` and `legacy/` trees are third-party f
 
 ## Python services — common commands
 
-Every Python service uses **uv** (not pip) and **hatchling** as build backend. All have a `Makefile`.
+Every Python service uses **uv** (not pip) and **hatchling** as build backend. All have a standardized `Makefile` with the same targets:
 
 ```sh
 make install        # uv sync --frozen
 make dev-install    # uv sync --frozen --all-groups
-make run            # start dev server (uvicorn, hot-reload)
+make run            # start dev server
 make test           # pytest
-make test FILE=tests/path/to_test.py  # single file (agent-service)
 make lint           # ruff check
 make format         # ruff format
+make fix            # ruff check --fix
 make typecheck      # mypy src/
+make clean          # remove caches
 ```
 
-### Per-service ports
+### Kong API gateway (port 8000)
 
-| service | port |
-|---|---|
-| agent-service | 8123 |
-| rag-service | 8083 |
-| tools-service | 8003 |
-| user-service | 8090 |
-| web (next dev) | 3000 |
+**All external traffic goes through Kong on port 8000.** Service ports are `.env`-configurable upstreams — never hardcode them.
+
+| Kong path | upstream service | auth |
+|---|---|---|
+| `/api/auth`, `/health`, `/auth` | user-service / agent-service | public (no JWT) |
+| `/api/users/*`, `/api/roles/*`, `/api/permissions/*` | user-service | JWT |
+| `/api/agents/*`, `/api/chat/*`, `/api/query/*`, `/auth/*` | agent-service | JWT |
+| `/api/rag/*` | rag-service | JWT |
+| `/api/mcp` | tools-service | JWT |
+| `/internal/{user-service,rag-service,mcp}` | respective service | internal token (no JWT) |
+
+Config at `configs/kong/kong.yml` — upstream template vars (`__USER_SERVICE_UPSTREAM_URL__` etc.) resolved from `configs/.env`.
+
+**Dev (outside Docker):** services run on host, Kong reaches them via `host.docker.internal:PORT`.
+**Docker Compose:** services run in containers, Kong reaches them by service name.
 
 ### agent-service specifics
 
 - Defined agents live in `src/agents/`; register new agents in `src/agents/agents.py`.
 - Default `test` target **skips** `tests/app`, `tests/voice`, `tests/integration`.
 - `make test-all` syncs all groups and runs everything.
+- `make test-cov` runs tests with coverage (terminal + HTML).
+- `make run` is an alias for `make run-service` which uses `src/run_service.py` (loads settings first).
 - `make run-streamlit` launches the Streamlit UI (`src/streamlit_app.py`).
 - `make run-studio` launches LangGraph Studio (`langgraph dev`).
+- `make fix` runs `ruff check --fix`.
+- `make format` runs `ruff format`.
+- Docker targets: `make docker-up`, `make docker-build`, `make docker-down`, `make docker-logs`.
+- Has its own Alembic migrations under `src/core/db/migrations/` — `make migrate`, `make new-migration`, `make migration-status`.
+- `make info` lists registered agents.
 - `FAKE_MODEL` env var enables development without a real LLM API key.
 - Uses pre-commit (`make precommit-install` + `make precommit-run`).
 
 ### rag-service specifics
 
-- Tests require `IS_TESTING=true` env var: `IS_TESTING=true uv run pytest tests/unit_tests`.
+- `make test` runs `IS_TESTING=true uv run pytest tests/unit_tests` (env var set in Makefile).
+- `make format` runs `ruff format` (use `make fix` for auto-fix lint).
 - `make up-dev` starts Docker services with live reload.
 
 ### user-service specifics
 
 - Makefile targets: `db-up`, `db-down`, `db-migrate`, `db-migrate-create`, `db-migrate-rollback`, `db-reset`.
 - Uses Alembic for migrations.
+- Additional Makefile targets: `test-coverage`, `typecheck`.
+
+### tools-service (FastMCP) specifics
+
+- Entrypoint at repo root: `python server.py` (not in `src/`).
+- Default port: 8001 (`MCP_PORT` env); Docker overrides to 8003.
 
 ## Code architecture & clean code standards
 
@@ -103,15 +126,11 @@ langconnect/api/*.py     →  langconnect/services/*.py     →  langconnect/dat
 
 Simpler layer stack. Services use raw SQLAlchemy or LangChain primitives directly rather than a repository layer.
 
-### SOLID principles observed in codebase:
+### SOLID principles observed in codebase
 
-| Principle | How the codebase follows it |
+| Principle | How it's followed |
 |---|---|
-| **S**ingle Responsibility | Routes own HTTP, controllers own orchestration, services own logic, repos own data. One file per entity in each layer. |
-| **O**pen/Closed | New tool categories extend `BaseToolCategory` without modifying registry. New agents register in `agents/agents.py` dict without changing framework. New routes add new router files without editing `app.py`. |
-| **L**iskov Substitution | Repos extend `BaseRepository` and are interchangeable. Services are injected via constructor. |
-| **I**nterface Segregation | `BaseToolCategory` requires only 3 properties + 1 method. Controllers depend only on services they need (constructor injection). |
-| **D**ependency Inversion | Routes depend on controller abstractions, not concrete implementations. Services depend on repository abstractions (`BaseRepository`), not direct DB calls. |
+| **O**pen/Closed | New tool categories extend `BaseToolCategory` without modifying registry. New agents register in `agents/agents.py` dict. New routes add new router files without editing `app.py`. |
 
 ### General Python service patterns
 
@@ -133,12 +152,11 @@ Simpler layer stack. Services use raw SQLAlchemy or LangChain primitives directl
 ### Web frontend standards (from `STANDARDS.md` + codebase)
 
 - **Absolute imports**: Always `@/` prefix, never relative.
+- **Path aliases**: `@/*` → `src/`, `@tests/*` → `tests/`, `@opal/*` → `lib/opal/src/*`, `@opal/types/*` → `lib/opal/src/types/*`.
 - **Components**: Prefer `function Component()`, not arrow functions.
 - **Props**: Extract into named interface (`interface Props`).
-- **Spacing**: Prefer `padding` over `margin`.
 - **Dark mode**: NEVER use `dark:` Tailwind modifier (colors defined in `colors.css` handle it automatically). Exception: `createLogoIcon` helper in `icons/icons.tsx`.
 - **Class names**: Use `cn()` utility from `@/lib/utils`, not raw string interpolation.
-- **Hooks**: One hook per file in `src/hooks/`.
 - **Icons**: ONLY from `src/icons/` directory. Never from `react-icons`, `lucide`, etc.
 - **Text**: Use `<Text>` component from `@/refresh-components/texts/Text`, never raw `<p>`, `<h1>`, etc.
 - **Form inputs**: Use components from `@/refresh-components/` or `@opal/`. Never raw HTML `<input>`, `<textarea>`, `<button>`.
@@ -151,14 +169,16 @@ Simpler layer stack. Services use raw SQLAlchemy or LangChain primitives directl
 
 ```sh
 npm run dev            # next dev --webpack (note: explicit --webpack flag)
+npm run dev:profile    # dev with NEXT_PUBLIC_ENABLE_STATS=true
 npm run build
-npm run lint           # next lint
+npm run lint           # eslint src/
 npm run lint:unused    # eslint with unused-imports rule
 npm run types:check    # tsgo --noEmit --project tsconfig.types.json
-npm run format         # prettier --write
+npm run format         # prettier --write "src/**/*.{ts,tsx,js,jsx,json,css,md}"
 npm run format:check   # prettier --check
 npm test               # jest (two projects: unit + integration)
 npm run test:ci        # jest --ci --maxWorkers=2 --silent --bail
+npm run test:coverage  # jest --coverage
 npm run test:watch
 ```
 
@@ -200,4 +220,5 @@ Central `.env` is at `configs/.env` — references the real network addresses. P
 - The old `AGENTS.md` at `legacy/open-agent-platform/AGENTS.md` documents a completely different codebase (Turbo/Yarn/Next 15) — ignore it.
 - `providers/` is empty.
 - The web app's `lib/opal/` is excluded from the main `tsconfig.json` (`"exclude": ["lib/opal"]`). Type-check it separately if needed.
-- Dont push the commits to remote branch and dont create merge request.
+- No CI/CD workflows exist (`.github/` directory is absent).
+- **Do not push** to remote or dev branches. All work stays local until explicitly told otherwise.
