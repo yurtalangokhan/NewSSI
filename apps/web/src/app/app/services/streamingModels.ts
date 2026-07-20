@@ -31,6 +31,10 @@ export enum PacketType {
   CUSTOM_TOOL_START = "custom_tool_start",
   CUSTOM_TOOL_DELTA = "custom_tool_delta",
 
+  // Graph stage packets
+  GRAPH_STAGE_START = "graph_stage_start",
+  GRAPH_STAGE_END = "graph_stage_end",
+
   // File reader tool packets
   FILE_READER_START = "file_reader_start",
   FILE_READER_RESULT = "file_reader_result",
@@ -179,6 +183,18 @@ export interface CustomToolDelta extends BaseObj {
   response_type: string;
   data?: any;
   file_ids?: string[] | null;
+}
+
+export interface GraphStageStart extends BaseObj {
+  type: "graph_stage_start";
+  stage_name: string;
+  stage_index?: number;
+}
+
+export interface GraphStageEnd extends BaseObj {
+  type: "graph_stage_end";
+  stage_name: string;
+  stage_index?: number;
 }
 
 // File Reader Packets
@@ -347,6 +363,8 @@ export type NewToolObj =
   | MemoryToolObj
   | LongTermMemoryObj;
 
+export type GraphStageObj = GraphStageStart | GraphStageEnd;
+
 export type ReasoningObj =
   | ReasoningStart
   | ReasoningDelta
@@ -376,6 +394,7 @@ export type ResearchAgentObj =
 export type ObjTypes =
   | ChatObj
   | NewToolObj
+  | GraphStageObj
   | ReasoningObj
   | StopObj
   | SectionEndObj

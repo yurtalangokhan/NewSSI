@@ -1,4 +1,8 @@
-import { buildLlmOptions, groupLlmOptions } from "./LLMPopover";
+import {
+  buildLlmOptions,
+  groupLlmOptions,
+  isLlmOptionAvailableForSelection,
+} from "./LLMPopover";
 import { LLMOption } from "./interfaces";
 import { LLMProviderDescriptor } from "@/interfaces/llm";
 import { makeProvider } from "@tests/setup/llmProviderTestUtils";
@@ -7,6 +11,7 @@ describe("LLMPopover helpers", () => {
   test("deduplicates identical provider+model combinations across provider entries", () => {
     const providers: LLMProviderDescriptor[] = [
       makeProvider({
+        id: 1,
         name: "OpenAI A",
         provider: "openai",
         model_configurations: [
@@ -20,6 +25,7 @@ describe("LLMPopover helpers", () => {
         ],
       }),
       makeProvider({
+        id: 2,
         name: "OpenAI B",
         provider: "openai",
         model_configurations: [
@@ -33,6 +39,7 @@ describe("LLMPopover helpers", () => {
         ],
       }),
       makeProvider({
+        id: 3,
         name: "Anthropic A",
         provider: "anthropic",
         model_configurations: [
@@ -52,10 +59,11 @@ describe("LLMPopover helpers", () => {
       (o) => o.modelName === "shared-model"
     );
 
-    expect(sharedModelOptions).toHaveLength(2);
-    expect(sharedModelOptions.map((o) => o.provider).sort()).toEqual([
-      "anthropic",
-      "openai",
+    expect(sharedModelOptions).toHaveLength(3);
+    expect(sharedModelOptions.map((o) => o.name).sort()).toEqual([
+      "Anthropic A",
+      "OpenAI A",
+      "OpenAI B",
     ]);
   });
 
@@ -78,6 +86,8 @@ describe("LLMPopover helpers", () => {
 
     const options = buildLlmOptions(providers, "hidden-selected-model");
     expect(options.map((o) => o.modelName)).toContain("hidden-selected-model");
+    expect(options[0]?.isAvailable).toBe(false);
+    expect(isLlmOptionAvailableForSelection(options[0]!)).toBe(false);
   });
 
   test("groups aggregator options by provider/vendor and sorts by display name", () => {
@@ -93,6 +103,7 @@ describe("LLMPopover helpers", () => {
       {
         name: "OpenAI Provider",
         provider: "openai",
+        providerId: "openai-1",
         providerDisplayName: "ChatGPT (OpenAI)",
         modelName: "gpt-4o-mini",
         displayName: "GPT-4o Mini",
@@ -104,10 +115,10 @@ describe("LLMPopover helpers", () => {
 
     expect(grouped.map((group) => group.key)).toEqual([
       "bedrock/anthropic",
-      "openai",
+      "openai/openai-1",
     ]);
     expect(grouped[0]?.displayName).toBe("Amazon Bedrock/Anthropic");
-    expect(grouped[1]?.displayName).toBe("ChatGPT (OpenAI)");
+    expect(grouped[1]?.displayName).toBe("OpenAI Provider");
     expect(grouped[0]?.options).toHaveLength(1);
     expect(grouped[1]?.options).toHaveLength(1);
   });

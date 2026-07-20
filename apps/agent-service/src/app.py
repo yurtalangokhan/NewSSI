@@ -169,7 +169,7 @@ async def api_health_check():
 # Include routers (new modular routes)
 # =============================================================================
 
-from api.routes import (
+from api.routes import (  # noqa: E402,I001
     agent_definitions_router,
     agent_groups_router,
     agent_tools_router,

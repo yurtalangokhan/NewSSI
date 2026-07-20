@@ -65,6 +65,13 @@ class AgentDefinitionModel(Base):
     # Sub-agents for supervisor/pipeline schemas (JSON array of dicts)
     sub_agents: Mapped[list] = mapped_column(JSON, default=list)
 
+    # Sub-agent IDs for referencing existing agents (for composition)
+    # NEW: Allows agents to reference other agents instead of inlining configs
+    sub_agent_ids: Mapped[list] = mapped_column(JSON, default=list)
+    
+    # Version counter for cache validation
+    sub_agent_config_version: Mapped[int] = mapped_column(Integer, default=0)
+
     # Supervisor prompt for supervisor schema
     supervisor_prompt: Mapped[str] = mapped_column(Text, nullable=True)
 
@@ -112,10 +119,11 @@ class AgentDefinitionModel(Base):
             "mcp_tools": self.mcp_tools or [],
             "rag_config": self.rag_config or {},
             "sub_agents": self.sub_agents or [],
+            "sub_agent_ids": self.sub_agent_ids or [],
+            "sub_agent_config_version": self.sub_agent_config_version or 0,
             "supervisor_prompt": self.supervisor_prompt,
             "stages": self.stages or [],
             "pipeline_prompt": self.pipeline_prompt,
             "reflection_prompt": self.reflection_prompt,
             "max_iterations": self.max_iterations or 3,
         }
-

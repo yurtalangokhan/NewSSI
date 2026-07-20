@@ -187,7 +187,7 @@ class ProviderService:
         from core.providers.registry import provider_registry
         provider_registry.initialize()
 
-        builtin = []
+        builtin: list[dict[str, Any]] = []
         for name, prov in provider_registry.get_all_providers().items():
             builtin.append({
                 "id": name,
@@ -297,7 +297,7 @@ class ProviderService:
             )
 
         # API-key providers use the well-known provider catalog as the source of
-        # truth (enterprise-safe, deterministic model options).
+        # fallback, but prefer live model discovery from the connected account.
         for provider in all_providers.get("user_providers", []):
             user_config = provider.get("user_config") or {}
             if not isinstance(user_config, dict):
@@ -310,9 +310,32 @@ class ProviderService:
             default_model = user_config.get("default_model")
             provider_type = provider.get("provider_type")
             known = _WELL_KNOWN_BY_TYPE.get(provider_type, {})
+            try:
+                api_key = await self._get_provider_api_key(provider, user_id)
+                live_models = await self._fetch_api_key_provider_models(
+                    provider_type=provider_type,
+                    api_key=api_key,
+                    api_base=user_config.get("api_base"),
+                    api_version=user_config.get("api_version"),
+                )
+            except Exception as exc:
+                logger.warning(
+                    "Failed to fetch API-key models for provider %s (%s): %s",
+                    provider.get("id"),
+                    provider_type,
+                    exc,
+                )
+                live_models = []
+
             model_configurations = [
-                dict(model) for model in known.get("known_models", [])
+                self._model_payload_to_configuration(model)
+                for model in live_models
+                if model.get("name")
             ]
+            if not model_configurations:
+                model_configurations = [
+                    dict(model) for model in known.get("known_models", [])
+                ]
 
             # Keep user default model selectable even if it is custom and not in catalog.
             if default_model and not any(m.get("name") == default_model for m in model_configurations):
@@ -431,6 +454,20 @@ class ProviderService:
         if provider_type in ("vllm", "openai_compatible", "litellm"):
             return await self._fetch_vllm_models(base_url, api_key=api_key)
         return []
+
+    @staticmethod
+    def _model_payload_to_configuration(model: dict[str, Any]) -> dict[str, Any]:
+        name = model.get("name")
+        display_name = model.get("display_name") or name
+        return {
+            "name": name,
+            "display_name": display_name,
+            "is_visible": model.get("is_visible", True),
+            "max_input_tokens": model.get("max_input_tokens"),
+            "supports_image_input": model.get("supports_image_input", False),
+            "supports_reasoning": model.get("supports_reasoning", False),
+            "is_remote": model.get("is_remote", False),
+        }
 
     async def test_connection(
         self,
@@ -818,4 +855,170 @@ class ProviderService:
                 ]
         except Exception as e:
             logger.warning("Failed to fetch vLLM models from %s: %s", origin, e)
+            return []
+
+    @staticmethod
+    def _default_api_base_for_provider(provider_type: str | None) -> str | None:
+        default_base_urls = {
+            "openai": "https://api.openai.com",
+            "openrouter": "https://openrouter.ai/api",
+            "deepseek": "https://api.deepseek.com",
+            "groq": "https://api.groq.com/openai",
+            "mistral": "https://api.mistral.ai",
+            "cohere": "https://api.cohere.com",
+            "xai": "https://api.x.ai",
+            "perplexity": "https://api.perplexity.ai",
+            "together": "https://api.together.xyz",
+            "fireworks": "https://api.fireworks.ai/inference",
+            "cerebras": "https://api.cerebras.ai",
+            "huggingface": "https://router.huggingface.co",
+            "nvidia": "https://integrate.api.nvidia.com",
+            "sambanova": "https://api.sambanova.ai",
+        }
+        return default_base_urls.get(provider_type or "")
+
+    @staticmethod
+    async def _fetch_api_key_provider_models(
+        *,
+        provider_type: str | None,
+        api_key: str | None,
+        api_base: str | None = None,
+        api_version: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Fetch models visible to an API-key based provider account."""
+        if not api_key:
+            return []
+
+        if provider_type == "anthropic":
+            return await ProviderService._fetch_anthropic_models(api_key)
+        if provider_type in {"google_genai", "google_vertexai"}:
+            return await ProviderService._fetch_google_models(api_key, api_version=api_version)
+
+        base_url = api_base or ProviderService._default_api_base_for_provider(provider_type)
+        if not base_url:
+            return []
+        return await ProviderService._fetch_openai_compatible_api_models(
+            base_url,
+            api_key=api_key,
+            provider_type=provider_type or "openai_compatible",
+        )
+
+    @staticmethod
+    async def _fetch_openai_compatible_api_models(
+        base_url: str,
+        *,
+        api_key: str,
+        provider_type: str,
+    ) -> list[dict[str, Any]]:
+        import httpx
+
+        resolved_base_url = base_url.rstrip("/")
+        if resolved_base_url.endswith("/v1"):
+            resolved_base_url = resolved_base_url.removesuffix("/v1")
+        try:
+            async with httpx.AsyncClient(timeout=8.0) as client:
+                resp = await client.get(
+                    f"{resolved_base_url}/v1/models",
+                    headers={"Authorization": f"Bearer {api_key}"},
+                )
+                if not resp.is_success:
+                    return []
+                models = resp.json().get("data", [])
+                if not isinstance(models, list):
+                    return []
+                return [
+                    {
+                        "name": model.get("id") or model.get("name"),
+                        "display_name": model.get("display_name") or model.get("id") or model.get("name"),
+                        "provider_type": provider_type,
+                        "max_input_tokens": model.get("max_model_len")
+                        or model.get("context_length")
+                        or model.get("max_input_tokens"),
+                        "supports_image_input": ProviderService._infer_vllm_image_support(model),
+                        "supports_reasoning": ProviderService._infer_vllm_reasoning_support(model),
+                        "is_remote": True,
+                    }
+                    for model in models
+                    if isinstance(model, dict) and (model.get("id") or model.get("name"))
+                ]
+        except Exception as e:
+            logger.warning("Failed to fetch API models from %s: %s", resolved_base_url, e)
+            return []
+
+    @staticmethod
+    async def _fetch_anthropic_models(api_key: str) -> list[dict[str, Any]]:
+        import httpx
+
+        try:
+            async with httpx.AsyncClient(timeout=8.0) as client:
+                resp = await client.get(
+                    "https://api.anthropic.com/v1/models",
+                    headers={"x-api-key": api_key, "anthropic-version": "2023-06-01"},
+                )
+                if not resp.is_success:
+                    return []
+                models = resp.json().get("data", [])
+                if not isinstance(models, list):
+                    return []
+                return [
+                    {
+                        "name": model.get("id"),
+                        "display_name": model.get("display_name") or model.get("id"),
+                        "provider_type": "anthropic",
+                        "supports_image_input": True,
+                        "supports_reasoning": False,
+                        "is_remote": True,
+                    }
+                    for model in models
+                    if isinstance(model, dict) and model.get("id")
+                ]
+        except Exception as e:
+            logger.warning("Failed to fetch Anthropic models: %s", e)
+            return []
+
+    @staticmethod
+    async def _fetch_google_models(
+        api_key: str,
+        *,
+        api_version: str | None = None,
+    ) -> list[dict[str, Any]]:
+        import httpx
+
+        version = api_version or "v1beta"
+        try:
+            async with httpx.AsyncClient(timeout=8.0) as client:
+                resp = await client.get(
+                    f"https://generativelanguage.googleapis.com/{version}/models",
+                    params={"key": api_key},
+                )
+                if not resp.is_success:
+                    return []
+                models = resp.json().get("models", [])
+                if not isinstance(models, list):
+                    return []
+                results: list[dict[str, Any]] = []
+                for model in models:
+                    if not isinstance(model, dict):
+                        continue
+                    raw_name = model.get("name")
+                    if not isinstance(raw_name, str):
+                        continue
+                    name = raw_name.removeprefix("models/")
+                    methods = model.get("supportedGenerationMethods") or []
+                    if isinstance(methods, list) and "generateContent" not in methods:
+                        continue
+                    results.append(
+                        {
+                            "name": name,
+                            "display_name": model.get("displayName") or name,
+                            "provider_type": "google_genai",
+                            "max_input_tokens": model.get("inputTokenLimit"),
+                            "supports_image_input": True,
+                            "supports_reasoning": "thinking" in name.lower(),
+                            "is_remote": True,
+                        }
+                    )
+                return results
+        except Exception as e:
+            logger.warning("Failed to fetch Google models: %s", e)
             return []

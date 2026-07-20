@@ -39,6 +39,7 @@ export interface AgentKnowledgePaneProps {
   onDocumentCollectionIdsChange: (ids: string[]) => void;
   ragGraphCollectionIds: string[];
   onGraphCollectionIdsChange: (ids: string[]) => void;
+  onCollectionDisplayNamesChange?: (displayNames: Record<string, string>) => void;
 }
 
 // ============================================================================
@@ -550,10 +551,26 @@ export default function AgentKnowledgePane({
   onDocumentCollectionIdsChange,
   ragGraphCollectionIds,
   onGraphCollectionIdsChange,
+  onCollectionDisplayNamesChange,
 }: AgentKnowledgePaneProps) {
   const { t } = useTranslation();
   const [view, setView] = useState<KnowledgeView>("main");
   const { collections, isLoading } = useKnowledgeCollections(enableKnowledge);
+
+  useEffect(() => {
+    if (!collections || !onCollectionDisplayNamesChange) {
+      return;
+    }
+
+    const displayNames: Record<string, string> = {};
+    [
+      ...collections.document_processing,
+      ...collections.knowledge_graph,
+    ].forEach((collection) => {
+      displayNames[collection.id] = collection.name;
+    });
+    onCollectionDisplayNamesChange(displayNames);
+  }, [collections, onCollectionDisplayNamesChange]);
 
   // Reset view when knowledge is disabled
   useEffect(() => {

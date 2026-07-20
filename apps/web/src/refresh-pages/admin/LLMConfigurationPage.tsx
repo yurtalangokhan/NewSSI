@@ -61,6 +61,7 @@ import { EditProviderModal } from "@/sections/modals/llmConfig/EditProviderModal
 import { Section } from "@/layouts/general-layouts";
 import { useTranslation } from "react-i18next";
 import { useUser } from "@/providers/UserProvider";
+import AdminOverviewPanel from "@/components/admin/AdminOverviewPanel";
 
 const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.LLM_MODELS]!;
 
@@ -540,6 +541,45 @@ export default function LLMConfigurationPage() {
       />
 
       <SettingsLayouts.Body>
+        <AdminOverviewPanel
+          icon={route.icon}
+          title={t("admin.llm.workspaceTitle", {
+            defaultValue: "Model provider workspace",
+          })}
+          description={t("admin.llm.workspaceDescription", {
+            defaultValue:
+              "Manage built-in, local, and cloud model providers, then choose the default model users start from.",
+          })}
+          metrics={[
+            {
+              label: t("admin.llm.builtInProvidersTitle"),
+              value: String(builtinProviders.length),
+            },
+            {
+              label: t("admin.llm.localProvidersTitle"),
+              value: String(urlProviders.length),
+              tone: urlProviders.length > 0 ? "success" : "neutral",
+            },
+            {
+              label: t("admin.llm.cloudProvidersTitle"),
+              value: String(apiKeyProviders.length),
+              tone: apiKeyProviders.length > 0 ? "success" : "neutral",
+            },
+          ]}
+          actions={[
+            {
+              label: t("admin.navigation.routes.chatPreferences.sidebar", {
+                defaultValue: "Chat Preferences",
+              }),
+              href: ADMIN_PATHS.CHAT_PREFERENCES,
+            },
+            {
+              label: t("admin.navigation.routes.imageGeneration.sidebar"),
+              href: ADMIN_PATHS.IMAGE_GENERATION,
+              primary: true,
+            },
+          ]}
+        />
         {allDbProviderGroups.length > 0 ? (
           <Card>
             <HorizontalInput

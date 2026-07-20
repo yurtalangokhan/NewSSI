@@ -48,13 +48,13 @@ function MessageEditing({
     <div className="w-full">
       <div
         className={cn(
-          "w-full h-full border rounded-16 overflow-hidden p-3 flex flex-col gap-2"
+          "w-full h-full border border-border-01 rounded-16 overflow-hidden bg-background-neutral-00 p-3 flex flex-col gap-2 shadow-01"
         )}
       >
         <textarea
           ref={textareaRef}
           className={cn(
-            "w-full h-full resize-none outline-none bg-transparent overflow-y-scroll whitespace-normal break-word"
+            "w-full min-h-[8rem] resize-none outline-none bg-transparent overflow-y-auto whitespace-normal break-word text-text-01"
           )}
           aria-multiline
           role="textarea"
@@ -196,10 +196,10 @@ const HumanMessage = React.memo(function HumanMessage({
           />
         ) : typeof content === "string" ? (
           <>
-            <div className="md:max-w-[37.5rem] flex basis-[100%] md:basis-auto justify-end md:order-1">
+            <div className="flex basis-[100%] justify-end md:order-1 md:basis-auto md:max-w-[37.5rem]">
               <div
                 className={
-                  "max-w-[30rem] md:max-w-[37.5rem] whitespace-break-spaces break-anywhere rounded-t-16 rounded-bl-16 bg-background-tint-02 py-2 px-3"
+                  "max-w-[min(34rem,calc(100vw-3rem))] md:max-w-[37.5rem] whitespace-break-spaces break-anywhere rounded-t-16 rounded-bl-16 border border-border-01 bg-background-neutral-00 px-3.5 py-2.5 shadow-01"
                 }
                 onCopy={(e) => {
                   const selection = window.getSelection();
@@ -224,7 +224,7 @@ const HumanMessage = React.memo(function HumanMessage({
               </div>
             </div>
             {onEdit && !isEditing && (
-              <div className="absolute md:relative right-0 z-content flex flex-row p-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="absolute right-0 z-content flex flex-row rounded-08 bg-background-neutral-00 p-1 opacity-0 shadow-01 transition-opacity group-hover:opacity-100 md:relative md:bg-transparent md:shadow-none">
                 <CopyIconButton
                   getCopyText={() => content}
                   prominence="tertiary"

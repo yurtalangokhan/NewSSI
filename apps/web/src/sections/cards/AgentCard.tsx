@@ -4,6 +4,7 @@ import { useMemo, useCallback, useState } from "react";
 import { MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
 import type { FullPersona } from "@/app/admin/agents/interfaces";
 import AgentAvatar from "@/refresh-components/avatars/AgentAvatar";
+import AgentAvailabilityBadge from "@/refresh-components/agents/AgentAvailabilityBadge";
 import Button from "@/refresh-components/buttons/Button";
 import { useAppRouter } from "@/hooks/appNavigation";
 import IconButton from "@/refresh-components/buttons/IconButton";
@@ -292,6 +293,7 @@ export default function AgentCard({ agent }: AgentCardProps) {
           <div className="bg-background-tint-01 p-1 flex flex-row items-end justify-between w-full">
             {/* Left side - creator and actions */}
             <div className="flex flex-col gap-1 py-1 px-2">
+              <AgentAvailabilityBadge agent={agent} showLabel className="w-fit" />
               <Content
                 icon={SvgUser}
                 title={ownerEmail}

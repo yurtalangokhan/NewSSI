@@ -60,7 +60,7 @@ class AgentClient:
     def retrieve_info(self) -> None:
         try:
             response = httpx.get(
-                f"{self.base_url}/info",
+                f"{self.base_url}/agents/info",
                 headers=self._headers,
                 timeout=self.timeout,
             )
@@ -118,7 +118,7 @@ class AgentClient:
         async with httpx.AsyncClient() as client:
             try:
                 response = await client.post(
-                    f"{self.base_url}/{self.agent}/invoke",
+                    f"{self.base_url}/agents/{self.agent}/invoke",
                     json=request.model_dump(),
                     headers=self._headers,
                     timeout=self.timeout,
@@ -163,7 +163,7 @@ class AgentClient:
             request.user_id = user_id
         try:
             response = httpx.post(
-                f"{self.base_url}/{self.agent}/invoke",
+                f"{self.base_url}/agents/{self.agent}/invoke",
                 json=request.model_dump(),
                 headers=self._headers,
                 timeout=self.timeout,
@@ -241,7 +241,7 @@ class AgentClient:
         try:
             with httpx.stream(
                 "POST",
-                f"{self.base_url}/{self.agent}/stream",
+                f"{self.base_url}/agents/{self.agent}/stream",
                 json=request.model_dump(),
                 headers=self._headers,
                 timeout=self.timeout,
@@ -299,7 +299,7 @@ class AgentClient:
             try:
                 async with client.stream(
                     "POST",
-                    f"{self.base_url}/{self.agent}/stream",
+                    f"{self.base_url}/agents/{self.agent}/stream",
                     json=request.model_dump(),
                     headers=self._headers,
                     timeout=self.timeout,
@@ -330,7 +330,7 @@ class AgentClient:
         async with httpx.AsyncClient() as client:
             try:
                 response = await client.post(
-                    f"{self.base_url}/feedback",
+                    f"{self.base_url}/agents/feedback",
                     json=request.model_dump(),
                     headers=self._headers,
                     timeout=self.timeout,
@@ -350,7 +350,7 @@ class AgentClient:
         request = ChatHistoryInput(thread_id=thread_id)
         try:
             response = httpx.post(
-                f"{self.base_url}/history",
+                f"{self.base_url}/agents/history",
                 json=request.model_dump(),
                 headers=self._headers,
                 timeout=self.timeout,

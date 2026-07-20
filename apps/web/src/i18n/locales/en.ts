@@ -1103,6 +1103,96 @@ const en = {
     graphSchemaLabel: "Graph Schema",
     graphSchemaDescription: "Select the dynamic graph execution pattern.",
     selectGraphSchemaPlaceholder: "Select graph schema",
+    graphPreviewTitle: "{{schema}} graph",
+    graphPreviewHeroEyebrow: "Agent architecture preview",
+    graphPreviewButtonTitle: "Preview the agent graph",
+    graphPreviewButtonDescription:
+      "Open the final graph card after choosing the schema, tools, memory, and flow.",
+    graphPreviewShowButton: "Preview graph",
+    graphPreviewHideButton: "Hide preview",
+    graphPreviewModalTitle: "Agent graph preview",
+    graphPreviewModalDescription:
+      "Review the final agent architecture before creating it.",
+    graphPreviewCloseButton: "Close preview",
+    graphPreviewExecutionPath: "Execution path",
+    graphPreviewLoop: "loop",
+    graphPreviewTools: "Tools",
+    graphPreviewMemory: "Memory",
+    graphPreviewSubAgents: "Sub-agents",
+    graphPreviewStages: "Stages",
+    graphPreviewConfiguredTeam: "Configured team",
+    graphPreviewNoSubAgents:
+      "No sub-agents are configured yet. Add them from sub-agent management.",
+    graphPreviewInstructionPreview: "Instruction",
+    graphPreviewSubAgentCount: "{{count}} configured",
+    graphPreviewMultiStep: "Multi-step",
+    graphPreviewTooling: "Tooling",
+    graphPreviewEnabled: "Enabled",
+    graphPreviewAvailable: "Available",
+    graphPreviewNotUsed: "Not used",
+    graphPreviewUnnamedAgent: "Untitled agent",
+    graphPreviewDefaultBrain: "Default brain",
+    graphPreviewKnowledge: "Knowledge",
+    graphPreviewToolCount: "{{count}} selected",
+    graphPreviewLongTermMemory: "Long-term",
+    graphPreviewSchemaManaged: "By schema",
+    graphPreviewToolsInfoTitle: "Tool access",
+    graphPreviewToolsInfoEmpty:
+      "No tools are selected yet. This agent will rely on the graph and model response only.",
+    graphPreviewToolsInfoWithTools:
+      "{{tools}}{{count, plural, =0 {} other { + {{count}} more}}} will be available when this graph reaches a tool-capable step.",
+    graphPreviewMemoryInfoTitle: "Memory behavior",
+    graphPreviewMemoryInfoEnabled:
+      "Memory can influence the answer when the selected graph reaches a context step.",
+    graphPreviewMemoryInfoDisabled:
+      "Memory is not selected. The agent will answer from the current request and configured knowledge.",
+    graphPreviewFlowInfoTitle: "Flow behavior",
+    graphPreviewFlowInfoDirect:
+      "This schema answers directly after one model pass.",
+    graphPreviewFlowInfoMultiStep:
+      "This schema decomposes the work into multiple passes before answering.",
+    graphPreviewFlowInfoSubAgents:
+      "This schema can route work through specialist agents before the final answer.",
+    validatingComposition: "Validating composition...",
+    compositionValid: "Composition is valid",
+    compositionDepth: "Composition depth {{depth}}",
+    compositionInvalid: "Composition needs attention",
+    warningsFound: "Warnings found",
+    hierarchyDepth: "Hierarchy depth {{depth}}",
+    graphPreviewNodes: {
+      input: "User input",
+      prompt: "Prompt model",
+      reason: "Reason",
+      act: "Use tool",
+      observe: "Observe",
+      supervisor: "Supervisor",
+      subAgents: "Specialists",
+      review: "Review",
+      stageOne: "Stage 1",
+      stageTwo: "Stage 2",
+      stageThree: "Stage 3",
+      plan: "Plan",
+      execute: "Execute",
+      synthesize: "Synthesize",
+      draft: "Draft",
+      critique: "Critique",
+      revise: "Revise",
+      answer: "Answer",
+    },
+    graphPreviewDetails: {
+      zeroShot:
+        "A single model pass. Best for direct answers where tools and retries are not needed.",
+      react:
+        "The agent reasons, calls tools when useful, observes the result, then continues.",
+      supervisor:
+        "A supervisor routes work to specialist agents and reviews the combined result.",
+      pipeline:
+        "A fixed sequence of stages transforms the request into a final response.",
+      planExecute:
+        "The agent writes a plan first, executes the steps, then synthesizes the result.",
+      selfReflect:
+        "The agent drafts an answer, critiques it, and revises before responding.",
+    },
     brainTypeLabel: "Brain Type",
     selectBrainTypePlaceholder: "Select brain type",
     memoryTypeLabel: "Memory Type",
@@ -1202,6 +1292,39 @@ const en = {
       subAgentsField: "Sub agents",
       stagesField: "Stages",
     },
+    subAgentPanelTitle: "Sub-agent management",
+    selectSubAgents: "Select Sub-Agents",
+    selectSubAgentsDescription: "Choose existing agents, assign each one a role, and write the instruction it should follow in this graph.",
+    addSubAgent: "Add sub-agent...",
+    manageSubAgents: "Manage sub-agents",
+    subAgentModalTitle: "Manage sub-agents",
+    subAgentModalDescription:
+      "Choose the agents in this graph, then define their role and operating instruction.",
+    availableAgentsPanel: "Available agents",
+    chooseSubAgent: "Choose an agent",
+    availableSubAgents: "{{count}} available",
+    noAvailableAgents: "No agents available for this schema type",
+    noSelectedSubAgents: "No sub-agents selected yet.",
+    noSelectedSubAgentsShort: "None selected",
+    noSelectedSubAgentsHint:
+      "Pick an agent from the left side to start building this graph.",
+    applySubAgentChanges: "Save sub-agent setup",
+    errorLoadingAvailableAgents: "Error loading available agents",
+    selectedSubAgents: "Selected Sub-Agents",
+    agentsSelected: "{{count}} selected",
+    supervisorRoles: "Supervisor roles",
+    pipelineOrder: "Pipeline order",
+    subAgentRoleLabel: "Role",
+    subAgentRolePlaceholder: "researcher, reviewer, writer...",
+    pipelineStagePlaceholder: "intake, enrich, verify...",
+    subAgentInstructionLabel: "Instruction",
+    subAgentInstructionPlaceholder: "Describe exactly what this sub-agent owns in the graph.",
+    subAgentRoleRequired: "Every sub-agent needs a role.",
+    subAgentInstructionRequired: "Every sub-agent needs an instruction.",
+    removeSubAgent: "Remove sub-agent",
+    moveSubAgentUp: "Move up",
+    moveSubAgentDown: "Move down",
+    depthLabel: "Depth {{depth}}",
   },
   newTenantModal: {
     inviteTitle:
@@ -1312,6 +1435,17 @@ const en = {
   },
   admin: {
     agents: {
+      workspaceTitle: "Agent workspace",
+      workspaceDescription:
+        "Manage the assistant catalog, access groups, and the tools that shape chat behavior.",
+      catalogMetricLabel: "Catalog",
+      totalAgentsLabel: "Total agents",
+      visibleAgentsLabel: "Visible agents",
+      publicAgentsLabel: "Public agents",
+      toolEnabledAgentsLabel: "Tool-enabled",
+      activeViewLabel: "Active view",
+      accessGroupsTitle: "Access groups",
+      accessModelLabel: "Access model",
       catalogTitle: "Agent Catalog",
       createButton: "Create Agent",
       catalogDescription:
@@ -1355,6 +1489,14 @@ const en = {
       visible: "Visible",
     },
     search: {
+      workspaceTitle: "Search quality workspace",
+      workspaceDescription:
+        "Review embedding configuration, reindexing needs, and the retrieval settings that shape answer quality.",
+      embeddingLabel: "Embedding model",
+      configurable: "Configurable",
+      indexHealthLabel: "Index health",
+      reviewBelow: "Review below",
+      relatedContentLabel: "Related content",
       changedSuccessfully: "Search settings changed successfully",
       fetchEmbeddingModelError: "Failed to fetch embedding model",
       reindexWarning:
@@ -1369,6 +1511,9 @@ const en = {
       updateButton: "Update Search Settings",
     },
     llm: {
+      workspaceTitle: "Model provider workspace",
+      workspaceDescription:
+        "Manage built-in, local, and cloud model providers, then choose the default model users start from.",
       defaultModelLabel: "Default Model",
       defaultModelDescription:
         "This model will be used by Onyx by default in your chats.",
@@ -1658,6 +1803,23 @@ const en = {
       },
     },
     users: {
+      workspaceTitle: "User management workspace",
+      workspaceDescription:
+        "Find users, export account data, invite teammates, and move into roles when access needs to change.",
+      primaryTableLabel: "Primary table",
+      accessModelLabel: "Access model",
+      exportLabel: "Export",
+      matchingUsersLabel: "Matching users",
+      pendingRequestsLabel: "Pending requests",
+      rolesAvailableLabel: "Roles available",
+      notAvailable: "Not available",
+      addUserWorkspaceTitle: "Create user",
+      addUserWorkspaceDescription:
+        "Add a user account, assign the initial access profile, and return to the user table when finished.",
+      identityLabel: "Identity",
+      required: "Required",
+      initialRoleLabel: "Initial role",
+      availableRolesLabel: "Available roles",
       searchPlaceholder: "Search",
       inviteUsersButton: "Invite Users",
       bulkAddTitle: "Bulk Add Users",
@@ -1796,6 +1958,17 @@ const en = {
         updateFailed: "Failed to update user",
       },
     },
+    roles: {
+      workspaceTitle: "Access policy workspace",
+      workspaceDescription:
+        "Review service roles, compose higher-level access profiles, and sync changes to identity infrastructure.",
+      roleLayerLabel: "Role layer",
+      roles: "Roles",
+      compositeLayerLabel: "Composite layer",
+      compositeRoles: "Composite Roles",
+      permissionSourceLabel: "Permission source",
+      services: "Services",
+    },
     connectorForm: {
       documentAccess: {
         label: "Document Access",
@@ -1824,6 +1997,19 @@ const en = {
       },
     },
     apiKey: {
+      workspaceTitle: "API access workspace",
+      workspaceDescription:
+        "Create, rotate, and review API keys used by service clients and integrations.",
+      securityLabel: "Security",
+      rotateKeys: "Rotate keys",
+      scopeLabel: "Scope",
+      subscriptionLabel: "Creation",
+      subscriptionControlled: "Plan controlled",
+      activeKeysLabel: "Active keys",
+      rolesInUseLabel: "Roles in use",
+      keyCreationLabel: "Key creation",
+      available: "Available",
+      requiresPlan: "Requires plan",
       description: "API Keys allow you to access Onyx APIs programmatically.",
       descriptionWithButton:
         "Click the button below to generate a new API Key.",
@@ -1861,6 +2047,16 @@ const en = {
       errorCreating: "Error creating API key - {{errorMsg}}",
     },
     tokenRateLimits: {
+      workspaceTitle: "Token governance workspace",
+      workspaceDescription:
+        "Control global, user, and group token budgets before high-volume usage affects the platform.",
+      globalScopeLabel: "Global",
+      userScopeLabel: "Users",
+      groupScopeLabel: "Groups",
+      scope: "Scope",
+      globalLimitsLabel: "Global limits",
+      userLimitsLabel: "User limits",
+      groupLimitsLabel: "Group limits",
       description:
         "Token rate limits enable you control how many tokens can be spent in a given time period. With token rate limits, you can:",
       globalRateLimit:
@@ -1912,6 +2108,13 @@ const en = {
       fetchUserGroupsError: "Failed to fetch user groups: {{error}}",
     },
     indexingStatus: {
+      workspaceTitle: "Connector control room",
+      workspaceDescription:
+        "Monitor connected sources, expand by connector type, and jump straight into adding the next data source.",
+      connectedSourcesLabel: "Connected sources",
+      connectorTypesLabel: "Connector types",
+      viewModeLabel: "View mode",
+      groupedByType: "Grouped by type",
       connectorCreated: "Connector created successfully",
       connectorDeleted: "Connector deleted successfully",
       datasourceDeleted: "Data source deleted",
@@ -2069,6 +2272,15 @@ const en = {
       },
     },
     airbyteConnector: {
+      catalogTitle: "Connector catalog",
+      catalogDescription:
+        "Search the available connectors, press Enter to open the first match, or browse by category.",
+      categoriesLabel: "Categories",
+      searchStateLabel: "Search state",
+      filtered: "Filtered",
+      browseAll: "Browse all",
+      keyboardLabel: "Keyboard",
+      enterToOpen: "Enter opens first",
       addConnector: "Add Connector",
       steps: {
         configure: "Configure",
@@ -2101,12 +2313,25 @@ const en = {
       optionLabel: "Option {{index}}",
     },
     documentProcessing: {
+      pipelineTitle: "Document pipeline",
+      pipelineDescription:
+        "Organize collections, review source documents, and keep graph-building work visible before it affects search quality.",
+      selectedCollectionLabel: "Selected collection",
+      selectRequired: "Choose below",
+      contentScopeLabel: "Content scope",
+      collectionsAndDocs: "Collections + documents",
+      downstreamLabel: "Downstream",
+      collectionsMetricLabel: "Collections",
+      dataSourcesMetricLabel: "Data sources",
+      graphReadyMetricLabel: "Graphs ready",
+      buildProgressMetricLabel: "Build progress",
+      noActiveBuild: "No active build",
       langConnectRag: "LangConnect RAG",
       langConnectRagDescription:
-        "Manage vector collections, upload documents for indexing, and run semantic search powered by LangConnect with PGVector.",
+        "Manage Milvus-backed vector collections, upload documents for indexing, and run semantic search powered by LangConnect.",
       ragCollections: "RAG Collections",
       ragCollectionsDescription:
-        "Collections store your documents as vector embeddings in PGVector. Select an existing collection or create a new one to manage documents and run semantic search.",
+        "Collections store your document chunks and vector embeddings in Milvus. Select an existing collection or create a new one to manage documents and run semantic search.",
       selectOrCreateCollection:
         "Select or create a collection above to manage documents and search.",
       selectCollection: "Select Collection",
@@ -2263,6 +2488,19 @@ const en = {
       testTool: "Test Tool",
     },
     kg: {
+      pageDescription:
+        "Build, inspect, and search entity graphs across your indexed knowledge sources.",
+      workspaceTitle: "Graph workspace",
+      workspaceDescription:
+        "Choose a collection, build the graph, then move between visual exploration and semantic search without losing context.",
+      primaryFlowLabel: "Primary flow",
+      primaryFlowValue: "Build -> Explore -> Search",
+      activeAreaLabel: "Current area",
+      dataDependencyLabel: "Needs",
+      knowledgeSourcesMetricLabel: "Knowledge sources",
+      graphReadyMetricLabel: "Graphs ready",
+      needsGraphMetricLabel: "Need graph",
+      dataSourcesMetricLabel: "Data sources",
       description:
         "Build a knowledge graph from your RAG collections. Extract entities and relationships from documents, explore the graph visually, and run graph-assisted semantic searches.",
       collection: "Collection",
@@ -2398,6 +2636,14 @@ const en = {
       },
     },
     imageGeneration: {
+      workspaceTitle: "Image generation workspace",
+      workspaceDescription:
+        "Connect image providers, review model availability, and keep visual generation ready for agent workflows.",
+      providerLayerLabel: "Provider layer",
+      agentCapabilityLabel: "Agent capability",
+      relatedConfigLabel: "Related config",
+      providersMetric: "Providers",
+      images: "Images",
       description: "Settings for in-chat image generation.",
       modelTitle: "Image Generation Model",
       modelDescription: "Select a model to generate images in chat.",
@@ -2475,6 +2721,12 @@ const en = {
       },
     },
     codeInterpreter: {
+      workspaceTitle: "Code execution workspace",
+      workspaceDescription:
+        "Monitor interpreter health and control whether agents can execute code-backed analysis.",
+      connectionLabel: "Connection",
+      availabilityLabel: "Availability",
+      agentUseLabel: "Agent use",
       title: "Code Interpreter",
       description: "Built-in Python runtime",
       pageDescription:
@@ -2492,6 +2744,15 @@ const en = {
         "All running sessions connected to <bold>Code Interpreter</bold> will stop working. Note that this will not remove any data from your runtime. You can reconnect to this runtime later if needed.",
     },
     webSearch: {
+      workspaceTitle: "Web retrieval workspace",
+      workspaceDescription:
+        "Configure how agents find web results, fetch page content, and test crawler quality before users rely on it.",
+      searchProviderLabel: "Search provider",
+      contentProviderLabel: "Content provider",
+      active: "Active",
+      notConfigured: "Not configured",
+      validationLabel: "Validation",
+      crawlerTestValue: "Crawler test",
       pageDescription:
         "Search settings for external search across the internet.",
       failedToLoad: "Failed to load web search settings",
@@ -2589,6 +2850,14 @@ const en = {
       noConnectors: "No connectors available.",
     },
     debug: {
+      workspaceTitle: "Diagnostics workspace",
+      workspaceDescription:
+        "Review log categories and download diagnostics when platform behavior needs investigation.",
+      logCategoriesLabel: "Log categories",
+      availableBelow: "Available below",
+      exportLabel: "Export",
+      sensitiveLabel: "Sensitive",
+      adminOnly: "Admin only",
       logsTitle: "Debug Logs",
       description:
         "provide detailed information about system operations and events. You can download logs for each category to analyze system behavior or troubleshoot issues.",
@@ -2620,6 +2889,14 @@ const en = {
       updateSettings: "Update Settings",
     },
     billing: {
+      workspaceTitle: "Billing workspace",
+      workspaceDescription:
+        "Review plan status, license activation, and billing details without leaving the admin console.",
+      currentViewLabel: "Current view",
+      subscriptionLabel: "Subscription",
+      active: "Active",
+      review: "Review",
+      supportLabel: "Support",
       plansAndBillingTitle: "Plans & Billing",
       upgradePlanTitle: "Upgrade Plan",
       viewPlansTitle: "View Plans",
@@ -2755,7 +3032,26 @@ const en = {
       backendVersion: "Backend Version",
       webVersion: "Web Version",
     },
+    systemSettings: {
+      workspaceTitle: "Identity and system controls",
+      workspaceDescription:
+        "Review Keycloak connectivity, external identity provider sync, and session policy from one operational surface.",
+      keycloakLabel: "Keycloak",
+      externalIdpLabel: "External IdP",
+      realmSessionLabel: "Realm session",
+      enabled: "Enabled",
+      disabled: "Disabled",
+      reachable: "Reachable",
+      needsReview: "Needs review",
+    },
     documentSets: {
+      workspaceTitle: "Document set workspace",
+      workspaceDescription:
+        "Group documents into reusable collections for agents, retrieval workflows, and governed access.",
+      structureLabel: "Structure",
+      sets: "Sets",
+      sourceLabel: "Source",
+      downstreamLabel: "Downstream",
       title: "Document Sets",
       description:
         "allow you to group logically connected documents into a single bundle. These can then be used as a filter when performing searches to control the scope of information Onyx searches over.",
@@ -2806,6 +3102,12 @@ const en = {
       newButton: "New Document Set",
     },
     documentsFeedback: {
+      workspaceTitle: "Document feedback workspace",
+      workspaceDescription:
+        "Review highly liked and disliked documents so retrieval quality improvements have a clear starting point.",
+      positiveSignalLabel: "Positive signal",
+      negativeSignalLabel: "Negative signal",
+      nextStepLabel: "Next step",
       loading: "Loading",
       errorLoadingDocuments: "Error loading documents",
       mostLikedTitle: "Most Liked Documents",
@@ -2820,6 +3122,13 @@ const en = {
       errorUpdatingHidden: "Error updating hidden status - {{error}}",
     },
     bots: {
+      workspaceTitle: "Slack bot workspace",
+      workspaceDescription:
+        "Manage Slack bot connections, channel routing, and chat entry points for workspace users.",
+      integrationLabel: "Integration",
+      routingLabel: "Routing",
+      channels: "Channels",
+      agentLayerLabel: "Agent layer",
       errorLoadingApps: "Error loading apps",
       unknownError: "An unknown error occurred",
       description:
@@ -2871,6 +3180,12 @@ const en = {
       failedToFetchBot: "Failed to fetch Slack Bot {{id}}: {{errorMsg}}",
     },
     discord: {
+      workspaceTitle: "Discord bot workspace",
+      workspaceDescription:
+        "Register Discord servers, manage bot tokens, and route channels to the right default agent.",
+      integrationLabel: "Integration",
+      registrationLabel: "Registration",
+      agentLayerLabel: "Agent layer",
       unknownError: "An unknown error occurred",
       pageDescription:
         "Connect Onyx to your Discord servers. Users can ask questions directly in Discord channels.",
@@ -2971,6 +3286,14 @@ const en = {
         "Connect MCP (Model Context Protocol) servers to add custom actions and tools for your agents.",
       openApiDescription:
         "Connect OpenAPI servers to add custom actions and tools for your agents.",
+      mcpWorkspaceTitle: "Action workspace",
+      mcpWorkspaceDescription:
+        "Connect MCP servers, inspect available tools, and decide what agents can safely use.",
+      serversLabel: "Servers",
+      connectedServersLabel: "Connected servers",
+      toolsLabel: "Tools",
+      toolAccessValue: "Tool access",
+      openApiActions: "OpenAPI Actions",
     },
     navigation: {
       version: "Onyx version: {{version}}",
@@ -3040,6 +3363,22 @@ const en = {
           title: "API Keys",
           sidebar: "API Keys",
         },
+        roles: {
+          title: "Roles & Permissions",
+          sidebar: "Roles & Permissions",
+        },
+        tokenRateLimits: {
+          title: "Token Rate Limits",
+          sidebar: "Token Rate Limits",
+        },
+        systemSettings: {
+          title: "System Settings",
+          sidebar: "System Settings",
+        },
+        documentFeedback: {
+          title: "Document Feedback",
+          sidebar: "Feedback",
+        },
         systemInfo: {
           title: "System Information",
           sidebar: "System Information",
@@ -3056,6 +3395,14 @@ const en = {
       },
     },
     documentExplorer: {
+      workspaceTitle: "Document explorer workspace",
+      workspaceDescription:
+        "Search indexed content, narrow by connector or document set, and inspect what agents can retrieve.",
+      connectorsLabel: "Connectors",
+      documentSetsLabel: "Document sets",
+      searchModeLabel: "Search mode",
+      prefilled: "Prefilled",
+      openSearch: "Open search",
       date: "Date",
       anyTime: "Any time...",
       allSources: "All Sources",

@@ -36,10 +36,11 @@ logger = get_logger(__name__)
 # =============================================================================
 
 
-async def get_graph_and_config(agent_id: str) -> tuple[str, dict]:
+async def get_graph_and_config(agent_id: str | int) -> tuple[str, dict]:
     """Helper to get graph_id and config, resolving stored assistants and personas."""
     from service.StoreService import get_assistant_from_store
 
+    agent_id = str(agent_id)
     config: dict = {}
     graph_id = agent_id  # Default to agent_id as graph_id
 
@@ -136,7 +137,7 @@ async def get_graph_and_config(agent_id: str) -> tuple[str, dict]:
     return graph_id, config
 
 
-async def get_configured_agent(agent_id: str, agent_config: dict) -> AgentGraph:
+async def get_configured_agent(agent_id: str | int, agent_config: dict) -> AgentGraph:
     """
     Get agent with dynamic configuration applied.
     For supervisor agents, creates a configured graph based on the config.

@@ -31,8 +31,46 @@ import {
 import { Section } from "@/layouts/general-layouts";
 import { OpenButton } from "@opal/components";
 import AgentAvatar from "@/refresh-components/avatars/AgentAvatar";
+import AgentAvailabilityBadge from "@/refresh-components/agents/AgentAvailabilityBadge";
+import { isAgentAvailableForSelection } from "@/lib/agentAvailability";
 import { LLMOption, LLMOptionGroup } from "./interfaces";
 import { useTranslation } from "react-i18next";
+
+function AvailabilityFlag({
+  available,
+  label,
+}: {
+  available: boolean;
+  label: string;
+}) {
+  return (
+    <span
+      title={label}
+      className={
+        available
+          ? "inline-flex items-center gap-1 rounded-08 border border-status-success-04/30 bg-status-success-04/10 px-1.5 py-0.5 shrink-0"
+          : "inline-flex items-center gap-1 rounded-08 border border-status-error-04/30 bg-status-error-04/10 px-1.5 py-0.5 shrink-0"
+      }
+    >
+      <span
+        className={
+          available
+            ? "size-1.5 rounded-full bg-status-success-04 shrink-0"
+            : "size-1.5 rounded-full bg-status-error-04 shrink-0"
+        }
+      />
+      <Text
+        as="span"
+        secondaryBody
+        className={
+          available ? "leading-none text-status-success-05" : "leading-none text-status-error-05"
+        }
+      >
+        {label}
+      </Text>
+    </span>
+  );
+}
 
 export interface LLMPopoverProps {
   llmManager: LlmManager;
@@ -90,6 +128,7 @@ export function buildLlmOptions(
           supportsReasoning: modelConfiguration.supports_reasoning || false,
           supportsImageInput: modelConfiguration.supports_image_input || false,
           isRemote: modelConfiguration.is_remote || false,
+          isAvailable: modelConfiguration.is_visible,
         });
       });
   });
@@ -144,6 +183,12 @@ export function groupLlmOptions(
       Icon: group.Icon,
     };
   });
+}
+
+export function isLlmOptionAvailableForSelection(
+  option: Pick<LLMOption, "isAvailable">
+): boolean {
+  return option.isAvailable !== false;
 }
 
 export default function LLMPopover({
@@ -335,6 +380,10 @@ export default function LLMPopover({
   };
 
   const handleSelectModel = (option: LLMOption) => {
+    if (!isLlmOptionAvailableForSelection(option)) {
+      return;
+    }
+
     llmManager.updateCurrentLlm({
       modelName: option.modelName,
       provider: option.provider,
@@ -349,6 +398,10 @@ export default function LLMPopover({
     !!onSwitchAgent && !!agents && agents.length > 0 && !!selectedAgent;
 
   const handleSelectAgent = (agent: MinimalPersonaSnapshot) => {
+    if (!isAgentAvailableForSelection(agent)) {
+      return;
+    }
+
     onSwitchAgent?.(agent);
     setOpen(false);
   };
@@ -372,6 +425,10 @@ export default function LLMPopover({
     }
     const description =
       capabilities.length > 0 ? capabilities.join(", ") : undefined;
+    const isAvailable = isLlmOptionAvailableForSelection(option);
+    const availabilityLabel = isAvailable
+      ? t("agentAvailability.available", "Available")
+      : t("agentAvailability.unavailable", "Unavailable");
 
     return (
       <div
@@ -381,17 +438,25 @@ export default function LLMPopover({
         <LineItem
           selected={isSelected}
           description={description}
+          muted={!isAvailable}
+          aria-disabled={!isAvailable}
           onClick={() => handleSelectModel(option)}
           rightChildren={
-            isSelected ? (
-              <SvgCheck className="h-4 w-4 stroke-action-link-05 shrink-0" />
-            ) : null
+            <span className="inline-flex items-center gap-1.5">
+              <AvailabilityFlag
+                available={isAvailable}
+                label={availabilityLabel}
+              />
+              {isSelected ? (
+                <SvgCheck className="h-4 w-4 stroke-action-link-05 shrink-0" />
+              ) : null}
+            </span>
           }
         >
-          <span className="inline-flex items-center gap-1.5">
-            {option.displayName}
+          <span className="inline-flex items-center gap-1.5 min-w-0">
+            <span className="truncate min-w-0">{option.displayName}</span>
             {option.isRemote && (
-              <span className="inline-flex items-center px-1.5 py-0.5 rounded-08 bg-background-tint-02 text-text-03 font-figure-small-label leading-none">
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded-08 bg-background-tint-02 text-text-03 font-figure-small-label leading-none shrink-0">
                 Cloud
               </span>
             )}
@@ -403,7 +468,7 @@ export default function LLMPopover({
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <div data-testid="llm-popover-trigger">
+      <div data-testid="llm-popover-trigger" className="relative inline-flex">
         <Popover.Trigger asChild disabled={disabled}>
           <OpenButton
             icon={
@@ -430,6 +495,12 @@ export default function LLMPopover({
               : currentLlmDisplayName}
           </OpenButton>
         </Popover.Trigger>
+        {hasAgentSelection && selectedAgent.id !== 0 && (
+          <AgentAvailabilityBadge
+            agent={selectedAgent}
+            className="absolute -right-0.5 -top-0.5"
+          />
+        )}
       </div>
 
       <Popover.Content side="top" align="end" width="xl">
@@ -452,18 +523,32 @@ export default function LLMPopover({
                   {t("app.llmPopover.agentSectionTitle", "Agents")}
                 </Text>
                 {filteredAgents.map((agent) => (
-                  <LineItem
-                    key={`agent-${agent.id}`}
-                    selected={agent.id === selectedAgent.id}
-                    icon={(props: React.SVGProps<SVGSVGElement>) => (
-                      <AgentAvatar agent={agent} size={16} {...(props as any)} />
-                    )}
-                    onClick={() => handleSelectAgent(agent)}
-                  >
-                    {agent.id === 0
-                      ? t("app.llmPopover.defaultAgentLabel", "Default")
-                      : agent.name}
-                  </LineItem>
+                  (() => {
+                    const isAvailable = isAgentAvailableForSelection(agent);
+                    return (
+                      <LineItem
+                        key={`agent-${agent.id}`}
+                        selected={agent.id === selectedAgent.id}
+                        muted={!isAvailable}
+                        aria-disabled={!isAvailable}
+                        icon={(props: React.SVGProps<SVGSVGElement>) => (
+                          <AgentAvatar
+                            agent={agent}
+                            size={16}
+                            {...(props as any)}
+                          />
+                        )}
+                        rightChildren={
+                          <AgentAvailabilityBadge agent={agent} showLabel />
+                        }
+                        onClick={() => handleSelectAgent(agent)}
+                      >
+                        {agent.id === 0
+                          ? t("app.llmPopover.defaultAgentLabel", "Default")
+                          : agent.name}
+                      </LineItem>
+                    );
+                  })()
                 ))}
                 <div className="mx-2 my-1 border-t border-border-02" />
               </div>

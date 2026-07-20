@@ -17,8 +17,8 @@ const DEFAULT_FADE_THRESHOLD_PX = 80; // 5rem
 const DEFAULT_BUTTON_THRESHOLD_PX = 32; // 2rem
 
 // Fade configuration
-const TOP_FADE_HEIGHT = "1rem";
-const BOTTOM_FADE_HEIGHT = "1rem";
+const TOP_FADE_HEIGHT = "1.5rem";
+const BOTTOM_FADE_HEIGHT = "2.25rem";
 
 export interface ScrollState {
   isAtBottom: boolean;
@@ -353,7 +353,7 @@ const ChatScrollContainer = React.memo(
             ref={scrollContainerRef}
             data-testid="chat-scroll-container"
             className={cn(
-              "flex flex-col flex-1 min-h-0 overflow-y-auto overflow-x-hidden",
+              "flex flex-col flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain",
               hideScrollbar ? "no-scrollbar" : "default-scrollbar"
             )}
             onScroll={handleScroll}

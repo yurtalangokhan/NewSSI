@@ -107,6 +107,7 @@ services:
       - name: agent-service-api
         paths:
           - /api/agents
+          - /api/agent-definitions
           - /api/agent-groups
           - /api/admin
           - /api/chat

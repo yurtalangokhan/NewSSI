@@ -239,9 +239,7 @@ export function PersonasTable({
                     className="mr-1 my-auto cursor-pointer"
                     onClick={() =>
                       router.push(
-                        `/app/agents/edit/${
-                          persona.id
-                        }?u=${Date.now()}&admin=true` as Route
+                        `/app/agents/edit/${persona.id}?u=${Date.now()}` as Route
                       )
                     }
                   />

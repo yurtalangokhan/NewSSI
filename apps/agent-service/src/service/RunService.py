@@ -33,6 +33,33 @@ class RunService:
     """Service layer for run execution and run history."""
 
     @staticmethod
+    def _extract_stage_names(config: RunnableConfig) -> list[str]:
+        configurable = config.get("configurable", {}) if config else {}
+
+        raw_stage_configs = configurable.get("stages") or configurable.get("pipeline_stages") or []
+        stage_names: list[str] = []
+
+        if isinstance(raw_stage_configs, list):
+            for stage in raw_stage_configs:
+                if not isinstance(stage, dict):
+                    continue
+                name = stage.get("name")
+                if isinstance(name, str) and name.strip():
+                    stage_names.append(name.strip())
+
+        if not stage_names:
+            raw_sub_agents = configurable.get("sub_agents") or []
+            if isinstance(raw_sub_agents, list):
+                for agent in raw_sub_agents:
+                    if not isinstance(agent, dict):
+                        continue
+                    name = agent.get("name")
+                    if isinstance(name, str) and name.strip():
+                        stage_names.append(name.strip())
+
+        return list(dict.fromkeys(stage_names))
+
+    @staticmethod
     def _sanitize_checkpoint_values(values: dict[str, Any]) -> dict[str, Any]:
         from langgraph.types import Send
 
@@ -133,6 +160,9 @@ class RunService:
     ) -> AsyncGenerator[str, None]:
         run_id_str = str(uuid.uuid4())[:8]
         cancel_event = register_run(thread_id, run_id_str)
+        stage_names = self._extract_stage_names(config)
+        stage_name_set = set(stage_names)
+        active_stage_name: str | None = None
 
         ctx = get_run_context(thread_id, run_id_str)
         if ctx:
@@ -155,6 +185,29 @@ class RunService:
                         break
 
                     event_type = event.get("event")
+                    event_name = event.get("name")
+                    metadata = event.get("metadata") or {}
+                    langgraph_node = metadata.get("langgraph_node")
+
+                    stage_candidate = None
+                    for candidate in (event_name, langgraph_node):
+                        if isinstance(candidate, str) and candidate.strip() in stage_name_set:
+                            stage_candidate = candidate.strip()
+                            break
+
+                    if stage_candidate and event_type == "on_chain_start":
+                        if active_stage_name and active_stage_name != stage_candidate:
+                            yield f"data: {json.dumps({'type': 'graph_stage_end', 'stage_name': active_stage_name})}\n\n"
+                        if active_stage_name != stage_candidate:
+                            active_stage_name = stage_candidate
+                            yield f"data: {json.dumps({'type': 'graph_stage_start', 'stage_name': stage_candidate, 'stage_index': stage_names.index(stage_candidate)})}\n\n"
+                        continue
+
+                    if stage_candidate and event_type == "on_chain_end" and active_stage_name == stage_candidate:
+                        yield f"data: {json.dumps({'type': 'graph_stage_end', 'stage_name': stage_candidate, 'stage_index': stage_names.index(stage_candidate)})}\n\n"
+                        active_stage_name = None
+                        continue
+
                     if event_type in {"custom", "on_custom_event"}:
                         payload = event.get("data", {})
                         if isinstance(payload, dict):
@@ -189,6 +242,8 @@ class RunService:
                     await self._persist_partial_messages(thread_id, run_id_str, ctx, agent, str(run_id))
                 except Exception as exc:
                     logger.error("Persist error: %s", exc)
+            if active_stage_name:
+                yield f"data: {json.dumps({'type': 'graph_stage_end', 'stage_name': active_stage_name})}\n\n"
             unregister_run(thread_id, run_id_str)
             yield "data: [DONE]\n\n"
 

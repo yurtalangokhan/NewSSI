@@ -138,11 +138,20 @@ class Settings(BaseSettings):
     @computed_field
     @property
     def AVAILABLE_MODELS(self) -> set[str]:
-        """Available LLM models."""
-        from models.llm import FakeModelName, OllamaModelName
+        """Configured fallback model names.
 
-        models = {m.value for m in OllamaModelName}
-        models.add(FakeModelName.FAKE.value)
+        Runtime availability is discovered from connected providers. This value
+        only exposes explicit env/default fallbacks for legacy callers.
+        """
+        models = {
+            model
+            for model in (
+                self.DEFAULT_MODEL,
+                self.OLLAMA_MODEL,
+                self.COMPATIBLE_MODEL,
+            )
+            if model
+        }
         return models
 
     def is_dev(self) -> bool:
