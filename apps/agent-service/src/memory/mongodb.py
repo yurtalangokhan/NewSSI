@@ -2,7 +2,10 @@ import logging
 import urllib.parse
 from contextlib import AbstractAsyncContextManager
 
-from langgraph.checkpoint.mongodb.aio import AsyncMongoDBSaver
+try:
+    from langgraph.checkpoint.mongodb.aio import AsyncMongoDBSaver
+except ImportError:
+    AsyncMongoDBSaver = None
 
 from core.settings import settings
 

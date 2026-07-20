@@ -1,6 +1,10 @@
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
 
-from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
+try:
+    from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
+except ImportError:
+    AsyncSqliteSaver = None
+
 from langgraph.store.memory import InMemoryStore
 
 from core.settings import settings
