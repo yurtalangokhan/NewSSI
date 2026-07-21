@@ -116,7 +116,7 @@ class AssistantAgentService:
     # Graph/config resolution (for agent execution)
     # =========================================================================
 
-    async def get_graph_and_config(self, agent_id: str) -> tuple[str, dict[str, Any]]:
+    async def get_graph_and_config(self, agent_id: str | int) -> tuple[str, dict[str, Any]]:
         """
         Resolve agent ID to graph ID and config.
 
@@ -128,6 +128,7 @@ class AssistantAgentService:
         Returns:
             Tuple of (graph_id, config)
         """
+        agent_id = str(agent_id)
         config: dict = {}
         graph_id = agent_id
 
@@ -226,7 +227,7 @@ class AssistantAgentService:
 
     async def get_configured_agent(
         self,
-        agent_id: str,
+        agent_id: str | int,
         agent_config: dict[str, Any] | None = None,
     ):
         """

@@ -112,7 +112,7 @@ const widthClasses: Record<PopoverWidths, string> = {
   fit: "w-fit",
   md: "w-[12rem]",
   lg: "w-[15rem]",
-  xl: "w-[18rem]",
+  xl: "w-[min(calc(100vw-1rem),24rem)]",
   trigger: "w-[var(--radix-popover-trigger-width)]",
 };
 interface PopoverContentProps

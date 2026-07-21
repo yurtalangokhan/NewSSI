@@ -80,7 +80,7 @@ class DynamicAgent(LazyLoadingAgent):
 
         try:
             await self._load_mcp_tools()
-            self._default_graph = self._create_graph_from_config()
+            self._default_graph = await self._create_graph_from_config_async()
             self._graph = self._default_graph
             self._loaded = True
             self._load_failed = False
@@ -139,6 +139,29 @@ class DynamicAgent(LazyLoadingAgent):
         *,
         runtime_config: dict[str, Any] | None = None,
     ) -> CompiledStateGraph | Pregel:
+        builder, schema_type, build_config = self._prepare_graph_build(
+            runtime_config=runtime_config
+        )
+        return builder.build(schema_type, build_config)
+
+    async def _create_graph_from_config_async(
+        self,
+        *,
+        runtime_config: dict[str, Any] | None = None,
+    ) -> CompiledStateGraph | Pregel:
+        builder, schema_type, build_config = self._prepare_graph_build(
+            runtime_config=runtime_config
+        )
+        from agents.storage.repository import AgentDefinitionRepository
+
+        builder.repository = AgentDefinitionRepository()
+        return await builder.build_async(schema_type, build_config)
+
+    def _prepare_graph_build(
+        self,
+        *,
+        runtime_config: dict[str, Any] | None = None,
+    ) -> tuple[GraphBuilder, GraphSchemaType, dict[str, Any]]:
         effective_config = {**self._config, **(runtime_config or {})}
         schema_type_str = effective_config.get("graph_schema", "zero_shot")
 
@@ -188,16 +211,20 @@ class DynamicAgent(LazyLoadingAgent):
             build_config["system_prompt"] = system_prompt
             build_config["extra_tools"] = rag_tools
         elif schema_type == GraphSchemaType.SUPERVISOR:
+            build_config["name"] = self.name
             build_config["supervisor_prompt"] = self._config.get(
                 "supervisor_prompt", "You are a team supervisor."
             )
             build_config["sub_agents"] = effective_config.get("sub_agents", [])
+            build_config["sub_agent_ids"] = effective_config.get("sub_agent_ids", [])
             build_config["model"] = effective_config.get("model")
         elif schema_type == GraphSchemaType.PIPELINE:
+            build_config["name"] = self.name
             build_config["pipeline_prompt"] = effective_config.get(
                 "pipeline_prompt", "Process through all stages."
             )
             build_config["stages"] = effective_config.get("stages", [])
+            build_config["sub_agent_ids"] = effective_config.get("sub_agent_ids", [])
             build_config["model"] = effective_config.get("model")
             build_config["extra_tools"] = rag_tools
         elif schema_type == GraphSchemaType.PLAN_EXECUTE:
@@ -213,7 +240,7 @@ class DynamicAgent(LazyLoadingAgent):
         else:
             build_config["system_prompt"] = system_prompt
 
-        return builder.build(schema_type, build_config)
+        return builder, schema_type, build_config
 
     def _create_fallback_graph(self) -> CompiledStateGraph:
         """Minimal fallback graph when load fails."""

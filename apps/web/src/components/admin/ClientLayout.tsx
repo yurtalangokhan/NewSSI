@@ -20,16 +20,35 @@ export interface ClientLayoutProps {
   enableCloud: boolean;
 }
 
-// TODO (@raunakab): Migrate ALL admin pages to use SettingsLayouts from
-// `@/layouts/settings-layouts`. Once every page manages its own layout,
-// the `py-10 px-4 md:px-12` padding below can be removed entirely and
-// this prefix list can be deleted.
+// Pages using SettingsLayouts handle their own padding/centering.
 const SETTINGS_LAYOUT_PREFIXES = [
+  ADMIN_PATHS.INDEXING_STATUS,
+  ADMIN_PATHS.ADD_CONNECTOR,
+  ADMIN_PATHS.DOCUMENT_SETS,
+  ADMIN_PATHS.DOCUMENT_EXPLORER,
+  ADMIN_PATHS.DOCUMENT_FEEDBACK,
+  ADMIN_PATHS.AGENTS,
+  ADMIN_PATHS.SLACK_BOTS,
+  ADMIN_PATHS.DISCORD_BOTS,
   ADMIN_PATHS.CHAT_PREFERENCES,
+  ADMIN_PATHS.LLM_MODELS,
   ADMIN_PATHS.IMAGE_GENERATION,
   ADMIN_PATHS.WEB_SEARCH,
+  ADMIN_PATHS.CODE_INTERPRETER,
+  ADMIN_PATHS.SEARCH_SETTINGS,
+  ADMIN_PATHS.DOCUMENT_PROCESSING,
   ADMIN_PATHS.MCP_ACTIONS,
+  ADMIN_PATHS.OPENAPI_ACTIONS,
   ADMIN_PATHS.KNOWLEDGE_GRAPH,
+  ADMIN_PATHS.USERS,
+  ADMIN_PATHS.API_KEYS,
+  ADMIN_PATHS.ROLES,
+  ADMIN_PATHS.TOKEN_RATE_LIMITS,
+  ADMIN_PATHS.BILLING,
+  ADMIN_PATHS.INDEX_MIGRATION,
+  ADMIN_PATHS.DEBUG,
+  ADMIN_PATHS.SYSTEM_SETTINGS,
+  ADMIN_PATHS.SYSTEM_INFO,
 ];
 
 export function ClientLayout({
@@ -53,13 +72,16 @@ export function ClientLayout({
     }
   }, [canViewRoute, isPermissionsLoading, router]);
 
+  useEffect(() => {
+    router.prefetch("/app");
+  }, [router]);
+
   // Certain admin panels have their own custom sidebar.
   // For those pages, we skip rendering the default `AdminSidebar` and let those individual pages render their own.
   const hasCustomSidebar =
     pathname.startsWith("/admin/connectors") ||
     pathname.startsWith("/admin/embeddings");
 
-  // Pages using SettingsLayouts handle their own padding/centering.
   const hasOwnLayout = SETTINGS_LAYOUT_PREFIXES.some((prefix) =>
     pathname.startsWith(prefix)
   );

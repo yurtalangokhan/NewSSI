@@ -16,14 +16,9 @@ This class is a **singleton** — acquire the instance via ``get_sync_queue()``.
 from __future__ import annotations
 
 import asyncio
+from dataclasses import dataclass, field
 
 from core.logger import get_logger
-
-logger = get_logger(__name__)
-import logging as _stdlib_logging
-
-logger_stdlib = _stdlib_logging.getLogger(__name__)
-from dataclasses import dataclass, field
 
 logger = get_logger(__name__)
 
@@ -55,6 +50,7 @@ class SyncQueueManager:
     """FIFO queue that executes sync jobs one at a time."""
 
     def __init__(self, max_queue_size: int = 100) -> None:
+        self._max_queue_size = max_queue_size
         self._queue: asyncio.Queue[SyncJob] = asyncio.Queue(maxsize=max_queue_size)
         self._ds_locks: dict[str, asyncio.Lock] = {}
         self._active_job: SyncJob | None = None
@@ -82,9 +78,21 @@ class SyncQueueManager:
                 self._queue.put_nowait(None)  # type: ignore[arg-type]
             except asyncio.QueueFull:
                 pass
-            await self._worker_task
+            try:
+                await self._worker_task
+            except RuntimeError as exc:
+                if "different event loop" not in str(exc):
+                    raise
+                self._worker_task.cancel()
             self._worker_task = None
+        self._reset_runtime_state()
         logger.info("SyncQueueManager worker stopped")
+
+    def _reset_runtime_state(self) -> None:
+        self._queue = asyncio.Queue(maxsize=self._max_queue_size)
+        self._ds_locks = {}
+        self._active_job = None
+        self._pending_ids = []
 
     # ---- public API ------------------------------------------------------
 

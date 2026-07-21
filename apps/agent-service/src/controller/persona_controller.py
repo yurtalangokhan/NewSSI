@@ -5,11 +5,145 @@ from typing import Any
 from fastapi import HTTPException
 
 from controller.base import BaseController
+from core.settings import settings
 from service.AuthService import AuthenticatedUser
 from service.PersonaRepository import PersonaDB
 
 DEFAULT_USER_ID = "dev-user"
 ADMIN_ROLE_NAMES = {"admin", "system-admin", "enterprise-admin", "super_admin", "superuser"}
+
+
+def build_agent_availability(
+    agent: dict[str, Any],
+    *,
+    available_models: set[str],
+    default_model: str | None,
+    available_mcp_tools: set[str],
+    available_rag_collections: set[str],
+    available_graph_rag_collections: set[str],
+    collection_display_names: dict[str, str] | None = None,
+    memory_available: bool = True,
+) -> dict[str, Any]:
+    """Return component-level availability for an agent snapshot."""
+    checks: list[dict[str, str]] = []
+    selected_model = agent.get("llm_model_version_override") or agent.get("model")
+
+    if selected_model:
+        if selected_model in available_models:
+            checks.append(
+                {
+                    "component": "model",
+                    "status": "ok",
+                    "message": f"Model '{selected_model}' is available.",
+                }
+            )
+        else:
+            checks.append(
+                {
+                    "component": "model",
+                    "status": "error",
+                    "message": f"Model '{selected_model}' is selected but is not available.",
+                }
+            )
+    elif default_model:
+        if default_model in available_models:
+            checks.append(
+                {
+                    "component": "model",
+                    "status": "ok",
+                    "message": f"Using default model '{default_model}'.",
+                }
+            )
+        else:
+            checks.append(
+                {
+                    "component": "model",
+                    "status": "error",
+                    "message": f"Default model '{default_model}' is not available.",
+                }
+            )
+    else:
+        checks.append(
+            {
+                "component": "model",
+                "status": "error",
+                "message": "No default model is configured.",
+            }
+        )
+
+    memory_enabled = (
+        agent.get("memory_type") == "long_term" or bool(agent.get("long_term_memory"))
+    )
+    if memory_enabled:
+        checks.append(
+            {
+                "component": "memory",
+                "status": "ok" if memory_available else "error",
+                "message": (
+                    "Long-term memory is available."
+                    if memory_available
+                    else "Long-term memory is enabled but memory storage is not available."
+                ),
+            }
+        )
+
+    for tool_name in agent.get("mcp_tools") or []:
+        checks.append(
+            {
+                "component": "mcp_tool",
+                "status": "ok" if tool_name in available_mcp_tools else "error",
+                "message": (
+                    f"MCP tool '{tool_name}' is available."
+                    if tool_name in available_mcp_tools
+                    else f"MCP tool '{tool_name}' is selected but is not available."
+                ),
+            }
+        )
+
+    rag_config = agent.get("rag_config") or {}
+    rag_config_display_names = rag_config.get("display_names") or {}
+    if not isinstance(rag_config_display_names, dict):
+        rag_config_display_names = {}
+    collection_display_names = {
+        **rag_config_display_names,
+        **(collection_display_names or {}),
+    }
+    for collection in rag_config.get("document_processing") or []:
+        display_name = collection_display_names.get(collection, collection)
+        checks.append(
+            {
+                "component": "rag",
+                "status": "ok" if collection in available_rag_collections else "error",
+                "message": (
+                    f"RAG collection '{display_name}' is available."
+                    if collection in available_rag_collections
+                    else f"RAG collection '{display_name}' is selected but is not available."
+                ),
+            }
+        )
+
+    for collection in rag_config.get("knowledge_graph") or []:
+        display_name = collection_display_names.get(collection, collection)
+        checks.append(
+            {
+                "component": "graph_rag",
+                "status": "ok" if collection in available_graph_rag_collections else "error",
+                "message": (
+                    f"Graph RAG collection '{display_name}' is available."
+                    if collection in available_graph_rag_collections
+                    else f"Graph RAG collection '{display_name}' is selected but is not available."
+                ),
+            }
+        )
+
+    if any(check["status"] == "error" for check in checks):
+        status_value = "unavailable"
+    elif any(check["status"] == "warning" for check in checks):
+        status_value = "degraded"
+    else:
+        status_value = "available"
+
+    return {"status": status_value, "checks": checks}
 
 
 def _format_tool_display_name(tool_name: str) -> str:
@@ -94,6 +228,7 @@ class PersonaController(BaseController):
             "mcp_tools": payload.get("mcp_tools") or [],
             "rag_config": payload.get("rag_config")
             or {"document_processing": [], "knowledge_graph": []},
+            "sub_agent_ids": payload.get("sub_agent_ids") or [],
             "sub_agents": payload.get("sub_agents") or [],
             "supervisor_prompt": payload.get("supervisor_prompt"),
             "stages": payload.get("stages") or [],
@@ -149,9 +284,11 @@ class PersonaController(BaseController):
                 "graph_schema": definition.graph_schema,
                 "brain_type": definition.brain_type,
                 "memory_type": definition.memory_type,
+                "llm_model_version_override": definition.model,
                 "mcp_tools": definition.mcp_tools or [],
                 "rag_config": definition.rag_config
                 or {"document_processing": [], "knowledge_graph": []},
+                "sub_agent_ids": definition.sub_agent_ids or [],
                 "sub_agents": definition.sub_agents or [],
                 "supervisor_prompt": definition.supervisor_prompt,
                 "stages": definition.stages or [],
@@ -230,10 +367,106 @@ class PersonaController(BaseController):
 
         return tool_snapshots
 
-    def _serialize_builtin_persona(
+    async def _get_available_model_names(self) -> set[str]:
+        try:
+            from core.providers.registry import provider_registry
+
+            provider_registry.initialize()
+            return set(await provider_registry.get_model_names())
+        except Exception:
+            return set()
+
+    async def _get_available_mcp_tool_names(self) -> set[str]:
+        names: set[str] = set()
+        try:
+            from service.MCPToolService import MCPToolService
+
+            tools = await MCPToolService.get_instance().list_tools(include_inactive=False)
+            names.update(str(tool.get("name")) for tool in tools if tool.get("name"))
+        except Exception:
+            pass
+
+        try:
+            from controller.proxy_controller import get_proxy_controller
+
+            tools_service_url = (
+                getattr(settings, "TOOLS_SERVICE_URL", None) or settings.MCP_SERVER_URL
+            )
+            payload = await get_proxy_controller().get_builtin_mcp_tools(tools_service_url)
+            names.update(str(tool.get("name")) for tool in payload.get("tools", []))
+        except Exception:
+            pass
+
+        return names
+
+    async def _get_existing_collection_info(
+        self,
+        collection_ids: list[str],
+    ) -> tuple[set[str], dict[str, str]]:
+        if not collection_ids:
+            return set(), {}
+
+        existing: set[str] = set()
+        display_names: dict[str, str] = {}
+        try:
+            from core.db.repositories.datasource_repo import DatasourceRepository
+
+            repo = DatasourceRepository()
+            for collection_id in collection_ids:
+                collection = await repo.get_collection(collection_id)
+                if collection is None:
+                    collection = await repo.get_collection_by_name(collection_id)
+                if collection is not None:
+                    existing.add(collection_id)
+                    display_name = collection.get("name") or collection.get("uuid")
+                    if display_name:
+                        display_names[collection_id] = str(display_name)
+        except Exception:
+            return set(), {}
+
+        return existing, display_names
+
+    def _is_memory_available(self) -> bool:
+        try:
+            from service.LangGraphStoreService import get_langgraph_store
+
+            return get_langgraph_store() is not None
+        except Exception:
+            return False
+
+    async def _get_agent_availability(self, agent: dict[str, Any]) -> dict[str, Any]:
+        rag_config = agent.get("rag_config") or {}
+        document_collections = [str(c) for c in rag_config.get("document_processing") or []]
+        graph_collections = [str(c) for c in rag_config.get("knowledge_graph") or []]
+
+        available_models = await self._get_available_model_names()
+        available_mcp_tools = await self._get_available_mcp_tool_names()
+        available_rag_collections, rag_display_names = await self._get_existing_collection_info(
+            document_collections
+        )
+        (
+            available_graph_rag_collections,
+            graph_display_names,
+        ) = await self._get_existing_collection_info(
+            graph_collections
+        )
+        collection_display_names = {**rag_display_names, **graph_display_names}
+
+        return build_agent_availability(
+            agent,
+            available_models=available_models,
+            default_model=settings.DEFAULT_MODEL,
+            available_mcp_tools=available_mcp_tools,
+            available_rag_collections=available_rag_collections,
+            available_graph_rag_collections=available_graph_rag_collections,
+            collection_display_names=collection_display_names,
+            memory_available=self._is_memory_available(),
+        )
+
+    async def _serialize_builtin_persona(
         self, persona_id: int, name: str, description: str, base_agent: str
     ) -> dict[str, Any]:
-        return {
+        serialized = {
             "id": persona_id,
             "name": name,
             "description": description,
@@ -271,6 +504,8 @@ class PersonaController(BaseController):
             },
             "search_start_date": None,
         }
+        serialized["availability"] = await self._get_agent_availability(serialized)
+        return serialized
 
     async def _serialize_custom_persona(self, persona: dict[str, Any]) -> dict[str, Any]:
         label_ids = persona.get("labels") or []
@@ -328,6 +563,7 @@ class PersonaController(BaseController):
         if persona.get("base_agent") == "dynamic-agent":
             definition = await self._get_dynamic_definition(int(persona["id"]))
             self._merge_dynamic_definition(serialized, definition)
+        serialized["availability"] = await self._get_agent_availability(serialized)
         return serialized
 
     async def get_persona(
@@ -347,7 +583,7 @@ class PersonaController(BaseController):
             description = (
                 all_agents[base_agent].description if base_agent in all_agents else ""
             )
-            return self._serialize_builtin_persona(
+            return await self._serialize_builtin_persona(
                 persona_id, display_name, description, base_agent
             )
 
@@ -384,7 +620,9 @@ class PersonaController(BaseController):
 
             description = all_agents[agent_key].description if agent_key in all_agents else ""
             personas.append(
-                self._serialize_builtin_persona(idx, display_name, description, agent_key)
+                await self._serialize_builtin_persona(
+                    idx, display_name, description, agent_key
+                )
             )
 
         try:

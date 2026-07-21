@@ -1,14 +1,11 @@
-import { NextResponse } from 'next/server';
+import { proxyToBackend } from "@/lib/api/proxy";
+import { NextRequest } from "next/server";
 
-const INTERNAL_URL = process.env.INTERNAL_URL || "http://localhost:8123";
+interface RouteContext {
+  params: Promise<{ personaId: string }>;
+}
 
-export async function GET(request: Request, { params }: { params: Promise<{ personaId: string }> }) {
-  try {
-    const { personaId } = await params;
-    const response = await fetch(`${INTERNAL_URL}/llm/persona/${personaId}/providers`);
-    const data = await response.json();
-    return NextResponse.json(data);
-  } catch (error) {
-    return NextResponse.json({ providers: [], selected_provider: null });
-  }
+export async function GET(request: NextRequest, { params }: RouteContext) {
+  const { personaId } = await params;
+  return proxyToBackend(request, `/api/llm/persona/${personaId}/providers`);
 }

@@ -107,6 +107,7 @@ target-version = "py311"
 extend-select = ["I", "U"]
 
 [tool.pytest]
+addopts = ["--import-mode=importlib"]
 pythonpath = ["src"]
 asyncio_default_fixture_loop_scope = "function"
 

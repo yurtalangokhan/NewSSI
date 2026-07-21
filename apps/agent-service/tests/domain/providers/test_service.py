@@ -63,7 +63,60 @@ async def test_available_models_keeps_default_model_when_provider_metadata_is_in
                     "max_input_tokens": None,
                     "supports_image_input": False,
                     "supports_reasoning": False,
+                    "is_remote": False,
                 }
             ],
+        }
+    ]
+
+
+class _ProviderServiceWithApiKeyProvider(ProviderService):
+    async def list_all(self, user_id: str):
+        return {
+            "builtin": [],
+            "url_providers": [],
+            "user_providers": [
+                {
+                    "id": "provider-1",
+                    "name": "OpenAI",
+                    "provider_type": "openai",
+                    "config": {},
+                    "user_config": {"default_model": "gpt-live"},
+                }
+            ],
+        }
+
+    async def _get_provider_api_key(self, provider: dict, user_id: str):
+        return "test-key"
+
+    @staticmethod
+    async def _fetch_api_key_provider_models(**kwargs):
+        return [
+            {
+                "name": "gpt-live",
+                "display_name": "GPT Live",
+                "max_input_tokens": 128000,
+                "supports_image_input": True,
+                "supports_reasoning": True,
+                "is_remote": True,
+            }
+        ]
+
+
+@pytest.mark.asyncio
+async def test_available_models_prefers_live_api_key_provider_models():
+    service = _ProviderServiceWithApiKeyProvider(_RepoThatFails())
+
+    providers = await service.get_available_models_for_user("user-1")
+
+    assert providers[0]["model_configurations"] == [
+        {
+            "name": "gpt-live",
+            "display_name": "GPT Live",
+            "is_visible": True,
+            "max_input_tokens": 128000,
+            "supports_image_input": True,
+            "supports_reasoning": True,
+            "is_remote": True,
         }
     ]

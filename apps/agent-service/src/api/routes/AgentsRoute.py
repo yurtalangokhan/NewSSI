@@ -12,6 +12,7 @@ import re
 from collections.abc import AsyncGenerator
 from typing import Any
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 from langchain_core.messages import AIMessage, AIMessageChunk, AnyMessage, ToolMessage
@@ -26,6 +27,8 @@ from models.chat import (
     ChatHistory,
     ChatHistoryInput,
     ChatMessage,
+    Feedback,
+    FeedbackResponse,
     StreamInput,
     UserInput,
 )
@@ -41,6 +44,41 @@ from service.Utils import (
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/agents", tags=["agents"], dependencies=[Depends(require_user)])
+
+
+def _stream_error_payload(exc: Exception) -> dict[str, Any]:
+    if isinstance(exc, httpx.ConnectError | httpx.ConnectTimeout | httpx.ReadTimeout):
+        return {
+            "type": "error",
+            "error": "LLM provider is unreachable. Check the provider URL, network, or model server status.",
+            "content": "LLM provider is unreachable. Check the provider URL, network, or model server status.",
+            "error_code": "provider_unavailable",
+            "is_retryable": True,
+            "details": {"exception_type": type(exc).__name__},
+        }
+
+    if isinstance(exc, httpx.HTTPStatusError):
+        status_code = exc.response.status_code if exc.response else None
+        return {
+            "type": "error",
+            "error": "LLM provider returned an error.",
+            "content": "LLM provider returned an error.",
+            "error_code": "provider_http_error",
+            "is_retryable": bool(status_code is None or status_code >= 500),
+            "details": {
+                "exception_type": type(exc).__name__,
+                "status_code": status_code,
+            },
+        }
+
+    return {
+        "type": "error",
+        "error": "Internal server error",
+        "content": "Internal server error",
+        "error_code": "internal_error",
+        "is_retryable": True,
+        "details": {"exception_type": type(exc).__name__},
+    }
 
 
 class ThinkingTagProcessor:
@@ -69,7 +107,7 @@ class ThinkingTagProcessor:
                         events.append({"type": "reasoning_start"})
                         self.reasoning_started = True
                     self.in_thinking = True
-                    self.buffer = self.buffer[pos + len(tag):]
+                    self.buffer = self.buffer[pos + len(tag) :]
                 else:
                     safe_len = max(0, len(self.buffer) - self.MAX_TAG_LEN)
                     if safe_len > 0:
@@ -82,11 +120,13 @@ class ThinkingTagProcessor:
                     if pos > 0:
                         events.append({"type": "reasoning_delta", "reasoning": self.buffer[:pos]})
                     self.in_thinking = False
-                    self.buffer = self.buffer[pos + len(tag):]
+                    self.buffer = self.buffer[pos + len(tag) :]
                 else:
                     safe_len = max(0, len(self.buffer) - self.MAX_TAG_LEN)
                     if safe_len > 0:
-                        events.append({"type": "reasoning_delta", "reasoning": self.buffer[:safe_len]})
+                        events.append(
+                            {"type": "reasoning_delta", "reasoning": self.buffer[:safe_len]}
+                        )
                         self.buffer = self.buffer[safe_len:]
                     break
 
@@ -358,15 +398,23 @@ async def message_generator(
                 # the assistant answer incrementally via `token` packets.
                 # Emitting the final full `message` packet as well causes the UI
                 # to render the full answer and then animate tokens on top of it.
-                if chat_message.type == "ai" and user_input.stream_tokens and saw_visible_answer_tokens:
+                if (
+                    chat_message.type == "ai"
+                    and user_input.stream_tokens
+                    and saw_visible_answer_tokens
+                ):
                     continue
 
                 # Strip <think>/<thinking> tags from AI responses
                 if chat_message.type == "ai" and chat_message.content:
-                    cleaned = re.sub(r"<think>.*?</think>", "", chat_message.content, flags=re.DOTALL)
+                    cleaned = re.sub(
+                        r"<think>.*?</think>", "", chat_message.content, flags=re.DOTALL
+                    )
                     cleaned = re.sub(r"<thinking>.*?</thinking>", "", cleaned, flags=re.DOTALL)
                     cleaned = re.sub(r"<think>(?:(?!</think>).)*$", "", cleaned, flags=re.DOTALL)
-                    cleaned = re.sub(r"<thinking>(?:(?!</thinking>).)*$", "", cleaned, flags=re.DOTALL)
+                    cleaned = re.sub(
+                        r"<thinking>(?:(?!</thinking>).)*$", "", cleaned, flags=re.DOTALL
+                    )
                     chat_message.content = cleaned.strip()
                     if not chat_message.content:
                         continue
@@ -447,10 +495,18 @@ async def message_generator(
                         yield f"data: {json.dumps({'type': 'reasoning_delta', 'reasoning': reasoning_text})}\n\n"
 
     except Exception as e:
-        import traceback
+        payload = _stream_error_payload(e)
+        if payload["error_code"].startswith("provider_"):
+            logger.warning(
+                "Provider error in message generator: %s: %s",
+                type(e).__name__,
+                e,
+            )
+        else:
+            import traceback
 
-        logger.error("Error in message generator: %s\n%s", e, traceback.format_exc())
-        yield f"data: {json.dumps({'type': 'error', 'content': 'Internal server error'})}\n\n"
+            logger.error("Error in message generator: %s\n%s", e, traceback.format_exc())
+        yield f"data: {json.dumps(payload)}\n\n"
     finally:
         for evt in thinking_processor.flush():
             yield f"data: {json.dumps(evt)}\n\n"
@@ -480,12 +536,12 @@ def _extract_reasoning_text(message: AIMessageChunk) -> str:
 
         for key in (
             "reasoning_content",  # Ollama (reasoning=True), DeepSeek API, OpenRouter
-            "reasoning",          # Some OpenAI-compatible providers
-            "thinking",           # Some providers
-            "reasoning_text",     # Some providers
-            "thoughts",           # Some providers
-            "thought",            # Alternative key used by some providers
-            "chain_of_thought",   # Some providers
+            "reasoning",  # Some OpenAI-compatible providers
+            "thinking",  # Some providers
+            "reasoning_text",  # Some providers
+            "thoughts",  # Some providers
+            "thought",  # Alternative key used by some providers
+            "chain_of_thought",  # Some providers
         ):
             value = payload.get(key)
             if isinstance(value, str) and value.strip():
@@ -640,18 +696,14 @@ async def stream(
 # =============================================================================
 
 
-# @router.post("/feedback")
-# async def feedback(feedback: Feedback) -> FeedbackResponse:
-#     """Record feedback for a run to LangSmith."""
-#     client = LangsmithClient()
-#     kwargs = feedback.kwargs or {}
-#     client.create_feedback(
-#         run_id=feedback.run_id,
-#         key=feedback.key,
-#         score=feedback.score,
-#         **kwargs,
-#     )
-#     return FeedbackResponse()
+@router.post("/feedback")
+async def feedback(
+    feedback: Feedback,
+    _user=Depends(require_permission("agent:feedback")),
+) -> FeedbackResponse:
+    """Accept feedback for a run."""
+    logger.info("Feedback received for run %s with key %s", feedback.run_id, feedback.key)
+    return FeedbackResponse(status="success")
 
 
 @router.post("/history")

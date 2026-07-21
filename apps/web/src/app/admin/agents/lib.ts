@@ -31,6 +31,7 @@ interface PersonaUpsertRequest {
   graph_schema: string;
   brain_type: string;
   memory_type: string;
+  sub_agent_ids: string[];
   sub_agents: Array<Record<string, unknown>>;
   supervisor_prompt: string | null;
   stages: Array<Record<string, unknown>>;
@@ -45,6 +46,7 @@ interface PersonaUpsertRequest {
   rag_config?: {
     document_processing: string[];
     knowledge_graph: string[];
+    display_names?: Record<string, string>;
   } | null;
   long_term_memory?: boolean;
 }
@@ -80,6 +82,7 @@ export interface PersonaUpsertParameters {
   graph_schema?: string;
   brain_type?: string;
   memory_type?: string;
+  sub_agent_ids?: string[];
   sub_agents?: Array<Record<string, unknown>>;
   supervisor_prompt?: string | null;
   stages?: Array<Record<string, unknown>>;
@@ -92,6 +95,7 @@ export interface PersonaUpsertParameters {
   rag_config?: {
     document_processing: string[];
     knowledge_graph: string[];
+    display_names?: Record<string, string>;
   };
   long_term_memory?: boolean;
 }
@@ -124,6 +128,7 @@ function buildPersonaUpsertRequest({
   graph_schema,
   brain_type,
   memory_type,
+  sub_agent_ids,
   sub_agents,
   supervisor_prompt,
   stages,
@@ -163,6 +168,7 @@ function buildPersonaUpsertRequest({
     graph_schema: graph_schema ?? "zero_shot",
     brain_type: brain_type ?? "llm",
     memory_type: memory_type ?? "none",
+    sub_agent_ids: sub_agent_ids ?? [],
     sub_agents: sub_agents ?? [],
     supervisor_prompt: supervisor_prompt ?? null,
     stages: stages ?? [],

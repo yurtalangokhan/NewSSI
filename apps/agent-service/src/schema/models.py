@@ -1,3 +1,6 @@
-from models.llm import AllModelEnum, FakeModelName, OllamaModelName
+from models.llm import AllModelEnum, ModelName
 
-__all__ = ["AllModelEnum", "FakeModelName", "OllamaModelName"]
+__all__ = [
+    "AllModelEnum",
+    "ModelName",
+]

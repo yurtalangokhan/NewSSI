@@ -5,6 +5,8 @@ from typing import Any
 from uuid import UUID
 
 from models.agents import AgentInfo
+from service.CacheInvalidationService import CacheInvalidationService
+from service.CompositionValidationService import CompositionValidationService
 
 logger = logging.getLogger(__name__)
 
@@ -46,10 +48,20 @@ class AgentDefinitionService:
 
     Wraps AgentDefinitionRepository with business-logic validation
     (schema capability checks, duplicate name detection).
+    
+    Includes composition management (sub-agent references).
     """
 
-    def __init__(self, repository):
+    def __init__(
+        self,
+        repository,
+        validation_service: CompositionValidationService | None = None,
+        cache_service: CacheInvalidationService | None = None,
+    ):
         self._repo = repository
+        # Lazy-load if not provided
+        self._validation_service = validation_service
+        self._cache_service = cache_service
 
     @staticmethod
     def _normalize_graph_schema(
@@ -74,6 +86,7 @@ class AgentDefinitionService:
         mcp_tools: list[str] | None = None,
         rag_config: dict[str, Any] | None = None,
         sub_agents: list[dict[str, Any]] | None = None,
+        sub_agent_ids: list[UUID] | None = None,
         supervisor_prompt: str | None = None,
         stages: list[dict[str, Any]] | None = None,
         pipeline_prompt: str | None = None,
@@ -93,8 +106,25 @@ class AgentDefinitionService:
         if sub_agents and not schema.supports_sub_agents:
             raise ValueError(f"Schema '{graph_schema}' does not support sub-agents")
 
+        if sub_agent_ids and not schema.supports_sub_agents:
+            raise ValueError(f"Schema '{graph_schema}' does not support sub-agents")
+
         if mcp_tools and not schema.supports_tools:
             raise ValueError(f"Schema '{graph_schema}' does not support tools")
+
+        if sub_agent_ids:
+            if not self._validation_service:
+                self._validation_service = CompositionValidationService(self._repo)
+
+            validation_result = await self._validation_service.validate_full_composition(
+                agent_id=None,
+                graph_schema=graph_schema,
+                sub_agent_ids=sub_agent_ids,
+            )
+            if not validation_result.valid:
+                raise ValueError(
+                    f"Composition validation failed: {'; '.join(validation_result.errors)}"
+                )
 
         existing = await self._repo.get_by_name(name)
         if existing:
@@ -113,6 +143,7 @@ class AgentDefinitionService:
             mcp_tools=mcp_tools,
             rag_config=rag_config,
             sub_agents=sub_agents,
+            sub_agent_ids=sub_agent_ids,
             supervisor_prompt=supervisor_prompt,
             stages=stages,
             pipeline_prompt=pipeline_prompt,
@@ -168,10 +199,42 @@ class AgentDefinitionService:
             if mcp_tools and not schema.supports_tools:
                 raise ValueError(f"Schema '{graph_schema}' does not support tools")
 
+        # NEW: Validate sub-agent references if updating
+        if "sub_agent_ids" in updates:
+            new_sub_agent_ids = updates.get("sub_agent_ids", [])
+            
+            if not self._validation_service:
+                self._validation_service = CompositionValidationService(self._repo)
+            
+            validation_result = await self._validation_service.validate_full_composition(
+                agent_id=id,
+                graph_schema=graph_schema or "zero_shot",
+                sub_agent_ids=new_sub_agent_ids,
+            )
+            
+            if not validation_result.valid:
+                raise ValueError(
+                    f"Composition validation failed: {'; '.join(validation_result.errors)}"
+                )
+            
+            # Increment version for cache validation
+            agent = await self._repo.get_by_id(id)
+            if agent:
+                updates["sub_agent_config_version"] = (
+                    agent.sub_agent_config_version + 1
+                )
+
         # Invalidate cache for this definition so next request reloads
         from agents.dynamic_agent import invalidate_agent_cache
 
         invalidate_agent_cache(str(id))
+
+        # NEW: Also cascade invalidate if dependents need recompilation
+        if "sub_agent_ids" in updates and not self._cache_service:
+            self._cache_service = CacheInvalidationService(self._repo)
+
+        if self._cache_service:
+            await self._cache_service.invalidate_agent_and_dependents(id)
 
         return await self._repo.update(id, updates)
 
@@ -186,6 +249,230 @@ class AgentDefinitionService:
 
     async def deactivate_agent_definition(self, id: UUID) -> bool:
         return await self._repo.deactivate(id)
+
+    # ==================== Composition Management Methods ====================
+    # New methods for managing sub-agent references and composition hierarchies
+
+    async def create_with_sub_agents(
+        self,
+        name: str,
+        graph_schema: str,
+        sub_agent_ids: list[UUID] | None = None,
+        **kwargs,
+    ):
+        """
+        Create agent with sub-agent references.
+
+        Validates composition before saving:
+        1. All sub-agents exist and are active
+        2. No circular dependencies
+        3. Schema compatibility
+        4. Max depth <= 5
+
+        Args:
+            name: Agent name
+            graph_schema: Graph schema type
+            sub_agent_ids: List of referenced agent IDs
+            **kwargs: Other agent fields
+
+        Returns:
+            Created AgentDefinitionModel
+
+        Raises:
+            CompositionValidationError: If validation fails
+        """
+        # Get or create validation service
+        if not self._validation_service:
+            self._validation_service = CompositionValidationService(self._repo)
+
+        # Validate composition
+        sub_ids = sub_agent_ids or []
+        validation_result = await self._validation_service.validate_full_composition(
+            agent_id=None,  # Creating new
+            graph_schema=graph_schema,
+            sub_agent_ids=sub_ids,
+        )
+
+        if not validation_result.valid:
+            raise ValueError(
+                f"Composition validation failed: {'; '.join(validation_result.errors)}"
+            )
+
+        # Create agent with sub_agent_ids
+        return await self._repo.create(
+            name=name,
+            graph_schema=graph_schema,
+            sub_agent_ids=sub_ids,
+            **kwargs,
+        )
+
+    async def update_sub_agents(
+        self,
+        agent_id: UUID,
+        new_sub_agent_ids: list[UUID],
+    ):
+        """
+        Update agent's sub-agents and cascade invalidate cache.
+
+        Args:
+            agent_id: Agent to update
+            new_sub_agent_ids: New list of referenced agent IDs
+
+        Returns:
+            Updated AgentDefinitionModel
+
+        Raises:
+            CompositionValidationError: If validation fails
+        """
+        # Load agent
+        agent = await self._repo.get_by_id(agent_id)
+        if not agent:
+            raise ValueError(f"Agent {agent_id} not found")
+
+        # Get or create validation service
+        if not self._validation_service:
+            self._validation_service = CompositionValidationService(self._repo)
+
+        # Validate new composition
+        validation_result = await self._validation_service.validate_full_composition(
+            agent_id=agent_id,
+            graph_schema=agent.graph_schema,
+            sub_agent_ids=new_sub_agent_ids,
+        )
+
+        if not validation_result.valid:
+            raise ValueError(
+                f"Composition validation failed: {'; '.join(validation_result.errors)}"
+            )
+
+        # Update DB
+        updates = {
+            "sub_agent_ids": new_sub_agent_ids,
+            "sub_agent_config_version": agent.sub_agent_config_version + 1,
+        }
+        updated = await self._repo.update(agent_id, updates)
+
+        # Cascade invalidate cache
+        if not self._cache_service:
+            self._cache_service = CacheInvalidationService(self._repo)
+
+        await self._cache_service.invalidate_agent_and_dependents(agent_id)
+
+        logger.info(
+            f"Updated agent {agent_id} sub-agents: "
+            f"{len(new_sub_agent_ids)} references, "
+            f"invalidated all dependents"
+        )
+
+        return updated
+
+    async def get_sub_agents(self, agent_id: UUID) -> list:
+        """
+        Load all sub-agents for an agent.
+
+        Returns:
+            List of AgentDefinitionModel for all referenced sub-agents
+        """
+        agent = await self._repo.get_by_id(agent_id)
+        if not agent:
+            raise ValueError(f"Agent {agent_id} not found")
+
+        if not agent.sub_agent_ids:
+            return []
+
+        sub_agents = []
+        for sub_id in agent.sub_agent_ids:
+            sub_agent = await self._repo.get_by_id(sub_id)
+            if sub_agent:
+                sub_agents.append(sub_agent)
+
+        return sub_agents
+
+    async def get_composition_info(self, agent_id: UUID) -> dict[str, Any]:
+        """
+        Get hierarchical composition structure for UI preview.
+
+        Returns:
+            {
+                "id": str,
+                "name": str,
+                "graph_schema": str,
+                "depth": int,
+                "sub_agents": [
+                    {same structure recursively}
+                ]
+            }
+        """
+        agent = await self._repo.get_by_id(agent_id)
+        if not agent:
+            raise ValueError(f"Agent {agent_id} not found")
+
+        async def build_tree(agent_def) -> dict[str, Any]:
+            sub_agents_list = await self.get_sub_agents(agent_def.id)
+
+            # Get depth
+            if not self._validation_service:
+                self._validation_service = CompositionValidationService(self._repo)
+
+            depth = await self._validation_service.get_composition_depth_async(
+                agent_def.id
+            )
+
+            return {
+                "id": str(agent_def.id),
+                "name": agent_def.name,
+                "graph_schema": agent_def.graph_schema,
+                "status": "active" if agent_def.is_active else "inactive",
+                "depth": depth,
+                "sub_agents": [await build_tree(sub) for sub in sub_agents_list],
+            }
+
+        return await build_tree(agent)
+
+    async def find_agents_by_sub_agent_id(self, sub_agent_id: UUID) -> list[UUID]:
+        """
+        Find all agents that reference this agent as a sub-agent.
+
+        Returns:
+            List of agent UUIDs
+        """
+        return await self._repo.find_agents_by_sub_agent_id(sub_agent_id)
+
+    async def validate_composition(
+        self,
+        agent_id: UUID | None,
+        graph_schema: str,
+        sub_agent_ids: list[UUID],
+    ) -> dict[str, Any]:
+        """
+        Validate composition without saving.
+
+        Args:
+            agent_id: None if creating, set if updating
+            graph_schema: Master agent schema
+            sub_agent_ids: Proposed sub-agent IDs
+
+        Returns:
+            {
+                "valid": bool,
+                "errors": [str],
+                "warnings": [str],
+                "depth": int
+            }
+        """
+        if not self._validation_service:
+            self._validation_service = CompositionValidationService(self._repo)
+
+        result = await self._validation_service.validate_full_composition(
+            agent_id, graph_schema, sub_agent_ids
+        )
+
+        return {
+            "valid": result.valid,
+            "errors": result.errors,
+            "warnings": result.warnings,
+            "depth": result.depth,
+        }
 
 
 class GraphSchemaService:

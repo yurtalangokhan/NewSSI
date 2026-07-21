@@ -35,10 +35,7 @@ import { toast } from "@/hooks/useToast";
 import { useAvailableTools } from "@/hooks/useAvailableTools";
 import {
   SEARCH_TOOL_ID,
-  IMAGE_GENERATION_TOOL_ID,
   WEB_SEARCH_TOOL_ID,
-  PYTHON_TOOL_ID,
-  OPEN_URL_TOOL_ID,
 } from "@/app/app/components/tools/constants";
 import { Button } from "@opal/components";
 import Modal from "@/refresh-components/Modal";
@@ -195,17 +192,8 @@ function ChatPreferencesForm() {
   const searchTool = availableTools.find(
     (t) => t.in_code_tool_id === SEARCH_TOOL_ID
   );
-  const imageGenTool = availableTools.find(
-    (t) => t.in_code_tool_id === IMAGE_GENERATION_TOOL_ID
-  );
   const webSearchTool = availableTools.find(
     (t) => t.in_code_tool_id === WEB_SEARCH_TOOL_ID
-  );
-  const openURLTool = availableTools.find(
-    (t) => t.in_code_tool_id === OPEN_URL_TOOL_ID
-  );
-  const codeInterpreterTool = availableTools.find(
-    (t) => t.in_code_tool_id === PYTHON_TOOL_ID
   );
 
   // Connectors
@@ -319,7 +307,7 @@ function ChatPreferencesForm() {
 
         router.refresh();
         toast.success(t("admin.chatPreferencesPage.toastSettingsUpdated"));
-      } catch (error) {
+      } catch {
         toast.error(t("admin.chatPreferencesPage.toastSettingsFailed"));
       }
     },
@@ -567,42 +555,6 @@ function ChatPreferencesForm() {
                         </Card>
                       )}
 
-                      <SimpleTooltip
-                        tooltip={
-                          imageGenTool
-                            ? undefined
-                            : t(
-                                "admin.chatPreferencesPage.imageGenerationUnavailableTooltip"
-                              )
-                        }
-                        side="top"
-                      >
-                        <Card variant={imageGenTool ? undefined : "disabled"}>
-                          <InputLayouts.Horizontal
-                            title={t(
-                              "admin.chatPreferencesPage.imageGenerationTitle"
-                            )}
-                            description={t(
-                              "admin.chatPreferencesPage.imageGenerationDescription"
-                            )}
-                            disabled={!imageGenTool}
-                          >
-                            <Switch
-                              checked={
-                                imageGenTool
-                                  ? isToolEnabled(imageGenTool.id)
-                                  : false
-                              }
-                              onCheckedChange={(checked) =>
-                                imageGenTool &&
-                                void toggleTool(imageGenTool.id, checked)
-                              }
-                              disabled={!imageGenTool}
-                            />
-                          </InputLayouts.Horizontal>
-                        </Card>
-                      </SimpleTooltip>
-
                       <Card variant={webSearchTool ? undefined : "disabled"}>
                         <InputLayouts.Horizontal
                           title={t("admin.chatPreferencesPage.webSearchTitle")}
@@ -622,56 +574,6 @@ function ChatPreferencesForm() {
                               void toggleTool(webSearchTool.id, checked)
                             }
                             disabled={!webSearchTool}
-                          />
-                        </InputLayouts.Horizontal>
-                      </Card>
-
-                      <Card variant={openURLTool ? undefined : "disabled"}>
-                        <InputLayouts.Horizontal
-                          title={t("admin.chatPreferencesPage.openUrlTitle")}
-                          description={t(
-                            "admin.chatPreferencesPage.openUrlDescription"
-                          )}
-                          disabled={!openURLTool}
-                        >
-                          <Switch
-                            checked={
-                              openURLTool
-                                ? isToolEnabled(openURLTool.id)
-                                : false
-                            }
-                            onCheckedChange={(checked) =>
-                              openURLTool &&
-                              void toggleTool(openURLTool.id, checked)
-                            }
-                            disabled={!openURLTool}
-                          />
-                        </InputLayouts.Horizontal>
-                      </Card>
-
-                      <Card
-                        variant={codeInterpreterTool ? undefined : "disabled"}
-                      >
-                        <InputLayouts.Horizontal
-                          title={t(
-                            "admin.chatPreferencesPage.codeInterpreterTitle"
-                          )}
-                          description={t(
-                            "admin.chatPreferencesPage.codeInterpreterDescription"
-                          )}
-                          disabled={!codeInterpreterTool}
-                        >
-                          <Switch
-                            checked={
-                              codeInterpreterTool
-                                ? isToolEnabled(codeInterpreterTool.id)
-                                : false
-                            }
-                            onCheckedChange={(checked) =>
-                              codeInterpreterTool &&
-                              void toggleTool(codeInterpreterTool.id, checked)
-                            }
-                            disabled={!codeInterpreterTool}
                           />
                         </InputLayouts.Horizontal>
                       </Card>
@@ -817,14 +719,18 @@ function ChatPreferencesForm() {
           <Modal.Header
             icon={SvgAddLines}
             title={t("admin.chatPreferencesPage.systemPromptTitle")}
-            description={t("admin.chatPreferencesPage.systemPromptModalDescription")}
+            description={t(
+              "admin.chatPreferencesPage.systemPromptModalDescription"
+            )}
             onClose={() => setSystemPromptModalOpen(false)}
           />
           <Modal.Body>
             <InputTextArea
               value={systemPromptValue}
               onChange={(e) => setSystemPromptValue(e.target.value)}
-              placeholder={t("admin.chatPreferencesPage.systemPromptPlaceholder")}
+              placeholder={t(
+                "admin.chatPreferencesPage.systemPromptPlaceholder"
+              )}
               rows={8}
               maxRows={20}
               autoResize

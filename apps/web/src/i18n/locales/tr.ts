@@ -1117,6 +1117,95 @@ const tr = {
     graphSchemaLabel: "Graf Şeması",
     graphSchemaDescription: "Dinamik graf çalıştırma modelini seçin.",
     selectGraphSchemaPlaceholder: "Graf şeması seçin",
+    graphPreviewTitle: "{{schema}} grafı",
+    graphPreviewHeroEyebrow: "Ajan mimarisi önizlemesi",
+    graphPreviewButtonTitle: "Ajan grafını önizle",
+    graphPreviewButtonDescription:
+      "Şema, araç, bellek ve akış seçimlerinden sonra son graf kartını açın.",
+    graphPreviewShowButton: "Grafı önizle",
+    graphPreviewHideButton: "Önizlemeyi gizle",
+    graphPreviewModalTitle: "Ajan grafı önizlemesi",
+    graphPreviewModalDescription:
+      "Ajanı oluşturmadan önce son mimariyi gözden geçirin.",
+    graphPreviewCloseButton: "Önizlemeyi kapat",
+    graphPreviewExecutionPath: "Çalıştırma yolu",
+    graphPreviewLoop: "döngü",
+    graphPreviewTools: "Araçlar",
+    graphPreviewMemory: "Bellek",
+    graphPreviewSubAgents: "Alt ajanlar",
+    graphPreviewStages: "Aşamalar",
+    graphPreviewConfiguredTeam: "Yapılandırılmış ekip",
+    graphPreviewNoSubAgents:
+      "Henüz alt ajan yapılandırılmadı. Alt ajan yönetiminden ekleyin.",
+    graphPreviewInstructionPreview: "Yönerge",
+    graphPreviewSubAgentCount: "{{count}} yapılandırıldı",
+    graphPreviewMultiStep: "Çok adım",
+    graphPreviewTooling: "Araç yapısı",
+    graphPreviewEnabled: "Etkin",
+    graphPreviewAvailable: "Kullanılabilir",
+    graphPreviewNotUsed: "Kullanılmaz",
+    graphPreviewUnnamedAgent: "Adsız ajan",
+    graphPreviewDefaultBrain: "Varsayılan beyin",
+    graphPreviewKnowledge: "Bilgi",
+    graphPreviewToolCount: "{{count}} seçili",
+    graphPreviewLongTermMemory: "Uzun süreli",
+    graphPreviewSchemaManaged: "Şemaya göre",
+    graphPreviewToolsInfoTitle: "Araç erişimi",
+    graphPreviewToolsInfoEmpty:
+      "Henüz araç seçilmedi. Bu ajan yalnızca graf ve model yanıtına dayanacak.",
+    graphPreviewToolsInfoWithTools:
+      "{{tools}}{{count, plural, =0 {} other { + {{count}} daha}}} graf araç kullanabilen adıma ulaştığında kullanılabilir olacak.",
+    graphPreviewMemoryInfoTitle: "Bellek davranışı",
+    graphPreviewMemoryInfoEnabled:
+      "Seçilen graf bağlam adımına ulaştığında bellek yanıtı etkileyebilir.",
+    graphPreviewMemoryInfoDisabled:
+      "Bellek seçilmedi. Ajan mevcut istek ve yapılandırılmış bilgiyle yanıt verir.",
+    graphPreviewFlowInfoTitle: "Akış davranışı",
+    graphPreviewFlowInfoDirect:
+      "Bu şema tek model geçişinden sonra doğrudan yanıt verir.",
+    graphPreviewFlowInfoMultiStep:
+      "Bu şema yanıtlamadan önce işi birden fazla geçişe böler.",
+    graphPreviewFlowInfoSubAgents:
+      "Bu şema final yanıtından önce işi uzman ajanlara yönlendirebilir.",
+    validatingComposition: "Kompozisyon doğrulanıyor...",
+    compositionValid: "Kompozisyon geçerli",
+    compositionDepth: "Kompozisyon derinliği {{depth}}",
+    compositionInvalid: "Kompozisyon dikkat gerektiriyor",
+    warningsFound: "Uyarılar bulundu",
+    hierarchyDepth: "Hiyerarşi derinliği {{depth}}",
+    graphPreviewNodes: {
+      input: "Kullanıcı girdisi",
+      prompt: "Model istemi",
+      reason: "Akıl yürüt",
+      act: "Araç kullan",
+      observe: "Gözlemle",
+      supervisor: "Süpervizör",
+      subAgents: "Uzmanlar",
+      review: "İncele",
+      stageOne: "Aşama 1",
+      stageTwo: "Aşama 2",
+      stageThree: "Aşama 3",
+      plan: "Planla",
+      execute: "Yürüt",
+      synthesize: "Birleştir",
+      draft: "Taslak",
+      critique: "Eleştir",
+      revise: "Revize et",
+      answer: "Yanıt",
+    },
+    graphPreviewDetails: {
+      zeroShot:
+        "Tek model geçişi. Araç ve yeniden deneme gerekmeyen doğrudan yanıtlar için uygundur.",
+      react:
+        "Ajan akıl yürütür, gerektiğinde araç çağırır, sonucu gözlemler ve devam eder.",
+      supervisor:
+        "Süpervizör işi uzman ajanlara yönlendirir ve birleşik sonucu inceler.",
+      pipeline: "Sabit aşama dizisi isteği adım adım nihai yanıta dönüştürür.",
+      planExecute:
+        "Ajan önce plan yazar, adımları yürütür ve sonucu birleştirir.",
+      selfReflect:
+        "Ajan yanıt taslağı üretir, eleştirir ve cevaplamadan önce revize eder.",
+    },
     brainTypeLabel: "Beyin Türü",
     selectBrainTypePlaceholder: "Beyin türü seçin",
     memoryTypeLabel: "Bellek Türü",
@@ -1215,6 +1304,39 @@ const tr = {
       subAgentsField: "Alt ajanlar",
       stagesField: "Aşamalar",
     },
+    subAgentPanelTitle: "Alt ajan yönetimi",
+    selectSubAgents: "Alt Ajanları Seçin",
+    selectSubAgentsDescription: "Mevcut ajanları seçin, her birine rol verin ve bu graf içinde izleyeceği yönergeyi yazın.",
+    addSubAgent: "Alt ajan ekle...",
+    manageSubAgents: "Alt ajanları yönet",
+    subAgentModalTitle: "Alt ajanları yönet",
+    subAgentModalDescription:
+      "Bu graftaki ajanları seçin, ardından her birinin rolünü ve çalışma yönergesini tanımlayın.",
+    availableAgentsPanel: "Uygun ajanlar",
+    chooseSubAgent: "Ajan seç",
+    availableSubAgents: "{{count}} uygun ajan",
+    noAvailableAgents: "Bu şema türü için kullanılabilir ajan yok",
+    noSelectedSubAgents: "Henüz alt ajan seçilmedi.",
+    noSelectedSubAgentsShort: "Seçim yok",
+    noSelectedSubAgentsHint:
+      "Bu grafı oluşturmaya başlamak için soldan bir ajan seçin.",
+    applySubAgentChanges: "Alt ajan ayarlarını kaydet",
+    errorLoadingAvailableAgents: "Kullanılabilir ajanlar yüklenirken hata oluştu",
+    selectedSubAgents: "Seçilen Alt Ajanlar",
+    agentsSelected: "{{count}} seçili",
+    supervisorRoles: "Süpervizör rolleri",
+    pipelineOrder: "İş hattı sırası",
+    subAgentRoleLabel: "Rol",
+    subAgentRolePlaceholder: "araştırmacı, denetleyici, yazar...",
+    pipelineStagePlaceholder: "giriş, zenginleştir, doğrula...",
+    subAgentInstructionLabel: "Yönerge",
+    subAgentInstructionPlaceholder: "Bu alt ajanın graf içinde tam olarak hangi sorumluluğu aldığını yazın.",
+    subAgentRoleRequired: "Her alt ajanın bir rolü olmalı.",
+    subAgentInstructionRequired: "Her alt ajanın bir yönergesi olmalı.",
+    removeSubAgent: "Alt ajanı kaldır",
+    moveSubAgentUp: "Yukarı taşı",
+    moveSubAgentDown: "Aşağı taşı",
+    depthLabel: "Derinlik {{depth}}",
   },
   newTenantModal: {
     inviteTitle:
@@ -1326,6 +1448,17 @@ const tr = {
   },
   admin: {
     agents: {
+      workspaceTitle: "Ajan çalışma alanı",
+      workspaceDescription:
+        "Ajan kataloğunu, erişim gruplarını ve sohbet davranışını şekillendiren araçları yönetin.",
+      catalogMetricLabel: "Katalog",
+      totalAgentsLabel: "Toplam ajan",
+      visibleAgentsLabel: "Görünür ajan",
+      publicAgentsLabel: "Genel ajan",
+      toolEnabledAgentsLabel: "Araç bağlı",
+      activeViewLabel: "Aktif görünüm",
+      accessGroupsTitle: "Erişim grupları",
+      accessModelLabel: "Erişim modeli",
       catalogTitle: "Ajan Kataloğu",
       createButton: "Ajan Oluştur",
       catalogDescription:
@@ -1370,6 +1503,14 @@ const tr = {
       visible: "Görünür",
     },
     search: {
+      workspaceTitle: "Arama kalitesi çalışma alanı",
+      workspaceDescription:
+        "Yanıt kalitesini etkileyen embedding yapılandırmasını, yeniden indeksleme ihtiyaçlarını ve retrieval ayarlarını gözden geçirin.",
+      embeddingLabel: "Embedding modeli",
+      configurable: "Yapılandırılabilir",
+      indexHealthLabel: "İndeks sağlığı",
+      reviewBelow: "Aşağıda inceleyin",
+      relatedContentLabel: "İlgili içerik",
       changedSuccessfully: "Arama ayarları başarıyla değiştirildi",
       fetchEmbeddingModelError: "Embedding modeli alınamadı",
       reindexWarning:
@@ -1384,6 +1525,9 @@ const tr = {
       updateButton: "Arama Ayarlarını Güncelle",
     },
     llm: {
+      workspaceTitle: "Model sağlayıcı çalışma alanı",
+      workspaceDescription:
+        "Yerleşik, yerel ve bulut model sağlayıcılarını yönetin; kullanıcıların başlayacağı varsayılan modeli seçin.",
       defaultModelLabel: "Varsayılan Model",
       defaultModelDescription:
         "Bu model, sohbetlerinizde Onyx tarafından varsayılan olarak kullanılacaktır.",
@@ -1673,6 +1817,23 @@ const tr = {
       },
     },
     users: {
+      workspaceTitle: "Kullanıcı yönetimi çalışma alanı",
+      workspaceDescription:
+        "Kullanıcıları bulun, hesap verilerini dışa aktarın, ekip arkadaşlarını davet edin ve erişim değişikliği gerektiğinde rollere geçin.",
+      primaryTableLabel: "Ana tablo",
+      accessModelLabel: "Erişim modeli",
+      exportLabel: "Dışa aktarım",
+      matchingUsersLabel: "Eşleşen kullanıcılar",
+      pendingRequestsLabel: "Bekleyen istekler",
+      rolesAvailableLabel: "Tanımlı roller",
+      notAvailable: "Mevcut değil",
+      addUserWorkspaceTitle: "Kullanıcı oluştur",
+      addUserWorkspaceDescription:
+        "Bir kullanıcı hesabı ekleyin, ilk erişim profilini atayın ve işlem bitince kullanıcı tablosuna dönün.",
+      identityLabel: "Kimlik",
+      required: "Zorunlu",
+      initialRoleLabel: "İlk rol",
+      availableRolesLabel: "Mevcut roller",
       searchPlaceholder: "Ara",
       inviteUsersButton: "Kullanıcı Davet Et",
       bulkAddTitle: "Toplu Kullanıcı Ekle",
@@ -1816,6 +1977,17 @@ const tr = {
         updateFailed: "Kullanıcı güncellenemedi",
       },
     },
+    roles: {
+      workspaceTitle: "Erişim politikası çalışma alanı",
+      workspaceDescription:
+        "Servis rollerini inceleyin, üst seviye erişim profilleri oluşturun ve değişiklikleri kimlik altyapısıyla eşitleyin.",
+      roleLayerLabel: "Rol katmanı",
+      roles: "Roller",
+      compositeLayerLabel: "Bileşik katman",
+      compositeRoles: "Bileşik Roller",
+      permissionSourceLabel: "İzin kaynağı",
+      services: "Servisler",
+    },
     connectorForm: {
       documentAccess: {
         label: "Belge Erişimi",
@@ -1844,6 +2016,19 @@ const tr = {
       },
     },
     apiKey: {
+      workspaceTitle: "API erişim çalışma alanı",
+      workspaceDescription:
+        "Servis istemcileri ve entegrasyonlar tarafından kullanılan API anahtarlarını oluşturun, döndürün ve inceleyin.",
+      securityLabel: "Güvenlik",
+      rotateKeys: "Anahtarları döndür",
+      scopeLabel: "Kapsam",
+      subscriptionLabel: "Oluşturma",
+      subscriptionControlled: "Plan kontrollü",
+      activeKeysLabel: "Aktif anahtarlar",
+      rolesInUseLabel: "Kullanılan roller",
+      keyCreationLabel: "Anahtar oluşturma",
+      available: "Kullanılabilir",
+      requiresPlan: "Plan gerekli",
       description:
         "API Anahtarları, Onyx API'lerine programatik erişim sağlar.",
       descriptionWithButton:
@@ -1882,6 +2067,16 @@ const tr = {
       errorCreating: "API anahtarı oluşturulurken hata oluştu - {{errorMsg}}",
     },
     tokenRateLimits: {
+      workspaceTitle: "Token yönetimi çalışma alanı",
+      workspaceDescription:
+        "Yüksek hacimli kullanım platformu etkilemeden önce global, kullanıcı ve grup token bütçelerini kontrol edin.",
+      globalScopeLabel: "Global",
+      userScopeLabel: "Kullanıcılar",
+      groupScopeLabel: "Gruplar",
+      scope: "Kapsam",
+      globalLimitsLabel: "Global limitler",
+      userLimitsLabel: "Kullanıcı limitleri",
+      groupLimitsLabel: "Grup limitleri",
       description:
         "Token hız sınırları, belirli bir sürede ne kadar token harcanabileceğini kontrol etmenizi sağlar. Token hız sınırlarıyla şunları yapabilirsiniz:",
       globalRateLimit:
@@ -1933,6 +2128,13 @@ const tr = {
       fetchUserGroupsError: "Kullanıcı grupları getirilemedi: {{error}}",
     },
     indexingStatus: {
+      workspaceTitle: "Bağlayıcı kontrol alanı",
+      workspaceDescription:
+        "Bağlı kaynakları izleyin, bağlayıcı türüne göre genişletin ve sıradaki veri kaynağını eklemeye hızlıca geçin.",
+      connectedSourcesLabel: "Bağlı kaynaklar",
+      connectorTypesLabel: "Bağlayıcı türleri",
+      viewModeLabel: "Görünüm modu",
+      groupedByType: "Türe göre gruplanmış",
       connectorCreated: "Bağlayıcı başarıyla oluşturuldu",
       connectorDeleted: "Bağlayıcı başarıyla silindi",
       datasourceDeleted: "Veri kaynağı silindi",
@@ -2090,6 +2292,15 @@ const tr = {
       },
     },
     airbyteConnector: {
+      catalogTitle: "Bağlayıcı kataloğu",
+      catalogDescription:
+        "Mevcut bağlayıcılarda arama yapın, ilk eşleşmeyi açmak için Enter'a basın veya kategoriye göre göz atın.",
+      categoriesLabel: "Kategoriler",
+      searchStateLabel: "Arama durumu",
+      filtered: "Filtrelenmiş",
+      browseAll: "Tümüne göz at",
+      keyboardLabel: "Klavye",
+      enterToOpen: "Enter ilk sonucu açar",
       addConnector: "Bağlayıcı Ekle",
       steps: {
         configure: "Yapılandır",
@@ -2122,12 +2333,25 @@ const tr = {
       optionLabel: "Seçenek {{index}}",
     },
     documentProcessing: {
+      pipelineTitle: "Belge işleme hattı",
+      pipelineDescription:
+        "Koleksiyonları düzenleyin, kaynak belgeleri inceleyin ve grafik oluşturma işlerini arama kalitesini etkilemeden önce görünür tutun.",
+      selectedCollectionLabel: "Seçili koleksiyon",
+      selectRequired: "Aşağıdan seçin",
+      contentScopeLabel: "İçerik kapsamı",
+      collectionsAndDocs: "Koleksiyonlar + belgeler",
+      downstreamLabel: "Sonraki kullanım",
+      collectionsMetricLabel: "Koleksiyonlar",
+      dataSourcesMetricLabel: "Veri kaynakları",
+      graphReadyMetricLabel: "Hazır graf",
+      buildProgressMetricLabel: "Oluşturma ilerlemesi",
+      noActiveBuild: "Aktif işlem yok",
       langConnectRag: "LangConnect RAG",
       langConnectRagDescription:
-        "Vektör koleksiyonlarını yönetin, indeksleme için belge yükleyin ve LangConnect ile PGVector destekli semantik arama çalıştırın.",
+        "Milvus destekli vektör koleksiyonlarını yönetin, indeksleme için belge yükleyin ve LangConnect ile semantik arama çalıştırın.",
       ragCollections: "RAG Koleksiyonları",
       ragCollectionsDescription:
-        "Koleksiyonlar belgelerinizi PGVector içinde vektör embeddingleri olarak saklar. Belgeleri yönetmek ve semantik arama çalıştırmak için mevcut bir koleksiyon seçin veya yeni bir koleksiyon oluşturun.",
+        "Koleksiyonlar belge parçalarını ve vektör embeddinglerini Milvus içinde saklar. Belgeleri yönetmek ve semantik arama çalıştırmak için mevcut bir koleksiyon seçin veya yeni bir koleksiyon oluşturun.",
       selectOrCreateCollection:
         "Belgeleri yönetmek ve arama yapmak için yukarıdan bir koleksiyon seçin veya oluşturun.",
       selectCollection: "Koleksiyon Seç",
@@ -2285,6 +2509,19 @@ const tr = {
       testTool: "Aracı Test Et",
     },
     kg: {
+      pageDescription:
+        "İndekslenmiş bilgi kaynaklarınızda entity grafiklerini oluşturun, inceleyin ve arayın.",
+      workspaceTitle: "Graf çalışma alanı",
+      workspaceDescription:
+        "Bir koleksiyon seçin, grafı oluşturun ve bağlamı kaybetmeden görsel keşif ile semantik arama arasında geçiş yapın.",
+      primaryFlowLabel: "Ana akış",
+      primaryFlowValue: "Oluştur -> Keşfet -> Ara",
+      activeAreaLabel: "Geçerli alan",
+      dataDependencyLabel: "Gereksinim",
+      knowledgeSourcesMetricLabel: "Bilgi kaynakları",
+      graphReadyMetricLabel: "Hazır graf",
+      needsGraphMetricLabel: "Graf bekleyen",
+      dataSourcesMetricLabel: "Veri kaynakları",
       description:
         "RAG koleksiyonlarınızdan bir bilgi grafiği oluşturun. Belgelerden varlıkları ve ilişkileri çıkarın, grafiği görsel olarak keşfedin ve grafik destekli semantik aramalar çalıştırın.",
       collection: "Koleksiyon",
@@ -2421,6 +2658,14 @@ const tr = {
       },
     },
     imageGeneration: {
+      workspaceTitle: "Görsel üretim çalışma alanı",
+      workspaceDescription:
+        "Görsel sağlayıcılarını bağlayın, model kullanılabilirliğini inceleyin ve ajan akışları için görsel üretimi hazır tutun.",
+      providerLayerLabel: "Sağlayıcı katmanı",
+      agentCapabilityLabel: "Ajan yeteneği",
+      relatedConfigLabel: "İlgili yapılandırma",
+      providersMetric: "Sağlayıcılar",
+      images: "Görseller",
       description: "Sohbet içi görüntü oluşturma ayarları.",
       modelTitle: "Görsel Oluşturma Modeli",
       modelDescription: "Sohbette görsel oluşturmak için bir model seçin.",
@@ -2479,6 +2724,12 @@ const tr = {
       },
     },
     codeInterpreter: {
+      workspaceTitle: "Kod yürütme çalışma alanı",
+      workspaceDescription:
+        "Kod çalıştırıcı sağlığını izleyin ve ajanların kod destekli analiz çalıştırıp çalıştıramayacağını kontrol edin.",
+      connectionLabel: "Bağlantı",
+      availabilityLabel: "Kullanılabilirlik",
+      agentUseLabel: "Ajan kullanımı",
       title: "Kod Çalıştırıcı",
       description: "Yerleşik Python çalışma zamanı",
       pageDescription:
@@ -2496,6 +2747,15 @@ const tr = {
         "<bold>Kod Çalıştırıcı</bold>'ya bağlı tüm çalışan oturumlar duracaktır. Bu işlemin çalışma zamanınızdan herhangi bir veriyi silmeyeceğini unutmayın. İhtiyaç duyduğunuzda bu çalışma zamanına yeniden bağlanabilirsiniz.",
     },
     webSearch: {
+      workspaceTitle: "Web retrieval çalışma alanı",
+      workspaceDescription:
+        "Ajanların web sonuçlarını nasıl bulacağını, sayfa içeriğini nasıl alacağını ve kullanıcılar güvenmeden önce tarayıcı kalitesini nasıl test edeceğinizi yapılandırın.",
+      searchProviderLabel: "Arama sağlayıcısı",
+      contentProviderLabel: "İçerik sağlayıcısı",
+      active: "Aktif",
+      notConfigured: "Yapılandırılmadı",
+      validationLabel: "Doğrulama",
+      crawlerTestValue: "Tarayıcı testi",
       pageDescription: "İnternet üzerinden harici arama için arama ayarları.",
       failedToLoad: "Web arama ayarları yüklenemedi",
       loadingError: "Web arama yapılandırması yüklenemiyor.",
@@ -2594,6 +2854,14 @@ const tr = {
       noConnectors: "Mevcut bağlayıcı yok.",
     },
     debug: {
+      workspaceTitle: "Tanılama çalışma alanı",
+      workspaceDescription:
+        "Platform davranışının incelenmesi gerektiğinde günlük kategorilerini gözden geçirin ve tanılama çıktılarını indirin.",
+      logCategoriesLabel: "Günlük kategorileri",
+      availableBelow: "Aşağıda mevcut",
+      exportLabel: "Dışa aktarım",
+      sensitiveLabel: "Hassas",
+      adminOnly: "Yalnızca admin",
       logsTitle: "Hata Ayıklama Günlükleri",
       description:
         "sistem işlemleri ve olaylar hakkında ayrıntılı bilgi sağlar. Sistem davranışını analiz etmek veya sorunları gidermek için her kategori için günlük indirebilirsiniz.",
@@ -2625,6 +2893,14 @@ const tr = {
       updateSettings: "Ayarları Güncelle",
     },
     billing: {
+      workspaceTitle: "Faturalama çalışma alanı",
+      workspaceDescription:
+        "Plan durumunu, lisans etkinleştirmeyi ve fatura detaylarını admin konsolundan ayrılmadan inceleyin.",
+      currentViewLabel: "Geçerli görünüm",
+      subscriptionLabel: "Abonelik",
+      active: "Aktif",
+      review: "İncele",
+      supportLabel: "Destek",
       pageTitle: "Fatura Bilgileri",
       plansAndBillingTitle: "Planlar ve Faturalandırma",
       upgradePlanTitle: "Planı Yükselt",
@@ -2758,7 +3034,26 @@ const tr = {
       backendVersion: "Backend Versiyonu",
       webVersion: "Web Versiyonu",
     },
+    systemSettings: {
+      workspaceTitle: "Kimlik ve sistem kontrolleri",
+      workspaceDescription:
+        "Keycloak bağlantısını, harici kimlik sağlayıcı eşitlemesini ve oturum politikasını tek bir operasyon yüzeyinde inceleyin.",
+      keycloakLabel: "Keycloak",
+      externalIdpLabel: "Harici IdP",
+      realmSessionLabel: "Realm oturumu",
+      enabled: "Etkin",
+      disabled: "Devre dışı",
+      reachable: "Erişilebilir",
+      needsReview: "İnceleme gerekli",
+    },
     documentSets: {
+      workspaceTitle: "Belge seti çalışma alanı",
+      workspaceDescription:
+        "Belgeleri ajanlar, retrieval akışları ve kontrollü erişim için yeniden kullanılabilir koleksiyonlar halinde gruplayın.",
+      structureLabel: "Yapı",
+      sets: "Setler",
+      sourceLabel: "Kaynak",
+      downstreamLabel: "Sonraki kullanım",
       title: "Belge Setleri",
       description:
         "mantıksal olarak bağlı belgeleri tek bir pakette gruplamanızı sağlar. Bu paketler, arama yaparken filtre olarak kullanılarak Onyx'in arama kapsamını kontrol etmenize yardımcı olur.",
@@ -2808,6 +3103,12 @@ const tr = {
       newButton: "Yeni Belge Seti",
     },
     documentsFeedback: {
+      workspaceTitle: "Belge geri bildirimi çalışma alanı",
+      workspaceDescription:
+        "Retrieval kalitesini iyileştirmek için en çok beğenilen ve beğenilmeyen belgeleri net bir başlangıç noktası olarak inceleyin.",
+      positiveSignalLabel: "Pozitif sinyal",
+      negativeSignalLabel: "Negatif sinyal",
+      nextStepLabel: "Sonraki adım",
       loading: "Yükleniyor",
       errorLoadingDocuments: "Belgeler yüklenirken hata oluştu",
       mostLikedTitle: "En Çok Beğenilen Belgeler",
@@ -2822,6 +3123,13 @@ const tr = {
       errorUpdatingHidden: "Gizlilik durumu güncellenemedi - {{error}}",
     },
     bots: {
+      workspaceTitle: "Slack bot çalışma alanı",
+      workspaceDescription:
+        "Çalışma alanı kullanıcıları için Slack bot bağlantılarını, kanal yönlendirmelerini ve sohbet giriş noktalarını yönetin.",
+      integrationLabel: "Entegrasyon",
+      routingLabel: "Yönlendirme",
+      channels: "Kanallar",
+      agentLayerLabel: "Ajan katmanı",
       errorLoadingApps: "Uygulamalar yüklenirken hata oluştu",
       unknownError: "Bilinmeyen bir hata oluştu",
       description:
@@ -2874,6 +3182,12 @@ const tr = {
       failedToFetchBot: "Slack Botu {{id}} alınamadı: {{errorMsg}}",
     },
     discord: {
+      workspaceTitle: "Discord bot çalışma alanı",
+      workspaceDescription:
+        "Discord sunucularını kaydedin, bot tokenlarını yönetin ve kanalları doğru varsayılan ajana yönlendirin.",
+      integrationLabel: "Entegrasyon",
+      registrationLabel: "Kayıt",
+      agentLayerLabel: "Ajan katmanı",
       unknownError: "Bilinmeyen bir hata oluştu",
       pageDescription:
         "Onyx'i Discord sunucularınıza bağlayın. Kullanıcılar soruları doğrudan Discord kanallarında sorabilir.",
@@ -2976,6 +3290,14 @@ const tr = {
         "Ajanlarınıza özel aksiyonlar ve araçlar eklemek için MCP (Model Context Protocol) sunucularını bağlayın.",
       openApiDescription:
         "Ajanlarınıza özel aksiyonlar ve araçlar eklemek için OpenAPI sunucularını bağlayın.",
+      mcpWorkspaceTitle: "Aksiyon çalışma alanı",
+      mcpWorkspaceDescription:
+        "MCP sunucularını bağlayın, mevcut araçları inceleyin ve ajanların güvenle kullanabileceği araçları belirleyin.",
+      serversLabel: "Sunucular",
+      connectedServersLabel: "Bağlı sunucular",
+      toolsLabel: "Araçlar",
+      toolAccessValue: "Araç erişimi",
+      openApiActions: "OpenAPI Aksiyonları",
     },
     navigation: {
       version: "Onyx versiyonu: {{version}}",
@@ -3045,6 +3367,22 @@ const tr = {
           title: "API Anahtarları",
           sidebar: "API Anahtarları",
         },
+        roles: {
+          title: "Roller ve İzinler",
+          sidebar: "Roller ve İzinler",
+        },
+        tokenRateLimits: {
+          title: "Token Hız Sınırları",
+          sidebar: "Token Hız Sınırları",
+        },
+        systemSettings: {
+          title: "Sistem Ayarları",
+          sidebar: "Sistem Ayarları",
+        },
+        documentFeedback: {
+          title: "Belge Geri Bildirimi",
+          sidebar: "Geri Bildirim",
+        },
         systemInfo: {
           title: "Sistem Bilgisi",
           sidebar: "Sistem Bilgisi",
@@ -3061,6 +3399,14 @@ const tr = {
       },
     },
     documentExplorer: {
+      workspaceTitle: "Belge gezgini çalışma alanı",
+      workspaceDescription:
+        "İndekslenmiş içerikte arama yapın, bağlayıcı veya belge setiyle daraltın ve ajanların neyi getirebildiğini inceleyin.",
+      connectorsLabel: "Bağlayıcılar",
+      documentSetsLabel: "Belge setleri",
+      searchModeLabel: "Arama modu",
+      prefilled: "Önceden doldurulmuş",
+      openSearch: "Açık arama",
       date: "Tarih",
       anyTime: "Herhangi bir zaman...",
       allSources: "Tüm Kaynaklar",

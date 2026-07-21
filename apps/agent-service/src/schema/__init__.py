@@ -8,7 +8,7 @@ from models.chat import (
     StreamInput,
     UserInput,
 )
-from models.llm import AllModelEnum
+from models.llm import AllModelEnum, ModelName
 
 __all__ = [
     "AgentInfo",
@@ -18,6 +18,7 @@ __all__ = [
     "ChatMessage",
     "Feedback",
     "FeedbackResponse",
+    "ModelName",
     "ServiceMetadata",
     "StreamInput",
     "UserInput",

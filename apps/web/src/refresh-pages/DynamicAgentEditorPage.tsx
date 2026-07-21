@@ -4,15 +4,26 @@ import { useMemo, useState } from "react";
 import useSWR from "swr";
 import { errorHandlingFetcher } from "@/lib/fetcher";
 import { useAvailableTools } from "@/hooks/useAvailableTools";
+import useBuiltInTools from "@/hooks/useBuiltInTools";
+import useMcpServersForAgentEditor from "@/hooks/useMcpServersForAgentEditor";
 import { useAgents } from "@/hooks/useAgents";
 import { useAppRouter } from "@/hooks/appNavigation";
 import { toast } from "@/hooks/useToast";
 import Button from "@/refresh-components/buttons/Button";
-import Checkbox from "@/refresh-components/inputs/Checkbox";
 import InputSelect from "@/refresh-components/inputs/InputSelect";
 import InputTextArea from "@/refresh-components/inputs/InputTextArea";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
 import Text from "@/refresh-components/texts/Text";
+import McpToolSelectionCard, {
+  buildMcpOnlyToolSelectionGroups,
+  buildToolSelectionGroups,
+  toSelectableTool,
+} from "@/refresh-components/agents/McpToolSelectionCard";
+import {
+  buildCategoryLabelMap,
+  groupToolsByCategory,
+  parseToolCategory,
+} from "@/lib/tools/builtInToolUtils";
 import { useTranslation } from "react-i18next";
 
 interface GraphSchemaInfo {
@@ -46,21 +57,28 @@ function parseJsonArray(
   try {
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) {
-      throw new Error(t("agentEditor.dynamic.jsonArrayError", { field: fieldName }));
+      throw new Error(
+        t("agentEditor.dynamic.jsonArrayError", { field: fieldName })
+      );
     }
     return parsed;
   } catch (error) {
     if (error instanceof Error && error.message.includes("JSON array")) {
       throw error;
     }
-    throw new Error(t("agentEditor.dynamic.jsonValidError", { field: fieldName }));
+    throw new Error(
+      t("agentEditor.dynamic.jsonValidError", { field: fieldName })
+    );
   }
 }
 
 export default function DynamicAgentEditorPage() {
   const { t } = useTranslation();
   const { refresh: refreshAgents } = useAgents();
-  const { tools } = useAvailableTools();
+  const { tools, isLoading: isToolsLoading } = useAvailableTools();
+  const { tools: builtInTools, isLoading: isBuiltInToolsLoading } =
+    useBuiltInTools();
+  const { mcpData, isLoading: isMcpLoading } = useMcpServersForAgentEditor();
   const appRouter = useAppRouter();
 
   const { data: schemas } = useSWR<GraphSchemaInfo[]>(
@@ -90,11 +108,51 @@ export default function DynamicAgentEditorPage() {
   const [maxIterations, setMaxIterations] = useState("3");
   const [subAgentsJson, setSubAgentsJson] = useState("[]");
   const [stagesJson, setStagesJson] = useState("[]");
-  const [selectedTools, setSelectedTools] = useState<Record<string, boolean>>({});
+  const [selectedTools, setSelectedTools] = useState<Record<string, boolean>>(
+    {}
+  );
 
   const selectedSchema = useMemo(
     () => schemas?.find((schema) => schema.schema_type === graphSchema),
     [schemas, graphSchema]
+  );
+  const toolGroups = useMemo(() => {
+    const externalMcpGroups = buildMcpOnlyToolSelectionGroups({
+      tools: tools.map(toSelectableTool),
+      mcpServers: mcpData?.mcp_servers ?? [],
+    });
+    const serviceTools = builtInTools.map((tool) => {
+      const parsed = parseToolCategory({
+        name: tool.name,
+        description: tool.description || "",
+        input_schema: tool.input_schema || {},
+      });
+      return {
+        name: parsed.name,
+        display_name: parsed.name,
+        description: parsed.description,
+        enabled: true,
+        agent_creation_selectable: true,
+        category: parsed.category,
+        categoryLabel: parsed.categoryLabel,
+        input_schema: parsed.input_schema,
+      };
+    });
+
+    return [
+      ...externalMcpGroups,
+      ...buildToolSelectionGroups({
+        serviceToolsByCategory: groupToolsByCategory(serviceTools),
+        categoryLabelMap: buildCategoryLabelMap(serviceTools),
+      }),
+    ];
+  }, [builtInTools, mcpData?.mcp_servers, tools]);
+  const selectedToolNames = useMemo(
+    () =>
+      Object.entries(selectedTools)
+        .filter(([, enabled]) => enabled)
+        .map(([toolName]) => toolName),
+    [selectedTools]
   );
 
   async function handleSubmit() {
@@ -289,37 +347,26 @@ export default function DynamicAgentEditorPage() {
       </div>
 
       {selectedSchema?.supports_tools && (
-        <div className="flex flex-col gap-3">
-          <Text as="p" secondaryBody>
-            {t("agentEditor.actionsLabel")}
-          </Text>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            {tools.map((tool) => (
-              <label
-                key={tool.name}
-                className="flex items-center gap-2 border border-border rounded-08 px-3 py-2"
-              >
-                <Checkbox
-                  checked={selectedTools[tool.name] ?? false}
-                  onCheckedChange={(checked) => {
-                    setSelectedTools((current) => ({
-                      ...current,
-                      [tool.name]: checked,
-                    }));
-                  }}
-                />
-                <div className="flex flex-col">
-                  <Text as="p" secondaryBody>
-                    {tool.display_name || tool.name}
-                  </Text>
-                  <Text as="p" secondaryBody>
-                    {tool.name}
-                  </Text>
-                </div>
-              </label>
-            ))}
-          </div>
-        </div>
+        <McpToolSelectionCard
+          title={t("agentEditor.actionsLabel")}
+          description={t(
+            "agentEditor.dynamic.mcpToolsDescription",
+            "Choose the tools this dynamic agent can call."
+          )}
+          groups={toolGroups}
+          selectedToolNames={selectedToolNames}
+          onSelectedToolNamesChange={(toolNames) => {
+            const next = new Set(toolNames);
+            setSelectedTools(
+              Object.fromEntries(
+                toolGroups
+                  .flatMap((group) => group.tools)
+                  .map((tool) => [tool.name, next.has(tool.name)])
+              )
+            );
+          }}
+          isLoading={isToolsLoading || isBuiltInToolsLoading || isMcpLoading}
+        />
       )}
 
       {graphSchema === "supervisor" && (

@@ -54,6 +54,31 @@ PERSONA_ID_TO_AGENT: dict[int, str] = {
 }
 
 
+def _resolve_custom_persona_agent(
+    persona_id: int,
+    custom_persona: dict[str, Any],
+    llm_override: dict[str, Any] | None,
+) -> tuple[str, dict[str, Any]]:
+    """Resolve a custom persona to the execution id and runtime overrides."""
+    base_agent = custom_persona.get("base_agent")
+    assistant_id = (
+        str(persona_id) if base_agent == "dynamic-agent" else base_agent or DEFAULT_AGENT
+    )
+
+    resolved_override = dict(llm_override or {})
+    if custom_persona.get("system_prompt"):
+        resolved_override["system_prompt"] = custom_persona["system_prompt"]
+    if custom_persona.get("mcp_tools"):
+        resolved_override["mcp_tools"] = custom_persona["mcp_tools"]
+    if custom_persona.get("rag_config"):
+        resolved_override["rag_config"] = custom_persona["rag_config"]
+
+    # Pass the numeric persona_id so _handle_input reads LTM settings from the
+    # correct persona, not from the underlying builtin graph key.
+    resolved_override["_persona_id"] = persona_id
+    return assistant_id, resolved_override
+
+
 def _truncate_name(message: str, max_length: int = 50) -> str:
     name = message.strip()
     name = " ".join(name.split())
@@ -494,20 +519,11 @@ async def send_chat_message(
             custom_persona = None
 
         if custom_persona and not custom_persona.get("is_builtin"):
-            assistant_id = custom_persona.get("base_agent") or DEFAULT_AGENT
-            if custom_persona.get("system_prompt"):
-                llm_override = llm_override or {}
-                llm_override["system_prompt"] = custom_persona["system_prompt"]
-            if custom_persona.get("mcp_tools"):
-                llm_override = llm_override or {}
-                llm_override["mcp_tools"] = custom_persona["mcp_tools"]
-            if custom_persona.get("rag_config"):
-                llm_override = llm_override or {}
-                llm_override["rag_config"] = custom_persona["rag_config"]
-            # Pass the numeric persona_id so _handle_input reads LTM settings
-            # from the correct persona, not from the underlying builtin graph key.
-            llm_override = llm_override or {}
-            llm_override["_persona_id"] = persona_id
+            assistant_id, llm_override = _resolve_custom_persona_agent(
+                persona_id,
+                custom_persona,
+                llm_override,
+            )
 
     thread_metadata = thread.get("metadata") if thread else None
     resolved_project_id = _coerce_project_id(body.get("project_id"))
