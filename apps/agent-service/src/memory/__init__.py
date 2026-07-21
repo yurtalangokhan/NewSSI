@@ -1,8 +1,19 @@
 from contextlib import AbstractAsyncContextManager
 
-from langgraph.checkpoint.mongodb.aio import AsyncMongoDBSaver
-from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
-from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
+try:
+    from langgraph.checkpoint.mongodb.aio import AsyncMongoDBSaver
+except ImportError:
+    AsyncMongoDBSaver = None
+
+try:
+    from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+except ImportError:
+    AsyncPostgresSaver = None
+
+try:
+    from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
+except ImportError:
+    AsyncSqliteSaver = None
 
 from core.settings import DatabaseType, settings
 from memory.mongodb import get_mongo_saver
