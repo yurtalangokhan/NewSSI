@@ -29,6 +29,7 @@ import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
 import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
 import { WebProviderSetupModal } from "@/app/admin/configuration/web-search/WebProviderSetupModal";
 import { useTranslation, Trans } from "react-i18next";
+import AdminOverviewPanel from "@/components/admin/AdminOverviewPanel";
 
 const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.WEB_SEARCH]!;
 import {
@@ -61,6 +62,13 @@ import {
   MASKED_API_KEY_PLACEHOLDER,
 } from "@/app/admin/configuration/web-search/WebProviderModalReducer";
 import { connectProviderFlow } from "@/app/admin/configuration/web-search/connectProviderFlow";
+
+function getContentProviderDisplayLabel(providerType: WebContentProviderType) {
+  return providerType
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
 
 interface WebSearchProviderView {
   id: number;
@@ -903,6 +911,61 @@ export default function Page() {
         />
 
         <SettingsLayouts.Body>
+          <AdminOverviewPanel
+            icon={route.icon}
+            title={t("admin.webSearch.workspaceTitle", {
+              defaultValue: "Web retrieval workspace",
+            })}
+            description={t("admin.webSearch.workspaceDescription", {
+              defaultValue:
+                "Configure how agents find web results, fetch page content, and test crawler quality before users rely on it.",
+            })}
+            metrics={[
+              {
+                label: t("admin.webSearch.searchProviderLabel", {
+                  defaultValue: "Search provider",
+                }),
+                value: hasActiveSearchProvider
+                  ? t("admin.webSearch.active", { defaultValue: "Active" })
+                  : t("admin.webSearch.notConfigured", {
+                      defaultValue: "Not configured",
+                    }),
+                tone: hasActiveSearchProvider ? "success" : "warning",
+              },
+              {
+                label: t("admin.webSearch.contentProviderLabel", {
+                  defaultValue: "Content provider",
+                }),
+                value: currentContentProviderType
+                  ? getContentProviderDisplayLabel(currentContentProviderType)
+                  : t("admin.webSearch.notConfigured", {
+                      defaultValue: "Not configured",
+                    }),
+                tone: currentContentProviderType ? "success" : "warning",
+              },
+              {
+                label: t("admin.webSearch.validationLabel", {
+                  defaultValue: "Validation",
+                }),
+                value: t("admin.webSearch.crawlerTestValue", {
+                  defaultValue: "Crawler test",
+                }),
+              },
+            ]}
+            actions={[
+              {
+                label: t("admin.navigation.routes.chatPreferences.sidebar", {
+                  defaultValue: "Chat Preferences",
+                }),
+                href: ADMIN_PATHS.CHAT_PREFERENCES,
+              },
+              {
+                label: t("admin.navigation.routes.searchSettings.sidebar"),
+                href: ADMIN_PATHS.SEARCH_SETTINGS,
+                primary: true,
+              },
+            ]}
+          />
           <div className="flex w-full flex-col gap-3">
             <Content
               title={t("admin.webSearch.searchProvidersTitle")}
