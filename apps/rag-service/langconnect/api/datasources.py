@@ -1,7 +1,7 @@
 """Datasources API — knowledge selector endpoint.
 
 Provides a unified view of available knowledge sources for the agent editor,
-combining document-processing collections (PGVector) with knowledge-graph
+combining document-processing collections (Milvus vector search) with knowledge-graph
 collections (Neo4j).
 """
 
@@ -26,11 +26,11 @@ async def knowledge_selector(
     """Return categorised knowledge sources for the agent editor.
 
     Returns two lists:
-    - ``document_processing``: all PGVector collections (vector similarity search)
+    - ``document_processing``: all Milvus-backed collections (vector similarity search)
     - ``knowledge_graph``: collections that have a built knowledge graph in Neo4j
     """
 
-    # 1. Fetch all PGVector collections (use internal identity to bypass owner filter)
+    # 1. Fetch all vector collections (use internal identity to bypass owner filter)
     all_collections = await CollectionsManager("internal-service").list()
 
     def _normalize_collection_name(col: dict[str, Any], metadata: dict[str, Any]) -> str:
@@ -74,7 +74,7 @@ async def knowledge_selector(
             if col:
                 knowledge_graph.append(_build_item(col))
             else:
-                # Collection exists in Neo4j but not in PGVector (orphan)
+                # Collection exists in Neo4j but not in vector collections (orphan)
                 knowledge_graph.append(
                     {
                         "id": cid,

@@ -1,7 +1,7 @@
 """Graph RAG orchestration service.
 
 Coordinates the pipeline:
-  1. Fetch document chunks from a PGVector collection.
+  1. Fetch document chunks from a Milvus-backed vector collection.
   2. Run entity extraction (LLMGraphTransformer).
   3. Upsert extracted entities/relations into Neo4j.
   4. Provide hybrid search (vector + graph) with RRF scoring.
@@ -130,7 +130,7 @@ class GraphRAGService:
         """Build (or rebuild) the knowledge graph for the collection.
 
         Steps:
-            1. Fetch all document chunks from PGVector.
+            1. Fetch all document chunks from the vector store.
             2. Extract entities/relations with LLMGraphTransformer.
             3. Upsert into Neo4j.
         """
@@ -240,7 +240,7 @@ class GraphRAGService:
 
         Two retrieval signals:
 
-        1. **Vector (cosine)** — PGVector similarity on embedded chunks.
+        1. **Vector (cosine)** — Milvus similarity on embedded chunks.
         2. **Graph BM25** — Neo4j fulltext (Lucene) on entity names/labels.
 
         RRF fusion is **entity-centric**: each entity receives an RRF
@@ -397,7 +397,7 @@ class GraphRAGService:
         *,
         limit: int = 5,
     ) -> list[dict[str, Any]]:
-        """Cosine similarity search via PGVector."""
+        """Cosine similarity search via Milvus."""
         from fastapi.exceptions import HTTPException
 
         try:
@@ -421,7 +421,7 @@ class GraphRAGService:
         except HTTPException as exc:
             if exc.status_code == 404:
                 # Expected for datasource-only collections that have a
-                # graph but no PGVector embeddings.  BM25 will still work.
+                # graph but no vector embeddings. BM25 will still work.
                 logger.debug(
                     "No vector collection found for %s — graph-only mode",
                     self.collection_id,
