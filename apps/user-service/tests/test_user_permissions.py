@@ -116,14 +116,10 @@ def test_me_permissions_endpoint_returns_current_user_permissions(monkeypatch):
 def test_internal_permissions_endpoint_resolves_target_user(monkeypatch):
     target_id = uuid.uuid4()
     controller = SimpleNamespace(
+        authorize_target_user_id=AsyncMock(return_value=target_id),
         get_user_permissions=AsyncMock(return_value={"permissions": ["document:read"]})
     )
     monkeypatch.setattr(user_route, "get_user_controller", lambda: controller)
-    monkeypatch.setattr(
-        user_route,
-        "_authorize_target_user_id",
-        AsyncMock(return_value=target_id),
-    )
 
     app = FastAPI()
     app.dependency_overrides[require_auth_or_internal_service_token] = lambda: "internal-service"
@@ -133,22 +129,22 @@ def test_internal_permissions_endpoint_resolves_target_user(monkeypatch):
 
     assert response.status_code == 200
     assert response.json() == {"permissions": ["document:read"]}
+    controller.authorize_target_user_id.assert_awaited_once_with(
+        str(target_id),
+        "internal-service",
+    )
     controller.get_user_permissions.assert_awaited_once_with(target_id)
 
 
 def test_internal_authorize_endpoint_resolves_target_user(monkeypatch):
     target_id = uuid.uuid4()
     controller = SimpleNamespace(
+        authorize_target_user_id=AsyncMock(return_value=target_id),
         authorize_user_permission=AsyncMock(
             return_value={"allowed": True, "permission": "document:read"}
         )
     )
     monkeypatch.setattr(user_route, "get_user_controller", lambda: controller)
-    monkeypatch.setattr(
-        user_route,
-        "_authorize_target_user_id",
-        AsyncMock(return_value=target_id),
-    )
 
     app = FastAPI()
     app.dependency_overrides[require_auth_or_internal_service_token] = lambda: "internal-service"
@@ -161,6 +157,10 @@ def test_internal_authorize_endpoint_resolves_target_user(monkeypatch):
 
     assert response.status_code == 200
     assert response.json() == {"allowed": True, "permission": "document:read"}
+    controller.authorize_target_user_id.assert_awaited_once_with(
+        str(target_id),
+        "internal-service",
+    )
     controller.authorize_user_permission.assert_awaited_once_with(
         target_id,
         "document:read",

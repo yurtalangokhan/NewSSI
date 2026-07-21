@@ -5,8 +5,8 @@ from cryptography.fernet import Fernet
 
 from src.config import get_settings
 from src.core.env import get_env
-from src.models.system_settings import KeycloakConfigUpdate, KeycloakRealmSessionUpdate
 from src.repository import SystemSettingRepository
+from src.schema.system_settings import KeycloakConfigUpdate, KeycloakRealmSessionUpdate
 from src.service.keycloak_service import get_keycloak_service
 
 KEYCLOAK_SETTINGS_KEY = "keycloak"

@@ -3,6 +3,7 @@ import uuid
 from typing import Any
 
 from src.core.database.models.user_model import normalize_user_role
+from src.core.exceptions import ForbiddenError, NotFoundError
 from src.repository import (
     CompositeRoleRepository,
     UserRepository,
@@ -71,6 +72,51 @@ class UserService:
         permissions = permission_data.get("permissions", [])
         allowed = permissions == ["*"] or permission in permissions
         return {"allowed": allowed, "permission": permission}
+
+    async def resolve_target_user_id(self, target_id: str) -> uuid.UUID:
+        try:
+            parsed = uuid.UUID(target_id)
+        except ValueError:
+            parsed = None
+
+        if parsed is not None:
+            by_local_id = await self.user_repo.get_by_id(parsed)
+            if by_local_id:
+                return by_local_id.id
+
+        by_keycloak_id = await self.user_repo.get_by_keycloak_id(target_id)
+        if by_keycloak_id:
+            return by_keycloak_id.id
+
+        raise NotFoundError("Target user not found")
+
+    async def authorize_target_user_id(
+        self,
+        target_id: str,
+        authenticated_user_id: str,
+    ) -> uuid.UUID:
+        resolved_user_id = await self.resolve_target_user_id(target_id)
+
+        if authenticated_user_id == "internal-service":
+            return resolved_user_id
+
+        try:
+            authenticated_uuid = uuid.UUID(authenticated_user_id)
+        except ValueError:
+            raise ForbiddenError("Forbidden") from None
+
+        if resolved_user_id == authenticated_uuid:
+            return resolved_user_id
+
+        user = await self.user_repo.get_by_id(authenticated_uuid)
+        if user:
+            if user.is_superuser:
+                return resolved_user_id
+            role = await self.role_repo.get_by_name(user.role)
+            if role and role.is_admin:
+                return resolved_user_id
+
+        raise ForbiddenError("Forbidden")
 
     async def get_user_by_email(self, email: str) -> dict[str, Any] | None:
         user = await self.user_repo.get_by_email(email)

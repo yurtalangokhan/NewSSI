@@ -7,13 +7,13 @@ from pathlib import Path
 from types import ModuleType
 from typing import Any
 
-from src.models.permissions import (
+from src.core.permissions import list_service_permissions
+from src.repository import PermissionRepository
+from src.schema.permissions import (
     PermissionDefinition,
     PermissionSource,
     PermissionSyncResult,
-    list_service_permissions,
 )
-from src.repository import PermissionRepository
 
 
 class PermissionSyncService:
@@ -43,13 +43,13 @@ class PermissionSyncService:
             collected=collected,
             permissions=local_permissions,
             source=PermissionSource(
-                service="user-service", path="src/models/permissions.py", loaded=True
+                service="user-service", path="src/core/permissions/manifest.py", loaded=True
             ),
         )
         sources.append(
             PermissionSource(
                 service="user-service",
-                path="src/models/permissions.py",
+                path="src/core/permissions/manifest.py",
                 loaded=True,
                 count=len(local_permissions),
             )

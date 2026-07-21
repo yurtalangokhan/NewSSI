@@ -59,6 +59,15 @@ class TestUserRoute:
         # Should not get 422 for missing params
         assert response.status_code != 422
 
+    def test_user_route_does_not_import_repositories(self):
+        """Route handlers should delegate data access to controller/service layers."""
+        import inspect
+
+        import src.api.routes.user_route as user_route
+
+        source = inspect.getsource(user_route)
+        assert "from src.repository" not in source
+
 
 class TestSettingsRoute:
     """Validate settings_route.py endpoints."""
@@ -76,6 +85,28 @@ class TestSettingsRoute:
         )
         # Should not get 422
         assert response.status_code != 422
+
+    def test_settings_route_does_not_import_repositories(self):
+        """Route handlers should delegate data access to controller/service layers."""
+        import inspect
+
+        import src.api.routes.settings_route as settings_route
+
+        source = inspect.getsource(settings_route)
+        assert "from src.repository" not in source
+
+
+class TestUserMemoryRoute:
+    """Validate user_memory_route.py boundaries."""
+
+    def test_user_memory_route_does_not_import_repositories(self):
+        """Route handlers should delegate data access to controller/service layers."""
+        import inspect
+
+        import src.api.routes.user_memory_route as user_memory_route
+
+        source = inspect.getsource(user_memory_route)
+        assert "from src.repository" not in source
 
 
 class TestApiKeysRoute:
@@ -101,6 +132,19 @@ class TestRolesRoute:
         source = inspect.getsource(roles_module)
         # Check if HTTPException is imported at module level
         assert "from fastapi import" in source[:200]
+
+
+class TestPermissionController:
+    """Validate permission controller boundaries."""
+
+    def test_permission_controller_does_not_import_repositories(self):
+        """Controller should delegate permission data access to service layer."""
+        import inspect
+
+        import src.controller.permission_controller as permission_controller
+
+        source = inspect.getsource(permission_controller)
+        assert "from src.repository" not in source
 
 
 class TestAuthRoute:

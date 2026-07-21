@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Request, Response
 
 from src.controller import get_auth_controller
-from src.models.auth import RegisterRequest
+from src.schema.auth import RegisterRequest
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
