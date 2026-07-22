@@ -40,9 +40,7 @@ def decode_html_bytes(
     if fallback_encoding and fallback_encoding not in override_encodings:
         override_encodings.append(fallback_encoding)
 
-    unicode_dammit = UnicodeDammit(
-        content, override_encodings=override_encodings or None
-    )
+    unicode_dammit = UnicodeDammit(content, override_encodings=override_encodings or None)
     if unicode_dammit.unicode_markup is not None:
         return unicode_dammit.unicode_markup
 
@@ -75,11 +73,7 @@ def is_pdf_resource(
     content_type: str | None = None,
     content_sniff: bytes | None = None,
 ) -> bool:
-    return (
-        is_pdf_mime_type(content_type)
-        or is_pdf_url(url)
-        or has_pdf_signature(content_sniff)
-    )
+    return is_pdf_mime_type(content_type) or is_pdf_url(url) or has_pdf_signature(content_sniff)
 
 
 def extract_pdf_text(content: bytes) -> tuple[str, dict[str, str | list[str]]]:

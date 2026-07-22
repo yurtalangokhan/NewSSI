@@ -3,10 +3,10 @@ Minimal FastAPI server that provides the endpoints needed by the Onyx frontend.
 This is a simplified backend for development purposes.
 """
 
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+
+from models.minimal_backend import Settings, User
 
 app = FastAPI(title="Agentic AI Backend")
 
@@ -17,46 +17,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-# Models
-class User(BaseModel):
-    id: str = "dev-user-1"
-    email: str = "dev@local.dev"
-    is_active: bool = True
-    is_superuser: bool = True
-    is_verified: bool = True
-    role: str = "admin"
-    preferences: dict = {
-        "chosen_assistants": None,
-        "visible_assistants": [],
-        "hidden_assistants": [],
-        "default_model": None,
-        "recent_assistants": [],
-        "auto_scroll": True,
-        "shortcut_enabled": True,
-        "temperature_override_enabled": False,
-        "theme_preference": None,
-        "chat_background": None,
-        "default_app_mode": "AUTO",
-    }
-    team_name: str | None = None
-    is_anonymous_user: bool = False
-    password_configured: bool = True
-
-
-class Settings(BaseModel):
-    auto_scroll: bool = True
-    application_status: str = "active"
-    gpu_enabled: bool = False
-    maximum_chat_retention_days: str | None = None
-    notifications: list = []
-    needs_reindexing: bool = False
-    anonymous_user_enabled: bool = True
-    invite_only_enabled: bool = False
-    deep_research_enabled: bool = True
-    temperature_override_enabled: bool = True
-    query_history_type: str = "normal"
 
 
 # Health

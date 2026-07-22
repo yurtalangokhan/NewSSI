@@ -38,7 +38,7 @@ class AgentToolsRepository(BaseRepository):
                 select(AgentToolsModel)
                 .where(
                     AgentToolsModel.agent_id == agent_id,
-                    AgentToolsModel.is_active == True,
+                    AgentToolsModel.is_active.is_(True),
                 )
                 .order_by(AgentToolsModel.order_index)
             )
@@ -53,7 +53,7 @@ class AgentToolsRepository(BaseRepository):
                 select(AgentToolsModel)
                 .where(
                     AgentToolsModel.tool_id == tool_id,
-                    AgentToolsModel.is_active == True,
+                    AgentToolsModel.is_active.is_(True),
                 )
                 .order_by(AgentToolsModel.agent_id)
             )

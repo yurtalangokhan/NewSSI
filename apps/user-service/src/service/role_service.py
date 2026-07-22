@@ -63,6 +63,27 @@ class CompositeRoleService:
         self.permission_repo = PermissionRepository()
         self.keycloak = get_keycloak_service()
 
+    async def _users_with_role(self, role_name: str):
+        from src.repository import UserRepository
+
+        return await UserRepository().list_by_role(role_name)
+
+    async def _invalidate_sessions_for_role_users(self, role_name: str) -> int:
+        if not self.keycloak.is_enabled():
+            return 0
+
+        invalidated = 0
+        for user in await self._users_with_role(role_name):
+            if not getattr(user, "keycloak_id", None):
+                continue
+            logged_out = await self.keycloak.logout_user_sessions(user.keycloak_id)
+            if not logged_out:
+                raise ValueError(
+                    f"Failed to invalidate active Keycloak sessions for user {user.email}"
+                )
+            invalidated += 1
+        return invalidated
+
     # ----------------------------------------------------------------
     # CRUD
     # ----------------------------------------------------------------
@@ -141,6 +162,8 @@ class CompositeRoleService:
             return None
         if self.keycloak.is_enabled():
             await self._sync_role_to_keycloak(role)
+        if permissions is not None or role_ids is not None:
+            await self._invalidate_sessions_for_role_users(name)
         return {
             "name": role.name,
             "description": role.description,
@@ -154,6 +177,8 @@ class CompositeRoleService:
         role = await self.role_repo.get_by_name(name)
         if role and role.is_builtin:
             raise ValueError(f"Cannot delete built-in role '{name}'")
+        if role and await self._users_with_role(name):
+            raise ValueError(f"Cannot delete role '{name}' while users are assigned to it")
         deleted = await self.role_repo.delete(name)
         if deleted and self.keycloak.is_enabled():
             await self.keycloak.delete_realm_role(name)
@@ -214,6 +239,7 @@ class CompositeRoleService:
             return None
         if self.keycloak.is_enabled():
             await self._sync_role_to_keycloak(role)
+        await self._invalidate_sessions_for_role_users(name)
         effective = await self._resolve_effective_permissions(role)
         return {
             "name": role.name,
@@ -246,6 +272,7 @@ class CompositeRoleService:
             return None
         if self.keycloak.is_enabled():
             await self._sync_role_to_keycloak(role)
+        await self._invalidate_sessions_for_role_users(name)
         effective = await self._resolve_effective_permissions(role)
         return {
             "name": role.name,

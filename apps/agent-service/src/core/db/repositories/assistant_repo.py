@@ -68,9 +68,7 @@ class AssistantRepository(BaseRepository):
         if not self._validate_uuid(assistant_id):
             return None
         async with self._session() as session:
-            stmt = select(AssistantModel).where(
-                AssistantModel.assistant_id == assistant_id
-            )
+            stmt = select(AssistantModel).where(AssistantModel.assistant_id == assistant_id)
             result = await session.execute(stmt)
             row = result.scalar_one_or_none()
         if row is None:
@@ -143,8 +141,6 @@ class AssistantRepository(BaseRepository):
         if not self._validate_uuid(assistant_id):
             return False
         async with self._session() as session:
-            stmt = delete(AssistantModel).where(
-                AssistantModel.assistant_id == assistant_id
-            )
+            stmt = delete(AssistantModel).where(AssistantModel.assistant_id == assistant_id)
             result = await session.execute(stmt)
             return result.rowcount > 0

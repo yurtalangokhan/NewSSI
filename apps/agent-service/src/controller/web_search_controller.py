@@ -71,16 +71,12 @@ class WebSearchController(BaseController):
         test URL cannot be fetched successfully.
         """
         if provider_type != "onyx_web_crawler":
-            self._raise_bad_request(
-                f"Unsupported content provider type: {provider_type}"
-            )
+            self._raise_bad_request(f"Unsupported content provider type: {provider_type}")
 
         try:
             results = self._crawler.contents(["https://example.com"])
             if results and not results[0].scrape_successful:
-                self._raise_bad_request(
-                    results[0].failure_reason or "Failed to fetch test URL"
-                )
+                self._raise_bad_request(results[0].failure_reason or "Failed to fetch test URL")
         except Exception as exc:
             logger.warning("OnyxWebCrawler test failed: %s", exc)
             self._raise_bad_request(str(exc))

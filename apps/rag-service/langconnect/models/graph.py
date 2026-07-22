@@ -5,7 +5,6 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-
 # =====================
 # Graph Node / Edge
 # =====================
@@ -15,7 +14,9 @@ class GraphNode(BaseModel):
     """A node in the knowledge graph."""
 
     id: str = Field(..., description="Neo4j internal element id or custom id.")
-    label: str = Field(..., description="Primary label of the node (e.g. Person, Company).")
+    label: str = Field(
+        ..., description="Primary label of the node (e.g. Person, Company)."
+    )
     name: str = Field(..., description="Human-readable name of the entity.")
     properties: dict[str, Any] = Field(
         default_factory=dict,
@@ -60,7 +61,9 @@ class ClusterNode(BaseModel):
         description="Names of the most important entities in the cluster.",
     )
     properties: dict[str, Any] = Field(default_factory=dict)
-    is_cluster: bool = Field(True, description="Flag to identify supernode clusters.")
+    is_cluster: bool = Field(
+        default=True, description="Flag to identify supernode clusters."
+    )
 
 
 class ClusterEdge(BaseModel):
@@ -86,7 +89,9 @@ class ClusteredGraphData(BaseModel):
     total_node_count: int = Field(0, description="Total nodes in DB.")
     total_edge_count: int = Field(0, description="Total edges in DB.")
     cluster_count: int = Field(0, description="Number of clusters generated.")
-    mode: str = Field("overview", description="'overview' | 'expand' | 'neighborhood' | 'full'")
+    mode: str = Field(
+        "overview", description="'overview' | 'expand' | 'neighborhood' | 'full'"
+    )
     scope_label: str | None = Field(
         None,
         description="The label currently being viewed (expand/sub-cluster). "
@@ -131,7 +136,7 @@ class PaginatedCounts(BaseModel):
     total: int = Field(0, description="Total number of items (before pagination).")
     page: int = Field(1, description="Current page number (1-based).")
     page_size: int = Field(25, description="Items per page.")
-    has_next: bool = Field(False, description="Whether there is a next page.")
+    has_next: bool = Field(default=False, description="Whether there is a next page.")
 
 
 # =====================

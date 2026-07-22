@@ -15,7 +15,7 @@ from langchain_core.messages import (
 )
 from pypdf import PdfReader
 
-from schema import ChatMessage
+from models.chat import ChatMessage
 
 logger = logging.getLogger(__name__)
 
@@ -43,18 +43,18 @@ def is_garbage_text(text: str) -> bool:
     """
     if not text or len(text) < 10:
         return False
-    
+
     words = text.split()
     if not words:
         return False
-        
+
     # Check ratio of words starting with / followed by digits or single chars
     # Heuristic: if > 30% of words look like CIDs (e.g. /12, /A, /i255)
-    cid_matches = [w for w in words if re.match(r'^/[\w\d]+$', w)]
-    
+    cid_matches = [w for w in words if re.match(r"^/[\w\d]+$", w)]
+
     if len(cid_matches) / len(words) > 0.3:
         return True
-        
+
     return False
 
 
@@ -65,7 +65,7 @@ def extract_text_from_pdf(base64_data: str) -> str:
         text_parts = []
         for page in reader.pages:
             text = page.extract_text()
-            
+
             # Check if extraction is empty or garbage (CID codes)
             # Retrying with layout mode might help for uninterpretable fonts or encodings
             if not text or len(text.strip()) < 5 or is_garbage_text(text):
@@ -74,15 +74,15 @@ def extract_text_from_pdf(base64_data: str) -> str:
                     text = page.extract_text(extraction_mode="layout")
                 except Exception:
                     pass
-            
+
             # If still garbage, return placeholder to avoid confusing LLM
             if is_garbage_text(text):
                 text = "[Text extraction failed for this page: Unsupported PDF encoding]"
-            
+
             # Ensure we don't append None
             if text:
                 text_parts.append(text)
-                
+
         return "\n".join(text_parts)
     except Exception as e:
         logger.error(f"Failed to extract text from PDF: {e}")
@@ -105,7 +105,6 @@ def convert_input_messages(messages: list[dict[str, Any]]) -> list[BaseMessage]:
     """
     langchain_messages = []
     for msg in messages:
-        role = msg.get("type", "human")
         content = msg.get("content", [])
 
         if isinstance(content, str):
@@ -131,10 +130,12 @@ def convert_input_messages(messages: list[dict[str, Any]]) -> list[BaseMessage]:
                 if mime == "application/pdf":
                     # PDF sent as "image" block (legacy frontend SDK workaround)
                     pdf_text = extract_text_from_pdf(data_b64)
-                    new_content.append({
-                        "type": "text",
-                        "text": f"--- Begin Content of {filename} ---\n{pdf_text}\n--- End Content of {filename} ---",
-                    })
+                    new_content.append(
+                        {
+                            "type": "text",
+                            "text": f"--- Begin Content of {filename} ---\n{pdf_text}\n--- End Content of {filename} ---",
+                        }
+                    )
                     _maybe_store(metadata, data_b64, mime, filename)
                 elif mime and not mime.startswith("image/"):
                     # Non-image file sent via "image" block — extract text
@@ -143,10 +144,12 @@ def convert_input_messages(messages: list[dict[str, Any]]) -> list[BaseMessage]:
                     _maybe_store(metadata, data_b64, mime, filename)
                 else:
                     # Actual image — convert to image_url block
-                    new_content.append({
-                        "type": "image_url",
-                        "image_url": {"url": f"data:{mime};base64,{data_b64}"},
-                    })
+                    new_content.append(
+                        {
+                            "type": "image_url",
+                            "image_url": {"url": f"data:{mime};base64,{data_b64}"},
+                        }
+                    )
                     _maybe_store(metadata, data_b64, mime, filename)
 
             elif item_type == "file":
@@ -171,6 +174,7 @@ def convert_input_messages(messages: list[dict[str, Any]]) -> list[BaseMessage]:
 # Helpers for convert_input_messages
 # ---------------------------------------------------------------------------
 
+
 def _maybe_store(metadata: dict, data_b64: str, mime: str, filename: str) -> None:
     """Store file bytes in FileService._STORE if a file_id is present in metadata."""
     file_id = metadata.get("file_id")
@@ -178,6 +182,7 @@ def _maybe_store(metadata: dict, data_b64: str, mime: str, filename: str) -> Non
         return
     try:
         from service.FileService import get_file, store_file
+
         if get_file(file_id) is None:
             raw = base64.b64decode(data_b64)
             store_file(file_id, raw, mime, filename)
@@ -216,10 +221,12 @@ def _extract_file_blocks(data_b64: str, mime: str, filename: str) -> list[dict]:
             # Image that slipped through — convert to image_url
             return [{"type": "image_url", "image_url": {"url": f"data:{m};base64,{data_b64}"}}]
 
-        return [{
-            "type": "text",
-            "text": f"--- Begin Content of {filename} ---\n{text}\n--- End Content of {filename} ---",
-        }]
+        return [
+            {
+                "type": "text",
+                "text": f"--- Begin Content of {filename} ---\n{text}\n--- End Content of {filename} ---",
+            }
+        ]
     except Exception as e:
         logger.error("Failed to extract content from %s (%s): %s", filename, mime, e)
         return [{"type": "text", "text": f"[Could not extract content from {filename}]"}]

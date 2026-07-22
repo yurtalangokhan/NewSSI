@@ -21,8 +21,8 @@ from agents import get_agent_or_lazy
 from api.dependencies import require_permission, require_user
 from controller import RunController, get_run_controller
 from core.logger import get_logger
+from models.threads import ThreadHistoryRequest, ThreadState
 from service.AuthService import extract_user_id_from_token
-from service.Schemas import ThreadHistoryRequest, ThreadState
 from service.StoreService import get_assistant_from_store
 from service.UserServiceClient import get_user_settings
 from service.Utils import convert_input_messages
@@ -152,7 +152,9 @@ async def stream_run(
     )
 
     ctrl = _get_controller()
-    event_gen = ctrl.event_generator(agent, input_messages, config, thread_id, run_id, stream_mode, user_id)
+    event_gen = ctrl.event_generator(
+        agent, input_messages, config, thread_id, run_id, stream_mode, user_id
+    )
 
     return StreamingResponse(event_gen, media_type="text/event-stream")
 

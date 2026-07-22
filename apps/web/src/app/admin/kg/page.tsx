@@ -22,6 +22,7 @@ import {
 } from "@/lib/langconnect";
 import { useAirbyteDatasources } from "@/lib/airbyte";
 import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
+import AdminOverviewPanel from "@/components/admin/AdminOverviewPanel";
 import GraphBuildPanel from "@/app/admin/kg/components/GraphBuildPanel";
 import GraphSearchPanel from "@/app/admin/kg/components/GraphSearchPanel";
 import GraphExplorer from "@/app/admin/kg/components/GraphExplorer";
@@ -29,7 +30,6 @@ import GraphStatsCard from "@/app/admin/kg/components/GraphStatsCard";
 import EntityPreview from "@/app/admin/kg/components/EntityPreview";
 import { ThreeDotsLoader } from "@/components/Loading";
 import { SvgActivity, SvgSearch, SvgNetworkGraph } from "@opal/icons";
-import { cn } from "@/lib/utils";
 import InputSelect from "@/refresh-components/inputs/InputSelect";
 import { useTranslation } from "react-i18next";
 
@@ -364,27 +364,56 @@ function Main({
   const [collectionId, setCollectionId] = useState<string | null>(null);
   const [selectedHasGraph, setSelectedHasGraph] = useState(false);
   const [selectorHighlight, setSelectorHighlight] = useState(false);
-  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined
+  );
+  const { collections } = useCollections();
+  const { datasources } = useAirbyteDatasources();
+  const { graphCollections } = useGraphCollections();
+
+  const datasourceIdSet = useMemo(
+    () => new Set(datasources.map((ds) => ds.id)),
+    [datasources]
+  );
+  const ragCollectionCount = useMemo(
+    () =>
+      collections.filter(
+        (collection) => !datasourceIdSet.has(collection.uuid)
+      ).length,
+    [collections, datasourceIdSet]
+  );
+  const knowledgeSourceCount = ragCollectionCount + datasources.length;
+  const graphReadyCount = graphCollections.length;
+  const needsGraphCount = Math.max(knowledgeSourceCount - graphReadyCount, 0);
 
   const triggerCollectionRequired = useCallback(() => {
     setSelectorHighlight(true);
     clearTimeout(highlightTimerRef.current);
-    highlightTimerRef.current = setTimeout(() => setSelectorHighlight(false), 1800);
+    highlightTimerRef.current = setTimeout(
+      () => setSelectorHighlight(false),
+      1800
+    );
   }, []);
 
-  const handleCollectionSelect = useCallback((id: string | null, hasGraph: boolean) => {
-    setCollectionId(id);
-    setSelectedHasGraph(hasGraph);
-    if (id) {
-      setSelectorHighlight(false);
-      clearTimeout(highlightTimerRef.current);
-    }
-  }, []);
+  const handleCollectionSelect = useCallback(
+    (id: string | null, hasGraph: boolean) => {
+      setCollectionId(id);
+      setSelectedHasGraph(hasGraph);
+      if (id) {
+        setSelectorHighlight(false);
+        clearTimeout(highlightTimerRef.current);
+      }
+    },
+    []
+  );
 
   const handleTabChange = useCallback(
     (value: string) => {
       // Block restricted tabs when no collection selected or collection has no graph
-      if (COLLECTION_REQUIRED_TABS.has(value) && (!collectionId || !selectedHasGraph)) {
+      if (
+        COLLECTION_REQUIRED_TABS.has(value) &&
+        (!collectionId || !selectedHasGraph)
+      ) {
         triggerCollectionRequired();
         return;
       }
@@ -408,6 +437,44 @@ function Main({
         transition: "max-width 500ms ease-in-out",
       }}
     >
+      <AdminOverviewPanel
+        icon={route.icon}
+        title={t("admin.kg.workspaceTitle")}
+        description={t("admin.kg.workspaceDescription")}
+        metrics={[
+          {
+            label: t("admin.kg.knowledgeSourcesMetricLabel"),
+            value: String(knowledgeSourceCount),
+            tone: knowledgeSourceCount > 0 ? "success" : "warning",
+          },
+          {
+            label: t("admin.kg.graphReadyMetricLabel"),
+            value: String(graphReadyCount),
+            tone: graphReadyCount > 0 ? "success" : "neutral",
+          },
+          {
+            label: t("admin.kg.needsGraphMetricLabel"),
+            value: String(needsGraphCount),
+            tone: needsGraphCount > 0 ? "warning" : "success",
+          },
+          {
+            label: t("admin.kg.dataSourcesMetricLabel"),
+            value: String(datasources.length),
+          },
+        ]}
+        actions={[
+          {
+            label: t("admin.navigation.routes.documentProcessing.sidebar"),
+            href: ADMIN_PATHS.DOCUMENT_PROCESSING,
+          },
+          {
+            label: t("admin.navigation.routes.documentExplorer.sidebar"),
+            href: ADMIN_PATHS.DOCUMENT_EXPLORER,
+            primary: true,
+          },
+        ]}
+      />
+
       <Text as="p" text03>
         {t("admin.kg.description")}
       </Text>
@@ -425,7 +492,10 @@ function Main({
             value="explorer"
             icon={SvgNetworkGraph}
             disabled={!collectionId || !selectedHasGraph}
-            onClick={() => (!collectionId || !selectedHasGraph) && triggerCollectionRequired()}
+            onClick={() =>
+              (!collectionId || !selectedHasGraph) &&
+              triggerCollectionRequired()
+            }
           >
             {t("admin.kg.graphExplorerTab")}
           </Tabs.Trigger>
@@ -436,7 +506,10 @@ function Main({
             value="search"
             icon={SvgSearch}
             disabled={!collectionId || !selectedHasGraph}
-            onClick={() => (!collectionId || !selectedHasGraph) && triggerCollectionRequired()}
+            onClick={() =>
+              (!collectionId || !selectedHasGraph) &&
+              triggerCollectionRequired()
+            }
           >
             {t("admin.kg.searchTab")}
           </Tabs.Trigger>
@@ -476,7 +549,15 @@ export default function Page() {
 
   return (
     <SettingsLayouts.Root width="full">
-      <SettingsLayouts.Header icon={route.icon} title={route.title} separator />
+      <SettingsLayouts.Header
+        icon={route.icon}
+        title={t(route.titleKey || "", { defaultValue: route.title })}
+        description={t("admin.kg.pageDescription", {
+          defaultValue:
+            "Build, inspect, and search entity graphs across your indexed knowledge sources.",
+        })}
+        separator
+      />
       <SettingsLayouts.Body>
         <Main activeTab={activeTab} onTabChange={setActiveTab} />
       </SettingsLayouts.Body>

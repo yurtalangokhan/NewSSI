@@ -3,7 +3,7 @@
 from typing import Any
 
 from controller.base import BaseController
-from service.ScheduleModels import (
+from models.schedules import (
     ScheduleRunStatus,
     SyncScheduleInput,
     SyncScheduleListItem,
@@ -25,7 +25,9 @@ class ScheduleController(BaseController):
         except Exception as exc:
             self._raise_internal_error(str(exc))
 
-    async def create_schedule(self, datasource_id: str, body: SyncScheduleInput) -> SyncScheduleResponse:
+    async def create_schedule(
+        self, datasource_id: str, body: SyncScheduleInput
+    ) -> SyncScheduleResponse:
         if not datasource_id:
             self._raise_bad_request("datasource_id is required")
         try:
@@ -47,7 +49,9 @@ class ScheduleController(BaseController):
         except Exception as exc:
             self._raise_internal_error(str(exc))
 
-    async def update_schedule(self, datasource_id: str, body: SyncScheduleUpdate) -> SyncScheduleResponse:
+    async def update_schedule(
+        self, datasource_id: str, body: SyncScheduleUpdate
+    ) -> SyncScheduleResponse:
         if not datasource_id:
             self._raise_bad_request("datasource_id is required")
         try:

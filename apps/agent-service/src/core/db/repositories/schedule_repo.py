@@ -53,9 +53,7 @@ class ScheduleRepository(BaseRepository):
     async def get_by_datasource(self, datasource_id: str) -> dict[str, Any] | None:
         """Return the schedule for a datasource (at most one per constraint)."""
         async with self._session() as session:
-            stmt = select(SyncScheduleModel).where(
-                SyncScheduleModel.datasource_id == datasource_id
-            )
+            stmt = select(SyncScheduleModel).where(SyncScheduleModel.datasource_id == datasource_id)
             result = await session.execute(stmt)
             row = result.scalar_one_or_none()
         if row is None:
@@ -65,9 +63,7 @@ class ScheduleRepository(BaseRepository):
     async def get_by_id(self, schedule_id: str) -> dict[str, Any] | None:
         """Return a schedule by its own ID."""
         async with self._session() as session:
-            stmt = select(SyncScheduleModel).where(
-                SyncScheduleModel.id == schedule_id
-            )
+            stmt = select(SyncScheduleModel).where(SyncScheduleModel.id == schedule_id)
             result = await session.execute(stmt)
             row = result.scalar_one_or_none()
         if row is None:
@@ -182,8 +178,6 @@ class ScheduleRepository(BaseRepository):
     async def delete(self, datasource_id: str) -> bool:
         """Delete the schedule for a datasource.  Returns ``True`` if removed."""
         async with self._session() as session:
-            stmt = delete(SyncScheduleModel).where(
-                SyncScheduleModel.datasource_id == datasource_id
-            )
+            stmt = delete(SyncScheduleModel).where(SyncScheduleModel.datasource_id == datasource_id)
             result = await session.execute(stmt)
             return result.rowcount > 0

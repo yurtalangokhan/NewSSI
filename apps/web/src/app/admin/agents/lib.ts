@@ -28,6 +28,16 @@ interface PersonaUpsertRequest {
   user_file_ids: string[] | null;
   replace_base_system_prompt: boolean;
   base_agent: string | null;
+  graph_schema: string;
+  brain_type: string;
+  memory_type: string;
+  sub_agent_ids: string[];
+  sub_agents: Array<Record<string, unknown>>;
+  supervisor_prompt: string | null;
+  stages: Array<Record<string, unknown>>;
+  pipeline_prompt: string | null;
+  reflection_prompt: string | null;
+  max_iterations: number;
   mcp_tools: string[];
   // Hierarchy nodes (folders, spaces, channels) for scoped search
   hierarchy_node_ids: number[];
@@ -36,6 +46,7 @@ interface PersonaUpsertRequest {
   rag_config?: {
     document_processing: string[];
     knowledge_graph: string[];
+    display_names?: Record<string, string>;
   } | null;
   long_term_memory?: boolean;
 }
@@ -68,12 +79,23 @@ export interface PersonaUpsertParameters {
   document_ids?: string[];
   // Base agent selection (chatbot, configurable-mcp-agent)
   base_agent?: string | null;
+  graph_schema?: string;
+  brain_type?: string;
+  memory_type?: string;
+  sub_agent_ids?: string[];
+  sub_agents?: Array<Record<string, unknown>>;
+  supervisor_prompt?: string | null;
+  stages?: Array<Record<string, unknown>>;
+  pipeline_prompt?: string | null;
+  reflection_prompt?: string | null;
+  max_iterations?: number;
   // MCP tool names to bind to the agent
   mcp_tools?: string[];
   // RAG collection config
   rag_config?: {
     document_processing: string[];
     knowledge_graph: string[];
+    display_names?: Record<string, string>;
   };
   long_term_memory?: boolean;
 }
@@ -103,6 +125,16 @@ function buildPersonaUpsertRequest({
   label_ids,
   replace_base_system_prompt,
   base_agent,
+  graph_schema,
+  brain_type,
+  memory_type,
+  sub_agent_ids,
+  sub_agents,
+  supervisor_prompt,
+  stages,
+  pipeline_prompt,
+  reflection_prompt,
+  max_iterations,
   mcp_tools,
   rag_config,
   long_term_memory,
@@ -133,6 +165,16 @@ function buildPersonaUpsertRequest({
     hierarchy_node_ids: hierarchy_node_ids ?? [],
     document_ids: document_ids ?? [],
     base_agent: base_agent ?? null,
+    graph_schema: graph_schema ?? "zero_shot",
+    brain_type: brain_type ?? "llm",
+    memory_type: memory_type ?? "none",
+    sub_agent_ids: sub_agent_ids ?? [],
+    sub_agents: sub_agents ?? [],
+    supervisor_prompt: supervisor_prompt ?? null,
+    stages: stages ?? [],
+    pipeline_prompt: pipeline_prompt ?? null,
+    reflection_prompt: reflection_prompt ?? null,
+    max_iterations: max_iterations ?? 3,
     mcp_tools: mcp_tools ?? [],
     rag_config: rag_config ?? null,
     long_term_memory: long_term_memory ?? false,

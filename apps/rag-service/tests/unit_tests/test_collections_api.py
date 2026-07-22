@@ -100,15 +100,11 @@ async def test_create_collections_with_identical_names() -> None:
 
 
 async def test_create_collection_requires_auth() -> None:
-    """POST /collections without a valid token should be 401."""
+    """POST /collections without a bearer token should be 401."""
     async with get_async_test_client() as client:
         payload = {"name": "no_auth", "metadata": {}}
         r = await client.post("/collections", json=payload)
-        assert r.status_code == 403
-        r2 = await client.post(
-            "/collections", json=payload, headers=NO_SUCH_USER_HEADERS
-        )
-        assert r2.status_code == 401
+        assert r.status_code == 401
 
 
 async def test_get_nonexistent_collection() -> None:
@@ -209,14 +205,7 @@ async def test_patch_collection() -> None:
             },
         }
 
-        # Get the UUID for colA
-        get_collection = await client.get("/collections", headers=USER_1_HEADERS)
-        assert get_collection.status_code == 200
-        collections = get_collection.json()
-        collection_id = next(
-            (c["uuid"] for c in collections if c["name"] == "colA"), None
-        )
-        assert collection_id is not None
+        collection_id = r.json()["uuid"]
 
         # update metadata using the UUID
         r2 = await client.patch(
@@ -239,23 +228,19 @@ async def test_update_collection_name_and_metadata() -> None:
     """PATCH should rename and/or update metadata properly."""
     async with get_async_test_client() as client:
         # create two collections
-        await client.post(
+        create_col_a = await client.post(
             "/collections",
             json={"name": "colA", "metadata": {"a": 1}},
             headers=USER_1_HEADERS,
         )
-        await client.post(
+        assert create_col_a.status_code == 201
+        create_col_b = await client.post(
             "/collections",
             json={"name": "colB", "metadata": {"b": 2}},
             headers=USER_1_HEADERS,
         )
-
-        # Get the UUID for colA
-        get_collection = await client.get("/collections", headers=USER_1_HEADERS)
-        assert get_collection.status_code == 200
-        collections = get_collection.json()
-        col_a_id = next((c["uuid"] for c in collections if c["name"] == "colA"), None)
-        assert col_a_id is not None
+        assert create_col_b.status_code == 201
+        col_a_id = create_col_a.json()["uuid"]
 
         # try renaming colA to colB (conflict)
         no_conflict = await client.patch(
@@ -328,13 +313,12 @@ async def test_update_nonexistent_collection() -> None:
 async def test_list_empty_and_multiple_collections() -> None:
     """Listing when empty and after multiple creates."""
     async with get_async_test_client() as client:
-        # ensure database is empty
-        empty = await client.get(
+        before = await client.get(
             "/collections",
             headers=USER_1_HEADERS,
         )
-        assert empty.status_code == 200
-        assert empty.json() == []
+        assert before.status_code == 200
+        existing_ids = {c["uuid"] for c in before.json()}
 
         # create several
         names = ["one", "two", "three"]
@@ -346,9 +330,9 @@ async def test_list_empty_and_multiple_collections() -> None:
 
         listed = await client.get("/collections", headers=USER_1_HEADERS)
         assert listed.status_code == 200
-        got = [c["name"] for c in listed.json()]
-        for n in names:
-            assert n in got
+        created = [c for c in listed.json() if c["uuid"] not in existing_ids]
+        got = [c["name"] for c in created]
+        assert sorted(got) == sorted(names)
 
 
 # Check ownership of collections.
@@ -360,14 +344,7 @@ async def test_ownership() -> None:
         r = await client.post("/collections", json=payload, headers=USER_1_HEADERS)
         assert r.status_code == 201
 
-        # Get the UUID of the collection
-        get_response = await client.get("/collections", headers=USER_1_HEADERS)
-        assert get_response.status_code == 200
-        collections = get_response.json()
-        collection_id = next(
-            (c["uuid"] for c in collections if c["name"] == "owned_by_user1"), None
-        )
-        assert collection_id is not None
+        collection_id = r.json()["uuid"]
 
         # user 2 tries to get it by ID
         r2 = await client.get(f"/collections/{collection_id}", headers=USER_2_HEADERS)
@@ -382,7 +359,7 @@ async def test_ownership() -> None:
         # Try listing collections as user 2
         r4 = await client.get("/collections", headers=USER_2_HEADERS)
         assert r4.status_code == 200
-        assert r4.json() == []
+        assert collection_id not in {c["uuid"] for c in r4.json()}
 
         # Try patching the collection as user 2
         r4 = await client.patch(

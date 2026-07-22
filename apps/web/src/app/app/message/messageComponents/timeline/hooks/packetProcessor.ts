@@ -324,6 +324,13 @@ function addPacketToGroup(
 function processPacket(state: ProcessorState, packet: Packet): void {
   if (!packet) return;
 
+  if (
+    packet.obj.type === "graph_stage_start" ||
+    packet.obj.type === "graph_stage_end"
+  ) {
+    return;
+  }
+
   // Handle TopLevelBranching packets - these tell us how many parallel branches to expect
   if (packet.obj.type === PacketType.TOP_LEVEL_BRANCHING) {
     handleTopLevelBranching(state, packet);

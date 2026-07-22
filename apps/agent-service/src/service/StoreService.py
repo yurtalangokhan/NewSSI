@@ -65,6 +65,7 @@ def get_checkpointer():
 # Lazy repository singletons
 # ------------------------------------------------------------------
 
+
 def _assistant_repo() -> AssistantRepository:
     return AssistantRepository()
 
@@ -76,6 +77,7 @@ def _thread_repo() -> ThreadRepository:
 # ------------------------------------------------------------------
 # Assistant wrapper functions
 # ------------------------------------------------------------------
+
 
 async def load_assistants_store_async() -> dict[str, dict]:
     assistants = await _assistant_repo().list_assistants()
@@ -106,6 +108,7 @@ async def delete_assistant_from_store(assistant_id: str) -> bool:
 # Thread wrapper functions
 # ------------------------------------------------------------------
 
+
 async def add_thread(thread: dict):
     return await _thread_repo().add_thread(thread)
 
@@ -117,9 +120,7 @@ async def get_thread_from_store(thread_id: str) -> dict | None:
 async def list_threads_from_store(
     limit: int = 100, offset: int = 0, metadata: dict | None = None
 ) -> list[dict]:
-    return await _thread_repo().list_threads(
-        limit=limit, offset=offset, metadata_filter=metadata
-    )
+    return await _thread_repo().list_threads(limit=limit, offset=offset, metadata_filter=metadata)
 
 
 async def update_thread_in_store(

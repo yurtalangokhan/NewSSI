@@ -14,7 +14,7 @@ class KnowledgeToolSelector:
     def select_tools(rag_config: dict) -> list[BaseTool]:
         """Return the tools appropriate for the given rag_config.
 
-        - document_processing collections → database_search (PGVector)
+        - document_processing collections → database_search (Milvus vector search)
         - knowledge_graph collections     → graph_search (Neo4j hybrid)
         """
         from agents.tools import database_search, graph_search

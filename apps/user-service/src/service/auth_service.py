@@ -404,12 +404,12 @@ class AuthService:
 
     async def get_oidc_authorize_url(
         self,
-        redirect_uri: str = "http://localhost:3000/auth/oidc/callback",
+        redirect_uri: str | None = None,
         idp_hint: str | None = None,
     ) -> str:
         state = secrets.token_urlsafe(16)
         return await self.keycloak.get_oidc_authorize_url(
-            redirect_uri,
+            redirect_uri or self.keycloak.get_oidc_redirect_uri(),
             state=state,
             idp_hint=idp_hint,
         )
@@ -417,12 +417,13 @@ class AuthService:
     async def handle_oidc_callback(
         self,
         code: str,
-        redirect_uri: str = "http://localhost:3000/auth/oidc/callback",
+        redirect_uri: str | None = None,
         fallback_redirect_uri: str | None = None,
     ) -> dict[str, Any]:
+        callback_redirect_uri = redirect_uri or self.keycloak.get_oidc_redirect_uri()
         token_data = await self.keycloak.handle_oidc_callback(
             code,
-            redirect_uri,
+            callback_redirect_uri,
             fallback_redirect_uri=fallback_redirect_uri,
         )
 

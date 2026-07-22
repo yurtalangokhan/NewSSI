@@ -6,7 +6,13 @@ import * as SettingsLayouts from "@/layouts/settings-layouts";
 import Text from "@/refresh-components/texts/Text";
 import { SvgHardDrive } from "@opal/icons";
 import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
-import { useGraphBuildStatus } from "@/lib/langconnect";
+import AdminOverviewPanel from "@/components/admin/AdminOverviewPanel";
+import {
+  useCollections,
+  useGraphBuildStatus,
+  useGraphCollections,
+} from "@/lib/langconnect";
+import { useAirbyteDatasources } from "@/lib/airbyte";
 import CollectionsPanel from "./components/CollectionsPanel";
 import DocumentsPanel from "./components/DocumentsPanel";
 import { useTranslation } from "react-i18next";
@@ -23,6 +29,9 @@ function RagManagementSection() {
     string | null
   >(null);
   const [selectedIsDatasource, setSelectedIsDatasource] = useState(false);
+  const { collections } = useCollections();
+  const { datasources } = useAirbyteDatasources();
+  const { graphCollections } = useGraphCollections();
   const { status: buildStatus } = useGraphBuildStatus(
     selectedCollectionId,
     Boolean(selectedCollectionId)
@@ -37,8 +46,52 @@ function RagManagementSection() {
     setSelectedIsDatasource(isDatasource ?? false);
   }
 
+  const graphReadyCount = graphCollections.length;
+  const selectedBuildProgress =
+    selectedCollectionId && buildStatus
+      ? `${Math.round(buildStatus.progress_percent ?? 0)}%`
+      : t("admin.documentProcessing.noActiveBuild");
+
   return (
     <div className="flex flex-col gap-4">
+      <AdminOverviewPanel
+        icon={route.icon}
+        title={t("admin.documentProcessing.pipelineTitle")}
+        description={t("admin.documentProcessing.pipelineDescription")}
+        metrics={[
+          {
+            label: t("admin.documentProcessing.collectionsMetricLabel"),
+            value: String(collections.length),
+            tone: collections.length > 0 ? "success" : "warning",
+          },
+          {
+            label: t("admin.documentProcessing.dataSourcesMetricLabel"),
+            value: String(datasources.length),
+          },
+          {
+            label: t("admin.documentProcessing.graphReadyMetricLabel"),
+            value: String(graphReadyCount),
+            tone: graphReadyCount > 0 ? "success" : "neutral",
+          },
+          {
+            label: t("admin.documentProcessing.buildProgressMetricLabel"),
+            value: selectedBuildProgress,
+            tone: isCollectionMutationLocked ? "warning" : "neutral",
+          },
+        ]}
+        actions={[
+          {
+            label: t("admin.navigation.routes.knowledgeGraph.sidebar"),
+            href: ADMIN_PATHS.KNOWLEDGE_GRAPH,
+          },
+          {
+            label: t("admin.indexingStatus.addConnector"),
+            href: ADMIN_PATHS.ADD_CONNECTOR,
+            primary: true,
+          },
+        ]}
+      />
+
       <CollectionsPanel
         selectedCollectionId={selectedCollectionId}
         onCollectionSelect={handleCollectionSelect}

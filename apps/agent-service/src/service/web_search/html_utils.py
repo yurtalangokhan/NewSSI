@@ -135,9 +135,7 @@ def parse_html_with_trafilatura(html_content: str) -> str:
     return strip_excessive_newlines_and_spaces(extracted_text) if extracted_text else ""
 
 
-def format_document_soup(
-    document: bs4.BeautifulSoup, table_cell_separator: str = "\t"
-) -> str:
+def format_document_soup(document: bs4.BeautifulSoup, table_cell_separator: str = "\t") -> str:
     """Format html to a flat text document.
 
     The following goals:
@@ -206,9 +204,7 @@ def format_document_soup(
             elif e.name == "a":
                 href_value = e.get("href", None)
                 # mostly for typing, having multiple hrefs is not valid HTML
-                link_href = (
-                    href_value[0] if isinstance(href_value, list) else href_value
-                )
+                link_href = href_value[0] if isinstance(href_value, list) else href_value
             elif e.name == "/a":
                 link_href = None
             elif e.name in ["p", "div"]:
@@ -255,9 +251,7 @@ def _remove_noise_elements(soup: bs4.BeautifulSoup) -> None:
         if any(r in NOISE_ARIA_ROLES for r in roles):
             tag.extract()
 
-    noise_pattern = re.compile(
-        "|".join(re.escape(p) for p in NOISE_CLASS_PATTERNS), re.IGNORECASE
-    )
+    noise_pattern = re.compile("|".join(re.escape(p) for p in NOISE_CLASS_PATTERNS), re.IGNORECASE)
     for tag in soup.find_all(True):
         if tag.parent is None or tag.name in _STRUCTURAL_TAGS:
             continue
@@ -294,9 +288,7 @@ def web_html_cleanup(
     for undesired_element in unwanted_classes:
         [
             tag.extract()
-            for tag in soup.find_all(
-                class_=lambda x: x and undesired_element in x.split()
-            )
+            for tag in soup.find_all(class_=lambda x: x and undesired_element in x.split())
         ]
 
     for undesired_tag in WEB_CONNECTOR_IGNORED_ELEMENTS:

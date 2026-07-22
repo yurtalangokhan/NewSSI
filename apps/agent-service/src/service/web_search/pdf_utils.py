@@ -53,9 +53,7 @@ def read_pdf_file(
                 elif isinstance(value, list) and all(isinstance(item, str) for item in value):
                     metadata[clean_key] = ", ".join(value)
 
-        text = TEXT_SECTION_SEPARATOR.join(
-            page.extract_text() for page in pdf_reader.pages
-        )
+        text = TEXT_SECTION_SEPARATOR.join(page.extract_text() for page in pdf_reader.pages)
 
         if extract_images:
             from PIL import Image
@@ -81,7 +79,9 @@ def read_pdf_file(
                     img_bytes = img_byte_arr.getvalue()
 
                     image_format = image.format.lower() if image.format else "png"
-                    image_name = f"page_{page_num + 1}_image_{image_file_object.name}.{image_format}"
+                    image_name = (
+                        f"page_{page_num + 1}_image_{image_file_object.name}.{image_format}"
+                    )
                     if image_callback is not None:
                         image_callback(img_bytes, image_name)
                     else:

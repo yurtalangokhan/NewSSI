@@ -7,7 +7,6 @@ This test verifies that:
 3. The frontend receives the correct message structure
 """
 
-
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.checkpoint.memory import MemorySaver

@@ -9,7 +9,11 @@ from langchain_core.runnables import RunnableConfig
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.prebuilt import create_react_agent
 from langgraph.pregel import Pregel
-from langgraph_supervisor import create_supervisor
+
+try:
+    from langgraph_supervisor import create_supervisor
+except ImportError:
+    create_supervisor = None
 
 from agents.base.manager import DelegateRequest, PipelineManager, TaskResult
 from agents.perceptrons.mcp_perceptron import MCPPerceptron

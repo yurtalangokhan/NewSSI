@@ -10,10 +10,12 @@ import { Section } from "@/layouts/general-layouts";
 import { Content, ContentAction } from "@opal/layouts";
 import Text from "@/refresh-components/texts/Text";
 import AgentAvatar from "@/refresh-components/avatars/AgentAvatar";
+import AgentAvailabilityBadge from "@/refresh-components/agents/AgentAvailabilityBadge";
 import Separator from "@/refresh-components/Separator";
 import SimpleCollapsible from "@/refresh-components/SimpleCollapsible";
 import {
   SvgActions,
+  SvgAlertCircle,
   SvgBubbleText,
   SvgClock,
   SvgExpand,
@@ -40,6 +42,7 @@ import { useProjectsContext } from "@/providers/ProjectsContext";
 import { FileCard } from "@/sections/cards/FileCard";
 import DocumentSetCard from "@/sections/cards/DocumentSetCard";
 import { getDisplayName } from "@/lib/llmConfig/utils";
+import { getAgentAvailabilityIssues } from "@/lib/agentAvailability";
 import { useLLMProviders } from "@/hooks/useLLMProviders";
 import { Interactive } from "@opal/core";
 import { useTranslation } from "react-i18next";
@@ -292,6 +295,7 @@ export default function AgentViewerModal({ agent }: AgentViewerModalProps) {
   const longTermMemoryEnabled =
     Boolean(agent.long_term_memory) || agent.memory_type === "long_term";
   const defaultModel = getDisplayName(agent, llmProviders ?? []);
+  const availabilityIssues = getAgentAvailabilityIssues(agent.availability);
 
   return (
     <Modal
@@ -307,7 +311,9 @@ export default function AgentViewerModal({ agent }: AgentViewerModalProps) {
           icon={(props) => <AgentAvatar agent={agent} {...props} size={24} />}
           title={agent.name}
           onClose={() => agentViewerModal.toggle(false)}
-        />
+        >
+          <AgentAvailabilityBadge agent={agent} showLabel className="ml-8 w-fit" />
+        </Modal.Header>
 
         <Modal.Body>
           {/* Metadata */}
@@ -340,6 +346,26 @@ export default function AgentViewerModal({ agent }: AgentViewerModalProps) {
 
           {/* Description */}
           {agent.description && <Text text03>{agent.description}</Text>}
+
+          {availabilityIssues.length > 0 && (
+            <div className="rounded-08 border border-status-error-02 bg-status-error-00 p-2">
+              <Section gap={0.5} alignItems="start">
+                <Content
+                  icon={SvgAlertCircle}
+                  title={t("agentViewer.availabilityIssuesTitle", "Availability issues")}
+                  sizePreset="main-ui"
+                  variant="section"
+                />
+                <div className="flex flex-col gap-1">
+                  {availabilityIssues.map((issue, index) => (
+                    <Text key={`${issue.component}-${index}`} secondaryBody text02>
+                      {issue.message}
+                    </Text>
+                  ))}
+                </div>
+              </Section>
+            </div>
+          )}
 
           {/* Knowledge */}
           <Separator noPadding />

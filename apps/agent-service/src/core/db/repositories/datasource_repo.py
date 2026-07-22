@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 # Milvus helpers (mirrors agent-service/src/agents/tools.py)
 # ---------------------------------------------------------------------------
 
+
 def _to_milvus_collection_name(raw_name: str) -> str:
     name = re.sub(r"[^a-zA-Z0-9_]", "_", (raw_name or "").strip())
     name = re.sub(r"_+", "_", name).strip("_")
@@ -158,7 +159,11 @@ class DatasourceRepository(BaseRepository):
             row = result.scalar_one_or_none()
         if row is None:
             return None
-        return {"uuid": str(row.uuid), "name": row.name, "cmetadata": self._parse_metadata(row.cmetadata)}
+        return {
+            "uuid": str(row.uuid),
+            "name": row.name,
+            "cmetadata": self._parse_metadata(row.cmetadata),
+        }
 
     async def update_collection_metadata(
         self,
@@ -177,7 +182,11 @@ class DatasourceRepository(BaseRepository):
             row = result.scalar_one_or_none()
         if row is None:
             return None
-        return {"uuid": str(row.uuid), "name": row.name, "cmetadata": self._parse_metadata(row.cmetadata)}
+        return {
+            "uuid": str(row.uuid),
+            "name": row.name,
+            "cmetadata": self._parse_metadata(row.cmetadata),
+        }
 
     async def update_collection(
         self,
@@ -206,7 +215,11 @@ class DatasourceRepository(BaseRepository):
             row = result.scalar_one_or_none()
         if row is None:
             return None
-        return {"uuid": str(row.uuid), "name": row.name, "cmetadata": self._parse_metadata(row.cmetadata)}
+        return {
+            "uuid": str(row.uuid),
+            "name": row.name,
+            "cmetadata": self._parse_metadata(row.cmetadata),
+        }
 
     async def delete_collection(self, collection_id: str) -> bool:
         """Delete a collection by UUID.  Returns ``True`` if a row was removed."""

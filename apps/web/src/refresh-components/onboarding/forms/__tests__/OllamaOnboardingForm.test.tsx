@@ -84,6 +84,14 @@ describe("OllamaOnboardingForm", () => {
     open: true,
     onOpenChange: jest.fn(),
   };
+  const titleText = /^llmOnboarding\.setupOllama$|Set up Ollama/i;
+  const descriptionText =
+    /^llmOnboarding\.setupOllamaDesc$|Connect to your Ollama models/i;
+  const selfHostedTabText = /selfHostedOllama|self-hosted/i;
+  const cloudTabText = /ollamaCloud|cloud/i;
+  const apiBaseUrlText = /apiBaseUrl|API Base URL/i;
+  const apiKeyText = /apiKey|API Key/i;
+  const modelPlaceholder = /selectModel|Select a model/i;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -96,14 +104,14 @@ describe("OllamaOnboardingForm", () => {
       render(<OllamaOnboardingForm {...defaultProps} />);
 
       expect(screen.getByRole("dialog")).toBeInTheDocument();
-      expect(screen.getByText("Set up Ollama")).toBeInTheDocument();
+      expect(screen.getByText(titleText)).toBeInTheDocument();
     });
 
     test("renders description", () => {
       render(<OllamaOnboardingForm {...defaultProps} />);
 
       expect(
-        screen.getByText(/Connect to your Ollama models/i)
+        screen.getByText(descriptionText)
       ).toBeInTheDocument();
     });
 
@@ -111,15 +119,19 @@ describe("OllamaOnboardingForm", () => {
       render(<OllamaOnboardingForm {...defaultProps} />);
 
       expect(
-        screen.getByRole("tab", { name: /self-hosted/i })
+        screen.getByRole("tab", { name: selfHostedTabText })
       ).toBeInTheDocument();
-      expect(screen.getByRole("tab", { name: /cloud/i })).toBeInTheDocument();
+      expect(
+        screen.getByRole("tab", { name: cloudTabText })
+      ).toBeInTheDocument();
     });
 
     test("self-hosted tab is selected by default", () => {
       render(<OllamaOnboardingForm {...defaultProps} />);
 
-      const selfHostedTab = screen.getByRole("tab", { name: /self-hosted/i });
+      const selfHostedTab = screen.getByRole("tab", {
+        name: selfHostedTabText,
+      });
       expect(selfHostedTab).toHaveAttribute("data-state", "active");
     });
 
@@ -134,7 +146,7 @@ describe("OllamaOnboardingForm", () => {
     test("renders API Base URL field", () => {
       render(<OllamaOnboardingForm {...defaultProps} />);
 
-      expect(screen.getByText("API Base URL")).toBeInTheDocument();
+      expect(screen.getByText(apiBaseUrlText)).toBeInTheDocument();
     });
 
     test("shows default API base URL placeholder", () => {
@@ -156,7 +168,7 @@ describe("OllamaOnboardingForm", () => {
       const user = setupUser();
       render(<OllamaOnboardingForm {...defaultProps} />);
 
-      const cloudTab = screen.getByRole("tab", { name: /cloud/i });
+      const cloudTab = screen.getByRole("tab", { name: cloudTabText });
       await user.click(cloudTab);
 
       expect(cloudTab).toHaveAttribute("data-state", "active");
@@ -166,11 +178,11 @@ describe("OllamaOnboardingForm", () => {
       const user = setupUser();
       render(<OllamaOnboardingForm {...defaultProps} />);
 
-      const cloudTab = screen.getByRole("tab", { name: /cloud/i });
+      const cloudTab = screen.getByRole("tab", { name: cloudTabText });
       await user.click(cloudTab);
 
       // In cloud tab, we should see API Key label
-      const apiKeyLabels = screen.getAllByText("API Key");
+      const apiKeyLabels = screen.getAllByText(apiKeyText);
       expect(apiKeyLabels.length).toBeGreaterThan(0);
     });
 
@@ -178,7 +190,7 @@ describe("OllamaOnboardingForm", () => {
       const user = setupUser();
       render(<OllamaOnboardingForm {...defaultProps} />);
 
-      const cloudTab = screen.getByRole("tab", { name: /cloud/i });
+      const cloudTab = screen.getByRole("tab", { name: cloudTabText });
       await user.click(cloudTab);
 
       const link = screen.getByRole("link", { name: /api key/i });
@@ -200,7 +212,7 @@ describe("OllamaOnboardingForm", () => {
       const user = setupUser();
       render(<OllamaOnboardingForm {...defaultProps} />);
 
-      const cloudTab = screen.getByRole("tab", { name: /cloud/i });
+      const cloudTab = screen.getByRole("tab", { name: cloudTabText });
       await user.click(cloudTab);
 
       const submitButton = screen.getByTestId("submit-button");
@@ -227,7 +239,7 @@ describe("OllamaOnboardingForm", () => {
       await user.type(apiBaseInput, "http://localhost:11434");
 
       // Fill model
-      const modelInput = screen.getByPlaceholderText("Select a model");
+      const modelInput = screen.getByPlaceholderText(modelPlaceholder);
       await user.type(modelInput, "llama2");
 
       const submitButton = screen.getByTestId("submit-button");
@@ -262,7 +274,7 @@ describe("OllamaOnboardingForm", () => {
       await user.clear(apiBaseInput);
       await user.type(apiBaseInput, "http://localhost:11434");
 
-      const modelInput = screen.getByPlaceholderText("Select a model");
+      const modelInput = screen.getByPlaceholderText(modelPlaceholder);
       await user.type(modelInput, "llama2");
 
       const submitButton = screen.getByTestId("submit-button");
@@ -290,11 +302,11 @@ describe("OllamaOnboardingForm", () => {
       await user.click(cloudTab);
 
       // Fill API key
-      const apiKeyInput = screen.getByLabelText(/api key/i);
+      const apiKeyInput = screen.getByLabelText(apiKeyText);
       await user.type(apiKeyInput, "ollama-cloud-key-123");
 
       // Fill model
-      const modelInput = screen.getByPlaceholderText("Select a model");
+      const modelInput = screen.getByPlaceholderText(modelPlaceholder);
       await user.type(modelInput, "llama2");
 
       const submitButton = screen.getByTestId("submit-button");
@@ -335,7 +347,7 @@ describe("OllamaOnboardingForm", () => {
       await user.clear(apiBaseInput);
       await user.type(apiBaseInput, "http://localhost:11434");
 
-      const modelInput = screen.getByPlaceholderText("Select a model");
+      const modelInput = screen.getByPlaceholderText(modelPlaceholder);
       await user.type(modelInput, "llama2");
 
       const submitButton = screen.getByTestId("submit-button");
@@ -367,7 +379,7 @@ describe("OllamaOnboardingForm", () => {
       await user.clear(apiBaseInput);
       await user.type(apiBaseInput, "http://invalid-host:11434");
 
-      const modelInput = screen.getByPlaceholderText("Select a model");
+      const modelInput = screen.getByPlaceholderText(modelPlaceholder);
       await user.type(modelInput, "llama2");
 
       const submitButton = screen.getByTestId("submit-button");

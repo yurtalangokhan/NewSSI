@@ -4,7 +4,6 @@ import useSWR from "swr";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import {
   AgentId,
-  DynamicAgentDefinition,
   MinimalPersonaSnapshot,
   FullPersona,
 } from "@/app/admin/agents/interfaces";
@@ -14,8 +13,6 @@ import { useUser } from "@/providers/UserProvider";
 import { useSearchParams } from "next/navigation";
 import { SEARCH_PARAM_NAMES } from "@/app/app/services/searchParams";
 import useChatSessions from "./useChatSessions";
-import { ToolSnapshot } from "@/lib/tools/interfaces";
-import { MinimalUserSnapshot } from "@/lib/types";
 
 export function agentIdsMatch(
   left: AgentId | MinimalPersonaSnapshot | null | undefined,
@@ -31,87 +28,11 @@ export function agentIdsMatch(
   return String(leftValue) === String(rightValue);
 }
 
-function definitionIdToSyntheticId(definitionId: string): number {
-  let hash = 0;
-  for (let index = 0; index < definitionId.length; index += 1) {
-    hash = (hash * 31 + definitionId.charCodeAt(index)) | 0;
-  }
-
-  return -(Math.abs(hash) || 1);
-}
-
 function sortAgents(left: MinimalPersonaSnapshot, right: MinimalPersonaSnapshot) {
   if (typeof left.id === "number" && typeof right.id === "number") {
     return right.id - left.id;
   }
   return left.name.localeCompare(right.name);
-}
-
-function buildDynamicAgentSnapshot(
-  definition: DynamicAgentDefinition,
-  tools: ToolSnapshot[],
-  owner: MinimalUserSnapshot | null = null
-): MinimalPersonaSnapshot {
-  const mappedTools = tools.filter(
-    (tool) =>
-      definition.mcp_tools.includes(tool.name) ||
-      (tool.in_code_tool_id && definition.mcp_tools.includes(tool.in_code_tool_id))
-  );
-
-  return {
-    id: definitionIdToSyntheticId(definition.id),
-    external_id: definition.id,
-    is_dynamic: true,
-    graph_schema: definition.graph_schema,
-    memory_type: definition.memory_type,
-    long_term_memory: definition.memory_type === "long_term",
-    mcp_tools: definition.mcp_tools,
-    name: definition.name,
-    description: definition.description ?? `${definition.graph_schema} dynamic agent`,
-    tools: mappedTools,
-    starter_messages: null,
-    document_sets: [],
-    hierarchy_node_count: 0,
-    attached_document_count: 0,
-    knowledge_sources: [],
-    llm_model_version_override: definition.model ?? undefined,
-    llm_model_provider_override: undefined,
-    is_public: true,
-    is_visible: definition.is_active,
-    display_priority: null,
-    featured: false,
-    builtin_persona: false,
-    owner,
-    labels: [],
-    icon_name: "bot",
-  };
-}
-
-function buildDynamicAgentFullPersona(
-  definition: DynamicAgentDefinition,
-  tools: ToolSnapshot[]
-): FullPersona {
-  const ragConfig = definition.rag_config ?? {
-    document_processing: [],
-    knowledge_graph: [],
-  };
-
-  return {
-    ...buildDynamicAgentSnapshot(definition, tools),
-    user_file_ids: [],
-    users: [],
-    groups: [],
-    hierarchy_nodes: [],
-    attached_documents: [],
-    system_prompt: definition.system_prompt,
-    replace_base_system_prompt: true,
-    task_prompt: definition.pipeline_prompt ?? definition.supervisor_prompt ?? definition.reflection_prompt,
-    datetime_aware: false,
-    base_agent: "dynamic-agent",
-    mcp_tools: definition.mcp_tools,
-    rag_config: ragConfig,
-    search_start_date: null,
-  };
 }
 
 /**
@@ -136,7 +57,6 @@ function buildDynamicAgentFullPersona(
  * return <AgentList agents={agents} />;
  */
 export function useAgents() {
-  const { user } = useUser();
   const { data, error, mutate } = useSWR<MinimalPersonaSnapshot[]>(
     "/api/persona",
     errorHandlingFetcher,
@@ -145,52 +65,17 @@ export function useAgents() {
       dedupingInterval: 60000,
     }
   );
-  const {
-    data: dynamicDefinitions,
-    error: dynamicError,
-    mutate: mutateDynamicDefinitions,
-  } = useSWR<DynamicAgentDefinition[]>(
-    "/api/agent-definitions?active_only=true",
-    errorHandlingFetcher,
-    {
-      revalidateOnFocus: false,
-      dedupingInterval: 60000,
-    }
-  );
-  const { data: availableTools } = useSWR<ToolSnapshot[]>(
-    "/api/tool",
-    errorHandlingFetcher,
-    {
-      revalidateOnFocus: false,
-      dedupingInterval: 60000,
-    }
-  );
-
   const agents = useMemo(() => {
     const personaAgents = data ?? [];
-    const toolCatalog = availableTools ?? [];
-    const dynamicOwner: MinimalUserSnapshot | null = user
-      ? {
-          id: user.id,
-          email: user.email,
-        }
-      : null;
-    const dynamicAgents = (dynamicDefinitions ?? []).map((definition) =>
-      buildDynamicAgentSnapshot(definition, toolCatalog, dynamicOwner)
-    );
-
-    return [...personaAgents, ...dynamicAgents].sort(sortAgents);
-  }, [data, dynamicDefinitions, availableTools, user?.email, user?.id]);
+    return [...personaAgents].sort(sortAgents);
+  }, [data]);
 
   return {
     agents,
-    isLoading:
-      (!error && !data) ||
-      (!dynamicError && !dynamicDefinitions) ||
-      !availableTools,
-    error: error ?? dynamicError,
+    isLoading: !error && !data,
+    error,
     refresh: async () => {
-      await Promise.all([mutate(), mutateDynamicDefinitions()]);
+      await mutate();
     },
   };
 }
@@ -226,35 +111,19 @@ export function useAgent(agentId: AgentId | null) {
       dedupingInterval: 60000,
     }
   );
-  const { data: dynamicData, error: dynamicError, isLoading: isDynamicLoading, mutate: mutateDynamic } = useSWR<DynamicAgentDefinition>(
-    agentId && typeof agentId === "string" ? `/api/agent-definitions/${agentId}` : null,
-    errorHandlingFetcher,
-    {
-      revalidateOnFocus: false,
-      dedupingInterval: 60000,
-    }
-  );
-  const { data: availableTools } = useSWR<ToolSnapshot[]>("/api/tool", errorHandlingFetcher, {
-    revalidateOnFocus: false,
-    dedupingInterval: 60000,
-  });
-
   const agent = useMemo(() => {
     if (personaData) {
       return personaData;
     }
-    if (dynamicData) {
-      return buildDynamicAgentFullPersona(dynamicData, availableTools ?? []);
-    }
     return null;
-  }, [personaData, dynamicData, availableTools]);
+  }, [personaData]);
 
   return {
     agent,
-    isLoading: isPersonaLoading || isDynamicLoading,
-    error: personaError ?? dynamicError,
+    isLoading: isPersonaLoading,
+    error: personaError,
     refresh: async () => {
-      await Promise.all([mutatePersona(), mutateDynamic()]);
+      await mutatePersona();
     },
   };
 }

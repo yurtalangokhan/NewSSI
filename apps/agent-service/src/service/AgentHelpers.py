@@ -20,7 +20,7 @@ from langgraph.types import Command
 from agents import AgentGraph
 from core import settings
 from core.logger import get_logger
-from schema import UserInput
+from models.chat import UserInput
 
 __all__ = [
     "get_graph_and_config",
@@ -36,10 +36,11 @@ logger = get_logger(__name__)
 # =============================================================================
 
 
-async def get_graph_and_config(agent_id: str) -> tuple[str, dict]:
+async def get_graph_and_config(agent_id: str | int) -> tuple[str, dict]:
     """Helper to get graph_id and config, resolving stored assistants and personas."""
     from service.StoreService import get_assistant_from_store
 
+    agent_id = str(agent_id)
     config: dict = {}
     graph_id = agent_id  # Default to agent_id as graph_id
 
@@ -82,6 +83,24 @@ async def get_graph_and_config(agent_id: str) -> tuple[str, dict]:
                 mcp_tools = persona.get("mcp_tools", [])
                 rag_config = persona.get("rag_config") or {}
 
+                if base_agent == "dynamic-agent":
+                    from agents.storage.repository import AgentDefinitionRepository
+
+                    definition = await AgentDefinitionRepository().get_by_persona_id(int(agent_id))
+                    if definition:
+                        definition_cfg = definition.to_config() or {}
+                        runtime_cfg: dict[str, Any] = {}
+                        for key in (
+                            "model",
+                            "system_prompt",
+                            "mcp_tools",
+                            "rag_config",
+                            "memory_type",
+                        ):
+                            if definition_cfg.get(key):
+                                runtime_cfg[key] = definition_cfg[key]
+                        return str(definition.id), runtime_cfg
+
                 if base_agent:
                     graph_id = base_agent
 
@@ -116,7 +135,7 @@ async def get_graph_and_config(agent_id: str) -> tuple[str, dict]:
     return graph_id, config
 
 
-async def get_configured_agent(agent_id: str, agent_config: dict) -> AgentGraph:
+async def get_configured_agent(agent_id: str | int, agent_config: dict) -> AgentGraph:
     """
     Get agent with dynamic configuration applied.
     For supervisor agents, creates a configured graph based on the config.
@@ -136,6 +155,29 @@ async def get_configured_agent(agent_id: str, agent_config: dict) -> AgentGraph:
 
     # Merge configs (agent_config takes precedence)
     merged_config = {**stored_config, **agent_config}
+
+    try:
+        from agents.storage.repository import AgentDefinitionRepository
+
+        definition_uuid = UUID(graph_id)
+        definition = await AgentDefinitionRepository().get_by_id(definition_uuid)
+        if definition:
+            from agents.dynamic_agent import (
+                DynamicAgent,
+                cache_agent,
+                get_cached_agent,
+            )
+
+            definition_id = str(definition.id)
+            cached = get_cached_agent(definition_id)
+            if cached is not None:
+                return cached
+
+            dynamic_agent = DynamicAgent(definition.to_config())
+            cache_agent(definition_id, dynamic_agent)
+            return dynamic_agent
+    except (ValueError, AttributeError):
+        pass
 
     # Get the base agent
     agent_entry = agents.get(graph_id)
@@ -295,7 +337,6 @@ async def _handle_input(
     # ------------------------------------------------------------------
     # AND-logic: long_term_memory = user toggle AND agent toggle
     # ------------------------------------------------------------------
-    user_ltm = False
     agent_ltm = bool(configurable.get("long_term_memory", False))
     us_data: dict = {}
     persona_data = None
@@ -303,7 +344,6 @@ async def _handle_input(
         from service.UserServiceClient import get_user_settings
 
         us_data = await get_user_settings(user_id)
-        user_ltm = bool(us_data.get("long_term_memory_enabled", False))
     except Exception as _ltm_err:
         logger.warning(f"LTM user_settings lookup failed: {_ltm_err}")
 
@@ -360,7 +400,9 @@ async def _handle_input(
             task for task in state.tasks if hasattr(task, "interrupts") and task.interrupts
         ]
     except Exception as e:
-        logger.warning(f"aget_state failed (no checkpointer?): {e} — treating as fresh conversation")
+        logger.warning(
+            f"aget_state failed (no checkpointer?): {e} — treating as fresh conversation"
+        )
 
     from service.Utils import convert_input_messages
 
@@ -392,9 +434,15 @@ async def _handle_input(
                     [{"type": "text", "text": user_input.message}] if user_input.message else []
                 )
                 new_content.extend(file_blocks)
-                input = {"messages": [HumanMessage(content=new_content, additional_kwargs=extra_kwargs)]}
+                input = {
+                    "messages": [HumanMessage(content=new_content, additional_kwargs=extra_kwargs)]
+                }
             else:
-                input = {"messages": [HumanMessage(content=user_input.message, additional_kwargs=extra_kwargs)]}
+                input = {
+                    "messages": [
+                        HumanMessage(content=user_input.message, additional_kwargs=extra_kwargs)
+                    ]
+                }
         except Exception as e:
             logger.warning(f"Failed to fetch existing messages from checkpointer: {e}")
             # Fall back to just the new message
@@ -406,9 +454,17 @@ async def _handle_input(
                     [{"type": "text", "text": user_input.message}] if user_input.message else []
                 )
                 fallback_content.extend(file_blocks)
-                input = {"messages": [HumanMessage(content=fallback_content, additional_kwargs=extra_kwargs)]}
+                input = {
+                    "messages": [
+                        HumanMessage(content=fallback_content, additional_kwargs=extra_kwargs)
+                    ]
+                }
             else:
-                input = {"messages": [HumanMessage(content=user_input.message, additional_kwargs=extra_kwargs)]}
+                input = {
+                    "messages": [
+                        HumanMessage(content=user_input.message, additional_kwargs=extra_kwargs)
+                    ]
+                }
     else:
         raise HTTPException(
             status_code=400, detail="One of 'message' or 'messages' must be provided."

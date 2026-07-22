@@ -8,7 +8,6 @@ Provides REST API for:
   - Executing Cypher queries.
 """
 
-import asyncio
 import logging
 from typing import Annotated, Any
 
@@ -310,7 +309,8 @@ async def get_graph_stats(
     collection_id: str,
     user: Annotated[AuthenticatedUser, Depends(require_permission("graph:read"))],
     scope_label: str | None = Query(
-        None, description="Scope stats to this label group",
+        None,
+        description="Scope stats to this label group",
     ),
 ):
     """Get statistics about the knowledge graph for a collection."""
@@ -328,7 +328,9 @@ async def get_labels_paginated(
     page: int = Query(1, ge=1),
     page_size: int = Query(25, ge=1, le=100),
     search: str | None = Query(None),
-    scope_label: str | None = Query(None, description="Scope to neighbour labels of this label group"),
+    scope_label: str | None = Query(
+        None, description="Scope to neighbour labels of this label group"
+    ),
     rel_type_filter: str | None = Query(
         None,
         description="Comma-separated relationship types to cross-filter labels by",
@@ -380,7 +382,7 @@ async def get_relationship_types_paginated(
     """Return relationship types with counts (paginated, searchable)."""
     store = GraphStore(collection_id)
     labels = (
-        [l.strip() for l in label_filter.split(",") if l.strip()]
+        [label.strip() for label in label_filter.split(",") if label.strip()]
         if label_filter
         else None
     )
@@ -422,7 +424,9 @@ async def search_graph(
 async def search_entities(
     collection_id: str,
     q: str = Query(..., min_length=1),
-    user: Annotated[AuthenticatedUser, Depends(require_permission("graph:search"))] = None,
+    user: Annotated[
+        AuthenticatedUser, Depends(require_permission("graph:search"))
+    ] = None,
     limit: int = Query(10, ge=1, le=100),
 ):
     """Search entities by name (full-text) in the knowledge graph."""
@@ -434,9 +438,16 @@ async def search_entities(
 async def search_entity_clusters(
     collection_id: str,
     q: str = Query(..., min_length=1),
-    scope_label: str | None = Query(None, description="If provided, returns counts for offset-based subclusters"),
-    chunk_size: int = Query(200, description="Chunk size for subclusters (should match node_limit of expand)"),
-    user: Annotated[AuthenticatedUser, Depends(require_permission("graph:search"))] = None,
+    scope_label: str | None = Query(
+        None, description="If provided, returns counts for offset-based subclusters"
+    ),
+    chunk_size: int = Query(
+        200,
+        description="Chunk size for subclusters (should match node_limit of expand)",
+    ),
+    user: Annotated[
+        AuthenticatedUser, Depends(require_permission("graph:search"))
+    ] = None,
 ):
     """Return ``{label: count}`` or ``{chunk_id: count}`` for clusters that contain entities matching *q*.
 

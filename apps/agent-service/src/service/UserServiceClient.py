@@ -62,10 +62,7 @@ def _service_headers(
     if not include_internal_token:
         return headers
 
-    token = str(
-        env.get("INTERNAL_SERVICE_TOKEN")
-        or ""
-    ).strip()
+    token = str(env.get("INTERNAL_SERVICE_TOKEN") or "").strip()
     if token:
         headers["X-Internal-Service-Token"] = token
     return headers
@@ -282,14 +279,29 @@ async def get_user_permissions(
     return {"permissions": []}
 
 
+async def authorize_user_permission(
+    user_id: str,
+    permission: str,
+    access_token: str | None = None,
+) -> dict[str, Any]:
+    """Return whether a user has a specific permission."""
+    data = await _request(
+        "POST",
+        "/api/users/internal/authorize",
+        json_body={"target_id": user_id, "permission": permission},
+        access_token=access_token,
+    )
+    if isinstance(data, dict):
+        return data
+    return {"allowed": False, "permission": permission}
+
+
 # ---------------------------------------------------------------------------
 # User memory operations — proxied to user-service internal API
 # ---------------------------------------------------------------------------
 
 
-async def get_user_memories_for_recall(
-    user_id: str, access_token: str | None = None
-) -> list[str]:
+async def get_user_memories_for_recall(user_id: str, access_token: str | None = None) -> list[str]:
     """Return memory content strings for prompt injection."""
     data = await _request(
         "GET",

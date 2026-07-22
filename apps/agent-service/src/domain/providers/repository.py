@@ -1,4 +1,5 @@
 """CRUD operations for providers and user_provider_configs tables."""
+
 from __future__ import annotations
 
 import hashlib
@@ -14,7 +15,6 @@ from core.security.encryption import decrypt_api_key, encrypt_api_key
 
 
 class ProviderRepository(BaseRepository):
-
     # ── URL-based providers ──────────────────────────────────────────────────
 
     async def list_url_providers(self, user_id: str) -> list[dict[str, Any]]:
@@ -32,8 +32,7 @@ class ProviderRepository(BaseRepository):
                 .order_by(UserProviderConfigModel.time_created.asc())
             )
             return [
-                self._serialize_with_config(provider, config)
-                for provider, config in result.all()
+                self._serialize_with_config(provider, config) for provider, config in result.all()
             ]
 
     async def get_url_provider(self, provider_id: str, user_id: str) -> dict[str, Any] | None:
@@ -153,9 +152,7 @@ class ProviderRepository(BaseRepository):
             await session.flush()
 
             remaining_count = await session.scalar(
-                select(func.count()).where(
-                    UserProviderConfigModel.provider_id == provider.id
-                )
+                select(func.count()).where(UserProviderConfigModel.provider_id == provider.id)
             )
             if not remaining_count:
                 await session.delete(provider)
@@ -178,8 +175,7 @@ class ProviderRepository(BaseRepository):
                 .order_by(UserProviderConfigModel.time_created.asc())
             )
             return [
-                self._serialize_with_config(provider, config)
-                for provider, config in result.all()
+                self._serialize_with_config(provider, config) for provider, config in result.all()
             ]
 
     async def create_user_provider(self, user_id: str, data: dict[str, Any]) -> dict[str, Any]:
@@ -212,14 +208,14 @@ class ProviderRepository(BaseRepository):
             try:
                 await session.flush()
             except IntegrityError:
-                raise ValueError(
-                    f"A {data['provider_type']} provider already exists."
-                )
+                raise ValueError(f"A {data['provider_type']} provider already exists.")
             await session.refresh(provider)
             await session.refresh(config)
             return self._serialize_with_config(provider, config)
 
-    async def update_user_provider(self, provider_id: str, user_id: str, data: dict[str, Any]) -> dict[str, Any] | None:
+    async def update_user_provider(
+        self, provider_id: str, user_id: str, data: dict[str, Any]
+    ) -> dict[str, Any] | None:
         async with self._session() as session:
             result = await session.execute(
                 select(ProviderModel, UserProviderConfigModel)
@@ -278,9 +274,7 @@ class ProviderRepository(BaseRepository):
             await session.flush()
 
             remaining_count = await session.scalar(
-                select(func.count()).where(
-                    UserProviderConfigModel.provider_id == provider.id
-                )
+                select(func.count()).where(UserProviderConfigModel.provider_id == provider.id)
             )
             if not remaining_count:
                 await session.delete(provider)

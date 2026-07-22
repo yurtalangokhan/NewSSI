@@ -11,7 +11,7 @@ import {
 } from "./lib";
 import { Scope, TokenRateLimit } from "./types";
 import { GenericTokenRateLimitTable } from "./TokenRateLimitTables";
-import { mutate } from "swr";
+import useSWR, { mutate } from "swr";
 import { toast } from "@/hooks/useToast";
 import CreateRateLimitModal from "./CreateRateLimitModal";
 import { usePaidEnterpriseFeaturesEnabled } from "@/components/settings/usePaidEnterpriseFeaturesEnabled";
@@ -20,6 +20,8 @@ import { SvgGlobe, SvgUser, SvgUsers } from "@opal/icons";
 import { Section } from "@/layouts/general-layouts";
 import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
 import { useTranslation } from "react-i18next";
+import AdminOverviewPanel from "@/components/admin/AdminOverviewPanel";
+import { errorHandlingFetcher } from "@/lib/fetcher";
 
 const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.TOKEN_RATE_LIMITS]!;
 const BASE_URL = "/api/admin/token-rate-limits";
@@ -200,10 +202,83 @@ function Main() {
 }
 
 export default function Page() {
+  const { t } = useTranslation();
+  const { data: globalLimits } = useSWR<TokenRateLimit[]>(
+    GLOBAL_TOKEN_FETCH_URL,
+    errorHandlingFetcher
+  );
+  const { data: userLimits } = useSWR<TokenRateLimit[]>(
+    USER_TOKEN_FETCH_URL,
+    errorHandlingFetcher
+  );
+  const { data: groupLimits } = useSWR<Record<string, TokenRateLimit[]>>(
+    USER_GROUP_FETCH_URL,
+    errorHandlingFetcher
+  );
+  const groupLimitCount = groupLimits
+    ? Object.values(groupLimits).reduce((sum, limits) => sum + limits.length, 0)
+    : undefined;
+
   return (
     <SettingsLayouts.Root>
-      <SettingsLayouts.Header title={route.title} icon={route.icon} separator />
+      <SettingsLayouts.Header
+        title={route.title}
+        icon={route.icon}
+        separator
+      />
       <SettingsLayouts.Body>
+        <AdminOverviewPanel
+          icon={route.icon}
+          title={t("admin.tokenRateLimits.workspaceTitle", {
+            defaultValue: "Token governance workspace",
+          })}
+          description={t("admin.tokenRateLimits.workspaceDescription", {
+            defaultValue:
+              "Control global, user, and group token budgets before high-volume usage affects the platform.",
+          })}
+          metrics={[
+            {
+              label: t("admin.tokenRateLimits.globalLimitsLabel"),
+              value:
+                globalLimits === undefined
+                  ? "..."
+                  : globalLimits.length.toLocaleString(),
+              tone:
+                globalLimits !== undefined && globalLimits.length > 0
+                  ? "success"
+                  : "warning",
+            },
+            {
+              label: t("admin.tokenRateLimits.userLimitsLabel"),
+              value:
+                userLimits === undefined
+                  ? "..."
+                  : userLimits.length.toLocaleString(),
+            },
+            {
+              label: t("admin.tokenRateLimits.groupLimitsLabel"),
+              value:
+                groupLimitCount === undefined
+                  ? "..."
+                  : groupLimitCount.toLocaleString(),
+            },
+          ]}
+          actions={[
+            {
+              label: t("admin.navigation.routes.users.sidebar", {
+                defaultValue: "Users",
+              }),
+              href: ADMIN_PATHS.USERS,
+            },
+            {
+              label: t("admin.navigation.routes.apiKeys.sidebar", {
+                defaultValue: "API Keys",
+              }),
+              href: ADMIN_PATHS.API_KEYS,
+              primary: true,
+            },
+          ]}
+        />
         <Main />
       </SettingsLayouts.Body>
     </SettingsLayouts.Root>

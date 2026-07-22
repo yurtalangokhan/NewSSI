@@ -1,11 +1,26 @@
 "use client";
-import { NotebookIcon } from "@/components/icons/icons";
+
 import { getWebVersion, getBackendVersion } from "@/lib/version";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
+import * as SettingsLayouts from "@/layouts/settings-layouts";
+import Text from "@/refresh-components/texts/Text";
 
 const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.SYSTEM_INFO]!;
+
+function VersionRow({ label, value }: { label: string; value: string | null }) {
+  return (
+    <div className="grid grid-cols-1 gap-1 border-b border-border-01 py-4 last:border-b-0 md:grid-cols-[180px_1fr]">
+      <Text as="span" secondaryBody text03>
+        {label}
+      </Text>
+      <Text as="span" mainUiBody text01 className="break-all">
+        {value || "-"}
+      </Text>
+    </div>
+  );
+}
 
 const Page = () => {
   const { t } = useTranslation();
@@ -29,27 +44,26 @@ const Page = () => {
   }, []);
 
   return (
-    <div>
-      <div className="border-solid border-background-600 border-b pb-2 mb-4 flex">
-        <NotebookIcon size={32} />
-        <h1 className="text-3xl font-bold pl-2">{t("admin.systemInfo.title")}</h1>
-      </div>
+    <SettingsLayouts.Root>
+      <SettingsLayouts.Header
+        icon={route.icon}
+        title={t(route.titleKey || "", { defaultValue: route.title })}
+        separator
+      />
 
-      <div>
-        <div className="flex mb-2">
-          <p className="my-auto mr-1">{t("admin.systemInfo.backendVersion")}: </p>
-          <p className="text-base my-auto text-slate-400 italic">
-            {backend_version}
-          </p>
+      <SettingsLayouts.Body>
+        <div className="rounded-08 border border-border-01 bg-background-neutral-00 px-4">
+          <VersionRow
+            label={t("admin.systemInfo.backendVersion")}
+            value={backend_version}
+          />
+          <VersionRow
+            label={t("admin.systemInfo.webVersion")}
+            value={web_version}
+          />
         </div>
-        <div className="flex mb-2">
-          <p className="my-auto mr-1">{t("admin.systemInfo.webVersion")}: </p>
-          <p className="text-base my-auto text-slate-400 italic">
-            {web_version}
-          </p>
-        </div>
-      </div>
-    </div>
+      </SettingsLayouts.Body>
+    </SettingsLayouts.Root>
   );
 };
 

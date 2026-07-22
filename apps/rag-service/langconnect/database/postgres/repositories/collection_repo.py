@@ -7,7 +7,7 @@ import logging
 import uuid
 from typing import Any
 
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, or_, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from langconnect import config
@@ -48,7 +48,9 @@ class CollectionRepository(BaseRepository):
             return {}
 
     @staticmethod
-    def _to_details(row: PgCollection, *, include_table_id: bool = False) -> CollectionDetails:
+    def _to_details(
+        row: PgCollection, *, include_table_id: bool = False
+    ) -> CollectionDetails:
         """Convert an ORM row to the ``CollectionDetails`` TypedDict."""
         metadata = CollectionRepository._parse_metadata(row.cmetadata)
         name = metadata.pop("name", "Unnamed")
@@ -69,9 +71,15 @@ class CollectionRepository(BaseRepository):
             stmt = select(PgCollection)
 
             if not self._is_internal:
-                # JSON operator ->> returns text
+                # JSON operator ->> returns text. Include internal/legacy rows so
+                # collections created by ingestion jobs remain visible in the UI.
                 stmt = stmt.where(
-                    PgCollection.cmetadata["owner_id"].as_string() == self.user_id
+                    or_(
+                        PgCollection.cmetadata["owner_id"].as_string() == self.user_id,
+                        PgCollection.cmetadata["owner_id"].as_string()
+                        == "internal-service",
+                        PgCollection.cmetadata["owner_id"].as_string().is_(None),
+                    )
                 )
 
             stmt = stmt.order_by(PgCollection.cmetadata["name"].as_string())
@@ -83,12 +91,15 @@ class CollectionRepository(BaseRepository):
     async def get_collection(self, collection_id: str) -> CollectionDetails | None:
         """Fetch a single collection by UUID, enforcing ownership."""
         async with self._session() as session:
-            stmt = select(PgCollection).where(
-                PgCollection.uuid == collection_id
-            )
+            stmt = select(PgCollection).where(PgCollection.uuid == collection_id)
             if not self._is_internal:
                 stmt = stmt.where(
-                    PgCollection.cmetadata["owner_id"].as_string() == self.user_id
+                    or_(
+                        PgCollection.cmetadata["owner_id"].as_string() == self.user_id,
+                        PgCollection.cmetadata["owner_id"].as_string()
+                        == "internal-service",
+                        PgCollection.cmetadata["owner_id"].as_string().is_(None),
+                    )
                 )
 
             result = await session.execute(stmt)
@@ -121,6 +132,7 @@ class CollectionRepository(BaseRepository):
             # PGVector path: calling get_vectorstore bootstraps the PG tables and
             # inserts a row into langchain_pg_collection as a side effect.
             from langconnect.database.connection import get_vectorstore
+
             get_vectorstore(table_id, collection_metadata=meta)
         else:
             # Milvus path: Milvus collection is created lazily on first upsert.
@@ -138,9 +150,7 @@ class CollectionRepository(BaseRepository):
             stmt = (
                 select(PgCollection)
                 .where(PgCollection.name == table_id)
-                .where(
-                    PgCollection.cmetadata["owner_id"].as_string() == self.user_id
-                )
+                .where(PgCollection.cmetadata["owner_id"].as_string() == self.user_id)
             )
             result = await session.execute(stmt)
             row = result.scalar_one_or_none()
@@ -219,9 +229,7 @@ class CollectionRepository(BaseRepository):
             stmt = (
                 delete(PgCollection)
                 .where(PgCollection.uuid == collection_id)
-                .where(
-                    PgCollection.cmetadata["owner_id"].as_string() == self.user_id
-                )
+                .where(PgCollection.cmetadata["owner_id"].as_string() == self.user_id)
             )
             result = await session.execute(stmt)
             return result.rowcount

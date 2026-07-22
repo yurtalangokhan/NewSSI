@@ -7,7 +7,7 @@ from agents.chatbot import chatbot
 from agents.configurable_mcp_agent import configurable_mcp_agent
 from agents.lazy_agent import LazyLoadingAgent
 from core.logger import get_logger
-from schema import AgentInfo
+from models.agents import AgentInfo
 
 logger = get_logger(__name__)
 

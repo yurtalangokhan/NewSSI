@@ -11,12 +11,17 @@ and ``langchain_pg_embedding`` respectively.
 from __future__ import annotations
 
 import uuid as _uuid
+from typing import TYPE_CHECKING
 
 from sqlalchemy import ForeignKey, Index, String, Text
 from sqlalchemy.dialects.postgresql import JSON, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from core.db.models.base import Base
+
+if TYPE_CHECKING:
+    from core.db.models.airbyte_mapping import AirbyteMappingModel
+    from core.db.models.schedule import SyncScheduleModel
 
 
 class PgCollection(Base):
@@ -86,9 +91,7 @@ class PgEmbedding(Base):
         back_populates="embeddings",
     )
 
-    __table_args__ = (
-        Index("ix_cmetadata_gin", cmetadata, postgresql_using="gin"),
-    )
+    __table_args__ = (Index("ix_cmetadata_gin", cmetadata, postgresql_using="gin"),)
 
     def __repr__(self) -> str:
         return f"<PgEmbedding id={self.id!r} collection_id={self.collection_id!s}>"

@@ -130,6 +130,7 @@ class SessionController(BaseController):
         except Exception as e:
             logger.error(f"Failed to create chat session: {e}")
             import uuid
+
             return {"chat_session_id": str(uuid.uuid4()), "name": "New Chat"}
 
     async def get_chat_session(self, chat_session_id: str) -> dict[str, Any]:
@@ -171,9 +172,15 @@ class SessionController(BaseController):
                             if not text:
                                 return text
                             result = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
-                            result = re.sub(r"<thinking>.*?</thinking>", "", result, flags=re.DOTALL)
-                            result = re.sub(r"<think>(?:(?!</think>).)*$", "", result, flags=re.DOTALL)
-                            result = re.sub(r"<thinking>(?:(?!</thinking>).)*$", "", result, flags=re.DOTALL)
+                            result = re.sub(
+                                r"<thinking>.*?</thinking>", "", result, flags=re.DOTALL
+                            )
+                            result = re.sub(
+                                r"<think>(?:(?!</think>).)*$", "", result, flags=re.DOTALL
+                            )
+                            result = re.sub(
+                                r"<thinking>(?:(?!</thinking>).)*$", "", result, flags=re.DOTALL
+                            )
                             return result.strip()
 
                         def _extract_content(msg) -> str:
@@ -206,15 +213,17 @@ class SessionController(BaseController):
                             if raw_type == "tool":
                                 tool_name = getattr(raw_msg, "name", "") or ""
                                 tool_content = _extract_content(raw_msg)
-                                pending_tool_packets.append({
-                                    "placement": {"turn_index": 0, "sub_turn_index": None},
-                                    "obj": {
-                                        "type": "custom_tool_delta",
-                                        "tool_name": tool_name,
-                                        "response_type": "tool_result",
-                                        "data": tool_content,
-                                    },
-                                })
+                                pending_tool_packets.append(
+                                    {
+                                        "placement": {"turn_index": 0, "sub_turn_index": None},
+                                        "obj": {
+                                            "type": "custom_tool_delta",
+                                            "tool_name": tool_name,
+                                            "response_type": "tool_result",
+                                            "data": tool_content,
+                                        },
+                                    }
+                                )
                                 continue
 
                             if raw_type == "ai":
@@ -223,14 +232,23 @@ class SessionController(BaseController):
 
                                 if tool_calls:
                                     for tc in tool_calls:
-                                        tc_name = tc.get("name", "tool") if isinstance(tc, dict) else getattr(tc, "name", "tool")
-                                        pending_tool_packets.append({
-                                            "placement": {"turn_index": 0, "sub_turn_index": None},
-                                            "obj": {
-                                                "type": "custom_tool_start",
-                                                "tool_name": tc_name,
-                                            },
-                                        })
+                                        tc_name = (
+                                            tc.get("name", "tool")
+                                            if isinstance(tc, dict)
+                                            else getattr(tc, "name", "tool")
+                                        )
+                                        pending_tool_packets.append(
+                                            {
+                                                "placement": {
+                                                    "turn_index": 0,
+                                                    "sub_turn_index": None,
+                                                },
+                                                "obj": {
+                                                    "type": "custom_tool_start",
+                                                    "tool_name": tc_name,
+                                                },
+                                            }
+                                        )
                                     continue
 
                                 turn_packets = []
@@ -238,21 +256,31 @@ class SessionController(BaseController):
                                     turn_packets.extend(pending_tool_packets)
                                     pending_tool_packets = []
                                 display_turn = 1 if turn_packets else 0
-                                turn_packets.append({
-                                    "placement": {"turn_index": display_turn, "sub_turn_index": None},
-                                    "obj": {
-                                        "type": "message_start",
-                                        "content": msg_content,
-                                        "final_documents": None,
-                                    },
-                                })
-                                turn_packets.append({
-                                    "placement": {"turn_index": display_turn, "sub_turn_index": None},
-                                    "obj": {
-                                        "type": "stop",
-                                        "stop_reason": "finished",
-                                    },
-                                })
+                                turn_packets.append(
+                                    {
+                                        "placement": {
+                                            "turn_index": display_turn,
+                                            "sub_turn_index": None,
+                                        },
+                                        "obj": {
+                                            "type": "message_start",
+                                            "content": msg_content,
+                                            "final_documents": None,
+                                        },
+                                    }
+                                )
+                                turn_packets.append(
+                                    {
+                                        "placement": {
+                                            "turn_index": display_turn,
+                                            "sub_turn_index": None,
+                                        },
+                                        "obj": {
+                                            "type": "stop",
+                                            "stop_reason": "finished",
+                                        },
+                                    }
+                                )
                                 packets_2d.append(turn_packets)
 
                                 parent_msg_id = msg_idx if msg_idx > 0 else None
@@ -409,7 +437,9 @@ class SessionController(BaseController):
             logger.warning(f"Failed to update chat session model: {e}")
             return {"success": True}
 
-    async def update_chat_session_temperature(self, session_id: str, temperature: float) -> dict[str, Any]:
+    async def update_chat_session_temperature(
+        self, session_id: str, temperature: float
+    ) -> dict[str, Any]:
         try:
             thread = await get_thread_from_store(session_id)
             if thread:

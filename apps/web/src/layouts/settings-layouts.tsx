@@ -82,17 +82,24 @@ interface SettingsRootProps
   extends WithoutStyles<React.HtmlHTMLAttributes<HTMLDivElement>> {
   width?: keyof typeof widthClasses;
 }
-function SettingsRoot({ width = "md", ...props }: SettingsRootProps) {
+function SettingsRoot({
+  width = "md",
+  className,
+  ...props
+}: SettingsRootProps & { className?: string }) {
   return (
     <div
       id="page-wrapper-scroll-container"
-      className="w-full h-full flex flex-col items-center overflow-y-auto"
+      className="w-full h-full flex flex-col items-center overflow-y-auto bg-background-tint-01"
     >
       {/* WARNING: The id="page-wrapper-scroll-container" above is used by SettingsHeader
           to detect scroll position and show/hide the scroll shadow.
           DO NOT REMOVE this ID without updating SettingsHeader accordingly. */}
-      <div className={cn("h-full", widthClasses[width])}>
-        <div {...props} />
+      <div className={cn("min-h-full", widthClasses[width])}>
+        <div
+          className={cn("min-h-full animate-in fade-in duration-200", className)}
+          {...props}
+        />
       </div>
     </div>
   );
@@ -233,8 +240,8 @@ function SettingsHeader({
       <Spacer vertical rem={1} />
 
       <div className="flex flex-col gap-6 px-4">
-        <div className="flex w-full justify-between">
-          <div aria-label="admin-page-title">
+        <div className="flex w-full flex-col gap-3 md:flex-row md:items-start md:justify-between">
+          <div aria-label="admin-page-title" className="min-w-0">
             <Content
               icon={Icon}
               title={title}
@@ -243,7 +250,11 @@ function SettingsHeader({
               variant="heading"
             />
           </div>
-          {rightChildren}
+          {rightChildren && (
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
+              {rightChildren}
+            </div>
+          )}
         </div>
 
         {children}
@@ -304,10 +315,17 @@ function SettingsHeader({
 function SettingsBody(
   props: WithoutStyles<HtmlHTMLAttributes<HTMLDivElement>>
 ) {
+  const { className, ...rest } = props as WithoutStyles<
+    HtmlHTMLAttributes<HTMLDivElement>
+  > & { className?: string };
+
   return (
     <div
-      className="pt-6 pb-[4.5rem] px-4 flex flex-col gap-8 w-full"
-      {...props}
+      className={cn(
+        "pt-6 pb-[4.5rem] px-4 flex flex-col gap-6 md:gap-8 w-full",
+        className
+      )}
+      {...rest}
     />
   );
 }

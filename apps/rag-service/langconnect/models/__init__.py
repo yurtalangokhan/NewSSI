@@ -26,19 +26,23 @@ from langconnect.models.graph import (
     GraphSearchResult,
     GraphStats,
 )
+from langconnect.models.permissions import (
+    SERVICE_PERMISSIONS,
+    PermissionDefinition,
+    list_service_permissions,
+)
 
 __all__ = [
+    "SERVICE_PERMISSIONS",
+    "BuildProgress",
+    "BuildStatus",
     "CollectionCreate",
     "CollectionResponse",
     "CollectionUpdate",
+    "CypherQueryRequest",
     "DocumentCreate",
     "DocumentResponse",
     "DocumentUpdate",
-    "SearchQuery",
-    "SearchResult",
-    "BuildProgress",
-    "BuildStatus",
-    "CypherQueryRequest",
     "ExtractedEntity",
     "ExtractedRelation",
     "ExtractionResult",
@@ -50,4 +54,8 @@ __all__ = [
     "GraphSearchQuery",
     "GraphSearchResult",
     "GraphStats",
+    "PermissionDefinition",
+    "SearchQuery",
+    "SearchResult",
+    "list_service_permissions",
 ]

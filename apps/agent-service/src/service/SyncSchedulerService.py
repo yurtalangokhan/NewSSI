@@ -21,18 +21,12 @@ Responsibilities
 from __future__ import annotations
 
 import asyncio
-
-from core.logger import get_logger
-
-logger = get_logger(__name__)
-import logging as _stdlib_logging
-
-logger_stdlib = _stdlib_logging.getLogger(__name__)
 from datetime import UTC, datetime
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
+from core.logger import get_logger
 from service.ScheduleRepository import ScheduleDBManager
 from service.SyncQueueService import SyncJob, get_sync_queue
 

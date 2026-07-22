@@ -128,8 +128,13 @@ async def acall_model(state: AgentState, config: RunnableConfig, *, store: BaseS
     if long_term_memory and store and user_id:
         extract_mem = configurable.get("extract_memory", True)
         await extract_and_save_memories(
-                store, user_id, list(state["messages"]) + [response], m, memories,
-                on_save=on_save, extract_memory=extract_mem
+            store,
+            user_id,
+            list(state["messages"]) + [response],
+            m,
+            memories,
+            on_save=on_save,
+            extract_memory=extract_mem,
         )
 
     # We return a list, because this will get added to the existing list

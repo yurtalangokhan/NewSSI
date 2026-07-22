@@ -3,6 +3,9 @@ import os
 
 import pytest
 
+from langconnect import auth
+from langconnect.authorization import AuthorizationClient
+
 if "OPENAI_API_KEY" in os.environ:
     raise AssertionError(
         "Attempting to run unit tests with an OpenAI key in the environment. "
@@ -10,6 +13,24 @@ if "OPENAI_API_KEY" in os.environ:
     )
 
 os.environ["OPENAI_API_KEY"] = "test_key"
+
+
+@pytest.fixture(autouse=True)
+def use_test_auth_mode(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(auth, "IS_TESTING", True)
+    monkeypatch.setattr(auth.config, "IS_TESTING", True)
+    monkeypatch.setattr(auth.config, "KEYCLOAK_ENABLED", False)
+    monkeypatch.setattr(auth.config, "KEYCLOAK_ISSUER_URL", "")
+
+    async def _allow_permission(
+        self: AuthorizationClient,
+        user_id: str,
+        permission: str,
+        access_token: str | None = None,
+    ) -> bool:
+        return True
+
+    monkeypatch.setattr(AuthorizationClient, "has_permission", _allow_permission)
 
 
 @pytest.fixture(scope="session")

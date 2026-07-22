@@ -1,6 +1,6 @@
 from enum import StrEnum
 
-from pydantic import AliasChoices, Field, computed_field
+from pydantic import AliasChoices, AnyHttpUrl, Field, TypeAdapter, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -28,6 +28,11 @@ class LogLevel(StrEnum):
             LogLevel.CRITICAL: logging.CRITICAL,
         }
         return mapping[self]
+
+
+def check_str_is_http(value: str) -> str:
+    """Validate and normalize an HTTP(S) URL string."""
+    return str(TypeAdapter(AnyHttpUrl).validate_python(value))
 
 
 class Settings(BaseSettings):
@@ -72,14 +77,15 @@ class Settings(BaseSettings):
     COMPATIBLE_BASE_URL: str | None = None
 
     MCP_SERVER_URL: str = Field(
-        default="http://localhost:8002/mcp",
+        default="http://localhost:8003/mcp",
         validation_alias=AliasChoices("MCP_SERVER_URL", "TOOLS_SERVICE_URL"),
     )
     TOOLS_SERVICE_URL: str = Field(
-        default="http://localhost:8002/mcp",
+        default="http://localhost:8003/mcp",
         validation_alias=AliasChoices("TOOLS_SERVICE_URL", "MCP_SERVER_URL"),
     )
     GITHUB_PAT: str | None = None
+    MCP_GITHUB_SERVER_URL: str = "https://api.githubcopilot.com/mcp/"
 
     LANGFUSE_TRACING: bool = False
     LANGFUSE_HOST: str = "https://cloud.langfuse.com"
@@ -138,11 +144,20 @@ class Settings(BaseSettings):
     @computed_field
     @property
     def AVAILABLE_MODELS(self) -> set[str]:
-        """Available LLM models."""
-        from schema.models import FakeModelName, OllamaModelName
+        """Configured fallback model names.
 
-        models = {m.value for m in OllamaModelName}
-        models.add(FakeModelName.FAKE.value)
+        Runtime availability is discovered from connected providers. This value
+        only exposes explicit env/default fallbacks for legacy callers.
+        """
+        models = {
+            model
+            for model in (
+                self.DEFAULT_MODEL,
+                self.OLLAMA_MODEL,
+                self.COMPATIBLE_MODEL,
+            )
+            if model
+        }
         return models
 
     def is_dev(self) -> bool:

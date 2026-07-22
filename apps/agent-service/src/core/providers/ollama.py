@@ -71,7 +71,11 @@ class OllamaProvider(LLMProvider):
                     model_info = show.get("model_info") if isinstance(show, dict) else None
                     if isinstance(model_info, dict):
                         for key, value in model_info.items():
-                            if key.endswith(".context_length") and isinstance(value, int) and value > 0:
+                            if (
+                                key.endswith(".context_length")
+                                and isinstance(value, int)
+                                and value > 0
+                            ):
                                 ctx_len = value
                                 break
 

@@ -16,6 +16,7 @@ import {
 } from "react";
 import { useAirbyteConnectors, AirbyteConnector } from "@/lib/airbyte";
 import { useRouter } from "next/navigation";
+import AdminOverviewPanel from "@/components/admin/AdminOverviewPanel";
 
 // ── Connector tile ──────────────────────────────────────────────────────────
 
@@ -57,7 +58,7 @@ function ConnectorTile({
 }) {
   const iconSrc = useMemo(
     () => connectorIconSrc(connector),
-    [connector.icon_url, connector.icon]
+    [connector]
   );
   return (
     <button
@@ -67,7 +68,6 @@ function ConnectorTile({
       }`}
     >
       {iconSrc ? (
-        // eslint-disable-next-line @next/next/no-img-element
         <img
           src={iconSrc}
           alt=""
@@ -182,6 +182,55 @@ export default function Page() {
         separator
       />
       <SettingsLayouts.Body>
+        <AdminOverviewPanel
+          icon={route.icon}
+          title={t("admin.addConnector.catalogTitle", {
+            defaultValue: "Connector catalog",
+          })}
+          description={t("admin.addConnector.catalogDescription", {
+            defaultValue:
+              "Search the available connectors, press Enter to open the first match, or browse by category.",
+          })}
+          metrics={[
+            {
+              label: t("admin.addConnector.categoriesLabel", {
+                defaultValue: "Categories",
+              }),
+              value: isLoading ? "..." : String(categories.length),
+            },
+            {
+              label: t("admin.addConnector.searchStateLabel", {
+                defaultValue: "Search state",
+              }),
+              value: rawSearchTerm
+                ? t("admin.addConnector.filtered", {
+                    defaultValue: "Filtered",
+                  })
+                : t("admin.addConnector.browseAll", {
+                    defaultValue: "Browse all",
+                  }),
+            },
+            {
+              label: t("admin.addConnector.keyboardLabel", {
+                defaultValue: "Keyboard",
+              }),
+              value: t("admin.addConnector.enterToOpen", {
+                defaultValue: "Enter opens first",
+              }),
+            },
+          ]}
+          actions={[
+            {
+              label: t("admin.addConnector.seeConnectors"),
+              href: ADMIN_PATHS.INDEXING_STATUS,
+            },
+            {
+              label: t("admin.navigation.routes.documentProcessing.sidebar"),
+              href: ADMIN_PATHS.DOCUMENT_PROCESSING,
+              primary: true,
+            },
+          ]}
+        />
         <InputTypeIn
           type="text"
           placeholder={t("admin.addConnector.searchPlaceholder")}

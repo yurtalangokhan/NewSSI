@@ -66,8 +66,13 @@ async def call_model(
         try:
             extract_mem = configurable.get("extract_memory", True)
             await extract_and_save_memories(
-                    store, user_id, list(state["messages"]) + [response], model, memories,
-                    on_save=on_save, extract_memory=extract_mem
+                store,
+                user_id,
+                list(state["messages"]) + [response],
+                model,
+                memories,
+                on_save=on_save,
+                extract_memory=extract_mem,
             )
             logger.debug("Memory extraction completed")
         except Exception as e:

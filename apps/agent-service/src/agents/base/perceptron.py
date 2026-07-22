@@ -168,7 +168,9 @@ class MemoryPerceptron(Perceptron):
                 from memory.long_term import build_event_emitters, recall_memories
 
                 on_recall, _ = build_event_emitters(context)
-                memories = await recall_memories(self._long_term_store, context["user_id"], on_recall=on_recall)
+                memories = await recall_memories(
+                    self._long_term_store, context["user_id"], on_recall=on_recall
+                )
                 memory_context = {"memories": memories}
             except Exception:
                 pass

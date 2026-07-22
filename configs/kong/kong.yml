@@ -15,7 +15,7 @@ services:
   # User Service
   # --------------------------------------------------------------------------
   - name: user-service
-    url: http://host.docker.internal:8090
+    url: __USER_SERVICE_UPSTREAM_URL__
     routes:
       # Public auth endpoints (login/logout/refresh/me/type/oidc)
       - name: user-service-auth
@@ -73,6 +73,7 @@ services:
       - name: user-service-roles
         paths:
           - /api/roles
+          - /api/coarse-roles
         strip_path: false
         preserve_host: true
         plugins: *jwt_plugin
@@ -95,7 +96,7 @@ services:
   # Agent Service
   # --------------------------------------------------------------------------
   - name: agent-service
-    url: http://host.docker.internal:8123
+    url: __AGENT_SERVICE_UPSTREAM_URL__
     routes:
       - name: agent-service-api-health-public
         paths:
@@ -106,6 +107,8 @@ services:
       - name: agent-service-api
         paths:
           - /api/agents
+          - /api/agent-definitions
+          - /api/agent-groups
           - /api/admin
           - /api/chat
           - /api/content
@@ -118,6 +121,7 @@ services:
           - /api/notifications
           - /api/password
           - /api/persona
+          - /api/proxy
           - /api/providers
           - /api/query
           - /api/search
@@ -160,11 +164,21 @@ services:
         preserve_host: true
         plugins: *jwt_plugin
 
+  - name: agent-service-mcp-compat
+    url: __AGENT_SERVICE_UPSTREAM_URL__/api/proxy
+    routes:
+      - name: agent-service-mcp-compat
+        paths:
+          - /mcp
+        strip_path: false
+        preserve_host: true
+        plugins: *jwt_plugin
+
   # --------------------------------------------------------------------------
   # RAG Service
   # --------------------------------------------------------------------------
   - name: rag-service
-    url: http://host.docker.internal:8083
+    url: __RAG_SERVICE_UPSTREAM_URL__
     routes:
       - name: rag-service-api
         paths:
@@ -189,7 +203,7 @@ services:
   # Tools Service (MCP)
   # --------------------------------------------------------------------------
   - name: tools-service-mcp
-    url: http://host.docker.internal:8003/mcp
+    url: __TOOLS_SERVICE_UPSTREAM_URL__/mcp
     routes:
       - name: tools-service-mcp
         paths:
@@ -208,7 +222,7 @@ services:
   # --------------------------------------------------------------------------
 
   - name: internal-user-service
-    url: http://host.docker.internal:8090
+    url: __USER_SERVICE_UPSTREAM_URL__
     routes:
       - name: internal-user-service-all
         paths:
@@ -217,7 +231,7 @@ services:
         preserve_host: true
 
   - name: internal-rag-service
-    url: http://host.docker.internal:8083
+    url: __RAG_SERVICE_UPSTREAM_URL__
     routes:
       - name: internal-rag-service-all
         paths:
@@ -226,7 +240,7 @@ services:
         preserve_host: true
 
   - name: internal-tools-service
-    url: http://host.docker.internal:8003/mcp
+    url: __TOOLS_SERVICE_UPSTREAM_URL__/mcp
     routes:
       - name: internal-tools-service-all
         paths:
@@ -238,7 +252,7 @@ consumers:
   - username: keycloak-agenticai
     custom_id: keycloak-agenticai
     jwt_secrets:
-      - key: http://10.101.90.13:8085/realms/agenticai
+      - key: __KEYCLOAK_ISSUER_URL__
         algorithm: RS256
         rsa_public_key: |
           -----BEGIN PUBLIC KEY-----

@@ -2,7 +2,7 @@ import asyncio
 
 from client import AgentClient
 from core import settings
-from schema import ChatMessage
+from models.chat import ChatMessage
 
 
 async def amain() -> None:
@@ -13,7 +13,7 @@ async def amain() -> None:
     print(client.info)
 
     print("Chat example:")
-    response = await client.ainvoke("Tell me a brief joke?", model="gpt-5-nano")
+    response = await client.ainvoke("Tell me a brief joke?", model="ollama")
     response.pretty_print()
 
     print("\nStream example:")
@@ -35,7 +35,7 @@ def main() -> None:
     print(client.info)
 
     print("Chat example:")
-    response = client.invoke("Tell me a brief joke?", model="gpt-5-nano")
+    response = client.invoke("Tell me a brief joke?", model="ollama")
     response.pretty_print()
 
     print("\nStream example:")

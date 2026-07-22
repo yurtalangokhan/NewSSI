@@ -8,7 +8,6 @@ import { ErrorBanner } from "@/app/app/message/Resubmit";
 import { MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
 import { LlmDescriptor, LlmManager } from "@/lib/hooks";
 import AgentMessage from "@/app/app/message/messageComponents/AgentMessage";
-import Spacer from "@/refresh-components/Spacer";
 import DynamicBottomSpacer from "@/components/chat/DynamicBottomSpacer";
 import {
   useCurrentMessageHistory,
@@ -115,7 +114,7 @@ const ChatUI = React.memo(
 
     return (
       <>
-        <div className="flex flex-col w-full max-w-[var(--app-page-main-content-width)] h-full pt-4 pb-8 pr-1 gap-12">
+        <div className="flex flex-col w-full max-w-[var(--app-page-main-content-width)] h-full px-3 pt-5 pb-10 gap-8 md:gap-10">
           {messages.map((message, i) => {
             const messageReactComponentKey = `message-${message.nodeId}`;
             const parentMessage = message.parentNodeId
@@ -129,6 +128,7 @@ const ChatUI = React.memo(
                 <div
                   id={messageReactComponentKey}
                   key={messageReactComponentKey}
+                  className="w-full scroll-mt-6"
                 >
                   <HumanMessage
                     disableSwitchingForStreaming={
@@ -148,13 +148,6 @@ const ChatUI = React.memo(
                 </div>
               );
             } else if (message.type === "assistant") {
-              // Debug logging for troubleshooting
-              console.log('[ChatUI] Rendering assistant message:', {
-                nodeId: message.nodeId,
-                messagePreview: message.message?.substring(0, 50),
-                packetsCount: message.packets?.length || 0,
-              });
-
               if ((error || loadError) && i === messages.length - 1) {
                 return (
                   <div key={`error-${message.nodeId}`} className="p-4">
@@ -184,6 +177,7 @@ const ChatUI = React.memo(
                 <div
                   id={`message-${message.nodeId}`}
                   key={messageReactComponentKey}
+                  className="w-full scroll-mt-6"
                 >
                   <AgentMessage
                     rawPackets={message.packets ?? []}

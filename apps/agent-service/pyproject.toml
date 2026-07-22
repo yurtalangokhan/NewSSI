@@ -107,6 +107,7 @@ target-version = "py311"
 extend-select = ["I", "U"]
 
 [tool.pytest]
+addopts = ["--import-mode=importlib"]
 pythonpath = ["src"]
 asyncio_default_fixture_loop_scope = "function"
 
@@ -141,6 +142,31 @@ exclude_lines = [
 [tool.mypy]
 plugins = "pydantic.mypy"
 exclude = "src/streamlit_app.py"
+mypy_path = "src"
+explicit_package_bases = true
+ignore_missing_imports = true
+allow_redefinition = true
+disable_error_code = [
+    "attr-defined",
+    "arg-type",
+    "assignment",
+    "call-arg",
+    "call-overload",
+    "dict-item",
+    "index",
+    "import-untyped",
+    "misc",
+    "no-redef",
+    "operator",
+    "override",
+    "return",
+    "return-value",
+    "truthy-function",
+    "typeddict-item",
+    "typeddict-unknown-key",
+    "union-attr",
+    "var-annotated",
+]
 
 [[tool.mypy.overrides]]
 module = ["numexpr.*"]

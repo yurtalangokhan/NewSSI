@@ -1,6 +1,7 @@
 import uuid
 from typing import Any
 
+from src.core.exceptions import ForbiddenError, NotFoundError
 from src.service import get_user_service
 
 from .base import BaseController
@@ -27,6 +28,26 @@ class UserController(BaseController):
         if not permissions:
             self._raise_not_found("User not found")
         return permissions
+
+    async def authorize_user_permission(
+        self, user_id: uuid.UUID, permission: str
+    ) -> dict[str, Any]:
+        return await self.user_service.user_has_permission(user_id, permission)
+
+    async def authorize_target_user_id(
+        self,
+        target_id: str,
+        authenticated_user_id: str,
+    ) -> uuid.UUID:
+        try:
+            return await self.user_service.authorize_target_user_id(
+                target_id,
+                authenticated_user_id,
+            )
+        except NotFoundError as e:
+            self._raise_not_found(str(e))
+        except ForbiddenError as e:
+            self._raise_forbidden(str(e))
 
     async def update_me(self, user_id: uuid.UUID, **updates: Any) -> dict[str, Any]:
         user = await self.user_service.update_user(user_id, **updates)

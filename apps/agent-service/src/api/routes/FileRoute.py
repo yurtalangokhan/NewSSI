@@ -66,6 +66,7 @@ async def _resolve_file(file_id: str) -> FileRecord:
 def _safe_disposition(disposition: str, filename: str) -> str:
     """Build a Content-Disposition value that survives latin-1 encoding."""
     from urllib.parse import quote
+
     try:
         filename.encode("latin-1")
         return f'{disposition}; filename="{filename}"'

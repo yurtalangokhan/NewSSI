@@ -25,7 +25,7 @@ from fastapi import APIRouter, Depends
 
 from api.dependencies import require_user_or_internal_service_token
 from controller import IngestController, get_ingest_controller
-from service.Schemas import BatchRequest, BatchResponse, SourcePreviewRequest
+from models.ingest import BatchRequest, BatchResponse, SourcePreviewRequest
 
 logger = logging.getLogger(__name__)
 

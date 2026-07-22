@@ -38,6 +38,10 @@ export interface MinimalPersonaSnapshot {
   external_id?: string | null;
   is_dynamic?: boolean;
   graph_schema?: string | null;
+  stages?: Array<Record<string, unknown>>;
+  sub_agents?: Array<Record<string, unknown>>;
+  sub_agent_ids?: string[];
+  brain_type?: string | null;
   mcp_tools?: string[];
   name: string;
   description: string;
@@ -52,6 +56,7 @@ export interface MinimalPersonaSnapshot {
   knowledge_sources?: ValidSources[];
   llm_model_version_override?: string;
   llm_model_provider_override?: string;
+  availability?: AgentAvailability;
   memory_type?: string | null;
   long_term_memory?: boolean;
 
@@ -88,7 +93,15 @@ export interface Persona extends MinimalPersonaSnapshot {
   rag_config?: {
     document_processing: string[];
     knowledge_graph: string[];
+    display_names?: Record<string, string>;
   };
+  sub_agents?: Array<Record<string, unknown>>;
+  sub_agent_ids?: string[];
+  supervisor_prompt?: string | null;
+  stages?: Array<Record<string, unknown>>;
+  pipeline_prompt?: string | null;
+  reflection_prompt?: string | null;
+  max_iterations?: number;
 }
 
 export interface FullPersona extends Persona {
@@ -97,6 +110,7 @@ export interface FullPersona extends Persona {
 
 export interface DynamicAgentDefinition {
   id: string;
+  persona_id?: number | null;
   name: string;
   agent_type: string;
   description: string | null;
@@ -109,8 +123,10 @@ export interface DynamicAgentDefinition {
   rag_config?: {
     document_processing: string[];
     knowledge_graph: string[];
+    display_names?: Record<string, string>;
   };
   sub_agents: Array<Record<string, unknown>>;
+  sub_agent_ids: string[];
   supervisor_prompt: string | null;
   stages: Array<Record<string, unknown>>;
   pipeline_prompt: string | null;
@@ -126,4 +142,15 @@ export interface DynamicAgentDefinition {
 export interface PersonaLabel {
   id: number;
   name: string;
+}
+
+export interface AgentAvailabilityCheck {
+  component: "model" | "memory" | "mcp_tool" | "rag" | "graph_rag";
+  status: "ok" | "warning" | "error";
+  message: string;
+}
+
+export interface AgentAvailability {
+  status: "available" | "degraded" | "unavailable";
+  checks: AgentAvailabilityCheck[];
 }

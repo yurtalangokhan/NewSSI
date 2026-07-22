@@ -116,7 +116,7 @@ class AssistantAgentService:
     # Graph/config resolution (for agent execution)
     # =========================================================================
 
-    async def get_graph_and_config(self, agent_id: str) -> tuple[str, dict[str, Any]]:
+    async def get_graph_and_config(self, agent_id: str | int) -> tuple[str, dict[str, Any]]:
         """
         Resolve agent ID to graph ID and config.
 
@@ -128,6 +128,7 @@ class AssistantAgentService:
         Returns:
             Tuple of (graph_id, config)
         """
+        agent_id = str(agent_id)
         config: dict = {}
         graph_id = agent_id
 
@@ -171,6 +172,26 @@ class AssistantAgentService:
                     mcp_tools = persona.get("mcp_tools", [])
                     rag_config = persona.get("rag_config") or {}
 
+                    if base_agent == "dynamic-agent":
+                        from agents.storage.repository import AgentDefinitionRepository
+
+                        definition = await AgentDefinitionRepository().get_by_persona_id(
+                            int(agent_id)
+                        )
+                        if definition:
+                            definition_cfg = definition.to_config() or {}
+                            runtime_cfg: dict[str, Any] = {}
+                            for key in (
+                                "model",
+                                "system_prompt",
+                                "mcp_tools",
+                                "rag_config",
+                                "memory_type",
+                            ):
+                                if definition_cfg.get(key):
+                                    runtime_cfg[key] = definition_cfg[key]
+                            return str(definition.id), runtime_cfg
+
                     if base_agent:
                         graph_id = base_agent
 
@@ -206,7 +227,7 @@ class AssistantAgentService:
 
     async def get_configured_agent(
         self,
-        agent_id: str,
+        agent_id: str | int,
         agent_config: dict[str, Any] | None = None,
     ):
         """
@@ -231,12 +252,13 @@ class AssistantAgentService:
         merged_config = {**stored_config, **(agent_config or {})}
 
         # ------------------------------------------------------------------
-        # 1.  UUID → AgentDefinition (DynamicAgent)
+        # 1.  UUID → AgentDefinition (DynamicAgent). This can be the original
+        # agent_id for legacy direct calls, or graph_id resolved from a persona.
         # ------------------------------------------------------------------
         try:
             from uuid import UUID as _UUID
 
-            definition_uuid = _UUID(agent_id)
+            definition_uuid = _UUID(graph_id)
             definition = await self._get_agent_definition(definition_uuid)
             if definition:
                 return await self._get_or_create_dynamic_agent(definition)

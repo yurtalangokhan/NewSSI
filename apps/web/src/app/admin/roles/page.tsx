@@ -28,6 +28,7 @@ import useSWR from "swr";
 import useSWRMutation from "swr/mutation";
 import { useTranslation } from "react-i18next";
 import { useUser } from "@/providers/UserProvider";
+import AdminOverviewPanel from "@/components/admin/AdminOverviewPanel";
 
 const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.ROLES]!;
 
@@ -1451,6 +1452,51 @@ export default function Page() {
         separator
       />
       <SettingsLayouts.Body>
+        <AdminOverviewPanel
+          icon={route.icon}
+          title={t("admin.roles.workspaceTitle", {
+            defaultValue: "Access policy workspace",
+          })}
+          description={t("admin.roles.workspaceDescription", {
+            defaultValue:
+              "Review service roles, compose higher-level access profiles, and sync changes to identity infrastructure.",
+          })}
+          metrics={[
+            {
+              label: t("admin.roles.roleLayerLabel", {
+                defaultValue: "Role layer",
+              }),
+              value: t("admin.roles.roles", { defaultValue: "Roles" }),
+            },
+            {
+              label: t("admin.roles.compositeLayerLabel", {
+                defaultValue: "Composite layer",
+              }),
+              value: t("admin.roles.compositeRoles", {
+                defaultValue: "Composite Roles",
+              }),
+            },
+            {
+              label: t("admin.roles.permissionSourceLabel", {
+                defaultValue: "Permission source",
+              }),
+              value: t("admin.roles.services", { defaultValue: "Services" }),
+            },
+          ]}
+          actions={[
+            {
+              label: t("admin.navigation.routes.users.sidebar", {
+                defaultValue: "Users",
+              }),
+              href: ADMIN_PATHS.USERS,
+            },
+            {
+              label: t("admin.navigation.routes.apiKeys.sidebar"),
+              href: ADMIN_PATHS.API_KEYS,
+              primary: true,
+            },
+          ]}
+        />
         <SimpleTabs
           tabs={{
             roles: {

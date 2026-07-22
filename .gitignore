@@ -14,3 +14,4 @@ agent-service-toolkit
 .pytest_cache
 .opencode/
 .codex/
+#.agents/

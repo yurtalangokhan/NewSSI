@@ -4,6 +4,7 @@ Data Ingestion Module.
 This module handles the background ingestion of data from Airbyte sources
 into the vector store for RAG operations.
 """
+
 import asyncio
 import logging
 import os
@@ -98,7 +99,8 @@ async def run_ingestion(
             logger.info(
                 "Job %d already completed for %s — destination-embedding "
                 "handled all batches during sync",
-                job_id, datasource_id,
+                job_id,
+                datasource_id,
             )
             # Optionally trigger Graph RAG rebuild
             if update_graph_rag:
@@ -122,6 +124,7 @@ async def run_ingestion(
             return
 
         from service.AirbyteApiClientService import get_airbyte_client
+
         client = get_airbyte_client()
 
         # Trigger the sync — destination-embedding streams batches in real-time
@@ -148,8 +151,9 @@ async def run_ingestion(
                     failures = last.get("failureSummary", {}).get("failures", [])
                     if failures:
                         messages = [
-                            f.get("failureOrigin", "") + ": " +
-                            f.get("externalMessage", f.get("internalMessage", ""))
+                            f.get("failureOrigin", "")
+                            + ": "
+                            + f.get("externalMessage", f.get("internalMessage", ""))
                             for f in failures
                         ]
                         failure_detail = "; ".join(m for m in messages if m.strip(" :"))
@@ -246,9 +250,7 @@ async def _trigger_graph_rag_rebuild(datasource_id: str) -> None:
             )
             resp.raise_for_status()
             build_data = resp.json()
-            logger.info(
-                "Graph build triggered for %s: %s", datasource_id, build_data.get("status")
-            )
+            logger.info("Graph build triggered for %s: %s", datasource_id, build_data.get("status"))
 
             # 2. Poll build progress until complete
             max_polls = 600  # 10 min max (1s interval)
@@ -296,9 +298,7 @@ async def _trigger_graph_rag_rebuild(datasource_id: str) -> None:
         await _update_graph_status(datasource_id, "graph_failed", str(exc))
 
 
-async def _update_graph_status(
-    uuid_str: str, graph_status: str, error: str | None = None
-) -> None:
+async def _update_graph_status(uuid_str: str, graph_status: str, error: str | None = None) -> None:
     """Write graph_update_status into cmetadata for UI feedback."""
     ds_repo = DatasourceRepository()
     row = await ds_repo.get_collection(uuid_str)

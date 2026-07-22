@@ -34,6 +34,7 @@ import { SvgEdit, SvgKey, SvgRefreshCw } from "@opal/icons";
 import { useCloudSubscription } from "@/hooks/useCloudSubscription";
 import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
 import { useTranslation } from "react-i18next";
+import AdminOverviewPanel from "@/components/admin/AdminOverviewPanel";
 
 const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.API_KEYS]!;
 
@@ -74,8 +75,48 @@ function Main() {
   const filteredApiKeys = apiKeys.filter(
     (key) => key.api_key_name !== DISCORD_SERVICE_API_KEY_NAME
   );
+  const uniqueApiKeyRoles = new Set(
+    filteredApiKeys.map((key) => key.api_key_role)
+  );
 
-    const introSection = (
+  const overviewSection = (
+    <AdminOverviewPanel
+      icon={route.icon}
+      title={t("admin.apiKey.workspaceTitle")}
+      description={t("admin.apiKey.workspaceDescription")}
+      metrics={[
+        {
+          label: t("admin.apiKey.activeKeysLabel"),
+          value: filteredApiKeys.length.toLocaleString(),
+          tone: filteredApiKeys.length > 0 ? "success" : "warning",
+        },
+        {
+          label: t("admin.apiKey.rolesInUseLabel"),
+          value: uniqueApiKeyRoles.size.toLocaleString(),
+        },
+        {
+          label: t("admin.apiKey.keyCreationLabel"),
+          value: canCreateKeys
+            ? t("admin.apiKey.available")
+            : t("admin.apiKey.requiresPlan"),
+          tone: canCreateKeys ? "success" : "warning",
+        },
+      ]}
+      actions={[
+        {
+          label: t("admin.navigation.routes.roles.sidebar"),
+          href: ADMIN_PATHS.ROLES,
+        },
+        {
+          label: t("admin.navigation.routes.tokenRateLimits.sidebar"),
+          href: ADMIN_PATHS.TOKEN_RATE_LIMITS,
+          primary: true,
+        },
+      ]}
+    />
+  );
+
+  const introSection = (
     <div className="flex flex-col items-start gap-4">
       <Text as="p">
         {t("admin.apiKey.description")}
@@ -98,7 +139,8 @@ function Main() {
 
   if (filteredApiKeys.length === 0) {
     return (
-      <div>
+      <div className="flex flex-col gap-6">
+        {overviewSection}
         {introSection}
 
         {showCreateUpdateForm && (
@@ -138,6 +180,8 @@ function Main() {
       </Modal>
 
       {keyIsGenerating && <Spinner />}
+
+      {overviewSection}
 
       {introSection}
 

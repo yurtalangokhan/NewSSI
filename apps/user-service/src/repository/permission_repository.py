@@ -64,3 +64,9 @@ class PermissionRepository(BaseRepository):
                 .order_by(PermissionModel.service)
             )
             return [{"service": row[0], "count": row[1]} for row in result]
+
+    async def upsert_many(self, permissions: list[dict]) -> int:
+        async with self._session() as session:
+            for permission in permissions:
+                await session.merge(PermissionModel(**permission))
+            return len(permissions)

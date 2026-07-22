@@ -12,18 +12,13 @@ that existing callers continue to work unchanged.
 
 from __future__ import annotations
 
-from core.logger import get_logger
-
-logger = get_logger(__name__)
-import logging as _stdlib_logging
-
-logger_stdlib = _stdlib_logging.getLogger(__name__)
 from datetime import UTC, datetime
 from typing import Any
 
 from croniter import croniter
 
 from core.db import ScheduleRepository
+from core.logger import get_logger
 
 logger = get_logger(__name__)
 

@@ -101,6 +101,12 @@ describe("AnthropicOnboardingForm", () => {
     open: true,
     onOpenChange: jest.fn(),
   };
+  const titleText = /^llmOnboarding\.setupClaude$|Set up Claude/i;
+  const descriptionText =
+    /^llmOnboarding\.setupClaudeDesc$|Connect to Anthropic and set up your Claude models/i;
+  const apiKeyText = /^llmOnboarding\.apiKey$|^API Key$/i;
+  const defaultModelText = /^llmOnboarding\.defaultModel$|^Default Model$/i;
+  const modelPlaceholder = /selectModel|Select a model/i;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -112,27 +118,27 @@ describe("AnthropicOnboardingForm", () => {
       render(<AnthropicOnboardingForm {...defaultProps} />);
 
       expect(screen.getByRole("dialog")).toBeInTheDocument();
-      expect(screen.getByText("Set up Claude")).toBeInTheDocument();
+      expect(screen.getByText(titleText)).toBeInTheDocument();
     });
 
     test("renders description", () => {
       render(<AnthropicOnboardingForm {...defaultProps} />);
 
       expect(
-        screen.getByText(/Connect to Anthropic and set up your Claude models/i)
+        screen.getByText(descriptionText)
       ).toBeInTheDocument();
     });
 
     test("renders API key field", () => {
       render(<AnthropicOnboardingForm {...defaultProps} />);
 
-      expect(screen.getByText("API Key")).toBeInTheDocument();
+      expect(screen.getByLabelText(apiKeyText)).toBeInTheDocument();
     });
 
     test("renders default model field", () => {
       render(<AnthropicOnboardingForm {...defaultProps} />);
 
-      expect(screen.getByText("Default Model")).toBeInTheDocument();
+      expect(screen.getByText(defaultModelText)).toBeInTheDocument();
     });
 
     test("renders link to Anthropic console", () => {
@@ -249,7 +255,7 @@ describe("AnthropicOnboardingForm", () => {
       expect(mockFetchModels).not.toHaveBeenCalled();
 
       // Select a model from the dropdown
-      const modelInput = screen.getByPlaceholderText("Select a model");
+      const modelInput = screen.getByPlaceholderText(modelPlaceholder);
       await user.type(modelInput, "claude-sonnet-4-5");
     }
 
@@ -373,7 +379,7 @@ describe("AnthropicOnboardingForm", () => {
       expect(mockFetchModels).not.toHaveBeenCalled();
 
       // Select a model from the dropdown
-      const modelInput = screen.getByPlaceholderText("Select a model");
+      const modelInput = screen.getByPlaceholderText(modelPlaceholder);
       await user.type(modelInput, "claude-sonnet-4-5");
     }
 

@@ -21,6 +21,7 @@ import { DiscordGuildsTable } from "@/app/admin/discord-bot/DiscordGuildsTable";
 import { BotConfigCard } from "@/app/admin/discord-bot/BotConfigCard";
 import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
 import { useTranslation } from "react-i18next";
+import AdminOverviewPanel from "@/components/admin/AdminOverviewPanel";
 
 function DiscordBotContent() {
   const { data: guilds, isLoading, error, refreshGuilds } = useDiscordGuilds();
@@ -131,6 +132,51 @@ export default function Page() {
         description={t("admin.discord.pageDescription")}
       />
       <SettingsLayouts.Body>
+        <AdminOverviewPanel
+          icon={route.icon}
+          title={t("admin.discord.workspaceTitle", {
+            defaultValue: "Discord bot workspace",
+          })}
+          description={t("admin.discord.workspaceDescription", {
+            defaultValue:
+              "Register Discord servers, manage bot tokens, and route channels to the right default agent.",
+          })}
+          metrics={[
+            {
+              label: t("admin.discord.integrationLabel", {
+                defaultValue: "Integration",
+              }),
+              value: "Discord",
+            },
+            {
+              label: t("admin.discord.registrationLabel", {
+                defaultValue: "Registration",
+              }),
+              value: t("admin.discord.serverConfigurations"),
+            },
+            {
+              label: t("admin.discord.agentLayerLabel", {
+                defaultValue: "Agent layer",
+              }),
+              value: t("admin.navigation.routes.agents.sidebar", {
+                defaultValue: "Agents",
+              }),
+            },
+          ]}
+          actions={[
+            {
+              label: t("admin.navigation.routes.agents.sidebar", {
+                defaultValue: "Agents",
+              }),
+              href: ADMIN_PATHS.AGENTS,
+            },
+            {
+              label: t("admin.navigation.routes.chatPreferences.sidebar"),
+              href: ADMIN_PATHS.CHAT_PREFERENCES,
+              primary: true,
+            },
+          ]}
+        />
         <DiscordBotContent />
       </SettingsLayouts.Body>
     </SettingsLayouts.Root>

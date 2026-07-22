@@ -20,17 +20,44 @@ services:
     ports:
       - "8124:5432"
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-your-super-secret-and-long-postgres-password}
-      POSTGRES_DB: ${POSTGRES_DB:-agent_service}
-      PGDATA: /var/lib/postgresql/data/postgresql.conf
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      PGDATA: ${POSTGRES_PGDATA}
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
       interval: 10s
       timeout: 5s
       retries: 5
+
+  keycloak-db-init:
+    container_name: keycloak-db-init
+    image: postgres:15
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGHOST: postgres
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      KEYCLOAK_DB_NAME: ${KEYCLOAK_DB_NAME}
+    command:
+      - sh
+      - -c
+      - |
+        if [ -z "$${KEYCLOAK_DB_NAME}" ]; then
+          echo "KEYCLOAK_DB_NAME must be set in configs/.env" >&2
+          exit 1
+        fi
+        if psql -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname = '$${KEYCLOAK_DB_NAME}'" | grep -q 1; then
+          echo "Keycloak database already exists: $${KEYCLOAK_DB_NAME}"
+        else
+          createdb "$${KEYCLOAK_DB_NAME}"
+          echo "Created Keycloak database: $${KEYCLOAK_DB_NAME}"
+        fi
 
   # ==========================================================================
   # Neo4j - Knowledge Graph
@@ -39,22 +66,23 @@ services:
   neo4j:
     image: neo4j:5.24-community
     container_name: neo4j
+    hostname: neo4j
     restart: unless-stopped
     ports:
-      - "7474:7474"   # HTTP (Browser UI)
-      - "7687:7687"   # Bolt protocol
+      - "8484:7474"   # HTTP (Browser UI)
+      - "8697:7687"   # Bolt protocol
     volumes:
       - neo4j-data:/data
       - neo4j-logs:/logs
       - neo4j-plugins:/plugins
     environment:
-      NEO4J_AUTH: ${NEO4J_USERNAME:-neo4j}/${NEO4J_PASSWORD:-neo4j123}
-      NEO4J_PLUGINS: '["apoc", "graph-data-science"]'
-      NEO4J_server_memory_heap_initial__size: 512m
-      NEO4J_server_memory_heap_max__size: 1G
-      NEO4J_server_memory_pagecache_size: 512m
-      NEO4J_dbms_security_procedures_unrestricted: apoc.*,gds.*
-      NEO4J_dbms_security_procedures_allowlist: apoc.*,gds.*
+      NEO4J_AUTH: ${NEO4J_USERNAME}/${NEO4J_PASSWORD}
+      NEO4J_PLUGINS: ${NEO4J_PLUGINS}
+      NEO4J_server_memory_heap_initial__size: ${NEO4J_HEAP_INITIAL_SIZE}
+      NEO4J_server_memory_heap_max__size: ${NEO4J_HEAP_MAX_SIZE}
+      NEO4J_server_memory_pagecache_size: ${NEO4J_PAGECACHE_SIZE}
+      NEO4J_dbms_security_procedures_unrestricted: ${NEO4J_PROCEDURES_UNRESTRICTED}
+      NEO4J_dbms_security_procedures_allowlist: ${NEO4J_PROCEDURES_ALLOWLIST}
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:7474 || exit 1"]
       interval: 10s
@@ -67,22 +95,22 @@ services:
 
   airbyte-bootloader:
     container_name: airbyte-bootloader
-    image: airbyte/bootloader:${AIRBYTE_VERSION:-0.50.33}
+    image: airbyte/bootloader:${AIRBYTE_VERSION}
     restart: "no"
     depends_on:
       postgres:
         condition: service_healthy
     environment:
-      AIRBYTE_VERSION: ${AIRBYTE_VERSION:-0.50.33}
-      DATABASE_URL: jdbc:postgresql://postgres:5432/airbyte
-      DATABASE_USER: airbyte
-      DATABASE_PASSWORD: ${AIRBYTE_DB_PASSWORD:-airbyte_password}
-      RUN_DATABASE_MIGRATION_ON_STARTUP: "true"
-      LOG_LEVEL: INFO
+      AIRBYTE_VERSION: ${AIRBYTE_VERSION}
+      DATABASE_URL: ${AIRBYTE_DATABASE_URL}
+      DATABASE_USER: ${AIRBYTE_DB_USER}
+      DATABASE_PASSWORD: ${AIRBYTE_DB_PASSWORD}
+      RUN_DATABASE_MIGRATION_ON_STARTUP: ${AIRBYTE_RUN_DATABASE_MIGRATION_ON_STARTUP}
+      LOG_LEVEL: ${AIRBYTE_LOG_LEVEL}
 
   airbyte-temporal:
     container_name: airbyte-temporal
-    image: airbyte/temporal:${AIRBYTE_VERSION:-0.50.33}
+    image: airbyte/temporal:${AIRBYTE_VERSION}
     restart: unless-stopped
     depends_on:
       postgres:
@@ -90,13 +118,13 @@ services:
       airbyte-bootloader:
         condition: service_completed_successfully
     environment:
-      DB: postgresql
-      DB_PORT: 5432
-      POSTGRES_USER: airbyte
-      POSTGRES_PWD: ${AIRBYTE_DB_PASSWORD:-airbyte_password}
-      POSTGRES_SEEDS: postgres
-      DYNAMIC_CONFIG_FILE_PATH: /etc/temporal/config/dynamicconfig/docker.yaml
-      LOG_LEVEL: INFO
+      DB: ${AIRBYTE_DB_TYPE}
+      DB_PORT: ${AIRBYTE_DB_PORT}
+      POSTGRES_USER: ${AIRBYTE_DB_USER}
+      POSTGRES_PWD: ${AIRBYTE_DB_PASSWORD}
+      POSTGRES_SEEDS: ${AIRBYTE_DB_SEEDS}
+      DYNAMIC_CONFIG_FILE_PATH: ${AIRBYTE_DYNAMIC_CONFIG_FILE_PATH}
+      LOG_LEVEL: ${AIRBYTE_LOG_LEVEL}
     healthcheck:
       test: ["CMD-SHELL", "nc -z $(hostname -i) 7233 || exit 1"]
       interval: 10s
@@ -106,7 +134,7 @@ services:
 
   airbyte-server:
     container_name: airbyte-server
-    image: airbyte/server:${AIRBYTE_VERSION:-0.50.33}
+    image: airbyte/server:${AIRBYTE_VERSION}
     restart: unless-stopped
     ports:
       - "8001:8001"
@@ -122,25 +150,25 @@ services:
       - airbyte-data:/data/config
       - /tmp/airbyte_local:/tmp/airbyte_local
     environment:
-      AIRBYTE_VERSION: ${AIRBYTE_VERSION:-0.50.33}
-      AIRBYTE_ROLE: ${AIRBYTE_ROLE:-}
-      DATABASE_URL: jdbc:postgresql://postgres:5432/airbyte
-      DATABASE_USER: airbyte
-      DATABASE_PASSWORD: ${AIRBYTE_DB_PASSWORD:-airbyte_password}
-      TRACKING_STRATEGY: logging
-      TEMPORAL_HOST: airbyte-temporal:7233
-      INTERNAL_API_HOST: airbyte-server:8001
-      WEBAPP_URL: http://airbyte-webapp:8000
-      WORKER_ENVIRONMENT: docker
-      WORKSPACE_ROOT: /tmp/workspace
-      CONFIG_ROOT: /data/config
-      LOG_LEVEL: INFO
-      LOCAL_ROOT: /tmp/airbyte_local
-      DEPLOYMENT_MODE: OSS
-      SECRET_PERSISTENCE: NONE
-      CONFIGS_DATABASE_MINIMUM_FLYWAY_MIGRATION_VERSION: "0.35.15.001"
-      JOBS_DATABASE_MINIMUM_FLYWAY_MIGRATION_VERSION: "0.29.15.001"
-      MICRONAUT_ENVIRONMENTS: control-plane
+      AIRBYTE_VERSION: ${AIRBYTE_VERSION}
+      AIRBYTE_ROLE: ${AIRBYTE_ROLE}
+      DATABASE_URL: ${AIRBYTE_DATABASE_URL}
+      DATABASE_USER: ${AIRBYTE_DB_USER}
+      DATABASE_PASSWORD: ${AIRBYTE_DB_PASSWORD}
+      TRACKING_STRATEGY: ${AIRBYTE_TRACKING_STRATEGY}
+      TEMPORAL_HOST: ${AIRBYTE_TEMPORAL_HOST}
+      INTERNAL_API_HOST: ${AIRBYTE_INTERNAL_API_HOST}
+      WEBAPP_URL: ${AIRBYTE_WEBAPP_URL}
+      WORKER_ENVIRONMENT: ${AIRBYTE_WORKER_ENVIRONMENT}
+      WORKSPACE_ROOT: ${AIRBYTE_WORKSPACE_ROOT}
+      CONFIG_ROOT: ${AIRBYTE_CONFIG_ROOT}
+      LOG_LEVEL: ${AIRBYTE_LOG_LEVEL}
+      LOCAL_ROOT: ${AIRBYTE_LOCAL_ROOT}
+      DEPLOYMENT_MODE: ${AIRBYTE_DEPLOYMENT_MODE}
+      SECRET_PERSISTENCE: ${AIRBYTE_SECRET_PERSISTENCE}
+      CONFIGS_DATABASE_MINIMUM_FLYWAY_MIGRATION_VERSION: ${AIRBYTE_CONFIGS_DATABASE_MINIMUM_FLYWAY_MIGRATION_VERSION}
+      JOBS_DATABASE_MINIMUM_FLYWAY_MIGRATION_VERSION: ${AIRBYTE_JOBS_DATABASE_MINIMUM_FLYWAY_MIGRATION_VERSION}
+      MICRONAUT_ENVIRONMENTS: ${AIRBYTE_MICRONAUT_ENVIRONMENTS}
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8001/api/v1/health || exit 1"]
       interval: 10s
@@ -150,7 +178,7 @@ services:
 
   airbyte-worker:
     container_name: airbyte-worker
-    image: airbyte/worker:${AIRBYTE_VERSION:-0.50.33}
+    image: airbyte/worker:${AIRBYTE_VERSION}
     restart: unless-stopped
     depends_on:
       postgres:
@@ -163,25 +191,25 @@ services:
       - /tmp/airbyte_local:/tmp/airbyte_local
       - airbyte-workspace:/tmp/workspace
     environment:
-      AIRBYTE_VERSION: ${AIRBYTE_VERSION:-0.50.33}
-      DATABASE_URL: jdbc:postgresql://postgres:5432/airbyte
-      DATABASE_USER: airbyte
-      DATABASE_PASSWORD: ${AIRBYTE_DB_PASSWORD:-airbyte_password}
-      INTERNAL_API_HOST: airbyte-server:8001
-      TEMPORAL_HOST: airbyte-temporal:7233
-      WORKSPACE_ROOT: /tmp/workspace
-      LOCAL_ROOT: /tmp/airbyte_local
-      DOCKER_NETWORK: agentic-ai-infrastructure_default
-      LOG_LEVEL: INFO
-      WORKER_ENVIRONMENT: docker
-      DEPLOYMENT_MODE: OSS
-      SECRET_PERSISTENCE: NONE
-      MAX_SYNC_WORKERS: 5
-      MAX_CHECK_WORKERS: 5
+      AIRBYTE_VERSION: ${AIRBYTE_VERSION}
+      DATABASE_URL: ${AIRBYTE_DATABASE_URL}
+      DATABASE_USER: ${AIRBYTE_DB_USER}
+      DATABASE_PASSWORD: ${AIRBYTE_DB_PASSWORD}
+      INTERNAL_API_HOST: ${AIRBYTE_INTERNAL_API_HOST}
+      TEMPORAL_HOST: ${AIRBYTE_TEMPORAL_HOST}
+      WORKSPACE_ROOT: ${AIRBYTE_WORKSPACE_ROOT}
+      LOCAL_ROOT: ${AIRBYTE_LOCAL_ROOT}
+      DOCKER_NETWORK: ${AIRBYTE_DOCKER_NETWORK}
+      LOG_LEVEL: ${AIRBYTE_LOG_LEVEL}
+      WORKER_ENVIRONMENT: ${AIRBYTE_WORKER_ENVIRONMENT}
+      DEPLOYMENT_MODE: ${AIRBYTE_DEPLOYMENT_MODE}
+      SECRET_PERSISTENCE: ${AIRBYTE_SECRET_PERSISTENCE}
+      MAX_SYNC_WORKERS: ${AIRBYTE_MAX_SYNC_WORKERS}
+      MAX_CHECK_WORKERS: ${AIRBYTE_MAX_CHECK_WORKERS}
 
   airbyte-webapp:
     container_name: airbyte-webapp
-    image: airbyte/webapp:${AIRBYTE_VERSION:-0.50.33}
+    image: airbyte/webapp:${AIRBYTE_VERSION}
     restart: unless-stopped
     ports:
       - "8010:80"
@@ -189,10 +217,10 @@ services:
       airbyte-server:
         condition: service_healthy
     environment:
-      INTERNAL_API_HOST: airbyte-server:8001
-      CONNECTOR_BUILDER_API_HOST: airbyte-server:8001
-      AIRBYTE_VERSION: ${AIRBYTE_VERSION:-0.50.33}
-      TRACKING_STRATEGY: logging
+      INTERNAL_API_HOST: ${AIRBYTE_INTERNAL_API_HOST}
+      CONNECTOR_BUILDER_API_HOST: ${AIRBYTE_CONNECTOR_BUILDER_API_HOST}
+      AIRBYTE_VERSION: ${AIRBYTE_VERSION}
+      TRACKING_STRATEGY: ${AIRBYTE_TRACKING_STRATEGY}
 
   # ==========================================================================
   # Milvus - Vector Database (etcd + minio + standalone)
@@ -211,10 +239,10 @@ services:
       --initial-cluster=default=http://etcd:2380
       --data-dir=/etcd
     environment:
-      ETCD_AUTO_COMPACTION_MODE: revision
-      ETCD_AUTO_COMPACTION_RETENTION: "1000"
-      ETCD_QUOTA_BACKEND_BYTES: "4294967296"
-      ETCD_SNAPSHOT_COUNT: "50000"
+      ETCD_AUTO_COMPACTION_MODE: ${MILVUS_ETCD_AUTO_COMPACTION_MODE}
+      ETCD_AUTO_COMPACTION_RETENTION: ${MILVUS_ETCD_AUTO_COMPACTION_RETENTION}
+      ETCD_QUOTA_BACKEND_BYTES: ${MILVUS_ETCD_QUOTA_BACKEND_BYTES}
+      ETCD_SNAPSHOT_COUNT: ${MILVUS_ETCD_SNAPSHOT_COUNT}
     volumes:
       - milvus-etcd-data:/etcd
     healthcheck:
@@ -230,8 +258,8 @@ services:
     restart: unless-stopped
     command: minio server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     ports:
       - "10000:9000"
       - "10001:9001"
@@ -254,13 +282,13 @@ services:
       minio:
         condition: service_healthy
     environment:
-      ETCD_ENDPOINTS: etcd:2379
-      MINIO_ADDRESS: minio:9000
-      MINIO_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minioadmin}
-      MINIO_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      ETCD_ENDPOINTS: ${MILVUS_ETCD_ENDPOINTS}
+      MINIO_ADDRESS: ${MILVUS_MINIO_ADDRESS}
+      MINIO_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
+      MINIO_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
     ports:
-      - "${MILVUS_BIND_ADDR:-0.0.0.0}:9765:19530"
-      - "${MILVUS_BIND_ADDR:-0.0.0.0}:9091:9091"
+      - "${MILVUS_BIND_ADDR}:9765:19530"
+      - "${MILVUS_BIND_ADDR}:9091:9091"
     volumes:
       - milvus-data:/var/lib/milvus
     healthcheck:
@@ -306,25 +334,57 @@ services:
       - "8101:8001"
     extra_hosts:
       # Maps to Docker host for OIDC discovery when KC_HOSTNAME uses a hostname.
-      # When KEYCLOAK_PUBLIC_HOSTNAME is an IP (e.g. 10.101.90.13), this entry
-      # is a no-op — Kong reaches that IP directly via the network.
+      # When KEYCLOAK_PUBLIC_HOSTNAME is an IP, this entry is a no-op — Kong
+      # reaches that IP directly via the network.
       - "keycloak.localhost:host-gateway"
-      # Backend services run on the host when launched from VS Code; kong.yml
-      # uses host.docker.internal to reach them while keeping JWT enabled.
+      # Keep host.docker.internal available for local-only integrations.
+      # Local VS Code launch configs run app services on the Docker host, so
+      # Kong can reach them through host.docker.internal.
       - "host.docker.internal:host-gateway"
     volumes:
-      - ./kong/kong.yml:/etc/kong/kong.yml:ro
+      - ./kong/kong.yml:/etc/kong/kong.yml.template:ro
     environment:
-      KONG_DATABASE: "off"
-      KONG_DECLARATIVE_CONFIG: /etc/kong/kong.yml
-      KONG_DNS_ORDER: LAST,A,CNAME
-      KONG_LOG_LEVEL: info
-      KONG_ADMIN_LISTEN: 0.0.0.0:8001
-      KONG_PROXY_LISTEN: 0.0.0.0:8000
-      KONG_ADMIN_ACCESS_LOG: /dev/stdout
-      KONG_ADMIN_ERROR_LOG: /dev/stderr
-      KONG_PROXY_ACCESS_LOG: /dev/stdout
-      KONG_PROXY_ERROR_LOG: /dev/stderr
+      KONG_DATABASE: ${KONG_DATABASE}
+      KONG_DECLARATIVE_CONFIG: ${KONG_DECLARATIVE_CONFIG}
+      KONG_DNS_ORDER: ${KONG_DNS_ORDER}
+      KONG_LOG_LEVEL: ${KONG_LOG_LEVEL}
+      KONG_ADMIN_LISTEN: ${KONG_ADMIN_LISTEN}
+      KONG_PROXY_LISTEN: ${KONG_PROXY_LISTEN}
+      KONG_ADMIN_ACCESS_LOG: ${KONG_ADMIN_ACCESS_LOG}
+      KONG_ADMIN_ERROR_LOG: ${KONG_ADMIN_ERROR_LOG}
+      KONG_PROXY_ACCESS_LOG: ${KONG_PROXY_ACCESS_LOG}
+      KONG_PROXY_ERROR_LOG: ${KONG_PROXY_ERROR_LOG}
+      KEYCLOAK_PUBLIC_HOSTNAME: ${KEYCLOAK_PUBLIC_HOSTNAME}
+      KEYCLOAK_PUBLIC_PORT: ${KEYCLOAK_PUBLIC_PORT}
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM}
+      KEYCLOAK_ISSUER_URL: ${KEYCLOAK_ISSUER_URL}
+      USER_SERVICE_UPSTREAM_URL: ${USER_SERVICE_UPSTREAM_URL}
+      AGENT_SERVICE_UPSTREAM_URL: ${AGENT_SERVICE_UPSTREAM_URL}
+      RAG_SERVICE_UPSTREAM_URL: ${RAG_SERVICE_UPSTREAM_URL}
+      TOOLS_SERVICE_UPSTREAM_URL: ${TOOLS_SERVICE_UPSTREAM_URL}
+    entrypoint:
+      - /bin/sh
+      - -c
+    command:
+      - |
+        if [ -z "$${KEYCLOAK_ISSUER_URL}" ]; then
+          echo "KEYCLOAK_ISSUER_URL must be set in configs/.env" >&2
+          exit 1
+        fi
+        issuer="$${KEYCLOAK_ISSUER_URL}"
+        user_service_upstream="$${USER_SERVICE_UPSTREAM_URL:-http://host.docker.internal:8090}"
+        agent_service_upstream="$${AGENT_SERVICE_UPSTREAM_URL:-http://host.docker.internal:8123}"
+        rag_service_upstream="$${RAG_SERVICE_UPSTREAM_URL:-http://host.docker.internal:8083}"
+        tools_service_upstream="$${TOOLS_SERVICE_UPSTREAM_URL:-http://host.docker.internal:8003}"
+        sed \
+          -e "s|__KEYCLOAK_ISSUER_URL__|$${issuer}|g" \
+          -e "s|__USER_SERVICE_UPSTREAM_URL__|$${user_service_upstream}|g" \
+          -e "s|__AGENT_SERVICE_UPSTREAM_URL__|$${agent_service_upstream}|g" \
+          -e "s|__RAG_SERVICE_UPSTREAM_URL__|$${rag_service_upstream}|g" \
+          -e "s|__TOOLS_SERVICE_UPSTREAM_URL__|$${tools_service_upstream}|g" \
+          /etc/kong/kong.yml.template > /tmp/kong.yml
+        export KONG_DECLARATIVE_CONFIG=/tmp/kong.yml
+        exec /docker-entrypoint.sh kong docker-start
     healthcheck:
       test: ["CMD", "kong", "health"]
       interval: 10s
@@ -337,21 +397,21 @@ services:
     restart: unless-stopped
     command: ["start-dev", "--http-port=8080"]
     depends_on:
-      postgres:
-        condition: service_healthy
+      keycloak-db-init:
+        condition: service_completed_successfully
     ports:
       - "8085:8080"
     environment:
-      KC_DB: postgres
-      KC_DB_URL_HOST: postgres
-      KC_DB_URL_DATABASE: ${KEYCLOAK_DB_NAME:-keycloak}
-      KC_DB_USERNAME: ${POSTGRES_USER:-postgres}
-      KC_DB_PASSWORD: ${POSTGRES_PASSWORD:-your-super-secret-and-long-postgres-password}
-      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
-      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin123}
-      KC_HEALTH_ENABLED: "true"
-      KC_HOSTNAME: http://${KEYCLOAK_PUBLIC_HOSTNAME:-10.101.90.13}:${KEYCLOAK_PUBLIC_PORT:-8085}
-      KC_HOSTNAME_STRICT: "false"
+      KC_DB: ${KEYCLOAK_DB_VENDOR}
+      KC_DB_URL_HOST: ${KEYCLOAK_DB_HOST}
+      KC_DB_URL_DATABASE: ${KEYCLOAK_DB_NAME}
+      KC_DB_USERNAME: ${POSTGRES_USER}
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD}
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KC_HEALTH_ENABLED: ${KEYCLOAK_HEALTH_ENABLED}
+      KC_HOSTNAME: http://${KEYCLOAK_PUBLIC_HOSTNAME}:${KEYCLOAK_PUBLIC_PORT}
+      KC_HOSTNAME_STRICT: ${KEYCLOAK_HOSTNAME_STRICT}
     volumes:
       - keycloak-data:/opt/keycloak/data
     healthcheck:
@@ -370,30 +430,32 @@ services:
     extra_hosts:
       - "keycloak.localhost:host-gateway"
     environment:
-      KEYCLOAK_BASE_URL: http://keycloak.localhost:8085
-      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
-      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin123}
-      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-agenticai}
-      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-agenticai-web}
-      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:-}
-      KEYCLOAK_REDIRECT_URI: ${KEYCLOAK_REDIRECT_URI:-*}
-      KEYCLOAK_WEB_ORIGIN: ${KEYCLOAK_WEB_ORIGIN:-*}
-      KEYCLOAK_POST_LOGOUT_REDIRECT_URIS: ${KEYCLOAK_POST_LOGOUT_REDIRECT_URIS:-+}
-      KEYCLOAK_TEST_USER: ${KEYCLOAK_TEST_USER:-devuser}
-      KEYCLOAK_TEST_EMAIL: ${KEYCLOAK_TEST_EMAIL:-devuser@local.dev}
-      KEYCLOAK_TEST_PASSWORD: ${KEYCLOAK_TEST_PASSWORD:-DevPass123!}
-      KEYCLOAK_DEFAULT_ADMIN_USER: ${KEYCLOAK_DEFAULT_ADMIN_USER:-agentic-admin}
-      KEYCLOAK_DEFAULT_ADMIN_EMAIL: ${KEYCLOAK_DEFAULT_ADMIN_EMAIL:-admin@agenticai.local}
-      KEYCLOAK_DEFAULT_ADMIN_PASSWORD: ${KEYCLOAK_DEFAULT_ADMIN_PASSWORD:-AdminPass123!}
-      KEYCLOAK_DEFAULT_ADMIN_FIRST_NAME: ${KEYCLOAK_DEFAULT_ADMIN_FIRST_NAME:-Agentic}
-      KEYCLOAK_DEFAULT_ADMIN_LAST_NAME: ${KEYCLOAK_DEFAULT_ADMIN_LAST_NAME:-Admin}
-      KEYCLOAK_DEFAULT_ADMIN_REALM_ROLE: ${KEYCLOAK_DEFAULT_ADMIN_REALM_ROLE:-admin}
+      KEYCLOAK_BASE_URL: ${KEYCLOAK_BASE_URL}
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM}
+      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET}
+      KEYCLOAK_REDIRECT_URI: ${KEYCLOAK_REDIRECT_URI}
+      KEYCLOAK_REDIRECT_URIS: ${KEYCLOAK_REDIRECT_URIS}
+      KEYCLOAK_WEB_ORIGIN: ${KEYCLOAK_WEB_ORIGIN}
+      KEYCLOAK_WEB_ORIGINS: ${KEYCLOAK_WEB_ORIGINS}
+      KEYCLOAK_POST_LOGOUT_REDIRECT_URIS: ${KEYCLOAK_POST_LOGOUT_REDIRECT_URIS}
+      KEYCLOAK_TEST_USER: ${KEYCLOAK_TEST_USER}
+      KEYCLOAK_TEST_EMAIL: ${KEYCLOAK_TEST_EMAIL}
+      KEYCLOAK_TEST_PASSWORD: ${KEYCLOAK_TEST_PASSWORD}
+      KEYCLOAK_DEFAULT_ADMIN_USER: ${KEYCLOAK_DEFAULT_ADMIN_USER}
+      KEYCLOAK_DEFAULT_ADMIN_EMAIL: ${KEYCLOAK_DEFAULT_ADMIN_EMAIL}
+      KEYCLOAK_DEFAULT_ADMIN_PASSWORD: ${KEYCLOAK_DEFAULT_ADMIN_PASSWORD}
+      KEYCLOAK_DEFAULT_ADMIN_FIRST_NAME: ${KEYCLOAK_DEFAULT_ADMIN_FIRST_NAME}
+      KEYCLOAK_DEFAULT_ADMIN_LAST_NAME: ${KEYCLOAK_DEFAULT_ADMIN_LAST_NAME}
+      KEYCLOAK_DEFAULT_ADMIN_REALM_ROLE: ${KEYCLOAK_DEFAULT_ADMIN_REALM_ROLE}
     volumes:
       - ../scripts/bootstrap_keycloak.sh:/scripts/bootstrap_keycloak.sh:ro
     command:
       - sh
       - -c
-      - apk add --no-cache bash curl jq >/dev/null && bash /scripts/bootstrap_keycloak.sh
+      - apk add --no-cache bash curl jq python3 >/dev/null && bash /scripts/bootstrap_keycloak.sh
 
   # mongo:
   #   image: mongo:7
@@ -437,8 +499,14 @@ volumes:
     external: true
     name: langgraph-with-ui_postgres-vanilla-data
   neo4j-data:
+    external: true
+    name: langgraph-with-ui_neo4j-data
   neo4j-logs:
+    external: true
+    name: langgraph-with-ui_neo4j-logs
   neo4j-plugins:
+    external: true
+    name: langgraph-with-ui_neo4j-plugins
   milvus-etcd-data:
   milvus-minio-data:
   milvus-data:

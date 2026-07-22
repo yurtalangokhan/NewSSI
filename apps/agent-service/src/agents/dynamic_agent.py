@@ -80,7 +80,7 @@ class DynamicAgent(LazyLoadingAgent):
 
         try:
             await self._load_mcp_tools()
-            self._default_graph = self._create_graph_from_config()
+            self._default_graph = await self._create_graph_from_config_async()
             self._graph = self._default_graph
             self._loaded = True
             self._load_failed = False
@@ -106,14 +106,17 @@ class DynamicAgent(LazyLoadingAgent):
                 or getattr(settings, "MCP_SERVER_URL", None)
                 or os.environ.get("TOOLS_SERVICE_URL")
                 or os.environ.get("MCP_SERVER_URL")
-                or "http://localhost:8002/mcp"
+                or "http://localhost:8003/mcp"
             )
+            token = (os.environ.get("INTERNAL_SERVICE_TOKEN") or "").strip()
+            headers = {"Authorization": f"Bearer {token}"} if token else None
 
             client = MultiServerMCPClient(
                 connections={
                     "mcp-tools": {
                         "transport": "streamable_http",
                         "url": mcp_url,
+                        **({"headers": headers} if headers else {}),
                     }
                 }
             )
@@ -136,6 +139,29 @@ class DynamicAgent(LazyLoadingAgent):
         *,
         runtime_config: dict[str, Any] | None = None,
     ) -> CompiledStateGraph | Pregel:
+        builder, schema_type, build_config = self._prepare_graph_build(
+            runtime_config=runtime_config
+        )
+        return builder.build(schema_type, build_config)
+
+    async def _create_graph_from_config_async(
+        self,
+        *,
+        runtime_config: dict[str, Any] | None = None,
+    ) -> CompiledStateGraph | Pregel:
+        builder, schema_type, build_config = self._prepare_graph_build(
+            runtime_config=runtime_config
+        )
+        from agents.storage.repository import AgentDefinitionRepository
+
+        builder.repository = AgentDefinitionRepository()
+        return await builder.build_async(schema_type, build_config)
+
+    def _prepare_graph_build(
+        self,
+        *,
+        runtime_config: dict[str, Any] | None = None,
+    ) -> tuple[GraphBuilder, GraphSchemaType, dict[str, Any]]:
         effective_config = {**self._config, **(runtime_config or {})}
         schema_type_str = effective_config.get("graph_schema", "zero_shot")
 
@@ -170,7 +196,9 @@ class DynamicAgent(LazyLoadingAgent):
 
                 rag_tools = KnowledgeToolSelector.select_tools(rag_config)
             except Exception as e:
-                logger.warning("Failed to resolve knowledge tools for DynamicAgent '%s': %s", self.name, e)
+                logger.warning(
+                    "Failed to resolve knowledge tools for DynamicAgent '%s': %s", self.name, e
+                )
 
         configured_mcp_tools = effective_config.get("mcp_tools", [])
         if schema_type == GraphSchemaType.ZERO_SHOT and (configured_mcp_tools or rag_tools):
@@ -185,16 +213,20 @@ class DynamicAgent(LazyLoadingAgent):
             build_config["system_prompt"] = system_prompt
             build_config["extra_tools"] = rag_tools
         elif schema_type == GraphSchemaType.SUPERVISOR:
+            build_config["name"] = self.name
             build_config["supervisor_prompt"] = self._config.get(
                 "supervisor_prompt", "You are a team supervisor."
             )
             build_config["sub_agents"] = effective_config.get("sub_agents", [])
+            build_config["sub_agent_ids"] = effective_config.get("sub_agent_ids", [])
             build_config["model"] = effective_config.get("model")
         elif schema_type == GraphSchemaType.PIPELINE:
+            build_config["name"] = self.name
             build_config["pipeline_prompt"] = effective_config.get(
                 "pipeline_prompt", "Process through all stages."
             )
             build_config["stages"] = effective_config.get("stages", [])
+            build_config["sub_agent_ids"] = effective_config.get("sub_agent_ids", [])
             build_config["model"] = effective_config.get("model")
             build_config["extra_tools"] = rag_tools
         elif schema_type == GraphSchemaType.PLAN_EXECUTE:
@@ -210,7 +242,7 @@ class DynamicAgent(LazyLoadingAgent):
         else:
             build_config["system_prompt"] = system_prompt
 
-        return builder.build(schema_type, build_config)
+        return builder, schema_type, build_config
 
     def _create_fallback_graph(self) -> CompiledStateGraph:
         """Minimal fallback graph when load fails."""
@@ -252,7 +284,9 @@ class DynamicAgent(LazyLoadingAgent):
         if memories is not None and user_id:
             configurable = (config or {}).get("configurable", {})
             _, on_save = build_event_emitters(configurable)
-            await self._save_memory_from_output(result, original_messages, memories, user_id, config, on_save=on_save)
+            await self._save_memory_from_output(
+                result, original_messages, memories, user_id, config, on_save=on_save
+            )
 
         return result
 
@@ -281,6 +315,8 @@ class DynamicAgent(LazyLoadingAgent):
             try:
                 configurable = (config or {}).get("configurable", {})
                 _, on_save = build_event_emitters(configurable)
-                await self._save_memory_from_output(None, original_messages, memories, user_id, config, on_save=on_save)
+                await self._save_memory_from_output(
+                    None, original_messages, memories, user_id, config, on_save=on_save
+                )
             except Exception as e:
                 logger.warning("Memory save after stream failed: %s", e)

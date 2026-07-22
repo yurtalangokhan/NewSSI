@@ -14,7 +14,7 @@ GREEN := $(shell tput setaf 2 2>/dev/null)
 YELLOW := $(shell tput setaf 3 2>/dev/null)
 RESET := $(shell tput sgr0 2>/dev/null)
 
-.PHONY: help install install-dev install-client sync sync-all clean test test-cov test-all test-file lint fix typecheck run run-service run-streamlit run-studio docker-up docker-build docker-down migrate new-migration precommit-install precommit-run check-env info
+.PHONY: help install install-dev install-client sync sync-all clean test test-cov test-all test-file lint format fix typecheck validate run run-service run-streamlit run-studio docker-up docker-build docker-down migrate new-migration precommit-install precommit-run check-env info
 
 # Default target
 help:
@@ -42,8 +42,10 @@ help:
 	@echo ""
 	@echo "$(YELLOW)Code Quality$(RESET)"
 	@echo "  lint           Run ruff linter"
+	@echo "  format         Format code with ruff"
 	@echo "  fix            Fix auto-fixable linting issues"
 	@echo "  typecheck      Run mypy type checker"
+	@echo "  validate       Run lint, typecheck, and tests"
 	@echo ""
 	@echo "$(YELLOW)Database$(RESET)"
 	@echo "  migrate        Apply all database migrations"
@@ -137,6 +139,10 @@ lint:
 	@echo "$(GREEN)Running ruff linter...$(RESET)"
 	cd $(PROJECT_DIR) && uv run ruff check --config ruff.toml src/ tests/
 
+format:
+	@echo "$(GREEN)Formatting code with ruff...$(RESET)"
+	cd $(PROJECT_DIR) && uv run ruff format --config ruff.toml src/ tests/
+
 fix:
 	@echo "$(GREEN)Fixing auto-fixable linting issues...$(RESET)"
 	cd $(PROJECT_DIR) && uv run ruff check --config ruff.toml --fix src/ tests/
@@ -144,6 +150,8 @@ fix:
 typecheck:
 	@echo "$(GREEN)Running mypy type checker...$(RESET)"
 	cd $(PROJECT_DIR) && uv run mypy src/
+
+validate: lint typecheck test
 
 # ============================================================
 # Database Migrations

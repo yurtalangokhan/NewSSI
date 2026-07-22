@@ -147,22 +147,24 @@ class UserController(BaseController):
         now = self._now_iso()
         hydrated = []
         for doc in docs:
-            hydrated.append({
-                "id": doc["file_id"],
-                "name": doc["filename"],
-                "project_id": doc["project_id"],
-                "user_id": doc["user_id"],
-                "file_id": doc["file_id"],
-                "created_at": doc["created_at"] or now,
-                "status": "COMPLETED",
-                "file_type": doc["mime_type"],
-                "last_accessed_at": doc["created_at"] or now,
-                "chat_file_type": doc["chat_file_type"],
-                "token_count": 0,
-                "chunk_count": 0,
-                "temp_id": None,
-                "minio_object_key": doc["minio_object_key"],
-            })
+            hydrated.append(
+                {
+                    "id": doc["file_id"],
+                    "name": doc["filename"],
+                    "project_id": doc["project_id"],
+                    "user_id": doc["user_id"],
+                    "file_id": doc["file_id"],
+                    "created_at": doc["created_at"] or now,
+                    "status": "COMPLETED",
+                    "file_type": doc["mime_type"],
+                    "last_accessed_at": doc["created_at"] or now,
+                    "chat_file_type": doc["chat_file_type"],
+                    "token_count": 0,
+                    "chunk_count": 0,
+                    "temp_id": None,
+                    "minio_object_key": doc["minio_object_key"],
+                }
+            )
         self._recent_files_by_user[effective_user_id] = hydrated
         return hydrated
 
@@ -338,7 +340,10 @@ class UserController(BaseController):
             project_files = self._project_files(effective_user_id, project_id)
             if not any(f.get("id") == file_id for f in project_files):
                 linked = {**file_obj, "project_id": project_id}
-                self._project_files_by_user[effective_user_id][project_id] = [linked, *project_files]
+                self._project_files_by_user[effective_user_id][project_id] = [
+                    linked,
+                    *project_files,
+                ]
 
         return {"success": True}
 
@@ -407,22 +412,24 @@ class UserController(BaseController):
             for file_id in missing:
                 doc = await DocumentRepository().get_by_file_id(file_id)
                 if doc:
-                    found.append({
-                        "id": doc["file_id"],
-                        "name": doc["filename"],
-                        "project_id": doc["project_id"],
-                        "user_id": doc["user_id"],
-                        "file_id": doc["file_id"],
-                        "created_at": doc["created_at"] or self._now_iso(),
-                        "status": "COMPLETED",
-                        "file_type": doc["mime_type"],
-                        "last_accessed_at": doc["created_at"] or self._now_iso(),
-                        "chat_file_type": doc["chat_file_type"],
-                        "token_count": 0,
-                        "chunk_count": 0,
-                        "temp_id": None,
-                        "minio_object_key": doc["minio_object_key"],
-                    })
+                    found.append(
+                        {
+                            "id": doc["file_id"],
+                            "name": doc["filename"],
+                            "project_id": doc["project_id"],
+                            "user_id": doc["user_id"],
+                            "file_id": doc["file_id"],
+                            "created_at": doc["created_at"] or self._now_iso(),
+                            "status": "COMPLETED",
+                            "file_type": doc["mime_type"],
+                            "last_accessed_at": doc["created_at"] or self._now_iso(),
+                            "chat_file_type": doc["chat_file_type"],
+                            "token_count": 0,
+                            "chunk_count": 0,
+                            "temp_id": None,
+                            "minio_object_key": doc["minio_object_key"],
+                        }
+                    )
 
         return found
 
@@ -570,9 +577,7 @@ class UserController(BaseController):
             raise HTTPException(status_code=404, detail="Project not found")
         return {"success": True}
 
-    async def _hydrate_project_files(
-        self, user_id: str, project_id: int
-    ) -> list[dict[str, Any]]:
+    async def _hydrate_project_files(self, user_id: str, project_id: int) -> list[dict[str, Any]]:
         from core.db.repositories.document_repo import DocumentRepository
 
         cache = self._project_files(user_id, project_id)
@@ -585,22 +590,24 @@ class UserController(BaseController):
             if doc["file_id"] in cache_ids:
                 continue
             cache_ids.add(doc["file_id"])
-            merged.append({
-                "id": doc["file_id"],
-                "name": doc["filename"],
-                "project_id": doc["project_id"],
-                "user_id": doc["user_id"],
-                "file_id": doc["file_id"],
-                "created_at": doc["created_at"] or now,
-                "status": "COMPLETED",
-                "file_type": doc["mime_type"],
-                "last_accessed_at": doc["created_at"] or now,
-                "chat_file_type": doc["chat_file_type"],
-                "token_count": 0,
-                "chunk_count": 0,
-                "temp_id": None,
-                "minio_object_key": doc["minio_object_key"],
-            })
+            merged.append(
+                {
+                    "id": doc["file_id"],
+                    "name": doc["filename"],
+                    "project_id": doc["project_id"],
+                    "user_id": doc["user_id"],
+                    "file_id": doc["file_id"],
+                    "created_at": doc["created_at"] or now,
+                    "status": "COMPLETED",
+                    "file_type": doc["mime_type"],
+                    "last_accessed_at": doc["created_at"] or now,
+                    "chat_file_type": doc["chat_file_type"],
+                    "token_count": 0,
+                    "chunk_count": 0,
+                    "temp_id": None,
+                    "minio_object_key": doc["minio_object_key"],
+                }
+            )
 
         self._project_files_by_user.setdefault(user_id, {})[project_id] = merged
         return merged
@@ -691,7 +698,8 @@ class UserController(BaseController):
                             encoded = base64.b64encode(raw).decode("ascii")
                             payload = {
                                 "data": encoded,
-                                "mime_type": file_obj.get("file_type") or "application/octet-stream",
+                                "mime_type": file_obj.get("file_type")
+                                or "application/octet-stream",
                                 "name": file_obj.get("name") or file_id,
                                 "chat_file_type": file_obj.get("chat_file_type") or "document",
                             }
@@ -704,7 +712,9 @@ class UserController(BaseController):
                 descriptors.append(
                     {
                         "id": file_id,
-                        "type": payload.get("chat_file_type") or file_obj.get("chat_file_type") or "document",
+                        "type": payload.get("chat_file_type")
+                        or file_obj.get("chat_file_type")
+                        or "document",
                         "name": payload.get("name") or file_obj.get("name") or file_id,
                         "user_file_id": file_obj.get("id"),
                         "data": payload.get("data"),

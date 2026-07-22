@@ -16,8 +16,14 @@ from typing import Any
 from neo4j import AsyncDriver, AsyncSession
 from neo4j.time import (
     Date as Neo4jDate,
+)
+from neo4j.time import (
     DateTime as Neo4jDateTime,
+)
+from neo4j.time import (
     Duration as Neo4jDuration,
+)
+from neo4j.time import (
     Time as Neo4jTime,
 )
 
@@ -75,11 +81,11 @@ class Neo4jRepository:
         """Convert Neo4j-specific temporal types to JSON-serialisable values."""
         clean: dict[str, Any] = {}
         for k, v in props.items():
-            if isinstance(v, Neo4jDateTime):
-                clean[k] = v.to_native().isoformat()
-            elif isinstance(v, Neo4jDate):
-                clean[k] = v.to_native().isoformat()
-            elif isinstance(v, Neo4jTime):
+            if (
+                isinstance(v, Neo4jDateTime)
+                or isinstance(v, Neo4jDate)
+                or isinstance(v, Neo4jTime)
+            ):
                 clean[k] = v.to_native().isoformat()
             elif isinstance(v, Neo4jDuration):
                 clean[k] = str(v)

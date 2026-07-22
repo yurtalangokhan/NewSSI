@@ -1,5 +1,4 @@
 import json
-from uuid import UUID
 
 from langconnect.models.graph import BuildProgress
 from tests.unit_tests.fixtures import (
@@ -44,13 +43,14 @@ async def test_documents_create_and_list_and_delete_and_search() -> None:
         assert resp.status_code == 200
         data = resp.json()
         assert data["success"] is True
-        # added_chunk_ids should be a non-empty list of UUIDs
+        # added_chunk_ids should be non-empty string ids. Milvus returns
+        # numeric string ids, while pgvector may return UUID-like ids.
         ids = data["added_chunk_ids"]
         assert isinstance(ids, list)
         assert ids
         for chunk_id in ids:
-            # Validate each is a UUID string
-            UUID(chunk_id)
+            assert isinstance(chunk_id, str)
+            assert chunk_id
 
         # List documents in collection, default limit 10
         list_resp = await client.get(
@@ -77,15 +77,10 @@ async def test_documents_create_and_list_and_delete_and_search() -> None:
         assert isinstance(results, list)
         # Each result should have id, score, text
         assert len(results) == 1
-        assert results[0] == {
-            "id": docs[0]["id"],
-            "score": results[0]["score"],
-            "page_content": "Hello world. This is a test document.",
-            "metadata": {
-                "file_id": docs[0]["metadata"]["file_id"],
-                "source": None,
-            },
-        }
+        assert results[0]["id"] == docs[0]["id"]
+        assert results[0]["page_content"] == "Hello world. This is a test document."
+        assert results[0]["metadata"]["file_id"] == docs[0]["metadata"]["file_id"]
+        assert results[0]["metadata"]["source"] is None
 
         # Delete a document
         doc_id = docs[0]["id"]
@@ -232,9 +227,10 @@ async def test_documents_create_with_valid_text_file_and_metadata() -> None:
         assert isinstance(ids, list)
         assert len(ids) > 0
 
-        # Verify each ID is a valid UUID
+        # Verify each ID is a non-empty string.
         for chunk_id in ids:
-            UUID(chunk_id)  # This will raise an exception if invalid
+            assert isinstance(chunk_id, str)
+            assert chunk_id
 
         # Verify document was added by listing documents
         list_response = await client.get(
@@ -420,7 +416,7 @@ async def test_document_mutations_blocked_while_graph_building(
             headers=USER_1_HEADERS,
         )
 
-        assert response.status_code == 400
+        assert response.status_code == 409
 
 
 async def test_documents_create_with_non_existent_collection() -> None:

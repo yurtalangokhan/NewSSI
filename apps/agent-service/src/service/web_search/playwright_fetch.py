@@ -17,8 +17,8 @@ from contextlib import contextmanager
 
 from playwright.sync_api import BrowserContext, Playwright, sync_playwright
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
-from pydantic import BaseModel
 
+from models.web_search import RenderedPage
 from service.web_search.url import SSRFException, validate_outbound_http_url
 
 logger = logging.getLogger(__name__)
@@ -61,15 +61,6 @@ DEFAULT_BOT_CHALLENGE_GRACE_MS = 5000
 # Total per-navigation budget for Playwright `goto` / wait_for_load_state.
 # Generous because we *want* to absorb a Cloudflare interstitial.
 DEFAULT_NAVIGATION_TIMEOUT_MS = 30000
-
-
-class RenderedPage(BaseModel):
-    """Result of a successful Playwright navigation."""
-
-    html: str
-    final_url: str
-    last_modified: str | None = None
-    status: int | None = None
 
 
 def start_playwright() -> tuple[Playwright, BrowserContext]:
@@ -148,9 +139,7 @@ def start_playwright() -> tuple[Playwright, BrowserContext]:
             client_id=WEB_CONNECTOR_OAUTH_CLIENT_ID,
             client_secret=WEB_CONNECTOR_OAUTH_CLIENT_SECRET,
         )
-        context.set_extra_http_headers(
-            {"Authorization": "Bearer {}".format(token["access_token"])}
-        )
+        context.set_extra_http_headers({"Authorization": "Bearer {}".format(token["access_token"])})
 
     return playwright, context
 
@@ -225,9 +214,7 @@ def looks_like_cloudflare_challenge(html: str) -> bool:
     because CF didn't let us through". The latter must NOT be returned
     to the LLM as if it were the page.
     """
-    return bool(html) and any(
-        marker in html for marker in _CLOUDFLARE_CHALLENGE_BODY_MARKERS
-    )
+    return bool(html) and any(marker in html for marker in _CLOUDFLARE_CHALLENGE_BODY_MARKERS)
 
 
 def fetch_rendered_html(
@@ -258,9 +245,7 @@ def fetch_rendered_html(
     try:
         validate_outbound_http_url(url)
     except (SSRFException, ValueError) as exc:
-        logger.warning(
-            "Refusing Playwright fallback for %s (%s)", url, exc.__class__.__name__
-        )
+        logger.warning("Refusing Playwright fallback for %s (%s)", url, exc.__class__.__name__)
         return None
 
     try:
@@ -283,17 +268,13 @@ def fetch_rendered_html(
 
                 # Best-effort wait for network to settle (SPA / CF challenge JS).
                 try:
-                    page.wait_for_load_state(
-                        "networkidle", timeout=bot_challenge_grace_ms
-                    )
+                    page.wait_for_load_state("networkidle", timeout=bot_challenge_grace_ms)
                 except PlaywrightTimeoutError:
                     pass
 
                 html = page.content()
                 final_url = page.url
-                last_modified = (
-                    response.header_value("Last-Modified") if response else None
-                )
+                last_modified = response.header_value("Last-Modified") if response else None
                 return RenderedPage(
                     html=html,
                     final_url=final_url,

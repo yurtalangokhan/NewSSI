@@ -9,7 +9,7 @@ from typing import Any
 
 from langchain_core.documents import Document
 
-from langconnect.config import EMBEDDING_PROVIDER, OLLAMA_BASE_URL, OLLAMA_EMBED_MODEL
+from langconnect.config import EMBEDDING_PROVIDER, OLLAMA_BASE_URL
 from langconnect.models.graph import (
     ExtractedEntity,
     ExtractedRelation,
@@ -19,7 +19,7 @@ from langconnect.models.graph import (
 logger = logging.getLogger(__name__)
 
 
-def _get_llm():
+def _get_llm() -> Any:
     """Get a chat model for entity extraction.
 
     Uses the same provider logic as embeddings but returns a chat model
@@ -29,8 +29,6 @@ def _get_llm():
     if provider == "ollama":
         from langchain_ollama import ChatOllama
 
-        # Use a capable model for extraction; fall back to llama3.1
-        model_name = OLLAMA_EMBED_MODEL
         # For extraction we need a chat model, not embedding model
         # Default to llama3.1:8b which is good at structured extraction
         return ChatOllama(
@@ -38,10 +36,9 @@ def _get_llm():
             base_url=OLLAMA_BASE_URL,
             temperature=0,
         )
-    else:
-        from langchain_openai import ChatOpenAI
+    from langchain_openai import ChatOpenAI
 
-        return ChatOpenAI(model="gpt-4o-mini", temperature=0)
+    return ChatOpenAI(model="gpt-4o-mini", temperature=0)
 
 
 class EntityExtractor:
@@ -57,14 +54,14 @@ class EntityExtractor:
         self._transformer = None
 
     # Extra instructions injected into LLMGraphTransformer's prompt to
-    # improve extraction quality – especially with smaller models.
+    # improve extraction quality - especially with smaller models.
     _ADDITIONAL_INSTRUCTIONS: str = (
         "\n## Additional Extraction Rules\n"
         "### Entity Name Normalization\n"
         "- Always use **Title Case** for entity names "
         "(e.g. 'Barack Obama', 'European Union', 'Nuclear Deal').\n"
         "- For possessives and contractions, capitalise only the first "
-        "letter after the apostrophe (e.g. \"Iran's\" NOT \"Iran'S\").\n"
+        'letter after the apostrophe (e.g. "Iran\'s" NOT "Iran\'S").\n'
         "- Strip leading/trailing whitespace and collapse multiple "
         "spaces into one.\n"
         "- Use the **full canonical name** of an entity, not "
@@ -94,7 +91,7 @@ class EntityExtractor:
         "your nodes list — no dangling references.\n"
     )
 
-    def _get_transformer(self):
+    def _get_transformer(self) -> Any:
         """Lazy-load the LLMGraphTransformer."""
         if self._transformer is None:
             from langchain_experimental.graph_transformers import (
@@ -153,7 +150,9 @@ class EntityExtractor:
                         ExtractedEntity(
                             name=str(node.id),
                             label=node.type,
-                            properties=node.properties if hasattr(node, "properties") else {},
+                            properties=node.properties
+                            if hasattr(node, "properties")
+                            else {},
                         )
                     )
             for rel in graph_doc.relationships:

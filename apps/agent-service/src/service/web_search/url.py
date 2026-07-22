@@ -165,9 +165,7 @@ def validate_outbound_http_url(
 
     if https_only:
         if parsed.scheme != "https":
-            raise SSRFException(
-                f"Invalid URL scheme '{parsed.scheme}'. Only https is allowed."
-            )
+            raise SSRFException(f"Invalid URL scheme '{parsed.scheme}'. Only https is allowed.")
     elif parsed.scheme not in ("http", "https"):
         raise SSRFException(
             f"Invalid URL scheme '{parsed.scheme}'. Only http and https are allowed."
@@ -236,9 +234,7 @@ def _make_ssrf_safe_request(
 
     # Set Host header to original hostname (required for virtual hosting)
     if parsed.scheme == "http":
-        request_headers["Host"] = (
-            f"{original_hostname}:{port}" if port != 80 else original_hostname
-        )
+        request_headers["Host"] = f"{original_hostname}:{port}" if port != 80 else original_hostname
 
     # Disable automatic redirects to prevent SSRF bypass via redirect
     return requests.get(
@@ -300,13 +296,13 @@ def ssrf_safe_get(
         if not redirect_url.startswith(("http://", "https://")):
             parsed_current = urlparse(current_url)
             if redirect_url.startswith("/"):
-                redirect_url = (
-                    f"{parsed_current.scheme}://{parsed_current.netloc}{redirect_url}"
-                )
+                redirect_url = f"{parsed_current.scheme}://{parsed_current.netloc}{redirect_url}"
             else:
                 # Relative path
                 base_path = parsed_current.path.rsplit("/", 1)[0]
-                redirect_url = f"{parsed_current.scheme}://{parsed_current.netloc}{base_path}/{redirect_url}"
+                redirect_url = (
+                    f"{parsed_current.scheme}://{parsed_current.netloc}{base_path}/{redirect_url}"
+                )
 
         # Validate and follow the redirect (this will raise SSRFException if invalid)
         current_url = redirect_url

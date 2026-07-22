@@ -22,6 +22,7 @@ def reset_db() -> None:
                 "Please set the host to 'localhost' before running tests."
             )
         from langconnect.database.connection import get_vectorstore
+
         vectorstore = get_vectorstore()
         vectorstore.drop_tables()
         vectorstore.__post_init__()

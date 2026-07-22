@@ -10,10 +10,10 @@ from langchain_core.runnables import Runnable, RunnableConfig, RunnableLambda, R
 from langgraph.graph import END, MessagesState, StateGraph
 from langgraph.store.base import BaseStore
 from langgraph.types import interrupt
-from pydantic import BaseModel, Field
 
 from core import settings
 from core.llm import get_model_from_config
+from models.agent_runtime import BirthdateExtraction
 
 # Added logger
 logger = logging.getLogger(__name__)
@@ -64,15 +64,6 @@ Rules for extraction:
 - Validate that the date is reasonable (not in the future)
 - If no clear birthdate was provided by the user, return None
 """)
-
-
-class BirthdateExtraction(BaseModel):
-    birthdate: str | None = Field(
-        description="The extracted birthdate in YYYY-MM-DD format. If no birthdate is found, this should be None."
-    )
-    reasoning: str = Field(
-        description="Explanation of how the birthdate was extracted or why no birthdate was found"
-    )
 
 
 async def determine_birthdate(
@@ -208,16 +199,15 @@ async def generate_response(state: AgentState, config: RunnableConfig) -> AgentS
         }
 
     birthdate_str = birthdate.strftime("%B %d, %Y")  # Format for display
-    
+
     # Get configuration for allowed actions
     configurable = config.get("configurable", {})
     allowed_actions = configurable.get("allowed_actions", ["cancel", "pause", "resume"])
     actions_str = ", ".join(allowed_actions)
-    
+
     # Augment prompt with allowed actions
     augmented_prompt = response_prompt.format(
-        birthdate_str=birthdate_str, 
-        last_user_message=last_user_message
+        birthdate_str=birthdate_str, last_user_message=last_user_message
     )
     augmented_prompt.content += f"\n\nAllowed actions for task control: {actions_str}"
 

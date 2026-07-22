@@ -2,20 +2,30 @@ import { getAuthTypeMetadataSS, logoutSS } from "@/lib/userSS";
 import { AuthType } from "@/lib/constants";
 import { NextRequest, NextResponse } from "next/server";
 import { getLoginPath } from "@/lib/auth/loginRoute";
+import { getDomain } from "@/lib/redirectSS";
 
 const handleLogout = async (request: NextRequest) => {
   const authTypeMetadata = await getAuthTypeMetadataSS();
   let backendLogoutSucceeded = false;
-  const publicWebOrigin =
-    process.env.WEB_DOMAIN?.replace(/\/$/, "") || request.nextUrl.origin;
+  const publicWebOrigin = getDomain(request).replace(/\/$/, "");
+  const useSecureCookies = (() => {
+    try {
+      return new URL(publicWebOrigin).protocol === "https:";
+    } catch {
+      return request.nextUrl.protocol === "https:";
+    }
+  })();
 
   // Call backend logout — this terminates the Keycloak SSO session
   // server-side via backchannel logout using the refresh_token cookie.
   // The backend Set-Cookie response is discarded (server-to-server fetch)
   // so we clear cookies manually below.
   try {
-    await logoutSS(authTypeMetadata.authType, request.headers);
-    backendLogoutSucceeded = true;
+    const logoutResponse = await logoutSS(
+      authTypeMetadata.authType,
+      request.headers
+    );
+    backendLogoutSucceeded = Boolean(logoutResponse?.ok);
   } catch {
     // Backend logout is best-effort. Cookies are cleared regardless.
   }
@@ -33,7 +43,7 @@ const handleLogout = async (request: NextRequest) => {
       response.cookies.set(cookieName, "", {
         path: "/",
         maxAge: 0,
-        secure: process.env.NODE_ENV === "production",
+        secure: useSecureCookies,
         httpOnly: true,
         sameSite: "lax",
       });

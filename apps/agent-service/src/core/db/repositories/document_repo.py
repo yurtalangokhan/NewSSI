@@ -80,9 +80,7 @@ class DocumentRepository(BaseRepository):
             )
             return [self._to_dict(r) for r in result.scalars().all()]
 
-    async def update_thread_id(
-        self, file_id: str, thread_id: str | uuid.UUID | None
-    ) -> bool:
+    async def update_thread_id(self, file_id: str, thread_id: str | uuid.UUID | None) -> bool:
         async with self._session() as session:
             result = await session.execute(
                 select(DocumentModel).where(DocumentModel.file_id == file_id)

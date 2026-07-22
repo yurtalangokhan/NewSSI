@@ -4,12 +4,16 @@ from __future__ import annotations
 
 import uuid as _uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, String, text
 from sqlalchemy.dialects.postgresql import BIGINT, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from core.db.models.base import Base
+
+if TYPE_CHECKING:
+    from core.db.models.collection import PgCollection
 
 
 class AirbyteMappingModel(Base):
@@ -31,10 +35,16 @@ class AirbyteMappingModel(Base):
     airbyte_connection_id: Mapped[str] = mapped_column(String, nullable=False)
     airbyte_destination_id: Mapped[str] = mapped_column(String, nullable=False)
     update_graph_rag: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=False, server_default=text("FALSE"),
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default=text("FALSE"),
     )
     last_processed_job_id: Mapped[int] = mapped_column(
-        BIGINT, nullable=False, default=0, server_default=text("0"),
+        BIGINT,
+        nullable=False,
+        default=0,
+        server_default=text("0"),
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

@@ -43,11 +43,24 @@ class _KeycloakLoginFormParser(HTMLParser):
 
 class KeycloakBrokerMixin:
     def _default_oidc_redirect_uri(self) -> str:
+        configured_redirect_uri = getattr(self, "get_oidc_redirect_uri", None)
+        if callable(configured_redirect_uri):
+            redirect_uri = configured_redirect_uri()
+            if redirect_uri:
+                return redirect_uri
+
         redirect_uris = self._login_client_redirect_uris()
         for redirect_uri in redirect_uris:
             if "*" not in redirect_uri:
                 return redirect_uri
-        return "http://localhost:3000/auth/oidc/callback"
+            parsed = urlparse(redirect_uri)
+            if parsed.scheme and parsed.netloc:
+                wildcard_base = redirect_uri.split("*", 1)[0].rstrip("/")
+                return f"{wildcard_base}/auth/oidc/callback"
+        raise ValueError(
+            "KEYCLOAK_REDIRECT_URI or KEYCLOAK_REDIRECT_URIS must contain an "
+            "absolute callback URL"
+        )
 
     def _rewrite_keycloak_url_for_backend(self, url: str) -> str:
         rewritten = html.unescape(url)

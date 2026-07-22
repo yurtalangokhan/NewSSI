@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from typing import Any
+from uuid import UUID
 
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import SystemMessage
@@ -41,6 +42,7 @@ class GraphBuilder:
         mcp_tools_map: dict[str, Any] | None = None,
         memory_enabled: bool = False,
         checkpointer: Any | None = None,
+        repository: Any | None = None,
     ):
         self.model = model
         self.system_prompt = system_prompt
@@ -48,6 +50,7 @@ class GraphBuilder:
         self.mcp_tools_map = mcp_tools_map or {}
         self.memory_enabled = memory_enabled
         self.checkpointer = checkpointer
+        self.repository = repository  # NEW: For loading sub-agents from DB
 
     def _get_tools_for_names(self, tool_names: list[str]) -> list[Any]:
         """Get tool instances from names using the tools map."""
@@ -63,10 +66,12 @@ class GraphBuilder:
         """Get model instance, using override or default."""
         if model_name:
             from core import get_model
+
             return get_model(model_name)
         if self.model:
             return self.model
         from core import get_model, settings
+
         return get_model(settings.DEFAULT_MODEL)
 
     def build(
@@ -110,6 +115,159 @@ class GraphBuilder:
             return self._build_self_reflect(config)
         else:
             raise GraphBuilderError(f"Unsupported schema type: {schema_type}")
+
+    async def build_async(
+        self, schema_type: str | GraphSchemaType, config: dict[str, Any] | None = None
+    ) -> CompiledStateGraph | Pregel:
+        """
+        Build a graph from schema type and config, with support for sub_agent_ids from DB.
+
+        Async version that can load referenced agents from database.
+
+        Args:
+            schema_type: Type of graph schema to build
+            config: Configuration for the graph (can include sub_agent_ids)
+
+        Returns:
+            Compiled graph
+        """
+        config = config or {}
+
+        if isinstance(schema_type, str):
+            try:
+                schema_type = GraphSchemaType(schema_type)
+            except ValueError:
+                raise GraphBuilderError(f"Unknown schema type: {schema_type}")
+
+        schema = get_schema(schema_type)
+        if not schema:
+            raise GraphBuilderError(f"Schema not found: {schema_type}")
+
+        logger.info("Building graph (async) with schema: %s", schema_type)
+
+        # NEW: Load sub-agents from DB if sub_agent_ids provided
+        if schema_type in (GraphSchemaType.SUPERVISOR, GraphSchemaType.PIPELINE):
+            target_field = "stages" if schema_type == GraphSchemaType.PIPELINE else "sub_agents"
+            await self._load_sub_agents_from_db(config, target_field=target_field)
+
+        # Delegate to existing schema-specific builders
+        if schema_type == GraphSchemaType.ZERO_SHOT:
+            return self._build_zero_shot(config)
+        elif schema_type == GraphSchemaType.REACT:
+            return self._build_react(config)
+        elif schema_type == GraphSchemaType.SUPERVISOR:
+            return self._build_supervisor(config)
+        elif schema_type == GraphSchemaType.PIPELINE:
+            return self._build_pipeline(config)
+        elif schema_type == GraphSchemaType.PLAN_EXECUTE:
+            return self._build_plan_execute(config)
+        elif schema_type == GraphSchemaType.SELF_REFLECT:
+            return self._build_self_reflect(config)
+        else:
+            raise GraphBuilderError(f"Unsupported schema type: {schema_type}")
+
+    async def _load_sub_agents_from_db(
+        self,
+        config: dict[str, Any],
+        *,
+        target_field: str | None = None,
+    ) -> None:
+        """
+        Load sub-agents from DB and merge with config.
+
+        If config has sub_agent_ids (list of UUIDs), load each agent's config
+        and merge into sub_agents list.
+
+        Args:
+            config: Config dict to modify in-place
+        """
+        if not self.repository:
+            logger.debug("No repository provided, skipping DB agent loading")
+            return
+
+        sub_agent_ids = config.get("sub_agent_ids", [])
+        if not sub_agent_ids:
+            logger.debug("No sub_agent_ids in config")
+            return
+
+        logger.info(f"Loading {len(sub_agent_ids)} sub-agents from DB")
+
+        loaded_sub_agents = []
+
+        for sub_id in sub_agent_ids:
+            # Convert to UUID if string
+            if isinstance(sub_id, str):
+                try:
+                    sub_id = UUID(sub_id)
+                except (ValueError, TypeError):
+                    logger.warning(f"Invalid UUID: {sub_id}")
+                    continue
+
+            try:
+                # Load sub-agent from repository
+                sub_agent_def = await self.repository.get_by_id(sub_id)
+                if not sub_agent_def:
+                    logger.warning(f"Sub-agent {sub_id} not found in DB")
+                    continue
+
+                sub_config = self._agent_def_to_config(sub_agent_def)
+                nested_target = (
+                    "stages"
+                    if sub_config.get("graph_schema") == GraphSchemaType.PIPELINE.value
+                    else "sub_agents"
+                )
+                await self._load_sub_agents_from_db(
+                    sub_config,
+                    target_field=nested_target,
+                )
+                loaded_sub_agents.append(sub_config)
+
+                logger.debug(
+                    f"Loaded sub-agent {sub_agent_def.name} (schema: {sub_agent_def.graph_schema})"
+                )
+
+            except Exception as e:
+                logger.error(f"Error loading sub-agent {sub_id}: {e}", exc_info=True)
+                continue
+
+        # Merge loaded agents with inline configs
+        if loaded_sub_agents:
+            field = target_field or (
+                "stages"
+                if config.get("graph_schema") == GraphSchemaType.PIPELINE.value
+                else "sub_agents"
+            )
+            existing = config.get(field, [])
+            config[field] = loaded_sub_agents + existing
+            logger.info(
+                f"Merged {len(loaded_sub_agents)} DB agents with "
+                f"{len(existing)} inline configs in {field}"
+            )
+
+    def _agent_def_to_config(self, agent_def: Any) -> dict[str, Any]:
+        """
+        Convert AgentDefinitionModel to graph config dict.
+
+        Args:
+            agent_def: AgentDefinitionModel instance
+
+        Returns:
+            Config dict compatible with graph builders
+        """
+        return {
+            "name": agent_def.name,
+            "graph_schema": agent_def.graph_schema,
+            "system_prompt": agent_def.system_prompt or "You are a helpful agent.",
+            "model": agent_def.model,
+            "mcp_tools": agent_def.mcp_tools or [],
+            "rag_config": agent_def.rag_config,
+            "supervisor_prompt": agent_def.supervisor_prompt,
+            "stages": agent_def.stages,
+            "pipeline_prompt": agent_def.pipeline_prompt,
+            "reflection_prompt": agent_def.reflection_prompt,
+            "max_iterations": agent_def.max_iterations or 3,
+            "sub_agent_ids": agent_def.sub_agent_ids or [],
+        }
 
     def _build_zero_shot(self, config: dict[str, Any]) -> CompiledStateGraph:
         """Build zero-shot chat graph."""
@@ -196,17 +354,7 @@ class GraphBuilder:
             name = sub_agent_cfg.get("name", "agent")
             sa_system_prompt = sub_agent_cfg.get("system_prompt", "You are a helpful agent.")
             tool_names = sub_agent_cfg.get("mcp_tools", [])
-            agent_model_name = sub_agent_cfg.get("model")
-
-            agent_model = self._get_model(agent_model_name)
-            agent_tools = self._get_tools_for_names(tool_names)
-
-            agent = create_react_agent(
-                model=agent_model,
-                tools=agent_tools,
-                name=name,
-                prompt=SystemMessage(content=sa_system_prompt),
-            )
+            agent = self._build_sub_agent_graph(sub_agent_cfg)
 
             agents_list.append(agent)
             tool_list = ", ".join(tool_names) if tool_names else "no tools"
@@ -226,7 +374,7 @@ class GraphBuilder:
             output_mode="full_history",
         )
 
-        return workflow.compile(checkpointer=self.checkpointer)
+        return workflow.compile(checkpointer=self.checkpointer, name=config.get("name"))
 
     def _build_pipeline(self, config: dict[str, Any]) -> CompiledStateGraph | Pregel:
         """Build pipeline graph with sequential stages."""
@@ -261,19 +409,7 @@ class GraphBuilder:
                 continue
 
             name = stage_cfg.get("name", "stage")
-            stage_system_prompt = stage_cfg.get("system_prompt", "Process this input.")
-            tool_names = stage_cfg.get("mcp_tools", [])
-            stage_model_name = stage_cfg.get("model")
-
-            stage_model = self._get_model(stage_model_name)
-            stage_tools = self._get_tools_for_names(tool_names)
-
-            agent = create_react_agent(
-                model=stage_model,
-                tools=stage_tools,
-                name=name,
-                prompt=SystemMessage(content=stage_system_prompt),
-            )
+            agent = self._build_sub_agent_graph(stage_cfg)
 
             agents_list.append(agent)
             stage_names.append(name)
@@ -291,7 +427,40 @@ class GraphBuilder:
             output_mode="full_history",
         )
 
-        return workflow.compile(checkpointer=self.checkpointer)
+        return workflow.compile(checkpointer=self.checkpointer, name=config.get("name"))
+
+    def _build_sub_agent_graph(self, agent_config: dict[str, Any]) -> CompiledStateGraph | Pregel:
+        """Build a sub-agent graph, preserving nested manager schemas when configured."""
+        schema_value = agent_config.get("graph_schema")
+        try:
+            schema_type = GraphSchemaType(schema_value) if schema_value else GraphSchemaType.REACT
+        except ValueError:
+            schema_type = GraphSchemaType.REACT
+
+        if schema_type in (GraphSchemaType.SUPERVISOR, GraphSchemaType.PIPELINE):
+            nested_builder = GraphBuilder(
+                model=self._get_model(agent_config.get("model")),
+                system_prompt=agent_config.get("system_prompt", self.system_prompt),
+                tools=self.tools,
+                mcp_tools_map=self.mcp_tools_map,
+                memory_enabled=self.memory_enabled,
+                checkpointer=self.checkpointer,
+                repository=self.repository,
+            )
+            return nested_builder.build(schema_type, agent_config)
+
+        name = agent_config.get("name", "agent")
+        system_prompt = agent_config.get("system_prompt", "You are a helpful agent.")
+        tool_names = agent_config.get("mcp_tools", [])
+        agent_model = self._get_model(agent_config.get("model"))
+        agent_tools = self._get_tools_for_names(tool_names)
+
+        return create_react_agent(
+            model=agent_model,
+            tools=agent_tools,
+            name=name,
+            prompt=SystemMessage(content=system_prompt),
+        )
 
     def _build_plan_execute(self, config: dict[str, Any]) -> CompiledStateGraph:
         """Build Plan & Execute graph."""
@@ -379,6 +548,7 @@ async def _inject_memory_context_async(messages: list, config: RunnableConfig) -
                     build_memory_context,
                     recall_memories,
                 )
+
                 on_recall, _ = build_event_emitters(configurable)
                 memories = await recall_memories(store, user_id, on_recall=on_recall)
                 context = build_memory_context(memories)

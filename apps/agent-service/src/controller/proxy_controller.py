@@ -1,5 +1,6 @@
 """Proxy controller - handles external service proxy logic (MCP, Ollama, RAG)."""
 
+import os
 from typing import Any
 
 from controller.base import BaseController
@@ -25,10 +26,7 @@ class ProxyController(BaseController):
 
             client = MultiServerMCPClient(
                 connections={
-                    "mcp-tools": {
-                        "transport": "streamable_http",
-                        "url": self._ensure_mcp_url_path(url),
-                    }
+                    "mcp-tools": self._mcp_connection(url),
                 }
             )
             tools = await client.get_tools()
@@ -98,10 +96,7 @@ class ProxyController(BaseController):
 
             client = MultiServerMCPClient(
                 connections={
-                    "tools-service": {
-                        "transport": "streamable_http",
-                        "url": self._ensure_mcp_url_path(tools_service_url),
-                    }
+                    "tools-service": self._mcp_connection(tools_service_url),
                 }
             )
             tools = await client.get_tools()
@@ -134,10 +129,7 @@ class ProxyController(BaseController):
 
             client = MultiServerMCPClient(
                 connections={
-                    "mcp-tools": {
-                        "transport": "streamable_http",
-                        "url": self._ensure_mcp_url_path(url),
-                    }
+                    "mcp-tools": self._mcp_connection(url),
                 }
             )
             tools = await client.get_tools()
@@ -211,6 +203,17 @@ class ProxyController(BaseController):
         if not path.endswith("/mcp"):
             path = path.rstrip("/") + "/mcp"
         return urlunparse(parsed._replace(path=path))
+
+    def _mcp_connection(self, url: str) -> dict[str, Any]:
+        """Build an authenticated streamable HTTP MCP client connection."""
+        connection: dict[str, Any] = {
+            "transport": "streamable_http",
+            "url": self._ensure_mcp_url_path(url),
+        }
+        token = (os.environ.get("INTERNAL_SERVICE_TOKEN") or "").strip()
+        if token:
+            connection["headers"] = {"Authorization": f"Bearer {token}"}
+        return connection
 
 
 # Singleton instance

@@ -15,6 +15,7 @@ RUN pip install --no-cache-dir uv
 RUN uv sync --frozen --only-group client
 
 COPY src/client/ ./client/
+COPY src/models/ ./models/
 COPY src/schema/ ./schema/
 COPY src/voice/ ./voice/
 COPY src/streamlit_app.py .

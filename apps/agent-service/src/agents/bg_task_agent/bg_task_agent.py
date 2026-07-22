@@ -65,8 +65,13 @@ async def acall_model(state: AgentState, config: RunnableConfig, *, store: BaseS
     if long_term_memory and store and user_id:
         extract_mem = configurable.get("extract_memory", True)
         await extract_and_save_memories(
-                store, user_id, list(state["messages"]) + [response], m, memories,
-                on_save=on_save, extract_memory=extract_mem
+            store,
+            user_id,
+            list(state["messages"]) + [response],
+            m,
+            memories,
+            on_save=on_save,
+            extract_memory=extract_mem,
         )
 
     # We return a list, because this will get added to the existing list
@@ -77,7 +82,7 @@ async def bg_task(state: AgentState, writer: StreamWriter, config: RunnableConfi
     configurable = config.get("configurable", {})
     max_retries = configurable.get("max_retries", 3)
     timeout = configurable.get("timeout_seconds", 3600)
-    
+
     task1 = Task(f"Index Repo (Retries: {max_retries})", writer)
     task2 = Task(f"Vector DB Sync (Timeout: {timeout}s)", writer)
 

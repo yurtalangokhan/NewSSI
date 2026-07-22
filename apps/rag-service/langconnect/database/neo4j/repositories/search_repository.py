@@ -13,8 +13,8 @@ from langconnect.database.neo4j.queries.search import (
     FETCH_NODES_BY_IDS,
     SEARCH_ENTITIES_CONTAINS,
     SEARCH_ENTITY_CLUSTERS,
-    SEARCH_SUBCLUSTERS,
     SEARCH_NEIGHBORHOOD_EDGES,
+    SEARCH_SUBCLUSTERS,
 )
 from langconnect.database.neo4j.repositories.base import Neo4jRepository
 from langconnect.models.graph import GraphData, GraphEdge, GraphNode
@@ -163,16 +163,15 @@ class SearchRepository(Neo4jRepository):
                     chunk_id = f"subcluster__{scope_label}__{offset}__{chunk_size}"
                     clusters[chunk_id] = cnt
                 return clusters
-            else:
-                result = await session.run(
-                    SEARCH_ENTITY_CLUSTERS,
-                    cid=self.cid,
-                    q=query,
-                )
-                clusters: dict[str, int] = {}
-                async for record in result:
-                    clusters[record["label"] or "Entity"] = record["cnt"]
-                return clusters
+            result = await session.run(
+                SEARCH_ENTITY_CLUSTERS,
+                cid=self.cid,
+                q=query,
+            )
+            clusters: dict[str, int] = {}
+            async for record in result:
+                clusters[record["label"] or "Entity"] = record["cnt"]
+            return clusters
 
     # ------------------------------------------------------------------
     # Entity context for RAG
@@ -245,9 +244,8 @@ class SearchRepository(Neo4jRepository):
                 if src_in and tgt_in:
                     if len(direct_lines) < max_direct:
                         direct_lines.append(line)
-                else:
-                    if len(indirect_lines) < max_indirect:
-                        indirect_lines.append(line)
+                elif len(indirect_lines) < max_indirect:
+                    indirect_lines.append(line)
 
         if not direct_lines and not indirect_lines:
             return ""

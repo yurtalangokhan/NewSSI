@@ -70,13 +70,13 @@ class ChatController(BaseController):
             offset=0,
         )
         matching_threads = [
-            thread
-            for thread in threads
-            if self._matches_owner(thread.get("metadata", {}) or {})
+            thread for thread in threads if self._matches_owner(thread.get("metadata", {}) or {})
         ]
         return matching_threads[offset : offset + limit]
 
-    async def _ensure_thread_belongs_to_user(self, thread_id: str, thread: dict[str, Any] | None) -> bool:
+    async def _ensure_thread_belongs_to_user(
+        self, thread_id: str, thread: dict[str, Any] | None
+    ) -> bool:
         if not thread:
             return False
 
@@ -270,11 +270,15 @@ class ChatController(BaseController):
         messages = state.get("values", {}).get("messages", [])
 
         for msg in messages:
-            msg_type = getattr(msg, "type", None) or (msg.get("type", "") if isinstance(msg, dict) else "")
+            msg_type = getattr(msg, "type", None) or (
+                msg.get("type", "") if isinstance(msg, dict) else ""
+            )
             if msg_type not in ("human", "user"):
                 continue
 
-            content = getattr(msg, "content", "") if hasattr(msg, "content") else msg.get("content", "")
+            content = (
+                getattr(msg, "content", "") if hasattr(msg, "content") else msg.get("content", "")
+            )
             if isinstance(content, list):
                 parts: list[str] = []
                 for item in content:
@@ -359,7 +363,9 @@ class ChatController(BaseController):
         try:
             human_message = await self._extract_first_human_message(session_id)
             if human_message:
-                title = await self._generate_title_from_question(human_message, model_name=model_name)
+                title = await self._generate_title_from_question(
+                    human_message, model_name=model_name
+                )
                 if title:
                     return title
 
@@ -643,7 +649,9 @@ class ChatController(BaseController):
                 tool_name = obj.get("tool_name")
 
                 if should_increment_turn(
-                    pkt_type, prev_type, prev_tool,
+                    pkt_type,
+                    prev_type,
+                    prev_tool,
                     tool_name if isinstance(tool_name, str) else None,
                     is_first=not reindexed,
                 ):
@@ -695,7 +703,10 @@ class ChatController(BaseController):
 
                 if raw_type == "system":
                     system_text = _extract_content(raw_msg)
-                    if "[Long-Term Memory — Previously learned facts about this user]" in system_text:
+                    if (
+                        "[Long-Term Memory — Previously learned facts about this user]"
+                        in system_text
+                    ):
                         facts = [
                             line
                             for line in system_text.splitlines()
@@ -706,9 +717,8 @@ class ChatController(BaseController):
                     continue
 
                 if raw_type == "ai":
-                    tool_calls = (
-                        getattr(raw_msg, "tool_calls", None)
-                        or (raw_msg.get("tool_calls", []) if isinstance(raw_msg, dict) else [])
+                    tool_calls = getattr(raw_msg, "tool_calls", None) or (
+                        raw_msg.get("tool_calls", []) if isinstance(raw_msg, dict) else []
                     )
                     msg_content, reasoning_text = _extract_visible_and_reasoning(raw_msg)
                     if not reasoning_text:
@@ -758,7 +768,11 @@ class ChatController(BaseController):
                     # Read LTM metadata from the AI message first so it can be placed
                     # before tool packets — matching the streaming order where LTM recall
                     # is emitted before the agent begins tool calls.
-                    _extra = raw_msg.get("additional_kwargs", {}) or {} if isinstance(raw_msg, dict) else getattr(raw_msg, "additional_kwargs", {}) or {}
+                    _extra = (
+                        raw_msg.get("additional_kwargs", {}) or {}
+                        if isinstance(raw_msg, dict)
+                        else getattr(raw_msg, "additional_kwargs", {}) or {}
+                    )
                     ltm_recalled = _extra.get("_ltm_recalled", 0)
                     if not ltm_recalled and pending_ltm_recalled_from_system:
                         ltm_recalled = pending_ltm_recalled_from_system
@@ -768,8 +782,12 @@ class ChatController(BaseController):
                     pending_ltm_recalled_from_user = 0
                     if ltm_recalled:
                         ltm_memories = _extra.get("_ltm_memories", [])
-                        logger.debug("[LTM-history] ai msg %d: extra_keys=%s ltm_recalled=%s",
-                                     msg_idx, list(_extra.keys()), ltm_recalled)
+                        logger.debug(
+                            "[LTM-history] ai msg %d: extra_keys=%s ltm_recalled=%s",
+                            msg_idx,
+                            list(_extra.keys()),
+                            ltm_recalled,
+                        )
                         turn_packets.append(
                             {
                                 "placement": {"turn_index": turn_counter, "sub_turn_index": None},
@@ -927,6 +945,7 @@ class ChatController(BaseController):
         except Exception:
             import logging as _logging
             import traceback as _traceback
+
             _logging.getLogger(__name__).error(
                 "Failed to load chat history for session %s:\n%s",
                 chat_session_id,
@@ -995,7 +1014,9 @@ class ChatController(BaseController):
         await self._thread_controller.update_thread(session_id, metadata, update_timestamp=False)
         return {"success": True}
 
-    async def update_chat_session_model(self, session_id: str | None, model: str | None) -> dict[str, Any]:
+    async def update_chat_session_model(
+        self, session_id: str | None, model: str | None
+    ) -> dict[str, Any]:
         if not session_id:
             return {"success": False, "error": "Missing session_id"}
 

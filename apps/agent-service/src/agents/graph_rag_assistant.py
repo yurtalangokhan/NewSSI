@@ -1,6 +1,6 @@
 """Graph RAG Assistant – hybrid retrieval agent using vector + knowledge graph.
 
-Combines PGVector similarity search with Neo4j BM25 graph search using
+Combines Milvus vector similarity search with Neo4j BM25 graph search using
 entity-centric Reciprocal Rank Fusion (RRF) for ranking.  All retrieval
 is handled by LangConnect's hybrid search API (POST /graph/search).
 """
@@ -136,9 +136,7 @@ def format_safety_message(safety: LlamaGuardOutput) -> AIMessage:
     return AIMessage(content=content)
 
 
-async def acall_model(
-    state: AgentState, config: RunnableConfig, *, store: BaseStore
-) -> AgentState:
+async def acall_model(state: AgentState, config: RunnableConfig, *, store: BaseStore) -> AgentState:
     configurable = config.get("configurable", {})
     m = get_model_from_config(configurable, settings.DEFAULT_MODEL)
 
@@ -191,24 +189,25 @@ async def acall_model(
     if long_term_memory and store and user_id:
         extract_mem = configurable.get("extract_memory", True)
         await extract_and_save_memories(
-                store, user_id, list(state["messages"]) + [response], m, memories,
-                on_save=on_save, extract_memory=extract_mem
+            store,
+            user_id,
+            list(state["messages"]) + [response],
+            m,
+            memories,
+            on_save=on_save,
+            extract_memory=extract_mem,
         )
 
     return {"messages": [response]}
 
 
-async def llama_guard_input(
-    state: AgentState, config: RunnableConfig
-) -> AgentState:
+async def llama_guard_input(state: AgentState, config: RunnableConfig) -> AgentState:
     llama_guard = LlamaGuard()
     safety_output = await llama_guard.ainvoke("User", state["messages"])
     return {"safety": safety_output, "messages": []}
 
 
-async def block_unsafe_content(
-    state: AgentState, config: RunnableConfig
-) -> AgentState:
+async def block_unsafe_content(state: AgentState, config: RunnableConfig) -> AgentState:
     safety: LlamaGuardOutput = state["safety"]
     return {"messages": [format_safety_message(safety)]}
 
@@ -247,8 +246,6 @@ def pending_tool_calls(state: AgentState) -> Literal["tools", "done"]:
     return "done"
 
 
-agent.add_conditional_edges(
-    "model", pending_tool_calls, {"tools": "tools", "done": END}
-)
+agent.add_conditional_edges("model", pending_tool_calls, {"tools": "tools", "done": END})
 
 graph_rag_assistant = agent.compile()

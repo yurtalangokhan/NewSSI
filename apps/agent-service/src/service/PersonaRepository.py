@@ -7,15 +7,10 @@ Table creation is managed by Alembic migrations.
 
 from __future__ import annotations
 
-from core.logger import get_logger
-
-logger = get_logger(__name__)
-import logging as _stdlib_logging
-
-logger_stdlib = _stdlib_logging.getLogger(__name__)
 from typing import Any
 
 from core.db.repositories.persona_repo import PersonaRepository
+from core.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -42,7 +37,8 @@ class PersonaDB:
 
         engine = get_db_engine()
         async with engine.begin() as conn:
-            await conn.execute(text("""
+            await conn.execute(
+                text("""
                 CREATE TABLE IF NOT EXISTS persona (
                     id                          SERIAL PRIMARY KEY,
                     name                        TEXT NOT NULL,
@@ -63,10 +59,11 @@ class PersonaDB:
                     time_created                TIMESTAMPTZ NOT NULL DEFAULT now(),
                     time_updated                TIMESTAMPTZ NOT NULL DEFAULT now()
                 )
-            """))
-            await conn.execute(text(
-                "CREATE INDEX IF NOT EXISTS idx_persona_user_id ON persona (user_id)"
-            ))
+            """)
+            )
+            await conn.execute(
+                text("CREATE INDEX IF NOT EXISTS idx_persona_user_id ON persona (user_id)")
+            )
         logger.info("persona table ready")
 
     @staticmethod

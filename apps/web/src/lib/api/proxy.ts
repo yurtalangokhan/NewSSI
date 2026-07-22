@@ -2,6 +2,39 @@ import { NextRequest, NextResponse } from "next/server";
 import { INTERNAL_URL, USER_SERVICE_URL } from "@/lib/constants";
 
 const BACKEND_URL = INTERNAL_URL;
+const AUTH_COOKIE_NAMES = [
+  "fastapiusersauth",
+  "session",
+  "refresh_token",
+  "id_token",
+  "access_token",
+];
+
+function shouldUseSecureCookies(request: NextRequest): boolean {
+  const publicWebOrigin = process.env.WEB_DOMAIN;
+  if (publicWebOrigin) {
+    try {
+      return new URL(publicWebOrigin).protocol === "https:";
+    } catch {
+      // Fall back to the concrete request URL below.
+    }
+  }
+
+  return request.nextUrl.protocol === "https:";
+}
+
+function clearAuthCookies(request: NextRequest, response: NextResponse) {
+  const secure = shouldUseSecureCookies(request);
+  AUTH_COOKIE_NAMES.forEach((cookieName) => {
+    response.cookies.set(cookieName, "", {
+      path: "/",
+      maxAge: 0,
+      secure,
+      httpOnly: true,
+      sameSite: "lax",
+    });
+  });
+}
 
 export function getCookieValue(
   cookieHeader: string,
@@ -152,6 +185,7 @@ export async function proxyToBackend(
     };
 
     const initialRefresh =
+      pathname !== "/api/auth/refresh" &&
       !getCookieValue(requestCookie, "access_token") &&
       getCookieValue(requestCookie, "refresh_token")
         ? await refreshAuthCookies(requestCookie)
@@ -201,6 +235,13 @@ export async function proxyToBackend(
     refreshed?.setCookies.forEach((cookie) => {
       result.headers.append("Set-Cookie", cookie);
     });
+
+    if (
+      pathname === "/api/auth/refresh" &&
+      (response.status === 400 || response.status === 401)
+    ) {
+      clearAuthCookies(request, result);
+    }
 
     return result;
   } catch (error) {

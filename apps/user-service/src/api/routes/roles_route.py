@@ -1,3 +1,5 @@
+from typing import Annotated
+
 from fastapi import APIRouter, Body, Depends
 
 from src.api.dependencies import require_permission
@@ -7,7 +9,7 @@ router = APIRouter(prefix="/roles", tags=["roles"])
 
 
 @router.get("/")
-async def list_roles(_user_id: str = Depends(require_permission("role:list"))):
+async def list_roles(_user_id: Annotated[str, Depends(require_permission("role:list"))]):
     ctrl = get_composite_role_controller()
     return await ctrl.list_roles()
 
@@ -15,9 +17,9 @@ async def list_roles(_user_id: str = Depends(require_permission("role:list"))):
 @router.post("/")
 async def create_role(
     name: str,
+    user_id: Annotated[str, Depends(require_permission("role:manage"))],
     description: str | None = None,
     permissions: list[str] | None = None,
-    user_id: str = Depends(require_permission("role:manage")),
 ):
     ctrl = get_composite_role_controller()
     return await ctrl.create_role(
@@ -29,7 +31,10 @@ async def create_role(
 
 
 @router.get("/{role_name}")
-async def get_role(role_name: str, _user_id: str = Depends(require_permission("role:read"))):
+async def get_role(
+    role_name: str,
+    _user_id: Annotated[str, Depends(require_permission("role:read"))],
+):
     ctrl = get_composite_role_controller()
     return await ctrl.get_role(role_name)
 
@@ -37,10 +42,10 @@ async def get_role(role_name: str, _user_id: str = Depends(require_permission("r
 @router.patch("/{role_name}")
 async def update_role(
     role_name: str,
+    user_id: Annotated[str, Depends(require_permission("role:manage"))],
     description: str | None = None,
     permissions: list[str] | None = None,
     role_ids: list[str] | None = None,
-    user_id: str = Depends(require_permission("role:manage")),
 ):
     ctrl = get_composite_role_controller()
     return await ctrl.update_role(
@@ -53,7 +58,10 @@ async def update_role(
 
 
 @router.delete("/{role_name}")
-async def delete_role(role_name: str, user_id: str = Depends(require_permission("role:manage"))):
+async def delete_role(
+    role_name: str,
+    user_id: Annotated[str, Depends(require_permission("role:manage"))],
+):
     ctrl = get_composite_role_controller()
     return await ctrl.delete_role(role_name, user_id=user_id)
 
@@ -61,7 +69,7 @@ async def delete_role(role_name: str, user_id: str = Depends(require_permission(
 @router.get("/{role_name}/permissions")
 async def get_role_permissions(
     role_name: str,
-    _user_id: str = Depends(require_permission("role:read")),
+    _user_id: Annotated[str, Depends(require_permission("role:read"))],
 ):
     ctrl = get_composite_role_controller()
     return await ctrl.get_role_permissions(role_name)
@@ -70,8 +78,8 @@ async def get_role_permissions(
 @router.put("/{role_name}/permissions")
 async def set_role_permissions(
     role_name: str,
-    permissions: list[str] = Body(..., embed=True),
-    user_id: str = Depends(require_permission("role:manage")),
+    permissions: Annotated[list[str], Body(embed=True)],
+    user_id: Annotated[str, Depends(require_permission("role:manage"))],
 ):
     ctrl = get_composite_role_controller()
     return await ctrl.set_role_permissions(role_name, permissions, user_id=user_id)
@@ -80,7 +88,7 @@ async def set_role_permissions(
 @router.get("/{role_name}/role-ids")
 async def get_role_role_ids(
     role_name: str,
-    _user_id: str = Depends(require_permission("role:read")),
+    _user_id: Annotated[str, Depends(require_permission("role:read"))],
 ):
     ctrl = get_composite_role_controller()
     return await ctrl.get_role_role_ids(role_name)
@@ -89,8 +97,8 @@ async def get_role_role_ids(
 @router.put("/{role_name}/role-ids")
 async def set_role_role_ids(
     role_name: str,
-    role_ids: list[str] = Body(..., embed=True),
-    user_id: str = Depends(require_permission("role:manage")),
+    role_ids: Annotated[list[str], Body(embed=True)],
+    user_id: Annotated[str, Depends(require_permission("role:manage"))],
 ):
     ctrl = get_composite_role_controller()
     return await ctrl.set_role_role_ids(role_name, role_ids, user_id=user_id)
@@ -98,7 +106,7 @@ async def set_role_role_ids(
 
 @router.post("/sync-keycloak")
 async def sync_roles_to_keycloak(
-    user_id: str = Depends(require_permission("role:manage")),
+    user_id: Annotated[str, Depends(require_permission("role:manage"))],
 ):
     ctrl = get_composite_role_controller()
     return await ctrl.sync_to_keycloak(user_id=user_id)

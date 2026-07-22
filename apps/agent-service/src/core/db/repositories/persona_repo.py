@@ -58,7 +58,7 @@ class PersonaRepository(BaseRepository):
         async with self._session() as session:
             stmt = select(PersonaModel).where(
                 PersonaModel.builtin_key == builtin_key,
-                PersonaModel.is_builtin == True,
+                PersonaModel.is_builtin.is_(True),
             )
             result = await session.execute(stmt)
             row = result.scalar_one_or_none()
@@ -74,7 +74,7 @@ class PersonaRepository(BaseRepository):
             else:
                 stmt = (
                     select(PersonaModel)
-                    .where(PersonaModel.is_builtin == False)
+                    .where(PersonaModel.is_builtin.is_(False))
                     .order_by(PersonaModel.id)
                 )
             result = await session.execute(stmt)
@@ -88,7 +88,7 @@ class PersonaRepository(BaseRepository):
                 select(PersonaModel)
                 .where(
                     PersonaModel.user_id == user_id,
-                    PersonaModel.is_builtin == False,
+                    PersonaModel.is_builtin.is_(False),
                 )
                 .order_by(PersonaModel.id)
             )
@@ -157,11 +157,7 @@ class PersonaRepository(BaseRepository):
         updates["time_updated"] = datetime.now(UTC)
 
         async with self._session() as session:
-            stmt = (
-                update(PersonaModel)
-                .where(PersonaModel.id == persona_id)
-                .values(**updates)
-            )
+            stmt = update(PersonaModel).where(PersonaModel.id == persona_id).values(**updates)
             await session.execute(stmt)
         return await self.get(persona_id)
 

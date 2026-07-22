@@ -23,6 +23,7 @@ import { updateCodeInterpreter } from "@/lib/admin/code-interpreter/svc";
 import { ContentAction } from "@opal/layouts";
 import { toast } from "@/hooks/useToast";
 import { useTranslation, Trans } from "react-i18next";
+import AdminOverviewPanel from "@/components/admin/AdminOverviewPanel";
 
 const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.CODE_INTERPRETER]!;
 
@@ -181,6 +182,58 @@ export default function CodeInterpreterPage() {
       />
 
       <SettingsLayouts.Body>
+        <AdminOverviewPanel
+          icon={route.icon}
+          title={t("admin.codeInterpreter.workspaceTitle", {
+            defaultValue: "Code execution workspace",
+          })}
+          description={t("admin.codeInterpreter.workspaceDescription", {
+            defaultValue:
+              "Monitor interpreter health and control whether agents can execute code-backed analysis.",
+          })}
+          metrics={[
+            {
+              label: t("admin.codeInterpreter.connectionLabel", {
+                defaultValue: "Connection",
+              }),
+              value: isLoading
+                ? t("admin.codeInterpreter.checking")
+                : isHealthy
+                  ? t("admin.codeInterpreter.connected")
+                  : t("admin.codeInterpreter.connectionLost"),
+              tone: isHealthy ? "success" : "warning",
+            },
+            {
+              label: t("admin.codeInterpreter.availabilityLabel", {
+                defaultValue: "Availability",
+              }),
+              value: isEnabled
+                ? t("admin.codeInterpreter.connected")
+                : t("admin.codeInterpreter.disconnected"),
+            },
+            {
+              label: t("admin.codeInterpreter.agentUseLabel", {
+                defaultValue: "Agent use",
+              }),
+              value: t("admin.actions.toolAccessValue", {
+                defaultValue: "Tool access",
+              }),
+            },
+          ]}
+          actions={[
+            {
+              label: t("admin.navigation.routes.chatPreferences.sidebar", {
+                defaultValue: "Chat Preferences",
+              }),
+              href: ADMIN_PATHS.CHAT_PREFERENCES,
+            },
+            {
+              label: t("admin.navigation.routes.mcpActions.sidebar"),
+              href: ADMIN_PATHS.MCP_ACTIONS,
+              primary: true,
+            },
+          ]}
+        />
         {isEnabled || isLoading ? (
           <CodeInterpreterCard
             title={t("admin.codeInterpreter.title")}

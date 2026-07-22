@@ -158,9 +158,7 @@ class GraphStore:
         depth: int = 1,
         limit: int = 50,
     ) -> GraphData:
-        return await self._viz.get_neighborhood(
-            node_id, depth=depth, limit=limit
-        )
+        return await self._viz.get_neighborhood(node_id, depth=depth, limit=limit)
 
     async def get_important_nodes(self, *, limit: int = 200) -> list[GraphNode]:
         return await self._viz.get_important_nodes(limit=limit)

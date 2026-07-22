@@ -5,7 +5,12 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from langconnect.api import collections_router, datasources_router, documents_router, graph_router
+from langconnect.api import (
+    collections_router,
+    datasources_router,
+    documents_router,
+    graph_router,
+)
 from langconnect.config import ALLOWED_ORIGINS
 from langconnect.database.collections import CollectionsManager
 from langconnect.database.postgres.schema_bootstrap import ensure_schema
@@ -29,14 +34,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     await ensure_schema()
     await CollectionsManager.setup()
 
-    # Initialize Neo4j connection (best-effort – graph features degrade gracefully)
+    # Initialize Neo4j connection (best-effort - graph features degrade gracefully)
     try:
         from langconnect.database.neo4j.connection import get_neo4j_driver
 
         await get_neo4j_driver()
         logger.info("Neo4j connection established.")
     except Exception:
-        logger.warning("Neo4j is not available – graph features will be disabled.")
+        logger.warning("Neo4j is not available - graph features will be disabled.")
 
     yield
 
@@ -46,14 +51,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
         await close_neo4j_driver()
     except Exception:
-        pass
+        logger.warning("Failed to close Neo4j driver.", exc_info=True)
 
     try:
         from langconnect.database.postgres.engine import close_db_engine
 
         await close_db_engine()
     except Exception:
-        pass
+        logger.warning("Failed to close Postgres engine.", exc_info=True)
 
     logger.info("App is shutting down. Stopping background worker...")
 

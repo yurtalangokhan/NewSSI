@@ -4,7 +4,7 @@ import logging
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import delete, select, update
+from sqlalchemy import String, cast, delete, select, update
 
 from agents.storage.models import AgentDefinitionModel
 from core.db.repositories.base import BaseRepository
@@ -15,9 +15,15 @@ logger = logging.getLogger(__name__)
 class AgentDefinitionRepository(BaseRepository):
     """Repository for AgentDefinition CRUD operations."""
 
+    @staticmethod
+    def _serialize_sub_agent_ids(sub_agent_ids: list | None) -> list[str]:
+        """Serialize UUID-like values for JSON storage."""
+        return [str(sub_id) for sub_id in (sub_agent_ids or [])]
+
     async def create(
         self,
         name: str,
+        persona_id: int | None = None,
         agent_type: str = "dynamic",
         description: str | None = None,
         graph_schema: str = "zero_shot",
@@ -28,6 +34,7 @@ class AgentDefinitionRepository(BaseRepository):
         mcp_tools: list | None = None,
         rag_config: dict | None = None,
         sub_agents: list | None = None,
+        sub_agent_ids: list | None = None,
         supervisor_prompt: str | None = None,
         stages: list | None = None,
         pipeline_prompt: str | None = None,
@@ -40,6 +47,7 @@ class AgentDefinitionRepository(BaseRepository):
         async with self._session() as session:
             definition = AgentDefinitionModel(
                 name=name,
+                persona_id=persona_id,
                 agent_type=agent_type,
                 description=description,
                 graph_schema=graph_schema,
@@ -50,6 +58,7 @@ class AgentDefinitionRepository(BaseRepository):
                 mcp_tools=mcp_tools or [],
                 rag_config=rag_config or {},
                 sub_agents=sub_agents or [],
+                sub_agent_ids=self._serialize_sub_agent_ids(sub_agent_ids),
                 supervisor_prompt=supervisor_prompt,
                 stages=stages or [],
                 pipeline_prompt=pipeline_prompt,
@@ -77,6 +86,13 @@ class AgentDefinitionRepository(BaseRepository):
             result = await session.execute(stmt)
             return result.scalar_one_or_none()
 
+    async def get_by_persona_id(self, persona_id: int) -> AgentDefinitionModel | None:
+        """Get the dynamic agent definition attached to a persona."""
+        async with self._session() as session:
+            stmt = select(AgentDefinitionModel).where(AgentDefinitionModel.persona_id == persona_id)
+            result = await session.execute(stmt)
+            return result.scalar_one_or_none()
+
     async def list_all(
         self,
         agent_type: str | None = None,
@@ -92,7 +108,7 @@ class AgentDefinitionRepository(BaseRepository):
             if graph_schema:
                 stmt = stmt.where(AgentDefinitionModel.graph_schema == graph_schema)
             if active_only:
-                stmt = stmt.where(AgentDefinitionModel.is_active == True)
+                stmt = stmt.where(AgentDefinitionModel.is_active)
 
             stmt = stmt.order_by(AgentDefinitionModel.name)
             result = await session.execute(stmt)
@@ -104,6 +120,12 @@ class AgentDefinitionRepository(BaseRepository):
         updates: dict[str, Any],
     ) -> AgentDefinitionModel | None:
         """Update an agent definition."""
+        if "sub_agent_ids" in updates:
+            updates = {
+                **updates,
+                "sub_agent_ids": self._serialize_sub_agent_ids(updates.get("sub_agent_ids")),
+            }
+
         async with self._session() as session:
             stmt = (
                 update(AgentDefinitionModel)
@@ -143,3 +165,77 @@ class AgentDefinitionRepository(BaseRepository):
             result = await session.execute(stmt)
             return result.rowcount > 0
 
+    async def find_agents_by_sub_agent_id(self, sub_agent_id: UUID) -> list[UUID]:
+        """
+        Find all agents that reference sub_agent_id in their sub_agent_ids.
+
+        Returns:
+            List of agent UUIDs that have sub_agent_id in their sub_agent_ids
+        """
+        async with self._session() as session:
+            # For PostgreSQL JSON array containment check
+            # We need to check if sub_agent_id is in the sub_agent_ids JSON array
+            stmt = select(AgentDefinitionModel.id).where(
+                cast(AgentDefinitionModel.sub_agent_ids, String).contains(str(sub_agent_id))
+            )
+            result = await session.execute(stmt)
+            return [row[0] for row in result.all()]
+
+    async def find_agents_by_sub_agent_ids(
+        self, sub_agent_ids: list[UUID]
+    ) -> list[AgentDefinitionModel]:
+        """
+        Find all agents referencing any of the given IDs.
+
+        Returns:
+            List of agents that reference at least one of the given IDs
+        """
+        if not sub_agent_ids:
+            return []
+
+        async with self._session() as session:
+            # Build a condition that checks if any sub_agent_id is in the array
+            conditions = [
+                cast(AgentDefinitionModel.sub_agent_ids, String).contains(str(sub_id))
+                for sub_id in sub_agent_ids
+            ]
+
+            # OR condition: matches any
+            from sqlalchemy import or_
+
+            stmt = select(AgentDefinitionModel).where(or_(*conditions))
+            result = await session.execute(stmt)
+            return list(result.scalars().all())
+
+    async def get_composition_depth(self, agent_id: UUID) -> int:
+        """
+        Recursively calculate max composition depth for an agent.
+
+        Depth is the maximum nesting level of sub-agents.
+        A leaf agent (no sub-agents) has depth 0.
+        An agent with leaf sub-agents has depth 1.
+
+        Returns:
+            Max depth, or -1 if circular dependency detected
+        """
+        return await self._calculate_depth_recursive(agent_id, set())
+
+    async def _calculate_depth_recursive(self, agent_id: UUID, visited: set[UUID]) -> int:
+        """Internal recursive depth calculation with cycle detection."""
+        if agent_id in visited:
+            return -1  # Circular dependency
+
+        visited.add(agent_id)
+
+        agent = await self.get_by_id(agent_id)
+        if not agent or not agent.sub_agent_ids:
+            return 0
+
+        max_depth = 0
+        for sub_id in agent.sub_agent_ids:
+            depth = await self._calculate_depth_recursive(sub_id, visited.copy())
+            if depth == -1:
+                return -1  # Propagate circular error
+            max_depth = max(max_depth, depth + 1)
+
+        return max_depth

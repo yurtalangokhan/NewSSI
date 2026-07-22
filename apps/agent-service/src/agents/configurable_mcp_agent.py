@@ -22,7 +22,7 @@ from memory.long_term import build_event_emitters, recall_memories
 logger = logging.getLogger(__name__)
 
 # Default system prompt
-DEFAULT_SYSTEM_PROMPT = """You are a helpful AI assistant. 
+DEFAULT_SYSTEM_PROMPT = """You are a helpful AI assistant.
 You have access to various tools that help you accomplish tasks.
 Always be helpful, accurate, and provide clear explanations."""
 
@@ -35,55 +35,55 @@ TOOL_USAGE_GUARDRAIL = (
 class ConfigurableMCPAgent(LazyLoadingAgent):
     """
     A configurable agent with MCP tool support.
-    
+
     Configuration (via agent_config):
         - system_prompt: Custom system prompt for the agent
         - mcp_tools: List of MCP tool names this agent can use
     """
-    
+
     def __init__(self) -> None:
         super().__init__()
         self._default_graph: CompiledStateGraph | None = None
         self._mcp_tools: dict[str, BaseTool] = {}
-    
+
     @property
     def name(self) -> str:
         return "configurable-mcp-agent"
-    
+
     @property
     def description(self) -> str:
         return "A configurable agent with custom system prompt and MCP tool selection"
-    
+
     async def load(self) -> None:
         """Create a default graph and load MCP tools."""
         if self._loaded:
             return
-        
+
         try:
             # Load MCP tools
             await self._load_mcp_tools()
-            
+
             # Create default graph
             self._default_graph = self._create_agent_graph(
-                system_prompt=DEFAULT_SYSTEM_PROMPT,
-                mcp_tool_names=[]
+                system_prompt=DEFAULT_SYSTEM_PROMPT, mcp_tool_names=[]
             )
             self._graph = self._default_graph
             self._loaded = True
-            
-            logger.info(f"Configurable MCP Agent initialized with {len(self._mcp_tools)} MCP tools available")
-            
+
+            logger.info(
+                f"Configurable MCP Agent initialized with {len(self._mcp_tools)} MCP tools available"
+            )
+
         except Exception as e:
             logger.error(f"Failed to initialize Configurable MCP Agent: {e}")
             # Create a minimal fallback graph
             self._default_graph = self._create_agent_graph(
-                system_prompt=DEFAULT_SYSTEM_PROMPT,
-                mcp_tool_names=[]
+                system_prompt=DEFAULT_SYSTEM_PROMPT, mcp_tool_names=[]
             )
             self._graph = self._default_graph
             self._loaded = True
             logger.warning("Using fallback graph without MCP tools")
-    
+
     async def _load_mcp_tools(self, mcp_url: str | None = None) -> None:
         """Load tools from MCP server."""
         from langchain_mcp_adapters.client import MultiServerMCPClient
@@ -97,17 +97,22 @@ class ConfigurableMCPAgent(LazyLoadingAgent):
             if localhost_url not in candidate_urls:
                 candidate_urls.append(localhost_url)
 
+        headers: dict[str, str] = {}
+        internal_token = getattr(settings, "INTERNAL_SERVICE_TOKEN", None)
+        if internal_token:
+            headers["Authorization"] = f"Bearer {internal_token}"
+
         last_error: Exception | None = None
         for candidate_url in candidate_urls:
             try:
-                client = MultiServerMCPClient(
-                    connections={
-                        "mcp-tools": {
-                            "transport": "streamable_http",
-                            "url": candidate_url,
-                        }
-                    }
-                )
+                connection: dict[str, Any] = {
+                    "transport": "streamable_http",
+                    "url": candidate_url,
+                }
+                if headers:
+                    connection["headers"] = headers
+
+                client = MultiServerMCPClient(connections={"mcp-tools": connection})
 
                 tools = await client.get_tools()
                 self._mcp_tools = {tool.name: tool for tool in tools}
@@ -181,7 +186,7 @@ class ConfigurableMCPAgent(LazyLoadingAgent):
             f"{facts_block}{omitted_line}\n"
             "Use only when relevant and never treat these facts as tool results."
         )
-    
+
     def _resolve_config(
         self,
         config: RunnableConfig | None,
@@ -243,17 +248,17 @@ class ConfigurableMCPAgent(LazyLoadingAgent):
         )
 
         return agent
-    
+
     async def ainvoke(
-        self, 
-        input: Any, 
+        self,
+        input: Any,
         config: RunnableConfig | None = None,
         checkpointer: Any | None = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> Any:
         """
         Async invoke with dynamic configuration support.
-        
+
         Checks for custom configuration in the config and creates
         a customized graph if needed.
         """
@@ -285,8 +290,14 @@ class ConfigurableMCPAgent(LazyLoadingAgent):
                 system_prompt = KnowledgeSystemPromptBuilder.build_full_prompt(system_prompt, mode)
 
         # Resolve checkpointer: prefer explicit param, then instance-level, then graph-level
-        effective_checkpointer = checkpointer or getattr(self, '_checkpointer', None) or (
-            self._graph.checkpointer if self._graph and hasattr(self._graph, 'checkpointer') else None
+        effective_checkpointer = (
+            checkpointer
+            or getattr(self, "_checkpointer", None)
+            or (
+                self._graph.checkpointer
+                if self._graph and hasattr(self._graph, "checkpointer")
+                else None
+            )
         )
 
         # Create a custom graph whenever anything deviates from defaults
@@ -307,15 +318,17 @@ class ConfigurableMCPAgent(LazyLoadingAgent):
         # Save memories from output
         configurable = (config or {}).get("configurable", {})
         _, on_save = build_event_emitters(configurable)
-        await self._save_memory_from_output(result, original_messages, memories, user_id, config, on_save=on_save)
+        await self._save_memory_from_output(
+            result, original_messages, memories, user_id, config, on_save=on_save
+        )
         return result
-    
+
     async def astream(
-        self, 
-        input: Any, 
+        self,
+        input: Any,
         config: RunnableConfig | None = None,
         checkpointer: Any | None = None,
-        **kwargs: Any
+        **kwargs: Any,
     ):
         """
         Async stream with dynamic configuration support.
@@ -357,8 +370,14 @@ class ConfigurableMCPAgent(LazyLoadingAgent):
                 system_prompt = KnowledgeSystemPromptBuilder.build_full_prompt(system_prompt, mode)
 
         # Resolve checkpointer
-        effective_checkpointer = checkpointer or getattr(self, '_checkpointer', None) or (
-            self._graph.checkpointer if self._graph and hasattr(self._graph, 'checkpointer') else None
+        effective_checkpointer = (
+            checkpointer
+            or getattr(self, "_checkpointer", None)
+            or (
+                self._graph.checkpointer
+                if self._graph and hasattr(self._graph, "checkpointer")
+                else None
+            )
         )
 
         # Create a custom graph whenever anything deviates from defaults
@@ -389,14 +408,14 @@ class ConfigurableMCPAgent(LazyLoadingAgent):
             await self._save_memory_from_output(
                 collected_output, original_messages, memories, user_id, config, on_save=on_save
             )
-    
+
     async def astream_events(
-        self, 
-        input: Any, 
+        self,
+        input: Any,
         config: RunnableConfig | None = None,
         version: str = "v2",
         checkpointer: Any | None = None,
-        **kwargs: Any
+        **kwargs: Any,
     ):
         """
         Async stream events with dynamic configuration support.
@@ -433,8 +452,14 @@ class ConfigurableMCPAgent(LazyLoadingAgent):
                 system_prompt = KnowledgeSystemPromptBuilder.build_full_prompt(system_prompt, mode)
 
         # Resolve checkpointer: prefer explicit param, then instance-level, then graph-level
-        effective_checkpointer = checkpointer or getattr(self, '_checkpointer', None) or (
-            self._graph.checkpointer if self._graph and hasattr(self._graph, 'checkpointer') else None
+        effective_checkpointer = (
+            checkpointer
+            or getattr(self, "_checkpointer", None)
+            or (
+                self._graph.checkpointer
+                if self._graph and hasattr(self._graph, "checkpointer")
+                else None
+            )
         )
 
         # Create a custom graph whenever anything deviates from defaults
@@ -446,11 +471,15 @@ class ConfigurableMCPAgent(LazyLoadingAgent):
                 checkpointer=effective_checkpointer,
                 extra_tools=rag_tools,
             )
-            async for event in graph.astream_events(input, config=config, version=version, **kwargs):
+            async for event in graph.astream_events(
+                input, config=config, version=version, **kwargs
+            ):
                 yield event
         else:
             # Use default graph
-            async for event in self._graph.astream_events(input, config=config, version=version, **kwargs):
+            async for event in self._graph.astream_events(
+                input, config=config, version=version, **kwargs
+            ):
                 yield event
 
         # Save memories after streaming completes
@@ -463,14 +492,22 @@ class ConfigurableMCPAgent(LazyLoadingAgent):
 
                     model = get_model_from_config(configurable, core_settings.DEFAULT_MODEL)
                     from memory.long_term import build_event_emitters, extract_and_save_memories
+
                     _, on_save = build_event_emitters(configurable)
                     extract_mem = configurable.get("extract_memory", True)
                     await extract_and_save_memories(
-                        store, user_id, original_messages, model, memories,
-                            on_save=on_save, extract_memory=extract_mem
+                        store,
+                        user_id,
+                        original_messages,
+                        model,
+                        memories,
+                        on_save=on_save,
+                        extract_memory=extract_mem,
                     )
             except Exception as e:
-                logger.warning(f"[ConfigurableMCPAgent] Memory save after stream_events failed: {e}")
+                logger.warning(
+                    f"[ConfigurableMCPAgent] Memory save after stream_events failed: {e}"
+                )
 
 
 # Create the agent instance

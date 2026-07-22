@@ -1,26 +1,11 @@
-from enum import Enum
-
 from langchain_core.messages import AnyMessage, HumanMessage
 from langchain_core.prompts import PromptTemplate
-from pydantic import BaseModel, Field
 
 from core.env import env
 from core.logger import get_logger
+from models.agent_runtime import LlamaGuardOutput, SafetyAssessment
 
 logger = get_logger(__name__)
-
-
-class SafetyAssessment(Enum):
-    SAFE = "safe"
-    UNSAFE = "unsafe"
-    ERROR = "error"
-
-
-class LlamaGuardOutput(BaseModel):
-    safety_assessment: SafetyAssessment = Field(description="The safety assessment of the content.")
-    unsafe_categories: list[str] = Field(
-        description="If content is unsafe, the list of unsafe categories.", default=[]
-    )
 
 
 llama_guard_instructions = """<|begin_of_text|><|start_header_id|>system<|end_header_id|>

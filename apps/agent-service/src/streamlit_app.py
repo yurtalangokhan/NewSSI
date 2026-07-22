@@ -9,8 +9,8 @@ from dotenv import load_dotenv
 from pydantic import ValidationError
 
 from client import AgentClient, AgentClientError
-from schema import ChatHistory, ChatMessage
-from schema.task_data import TaskData, TaskDataStatus
+from models.chat import ChatHistory, ChatMessage
+from models.task_data import TaskData, TaskDataStatus
 from voice import VoiceManager
 
 # A Streamlit app for interacting with the langgraph agent via a simple chat interface.

@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import uuid as _uuid
 
-from sqlalchemy import ForeignKey, Index, String, Text, text
+from sqlalchemy import ForeignKey, Index, String, Text
 from sqlalchemy.dialects.postgresql import JSON, JSONB, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -70,9 +70,7 @@ class PgEmbedding(Base):
         back_populates="embeddings",
     )
 
-    __table_args__ = (
-        Index("ix_cmetadata_gin", cmetadata, postgresql_using="gin"),
-    )
+    __table_args__ = (Index("ix_cmetadata_gin", cmetadata, postgresql_using="gin"),)
 
     def __repr__(self) -> str:
         return f"<PgEmbedding id={self.id!r} collection_id={self.collection_id!s}>"

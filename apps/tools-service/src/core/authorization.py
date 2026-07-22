@@ -1,0 +1,44 @@
+"""Authorization data fetched from user-service for MCP token scopes."""
+
+from __future__ import annotations
+
+import os
+import time
+
+import httpx
+
+_PERMISSION_CACHE: dict[str, tuple[float, list[str]]] = {}
+
+
+def _user_service_base_url() -> str:
+    return (os.environ.get("USER_SERVICE_URL") or "http://localhost:8090").rstrip("/")
+
+
+def _permission_cache_ttl() -> float:
+    return float(os.environ.get("USER_PERMISSION_CACHE_TTL_SECONDS", "30"))
+
+
+async def get_user_service_permissions(token: str, subject: str) -> list[str]:
+    """Return effective permissions from user-service, cached per subject."""
+    now = time.monotonic()
+    cached = _PERMISSION_CACHE.get(subject)
+    if cached and cached[0] > now:
+        return cached[1]
+
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.get(
+                f"{_user_service_base_url()}/api/users/internal/{subject}/permissions",
+                headers={"Authorization": f"Bearer {token}"},
+            )
+        resp.raise_for_status()
+        data = resp.json()
+    except (httpx.HTTPError, ValueError):
+        return []
+
+    raw_permissions = data.get("permissions", []) if isinstance(data, dict) else []
+    permissions = sorted(
+        str(permission) for permission in raw_permissions if permission is not None
+    )
+    _PERMISSION_CACHE[subject] = (now + _permission_cache_ttl(), permissions)
+    return permissions

@@ -167,8 +167,7 @@ class SupervisorManager(AgentManager):
         agent_definitions: list[dict[str, Any]],
     ) -> None:
         """Create team from definitions."""
-        for agent_def in agent_definitions:
-            name = agent_def.get("name", "agent")
+        for _agent_def in agent_definitions:
             # Would load/create agent here
             pass
 

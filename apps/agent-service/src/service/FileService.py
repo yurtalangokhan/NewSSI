@@ -131,6 +131,7 @@ def get_file(file_id: str) -> FileRecord | None:
 # LangChain-based text extraction
 # ---------------------------------------------------------------------------
 
+
 class _CSVToTextParser:
     """Parse CSV into one LangChain Document per row (key: value pairs)."""
 
@@ -163,9 +164,7 @@ class _ExcelToTextParser:
             rows = list(ws.iter_rows(values_only=True))
             if len(rows) < 2:
                 continue
-            headers = [
-                str(h) if h is not None else f"col_{i}" for i, h in enumerate(rows[0])
-            ]
+            headers = [str(h) if h is not None else f"col_{i}" for i, h in enumerate(rows[0])]
             for row_idx, row in enumerate(rows[1:], start=1):
                 content = "\n".join(
                     f"{headers[j]}: {cell}"

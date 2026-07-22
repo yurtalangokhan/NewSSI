@@ -12,9 +12,7 @@ from typing import Any
 from croniter import croniter
 
 from core.db import DatasourceRepository
-from service.AirbyteApiClientService import get_airbyte_client
-from service.AirbyteMappingRepository import AirbyteMappingDB
-from service.ScheduleModels import (
+from models.schedules import (
     PRESET_CRON_MAP,
     SchedulePreset,
     ScheduleRunStatus,
@@ -23,6 +21,8 @@ from service.ScheduleModels import (
     SyncScheduleResponse,
     SyncScheduleUpdate,
 )
+from service.AirbyteApiClientService import get_airbyte_client
+from service.AirbyteMappingRepository import AirbyteMappingDB
 from service.SyncQueueService import get_sync_queue
 
 logger = logging.getLogger(__name__)
@@ -263,7 +263,9 @@ class ScheduleService:
             try:
                 sched_info = await self._get_connection_schedule(mapping)
                 scheduled = sched_info.get("enabled", False)
-                next_run = self._compute_next_run(sched_info.get("cron_expression", ""), sched_info.get("timezone", "UTC"))
+                next_run = self._compute_next_run(
+                    sched_info.get("cron_expression", ""), sched_info.get("timezone", "UTC")
+                )
                 update_graph = sched_info.get("update_graph_rag", False)
                 last_run_at = sched_info.get("last_run_at")
                 last_run_status = sched_info.get("last_run_status")

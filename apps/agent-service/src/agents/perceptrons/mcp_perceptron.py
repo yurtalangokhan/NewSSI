@@ -57,20 +57,24 @@ class MCPPerceptron(Perceptron):
             return
 
         if not self._mcp_servers:
-            mcp_url = os.environ.get("MCP_SERVER_URL", "http://mcp-server:8002/mcp")
+            mcp_url = os.environ.get("MCP_SERVER_URL", "http://tools-service:8003/mcp")
             self._mcp_servers = [{"name": "default", "url": mcp_url}]
 
         try:
             from langchain_mcp_adapters.client import MultiServerMCPClient
 
             connections = {}
+            token = (os.environ.get("INTERNAL_SERVICE_TOKEN") or "").strip()
+            default_headers = {"Authorization": f"Bearer {token}"} if token else None
             for server in self._mcp_servers:
                 name = server.get("name", "mcp")
                 url = server.get("url")
                 transport = server.get("transport", "streamable_http")
+                headers = server.get("headers") or default_headers
                 connections[name] = {
                     "transport": transport,
                     "url": url,
+                    **({"headers": headers} if headers else {}),
                 }
 
             self._mcp_client = MultiServerMCPClient(connections=connections)

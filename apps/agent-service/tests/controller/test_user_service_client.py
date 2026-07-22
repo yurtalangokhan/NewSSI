@@ -28,10 +28,6 @@ async def test_get_user_by_keycloak_id_caches_lookup(monkeypatch) -> None:
 
     keycloak_id = "11111111-1111-4111-8111-111111111111"
 
-    assert await UserServiceClient.get_user_by_keycloak_id(keycloak_id) == {
-        "id": "local-user-id"
-    }
-    assert await UserServiceClient.get_user_by_keycloak_id(keycloak_id) == {
-        "id": "local-user-id"
-    }
+    assert await UserServiceClient.get_user_by_keycloak_id(keycloak_id) == {"id": "local-user-id"}
+    assert await UserServiceClient.get_user_by_keycloak_id(keycloak_id) == {"id": "local-user-id"}
     assert calls == 1

@@ -1,4 +1,5 @@
 """Business logic for provider management."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -8,6 +9,7 @@ from core.settings import settings
 from domain.providers.repository import ProviderRepository
 
 logger = get_logger(__name__)
+
 
 def _known_model(
     name: str,
@@ -37,17 +39,39 @@ KNOWN_MODELS_BY_PROVIDER: dict[str, list[dict[str, Any]]] = {
         _known_model("gpt-4o", supports_image_input=True, max_input_tokens=128000),
     ],
     "anthropic": [
-        _known_model("claude-opus-4-1", supports_image_input=True, supports_reasoning=True, max_input_tokens=200000),
-        _known_model("claude-sonnet-4", supports_image_input=True, supports_reasoning=True, max_input_tokens=200000),
-        _known_model("claude-3-7-sonnet-latest", supports_image_input=True, max_input_tokens=200000),
+        _known_model(
+            "claude-opus-4-1",
+            supports_image_input=True,
+            supports_reasoning=True,
+            max_input_tokens=200000,
+        ),
+        _known_model(
+            "claude-sonnet-4",
+            supports_image_input=True,
+            supports_reasoning=True,
+            max_input_tokens=200000,
+        ),
+        _known_model(
+            "claude-3-7-sonnet-latest", supports_image_input=True, max_input_tokens=200000
+        ),
     ],
     "google_genai": [
-        _known_model("gemini-2.5-pro", supports_image_input=True, supports_reasoning=True, max_input_tokens=1000000),
+        _known_model(
+            "gemini-2.5-pro",
+            supports_image_input=True,
+            supports_reasoning=True,
+            max_input_tokens=1000000,
+        ),
         _known_model("gemini-2.5-flash", supports_image_input=True, max_input_tokens=1000000),
         _known_model("gemini-2.0-flash", supports_image_input=True, max_input_tokens=1000000),
     ],
     "google_vertexai": [
-        _known_model("gemini-2.5-pro", supports_image_input=True, supports_reasoning=True, max_input_tokens=1000000),
+        _known_model(
+            "gemini-2.5-pro",
+            supports_image_input=True,
+            supports_reasoning=True,
+            max_input_tokens=1000000,
+        ),
         _known_model("gemini-2.5-flash", supports_image_input=True, max_input_tokens=1000000),
     ],
     "azure_openai": [
@@ -56,8 +80,16 @@ KNOWN_MODELS_BY_PROVIDER: dict[str, list[dict[str, Any]]] = {
         _known_model("gpt-4o", supports_image_input=True, max_input_tokens=128000),
     ],
     "aws_bedrock": [
-        _known_model("anthropic.claude-3-7-sonnet-20250219-v1:0", supports_image_input=True, max_input_tokens=200000),
-        _known_model("anthropic.claude-3-5-sonnet-20241022-v2:0", supports_image_input=True, max_input_tokens=200000),
+        _known_model(
+            "anthropic.claude-3-7-sonnet-20250219-v1:0",
+            supports_image_input=True,
+            max_input_tokens=200000,
+        ),
+        _known_model(
+            "anthropic.claude-3-5-sonnet-20241022-v2:0",
+            supports_image_input=True,
+            max_input_tokens=200000,
+        ),
         _known_model("amazon.nova-pro-v1:0", supports_image_input=True, max_input_tokens=300000),
     ],
     "groq": [
@@ -117,8 +149,18 @@ KNOWN_MODELS_BY_PROVIDER: dict[str, list[dict[str, Any]]] = {
     ],
     "openrouter": [
         _known_model("openai/gpt-5", supports_reasoning=True, max_input_tokens=200000),
-        _known_model("anthropic/claude-sonnet-4", supports_image_input=True, supports_reasoning=True, max_input_tokens=200000),
-        _known_model("google/gemini-2.5-pro", supports_image_input=True, supports_reasoning=True, max_input_tokens=1000000),
+        _known_model(
+            "anthropic/claude-sonnet-4",
+            supports_image_input=True,
+            supports_reasoning=True,
+            max_input_tokens=200000,
+        ),
+        _known_model(
+            "google/gemini-2.5-pro",
+            supports_image_input=True,
+            supports_reasoning=True,
+            max_input_tokens=1000000,
+        ),
     ],
 }
 
@@ -149,33 +191,102 @@ WELL_KNOWN_PROVIDERS: list[dict[str, Any]] = [
     # URL-based
     {"name": "Ollama", "provider_type": "ollama", "category": "url_based", "icon": "ollama"},
     {"name": "vLLM", "provider_type": "vllm", "category": "url_based", "icon": "cpu"},
-    {"name": "OpenAI-Compatible", "provider_type": "openai_compatible", "category": "url_based", "icon": "openai"},
+    {
+        "name": "OpenAI-Compatible",
+        "provider_type": "openai_compatible",
+        "category": "url_based",
+        "icon": "openai",
+    },
     {"name": "LiteLLM Proxy", "provider_type": "litellm", "category": "url_based", "icon": "cpu"},
     # API-key-based
     _well_known_api_key("OpenAI", "openai", icon="openai", default_model="gpt-5"),
-    _well_known_api_key("Anthropic", "anthropic", icon="anthropic", default_model="claude-sonnet-4"),
-    _well_known_api_key("Google Gemini", "google_genai", icon="google", default_model="gemini-2.5-pro"),
-    _well_known_api_key("Google Vertex AI", "google_vertexai", icon="google", default_model="gemini-2.5-pro"),
+    _well_known_api_key(
+        "Anthropic", "anthropic", icon="anthropic", default_model="claude-sonnet-4"
+    ),
+    _well_known_api_key(
+        "Google Gemini", "google_genai", icon="google", default_model="gemini-2.5-pro"
+    ),
+    _well_known_api_key(
+        "Google Vertex AI", "google_vertexai", icon="google", default_model="gemini-2.5-pro"
+    ),
     _well_known_api_key("Azure OpenAI", "azure_openai", icon="azure", default_model="gpt-5"),
     _well_known_api_key("Azure AI", "azure_ai", icon="azure"),
-    _well_known_api_key("AWS Bedrock", "aws_bedrock", icon="amazon", default_model="anthropic.claude-3-7-sonnet-20250219-v1:0", default_model_display="Anthropic Claude 3.7 Sonnet"),
-    _well_known_api_key("Groq", "groq", icon="cpu", default_model="llama-3.3-70b-versatile", default_model_display="Llama 3.3 70B Versatile"),
-    _well_known_api_key("MistralAI", "mistral", icon="mistral", default_model="mistral-large-latest"),
+    _well_known_api_key(
+        "AWS Bedrock",
+        "aws_bedrock",
+        icon="amazon",
+        default_model="anthropic.claude-3-7-sonnet-20250219-v1:0",
+        default_model_display="Anthropic Claude 3.7 Sonnet",
+    ),
+    _well_known_api_key(
+        "Groq",
+        "groq",
+        icon="cpu",
+        default_model="llama-3.3-70b-versatile",
+        default_model_display="Llama 3.3 70B Versatile",
+    ),
+    _well_known_api_key(
+        "MistralAI", "mistral", icon="mistral", default_model="mistral-large-latest"
+    ),
     _well_known_api_key("Cohere", "cohere", icon="cpu", default_model="command-a-03-2025"),
     _well_known_api_key("DeepSeek", "deepseek", icon="deepseek", default_model="deepseek-chat"),
     _well_known_api_key("xAI (Grok)", "xai", icon="cpu", default_model="grok-3-beta"),
     _well_known_api_key("Perplexity", "perplexity", icon="cpu", default_model="sonar-pro"),
-    _well_known_api_key("Together AI", "together", icon="cpu", default_model="meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo", default_model_display="Llama 3.1 70B Turbo"),
-    _well_known_api_key("Fireworks AI", "fireworks", icon="cpu", default_model="accounts/fireworks/models/llama-v3p1-70b-instruct", default_model_display="Llama v3.1 70B"),
+    _well_known_api_key(
+        "Together AI",
+        "together",
+        icon="cpu",
+        default_model="meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo",
+        default_model_display="Llama 3.1 70B Turbo",
+    ),
+    _well_known_api_key(
+        "Fireworks AI",
+        "fireworks",
+        icon="cpu",
+        default_model="accounts/fireworks/models/llama-v3p1-70b-instruct",
+        default_model_display="Llama v3.1 70B",
+    ),
     _well_known_api_key("Cerebras", "cerebras", icon="cpu", default_model="llama-3.3-70b"),
-    _well_known_api_key("HuggingFace", "huggingface", icon="cpu", default_model="meta-llama/Llama-3.1-70B-Instruct", default_model_display="Llama 3.1 70B Instruct"),
-    _well_known_api_key("NVIDIA AI", "nvidia", icon="cpu", default_model="meta/llama-3.1-70b-instruct", default_model_display="Llama 3.1 70B Instruct"),
-    _well_known_api_key("IBM WatsonX", "ibm_watsonx", icon="cpu", default_model="ibm/granite-3-8b-instruct", default_model_display="granite-3-8b-instruct"),
-    _well_known_api_key("SambaNova", "sambanova", icon="cpu", default_model="Meta-Llama-3.1-405B-Instruct", default_model_display="Llama 3.1 405B Instruct"),
-    _well_known_api_key("OpenRouter", "openrouter", icon="openrouter", default_model="openai/gpt-5", default_model_display="OpenAI GPT-5"),
+    _well_known_api_key(
+        "HuggingFace",
+        "huggingface",
+        icon="cpu",
+        default_model="meta-llama/Llama-3.1-70B-Instruct",
+        default_model_display="Llama 3.1 70B Instruct",
+    ),
+    _well_known_api_key(
+        "NVIDIA AI",
+        "nvidia",
+        icon="cpu",
+        default_model="meta/llama-3.1-70b-instruct",
+        default_model_display="Llama 3.1 70B Instruct",
+    ),
+    _well_known_api_key(
+        "IBM WatsonX",
+        "ibm_watsonx",
+        icon="cpu",
+        default_model="ibm/granite-3-8b-instruct",
+        default_model_display="granite-3-8b-instruct",
+    ),
+    _well_known_api_key(
+        "SambaNova",
+        "sambanova",
+        icon="cpu",
+        default_model="Meta-Llama-3.1-405B-Instruct",
+        default_model_display="Llama 3.1 405B Instruct",
+    ),
+    _well_known_api_key(
+        "OpenRouter",
+        "openrouter",
+        icon="openrouter",
+        default_model="openai/gpt-5",
+        default_model_display="OpenAI GPT-5",
+    ),
 ]
 
-_WELL_KNOWN_BY_TYPE: dict[str, dict[str, Any]] = {p["provider_type"]: p for p in WELL_KNOWN_PROVIDERS}
+_WELL_KNOWN_BY_TYPE: dict[str, dict[str, Any]] = {
+    p["provider_type"]: p for p in WELL_KNOWN_PROVIDERS
+}
 
 
 class ProviderService:
@@ -185,20 +296,23 @@ class ProviderService:
     async def list_all(self, user_id: str) -> dict[str, Any]:
         """Return builtin providers (from env) + DB-stored providers."""
         from core.providers.registry import provider_registry
+
         provider_registry.initialize()
 
-        builtin = []
+        builtin: list[dict[str, Any]] = []
         for name, prov in provider_registry.get_all_providers().items():
-            builtin.append({
-                "id": name,
-                "name": prov.display_name,
-                "provider_type": name,
-                "base_url": getattr(prov, "base_url", None),
-                "is_active": True,
-                "is_builtin": True,
-                "has_api_key": False,
-                "config": {},
-            })
+            builtin.append(
+                {
+                    "id": name,
+                    "name": prov.display_name,
+                    "provider_type": name,
+                    "base_url": getattr(prov, "base_url", None),
+                    "is_active": True,
+                    "is_builtin": True,
+                    "has_api_key": False,
+                    "config": {},
+                }
+            )
 
         try:
             url_providers = await self._repo.list_url_providers(user_id)
@@ -283,7 +397,9 @@ class ProviderService:
                 )
                 user_config = {}
             default_model = user_config.get("default_model")
-            if default_model and not any(m.get("name") == default_model for m in model_configurations):
+            if default_model and not any(
+                m.get("name") == default_model for m in model_configurations
+            ):
                 model_configurations.append(_known_model(default_model))
 
             results.append(
@@ -297,7 +413,7 @@ class ProviderService:
             )
 
         # API-key providers use the well-known provider catalog as the source of
-        # truth (enterprise-safe, deterministic model options).
+        # fallback, but prefer live model discovery from the connected account.
         for provider in all_providers.get("user_providers", []):
             user_config = provider.get("user_config") or {}
             if not isinstance(user_config, dict):
@@ -310,12 +426,35 @@ class ProviderService:
             default_model = user_config.get("default_model")
             provider_type = provider.get("provider_type")
             known = _WELL_KNOWN_BY_TYPE.get(provider_type, {})
+            try:
+                api_key = await self._get_provider_api_key(provider, user_id)
+                live_models = await self._fetch_api_key_provider_models(
+                    provider_type=provider_type,
+                    api_key=api_key,
+                    api_base=user_config.get("api_base"),
+                    api_version=user_config.get("api_version"),
+                )
+            except Exception as exc:
+                logger.warning(
+                    "Failed to fetch API-key models for provider %s (%s): %s",
+                    provider.get("id"),
+                    provider_type,
+                    exc,
+                )
+                live_models = []
+
             model_configurations = [
-                dict(model) for model in known.get("known_models", [])
+                self._model_payload_to_configuration(model)
+                for model in live_models
+                if model.get("name")
             ]
+            if not model_configurations:
+                model_configurations = [dict(model) for model in known.get("known_models", [])]
 
             # Keep user default model selectable even if it is custom and not in catalog.
-            if default_model and not any(m.get("name") == default_model for m in model_configurations):
+            if default_model and not any(
+                m.get("name") == default_model for m in model_configurations
+            ):
                 model_configurations.append(_known_model(default_model))
 
             provider_display_name = known.get("name") or provider.get("name") or provider_type
@@ -339,10 +478,14 @@ class ProviderService:
         try:
             created = await self.sync_models_for_provider(created["id"], user_id)
         except Exception as exc:
-            logger.warning("Auto-sync models failed for new provider %s: %s", created.get("id"), exc)
+            logger.warning(
+                "Auto-sync models failed for new provider %s: %s", created.get("id"), exc
+            )
         return created
 
-    async def update_url_provider(self, provider_id: str, user_id: str, data: dict[str, Any]) -> dict[str, Any]:
+    async def update_url_provider(
+        self, provider_id: str, user_id: str, data: dict[str, Any]
+    ) -> dict[str, Any]:
         result = await self._repo.update_url_provider(provider_id, user_id, data)
         if result is None:
             raise ValueError("Provider not found or cannot be updated")
@@ -354,7 +497,9 @@ class ProviderService:
     async def create_user_provider(self, user_id: str, data: dict[str, Any]) -> dict[str, Any]:
         return await self._repo.create_user_provider(user_id, data)
 
-    async def update_user_provider(self, provider_id: str, user_id: str, data: dict[str, Any]) -> dict[str, Any]:
+    async def update_user_provider(
+        self, provider_id: str, user_id: str, data: dict[str, Any]
+    ) -> dict[str, Any]:
         result = await self._repo.update_user_provider(provider_id, user_id, data)
         if result is None:
             raise ValueError("Provider not found or cannot be updated")
@@ -432,6 +577,20 @@ class ProviderService:
             return await self._fetch_vllm_models(base_url, api_key=api_key)
         return []
 
+    @staticmethod
+    def _model_payload_to_configuration(model: dict[str, Any]) -> dict[str, Any]:
+        name = model.get("name")
+        display_name = model.get("display_name") or name
+        return {
+            "name": name,
+            "display_name": display_name,
+            "is_visible": model.get("is_visible", True),
+            "max_input_tokens": model.get("max_input_tokens"),
+            "supports_image_input": model.get("supports_image_input", False),
+            "supports_reasoning": model.get("supports_reasoning", False),
+            "is_remote": model.get("is_remote", False),
+        }
+
     async def test_connection(
         self,
         provider_type: str,
@@ -469,7 +628,11 @@ class ProviderService:
                 result = await self._test_generic_openai_api(provider_type, api_key or "", base_url)
 
             latency_ms = round((time.monotonic() - start) * 1000)
-            return {"success": result["success"], "latency_ms": latency_ms, "error": result.get("error")}
+            return {
+                "success": result["success"],
+                "latency_ms": latency_ms,
+                "error": result.get("error"),
+            }
         except Exception as exc:
             latency_ms = round((time.monotonic() - start) * 1000)
             error_msg = str(exc) or type(exc).__name__
@@ -479,6 +642,7 @@ class ProviderService:
     def _extract_origin(url: str) -> str:
         """Return only scheme://host:port, stripping any path/query/fragment."""
         from urllib.parse import urlparse
+
         parsed = urlparse(url.rstrip("/"))
         if parsed.netloc:
             return f"{parsed.scheme}://{parsed.netloc}"
@@ -527,6 +691,7 @@ class ProviderService:
     @staticmethod
     async def _test_openai_api(api_key: str) -> dict[str, Any]:
         import httpx
+
         async with httpx.AsyncClient(timeout=8.0) as client:
             resp = await client.get(
                 "https://api.openai.com/v1/models",
@@ -539,6 +704,7 @@ class ProviderService:
     @staticmethod
     async def _test_anthropic(api_key: str) -> dict[str, Any]:
         import httpx
+
         async with httpx.AsyncClient(timeout=8.0) as client:
             resp = await client.get(
                 "https://api.anthropic.com/v1/models",
@@ -551,6 +717,7 @@ class ProviderService:
     @staticmethod
     async def _test_google_genai(api_key: str) -> dict[str, Any]:
         import httpx
+
         if not api_key:
             return {"success": False, "error": "API key is required"}
         async with httpx.AsyncClient(timeout=8.0) as client:
@@ -563,7 +730,9 @@ class ProviderService:
             return {"success": False, "error": f"HTTP {resp.status_code}: {resp.text[:200]}"}
 
     @staticmethod
-    async def _test_generic_openai_api(provider_type: str, api_key: str, base_url: str | None) -> dict[str, Any]:
+    async def _test_generic_openai_api(
+        provider_type: str, api_key: str, base_url: str | None
+    ) -> dict[str, Any]:
         """Fallback: try /v1/models with the api_key as Bearer token."""
         default_base_urls = {
             "openrouter": "https://openrouter.ai/api",
@@ -582,6 +751,7 @@ class ProviderService:
         if not resolved_base_url:
             return {"success": False, "error": f"No base_url configured for {provider_type}"}
         import httpx
+
         async with httpx.AsyncClient(timeout=8.0) as client:
             resp = await client.get(
                 f"{resolved_base_url}/v1/models",
@@ -597,6 +767,7 @@ class ProviderService:
 
         if provider_id in {"builtin", "ollama"}:
             from core.env import env
+
             base_url = env.OLLAMA_BASE_URL or settings.OLLAMA_BASE_URL
         else:
             provider = await self._repo.get_url_provider(provider_id, user_id)
@@ -666,6 +837,7 @@ class ProviderService:
 
     def _check_builtin_collision(self, data: dict[str, Any]) -> None:
         from core.env import env
+
         ptype = data.get("provider_type")
         base_url = data.get("base_url", "").rstrip("/")
         ollama_url = (env.OLLAMA_BASE_URL or settings.OLLAMA_BASE_URL).rstrip("/")
@@ -795,7 +967,9 @@ class ProviderService:
             return []
 
     @staticmethod
-    async def _fetch_vllm_models(base_url: str, *, api_key: str | None = None) -> list[dict[str, Any]]:
+    async def _fetch_vllm_models(
+        base_url: str, *, api_key: str | None = None
+    ) -> list[dict[str, Any]]:
         """Fetch models from a vLLM / OpenAI-compatible endpoint."""
         import httpx
 
@@ -810,7 +984,9 @@ class ProviderService:
                     {
                         "name": m.get("id", ""),
                         "provider_type": "vllm",
-                        "max_input_tokens": m.get("max_model_len") or m.get("context_length") or m.get("max_input_tokens"),
+                        "max_input_tokens": m.get("max_model_len")
+                        or m.get("context_length")
+                        or m.get("max_input_tokens"),
                         "supports_image_input": ProviderService._infer_vllm_image_support(m),
                         "supports_reasoning": ProviderService._infer_vllm_reasoning_support(m),
                     }
@@ -818,4 +994,172 @@ class ProviderService:
                 ]
         except Exception as e:
             logger.warning("Failed to fetch vLLM models from %s: %s", origin, e)
+            return []
+
+    @staticmethod
+    def _default_api_base_for_provider(provider_type: str | None) -> str | None:
+        default_base_urls = {
+            "openai": "https://api.openai.com",
+            "openrouter": "https://openrouter.ai/api",
+            "deepseek": "https://api.deepseek.com",
+            "groq": "https://api.groq.com/openai",
+            "mistral": "https://api.mistral.ai",
+            "cohere": "https://api.cohere.com",
+            "xai": "https://api.x.ai",
+            "perplexity": "https://api.perplexity.ai",
+            "together": "https://api.together.xyz",
+            "fireworks": "https://api.fireworks.ai/inference",
+            "cerebras": "https://api.cerebras.ai",
+            "huggingface": "https://router.huggingface.co",
+            "nvidia": "https://integrate.api.nvidia.com",
+            "sambanova": "https://api.sambanova.ai",
+        }
+        return default_base_urls.get(provider_type or "")
+
+    @staticmethod
+    async def _fetch_api_key_provider_models(
+        *,
+        provider_type: str | None,
+        api_key: str | None,
+        api_base: str | None = None,
+        api_version: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Fetch models visible to an API-key based provider account."""
+        if not api_key:
+            return []
+
+        if provider_type == "anthropic":
+            return await ProviderService._fetch_anthropic_models(api_key)
+        if provider_type in {"google_genai", "google_vertexai"}:
+            return await ProviderService._fetch_google_models(api_key, api_version=api_version)
+
+        base_url = api_base or ProviderService._default_api_base_for_provider(provider_type)
+        if not base_url:
+            return []
+        return await ProviderService._fetch_openai_compatible_api_models(
+            base_url,
+            api_key=api_key,
+            provider_type=provider_type or "openai_compatible",
+        )
+
+    @staticmethod
+    async def _fetch_openai_compatible_api_models(
+        base_url: str,
+        *,
+        api_key: str,
+        provider_type: str,
+    ) -> list[dict[str, Any]]:
+        import httpx
+
+        resolved_base_url = base_url.rstrip("/")
+        if resolved_base_url.endswith("/v1"):
+            resolved_base_url = resolved_base_url.removesuffix("/v1")
+        try:
+            async with httpx.AsyncClient(timeout=8.0) as client:
+                resp = await client.get(
+                    f"{resolved_base_url}/v1/models",
+                    headers={"Authorization": f"Bearer {api_key}"},
+                )
+                if not resp.is_success:
+                    return []
+                models = resp.json().get("data", [])
+                if not isinstance(models, list):
+                    return []
+                return [
+                    {
+                        "name": model.get("id") or model.get("name"),
+                        "display_name": model.get("display_name")
+                        or model.get("id")
+                        or model.get("name"),
+                        "provider_type": provider_type,
+                        "max_input_tokens": model.get("max_model_len")
+                        or model.get("context_length")
+                        or model.get("max_input_tokens"),
+                        "supports_image_input": ProviderService._infer_vllm_image_support(model),
+                        "supports_reasoning": ProviderService._infer_vllm_reasoning_support(model),
+                        "is_remote": True,
+                    }
+                    for model in models
+                    if isinstance(model, dict) and (model.get("id") or model.get("name"))
+                ]
+        except Exception as e:
+            logger.warning("Failed to fetch API models from %s: %s", resolved_base_url, e)
+            return []
+
+    @staticmethod
+    async def _fetch_anthropic_models(api_key: str) -> list[dict[str, Any]]:
+        import httpx
+
+        try:
+            async with httpx.AsyncClient(timeout=8.0) as client:
+                resp = await client.get(
+                    "https://api.anthropic.com/v1/models",
+                    headers={"x-api-key": api_key, "anthropic-version": "2023-06-01"},
+                )
+                if not resp.is_success:
+                    return []
+                models = resp.json().get("data", [])
+                if not isinstance(models, list):
+                    return []
+                return [
+                    {
+                        "name": model.get("id"),
+                        "display_name": model.get("display_name") or model.get("id"),
+                        "provider_type": "anthropic",
+                        "supports_image_input": True,
+                        "supports_reasoning": False,
+                        "is_remote": True,
+                    }
+                    for model in models
+                    if isinstance(model, dict) and model.get("id")
+                ]
+        except Exception as e:
+            logger.warning("Failed to fetch Anthropic models: %s", e)
+            return []
+
+    @staticmethod
+    async def _fetch_google_models(
+        api_key: str,
+        *,
+        api_version: str | None = None,
+    ) -> list[dict[str, Any]]:
+        import httpx
+
+        version = api_version or "v1beta"
+        try:
+            async with httpx.AsyncClient(timeout=8.0) as client:
+                resp = await client.get(
+                    f"https://generativelanguage.googleapis.com/{version}/models",
+                    params={"key": api_key},
+                )
+                if not resp.is_success:
+                    return []
+                models = resp.json().get("models", [])
+                if not isinstance(models, list):
+                    return []
+                results: list[dict[str, Any]] = []
+                for model in models:
+                    if not isinstance(model, dict):
+                        continue
+                    raw_name = model.get("name")
+                    if not isinstance(raw_name, str):
+                        continue
+                    name = raw_name.removeprefix("models/")
+                    methods = model.get("supportedGenerationMethods") or []
+                    if isinstance(methods, list) and "generateContent" not in methods:
+                        continue
+                    results.append(
+                        {
+                            "name": name,
+                            "display_name": model.get("displayName") or name,
+                            "provider_type": "google_genai",
+                            "max_input_tokens": model.get("inputTokenLimit"),
+                            "supports_image_input": True,
+                            "supports_reasoning": "thinking" in name.lower(),
+                            "is_remote": True,
+                        }
+                    )
+                return results
+        except Exception as e:
+            logger.warning("Failed to fetch Google models: %s", e)
             return []

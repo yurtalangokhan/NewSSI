@@ -40,6 +40,7 @@ _session_factory: async_sessionmaker[AsyncSession] | None = None
 # URL builder
 # ---------------------------------------------------------------------------
 
+
 def _build_url(*, driver: str = "asyncpg") -> str:
     """Build a PostgreSQL DSN from environment config.
 
@@ -62,6 +63,7 @@ def _build_url(*, driver: str = "asyncpg") -> str:
 # ---------------------------------------------------------------------------
 # Engine & session factory
 # ---------------------------------------------------------------------------
+
 
 def get_db_engine() -> AsyncEngine:
     """Return the singleton ``AsyncEngine``, creating it on first call."""
@@ -100,6 +102,7 @@ async def get_async_session() -> AsyncSession:
 # ---------------------------------------------------------------------------
 # Teardown
 # ---------------------------------------------------------------------------
+
 
 async def close_db_engine() -> None:
     """Dispose the engine and reset module-level singletons."""

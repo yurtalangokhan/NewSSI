@@ -7,7 +7,7 @@ import logging
 import uuid
 from typing import Any
 
-from sqlalchemy import and_, delete, distinct, func, select, text
+from sqlalchemy import delete, distinct, func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import aliased
 
@@ -224,7 +224,11 @@ class DocumentRepository(BaseRepository):
                     milvus_store = get_vectorstore(collection_name=table_id)
                     # expr-based delete on metadata JSON field
                     milvus_store.delete(expr=f'metadata["file_id"] == "{file_id}"')
-                    logger.info("Deleted Milvus vectors for file %r in collection %r.", file_id, table_id)
+                    logger.info(
+                        "Deleted Milvus vectors for file %r in collection %r.",
+                        file_id,
+                        table_id,
+                    )
                 except Exception as exc:
                     logger.warning("Milvus delete failed for file %r: %s", file_id, exc)
 

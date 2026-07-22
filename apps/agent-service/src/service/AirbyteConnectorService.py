@@ -11,23 +11,20 @@ it natively via the recursive SchemaForm component.
 
 from __future__ import annotations
 
-from core.logger import get_logger
-
-logger = get_logger(__name__)
 import logging as _stdlib_logging
-
-logger_stdlib = _stdlib_logging.getLogger(__name__)
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
 
 from langchain_core.documents import Document
 
+from core.logger import get_logger
+from models.connectors import ConnectorInfo, ConnectorSpec
 from service.AirbyteApiClientService import get_airbyte_client
 from service.AirbyteDestinationService import get_destination_reader
-from service.Schemas import ConnectorInfo, ConnectorSpec
 
 logger = get_logger(__name__)
+logger_stdlib = _stdlib_logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -478,10 +475,10 @@ async def extract_documents_async(
                         # Fallback: check for stderr output in logs
                         logs = last_attempt.get("logs", {}).get("logLines", [])
                         error_lines = [
-                            l
-                            for l in logs
-                            if isinstance(l, str)
-                            and ("error" in l.lower() or "exception" in l.lower())
+                            line
+                            for line in logs
+                            if isinstance(line, str)
+                            and ("error" in line.lower() or "exception" in line.lower())
                         ]
                         if error_lines:
                             failure_detail = error_lines[-1][:500]

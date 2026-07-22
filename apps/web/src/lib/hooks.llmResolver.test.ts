@@ -49,6 +49,7 @@ describe("LLM resolver helpers", () => {
       name: "Anthropic Provider",
       provider: "anthropic",
       modelName: sharedModel,
+      providerId: "2",
     });
   });
 
@@ -93,6 +94,7 @@ describe("LLM resolver helpers", () => {
       name: "Default OpenAI",
       provider: "openai",
       modelName: "gpt-4o-mini",
+      providerId: "10",
     });
   });
 
@@ -132,6 +134,7 @@ describe("LLM resolver helpers", () => {
       name: "First Provider",
       provider: "openai",
       modelName: "gpt-first",
+      providerId: "30",
     });
   });
 });

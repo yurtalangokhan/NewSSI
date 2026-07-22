@@ -6,6 +6,7 @@ from controller.base import BaseController
 from core.db.repositories import AssistantRepository
 from service.AssistantAgentService import AssistantAgentService
 
+
 # Agent-level permission checking
 class AgentPermissionError(Exception):
     def __init__(self, action: str, agent_id: str = None):

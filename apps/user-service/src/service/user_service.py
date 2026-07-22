@@ -3,6 +3,7 @@ import uuid
 from typing import Any
 
 from src.core.database.models.user_model import normalize_user_role
+from src.core.exceptions import ForbiddenError, NotFoundError
 from src.repository import (
     CompositeRoleRepository,
     UserRepository,
@@ -21,6 +22,14 @@ class UserService:
         self.settings_repo = UserSettingsRepository()
         self.role_repo = CompositeRoleRepository()
         self.keycloak = get_keycloak_service()
+
+    async def _logout_keycloak_sessions(self, user) -> None:
+        if not self.keycloak.is_enabled() or not getattr(user, "keycloak_id", None):
+            return
+
+        logged_out = await self.keycloak.logout_user_sessions(user.keycloak_id)
+        if not logged_out:
+            raise ValueError("Failed to invalidate active Keycloak sessions")
 
     async def get_user(self, user_id: uuid.UUID) -> dict[str, Any] | None:
         user = await self.user_repo.get_by_id(user_id)
@@ -54,6 +63,60 @@ class UserService:
             perms.update(coarse_perms)
 
         return {"permissions": sorted(perms)}
+
+    async def user_has_permission(self, user_id: uuid.UUID, permission: str) -> dict[str, Any]:
+        permission_data = await self.get_user_permissions(user_id)
+        if permission_data is None:
+            return {"allowed": False, "permissions": []}
+
+        permissions = permission_data.get("permissions", [])
+        allowed = permissions == ["*"] or permission in permissions
+        return {"allowed": allowed, "permission": permission}
+
+    async def resolve_target_user_id(self, target_id: str) -> uuid.UUID:
+        try:
+            parsed = uuid.UUID(target_id)
+        except ValueError:
+            parsed = None
+
+        if parsed is not None:
+            by_local_id = await self.user_repo.get_by_id(parsed)
+            if by_local_id:
+                return by_local_id.id
+
+        by_keycloak_id = await self.user_repo.get_by_keycloak_id(target_id)
+        if by_keycloak_id:
+            return by_keycloak_id.id
+
+        raise NotFoundError("Target user not found")
+
+    async def authorize_target_user_id(
+        self,
+        target_id: str,
+        authenticated_user_id: str,
+    ) -> uuid.UUID:
+        resolved_user_id = await self.resolve_target_user_id(target_id)
+
+        if authenticated_user_id == "internal-service":
+            return resolved_user_id
+
+        try:
+            authenticated_uuid = uuid.UUID(authenticated_user_id)
+        except ValueError:
+            raise ForbiddenError("Forbidden") from None
+
+        if resolved_user_id == authenticated_uuid:
+            return resolved_user_id
+
+        user = await self.user_repo.get_by_id(authenticated_uuid)
+        if user:
+            if user.is_superuser:
+                return resolved_user_id
+            role = await self.role_repo.get_by_name(user.role)
+            if role and role.is_admin:
+                return resolved_user_id
+
+        raise ForbiddenError("Forbidden")
 
     async def get_user_by_email(self, email: str) -> dict[str, Any] | None:
         user = await self.user_repo.get_by_email(email)
@@ -286,6 +349,7 @@ class UserService:
             if "role" in filtered:
                 role_name = normalize_user_role(filtered["role"])
                 await self.keycloak.set_realm_role(user.keycloak_id, role_name)
+                await self._logout_keycloak_sessions(user)
 
         # Then update DB to mirror Keycloak
         user = await self.user_repo.update(user_id, **filtered)
@@ -328,6 +392,8 @@ class UserService:
                 f"firstName={payload.get('firstName')}, lastName={payload.get('lastName')}"
             )
             await self.keycloak.update_user(user.keycloak_id, payload)
+            if not active and user.is_active:
+                await self._logout_keycloak_sessions(user)
 
         # Then update DB to mirror Keycloak
         user = await self.user_repo.update(user_id, is_active=active)
@@ -347,6 +413,8 @@ class UserService:
         # Set role in Keycloak first (source of truth)
         if self.keycloak.is_enabled() and user.keycloak_id:
             await self.keycloak.set_realm_role(user.keycloak_id, role)
+            if role != user.role:
+                await self._logout_keycloak_sessions(user)
             # Verify role was set correctly by reading back from Keycloak
             try:
                 actual_role = await self._resolve_role_from_keycloak(user.keycloak_id)

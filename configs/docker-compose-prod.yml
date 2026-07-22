@@ -1,0 +1,146 @@
+# =============================================================================
+# Docker Compose - Development Services
+# 
+# Application services only - connects to infrastructure services.
+# Service env files are stored in each app folder as .env.
+# Run with: docker compose -f configs/docker-compose-dev.yml up -d
+# =============================================================================
+
+name: agentic-ai-platform
+
+services:
+
+  # ==========================================================================
+  # Agent Service - Core LangGraph orchestration
+  # ==========================================================================
+
+  agent-service:
+    container_name: agent-service-rf
+    build:
+      context: ../apps/agent-service
+      dockerfile: docker/Dockerfile.service
+    restart: unless-stopped
+    volumes:
+      - /tmp/airbyte_local:/tmp/airbyte_local:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+      - "${KEYCLOAK_PUBLIC_HOSTNAME:-keycloak.localhost}:host-gateway"
+    env_file:
+      - path: ../apps/agent-service/.env.production
+        required: false
+    environment:
+      AIRBYTE_LOCAL_OUTPUT_PATH: /tmp/airbyte_local
+      LANGCHAIN_PROJECT: agent-service
+    networks:
+      airbyte:
+        aliases:
+          - agent-service
+
+  # ==========================================================================
+  # RAG Service - Graph RAG API
+  # ==========================================================================
+
+  rag-service:
+    container_name: rag-service-rf
+    build:
+      context: ../apps/rag-service
+      dockerfile: Dockerfile
+    image: rag-service:local
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    env_file:
+      - path: ../apps/rag-service/.env.production
+        required: false
+    environment:
+      ALLOW_ORIGINS: '["*"]'
+    networks:
+      airbyte:
+        aliases:
+          - rag-service
+
+  # ==========================================================================
+  # Tools Service - MCP Tools Server
+  # ==========================================================================
+
+  tools-service:
+    container_name: tools-service-rf
+    build:
+      context: ../apps/tools-service
+      dockerfile: Dockerfile
+    image: tools-service:local
+    restart: unless-stopped
+    env_file:
+      - path: ../apps/tools-service/.env.production
+        required: false
+    environment:
+      MCP_HOST: "0.0.0.0"
+      MCP_PORT: "8003"
+    volumes:
+      - ./workspace:/workspace
+    networks:
+      airbyte:
+        aliases:
+          - tools-service
+
+  # ==========================================================================
+  # User Service - Auth & User Management
+  # ==========================================================================
+
+  user-service:
+    container_name: user-service-rf
+    build:
+      context: ../apps/user-service
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+      - "${KEYCLOAK_PUBLIC_HOSTNAME:-keycloak.localhost}:host-gateway"
+    env_file:
+      - path: ../apps/user-service/.env.production
+        required: false
+    environment:
+      PERMISSION_MANIFEST_ROOT: /app
+    volumes:
+      - ../apps/agent-service/src/models:/app/apps/agent-service/src/models:ro
+      - ../apps/rag-service/langconnect/models:/app/apps/rag-service/langconnect/models:ro
+      - ../apps/tools-service/src/models:/app/apps/tools-service/src/models:ro
+    networks:
+      airbyte:
+        aliases:
+          - user-service
+
+  # ==========================================================================
+  # Web - Frontend (Onyx)
+  # ==========================================================================
+
+  web:
+    container_name: web-rf
+    build:
+      context: ../apps/web
+      dockerfile: Dockerfile
+    image: web:local
+    restart: unless-stopped
+    ports:
+      - "8126:3000"
+    env_file:
+      - path: ../apps/web/.env.production
+        required: false
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+      - "${KEYCLOAK_PUBLIC_HOSTNAME:-keycloak.localhost}:host-gateway"
+    networks:
+      airbyte:
+        aliases:
+          - web
+    depends_on:
+      - agent-service
+      - user-service
+      - rag-service
+      - tools-service
+
+
+networks:
+  airbyte:
+    external: true
+    name: ${AIRBYTE_DOCKER_NETWORK:-agentic-ai-infrastructure_default}

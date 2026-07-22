@@ -25,6 +25,8 @@ import LicenseActivationCard from "./LicenseActivationCard";
 import "./billing.css";
 import { useTranslation } from "react-i18next";
 import { APP_SUPPORT_EMAIL } from "@/lib/appInfo";
+import AdminOverviewPanel from "@/components/admin/AdminOverviewPanel";
+import { ADMIN_PATHS } from "@/lib/admin-routes";
 
 // ----------------------------------------------------------------------------
 // Types
@@ -388,6 +390,58 @@ export default function BillingPage() {
       />
       <SettingsLayouts.Body>
         <div className="flex flex-col items-center gap-6">
+          <div className="w-full">
+            <AdminOverviewPanel
+              icon={SvgWallet}
+              title={t("admin.billing.workspaceTitle", {
+                defaultValue: "Billing workspace",
+              })}
+              description={t("admin.billing.workspaceDescription", {
+                defaultValue:
+                  "Review plan status, license activation, and billing details without leaving the admin console.",
+              })}
+              metrics={[
+                {
+                  label: t("admin.billing.currentViewLabel", {
+                    defaultValue: "Current view",
+                  }),
+                  value: viewConfig.title,
+                },
+                {
+                  label: t("admin.billing.subscriptionLabel", {
+                    defaultValue: "Subscription",
+                  }),
+                  value:
+                    hasSubscription || licenseData?.has_license
+                      ? t("admin.billing.active", { defaultValue: "Active" })
+                      : t("admin.billing.review", { defaultValue: "Review" }),
+                  tone:
+                    hasSubscription || licenseData?.has_license
+                      ? "success"
+                      : "warning",
+                },
+                {
+                  label: t("admin.billing.supportLabel", {
+                    defaultValue: "Support",
+                  }),
+                  value: APP_SUPPORT_EMAIL,
+                },
+              ]}
+              actions={[
+                {
+                  label: t("admin.navigation.routes.systemInfo.sidebar", {
+                    defaultValue: "System Information",
+                  }),
+                  href: "/admin/systeminfo",
+                },
+                {
+                  label: t("admin.navigation.routes.systemSettings.sidebar"),
+                  href: ADMIN_PATHS.SYSTEM_SETTINGS,
+                  primary: true,
+                },
+              ]}
+            />
+          </div>
           {renderContent()}
           {renderFooter()}
         </div>

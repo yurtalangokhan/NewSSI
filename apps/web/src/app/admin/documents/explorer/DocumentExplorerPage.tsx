@@ -6,6 +6,7 @@ import { Explorer } from "./Explorer";
 import { Connector } from "@/lib/connectors/connectors";
 import { DocumentSetSummary } from "@/lib/types";
 import { useTranslation } from "react-i18next";
+import AdminOverviewPanel from "@/components/admin/AdminOverviewPanel";
 
 interface DocumentExplorerPageProps {
   initialSearchValue: string | undefined;
@@ -30,6 +31,57 @@ export default function DocumentExplorerPage({
       />
 
       <SettingsLayouts.Body>
+        <AdminOverviewPanel
+          icon={route.icon}
+          title={t("admin.documentExplorer.workspaceTitle", {
+            defaultValue: "Document explorer workspace",
+          })}
+          description={t("admin.documentExplorer.workspaceDescription", {
+            defaultValue:
+              "Search indexed content, narrow by connector or document set, and inspect what agents can retrieve.",
+          })}
+          metrics={[
+            {
+              label: t("admin.documentExplorer.connectorsLabel", {
+                defaultValue: "Connectors",
+              }),
+              value: String(connectors.length),
+            },
+            {
+              label: t("admin.documentExplorer.documentSetsLabel", {
+                defaultValue: "Document sets",
+              }),
+              value: String(documentSets.length),
+            },
+            {
+              label: t("admin.documentExplorer.searchModeLabel", {
+                defaultValue: "Search mode",
+              }),
+              value: initialSearchValue
+                ? t("admin.documentExplorer.prefilled", {
+                    defaultValue: "Prefilled",
+                  })
+                : t("admin.documentExplorer.openSearch", {
+                    defaultValue: "Open search",
+                  }),
+            },
+          ]}
+          actions={[
+            {
+              label: t("admin.navigation.routes.documentSets.sidebar", {
+                defaultValue: "Document Sets",
+              }),
+              href: ADMIN_PATHS.DOCUMENT_SETS,
+            },
+            {
+              label: t("admin.navigation.routes.documentFeedback.sidebar", {
+                defaultValue: "Feedback",
+              }),
+              href: ADMIN_PATHS.DOCUMENT_FEEDBACK,
+              primary: true,
+            },
+          ]}
+        />
         <Explorer
           initialSearchValue={initialSearchValue}
           connectors={connectors}

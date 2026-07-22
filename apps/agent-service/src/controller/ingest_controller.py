@@ -3,8 +3,8 @@
 from typing import Any
 
 from controller.base import BaseController
+from models.ingest import BatchRequest, BatchResponse, SourcePreviewRequest
 from service.IngestService import IngestService
-from service.Schemas import BatchRequest, BatchResponse, SourcePreviewRequest
 
 
 class IngestController(BaseController):

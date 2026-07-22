@@ -84,9 +84,7 @@ class UserMemoryService:
     # UI: paginated list (always from user-service, no cache)
     # ------------------------------------------------------------------
 
-    async def list_for_ui(
-        self, user_id: str, page: int = 1, page_size: int = 50
-    ) -> dict:
+    async def list_for_ui(self, user_id: str, page: int = 1, page_size: int = 50) -> dict:
         return await get_user_memories(user_id, page=page, page_size=page_size)
 
     # ------------------------------------------------------------------
@@ -98,9 +96,7 @@ class UserMemoryService:
         await self.cache.invalidate(user_id)
         return row
 
-    async def update(
-        self, memory_id: str, user_id: str, content: str
-    ) -> dict | None:
+    async def update(self, memory_id: str, user_id: str, content: str) -> dict | None:
         row = await update_user_memory(memory_id, user_id, content.strip())
         if row:
             await self.cache.invalidate(user_id)

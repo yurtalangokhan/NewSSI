@@ -1,8 +1,16 @@
 import logging
 from contextlib import asynccontextmanager
 
-from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
-from langgraph.store.postgres import AsyncPostgresStore
+try:
+    from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+except ImportError:
+    AsyncPostgresSaver = None
+
+try:
+    from langgraph.store.postgres import AsyncPostgresStore
+except ImportError:
+    AsyncPostgresStore = None
+
 from psycopg import errors as pg_errors
 from psycopg.rows import dict_row
 from psycopg_pool import AsyncConnectionPool

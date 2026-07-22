@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 from langconnect.database.neo4j.queries.visualization import (
     ALL_COLLECTION_EDGES,
     ALL_LABEL_COUNTS,
+    CHUNKED_INTERNAL_REL_TYPES,
     CLUSTER_BY_LABEL,
     COUNT_LABEL_EDGES,
     COUNT_LABEL_NODES,
@@ -23,14 +23,13 @@ from langconnect.database.neo4j.queries.visualization import (
     LABEL_RELATIONSHIP_TYPES,
     NEIGHBORHOOD_TEMPLATE,
     TOP_ENTITY_NAMES_BY_DEGREE,
-    CHUNKED_INTERNAL_REL_TYPES,
 )
 from langconnect.database.neo4j.repositories.base import Neo4jRepository
 from langconnect.database.neo4j.repositories.stats_repository import StatsRepository
 from langconnect.models.graph import (
     ClusterEdge,
-    ClusterNode,
     ClusteredGraphData,
+    ClusterNode,
     GraphData,
     GraphEdge,
     GraphNode,
@@ -64,7 +63,9 @@ class VisualizationRepository(Neo4jRepository):
         stats = await self._stats_repo.get_stats()
 
         if stats.node_count <= max_clusters:
-            from langconnect.database.neo4j.repositories.entity_repository import EntityRepository
+            from langconnect.database.neo4j.repositories.entity_repository import (
+                EntityRepository,
+            )
 
             entity_repo = EntityRepository(self.cid)
             data = await entity_repo.get_graph_data(
@@ -232,11 +233,15 @@ class VisualizationRepository(Neo4jRepository):
                 tgt_cluster = node_to_cluster.get(record["tgt"])
 
                 rtype = record["rtype"]
-                
+
                 if src_cluster:
-                    cluster_rel_counts[src_cluster][rtype] = cluster_rel_counts[src_cluster].get(rtype, 0) + 1
+                    cluster_rel_counts[src_cluster][rtype] = (
+                        cluster_rel_counts[src_cluster].get(rtype, 0) + 1
+                    )
                 if tgt_cluster and tgt_cluster != src_cluster:
-                    cluster_rel_counts[tgt_cluster][rtype] = cluster_rel_counts[tgt_cluster].get(rtype, 0) + 1
+                    cluster_rel_counts[tgt_cluster][rtype] = (
+                        cluster_rel_counts[tgt_cluster].get(rtype, 0) + 1
+                    )
 
                 if not src_cluster or not tgt_cluster or src_cluster == tgt_cluster:
                     continue
@@ -440,17 +445,13 @@ class VisualizationRepository(Neo4jRepository):
 
     async def count_label_nodes(self, label: str) -> int:
         async with self._session() as session:
-            result = await session.run(
-                COUNT_LABEL_NODES, cid=self.cid, label=label
-            )
+            result = await session.run(COUNT_LABEL_NODES, cid=self.cid, label=label)
             record = await result.single()
             return record["cnt"] if record else 0
 
     async def count_label_edges(self, label: str) -> int:
         async with self._session() as session:
-            result = await session.run(
-                COUNT_LABEL_EDGES, cid=self.cid, label=label
-            )
+            result = await session.run(COUNT_LABEL_EDGES, cid=self.cid, label=label)
             record = await result.single()
             return record["cnt"] if record else 0
 
@@ -537,9 +538,7 @@ class VisualizationRepository(Neo4jRepository):
             )
 
         if mode == "neighborhood" and node_id:
-            data = await self.get_neighborhood(
-                node_id, depth=depth, limit=node_limit
-            )
+            data = await self.get_neighborhood(node_id, depth=depth, limit=node_limit)
             return ClusteredGraphData(
                 nodes=data.nodes,
                 edges=data.edges,
@@ -603,7 +602,10 @@ class VisualizationRepository(Neo4jRepository):
 
         if label_count > node_limit:
             return await self._expand_as_subclusters(
-                cluster_label, label_count=label_count, node_limit=node_limit, stats=stats
+                cluster_label,
+                label_count=label_count,
+                node_limit=node_limit,
+                stats=stats,
             )
 
         # Small enough — return flat
@@ -649,8 +651,10 @@ class VisualizationRepository(Neo4jRepository):
         rel_type_counts, neighbor_label_counts = await self.get_label_metadata(
             cluster_label
         )
-        chunked_rels = await self.get_chunked_internal_rel_types(cluster_label, chunk_size)
-        
+        chunked_rels = await self.get_chunked_internal_rel_types(
+            cluster_label, chunk_size
+        )
+
         for sc in sub_clusters:
             offset = sc.properties.get("_skip", 0)
             sc.properties["_rel_type_counts"] = chunked_rels.get(offset, {})
@@ -726,7 +730,9 @@ class VisualizationRepository(Neo4jRepository):
             dom = max(lfreq, key=lfreq.get)  # type: ignore[arg-type]
             label_merged.setdefault(dom, []).extend(members)
 
-        merged_comms = sorted(label_merged.items(), key=lambda x: len(x[1]), reverse=True)
+        merged_comms = sorted(
+            label_merged.items(), key=lambda x: len(x[1]), reverse=True
+        )
         if len(merged_comms) > max_clusters:
             merged_comms = merged_comms[:max_clusters]
 
@@ -773,9 +779,7 @@ class VisualizationRepository(Neo4jRepository):
             edges=[],
             total_node_count=stats.node_count,
             total_edge_count=stats.edge_count,
-            cluster_count=len(
-                [n for n in cluster_nodes if isinstance(n, ClusterNode)]
-            ),
+            cluster_count=len([n for n in cluster_nodes if isinstance(n, ClusterNode)]),
             mode="overview",
         )
 

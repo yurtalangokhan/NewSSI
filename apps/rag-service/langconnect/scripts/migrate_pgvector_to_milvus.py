@@ -18,8 +18,8 @@ from collections import defaultdict
 from dataclasses import dataclass
 from typing import Any
 
-from langchain_core.documents import Document
 from langchain_community.vectorstores import Milvus
+from langchain_core.documents import Document
 from sqlalchemy import Select, select
 
 from langconnect import config
@@ -43,7 +43,9 @@ class ChunkRow:
 class _ReadRepo(BaseRepository):
     """Read-only helpers for migration queries."""
 
-    async def fetch_candidate_chunks(self, collection_id: str | None = None) -> list[ChunkRow]:
+    async def fetch_candidate_chunks(
+        self, collection_id: str | None = None
+    ) -> list[ChunkRow]:
         """Fetch chunks that still have pgvector embeddings.
 
         Rows with non-null embedding are treated as originating from PGVector.

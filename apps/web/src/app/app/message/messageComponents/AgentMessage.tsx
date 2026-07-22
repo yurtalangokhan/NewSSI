@@ -1,7 +1,11 @@
 "use client";
 
 import React, { useRef, RefObject, useMemo } from "react";
-import { Packet, StopReason } from "@/app/app/services/streamingModels";
+import {
+  Packet,
+  PacketType,
+  StopReason,
+} from "@/app/app/services/streamingModels";
 import { FullChatState } from "@/app/app/message/messageComponents/interfaces";
 import { FeedbackType } from "@/app/app/interfaces";
 import { handleCopy } from "@/app/app/message/copyingUtils";
@@ -14,6 +18,7 @@ import { LlmDescriptor, LlmManager } from "@/lib/hooks";
 import { Message } from "@/app/app/interfaces";
 import Text from "@/refresh-components/texts/Text";
 import { AgentTimeline } from "@/app/app/message/messageComponents/timeline/AgentTimeline";
+import GraphStageStrip from "@/app/app/message/messageComponents/timeline/GraphStageStrip";
 import { cn } from "@/lib/utils";
 import { useAppBackground } from "@/providers/AppBackgroundProvider";
 
@@ -94,14 +99,6 @@ const AgentMessage = React.memo(function AgentMessage({
   const finalAnswerRef = useRef<HTMLDivElement>(null);
   const { foregroundTextClass, foregroundTextStyle } = useAppBackground();
 
-  // Debug: log packets info
-  console.log(
-    "[AgentMessage] rawPackets:",
-    rawPackets?.length || 0,
-    "packetCount:",
-    rawPackets?.length || 0
-  );
-
   // If packets are empty but we have finalMessageText (historical message),
   // create synthetic packets for rendering
   const effectivePackets = useMemo((): Packet[] => {
@@ -140,6 +137,16 @@ const AgentMessage = React.memo(function AgentMessage({
     }
     return rawPackets;
   }, [rawPackets, finalMessageText]);
+
+  const hasGraphStagePackets = useMemo(
+    () =>
+      effectivePackets.some(
+        (packet) =>
+          packet.obj.type === PacketType.GRAPH_STAGE_START ||
+          packet.obj.type === PacketType.GRAPH_STAGE_END
+      ),
+    [effectivePackets]
+  );
 
   // Process streaming packets: returns data and callbacks
   // Hook handles all state internally, exposes clean API
@@ -214,9 +221,13 @@ const AgentMessage = React.memo(function AgentMessage({
 
   return (
     <div
-      className="flex flex-col gap-3"
+      className="flex flex-col gap-3 rounded-12 py-1"
       data-testid={isComplete ? "onyx-ai-message" : undefined}
     >
+      {(hasGraphStagePackets || !isComplete) && (
+        <GraphStageStrip agent={chatState.agent} packets={effectivePackets} />
+      )}
+
       {/* Row 1: Two-column layout for tool steps */}
 
       <AgentTimeline
@@ -236,7 +247,7 @@ const AgentMessage = React.memo(function AgentMessage({
       <div
         ref={markdownRef}
         className={cn(
-          "overflow-x-visible focus:outline-none select-text cursor-text px-3",
+          "overflow-x-visible focus:outline-none select-text cursor-text rounded-12 px-3 py-1 transition-colors",
           foregroundTextClass
         )}
         onCopy={(e) => {

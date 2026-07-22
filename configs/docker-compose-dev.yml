@@ -20,16 +20,23 @@ services:
       context: ../apps/agent-service
       dockerfile: docker/Dockerfile.service
     restart: unless-stopped
+    ports:
+      - "8123:8123"
     volumes:
       - /tmp/airbyte_local:/tmp/airbyte_local:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
       - "${KEYCLOAK_PUBLIC_HOSTNAME:-keycloak.localhost}:host-gateway"
     env_file:
-      - ../apps/agent-service/.env.production
+      - ../apps/agent-service/.env
     environment:
       AIRBYTE_LOCAL_OUTPUT_PATH: /tmp/airbyte_local
       LANGCHAIN_PROJECT: agent-service
+      TOOLS_SERVICE_URL: http://kong:8000/internal/mcp
+      MCP_SERVER_URL: http://kong:8000/internal/mcp
+      RAG_SERVICE_API_URL: http://kong:8000/internal/rag-service
+      RAG_API_URL: http://kong:8000/internal/rag-service
+      USER_SERVICE_URL: http://kong:8000/internal/user-service
     networks:
       airbyte:
         aliases:
@@ -46,12 +53,15 @@ services:
       dockerfile: Dockerfile
     image: rag-service:local
     restart: unless-stopped
+    ports:
+      - "8083:8083"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     env_file:
-      - ../apps/rag-service/.env.production
+      - ../apps/rag-service/.env
     environment:
       ALLOW_ORIGINS: '["*"]'
+      USER_SERVICE_URL: http://kong:8000/internal/user-service
     networks:
       airbyte:
         aliases:
@@ -68,11 +78,15 @@ services:
       dockerfile: Dockerfile
     image: tools-service:local
     restart: unless-stopped
+    ports:
+      - "8003:8003"
     env_file:
-      - ../apps/tools-service/.env.production
+      - ../apps/tools-service/.env
     environment:
       MCP_HOST: "0.0.0.0"
       MCP_PORT: "8003"
+      USER_SERVICE_URL: http://kong:8000/internal/user-service
+      RAG_SERVICE_API_URL: http://kong:8000/internal/rag-service
     volumes:
       - ./workspace:/workspace
     networks:
@@ -90,11 +104,19 @@ services:
       context: ../apps/user-service
       dockerfile: Dockerfile
     restart: unless-stopped
+    ports:
+      - "8090:8090"
     extra_hosts:
       - "host.docker.internal:host-gateway"
       - "${KEYCLOAK_PUBLIC_HOSTNAME:-keycloak.localhost}:host-gateway"
     env_file:
-      - ../apps/user-service/.env.production
+      - ../apps/user-service/.env
+    environment:
+      PERMISSION_MANIFEST_ROOT: /app
+    volumes:
+      - ../apps/agent-service/src/models:/app/apps/agent-service/src/models:ro
+      - ../apps/rag-service/langconnect/models:/app/apps/rag-service/langconnect/models:ro
+      - ../apps/tools-service/src/models:/app/apps/tools-service/src/models:ro
     networks:
       airbyte:
         aliases:
@@ -114,10 +136,18 @@ services:
     ports:
       - "8126:3000"
     env_file:
-      - ../apps/web/.env.production
+      - ../apps/web/.env
+    environment:
+      INTERNAL_URL: http://kong:8000
+      AGENT_SERVICE_URL: http://kong:8000
+      USER_SERVICE_URL: http://kong:8000
+      LANGCONNECT_URL: http://kong:8000
+      MCP_INTERNAL_URL: http://kong:8000/internal/mcp
+      MCP_SERVER_URL: http://kong:8000/api/mcp
+      TOOLS_SERVICE_URL: http://kong:8000/api/mcp
     extra_hosts:
       - "host.docker.internal:host-gateway"
-      - "${KEYCLOAK_PUBLIC_HOSTNAME:-10.101.90.13}:host-gateway"
+      - "${KEYCLOAK_PUBLIC_HOSTNAME:-keycloak.localhost}:host-gateway"
     networks:
       airbyte:
         aliases:

@@ -1,13 +1,18 @@
 "use client";
 
 import AdminSidebar from "@/sections/sidebar/AdminSidebar";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useSettingsContext } from "@/providers/SettingsProvider";
 import { ApplicationStatus } from "@/interfaces/settings";
 import Button from "@/refresh-components/buttons/Button";
 import { cn } from "@/lib/utils";
-import { ADMIN_PATHS } from "@/lib/admin-routes";
+import {
+  ADMIN_PATHS,
+  getAdminRouteConfigForPathname,
+} from "@/lib/admin-routes";
 import { useTranslation } from "react-i18next";
+import { useEffect } from "react";
+import { useUser } from "@/providers/UserProvider";
 
 export interface ClientLayoutProps {
   children: React.ReactNode;
@@ -15,16 +20,35 @@ export interface ClientLayoutProps {
   enableCloud: boolean;
 }
 
-// TODO (@raunakab): Migrate ALL admin pages to use SettingsLayouts from
-// `@/layouts/settings-layouts`. Once every page manages its own layout,
-// the `py-10 px-4 md:px-12` padding below can be removed entirely and
-// this prefix list can be deleted.
+// Pages using SettingsLayouts handle their own padding/centering.
 const SETTINGS_LAYOUT_PREFIXES = [
+  ADMIN_PATHS.INDEXING_STATUS,
+  ADMIN_PATHS.ADD_CONNECTOR,
+  ADMIN_PATHS.DOCUMENT_SETS,
+  ADMIN_PATHS.DOCUMENT_EXPLORER,
+  ADMIN_PATHS.DOCUMENT_FEEDBACK,
+  ADMIN_PATHS.AGENTS,
+  ADMIN_PATHS.SLACK_BOTS,
+  ADMIN_PATHS.DISCORD_BOTS,
   ADMIN_PATHS.CHAT_PREFERENCES,
+  ADMIN_PATHS.LLM_MODELS,
   ADMIN_PATHS.IMAGE_GENERATION,
   ADMIN_PATHS.WEB_SEARCH,
+  ADMIN_PATHS.CODE_INTERPRETER,
+  ADMIN_PATHS.SEARCH_SETTINGS,
+  ADMIN_PATHS.DOCUMENT_PROCESSING,
   ADMIN_PATHS.MCP_ACTIONS,
+  ADMIN_PATHS.OPENAPI_ACTIONS,
   ADMIN_PATHS.KNOWLEDGE_GRAPH,
+  ADMIN_PATHS.USERS,
+  ADMIN_PATHS.API_KEYS,
+  ADMIN_PATHS.ROLES,
+  ADMIN_PATHS.TOKEN_RATE_LIMITS,
+  ADMIN_PATHS.BILLING,
+  ADMIN_PATHS.INDEX_MIGRATION,
+  ADMIN_PATHS.DEBUG,
+  ADMIN_PATHS.SYSTEM_SETTINGS,
+  ADMIN_PATHS.SYSTEM_INFO,
 ];
 
 export function ClientLayout({
@@ -34,7 +58,23 @@ export function ClientLayout({
 }: ClientLayoutProps) {
   const { t } = useTranslation("admin");
   const pathname = usePathname();
+  const router = useRouter();
   const settings = useSettingsContext();
+  const { hasAllPermissions, isPermissionsLoading } = useUser();
+  const routeConfig = getAdminRouteConfigForPathname(pathname);
+  const requiredPermissions = routeConfig?.requiredPermissions ?? [];
+  const canViewRoute =
+    isPermissionsLoading || hasAllPermissions(requiredPermissions);
+
+  useEffect(() => {
+    if (!isPermissionsLoading && !canViewRoute) {
+      router.replace("/error/403");
+    }
+  }, [canViewRoute, isPermissionsLoading, router]);
+
+  useEffect(() => {
+    router.prefetch("/app");
+  }, [router]);
 
   // Certain admin panels have their own custom sidebar.
   // For those pages, we skip rendering the default `AdminSidebar` and let those individual pages render their own.
@@ -42,10 +82,13 @@ export function ClientLayout({
     pathname.startsWith("/admin/connectors") ||
     pathname.startsWith("/admin/embeddings");
 
-  // Pages using SettingsLayouts handle their own padding/centering.
   const hasOwnLayout = SETTINGS_LAYOUT_PREFIXES.some((prefix) =>
     pathname.startsWith(prefix)
   );
+
+  if (!canViewRoute) {
+    return null;
+  }
 
   return (
     <div className="h-screen w-screen flex overflow-hidden">
