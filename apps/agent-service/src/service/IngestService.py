@@ -149,7 +149,9 @@ class IngestService:
             raise LookupError(f"Datasource {datasource_id} not found")
 
         collection_name = row.get("name")
-        connector_type = req.connector_type or row.get("cmetadata", {}).get("connector_type", "unknown")
+        connector_type = req.connector_type or row.get("cmetadata", {}).get(
+            "connector_type", "unknown"
+        )
         records = req.records or []
 
         if not records:
@@ -186,7 +188,9 @@ class IngestService:
                 await asyncio.to_thread(
                     vector_store.col.delete, f"{vector_store._primary_field} >= 0"
                 )
-                logger.info("Cleared existing Milvus chunks for datasource %s before re-sync", datasource_id)
+                logger.info(
+                    "Cleared existing Milvus chunks for datasource %s before re-sync", datasource_id
+                )
             except Exception as exc:
                 logger.warning("Failed to clear Milvus chunks for %s: %s", datasource_id, exc)
 

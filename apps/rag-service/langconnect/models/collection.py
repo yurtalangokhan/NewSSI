@@ -3,7 +3,6 @@ from typing import Any, NotRequired, TypedDict
 
 from pydantic import BaseModel, Field
 
-
 # =====================
 # Collection TypedDicts
 # =====================

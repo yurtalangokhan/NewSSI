@@ -21,7 +21,9 @@ router = APIRouter(prefix="/collections", tags=["collections"])
 )
 async def collections_create(
     collection_data: CollectionCreate,
-    user: Annotated[AuthenticatedUser, Depends(require_permission("collection:create"))],
+    user: Annotated[
+        AuthenticatedUser, Depends(require_permission("collection:create"))
+    ],
 ):
     """Creates a new vector collection by name with optional metadata."""
     collection_info = await CollectionsManager(user.identity).create(
@@ -59,7 +61,9 @@ async def collections_get(
 
 @router.delete("/{collection_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def collections_delete(
-    user: Annotated[AuthenticatedUser, Depends(require_permission("collection:delete"))],
+    user: Annotated[
+        AuthenticatedUser, Depends(require_permission("collection:delete"))
+    ],
     collection_id: UUID,
 ):
     """Deletes a specific vector collection by name."""
@@ -71,7 +75,9 @@ async def collections_delete(
 
 @router.patch("/{collection_id}", response_model=CollectionResponse)
 async def collections_update(
-    user: Annotated[AuthenticatedUser, Depends(require_permission("collection:update"))],
+    user: Annotated[
+        AuthenticatedUser, Depends(require_permission("collection:update"))
+    ],
     collection_id: UUID,
     collection_data: CollectionUpdate,
 ):

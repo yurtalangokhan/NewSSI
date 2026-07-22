@@ -68,7 +68,7 @@ class AgentDefinitionModel(Base):
     # Sub-agent IDs for referencing existing agents (for composition)
     # NEW: Allows agents to reference other agents instead of inlining configs
     sub_agent_ids: Mapped[list] = mapped_column(JSON, default=list)
-    
+
     # Version counter for cache validation
     sub_agent_config_version: Mapped[int] = mapped_column(Integer, default=0)
 

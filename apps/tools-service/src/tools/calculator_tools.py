@@ -11,30 +11,30 @@ from ..core.base import BaseToolCategory
 
 class CalculatorTools(BaseToolCategory):
     """Mathematical calculation tools."""
-    
+
     @property
     def name(self) -> str:
         return "calculator"
-    
+
     @property
     def description(self) -> str:
         return "Safe mathematical expression evaluation"
-    
+
     @property
     def label(self) -> str:
         return "Calculator"
-    
+
     def register_tools(self, mcp: Any) -> None:
         """Register all calculator tools with MCP."""
-        
+
         @mcp.tool()
         def calculate(expression: str) -> str:
             """
             Evaluate a mathematical expression safely.
-            
+
             Args:
                 expression: Mathematical expression (e.g., "2 + 2 * 3", "sqrt(16)", "sin(3.14159/2)")
-            
+
             Returns:
                 The result of the calculation
             """
@@ -56,14 +56,14 @@ class CalculatorTools(BaseToolCategory):
                 "pi": math.pi,
                 "e": math.e,
             }
-            
+
             try:
                 # Remove any potentially dangerous characters
                 allowed = set("0123456789+-*/.() ,")
                 for char in expression:
                     if char not in allowed and not char.isalpha():
                         return f"Invalid character in expression: {char}"
-                
+
                 result = eval(expression, {"__builtins__": {}}, safe_dict)
                 return str(result)
             except Exception as e:

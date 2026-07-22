@@ -82,7 +82,7 @@ def get_vectorstore(
         )
 
     # Default: Milvus
-    from langchain_community.vectorstores import Milvus  # noqa: PLC0415
+    from langchain_community.vectorstores import Milvus
 
     milvus_collection_name = to_milvus_collection_name(collection_name)
 

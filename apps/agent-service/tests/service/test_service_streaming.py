@@ -1,7 +1,6 @@
 import pytest
 from langchain_core.messages import AIMessage
 from pydantic_core import ValidationError
-
 from service.agent_routes import _create_ai_message
 
 

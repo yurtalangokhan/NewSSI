@@ -241,11 +241,6 @@ class Env:
     def OPENWEATHERMAP_API_KEY(self) -> str | None:
         return os.environ.get("OPENWEATHERMAP_API_KEY")
 
-    # Logging Configuration
-    @property
-    def LOG_LEVEL(self) -> str:
-        return os.environ.get("LOG_LEVEL", "INFO")
-
     @property
     def LOG_FORMAT(self) -> str:
         return os.environ.get("LOG_FORMAT", "text")

@@ -85,9 +85,7 @@ class CompositionValidationService:
             return True, []
 
         if len(sub_agent_ids) > self.MAX_SUB_AGENTS:
-            return False, [
-                f"Too many sub-agents: {len(sub_agent_ids)} > {self.MAX_SUB_AGENTS}"
-            ]
+            return False, [f"Too many sub-agents: {len(sub_agent_ids)} > {self.MAX_SUB_AGENTS}"]
 
         errors = []
         for sub_id in self._normalize_ids(sub_agent_ids):
@@ -253,8 +251,7 @@ class CompositionValidationService:
 
         if proposed_depth >= self.MAX_DEPTH:
             errors.append(
-                f"Sub-agent depth would exceed limit: "
-                f"{proposed_depth} >= {self.MAX_DEPTH}"
+                f"Sub-agent depth would exceed limit: {proposed_depth} >= {self.MAX_DEPTH}"
             )
 
         return len(errors) == 0, errors
@@ -290,9 +287,7 @@ class CompositionValidationService:
             errors.append("Circular dependency detected: Agent cannot reference itself")
 
         # 3. Check schema compatibility
-        valid, schema_errors = await self.validate_schema_compatibility(
-            graph_schema, sub_agent_ids
-        )
+        valid, schema_errors = await self.validate_schema_compatibility(graph_schema, sub_agent_ids)
         if not valid:
             errors.extend(schema_errors)
 

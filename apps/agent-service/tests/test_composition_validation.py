@@ -121,9 +121,7 @@ async def test_detect_circular_dependency_indirect():
     agent_b = MockAgent(agent_b_id, "B", "SUPERVISOR", [agent_c_id])
     agent_c = MockAgent(agent_c_id, "C", "REACT", [agent_a_id])  # C → A
 
-    repo = MockRepository(
-        {agent_a_id: agent_a, agent_b_id: agent_b, agent_c_id: agent_c}
-    )
+    repo = MockRepository({agent_a_id: agent_a, agent_b_id: agent_b, agent_c_id: agent_c})
     service = CompositionValidationService(repo)
 
     is_circular = await service.detect_circular_dependency(agent_a_id, [agent_b_id])
@@ -142,9 +140,7 @@ async def test_detect_circular_dependency_none():
     agent_b = MockAgent(agent_b_id, "B", "REACT", [agent_c_id])
     agent_c = MockAgent(agent_c_id, "C", "REACT", [])
 
-    repo = MockRepository(
-        {agent_a_id: agent_a, agent_b_id: agent_b, agent_c_id: agent_c}
-    )
+    repo = MockRepository({agent_a_id: agent_a, agent_b_id: agent_b, agent_c_id: agent_c})
     service = CompositionValidationService(repo)
 
     is_circular = await service.detect_circular_dependency(agent_a_id, [agent_b_id])

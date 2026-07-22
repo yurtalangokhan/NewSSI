@@ -318,7 +318,11 @@ class ProjectRepository(BaseRepository):
             if not isinstance(legacy_owner_ids, list):
                 legacy_owner_ids = []
             old_owner = metadata.get("user_id")
-            if old_owner and str(old_owner) != primary_user_id and str(old_owner) not in legacy_owner_ids:
+            if (
+                old_owner
+                and str(old_owner) != primary_user_id
+                and str(old_owner) not in legacy_owner_ids
+            ):
                 legacy_owner_ids.append(str(old_owner))
 
             metadata["user_id"] = primary_user_id

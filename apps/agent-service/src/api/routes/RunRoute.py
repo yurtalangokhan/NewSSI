@@ -152,7 +152,9 @@ async def stream_run(
     )
 
     ctrl = _get_controller()
-    event_gen = ctrl.event_generator(agent, input_messages, config, thread_id, run_id, stream_mode, user_id)
+    event_gen = ctrl.event_generator(
+        agent, input_messages, config, thread_id, run_id, stream_mode, user_id
+    )
 
     return StreamingResponse(event_gen, media_type="text/event-stream")
 

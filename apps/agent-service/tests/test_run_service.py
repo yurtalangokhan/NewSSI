@@ -29,9 +29,11 @@ async def test_event_generator_forwards_custom_ltm_event():
     service = RunService()
     cancel_event = asyncio.Event()
 
-    with patch("service.RunService.register_run", return_value=cancel_event), patch(
-        "service.RunService.get_run_context", return_value=None
-    ), patch("service.RunService.unregister_run"):
+    with (
+        patch("service.RunService.register_run", return_value=cancel_event),
+        patch("service.RunService.get_run_context", return_value=None),
+        patch("service.RunService.unregister_run"),
+    ):
         chunks = [
             chunk
             async for chunk in service.event_generator(

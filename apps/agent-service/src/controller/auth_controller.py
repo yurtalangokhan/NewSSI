@@ -42,13 +42,12 @@ class AuthController(BaseController):
     async def get_mcp_servers(self) -> dict[str, Any]:
         mcp_servers = []
         tools_service_url = (
-            os.getenv("TOOLS_SERVICE_URL")
-            or os.getenv("MCP_SERVER_URL")
-            or "http://localhost:8003"
+            os.getenv("TOOLS_SERVICE_URL") or os.getenv("MCP_SERVER_URL") or "http://localhost:8003"
         )
 
         if tools_service_url:
             from datetime import UTC, datetime
+
             mcp_servers.append(
                 {
                     "id": 1,

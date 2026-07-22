@@ -89,9 +89,7 @@ class AgentDefinitionRepository(BaseRepository):
     async def get_by_persona_id(self, persona_id: int) -> AgentDefinitionModel | None:
         """Get the dynamic agent definition attached to a persona."""
         async with self._session() as session:
-            stmt = select(AgentDefinitionModel).where(
-                AgentDefinitionModel.persona_id == persona_id
-            )
+            stmt = select(AgentDefinitionModel).where(AgentDefinitionModel.persona_id == persona_id)
             result = await session.execute(stmt)
             return result.scalar_one_or_none()
 
@@ -125,9 +123,7 @@ class AgentDefinitionRepository(BaseRepository):
         if "sub_agent_ids" in updates:
             updates = {
                 **updates,
-                "sub_agent_ids": self._serialize_sub_agent_ids(
-                    updates.get("sub_agent_ids")
-                ),
+                "sub_agent_ids": self._serialize_sub_agent_ids(updates.get("sub_agent_ids")),
             }
 
         async with self._session() as session:
@@ -169,9 +165,7 @@ class AgentDefinitionRepository(BaseRepository):
             result = await session.execute(stmt)
             return result.rowcount > 0
 
-    async def find_agents_by_sub_agent_id(
-        self, sub_agent_id: UUID
-    ) -> list[UUID]:
+    async def find_agents_by_sub_agent_id(self, sub_agent_id: UUID) -> list[UUID]:
         """
         Find all agents that reference sub_agent_id in their sub_agent_ids.
 
@@ -182,9 +176,7 @@ class AgentDefinitionRepository(BaseRepository):
             # For PostgreSQL JSON array containment check
             # We need to check if sub_agent_id is in the sub_agent_ids JSON array
             stmt = select(AgentDefinitionModel.id).where(
-                cast(AgentDefinitionModel.sub_agent_ids, String).contains(
-                    str(sub_agent_id)
-                )
+                cast(AgentDefinitionModel.sub_agent_ids, String).contains(str(sub_agent_id))
             )
             result = await session.execute(stmt)
             return [row[0] for row in result.all()]
@@ -204,9 +196,7 @@ class AgentDefinitionRepository(BaseRepository):
         async with self._session() as session:
             # Build a condition that checks if any sub_agent_id is in the array
             conditions = [
-                cast(AgentDefinitionModel.sub_agent_ids, String).contains(
-                    str(sub_id)
-                )
+                cast(AgentDefinitionModel.sub_agent_ids, String).contains(str(sub_id))
                 for sub_id in sub_agent_ids
             ]
 
@@ -230,9 +220,7 @@ class AgentDefinitionRepository(BaseRepository):
         """
         return await self._calculate_depth_recursive(agent_id, set())
 
-    async def _calculate_depth_recursive(
-        self, agent_id: UUID, visited: set[UUID]
-    ) -> int:
+    async def _calculate_depth_recursive(self, agent_id: UUID, visited: set[UUID]) -> int:
         """Internal recursive depth calculation with cycle detection."""
         if agent_id in visited:
             return -1  # Circular dependency

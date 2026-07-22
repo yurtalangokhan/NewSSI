@@ -78,7 +78,7 @@ async def test_resolve_user_does_not_trust_localhost_without_flag(
             None,
         )
 
-    assert exc.value.status_code == 401
+    assert exc.value.status_code == 403
 
 
 async def test_resolve_user_accepts_internal_service_token(

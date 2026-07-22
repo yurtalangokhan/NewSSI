@@ -66,10 +66,12 @@ class GraphBuilder:
         """Get model instance, using override or default."""
         if model_name:
             from core import get_model
+
             return get_model(model_name)
         if self.model:
             return self.model
         from core import get_model, settings
+
         return get_model(settings.DEFAULT_MODEL)
 
     def build(
@@ -221,8 +223,7 @@ class GraphBuilder:
                 loaded_sub_agents.append(sub_config)
 
                 logger.debug(
-                    f"Loaded sub-agent {sub_agent_def.name} (schema: "
-                    f"{sub_agent_def.graph_schema})"
+                    f"Loaded sub-agent {sub_agent_def.name} (schema: {sub_agent_def.graph_schema})"
                 )
 
             except Exception as e:
@@ -547,6 +548,7 @@ async def _inject_memory_context_async(messages: list, config: RunnableConfig) -
                     build_memory_context,
                     recall_memories,
                 )
+
                 on_recall, _ = build_event_emitters(configurable)
                 memories = await recall_memories(store, user_id, on_recall=on_recall)
                 context = build_memory_context(memories)

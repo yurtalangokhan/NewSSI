@@ -15,16 +15,11 @@ The listener only needs to:
 from __future__ import annotations
 
 import asyncio
+import os
 
 from sqlalchemy.exc import DBAPIError
 
 from core.logger import get_logger
-
-logger = get_logger(__name__)
-import logging as _stdlib_logging
-
-logger_stdlib = _stdlib_logging.getLogger(__name__)
-import os
 
 logger = get_logger(__name__)
 

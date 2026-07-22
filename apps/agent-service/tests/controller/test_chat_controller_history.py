@@ -1,8 +1,7 @@
 """Tests for chat history reconstruction in ChatController."""
 
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
-
 import pytest
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
 from controller.chat_controller import ChatController
 

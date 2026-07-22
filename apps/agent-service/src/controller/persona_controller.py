@@ -71,9 +71,7 @@ def build_agent_availability(
             }
         )
 
-    memory_enabled = (
-        agent.get("memory_type") == "long_term" or bool(agent.get("long_term_memory"))
-    )
+    memory_enabled = agent.get("memory_type") == "long_term" or bool(agent.get("long_term_memory"))
     if memory_enabled:
         checks.append(
             {
@@ -189,8 +187,7 @@ class PersonaController(BaseController):
             [
                 group
                 for group in groups
-                if user.user_id
-                in {str(member_id) for member_id in group.get("user_ids", []) or []}
+                if user.user_id in {str(member_id) for member_id in group.get("user_ids", []) or []}
             ]
         )
         return restricted_persona_ids, accessible_persona_ids
@@ -447,9 +444,7 @@ class PersonaController(BaseController):
         (
             available_graph_rag_collections,
             graph_display_names,
-        ) = await self._get_existing_collection_info(
-            graph_collections
-        )
+        ) = await self._get_existing_collection_info(graph_collections)
         collection_display_names = {**rag_display_names, **graph_display_names}
 
         return build_agent_availability(
@@ -549,9 +544,7 @@ class PersonaController(BaseController):
             "hierarchy_nodes": persona.get("hierarchy_nodes") or [],
             "attached_documents": persona.get("attached_documents") or [],
             "system_prompt": persona.get("system_prompt", ""),
-            "replace_base_system_prompt": bool(
-                persona.get("replace_base_system_prompt", False)
-            ),
+            "replace_base_system_prompt": bool(persona.get("replace_base_system_prompt", False)),
             "task_prompt": persona.get("task_prompt", ""),
             "datetime_aware": bool(persona.get("datetime_aware", True)),
             "base_agent": persona.get("base_agent"),
@@ -580,9 +573,7 @@ class PersonaController(BaseController):
             display_name, base_agent = builtin_display[persona_id]
             from agents.agents import agents as all_agents
 
-            description = (
-                all_agents[base_agent].description if base_agent in all_agents else ""
-            )
+            description = all_agents[base_agent].description if base_agent in all_agents else ""
             return await self._serialize_builtin_persona(
                 persona_id, display_name, description, base_agent
             )
@@ -592,9 +583,10 @@ class PersonaController(BaseController):
             self._raise_not_found("Persona not found")
 
         if user:
-            restricted_persona_ids, accessible_persona_ids = (
-                await self._load_agent_group_visibility(user)
-            )
+            (
+                restricted_persona_ids,
+                accessible_persona_ids,
+            ) = await self._load_agent_group_visibility(user)
             if not self._can_access_persona(
                 persona,
                 user,
@@ -620,9 +612,7 @@ class PersonaController(BaseController):
 
             description = all_agents[agent_key].description if agent_key in all_agents else ""
             personas.append(
-                await self._serialize_builtin_persona(
-                    idx, display_name, description, agent_key
-                )
+                await self._serialize_builtin_persona(idx, display_name, description, agent_key)
             )
 
         try:
@@ -630,9 +620,10 @@ class PersonaController(BaseController):
             restricted_persona_ids: set[int] = set()
             accessible_persona_ids: set[int] = set()
             if user:
-                restricted_persona_ids, accessible_persona_ids = (
-                    await self._load_agent_group_visibility(user)
-                )
+                (
+                    restricted_persona_ids,
+                    accessible_persona_ids,
+                ) = await self._load_agent_group_visibility(user)
             for persona in custom_personas:
                 if user and not self._can_access_persona(
                     persona,

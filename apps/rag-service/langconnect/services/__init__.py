@@ -7,7 +7,7 @@ from langconnect.services.graph_rag_service import GraphRAGService
 
 __all__ = [
     "SUPPORTED_MIMETYPES",
-    "process_document",
     "EntityExtractor",
     "GraphRAGService",
+    "process_document",
 ]

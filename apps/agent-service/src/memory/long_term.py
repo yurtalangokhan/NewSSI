@@ -32,6 +32,7 @@ MAX_FACTS = 50
 
 # ── Reading memories ─────────────────────────────────────────────────────────
 
+
 async def recall_memories(
     store: BaseStore | None,
     user_id: str,
@@ -71,6 +72,7 @@ async def recall_memories(
 
 # ── Writing memories ─────────────────────────────────────────────────────────
 
+
 async def save_memories(
     store: BaseStore | None,
     user_id: str,
@@ -106,14 +108,13 @@ async def save_memories(
                 )
             except Exception as cb_err:
                 logger.debug(f"[LongTermMemory] on_save callback error: {cb_err}")
-        logger.info(
-            f"[LongTermMemory] Saved {len(created)} new fact(s) for user {user_id}"
-        )
+        logger.info(f"[LongTermMemory] Saved {len(created)} new fact(s) for user {user_id}")
     except Exception as e:
         logger.error(f"[LongTermMemory] Failed to save memories for user {user_id}: {e}")
 
 
 # ── Building context string ─────────────────────────────────────────────────
+
 
 def build_memory_context(memories: dict[str, Any]) -> str:
     """
@@ -181,7 +182,10 @@ async def extract_and_save_memories(
         return
 
     if not extract_memory:
-        logger.info("[LongTermMemory] extract_and_save_memories: extract_memory gate is OFF for user %s", user_id)
+        logger.info(
+            "[LongTermMemory] extract_and_save_memories: extract_memory gate is OFF for user %s",
+            user_id,
+        )
         return
 
     logger.info("[LongTermMemory] Starting memory extraction for user %s", user_id)
@@ -194,13 +198,14 @@ async def extract_and_save_memories(
 
         existing_context = ""
         if existing_facts:
-            existing_context = (
-                "\n\nAlready known facts (do NOT repeat these):\n"
-                + "\n".join(f"- {f}" for f in existing_facts)
+            existing_context = "\n\nAlready known facts (do NOT repeat these):\n" + "\n".join(
+                f"- {f}" for f in existing_facts
             )
 
         recent_messages = messages[-6:] if len(messages) > 6 else messages
-        logger.debug(f"[LongTermMemory] Processing {len(recent_messages)} recent messages (from {len(messages)} total)")
+        logger.debug(
+            f"[LongTermMemory] Processing {len(recent_messages)} recent messages (from {len(messages)} total)"
+        )
 
         conv_parts = []
         for msg in recent_messages:
@@ -210,11 +215,15 @@ async def extract_and_save_memories(
                 conv_parts.append(f"Assistant: {msg.content}")
 
         if not conv_parts:
-            logger.debug("[LongTermMemory] No conversation parts found in messages, skipping extraction")
+            logger.debug(
+                "[LongTermMemory] No conversation parts found in messages, skipping extraction"
+            )
             return
 
         conversation_text = "\n".join(conv_parts)
-        logger.debug("[LongTermMemory] Extraction input text length: %d chars", len(conversation_text))
+        logger.debug(
+            "[LongTermMemory] Extraction input text length: %d chars", len(conversation_text)
+        )
 
         extraction_prompt = (
             f"{MEMORY_EXTRACTION_SYSTEM_PROMPT}"
@@ -241,27 +250,40 @@ async def extract_and_save_memories(
                 logger.debug("[LongTermMemory] Extracted JSON from markdown code block")
 
         new_facts = json.loads(content)
-        logger.debug(f"[LongTermMemory] Parsed {len(new_facts) if isinstance(new_facts, list) else 0} facts from JSON")
+        logger.debug(
+            f"[LongTermMemory] Parsed {len(new_facts) if isinstance(new_facts, list) else 0} facts from JSON"
+        )
 
         if isinstance(new_facts, list) and new_facts:
             filtered_facts = [f for f in new_facts if isinstance(f, str) and len(f.strip()) > 3]
-            logger.info(f"[LongTermMemory] Filtered to {len(filtered_facts)} facts (from {len(new_facts)})")
+            logger.info(
+                f"[LongTermMemory] Filtered to {len(filtered_facts)} facts (from {len(new_facts)})"
+            )
             if filtered_facts:
-                logger.info(f"[LongTermMemory] Saving {len(filtered_facts)} facts: {filtered_facts[:3]}...")
+                logger.info(
+                    f"[LongTermMemory] Saving {len(filtered_facts)} facts: {filtered_facts[:3]}..."
+                )
                 await save_memories(store, user_id, filtered_facts, on_save=on_save)
             else:
                 logger.debug("[LongTermMemory] All facts filtered out")
         else:
-            logger.debug(f"[LongTermMemory] No facts extracted (parsed as: {type(new_facts).__name__})")
+            logger.debug(
+                f"[LongTermMemory] No facts extracted (parsed as: {type(new_facts).__name__})"
+            )
 
     except json.JSONDecodeError as je:
-        logger.warning(f"[LongTermMemory] Could not parse extraction response as JSON for user {user_id}: {je}")
+        logger.warning(
+            f"[LongTermMemory] Could not parse extraction response as JSON for user {user_id}: {je}"
+        )
         logger.debug(f"[LongTermMemory] Response content was: {content[:200]}...")
     except Exception as e:
-        logger.error(f"[LongTermMemory] Memory extraction failed for user {user_id}: {type(e).__name__}: {e}")
+        logger.error(
+            f"[LongTermMemory] Memory extraction failed for user {user_id}: {type(e).__name__}: {e}"
+        )
 
 
 # ── History persistence helpers ──────────────────────────────────────────────
+
 
 def tag_response_with_ltm_recall(response: Any, memories: dict) -> Any:
     """
@@ -274,18 +296,27 @@ def tag_response_with_ltm_recall(response: Any, memories: dict) -> Any:
         logger.debug("[LTM-tag] no facts to tag — memories keys: %s", list(memories.keys()))
         return response
     if not hasattr(response, "additional_kwargs"):
-        logger.warning("[LTM-tag] response has no additional_kwargs attr (type=%s)", type(response).__name__)
+        logger.warning(
+            "[LTM-tag] response has no additional_kwargs attr (type=%s)", type(response).__name__
+        )
         return response
     response.additional_kwargs["_ltm_recalled"] = len(facts)
     response.additional_kwargs["_ltm_memories"] = list(facts)
-    logger.debug("[LTM-tag] tagged response with _ltm_recalled=%d (type=%s, ak_keys=%s)",
-                 len(facts), type(response).__name__, list(response.additional_kwargs.keys()))
+    logger.debug(
+        "[LTM-tag] tagged response with _ltm_recalled=%d (type=%s, ak_keys=%s)",
+        len(facts),
+        type(response).__name__,
+        list(response.additional_kwargs.keys()),
+    )
     return response
 
 
 # ── Event emitter helpers ────────────────────────────────────────────────────
 
-def build_event_emitters(configurable: dict[str, Any]) -> tuple[
+
+def build_event_emitters(
+    configurable: dict[str, Any],
+) -> tuple[
     Callable[[dict], Coroutine] | None,
     Callable[[dict], Coroutine] | None,
 ]:
@@ -312,6 +343,7 @@ def build_event_emitters(configurable: dict[str, Any]) -> tuple[
                     writer({"type": event_type, **payload})
             except Exception as e:
                 logger.debug("[LTM] emit %s failed: %s", event_type, e)
+
         return _emit
 
     return _make_emitter("long_term_memory_recall"), _make_emitter("long_term_memory_save")

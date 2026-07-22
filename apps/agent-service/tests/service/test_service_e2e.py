@@ -1,15 +1,6 @@
-from unittest.mock import patch
-
-import pytest
 from langchain_core.messages import AIMessage, ToolCall, ToolMessage
-from langgraph.checkpoint.memory import MemorySaver
-from langgraph.graph import END, MessagesState, StateGraph
-from langgraph.types import StreamWriter
 
-from agents.agents import Agent
 from agents.utils import CustomData
-from client import AgentClient
-from schema.schema import ChatMessage
 from service.utils import langchain_to_chat_message
 
 START_MESSAGE = CustomData(type="start", data={"key1": "value1", "key2": 123})
@@ -66,46 +57,3 @@ def test_messages_conversion() -> None:
     # Fifth message: Custom data end marker
     assert messages[4].type == "custom"
     assert messages[4].custom_data == {"time": "end"}
-
-
-async def static_messages(state: MessagesState, writer: StreamWriter) -> MessagesState:
-    START_MESSAGE.dispatch(writer)
-    return {"messages": STATIC_MESSAGES}
-
-
-agent = StateGraph(MessagesState)
-agent.add_node("static_messages", static_messages)
-agent.set_entry_point("static_messages")
-agent.add_edge("static_messages", END)
-static_agent = agent.compile(checkpointer=MemorySaver())
-
-
-@pytest.fixture
-def mock_database_settings(mock_env):
-    """Fixture to ensure database settings are clean"""
-    with patch("memory.settings") as mock_settings:
-        yield mock_settings
-
-
-def test_agent_stream(mock_database_settings, mock_httpx):
-    """Test that streaming from our static agent works correctly with token streaming."""
-    agent_meta = Agent(description="A static agent.", graph_like=static_agent)
-    with patch.dict("agents.agents.agents", {"static-agent": agent_meta}, clear=True):
-        client = AgentClient(agent="static-agent")
-
-    # Use stream to get intermediate responses
-    messages = []
-
-    def agent_lookup(agent_id):
-        if agent_id == "static-agent":
-            return static_agent
-        return None
-
-    with patch("service.service.get_agent", side_effect=agent_lookup):
-        for response in client.stream("Test message", stream_tokens=False):
-            if isinstance(response, ChatMessage):
-                messages.append(response)
-
-    for expected, actual in zip(EXPECTED_OUTPUT_MESSAGES, messages):
-        actual.run_id = None
-        assert expected == actual

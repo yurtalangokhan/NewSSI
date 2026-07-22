@@ -263,7 +263,9 @@ class ScheduleService:
             try:
                 sched_info = await self._get_connection_schedule(mapping)
                 scheduled = sched_info.get("enabled", False)
-                next_run = self._compute_next_run(sched_info.get("cron_expression", ""), sched_info.get("timezone", "UTC"))
+                next_run = self._compute_next_run(
+                    sched_info.get("cron_expression", ""), sched_info.get("timezone", "UTC")
+                )
                 update_graph = sched_info.get("update_graph_rag", False)
                 last_run_at = sched_info.get("last_run_at")
                 last_run_status = sched_info.get("last_run_status")

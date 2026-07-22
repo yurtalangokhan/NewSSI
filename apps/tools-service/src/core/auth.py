@@ -16,7 +16,7 @@ from .authorization import get_user_service_permissions
 def _get_valid_api_keys() -> set:
     keys = os.environ.get("VALID_API_KEYS", "")
     if keys:
-        return set(k.strip() for k in keys.split(",") if k.strip())
+        return {k.strip() for k in keys.split(",") if k.strip()}
     return set()
 
 

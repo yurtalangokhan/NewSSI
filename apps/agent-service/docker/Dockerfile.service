@@ -20,6 +20,7 @@ COPY src/controller/ ./controller/
 COPY src/core/ ./core/
 COPY src/domain/ ./domain/
 COPY src/memory/ ./memory/
+COPY src/models/ ./models/
 COPY src/schema/ ./schema/
 COPY src/service/ ./service/
 COPY src/app.py .

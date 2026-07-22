@@ -4,9 +4,7 @@
 # Collection list
 # ------------------------------------------------------------------
 
-LIST_GRAPH_COLLECTION_IDS = (
-    "MATCH (n:Entity) RETURN DISTINCT n.collection_id AS cid"
-)
+LIST_GRAPH_COLLECTION_IDS = "MATCH (n:Entity) RETURN DISTINCT n.collection_id AS cid"
 
 # ------------------------------------------------------------------
 # Stats (per collection)

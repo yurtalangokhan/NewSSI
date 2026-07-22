@@ -40,7 +40,7 @@ def _normalize_name(name: str) -> str:
         if "'" in part:
             # Capitalise only the first letter; lowercase after apostrophe
             idx = part.index("'")
-            part = part[:idx].capitalize() + "'" + part[idx + 1:].lower()
+            part = part[:idx].capitalize() + "'" + part[idx + 1 :].lower()
         else:
             part = part.capitalize()
         normalised.append(part)

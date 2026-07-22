@@ -51,7 +51,7 @@ class GitHubMCPAgent(LazyLoadingAgent):
     async def load(self) -> None:
         """Initialize the GitHub MCP agent by loading MCP tools."""
         connections = {}
-        
+
         # GitHub MCP Server connection
         if settings.GITHUB_PAT:
             try:

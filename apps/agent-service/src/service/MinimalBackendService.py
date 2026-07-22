@@ -3,7 +3,6 @@ Minimal FastAPI server that provides the endpoints needed by the Onyx frontend.
 This is a simplified backend for development purposes.
 """
 
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 

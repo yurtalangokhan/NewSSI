@@ -28,9 +28,10 @@ Security Guidelines:
 - Respect the allowed commands list provided in your configuration.
 """
 
+
 class CommandAgent(LazyLoadingAgent):
     """Command Agent with async initialization for MCP tools."""
-    
+
     def __init__(self) -> None:
         super().__init__()
         self._mcp_tools: list[BaseTool] = []
@@ -39,9 +40,9 @@ class CommandAgent(LazyLoadingAgent):
     async def load(self) -> None:
         """Initialize the agent by loading MCP tools."""
         try:
-             # MCP connection details
+            # MCP connection details
             mcp_url = settings.MCP_SERVER_URL
-            
+
             connections = {
                 "command-server": StreamableHttpConnection(
                     transport="streamable_http",
@@ -116,5 +117,6 @@ class CommandAgent(LazyLoadingAgent):
             **kwargs,
         ):
             yield event
+
 
 command_agent = CommandAgent()

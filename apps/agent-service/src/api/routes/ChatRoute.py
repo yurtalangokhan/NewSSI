@@ -61,9 +61,7 @@ def _resolve_custom_persona_agent(
 ) -> tuple[str, dict[str, Any]]:
     """Resolve a custom persona to the execution id and runtime overrides."""
     base_agent = custom_persona.get("base_agent")
-    assistant_id = (
-        str(persona_id) if base_agent == "dynamic-agent" else base_agent or DEFAULT_AGENT
-    )
+    assistant_id = str(persona_id) if base_agent == "dynamic-agent" else base_agent or DEFAULT_AGENT
 
     resolved_override = dict(llm_override or {})
     if custom_persona.get("system_prompt"):
@@ -185,7 +183,9 @@ async def get_chat_session(
     user: Annotated[AuthenticatedUser, Depends(require_permission("chat:read"))],
 ):
     try:
-        return await (await _get_user_chat_controller(request, user)).get_chat_session(chat_session_id)
+        return await (await _get_user_chat_controller(request, user)).get_chat_session(
+            chat_session_id
+        )
     except PermissionError as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
 
@@ -197,7 +197,9 @@ async def delete_chat_session(
     chat_session_id: str,
     user: Annotated[AuthenticatedUser, Depends(require_permission("chat:delete"))],
 ):
-    result = await (await _get_user_chat_controller(request, user)).delete_chat_session(chat_session_id)
+    result = await (await _get_user_chat_controller(request, user)).delete_chat_session(
+        chat_session_id
+    )
     if result.get("success") is False and result.get("error") == "Forbidden":
         raise HTTPException(status_code=403, detail="Forbidden")
     return result
@@ -282,7 +284,9 @@ async def get_available_context_tokens(
     user: Annotated[AuthenticatedUser, Depends(require_permission("chat:read"))],
     session_id: str = None,
 ):
-    return await (await _get_user_chat_controller(request, user)).get_available_context_tokens(session_id)
+    return await (await _get_user_chat_controller(request, user)).get_available_context_tokens(
+        session_id
+    )
 
 
 @router.get("/api/user/projects/session/{session_id}/token-count")
@@ -292,7 +296,9 @@ async def get_session_token_count(
     session_id: str,
     user: Annotated[AuthenticatedUser, Depends(require_permission("chat:read"))],
 ):
-    return await (await _get_user_chat_controller(request, user)).get_session_token_count(session_id)
+    return await (await _get_user_chat_controller(request, user)).get_session_token_count(
+        session_id
+    )
 
 
 @router.get("/api/user/projects/session/{session_id}/files")
@@ -380,7 +386,12 @@ async def send_chat_message(
                 from core.llm_factory import get_llm_for_provider
 
                 provider_id = str(llm_override["provider_id"])
-                logger.debug("Resolving provider: provider_id=%s, provider_type=%s, model=%s", provider_id, llm_override["provider_type"], model_name)
+                logger.debug(
+                    "Resolving provider: provider_id=%s, provider_type=%s, model=%s",
+                    provider_id,
+                    llm_override["provider_type"],
+                    model_name,
+                )
                 repo = ProviderRepository()
                 provider = await _resolve_provider_for_user(effective_user_id, provider_id, repo)
 
@@ -394,11 +405,13 @@ async def send_chat_message(
                     # Only fetch API key for DB-stored (non-builtin) providers
                     if not provider.get("is_builtin"):
                         api_key = await repo.get_decrypted_api_key(provider_id, effective_user_id)
-                    base_url = provider.get("base_url") or (provider.get("user_config") or {}).get("api_base")
-                    api_version = (provider.get("user_config") or {}).get("api_version")
-                    request_overrides = ((provider.get("config") or {}).get("custom_config") or {}).get(
-                        "request_overrides"
+                    base_url = provider.get("base_url") or (provider.get("user_config") or {}).get(
+                        "api_base"
                     )
+                    api_version = (provider.get("user_config") or {}).get("api_version")
+                    request_overrides = (
+                        (provider.get("config") or {}).get("custom_config") or {}
+                    ).get("request_overrides")
                     provider_type = provider.get("provider_type") or llm_override["provider_type"]
                     supports_reasoning = await _resolve_model_supports_reasoning(
                         user_id=effective_user_id,
@@ -408,7 +421,9 @@ async def send_chat_message(
                         repo=repo,
                     )
                 else:
-                    logger.warning("Provider %s not found for user %s", provider_id, effective_user_id)
+                    logger.warning(
+                        "Provider %s not found for user %s", provider_id, effective_user_id
+                    )
                     provider_resolution_failed = True
                     provider_type = llm_override["provider_type"]
                     supports_reasoning = None
@@ -457,7 +472,7 @@ async def send_chat_message(
                 "name": session_name,
                 "persona_id": persona_id,
                 "project_id": body.get("project_id"),
-            }
+            },
         )
     else:
         metadata = thread.get("metadata", {}) or {}
@@ -479,14 +494,18 @@ async def send_chat_message(
             metadata["legacy_user_ids"] = legacy_owner_ids
             metadata["user_id"] = effective_user_id
 
-        needs_update = metadata.get("user_id") == effective_user_id and str(owner_id) != effective_user_id
+        needs_update = (
+            metadata.get("user_id") == effective_user_id and str(owner_id) != effective_user_id
+        )
         if metadata.get("name") in (None, "", "New Chat"):
             metadata["name"] = session_name
             needs_update = True
         if persona_id is not None and metadata.get("persona_id") != persona_id:
             metadata["persona_id"] = persona_id
             needs_update = True
-        if body.get("project_id") is not None and metadata.get("project_id") != body.get("project_id"):
+        if body.get("project_id") is not None and metadata.get("project_id") != body.get(
+            "project_id"
+        ):
             metadata["project_id"] = body.get("project_id")
             needs_update = True
         if llm_override:
@@ -513,6 +532,7 @@ async def send_chat_message(
 
     if persona_id is not None and not isinstance(persona_id, str):
         from service.PersonaRepository import PersonaDB
+
         try:
             custom_persona = await PersonaDB.get(persona_id)
         except Exception:
@@ -560,7 +580,14 @@ async def send_chat_message(
             fd_data: str | None = fd.get("data")  # base64 string or None
             fd_type: str = fd.get("type") or "document"
 
-            logger.debug("Processing file descriptor: id=%s, name=%s, mime=%s, has_data=%s, type=%s", fd_id, fd_name, fd_mime, bool(fd_data), fd_type)
+            logger.debug(
+                "Processing file descriptor: id=%s, name=%s, mime=%s, has_data=%s, type=%s",
+                fd_id,
+                fd_name,
+                fd_mime,
+                bool(fd_data),
+                fd_type,
+            )
             files_metadata.append({"id": fd_id, "type": fd_type, "name": fd_name})
 
             if not fd_data:
@@ -573,10 +600,13 @@ async def send_chat_message(
                     if db_doc and db_doc.get("minio_object_key"):
                         raw_bytes = minio_download(db_doc["minio_object_key"])
                         import base64 as _b64_inner
+
                         fd_data = _b64_inner.b64encode(raw_bytes).decode("ascii")
                         fd_mime = db_doc.get("mime_type") or fd_mime
                         fd_name = db_doc.get("filename") or fd_name
-                        logger.debug("Recovered file %s from MinIO (%d bytes)", fd_id, len(raw_bytes))
+                        logger.debug(
+                            "Recovered file %s from MinIO (%d bytes)", fd_id, len(raw_bytes)
+                        )
                 except Exception as _minio_err:
                     logger.warning("Could not recover file %s from MinIO: %s", fd_id, _minio_err)
 
@@ -592,7 +622,9 @@ async def send_chat_message(
                 logger.debug("Storing file %s (%s): %d bytes", fd_id, m, len(raw))
                 _store_file(fd_id, raw, fd_mime, fd_name)
             except Exception as store_err:
-                logger.error("Could not store file %s in FileService: %s", fd_id, store_err, exc_info=True)
+                logger.error(
+                    "Could not store file %s in FileService: %s", fd_id, store_err, exc_info=True
+                )
 
             # Persist to MinIO + DB (best-effort, only if not already saved)
             try:
@@ -622,13 +654,17 @@ async def send_chat_message(
                         project_id=resolved_project_id,
                     )
             except Exception as _persist_err:
-                logger.warning("MinIO/DB persist for inline file %s failed: %s", fd_id, _persist_err)
+                logger.warning(
+                    "MinIO/DB persist for inline file %s failed: %s", fd_id, _persist_err
+                )
 
             if m in IMAGE_MIMES:
-                file_content_blocks.append({
-                    "type": "image_url",
-                    "image_url": {"url": f"data:{m};base64,{fd_data}"},
-                })
+                file_content_blocks.append(
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": f"data:{m};base64,{fd_data}"},
+                    }
+                )
             else:
                 blocks = _extract_file_blocks(fd_data, fd_mime, fd_name)
                 file_content_blocks.extend(blocks)

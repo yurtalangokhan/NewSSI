@@ -44,7 +44,7 @@ class MCPProviderRepository(BaseRepository):
             else:
                 stmt = (
                     select(MCPProviderModel)
-                    .where(MCPProviderModel.is_active == True)
+                    .where(MCPProviderModel.is_active.is_(True))
                     .order_by(MCPProviderModel.name)
                 )
             result = await session.execute(stmt)
@@ -74,7 +74,7 @@ class MCPProviderRepository(BaseRepository):
     async def get_builtin(self) -> dict[str, Any] | None:
         """Get the builtin tool-service provider."""
         async with self._session() as session:
-            stmt = select(MCPProviderModel).where(MCPProviderModel.is_builtin == True)
+            stmt = select(MCPProviderModel).where(MCPProviderModel.is_builtin.is_(True))
             result = await session.execute(stmt)
             row = result.scalar_one_or_none()
         if row is None:

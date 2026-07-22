@@ -36,9 +36,7 @@ async def create_persona(
     request: PersonaUpsertRequest,
     user: Annotated[AuthenticatedUser, Depends(require_permission("persona:create"))],
 ):
-    return await _get_controller().create_persona(
-        request.model_dump(), user_id=user.user_id
-    )
+    return await _get_controller().create_persona(request.model_dump(), user_id=user.user_id)
 
 
 @router.get("/api/persona/{persona_id}")

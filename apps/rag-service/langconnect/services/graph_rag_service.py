@@ -8,12 +8,12 @@ Coordinates the pipeline:
 """
 
 import asyncio
-import json
 import logging
 from typing import Any
 
-from langconnect.database.collections import Collection, CollectionsManager
-from langconnect.database.connection import get_vectorstore
+from fastapi import status
+
+from langconnect.database.collections import Collection
 from langconnect.database.neo4j import GraphStore
 from langconnect.models.graph import (
     BuildProgress,
@@ -41,11 +41,13 @@ class _BuildControl:
 
 _build_controls: dict[str, _BuildControl] = {}
 
-_ACTIVE_BUILD_STATUSES: frozenset[BuildStatus] = frozenset({
-    BuildStatus.PENDING,
-    BuildStatus.EXTRACTING,
-    BuildStatus.BUILDING,
-})
+_ACTIVE_BUILD_STATUSES: frozenset[BuildStatus] = frozenset(
+    {
+        BuildStatus.PENDING,
+        BuildStatus.EXTRACTING,
+        BuildStatus.BUILDING,
+    }
+)
 
 
 def get_build_progress(collection_id: str) -> BuildProgress | None:
@@ -71,7 +73,11 @@ def _get_active_build(collection_id: str) -> tuple[BuildProgress, _BuildControl]
     """Return (progress, control) if a build is currently active, else None."""
     progress = _build_progress.get(collection_id)
     control = _build_controls.get(collection_id)
-    if progress is None or control is None or progress.status not in _ACTIVE_BUILD_STATUSES:
+    if (
+        progress is None
+        or control is None
+        or progress.status not in _ACTIVE_BUILD_STATUSES
+    ):
         return None
     return progress, control
 
@@ -173,10 +179,10 @@ class GraphRAGService:
                     text=chunk["content"],
                     chunk_id=chunk.get("id"),
                 )
-                for entity in result.entities:
-                    all_entities.append(entity.model_dump())
-                for relation in result.relations:
-                    all_relations.append(relation.model_dump())
+                all_entities.extend(entity.model_dump() for entity in result.entities)
+                all_relations.extend(
+                    relation.model_dump() for relation in result.relations
+                )
 
                 progress.processed_chunks += 1
                 progress.extracted_entities = len(all_entities)
@@ -213,11 +219,11 @@ class GraphRAGService:
     async def _wait_if_paused_or_stopped(self, control: _BuildControl) -> None:
         """Cooperative checkpoint for pause/resume/stop controls."""
         if control.cancel_requested:
-            raise asyncio.CancelledError()
+            raise asyncio.CancelledError
         if not control.pause_event.is_set():
             await control.pause_event.wait()
         if control.cancel_requested:
-            raise asyncio.CancelledError()
+            raise asyncio.CancelledError
 
     async def _fetch_all_chunks(self) -> list[dict[str, Any]]:
         """Fetch all document chunks from Milvus."""
@@ -274,7 +280,9 @@ class GraphRAGService:
         # Signal 1 — BM25: entities ranked by descending BM25 score
         for rank, hit in enumerate(bm25_results):
             name = hit["node"].name
-            rrf_scores[name] = rrf_scores.get(name, 0) + graph_weight / (rrf_k + rank + 1)
+            rrf_scores[name] = rrf_scores.get(name, 0) + graph_weight / (
+                rrf_k + rank + 1
+            )
 
         # Signal 2 — Vector: for each ranked chunk, find which
         # BM25-matched entity names appear in the chunk text.
@@ -288,17 +296,19 @@ class GraphRAGService:
             if not content_lower:
                 continue
             for name_lower, name in entity_names_lower.items():
-                if name_lower in content_lower:
-                    if name not in entity_best_vector_rank or rank < entity_best_vector_rank[name]:
-                        entity_best_vector_rank[name] = rank
+                if name_lower in content_lower and (
+                    name not in entity_best_vector_rank
+                    or rank < entity_best_vector_rank[name]
+                ):
+                    entity_best_vector_rank[name] = rank
 
         for name, best_rank in entity_best_vector_rank.items():
-            rrf_scores[name] = rrf_scores.get(name, 0) + vector_weight / (rrf_k + best_rank + 1)
+            rrf_scores[name] = rrf_scores.get(name, 0) + vector_weight / (
+                rrf_k + best_rank + 1
+            )
 
         # Sort entities by fused RRF score (descending)
-        sorted_entities = sorted(
-            rrf_scores.items(), key=lambda x: x[1], reverse=True
-        )
+        sorted_entities = sorted(rrf_scores.items(), key=lambda x: x[1], reverse=True)
 
         # Build ordered node list — attach rrf_score to properties
         merged_nodes: list = []
@@ -362,7 +372,7 @@ class GraphRAGService:
                 label = hit["node"].label if hit else "?"
                 bm25 = hit["bm25_score"] if hit else 0
                 # Show both scores: one from BM25, one from fused RRF
-                in_vector = "✓" if name in entity_best_vector_rank else "–"
+                in_vector = "yes" if name in entity_best_vector_rank else "no"
                 context_parts.append(
                     f"  #{rank}  {label}: {name}  "
                     f"(RRF={score:.4f}  BM25={bm25:.3f}  vec={in_vector})"
@@ -419,7 +429,7 @@ class GraphRAGService:
                 for r in results
             ]
         except HTTPException as exc:
-            if exc.status_code == 404:
+            if exc.status_code == status.HTTP_404_NOT_FOUND:
                 # Expected for datasource-only collections that have a
                 # graph but no vector embeddings. BM25 will still work.
                 logger.debug(

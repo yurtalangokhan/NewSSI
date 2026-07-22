@@ -9,11 +9,11 @@ from pydantic import TypeAdapter, ValidationError
 from langconnect.auth import AuthenticatedUser, require_permission
 from langconnect.database.collections import Collection
 from langconnect.models import SearchQuery, SearchResult
+from langconnect.services import process_document
 from langconnect.services.build_lock import (
     ensure_collection_mutable,
     ensure_not_connector_managed_collection,
 )
-from langconnect.services import process_document
 
 # Create a TypeAdapter that enforces “list of dict”
 _metadata_adapter = TypeAdapter(list[dict[str, Any]])
@@ -177,11 +177,11 @@ async def documents_list_chunks(
         user_id=user.identity,
     )
     chunks = await collection.get_chunks(file_id=document_id)
-    
+
     # Fallbacks in case stats weren't saved in metadata for older chunks
     total_chunks = len(chunks)
     first_meta = chunks[0].get("metadata", {}) if chunks else {}
-    
+
     stats = {
         "total_chunks": first_meta.get("file_total_chunks", total_chunks),
         "avg_chars": first_meta.get("file_avg_chars", 0),
@@ -191,14 +191,14 @@ async def documents_list_chunks(
     # Re-calculate averages if not present in metadata (older docs)
     if total_chunks > 0 and stats["avg_chars"] == 0:
         total_chars = sum(len(c.get("content", "")) for c in chunks)
-        total_tokens = sum(c.get("metadata", {}).get("token_count", len(c.get("content", "")) // 4) for c in chunks)
+        total_tokens = sum(
+            c.get("metadata", {}).get("token_count", len(c.get("content", "")) // 4)
+            for c in chunks
+        )
         stats["avg_chars"] = round(total_chars / total_chunks)
         stats["avg_tokens"] = round(total_tokens / total_chunks)
-        
-    return {
-        "stats": stats,
-        "chunks": chunks
-    }
+
+    return {"stats": stats, "chunks": chunks}
 
 
 @router.delete(

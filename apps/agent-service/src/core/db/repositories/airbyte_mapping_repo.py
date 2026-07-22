@@ -51,9 +51,7 @@ class AirbyteMappingRepository(BaseRepository):
     async def list_all(self) -> list[dict[str, Any]]:
         """Return all mappings ordered by creation date."""
         async with self._session() as session:
-            stmt = select(AirbyteMappingModel).order_by(
-                AirbyteMappingModel.created_at
-            )
+            stmt = select(AirbyteMappingModel).order_by(AirbyteMappingModel.created_at)
             result = await session.execute(stmt)
             rows = result.scalars().all()
         return [self._to_dict(r) for r in rows]

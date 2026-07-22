@@ -1,7 +1,6 @@
 """Proxy controller - handles external service proxy logic (MCP, Ollama, RAG)."""
 
 import os
-
 from typing import Any
 
 from controller.base import BaseController

@@ -66,7 +66,11 @@ class RunService:
         sanitized: dict[str, Any] = {}
         for key, value in values.items():
             if isinstance(value, Send):
-                sanitized[key] = {"__type__": "Send", "node": value.node, "arg": str(value.arg)[:500]}
+                sanitized[key] = {
+                    "__type__": "Send",
+                    "node": value.node,
+                    "arg": str(value.arg)[:500],
+                }
             elif isinstance(value, list):
                 sanitized[key] = [
                     {
@@ -203,7 +207,11 @@ class RunService:
                             yield f"data: {json.dumps({'type': 'graph_stage_start', 'stage_name': stage_candidate, 'stage_index': stage_names.index(stage_candidate)})}\n\n"
                         continue
 
-                    if stage_candidate and event_type == "on_chain_end" and active_stage_name == stage_candidate:
+                    if (
+                        stage_candidate
+                        and event_type == "on_chain_end"
+                        and active_stage_name == stage_candidate
+                    ):
                         yield f"data: {json.dumps({'type': 'graph_stage_end', 'stage_name': stage_candidate, 'stage_index': stage_names.index(stage_candidate)})}\n\n"
                         active_stage_name = None
                         continue
@@ -239,7 +247,9 @@ class RunService:
         finally:
             if ctx:
                 try:
-                    await self._persist_partial_messages(thread_id, run_id_str, ctx, agent, str(run_id))
+                    await self._persist_partial_messages(
+                        thread_id, run_id_str, ctx, agent, str(run_id)
+                    )
                 except Exception as exc:
                     logger.error("Persist error: %s", exc)
             if active_stage_name:
@@ -273,7 +283,9 @@ class RunService:
         history: list[dict[str, Any]] = []
 
         async for checkpoint in saver.alist(config, limit=limit, before=before):
-            raw_values = checkpoint.checkpoint.get("channel_values", {}) if checkpoint.checkpoint else {}
+            raw_values = (
+                checkpoint.checkpoint.get("channel_values", {}) if checkpoint.checkpoint else {}
+            )
             values = self._sanitize_checkpoint_values(raw_values)
 
             if "messages" in values:
@@ -299,10 +311,14 @@ class RunService:
                     "next": [],
                     "checkpoint": {
                         "thread_id": thread_id,
-                        "checkpoint_id": checkpoint.checkpoint["id"] if checkpoint.checkpoint else None,
+                        "checkpoint_id": checkpoint.checkpoint["id"]
+                        if checkpoint.checkpoint
+                        else None,
                     },
                     "metadata": checkpoint.metadata,
-                    "created_at": checkpoint.metadata.get("created_at") if checkpoint.metadata else None,
+                    "created_at": checkpoint.metadata.get("created_at")
+                    if checkpoint.metadata
+                    else None,
                     "parent_config": checkpoint.parent_config,
                     "parent_checkpoint": parent_checkpoint,
                 }

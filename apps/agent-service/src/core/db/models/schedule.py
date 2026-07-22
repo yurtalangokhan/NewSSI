@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import uuid as _uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     Boolean,
@@ -18,6 +19,9 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from core.db.models.base import Base
+
+if TYPE_CHECKING:
+    from core.db.models.collection import PgCollection
 
 
 class SyncScheduleModel(Base):
@@ -42,22 +46,36 @@ class SyncScheduleModel(Base):
     )
     cron_expression: Mapped[str] = mapped_column(Text, nullable=False)
     preset: Mapped[str] = mapped_column(
-        Text, nullable=False, default="custom", server_default=text("'custom'"),
+        Text,
+        nullable=False,
+        default="custom",
+        server_default=text("'custom'"),
     )
     enabled: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=True, server_default=text("TRUE"),
+        Boolean,
+        nullable=False,
+        default=True,
+        server_default=text("TRUE"),
     )
     update_graph_rag: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=False, server_default=text("FALSE"),
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default=text("FALSE"),
     )
     timezone: Mapped[str] = mapped_column(
-        Text, nullable=False, default="UTC", server_default=text("'UTC'"),
+        Text,
+        nullable=False,
+        default="UTC",
+        server_default=text("'UTC'"),
     )
     next_run_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True,
+        DateTime(timezone=True),
+        nullable=True,
     )
     last_run_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True,
+        DateTime(timezone=True),
+        nullable=True,
     )
     last_run_status: Mapped[str | None] = mapped_column(Text, nullable=True)
     last_run_error: Mapped[str | None] = mapped_column(Text, nullable=True)

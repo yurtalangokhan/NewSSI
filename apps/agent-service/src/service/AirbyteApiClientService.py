@@ -52,8 +52,7 @@ class AirbyteAPIClient:
         max_retries: int = 3,
     ) -> None:
         self._base_url = (
-            base_url
-            or os.environ.get("AIRBYTE_API_URL", "http://airbyte-server:8001/api/v1")
+            base_url or os.environ.get("AIRBYTE_API_URL", "http://airbyte-server:8001/api/v1")
         ).rstrip("/")
         self._timeout = timeout
         self._max_retries = max_retries
@@ -105,7 +104,12 @@ class AirbyteAPIClient:
                         delay = 2 ** (attempt - 1)
                         logger.warning(
                             "Airbyte API %s %s returned %d (attempt %d/%d), retrying in %ds",
-                            method, path, resp.status_code, attempt, self._max_retries, delay,
+                            method,
+                            path,
+                            resp.status_code,
+                            attempt,
+                            self._max_retries,
+                            delay,
                         )
                         await asyncio.sleep(delay)
                         continue
@@ -117,16 +121,25 @@ class AirbyteAPIClient:
                     delay = 2 ** (attempt - 1)
                     logger.warning(
                         "Airbyte API connection error on %s %s (attempt %d/%d): %s — retrying in %ds",
-                        method, path, attempt, self._max_retries, exc, delay,
+                        method,
+                        path,
+                        attempt,
+                        self._max_retries,
+                        exc,
+                        delay,
                     )
                     await asyncio.sleep(delay)
                 else:
-                    raise AirbyteAPIError(0, f"Connection failed after {self._max_retries} attempts: {exc}") from exc
+                    raise AirbyteAPIError(
+                        0, f"Connection failed after {self._max_retries} attempts: {exc}"
+                    ) from exc
 
         # Should not reach here, but just in case
         raise AirbyteAPIError(0, f"Request failed: {last_exc}")
 
-    async def _post(self, path: str, json: dict[str, Any] | None = None, **kw: Any) -> dict[str, Any]:
+    async def _post(
+        self, path: str, json: dict[str, Any] | None = None, **kw: Any
+    ) -> dict[str, Any]:
         return await self._request("POST", path, json, **kw)
 
     # ---- workspace -------------------------------------------------------
@@ -283,7 +296,9 @@ class AirbyteAPIClient:
         destination connector knows which collection to target.
         """
         # Reuse existing destination for this datasource if it already exists
-        dest_name = f"agent-embedding-{datasource_id[:8]}" if datasource_id else "agent-embedding-default"
+        dest_name = (
+            f"agent-embedding-{datasource_id[:8]}" if datasource_id else "agent-embedding-default"
+        )
         destinations = await self.list_destinations()
         for dest in destinations:
             if dest.get("name") == dest_name:
@@ -310,9 +325,8 @@ class AirbyteAPIClient:
         agent_service_url = os.environ.get(
             "AIRBYTE_DESTINATION_AGENT_URL", "http://agent-service:8080"
         )
-        agent_token = (
-            os.environ.get("AIRBYTE_DESTINATION_AGENT_TOKEN")
-            or os.environ.get("INTERNAL_SERVICE_TOKEN")
+        agent_token = os.environ.get("AIRBYTE_DESTINATION_AGENT_TOKEN") or os.environ.get(
+            "INTERNAL_SERVICE_TOKEN"
         )
         destination_config = {
             "agent_service_url": agent_service_url,
@@ -328,7 +342,11 @@ class AirbyteAPIClient:
             destination_definition_id=embedding_def["destinationDefinitionId"],
             config=destination_config,
         )
-        logger.info("Created embedding destination %s for datasource %s", dest["destinationId"], datasource_id)
+        logger.info(
+            "Created embedding destination %s for datasource %s",
+            dest["destinationId"],
+            datasource_id,
+        )
         return dest["destinationId"]
 
     # ---- connections -----------------------------------------------------
@@ -396,9 +414,7 @@ class AirbyteAPIClient:
         """
         if schedule:
             # Extract cron data from the nested structure
-            cron_data = (
-                schedule.get("scheduleData", {}).get("cron", {})
-            )
+            cron_data = schedule.get("scheduleData", {}).get("cron", {})
             cron_expr = cron_data.get("cronExpression", "0 0 0 * * ?")
             tz = cron_data.get("cronTimeZone", "UTC")
 
@@ -478,9 +494,7 @@ class AirbyteAPIClient:
             await asyncio.sleep(poll_interval)
             elapsed += poll_interval
 
-        raise AirbyteAPIError(
-            408, f"Job {job_id} did not complete within {timeout}s"
-        )
+        raise AirbyteAPIError(408, f"Job {job_id} did not complete within {timeout}s")
 
     # ---- health ----------------------------------------------------------
 

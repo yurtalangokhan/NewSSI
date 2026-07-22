@@ -8,10 +8,9 @@ import os
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from ..core.base import BaseToolCategory
-
 
 # Get workspace directory from environment
 WORKSPACE_DIR = os.environ.get("WORKSPACE_DIR", "/workspace")
@@ -19,9 +18,9 @@ WORKSPACE_DIR = os.environ.get("WORKSPACE_DIR", "/workspace")
 
 def normalize_code(code: str) -> str:
     """Normalize escaped characters from UI/JSON input."""
-    code = code.replace('\\n', '\n')
-    code = code.replace('\\t', '\t')
-    code = code.replace('\\r', '\r')
+    code = code.replace("\\n", "\n")
+    code = code.replace("\\t", "\t")
+    code = code.replace("\\r", "\r")
     code = code.replace('\\"', '"')
     return code
 
@@ -50,9 +49,9 @@ class JavaTools(BaseToolCategory):
         @mcp.tool()
         def run_jar(
             jar_path: str,
-            args: Optional[str] = None,
-            main_class: Optional[str] = None,
-            jvm_args: Optional[str] = None,
+            args: str | None = None,
+            main_class: str | None = None,
+            jvm_args: str | None = None,
             timeout: int = 120,
         ) -> str:
             """
@@ -198,7 +197,7 @@ class JavaTools(BaseToolCategory):
         @mcp.tool()
         def compile_java_file(
             file_path: str,
-            output_dir: Optional[str] = None,
+            output_dir: str | None = None,
             timeout: int = 60,
         ) -> str:
             """
@@ -221,7 +220,11 @@ class JavaTools(BaseToolCategory):
             try:
                 cmd = ["javac"]
                 if output_dir:
-                    out = output_dir if os.path.isabs(output_dir) else os.path.join(WORKSPACE_DIR, output_dir)
+                    out = (
+                        output_dir
+                        if os.path.isabs(output_dir)
+                        else os.path.join(WORKSPACE_DIR, output_dir)
+                    )
                     os.makedirs(out, exist_ok=True)
                     cmd.extend(["-d", out])
                 cmd.append(file_path)

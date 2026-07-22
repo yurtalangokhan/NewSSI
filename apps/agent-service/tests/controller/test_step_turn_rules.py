@@ -1,7 +1,5 @@
 """Unit tests for the step_turn_rules registry."""
 
-import pytest
-
 from controller.step_turn_rules import STEP_TURN_RULES, should_increment_turn
 
 
@@ -21,67 +19,134 @@ class TestShouldIncrementTurn:
     # ------------------------------------------------------------------ #
 
     def test_reasoning_start_always_new_turn(self):
-        assert should_increment_turn("reasoning_start", "custom_tool_delta", None, None, is_first=False) is True
+        assert (
+            should_increment_turn(
+                "reasoning_start", "custom_tool_delta", None, None, is_first=False
+            )
+            is True
+        )
 
     def test_reasoning_start_after_reasoning_delta(self):
-        assert should_increment_turn("reasoning_start", "reasoning_delta", None, None, is_first=False) is True
+        assert (
+            should_increment_turn("reasoning_start", "reasoning_delta", None, None, is_first=False)
+            is True
+        )
 
     # ------------------------------------------------------------------ #
     # reasoning_delta groups with preceding reasoning packets             #
     # ------------------------------------------------------------------ #
 
     def test_reasoning_delta_groups_with_reasoning_start(self):
-        assert should_increment_turn("reasoning_delta", "reasoning_start", None, None, is_first=False) is False
+        assert (
+            should_increment_turn("reasoning_delta", "reasoning_start", None, None, is_first=False)
+            is False
+        )
 
     def test_reasoning_delta_groups_with_reasoning_delta(self):
-        assert should_increment_turn("reasoning_delta", "reasoning_delta", None, None, is_first=False) is False
+        assert (
+            should_increment_turn("reasoning_delta", "reasoning_delta", None, None, is_first=False)
+            is False
+        )
 
     def test_reasoning_delta_splits_from_tool(self):
-        assert should_increment_turn("reasoning_delta", "custom_tool_delta", None, None, is_first=False) is True
+        assert (
+            should_increment_turn(
+                "reasoning_delta", "custom_tool_delta", None, None, is_first=False
+            )
+            is True
+        )
 
     # ------------------------------------------------------------------ #
     # custom_tool_start always starts a new turn                          #
     # ------------------------------------------------------------------ #
 
     def test_tool_start_always_new_turn(self):
-        assert should_increment_turn("custom_tool_start", "reasoning_delta", None, None, is_first=False) is True
+        assert (
+            should_increment_turn(
+                "custom_tool_start", "reasoning_delta", None, None, is_first=False
+            )
+            is True
+        )
 
     def test_tool_start_after_tool_delta(self):
-        assert should_increment_turn("custom_tool_start", "custom_tool_delta", "search", "search", is_first=False) is True
+        assert (
+            should_increment_turn(
+                "custom_tool_start", "custom_tool_delta", "search", "search", is_first=False
+            )
+            is True
+        )
 
     # ------------------------------------------------------------------ #
     # custom_tool_delta groups when same tool, splits when tool changes   #
     # ------------------------------------------------------------------ #
 
     def test_tool_delta_groups_after_tool_start_same_tool(self):
-        assert should_increment_turn("custom_tool_delta", "custom_tool_start", "search", "search", is_first=False) is False
+        assert (
+            should_increment_turn(
+                "custom_tool_delta", "custom_tool_start", "search", "search", is_first=False
+            )
+            is False
+        )
 
     def test_tool_delta_groups_after_tool_delta_same_tool(self):
-        assert should_increment_turn("custom_tool_delta", "custom_tool_delta", "search", "search", is_first=False) is False
+        assert (
+            should_increment_turn(
+                "custom_tool_delta", "custom_tool_delta", "search", "search", is_first=False
+            )
+            is False
+        )
 
     def test_tool_delta_splits_on_tool_change(self):
-        assert should_increment_turn("custom_tool_delta", "custom_tool_delta", "search", "calculator", is_first=False) is True
+        assert (
+            should_increment_turn(
+                "custom_tool_delta", "custom_tool_delta", "search", "calculator", is_first=False
+            )
+            is True
+        )
 
     def test_tool_delta_splits_when_prev_is_not_tool(self):
-        assert should_increment_turn("custom_tool_delta", "reasoning_delta", "search", "search", is_first=False) is True
+        assert (
+            should_increment_turn(
+                "custom_tool_delta", "reasoning_delta", "search", "search", is_first=False
+            )
+            is True
+        )
 
     def test_tool_delta_splits_when_prev_tool_is_none(self):
         # prev_tool=None means no known preceding tool → treat as new
-        assert should_increment_turn("custom_tool_delta", "custom_tool_delta", None, "search", is_first=False) is False
+        assert (
+            should_increment_turn(
+                "custom_tool_delta", "custom_tool_delta", None, "search", is_first=False
+            )
+            is False
+        )
 
     def test_tool_delta_splits_when_curr_tool_is_none(self):
         # curr_tool=None → can't confirm same tool, but prev in groups_with and no tool info → stays
-        assert should_increment_turn("custom_tool_delta", "custom_tool_delta", "search", None, is_first=False) is False
+        assert (
+            should_increment_turn(
+                "custom_tool_delta", "custom_tool_delta", "search", None, is_first=False
+            )
+            is False
+        )
 
     # ------------------------------------------------------------------ #
     # Unknown types default to new_turn=True                              #
     # ------------------------------------------------------------------ #
 
     def test_unknown_type_always_new_turn(self):
-        assert should_increment_turn("researcher_start", "custom_tool_delta", None, None, is_first=False) is True
+        assert (
+            should_increment_turn(
+                "researcher_start", "custom_tool_delta", None, None, is_first=False
+            )
+            is True
+        )
 
     def test_another_unknown_type(self):
-        assert should_increment_turn("my_custom_delta", "my_custom_delta", None, None, is_first=False) is True
+        assert (
+            should_increment_turn("my_custom_delta", "my_custom_delta", None, None, is_first=False)
+            is True
+        )
 
 
 class TestStepTurnRulesRegistry:

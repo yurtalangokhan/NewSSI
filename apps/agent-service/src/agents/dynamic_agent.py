@@ -196,7 +196,9 @@ class DynamicAgent(LazyLoadingAgent):
 
                 rag_tools = KnowledgeToolSelector.select_tools(rag_config)
             except Exception as e:
-                logger.warning("Failed to resolve knowledge tools for DynamicAgent '%s': %s", self.name, e)
+                logger.warning(
+                    "Failed to resolve knowledge tools for DynamicAgent '%s': %s", self.name, e
+                )
 
         configured_mcp_tools = effective_config.get("mcp_tools", [])
         if schema_type == GraphSchemaType.ZERO_SHOT and (configured_mcp_tools or rag_tools):
@@ -282,7 +284,9 @@ class DynamicAgent(LazyLoadingAgent):
         if memories is not None and user_id:
             configurable = (config or {}).get("configurable", {})
             _, on_save = build_event_emitters(configurable)
-            await self._save_memory_from_output(result, original_messages, memories, user_id, config, on_save=on_save)
+            await self._save_memory_from_output(
+                result, original_messages, memories, user_id, config, on_save=on_save
+            )
 
         return result
 
@@ -311,6 +315,8 @@ class DynamicAgent(LazyLoadingAgent):
             try:
                 configurable = (config or {}).get("configurable", {})
                 _, on_save = build_event_emitters(configurable)
-                await self._save_memory_from_output(None, original_messages, memories, user_id, config, on_save=on_save)
+                await self._save_memory_from_output(
+                    None, original_messages, memories, user_id, config, on_save=on_save
+                )
             except Exception as e:
                 logger.warning("Memory save after stream failed: %s", e)

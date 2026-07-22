@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import os
 from pathlib import Path
 from types import ModuleType
 from typing import Any
@@ -82,12 +83,24 @@ class PermissionSyncService:
         source.count = len(permissions)
 
     def _external_manifest_paths(self) -> dict[str, Path]:
-        repo_root = Path(__file__).resolve().parents[4]
+        repo_root = self._repo_root()
         return {
             "agent-service": repo_root / "apps/agent-service/src/models/permissions.py",
             "rag-service": repo_root / "apps/rag-service/langconnect/models/permissions.py",
             "tools-service": repo_root / "apps/tools-service/src/models/permissions.py",
         }
+
+    def _repo_root(self) -> Path:
+        configured_root = os.getenv("PERMISSION_MANIFEST_ROOT")
+        if configured_root:
+            return Path(configured_root)
+
+        service_file = Path(__file__).resolve()
+        for parent in service_file.parents:
+            if (parent / "apps/user-service").exists():
+                return parent
+
+        return Path.cwd()
 
     def _load_external_manifest(
         self,

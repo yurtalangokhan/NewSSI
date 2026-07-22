@@ -1,6 +1,6 @@
 from enum import StrEnum
 
-from pydantic import AliasChoices, Field, computed_field
+from pydantic import AliasChoices, AnyHttpUrl, Field, TypeAdapter, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -28,6 +28,11 @@ class LogLevel(StrEnum):
             LogLevel.CRITICAL: logging.CRITICAL,
         }
         return mapping[self]
+
+
+def check_str_is_http(value: str) -> str:
+    """Validate and normalize an HTTP(S) URL string."""
+    return str(TypeAdapter(AnyHttpUrl).validate_python(value))
 
 
 class Settings(BaseSettings):
@@ -80,6 +85,7 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("TOOLS_SERVICE_URL", "MCP_SERVER_URL"),
     )
     GITHUB_PAT: str | None = None
+    MCP_GITHUB_SERVER_URL: str = "https://api.githubcopilot.com/mcp/"
 
     LANGFUSE_TRACING: bool = False
     LANGFUSE_HOST: str = "https://cloud.langfuse.com"

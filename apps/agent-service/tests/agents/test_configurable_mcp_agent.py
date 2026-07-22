@@ -12,7 +12,9 @@ class DummyStreamGraph:
     async def astream(self, input, config=None, **kwargs) -> AsyncGenerator[tuple[str, dict], None]:
         yield ("updates", {"agent": {"messages": []}})
 
-    async def astream_events(self, input, config=None, version="v2", **kwargs) -> AsyncGenerator[dict, None]:
+    async def astream_events(
+        self, input, config=None, version="v2", **kwargs
+    ) -> AsyncGenerator[dict, None]:
         yield {"event": "on_chain_end", "data": {"output": "done"}}
 
 
@@ -37,9 +39,12 @@ class TestConfigurableMCPAgent:
                 )
             ),
         ):
-            with patch(
-                "agents.configurable_mcp_agent.KnowledgeToolSelector.select_tools",
-                return_value=[],
+            with (
+                patch(
+                    "agents.configurable_mcp_agent.KnowledgeToolSelector.select_tools",
+                    return_value=[],
+                ),
+                patch.object(agent, "_create_agent_graph", return_value=DummyStreamGraph()),
             ):
                 events = [
                     item

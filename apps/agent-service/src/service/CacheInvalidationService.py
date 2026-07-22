@@ -15,9 +15,7 @@ class CacheInvalidationService:
         """Initialize with repository."""
         self.repository = repository
 
-    async def find_agents_using_sub_agent(
-        self, sub_agent_id: UUID
-    ) -> list[UUID]:
+    async def find_agents_using_sub_agent(self, sub_agent_id: UUID) -> list[UUID]:
         """
         Find all agents that reference sub_agent_id in their sub_agent_ids.
 
@@ -125,8 +123,7 @@ class CacheInvalidationService:
         removed = old_ids - new_ids
 
         logger.info(
-            f"Agent {agent_id} sub-agents changing: "
-            f"+{len(added)} added, -{len(removed)} removed"
+            f"Agent {agent_id} sub-agents changing: +{len(added)} added, -{len(removed)} removed"
         )
 
         # Invalidate all affected caches

@@ -368,7 +368,9 @@ Analyze the user's request and delegate to the most appropriate agent(s). You ca
         # Save memories from output
         configurable = (config or {}).get("configurable", {})
         _, on_save = build_event_emitters(configurable)
-        await self._save_memory_from_output(result, original_messages, memories, user_id, config, on_save=on_save)
+        await self._save_memory_from_output(
+            result, original_messages, memories, user_id, config, on_save=on_save
+        )
         return result
 
     async def astream(
@@ -485,11 +487,17 @@ Analyze the user's request and delegate to the most appropriate agent(s). You ca
 
                     model = get_model_from_config(configurable, core_settings.DEFAULT_MODEL)
                     from memory.long_term import build_event_emitters, extract_and_save_memories
+
                     _, on_save = build_event_emitters(configurable)
                     extract_mem = configurable.get("extract_memory", True)
                     await extract_and_save_memories(
-                        store, user_id, original_messages, model, memories,
-                            on_save=on_save, extract_memory=extract_mem
+                        store,
+                        user_id,
+                        original_messages,
+                        model,
+                        memories,
+                        on_save=on_save,
+                        extract_memory=extract_mem,
                     )
             except Exception as e:
                 logger.warning("Failed to save memories: %s", e)

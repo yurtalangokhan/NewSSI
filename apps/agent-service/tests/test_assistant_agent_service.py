@@ -4,7 +4,9 @@ from service.AssistantAgentService import AssistantAgentService
 
 
 @pytest.mark.asyncio
-async def test_get_graph_and_config_accepts_numeric_agent_id(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_get_graph_and_config_accepts_numeric_agent_id(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     service = object.__new__(AssistantAgentService)
 
     async def fake_get(persona_id: int):

@@ -6,21 +6,21 @@ import logging
 
 from langconnect.database.neo4j.queries.stats import (
     EDGE_COUNT_SCOPED,
+    LABEL_COUNTS,
+    LABEL_COUNTS_SCOPED,
     LABELS_FILTERED_BY_REL_TYPES,
     LABELS_PAGINATED_SCOPED,
     LABELS_PAGINATED_UNSCOPED,
     LABELS_SCOPED_FILTERED_BY_REL_TYPES,
-    LABEL_COUNTS,
-    LABEL_COUNTS_SCOPED,
     LIST_GRAPH_COLLECTION_IDS,
     NODE_COUNT_SCOPED,
+    REL_TYPES_FILTERED_BY_LABELS,
+    REL_TYPES_SCOPED_FILTERED_BY_LABELS,
     RELATIONSHIP_TYPE_COUNTS,
     RELATIONSHIP_TYPE_COUNTS_SCOPED,
     RELATIONSHIP_TYPES_CHUNK_SCOPED,
     RELATIONSHIP_TYPES_PAGINATED_SCOPED,
     RELATIONSHIP_TYPES_PAGINATED_UNSCOPED,
-    REL_TYPES_FILTERED_BY_LABELS,
-    REL_TYPES_SCOPED_FILTERED_BY_LABELS,
 )
 from langconnect.database.neo4j.repositories.base import Neo4jRepository
 from langconnect.models.graph import GraphStats, PaginatedCounts
@@ -66,21 +66,27 @@ class StatsRepository(Neo4jRepository):
             if scope_label:
                 # Scoped node count
                 nc_result = await session.run(
-                    NODE_COUNT_SCOPED, cid=self.cid, scope_label=scope_label,
+                    NODE_COUNT_SCOPED,
+                    cid=self.cid,
+                    scope_label=scope_label,
                 )
                 nc_record = await nc_result.single()
                 node_count = nc_record["cnt"] if nc_record else 0
 
                 # Scoped edge count
                 ec_result = await session.run(
-                    EDGE_COUNT_SCOPED, cid=self.cid, scope_label=scope_label,
+                    EDGE_COUNT_SCOPED,
+                    cid=self.cid,
+                    scope_label=scope_label,
                 )
                 ec_record = await ec_result.single()
                 edge_count = ec_record["cnt"] if ec_record else 0
 
                 # Scoped label breakdown (neighbour labels)
                 label_result = await session.run(
-                    LABEL_COUNTS_SCOPED, cid=self.cid, scope_label=scope_label,
+                    LABEL_COUNTS_SCOPED,
+                    cid=self.cid,
+                    scope_label=scope_label,
                 )
                 label_counts: dict[str, int] = {}
                 async for record in label_result:
@@ -108,7 +114,8 @@ class StatsRepository(Neo4jRepository):
                     node_count += cnt
 
                 rel_result = await session.run(
-                    RELATIONSHIP_TYPE_COUNTS, cid=self.cid,
+                    RELATIONSHIP_TYPE_COUNTS,
+                    cid=self.cid,
                 )
                 rel_counts = {}
                 edge_count = 0

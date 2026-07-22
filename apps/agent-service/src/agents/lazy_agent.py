@@ -40,7 +40,7 @@ class LazyLoadingAgent(ABC):
         - Creating the agent's graph
         """
         raise NotImplementedError  # pragma: no cover
-    
+
     async def ensure_loaded(self) -> None:
         """Ensure the agent is loaded."""
         if not self._loaded:
@@ -70,6 +70,7 @@ class LazyLoadingAgent(ABC):
         """Get the global LangGraph store for long-term memory."""
         try:
             from service.LangGraphStoreService import get_langgraph_store
+
             return get_langgraph_store()
         except Exception as exc:
             logger.warning("[LazyAgent] Could not resolve LangGraph store: %s", exc)
@@ -210,18 +211,18 @@ class LazyLoadingAgent(ABC):
             all_messages = list(original_messages) + list(output_messages)
             extract_mem = configurable.get("extract_memory", True)
             await extract_and_save_memories(
-                store, user_id, all_messages, model, memories,
-                on_save=on_save, extract_memory=extract_mem,
+                store,
+                user_id,
+                all_messages,
+                model,
+                memories,
+                on_save=on_save,
+                extract_memory=extract_mem,
             )
         except Exception as e:
             logger.warning(f"[LazyAgent] Memory save failed: {e}")
 
-    async def ainvoke(
-        self,
-        input: Any,
-        config: RunnableConfig | None = None,
-        **kwargs: Any
-    ) -> Any:
+    async def ainvoke(self, input: Any, config: RunnableConfig | None = None, **kwargs: Any) -> Any:
         """
         Default async invoke - proxies to the graph with long-term memory support.
         Subclasses can override for dynamic configuration.
@@ -242,16 +243,13 @@ class LazyLoadingAgent(ABC):
         # Save memories from output
         configurable = (config or {}).get("configurable", {})
         _, on_save = build_event_emitters(configurable)
-        await self._save_memory_from_output(result, original_messages, memories, user_id, config, on_save=on_save)
+        await self._save_memory_from_output(
+            result, original_messages, memories, user_id, config, on_save=on_save
+        )
 
         return result
-    
-    async def astream(
-        self,
-        input: Any,
-        config: RunnableConfig | None = None,
-        **kwargs: Any
-    ):
+
+    async def astream(self, input: Any, config: RunnableConfig | None = None, **kwargs: Any):
         """
         Default async stream - proxies to the graph with long-term memory support.
         Subclasses can override for dynamic configuration.
@@ -281,16 +279,16 @@ class LazyLoadingAgent(ABC):
             configurable = (config or {}).get("configurable", {})
             _, on_save = build_event_emitters(configurable)
             await self._save_memory_from_output(
-                collected_output, original_messages, memories, user_id, config,
+                collected_output,
+                original_messages,
+                memories,
+                user_id,
+                config,
                 on_save=on_save,
             )
-    
+
     async def astream_events(
-        self,
-        input: Any,
-        config: RunnableConfig | None = None,
-        version: str = "v2",
-        **kwargs: Any
+        self, input: Any, config: RunnableConfig | None = None, version: str = "v2", **kwargs: Any
     ):
         """
         Default async stream events - proxies to the graph with long-term memory support.
@@ -308,7 +306,9 @@ class LazyLoadingAgent(ABC):
 
         # Collect AI response messages from events for higher-quality extraction
         response_messages: list = []
-        async for event in self._graph.astream_events(input, config=config, version=version, **kwargs):
+        async for event in self._graph.astream_events(
+            input, config=config, version=version, **kwargs
+        ):
             # Capture AI responses from model end events
             if event.get("event") == "on_chat_model_end":
                 output = event.get("data", {}).get("output")
@@ -330,8 +330,13 @@ class LazyLoadingAgent(ABC):
                     _, on_save = build_event_emitters(configurable)
                     all_messages = list(original_messages) + response_messages
                     await extract_and_save_memories(
-                        store, user_id, all_messages, model, memories,
-                        on_save=on_save, extract_memory=extract_mem,
+                        store,
+                        user_id,
+                        all_messages,
+                        model,
+                        memories,
+                        on_save=on_save,
+                        extract_memory=extract_mem,
                     )
             except Exception as e:
                 logger.warning(f"[LazyAgent] Memory save after stream_events failed: {e}")

@@ -26,8 +26,8 @@ Tables managed here
    Chat sessions are now managed via Thread-based storage in the LangGraph store.
 """
 
-from core.db.models.agent_tools import AgentToolsModel
 from core.db.models.agent_group import AgentGroupModel
+from core.db.models.agent_tools import AgentToolsModel
 from core.db.models.airbyte_mapping import AirbyteMappingModel
 from core.db.models.assistant import AssistantModel
 from core.db.models.base import Base

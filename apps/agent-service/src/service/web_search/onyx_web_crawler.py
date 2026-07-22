@@ -107,9 +107,7 @@ def _should_try_playwright_fallback(response: requests.Response) -> bool:
     )
 
 
-def _failure_reason_for_status(
-    response: requests.Response, has_cf_signals: bool
-) -> str:
+def _failure_reason_for_status(response: requests.Response, has_cf_signals: bool) -> str:
     """Pick the LLM-facing failure reason for a 4xx/5xx upstream response.
 
     Only labels failures as Cloudflare when the response actually carries
@@ -135,9 +133,7 @@ def _parse_html_to_web_content(url: str, html: str) -> WebContent:
         text_content = parsed.cleaned_text or ""
         title = parsed.title or ""
     except Exception as exc:
-        logger.warning(
-            "Onyx crawler failed to parse %s (%s)", url, exc.__class__.__name__
-        )
+        logger.warning("Onyx crawler failed to parse %s (%s)", url, exc.__class__.__name__)
         return _failed_result(url, FailureReason.EMPTY_OR_UNPARSEABLE)
 
     if not text_content.strip():
@@ -243,15 +239,13 @@ class OnyxWebCrawler(WebContentProvider):
             #     403 from e.g. a private GitHub repo or expired presigned
             #     S3 URL gets the generic-403 reason instead).
             has_cf_signals = _has_cloudflare_signals(response)
-            try_fallback = (
-                self._playwright_fallback_enabled
-                and _should_try_playwright_fallback(response)
+            try_fallback = self._playwright_fallback_enabled and _should_try_playwright_fallback(
+                response
             )
 
             if try_fallback:
                 logger.info(
-                    "Onyx crawler got %s for %s; retrying via Playwright "
-                    "(cf_signals=%s)",
+                    "Onyx crawler got %s for %s; retrying via Playwright (cf_signals=%s)",
                     response.status_code,
                     url,
                     has_cf_signals,
@@ -264,9 +258,7 @@ class OnyxWebCrawler(WebContentProvider):
                     return fallback
 
             logger.warning("Onyx crawler received %s for %s", response.status_code, url)
-            return _failed_result(
-                url, _failure_reason_for_status(response, has_cf_signals)
-            )
+            return _failed_result(url, _failure_reason_for_status(response, has_cf_signals))
 
         content_type = response.headers.get("Content-Type", "")
         content = response.content
@@ -275,10 +267,7 @@ class OnyxWebCrawler(WebContentProvider):
         if is_pdf_resource(url, content_type, content_sniff):
             return self._handle_pdf_response(url, content)
 
-        if (
-            self._max_html_size_bytes is not None
-            and len(content) > self._max_html_size_bytes
-        ):
+        if self._max_html_size_bytes is not None and len(content) > self._max_html_size_bytes:
             logger.warning(
                 "HTML content too large (%d bytes) for %s, max is %d",
                 len(content),
@@ -294,9 +283,7 @@ class OnyxWebCrawler(WebContentProvider):
                 fallback_encoding=response.apparent_encoding or response.encoding,
             )
         except Exception as exc:
-            logger.warning(
-                "Onyx crawler failed to decode %s (%s)", url, exc.__class__.__name__
-            )
+            logger.warning("Onyx crawler failed to decode %s (%s)", url, exc.__class__.__name__)
             return _failed_result(url, FailureReason.DECODE_ERROR)
 
         direct_result = _parse_html_to_web_content(url, decoded_html)
@@ -327,10 +314,7 @@ class OnyxWebCrawler(WebContentProvider):
         return direct_result
 
     def _handle_pdf_response(self, url: str, content: bytes) -> WebContent:
-        if (
-            self._max_pdf_size_bytes is not None
-            and len(content) > self._max_pdf_size_bytes
-        ):
+        if self._max_pdf_size_bytes is not None and len(content) > self._max_pdf_size_bytes:
             logger.warning(
                 "PDF content too large (%d bytes) for %s, max is %d",
                 len(content),
@@ -368,10 +352,7 @@ class OnyxWebCrawler(WebContentProvider):
         if rendered is None:
             return None
 
-        if (
-            self._max_html_size_bytes is not None
-            and len(rendered.html) > self._max_html_size_bytes
-        ):
+        if self._max_html_size_bytes is not None and len(rendered.html) > self._max_html_size_bytes:
             logger.warning(
                 "Rendered HTML too large (%d chars) for %s, max is %d",
                 len(rendered.html),

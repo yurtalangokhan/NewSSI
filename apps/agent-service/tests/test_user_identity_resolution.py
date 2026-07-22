@@ -3,7 +3,7 @@ from fastapi import HTTPException
 from starlette.requests import Request
 
 from api.routes.ChatRoute import _resolve_effective_chat_user_id
-from service.AuthService import AuthService, AuthenticatedUser, get_primary_user_id
+from service.AuthService import AuthenticatedUser, AuthService, get_primary_user_id
 
 
 def _build_request() -> Request:

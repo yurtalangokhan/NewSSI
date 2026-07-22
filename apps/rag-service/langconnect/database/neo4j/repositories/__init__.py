@@ -9,11 +9,13 @@ from langconnect.database.neo4j.repositories.base import Neo4jRepository
 from langconnect.database.neo4j.repositories.entity_repository import EntityRepository
 from langconnect.database.neo4j.repositories.search_repository import SearchRepository
 from langconnect.database.neo4j.repositories.stats_repository import StatsRepository
-from langconnect.database.neo4j.repositories.visualization_repository import VisualizationRepository
+from langconnect.database.neo4j.repositories.visualization_repository import (
+    VisualizationRepository,
+)
 
 __all__ = [
-    "Neo4jRepository",
     "EntityRepository",
+    "Neo4jRepository",
     "SearchRepository",
     "StatsRepository",
     "VisualizationRepository",

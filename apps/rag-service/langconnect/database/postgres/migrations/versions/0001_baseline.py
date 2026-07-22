@@ -8,12 +8,14 @@ Creates the ``langchain_pg_collection`` and ``langchain_pg_embedding``
 tables with their indexes.  Uses ``if_not_exists=True`` so the DDL is
 safe to run on databases where the tables are already present.
 """
+
 from __future__ import annotations
 
-from typing import Sequence, Union
+from collections.abc import Sequence
+from typing import Union
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
@@ -40,9 +42,7 @@ def upgrade() -> None:
         sa.Column(
             "collection_id",
             postgresql.UUID(as_uuid=True),
-            sa.ForeignKey(
-                "langchain_pg_collection.uuid", ondelete="CASCADE"
-            ),
+            sa.ForeignKey("langchain_pg_collection.uuid", ondelete="CASCADE"),
             nullable=True,
         ),
         sa.Column("embedding", sa.Text(), nullable=True),

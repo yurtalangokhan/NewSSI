@@ -26,7 +26,8 @@ services:
       - "host.docker.internal:host-gateway"
       - "${KEYCLOAK_PUBLIC_HOSTNAME:-keycloak.localhost}:host-gateway"
     env_file:
-      - ../apps/agent-service/.env.production
+      - path: ../apps/agent-service/.env.production
+        required: false
     environment:
       AIRBYTE_LOCAL_OUTPUT_PATH: /tmp/airbyte_local
       LANGCHAIN_PROJECT: agent-service
@@ -49,7 +50,8 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     env_file:
-      - ../apps/rag-service/.env.production
+      - path: ../apps/rag-service/.env.production
+        required: false
     environment:
       ALLOW_ORIGINS: '["*"]'
     networks:
@@ -69,7 +71,8 @@ services:
     image: tools-service:local
     restart: unless-stopped
     env_file:
-      - ../apps/tools-service/.env.production
+      - path: ../apps/tools-service/.env.production
+        required: false
     environment:
       MCP_HOST: "0.0.0.0"
       MCP_PORT: "8003"
@@ -94,7 +97,14 @@ services:
       - "host.docker.internal:host-gateway"
       - "${KEYCLOAK_PUBLIC_HOSTNAME:-keycloak.localhost}:host-gateway"
     env_file:
-      - ../apps/user-service/.env.production
+      - path: ../apps/user-service/.env.production
+        required: false
+    environment:
+      PERMISSION_MANIFEST_ROOT: /app
+    volumes:
+      - ../apps/agent-service/src/models:/app/apps/agent-service/src/models:ro
+      - ../apps/rag-service/langconnect/models:/app/apps/rag-service/langconnect/models:ro
+      - ../apps/tools-service/src/models:/app/apps/tools-service/src/models:ro
     networks:
       airbyte:
         aliases:
@@ -114,7 +124,8 @@ services:
     ports:
       - "8126:3000"
     env_file:
-      - ../apps/web/.env.production
+      - path: ../apps/web/.env.production
+        required: false
     extra_hosts:
       - "host.docker.internal:host-gateway"
       - "${KEYCLOAK_PUBLIC_HOSTNAME:-keycloak.localhost}:host-gateway"

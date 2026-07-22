@@ -27,10 +27,15 @@ class ThreadModel(Base):
         default=_uuid.uuid4,
     )
     metadata_: Mapped[dict | None] = mapped_column(
-        "metadata", JSONB, nullable=True, default=dict,
+        "metadata",
+        JSONB,
+        nullable=True,
+        default=dict,
     )
     status: Mapped[str] = mapped_column(
-        String, nullable=False, default="idle",
+        String,
+        nullable=False,
+        default="idle",
     )
     project_id: Mapped[int | None] = mapped_column(
         Integer,
@@ -48,9 +53,7 @@ class ThreadModel(Base):
         server_default=text("now()"),
     )
 
-    __table_args__ = (
-        Index("ix_thread_metadata_gin", metadata_, postgresql_using="gin"),
-    )
+    __table_args__ = (Index("ix_thread_metadata_gin", metadata_, postgresql_using="gin"),)
 
     def __repr__(self) -> str:
         return f"<Thread id={self.thread_id!s} status={self.status!r}>"

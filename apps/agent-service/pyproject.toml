@@ -142,6 +142,8 @@ exclude_lines = [
 [tool.mypy]
 plugins = "pydantic.mypy"
 exclude = "src/streamlit_app.py"
+mypy_path = "src"
+explicit_package_bases = true
 
 [[tool.mypy.overrides]]
 module = ["numexpr.*"]

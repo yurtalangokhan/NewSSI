@@ -1,7 +1,8 @@
 """Shared fixtures for domain and API tests."""
 
+from unittest.mock import patch
+
 import pytest
-from unittest.mock import AsyncMock, patch
 
 
 @pytest.fixture

@@ -196,9 +196,7 @@ class DataController(BaseController):
 
             if streams:
                 catalog_streams = [
-                    s
-                    for s in catalog_streams
-                    if s.get("stream", {}).get("name") in streams
+                    s for s in catalog_streams if s.get("stream", {}).get("name") in streams
                 ]
 
             for cs in catalog_streams:
@@ -311,11 +309,7 @@ class DataController(BaseController):
                 self._raise_bad_request(f"Failed to update Airbyte source name: {e}")
 
         conn_update_fields: dict[str, Any] = {}
-        if (
-            streams is not None
-            or sync_mode is not None
-            or destination_sync_mode is not None
-        ):
+        if streams is not None or sync_mode is not None or destination_sync_mode is not None:
             try:
                 conn_data = await client.get_connection(mapping["airbyte_connection_id"])
                 sync_catalog = conn_data.get("syncCatalog", {})
@@ -326,9 +320,7 @@ class DataController(BaseController):
                     discovered_catalog = schema.get("catalog", {})
                     discovered_streams = discovered_catalog.get("streams", [])
                     catalog_streams = [
-                        s
-                        for s in discovered_streams
-                        if s.get("stream", {}).get("name") in streams
+                        s for s in discovered_streams if s.get("stream", {}).get("name") in streams
                     ]
 
                 effective_sync_mode = sync_mode or "full_refresh"
@@ -417,8 +409,6 @@ class DataController(BaseController):
 
         chunk_stats = col_meta.get("chunk_stats", {})
         chunk_count = chunk_stats.get("chunk_count", 0)
-        avg_chars = chunk_stats.get("avg_chunk_chars", 0)
-        avg_tokens = chunk_stats.get("avg_chunk_tokens", 0)
 
         if not chunk_count:
             chunk_count = await self._ds_repo.count_embeddings(datasource_id)
@@ -547,14 +537,16 @@ class DataController(BaseController):
                 cron_expr = cron_data.get("cronExpression", "")
                 tz = cron_data.get("cronTimeZone", "UTC")
 
-                items.append({
-                    "id": mapping["datasource_id"],
-                    "datasource_id": mapping["datasource_id"],
-                    "cron_expression": cron_expr,
-                    "enabled": True,
-                    "update_graph_rag": mapping.get("update_graph_rag", False),
-                    "timezone": tz,
-                })
+                items.append(
+                    {
+                        "id": mapping["datasource_id"],
+                        "datasource_id": mapping["datasource_id"],
+                        "cron_expression": cron_expr,
+                        "enabled": True,
+                        "update_graph_rag": mapping.get("update_graph_rag", False),
+                        "timezone": tz,
+                    }
+                )
             except Exception:
                 continue
 

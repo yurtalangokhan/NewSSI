@@ -95,6 +95,12 @@ services:
       - "${KEYCLOAK_PUBLIC_HOSTNAME:-keycloak.localhost}:host-gateway"
     env_file:
       - ../apps/user-service/.env
+    environment:
+      PERMISSION_MANIFEST_ROOT: /app
+    volumes:
+      - ../apps/agent-service/src/models:/app/apps/agent-service/src/models:ro
+      - ../apps/rag-service/langconnect/models:/app/apps/rag-service/langconnect/models:ro
+      - ../apps/tools-service/src/models:/app/apps/tools-service/src/models:ro
     networks:
       airbyte:
         aliases:

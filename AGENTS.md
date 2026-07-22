@@ -213,6 +213,109 @@ docker compose -f configs/docker-compose-services.yml up -d
 
 Central `.env` is at `configs/.env` — references the real network addresses. Per-service `.env` files live in each `apps/*/` folder.
 
+### Docker verification rule
+
+When changing Dockerfiles, compose files, Python package layout, import paths, or files copied into images, verify Docker explicitly in addition to `make test`:
+
+```sh
+make docker-verify
+```
+
+This runs `docker compose config` for dev/prod and builds the Python service images from `configs/docker-compose-dev.yml`. For service-specific Dockerfiles that are not part of `configs/docker-compose-dev.yml`, build them directly or through their local compose file. If source imports use top-level packages like `models`, `schema`, or `agents`, the corresponding Dockerfile must copy those directories into the image.
+
+### Git quality gates
+
+Install repo hooks once per clone:
+
+```sh
+make hooks-install
+```
+
+The hooks use `scripts/quality/check.sh` and must stay lightweight enough for daily use while still blocking broken code:
+
+- **pre-commit** runs staged-file whitespace checks, shell syntax checks, changed-service `make lint test`, and `make docker-config` when Docker/compose/package files changed.
+- **pre-push** runs checks for files being pushed and runs `make docker-verify` when Docker, compose, package layout, import-sensitive Python service code, or quality scripts changed.
+- Do not bypass hooks with `--no-verify` unless the user explicitly approves it for that one action.
+- Before committing or asking the user to commit, run the same checks manually with `make quality-staged` or the relevant service `make lint test`. For Docker/config/import-layout changes, also run `make docker-verify`.
+- Commit/push only green code. If a quality gate fails because of unrelated existing debt, document the failing command and narrow the hook/script rule instead of weakening checks globally.
+
+### Agent pre-push validation flow
+
+Before telling the user that code is ready to push, the agent must evaluate the
+changes through Makefile targets instead of ad hoc commands wherever a Makefile
+target exists.
+
+**Use the root Makefile for repository-level gates:**
+
+```sh
+make quality-staged   # check changed/staged services before commit
+make quality-push     # pre-push equivalent for the current branch
+make quality-all      # broader local validation when requested or high risk
+make docker-config    # compose config validation
+make docker-verify    # compose config + Python service image builds
+```
+
+**Use each service Makefile for service-level gates:**
+
+```sh
+make -C apps/agent-service lint test
+make -C apps/rag-service lint test
+make -C apps/user-service lint test
+make -C apps/tools-service lint test
+```
+
+The agent must choose service Makefile targets from the changed files:
+
+| Changed path | Required validation |
+|---|---|
+| `apps/agent-service/**` | `make -C apps/agent-service lint test` |
+| `apps/rag-service/**` | `make -C apps/rag-service lint test` |
+| `apps/user-service/**` | `make -C apps/user-service lint test` |
+| `apps/tools-service/**` | `make -C apps/tools-service lint test` |
+| service typing-heavy changes | also run that service's `make typecheck` |
+| dependency or lockfile changes | run that service's `make install` or `make dev-install` first, then `make lint test` |
+| migration/model/repository changes | run service tests and the relevant migration target when applicable |
+| Dockerfile/compose/package-layout/import-path changes | run `make docker-verify` from the repo root |
+| root `Makefile`, hooks, or `scripts/quality/**` | run `make quality-staged` or `make quality-push` from the repo root |
+
+How the agent should use this flow:
+
+1. Inspect `git status --short` and map changed files to affected services.
+2. Prefer the affected service's own Makefile from inside the repo root, e.g. `make -C apps/rag-service lint test`.
+3. If a service Makefile exposes a more specific target for the task, use it instead of open-coded commands: `make typecheck`, `make test-cov`, `make db-migrate`, `make docker-build`, etc.
+4. Use root Makefile targets for cross-service validation and Docker/quality hooks: `make quality-staged`, `make quality-push`, `make docker-config`, `make docker-verify`.
+5. Only fall back to direct commands when no Makefile target exists, and explain that in the final response.
+6. Do not claim all services are validated unless every affected service Makefile gate was actually run and passed.
+
+For web changes, use the web package scripts because `apps/web` does not expose
+a Makefile:
+
+```sh
+npm --prefix apps/web run lint
+npm --prefix apps/web run types:check
+npm --prefix apps/web test
+```
+
+Validation expectations:
+
+- After every prompt that changes code, config, tests, Docker, compose, package metadata, or quality scripts, run the narrowest relevant service Makefile gates before the final response.
+- Before any push-ready handoff, run `make quality-staged` or the relevant `make -C apps/<service> lint test` commands. If Dockerfiles, compose files, import paths, package layout, or image copy rules changed, also run `make docker-verify`.
+- If the user asks to check all services, run all service gates plus web lint/typecheck and `make docker-verify`.
+- If a command fails, fix root causes when they are in scope. If failures are unrelated existing debt, report the failing command, failure count, and why the code is not fully push-ready yet.
+- The final response must explicitly say which skills were used, which Makefile/npm gates passed, which gates failed or were skipped, and whether the code is ready to push.
+- Do not push to remote branches unless the user explicitly asks for push in that turn.
+
+### Agent development workflow
+
+Use the project skills deliberately before changing code:
+
+- Start by checking applicable skills; use `systematic-debugging` for bugs/build failures and find the root cause before editing.
+- Use `brainstorming` for new behavior or larger refactors, then keep the implementation scoped to the smallest useful change.
+- Use `test-driven-development` for bug fixes, behavior changes, and refactors: add or update a failing regression test first when practical, then make it pass.
+- Use `fastapi` / `fastapi-expert` for FastAPI, Pydantic, SQLAlchemy async, auth, and API architecture changes.
+- Use architecture skills for service/folder restructuring and preserve the repo layering: route -> controller -> service -> repository, with schemas/models kept in their own directories.
+- At the end of implementation work, report the selected skills and validation results. Say "ready to push" only when the applicable service Makefile gates, root quality/Docker gates, and web scripts are green for the changed surface.
+
 ## Things to avoid
 
 - **Do not touch** `supabase/` (third-party source clones) or `legacy/` (old stack).

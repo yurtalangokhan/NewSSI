@@ -15,17 +15,16 @@ Usage
 
 from __future__ import annotations
 
-import asyncio
 from logging.config import fileConfig
 
 from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
-from sqlalchemy.ext.asyncio import async_engine_from_config
+
+from langconnect.database.postgres.engine import _build_url
 
 # ── Import the shared metadata so Alembic can diff models vs DB ──
-from langconnect.database.postgres.models import Base  # noqa: E402
-from langconnect.database.postgres.engine import _build_url  # noqa: E402
+from langconnect.database.postgres.models import Base
 
 # Alembic Config object — gives access to alembic.ini values.
 config = context.config
@@ -46,6 +45,7 @@ target_metadata = Base.metadata
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _get_url() -> str:
     """Return a sync DB URL for Alembic's migration runner."""
     return _build_url(driver="psycopg")
@@ -54,6 +54,7 @@ def _get_url() -> str:
 # ---------------------------------------------------------------------------
 # Offline migrations  (--sql mode, generates SQL script)
 # ---------------------------------------------------------------------------
+
 
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode.
@@ -77,6 +78,7 @@ def run_migrations_offline() -> None:
 # ---------------------------------------------------------------------------
 # Online migrations  (default — connects to the real DB)
 # ---------------------------------------------------------------------------
+
 
 def do_run_migrations(connection: Connection) -> None:
     """Configure context and run migration steps inside a connection."""

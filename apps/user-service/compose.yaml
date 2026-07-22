@@ -50,11 +50,15 @@ services:
       ENCRYPTION_KEY: UKtf1bGCDl8smcVDRM9YekfivWNlsjSB-Mh0d993z40=
       INTERNAL_SERVICE_TOKEN: dev-internal-service-token-change-me
       LOG_LEVEL: INFO
+      PERMISSION_MANIFEST_ROOT: /app
     depends_on:
       user-service-db:
         condition: service_healthy
     volumes:
       - ./src:/app/src
+      - ../agent-service/src/models:/app/apps/agent-service/src/models:ro
+      - ../rag-service/langconnect/models:/app/apps/rag-service/langconnect/models:ro
+      - ../tools-service/src/models:/app/apps/tools-service/src/models:ro
 
 volumes:
   user-service-db-data:

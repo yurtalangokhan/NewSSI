@@ -51,6 +51,7 @@ def _get_milvus_connection_args() -> dict:
         "secure": False,
     }
 
+
 def _count_milvus_entities_batch(collection_names: list[str]) -> dict[str, int]:
     """Count Milvus entities for multiple collections using one shared connection."""
     names = [n for n in collection_names if n]
@@ -66,9 +67,7 @@ def _count_milvus_entities_batch(collection_names: list[str]) -> dict[str, int]:
             try:
                 milvus_name = _to_milvus_collection_name(name)
                 if utility.has_collection(milvus_name, using=alias):
-                    result[name] = int(
-                        Collection(name=milvus_name, using=alias).num_entities or 0
-                    )
+                    result[name] = int(Collection(name=milvus_name, using=alias).num_entities or 0)
             except Exception:
                 pass
     except Exception:
@@ -81,9 +80,7 @@ def _count_milvus_entities_batch(collection_names: list[str]) -> dict[str, int]:
     return result
 
 
-def _query_milvus_collection(
-    collection_name: str, sample_limit: int = 0
-) -> tuple[int, list[dict]]:
+def _query_milvus_collection(collection_name: str, sample_limit: int = 0) -> tuple[int, list[dict]]:
     """Get entity count and optional chunk samples from a Milvus collection in one connection."""
     if not collection_name:
         return 0, []
@@ -275,8 +272,8 @@ def database_search_func(query: str, config: Annotated[RunnableConfig, InjectedT
         configurable = config.get("configurable", {})
         rag_config = configurable.get("rag_config", {})
         # Prefer rag_config.document_processing; fall back to legacy rag_config.collections
-        collection_ids: list[str] = (
-            rag_config.get("document_processing") or rag_config.get("collections", [])
+        collection_ids: list[str] = rag_config.get("document_processing") or rag_config.get(
+            "collections", []
         )
 
         logger.debug(
@@ -330,9 +327,7 @@ database_search.name = "Database_Search"
 _LANGCONNECT_BASE_URL = os.environ.get("RAG_SERVICE_API_URL", "http://langconnect-api:8080")
 
 # LANGCONNECT_SERVICE_TOKEN is deprecated - use INTERNAL_SERVICE_TOKEN instead
-_LANGCONNECT_SERVICE_TOKEN = os.environ.get(
-    "INTERNAL_SERVICE_TOKEN", ""
-)
+_LANGCONNECT_SERVICE_TOKEN = os.environ.get("INTERNAL_SERVICE_TOKEN", "")
 
 
 def graph_search_func(
@@ -353,8 +348,8 @@ def graph_search_func(
         configurable = config.get("configurable", {})
         rag_config = configurable.get("rag_config", {})
         # Prefer rag_config.knowledge_graph; fall back to legacy rag_config.collections
-        collection_ids: list[str] = (
-            rag_config.get("knowledge_graph") or rag_config.get("collections", [])
+        collection_ids: list[str] = rag_config.get("knowledge_graph") or rag_config.get(
+            "collections", []
         )
 
         if not collection_ids:

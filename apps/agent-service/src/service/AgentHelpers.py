@@ -86,9 +86,7 @@ async def get_graph_and_config(agent_id: str | int) -> tuple[str, dict]:
                 if base_agent == "dynamic-agent":
                     from agents.storage.repository import AgentDefinitionRepository
 
-                    definition = await AgentDefinitionRepository().get_by_persona_id(
-                        int(agent_id)
-                    )
+                    definition = await AgentDefinitionRepository().get_by_persona_id(int(agent_id))
                     if definition:
                         definition_cfg = definition.to_config() or {}
                         runtime_cfg: dict[str, Any] = {}
@@ -402,7 +400,9 @@ async def _handle_input(
             task for task in state.tasks if hasattr(task, "interrupts") and task.interrupts
         ]
     except Exception as e:
-        logger.warning(f"aget_state failed (no checkpointer?): {e} — treating as fresh conversation")
+        logger.warning(
+            f"aget_state failed (no checkpointer?): {e} — treating as fresh conversation"
+        )
 
     from service.Utils import convert_input_messages
 
@@ -434,9 +434,15 @@ async def _handle_input(
                     [{"type": "text", "text": user_input.message}] if user_input.message else []
                 )
                 new_content.extend(file_blocks)
-                input = {"messages": [HumanMessage(content=new_content, additional_kwargs=extra_kwargs)]}
+                input = {
+                    "messages": [HumanMessage(content=new_content, additional_kwargs=extra_kwargs)]
+                }
             else:
-                input = {"messages": [HumanMessage(content=user_input.message, additional_kwargs=extra_kwargs)]}
+                input = {
+                    "messages": [
+                        HumanMessage(content=user_input.message, additional_kwargs=extra_kwargs)
+                    ]
+                }
         except Exception as e:
             logger.warning(f"Failed to fetch existing messages from checkpointer: {e}")
             # Fall back to just the new message
@@ -448,9 +454,17 @@ async def _handle_input(
                     [{"type": "text", "text": user_input.message}] if user_input.message else []
                 )
                 fallback_content.extend(file_blocks)
-                input = {"messages": [HumanMessage(content=fallback_content, additional_kwargs=extra_kwargs)]}
+                input = {
+                    "messages": [
+                        HumanMessage(content=fallback_content, additional_kwargs=extra_kwargs)
+                    ]
+                }
             else:
-                input = {"messages": [HumanMessage(content=user_input.message, additional_kwargs=extra_kwargs)]}
+                input = {
+                    "messages": [
+                        HumanMessage(content=user_input.message, additional_kwargs=extra_kwargs)
+                    ]
+                }
     else:
         raise HTTPException(
             status_code=400, detail="One of 'message' or 'messages' must be provided."

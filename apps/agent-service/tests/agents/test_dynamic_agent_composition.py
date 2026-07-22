@@ -44,7 +44,5 @@ async def test_dynamic_agent_load_uses_async_builder_for_sub_agent_ids(monkeypat
     await agent.load()
 
     assert isinstance(agent.get_graph(), FakeGraph)
-    assert calls["config"]["sub_agent_ids"] == [
-        "00000000-0000-0000-0000-000000000001"
-    ]
+    assert calls["config"]["sub_agent_ids"] == ["00000000-0000-0000-0000-000000000001"]
     assert calls["repository_set"] is True

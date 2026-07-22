@@ -52,7 +52,9 @@ class UserInput(BaseModel):
 class StreamInput(UserInput):
     """User input for streaming the agent's response."""
 
-    stream_tokens: bool = Field(default=True, description="Whether to stream LLM tokens to the client.")
+    stream_tokens: bool = Field(
+        default=True, description="Whether to stream LLM tokens to the client."
+    )
 
 
 class ToolCall(BaseModel):
@@ -73,7 +75,9 @@ class ChatMessage(BaseModel):
         default_factory=list,
         description="Tool calls in the message.",
     )
-    tool_call_id: str | None = Field(default=None, description="Tool call that this message is responding to.")
+    tool_call_id: str | None = Field(
+        default=None, description="Tool call that this message is responding to."
+    )
     run_id: str | None = Field(default=None, description="Run ID of the message.")
     response_metadata: dict[str, Any] = Field(
         default_factory=dict,

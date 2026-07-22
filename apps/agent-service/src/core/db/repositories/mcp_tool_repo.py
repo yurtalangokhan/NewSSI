@@ -43,7 +43,7 @@ class MCPToolRepository(BaseRepository):
             else:
                 stmt = (
                     select(MCPToolModel)
-                    .where(MCPToolModel.is_active == True)
+                    .where(MCPToolModel.is_active.is_(True))
                     .order_by(MCPToolModel.name)
                 )
             result = await session.execute(stmt)
@@ -65,7 +65,7 @@ class MCPToolRepository(BaseRepository):
                     select(MCPToolModel)
                     .where(
                         MCPToolModel.provider_id == provider_id,
-                        MCPToolModel.is_active == True,
+                        MCPToolModel.is_active.is_(True),
                     )
                     .order_by(MCPToolModel.name)
                 )
@@ -102,7 +102,7 @@ class MCPToolRepository(BaseRepository):
                 select(MCPToolModel)
                 .where(
                     MCPToolModel.category == category,
-                    MCPToolModel.is_active == True,
+                    MCPToolModel.is_active.is_(True),
                 )
                 .order_by(MCPToolModel.name)
             )
@@ -112,7 +112,7 @@ class MCPToolRepository(BaseRepository):
 
     async def list_categories(self) -> list[str]:
         async with self._session() as session:
-            stmt = select(MCPToolModel.category).where(MCPToolModel.is_active == True).distinct()
+            stmt = select(MCPToolModel.category).where(MCPToolModel.is_active.is_(True)).distinct()
             result = await session.execute(stmt)
             rows = result.scalars().all()
         return [c for c in rows if c]

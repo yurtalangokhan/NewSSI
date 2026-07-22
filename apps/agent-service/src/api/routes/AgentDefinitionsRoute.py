@@ -136,7 +136,9 @@ async def list_brain_types(_user=Depends(require_permission("agent:list"))) -> l
 
 
 @router.get("/memory/list")
-async def list_memory_types(_user=Depends(require_permission("agent:list"))) -> list[dict[str, Any]]:
+async def list_memory_types(
+    _user=Depends(require_permission("agent:list")),
+) -> list[dict[str, Any]]:
     """Return all available memory types."""
     return MemoryTypeService.get_available_memory_types()
 
@@ -226,7 +228,7 @@ async def validate_composition(
         agent_id = body.get("agent_id")
         if agent_id:
             agent_id = UUID(agent_id)
-        
+
         graph_schema = body.get("graph_schema")
         if not graph_schema:
             raise HTTPException(
@@ -290,13 +292,13 @@ async def get_available_for_composition(
         schema = body.get("schema")
         exclude_ids_raw = body.get("exclude_ids", [])
         exclude_ids = set()
-        
+
         for eid in exclude_ids_raw:
             try:
                 exclude_ids.add(UUID(eid))
             except (ValueError, TypeError):
                 logger.warning(f"Invalid UUID in exclude_ids: {eid}")
-        
+
         service = _get_service()
 
         # Get all active agents
@@ -307,7 +309,7 @@ async def get_available_for_composition(
             # Skip excluded IDs
             if d.id in exclude_ids:
                 continue
-            
+
             # Get depth
             try:
                 info = await service.get_composition_info(d.id)
@@ -315,13 +317,15 @@ async def get_available_for_composition(
             except Exception:
                 depth = 0
 
-            result.append({
-                "id": str(d.id),
-                "name": d.name,
-                "graph_schema": d.graph_schema,
-                "status": "active" if d.is_active else "inactive",
-                "depth": depth,
-            })
+            result.append(
+                {
+                    "id": str(d.id),
+                    "name": d.name,
+                    "graph_schema": d.graph_schema,
+                    "status": "active" if d.is_active else "inactive",
+                    "depth": depth,
+                }
+            )
 
         # Filter by schema if provided.
         # SUPERVISOR: only tool-capable single agents (REACT, PLAN_EXECUTE).

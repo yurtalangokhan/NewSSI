@@ -28,7 +28,9 @@ from service.SyncQueueService import SyncJob, get_sync_queue
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/datasources", tags=["datasources"], dependencies=[Depends(require_user)])
+router = APIRouter(
+    prefix="/datasources", tags=["datasources"], dependencies=[Depends(require_user)]
+)
 
 
 def _get_controller() -> DataController:
@@ -872,12 +874,8 @@ async def get_sync_history(id: str, limit: int = Query(20, ge=1, le=100)):
         job = entry.get("job", entry)
         attempts = entry.get("attempts", [])
         # Aggregate bytes/records across attempts
-        bytes_synced = sum(
-            a.get("bytesSynced", 0) or 0 for a in attempts
-        )
-        records_synced = sum(
-            a.get("recordsSynced", 0) or 0 for a in attempts
-        )
+        bytes_synced = sum(a.get("bytesSynced", 0) or 0 for a in attempts)
+        records_synced = sum(a.get("recordsSynced", 0) or 0 for a in attempts)
         created_at = job.get("createdAt")
         updated_at = job.get("updatedAt")
         duration = None
@@ -887,20 +885,27 @@ async def get_sync_history(id: str, limit: int = Query(20, ge=1, le=100)):
             except Exception:
                 pass
 
-        results.append({
-            "id": str(job.get("id", "")),
-            "status": job.get("status", "unknown"),
-            "created_at": created_at,
-            "updated_at": updated_at,
-            "duration_seconds": duration,
-            "bytes_synced": bytes_synced,
-            "records_synced": records_synced,
-            "error_message": next(
-                (a.get("failureSummary", {}).get("failures", [{}])[0].get("internalMessage", "")
-                 for a in attempts if a.get("failureSummary")),
-                None,
-            ),
-        })
+        results.append(
+            {
+                "id": str(job.get("id", "")),
+                "status": job.get("status", "unknown"),
+                "created_at": created_at,
+                "updated_at": updated_at,
+                "duration_seconds": duration,
+                "bytes_synced": bytes_synced,
+                "records_synced": records_synced,
+                "error_message": next(
+                    (
+                        a.get("failureSummary", {})
+                        .get("failures", [{}])[0]
+                        .get("internalMessage", "")
+                        for a in attempts
+                        if a.get("failureSummary")
+                    ),
+                    None,
+                ),
+            }
+        )
 
     return results
 

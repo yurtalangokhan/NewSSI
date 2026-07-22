@@ -51,8 +51,12 @@ class CollectionsManager:
         """Run any necessary initialisation (vectorstore bootstrap)."""
         logger.info("Starting vector store initialization...")
         from langconnect import config
+
         if config.VECTOR_DB_PROVIDER.lower() != "pgvector":
-            logger.info("Vector DB provider: %s — skipping PGVector table bootstrap.", config.VECTOR_DB_PROVIDER)
+            logger.info(
+                "Vector DB provider: %s — skipping PGVector table bootstrap.",
+                config.VECTOR_DB_PROVIDER,
+            )
         else:
             get_vectorstore()
         logger.info("Vector store initialization complete.")
@@ -146,7 +150,11 @@ class Collection:
         store = self._get_store(details["table_id"])
         try:
             store.delete(expr=f'{store._metadata_field}["file_id"] == "{file_id}"')
-            logger.info("Deleted Milvus chunks for file %r in collection %r.", file_id, self.collection_id)
+            logger.info(
+                "Deleted Milvus chunks for file %r in collection %r.",
+                file_id,
+                self.collection_id,
+            )
         except Exception as exc:
             logger.warning("Milvus delete failed for file %r: %s", file_id, exc)
         return True
@@ -166,11 +174,17 @@ class Collection:
         try:
             rows = store.col.query(
                 expr=f"{store._primary_field} >= 0",
-                output_fields=[store._primary_field, store._text_field, store._metadata_field],
+                output_fields=[
+                    store._primary_field,
+                    store._text_field,
+                    store._metadata_field,
+                ],
                 limit=10_000,
             )
         except Exception as exc:
-            logger.warning("Milvus query failed for collection %r: %s", self.collection_id, exc)
+            logger.warning(
+                "Milvus query failed for collection %r: %s", self.collection_id, exc
+            )
             return []
 
         # Deduplicate: one representative chunk per file_id
@@ -187,7 +201,7 @@ class Collection:
                 }
 
         all_docs = list(seen.values())
-        return all_docs[offset: offset + limit]
+        return all_docs[offset : offset + limit]
 
     async def count(self) -> int:
         """Return the number of distinct documents (unique file_ids) in this collection."""
@@ -220,7 +234,11 @@ class Collection:
         try:
             rows = store.col.query(
                 expr=f'{store._metadata_field}["file_id"] == "{document_id}"',
-                output_fields=[store._primary_field, store._text_field, store._metadata_field],
+                output_fields=[
+                    store._primary_field,
+                    store._text_field,
+                    store._metadata_field,
+                ],
                 limit=1,
             )
         except Exception:
@@ -244,7 +262,11 @@ class Collection:
         try:
             rows = store.col.query(
                 expr=f'{store._metadata_field}["file_id"] == "{file_id}"',
-                output_fields=[store._primary_field, store._text_field, store._metadata_field],
+                output_fields=[
+                    store._primary_field,
+                    store._text_field,
+                    store._metadata_field,
+                ],
                 limit=10_000,
             )
         except Exception as exc:
@@ -271,21 +293,33 @@ class Collection:
         try:
             rows = store.col.query(
                 expr=f"{store._primary_field} >= 0",
-                output_fields=[store._primary_field, store._text_field, store._metadata_field],
+                output_fields=[
+                    store._primary_field,
+                    store._text_field,
+                    store._metadata_field,
+                ],
                 limit=100_000,
             )
         except Exception as exc:
-            logger.warning("Milvus fetch_all_chunks failed for %r: %s", self.collection_id, exc)
+            logger.warning(
+                "Milvus fetch_all_chunks failed for %r: %s", self.collection_id, exc
+            )
             return []
 
         chunks = []
         for row in rows:
-            chunks.append({
-                "id": str(row.get(store._primary_field, "")),
-                "content": row.get(store._text_field, ""),
-                "metadata": _parse_milvus_meta(row.get(store._metadata_field)),
-            })
-        logger.info("Fetched %d chunks from Milvus collection %s", len(chunks), self.collection_id)
+            chunks.append(
+                {
+                    "id": str(row.get(store._primary_field, "")),
+                    "content": row.get(store._text_field, ""),
+                    "metadata": _parse_milvus_meta(row.get(store._metadata_field)),
+                }
+            )
+        logger.info(
+            "Fetched %d chunks from Milvus collection %s",
+            len(chunks),
+            self.collection_id,
+        )
         return chunks
 
     async def search(

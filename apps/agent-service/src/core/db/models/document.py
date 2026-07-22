@@ -61,7 +61,4 @@ class DocumentModel(Base):
     )
 
     def __repr__(self) -> str:
-        return (
-            f"<Document id={self.id!s} file_id={self.file_id!r} "
-            f"filename={self.filename!r}>"
-        )
+        return f"<Document id={self.id!s} file_id={self.file_id!r} filename={self.filename!r}>"

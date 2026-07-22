@@ -91,14 +91,8 @@ class ThreadRepository(BaseRepository):
         async with self._session() as session:
             stmt = select(ThreadModel)
             if metadata_filter:
-                stmt = stmt.where(
-                    ThreadModel.metadata_.op("@>")(cast(metadata_filter, JSONB))
-                )
-            stmt = (
-                stmt.order_by(ThreadModel.updated_at.desc())
-                .limit(limit)
-                .offset(offset)
-            )
+                stmt = stmt.where(ThreadModel.metadata_.op("@>")(cast(metadata_filter, JSONB)))
+            stmt = stmt.order_by(ThreadModel.updated_at.desc()).limit(limit).offset(offset)
             result = await session.execute(stmt)
             rows = result.scalars().all()
         return [self._to_dict(r) for r in rows]
@@ -110,9 +104,7 @@ class ThreadRepository(BaseRepository):
             return None
 
         async with self._session() as session:
-            stmt = select(ThreadModel).where(
-                ThreadModel.thread_id == parsed_thread_id
-            )
+            stmt = select(ThreadModel).where(ThreadModel.thread_id == parsed_thread_id)
             result = await session.execute(stmt)
             row = result.scalar_one_or_none()
         if row is None:
@@ -190,8 +182,6 @@ class ThreadRepository(BaseRepository):
             return False
 
         async with self._session() as session:
-            stmt = delete(ThreadModel).where(
-                ThreadModel.thread_id == parsed_thread_id
-            )
+            stmt = delete(ThreadModel).where(ThreadModel.thread_id == parsed_thread_id)
             result = await session.execute(stmt)
             return result.rowcount > 0

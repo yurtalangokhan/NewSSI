@@ -18,6 +18,7 @@ MAX_FILE_SIZE_BYTES = 200 * 1024 * 1024  # 200 MB
 
 # ── Custom parsers for best embedding quality ────────────────────────────
 
+
 class _CSVToTextParser:
     """Parse CSV into one document per row formatted as key: value pairs.
 
@@ -25,7 +26,7 @@ class _CSVToTextParser:
     far better than raw comma-separated lines.
     """
 
-    def lazy_parse(self, blob: Blob):  # noqa: ANN201
+    def lazy_parse(self, blob: Blob):
         import csv
         import io
 
@@ -62,12 +63,11 @@ class _JSONToTextParser:
         elif isinstance(obj, list):
             for i, item in enumerate(obj):
                 lines.extend(_JSONToTextParser._flatten(item, f"{prefix}[{i}]"))
-        else:
-            if obj is not None:
-                lines.append(f"{prefix}: {obj}" if prefix else str(obj))
+        elif obj is not None:
+            lines.append(f"{prefix}: {obj}" if prefix else str(obj))
         return lines
 
-    def lazy_parse(self, blob: Blob):  # noqa: ANN201
+    def lazy_parse(self, blob: Blob):
         data = json.loads(blob.as_string())
         if isinstance(data, list):
             for i, item in enumerate(data):
@@ -90,17 +90,22 @@ class _ExcelToTextParser:
     chunk represents a single record — ideal for embedding.
     """
 
-    def lazy_parse(self, blob: Blob):  # noqa: ANN201
-        import openpyxl
+    def lazy_parse(self, blob: Blob):
         import io
 
-        wb = openpyxl.load_workbook(io.BytesIO(blob.as_bytes()), read_only=True, data_only=True)
+        import openpyxl
+
+        wb = openpyxl.load_workbook(
+            io.BytesIO(blob.as_bytes()), read_only=True, data_only=True
+        )
         for sheet_name in wb.sheetnames:
             ws = wb[sheet_name]
             rows = list(ws.iter_rows(values_only=True))
             if len(rows) < 2:
                 continue
-            headers = [str(h) if h is not None else f"col_{i}" for i, h in enumerate(rows[0])]
+            headers = [
+                str(h) if h is not None else f"col_{i}" for i, h in enumerate(rows[0])
+            ]
             for row_idx, row in enumerate(rows[1:], start=1):
                 content = "\n".join(
                     f"{headers[j]}: {cell}"
@@ -126,9 +131,10 @@ class _PPTXToTextParser:
     splitting across slide boundaries.
     """
 
-    def lazy_parse(self, blob: Blob):  # noqa: ANN201
-        from pptx import Presentation
+    def lazy_parse(self, blob: Blob):
         import io
+
+        from pptx import Presentation
 
         prs = Presentation(io.BytesIO(blob.as_bytes()))
         for slide_num, slide in enumerate(prs.slides, start=1):
@@ -164,35 +170,35 @@ class _PPTXToTextParser:
 HANDLERS = {
     # ── Documents ──
     "application/pdf": PDFMinerParser(),
-    "application/msword": MsWordParser(),                                       # .doc
+    "application/msword": MsWordParser(),  # .doc
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document": (
-        MsWordParser()                                                          # .docx
+        MsWordParser()  # .docx
     ),
     # ── Presentations ──
     "application/vnd.openxmlformats-officedocument.presentationml.presentation": (
-        _PPTXToTextParser()                                                     # .pptx
+        _PPTXToTextParser()  # .pptx
     ),
     # ── Spreadsheets / tabular ──
-    "text/csv": _CSVToTextParser(),                                             # .csv
-    "text/tab-separated-values": _CSVToTextParser(),                            # .tsv
+    "text/csv": _CSVToTextParser(),  # .csv
+    "text/tab-separated-values": _CSVToTextParser(),  # .tsv
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": (
-        _ExcelToTextParser()                                                    # .xlsx
+        _ExcelToTextParser()  # .xlsx
     ),
-    "application/vnd.ms-excel": _ExcelToTextParser(),                           # .xls
+    "application/vnd.ms-excel": _ExcelToTextParser(),  # .xls
     # ── Markup / text ──
-    "text/plain": TextParser(),                                                 # .txt
-    "text/markdown": TextParser(),                                              # .md
-    "text/html": BS4HTMLParser(),                                               # .html
-    "application/xhtml+xml": BS4HTMLParser(),                                   # .xhtml
-    "text/xml": BS4HTMLParser(),                                                # .xml
-    "application/xml": BS4HTMLParser(),                                         # .xml
+    "text/plain": TextParser(),  # .txt
+    "text/markdown": TextParser(),  # .md
+    "text/html": BS4HTMLParser(),  # .html
+    "application/xhtml+xml": BS4HTMLParser(),  # .xhtml
+    "text/xml": BS4HTMLParser(),  # .xml
+    "application/xml": BS4HTMLParser(),  # .xml
     # ── Structured data ──
-    "application/json": _JSONToTextParser(),                                    # .json
+    "application/json": _JSONToTextParser(),  # .json
     # ── Rich text ──
-    "application/rtf": TextParser(),                                            # .rtf
-    "text/rtf": TextParser(),                                                   # .rtf
+    "application/rtf": TextParser(),  # .rtf
+    "text/rtf": TextParser(),  # .rtf
     # ── Email ──
-    "message/rfc822": TextParser(),                                             # .eml
+    "message/rfc822": TextParser(),  # .eml
 }
 
 SUPPORTED_MIMETYPES = sorted(HANDLERS.keys())
@@ -248,7 +254,7 @@ async def process_document(
     total_chunks = len(split_docs)
     total_chars = 0
     total_tokens = 0
-    
+
     # First pass to calculate totals
     for split_doc in split_docs:
         content_len = len(split_doc.page_content)
@@ -264,10 +270,12 @@ async def process_document(
             split_doc.metadata, dict
         ):
             split_doc.metadata = {}  # Initialize if it doesn't exist
-        
+
         # Identity
-        split_doc.metadata["file_id"] = str(file_id)  # Store as string for compatibility
-        
+        split_doc.metadata["file_id"] = str(
+            file_id
+        )  # Store as string for compatibility
+
         # Individual chunk stats
         content_len = len(split_doc.page_content)
         split_doc.metadata["char_count"] = content_len

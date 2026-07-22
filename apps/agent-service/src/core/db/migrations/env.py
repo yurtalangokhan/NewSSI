@@ -52,6 +52,7 @@ def exclude_embedding(obj, name, type_, reflected, compare_to):
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _get_url() -> str:
     """Return a sync DB URL for Alembic's migration runner."""
     return _build_url(driver="psycopg")
@@ -60,6 +61,7 @@ def _get_url() -> str:
 # ---------------------------------------------------------------------------
 # Offline migrations  (--sql mode, generates SQL script)
 # ---------------------------------------------------------------------------
+
 
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode.
@@ -84,6 +86,7 @@ def run_migrations_offline() -> None:
 # ---------------------------------------------------------------------------
 # Online migrations  (default — connects to the real DB)
 # ---------------------------------------------------------------------------
+
 
 def do_run_migrations(connection: Connection) -> None:
     """Configure context and run migration steps inside a connection."""

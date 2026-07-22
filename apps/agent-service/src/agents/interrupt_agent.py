@@ -199,16 +199,15 @@ async def generate_response(state: AgentState, config: RunnableConfig) -> AgentS
         }
 
     birthdate_str = birthdate.strftime("%B %d, %Y")  # Format for display
-    
+
     # Get configuration for allowed actions
     configurable = config.get("configurable", {})
     allowed_actions = configurable.get("allowed_actions", ["cancel", "pause", "resume"])
     actions_str = ", ".join(allowed_actions)
-    
+
     # Augment prompt with allowed actions
     augmented_prompt = response_prompt.format(
-        birthdate_str=birthdate_str, 
-        last_user_message=last_user_message
+        birthdate_str=birthdate_str, last_user_message=last_user_message
     )
     augmented_prompt.content += f"\n\nAllowed actions for task control: {actions_str}"
 

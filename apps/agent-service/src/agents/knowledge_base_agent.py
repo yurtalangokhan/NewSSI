@@ -99,7 +99,7 @@ async def retrieve_documents(state: AgentState, config: RunnableConfig) -> Agent
 
     # Use the last human message as the query
     query = human_messages[-1].content
-    
+
     # Get configuration
     configurable = config.get("configurable", {})
     kb_id = configurable.get("aws_kb_id") or os.environ.get("AWS_KB_ID", "")
@@ -184,8 +184,13 @@ async def acall_model(state: AgentState, config: RunnableConfig, *, store: BaseS
     if long_term_memory and store and user_id:
         extract_mem = configurable.get("extract_memory", True)
         await extract_and_save_memories(
-                store, user_id, list(state["messages"]) + [response], m, memories,
-                on_save=on_save, extract_memory=extract_mem
+            store,
+            user_id,
+            list(state["messages"]) + [response],
+            m,
+            memories,
+            on_save=on_save,
+            extract_memory=extract_mem,
         )
 
     return {"messages": [response]}

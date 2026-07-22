@@ -48,7 +48,7 @@ class AgentDefinitionService:
 
     Wraps AgentDefinitionRepository with business-logic validation
     (schema capability checks, duplicate name detection).
-    
+
     Includes composition management (sub-agent references).
     """
 
@@ -69,7 +69,10 @@ class AgentDefinitionService:
         mcp_tools: list[str] | None = None,
         rag_config: dict[str, Any] | None = None,
     ) -> str:
-        has_rag_tools = any((rag_config or {}).get(key) for key in ("document_processing", "knowledge_graph", "collections"))
+        has_rag_tools = any(
+            (rag_config or {}).get(key)
+            for key in ("document_processing", "knowledge_graph", "collections")
+        )
         if graph_schema == "zero_shot" and ((mcp_tools or []) or has_rag_tools):
             return "react"
         return graph_schema
@@ -174,11 +177,17 @@ class AgentDefinitionService:
         updates: dict[str, Any],
     ):
         graph_schema = updates.get("graph_schema")
-        normalized_graph_schema = self._normalize_graph_schema(
-            graph_schema or "zero_shot",
-            updates.get("mcp_tools"),
-            updates.get("rag_config"),
-        ) if graph_schema or updates.get("mcp_tools") is not None or updates.get("rag_config") is not None else None
+        normalized_graph_schema = (
+            self._normalize_graph_schema(
+                graph_schema or "zero_shot",
+                updates.get("mcp_tools"),
+                updates.get("rag_config"),
+            )
+            if graph_schema
+            or updates.get("mcp_tools") is not None
+            or updates.get("rag_config") is not None
+            else None
+        )
 
         if normalized_graph_schema:
             updates["graph_schema"] = normalized_graph_schema
@@ -202,27 +211,25 @@ class AgentDefinitionService:
         # NEW: Validate sub-agent references if updating
         if "sub_agent_ids" in updates:
             new_sub_agent_ids = updates.get("sub_agent_ids", [])
-            
+
             if not self._validation_service:
                 self._validation_service = CompositionValidationService(self._repo)
-            
+
             validation_result = await self._validation_service.validate_full_composition(
                 agent_id=id,
                 graph_schema=graph_schema or "zero_shot",
                 sub_agent_ids=new_sub_agent_ids,
             )
-            
+
             if not validation_result.valid:
                 raise ValueError(
                     f"Composition validation failed: {'; '.join(validation_result.errors)}"
                 )
-            
+
             # Increment version for cache validation
             agent = await self._repo.get_by_id(id)
             if agent:
-                updates["sub_agent_config_version"] = (
-                    agent.sub_agent_config_version + 1
-                )
+                updates["sub_agent_config_version"] = agent.sub_agent_config_version + 1
 
         # Invalidate cache for this definition so next request reloads
         from agents.dynamic_agent import invalidate_agent_cache
@@ -414,9 +421,7 @@ class AgentDefinitionService:
             if not self._validation_service:
                 self._validation_service = CompositionValidationService(self._repo)
 
-            depth = await self._validation_service.get_composition_depth_async(
-                agent_def.id
-            )
+            depth = await self._validation_service.get_composition_depth_async(agent_def.id)
 
             return {
                 "id": str(agent_def.id),
@@ -522,7 +527,10 @@ class BrainTypeService:
     BRAIN_TYPES = [
         {"brain_type": "llm", "description": "Standard LLM brain - direct model calls"},
         {"brain_type": "guard", "description": "Safety brain with input/output filtering"},
-        {"brain_type": "multi_model", "description": "Multi-model brain - routes to different models"},
+        {
+            "brain_type": "multi_model",
+            "description": "Multi-model brain - routes to different models",
+        },
     ]
 
     @staticmethod

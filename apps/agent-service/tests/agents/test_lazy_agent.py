@@ -90,7 +90,9 @@ class TestLazyLoadingAgentBase:
         agent._graph = DummyStreamGraph()
 
         with patch.object(agent, "_get_langgraph_store", return_value=object()):
-            with patch("agents.lazy_agent.recall_memories", return_value={"user_facts": ["User likes tea"]}):
+            with patch(
+                "agents.lazy_agent.recall_memories", return_value={"user_facts": ["User likes tea"]}
+            ):
                 events = [
                     item
                     async for item in agent.astream(
