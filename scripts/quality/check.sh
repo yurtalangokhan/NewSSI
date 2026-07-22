@@ -88,6 +88,24 @@ run_python_service_checks() {
   run "$service validate" make -C "apps/$service" validate
 }
 
+changed_docker_services() {
+  local service
+  local services=()
+
+  if has_changed_path '^(configs/docker-compose.*\.ya?ml|docker-compose.*\.ya?ml|Makefile|scripts/)'; then
+    printf '%s\n' "agent-service user-service rag-service tools-service"
+    return
+  fi
+
+  for service in agent-service rag-service user-service tools-service; do
+    if has_changed_path "^apps/$service/(src|models|schema|tests|alembic|migrations|pyproject.toml|uv.lock|Makefile|Dockerfile|docker/Dockerfile.*|compose\.ya?ml)"; then
+      services+=("$service")
+    fi
+  done
+
+  printf '%s\n' "${services[*]}"
+}
+
 run_web_checks() {
   log "web validate"
   (
@@ -151,8 +169,9 @@ if has_changed_path '^(configs/docker-compose.*\.ya?ml|docker-compose.*\.ya?ml|a
   run "docker compose config" make docker-config
 fi
 
-if [[ "$MODE" == "push" ]] && has_changed_path '^(configs/docker-compose.*\.ya?ml|docker-compose.*\.ya?ml|apps/.*/compose\.ya?ml|apps/.*/Dockerfile|apps/.*/docker/Dockerfile.*|apps/.*/pyproject\.toml|apps/.*/uv\.lock|apps/(agent-service|rag-service|user-service|tools-service)/(src|models|schema|tests)|Makefile|scripts/)'; then
-  run "docker image verify" make docker-verify
+DOCKER_SERVICES="$(changed_docker_services)"
+if [[ -n "$DOCKER_SERVICES" ]] && has_changed_path '^(configs/docker-compose.*\.ya?ml|docker-compose.*\.ya?ml|apps/.*/compose\.ya?ml|apps/.*/Dockerfile|apps/.*/docker/Dockerfile.*|apps/.*/pyproject\.toml|apps/.*/uv\.lock|apps/(agent-service|rag-service|user-service|tools-service)/(src|models|schema|tests|alembic|migrations|Makefile)|Makefile|scripts/)'; then
+  run "docker image build ($DOCKER_SERVICES)" make docker-build-services PYTHON_SERVICES="$DOCKER_SERVICES"
 fi
 
 printf '\n%sQuality gate passed.%s %s%d step(s) completed.%s\n' "$GREEN" "$RESET" "$DIM" "$STEP" "$RESET"

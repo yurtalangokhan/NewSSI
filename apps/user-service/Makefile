@@ -1,4 +1,4 @@
-.PHONY: install dev-install run test test-coverage lint format fix typecheck clean db-up db-down db-migrate db-migrate-create db-migrate-rollback db-reset
+.PHONY: install dev-install run test test-coverage lint format fix typecheck validate clean db-up db-down db-migrate db-migrate-create db-migrate-rollback db-reset
 
 install:
 	uv sync --frozen
@@ -26,6 +26,8 @@ fix:
 
 typecheck:
 	uv run mypy src/
+
+validate: lint typecheck test
 
 clean:
 	rm -rf .ruff_cache .mypy_cache .pytest_cache __pycache__ **/__pycache__ src/**/*.pyc

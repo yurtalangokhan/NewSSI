@@ -1,4 +1,4 @@
-.PHONY: install dev-install run test lint format fix typecheck clean build up up-dev down logs restart
+.PHONY: install dev-install run test lint format fix typecheck validate clean build up up-dev down logs restart
 
 install:
 	uv sync --frozen
@@ -26,6 +26,8 @@ fix:
 
 typecheck:
 	uv run mypy langconnect/
+
+validate: lint typecheck test
 
 clean:
 	rm -rf .ruff_cache .mypy_cache .pytest_cache __pycache__ **/__pycache__ langconnect/**/*.pyc

@@ -263,20 +263,20 @@ describe("packetProcessor", () => {
 
     // Parameterized tests for tool packet types
     test.each([
-      [PacketType.SEARCH_TOOL_START, "SEARCH_TOOL_START"],
-      [PacketType.PYTHON_TOOL_START, "PYTHON_TOOL_START"],
-      [PacketType.FETCH_TOOL_START, "FETCH_TOOL_START"],
-      [PacketType.CUSTOM_TOOL_START, "CUSTOM_TOOL_START"],
-      [PacketType.FILE_READER_START, "FILE_READER_START"],
-      [PacketType.REASONING_START, "REASONING_START"],
-      [PacketType.DEEP_RESEARCH_PLAN_START, "DEEP_RESEARCH_PLAN_START"],
-      [PacketType.RESEARCH_AGENT_START, "RESEARCH_AGENT_START"],
-    ])("%s categorizes as tool group", (packetType) => {
+      [PacketType.SEARCH_TOOL_START, "0-0"],
+      [PacketType.PYTHON_TOOL_START, "0-0"],
+      [PacketType.FETCH_TOOL_START, "0-0"],
+      [PacketType.CUSTOM_TOOL_START, "0-0"],
+      [PacketType.FILE_READER_START, "0-0"],
+      [PacketType.REASONING_START, "0-0-reasoning"],
+      [PacketType.DEEP_RESEARCH_PLAN_START, "0-0"],
+      [PacketType.RESEARCH_AGENT_START, "0-0"],
+    ])("%s categorizes as tool group", (packetType, expectedKey) => {
       const state = createInitialState(1);
       const packets = [createPacket(packetType, { turn_index: 0 })];
       const result = processPackets(state, packets);
 
-      expect(result.toolGroupKeys.has("0-0")).toBe(true);
+      expect(result.toolGroupKeys.has(expectedKey)).toBe(true);
     });
 
     // Parameterized tests for display packet types

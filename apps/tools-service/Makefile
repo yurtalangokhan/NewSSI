@@ -1,4 +1,4 @@
-.PHONY: install dev-install run test lint format fix typecheck clean
+.PHONY: install dev-install run test lint format fix typecheck validate clean
 
 install:
 	uv sync --frozen
@@ -23,6 +23,8 @@ fix:
 
 typecheck:
 	uv run mypy src/
+
+validate: lint typecheck test
 
 clean:
 	rm -rf .ruff_cache .mypy_cache .pytest_cache __pycache__ **/__pycache__ src/**/*.pyc

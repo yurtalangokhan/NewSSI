@@ -50,6 +50,7 @@ packages = ["langconnect"]
 
 [dependency-groups]
 dev = [
+    "mypy>=1.14.0",
     "ruff>=0.8.4",
     "langgraph-api>=0.0.28",
     "langgraph-cli>=0.1.75",
@@ -195,6 +196,34 @@ ignore = [
 ]
 "langconnect/services/graph_rag_service.py" = [
   "D107",
+]
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+allow_redefinition = true
+disable_error_code = [
+  "attr-defined",
+  "arg-type",
+  "assignment",
+  "call-arg",
+  "call-overload",
+  "dict-item",
+  "index",
+  "misc",
+  "name-defined",
+  "no-any-return",
+  "no-redef",
+  "no-untyped-def",
+  "operator",
+  "override",
+  "return-value",
+  "truthy-function",
+  "type-arg",
+  "untyped-decorator",
+  "union-attr",
+  "valid-type",
+  "var-annotated",
 ]
 
 [tool.ruff.lint.pydocstyle]

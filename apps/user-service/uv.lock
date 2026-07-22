@@ -1524,6 +1524,9 @@ dev = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "mypy" },
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
     { name = "ruff" },
 ]
 
@@ -1554,7 +1557,12 @@ requires-dist = [
 provides-extras = ["dev"]
 
 [package.metadata.requires-dev]
-dev = [{ name = "ruff", specifier = ">=0.15.13" }]
+dev = [
+    { name = "mypy", specifier = ">=1.14.0" },
+    { name = "pytest", specifier = ">=8.3.0" },
+    { name = "pytest-asyncio", specifier = ">=0.25.0" },
+    { name = "ruff", specifier = ">=0.15.13" },
+]
 
 [[package]]
 name = "uvicorn"

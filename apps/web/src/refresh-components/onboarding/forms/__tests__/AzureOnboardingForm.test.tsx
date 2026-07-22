@@ -104,6 +104,15 @@ describe("AzureOnboardingForm", () => {
 
   const validTargetUri =
     "https://my-resource.cognitiveservices.azure.com/openai/deployments/gpt-4/chat/completions?api-version=2024-02-01";
+  const titleText = /^llmOnboarding\.setupAzure$|^Set up Azure OpenAI$/i;
+  const descriptionText =
+    /^llmOnboarding\.setupAzureDesc$|Connect to Microsoft Azure and set up your Azure OpenAI models/i;
+  const targetUriText = /^llmOnboarding\.targetUri$|^Target URI$/i;
+  const apiKeyText = /^llmOnboarding\.apiKey$|^API Key$/i;
+  const defaultModelText = /^llmOnboarding\.defaultModel$|^Default Model$/i;
+  const targetUriValidationText =
+    /^llmOnboardingForms\.targetUriValidation$|Target URI must be a valid URL/i;
+  const modelPlaceholder = /selectOrTypeModel|Select or type a model name/i;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -115,35 +124,33 @@ describe("AzureOnboardingForm", () => {
       render(<AzureOnboardingForm {...defaultProps} />);
 
       expect(screen.getByRole("dialog")).toBeInTheDocument();
-      expect(screen.getByText("Set up Azure OpenAI")).toBeInTheDocument();
+      expect(screen.getByText(titleText)).toBeInTheDocument();
     });
 
     test("renders description", () => {
       render(<AzureOnboardingForm {...defaultProps} />);
 
       expect(
-        screen.getByText(
-          /Connect to Microsoft Azure and set up your Azure OpenAI models/i
-        )
+        screen.getByText(descriptionText)
       ).toBeInTheDocument();
     });
 
     test("renders Target URI field", () => {
       render(<AzureOnboardingForm {...defaultProps} />);
 
-      expect(screen.getByText("Target URI")).toBeInTheDocument();
+      expect(screen.getByLabelText(targetUriText)).toBeInTheDocument();
     });
 
     test("renders API key field", () => {
       render(<AzureOnboardingForm {...defaultProps} />);
 
-      expect(screen.getByText("API Key")).toBeInTheDocument();
+      expect(screen.getByLabelText(apiKeyText)).toBeInTheDocument();
     });
 
     test("renders default model field", () => {
       render(<AzureOnboardingForm {...defaultProps} />);
 
-      expect(screen.getByText("Default Model")).toBeInTheDocument();
+      expect(screen.getByText(defaultModelText)).toBeInTheDocument();
     });
 
     test("renders link to Azure OpenAI portal", () => {
@@ -195,7 +202,7 @@ describe("AzureOnboardingForm", () => {
       // Should show validation error
       await waitFor(() => {
         expect(
-          screen.getByText(/Target URI must be a valid URL/i)
+          screen.getByText(targetUriValidationText)
         ).toBeInTheDocument();
       });
     });
@@ -221,9 +228,7 @@ describe("AzureOnboardingForm", () => {
       await user.type(apiKeyInput, "azure-api-key-123");
 
       // Fill model
-      const modelInput = screen.getByPlaceholderText(
-        "Select or type a model name"
-      );
+      const modelInput = screen.getByPlaceholderText(modelPlaceholder);
       await user.type(modelInput, "gpt-4");
 
       const submitButton = screen.getByTestId("submit-button");
@@ -256,9 +261,7 @@ describe("AzureOnboardingForm", () => {
       const apiKeyInput = screen.getByPlaceholderText("");
       await user.type(apiKeyInput, "azure-api-key-123");
 
-      const modelInput = screen.getByPlaceholderText(
-        "Select or type a model name"
-      );
+      const modelInput = screen.getByPlaceholderText(modelPlaceholder);
       await user.type(modelInput, "gpt-4");
 
       const submitButton = screen.getByTestId("submit-button");
@@ -293,9 +296,7 @@ describe("AzureOnboardingForm", () => {
       const apiKeyInput = screen.getByPlaceholderText("");
       await user.type(apiKeyInput, "azure-api-key-123");
 
-      const modelInput = screen.getByPlaceholderText(
-        "Select or type a model name"
-      );
+      const modelInput = screen.getByPlaceholderText(modelPlaceholder);
       await user.type(modelInput, "gpt-4");
 
       const submitButton = screen.getByTestId("submit-button");
@@ -329,9 +330,7 @@ describe("AzureOnboardingForm", () => {
       const apiKeyInput = screen.getByPlaceholderText("");
       await user.type(apiKeyInput, "azure-api-key-123");
 
-      const modelInput = screen.getByPlaceholderText(
-        "Select or type a model name"
-      );
+      const modelInput = screen.getByPlaceholderText(modelPlaceholder);
       await user.type(modelInput, "gpt-4");
 
       const submitButton = screen.getByTestId("submit-button");
@@ -363,9 +362,7 @@ describe("AzureOnboardingForm", () => {
       const apiKeyInput = screen.getByPlaceholderText("");
       await user.type(apiKeyInput, "invalid-key");
 
-      const modelInput = screen.getByPlaceholderText(
-        "Select or type a model name"
-      );
+      const modelInput = screen.getByPlaceholderText(modelPlaceholder);
       await user.type(modelInput, "gpt-4");
 
       const submitButton = screen.getByTestId("submit-button");
@@ -394,9 +391,7 @@ describe("AzureOnboardingForm", () => {
       const apiKeyInput = screen.getByPlaceholderText("");
       await user.type(apiKeyInput, "invalid-key");
 
-      const modelInput = screen.getByPlaceholderText(
-        "Select or type a model name"
-      );
+      const modelInput = screen.getByPlaceholderText(modelPlaceholder);
       await user.type(modelInput, "gpt-4");
 
       const submitButton = screen.getByTestId("submit-button");

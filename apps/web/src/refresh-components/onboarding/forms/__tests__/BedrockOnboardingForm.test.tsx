@@ -92,6 +92,27 @@ describe("BedrockOnboardingForm", () => {
     open: true,
     onOpenChange: jest.fn(),
   };
+  const titleText = /^llmOnboarding\.setupBedrock$|Set up Amazon Bedrock/i;
+  const descriptionText =
+    /^llmOnboarding\.setupBedrockDesc$|Connect to AWS and set up your Amazon Bedrock models/i;
+  const awsRegionText = /^llmOnboarding\.awsRegion$|^AWS Region$/i;
+  const authMethodText =
+    /^llmOnboarding\.authMethod$|^Authentication Method$/i;
+  const defaultModelText = /^llmOnboarding\.defaultModel$|^Default Model$/i;
+  const awsAccessKeyIdText =
+    /^llmOnboarding\.awsAccessKeyId$|^AWS Access Key ID$/i;
+  const awsSecretAccessKeyText =
+    /^llmOnboarding\.awsSecretAccessKey$|^AWS Secret Access Key$/i;
+  const awsLongTermKeyText =
+    /^llmOnboarding\.awsLongTermKey$|^AWS Bedrock Long-term API Key$/i;
+  const iamRoleText = /^llmOnboarding\.iamRole$|^IAM Role$/i;
+  const longTermApiKeyText =
+    /^llmOnboarding\.longTermApiKey$|^Long-term API Key$/i;
+  const iamDescText =
+    /^llmOnboarding\.iamDesc$|Onyx will use the IAM role attached/i;
+  const fetchModelsText =
+    /^llmOnboarding\.fetchAvailableModelsAria$|fetch available models/i;
+  const modelPlaceholder = /selectModel|Select a model/i;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -103,7 +124,7 @@ describe("BedrockOnboardingForm", () => {
       render(<BedrockOnboardingForm {...defaultProps} />);
 
       expect(screen.getByRole("dialog")).toBeInTheDocument();
-      expect(screen.getByText("Set up Amazon Bedrock")).toBeInTheDocument();
+      expect(screen.getByText(titleText)).toBeInTheDocument();
     });
 
     test("renders description", () => {
@@ -111,7 +132,7 @@ describe("BedrockOnboardingForm", () => {
 
       expect(
         screen.getByText(
-          /Connect to AWS and set up your Amazon Bedrock models/i
+          descriptionText
         )
       ).toBeInTheDocument();
     });
@@ -119,19 +140,19 @@ describe("BedrockOnboardingForm", () => {
     test("renders AWS Region field", () => {
       render(<BedrockOnboardingForm {...defaultProps} />);
 
-      expect(screen.getByText("AWS Region")).toBeInTheDocument();
+      expect(screen.getByText(awsRegionText)).toBeInTheDocument();
     });
 
     test("renders Authentication Method field", () => {
       render(<BedrockOnboardingForm {...defaultProps} />);
 
-      expect(screen.getByText("Authentication Method")).toBeInTheDocument();
+      expect(screen.getByText(authMethodText)).toBeInTheDocument();
     });
 
     test("renders default model field", () => {
       render(<BedrockOnboardingForm {...defaultProps} />);
 
-      expect(screen.getByText("Default Model")).toBeInTheDocument();
+      expect(screen.getByText(defaultModelText)).toBeInTheDocument();
     });
 
     test("does not render when closed", () => {
@@ -145,8 +166,8 @@ describe("BedrockOnboardingForm", () => {
     test("shows Access Key fields by default", () => {
       render(<BedrockOnboardingForm {...defaultProps} />);
 
-      expect(screen.getByText("AWS Access Key ID")).toBeInTheDocument();
-      expect(screen.getByText("AWS Secret Access Key")).toBeInTheDocument();
+      expect(screen.getByText(awsAccessKeyIdText)).toBeInTheDocument();
+      expect(screen.getByText(awsSecretAccessKeyText)).toBeInTheDocument();
     });
 
     test("renders Access Key ID placeholder", () => {
@@ -169,13 +190,13 @@ describe("BedrockOnboardingForm", () => {
       await user.click(authMethodTrigger);
 
       // Select IAM Role option
-      const iamOption = screen.getByRole("option", { name: /iam role/i });
+      const iamOption = screen.getByRole("option", { name: iamRoleText });
       await user.click(iamOption);
 
       // Should show IAM info message
       await waitFor(() => {
         expect(
-          screen.getByText(/Onyx will use the IAM role attached/i)
+          screen.getByText(iamDescText)
         ).toBeInTheDocument();
       });
     });
@@ -189,13 +210,13 @@ describe("BedrockOnboardingForm", () => {
       const authMethodTrigger = comboboxes[1]!;
       await user.click(authMethodTrigger);
 
-      const iamOption = screen.getByRole("option", { name: /iam role/i });
+      const iamOption = screen.getByRole("option", { name: iamRoleText });
       await user.click(iamOption);
 
       await waitFor(() => {
-        expect(screen.queryByText("AWS Access Key ID")).not.toBeInTheDocument();
+        expect(screen.queryByText(awsAccessKeyIdText)).not.toBeInTheDocument();
         expect(
-          screen.queryByText("AWS Secret Access Key")
+          screen.queryByText(awsSecretAccessKeyText)
         ).not.toBeInTheDocument();
       });
     });
@@ -212,13 +233,13 @@ describe("BedrockOnboardingForm", () => {
       await user.click(authMethodTrigger);
 
       const longTermOption = screen.getByRole("option", {
-        name: /long-term api key/i,
+        name: longTermApiKeyText,
       });
       await user.click(longTermOption);
 
       await waitFor(() => {
         expect(
-          screen.getByText("AWS Bedrock Long-term API Key")
+          screen.getByText(awsLongTermKeyText)
         ).toBeInTheDocument();
       });
     });
@@ -259,7 +280,7 @@ describe("BedrockOnboardingForm", () => {
 
       // Click fetch models button - find by aria-label
       const fetchButton = screen.getByRole("button", {
-        name: /fetch available models/i,
+        name: fetchModelsText,
       });
       await user.click(fetchButton);
 
@@ -269,7 +290,7 @@ describe("BedrockOnboardingForm", () => {
       });
 
       // Fill model - use the textbox with the specific placeholder
-      const modelInput = screen.getByPlaceholderText("Select a model");
+      const modelInput = screen.getByPlaceholderText(modelPlaceholder);
       await user.type(modelInput, "anthropic.claude-3-sonnet");
     }
 
@@ -376,7 +397,7 @@ describe("BedrockOnboardingForm", () => {
 
       // Click fetch models button - find by aria-label
       const fetchButton = screen.getByRole("button", {
-        name: /fetch available models/i,
+        name: fetchModelsText,
       });
       await user.click(fetchButton);
 
@@ -385,7 +406,7 @@ describe("BedrockOnboardingForm", () => {
         expect(mockFetchModels).toHaveBeenCalled();
       });
 
-      const modelInput = screen.getByPlaceholderText("Select a model");
+      const modelInput = screen.getByPlaceholderText(modelPlaceholder);
       await user.type(modelInput, "anthropic.claude-3-sonnet");
     }
 

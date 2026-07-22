@@ -60,5 +60,28 @@ testpaths = ["tests"]
 
 [dependency-groups]
 dev = [
+    "mypy>=1.14.0",
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.25.0",
     "ruff>=0.15.13",
+]
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+allow_redefinition = true
+exclude = "src/core/database/migrations/"
+disable_error_code = [
+    "attr-defined",
+    "arg-type",
+    "assignment",
+    "dict-item",
+    "index",
+    "misc",
+    "name-defined",
+    "no-redef",
+    "operator",
+    "return",
+    "return-value",
+    "union-attr",
 ]

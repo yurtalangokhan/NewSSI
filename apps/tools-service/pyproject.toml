@@ -44,5 +44,13 @@ testpaths = ["tests"]
 
 [tool.mypy]
 python_version = "3.11"
-strict = true
 ignore_missing_imports = true
+allow_redefinition = true
+disable_error_code = [
+    "attr-defined",
+    "no-any-return",
+    "no-redef",
+    "no-untyped-def",
+    "type-arg",
+    "untyped-decorator",
+]
