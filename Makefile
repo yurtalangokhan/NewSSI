@@ -1,13 +1,23 @@
-.PHONY: docker-config docker-build-services docker-verify hooks-install validate-services validate quality-staged quality-push quality-all
+.PHONY: env-check env-init env-test docker-config docker-build-services docker-verify hooks-install validate-services validate quality-staged quality-push quality-all
 
 PYTHON_SERVICES ?= agent-service user-service rag-service tools-service
 
 docker-config:
-	docker compose -f configs/docker-compose-dev.yml config >/tmp/agentic-dev-compose.yml
-	docker compose -f configs/docker-compose-prod.yml config >/tmp/agentic-prod-compose.yml
+	docker compose --env-file configs/.env -f configs/docker-compose-services.yml config >/tmp/agentic-services-compose.yml
+	docker compose --env-file configs/.env -f configs/docker-compose-dev.yml config >/tmp/agentic-dev-compose.yml
+	docker compose --env-file configs/.env -f configs/docker-compose-prod.yml config >/tmp/agentic-prod-compose.yml
+
+env-check:
+	python scripts/env_manager.py check
+
+env-init:
+	python scripts/env_manager.py init
+
+env-test:
+	python -m unittest scripts.tests.test_env_manager
 
 docker-build-services:
-	docker compose -f configs/docker-compose-dev.yml build $(PYTHON_SERVICES)
+	docker compose --env-file configs/.env -f configs/docker-compose-dev.yml build $(PYTHON_SERVICES)
 
 docker-verify: docker-config docker-build-services
 

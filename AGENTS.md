@@ -202,17 +202,35 @@ npm run test:watch
 - `SHOW_EXTRA_CONNECTORS=false`
 - `AUTH_TYPE=oidc` (Keycloak)
 
+## Development environment and startup
+
+Before starting services or changing env/compose files, read
+`docs/development-environment.md`. In short:
+
+- `configs/.env` belongs to infrastructure compose only.
+- `apps/*/.env` files belong to app runtime and are used by VS Code launch
+  configs and app Docker Compose.
+- Run `make env-init` to create missing env files and keys.
+- Run `make env-check` before starting services or handing off env changes.
+- All external app traffic must go through Kong on `localhost:8000`.
+- Do not commit real `.env` files; commit env validation logic and docs instead.
+
 ## Infrastructure configs
 
 ```sh
+# Prepare/validate env files
+make env-init
+make env-check
+
 # Dev application services
-docker compose -f configs/docker-compose-dev.yml up -d
+docker compose --env-file configs/.env -f configs/docker-compose-dev.yml up -d
 
 # Infrastructure (Postgres, Neo4j, Milvus, Airbyte, Keycloak)
-docker compose -f configs/docker-compose-services.yml up -d
+docker compose --env-file configs/.env -f configs/docker-compose-services.yml up -d
 ```
 
-Central `.env` is at `configs/.env` — references the real network addresses. Per-service `.env` files live in each `apps/*/` folder.
+Infrastructure `.env` is at `configs/.env`; per-service runtime `.env` files
+live in each `apps/*/` folder.
 
 ### Docker verification rule
 
