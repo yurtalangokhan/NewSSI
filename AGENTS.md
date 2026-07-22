@@ -2,7 +2,8 @@
 
 ## Monorepo layout
 
-Active code is in `apps/`. The `supabase/` and `legacy/` trees are third-party forks/stubs — **do not edit**.
+Active code is in `apps/`. Third-party fork/stub trees such as `supabase/` and
+`legacy/` have been removed from this branch; do not reintroduce them.
 
 | directory | language | what |
 |---|---|---|
@@ -193,11 +194,15 @@ docker compose -f configs/docker-compose-services.yml up -d
 
 Central `.env` is at `configs/.env` — references the real network addresses. Per-service `.env` files live in each `apps/*/` folder.
 
+Airbyte remains an active datasource integration. The `docker-bin/docker` binary
+is mounted into the Airbyte worker by `configs/docker-compose-services.yml`, and
+`airbyte-destination-embedding/` contains the custom destination connector source.
+
 ## Things to avoid
 
-- **Do not touch** `supabase/` (third-party source clones) or `legacy/` (old stack).
-- **Do not touch** `airbyte-destination-embedding/` unless the task explicitly mentions Airbyte destinations.
-- The old `AGENTS.md` at `legacy/open-agent-platform/AGENTS.md` documents a completely different codebase (Turbo/Yarn/Next 15) — ignore it.
+- Do not re-add the removed `supabase/` third-party source clone or `legacy/` old stack.
+- Do not remove `docker-bin/docker` unless Airbyte worker startup is updated to use another Docker CLI source.
+- Do not touch `airbyte-destination-embedding/` unless the task explicitly mentions Airbyte destinations.
 - `providers/` is empty.
 - The web app's `lib/opal/` is excluded from the main `tsconfig.json` (`"exclude": ["lib/opal"]`). Type-check it separately if needed.
 - Dont push the commits to remote branch and dont create merge request.
