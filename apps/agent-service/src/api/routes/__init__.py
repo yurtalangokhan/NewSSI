@@ -13,6 +13,7 @@ from api.routes.FileRoute import router as file_router
 from api.routes.IngestRoute import router as ingest_router
 from api.routes.MCPProvidersRoute import router as mcp_providers_router
 from api.routes.MCPToolsRoute import router as mcp_tools_router
+from api.routes.OllamaRoute import router as ollama_router
 from api.routes.PersonaRoute import router as persona_router
 from api.routes.ProviderRoute import router as provider_router
 from api.routes.ProxyRoute import router as proxy_router
@@ -44,4 +45,5 @@ __all__ = [
     "mcp_tools_router",
     "web_search_router",
     "provider_router",
+    "ollama_router",
 ]

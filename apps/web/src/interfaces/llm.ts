@@ -66,8 +66,19 @@ export interface LLMProviderDescriptor {
 export interface OllamaModelResponse {
   name: string;
   display_name: string;
+  size?: number;
   max_input_tokens: number | null;
   supports_image_input: boolean;
+  supports_reasoning?: boolean;
+  is_remote?: boolean;
+}
+
+export interface BuiltinOllamaStatus {
+  base_url: string;
+  online: boolean;
+  version: string | null;
+  model_count: number;
+  error: string | null;
 }
 
 export interface OpenRouterModelResponse {

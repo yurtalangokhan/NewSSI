@@ -94,6 +94,8 @@ export function ModelDownloadModal({ open, onOpenChange, providerId }: Props) {
       setDone(true);
       toast({ message: t("admin.llm.modelDownloaded", { model: modelName }) });
       await mutate(`/api/admin/providers/${providerId}/models`);
+      await mutate("/api/admin/ollama/models");
+      await mutate("/api/admin/ollama/status");
     } catch (e: unknown) {
       toast({
         message: e instanceof Error ? e.message : t("admin.llm.pullFailed"),

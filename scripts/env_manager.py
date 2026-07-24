@@ -129,6 +129,13 @@ def build_specs() -> dict[str, EnvFileSpec]:
                 var("POSTGRES_PASSWORD", "Infrastructure Postgres password.", postgres_password),
                 var("POSTGRES_DB", "Default database created by Postgres.", "postgres"),
                 var("POSTGRES_PGDATA", "Postgres data directory inside the container.", "/var/lib/postgresql/data/pgdata"),
+                var("OLLAMA_IMAGE_TAG", "Ollama Docker image tag.", "latest"),
+                var("OLLAMA_PORT", "Host port mapped to built-in Ollama.", "11434"),
+                var(
+                    "OLLAMA_PRELOAD_MODELS",
+                    "Space-separated Ollama models pulled during infra startup.",
+                    "llama3.1:8b nomic-embed-text",
+                ),
                 var("NEO4J_URI", "Neo4j Bolt URI for app services.", f"bolt://{common_host}:8697"),
                 var("NEO4J_USERNAME", "Neo4j username.", "neo4j"),
                 var("NEO4J_PASSWORD", "Neo4j password.", "neo4j123"),

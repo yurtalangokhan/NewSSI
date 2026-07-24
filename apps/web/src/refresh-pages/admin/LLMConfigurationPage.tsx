@@ -57,6 +57,7 @@ import { UrlProviderModal } from "@/sections/modals/llmConfig/UrlProviderModal";
 import { ApiKeyProviderModal } from "@/sections/modals/llmConfig/ApiKeyProviderModal";
 import { ModelDownloadModal } from "@/sections/modals/llmConfig/ModelDownloadModal";
 import { UrlProviderCard } from "@/sections/llmConfig/UrlProviderCard";
+import { BuiltinOllamaPanel } from "@/sections/llmConfig/BuiltinOllamaPanel";
 import { EditProviderModal } from "@/sections/modals/llmConfig/EditProviderModal";
 import { Section } from "@/layouts/general-layouts";
 import { useTranslation } from "react-i18next";
@@ -656,13 +657,23 @@ export default function LLMConfigurationPage() {
           />
           <div className="flex flex-col gap-2">
             {builtinProviders.length > 0 ? (
-              builtinProviders.map((provider) => (
-                <UrlProviderCard
-                  key={`builtin-${provider.id}`}
-                  provider={provider}
-                  readOnly
-                />
-              ))
+              builtinProviders.map((provider) =>
+                provider.provider_type === "ollama" ? (
+                  <BuiltinOllamaPanel
+                    key={`builtin-${provider.id}`}
+                    onDownload={() => {
+                      setSelectedProviderForDownload("builtin");
+                      setDownloadModalOpen(true);
+                    }}
+                  />
+                ) : (
+                  <UrlProviderCard
+                    key={`builtin-${provider.id}`}
+                    provider={provider}
+                    readOnly
+                  />
+                )
+              )
             ) : (
               <Card>
                 <ContentAction

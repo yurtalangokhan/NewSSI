@@ -183,6 +183,7 @@ from api.routes import (  # noqa: E402,I001
     ingest_router,
     mcp_providers_router,
     mcp_tools_router,
+    ollama_router,
     persona_router,
     provider_router,
     proxy_router,
@@ -211,6 +212,7 @@ app.include_router(assistant_schemas_router)
 app.include_router(file_router)
 app.include_router(web_search_router)
 app.include_router(provider_router)
+app.include_router(ollama_router)
 app.include_router(mcp_providers_router)
 app.include_router(mcp_tools_router)
 app.include_router(agent_tools_router)

@@ -37,6 +37,7 @@ services:
       RAG_SERVICE_API_URL: http://kong:8000/internal/rag-service
       RAG_API_URL: http://kong:8000/internal/rag-service
       USER_SERVICE_URL: http://kong:8000/internal/user-service
+      OLLAMA_BASE_URL: http://ollama:11434
     networks:
       airbyte:
         aliases:
@@ -62,6 +63,7 @@ services:
     environment:
       ALLOW_ORIGINS: '["*"]'
       USER_SERVICE_URL: http://kong:8000/internal/user-service
+      OLLAMA_BASE_URL: http://ollama:11434
     networks:
       airbyte:
         aliases:

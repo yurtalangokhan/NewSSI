@@ -6,6 +6,8 @@ import { errorHandlingFetcher } from "@/lib/fetcher";
 import {
   AllProvidersResponse,
   ApiKeyProvider,
+  BuiltinOllamaStatus,
+  OllamaModelResponse,
   UrlBasedProvider,
   WellKnownLangChainProvider,
 } from "@/interfaces/llm";
@@ -66,6 +68,48 @@ export function useWellKnownLangChainProviders() {
     error,
     mutate,
   };
+}
+
+export function useBuiltinOllamaStatus() {
+  const { data, error, isLoading, mutate } = useSWR<BuiltinOllamaStatus>(
+    "/api/admin/ollama/status",
+    errorHandlingFetcher,
+    { revalidateOnFocus: false }
+  );
+  return {
+    data,
+    isLoading,
+    error,
+    mutate,
+  };
+}
+
+export function useBuiltinOllamaModels() {
+  const { data, error, isLoading, mutate } = useSWR<OllamaModelResponse[]>(
+    "/api/admin/ollama/models",
+    errorHandlingFetcher,
+    { revalidateOnFocus: false }
+  );
+  return {
+    data: data ?? [],
+    isLoading,
+    error,
+    mutate,
+  };
+}
+
+export function useDeleteBuiltinOllamaModel() {
+  return useCallback(async (modelName: string) => {
+    const response = await fetch(
+      `/api/admin/ollama/models/${encodeURIComponent(modelName)}`,
+      { method: "DELETE" }
+    );
+
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}));
+      throw new Error(payload.detail || payload.error || "Failed to delete model");
+    }
+  }, []);
 }
 
 export function useReorderProviders() {
