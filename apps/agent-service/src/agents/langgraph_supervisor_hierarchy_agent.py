@@ -6,7 +6,6 @@ Supports dynamic stage configuration with MCP tools per stage.
 
 import hashlib
 import json as json_module
-import os
 from typing import Any
 
 from langchain_core.messages import SystemMessage
@@ -18,6 +17,7 @@ from langgraph_supervisor import create_supervisor
 
 from agents.lazy_agent import LazyLoadingAgent
 from core import get_model, settings
+from core.env import env
 from core.logger import get_logger
 from memory.long_term import build_event_emitters
 
@@ -97,8 +97,8 @@ class DynamicPipelineSupervisor(LazyLoadingAgent):
         try:
             from langchain_mcp_adapters.client import MultiServerMCPClient
 
-            mcp_url = os.environ.get("MCP_SERVER_URL", "http://tools-service:8003/mcp")
-            token = (os.environ.get("INTERNAL_SERVICE_TOKEN") or "").strip()
+            mcp_url = env.MCP_SERVER_URL
+            token = (env.INTERNAL_SERVICE_TOKEN or "").strip()
             headers = {"Authorization": f"Bearer {token}"} if token else None
 
             client = MultiServerMCPClient(

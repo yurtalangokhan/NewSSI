@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import time
 from typing import Any
 
@@ -11,17 +10,18 @@ from fastmcp.server.auth import AccessToken, TokenVerifier
 from jwt import InvalidTokenError, PyJWKClient
 
 from .authorization import get_user_service_permissions
+from .settings import get_settings, optional_env
 
 
 def _get_valid_api_keys() -> set:
-    keys = os.environ.get("VALID_API_KEYS", "")
+    keys = optional_env("VALID_API_KEYS")
     if keys:
         return {k.strip() for k in keys.split(",") if k.strip()}
     return set()
 
 
 def _get_internal_service_token() -> str:
-    return (os.environ.get("INTERNAL_SERVICE_TOKEN") or "").strip()
+    return optional_env("INTERNAL_SERVICE_TOKEN").strip()
 
 
 class KeycloakTokenVerifier(TokenVerifier):
@@ -34,15 +34,12 @@ class KeycloakTokenVerifier(TokenVerifier):
     """
 
     def __init__(self) -> None:
-        base_url = os.environ.get("MCP_PUBLIC_BASE_URL") or os.environ.get(
-            "TOOLS_SERVICE_URL",
-            "http://localhost:8003/mcp",
-        )
-        super().__init__(base_url=base_url, required_scopes=["tool:execute"])
-        self._issuer = (os.environ.get("KEYCLOAK_ISSUER_URL") or "").rstrip("/")
-        self._audience = os.environ.get("KEYCLOAK_AUDIENCE", "")
-        self._client_id = os.environ.get("KEYCLOAK_CLIENT_ID", "agenticai-web")
-        self._leeway = int(os.environ.get("KEYCLOAK_TOKEN_LEEWAY_SECONDS", "120"))
+        settings = get_settings()
+        super().__init__(base_url=settings.mcp_public_base_url, required_scopes=["tool:execute"])
+        self._issuer = settings.keycloak_issuer_url
+        self._audience = settings.keycloak_audience
+        self._client_id = settings.keycloak_client_id
+        self._leeway = settings.keycloak_token_leeway_seconds
         self._jwks_client: PyJWKClient | None = None
 
     def _get_jwks_client(self) -> PyJWKClient | None:

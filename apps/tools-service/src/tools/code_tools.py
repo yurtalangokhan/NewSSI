@@ -12,9 +12,9 @@ from pathlib import Path
 from typing import Any
 
 from ..core.base import BaseToolCategory
+from ..core.settings import optional_env
 
-# Get workspace directory from environment
-WORKSPACE_DIR = os.environ.get("WORKSPACE_DIR", "/workspace")
+WORKSPACE_DIR = optional_env("WORKSPACE_DIR", "/workspace")
 
 
 def normalize_code(code: str) -> str:

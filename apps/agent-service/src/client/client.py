@@ -1,10 +1,10 @@
 import json
-import os
 from collections.abc import AsyncGenerator, Generator
 from typing import Any
 
 import httpx
 
+from core.env import env
 from models.agents import ServiceMetadata
 from models.chat import (
     ChatHistory,
@@ -41,7 +41,7 @@ class AgentClient:
                 Default: True
         """
         self.base_url = base_url
-        self.auth_secret = os.getenv("AUTH_SECRET")
+        self.auth_secret = env.AUTH_SECRET
         self.timeout = timeout
         self.info: ServiceMetadata | None = None
         self.agent: str | None = None

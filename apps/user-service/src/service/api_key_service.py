@@ -15,7 +15,7 @@ _fernet = None
 def _get_fernet() -> Fernet:
     global _fernet
     if _fernet is None:
-        key = _settings.ENCRYPTION_KEY or "UKtf1bGCDl8smcVDRM9YekfivWNlsjSB-Mh0d993z40="
+        key = _settings.require_encryption_key()
         if isinstance(key, str):
             import base64
 

@@ -4,7 +4,6 @@ Uses FastMCP for simple tool definitions with modular plugin architecture.
 Provides tools for web search, calculations, utilities, and more.
 """
 
-import os
 import sys
 from pathlib import Path
 
@@ -33,6 +32,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from src.core.registry import ToolRegistry
 from src.core.database import close_db_pool
 from src.core.auth import KeycloakTokenVerifier
+from src.core.settings import get_settings
 
 
 # Initialize FastMCP server
@@ -55,8 +55,9 @@ async def cleanup():
 
 # Run with HTTP transport for Open Agent Platform compatibility
 if __name__ == "__main__":
-    port = int(os.environ.get("MCP_PORT", 8001))
-    host = os.environ.get("MCP_HOST", "0.0.0.0")
+    settings = get_settings()
+    port = settings.mcp_port
+    host = settings.mcp_host
     
     print(f"\n{'='*60}")
     print(f"MCP Server - Modular Architecture")

@@ -8,9 +8,9 @@ import subprocess
 from typing import Any
 
 from ..core.base import BaseToolCategory
+from ..core.settings import optional_env
 
-# Get workspace directory from environment
-WORKSPACE_DIR = os.environ.get("WORKSPACE_DIR", "/workspace")
+WORKSPACE_DIR = optional_env("WORKSPACE_DIR", "/workspace")
 
 
 def _resolve_repo_path(repo_dir: str) -> str:

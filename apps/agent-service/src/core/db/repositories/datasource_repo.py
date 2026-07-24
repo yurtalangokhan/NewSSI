@@ -9,7 +9,6 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-import os
 import re
 from typing import Any
 
@@ -18,6 +17,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from core.db.models.collection import PgCollection
 from core.db.repositories.base import BaseRepository
+from core.env import env
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +38,6 @@ def _to_milvus_collection_name(raw_name: str) -> str:
 
 
 def _get_milvus_connection_args() -> dict:
-    env = os.environ
     return {
         "host": env.get("MILVUS_HOST", "localhost"),
         "port": env.get("MILVUS_PORT", "9765"),

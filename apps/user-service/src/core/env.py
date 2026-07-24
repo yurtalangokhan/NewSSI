@@ -53,6 +53,10 @@ class Env:
         return os.environ.get("KEYCLOAK_AUDIENCE")
 
     @property
+    def KEYCLOAK_TOKEN_LEEWAY_SECONDS(self) -> int:
+        return int(os.environ.get("KEYCLOAK_TOKEN_LEEWAY_SECONDS", "120"))
+
+    @property
     def KEYCLOAK_LOGIN_CLIENT_ID(self) -> str | None:
         return os.environ.get("KEYCLOAK_LOGIN_CLIENT_ID")
 
@@ -201,6 +205,10 @@ class Env:
             "LDAP_ATTRIBUTE_MAP",
             '{"username": "uid", "email": "mail", "first_name": "givenName", "last_name": "sn"}',
         )
+
+    @property
+    def PERMISSION_MANIFEST_ROOT(self) -> str | None:
+        return os.environ.get("PERMISSION_MANIFEST_ROOT")
 
 
 _env = Env()

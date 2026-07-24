@@ -1,6 +1,7 @@
+import { getInternalUrl } from "@/lib/env.server";
 import { NextResponse } from 'next/server';
 
-const INTERNAL_URL = process.env.INTERNAL_URL || "http://localhost:8123";
+const INTERNAL_URL = getInternalUrl();
 
 export async function POST(request: Request, { params }: { params: Promise<{ chatSessionId: string }> }) {
   try {

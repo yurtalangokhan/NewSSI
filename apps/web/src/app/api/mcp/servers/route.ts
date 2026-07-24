@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
+import { getToolsServiceUrl } from "@/lib/env.server";
 
-const TOOLS_SERVICE_URL =
-  process.env.TOOLS_SERVICE_URL || "http://localhost:8003/mcp";
+const TOOLS_SERVICE_URL = getToolsServiceUrl();
 
 export async function GET() {
   // Return the tools-service as a default MCP server

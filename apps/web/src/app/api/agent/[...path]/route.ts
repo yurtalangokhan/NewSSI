@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCookieValue, refreshAuthCookies } from "@/lib/api/proxy";
+import { getAgentServiceUrl } from "@/lib/env.server";
 
-const AGENT_SERVICE_URL =
-  process.env.AGENT_SERVICE_URL ||
-  process.env.INTERNAL_URL ||
-  "http://localhost:8123";
+const AGENT_SERVICE_URL = getAgentServiceUrl();
 
 /**
  * Generic proxy to agent-service for all HTTP methods.

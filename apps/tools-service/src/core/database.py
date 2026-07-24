@@ -3,13 +3,14 @@ Database connection management.
 Provides a singleton DatabaseManager for async connection pooling.
 """
 
-import os
 from typing import Optional
 
 try:
     import asyncpg
 except ImportError:  # pragma: no cover - optional dependency in local dev
     asyncpg = None
+
+from .settings import get_settings
 
 
 class DatabaseManager:
@@ -30,16 +31,8 @@ class DatabaseManager:
 
     @property
     def config(self) -> dict:
-        """Get database configuration from environment variables."""
-        return {
-            "user": os.environ.get("POSTGRES_USER", "postgres"),
-            "password": os.environ.get(
-                "POSTGRES_PASSWORD", "your-super-secret-and-long-postgres-password"
-            ),
-            "host": os.environ.get("POSTGRES_HOST", "db"),
-            "port": int(os.environ.get("POSTGRES_PORT", 5432)),
-            "database": os.environ.get("POSTGRES_DB", "postgres"),
-        }
+        """Get database configuration from centralized settings."""
+        return get_settings().postgres_config
 
     async def get_pool(self):
         """

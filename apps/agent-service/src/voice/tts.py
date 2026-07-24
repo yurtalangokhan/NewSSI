@@ -5,8 +5,9 @@ based on configuration.
 """
 
 import logging
-import os
 from typing import Literal, cast
+
+from core.env import env
 
 logger = logging.getLogger(__name__)
 
@@ -68,9 +69,9 @@ class TextToSpeech:
         # Otherwise, get from environment based on provider
         match provider:
             case "openai":
-                return os.getenv("OPENAI_API_KEY")
+                return env.OPENAI_API_KEY
             case "elevenlabs":
-                return os.getenv("ELEVENLABS_API_KEY")
+                return env.ELEVENLABS_API_KEY
             case _:
                 return None
 
@@ -136,7 +137,7 @@ class TextToSpeech:
             >>> if tts:
             ...     audio = tts.generate("Hello world")
         """
-        provider = os.getenv("VOICE_TTS_PROVIDER")
+        provider = env.VOICE_TTS_PROVIDER
 
         # If provider not set, voice features are disabled
         if not provider:

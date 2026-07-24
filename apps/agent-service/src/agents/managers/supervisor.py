@@ -1,7 +1,6 @@
 """Supervisor manager - coordinates multiple sub-agents."""
 
 import logging
-import os
 from typing import Any
 
 from langchain_core.messages import SystemMessage
@@ -17,6 +16,7 @@ except ImportError:
 
 from agents.base.manager import DelegateRequest, SupervisorManager, TaskResult
 from agents.perceptrons.mcp_perceptron import MCPPerceptron
+from core.env import env
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +68,7 @@ class DynamicFlatSupervisor(SupervisorManager):
             return
 
         # Load MCP tools
-        mcp_url = self.get_config("mcp_server_url") or os.environ.get("MCP_SERVER_URL")
+        mcp_url = self.get_config("mcp_server_url") or env.MCP_SERVER_URL
         if mcp_url:
             self._mcp_perceptron = MCPPerceptron(mcp_servers=[{"name": "mcp", "url": mcp_url}])
             await self._mcp_perceptron.load()

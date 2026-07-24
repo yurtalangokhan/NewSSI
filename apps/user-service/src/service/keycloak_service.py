@@ -1,5 +1,4 @@
 import fnmatch
-import os
 import time
 from typing import Any
 from urllib.parse import quote, urlparse
@@ -254,7 +253,7 @@ class KeycloakService(KeycloakBrokerMixin):
                 algorithms=["RS256", "RS384", "RS512"],
                 issuer=issuer,
                 audience=audiences if audiences else None,
-                leeway=int(os.environ.get("KEYCLOAK_TOKEN_LEEWAY_SECONDS", "120")),
+                leeway=_env.KEYCLOAK_TOKEN_LEEWAY_SECONDS,
                 options={
                     "verify_aud": bool(audiences),
                     "verify_iss": True,
