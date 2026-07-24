@@ -32,7 +32,7 @@ class AuthService:
             "type": "access",
             "jti": secrets.token_urlsafe(12),
         }
-        secret = _settings.AUTH_SECRET or "dev-secret-change-me"
+        secret = _settings.require_auth_secret()
         token = jwt.encode(payload, secret, algorithm="HS256")
         return token, expires
 
@@ -305,7 +305,7 @@ class AuthService:
     async def validate_token(self, token: str) -> dict[str, Any] | None:
         # 1. Try local HS256 decode (legacy user-service tokens)
         try:
-            secret = _settings.AUTH_SECRET or "dev-secret-change-me"
+            secret = _settings.require_auth_secret()
             payload = jwt.decode(
                 token, secret, algorithms=["HS256"], audience=_settings.SERVICE_NAME
             )

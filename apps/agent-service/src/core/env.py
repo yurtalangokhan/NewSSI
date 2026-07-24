@@ -94,6 +94,10 @@ class Env:
         return int(os.environ.get("PORT", "8080"))
 
     @property
+    def AGENT_URL(self) -> str | None:
+        return os.environ.get("AGENT_URL")
+
+    @property
     def LOG_LEVEL(self) -> str:
         return os.environ.get("LOG_LEVEL", "INFO")
 
@@ -116,6 +120,10 @@ class Env:
     @property
     def KEYCLOAK_AUDIENCE(self) -> str | None:
         return os.environ.get("KEYCLOAK_AUDIENCE")
+
+    @property
+    def KEYCLOAK_TOKEN_LEEWAY_SECONDS(self) -> int:
+        return int(os.environ.get("KEYCLOAK_TOKEN_LEEWAY_SECONDS", "120"))
 
     @property
     def KEYCLOAK_CLIENT_SECRET(self) -> str | None:
@@ -160,6 +168,22 @@ class Env:
     @property
     def MCP_SERVER_URL(self) -> str:
         return os.environ.get("MCP_SERVER_URL", "http://localhost:8003/mcp")
+
+    @property
+    def TOOLS_SERVICE_URL(self) -> str | None:
+        return os.environ.get("TOOLS_SERVICE_URL")
+
+    @property
+    def USER_SERVICE_URL(self) -> str | None:
+        return os.environ.get("USER_SERVICE_URL")
+
+    @property
+    def RAG_SERVICE_API_URL(self) -> str | None:
+        return os.environ.get("RAG_SERVICE_API_URL")
+
+    @property
+    def RAG_API_URL(self) -> str | None:
+        return os.environ.get("RAG_API_URL")
 
     @property
     def GITHUB_PAT(self) -> str | None:
@@ -234,12 +258,52 @@ class Env:
         return os.environ.get("AIRBYTE_API_URL")
 
     @property
+    def AIRBYTE_DESTINATION_AGENT_TOKEN(self) -> str | None:
+        return os.environ.get("AIRBYTE_DESTINATION_AGENT_TOKEN")
+
+    @property
+    def AIRBYTE_EMBED_BATCH_SIZE(self) -> int:
+        return int(os.environ.get("AIRBYTE_EMBED_BATCH_SIZE", "200"))
+
+    @property
+    def AIRBYTE_SYNC_POLL_INTERVAL_SECONDS(self) -> int:
+        return int(os.environ.get("AIRBYTE_SYNC_POLL_INTERVAL_SECONDS", "30"))
+
+    @property
     def AIRBYTE_LOCAL_OUTPUT_PATH(self) -> str:
         return os.environ.get("AIRBYTE_LOCAL_OUTPUT_PATH", "/tmp/airbyte_local")
 
     @property
     def OPENWEATHERMAP_API_KEY(self) -> str | None:
         return os.environ.get("OPENWEATHERMAP_API_KEY")
+
+    @property
+    def OPENAI_API_KEY(self) -> str | None:
+        return os.environ.get("OPENAI_API_KEY")
+
+    @property
+    def DEEPGRAM_API_KEY(self) -> str | None:
+        return os.environ.get("DEEPGRAM_API_KEY")
+
+    @property
+    def ELEVENLABS_API_KEY(self) -> str | None:
+        return os.environ.get("ELEVENLABS_API_KEY")
+
+    @property
+    def VOICE_STT_PROVIDER(self) -> str | None:
+        return os.environ.get("VOICE_STT_PROVIDER")
+
+    @property
+    def VOICE_TTS_PROVIDER(self) -> str | None:
+        return os.environ.get("VOICE_TTS_PROVIDER")
+
+    @property
+    def AWS_KB_ID(self) -> str | None:
+        return os.environ.get("AWS_KB_ID")
+
+    @property
+    def ENCRYPTION_KEY(self) -> str | None:
+        return os.environ.get("ENCRYPTION_KEY")
 
     @property
     def LOG_FORMAT(self) -> str:

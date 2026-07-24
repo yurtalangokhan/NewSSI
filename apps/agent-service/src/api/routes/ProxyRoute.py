@@ -10,13 +10,13 @@ Endpoints:
 """
 
 import logging
-import os
 
 from fastapi import APIRouter, Body, Depends, Query
 
 from api.dependencies import require_user
 from controller import ProxyController, get_proxy_controller
 from core import settings
+from core.env import env
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +57,7 @@ async def get_ollama_models() -> dict:
 @router.get("/rag/collections")
 async def get_rag_collections() -> dict:
     """Proxy endpoint to get RAG collections from langconnect-api."""
-    rag_api_url = os.environ.get("RAG_API_URL", "http://langconnect-api:8080")
+    rag_api_url = env.RAG_API_URL or "http://langconnect-api:8080"
     ctrl = _get_controller()
     return await ctrl.get_rag_collections(rag_api_url)
 

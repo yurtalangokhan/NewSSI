@@ -1,5 +1,4 @@
 import asyncio
-import os
 import urllib.parse
 import uuid
 from collections.abc import AsyncGenerator
@@ -9,6 +8,7 @@ from dotenv import load_dotenv
 from pydantic import ValidationError
 
 from client import AgentClient, AgentClientError
+from core.env import env
 from models.chat import ChatHistory, ChatMessage
 from models.task_data import TaskData, TaskDataStatus
 from voice import VoiceManager
@@ -82,10 +82,10 @@ async def main() -> None:
 
     if "agent_client" not in st.session_state:
         load_dotenv()
-        agent_url = os.getenv("AGENT_URL")
+        agent_url = env.AGENT_URL
         if not agent_url:
-            host = os.getenv("HOST", "0.0.0.0")
-            port = os.getenv("PORT", 8080)
+            host = env.HOST
+            port = env.PORT
             agent_url = f"http://{host}:{port}"
         try:
             with st.spinner("Connecting to agent service..."):

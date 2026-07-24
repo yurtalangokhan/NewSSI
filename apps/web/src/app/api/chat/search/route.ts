@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server';
 
-const INTERNAL_URL = process.env.INTERNAL_URL || "http://localhost:8123";
-
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);

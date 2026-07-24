@@ -30,7 +30,7 @@ async def test_validate_token_accepts_current_service_tokens():
 @pytest.mark.asyncio
 async def test_validate_token_accepts_legacy_tokens_without_audience():
     settings = get_settings()
-    secret = settings.AUTH_SECRET or "dev-secret-change-me"
+    secret = settings.require_auth_secret()
     token = jwt.encode(
         {
             "sub": "legacy-user",

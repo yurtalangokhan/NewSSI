@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from typing import Any
 
 from langchain_core.runnables import RunnableConfig
@@ -13,6 +12,7 @@ from agents.graphs.builder import GraphBuilder
 from agents.graphs.schemas import GraphSchemaType, get_schema
 from agents.lazy_agent import LazyLoadingAgent
 from core import settings
+from core.env import env
 from core.llm import get_model, get_model_from_config
 from core.logger import get_logger
 from memory.long_term import build_event_emitters
@@ -104,11 +104,11 @@ class DynamicAgent(LazyLoadingAgent):
             mcp_url = (
                 getattr(settings, "TOOLS_SERVICE_URL", None)
                 or getattr(settings, "MCP_SERVER_URL", None)
-                or os.environ.get("TOOLS_SERVICE_URL")
-                or os.environ.get("MCP_SERVER_URL")
+                or env.TOOLS_SERVICE_URL
+                or env.MCP_SERVER_URL
                 or "http://localhost:8003/mcp"
             )
-            token = (os.environ.get("INTERNAL_SERVICE_TOKEN") or "").strip()
+            token = (env.INTERNAL_SERVICE_TOKEN or "").strip()
             headers = {"Authorization": f"Bearer {token}"} if token else None
 
             client = MultiServerMCPClient(

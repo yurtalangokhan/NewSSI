@@ -1,7 +1,8 @@
+import { getInternalUrl } from "@/lib/env.server";
 import { NextRequest, NextResponse } from "next/server";
 import { getCookieValue, refreshAuthCookies } from "@/lib/api/proxy";
 
-const INTERNAL_URL = process.env.INTERNAL_URL || "http://localhost:8123";
+const INTERNAL_URL = getInternalUrl();
 
 // LangGraph SDK proxy - maps SDK calls to agent-service endpoints
 // SDK calls: /threads/search, /threads/{id}, /threads/{id}/state, etc.

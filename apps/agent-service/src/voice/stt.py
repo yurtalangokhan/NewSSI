@@ -5,8 +5,9 @@ based on configuration.
 """
 
 import logging
-import os
 from typing import BinaryIO, Literal, cast
+
+from core.env import env
 
 logger = logging.getLogger(__name__)
 
@@ -66,9 +67,9 @@ class SpeechToText:
         # Otherwise, get from environment based on provider
         match provider:
             case "openai":
-                return os.getenv("OPENAI_API_KEY")
+                return env.OPENAI_API_KEY
             case "deepgram":
-                return os.getenv("DEEPGRAM_API_KEY")
+                return env.DEEPGRAM_API_KEY
             case _:
                 return None
 
@@ -128,7 +129,7 @@ class SpeechToText:
             >>> if stt:
             ...     text = stt.transcribe(audio_file)
         """
-        provider = os.getenv("VOICE_STT_PROVIDER")
+        provider = env.VOICE_STT_PROVIDER
 
         # If provider not set, voice features are disabled
         if not provider:

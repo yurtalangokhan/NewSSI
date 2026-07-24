@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import importlib.util
-import os
 from pathlib import Path
 from types import ModuleType
 from typing import Any
 
+from src.core.env import get_env
 from src.core.permissions import list_service_permissions
 from src.repository import PermissionRepository
 from src.schema.permissions import (
@@ -91,7 +91,7 @@ class PermissionSyncService:
         }
 
     def _repo_root(self) -> Path:
-        configured_root = os.getenv("PERMISSION_MANIFEST_ROOT")
+        configured_root = get_env().PERMISSION_MANIFEST_ROOT
         if configured_root:
             return Path(configured_root)
 

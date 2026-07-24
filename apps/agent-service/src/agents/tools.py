@@ -1,5 +1,4 @@
 import math
-import os
 import re
 from functools import lru_cache
 from threading import Lock
@@ -324,10 +323,10 @@ database_search.name = "Database_Search"
 # ============== Graph Search Tool (Neo4j via LangConnect API) ==============
 
 # LangConnect API base URL (service-to-service within Docker network)
-_LANGCONNECT_BASE_URL = os.environ.get("RAG_SERVICE_API_URL", "http://langconnect-api:8080")
+_LANGCONNECT_BASE_URL = env.RAG_SERVICE_API_URL or "http://langconnect-api:8080"
 
 # LANGCONNECT_SERVICE_TOKEN is deprecated - use INTERNAL_SERVICE_TOKEN instead
-_LANGCONNECT_SERVICE_TOKEN = os.environ.get("INTERNAL_SERVICE_TOKEN", "")
+_LANGCONNECT_SERVICE_TOKEN = env.INTERNAL_SERVICE_TOKEN or ""
 
 
 def graph_search_func(

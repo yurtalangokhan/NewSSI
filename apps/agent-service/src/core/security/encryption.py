@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-import os
-
 from cryptography.fernet import Fernet, InvalidToken
+
+from core.env import env
 
 _fernet: Fernet | None = None
 
@@ -12,7 +12,7 @@ _fernet: Fernet | None = None
 def _get_fernet() -> Fernet:
     global _fernet
     if _fernet is None:
-        key = os.environ.get("ENCRYPTION_KEY")
+        key = env.ENCRYPTION_KEY
         if not key:
             raise RuntimeError("ENCRYPTION_KEY env var is required for API key storage")
         _fernet = Fernet(key.encode())

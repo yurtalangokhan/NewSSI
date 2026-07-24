@@ -15,15 +15,15 @@ The listener only needs to:
 from __future__ import annotations
 
 import asyncio
-import os
 
 from sqlalchemy.exc import DBAPIError
 
+from core.env import env
 from core.logger import get_logger
 
 logger = get_logger(__name__)
 
-POLL_INTERVAL = int(os.environ.get("AIRBYTE_SYNC_POLL_INTERVAL_SECONDS", "30"))
+POLL_INTERVAL = env.AIRBYTE_SYNC_POLL_INTERVAL_SECONDS
 
 
 class AirbyteSyncListener:

@@ -2,20 +2,21 @@
 
 from __future__ import annotations
 
-import os
 import time
 
 import httpx
+
+from .settings import get_settings
 
 _PERMISSION_CACHE: dict[str, tuple[float, list[str]]] = {}
 
 
 def _user_service_base_url() -> str:
-    return (os.environ.get("USER_SERVICE_URL") or "http://localhost:8090").rstrip("/")
+    return get_settings().user_service_url
 
 
 def _permission_cache_ttl() -> float:
-    return float(os.environ.get("USER_PERMISSION_CACHE_TTL_SECONDS", "30"))
+    return get_settings().user_permission_cache_ttl_seconds
 
 
 async def get_user_service_permissions(token: str, subject: str) -> list[str]:
