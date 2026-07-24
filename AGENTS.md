@@ -338,6 +338,64 @@ Use the project skills deliberately before changing code:
 - Use architecture skills for service/folder restructuring and preserve the repo layering: route -> controller -> service -> repository, with schemas/models kept in their own directories.
 - At the end of implementation work, report the selected skills and validation results, including typecheck. Say "ready to push" only when the applicable service Makefile `validate` gates, root quality/Docker gates, and web scripts are green for the changed surface.
 
+### Documentation and context reading
+
+Agents must treat repository documentation as shared working memory for
+understanding the codebase before making changes.
+
+- Before changing a service, UI area, integration, or flow, scan the relevant
+  `docs/**/*.md` files and any related `.tmp/**/*.md` files. Prefer `rg` or
+  `find` to discover likely matches by feature name, service name, route, or
+  domain concept.
+- `docs/` is for durable system knowledge: architecture overviews, service
+  boundaries, component and flow explanations, runbooks, and decisions that
+  should remain true after the current task is finished.
+- `.tmp/` is for active working context: temporary specs, implementation notes,
+  instructions, investigation notes, and shared memory that helps agents
+  coordinate on the current feature or bugfix.
+- If a task introduces or materially changes a component, service boundary,
+  API flow, auth flow, integration, data model, or agent behavior, update or
+  create the matching documentation as part of the same change. Use `docs/`
+  for stable knowledge and `.tmp/` for in-progress specs or instructions.
+- Keep docs concise and navigable. A future agent should be able to understand
+  what the component or flow does, where the important files are, how data
+  moves through it, what invariants matter, and which validation commands prove
+  it still works.
+- Do not let `.tmp/` become the only source of truth for completed work. When a
+  temporary spec captures lasting architecture or flow knowledge, migrate that
+  knowledge into `docs/` before calling the work complete.
+
+### Spec-driven implementation workflow
+
+Features and larger changes start with a detailed spec document in `.tmp/`.
+This is the bridge between design brainstorming and code implementation.
+
+1. **Spec location:** All active spec documents live in `.tmp/` at the repo
+   root. Name pattern: `.tmp/<topic>-design.md`.
+2. **Spec content:** Must cover architecture, component interfaces, data flow,
+   error handling, testing strategy, implementation order, and per-file changes.
+3. **Before implementing:** An agent must first read the full spec from
+   `.tmp/<topic>-design.md` and confirm they understand the design. If the spec
+   is unclear or incomplete, report back — do not guess.
+4. **Follow the spec order:** Implement steps in the order listed in the spec's
+   "Implementation Order" section. Each step corresponds to a concrete set of
+   file changes.
+5. **Validation gates:** After each spec step, run the relevant service
+   `make validate` before moving to the next step. Docker/compose changes
+   require `make docker-verify`.
+6. **Spec updates:** If implementation reveals design gaps, update the spec
+   document first, then continue coding. The spec is the source of truth.
+7. **Cleanup:** Once the feature is complete and validated, the spec document
+   can be moved to `docs/superpowers/specs/` as a permanent record.
+
+### Auth/OIDC redirect and cookie workflow
+
+- Treat login, logout, callback redirect, and browser cookie changes as security-sensitive behavior changes.
+- Use TDD for auth behavior: add or update regression tests for redirect URI merging, post-logout redirect handling, Set-Cookie creation/clearing, and open redirect validation before changing production code.
+- Do not replace Keycloak client `redirectUris`, `webOrigins`, or `post.logout.redirect.uris` from env/runtime values. Merge existing Keycloak values with new env/runtime values while preserving manual admin entries.
+- For browser-accessible origins, ensure runtime callback and post-logout redirect URIs are registered before redirecting the user to Keycloak.
+- Validate auth changes through the affected service gates (`make -C apps/user-service validate`, web lint/typecheck/tests when web changes) and live HTTP/cookie checks through Kong when services are running.
+
 Airbyte remains an active datasource integration. The `docker-bin/docker` binary
 is mounted into the Airbyte worker by `configs/docker-compose-services.yml`, and
 `airbyte-destination-embedding/` contains the custom destination connector source.
