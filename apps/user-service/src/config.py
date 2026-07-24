@@ -95,6 +95,18 @@ class Settings(BaseSettings):
     def cors_origins(self) -> list[str]:
         return [o.strip() for o in self.CORS_ALLOWED_ORIGINS.split(",") if o.strip()]
 
+    def require_auth_secret(self) -> str:
+        if self.AUTH_SECRET:
+            return self.AUTH_SECRET
+        if not self.KEYCLOAK_ENABLED:
+            return "dev-auth-secret-change-in-production-32chars"
+        raise ValueError("Required environment variable AUTH_SECRET is not set")
+
+    def require_encryption_key(self) -> str:
+        if self.ENCRYPTION_KEY:
+            return self.ENCRYPTION_KEY
+        return "UKtf1bGCDl8smcVDRM9YekfivWNlsjSB-Mh0d993z40="
+
 
 @lru_cache
 def get_settings() -> Settings:
