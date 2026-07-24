@@ -115,7 +115,7 @@ ensure_client() {
     return 0
   fi
   local payload="$1"
-  echo "[info] creating client: $clientId"
+  echo "[info] creating client: $clientId" >&2
   code="$(http_code POST "$BASE/admin/realms/$KEYCLOAK_REALM/clients" "$payload")"
   [[ "$code" == "201" || "$code" == "204" ]] || { echo "[error] failed to create client $clientId: HTTP $code"; return 1; }
   uuid="$(
@@ -127,6 +127,14 @@ ensure_client() {
 
 generate_secret() {
   python3 -c "import secrets; print(secrets.token_urlsafe(36)[:48])"
+}
+
+csv_json_array() {
+  jq -cn --arg csv "$1" '$csv | split(",") | map(gsub("^\\s+|\\s+$"; "")) | map(select(length > 0))'
+}
+
+post_logout_json_array() {
+  jq -cn --arg values "$1" '$values | split("##") | map(gsub("^\\s+|\\s+$"; "")) | map(select(length > 0))'
 }
 
 # ---------------------------------------------------------------------------
@@ -149,19 +157,28 @@ FE_UUID="$(ensure_client "$KEYCLOAK_CLIENT_ID" "$(jq -n \
   }')")"
 
 echo "[info] syncing frontend client settings"
+FE_CURRENT="$(
+  curl -fsS "$BASE/admin/realms/$KEYCLOAK_REALM/clients/$FE_UUID" -H "$(auth_header)"
+)"
 update_code="$(http_code PUT "$BASE/admin/realms/$KEYCLOAK_REALM/clients/$FE_UUID" "$(jq -n \
+  --argjson current "$FE_CURRENT" \
   --arg clientId "$KEYCLOAK_CLIENT_ID" \
-  --arg redirectUrisCsv "$KEYCLOAK_REDIRECT_URIS" \
-  --arg webOriginsCsv "$KEYCLOAK_WEB_ORIGINS" \
-  --arg postLogoutRedirectUris "$KEYCLOAK_POST_LOGOUT_REDIRECT_URIS" \
+  --argjson configuredRedirectUris "$(csv_json_array "$KEYCLOAK_REDIRECT_URIS")" \
+  --argjson configuredWebOrigins "$(csv_json_array "$KEYCLOAK_WEB_ORIGINS")" \
+  --argjson configuredPostLogoutRedirectUris "$(post_logout_json_array "$KEYCLOAK_POST_LOGOUT_REDIRECT_URIS")" \
   --argjson publicClient "$KEYCLOAK_PUBLIC_CLIENT" \
-  '{
+  '$current + {
     clientId: $clientId, enabled: true, protocol: "openid-connect",
     publicClient: $publicClient,
     standardFlowEnabled: true, directAccessGrantsEnabled: true,
-    redirectUris: ($redirectUrisCsv | split(",") | map(gsub("^\\s+|\\s+$"; "")) | map(select(length > 0))),
-    webOrigins: ($webOriginsCsv | split(",") | map(gsub("^\\s+|\\s+$"; "")) | map(select(length > 0))),
-    attributes: { "post.logout.redirect.uris": $postLogoutRedirectUris }
+    redirectUris: (reduce ((($current.redirectUris // []) + $configuredRedirectUris)[]) as $uri ([]; if index($uri) then . else . + [$uri] end)),
+    webOrigins: (reduce ((($current.webOrigins // []) + $configuredWebOrigins)[]) as $origin ([]; if index($origin) then . else . + [$origin] end)),
+    attributes: (($current.attributes // {}) + {
+      "post.logout.redirect.uris": (
+        reduce (((($current.attributes // {})["post.logout.redirect.uris"] // "" | split("##") | map(gsub("^\\s+|\\s+$"; "")) | map(select(length > 0))) + $configuredPostLogoutRedirectUris)[]) as $uri
+        ([]; if index($uri) then . else . + [$uri] end) | join("##")
+      )
+    })
   }')")"
 [[ "$update_code" == "200" || "$update_code" == "204" ]] || echo "[warn] frontend client update returned HTTP $update_code"
 

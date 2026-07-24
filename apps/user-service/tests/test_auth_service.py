@@ -153,6 +153,31 @@ async def test_logout_delegates_session_invalidation_to_keycloak():
     assert not hasattr(auth_service, "session_repo")
 
 
+@pytest.mark.asyncio
+async def test_logout_ensures_post_logout_redirect_uri():
+    auth_service = AuthService()
+    auth_service.keycloak = SimpleNamespace(
+        is_enabled=lambda: True,
+        get_oidc_redirect_uri=lambda: "http://localhost:8126/auth/oidc/callback",
+        ensure_login_client_redirect_uri=AsyncMock(return_value={"status": "updated"}),
+        backchannel_logout=AsyncMock(return_value=True),
+    )
+
+    result = await auth_service.logout(
+        refresh_token="refresh-token",
+        post_logout_redirect_uri="http://localhost:8126/auth/ee/login",
+    )
+
+    assert result == {"message": "Logged out successfully"}
+    auth_service.keycloak.ensure_login_client_redirect_uri.assert_awaited_once_with(
+        "http://localhost:8126/auth/oidc/callback",
+        post_logout_redirect_uri="http://localhost:8126/auth/ee/login",
+    )
+    auth_service.keycloak.backchannel_logout.assert_awaited_once_with(
+        refresh_token="refresh-token"
+    )
+
+
 def test_extract_roles_from_claims_supports_realm_and_client_roles():
     claims = {
         "realm_access": {"roles": ["offline_access", "uma_authorization"]},
@@ -401,6 +426,26 @@ async def test_handle_oidc_callback_persists_groups_from_sp_id_token():
         is_verified=True,
         is_external_keycloak_user=False,
     )
+
+
+@pytest.mark.asyncio
+async def test_get_oidc_authorize_url_ensures_runtime_redirect_uri():
+    auth_service = AuthService()
+    auth_service.keycloak = SimpleNamespace(
+        ensure_login_client_redirect_uri=AsyncMock(return_value={"status": "updated"}),
+        get_oidc_authorize_url=AsyncMock(return_value="http://keycloak/auth"),
+    )
+
+    result = await auth_service.get_oidc_authorize_url(
+        "http://localhost:8126/auth/oidc/callback",
+        idp_hint="external-keycloak",
+    )
+
+    assert result == "http://keycloak/auth"
+    auth_service.keycloak.ensure_login_client_redirect_uri.assert_awaited_once_with(
+        "http://localhost:8126/auth/oidc/callback"
+    )
+    auth_service.keycloak.get_oidc_authorize_url.assert_awaited_once()
 
 
 @pytest.mark.asyncio

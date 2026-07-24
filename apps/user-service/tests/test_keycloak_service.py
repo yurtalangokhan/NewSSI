@@ -143,8 +143,10 @@ async def test_get_oidc_authorize_url_includes_keycloak_idp_hint(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_follow_broker_redirects_ignores_intermediate_idp_code_state():
+async def test_follow_broker_redirects_ignores_intermediate_idp_code_state(monkeypatch):
     service = KeycloakService()
+    monkeypatch.setenv("EXTERNAL_KEYCLOAK_ISSUER_URL", "http://keycloak/realms/agenticai")
+    monkeypatch.setenv("EXTERNAL_KEYCLOAK_BACKEND_ISSUER_URL", "http://keycloak/realms/agenticai")
     callback_uri = "http://localhost:3000/auth/oidc/callback"
     broker_url = (
         "http://keycloak/realms/agenticai/broker/external-keycloak/endpoint"
@@ -284,6 +286,217 @@ async def test_ensure_login_client_config_enables_direct_access_grants(monkeypat
     assert payload["attributes"]["existing"] == "kept"
     assert payload["attributes"]["post.logout.redirect.uris"] == "+"
     assert "secret" not in payload
+
+
+@pytest.mark.asyncio
+async def test_ensure_login_client_config_preserves_existing_redirects(monkeypatch):
+    service = KeycloakService()
+    monkeypatch.setenv("KEYCLOAK_LOGIN_CLIENT_ID", "agenticai-web")
+    monkeypatch.setenv(
+        "KEYCLOAK_REDIRECT_URIS",
+        "http://localhost:3000/*, http://app.example.com/auth/oidc/callback",
+    )
+    monkeypatch.setenv("KEYCLOAK_WEB_ORIGINS", "http://localhost:3000")
+    monkeypatch.setattr(service, "get_client_uuid", AsyncMock(return_value="client-uuid"))
+
+    get_response = SimpleNamespace(
+        raise_for_status=lambda: None,
+        json=lambda: {
+            "id": "client-uuid",
+            "clientId": "agenticai-web",
+            "name": "Agentic AI Web",
+            "protocol": "openid-connect",
+            "redirectUris": [
+                "http://manual.example.com/auth/oidc/callback",
+                "http://localhost:3000/*",
+            ],
+            "webOrigins": ["http://manual.example.com", "http://localhost:3000"],
+            "attributes": {},
+        },
+    )
+    put_response = SimpleNamespace(status_code=204, raise_for_status=lambda: None)
+    request = AsyncMock(side_effect=[get_response, put_response])
+    monkeypatch.setattr(service, "_keycloak_request", request)
+
+    await service.ensure_login_client_config()
+
+    payload = request.await_args_list[1].kwargs["json"]
+    assert payload["redirectUris"] == [
+        "http://manual.example.com/auth/oidc/callback",
+        "http://localhost:3000/*",
+        "http://app.example.com/auth/oidc/callback",
+    ]
+    assert payload["webOrigins"] == [
+        "http://manual.example.com",
+        "http://localhost:3000",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_ensure_login_client_config_preserves_existing_post_logout_redirects(
+    monkeypatch,
+):
+    service = KeycloakService()
+    monkeypatch.setenv("KEYCLOAK_LOGIN_CLIENT_ID", "agenticai-web")
+    monkeypatch.setenv("KEYCLOAK_REDIRECT_URIS", "http://localhost:3000/*")
+    monkeypatch.setenv("KEYCLOAK_WEB_ORIGINS", "http://localhost:3000")
+    monkeypatch.setenv(
+        "KEYCLOAK_POST_LOGOUT_REDIRECT_URIS",
+        "+##http://localhost:8126/auth/ee/login",
+    )
+    monkeypatch.setattr(service, "get_client_uuid", AsyncMock(return_value="client-uuid"))
+
+    get_response = SimpleNamespace(
+        raise_for_status=lambda: None,
+        json=lambda: {
+            "id": "client-uuid",
+            "clientId": "agenticai-web",
+            "name": "Agentic AI Web",
+            "protocol": "openid-connect",
+            "redirectUris": ["http://localhost:3000/*"],
+            "webOrigins": ["http://localhost:3000"],
+            "attributes": {
+                "post.logout.redirect.uris": "http://manual.example.com/auth/login##+",
+            },
+        },
+    )
+    put_response = SimpleNamespace(status_code=204, raise_for_status=lambda: None)
+    request = AsyncMock(side_effect=[get_response, put_response])
+    monkeypatch.setattr(service, "_keycloak_request", request)
+
+    await service.ensure_login_client_config()
+
+    payload = request.await_args_list[1].kwargs["json"]
+    assert payload["attributes"]["post.logout.redirect.uris"] == (
+        "http://manual.example.com/auth/login##+##http://localhost:8126/auth/ee/login"
+    )
+
+
+@pytest.mark.asyncio
+async def test_ensure_login_client_redirect_uri_adds_new_runtime_origin(monkeypatch):
+    service = KeycloakService()
+    monkeypatch.setenv("KEYCLOAK_LOGIN_CLIENT_ID", "agenticai-web")
+    monkeypatch.setattr(service, "get_client_uuid", AsyncMock(return_value="client-uuid"))
+
+    get_response = SimpleNamespace(
+        raise_for_status=lambda: None,
+        json=lambda: {
+            "id": "client-uuid",
+            "clientId": "agenticai-web",
+            "redirectUris": ["http://localhost:3000/auth/oidc/callback"],
+            "webOrigins": ["http://localhost:3000"],
+            "attributes": {},
+        },
+    )
+    put_response = SimpleNamespace(status_code=204, raise_for_status=lambda: None)
+    request = AsyncMock(side_effect=[get_response, put_response])
+    monkeypatch.setattr(service, "_keycloak_request", request)
+
+    result = await service.ensure_login_client_redirect_uri(
+        "http://localhost:8126/auth/oidc/callback"
+    )
+
+    assert result == {
+        "status": "updated",
+        "client_id": "agenticai-web",
+        "redirect_uri": "http://localhost:8126/auth/oidc/callback",
+        "web_origin": "http://localhost:8126",
+    }
+    payload = request.await_args_list[1].kwargs["json"]
+    assert payload["redirectUris"] == [
+        "http://localhost:3000/auth/oidc/callback",
+        "http://localhost:8126/auth/oidc/callback",
+    ]
+    assert payload["webOrigins"] == ["http://localhost:3000", "http://localhost:8126"]
+
+
+@pytest.mark.asyncio
+async def test_ensure_login_client_redirect_uri_adds_post_logout_uri(monkeypatch):
+    service = KeycloakService()
+    monkeypatch.setattr(service, "get_client_uuid", AsyncMock(return_value="client-uuid"))
+
+    get_response = SimpleNamespace(
+        raise_for_status=lambda: None,
+        json=lambda: {
+            "id": "client-uuid",
+            "clientId": "agenticai-web",
+            "redirectUris": ["http://localhost:8126/auth/oidc/callback"],
+            "webOrigins": ["http://localhost:8126"],
+            "attributes": {
+                "post.logout.redirect.uris": "http://localhost:3000/auth/login"
+            },
+        },
+    )
+    put_response = SimpleNamespace(status_code=204, raise_for_status=lambda: None)
+    request = AsyncMock(side_effect=[get_response, put_response])
+    monkeypatch.setattr(service, "_keycloak_request", request)
+
+    await service.ensure_login_client_redirect_uri(
+        "http://localhost:8126/auth/oidc/callback",
+        post_logout_redirect_uri="http://localhost:8126/auth/ee/login",
+    )
+
+    payload = request.await_args_list[1].kwargs["json"]
+    assert payload["attributes"]["post.logout.redirect.uris"] == (
+        "http://localhost:3000/auth/login##http://localhost:8126/auth/ee/login"
+    )
+
+
+@pytest.mark.asyncio
+async def test_ensure_login_client_redirect_uri_adds_exact_post_logout_uri_when_plus_exists(
+    monkeypatch,
+):
+    service = KeycloakService()
+    monkeypatch.setattr(service, "get_client_uuid", AsyncMock(return_value="client-uuid"))
+
+    get_response = SimpleNamespace(
+        raise_for_status=lambda: None,
+        json=lambda: {
+            "id": "client-uuid",
+            "clientId": "agenticai-web",
+            "redirectUris": ["http://localhost:8126/auth/oidc/callback"],
+            "webOrigins": ["+"],
+            "attributes": {"post.logout.redirect.uris": "+"},
+        },
+    )
+    put_response = SimpleNamespace(status_code=204, raise_for_status=lambda: None)
+    request = AsyncMock(side_effect=[get_response, put_response])
+    monkeypatch.setattr(service, "_keycloak_request", request)
+
+    await service.ensure_login_client_redirect_uri(
+        "http://localhost:8126/auth/oidc/callback",
+        post_logout_redirect_uri="http://localhost:8126/auth/ee/login",
+    )
+
+    payload = request.await_args_list[1].kwargs["json"]
+    assert payload["attributes"]["post.logout.redirect.uris"] == (
+        "+##http://localhost:8126/auth/ee/login"
+    )
+
+
+@pytest.mark.asyncio
+async def test_ensure_login_client_redirect_uri_skips_when_wildcard_covers_uri(monkeypatch):
+    service = KeycloakService()
+    monkeypatch.setattr(service, "get_client_uuid", AsyncMock(return_value="client-uuid"))
+
+    get_response = SimpleNamespace(
+        raise_for_status=lambda: None,
+        json=lambda: {
+            "id": "client-uuid",
+            "clientId": "agenticai-web",
+            "redirectUris": ["http://localhost:8126/*"],
+            "webOrigins": ["+"],
+        },
+    )
+    request = AsyncMock(return_value=get_response)
+    monkeypatch.setattr(service, "_keycloak_request", request)
+
+    result = await service.ensure_login_client_redirect_uri(
+        "http://localhost:8126/auth/oidc/callback"
+    )
+
+    assert result["status"] == "exists"
+    assert request.await_count == 1
 
 
 @pytest.mark.asyncio

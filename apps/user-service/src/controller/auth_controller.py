@@ -44,10 +44,15 @@ class AuthController(BaseController):
         except ValueError as e:
             self._raise_bad_request(str(e))
 
-    async def logout(self, request: Request, response: Response) -> dict[str, Any]:
+    async def logout(
+        self,
+        request: Request,
+        response: Response,
+        post_logout_redirect_uri: str | None = None,
+    ) -> dict[str, Any]:
         refresh_token = request.cookies.get("refresh_token")
         self._clear_cookies(response)
-        return await self.auth_service.logout(refresh_token)
+        return await self.auth_service.logout(refresh_token, post_logout_redirect_uri)
 
     async def refresh(self, request: Request, response: Response) -> dict[str, Any]:
         refresh_token = request.cookies.get("refresh_token")
