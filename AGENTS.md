@@ -259,6 +259,28 @@ The hooks use `scripts/quality/check.sh` and must stay lightweight enough for da
 - Before committing or asking the user to commit, run the same checks manually with `make quality-staged` or the relevant service `make validate`. For Docker/config/import-layout changes, also run `make docker-verify`.
 - Commit/push only green code. If a quality gate fails because of unrelated existing debt, document the failing command and narrow the hook/script rule instead of weakening checks globally.
 
+### Branch and commit naming
+
+Use the existing branch style: `<type>/<kebab-case-description>`.
+
+Common branch types:
+
+- `feature/` for new product or platform capabilities.
+- `fix/` for bug fixes and regressions.
+- `hotfix/` for urgent production fixes.
+- `chore/` for maintenance, build, dependency, or tooling work.
+- `docs/` for documentation, agent instructions, and process contracts.
+
+Examples:
+
+- `feature/builtin-ollama-management`
+- `fix/auth-redirect-cookie-flow`
+- `chore/makefile-standardization`
+- `docs/spec-driven-agent-team`
+
+Use concise imperative commit messages, for example
+`docs: add spec-driven agent team workflow`.
+
 ### Agent pre-push validation flow
 
 Before telling the user that code is ready to push, the agent must evaluate the
@@ -336,6 +358,11 @@ Use the project skills deliberately before changing code:
 - Use `test-driven-development` for bug fixes, behavior changes, and refactors: add or update a failing regression test first when practical, then make it pass.
 - Use `fastapi` / `fastapi-expert` for FastAPI, Pydantic, SQLAlchemy async, auth, and API architecture changes.
 - Use architecture skills for service/folder restructuring and preserve the repo layering: route -> controller -> service -> repository, with schemas/models kept in their own directories.
+- Use `.agents/team.yaml` as the provider-neutral development team contract
+  when a task benefits from planner, architect, implementer, tester, reviewer,
+  or docs-maintainer roles. Codex, OpenCode, or another agent provider may map
+  these roles to native subagents, separate sessions, or sequential execution
+  by the main agent.
 - At the end of implementation work, report the selected skills and validation results, including typecheck. Say "ready to push" only when the applicable service Makefile `validate` gates, root quality/Docker gates, and web scripts are green for the changed surface.
 
 ### Documentation and context reading
@@ -371,9 +398,13 @@ Features and larger changes start with a detailed spec document in `.tmp/`.
 This is the bridge between design brainstorming and code implementation.
 
 1. **Spec location:** All active spec documents live in `.tmp/` at the repo
-   root. Name pattern: `.tmp/<topic>-design.md`.
+   root. Name pattern: `.tmp/<topic>-design.md`. Start from
+   `.agents/templates/spec-template.md` unless an existing spec already covers
+   the work.
 2. **Spec content:** Must cover architecture, component interfaces, data flow,
-   error handling, testing strategy, implementation order, and per-file changes.
+   error handling, testing strategy, implementation order, per-file changes,
+   validation gates, acceptance criteria, resolved decisions, and agent handoff
+   notes.
 3. **Before implementing:** An agent must first read the full spec from
    `.tmp/<topic>-design.md` and confirm they understand the design. If the spec
    is unclear or incomplete, report back — do not guess.
@@ -387,6 +418,70 @@ This is the bridge between design brainstorming and code implementation.
    document first, then continue coding. The spec is the source of truth.
 7. **Cleanup:** Once the feature is complete and validated, the spec document
    can be moved to `docs/superpowers/specs/` as a permanent record.
+
+### Spec-driven agent team workflow
+
+The repository defines a small provider-neutral development team in
+`.agents/team.yaml`. Use this contract for larger changes, multi-step features,
+cross-service work, or any task where shared context and review loops reduce
+risk.
+
+**Team files:**
+
+- `.agents/team.yaml` defines roles, workflows, shared context file patterns,
+  and provider fallback behavior.
+- `.agents/roles/*.md` defines role-specific instructions for planner,
+  architect, implementer, tester, reviewer, and docs-maintainer agents.
+- `.agents/templates/spec-template.md` is the durable template for new
+  `.tmp/<topic>-design.md` specs.
+
+**Provider mapping rules:**
+
+- Codex should use native multi-agent tools when available; otherwise execute
+  the same role sequence in the main session.
+- OpenCode or other providers should map `.agents/team.yaml` roles to their
+  own agent/task runner primitives while preserving the same files and report
+  contracts.
+- If no subagent mechanism exists, do not invent parallelism. Execute the
+  workflow sequentially in the main agent and keep the same `.tmp` artifacts.
+
+**Shared context contract:**
+
+- `.tmp/<topic>-design.md` is the single active source of truth for the task.
+- `.tmp/<topic>-task-<n>-brief.md` contains the exact requirements for one
+  implementation step.
+- `.tmp/<topic>-task-<n>-report.md` contains the implementer's status, changed
+  files, validation commands, results, and concerns.
+- `.tmp/<topic>-progress.md` records completed steps so future agents can
+  resume without rereading conversation history.
+
+**Role flow:**
+
+1. **Planner:** analyzes the request, reads relevant docs, creates or updates
+   the `.tmp/<topic>-design.md` shared spec, and defines implementation order.
+2. **Architect:** reviews the spec for service boundaries, interfaces, data
+   flow, and validation gaps before implementation begins.
+3. **Implementer:** works one task brief at a time, follows TDD for behavior
+   changes, preserves existing user changes, and writes the task report.
+4. **Tester:** confirms regression coverage and maps changed files to required
+   Makefile/npm gates.
+5. **Reviewer:** checks each task for spec compliance and code quality. Critical
+   and Important findings must be fixed and re-reviewed before moving on.
+6. **Docs maintainer:** updates durable docs when the completed work changes
+   architecture, service boundaries, API flow, auth flow, integration, data
+   model, or agent behavior.
+
+**Execution rules:**
+
+- Do not dispatch multiple implementers in parallel against the same working
+  tree unless their file ownership is explicitly disjoint in the spec.
+- Give each subagent the smallest useful context: its role prompt, the task
+  brief, the shared spec sections named in the brief, and relevant files.
+- Keep long handoffs in files, not pasted conversation text.
+- Update `.tmp/<topic>-progress.md` after each reviewed task completes.
+- If implementation reveals a spec gap, update the spec before continuing.
+- Final responses must state which roles/skills were used, which validation
+  gates passed or failed, and whether the code is ready to push.
 
 ### Auth/OIDC redirect and cookie workflow
 
