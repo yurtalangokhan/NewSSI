@@ -109,6 +109,14 @@ NEO4J_URI = env("NEO4J_URI", cast=str, default="bolt://localhost:7687")
 NEO4J_USERNAME = env("NEO4J_USERNAME", cast=str, default="neo4j")
 NEO4J_PASSWORD = env("NEO4J_PASSWORD", cast=str, default="neo4j123")
 
+# Idempotency / Redis configuration
+REDIS_HOST = env("REDIS_HOST", cast=str, default="localhost")
+REDIS_PORT = env("REDIS_PORT", cast=int, default=6379)
+REDIS_DB = env("REDIS_DB", cast=int, default=0)
+REDIS_PASSWORD = env("REDIS_PASSWORD", cast=str, default="")
+IDEMPOTENCY_TTL = env("IDEMPOTENCY_TTL", cast=int, default=86400)
+IDEMPOTENCY_ENABLED = env("IDEMPOTENCY_ENABLED", cast=bool, default=True)
+
 ALLOWED_ORIGINS = parse_allowed_origins(ALLOW_ORIGINS_JSON)
 if ALLOW_ORIGINS_JSON:
     print(f"ALLOW_ORIGINS environment variable set to: {ALLOW_ORIGINS_JSON}")

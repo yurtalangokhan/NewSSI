@@ -8,15 +8,16 @@ ENV UV_COMPILE_BYTECODE=1
 
 RUN pip install --no-cache-dir --upgrade pip uv
 
-COPY pyproject.toml uv.lock README.md ./
+COPY apps/user-service/pyproject.toml apps/user-service/uv.lock apps/user-service/README.md ./
+COPY packages/idempotency-py/ packages/idempotency-py/
 
-# Install only dependencies (not the project)
-RUN uv sync --frozen --no-dev --no-install-project
+RUN sed -i 's|path = "../../packages/idempotency-py"|path = "packages/idempotency-py"|' pyproject.toml \
+    && uv lock \
+    && uv sync --frozen --no-dev --no-install-project
 
-COPY src/ src/
-COPY alembic.ini ./
+COPY apps/user-service/src/ src/
+COPY apps/user-service/alembic.ini ./
 
-# Install the project itself into the existing uv-managed environment.
 RUN uv sync --frozen --no-dev
 
 ENV PATH="/app/.venv/bin:$PATH"

@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from idempotency import AsyncRedisPool, IdempotencyConfig, IdempotencyMiddleware
 
 from langconnect.api import (
     collections_router,
@@ -11,7 +12,15 @@ from langconnect.api import (
     documents_router,
     graph_router,
 )
-from langconnect.config import ALLOWED_ORIGINS
+from langconnect.config import (
+    ALLOWED_ORIGINS,
+    IDEMPOTENCY_ENABLED,
+    IDEMPOTENCY_TTL,
+    REDIS_DB,
+    REDIS_HOST,
+    REDIS_PASSWORD,
+    REDIS_PORT,
+)
 from langconnect.database.collections import CollectionsManager
 from langconnect.database.postgres.schema_bootstrap import ensure_schema
 
@@ -27,10 +36,22 @@ logger = logging.getLogger(__name__)
 # Initialize FastAPI app
 
 
+_idempotency_config = IdempotencyConfig(
+    redis_host=REDIS_HOST,
+    redis_port=REDIS_PORT,
+    redis_db=REDIS_DB,
+    redis_password=REDIS_PASSWORD,
+    idempotency_ttl=IDEMPOTENCY_TTL,
+    idempotency_enabled=IDEMPOTENCY_ENABLED,
+    service_name="rag-service",
+)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Lifespan context manager for FastAPI application."""
     logger.info("App is starting up. Creating background worker...")
+    await AsyncRedisPool.connect(_idempotency_config)
     await ensure_schema()
     await CollectionsManager.setup()
 
@@ -44,6 +65,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         logger.warning("Neo4j is not available - graph features will be disabled.")
 
     yield
+
+    await AsyncRedisPool.close()
 
     # Shutdown
     try:
@@ -77,6 +100,12 @@ APP.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+)
+
+APP.add_middleware(
+    IdempotencyMiddleware,
+    config=_idempotency_config,
+    exclude_paths={"/health", "/api/health"},
 )
 
 # Include API routers

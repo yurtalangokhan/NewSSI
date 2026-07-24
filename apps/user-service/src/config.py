@@ -64,6 +64,13 @@ class Settings(BaseSettings):
 
     CORS_ALLOWED_ORIGINS: str = "http://localhost:3000,http://localhost:8123"
 
+    REDIS_HOST: str = "localhost"
+    REDIS_PORT: int = 6379
+    REDIS_DB: int = 0
+    REDIS_PASSWORD: str = ""
+    IDEMPOTENCY_TTL: int = 86400
+    IDEMPOTENCY_ENABLED: bool = True
+
     LOG_LEVEL: str = "INFO"
 
     @property

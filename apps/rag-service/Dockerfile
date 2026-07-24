@@ -6,24 +6,22 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV UV_COMPILE_BYTECODE=1
 
-# libpq5 is needed at runtime by PostgreSQL clients. gcc/libpq-dev are only
-# needed while building any source distributions that do not have wheels.
 RUN apt-get update && \
     apt-get install -y --no-install-recommends gcc libpq5 libpq-dev && \
     pip install --no-cache-dir --upgrade pip uv && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Copy dependency metadata first for better layer caching.
-COPY pyproject.toml uv.lock README.md ./
+COPY apps/rag-service/pyproject.toml apps/rag-service/uv.lock apps/rag-service/README.md ./
+COPY packages/idempotency-py/ packages/idempotency-py/
 
-# Install locked runtime dependencies, but not the project source yet.
-RUN uv sync --frozen --no-dev --no-install-project
+RUN sed -i 's|path = "../../packages/idempotency-py"|path = "packages/idempotency-py"|' pyproject.toml \
+    && uv lock \
+    && uv sync --frozen --no-dev --no-install-project
 
-COPY langconnect/ langconnect/
-COPY alembic.ini ./
+COPY apps/rag-service/langconnect/ langconnect/
+COPY apps/rag-service/alembic.ini ./
 
-# Install the project itself into the existing uv-managed environment.
 RUN uv sync --frozen --no-dev && \
     apt-get purge -y --auto-remove gcc libpq-dev && \
     apt-get clean && \

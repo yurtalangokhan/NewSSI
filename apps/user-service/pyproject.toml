@@ -24,7 +24,11 @@ dependencies = [
     "python-multipart>=0.0.20",
     "python-jose[cryptography]>=3.3.0",
     "ldap3>=2.9.1",
+    "idempotency",
 ]
+
+[tool.uv.sources]
+idempotency = { path = "../../packages/idempotency-py" }
 
 [project.optional-dependencies]
 dev = [

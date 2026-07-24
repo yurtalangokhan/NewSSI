@@ -18,9 +18,9 @@ RUN apt-get update && apt-get install -y \
 RUN pip install --no-cache-dir uv
 
 # Copy project files
-COPY pyproject.toml .
-COPY server.py .
-COPY src/ src/
+COPY apps/tools-service/pyproject.toml .
+COPY apps/tools-service/server.py .
+COPY apps/tools-service/src/ src/
 
 # Install Python dependencies using uv
 RUN uv pip install --system \
