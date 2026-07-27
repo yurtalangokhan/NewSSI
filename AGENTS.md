@@ -155,6 +155,27 @@ npm run test:e2e       # playwright (tests/e2e/)
 
 ## Development lifecycle rules
 
+### 0. Documentation and shared context
+
+Treat repository documentation as shared working memory before changing code.
+
+- Before changing a service, UI area, integration, or flow, scan the relevant
+  `docs/**/*.md` files and any related `.tmp/**/*.md` files. Use `rg` to
+  discover likely matches by feature name, service name, route, or domain
+  concept.
+- Use `docs/` for durable system knowledge: architecture overviews, service
+  boundaries, component and flow explanations, runbooks, and decisions that
+  should remain true after the current task is finished.
+- Use `.tmp/` for active working context: temporary specs, implementation
+  notes, investigation notes, and shared memory that helps agents coordinate on
+  the current feature or bugfix.
+- If a task introduces or materially changes a component, service boundary, API
+  flow, auth flow, integration, data model, or agent behavior, update or create
+  the matching documentation as part of the same change.
+- Do not let `.tmp/` become the only source of truth for completed work. Move
+  lasting architecture or flow knowledge into `docs/` before calling the work
+  complete.
+
 ### 1. Before coding
 
 Load the relevant skill first:
@@ -163,6 +184,96 @@ Load the relevant skill first:
 - `test-driven-development` — bug fixes, behavior changes
 - `fastapi` / `fastapi-expert` — FastAPI, Pydantic, SQLAlchemy, auth
 - `frontend-design` — UI changes
+
+### Spec-driven implementation workflow
+
+Features and larger changes start with a detailed spec document in `.tmp/`.
+This spec is the bridge between design brainstorming and code implementation.
+
+1. **Spec location:** Active spec documents live in `.tmp/` at the repo root.
+   Name pattern: `.tmp/<topic>-design.md`. Start from
+   `.agents/templates/spec-template.md` unless an existing spec already covers
+   the work.
+2. **Spec content:** Cover architecture, component interfaces, data flow, error
+   handling, testing strategy, implementation order, per-file changes,
+   validation gates, acceptance criteria, resolved decisions, and agent handoff
+   notes.
+3. **Before implementing:** Read the full spec and confirm the design is clear.
+   If the spec is unclear or incomplete, update it before coding.
+4. **Follow the spec order:** Implement steps in the order listed in the
+   spec's "Implementation order" section. Each step maps to a concrete set of
+   file changes.
+5. **Validation gates:** After each spec step, run the relevant service
+   `make validate` before moving to the next step. Docker/compose changes
+   require `make docker-verify`.
+6. **Spec updates:** If implementation reveals design gaps, update the spec
+   document first, then continue coding. The spec is the source of truth.
+7. **Cleanup:** Once the feature is complete and validated, move durable
+   knowledge from the spec into `docs/`.
+
+### Spec-driven agent team workflow
+
+The repository defines a provider-neutral development team in
+`.agents/team.yaml`. Use this contract for larger changes, multi-step features,
+cross-service work, or tasks where shared context and review loops reduce risk.
+
+**Team files:**
+
+- `.agents/team.yaml` defines roles, workflows, shared context file patterns,
+  and provider fallback behavior.
+- `.agents/roles/*.md` defines role-specific instructions for planner,
+  architect, implementer, tester, reviewer, and docs-maintainer agents.
+- `.agents/templates/spec-template.md` is the durable template for new
+  `.tmp/<topic>-design.md` specs.
+
+**Provider mapping rules:**
+
+- Codex should use native multi-agent tools when available; otherwise execute
+  the same role sequence in the main session.
+- OpenCode or other providers should map `.agents/team.yaml` roles to their own
+  agent/task runner primitives while preserving the same files and report
+  contracts.
+- If no subagent mechanism exists, execute the workflow sequentially in the
+  main agent and keep the same `.tmp` artifacts.
+
+**Shared context contract:**
+
+- `.tmp/<topic>-design.md` is the single active source of truth for the task.
+- `.tmp/<topic>-task-<n>-brief.md` contains the exact requirements for one
+  implementation step.
+- `.tmp/<topic>-task-<n>-report.md` contains the implementer's status, changed
+  files, validation commands, results, and concerns.
+- `.tmp/<topic>-progress.md` records completed steps so future agents can
+  resume without rereading conversation history.
+
+**Role flow:**
+
+1. **Planner:** Analyzes the request, reads relevant docs, creates or updates
+   the `.tmp/<topic>-design.md` shared spec, and defines implementation order.
+2. **Architect:** Reviews the spec for service boundaries, interfaces, data
+   flow, and validation gaps before implementation begins.
+3. **Implementer:** Works one task brief at a time, follows TDD for behavior
+   changes, preserves existing user changes, and writes the task report.
+4. **Tester:** Confirms regression coverage and maps changed files to required
+   Makefile/npm gates.
+5. **Reviewer:** Checks each task for spec compliance and code quality.
+   Critical and important findings must be fixed and re-reviewed before moving
+   on.
+6. **Docs maintainer:** Updates durable docs when completed work changes
+   architecture, service boundaries, API flow, auth flow, integration, data
+   model, or agent behavior.
+
+**Execution rules:**
+
+- Do not dispatch multiple implementers in parallel against the same working
+  tree unless their file ownership is explicitly disjoint in the spec.
+- Give each subagent the smallest useful context: its role prompt, the task
+  brief, the shared spec sections named in the brief, and relevant files.
+- Keep long handoffs in files, not pasted conversation text.
+- Update `.tmp/<topic>-progress.md` after each reviewed task completes.
+- If implementation reveals a spec gap, update the spec before continuing.
+- Final responses must state which roles/skills were used, which validation
+  gates passed or failed, and whether the code is ready to push.
 
 ### 2. Coding
 
@@ -222,6 +333,28 @@ The hooks run `scripts/quality/check.sh`:
 
 Do not bypass hooks with `--no-verify` unless the user explicitly approves.
 
+### Branch and commit naming
+
+Use the existing branch style: `<type>/<kebab-case-description>`.
+
+Common branch types:
+
+- `feature/` for new product or platform capabilities.
+- `fix/` for bug fixes and regressions.
+- `hotfix/` for urgent production fixes.
+- `chore/` for maintenance, build, dependency, or tooling work.
+- `docs/` for documentation, agent instructions, and process contracts.
+
+Examples:
+
+- `feature/builtin-ollama-management`
+- `fix/auth-redirect-cookie-flow`
+- `chore/makefile-standardization`
+- `docs/spec-driven-agent-team`
+
+Use concise imperative commit messages, for example
+`docs: add spec-driven agent team workflow`.
+
 ### 6. Preparing to push
 
 1. `git status --short` → identify changed services
@@ -262,8 +395,6 @@ docker compose --env-file configs/.env -f configs/docker-compose-dev.yml up -d
 ```
 
 Health checks: `curl http://localhost:8000/health/`, `curl http://localhost:8000/api/health`
-
----
 
 ## Things to avoid
 

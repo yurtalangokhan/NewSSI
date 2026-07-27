@@ -63,6 +63,29 @@ require_admin            → require_auth → checks superuser or admin role
 require_permission("X")  → require_auth → checks via user-service
 ```
 
+### OIDC redirect and logout invariants
+
+OIDC browser auth spans the web app, user-service, and Keycloak. Keep the
+runtime redirect and logout behavior consistent across those boundaries.
+
+- The web logout route calls user-service logout, clears browser auth cookies,
+  and then redirects OIDC users to the Keycloak front-channel logout endpoint.
+  Backchannel logout invalidates the server-side Keycloak session, but it can't
+  remove cookies owned by the Keycloak origin from the user's browser.
+- User-service must register runtime callback and post-logout redirect URIs
+  before redirecting users to Keycloak. This supports local ports and deployed
+  origins that differ from static bootstrap values.
+- Keycloak client updates must merge `redirectUris`, `webOrigins`, and
+  `post.logout.redirect.uris` with existing values. Do not replace admin-managed
+  entries from environment or runtime values.
+- Treat login, logout, callback redirect, and browser cookie changes as
+  security-sensitive behavior. Cover redirect URI merging, post-logout redirect
+  handling, cookie creation and clearing, and open redirect validation with
+  regression tests.
+- Validate auth changes with `make -C apps/user-service validate`. When web
+  logout or callback code changes, also run web lint, typecheck, and tests. If
+  services are running, verify the browser flow through Kong.
+
 ---
 
 ## Request lifecycle: chat message
