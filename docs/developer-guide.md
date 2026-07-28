@@ -292,14 +292,20 @@ make env-init         # create .env files
 make env-check        # validate them
 ```
 
-**Infrastructure** (Postgres, Neo4j, Milvus, Airbyte, Keycloak):
+**Full Docker stack**:
 ```sh
-docker compose --env-file configs/.env -f configs/docker-compose-services.yml up -d
+make stack-up
 ```
 
-**App services**:
+`make stack-up` starts the third-party services from
+`configs/docker-compose-services.yml`, pulls the configured Ollama models, and
+then starts the application microservices from `configs/docker-compose-prod.yml`.
+
+**Layered startup**:
 ```sh
-docker compose --env-file configs/.env -f configs/docker-compose-dev.yml up -d
+make third-party-up
+make ollama-models
+make prod-up
 ```
 
 **Health checks:**

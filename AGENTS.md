@@ -381,17 +381,14 @@ make env-init       # create missing .env files and keys
 make env-check      # validate env files before starting services
 ```
 
-- `configs/.env` → infrastructure compose only.
+- `configs/.env` → third-party services compose only.
 - `apps/*/.env` → per-service runtime env (used by VS Code + app Docker Compose).
 - Do not commit real `.env` files.
 
 **Start order:**
 ```sh
-# 1. Infrastructure (Postgres, Neo4j, Milvus, Airbyte, Keycloak)
-docker compose --env-file configs/.env -f configs/docker-compose-services.yml up -d
-
-# 2. App services
-docker compose --env-file configs/.env -f configs/docker-compose-dev.yml up -d
+# Third-party services, required Ollama models, and app microservices
+make stack-up
 ```
 
 Health checks: `curl http://localhost:8000/health/`, `curl http://localhost:8000/api/health`

@@ -133,7 +133,7 @@ def build_specs() -> dict[str, EnvFileSpec]:
                 var("OLLAMA_PORT", "Host port mapped to built-in Ollama.", "11434"),
                 var(
                     "OLLAMA_PRELOAD_MODELS",
-                    "Space-separated Ollama models pulled during infra startup.",
+                    "Space-separated Ollama models pulled by scripts/pull_ollama_models.sh.",
                     "llama3.1:8b nomic-embed-text",
                 ),
                 var("NEO4J_URI", "Neo4j Bolt URI for app services.", f"bolt://{common_host}:8697"),

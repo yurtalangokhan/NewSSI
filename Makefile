@@ -1,7 +1,21 @@
-.PHONY: env-check env-init env-test docker-config docker-build-services docker-build-apps docker-verify hooks-install validate-services validate quality-staged quality-push quality-all
+.PHONY: env-check env-init env-test third-party-up ollama-models prod-up stack-up docker-config docker-build-services docker-build-apps docker-verify hooks-install validate-services validate quality-staged quality-push quality-all
 
 PYTHON_SERVICES ?= agent-service user-service rag-service tools-service
 APP_SERVICES ?= $(PYTHON_SERVICES) web
+
+third-party-up:
+	docker compose --env-file configs/.env -f configs/docker-compose-services.yml up -d
+
+ollama-models:
+	scripts/pull_ollama_models.sh
+
+prod-up:
+	docker compose --env-file configs/.env -f configs/docker-compose-prod.yml up -d
+
+stack-up:
+	$(MAKE) third-party-up
+	$(MAKE) ollama-models
+	$(MAKE) prod-up
 
 docker-config:
 	docker compose --env-file configs/.env -f configs/docker-compose-services.yml config >/tmp/agentic-services-compose.yml

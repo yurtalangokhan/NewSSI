@@ -31,13 +31,10 @@ The platform is deployed as Docker containers orchestrated with Docker Compose. 
 make env-init
 make env-check
 
-# 2. Start infrastructure (Postgres, Neo4j, Milvus, Airbyte, Keycloak)
-docker compose --env-file configs/.env -f configs/docker-compose-services.yml up -d
+# 2. Start third-party services, pull Ollama models, and start app services
+make stack-up
 
-# 3. Start app services
-docker compose --env-file configs/.env -f configs/docker-compose-dev.yml up -d
-
-# 4. Verify everything is running
+# 3. Verify everything is running
 curl http://localhost:8000/health/
 curl http://localhost:8000/api/health
 ```

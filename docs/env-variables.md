@@ -32,6 +32,9 @@
 | `AIRBYTE_PASSWORD` | Airbyte DB password | — |
 | `KONG_DATABASE` | Kong DB name | `kong` |
 | `KONG_PASSWORD` | Kong admin password | — |
+| `OLLAMA_IMAGE_TAG` | Ollama Docker image tag | `latest` |
+| `OLLAMA_PORT` | Host port mapped to built-in Ollama | `11434` |
+| `OLLAMA_PRELOAD_MODELS` | Space-separated models pulled by `scripts/pull_ollama_models.sh` | `llama3.1:8b nomic-embed-text` |
 
 ---
 

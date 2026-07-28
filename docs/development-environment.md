@@ -6,7 +6,7 @@ from app runtime env.
 
 ## Env Ownership
 
-- `configs/.env` is only for infrastructure compose:
+- `configs/.env` is only for third-party service compose:
   `configs/docker-compose-services.yml`, Kong rendering, Keycloak bootstrap,
   Postgres, Neo4j, Airbyte, Milvus, and MinIO.
 - `apps/web/.env` is the web runtime env.
@@ -72,20 +72,33 @@ For Docker Compose app services:
    make env-check
    ```
 
-2. Start infrastructure:
+2. Start the full Docker stack:
 
    ```sh
-   docker compose --env-file configs/.env -f configs/docker-compose-services.yml up -d
+   make stack-up
    ```
 
-3. Start application services with Docker Compose:
+   This target starts the third-party services from
+   `configs/docker-compose-services.yml`, runs
+   `scripts/pull_ollama_models.sh`, and then starts the application
+   microservices from `configs/docker-compose-prod.yml`.
+
+   `scripts/pull_ollama_models.sh` reads `OLLAMA_PRELOAD_MODELS` from
+   `configs/.env` and pulls those models through the existing `ollama` compose
+   service. It doesn't start a separate model-pull container.
+
+3. Optional: start only one layer:
 
    ```sh
-   docker compose --env-file configs/.env -f configs/docker-compose-dev.yml up -d
+   make third-party-up
+   make ollama-models
+   make prod-up
    ```
 
-   Alternatively, start services from `.vscode/launch.json`; the launch configs
-   read the same app env files.
+   Use this split flow when you need to inspect the third-party services before
+   starting the application microservices. For host-based development, start
+   services from `.vscode/launch.json`; the launch configs read the same app env
+   files.
 
 4. Validate compose rendering and image builds after env or compose changes:
 

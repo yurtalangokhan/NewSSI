@@ -78,25 +78,6 @@ services:
       retries: 12
       start_period: 15s
 
-  ollama-model-pull:
-    container_name: ollama-model-pull
-    image: ollama/ollama:${OLLAMA_IMAGE_TAG:-latest}
-    restart: "no"
-    depends_on:
-      ollama:
-        condition: service_healthy
-    environment:
-      OLLAMA_HOST: http://ollama:11434
-      OLLAMA_PRELOAD_MODELS: ${OLLAMA_PRELOAD_MODELS:-llama3.1:8b nomic-embed-text}
-    command:
-      - sh
-      - -c
-      - |
-        for model in $${OLLAMA_PRELOAD_MODELS}; do
-          echo "Pulling Ollama model: $${model}"
-          ollama pull "$${model}"
-        done
-
   # ==========================================================================
   # Neo4j - Knowledge Graph
   # ==========================================================================
