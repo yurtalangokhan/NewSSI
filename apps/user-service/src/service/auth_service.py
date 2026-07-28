@@ -48,11 +48,20 @@ class AuthService:
         token_data = await self.keycloak.password_grant(username, password)
         return await self._upsert_user_from_token_data(token_data, fallback_username=username)
 
-    async def external_keycloak_login(self, username: str, password: str) -> dict[str, Any]:
+    async def external_keycloak_login(
+        self,
+        username: str,
+        password: str,
+        redirect_uri: str | None = None,
+    ) -> dict[str, Any]:
         if not self.keycloak.is_enabled():
             raise ValueError("External Keycloak login is disabled")
 
-        token_data = await self.keycloak.external_broker_password_login(username, password)
+        token_data = await self.keycloak.external_broker_password_login(
+            username,
+            password,
+            redirect_uri=redirect_uri,
+        )
         return await self._upsert_user_from_token_data(token_data, fallback_username=username)
 
     async def register(

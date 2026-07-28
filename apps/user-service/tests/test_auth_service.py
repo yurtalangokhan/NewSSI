@@ -342,7 +342,11 @@ async def test_external_keycloak_login_uses_sp_brokered_idp_credentials():
         )
     )
 
-    result = await auth_service.external_keycloak_login("external@example.com", "secret")
+    result = await auth_service.external_keycloak_login(
+        "external@example.com",
+        "secret",
+        redirect_uri="http://localhost:3000/auth/oidc/callback",
+    )
 
     assert result["access_token"] == "sp-access-token"
     assert result["refresh_token"] == "sp-refresh-token"
@@ -350,6 +354,7 @@ async def test_external_keycloak_login_uses_sp_brokered_idp_credentials():
     auth_service.keycloak.external_broker_password_login.assert_awaited_once_with(
         "external@example.com",
         "secret",
+        redirect_uri="http://localhost:3000/auth/oidc/callback",
     )
     auth_service.user_repo.upsert_by_keycloak_id.assert_awaited_once_with(
         keycloak_id,

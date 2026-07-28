@@ -117,6 +117,35 @@ class KeycloakBrokerMixin:
             f"{rejected_redirect_uri}"
         )
 
+    def _sp_redirect_uri_error(self, response: httpx.Response) -> str | None:
+        if response.status_code != 400:
+            return None
+
+        parsed = urlparse(str(response.url))
+        get_realm = getattr(self, "get_realm", None)
+        realm = get_realm() if callable(get_realm) else None
+        if not realm:
+            return None
+
+        expected_auth_path = f"/realms/{realm}/protocol/openid-connect/auth"
+        if parsed.path != expected_auth_path:
+            return None
+
+        query = parse_qs(parsed.query)
+        rejected_redirect_uri = query.get("redirect_uri", [None])[0]
+        if not rejected_redirect_uri:
+            return None
+
+        client_id = query.get("client_id", [None])[0]
+        if not client_id:
+            get_login_client_id = getattr(self, "get_login_client_id", None)
+            client_id = get_login_client_id() if callable(get_login_client_id) else ""
+
+        return (
+            "SP Keycloak rejected redirect_uri. Add this Valid Redirect URI to "
+            f"SP Keycloak client '{client_id}': {rejected_redirect_uri}"
+        )
+
     @staticmethod
     def _response_error_detail(response: httpx.Response) -> str:
         detail = f"status={response.status_code}, url={response.url}"
@@ -177,6 +206,10 @@ class KeycloakBrokerMixin:
             if current.status_code == 200:
                 return None, current
 
+            redirect_uri_error = self._sp_redirect_uri_error(current)
+            if redirect_uri_error:
+                raise ValueError(redirect_uri_error)
+
             redirect_uri_error = self._external_redirect_uri_error(current)
             if redirect_uri_error:
                 raise ValueError(redirect_uri_error)
@@ -196,7 +229,14 @@ class KeycloakBrokerMixin:
         if not self.is_external_keycloak():
             raise ValueError("External Keycloak is not configured")
 
-        callback_uri = redirect_uri or self._default_oidc_redirect_uri()
+        if not redirect_uri:
+            raise ValueError("redirect_uri is required for external Keycloak login")
+
+        callback_uri = redirect_uri
+        ensure_login_redirect_uri = getattr(self, "ensure_login_client_redirect_uri", None)
+        if callable(ensure_login_redirect_uri):
+            await ensure_login_redirect_uri(callback_uri)
+
         state = secrets.token_urlsafe(24)
         authorize_url = await self.get_oidc_authorize_url(
             callback_uri,
