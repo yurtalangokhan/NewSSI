@@ -2,7 +2,13 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from scripts.env_manager import EnvFileSpec, EnvVarSpec, check_env_file, init_env_file
+from scripts.env_manager import (
+    EnvFileSpec,
+    EnvVarSpec,
+    build_specs,
+    check_env_file,
+    init_env_file,
+)
 
 
 class EnvManagerTests(unittest.TestCase):
@@ -44,6 +50,28 @@ class EnvManagerTests(unittest.TestCase):
 
         self.assertIn("REQUIRED_KEY=custom\n", content)
         self.assertIn("# missing value\nMISSING_KEY=fallback\n", content)
+
+    def test_generated_web_callback_defaults_use_localhost(self) -> None:
+        specs = build_specs()
+        watched_keys = {
+            "WEB_DOMAIN",
+            "KEYCLOAK_REDIRECT_URI",
+            "KEYCLOAK_REDIRECT_URIS",
+            "KEYCLOAK_WEB_ORIGIN",
+            "KEYCLOAK_WEB_ORIGINS",
+            "CORS_ALLOWED_ORIGINS",
+        }
+
+        defaults = [
+            variable.default
+            for spec in specs.values()
+            for variable in spec.variables
+            if variable.name in watched_keys
+        ]
+
+        self.assertTrue(defaults)
+        for default in defaults:
+            self.assertNotIn("10.101.90.13:3000", default)
 
 
 if __name__ == "__main__":

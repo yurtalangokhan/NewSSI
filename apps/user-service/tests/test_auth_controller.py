@@ -81,3 +81,47 @@ async def test_oidc_callback_without_id_token_does_not_set_id_cookie():
     assert "access_token=access-token" in set_cookie
     assert "refresh_token=refresh-token" in set_cookie
     assert "id_token=" not in set_cookie
+
+
+def test_set_cookies_skips_oversized_id_token_cookie():
+    controller = AuthController()
+    response = Response()
+
+    controller._set_cookies(
+        response=response,
+        access_token="access-token",
+        refresh_token="refresh-token",
+        id_token="x" * 5000,
+    )
+
+    set_cookie = _all_set_cookie_headers(response)
+
+    assert "access_token=access-token" in set_cookie
+    assert "refresh_token=refresh-token" in set_cookie
+    assert "id_token=" not in set_cookie
+
+
+@pytest.mark.asyncio
+async def test_external_login_passes_redirect_uri_to_auth_service():
+    controller = AuthController()
+    controller.auth_service = AsyncMock()
+    controller.auth_service.external_keycloak_login.return_value = {
+        "access_token": "access-token",
+        "refresh_token": "refresh-token",
+    }
+    request = _build_request("/auth/external/login")
+    response = Response()
+
+    await controller.external_login(
+        request=request,
+        response=response,
+        username="external@example.com",
+        password="secret",
+        redirect_uri="http://localhost:3000/auth/oidc/callback",
+    )
+
+    controller.auth_service.external_keycloak_login.assert_awaited_once_with(
+        "external@example.com",
+        "secret",
+        redirect_uri="http://localhost:3000/auth/oidc/callback",
+    )

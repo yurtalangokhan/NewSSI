@@ -182,6 +182,118 @@ async def test_follow_broker_redirects_ignores_intermediate_idp_code_state(monke
 
 
 @pytest.mark.asyncio
+async def test_follow_broker_redirects_reports_sp_redirect_uri_rejection(monkeypatch):
+    service = KeycloakService()
+    monkeypatch.setenv("KEYCLOAK_BASE_URL", "http://keycloak")
+    monkeypatch.setenv("KEYCLOAK_REALM", "agenticai")
+    monkeypatch.setenv("KEYCLOAK_LOGIN_CLIENT_ID", "agenticai-web")
+    monkeypatch.setenv("EXTERNAL_KEYCLOAK_ISSUER_URL", "http://external/realms/idp")
+    callback_uri = "http://localhost:3000/auth/oidc/callback"
+    auth_url = (
+        "http://keycloak/realms/agenticai/protocol/openid-connect/auth"
+        "?client_id=agenticai-web"
+        f"&redirect_uri={callback_uri}"
+    )
+    response = httpx.Response(
+        400,
+        text="<html>Invalid parameter: redirect_uri</html>",
+        request=httpx.Request("GET", auth_url),
+    )
+
+    class Client:
+        async def get(self, url: str, follow_redirects: bool = False) -> httpx.Response:
+            raise AssertionError("No redirects should be followed for a 400 response")
+
+    with pytest.raises(ValueError, match="SP Keycloak rejected redirect_uri"):
+        await service._follow_broker_redirects(
+            Client(),
+            response,
+            callback_uri,
+            "expected-state",
+        )
+
+
+@pytest.mark.asyncio
+async def test_external_broker_password_login_ensures_runtime_callback_uri(monkeypatch):
+    service = KeycloakService()
+    callback_uri = "http://localhost:3000/auth/oidc/callback"
+    authorize_url = "http://keycloak/realms/agenticai/protocol/openid-connect/auth"
+    callback_url = f"{callback_uri}?code=sp-code&state=expected-state"
+    calls: list[str] = []
+
+    monkeypatch.setenv("EXTERNAL_KEYCLOAK", "true")
+    monkeypatch.setattr(
+        "src.service.keycloak_broker.secrets.token_urlsafe",
+        lambda _: "expected-state",
+    )
+    monkeypatch.setattr(service, "_default_oidc_redirect_uri", lambda: callback_uri)
+    monkeypatch.setattr(service, "get_external_keycloak_alias", lambda: "external-keycloak")
+    monkeypatch.setattr(service, "_rewrite_keycloak_url_for_backend", lambda url: url)
+    monkeypatch.setattr(
+        service,
+        "get_oidc_authorize_url",
+        AsyncMock(return_value=authorize_url),
+    )
+    monkeypatch.setattr(
+        service,
+        "handle_oidc_callback",
+        AsyncMock(return_value={"access_token": "sp-access-token"}),
+    )
+
+    async def ensure_redirect_uri(uri: str) -> dict[str, str]:
+        calls.append(f"ensure:{uri}")
+        return {"status": "updated"}
+
+    monkeypatch.setattr(service, "ensure_login_client_redirect_uri", ensure_redirect_uri)
+
+    class Client:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            return None
+
+        async def get(self, url: str, follow_redirects: bool = False) -> httpx.Response:
+            calls.append(f"get:{url}")
+            return httpx.Response(
+                302,
+                headers={"location": callback_url},
+                request=httpx.Request("GET", url),
+            )
+
+    monkeypatch.setattr(keycloak_service.httpx, "AsyncClient", Client)
+
+    result = await service.external_broker_password_login(
+        "external@example.com",
+        "secret",
+        redirect_uri=callback_uri,
+    )
+
+    assert result == {"access_token": "sp-access-token"}
+    assert calls == [
+        f"ensure:{callback_uri}",
+        f"get:{authorize_url}",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_external_broker_password_login_requires_explicit_redirect_uri(monkeypatch):
+    service = KeycloakService()
+    ensure_redirect_uri = AsyncMock()
+
+    monkeypatch.setenv("EXTERNAL_KEYCLOAK", "true")
+    monkeypatch.setattr(service, "ensure_login_client_redirect_uri", ensure_redirect_uri)
+
+    with pytest.raises(ValueError, match="redirect_uri is required"):
+        await service.external_broker_password_login("external@example.com", "secret")
+
+    ensure_redirect_uri.assert_not_awaited()
+
+
+@pytest.mark.asyncio
 async def test_ensure_enduser_default_realm_role_adds_composite(monkeypatch):
     service = KeycloakService()
     monkeypatch.setenv("KEYCLOAK_REALM", "agenticai")

@@ -161,6 +161,16 @@ class TestAuthRoute:
         assert "require_auth" not in source
         assert "Depends(" not in source
 
+    def test_external_login_accepts_redirect_uri_query_param(self):
+        """External form login must pass the browser callback URI through."""
+        import inspect
+
+        from src.api.routes.auth_base_route import external_login
+
+        sig = inspect.signature(external_login)
+
+        assert "redirect_uri" in sig.parameters
+
 
 class TestEndpointSignatures:
     """Validate endpoint function signatures."""

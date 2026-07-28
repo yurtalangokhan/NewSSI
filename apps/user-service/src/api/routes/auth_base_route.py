@@ -29,8 +29,15 @@ async def external_login(
     response: Response,
     username: str = Form(...),
     password: str = Form(...),
+    redirect_uri: str | None = Query(None),
 ):
-    return await get_auth_controller().external_login(request, response, username, password)
+    return await get_auth_controller().external_login(
+        request,
+        response,
+        username,
+        password,
+        redirect_uri,
+    )
 
 
 @router.post("/logout")
