@@ -1,6 +1,7 @@
+import { getInternalUrl } from "@/lib/env.server";
 import { NextRequest, NextResponse } from 'next/server';
 
-const INTERNAL_URL = process.env.INTERNAL_URL || 'http://localhost:8123';
+const INTERNAL_URL = getInternalUrl();
 
 export async function GET(
   request: NextRequest,

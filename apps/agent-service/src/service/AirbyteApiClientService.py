@@ -13,11 +13,11 @@ from __future__ import annotations
 
 import asyncio
 import logging as _stdlib_logging
-import os
 from typing import Any
 
 import httpx
 
+from core.env import env
 from core.logger import get_logger
 
 logger = get_logger(__name__)
@@ -52,7 +52,7 @@ class AirbyteAPIClient:
         max_retries: int = 3,
     ) -> None:
         self._base_url = (
-            base_url or os.environ.get("AIRBYTE_API_URL", "http://airbyte-server:8001/api/v1")
+            base_url or env.AIRBYTE_API_URL or "http://airbyte-server:8001/api/v1"
         ).rstrip("/")
         self._timeout = timeout
         self._max_retries = max_retries
@@ -322,16 +322,12 @@ class AirbyteAPIClient:
                 "./airbyte-destination-embedding and register the custom connector.",
             )
 
-        agent_service_url = os.environ.get(
-            "AIRBYTE_DESTINATION_AGENT_URL", "http://agent-service:8080"
-        )
-        agent_token = os.environ.get("AIRBYTE_DESTINATION_AGENT_TOKEN") or os.environ.get(
-            "INTERNAL_SERVICE_TOKEN"
-        )
+        agent_service_url = env.get("AIRBYTE_DESTINATION_AGENT_URL", "http://agent-service:8080")
+        agent_token = env.AIRBYTE_DESTINATION_AGENT_TOKEN or env.INTERNAL_SERVICE_TOKEN
         destination_config = {
             "agent_service_url": agent_service_url,
             "datasource_id": datasource_id,
-            "batch_size": int(os.environ.get("AIRBYTE_EMBED_BATCH_SIZE", "200")),
+            "batch_size": env.AIRBYTE_EMBED_BATCH_SIZE,
             "request_timeout_seconds": 120,
         }
         if agent_token:

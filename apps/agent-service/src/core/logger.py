@@ -24,6 +24,8 @@ from logging.handlers import RotatingFileHandler
 from typing import Any
 from uuid import uuid4
 
+from core.env import env
+
 
 class LogLevel(StrEnum):
     DEBUG = "DEBUG"
@@ -139,28 +141,22 @@ class LoggerFactory:
         """Configure logging from dict or env vars."""
         config = config or {}
 
-        level_str = config.get("LOG_LEVEL") or os.environ.get("LOG_LEVEL", "INFO")
+        level_str = config.get("LOG_LEVEL") or env.LOG_LEVEL
         try:
             cls._log_level = getattr(logging, level_str.upper())
         except AttributeError:
             cls._log_level = logging.INFO
 
-        fmt_str = config.get("LOG_FORMAT") or os.environ.get("LOG_FORMAT", "text")
+        fmt_str = config.get("LOG_FORMAT") or env.LOG_FORMAT
         cls._log_format = LogFormat(fmt_str.lower())
 
-        output_str = config.get("LOG_OUTPUT") or os.environ.get("LOG_OUTPUT", "console")
+        output_str = config.get("LOG_OUTPUT") or env.LOG_OUTPUT
         cls._log_output = LogOutput(output_str.lower())
 
-        cls._log_file_path = config.get("LOG_FILE_PATH") or os.environ.get(
-            "LOG_FILE_PATH", "/var/log/agent-service/app.log"
-        )
+        cls._log_file_path = config.get("LOG_FILE_PATH") or env.LOG_FILE_PATH
 
-        cls._log_max_bytes = int(
-            config.get("LOG_MAX_SIZE") or os.environ.get("LOG_MAX_SIZE", "10485760")
-        )
-        cls._log_backup_count = int(
-            config.get("LOG_BACKUP_COUNT") or os.environ.get("LOG_BACKUP_COUNT", "5")
-        )
+        cls._log_max_bytes = int(config.get("LOG_MAX_SIZE") or env.LOG_MAX_SIZE)
+        cls._log_backup_count = int(config.get("LOG_BACKUP_COUNT") or env.LOG_BACKUP_COUNT)
 
         cls._initialized = True
 

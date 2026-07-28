@@ -1,9 +1,9 @@
 """Proxy controller - handles external service proxy logic (MCP, Ollama, RAG)."""
 
-import os
 from typing import Any
 
 from controller.base import BaseController
+from core.env import env
 
 
 class ProxyController(BaseController):
@@ -210,7 +210,7 @@ class ProxyController(BaseController):
             "transport": "streamable_http",
             "url": self._ensure_mcp_url_path(url),
         }
-        token = (os.environ.get("INTERNAL_SERVICE_TOKEN") or "").strip()
+        token = (env.INTERNAL_SERVICE_TOKEN or "").strip()
         if token:
             connection["headers"] = {"Authorization": f"Bearer {token}"}
         return connection

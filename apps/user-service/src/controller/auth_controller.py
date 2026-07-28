@@ -1,3 +1,4 @@
+import logging
 from typing import Any
 
 from fastapi import Request, Response
@@ -5,6 +6,10 @@ from fastapi import Request, Response
 from src.service import get_auth_service
 
 from .base import BaseController
+
+logger = logging.getLogger(__name__)
+
+MAX_ID_TOKEN_COOKIE_VALUE_BYTES = 3800
 
 
 class AuthController(BaseController):
@@ -30,10 +35,19 @@ class AuthController(BaseController):
             self._raise_bad_request(str(e))
 
     async def external_login(
-        self, request: Request, response: Response, username: str, password: str
+        self,
+        request: Request,
+        response: Response,
+        username: str,
+        password: str,
+        redirect_uri: str | None = None,
     ) -> dict[str, Any]:
         try:
-            result = await self.auth_service.external_keycloak_login(username, password)
+            result = await self.auth_service.external_keycloak_login(
+                username,
+                password,
+                redirect_uri=redirect_uri,
+            )
             self._set_cookies(
                 response,
                 result.get("access_token", ""),
@@ -44,10 +58,15 @@ class AuthController(BaseController):
         except ValueError as e:
             self._raise_bad_request(str(e))
 
-    async def logout(self, request: Request, response: Response) -> dict[str, Any]:
+    async def logout(
+        self,
+        request: Request,
+        response: Response,
+        post_logout_redirect_uri: str | None = None,
+    ) -> dict[str, Any]:
         refresh_token = request.cookies.get("refresh_token")
         self._clear_cookies(response)
-        return await self.auth_service.logout(refresh_token)
+        return await self.auth_service.logout(refresh_token, post_logout_redirect_uri)
 
     async def refresh(self, request: Request, response: Response) -> dict[str, Any]:
         refresh_token = request.cookies.get("refresh_token")
@@ -127,7 +146,7 @@ class AuthController(BaseController):
                 max_age=30 * 86400,
                 secure=False,
             )
-        if id_token:
+        if id_token and len(id_token.encode("utf-8")) <= MAX_ID_TOKEN_COOKIE_VALUE_BYTES:
             response.set_cookie(
                 key="id_token",
                 value=id_token,
@@ -135,6 +154,12 @@ class AuthController(BaseController):
                 samesite="lax",
                 max_age=30 * 86400,
                 secure=False,
+            )
+        elif id_token:
+            logger.warning(
+                "Skipping id_token cookie because it exceeds browser-safe cookie size "
+                "(%s bytes)",
+                len(id_token.encode("utf-8")),
             )
 
     def _clear_cookies(self, response: Response):

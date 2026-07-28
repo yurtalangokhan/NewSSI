@@ -32,7 +32,7 @@ class AuthService:
             "type": "access",
             "jti": secrets.token_urlsafe(12),
         }
-        secret = _settings.AUTH_SECRET or "dev-secret-change-me"
+        secret = _settings.require_auth_secret()
         token = jwt.encode(payload, secret, algorithm="HS256")
         return token, expires
 
@@ -48,11 +48,20 @@ class AuthService:
         token_data = await self.keycloak.password_grant(username, password)
         return await self._upsert_user_from_token_data(token_data, fallback_username=username)
 
-    async def external_keycloak_login(self, username: str, password: str) -> dict[str, Any]:
+    async def external_keycloak_login(
+        self,
+        username: str,
+        password: str,
+        redirect_uri: str | None = None,
+    ) -> dict[str, Any]:
         if not self.keycloak.is_enabled():
             raise ValueError("External Keycloak login is disabled")
 
-        token_data = await self.keycloak.external_broker_password_login(username, password)
+        token_data = await self.keycloak.external_broker_password_login(
+            username,
+            password,
+            redirect_uri=redirect_uri,
+        )
         return await self._upsert_user_from_token_data(token_data, fallback_username=username)
 
     async def register(
@@ -247,8 +256,17 @@ class AuthService:
             is_external_keycloak_user=True,
         )
 
-    async def logout(self, refresh_token: str | None = None) -> dict[str, Any]:
+    async def logout(
+        self,
+        refresh_token: str | None = None,
+        post_logout_redirect_uri: str | None = None,
+    ) -> dict[str, Any]:
         if self.keycloak.is_enabled():
+            if post_logout_redirect_uri:
+                await self.keycloak.ensure_login_client_redirect_uri(
+                    self.keycloak.get_oidc_redirect_uri(),
+                    post_logout_redirect_uri=post_logout_redirect_uri,
+                )
             await self.keycloak.backchannel_logout(refresh_token=refresh_token)
 
         return {"message": "Logged out successfully"}
@@ -296,7 +314,7 @@ class AuthService:
     async def validate_token(self, token: str) -> dict[str, Any] | None:
         # 1. Try local HS256 decode (legacy user-service tokens)
         try:
-            secret = _settings.AUTH_SECRET or "dev-secret-change-me"
+            secret = _settings.require_auth_secret()
             payload = jwt.decode(
                 token, secret, algorithms=["HS256"], audience=_settings.SERVICE_NAME
             )
@@ -408,8 +426,10 @@ class AuthService:
         idp_hint: str | None = None,
     ) -> str:
         state = secrets.token_urlsafe(16)
+        callback_uri = redirect_uri or self.keycloak.get_oidc_redirect_uri()
+        await self.keycloak.ensure_login_client_redirect_uri(callback_uri)
         return await self.keycloak.get_oidc_authorize_url(
-            redirect_uri or self.keycloak.get_oidc_redirect_uri(),
+            callback_uri,
             state=state,
             idp_hint=idp_hint,
         )

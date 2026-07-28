@@ -7,18 +7,18 @@ into the vector store for RAG operations.
 
 import asyncio
 import logging
-import os
 import time
 from datetime import UTC, datetime
 
 import httpx
 
 from core.db import AirbyteMappingRepository, DatasourceRepository
+from core.env import env
 
 # LangConnect base URL for Graph RAG rebuild requests
-LANGCONNECT_BASE_URL = os.environ.get("RAG_SERVICE_API_URL", "http://langconnect-api:8083")
+LANGCONNECT_BASE_URL = env.RAG_SERVICE_API_URL or "http://langconnect-api:8083"
 # Internal service token for authenticating with LangConnect
-_LANGCONNECT_SERVICE_TOKEN = os.environ.get("INTERNAL_SERVICE_TOKEN", "")
+_LANGCONNECT_SERVICE_TOKEN = env.INTERNAL_SERVICE_TOKEN or ""
 
 logger = logging.getLogger(__name__)
 

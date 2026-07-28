@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from typing import Annotated, Any, Optional
 
 import jwt
@@ -29,9 +28,7 @@ def _get_valid_api_keys() -> set:
     """Get valid API keys from environment variable."""
     global VALID_API_KEYS
     if not VALID_API_KEYS:
-        api_keys_env = os.environ.get("VALID_API_KEYS", "")
-        if api_keys_env:
-            VALID_API_KEYS = {k.strip() for k in api_keys_env.split(",") if k.strip()}
+        VALID_API_KEYS = config.parse_valid_api_keys()
     return VALID_API_KEYS
 
 

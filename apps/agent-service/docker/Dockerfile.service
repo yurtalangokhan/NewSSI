@@ -5,28 +5,29 @@ WORKDIR /app
 ENV UV_PROJECT_ENVIRONMENT="/usr/local/"
 ENV UV_COMPILE_BYTECODE=1
 
-COPY pyproject.toml .
-COPY uv.lock* ./
+COPY apps/agent-service/pyproject.toml .
+COPY apps/agent-service/uv.lock* ./
+COPY packages/idempotency-py/ packages/idempotency-py/
 RUN pip install uv
 
-# --no-frozen: allow uv to update the lock file if pyproject.toml changed
-RUN uv lock && uv sync --frozen --no-install-project --no-dev
+# Fix idempotency path from local-dev relative to Docker WORKDIR
+RUN sed -i 's|path = "../../packages/idempotency-py"|path = "packages/idempotency-py"|' pyproject.toml \
+    && uv lock && uv sync --frozen --no-install-project --no-dev
 RUN uv run playwright install --with-deps chromium
 
-COPY src/agents/ ./agents/
-COPY src/api/ ./api/
-COPY src/client/ ./client/
-COPY src/controller/ ./controller/
-COPY src/core/ ./core/
-COPY src/domain/ ./domain/
-COPY src/memory/ ./memory/
-COPY src/models/ ./models/
-COPY src/schema/ ./schema/
-COPY src/service/ ./service/
-COPY src/app.py .
-COPY src/run_service.py .
-COPY alembic.ini .
-# Symlink so alembic.ini's "src/core/..." path resolves inside /app/
+COPY apps/agent-service/src/agents/ ./agents/
+COPY apps/agent-service/src/api/ ./api/
+COPY apps/agent-service/src/client/ ./client/
+COPY apps/agent-service/src/controller/ ./controller/
+COPY apps/agent-service/src/core/ ./core/
+COPY apps/agent-service/src/domain/ ./domain/
+COPY apps/agent-service/src/memory/ ./memory/
+COPY apps/agent-service/src/models/ ./models/
+COPY apps/agent-service/src/schema/ ./schema/
+COPY apps/agent-service/src/service/ ./service/
+COPY apps/agent-service/src/app.py .
+COPY apps/agent-service/src/run_service.py .
+COPY apps/agent-service/alembic.ini .
 RUN ln -s . src
 
 CMD ["python", "run_service.py"]

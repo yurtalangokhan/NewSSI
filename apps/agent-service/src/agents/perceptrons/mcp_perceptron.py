@@ -1,12 +1,12 @@
 """MCP Perceptron - MCP server tool integration."""
 
 import logging
-import os
 from typing import Any
 
 from langchain_core.tools import BaseTool
 
 from agents.base.perceptron import PerceptionResult, Perceptron
+from core.env import env
 
 logger = logging.getLogger(__name__)
 
@@ -57,14 +57,14 @@ class MCPPerceptron(Perceptron):
             return
 
         if not self._mcp_servers:
-            mcp_url = os.environ.get("MCP_SERVER_URL", "http://tools-service:8003/mcp")
+            mcp_url = env.MCP_SERVER_URL
             self._mcp_servers = [{"name": "default", "url": mcp_url}]
 
         try:
             from langchain_mcp_adapters.client import MultiServerMCPClient
 
             connections = {}
-            token = (os.environ.get("INTERNAL_SERVICE_TOKEN") or "").strip()
+            token = (env.INTERNAL_SERVICE_TOKEN or "").strip()
             default_headers = {"Authorization": f"Bearer {token}"} if token else None
             for server in self._mcp_servers:
                 name = server.get("name", "mcp")

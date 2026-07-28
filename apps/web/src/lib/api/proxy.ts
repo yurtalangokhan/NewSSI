@@ -9,6 +9,19 @@ const AUTH_COOKIE_NAMES = [
   "id_token",
   "access_token",
 ];
+const EXCLUDED_PROXY_RESPONSE_HEADERS = new Set([
+  "connection",
+  "content-encoding",
+  "content-length",
+  "keep-alive",
+  "proxy-authenticate",
+  "proxy-authorization",
+  "set-cookie",
+  "te",
+  "trailer",
+  "transfer-encoding",
+  "upgrade",
+]);
 
 function shouldUseSecureCookies(request: NextRequest): boolean {
   const publicWebOrigin = process.env.WEB_DOMAIN;
@@ -116,6 +129,7 @@ export interface ProxyOptions {
   withCredentials?: boolean;
   backendUrl?: string;
   refreshOnUnauthorized?: boolean;
+  queryParams?: Record<string, string>;
 }
 
 /**
@@ -132,6 +146,7 @@ export async function proxyToBackend(
       withCredentials = true,
       backendUrl = BACKEND_URL,
       refreshOnUnauthorized = true,
+      queryParams,
     } = options;
 
     // Build URL with query params
@@ -139,6 +154,9 @@ export async function proxyToBackend(
     if (request.nextUrl.search) {
       url.search = request.nextUrl.search;
     }
+    Object.entries(queryParams ?? {}).forEach(([key, value]) => {
+      url.searchParams.set(key, value);
+    });
 
     const requestCookie = request.headers.get("cookie") || "";
     let body: BodyInit | undefined;
@@ -220,7 +238,7 @@ export async function proxyToBackend(
 
     // Copy headers
     response.headers.forEach((value, key) => {
-      if (key.toLowerCase() !== "content-encoding") {
+      if (!EXCLUDED_PROXY_RESPONSE_HEADERS.has(key.toLowerCase())) {
         result.headers.set(key, value);
       }
     });

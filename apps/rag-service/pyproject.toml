@@ -36,7 +36,11 @@ dependencies = [
     "sqlalchemy[asyncio]>=2.0",
     "alembic>=1.13",
     "PyJWT>=2.10.1",
+    "idempotency",
 ]
+
+[tool.uv.sources]
+idempotency = { path = "../../packages/idempotency-py" }
 
 [project.packages]
 find = { where = ["langconnect"] }

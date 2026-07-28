@@ -60,6 +60,44 @@ services:
         fi
 
   # ==========================================================================
+  # Ollama - Built-in Local LLM Runtime
+  # ==========================================================================
+
+  ollama:
+    container_name: ollama
+    image: ollama/ollama:${OLLAMA_IMAGE_TAG:-latest}
+    restart: unless-stopped
+    ports:
+      - "${OLLAMA_PORT:-11434}:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 15s
+
+  ollama-model-pull:
+    container_name: ollama-model-pull
+    image: ollama/ollama:${OLLAMA_IMAGE_TAG:-latest}
+    restart: "no"
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+      OLLAMA_PRELOAD_MODELS: ${OLLAMA_PRELOAD_MODELS:-llama3.1:8b nomic-embed-text}
+    command:
+      - sh
+      - -c
+      - |
+        for model in $${OLLAMA_PRELOAD_MODELS}; do
+          echo "Pulling Ollama model: $${model}"
+          ollama pull "$${model}"
+        done
+
+  # ==========================================================================
   # Neo4j - Knowledge Graph
   # ==========================================================================
 
@@ -299,20 +337,22 @@ services:
       start_period: 30s
 
   # ==========================================================================
-  # Redis - Cache (optional, currently not used)
+  # Redis - Idempotency cache & distributed locks
   # ==========================================================================
 
-  # redis:
-  #   container_name: redis
-  #   image: redis:7-alpine
-  #   restart: unless-stopped
-  #   ports:
-  #     - "6379:6379"
-  #   healthcheck:
-  #     test: ["CMD", "redis-cli", "ping"]
-  #     interval: 5s
-  #     timeout: 3s
-  #     retries: 5
+  redis:
+    container_name: redis
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
   # ==========================================================================
   # MongoDB - Document store (optional, for LangGraph checkpointing)
@@ -516,5 +556,7 @@ volumes:
   airbyte-data:
     external: true
     name: langgraph-with-ui_airbyte-data
+  redis-data:
   keycloak-data:
+  ollama-data:
   # mysql-data:

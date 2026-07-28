@@ -64,13 +64,17 @@ export default function EmailPasswordForm({
 
   const readErrorMessage = async (response: Response): Promise<string> => {
     try {
-      const payload = await response.json();
-      const detail = payload?.detail;
-      if (typeof detail === "string") {
-        return detail;
-      }
-      if (typeof detail === "object" && detail?.reason) {
-        return detail.reason;
+      const jsonResponse =
+        typeof response.clone === "function" ? response.clone() : response;
+      const payload = await jsonResponse.json();
+      for (const key of ["detail", "error", "message"] as const) {
+        const value = payload?.[key];
+        if (typeof value === "string") {
+          return value;
+        }
+        if (typeof value === "object" && value?.reason) {
+          return value.reason;
+        }
       }
     } catch {
       // Fall back to raw text below.

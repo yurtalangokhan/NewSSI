@@ -30,7 +30,7 @@ async def test_validate_token_accepts_current_service_tokens():
 @pytest.mark.asyncio
 async def test_validate_token_accepts_legacy_tokens_without_audience():
     settings = get_settings()
-    secret = settings.AUTH_SECRET or "dev-secret-change-me"
+    secret = settings.require_auth_secret()
     token = jwt.encode(
         {
             "sub": "legacy-user",
@@ -151,6 +151,31 @@ async def test_logout_delegates_session_invalidation_to_keycloak():
         refresh_token="refresh-token"
     )
     assert not hasattr(auth_service, "session_repo")
+
+
+@pytest.mark.asyncio
+async def test_logout_ensures_post_logout_redirect_uri():
+    auth_service = AuthService()
+    auth_service.keycloak = SimpleNamespace(
+        is_enabled=lambda: True,
+        get_oidc_redirect_uri=lambda: "http://localhost:8126/auth/oidc/callback",
+        ensure_login_client_redirect_uri=AsyncMock(return_value={"status": "updated"}),
+        backchannel_logout=AsyncMock(return_value=True),
+    )
+
+    result = await auth_service.logout(
+        refresh_token="refresh-token",
+        post_logout_redirect_uri="http://localhost:8126/auth/ee/login",
+    )
+
+    assert result == {"message": "Logged out successfully"}
+    auth_service.keycloak.ensure_login_client_redirect_uri.assert_awaited_once_with(
+        "http://localhost:8126/auth/oidc/callback",
+        post_logout_redirect_uri="http://localhost:8126/auth/ee/login",
+    )
+    auth_service.keycloak.backchannel_logout.assert_awaited_once_with(
+        refresh_token="refresh-token"
+    )
 
 
 def test_extract_roles_from_claims_supports_realm_and_client_roles():
@@ -317,7 +342,11 @@ async def test_external_keycloak_login_uses_sp_brokered_idp_credentials():
         )
     )
 
-    result = await auth_service.external_keycloak_login("external@example.com", "secret")
+    result = await auth_service.external_keycloak_login(
+        "external@example.com",
+        "secret",
+        redirect_uri="http://localhost:3000/auth/oidc/callback",
+    )
 
     assert result["access_token"] == "sp-access-token"
     assert result["refresh_token"] == "sp-refresh-token"
@@ -325,6 +354,7 @@ async def test_external_keycloak_login_uses_sp_brokered_idp_credentials():
     auth_service.keycloak.external_broker_password_login.assert_awaited_once_with(
         "external@example.com",
         "secret",
+        redirect_uri="http://localhost:3000/auth/oidc/callback",
     )
     auth_service.user_repo.upsert_by_keycloak_id.assert_awaited_once_with(
         keycloak_id,
@@ -401,6 +431,26 @@ async def test_handle_oidc_callback_persists_groups_from_sp_id_token():
         is_verified=True,
         is_external_keycloak_user=False,
     )
+
+
+@pytest.mark.asyncio
+async def test_get_oidc_authorize_url_ensures_runtime_redirect_uri():
+    auth_service = AuthService()
+    auth_service.keycloak = SimpleNamespace(
+        ensure_login_client_redirect_uri=AsyncMock(return_value={"status": "updated"}),
+        get_oidc_authorize_url=AsyncMock(return_value="http://keycloak/auth"),
+    )
+
+    result = await auth_service.get_oidc_authorize_url(
+        "http://localhost:8126/auth/oidc/callback",
+        idp_hint="external-keycloak",
+    )
+
+    assert result == "http://keycloak/auth"
+    auth_service.keycloak.ensure_login_client_redirect_uri.assert_awaited_once_with(
+        "http://localhost:8126/auth/oidc/callback"
+    )
+    auth_service.keycloak.get_oidc_authorize_url.assert_awaited_once()
 
 
 @pytest.mark.asyncio

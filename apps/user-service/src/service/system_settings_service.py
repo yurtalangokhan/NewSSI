@@ -29,7 +29,7 @@ def _configured_value(*values: Any) -> str | None:
 
 def _fernet() -> Fernet:
     settings = get_settings()
-    key = settings.ENCRYPTION_KEY or "UKtf1bGCDl8smcVDRM9YekfivWNlsjSB-Mh0d993z40="
+    key = settings.require_encryption_key()
     if len(key) != 44:
         key_bytes = base64.urlsafe_b64encode(key.encode()[:32].ljust(32, b"0"))
         return Fernet(key_bytes)

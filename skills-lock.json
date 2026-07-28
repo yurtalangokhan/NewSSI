@@ -13,6 +13,18 @@
       "skillPath": "clean-code/SKILL.md",
       "computedHash": "917f01d5f5800f1f575c6701a4a34939647e74c423bd3108e894191abb0593f6"
     },
+    "code-review": {
+      "source": "mattpocock/skills",
+      "sourceType": "github",
+      "skillPath": "skills/engineering/code-review/SKILL.md",
+      "computedHash": "31d149a480eaa68c11e32f5ee77f0fd0b98a906834d531d881d502352edd0b8e"
+    },
+    "docs-writer": {
+      "source": "google-gemini/gemini-cli",
+      "sourceType": "github",
+      "skillPath": ".gemini/skills/docs-writer/SKILL.md",
+      "computedHash": "ddb3671168efa5f2fe481740a57ca147619ffffe2cf764ada6229bde01fed3df"
+    },
     "fastapi": {
       "source": "fastapi/fastapi",
       "sourceType": "github",

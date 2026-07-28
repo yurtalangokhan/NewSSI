@@ -1,11 +1,11 @@
 """Auth-adjacent controller for token-backed agent-service routes."""
 
-import os
 from typing import Any
 
 from fastapi import Request
 
 from controller.base import BaseController
+from core.env import env
 from service.AuthService import AuthenticatedUser, get_auth_service
 
 
@@ -41,9 +41,7 @@ class AuthController(BaseController):
 
     async def get_mcp_servers(self) -> dict[str, Any]:
         mcp_servers = []
-        tools_service_url = (
-            os.getenv("TOOLS_SERVICE_URL") or os.getenv("MCP_SERVER_URL") or "http://localhost:8003"
-        )
+        tools_service_url = env.TOOLS_SERVICE_URL or env.MCP_SERVER_URL
 
         if tools_service_url:
             from datetime import UTC, datetime

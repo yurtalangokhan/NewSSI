@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 import httpx
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from idempotency import AsyncRedisPool, IdempotencyConfig, IdempotencyMiddleware
 
 from src.config import get_settings
 from src.core.database.engine import close_db_engine
@@ -41,8 +42,26 @@ async def lifespan(app: FastAPI):
                         raise
     except Exception:
         logger.exception("Failed to initialize Keycloak system settings")
+    await AsyncRedisPool.connect(_idempotency_config)
     yield
+    await AsyncRedisPool.close()
     await close_db_engine()
+
+
+def _build_idempotency_config() -> IdempotencyConfig:
+    s = get_settings()
+    return IdempotencyConfig(
+        redis_host=s.REDIS_HOST,
+        redis_port=s.REDIS_PORT,
+        redis_db=s.REDIS_DB,
+        redis_password=s.REDIS_PASSWORD,
+        idempotency_ttl=s.IDEMPOTENCY_TTL,
+        idempotency_enabled=s.IDEMPOTENCY_ENABLED,
+        service_name="user-service",
+    )
+
+
+_idempotency_config = _build_idempotency_config()
 
 
 def create_app() -> FastAPI:
@@ -63,6 +82,12 @@ def create_app() -> FastAPI:
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
+    )
+
+    app.add_middleware(
+        IdempotencyMiddleware,
+        config=_idempotency_config,
+        exclude_paths={"/health", "/health/", "/api/health", "/api/health/"},
     )
 
     from src.api.routes.health import router as health_router

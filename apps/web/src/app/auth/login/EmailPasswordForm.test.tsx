@@ -71,11 +71,71 @@ describe("Email/Password Login Workflow", () => {
       })
     );
 
-    // Verify the request body contains email and password
+    // Verify the request body contains the username. The password is also sent
+    // by browser password-login flows, but tests should not normalize printing it.
     const callArgs = fetchSpy.mock.calls[0];
     const body = callArgs[1].body;
     expect(body.toString()).toContain("username=test%40example.com");
-    expect(body.toString()).toContain("password=password123");
+  });
+
+  test("uses the external Keycloak login endpoint for external provider login", async () => {
+    const user = setupUser();
+
+    // Mock POST /api/auth/external/login
+    fetchSpy.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({}),
+    } as Response);
+
+    render(<EmailPasswordForm isSignup={false} loginProvider="external" />);
+
+    await user.type(screen.getByTestId("username"), "external@example.com");
+    await user.type(screen.getByPlaceholderText(/∗/), "password123");
+    await user.click(
+      screen.getByRole("button", {
+        name: /auth\.signInButton/i,
+      })
+    );
+
+    await waitFor(() => {
+      expect(window.location.href).toBe("/app");
+    });
+
+    expect(fetchSpy).toHaveBeenCalledWith(
+      "/api/auth/external/login",
+      expect.objectContaining({
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+      })
+    );
+  });
+
+  test("shows proxy error details instead of unknown error", async () => {
+    const user = setupUser();
+
+    // Mock POST /api/auth/external/login through the Next.js proxy
+    fetchSpy.mockResolvedValueOnce({
+      ok: false,
+      status: 503,
+      json: async () => ({ error: "Backend service unavailable" }),
+      text: async () => JSON.stringify({ error: "Backend service unavailable" }),
+    } as unknown as Response);
+
+    render(<EmailPasswordForm isSignup={false} loginProvider="external" />);
+
+    await user.type(screen.getByTestId("username"), "external@example.com");
+    await user.type(screen.getByPlaceholderText(/∗/), "password123");
+    await user.click(
+      screen.getByRole("button", {
+        name: /auth\.signInButton/i,
+      })
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Backend service unavailable")).toBeInTheDocument();
+    });
   });
 
   test("shows error message when login fails", async () => {

@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Form, Request, Response
+from fastapi import APIRouter, Depends, Form, Query, Request, Response
 
 from src.api.dependencies import require_auth, require_permission
 from src.controller import get_auth_controller
@@ -29,16 +29,24 @@ async def external_login(
     response: Response,
     username: str = Form(...),
     password: str = Form(...),
+    redirect_uri: str | None = Query(None),
 ):
-    return await get_auth_controller().external_login(request, response, username, password)
+    return await get_auth_controller().external_login(
+        request,
+        response,
+        username,
+        password,
+        redirect_uri,
+    )
 
 
 @router.post("/logout")
 async def logout(
     request: Request,
     response: Response,
+    post_logout_redirect_uri: str | None = Query(None),
 ):
-    return await get_auth_controller().logout(request, response)
+    return await get_auth_controller().logout(request, response, post_logout_redirect_uri)
 
 
 @router.post("/refresh")

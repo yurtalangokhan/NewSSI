@@ -17,8 +17,8 @@ services:
   agent-service:
     container_name: agent-service-rf
     build:
-      context: ../apps/agent-service
-      dockerfile: docker/Dockerfile.service
+      context: ..
+      dockerfile: apps/agent-service/docker/Dockerfile.service
     restart: unless-stopped
     volumes:
       - /tmp/airbyte_local:/tmp/airbyte_local:ro
@@ -43,8 +43,8 @@ services:
   rag-service:
     container_name: rag-service-rf
     build:
-      context: ../apps/rag-service
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: apps/rag-service/Dockerfile
     image: rag-service:local
     restart: unless-stopped
     extra_hosts:
@@ -66,8 +66,8 @@ services:
   tools-service:
     container_name: tools-service-rf
     build:
-      context: ../apps/tools-service
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: apps/tools-service/Dockerfile
     image: tools-service:local
     restart: unless-stopped
     env_file:
@@ -90,8 +90,8 @@ services:
   user-service:
     container_name: user-service-rf
     build:
-      context: ../apps/user-service
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: apps/user-service/Dockerfile
     restart: unless-stopped
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -117,8 +117,8 @@ services:
   web:
     container_name: web-rf
     build:
-      context: ../apps/web
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: apps/web/Dockerfile
     image: web:local
     restart: unless-stopped
     ports:

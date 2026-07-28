@@ -136,6 +136,13 @@ class Settings(BaseSettings):
     MINIO_BUCKET: str = "agent-service-documents"
     MINIO_SECURE: bool = False
 
+    REDIS_HOST: str = "localhost"
+    REDIS_PORT: int = 6379
+    REDIS_DB: int = 0
+    REDIS_PASSWORD: str = ""
+    IDEMPOTENCY_TTL: int = 86_400
+    IDEMPOTENCY_ENABLED: bool = True
+
     @computed_field
     @property
     def BASE_URL(self) -> str:

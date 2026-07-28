@@ -1,0 +1,96 @@
+version: 1
+
+team:
+  name: agentic-ai-development-team
+  default_workflow: spec_driven_development
+  description: >
+    Provider-neutral development team contract for Codex, OpenCode, and other
+    agent providers. Tools may map these roles to native subagents, separate
+    sessions, or a sequential main-agent fallback.
+
+shared_context:
+  active_dir: .tmp
+  spec_template: .agents/templates/spec-template.md
+  spec_pattern: ".tmp/<topic>-design.md"
+  task_brief_pattern: ".tmp/<topic>-task-<n>-brief.md"
+  task_report_pattern: ".tmp/<topic>-task-<n>-report.md"
+  progress_pattern: ".tmp/<topic>-progress.md"
+  durable_docs_dir: docs
+
+provider_contract:
+  codex:
+    supports_subagents: true
+    notes:
+      - Use native multi-agent tools when available.
+      - Fall back to sequential execution in the main session when unavailable.
+  opencode:
+    supports_subagents: true
+    notes:
+      - Map role prompts to the provider's agent or task runner configuration.
+      - Preserve the shared context and report file contract.
+  generic:
+    supports_subagents: optional
+    fallback: sequential_main_agent
+
+roles:
+  - id: planner
+    prompt: .agents/roles/planner.md
+    responsibilities:
+      - analyze_requirements
+      - write_shared_spec
+      - define_implementation_order
+      - identify_validation_gates
+
+  - id: architect
+    prompt: .agents/roles/architect.md
+    responsibilities:
+      - review_service_boundaries
+      - define_component_interfaces
+      - flag_cross_service_risks
+      - keep_scope_small
+
+  - id: implementer
+    prompt: .agents/roles/implementer.md
+    responsibilities:
+      - read_task_brief
+      - follow_spec
+      - use_tdd_for_behavior_changes
+      - run_required_validation
+      - write_task_report
+
+  - id: tester
+    prompt: .agents/roles/tester.md
+    responsibilities:
+      - define_regression_coverage
+      - verify_test_failures_when_tdd_applies
+      - confirm_validation_commands
+      - report_test_gaps
+
+  - id: reviewer
+    prompt: .agents/roles/reviewer.md
+    responsibilities:
+      - check_spec_compliance
+      - check_code_quality
+      - identify_blocking_findings
+      - require_re_review_after_fixes
+
+  - id: docs-maintainer
+    prompt: .agents/roles/docs-maintainer.md
+    responsibilities:
+      - update_durable_docs
+      - keep_tmp_specs_current
+      - migrate_lasting_context_from_tmp_to_docs
+
+workflows:
+  spec_driven_development:
+    require_spec_before_implementation: true
+    require_shared_context: true
+    require_implementation_order: true
+    require_validation_after_each_step: true
+    allow_subagents: true
+    parallel_implementation: false
+    fallback_without_subagents: sequential_main_agent
+    review_policy:
+      per_task_review: true
+      final_review_for_large_changes: true
+      fix_critical_and_important_findings_before_next_task: true

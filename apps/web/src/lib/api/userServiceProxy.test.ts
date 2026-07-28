@@ -1,6 +1,14 @@
 import { getBackendUrl } from "@/lib/api/routeBackendUrl";
 
 describe("user-service API proxy routing", () => {
+  beforeEach(() => {
+    process.env.USER_SERVICE_URL = "http://user-service";
+  });
+
+  afterEach(() => {
+    delete process.env.USER_SERVICE_URL;
+  });
+
   it("strips the frontend user-service alias before forwarding", () => {
     const url = getBackendUrl(["user-service", "users", "me", "permissions"]);
 

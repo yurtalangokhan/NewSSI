@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCookieValue, refreshAuthCookies } from "@/lib/api/proxy";
+import { getRagServiceUrl } from "@/lib/env.server";
 
 // LANGCONNECT_URL is the canonical env var for the RAG service (see configs/.env)
-const LANGCONNECT_URL =
-  process.env.LANGCONNECT_URL ||
-  process.env.RAG_SERVICE_URL ||
-  "http://localhost:8083";
+const LANGCONNECT_URL = getRagServiceUrl();
 
 /**
  * Proxy to LangConnect RAG service.

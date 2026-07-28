@@ -15,6 +15,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.routing import APIRoute
+from idempotency import AsyncRedisPool, IdempotencyConfig, IdempotencyMiddleware
 from langchain_core._api import LangChainBetaWarning
 from langfuse import Langfuse  # type: ignore[import-untyped]
 
@@ -30,6 +31,16 @@ from service.CheckpointerService import set_global_checkpointer
 from service.LangGraphStoreService import set_global_langgraph_store
 from service.MCPProviderService import MCPProviderService
 from service.SyncQueueService import get_sync_queue
+
+_idempotency_config = IdempotencyConfig(
+    redis_host=settings.REDIS_HOST,
+    redis_port=settings.REDIS_PORT,
+    redis_db=settings.REDIS_DB,
+    redis_password=settings.REDIS_PASSWORD,
+    idempotency_ttl=settings.IDEMPOTENCY_TTL,
+    idempotency_enabled=settings.IDEMPOTENCY_ENABLED,
+    service_name="agent-service",
+)
 
 warnings.filterwarnings("ignore", category=LangChainBetaWarning)
 configure_logging()
@@ -100,8 +111,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                 sync_listener = get_sync_listener()
                 sync_listener.start()
 
+                await AsyncRedisPool.connect(_idempotency_config)
+
                 yield
 
+                await AsyncRedisPool.close()
                 await sync_listener.stop()
                 await sync_queue.stop()
 
@@ -125,6 +139,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["Content-Location"],
+)
+
+app.add_middleware(
+    IdempotencyMiddleware,
+    config=_idempotency_config,
+    exclude_paths={"/health", "/api/health"},
 )
 
 
@@ -183,6 +203,7 @@ from api.routes import (  # noqa: E402,I001
     ingest_router,
     mcp_providers_router,
     mcp_tools_router,
+    ollama_router,
     persona_router,
     provider_router,
     proxy_router,
@@ -211,6 +232,7 @@ app.include_router(assistant_schemas_router)
 app.include_router(file_router)
 app.include_router(web_search_router)
 app.include_router(provider_router)
+app.include_router(ollama_router)
 app.include_router(mcp_providers_router)
 app.include_router(mcp_tools_router)
 app.include_router(agent_tools_router)

@@ -1,4 +1,4 @@
-import os
+import fnmatch
 import time
 from typing import Any
 from urllib.parse import quote, urlparse
@@ -253,7 +253,7 @@ class KeycloakService(KeycloakBrokerMixin):
                 algorithms=["RS256", "RS384", "RS512"],
                 issuer=issuer,
                 audience=audiences if audiences else None,
-                leeway=int(os.environ.get("KEYCLOAK_TOKEN_LEEWAY_SECONDS", "120")),
+                leeway=_env.KEYCLOAK_TOKEN_LEEWAY_SECONDS,
                 options={
                     "verify_aud": bool(audiences),
                     "verify_iss": True,
@@ -517,6 +517,42 @@ class KeycloakService(KeycloakBrokerMixin):
     def _csv_values(raw: str | None) -> list[str]:
         return [value.strip() for value in (raw or "").split(",") if value.strip()]
 
+    @staticmethod
+    def _merge_unique_values(existing: list[Any], configured: list[str]) -> list[str]:
+        merged: list[str] = []
+        for value in [*existing, *configured]:
+            if not isinstance(value, str):
+                continue
+            item = value.strip()
+            if item and item not in merged:
+                merged.append(item)
+        return merged
+
+    @staticmethod
+    def _value_matches_pattern(value: str, patterns: list[str]) -> bool:
+        return any(pattern in ("*", "+") or fnmatch.fnmatchcase(value, pattern) for pattern in patterns)
+
+    @staticmethod
+    def _origin_from_url(url: str) -> str | None:
+        parsed = urlparse(url)
+        if parsed.scheme not in ("http", "https") or not parsed.netloc:
+            return None
+        return f"{parsed.scheme}://{parsed.netloc}"
+
+    @staticmethod
+    def _post_logout_redirect_values(raw: Any) -> list[str]:
+        values = raw if isinstance(raw, list) else str(raw or "").split("##")
+        return [value.strip() for value in values if isinstance(value, str) and value.strip()]
+
+    @classmethod
+    def _merge_post_logout_redirect_uris(cls, existing: Any, configured: str) -> str:
+        return "##".join(
+            cls._merge_unique_values(
+                cls._post_logout_redirect_values(existing),
+                cls._post_logout_redirect_values(configured),
+            )
+        )
+
     def _login_client_redirect_uris(self) -> list[str]:
         raw = self._str_config(
             "KEYCLOAK_REDIRECT_URIS",
@@ -571,7 +607,10 @@ class KeycloakService(KeycloakBrokerMixin):
             action = "created"
 
         attributes = dict(current.get("attributes") or {})
-        attributes["post.logout.redirect.uris"] = self._login_client_post_logout_redirect_uris()
+        attributes["post.logout.redirect.uris"] = self._merge_post_logout_redirect_uris(
+            attributes.get("post.logout.redirect.uris"),
+            self._login_client_post_logout_redirect_uris(),
+        )
         payload = {
             **current,
             "clientId": client_id,
@@ -584,8 +623,14 @@ class KeycloakService(KeycloakBrokerMixin):
             "implicitFlowEnabled": False,
             "directAccessGrantsEnabled": True,
             "serviceAccountsEnabled": False,
-            "redirectUris": self._login_client_redirect_uris(),
-            "webOrigins": self._login_client_web_origins(),
+            "redirectUris": self._merge_unique_values(
+                list(current.get("redirectUris") or []),
+                self._login_client_redirect_uris(),
+            ),
+            "webOrigins": self._merge_unique_values(
+                list(current.get("webOrigins") or []),
+                self._login_client_web_origins(),
+            ),
             "attributes": attributes,
         }
         payload.pop("secret", None)
@@ -623,6 +668,88 @@ class KeycloakService(KeycloakBrokerMixin):
             "public_client": True,
             "redirect_uris": payload["redirectUris"],
             "web_origins": payload["webOrigins"],
+        }
+
+    async def ensure_login_client_redirect_uri(
+        self,
+        redirect_uri: str | None,
+        post_logout_redirect_uri: str | None = None,
+    ) -> dict[str, Any]:
+        if not redirect_uri:
+            return {"status": "skipped", "reason": "redirect_uri is not set"}
+
+        web_origin = self._origin_from_url(redirect_uri)
+        if web_origin is None:
+            return {
+                "status": "skipped",
+                "reason": "redirect_uri is not an absolute HTTP(S) URL",
+                "redirect_uri": redirect_uri,
+            }
+
+        client_id = self.get_login_client_id()
+        client_uuid = await self.get_client_uuid(client_id=client_id)
+        resp = await self._keycloak_request("GET", f"/clients/{client_uuid}")
+        resp.raise_for_status()
+        current = resp.json()
+        if not isinstance(current, dict):
+            raise ValueError(f"Keycloak client '{client_id}' response is invalid")
+
+        current_redirect_uris = self._merge_unique_values(
+            list(current.get("redirectUris") or []), []
+        )
+        current_web_origins = self._merge_unique_values(list(current.get("webOrigins") or []), [])
+        attributes = dict(current.get("attributes") or {})
+        current_post_logout_redirect_uris = self._post_logout_redirect_values(
+            attributes.get("post.logout.redirect.uris")
+        )
+        redirect_exists = self._value_matches_pattern(redirect_uri, current_redirect_uris)
+        origin_exists = self._value_matches_pattern(web_origin, current_web_origins)
+        post_logout_exists = (
+            not post_logout_redirect_uri
+            or post_logout_redirect_uri in current_post_logout_redirect_uris
+            or self._value_matches_pattern(
+                post_logout_redirect_uri,
+                [
+                    uri
+                    for uri in current_post_logout_redirect_uris
+                    if uri != "+"
+                ],
+            )
+        )
+
+        if redirect_exists and origin_exists and post_logout_exists:
+            return {
+                "status": "exists",
+                "client_id": client_id,
+                "redirect_uri": redirect_uri,
+                "web_origin": web_origin,
+            }
+
+        if post_logout_redirect_uri and not post_logout_exists:
+            attributes["post.logout.redirect.uris"] = "##".join(
+                [*current_post_logout_redirect_uris, post_logout_redirect_uri]
+            )
+
+        payload = {
+            **current,
+            "redirectUris": current_redirect_uris
+            if redirect_exists
+            else [*current_redirect_uris, redirect_uri],
+            "webOrigins": current_web_origins
+            if origin_exists
+            else [*current_web_origins, web_origin],
+            "attributes": attributes,
+        }
+        payload.pop("secret", None)
+        update_resp = await self._keycloak_request("PUT", f"/clients/{client_uuid}", json=payload)
+        if update_resp.status_code not in (200, 204):
+            update_resp.raise_for_status()
+
+        return {
+            "status": "updated",
+            "client_id": client_id,
+            "redirect_uri": redirect_uri,
+            "web_origin": web_origin,
         }
 
     async def ensure_external_identity_provider(self) -> dict[str, Any]:

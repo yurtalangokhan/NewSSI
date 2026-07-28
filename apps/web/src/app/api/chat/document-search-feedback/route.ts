@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server';
 
-const INTERNAL_URL = process.env.INTERNAL_URL || "http://localhost:8123";
-
 export async function POST(request: Request) {
   try {
     const body = await request.json();

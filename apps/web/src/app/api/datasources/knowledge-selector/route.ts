@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCookieValue, refreshAuthCookies } from "@/lib/api/proxy";
+import { getRagServiceUrl } from "@/lib/env.server";
 
-const LANGCONNECT_URL = process.env.LANGCONNECT_URL || "http://localhost:8083";
+const LANGCONNECT_URL = getRagServiceUrl();
 
 export async function GET(request: NextRequest) {
   try {

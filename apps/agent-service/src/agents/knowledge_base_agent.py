@@ -1,5 +1,4 @@
 import logging
-import os
 from typing import Any
 
 from langchain_aws import AmazonKnowledgeBasesRetriever
@@ -12,6 +11,7 @@ from langgraph.managed import RemainingSteps
 from langgraph.store.base import BaseStore
 
 from core import settings
+from core.env import env
 from core.llm import get_model_from_config
 from memory.long_term import (
     build_event_emitters,
@@ -102,7 +102,7 @@ async def retrieve_documents(state: AgentState, config: RunnableConfig) -> Agent
 
     # Get configuration
     configurable = config.get("configurable", {})
-    kb_id = configurable.get("aws_kb_id") or os.environ.get("AWS_KB_ID", "")
+    kb_id = configurable.get("aws_kb_id") or env.AWS_KB_ID or ""
 
     try:
         # Initialize the retriever

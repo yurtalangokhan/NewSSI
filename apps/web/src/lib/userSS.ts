@@ -103,8 +103,15 @@ export const getAuthUrlSS = async (
   }
 };
 
-const logoutStandardSS = async (headers: Headers): Promise<Response> => {
-  return await fetch(buildUserServiceUrl("/api/auth/logout"), {
+const logoutStandardSS = async (
+  headers: Headers,
+  postLogoutRedirectUri?: string
+): Promise<Response> => {
+  const url = new URL(buildUserServiceUrl("/api/auth/logout"));
+  if (postLogoutRedirectUri) {
+    url.searchParams.set("post_logout_redirect_uri", postLogoutRedirectUri);
+  }
+  return await fetch(url.toString(), {
     method: "POST",
     headers: headers,
   });
@@ -119,14 +126,15 @@ const logoutSAMLSS = async (headers: Headers): Promise<Response> => {
 
 export const logoutSS = async (
   authType: AuthType,
-  headers: Headers
+  headers: Headers,
+  postLogoutRedirectUri?: string
 ): Promise<Response | null> => {
   switch (authType) {
     case AuthType.SAML: {
       return await logoutSAMLSS(headers);
     }
     default: {
-      return await logoutStandardSS(headers);
+      return await logoutStandardSS(headers, postLogoutRedirectUri);
     }
   }
 };
