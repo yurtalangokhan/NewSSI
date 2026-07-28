@@ -66,7 +66,8 @@ make docker-config     # Validate compose files
 make docker-verify     # Validate + build images
 ```
 
-`make docker-verify` builds all Python service images from `configs/docker-compose-dev.yml`.
+`make docker-verify` validates the compose files and builds all application
+images from `configs/docker-compose-dev.yml`, including the web image.
 
 ### When to verify Docker
 
@@ -91,7 +92,13 @@ All Python services use `uv` for dependency management and `hatchling` as build 
 - `apps/tools-service/Dockerfile`
 - `apps/agent-service/docker/Dockerfile.*`
 
-**Build context:** Each service's `apps/<service>/` directory.
+**Build context:** The shared compose files use the repository root as the
+build context. Dockerfile `COPY` paths must be relative to the repository root,
+such as `apps/user-service/pyproject.toml`.
+
+The root `.dockerignore` keeps generated files, dependency directories, local
+environments, and repository metadata out of the shared build context. Keep it
+updated when adding large generated directories or new service-local caches.
 
 **Key image requirements:**
 - Services with top-level imports like `models`, `schema`, `agents` must have those directories copied into the image (checked during `docker-verify`).
@@ -99,6 +106,14 @@ All Python services use `uv` for dependency management and `hatchling` as build 
 ### Web frontend
 
 The web app uses **Next.js standalone output** (`output: "standalone"` in `next.config.js`). The Dockerfile is at `apps/web/Dockerfile`.
+The shared compose files build it from the repository root, so package files are
+copied from `apps/web/package.json`, `apps/web/package-lock.json`, and
+`apps/web/lib/opal/package.json`.
+
+Next.js imports server route modules during the image build. The web Dockerfile
+therefore defines build-time defaults for `INTERNAL_URL`, `AGENT_SERVICE_URL`,
+`USER_SERVICE_URL`, `LANGCONNECT_URL`, and `TOOLS_SERVICE_URL`. Runtime compose
+environment values or web env files can override those defaults.
 
 ---
 

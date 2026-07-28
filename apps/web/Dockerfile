@@ -15,14 +15,14 @@ WORKDIR /app
 
 # Copy package files first for better layer caching
 # This layer will be cached unless package.json or package-lock.json changes
-COPY package.json package-lock.json ./
-COPY lib/opal/package.json ./lib/opal/
+COPY apps/web/package.json apps/web/package-lock.json ./
+COPY apps/web/lib/opal/package.json ./lib/opal/
 
 # Install dependencies
 RUN npm ci
 
 # pull in source code / package.json / package-lock.json
-COPY . .
+COPY apps/web/ .
 
 # needed to get the `standalone` dir we expect later
 ENV NEXT_PRIVATE_STANDALONE=true
@@ -34,6 +34,20 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # https://github.com/vercel/next.js/discussions/14030
 # NOTE: if you add something here, make sure to add it to the runner as well
 
+ARG INTERNAL_URL=http://kong:8000
+ENV INTERNAL_URL=${INTERNAL_URL}
+
+ARG AGENT_SERVICE_URL=http://kong:8000
+ENV AGENT_SERVICE_URL=${AGENT_SERVICE_URL}
+
+ARG USER_SERVICE_URL=http://kong:8000
+ENV USER_SERVICE_URL=${USER_SERVICE_URL}
+
+ARG LANGCONNECT_URL=http://kong:8000
+ENV LANGCONNECT_URL=${LANGCONNECT_URL}
+
+ARG TOOLS_SERVICE_URL=http://kong:8000/api/mcp
+ENV TOOLS_SERVICE_URL=${TOOLS_SERVICE_URL}
 
 ARG NEXT_PUBLIC_THEME
 ENV NEXT_PUBLIC_THEME=${NEXT_PUBLIC_THEME}
@@ -110,6 +124,20 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 # Environment variables must be redefined at run time
 # NOTE: if you add something here, make sure to add it to the builder as well
 
+ARG INTERNAL_URL=http://kong:8000
+ENV INTERNAL_URL=${INTERNAL_URL}
+
+ARG AGENT_SERVICE_URL=http://kong:8000
+ENV AGENT_SERVICE_URL=${AGENT_SERVICE_URL}
+
+ARG USER_SERVICE_URL=http://kong:8000
+ENV USER_SERVICE_URL=${USER_SERVICE_URL}
+
+ARG LANGCONNECT_URL=http://kong:8000
+ENV LANGCONNECT_URL=${LANGCONNECT_URL}
+
+ARG TOOLS_SERVICE_URL=http://kong:8000/api/mcp
+ENV TOOLS_SERVICE_URL=${TOOLS_SERVICE_URL}
 
 # allow user to specify custom feedback options
 ARG NEXT_PUBLIC_THEME

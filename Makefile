@@ -1,6 +1,7 @@
-.PHONY: env-check env-init env-test docker-config docker-build-services docker-verify hooks-install validate-services validate quality-staged quality-push quality-all
+.PHONY: env-check env-init env-test docker-config docker-build-services docker-build-apps docker-verify hooks-install validate-services validate quality-staged quality-push quality-all
 
 PYTHON_SERVICES ?= agent-service user-service rag-service tools-service
+APP_SERVICES ?= $(PYTHON_SERVICES) web
 
 docker-config:
 	docker compose --env-file configs/.env -f configs/docker-compose-services.yml config >/tmp/agentic-services-compose.yml
@@ -19,7 +20,10 @@ env-test:
 docker-build-services:
 	docker compose --env-file configs/.env -f configs/docker-compose-dev.yml build $(PYTHON_SERVICES)
 
-docker-verify: docker-config docker-build-services
+docker-build-apps:
+	docker compose --env-file configs/.env -f configs/docker-compose-dev.yml build $(APP_SERVICES)
+
+docker-verify: docker-config docker-build-apps
 
 hooks-install:
 	bash scripts/install-git-hooks.sh
