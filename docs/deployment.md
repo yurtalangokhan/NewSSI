@@ -20,6 +20,9 @@ The platform is deployed as Docker containers orchestrated with Docker Compose. 
 ### Prerequisites
 
 - Docker + Docker Compose
+- A working NVIDIA GPU driver (`nvidia-smi`) and NVIDIA Container Toolkit for
+  the Compose-managed Ollama service
+- An existing external Docker volume named `ollama` for Ollama model data
 - Python 3.11+ with `uv` installed
 - Node.js 20+ (for frontend)
 - At least 8GB RAM, 20GB disk

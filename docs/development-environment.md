@@ -119,3 +119,174 @@ curl http://localhost:8000/api/rag/health
 
 Direct service ports are useful only for debugging a single service. The app
 architecture should prefer Kong-routed URLs.
+
+## Ollama GPU operations
+
+Ollama is an infrastructure Compose service. It reuses the external Docker
+volume named `ollama` for model data and reserves all available NVIDIA GPUs for
+that service only. Start and manage it through the repository Compose commands,
+not a host `ollama serve` process.
+
+### Prerequisites
+
+Before starting the infrastructure stack, confirm that the host GPU driver and
+the Docker GPU integration are available and that the existing model-data
+volume is present. First, derive the published port from `configs/.env`. The
+command uses `11434` only when `OLLAMA_PORT` is absent or empty, and it rejects
+non-numeric or out-of-range values.
+
+```sh
+OLLAMA_PORT="$(
+  awk -F= '
+    $1 ~ /^[[:space:]]*OLLAMA_PORT[[:space:]]*$/ {
+      value = substr($0, index($0, "=") + 1)
+      gsub(/^[[:space:]]+|[[:space:]\r]+$/, "", value)
+      print value
+      exit
+    }
+  ' configs/.env
+)"
+OLLAMA_PORT="${OLLAMA_PORT:-11434}"
+case "$OLLAMA_PORT" in
+  *[!0-9]*) echo "Invalid OLLAMA_PORT" >&2; false ;;
+esac
+[ "$OLLAMA_PORT" -ge 1 ] && [ "$OLLAMA_PORT" -le 65535 ]
+
+nvidia-smi
+docker run --rm --gpus all ubuntu nvidia-smi
+docker volume inspect ollama
+```
+
+Do not continue if the port validation fails. The first `nvidia-smi` command
+must report the host GPU, and the temporary Docker probe must report the same
+GPU through the NVIDIA Container Toolkit. The probe may pull the `ubuntu` image
+the first time it runs, but it doesn't mount the Ollama volume. The `ollama`
+volume must already exist. Compose treats it as external and does not create
+it.
+
+<!-- prettier-ignore -->
+> [!WARNING]
+> Never run `docker compose down -v`, `docker rm -v`, or another
+> volume-removal command for Ollama. The external `ollama` volume contains the
+> model data that Compose reuses.
+
+### Start and update models
+
+Use the Makefile targets from the repository root. They use
+`configs/docker-compose-services.yml` with `configs/.env`.
+
+```sh
+make third-party-up
+make ollama-models
+```
+
+`make third-party-up` starts the Compose-managed infrastructure, including
+Ollama. `make ollama-models` runs the existing model-pull script against that
+service. `make stack-up` performs those two steps and then starts the
+application services.
+
+### One-time handover
+
+Use this procedure only when a standalone `ollama` container or a host listener
+currently owns the Ollama name or port. Do not stop or remove anything until
+you confirm the existing container's identity and model-data mount.
+
+1. Confirm that the external volume exists and inspect any container named
+   `ollama`.
+
+   ```sh
+   docker volume inspect ollama
+   docker ps -a --filter 'name=^/ollama$'
+   docker inspect ollama --format '{{json .Config.Labels}}'
+   docker inspect ollama --format '{{json .Mounts}}'
+   ```
+
+   Inspect the project label `com.docker.compose.project` and service label
+   `com.docker.compose.service`. If they already equal
+   `agentic-ai-infrastructure` and `ollama`, respectively, the container is
+   Compose-managed: do not stop or remove it. Continue with removal only for a
+   standalone container whose mount object has the name `ollama`, destination
+   `/root/.ollama`, and `RW` set to `true`.
+
+2. Check whether a host process owns the published Ollama port.
+
+   ```sh
+   sudo ss -ltnp "sport = :$OLLAMA_PORT"
+   ```
+
+   If a verified host `ollama serve` listener owns the port, stop it from its
+   original terminal or service manager. For a system service, use:
+
+   ```sh
+   sudo systemctl stop ollama
+   ```
+
+   Do not use broad process-kill commands. If the port owner is unclear, stop
+   the handover and identify it before continuing.
+
+3. Reconfirm GPU access immediately before any destructive handover.
+
+   ```sh
+   nvidia-smi
+   docker run --rm --gpus all ubuntu nvidia-smi
+   ```
+
+   Both commands must succeed. If either fails, do not stop or remove the
+   existing container.
+
+4. If the inspected container is standalone and has the exact required mount,
+   stop and remove only that container. Do not add volume-removal flags.
+
+   ```sh
+   docker stop ollama
+   docker rm ollama
+   ```
+
+5. Start the Compose service and pull configured models when needed.
+
+   ```sh
+   make third-party-up
+   make ollama-models
+   ```
+
+### Verify Compose ownership and GPU use
+
+After startup, run the following checks. The labels must identify project
+`agentic-ai-infrastructure` and service `ollama`; the mount must identify
+volume `ollama`, destination `/root/.ollama`, and `RW` as `true`; and the
+health status must be `healthy`.
+
+```sh
+docker inspect ollama --format '{{json .Config.Labels}}'
+docker inspect ollama --format '{{json .Mounts}}'
+docker inspect ollama --format '{{.State.Health.Status}}'
+docker exec ollama ollama list
+docker inspect ollama --format '{{json .HostConfig.DeviceRequests}}'
+curl --fail --silent --show-error \
+  "http://localhost:$OLLAMA_PORT/api/generate" \
+  -H 'Content-Type: application/json' \
+  -d '{"model":"llama3.1:8b","prompt":"Reply with OK.","stream":false}'
+docker exec ollama ollama ps
+```
+
+The device-request output must include the `nvidia` driver and the `gpu`
+capability. Docker renders Compose's `count: all` GPU reservation as a device
+request with a count of `-1`. `ollama list` shows the models available in the
+reused volume. The API call performs a noninteractive generation request with
+the existing default generation model, `llama3.1:8b`, before checking runtime
+placement. After the request succeeds, `ollama ps` must show `llama3.1:8b`
+with `100% GPU` to prove live GPU placement.
+
+### Troubleshoot Ollama startup
+
+Use these checks to resolve common startup failures without risking model data.
+
+- **Port or name conflict:** Check `docker ps -a --filter 'name=^/ollama$'`
+  and `sudo ss -ltnp "sport = :$OLLAMA_PORT"`. Follow the one-time handover only
+  after verifying the current container mount or host listener identity.
+- **Missing external volume:** `docker volume inspect ollama` fails when the
+  required volume is absent. Do not create a new empty volume in its place;
+  recover the original volume or obtain the correct volume from its owner.
+- **Unavailable NVIDIA driver:** If `nvidia-smi` fails or Docker does not grant
+  the NVIDIA device request, install or repair the host NVIDIA driver and
+  NVIDIA Container Toolkit before restarting the Compose service.

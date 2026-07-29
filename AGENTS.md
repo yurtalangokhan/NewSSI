@@ -393,6 +393,19 @@ make stack-up
 
 Health checks: `curl http://localhost:8000/health/`, `curl http://localhost:8000/api/health`
 
+## Ollama operations
+
+Use this contract whenever Ollama runtime ownership or model data is in scope.
+
+- Manage Ollama with `make third-party-up` and `make ollama-models`; do not
+  run host `ollama serve`.
+- Never delete or recreate the external Docker volume named `ollama`, and never
+  use volume-removal flags during Ollama work.
+- Before a destructive handover, verify the Compose labels, the read-write
+  `ollama` mount at `/root/.ollama`, and NVIDIA GPU availability.
+- Redis remains required infrastructure and must not be removed as part of
+  Ollama work.
+
 ## Things to avoid
 
 - Do not re-add `supabase/` or `legacy/` directories.
