@@ -424,6 +424,7 @@ class AuthService:
         self,
         redirect_uri: str | None = None,
         idp_hint: str | None = None,
+        prompt: str | None = None,
     ) -> str:
         state = secrets.token_urlsafe(16)
         callback_uri = redirect_uri or self.keycloak.get_oidc_redirect_uri()
@@ -432,6 +433,7 @@ class AuthService:
             callback_uri,
             state=state,
             idp_hint=idp_hint,
+            prompt=prompt,
         )
 
     async def handle_oidc_callback(

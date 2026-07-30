@@ -52,7 +52,6 @@ async def delete_prompt_shortcut(
 
 
 @internal_router.get("/{target_id}/settings")
-@router.get("/internal/users/{target_id}/settings")
 async def get_settings_internal(
     target_id: str,
     authenticated_user_id: Annotated[str, Depends(require_auth_or_internal_service_token)],
@@ -65,7 +64,6 @@ async def get_settings_internal(
 
 
 @internal_router.patch("/{target_id}/settings")
-@router.patch("/internal/users/{target_id}/settings")
 async def update_settings_internal(
     target_id: str,
     updates: Annotated[dict[str, Any], Body()],
@@ -79,7 +77,6 @@ async def update_settings_internal(
 
 
 @internal_router.post("/{target_id}/settings/prompt-shortcuts")
-@router.post("/internal/users/{target_id}/settings/prompt-shortcuts")
 async def create_prompt_shortcut_internal(
     target_id: str,
     shortcut: Annotated[dict[str, Any], Body()],
@@ -93,7 +90,6 @@ async def create_prompt_shortcut_internal(
 
 
 @internal_router.patch("/{target_id}/settings/prompt-shortcuts/{shortcut_id}")
-@router.patch("/internal/users/{target_id}/settings/prompt-shortcuts/{shortcut_id}")
 async def update_prompt_shortcut_internal(
     target_id: str,
     shortcut_id: int,
@@ -110,7 +106,6 @@ async def update_prompt_shortcut_internal(
 
 
 @internal_router.delete("/{target_id}/settings/prompt-shortcuts/{shortcut_id}")
-@router.delete("/internal/users/{target_id}/settings/prompt-shortcuts/{shortcut_id}")
 async def delete_prompt_shortcut_internal(
     target_id: str,
     shortcut_id: int,

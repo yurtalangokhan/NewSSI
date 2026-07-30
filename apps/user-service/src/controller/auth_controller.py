@@ -88,10 +88,12 @@ class AuthController(BaseController):
         self,
         redirect_uri: str | None = None,
         kc_idp_hint: str | None = None,
+        prompt: str | None = None,
     ) -> dict[str, Any]:
         url = await self.auth_service.get_oidc_authorize_url(
             redirect_uri,
             idp_hint=kc_idp_hint,
+            prompt=prompt,
         )
         # Return both formats for compatibility:
         # - authorization_url: JSON response field

@@ -12,6 +12,7 @@ from jwt import InvalidTokenError, PyJWKClient
 from starlette.authentication import BaseUser
 
 from langconnect import config
+from langconnect.api_versioning import USER_SERVICE_API_PREFIX
 
 security = HTTPBearer(auto_error=False)
 HTTP_OK = 200
@@ -207,7 +208,7 @@ async def _get_user_service_user(token: str) -> dict[str, Any] | None:
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
             response = await client.get(
-                f"{config.USER_SERVICE_URL.rstrip('/')}/api/auth/me",
+                f"{config.USER_SERVICE_URL.rstrip('/')}{USER_SERVICE_API_PREFIX}/auth/me",
                 headers={"Authorization": f"Bearer {token}"},
             )
         if response.status_code == HTTP_OK:

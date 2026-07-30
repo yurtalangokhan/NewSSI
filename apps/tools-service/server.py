@@ -8,6 +8,8 @@ import sys
 from pathlib import Path
 
 from fastmcp import FastMCP
+from starlette.requests import Request
+from starlette.responses import JSONResponse, Response
 
 # Suppress WinError 10054 (connection reset by peer) on Windows.
 # This is a known asyncio ProactorEventLoop issue when HTTP/SSE clients
@@ -37,6 +39,12 @@ from src.core.settings import get_settings
 
 # Initialize FastMCP server
 mcp = FastMCP("open-agent-tools", auth=KeycloakTokenVerifier())
+
+
+@mcp.custom_route("/health", methods=["GET"], name="health", include_in_schema=True)
+async def health_check(request: Request) -> Response:
+    """Public health check endpoint outside the MCP protocol transport."""
+    return JSONResponse({"status": "ok"})
 
 # Initialize the tool registry with plugin discovery
 registry = ToolRegistry(mcp)

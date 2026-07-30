@@ -61,8 +61,9 @@ async def refresh(
 async def oidc_authorize(
     redirect_uri: str | None = None,
     kc_idp_hint: str | None = None,
+    prompt: str | None = None,
 ):
-    return await get_auth_controller().oidc_authorize(redirect_uri, kc_idp_hint)
+    return await get_auth_controller().oidc_authorize(redirect_uri, kc_idp_hint, prompt)
 
 
 @router.get("/oidc/callback")

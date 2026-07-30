@@ -1,4 +1,5 @@
-from types import SimpleNamespace
+from types import SimpleNamespace, TracebackType
+from typing import Self
 
 import pytest
 from fastapi import HTTPException
@@ -141,3 +142,44 @@ async def test_resolve_user_maps_keycloak_token_to_local_user(
     assert user.identity == "local-user-id"
     assert user.display_name == "local@example.com"
     assert user.access_token == "jwt-token"
+
+
+async def test_get_user_service_user_uses_api_v1_auth_me_path(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class _Response:
+        status_code = 200
+
+        def json(self) -> dict[str, str]:
+            return {"id": "user-1", "email": "demo@example.com"}
+
+    class _AsyncClient:
+        captured_url = ""
+
+        def __init__(self, timeout: float) -> None:
+            pass
+
+        async def __aenter__(self) -> Self:
+            return self
+
+        async def __aexit__(
+            self,
+            exc_type: type[BaseException] | None,
+            exc: BaseException | None,
+            traceback: TracebackType | None,
+        ) -> None:
+            return None
+
+        async def get(self, url: str, headers: dict[str, str]) -> _Response:
+            self.__class__.captured_url = url
+            assert headers == {"Authorization": "Bearer jwt-token"}
+            return _Response()
+
+    monkeypatch.setattr(auth.config, "USER_SERVICE_URL", "http://user-service:8090")
+    monkeypatch.setattr("httpx.AsyncClient", _AsyncClient)
+
+    assert await auth._get_user_service_user("jwt-token") == {
+        "id": "user-1",
+        "email": "demo@example.com",
+    }
+    assert _AsyncClient.captured_url == "http://user-service:8090/api/v1/auth/me"

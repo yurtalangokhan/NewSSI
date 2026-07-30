@@ -1745,6 +1745,7 @@ class KeycloakService(KeycloakBrokerMixin):
         redirect_uri: str,
         state: str | None = None,
         idp_hint: str | None = None,
+        prompt: str | None = None,
     ) -> str:
         client_id = self.get_login_client_id()
         base_url = self.get_base_url()
@@ -1758,6 +1759,8 @@ class KeycloakService(KeycloakBrokerMixin):
             params["state"] = state
         if idp_hint:
             params["kc_idp_hint"] = idp_hint
+        if prompt:
+            params["prompt"] = prompt
         import urllib.parse
 
         query = urllib.parse.urlencode(params)

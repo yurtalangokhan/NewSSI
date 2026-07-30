@@ -10,6 +10,7 @@ _INTERNAL_MCP_HOSTS = {
     "localhost",
     "127.0.0.1",
     "host.docker.internal",
+    "kong",
     "tools-service",
     "mcp-server",
 }
@@ -39,7 +40,7 @@ def _is_internal_mcp_url(url: str) -> bool:
     if hostname not in _INTERNAL_MCP_HOSTS:
         return False
 
-    if parsed.path.startswith("/internal/mcp"):
+    if parsed.path.startswith("/internal/tools-service/mcp"):
         return True
 
     return (parsed.port in {8002, 8003}) and parsed.path.rstrip("/").endswith("/mcp")

@@ -79,7 +79,6 @@ async def delete_all_memories(
 
 
 @internal_router.get("/{target_id}/memories")
-@router.get("/internal/users/{target_id}/memories")
 async def list_memories_internal(
     target_id: str,
     authenticated_user_id: Annotated[str, Depends(require_auth_or_internal_service_token)],
@@ -96,7 +95,6 @@ async def list_memories_internal(
 
 
 @internal_router.get("/{target_id}/memories/recall")
-@router.get("/internal/users/{target_id}/memories/recall")
 async def list_memories_for_recall_internal(
     target_id: str,
     authenticated_user_id: Annotated[str, Depends(require_auth_or_internal_service_token)],
@@ -109,7 +107,6 @@ async def list_memories_for_recall_internal(
 
 
 @internal_router.post("/{target_id}/memories")
-@router.post("/internal/users/{target_id}/memories")
 async def create_memory_internal(
     target_id: str,
     body: Annotated[dict[str, Any], Body()],
@@ -126,7 +123,6 @@ async def create_memory_internal(
 
 
 @internal_router.post("/{target_id}/memories/bulk")
-@router.post("/internal/users/{target_id}/memories/bulk")
 async def add_facts_internal(
     target_id: str,
     body: Annotated[dict[str, Any], Body()],
@@ -142,7 +138,6 @@ async def add_facts_internal(
 
 
 @internal_router.get("/{target_id}/memories/{memory_id}")
-@router.get("/internal/users/{target_id}/memories/{memory_id}")
 async def get_memory_internal(
     target_id: str,
     memory_id: uuid.UUID,
@@ -156,7 +151,6 @@ async def get_memory_internal(
 
 
 @internal_router.patch("/{target_id}/memories/{memory_id}")
-@router.patch("/internal/users/{target_id}/memories/{memory_id}")
 async def update_memory_internal(
     target_id: str,
     memory_id: uuid.UUID,
@@ -174,7 +168,6 @@ async def update_memory_internal(
 
 
 @internal_router.delete("/{target_id}/memories/{memory_id}", status_code=204)
-@router.delete("/internal/users/{target_id}/memories/{memory_id}", status_code=204)
 async def delete_memory_internal(
     target_id: str,
     memory_id: uuid.UUID,
@@ -188,7 +181,6 @@ async def delete_memory_internal(
 
 
 @internal_router.delete("/{target_id}/memories")
-@router.delete("/internal/users/{target_id}/memories")
 async def delete_all_memories_internal(
     target_id: str,
     authenticated_user_id: Annotated[str, Depends(require_auth_or_internal_service_token)],

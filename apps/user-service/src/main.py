@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from idempotency import AsyncRedisPool, IdempotencyConfig, IdempotencyMiddleware
 
 from src.config import get_settings
+from src.core.api_versioning import API_PREFIX
 from src.core.database.engine import close_db_engine
 
 logger = logging.getLogger(__name__)
@@ -21,9 +22,7 @@ async def lifespan(app: FastAPI):
         await system_settings.load_runtime_settings()
         if system_settings.keycloak.is_enabled():
             try:
-                login_client_result = (
-                    await system_settings.keycloak.ensure_login_client_config()
-                )
+                login_client_result = await system_settings.keycloak.ensure_login_client_config()
                 logger.info("Keycloak login client bootstrap: %s", login_client_result)
             except Exception:
                 logger.exception("Keycloak login client bootstrap failed (non-fatal)")
@@ -63,7 +62,6 @@ def _build_idempotency_config() -> IdempotencyConfig:
 
 _idempotency_config = _build_idempotency_config()
 
-
 def create_app() -> FastAPI:
     settings = get_settings()
 
@@ -87,12 +85,12 @@ def create_app() -> FastAPI:
     app.add_middleware(
         IdempotencyMiddleware,
         config=_idempotency_config,
-        exclude_paths={"/health", "/health/", "/api/health", "/api/health/"},
+        exclude_paths={
+            f"{API_PREFIX}/health",
+            f"{API_PREFIX}/health/",
+            f"{API_PREFIX}/health/ready",
+        },
     )
-
-    from src.api.routes.health import router as health_router
-
-    app.include_router(health_router, prefix="/health")
 
     from src.api.routes import (
         api_keys_router,
@@ -101,6 +99,7 @@ def create_app() -> FastAPI:
         coarse_roles_router,
         internal_settings_router,
         internal_user_memory_router,
+        internal_user_router,
         permissions_router,
         roles_router,
         settings_router,
@@ -108,19 +107,22 @@ def create_app() -> FastAPI:
         user_memory_router,
         user_router,
     )
+    from src.api.routes.health import router as health_router
 
-    app.include_router(auth_base_router, prefix="/api")
-    app.include_router(auth_own_router, prefix="/api")
-    app.include_router(user_router, prefix="/api")
-    app.include_router(settings_router, prefix="/api")
-    app.include_router(internal_settings_router, prefix="/api")
-    app.include_router(user_memory_router, prefix="/api")
-    app.include_router(internal_user_memory_router, prefix="/api")
-    app.include_router(api_keys_router, prefix="/api")
-    app.include_router(coarse_roles_router, prefix="/api")
-    app.include_router(roles_router, prefix="/api")
-    app.include_router(permissions_router, prefix="/api")
-    app.include_router(system_settings_router, prefix="/api")
+    app.include_router(health_router, prefix=f"{API_PREFIX}/health")
+    app.include_router(auth_base_router, prefix=API_PREFIX)
+    app.include_router(auth_own_router, prefix=API_PREFIX)
+    app.include_router(user_router, prefix=API_PREFIX)
+    app.include_router(internal_user_router, prefix=API_PREFIX)
+    app.include_router(settings_router, prefix=API_PREFIX)
+    app.include_router(internal_settings_router, prefix=API_PREFIX)
+    app.include_router(user_memory_router, prefix=API_PREFIX)
+    app.include_router(internal_user_memory_router, prefix=API_PREFIX)
+    app.include_router(api_keys_router, prefix=API_PREFIX)
+    app.include_router(coarse_roles_router, prefix=API_PREFIX)
+    app.include_router(roles_router, prefix=API_PREFIX)
+    app.include_router(permissions_router, prefix=API_PREFIX)
+    app.include_router(system_settings_router, prefix=API_PREFIX)
 
     return app
 

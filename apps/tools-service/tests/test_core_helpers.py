@@ -1,4 +1,5 @@
 from src.core.auth import _get_valid_api_keys
+from src.core.authorization import get_user_service_permissions
 from src.core.base import BaseToolCategory
 from src.core.settings import Settings
 
@@ -52,3 +53,45 @@ def test_parse_json_param_returns_empty_dict_for_missing_or_invalid_input():
 
 def test_parse_json_param_returns_decoded_dict():
     assert BaseToolCategory.parse_json_param('{"name": "tools"}') == {"name": "tools"}
+
+
+class _PermissionResponse:
+    def raise_for_status(self) -> None:
+        return None
+
+    def json(self) -> dict[str, list[str]]:
+        return {"permissions": ["tool:execute"]}
+
+
+class _AsyncClient:
+    captured_url: str = ""
+
+    def __init__(self, *args, **kwargs) -> None:
+        pass
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *args) -> None:
+        return None
+
+    async def get(self, url: str, **kwargs):
+        self.__class__.captured_url = url
+        return _PermissionResponse()
+
+
+async def test_get_user_service_permissions_uses_api_v1_internal_path(
+    monkeypatch,
+):
+    monkeypatch.setattr(
+        "src.core.authorization._user_service_base_url",
+        lambda: "http://kong:8000/internal/user-service",
+    )
+    monkeypatch.setattr("src.core.authorization._permission_cache_ttl", lambda: 30.0)
+    monkeypatch.setattr("src.core.authorization.httpx.AsyncClient", _AsyncClient)
+
+    assert await get_user_service_permissions("token", "user-1") == ["tool:execute"]
+    assert (
+        _AsyncClient.captured_url
+        == "http://kong:8000/internal/user-service/api/v1/internal/users/user-1/permissions"
+    )
