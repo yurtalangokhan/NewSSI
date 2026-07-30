@@ -1,4 +1,5 @@
 import { getInternalUrl } from "@/lib/env.server";
+import { buildServiceUrl } from "@/lib/api/gatewayRouting";
 import { NextRequest, NextResponse } from "next/server";
 
 const INTERNAL_URL = getInternalUrl();
@@ -14,9 +15,13 @@ export async function POST(request: NextRequest) {
     // 2. Thread creation in LangGraph store
     // 3. Message storage
     // 4. Streaming response
-    const url = `${INTERNAL_URL}/api/chat/send-chat-message`;
+    const url = buildServiceUrl(
+      INTERNAL_URL,
+      "agent",
+      "/api/chat/send-chat-message"
+    );
 
-    const response = await fetch(url, {
+    const response = await fetch(url.toString(), {
       method: "POST",
       body,
       headers: {

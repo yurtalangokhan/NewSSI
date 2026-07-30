@@ -1,10 +1,10 @@
-import { buildUserServiceUrl } from "@/lib/utilsSS";
+import { buildPublicUserAuthUrl } from "@/lib/api/publicUserAuthUrl";
 import { getDomain } from "@/lib/redirectSS";
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 
 export const GET = async (request: NextRequest) => {
-  const target = new URL(buildUserServiceUrl("/api/auth/oidc/authorize"));
+  const target = buildPublicUserAuthUrl("/oidc/authorize");
   const callbackBase = getDomain(request).replace(/\/$/, "");
   const dynamicRedirectUri = `${callbackBase}/auth/oidc/callback`;
 

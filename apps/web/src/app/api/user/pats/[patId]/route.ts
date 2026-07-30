@@ -1,4 +1,5 @@
 import { USER_SERVICE_URL } from "@/lib/constants";
+import { buildServiceUrl } from "@/lib/api/gatewayRouting";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function DELETE(
@@ -14,7 +15,11 @@ export async function DELETE(
   if (auth) headers["Authorization"] = auth;
 
   const response = await fetch(
-    `${USER_SERVICE_URL}/api/users/me/api-keys/${params.patId}`,
+    buildServiceUrl(
+      USER_SERVICE_URL,
+      "user",
+      `/api/users/me/api-keys/${params.patId}`
+    ).toString(),
     {
       method: "DELETE",
       headers,

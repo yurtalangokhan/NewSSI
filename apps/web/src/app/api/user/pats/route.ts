@@ -1,4 +1,5 @@
 import { USER_SERVICE_URL } from "@/lib/constants";
+import { buildServiceUrl } from "@/lib/api/gatewayRouting";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
@@ -9,9 +10,16 @@ export async function GET(request: NextRequest) {
   const auth = request.headers.get("authorization");
   if (auth) headers["Authorization"] = auth;
 
-  const response = await fetch(`${USER_SERVICE_URL}/api/users/me/api-keys/`, {
-    headers,
-  });
+  const response = await fetch(
+    buildServiceUrl(
+      USER_SERVICE_URL,
+      "user",
+      "/api/users/me/api-keys/"
+    ).toString(),
+    {
+      headers,
+    }
+  );
   const data = await response.json();
   return NextResponse.json(data, { status: response.status });
 }
@@ -25,11 +33,18 @@ export async function POST(request: NextRequest) {
   const auth = request.headers.get("authorization");
   if (auth) headers["Authorization"] = auth;
 
-  const response = await fetch(`${USER_SERVICE_URL}/api/users/me/api-keys/`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(body),
-  });
+  const response = await fetch(
+    buildServiceUrl(
+      USER_SERVICE_URL,
+      "user",
+      "/api/users/me/api-keys/"
+    ).toString(),
+    {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+    }
+  );
   const data = await response.json();
   return NextResponse.json(data, { status: response.status });
 }

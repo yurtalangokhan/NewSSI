@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCookieValue, refreshAuthCookies } from "@/lib/api/proxy";
+import { buildServiceUrl } from "@/lib/api/gatewayRouting";
 import { getRagServiceUrl } from "@/lib/env.server";
 
 const LANGCONNECT_URL = getRagServiceUrl();
@@ -29,9 +30,16 @@ export async function GET(request: NextRequest) {
       cookieHeader: string,
       accessTokenOverride?: string | null
     ) =>
-      fetch(`${LANGCONNECT_URL}/datasources/knowledge-selector`, {
-        headers: buildHeaders(cookieHeader, accessTokenOverride),
-      });
+      fetch(
+        buildServiceUrl(
+          LANGCONNECT_URL,
+          "rag",
+          "/datasources/knowledge-selector"
+        ),
+        {
+          headers: buildHeaders(cookieHeader, accessTokenOverride),
+        }
+      );
 
     let response = await execute(requestCookie);
     const refreshed =

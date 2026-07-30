@@ -1,13 +1,28 @@
 import { getInternalUrl } from "@/lib/env.server";
-import { NextResponse } from 'next/server';
+import { buildServiceUrl } from "@/lib/api/gatewayRouting";
+import { NextRequest, NextResponse } from "next/server";
 
 const INTERNAL_URL = getInternalUrl();
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const response = await fetch(`${INTERNAL_URL}/mcp/tools-builtin`, {
-      cache: 'no-store',
-    });
+    const headers: HeadersInit = {};
+    const cookie = request.headers.get("cookie");
+    const authorization = request.headers.get("authorization");
+    if (cookie) {
+      headers["Cookie"] = cookie;
+    }
+    if (authorization) {
+      headers["Authorization"] = authorization;
+    }
+
+    const response = await fetch(
+      buildServiceUrl(INTERNAL_URL, "agent", "/mcp/tools-builtin").toString(),
+      {
+        cache: "no-store",
+        headers,
+      }
+    );
 
     if (!response.ok) {
       return NextResponse.json([]);
@@ -19,9 +34,9 @@ export async function GET() {
     return NextResponse.json(
       tools.map((tool: { name?: string; description?: string }) => ({
         id: 0,
-        name: tool.name || '',
-        display_name: (tool.name || '').replace(/[_-]/g, ' '),
-        description: tool.description || '',
+        name: tool.name || "",
+        display_name: (tool.name || "").replace(/[_-]/g, " "),
+        description: tool.description || "",
         definition: null,
         custom_headers: [],
         in_code_tool_id: tool.name || null,

@@ -1,4 +1,5 @@
 import { USER_SERVICE_URL } from "@/lib/constants";
+import { buildServiceUrl } from "@/lib/api/gatewayRouting";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function PATCH(
@@ -15,7 +16,11 @@ export async function PATCH(
   if (auth) headers["Authorization"] = auth;
 
   const response = await fetch(
-    `${USER_SERVICE_URL}/api/users/me/settings/prompt-shortcuts/${params.promptId}`,
+    buildServiceUrl(
+      USER_SERVICE_URL,
+      "user",
+      `/api/users/me/settings/prompt-shortcuts/${params.promptId}`
+    ).toString(),
     {
       method: "PATCH",
       headers,
@@ -40,7 +45,11 @@ export async function DELETE(
   if (auth) headers["Authorization"] = auth;
 
   const response = await fetch(
-    `${USER_SERVICE_URL}/api/users/me/settings/prompt-shortcuts/${params.promptId}`,
+    buildServiceUrl(
+      USER_SERVICE_URL,
+      "user",
+      `/api/users/me/settings/prompt-shortcuts/${params.promptId}`
+    ).toString(),
     {
       method: "DELETE",
       headers,

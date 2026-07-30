@@ -1,5 +1,6 @@
 import { getInternalUrl } from "@/lib/env.server";
-import { NextRequest, NextResponse } from 'next/server';
+import { buildServiceUrl } from "@/lib/api/gatewayRouting";
+import { NextRequest, NextResponse } from "next/server";
 
 const INTERNAL_URL = getInternalUrl();
 
@@ -9,34 +10,52 @@ export async function GET(
 ) {
   try {
     const { fileId } = await params;
-    const backendUrl = `${INTERNAL_URL}/api/chat/file/${encodeURIComponent(fileId)}`;
+    const backendUrl = buildServiceUrl(
+      INTERNAL_URL,
+      "agent",
+      `/api/chat/file/${encodeURIComponent(fileId)}`
+    );
 
     const headers: Record<string, string> = {};
-    const cookie = request.headers.get('cookie');
-    if (cookie) headers['Cookie'] = cookie;
-    const auth = request.headers.get('authorization');
-    if (auth) headers['Authorization'] = auth;
+    const cookie = request.headers.get("cookie");
+    if (cookie) headers["Cookie"] = cookie;
+    const auth = request.headers.get("authorization");
+    if (auth) headers["Authorization"] = auth;
 
-    const response = await fetch(backendUrl, { headers, cache: 'no-store' });
+    const response = await fetch(backendUrl.toString(), {
+      headers,
+      cache: "no-store",
+    });
 
     if (!response.ok) {
-      return NextResponse.json({ error: 'File not found' }, { status: response.status });
+      return NextResponse.json(
+        { error: "File not found" },
+        { status: response.status }
+      );
     }
 
-    const contentType = response.headers.get('Content-Type') || 'application/octet-stream';
+    const contentType =
+      response.headers.get("Content-Type") || "application/octet-stream";
     const body = await response.arrayBuffer();
 
     return new Response(body, {
       status: 200,
       headers: {
-        'Content-Type': contentType,
-        'Cache-Control': 'private, max-age=3600',
-        ...(response.headers.get('Content-Disposition')
-          ? { 'Content-Disposition': response.headers.get('Content-Disposition')! }
+        "Content-Type": contentType,
+        "Cache-Control": "private, max-age=3600",
+        ...(response.headers.get("Content-Disposition")
+          ? {
+              "Content-Disposition": response.headers.get(
+                "Content-Disposition"
+              )!,
+            }
           : {}),
       },
     });
   } catch {
-    return NextResponse.json({ error: 'Failed to fetch file' }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to fetch file" },
+      { status: 500 }
+    );
   }
 }

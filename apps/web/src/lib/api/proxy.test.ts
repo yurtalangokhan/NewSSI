@@ -78,7 +78,22 @@ describe("proxyToBackend", () => {
     });
 
     expect(fetchSpy).toHaveBeenCalledWith(
-      "http://user-service/api/auth/external/login?existing=1&redirect_uri=http%3A%2F%2Flocalhost%3A3000%2Fauth%2Foidc%2Fcallback",
+      "http://user-service/api/v1/auth/external/login?existing=1&redirect_uri=http%3A%2F%2Flocalhost%3A3000%2Fauth%2Foidc%2Fcallback",
+      expect.any(Object)
+    );
+  });
+
+  it("adds service scope when proxying through Kong", async () => {
+    fetchSpy.mockResolvedValueOnce(responseWithHeaders({}));
+
+    const request = new NextRequest("http://localhost/api/chat/get-user-chat-sessions");
+
+    await proxyToBackend(request, "/api/chat/get-user-chat-sessions", {
+      backendUrl: "http://kong:8000",
+    });
+
+    expect(fetchSpy).toHaveBeenCalledWith(
+      "http://kong:8000/agent-service/api/v1/chat/get-user-chat-sessions",
       expect.any(Object)
     );
   });

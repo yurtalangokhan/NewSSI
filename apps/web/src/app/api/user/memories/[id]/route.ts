@@ -1,4 +1,5 @@
 import { USER_SERVICE_URL } from "@/lib/constants";
+import { buildServiceUrl } from "@/lib/api/gatewayRouting";
 import { NextRequest, NextResponse } from "next/server";
 
 async function proxyToUserService(
@@ -18,7 +19,11 @@ async function proxyToUserService(
     const body = method === "DELETE" ? undefined : await request.json();
 
     const response = await fetch(
-      `${USER_SERVICE_URL}/api/users/me/memories/${id}`,
+      buildServiceUrl(
+        USER_SERVICE_URL,
+        "user",
+        `/api/users/me/memories/${id}`
+      ).toString(),
       {
         method,
         headers,
@@ -34,7 +39,10 @@ async function proxyToUserService(
     return NextResponse.json(data, { status: response.status });
   } catch (error) {
     console.error("Failed to proxy memories request:", error);
-    return NextResponse.json({ error: "Failed to proxy memories request" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to proxy memories request" },
+      { status: 500 }
+    );
   }
 }
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCookieValue, refreshAuthCookies } from "@/lib/api/proxy";
+import { buildServiceUrl } from "@/lib/api/gatewayRouting";
 import { getAgentServiceUrl } from "@/lib/env.server";
 
 const AGENT_SERVICE_URL = getAgentServiceUrl();
@@ -15,7 +16,7 @@ async function proxyToAgentService(
   try {
     const url = new URL(request.url);
     const targetPath = path.join("/");
-    const targetUrl = new URL(`${AGENT_SERVICE_URL}/${targetPath}`);
+    const targetUrl = buildServiceUrl(AGENT_SERVICE_URL, "agent", targetPath);
 
     url.searchParams.forEach((value, key) => {
       targetUrl.searchParams.append(key, value);

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { INTERNAL_URL, USER_SERVICE_URL } from "@/lib/constants";
+import { BackendService, buildServiceUrl } from "@/lib/api/gatewayRouting";
 
 const BACKEND_URL = INTERNAL_URL;
 const AUTH_COOKIE_NAMES = [
@@ -75,11 +76,14 @@ export async function refreshAuthCookies(
     return null;
   }
 
-  const response = await fetch(`${USER_SERVICE_URL}/api/auth/refresh`, {
-    method: "POST",
-    headers: cookieHeader ? { Cookie: cookieHeader } : undefined,
-    cache: "no-store",
-  });
+  const response = await fetch(
+    buildServiceUrl(USER_SERVICE_URL, "user", "/api/auth/refresh").toString(),
+    {
+      method: "POST",
+      headers: cookieHeader ? { Cookie: cookieHeader } : undefined,
+      cache: "no-store",
+    }
+  );
 
   if (!response.ok) {
     return null;
@@ -128,8 +132,28 @@ export interface ProxyOptions {
   method?: "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
   withCredentials?: boolean;
   backendUrl?: string;
+  backendService?: BackendService;
   refreshOnUnauthorized?: boolean;
   queryParams?: Record<string, string>;
+}
+
+function inferBackendService(backendUrl: string): BackendService {
+  try {
+    const parsed = new URL(backendUrl);
+    if (
+      backendUrl === USER_SERVICE_URL ||
+      parsed.hostname.includes("user-service") ||
+      parsed.pathname.startsWith("/user-service")
+    ) {
+      return "user";
+    }
+  } catch {
+    if (backendUrl === USER_SERVICE_URL) {
+      return "user";
+    }
+  }
+
+  return "agent";
 }
 
 /**
@@ -145,12 +169,13 @@ export async function proxyToBackend(
       method = request.method,
       withCredentials = true,
       backendUrl = BACKEND_URL,
+      backendService = inferBackendService(backendUrl),
       refreshOnUnauthorized = true,
       queryParams,
     } = options;
 
     // Build URL with query params
-    const url = new URL(`${backendUrl}${pathname}`);
+    const url = buildServiceUrl(backendUrl, backendService, pathname);
     if (request.nextUrl.search) {
       url.search = request.nextUrl.search;
     }
