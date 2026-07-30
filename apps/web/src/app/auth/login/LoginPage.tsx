@@ -13,6 +13,7 @@ import Link from "next/link";
 import type { Route } from "next";
 import { useTranslation } from "react-i18next";
 import { useEffect } from "react";
+import { clearAuthRefreshFailed } from "@/lib/fetcher";
 
 interface LoginPageProps {
   authUrl: string | null;
@@ -42,6 +43,7 @@ export default function LoginPage({
 
   useEffect(() => {
     window.sessionStorage.removeItem("logout_in_progress");
+    clearAuthRefreshFailed();
   }, []);
 
   // Honor any existing nextUrl; only default to new team flow for first users with no nextUrl
@@ -152,23 +154,14 @@ export default function LoginPage({
         externalKeycloakLogin && (
           <div className="flex flex-col w-full gap-4">
             <LoginText />
-            {(authUrl || spAuthUrl) && (
+            {spAuthUrl && (
               <>
                 <div className="flex flex-col w-full gap-2">
-                  {authUrl && (
-                    <Button href={authUrl} className="w-full">
-                      {t("auth.externalSsoLink", {
-                        defaultValue: "External SSO",
-                      })}
-                    </Button>
-                  )}
-                  {spAuthUrl && (
-                    <Button href={spAuthUrl} secondary className="w-full">
-                      {t("auth.spSsoLink", {
-                        defaultValue: "SP Keycloak SSO",
-                      })}
-                    </Button>
-                  )}
+                  <Button href={spAuthUrl} secondary className="w-full">
+                    {t("auth.spSsoLink", {
+                      defaultValue: "SP Keycloak SSO",
+                    })}
+                  </Button>
                 </div>
                 <div className="flex flex-row items-center w-full gap-2">
                   <div className="flex-1 border-t border-border" />

@@ -1,5 +1,5 @@
 import { getDomain } from "@/lib/redirectSS";
-import { buildUserServiceUrl } from "@/lib/utilsSS";
+import { buildPublicUserAuthUrl } from "@/lib/api/publicUserAuthUrl";
 import { getLoginPath } from "@/lib/auth/loginRoute";
 import { getAuthTypeMetadataSS } from "@/lib/userSS";
 import { NextRequest, NextResponse } from "next/server";
@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 export const GET = async (request: NextRequest) => {
   // Wrapper around the FastAPI endpoint /auth/oidc/callback,
   // which adds back a redirect to the main app.
-  const url = new URL(buildUserServiceUrl("/api/auth/oidc/callback"));
+  const url = buildPublicUserAuthUrl("/oidc/callback");
   url.search = request.nextUrl.search;
   const callbackBase = getDomain(request).replace(/\/$/, "");
   url.searchParams.set("redirect_uri", `${callbackBase}/auth/oidc/callback`);

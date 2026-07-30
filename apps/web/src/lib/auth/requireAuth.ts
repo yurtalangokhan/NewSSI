@@ -3,7 +3,6 @@ import {
   AuthTypeMetadata,
   getAuthTypeMetadataSS,
   getCurrentUserSS,
-  hasRefreshTokenCookieSS,
 } from "@/lib/userSS";
 import { getLoginPath } from "@/lib/auth/loginRoute";
 import { isAdminUser } from "@/lib/auth/roles";
@@ -39,27 +38,21 @@ export async function requireAuth(): Promise<AuthCheckResult> {
   // Fetch auth information
   let user: User | null = null;
   let authTypeMetadata: AuthTypeMetadata | null = null;
-  let hasRefreshTokenCookie = false;
 
   try {
-    [authTypeMetadata, user, hasRefreshTokenCookie] = await Promise.all([
+    [authTypeMetadata, user] = await Promise.all([
       getAuthTypeMetadataSS(),
       getCurrentUserSS(),
-      hasRefreshTokenCookieSS(),
     ]);
   } catch (e) {
     console.log(`Failed to fetch auth information - ${e}`);
   }
 
   if (!user) {
-    const redirect = hasRefreshTokenCookie
-      ? getLoginPath(authTypeMetadata)
-      : "/error/401";
-
     return {
       user: null,
       authTypeMetadata,
-      redirect,
+      redirect: getLoginPath(authTypeMetadata),
     };
   }
 

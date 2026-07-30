@@ -31,7 +31,7 @@ export default function AddUserPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { data: roles } = useSWR<{ roles: { name: string }[] }>(
-    "/api/user-service/roles/",
+    "/api/user-service/roles",
     errorHandlingFetcher
   );
 

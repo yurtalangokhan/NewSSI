@@ -116,7 +116,7 @@ function UsersTables({
     data: rolesData,
     isLoading: rolesLoading,
   } = useSWR<{ roles: { name: string }[] }>(
-    "/api/user-service/roles/",
+    "/api/user-service/roles",
     errorHandlingFetcher
   );
 

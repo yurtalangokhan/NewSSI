@@ -31,7 +31,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { fetchAppSidebarMetadata } from "@/lib/appSidebarSS";
 import StatsOverlayLoader from "@/components/dev/StatsOverlayLoader";
 import PerformanceMeasureGuard from "@/components/dev/PerformanceMeasureGuard";
-import AppHealthBanner from "@/sections/AppHealthBanner";
 import { getAppName } from "@/lib/appInfo";
 
 const inter = Inter({
@@ -166,7 +165,6 @@ export default async function RootLayout({
       settings={combinedSettings}
       folded={folded}
     >
-      <AppHealthBanner />
       <Suspense fallback={null}>
         <PostHogPageView />
       </Suspense>

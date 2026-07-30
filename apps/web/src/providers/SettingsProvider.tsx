@@ -14,13 +14,15 @@ import useCCPairs from "@/hooks/useCCPairs";
 export function SettingsProvider({
   children,
   settings,
+  enableSearchRuntimeStatus = true,
 }: {
   children: React.ReactNode | JSX.Element;
   settings: CombinedSettings;
+  enableSearchRuntimeStatus?: boolean;
 }) {
   const [isMobile, setIsMobile] = useState<boolean | undefined>();
   const vectorDbEnabled = settings.settings.vector_db_enabled !== false;
-  const { ccPairs } = useCCPairs(vectorDbEnabled);
+  const { ccPairs } = useCCPairs(vectorDbEnabled && enableSearchRuntimeStatus);
 
   useEffect(() => {
     const checkMobile = () => {
@@ -42,8 +44,11 @@ export function SettingsProvider({
    * consumers don't need to independently verify availability.
    */
   const isSearchModeAvailable = useMemo(
-    () => settings.settings.search_ui_enabled !== false && ccPairs.length > 0,
-    [settings.settings.search_ui_enabled, ccPairs.length]
+    () =>
+      enableSearchRuntimeStatus &&
+      settings.settings.search_ui_enabled !== false &&
+      ccPairs.length > 0,
+    [enableSearchRuntimeStatus, settings.settings.search_ui_enabled, ccPairs.length]
   );
 
   return (
