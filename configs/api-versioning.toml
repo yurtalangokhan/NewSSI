@@ -1,0 +1,25 @@
+[api]
+base_path = "/api"
+default_version = "v1"
+supported_versions = ["v1"]
+deprecated_versions = []
+
+[services.agent-service]
+default_version = "v1"
+supported_versions = ["v1"]
+deprecated_versions = []
+
+[services.user-service]
+default_version = "v1"
+supported_versions = ["v1"]
+deprecated_versions = []
+
+[services.rag-service]
+default_version = "v1"
+supported_versions = ["v1"]
+deprecated_versions = []
+
+[services.tools-service]
+default_version = "v1"
+supported_versions = ["v1"]
+deprecated_versions = []

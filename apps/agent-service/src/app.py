@@ -22,6 +22,7 @@ from langfuse import Langfuse  # type: ignore[import-untyped]
 from agents import get_agent, get_all_agent_info, load_agent
 from core import settings
 from core import settings as core_settings
+from core.api_versioning import API_PREFIX
 from core.db import close_db_engine, get_db_engine
 from core.db.schema_bootstrap import ensure_schema
 from core.logger import configure_logging
@@ -144,7 +145,7 @@ app.add_middleware(
 app.add_middleware(
     IdempotencyMiddleware,
     config=_idempotency_config,
-    exclude_paths={"/health", "/api/health"},
+    exclude_paths={f"{API_PREFIX}/health"},
 )
 
 
@@ -153,9 +154,8 @@ app.add_middleware(
 # =============================================================================
 
 
-@app.get("/health")
-async def health_check():
-    """Health check endpoint."""
+async def _health_status():
+    """Build the agent-service health response."""
     health_status = {"status": "ok"}
 
     if settings.LANGFUSE_TRACING:
@@ -169,20 +169,43 @@ async def health_check():
     return health_status
 
 
-@app.get("/api/health")
+@app.get(f"{API_PREFIX}/health")
 async def api_health_check():
-    """API health check endpoint."""
-    health_status = {"status": "UP"}
+    """Versioned health check endpoint."""
+    return await _health_status()
 
-    if settings.LANGFUSE_TRACING:
-        try:
-            langfuse = Langfuse()
-            health_status["langfuse"] = "connected" if langfuse.auth_check() else "disconnected"
-        except Exception as e:
-            logger.error(f"Langfuse connection error: {e}")
-            health_status["langfuse"] = "disconnected"
 
-    return health_status
+def _api_versioned_path(path: str, resource_prefix: str = "") -> str:
+    if path.startswith("/api/"):
+        return f"{API_PREFIX}{path[4:]}"
+    if resource_prefix:
+        return f"{API_PREFIX}{resource_prefix}{path}"
+    return f"{API_PREFIX}{path}"
+
+
+def _include_router_with_versioned_routes(router, *, resource_prefix: str = ""):
+    for route in router.routes:
+        if not isinstance(route, APIRoute):
+            continue
+        versioned_path = _api_versioned_path(route.path, resource_prefix)
+        app.add_api_route(
+            versioned_path,
+            route.endpoint,
+            response_model=route.response_model,
+            status_code=route.status_code,
+            tags=route.tags,
+            dependencies=route.dependencies,
+            summary=route.summary,
+            description=route.description,
+            response_description=route.response_description,
+            responses=route.responses,
+            deprecated=route.deprecated,
+            methods=route.methods,
+            operation_id=route.operation_id,
+            response_class=route.response_class,
+            name=route.name,
+            openapi_extra=route.openapi_extra,
+        )
 
 
 # =============================================================================
@@ -214,25 +237,25 @@ from api.routes import (  # noqa: E402,I001
     web_search_router,
 )
 
-app.include_router(agents_router)
-app.include_router(agent_definitions_router)
-app.include_router(agent_groups_router)
-app.include_router(assistants_router)
-app.include_router(threads_router)
-app.include_router(auth_router)
-app.include_router(chat_router)
-app.include_router(persona_router)
-app.include_router(user_router)
-app.include_router(schedule_router)
-app.include_router(ingest_router)
-app.include_router(proxy_router)
-app.include_router(run_router)
-app.include_router(datasources_router)
-app.include_router(assistant_schemas_router)
-app.include_router(file_router)
-app.include_router(web_search_router)
-app.include_router(provider_router)
-app.include_router(ollama_router)
-app.include_router(mcp_providers_router)
-app.include_router(mcp_tools_router)
-app.include_router(agent_tools_router)
+_include_router_with_versioned_routes(agents_router)
+_include_router_with_versioned_routes(agent_definitions_router)
+_include_router_with_versioned_routes(agent_groups_router)
+_include_router_with_versioned_routes(assistants_router)
+_include_router_with_versioned_routes(threads_router)
+_include_router_with_versioned_routes(auth_router, resource_prefix="/auth")
+_include_router_with_versioned_routes(chat_router)
+_include_router_with_versioned_routes(persona_router)
+_include_router_with_versioned_routes(user_router)
+_include_router_with_versioned_routes(schedule_router)
+_include_router_with_versioned_routes(ingest_router, resource_prefix="/ingest")
+_include_router_with_versioned_routes(proxy_router)
+_include_router_with_versioned_routes(run_router)
+_include_router_with_versioned_routes(datasources_router)
+_include_router_with_versioned_routes(assistant_schemas_router)
+_include_router_with_versioned_routes(file_router)
+_include_router_with_versioned_routes(web_search_router)
+_include_router_with_versioned_routes(provider_router)
+_include_router_with_versioned_routes(ollama_router)
+_include_router_with_versioned_routes(mcp_providers_router)
+_include_router_with_versioned_routes(mcp_tools_router)
+_include_router_with_versioned_routes(agent_tools_router)

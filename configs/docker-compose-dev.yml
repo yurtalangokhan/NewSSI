@@ -32,8 +32,8 @@ services:
     environment:
       AIRBYTE_LOCAL_OUTPUT_PATH: /tmp/airbyte_local
       LANGCHAIN_PROJECT: agent-service
-      TOOLS_SERVICE_URL: http://kong:8000/internal/mcp
-      MCP_SERVER_URL: http://kong:8000/internal/mcp
+      TOOLS_SERVICE_URL: http://kong:8000/internal/tools-service/mcp
+      MCP_SERVER_URL: http://kong:8000/internal/tools-service/mcp
       RAG_SERVICE_API_URL: http://kong:8000/internal/rag-service
       RAG_API_URL: http://kong:8000/internal/rag-service
       USER_SERVICE_URL: http://kong:8000/internal/user-service
@@ -140,13 +140,13 @@ services:
     env_file:
       - ../apps/web/.env
     environment:
-      INTERNAL_URL: http://kong:8000
-      AGENT_SERVICE_URL: http://kong:8000
-      USER_SERVICE_URL: http://kong:8000
-      LANGCONNECT_URL: http://kong:8000
-      MCP_INTERNAL_URL: http://kong:8000/internal/mcp
-      MCP_SERVER_URL: http://kong:8000/api/mcp
-      TOOLS_SERVICE_URL: http://kong:8000/api/mcp
+      INTERNAL_URL: http://kong:8000/agent-service
+      AGENT_SERVICE_URL: http://kong:8000/agent-service
+      USER_SERVICE_URL: http://kong:8000/user-service
+      LANGCONNECT_URL: http://kong:8000/rag-service
+      MCP_INTERNAL_URL: http://kong:8000/internal/tools-service/mcp
+      MCP_SERVER_URL: http://kong:8000/tools-service/mcp
+      TOOLS_SERVICE_URL: http://kong:8000/tools-service/mcp
     extra_hosts:
       - "host.docker.internal:host-gateway"
       - "${KEYCLOAK_PUBLIC_HOSTNAME:-keycloak.localhost}:host-gateway"

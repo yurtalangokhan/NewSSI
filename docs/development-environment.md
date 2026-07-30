@@ -112,9 +112,10 @@ For Docker Compose app services:
 Kong-routed checks:
 
 ```sh
-curl http://localhost:8000/health/
-curl http://localhost:8000/api/health
-curl http://localhost:8000/api/rag/health
+curl http://localhost:8000/user-service/health
+curl http://localhost:8000/agent-service/health
+curl http://localhost:8000/rag-service/health
+curl http://localhost:8000/tools-service/health
 ```
 
 Direct service ports are useful only for debugging a single service. The app

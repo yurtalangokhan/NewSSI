@@ -149,16 +149,53 @@ Each tool category extends `BaseToolCategory` and auto-registers on startup. The
 
 ## API gateway routing
 
-All external traffic goes through **Kong on port 8000**:
+All external traffic goes through **Kong on port 8000**. New callers must use
+service-scoped paths. Legacy `/api/*` paths remain as compatibility aliases
+while clients migrate.
 
 | Path | Backend service | Auth |
 |------|----------------|------|
-| `/api/auth`, `/health` | user-service / agent-service | Public |
-| `/api/users/*`, `/api/roles/*`, `/api/permissions/*` | user-service | JWT |
-| `/api/chat/*`, `/api/agents/*`, `/api/query/*`, `/auth/*` | agent-service | JWT |
-| `/api/rag/*` | rag-service | JWT |
-| `/api/mcp` | tools-service | JWT |
-| `/internal/{user-service,rag-service,mcp}` | respective service | Internal token |
+| `/user-service/health` | user-service | Public |
+| `/agent-service/health` | agent-service | Public |
+| `/rag-service/health` | rag-service | Public |
+| `/tools-service/health` | tools-service | Public |
+| `/user-service/api/v1/auth/type`, `/user-service/api/v1/auth/login`, `/user-service/api/v1/auth/refresh` | user-service | Public |
+| `/agent-service/api/v1/auth/health` | agent-service | Public |
+| `/rag-service/api/v1/graph/health` | rag-service | Public |
+| `/user-service/api/v1/*` | user-service | JWT |
+| `/agent-service/api/v1/*` | agent-service | JWT |
+| `/rag-service/api/v1/*` | rag-service | JWT |
+| `/tools-service/mcp` | tools-service | JWT |
+| `/internal/{user-service,rag-service,tools-service}/*` | respective service | Internal token |
+| `/internal/mcp` | tools-service | Internal token, legacy alias |
+
+---
+
+## API versioning
+
+Backend services use path-based API versioning. The canonical public prefix is
+`/api/v1`, and service-scoped Kong routes expose that prefix under each service
+path, such as `/agent-service/api/v1/*`.
+
+The shared versioning contract lives in `configs/api-versioning.toml`. Python
+services read that file through local `api_versioning` helpers because the repo
+doesn't yet have a shared Python package. If the file isn't present in a runtime
+image, helpers fall back to the current contract: `/api/v1`.
+
+Use these rules when changing API versions:
+
+- Keep route modules version-neutral. Add prefixes only in app entrypoints and
+  service clients.
+- Use the local helper's `API_PREFIX` for FastAPI route registration,
+  idempotency exclusions, and service-owned routes.
+- Use `USER_SERVICE_API_PREFIX` for internal calls to user-service.
+- Treat `supported_versions` and `deprecated_versions` as metadata. Updating
+  TOML alone must not publish a new route surface.
+- To publish `/api/v2`, add explicit v2 router registration or a v2
+  sub-application, keep `/api/v1` registered for compatibility, and update Kong,
+  frontend clients, API docs, and regression tests in the same change.
+- Put breaking request or response schema changes in the versioned API layer.
+  Share controller, service, and repository logic when behavior is compatible.
 
 ---
 
@@ -310,8 +347,10 @@ make prod-up
 
 **Health checks:**
 ```sh
-curl http://localhost:8000/health/
-curl http://localhost:8000/api/health
+curl http://localhost:8000/user-service/health
+curl http://localhost:8000/agent-service/health
+curl http://localhost:8000/rag-service/health
+curl http://localhost:8000/tools-service/health
 ```
 
 ---

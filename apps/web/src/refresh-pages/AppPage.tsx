@@ -83,6 +83,7 @@ const SearchUI = eeGated(EESearchUI);
 import { motion, AnimatePresence } from "motion/react";
 import { useAppMode } from "@/providers/AppModeProvider";
 import { useTranslation } from "react-i18next";
+import { getLoginPath } from "@/lib/auth/loginRoute";
 
 interface FadeProps {
   show: boolean;
@@ -268,7 +269,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
   // Also fetch federated connectors for the sources list
   const { data: federatedConnectorsData } = useFederatedConnectors();
 
-  const { user } = useUser();
+  const { user, authTypeMetadata } = useUser();
 
   function processSearchParamsAndSubmitMessage(searchParamsString: string) {
     const newSearchParams = new URLSearchParams(searchParamsString);
@@ -546,7 +547,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
   }, [documentSidebarVisible, updateCurrentDocumentSidebarVisible]);
 
   if (!user) {
-    redirect("/auth/login");
+    redirect(getLoginPath(authTypeMetadata));
   }
 
   const onChat = useCallback(

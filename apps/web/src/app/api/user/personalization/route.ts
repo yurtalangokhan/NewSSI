@@ -1,4 +1,5 @@
 import { USER_SERVICE_URL } from "@/lib/constants";
+import { buildServiceUrl } from "@/lib/api/gatewayRouting";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function PATCH(request: NextRequest) {
@@ -16,14 +17,17 @@ export async function PATCH(request: NextRequest) {
       .trim()
       .split(/\s+/)
       .filter(Boolean);
-    const profileResponse = await fetch(`${USER_SERVICE_URL}/api/users/me`, {
-      method: "PATCH",
-      headers,
-      body: JSON.stringify({
-        first_name: firstName || null,
-        last_name: rest.join(" ") || null,
-      }),
-    });
+    const profileResponse = await fetch(
+      buildServiceUrl(USER_SERVICE_URL, "user", "/api/users/me").toString(),
+      {
+        method: "PATCH",
+        headers,
+        body: JSON.stringify({
+          first_name: firstName || null,
+          last_name: rest.join(" ") || null,
+        }),
+      }
+    );
     if (!profileResponse.ok) {
       return new NextResponse(await profileResponse.text(), {
         status: profileResponse.status,
@@ -54,11 +58,18 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
-  const response = await fetch(`${USER_SERVICE_URL}/api/users/me/settings/`, {
-    method: "PATCH",
-    headers,
-    body: JSON.stringify(settingsPayload),
-  });
+  const response = await fetch(
+    buildServiceUrl(
+      USER_SERVICE_URL,
+      "user",
+      "/api/users/me/settings/"
+    ).toString(),
+    {
+      method: "PATCH",
+      headers,
+      body: JSON.stringify(settingsPayload),
+    }
+  );
 
   return new NextResponse(await response.text(), {
     status: response.status,

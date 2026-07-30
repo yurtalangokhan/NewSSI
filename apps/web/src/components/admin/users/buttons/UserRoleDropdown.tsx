@@ -30,7 +30,7 @@ export default function UserRoleDropdown({
   const [selectedRole, setSelectedRole] = useState(getEffectiveUserRole(user));
 
   const { data: roles, isLoading: isRolesLoading } = useSWR<{ roles: Role[] }>(
-    "/api/user-service/roles/",
+    "/api/user-service/roles",
     errorHandlingFetcher
   );
 

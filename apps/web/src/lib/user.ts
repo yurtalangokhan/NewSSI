@@ -6,7 +6,9 @@ export const checkUserIsNoAuthUser = (userId: string) => {
 };
 
 export const getCurrentUser = async (): Promise<User | null> => {
-  const response = await authenticatedFetch("/api/me");
+  const response = await authenticatedFetch("/api/me", {
+    redirectOnAuthError: false,
+  });
   if (!response.ok) {
     return null;
   }

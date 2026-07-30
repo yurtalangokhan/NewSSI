@@ -1,5 +1,6 @@
 import { getInternalUrl } from "@/lib/env.server";
-import { NextResponse } from 'next/server';
+import { buildServiceUrl } from "@/lib/api/gatewayRouting";
+import { NextResponse } from "next/server";
 
 const INTERNAL_URL = getInternalUrl();
 
@@ -11,11 +12,18 @@ export async function GET(
     const { sessionId } = await params;
     const cookie = request.headers.get("cookie") || "";
     // Proxy to backend available-context-tokens endpoint
-    const response = await fetch(`${INTERNAL_URL}/api/chat/available-context-tokens/${sessionId}`, {
-      headers: {
-        ...(cookie ? { Cookie: cookie } : {}),
-      },
-    });
+    const response = await fetch(
+      buildServiceUrl(
+        INTERNAL_URL,
+        "agent",
+        `/api/chat/available-context-tokens/${sessionId}`
+      ).toString(),
+      {
+        headers: {
+          ...(cookie ? { Cookie: cookie } : {}),
+        },
+      }
+    );
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error) {

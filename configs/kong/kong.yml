@@ -4,44 +4,122 @@ _transform: true
 # Kong OSS 3.8 JWT authentication.
 #
 # Routing strategy:
-# 1. Public endpoints (/api/auth, /health, /auth) - no JWT required
-# 2. Protected endpoints - Kong JWT plugin verifies RS256 signature plus exp claim
-# 3. Internal service-to-service traffic must use /internal/* routes (no JWT)
-# 4. Expired/invalid tokens return 401 from Kong, so web can redirect to login
-# 5. Backend services decode claims for authorization decisions
+# 1. Public health/auth endpoints use service-scoped paths.
+# 2. Protected endpoints use /{service-name}/api/v1/* and Kong JWT.
+# 3. Internal service-to-service traffic must use /internal/{service-name}/*.
+# 4. Expired/invalid tokens return 401 from Kong, so web can redirect to login.
+# 5. Backend services decode claims for authorization decisions.
 
 services:
   # --------------------------------------------------------------------------
   # User Service
   # --------------------------------------------------------------------------
+  - name: user-service-health-public
+    url: __USER_SERVICE_UPSTREAM_URL__/api/v1/health
+    routes:
+      - name: user-service-health-public
+        paths:
+          - /user-service/health
+        methods:
+          - GET
+        strip_path: true
+        preserve_host: true
+
+  - name: user-service-auth-type-public
+    url: __USER_SERVICE_UPSTREAM_URL__/api/v1/auth/type
+    routes:
+      - name: user-service-auth-type-public
+        paths:
+          - /user-service/api/v1/auth/type
+        methods:
+          - GET
+        strip_path: true
+        preserve_host: true
+
+  - name: user-service-auth-login-public
+    url: __USER_SERVICE_UPSTREAM_URL__/api/v1/auth/login
+    routes:
+      - name: user-service-auth-login-public
+        paths:
+          - /user-service/api/v1/auth/login
+        methods:
+          - POST
+        strip_path: true
+        preserve_host: true
+
+  - name: user-service-auth-external-login-public
+    url: __USER_SERVICE_UPSTREAM_URL__/api/v1/auth/external/login
+    routes:
+      - name: user-service-auth-external-login-public
+        paths:
+          - /user-service/api/v1/auth/external/login
+        methods:
+          - POST
+        strip_path: true
+        preserve_host: true
+
+  - name: user-service-auth-logout-public
+    url: __USER_SERVICE_UPSTREAM_URL__/api/v1/auth/logout
+    routes:
+      - name: user-service-auth-logout-public
+        paths:
+          - /user-service/api/v1/auth/logout
+        methods:
+          - POST
+        strip_path: true
+        preserve_host: true
+
+  - name: user-service-auth-refresh-public
+    url: __USER_SERVICE_UPSTREAM_URL__/api/v1/auth/refresh
+    routes:
+      - name: user-service-auth-refresh-public
+        paths:
+          - /user-service/api/v1/auth/refresh
+        methods:
+          - POST
+        strip_path: true
+        preserve_host: true
+
+  - name: user-service-auth-oidc-authorize-public
+    url: __USER_SERVICE_UPSTREAM_URL__/api/v1/auth/oidc/authorize
+    routes:
+      - name: user-service-auth-oidc-authorize-public
+        paths:
+          - /user-service/api/v1/auth/oidc/authorize
+        methods:
+          - GET
+        strip_path: true
+        preserve_host: true
+
+  - name: user-service-auth-oidc-callback-public
+    url: __USER_SERVICE_UPSTREAM_URL__/api/v1/auth/oidc/callback
+    routes:
+      - name: user-service-auth-oidc-callback-public
+        paths:
+          - /user-service/api/v1/auth/oidc/callback
+        methods:
+          - GET
+        strip_path: true
+        preserve_host: true
+
+  - name: user-service-auth-register-public
+    url: __USER_SERVICE_UPSTREAM_URL__/api/v1/auth/register
+    routes:
+      - name: user-service-auth-register-public
+        paths:
+          - /user-service/api/v1/auth/register
+        methods:
+          - POST
+        strip_path: true
+        preserve_host: true
+
   - name: user-service
     url: __USER_SERVICE_UPSTREAM_URL__
     routes:
-      # Public auth endpoints (login/logout/refresh/me/type/oidc)
-      - name: user-service-auth
+      - name: user-service-scoped
         paths:
-          - /api/auth
-        strip_path: false
-        preserve_host: true
-
-      # Internal endpoints (no JWT — service-to-service calls)
-      - name: user-service-users-internal
-        paths:
-          - /api/users/internal
-        strip_path: false
-        preserve_host: true
-
-      - name: user-service-settings-internal
-        paths:
-          - /api/users/me/settings/internal
-        strip_path: false
-        preserve_host: true
-
-      # Shared JWT policy for protected external endpoints.
-      - name: user-service-users
-        paths:
-          - /api/users
-        strip_path: false
+          - /user-service
+        strip_path: true
         preserve_host: true
         plugins: &jwt_plugin
           - name: jwt
@@ -56,146 +134,73 @@ services:
                 - access_token
                 - fastapiusersauth
 
-      - name: user-service-settings
-        paths:
-          - /api/users/me/settings
-        strip_path: false
-        preserve_host: true
-        plugins: *jwt_plugin
-
-      - name: user-service-api-keys
-        paths:
-          - /api/users/me/api-keys
-        strip_path: false
-        preserve_host: true
-        plugins: *jwt_plugin
-
-      - name: user-service-roles
-        paths:
-          - /api/roles
-          - /api/coarse-roles
-        strip_path: false
-        preserve_host: true
-        plugins: *jwt_plugin
-
-      - name: user-service-permissions
-        paths:
-          - /api/permissions
-        strip_path: false
-        preserve_host: true
-        plugins: *jwt_plugin
-
-      # Health
-      - name: user-service-health
-        paths:
-          - /health
-        strip_path: false
-        preserve_host: true
-
   # --------------------------------------------------------------------------
   # Agent Service
   # --------------------------------------------------------------------------
+  - name: agent-service-health-public
+    url: __AGENT_SERVICE_UPSTREAM_URL__/api/v1/health
+    routes:
+      - name: agent-service-health-public
+        paths:
+          - /agent-service/health
+        methods:
+          - GET
+        strip_path: true
+        preserve_host: true
+
+  - name: agent-service-auth-health-public
+    url: __AGENT_SERVICE_UPSTREAM_URL__/api/v1/auth/health
+    routes:
+      - name: agent-service-auth-health-public
+        paths:
+          - /agent-service/api/v1/auth/health
+        methods:
+          - GET
+        strip_path: true
+        preserve_host: true
+
   - name: agent-service
     url: __AGENT_SERVICE_UPSTREAM_URL__
     routes:
-      - name: agent-service-api-health-public
+      - name: agent-service-scoped
         paths:
-          - /api/health
-        strip_path: false
-        preserve_host: true
-
-      - name: agent-service-api
-        paths:
-          - /api/agents
-          - /api/agent-definitions
-          - /api/agent-groups
-          - /api/admin
-          - /api/chat
-          - /api/content
-          - /api/datasources
-          - /api/federated
-          - /api/input_prompt
-          - /api/llm
-          - /api/manage
-          - /api/mcp
-          - /api/notifications
-          - /api/password
-          - /api/persona
-          - /api/proxy
-          - /api/providers
-          - /api/query
-          - /api/search
-          - /api/streaming
-          - /api/threads
-          - /api/user
-          - /api/vllm
-        strip_path: false
-        preserve_host: true
-        plugins: *jwt_plugin
-
-      # Public auth endpoints for login/logout/oidc flow.
-      - name: agent-service-auth-public
-        paths:
-          - /auth
-        strip_path: false
-        preserve_host: true
-
-      # Non-/api endpoints exposed by agent-service.
-      - name: agent-service-non-api
-        paths:
-          - /me
-          - /settings
-          - /enterprise-settings
-          - /admin
-          - /llm
-          - /agents
-          - /assistants
-          - /threads
-          - /datasources
-          - /agent-definitions
-          - /mcp-providers
-          - /mcp-tools
-          - /search-providers
-          - /content-providers
-          - /schemas
-          - /brains
-          - /memory
-        strip_path: false
-        preserve_host: true
-        plugins: *jwt_plugin
-
-  - name: agent-service-mcp-compat
-    url: __AGENT_SERVICE_UPSTREAM_URL__/api/proxy
-    routes:
-      - name: agent-service-mcp-compat
-        paths:
-          - /mcp
-        strip_path: false
+          - /agent-service
+        strip_path: true
         preserve_host: true
         plugins: *jwt_plugin
 
   # --------------------------------------------------------------------------
   # RAG Service
   # --------------------------------------------------------------------------
+  - name: rag-service-health-public
+    url: __RAG_SERVICE_UPSTREAM_URL__/api/v1/health
+    routes:
+      - name: rag-service-health-public
+        paths:
+          - /rag-service/health
+        methods:
+          - GET
+        strip_path: true
+        preserve_host: true
+
+  - name: rag-service-graph-health-public
+    url: __RAG_SERVICE_UPSTREAM_URL__/api/v1/graph/health
+    routes:
+      - name: rag-service-graph-health-public
+        paths:
+          - /rag-service/api/v1/graph/health
+        methods:
+          - GET
+        strip_path: true
+        preserve_host: true
+
   - name: rag-service
     url: __RAG_SERVICE_UPSTREAM_URL__
     routes:
-      - name: rag-service-api
+      - name: rag-service-scoped
         paths:
-          - /api/rag
+          - /rag-service
         strip_path: true
-        preserve_host: true
-        plugins: *jwt_plugin
-
-      # Local web proxy compatibility: apps/web strips /api/rag before calling
-      # LANGCONNECT_URL. When LANGCONNECT_URL points at Kong, these routes let
-      # already-stripped RAG paths still reach rag-service.
-      - name: rag-service-stripped-api
-        paths:
-          - /collections
-          - /graph
-          - /datasources/knowledge-selector
-        strip_path: false
         preserve_host: true
         plugins: *jwt_plugin
 
@@ -203,11 +208,11 @@ services:
   # Tools Service (MCP)
   # --------------------------------------------------------------------------
   - name: tools-service-mcp
-    url: __TOOLS_SERVICE_UPSTREAM_URL__/mcp
+    url: __TOOLS_SERVICE_UPSTREAM_URL__
     routes:
-      - name: tools-service-mcp
+      - name: tools-service-mcp-scoped
         paths:
-          - /api/mcp
+          - /tools-service
         strip_path: true
         preserve_host: true
         plugins: *jwt_plugin
@@ -240,11 +245,11 @@ services:
         preserve_host: true
 
   - name: internal-tools-service
-    url: __TOOLS_SERVICE_UPSTREAM_URL__/mcp
+    url: __TOOLS_SERVICE_UPSTREAM_URL__
     routes:
       - name: internal-tools-service-all
         paths:
-          - /internal/mcp
+          - /internal/tools-service
         strip_path: true
         preserve_host: true
 

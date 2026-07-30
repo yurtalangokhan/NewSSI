@@ -1,5 +1,6 @@
 import { getInternalUrl } from "@/lib/env.server";
-import { NextResponse } from 'next/server';
+import { buildServiceUrl } from "@/lib/api/gatewayRouting";
+import { NextResponse } from "next/server";
 
 const INTERNAL_URL = getInternalUrl();
 
@@ -7,17 +8,27 @@ export async function PUT(request: Request) {
   try {
     const body = await request.text();
     const cookie = request.headers.get("cookie") || "";
-    const response = await fetch(`${INTERNAL_URL}/api/chat/update-chat-session-model`, {
-      method: "PUT",
-      body,
-      headers: {
-        "Content-Type": "application/json",
-        ...(cookie ? { Cookie: cookie } : {}),
+    const response = await fetch(
+      buildServiceUrl(
+        INTERNAL_URL,
+        "agent",
+        "/api/chat/update-chat-session-model"
+      ).toString(),
+      {
+        method: "PUT",
+        body,
+        headers: {
+          "Content-Type": "application/json",
+          ...(cookie ? { Cookie: cookie } : {}),
+        },
       }
-    });
+    );
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error) {
-    return NextResponse.json({ error: "Failed to update chat session model" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to update chat session model" },
+      { status: 500 }
+    );
   }
 }

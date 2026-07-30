@@ -1,44 +1,18 @@
-import { getInternalUrl } from "@/lib/env.server";
-import { NextResponse } from 'next/server';
+import { proxyToBackend } from "@/lib/api/proxy";
+import { NextRequest } from "next/server";
 
-const INTERNAL_URL = getInternalUrl();
-
-export async function GET() {
-  try {
-    const response = await fetch(`${INTERNAL_URL}/admin/llm/provider`);
-    const data = await response.json();
-    return NextResponse.json(data);
-  } catch (error) {
-    return NextResponse.json({ error: "Failed" }, { status: 500 });
-  }
+export async function GET(request: NextRequest) {
+  return proxyToBackend(request, "/admin/llm/provider");
 }
 
-export async function PUT(request: Request) {
-  try {
-    const body = await request.text();
-    const response = await fetch(`${INTERNAL_URL}/api/admin/llm/provider`, { 
-      method: "PUT",
-      body,
-      headers: { "Content-Type": "application/json" }
-    });
-    const data = await response.json();
-    return NextResponse.json(data);
-  } catch (error) {
-    return NextResponse.json({ error: "Failed" }, { status: 500 });
-  }
+export async function PUT(request: NextRequest) {
+  return proxyToBackend(request, "/api/admin/llm/provider", {
+    method: "PUT",
+  });
 }
 
-export async function POST(request: Request) {
-  try {
-    const body = await request.text();
-    const response = await fetch(`${INTERNAL_URL}/api/admin/llm/provider`, { 
-      method: "POST",
-      body,
-      headers: { "Content-Type": "application/json" }
-    });
-    const data = await response.json();
-    return NextResponse.json(data);
-  } catch (error) {
-    return NextResponse.json({ error: "Failed" }, { status: 500 });
-  }
+export async function POST(request: NextRequest) {
+  return proxyToBackend(request, "/api/admin/llm/provider", {
+    method: "POST",
+  });
 }

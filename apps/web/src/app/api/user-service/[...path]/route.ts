@@ -2,15 +2,7 @@ import { NextRequest } from "next/server";
 
 import { proxyToBackend } from "@/lib/api/proxy";
 import { USER_SERVICE_URL } from "@/lib/constants";
-
-// Preserve trailing slash from the original URL to avoid FastAPI 307 redirect
-function buildUserServicePath(path: string[], request: NextRequest) {
-  let result = `/api/${path.join("/")}`;
-  if (request.nextUrl.pathname.endsWith("/") && !result.endsWith("/")) {
-    result += "/";
-  }
-  return result;
-}
+import { buildUserServicePath } from "@/lib/api/userServicePath";
 
 export async function GET(
   request: NextRequest,

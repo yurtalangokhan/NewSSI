@@ -143,6 +143,20 @@ async def test_get_oidc_authorize_url_includes_keycloak_idp_hint(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_get_oidc_authorize_url_includes_prompt_login(monkeypatch):
+    monkeypatch.setenv("KEYCLOAK_BASE_URL", "http://keycloak:8080")
+    monkeypatch.setenv("KEYCLOAK_REALM", "agenticai")
+    monkeypatch.setenv("KEYCLOAK_CLIENT_ID", "agenticai-web")
+
+    url = await KeycloakService().get_oidc_authorize_url(
+        "http://localhost:3000/auth/oidc/callback",
+        prompt="login",
+    )
+
+    assert "prompt=login" in url
+
+
+@pytest.mark.asyncio
 async def test_follow_broker_redirects_ignores_intermediate_idp_code_state(monkeypatch):
     service = KeycloakService()
     monkeypatch.setenv("EXTERNAL_KEYCLOAK_ISSUER_URL", "http://keycloak/realms/agenticai")

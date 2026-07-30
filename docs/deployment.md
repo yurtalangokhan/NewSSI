@@ -38,8 +38,10 @@ make env-check
 make stack-up
 
 # 3. Verify everything is running
-curl http://localhost:8000/health/
-curl http://localhost:8000/api/health
+curl http://localhost:8000/user-service/health
+curl http://localhost:8000/agent-service/health
+curl http://localhost:8000/rag-service/health
+curl http://localhost:8000/tools-service/health
 ```
 
 ### Running services outside Docker (for development)
@@ -136,7 +138,7 @@ environment values or web env files can override those defaults.
        │
 7. Web frontend (depends on Kong)
        │
-8. Health check: curl http://localhost:8000/health/
+8. Health check: curl http://localhost:8000/agent-service/health
 ```
 
 ---
@@ -186,17 +188,18 @@ docker compose --env-file configs/.env -f configs/docker-compose-prod.yml up -d
 
 | Endpoint | Service | Expected response |
 |----------|---------|------------------|
-| `GET /health/` | user-service | `{"status": "healthy", "service": "user-service"}` |
-| `GET /health` | agent-service | `{"status": "ok"}` |
-| `GET /health` | rag-service | `{"status": "ok"}` |
-| `GET /graph/health` | rag-service (Neo4j) | `{"status": "ok", "service": "neo4j"}` |
-| `GET /health/ready` | user-service | `{"status": "ready", ...}` (with DB ping) |
+| `GET /api/v1/health` | user-service | `{"status": "healthy", "service": "user-service"}` |
+| `GET /api/v1/health` | agent-service | `{"status": "ok"}` |
+| `GET /api/v1/health` | rag-service | `{"status": "ok"}` |
+| `GET /api/v1/graph/health` | rag-service (Neo4j) | `{"status": "ok", "service": "neo4j"}` |
+| `GET /health` | tools-service | `{"status": "ok"}` |
 
 Via Kong:
 ```sh
-curl http://localhost:8000/health/
-curl http://localhost:8000/api/health
-curl http://localhost:8000/api/rag/health
+curl http://localhost:8000/user-service/health
+curl http://localhost:8000/agent-service/health
+curl http://localhost:8000/rag-service/health
+curl http://localhost:8000/tools-service/health
 ```
 
 ---

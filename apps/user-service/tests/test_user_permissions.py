@@ -117,15 +117,15 @@ def test_internal_permissions_endpoint_resolves_target_user(monkeypatch):
     target_id = uuid.uuid4()
     controller = SimpleNamespace(
         authorize_target_user_id=AsyncMock(return_value=target_id),
-        get_user_permissions=AsyncMock(return_value={"permissions": ["document:read"]})
+        get_user_permissions=AsyncMock(return_value={"permissions": ["document:read"]}),
     )
     monkeypatch.setattr(user_route, "get_user_controller", lambda: controller)
 
     app = FastAPI()
     app.dependency_overrides[require_auth_or_internal_service_token] = lambda: "internal-service"
-    app.include_router(user_route.router)
+    app.include_router(user_route.internal_router)
 
-    response = TestClient(app).get(f"/users/internal/{target_id}/permissions")
+    response = TestClient(app).get(f"/internal/users/{target_id}/permissions")
 
     assert response.status_code == 200
     assert response.json() == {"permissions": ["document:read"]}
@@ -142,16 +142,16 @@ def test_internal_authorize_endpoint_resolves_target_user(monkeypatch):
         authorize_target_user_id=AsyncMock(return_value=target_id),
         authorize_user_permission=AsyncMock(
             return_value={"allowed": True, "permission": "document:read"}
-        )
+        ),
     )
     monkeypatch.setattr(user_route, "get_user_controller", lambda: controller)
 
     app = FastAPI()
     app.dependency_overrides[require_auth_or_internal_service_token] = lambda: "internal-service"
-    app.include_router(user_route.router)
+    app.include_router(user_route.internal_router)
 
     response = TestClient(app).post(
-        "/users/internal/authorize",
+        "/internal/users/authorize",
         json={"target_id": str(target_id), "permission": "document:read"},
     )
 

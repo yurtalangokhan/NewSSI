@@ -9,6 +9,7 @@ from typing import Any
 import httpx
 from fastapi import HTTPException, status
 
+from core.api_versioning import USER_SERVICE_API_PREFIX
 from core.env import env
 
 DEFAULT_INTERNAL_SERVICE_TOKEN = ""
@@ -122,7 +123,7 @@ async def _request(
 async def get_user_settings(user_id: str, access_token: str | None = None) -> dict[str, Any]:
     data = await _request(
         "GET",
-        f"/api/internal/users/{user_id}/settings",
+        f"{USER_SERVICE_API_PREFIX}/internal/users/{user_id}/settings",
         access_token=access_token,
     )
     if isinstance(data, dict):
@@ -135,7 +136,7 @@ async def get_user_settings(user_id: str, access_token: str | None = None) -> di
 async def get_current_user(access_token: str) -> dict[str, Any] | None:
     data = await _request(
         "GET",
-        "/api/auth/me",
+        f"{USER_SERVICE_API_PREFIX}/auth/me",
         access_token=access_token,
     )
     if isinstance(data, dict):
@@ -150,7 +151,7 @@ async def update_user_settings(
 ) -> dict[str, Any]:
     data = await _request(
         "PATCH",
-        f"/api/internal/users/{user_id}/settings",
+        f"{USER_SERVICE_API_PREFIX}/internal/users/{user_id}/settings",
         json_body=updates,
         access_token=access_token,
     )
@@ -168,7 +169,7 @@ async def update_user_profile(
 ) -> dict[str, Any]:
     data = await _request(
         "PATCH",
-        f"/api/users/internal/users/{user_id}",
+        f"{USER_SERVICE_API_PREFIX}/internal/users/{user_id}",
         json_body=updates,
         access_token=access_token,
     )
@@ -188,7 +189,7 @@ async def create_prompt_shortcut(
 ) -> dict[str, Any]:
     data = await _request(
         "POST",
-        f"/api/internal/users/{user_id}/settings/prompt-shortcuts",
+        f"{USER_SERVICE_API_PREFIX}/internal/users/{user_id}/settings/prompt-shortcuts",
         json_body=payload,
         access_token=access_token,
     )
@@ -205,7 +206,7 @@ async def update_prompt_shortcut(
 ) -> dict[str, Any]:
     data = await _request(
         "PATCH",
-        f"/api/internal/users/{user_id}/settings/prompt-shortcuts/{prompt_id}",
+        f"{USER_SERVICE_API_PREFIX}/internal/users/{user_id}/settings/prompt-shortcuts/{prompt_id}",
         json_body=payload,
         access_token=access_token,
     )
@@ -221,7 +222,7 @@ async def delete_prompt_shortcut(
 ) -> dict[str, Any]:
     data = await _request(
         "DELETE",
-        f"/api/internal/users/{user_id}/settings/prompt-shortcuts/{prompt_id}",
+        f"{USER_SERVICE_API_PREFIX}/internal/users/{user_id}/settings/prompt-shortcuts/{prompt_id}",
         access_token=access_token,
     )
     if isinstance(data, dict):
@@ -240,7 +241,7 @@ async def upsert_user_from_keycloak(
     """Create or update user in user-microservice from Keycloak profile."""
     data = await _request(
         "POST",
-        "/api/users/internal/upsert-from-keycloak",
+        f"{USER_SERVICE_API_PREFIX}/internal/users/upsert-from-keycloak",
         json_body={
             "keycloak_id": keycloak_id,
             "email": email,
@@ -266,12 +267,12 @@ async def get_user_permissions(
 ) -> dict[str, list[str]]:
     """Return the resolved permission list for a user.
 
-    Calls GET /api/users/internal/{user_id}/permissions on user-service.
+    Calls GET /api/v1/internal/users/{user_id}/permissions on user-service.
     Returns ``{"permissions": [...]}``, or ``{"permissions": []}`` on failure.
     """
     data = await _request(
         "GET",
-        f"/api/users/internal/{user_id}/permissions",
+        f"{USER_SERVICE_API_PREFIX}/internal/users/{user_id}/permissions",
         access_token=access_token,
     )
     if isinstance(data, dict):
@@ -287,7 +288,7 @@ async def authorize_user_permission(
     """Return whether a user has a specific permission."""
     data = await _request(
         "POST",
-        "/api/users/internal/authorize",
+        f"{USER_SERVICE_API_PREFIX}/internal/users/authorize",
         json_body={"target_id": user_id, "permission": permission},
         access_token=access_token,
     )
@@ -305,7 +306,7 @@ async def get_user_memories_for_recall(user_id: str, access_token: str | None = 
     """Return memory content strings for prompt injection."""
     data = await _request(
         "GET",
-        f"/api/internal/users/{user_id}/memories/recall",
+        f"{USER_SERVICE_API_PREFIX}/internal/users/{user_id}/memories/recall",
         access_token=access_token,
     )
     if isinstance(data, list):
@@ -321,7 +322,7 @@ async def get_user_memories(
 ) -> dict[str, Any]:
     data = await _request(
         "GET",
-        f"/api/internal/users/{user_id}/memories?page={page}&page_size={page_size}",
+        f"{USER_SERVICE_API_PREFIX}/internal/users/{user_id}/memories?page={page}&page_size={page_size}",
         access_token=access_token,
     )
     if isinstance(data, dict):
@@ -336,7 +337,7 @@ async def get_user_memory(
 ) -> dict[str, Any] | None:
     data = await _request(
         "GET",
-        f"/api/internal/users/{user_id}/memories/{memory_id}",
+        f"{USER_SERVICE_API_PREFIX}/internal/users/{user_id}/memories/{memory_id}",
         access_token=access_token,
     )
     if isinstance(data, dict):
@@ -351,7 +352,7 @@ async def create_user_memory(
 ) -> dict[str, Any]:
     data = await _request(
         "POST",
-        f"/api/internal/users/{user_id}/memories",
+        f"{USER_SERVICE_API_PREFIX}/internal/users/{user_id}/memories",
         json_body={"content": content},
         access_token=access_token,
     )
@@ -369,7 +370,7 @@ async def add_facts_to_user(
     """Bulk-add auto-extracted facts (deduped server-side)."""
     data = await _request(
         "POST",
-        f"/api/internal/users/{user_id}/memories/bulk",
+        f"{USER_SERVICE_API_PREFIX}/internal/users/{user_id}/memories/bulk",
         json_body={"contents": contents, "source": source},
         access_token=access_token,
     )
@@ -386,7 +387,7 @@ async def update_user_memory(
 ) -> dict[str, Any] | None:
     data = await _request(
         "PATCH",
-        f"/api/internal/users/{user_id}/memories/{memory_id}",
+        f"{USER_SERVICE_API_PREFIX}/internal/users/{user_id}/memories/{memory_id}",
         json_body={"content": content},
         access_token=access_token,
     )
@@ -402,7 +403,7 @@ async def delete_user_memory(
 ) -> bool:
     await _request(
         "DELETE",
-        f"/api/internal/users/{user_id}/memories/{memory_id}",
+        f"{USER_SERVICE_API_PREFIX}/internal/users/{user_id}/memories/{memory_id}",
         access_token=access_token,
     )
     # 204 → _request returns {}; non-2xx → _request raises
@@ -415,7 +416,7 @@ async def delete_all_user_memories(
 ) -> int:
     data = await _request(
         "DELETE",
-        f"/api/internal/users/{user_id}/memories",
+        f"{USER_SERVICE_API_PREFIX}/internal/users/{user_id}/memories",
         access_token=access_token,
     )
     if isinstance(data, dict):
@@ -439,7 +440,7 @@ async def get_user_by_keycloak_id(
     try:
         data = await _request(
             "GET",
-            f"/api/users/internal/by-keycloak-id/{normalized}",
+            f"{USER_SERVICE_API_PREFIX}/internal/users/by-keycloak-id/{normalized}",
             access_token=effective_access_token,
         )
         if isinstance(data, dict):

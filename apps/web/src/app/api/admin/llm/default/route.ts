@@ -1,14 +1,8 @@
-import { getInternalUrl } from "@/lib/env.server";
-import { NextResponse } from 'next/server';
+import { proxyToBackend } from "@/lib/api/proxy";
+import { NextRequest } from "next/server";
 
-const INTERNAL_URL = getInternalUrl();
-
-export async function POST() {
-  try {
-    const response = await fetch(`${INTERNAL_URL}/api/admin/llm/default`, { method: "POST" });
-    const data = await response.json();
-    return NextResponse.json(data);
-  } catch (error) {
-    return NextResponse.json({ error: "Failed" }, { status: 500 });
-  }
+export async function POST(request: NextRequest) {
+  return proxyToBackend(request, "/api/admin/llm/default", {
+    method: "POST",
+  });
 }

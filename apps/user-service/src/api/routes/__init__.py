@@ -1,5 +1,6 @@
 from .auth_base_route import router as auth_base_router
 from .auth_own_route import router as auth_own_router
+from .user_route import internal_router as internal_user_router
 from .user_route import router as user_router
 from .settings_route import internal_router as internal_settings_router
 from .settings_route import router as settings_router

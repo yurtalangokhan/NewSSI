@@ -12,6 +12,7 @@ from langconnect.api import (
     documents_router,
     graph_router,
 )
+from langconnect.api_versioning import API_PREFIX
 from langconnect.config import (
     ALLOWED_ORIGINS,
     IDEMPOTENCY_ENABLED,
@@ -105,19 +106,19 @@ APP.add_middleware(
 APP.add_middleware(
     IdempotencyMiddleware,
     config=_idempotency_config,
-    exclude_paths={"/health", "/api/health"},
+    exclude_paths={f"{API_PREFIX}/health"},
 )
 
 # Include API routers
-APP.include_router(collections_router)
-APP.include_router(datasources_router)
-APP.include_router(documents_router)
-APP.include_router(graph_router)
+APP.include_router(collections_router, prefix=API_PREFIX)
+APP.include_router(datasources_router, prefix=API_PREFIX)
+APP.include_router(documents_router, prefix=API_PREFIX)
+APP.include_router(graph_router, prefix=API_PREFIX)
 
 
-@APP.get("/health")
-async def health_check() -> dict:
-    """Health check endpoint."""
+@APP.get(f"{API_PREFIX}/health")
+async def api_health_check() -> dict:
+    """Versioned health check endpoint."""
     return {"status": "ok"}
 
 

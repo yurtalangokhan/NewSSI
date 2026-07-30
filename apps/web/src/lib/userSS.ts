@@ -39,7 +39,8 @@ export const getAuthTypeMetadataSS = async (): Promise<AuthTypeMetadata> => {
 
 const getOIDCAuthUrlSS = async (
   nextUrl: string | null,
-  idpHint?: string | null
+  idpHint?: string | null,
+  options?: { prompt?: string }
 ): Promise<string> => {
   const url = new UrlBuilder("/api/auth/oidc/authorize");
   if (nextUrl) {
@@ -47,6 +48,9 @@ const getOIDCAuthUrlSS = async (
   }
   if (idpHint) {
     url.addParam("kc_idp_hint", idpHint);
+  }
+  if (options?.prompt) {
+    url.addParam("prompt", options.prompt);
   }
   url.addParam("redirect", true);
 
@@ -81,7 +85,8 @@ const getSAMLAuthUrlSS = async (nextUrl: string | null): Promise<string> => {
 export const getAuthUrlSS = async (
   authType: AuthType,
   nextUrl: string | null,
-  idpHint?: string | null
+  idpHint?: string | null,
+  options?: { prompt?: string }
 ): Promise<string> => {
   // Returns the auth url for the given auth type
 
@@ -98,7 +103,7 @@ export const getAuthUrlSS = async (
       return await getSAMLAuthUrlSS(nextUrl);
     }
     case AuthType.OIDC: {
-      return await getOIDCAuthUrlSS(nextUrl, idpHint);
+      return await getOIDCAuthUrlSS(nextUrl, idpHint, options);
     }
   }
 };

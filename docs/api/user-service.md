@@ -1,10 +1,13 @@
 # User Service API
 
 **Service:** Auth, users, roles, permissions, settings, API keys, and user memories.
-**Base URL:** `http://kong:8000` (via Kong gateway) or `http://user-service:8090` (direct)
-**Auth:** JWT Bearer token (header or `access_token` cookie), except `/health` and `/api/auth/*` which are public.
+**Base URL:** `http://kong:8000/user-service` (via Kong gateway) or `http://user-service:8090` (direct)
+**Canonical API prefix:** `/api/v1`
+**Auth:** JWT Bearer token (header or `access_token` cookie), except `/api/v1/health` and selected `/api/v1/auth/*` endpoints which are public.
 
 Internal service-to-service calls use `X-Internal-Service-Token` header.
+Legacy `/api/*` and root health paths remain compatibility aliases during the
+migration.
 
 ---
 
@@ -12,29 +15,29 @@ Internal service-to-service calls use `X-Internal-Service-Token` header.
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET | `/health/` | Public | Simple health check `{"status": "healthy", "service": "user-service"}` |
-| GET | `/health/ready` | Public | Readiness check with DB ping |
+| GET | `/api/v1/health` | Public | Simple health check `{"status": "healthy", "service": "user-service"}` |
+| GET | `/api/v1/health/ready` | Public | Readiness check with DB ping |
 
 ---
 
 ## Authentication
 
-**Prefix:** `/api/auth`
+**Prefix:** `/api/v1/auth`
 
 Authentication supports three modes: OIDC (Keycloak browser redirect), Direct Access Grant (username/password), and external Keycloak broker (federated IdP).
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET | `/api/auth/type` | Public | Returns auth type (`oidc` or `basic`) and Keycloak config status |
-| POST | `/api/auth/login` | Public | Login with username/password (Keycloak Direct Access Grant). Sets cookies. |
-| POST | `/api/auth/external/login` | Public | Login via external Keycloak identity provider broker |
-| POST | `/api/auth/logout` | Public | Logout — clears cookies, triggers Keycloak backchannel logout |
-| POST | `/api/auth/refresh` | Public | Refresh tokens using `refresh_token` cookie |
-| GET | `/api/auth/oidc/authorize` | Public | Get Keycloak OIDC authorization URL (query: `redirect_uri`, `kc_idp_hint`) |
-| GET | `/api/auth/oidc/callback` | Public | Handle OIDC callback — exchanges code for tokens, upserts user |
-| GET | `/api/auth/me` | JWT | Get current user's full profile with preferences |
-| POST | `/api/auth/sync-users` | `user:manage` | Sync all users and roles from Keycloak to local database |
-| POST | `/api/auth/register` | Public | Register new user (currently raises ValueError — managed by Keycloak) |
+| GET | `/api/v1/auth/type` | Public | Returns auth type (`oidc` or `basic`) and Keycloak config status |
+| POST | `/api/v1/auth/login` | Public | Login with username/password (Keycloak Direct Access Grant). Sets cookies. |
+| POST | `/api/v1/auth/external/login` | Public | Login via external Keycloak identity provider broker |
+| POST | `/api/v1/auth/logout` | Public | Logout — clears cookies, triggers Keycloak backchannel logout |
+| POST | `/api/v1/auth/refresh` | Public | Refresh tokens using `refresh_token` cookie |
+| GET | `/api/v1/auth/oidc/authorize` | Public | Get Keycloak OIDC authorization URL (query: `redirect_uri`, `kc_idp_hint`, `prompt`) |
+| GET | `/api/v1/auth/oidc/callback` | Public | Handle OIDC callback — exchanges code for tokens, upserts user |
+| GET | `/api/v1/auth/me` | JWT | Get current user's full profile with preferences |
+| POST | `/api/v1/auth/sync-users` | `user:manage` | Sync all users and roles from Keycloak to local database |
+| POST | `/api/v1/auth/register` | Public | Register new user (currently raises ValueError — managed by Keycloak) |
 
 **Cookie-based auth:** Tokens stored in `access_token`, `refresh_token`, `id_token` HTTP-only cookies with `SameSite=Lax`.
 
@@ -80,17 +83,17 @@ Authentication supports three modes: OIDC (Keycloak browser redirect), Direct Ac
 
 ## Users — Internal endpoints
 
-**Prefix:** `/api/users/internal`
+**Prefix:** `/api/v1/internal/users`
 
 Used by other services (agent-service, rag-service) for service-to-service user lookups.
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| POST | `/api/users/internal/upsert-from-keycloak` | JWT / Internal | Create/update user from Keycloak OIDC profile |
-| GET | `/api/users/internal/by-keycloak-id/{keycloak_id}` | JWT / Internal | Get user by Keycloak subject ID |
-| PATCH | `/api/users/internal/users/{target_id}` | JWT / Internal | Update user profile |
-| GET | `/api/users/internal/{target_id}/permissions` | JWT / Internal | Get user's permissions |
-| POST | `/api/users/internal/authorize` | JWT / Internal | Check if user has a specific permission |
+| POST | `/api/v1/internal/users/upsert-from-keycloak` | JWT / Internal | Create/update user from Keycloak OIDC profile |
+| GET | `/api/v1/internal/users/by-keycloak-id/{keycloak_id}` | JWT / Internal | Get user by Keycloak subject ID |
+| PATCH | `/api/v1/internal/users/{target_id}` | JWT / Internal | Update user profile |
+| GET | `/api/v1/internal/users/{target_id}/permissions` | JWT / Internal | Get user's permissions |
+| POST | `/api/v1/internal/users/authorize` | JWT / Internal | Check if user has a specific permission |
 
 ---
 
@@ -108,15 +111,15 @@ Used by other services (agent-service, rag-service) for service-to-service user 
 
 ### Settings — Internal
 
-**Prefix:** `/api/internal/users`
+**Prefix:** `/api/v1/internal/users`
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET | `/api/internal/users/{target_id}/settings` | JWT / Internal | Get any user's settings |
-| PATCH | `/api/internal/users/{target_id}/settings` | JWT / Internal | Update any user's settings |
-| POST | `/api/internal/users/{target_id}/settings/prompt-shortcuts` | JWT / Internal | Create shortcut for any user |
-| PATCH | `/api/internal/users/{target_id}/settings/prompt-shortcuts/{shortcut_id}` | JWT / Internal | Update shortcut for any user |
-| DELETE | `/api/internal/users/{target_id}/settings/prompt-shortcuts/{shortcut_id}` | JWT / Internal | Delete shortcut for any user |
+| GET | `/api/v1/internal/users/{target_id}/settings` | JWT / Internal | Get any user's settings |
+| PATCH | `/api/v1/internal/users/{target_id}/settings` | JWT / Internal | Update any user's settings |
+| POST | `/api/v1/internal/users/{target_id}/settings/prompt-shortcuts` | JWT / Internal | Create shortcut for any user |
+| PATCH | `/api/v1/internal/users/{target_id}/settings/prompt-shortcuts/{shortcut_id}` | JWT / Internal | Update shortcut for any user |
+| DELETE | `/api/v1/internal/users/{target_id}/settings/prompt-shortcuts/{shortcut_id}` | JWT / Internal | Delete shortcut for any user |
 
 ---
 
@@ -137,18 +140,18 @@ User memories store facts about the user for agent recall (long-term memory).
 
 ### Memories — Internal
 
-**Prefix:** `/api/internal/users/{target_id}/memories` (also `/api/users/internal/users/{target_id}/memories`)
+**Prefix:** `/api/v1/internal/users/{target_id}/memories`
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET | `/api/internal/users/{target_id}/memories` | JWT / Internal | List any user's memories |
-| GET | `/api/internal/users/{target_id}/memories/recall` | JWT / Internal | Get memories for agent recall (content-only strings) |
-| POST | `/api/internal/users/{target_id}/memories` | JWT / Internal | Create memory for any user |
-| POST | `/api/internal/users/{target_id}/memories/bulk` | JWT / Internal | Bulk add facts (body: `{"contents": [...], "source?": "..."}`) |
-| GET | `/api/internal/users/{target_id}/memories/{memory_id}` | JWT / Internal | Get specific memory |
-| PATCH | `/api/internal/users/{target_id}/memories/{memory_id}` | JWT / Internal | Update memory |
-| DELETE | `/api/internal/users/{target_id}/memories/{memory_id}` | JWT / Internal | Delete memory — 204 |
-| DELETE | `/api/internal/users/{target_id}/memories` | JWT / Internal | Delete all memories for user |
+| GET | `/api/v1/internal/users/{target_id}/memories` | JWT / Internal | List any user's memories |
+| GET | `/api/v1/internal/users/{target_id}/memories/recall` | JWT / Internal | Get memories for agent recall (content-only strings) |
+| POST | `/api/v1/internal/users/{target_id}/memories` | JWT / Internal | Create memory for any user |
+| POST | `/api/v1/internal/users/{target_id}/memories/bulk` | JWT / Internal | Bulk add facts (body: `{"contents": [...], "source?": "..."}`) |
+| GET | `/api/v1/internal/users/{target_id}/memories/{memory_id}` | JWT / Internal | Get specific memory |
+| PATCH | `/api/v1/internal/users/{target_id}/memories/{memory_id}` | JWT / Internal | Update memory |
+| DELETE | `/api/v1/internal/users/{target_id}/memories/{memory_id}` | JWT / Internal | Delete memory — 204 |
+| DELETE | `/api/v1/internal/users/{target_id}/memories` | JWT / Internal | Delete all memories for user |
 
 ---
 

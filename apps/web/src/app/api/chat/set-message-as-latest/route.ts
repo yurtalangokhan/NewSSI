@@ -1,19 +1,36 @@
 import { getInternalUrl } from "@/lib/env.server";
-import { NextResponse } from 'next/server';
+import { buildServiceUrl } from "@/lib/api/gatewayRouting";
+import { NextResponse } from "next/server";
 
 const INTERNAL_URL = getInternalUrl();
 
 export async function PUT(request: Request) {
   try {
     const body = await request.text();
-    const response = await fetch(`${INTERNAL_URL}/api/chat/set-message-as-latest`, {
-      method: "PUT",
-      body,
-      headers: { "Content-Type": "application/json" }
-    });
+    const cookie = request.headers.get("cookie") || "";
+    const authorization = request.headers.get("authorization");
+    const response = await fetch(
+      buildServiceUrl(
+        INTERNAL_URL,
+        "agent",
+        "/api/chat/set-message-as-latest"
+      ).toString(),
+      {
+        method: "PUT",
+        body,
+        headers: {
+          "Content-Type": "application/json",
+          ...(cookie ? { Cookie: cookie } : {}),
+          ...(authorization ? { Authorization: authorization } : {}),
+        },
+      }
+    );
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error) {
-    return NextResponse.json({ error: "Failed to set message as latest" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to set message as latest" },
+      { status: 500 }
+    );
   }
 }

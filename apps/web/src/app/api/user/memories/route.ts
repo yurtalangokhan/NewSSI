@@ -1,4 +1,5 @@
 import { USER_SERVICE_URL } from "@/lib/constants";
+import { buildServiceUrl } from "@/lib/api/gatewayRouting";
 import { NextRequest, NextResponse } from "next/server";
 
 async function proxyToUserService(request: NextRequest, method: string) {
@@ -10,15 +11,19 @@ async function proxyToUserService(request: NextRequest, method: string) {
     const auth = request.headers.get("authorization");
     if (auth) headers["Authorization"] = auth;
 
-    const body = method === "GET" || method === "DELETE"
-      ? undefined
-      : await request.json();
+    const body =
+      method === "GET" || method === "DELETE"
+        ? undefined
+        : await request.json();
 
-    const url = new URL(request.url);
-    const searchParams = url.searchParams.toString();
-    const path = `/api/users/me/memories/${searchParams ? `?${searchParams}` : ""}`;
+    const target = buildServiceUrl(
+      USER_SERVICE_URL,
+      "user",
+      "/api/users/me/memories/"
+    );
+    target.search = new URL(request.url).search;
 
-    const response = await fetch(`${USER_SERVICE_URL}${path}`, {
+    const response = await fetch(target.toString(), {
       method,
       headers,
       body: body ? JSON.stringify(body) : undefined,
@@ -32,7 +37,10 @@ async function proxyToUserService(request: NextRequest, method: string) {
     return NextResponse.json(data, { status: response.status });
   } catch (error) {
     console.error("Failed to proxy memories request:", error);
-    return NextResponse.json({ error: "Failed to proxy memories request" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to proxy memories request" },
+      { status: 500 }
+    );
   }
 }
 

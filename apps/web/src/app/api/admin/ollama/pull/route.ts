@@ -1,4 +1,5 @@
 import { getInternalUrl } from "@/lib/env.server";
+import { buildServiceUrl } from "@/lib/api/gatewayRouting";
 import { NextRequest, NextResponse } from "next/server";
 
 const INTERNAL_URL = getInternalUrl();
@@ -13,11 +14,18 @@ export async function POST(request: NextRequest) {
     if (cookie) {
       headers["Cookie"] = cookie;
     }
-    const upstream = await fetch(`${INTERNAL_URL}/api/admin/ollama/pull`, {
-      method: "POST",
-      body,
-      headers,
-    });
+    const upstream = await fetch(
+      buildServiceUrl(
+        INTERNAL_URL,
+        "agent",
+        "/api/admin/ollama/pull"
+      ).toString(),
+      {
+        method: "POST",
+        body,
+        headers,
+      }
+    );
 
     if (!upstream.body) {
       return NextResponse.json({ error: "No body" }, { status: 500 });

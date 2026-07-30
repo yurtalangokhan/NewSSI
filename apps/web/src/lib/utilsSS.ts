@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { HOST_URL, INTERNAL_URL, USER_SERVICE_URL } from "./constants";
 import { processCookies } from "@/lib/userSS";
+import { buildServiceUrl } from "@/lib/api/gatewayRouting";
 
 export function buildClientUrl(path: string) {
   if (path.startsWith("/")) {
@@ -10,17 +11,11 @@ export function buildClientUrl(path: string) {
 }
 
 export function buildUrl(path: string) {
-  if (path.startsWith("/")) {
-    return `${INTERNAL_URL}${path}`;
-  }
-  return `${INTERNAL_URL}/${path}`;
+  return buildServiceUrl(INTERNAL_URL, "agent", path).toString();
 }
 
 export function buildUserServiceUrl(path: string) {
-  if (path.startsWith("/")) {
-    return `${USER_SERVICE_URL}${path}`;
-  }
-  return `${USER_SERVICE_URL}/${path}`;
+  return buildServiceUrl(USER_SERVICE_URL, "user", path).toString();
 }
 
 export class UrlBuilder {

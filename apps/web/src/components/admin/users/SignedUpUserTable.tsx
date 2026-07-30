@@ -110,15 +110,6 @@ export default function SignedUpUserTable({
     }
   }, [pageOfUsers, totalItems, onTotalItemsChange]);
 
-  if (error) {
-    return (
-      <ErrorCallout
-        errorTitle={t("admin.users.errorLoadingUsers")}
-        errorMsg={error?.message}
-      />
-    );
-  }
-
   const handlePopup = (message: string, type: "success" | "error") => {
     if (type === "success") {
       toast.success(message);
@@ -352,6 +343,15 @@ export default function SignedUpUserTable({
     );
   };
 
+  if (error) {
+    return (
+      <ErrorCallout
+        errorTitle={t("admin.users.errorLoadingUsers")}
+        errorMsg={error?.message}
+      />
+    );
+  }
+
   return (
     <>
       {renderFilters()}
@@ -515,7 +515,7 @@ function DynamicRoleFilterCheckboxes({
 }) {
   const { t } = useTranslation();
   const { data: roles } = useSWR<{ roles: { name: string }[] }>(
-    "/api/user-service/roles/",
+    "/api/user-service/roles",
     errorHandlingFetcher
   );
 

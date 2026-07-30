@@ -1,9 +1,17 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { buildServiceUrl } from "@/lib/api/gatewayRouting";
 
 const USER_SERVICE_URL =
   process.env.USER_SERVICE_URL || "http://localhost:8090";
 const REFRESH_TOKEN_EXPIRY_BUFFER_SECONDS = 30;
+const AUTH_COOKIE_NAMES = [
+  "fastapiusersauth",
+  "session",
+  "refresh_token",
+  "id_token",
+  "access_token",
+];
 
 export const config = {
   matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
@@ -105,6 +113,17 @@ function applySetCookieToRequestHeaders(
   );
 }
 
+function clearAuthCookies(response: NextResponse) {
+  AUTH_COOKIE_NAMES.forEach((cookieName) => {
+    response.cookies.set(cookieName, "", {
+      path: "/",
+      maxAge: 0,
+      httpOnly: true,
+      sameSite: "lax",
+    });
+  });
+}
+
 async function refreshAuthCookies(request: NextRequest) {
   const refreshToken = request.cookies.get("refresh_token")?.value;
   const accessToken = request.cookies.get("access_token")?.value;
@@ -113,16 +132,19 @@ async function refreshAuthCookies(request: NextRequest) {
     return null;
   }
 
-  const response = await fetch(`${USER_SERVICE_URL}/api/auth/refresh`, {
-    method: "POST",
-    headers: {
-      cookie: request.headers.get("cookie") || "",
-    },
-    cache: "no-store",
-  });
+  const response = await fetch(
+    buildServiceUrl(USER_SERVICE_URL, "user", "/api/auth/refresh").toString(),
+    {
+      method: "POST",
+      headers: {
+        cookie: request.headers.get("cookie") || "",
+      },
+      cache: "no-store",
+    }
+  );
 
   if (!response.ok) {
-    return null;
+    return [];
   }
 
   return getSetCookieHeaders(response);
@@ -131,6 +153,8 @@ async function refreshAuthCookies(request: NextRequest) {
 export async function proxy(request: NextRequest) {
   const requestHeaders = new Headers(request.headers);
   const refreshedCookies = await refreshAuthCookies(request);
+  const refreshFailed =
+    request.cookies.has("refresh_token") && refreshedCookies?.length === 0;
 
   if (refreshedCookies?.length) {
     applySetCookieToRequestHeaders(requestHeaders, refreshedCookies);
@@ -145,6 +169,9 @@ export async function proxy(request: NextRequest) {
   refreshedCookies?.forEach((cookie) => {
     response.headers.append("set-cookie", cookie);
   });
+  if (refreshFailed) {
+    clearAuthCookies(response);
+  }
 
   return response;
 }

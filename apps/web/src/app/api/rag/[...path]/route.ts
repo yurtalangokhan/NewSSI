@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCookieValue, refreshAuthCookies } from "@/lib/api/proxy";
+import { buildServiceUrl } from "@/lib/api/gatewayRouting";
 import { getRagServiceUrl } from "@/lib/env.server";
 
 // LANGCONNECT_URL is the canonical env var for the RAG service (see configs/.env)
@@ -21,7 +22,7 @@ async function proxyToRagService(
   try {
     const url = new URL(request.url);
     const targetPath = path.join("/");
-    const targetUrl = new URL(`${LANGCONNECT_URL}/${targetPath}`);
+    const targetUrl = buildServiceUrl(LANGCONNECT_URL, "rag", targetPath);
 
     // Forward query params
     url.searchParams.forEach((value, key) => {

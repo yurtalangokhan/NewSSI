@@ -7,6 +7,7 @@ import time
 import httpx
 
 from langconnect import config
+from langconnect.api_versioning import USER_SERVICE_API_PREFIX
 
 HTTP_OK = 200
 
@@ -56,7 +57,10 @@ class AuthorizationClient:
         try:
             async with httpx.AsyncClient(timeout=5.0) as client:
                 response = await client.post(
-                    f"{config.USER_SERVICE_URL.rstrip('/')}/api/users/internal/authorize",
+                    (
+                        f"{config.USER_SERVICE_URL.rstrip('/')}"
+                        f"{USER_SERVICE_API_PREFIX}/internal/users/authorize"
+                    ),
                     headers=headers,
                     json={"target_id": user_id, "permission": permission},
                 )
@@ -82,7 +86,10 @@ class AuthorizationClient:
         try:
             async with httpx.AsyncClient(timeout=5.0) as client:
                 response = await client.get(
-                    f"{config.USER_SERVICE_URL.rstrip('/')}/api/users/internal/{user_id}/permissions",
+                    (
+                        f"{config.USER_SERVICE_URL.rstrip('/')}"
+                        f"{USER_SERVICE_API_PREFIX}/internal/users/{user_id}/permissions"
+                    ),
                     headers=headers,
                 )
             if response.status_code != HTTP_OK:

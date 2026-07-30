@@ -70,6 +70,9 @@ import { AppBackgroundProvider } from "@/providers/AppBackgroundProvider";
 import { QueryControllerProvider } from "@/providers/QueryControllerProvider";
 import ToastProvider from "@/providers/ToastProvider";
 import I18nProvider from "@/providers/I18nProvider";
+import AppHealthBanner from "@/sections/AppHealthBanner";
+import { usePathname } from "next/navigation";
+import { shouldRenderAppShell } from "@/providers/appShellRouting";
 
 interface AppProviderProps {
   children: React.ReactNode;
@@ -86,27 +89,42 @@ export default function AppProvider({
   authTypeMetadata,
   folded,
 }: AppProviderProps) {
+  const pathname = usePathname();
+  const renderAppShell = shouldRenderAppShell(pathname);
+
+  const content = renderAppShell ? (
+    <AppBackgroundProvider>
+      <ProviderContextProvider>
+        <ModalProvider user={user}>
+          <AppSidebarProvider folded={!!folded}>
+            <AppModeProvider>
+              <QueryControllerProvider>
+                <ToastProvider>
+                  <AppHealthBanner />
+                  {children}
+                </ToastProvider>
+              </QueryControllerProvider>
+            </AppModeProvider>
+          </AppSidebarProvider>
+        </ModalProvider>
+      </ProviderContextProvider>
+    </AppBackgroundProvider>
+  ) : (
+    <ToastProvider>{children}</ToastProvider>
+  );
+
   return (
     <I18nProvider>
-      <SettingsProvider settings={settings}>
+      <SettingsProvider
+        settings={settings}
+        enableSearchRuntimeStatus={renderAppShell}
+      >
         <UserProvider
           settings={settings}
           user={user}
           authTypeMetadata={authTypeMetadata}
         >
-          <AppBackgroundProvider>
-            <ProviderContextProvider>
-              <ModalProvider user={user}>
-                <AppSidebarProvider folded={!!folded}>
-                  <AppModeProvider>
-                    <QueryControllerProvider>
-                      <ToastProvider>{children}</ToastProvider>
-                    </QueryControllerProvider>
-                  </AppModeProvider>
-                </AppSidebarProvider>
-              </ModalProvider>
-            </ProviderContextProvider>
-          </AppBackgroundProvider>
+          {content}
         </UserProvider>
       </SettingsProvider>
     </I18nProvider>

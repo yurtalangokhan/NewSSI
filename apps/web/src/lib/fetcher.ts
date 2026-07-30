@@ -31,10 +31,44 @@ interface AuthTypeMetadata {
   external_keycloak?: boolean;
 }
 
+interface AuthenticatedFetchOptions extends RequestInit {
+  redirectOnAuthError?: boolean;
+}
+
 let refreshTokenPromise: Promise<RefreshTokenResult> | null = null;
 let loginPathPromise: Promise<string> | null = null;
+let authRefreshFailed = false;
+const AUTH_REFRESH_FAILED_KEY = "auth_refresh_failed";
+
+function hasAuthRefreshFailed(): boolean {
+  if (typeof window === "undefined") {
+    return authRefreshFailed;
+  }
+
+  authRefreshFailed =
+    window.sessionStorage.getItem(AUTH_REFRESH_FAILED_KEY) === "true";
+  return authRefreshFailed;
+}
+
+function markAuthRefreshFailed() {
+  authRefreshFailed = true;
+  if (typeof window !== "undefined") {
+    window.sessionStorage.setItem(AUTH_REFRESH_FAILED_KEY, "true");
+  }
+}
+
+export function clearAuthRefreshFailed() {
+  authRefreshFailed = false;
+  if (typeof window !== "undefined") {
+    window.sessionStorage.removeItem(AUTH_REFRESH_FAILED_KEY);
+  }
+}
 
 async function tryRefreshToken(): Promise<RefreshTokenResult> {
+  if (hasAuthRefreshFailed()) {
+    return { ok: false, status: null };
+  }
+
   if (!refreshTokenPromise) {
     refreshTokenPromise = (async () => {
       try {
@@ -42,8 +76,14 @@ async function tryRefreshToken(): Promise<RefreshTokenResult> {
           method: "POST",
           credentials: "include",
         });
+        if (res.ok) {
+          clearAuthRefreshFailed();
+        } else {
+          markAuthRefreshFailed();
+        }
         return { ok: res.ok, status: res.status };
       } catch {
+        markAuthRefreshFailed();
         return { ok: false, status: null };
       } finally {
         refreshTokenPromise = null;
@@ -91,14 +131,40 @@ export async function getLoginRedirectUrl(): Promise<string> {
   }
 
   const nextUrl = `${window.location.pathname}${window.location.search}`;
-  return nextUrl === loginPath
-    ? loginPath
+  return window.location.pathname === loginPath
+    ? nextUrl
     : `${loginPath}?next=${encodeURIComponent(nextUrl)}`;
 }
 
+export async function getSessionExpiredRedirectUrl(): Promise<string> {
+  const loginRedirectUrl = await getLoginRedirectUrl();
+
+  if (typeof window === "undefined") {
+    return loginRedirectUrl;
+  }
+
+  const targetUrl = new URL(loginRedirectUrl, window.location.origin);
+  if (
+    window.location.pathname === targetUrl.pathname &&
+    window.location.search === targetUrl.search
+  ) {
+    return loginRedirectUrl;
+  }
+
+  return `/auth/logout?next=${encodeURIComponent(loginRedirectUrl)}`;
+}
+
 function navigateTo(url: string) {
+  const targetUrl = new URL(url, window.location.origin);
+  if (
+    window.location.pathname === targetUrl.pathname &&
+    window.location.search === targetUrl.search
+  ) {
+    return;
+  }
+
   try {
-    window.location.href = url;
+    window.location.href = targetUrl.toString();
   } catch {
     // jsdom cannot perform full browser navigation during tests.
   }
@@ -106,7 +172,7 @@ function navigateTo(url: string) {
 
 async function redirectToLogin(status: 401 | 403): Promise<never> {
   if (typeof window !== "undefined") {
-    navigateTo(await getLoginRedirectUrl());
+    navigateTo(await getSessionExpiredRedirectUrl());
   }
   throw new RedirectError(DEFAULT_AUTH_ERROR_MSG, status, null);
 }
@@ -124,28 +190,26 @@ async function handleAuthError(status: 401 | 403): Promise<never> {
 
 export async function authenticatedFetch(
   input: RequestInfo | URL,
-  init?: RequestInit
+  init?: AuthenticatedFetchOptions
 ): Promise<Response> {
+  const { redirectOnAuthError = true, ...fetchInit } = init ?? {};
   const execute = () =>
     fetch(input, {
       credentials: "include",
-      ...init,
+      ...fetchInit,
     });
 
   let res = await execute();
 
+  if (!redirectOnAuthError && (res.status === 401 || res.status === 403)) {
+    return res;
+  }
+
   if (res.status === 401) {
     const refreshed = await tryRefreshToken();
     if (!refreshed.ok) {
-      if (refreshed.status === 401) {
-        console.error("[Auth] Session expired, redirecting to login");
-        await redirectToLogin(401);
-      }
-
-      console.error(
-        "[Auth] No refresh token available, redirecting to error page"
-      );
-      await handleAuthError(401);
+      console.error("[Auth] Session expired, redirecting to login");
+      await redirectToLogin(401);
     }
 
     console.log("[Auth] Token refreshed successfully");
@@ -153,7 +217,7 @@ export async function authenticatedFetch(
 
     if (res.status === 401) {
       console.error("[Auth] Unauthorized after token refresh");
-      await handleAuthError(401);
+      await redirectToLogin(401);
     }
   }
 

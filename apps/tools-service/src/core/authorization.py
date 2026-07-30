@@ -6,6 +6,7 @@ import time
 
 import httpx
 
+from .api_versioning import USER_SERVICE_API_PREFIX
 from .settings import get_settings
 
 _PERMISSION_CACHE: dict[str, tuple[float, list[str]]] = {}
@@ -29,7 +30,10 @@ async def get_user_service_permissions(token: str, subject: str) -> list[str]:
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
             resp = await client.get(
-                f"{_user_service_base_url()}/api/users/internal/{subject}/permissions",
+                (
+                    f"{_user_service_base_url().rstrip('/')}"
+                    f"{USER_SERVICE_API_PREFIX}/internal/users/{subject}/permissions"
+                ),
                 headers={"Authorization": f"Bearer {token}"},
             )
         resp.raise_for_status()

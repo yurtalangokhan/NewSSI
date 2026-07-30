@@ -43,18 +43,18 @@ export default async function Page(props: PageProps) {
     return redirect("/app");
   }
 
-  const spAuthUrl = await getAuthUrlSS(authTypeMetadata.authType, nextUrl);
-  const externalAuthUrl = await getAuthUrlSS(
+  const spAuthUrl = await getAuthUrlSS(
     authTypeMetadata.authType,
     nextUrl,
-    authTypeMetadata.externalKeycloakAlias
+    null,
+    { prompt: "login" }
   );
 
   return (
     <div className="flex flex-col">
       <AuthFlowContainer authState="login">
         <LoginPage
-          authUrl={externalAuthUrl}
+          authUrl={null}
           spAuthUrl={spAuthUrl}
           authTypeMetadata={authTypeMetadata}
           nextUrl={nextUrl}

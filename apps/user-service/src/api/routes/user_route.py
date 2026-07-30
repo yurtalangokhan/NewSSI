@@ -23,6 +23,7 @@ from src.schema.users import (
 )
 
 router = APIRouter(prefix="/users", tags=["users"])
+internal_router = APIRouter(prefix="/internal/users", tags=["users"])
 
 
 @router.get("/me")
@@ -125,6 +126,7 @@ async def download_csv(
 
 
 # Internal endpoint for agent-service to sync users from Keycloak
+@internal_router.post("/upsert-from-keycloak")
 @router.post("/internal/upsert-from-keycloak")
 async def upsert_user_from_keycloak(
     payload: Annotated[KeycloakUpsertRequest, Body()],
@@ -142,7 +144,7 @@ async def upsert_user_from_keycloak(
 
 
 # Internal endpoint for agent-service to fetch user by Keycloak ID
-@router.get("/internal/by-keycloak-id/{keycloak_id}")
+@internal_router.get("/by-keycloak-id/{keycloak_id}")
 async def get_user_by_keycloak_id(
     keycloak_id: str,
     authenticated_user_id: Annotated[str, Depends(require_auth_or_internal_service_token)],
@@ -156,7 +158,7 @@ async def get_user_by_keycloak_id(
     return await get_user_controller().get_user_by_keycloak_id(keycloak_id)
 
 
-@router.patch("/internal/users/{target_id}")
+@internal_router.patch("/{target_id}")
 async def update_user_internal(
     target_id: str,
     updates: Annotated[InternalUserUpdateRequest, Body()],
@@ -172,7 +174,7 @@ async def update_user_internal(
     )
 
 
-@router.get("/internal/{target_id}/permissions")
+@internal_router.get("/{target_id}/permissions")
 async def get_user_permissions_internal(
     target_id: str,
     authenticated_user_id: Annotated[str, Depends(require_auth_or_internal_service_token)],
@@ -184,7 +186,7 @@ async def get_user_permissions_internal(
     return await get_user_controller().get_user_permissions(resolved_user_id)
 
 
-@router.post("/internal/authorize")
+@internal_router.post("/authorize")
 async def authorize_user_permission_internal(
     payload: Annotated[InternalAuthorizeRequest, Body()],
     authenticated_user_id: Annotated[str, Depends(require_auth_or_internal_service_token)],
