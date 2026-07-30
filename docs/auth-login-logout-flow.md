@@ -45,17 +45,23 @@ overrides runtime settings and `/api/auth/type` reports `externalKeycloak:false`
    sets `access_token` and `refresh_token` cookies. `id_token` is only set as an
    optional logout hint when it fits within browser-safe cookie size.
 
+The web authorize and callback route handlers call user-service through Kong's
+service-scoped `/user-service/api/v1/auth/...` path. The frontend's
+server-side URL helpers normalize older `/api/auth/...` inputs to that
+canonical gateway path.
+
 Unauthenticated `/api/auth/me` requests may return 401 before login. That is
 normal. After cookies are set, `/api/auth/me` should return 200.
 
 ## External Keycloak Login
 
-The `/auth/ee/login` page supports two SP-backed paths:
+The `/auth/ee/login` page supports the external Keycloak IdP form and one
+explicit SP Keycloak login action:
 
-- SSO button: browser-based SP OIDC authorize request with
-  `kc_idp_hint=<external alias>`.
 - Form login: server-side brokered password login through
   `POST /api/auth/external/login`.
+- SP Keycloak SSO button: browser-based SP OIDC authorize request with
+  `prompt=login`.
 
 The form login flow is:
 
@@ -78,7 +84,9 @@ browser's own Network request payload. That is expected for any password login
 flow. Do not log the payload in frontend, proxy, gateway, or backend logs, and
 do not run this flow over plain HTTP outside local development. The SSO button
 avoids sending the password to the web app because credentials are entered on
-the IdP origin instead.
+the SP Keycloak origin instead. It uses `prompt=login` so returning from an
+expired app session doesn't silently reuse an existing SP Keycloak browser SSO
+cookie.
 
 If SP Keycloak rejects the callback URI, the response can be a 400 HTML page
 from `/protocol/openid-connect/auth`. Add the rejected callback URI to the SP
@@ -95,12 +103,22 @@ to the external Keycloak client:
 When an API call receives 401, the web app attempts `POST /api/auth/refresh`.
 
 - If refresh succeeds, the original request is retried.
-- If refresh returns 401, the app session is expired and the browser is sent to
-  the login page selected by `/api/auth/type`.
-- If no refresh token is available, the browser is sent to the 401 error page.
+- If refresh fails, the app session is expired and the browser is sent through
+  `/auth/logout?next=<login-url>`. That route clears app cookies and, for OIDC,
+  redirects to Keycloak front-channel logout before returning to the login page
+  selected by `/api/auth/type`.
+- After a refresh failure, the web app suppresses repeated refresh attempts for
+  that browser tab until a login page is mounted. The login page clears that
+  marker so the first 401 after the next successful login can refresh normally.
 
 Seeing 401 for `/api/auth/refresh` or `/api/auth/me` before login is expected.
 It is only a bug if successful login does not turn those requests into 200.
+
+Refresh token expiry and the SP Keycloak browser SSO cookie are independent.
+Keycloak client session settings can expire the refresh token while the browser
+SSO session is still valid. The logout redirect above clears the app cookies
+and attempts to clear that browser SSO session so the next SP SSO login requires
+credentials again.
 
 ## Logout
 
@@ -113,16 +131,16 @@ Web `/auth/logout`:
    browser SSO cookie on the Keycloak origin is also cleared. `id_token_hint` is
    used only when the optional `id_token` cookie exists.
 
-If the SP Keycloak SSO cookie remains alive, pressing the SSO login button may
-log in again without asking for credentials. That is normal OIDC behavior and
-means Keycloak still has a browser session.
+If the SP Keycloak SSO cookie remains alive, an authorize request without
+`prompt=login` can log in again without asking for credentials. The web login
+page uses `prompt=login` for the SP SSO button to avoid that silent reuse.
 
 ## Useful Checks
 
 Check login mode:
 
 ```sh
-curl http://localhost:8000/api/auth/type
+curl http://localhost:8000/user-service/api/v1/auth/type
 ```
 
 Check whether the browser app sees the same mode:

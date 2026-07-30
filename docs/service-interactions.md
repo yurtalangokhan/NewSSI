@@ -91,7 +91,7 @@ runtime redirect and logout behavior consistent across those boundaries.
 ## Request lifecycle: chat message
 
 ```
-1. POST /api/chat/send-chat-message
+1. POST /agent-service/api/v1/chat/send-chat-message
    │
    ▼
 2. Kong routes to agent-service:8080
@@ -128,13 +128,13 @@ runtime redirect and logout behavior consistent across those boundaries.
 2. agent-service stores in MinIO, creates datasource
    │
    ▼
-3. POST /datasources/{id}/sync  →  Airbyte sync triggered
+3. POST /agent-service/api/v1/datasources/{id}/sync  →  Airbyte sync triggered
    │
    ▼
 4. Airbyte reads source → writes to destination
    │  (airbyte-destination-embedding)
    ▼
-5. POST /batch  →  agent-service ingest pipeline:
+5. POST /agent-service/api/v1/ingest/batch  →  agent-service ingest pipeline:
    │  ├─ Parse document (PDF, DOCX, CSV, etc.)
    │  ├─ Split into chunks (1000 chars, 200 overlap)
    │  ├─ Generate embeddings (Ollama/OpenAI)
@@ -142,14 +142,14 @@ runtime redirect and logout behavior consistent across those boundaries.
    │  └─ Return chunk IDs
    │
    ▼
-6. POST /collections/{id}/documents  →  rag-service (alternative path)
+6. POST /rag-service/api/v1/collections/{id}/documents  →  rag-service
    │  ├─ Parse and chunk same way
    │  ├─ Generate embeddings
    │  ├─ Upsert to Milvus
    │  └─ Store metadata in PostgreSQL
    │
    ▼
-7. User searches → POST /collections/{id}/documents/search
+7. User searches → POST /rag-service/api/v1/collections/{id}/documents/search
    │  ├─ Generate query embedding
    │  ├─ Cosine similarity search in Milvus
    │  └─ Return top-k chunks with scores
@@ -160,7 +160,7 @@ runtime redirect and logout behavior consistent across those boundaries.
 ## Request lifecycle: knowledge graph build
 
 ```
-1. POST /graph/build  { collection_id }
+1. POST /rag-service/api/v1/graph/build  { collection_id }
    │
    ▼
 2. rag-service starts background task:
@@ -234,10 +234,10 @@ runtime redirect and logout behavior consistent across those boundaries.
 ### External (through Kong)
 
 ```
-Browser → Kong:8000/api/chat/*      → agent-service:8080
-Browser → Kong:8000/api/users/*     → user-service:8090
-Browser → Kong:8000/api/rag/*       → rag-service:8083
-Browser → Kong:8000/api/mcp         → tools-service:8001
+Browser → Kong:8000/agent-service/api/v1/*  → agent-service:8080
+Browser → Kong:8000/user-service/api/v1/*   → user-service:8090
+Browser → Kong:8000/rag-service/api/v1/*    → rag-service:8083
+Browser → Kong:8000/tools-service/mcp       → tools-service:8003
 ```
 
 ### Internal (service-to-service)
@@ -245,10 +245,11 @@ Browser → Kong:8000/api/mcp         → tools-service:8001
 ```
 Service → http://kong:8000/internal/user-service  → user-service:8090
 Service → http://kong:8000/internal/rag-service   → rag-service:8083
-Service → http://kong:8000/internal/mcp           → tools-service:8001
+Service → http://kong:8000/internal/tools-service/mcp → tools-service:8003
 ```
 
 Internal calls use `X-Internal-Service-Token` header instead of JWT.
+`/internal/mcp` remains a legacy tools-service alias while callers migrate.
 
 ---
 
@@ -258,7 +259,7 @@ Internal calls use `X-Internal-Service-Token` header instead of JWT.
 
 ```
 Service A wants to check if User X has permission "chat:send":
-  GET /api/users/internal/{user_id}/permissions
+  GET /api/v1/internal/users/{user_id}/permissions
   Header: X-Internal-Service-Token
   ← Returns { "permissions": ["chat:send", "chat:read", ...] }
 ```
@@ -267,7 +268,7 @@ Service A wants to check if User X has permission "chat:send":
 
 ```
 Service A has a Keycloak subject ID, needs the local user:
-  GET /api/users/internal/by-keycloak-id/{keycloak_id}
+  GET /api/v1/internal/users/by-keycloak-id/{keycloak_id}
   Header: X-Internal-Service-Token
   ← Returns user dict with local user_id, email, role
 ```
@@ -276,7 +277,7 @@ Service A has a Keycloak subject ID, needs the local user:
 
 ```
 Agent needs to recall user facts:
-  GET /api/internal/users/{user_id}/memories/recall
+  GET /api/v1/internal/users/{user_id}/memories/recall
   Header: X-Internal-Service-Token
   ← Returns ["User likes Python", "User works at Acme Corp", ...]
 ```

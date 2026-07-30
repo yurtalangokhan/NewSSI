@@ -155,7 +155,14 @@
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `NEXT_PUBLIC_API_URL` | Kong base URL for API calls | `http://localhost:8000/api` |
+| `NEXT_PUBLIC_API_URL` | Browser-facing Kong base URL for compatibility API calls | `http://localhost:8000/api` |
+| `INTERNAL_URL` | Server-side agent-service gateway base | `http://localhost:8000/agent-service` |
+| `AGENT_SERVICE_URL` | Explicit server-side agent-service gateway base | `http://localhost:8000/agent-service` |
+| `USER_SERVICE_URL` | Server-side user-service gateway base | `http://localhost:8000/user-service` |
+| `LANGCONNECT_URL` | Server-side RAG gateway base | `http://localhost:8000/rag-service` |
+| `MCP_INTERNAL_URL` | Server-side internal MCP gateway URL | `http://localhost:8000/internal/tools-service/mcp` |
+| `MCP_SERVER_URL` | Browser-facing MCP gateway URL | `http://localhost:8000/tools-service/mcp` |
+| `TOOLS_SERVICE_URL` | Server-side tools-service MCP gateway URL | `http://localhost:8000/tools-service/mcp` |
 | `NEXT_PUBLIC_WS_URL` | WebSocket URL for streaming | `ws://localhost:8000` |
 | `NEXT_PUBLIC_KEYCLOAK_URL` | Keycloak external URL | `http://localhost:8080` |
 | `NEXT_PUBLIC_KEYCLOAK_REALM` | Keycloak realm | `agenticai` |

@@ -23,11 +23,11 @@ flowchart TB
   admin -.->|"admin access"| keycloak
   admin -.->|"admin access"| kong_api
   web -->|"API calls via rewrite/proxy"| kong_api
-  kong_api -->|"/api/users (JWT)"| user_svc
-  kong_api -->|"/api/agents (JWT)"| agent_svc
-  kong_api -->|"/api/rag (JWT)"| rag_svc
-  kong_api -->|"/api/mcp (JWT)"| tools_svc
-  kong_api -->|"/api/auth (public)"| keycloak
+  kong_api -->|"/user-service/api/v1 (JWT)"| user_svc
+  kong_api -->|"/agent-service/api/v1 (JWT)"| agent_svc
+  kong_api -->|"/rag-service/api/v1 (JWT)"| rag_svc
+  kong_api -->|"/tools-service/mcp (JWT)"| tools_svc
+  kong_api -->|"/user-service/api/v1/auth (public subset)"| keycloak
 
   user_svc -->|"asyncpg"| postgres
   agent_svc -->|"asyncpg"| postgres
@@ -43,18 +43,18 @@ flowchart TB
   nextjs["Web frontend: Next.js 16 - TypeScript - App Router, SSR, client components"]
   opal["Web frontend: @onyx/opal lib - TypeScript - Shared components, layouts, icons"]
 
-  user_api["User Service: FastAPI routes - Python 3.11 - /api/users, /api/auth"]
+  user_api["User Service: FastAPI routes - Python 3.11 - /api/v1/users, /api/v1/auth"]
   user_ctrl["User Service: Controllers - Python 3.11 - Orchestration, error translation"]
   user_logic["User Service: Services - Python 3.11 - Business logic"]
   user_repo["User Service: Repositories - Python 3.11 - SQLAlchemy async + Alembic"]
 
-  agent_api["Agent Service: FastAPI routes - Python 3.11 - /api/chat, /api/agents"]
+  agent_api["Agent Service: FastAPI routes - Python 3.11 - /api/v1/chat, /api/v1/agents"]
   agent_ctrl["Agent Service: Controllers - Python 3.11 - Orchestration"]
   agent_logic["Agent Service: Services - Python 3.11 - LangGraph agents"]
   agent_repo["Agent Service: Repositories - Python 3.11 - LangGraph checkpoint stores"]
   streamlit["Agent Service: Streamlit UI - Python 3.11 - Dev UI for agent debugging"]
 
-  rag_api["RAG Service: FastAPI routes - Python 3.11 - /api/collections, /api/documents"]
+  rag_api["RAG Service: FastAPI routes - Python 3.11 - /api/v1/collections, /api/v1/documents"]
   rag_logic["RAG Service: Services - Python 3.11 - Document processing, graph RAG"]
   rag_db["RAG Service: Database layer - Python 3.11 - pgvector + Neo4j + Milvus"]
 

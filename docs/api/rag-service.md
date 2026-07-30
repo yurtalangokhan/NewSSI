@@ -1,10 +1,13 @@
 # RAG Service (LangConnect) API
 
 **Service:** RAG (Retrieval-Augmented Generation) — vector search, document processing, and knowledge graphs.
-**Base URL:** `http://kong:8000` (via Kong, path `/api/rag/*`) or `http://rag-service:8083` (direct)
-**Auth:** JWT Bearer token, API Key, or Internal Service Token. `/health` is public.
+**Base URL:** `http://kong:8000/rag-service` (via Kong) or `http://rag-service:8083` (direct)
+**Canonical API prefix:** `/api/v1`
+**Auth:** JWT Bearer token, API Key, or Internal Service Token. `/api/v1/health` and `/api/v1/graph/health` are public.
 
 Permission checks call user-service for fine-grained authorization (cached 30s by default).
+Legacy `/api/rag/*` and root RAG paths remain compatibility aliases during the
+migration.
 
 ---
 
@@ -12,7 +15,7 @@ Permission checks call user-service for fine-grained authorization (cached 30s b
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET | `/health` | Public | `{"status": "ok"}` |
+| GET | `/api/v1/health` | Public | `{"status": "ok"}` |
 
 ---
 
@@ -110,7 +113,7 @@ The graph RAG subsystem builds knowledge graphs from vector collections using LL
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET | `/graph/health` | Public | Neo4j connectivity check |
+| GET | `/api/v1/graph/health` | Public | Neo4j connectivity check |
 
 ---
 

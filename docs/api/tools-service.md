@@ -1,7 +1,7 @@
 # Tools Service (MCP Server) API
 
 **Service:** MCP (Model Context Protocol) tool server — code execution, file operations, git, search, Docker, and more.
-**Base URL:** `http://kong:8000/api/mcp` (via Kong, JWT required) or `http://tools-service:8001/mcp` (direct, Docker: 8003)
+**Base URL:** `http://kong:8000/tools-service/mcp` (via Kong, JWT required) or `http://tools-service:8003/mcp` (direct)
 **Auth:** 3-tier — JWT (Keycloak) > Internal Token > API Key. All tools require `tool:execute` scope.
 
 ---
@@ -9,11 +9,17 @@
 ## Transport
 
 The service uses **FastMCP HTTP transport**. The MCP protocol endpoint is at `/mcp`.
+Kong forwards `/tools-service/mcp` to that transport. Internal callers use
+`/internal/tools-service/mcp`; `/internal/mcp` remains a legacy alias.
+
+`GET /tools-service/health` is public through Kong and forwards to the
+FastMCP custom `/health` route.
 
 | Endpoint | Method | Auth | Description |
 |----------|--------|------|-------------|
 | `GET /mcp` | GET | Bearer token | MCP discovery / SSE connection |
 | `POST /mcp` | POST | Bearer token | MCP JSON-RPC (list tools, execute tool, etc.) |
+| `GET /health` | GET | Public | Health check `{"status": "ok"}` |
 
 ---
 

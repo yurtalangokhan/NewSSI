@@ -1,10 +1,13 @@
 # Agent Service API
 
 **Service:** AI agent orchestration built on LangGraph, FastAPI, and Streamlit.
-**Base URL:** `http://kong:8000` (via Kong gateway) or `http://agent-service:8080` (direct)
-**Auth:** JWT Bearer token (except `/health`). Internal calls use `X-Internal-Service-Token`.
+**Base URL:** `http://kong:8000/agent-service` (via Kong gateway) or `http://agent-service:8080` (direct)
+**Canonical API prefix:** `/api/v1`
+**Auth:** JWT Bearer token (except `/api/v1/health` and `/api/v1/auth/health`). Internal calls use `X-Internal-Service-Token`.
 
 Permissions are checked per-endpoint via `require_permission("<entity>:<action>")`.
+Legacy root and `/api/*` paths remain compatibility aliases during the
+migration.
 
 ---
 
@@ -12,8 +15,8 @@ Permissions are checked per-endpoint via `require_permission("<entity>:<action>"
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET | `/health` | Public | Health check (includes Langfuse status) |
-| GET | `/api/health` | Public | API health check |
+| GET | `/api/v1/health` | Public | Health check (includes Langfuse status) |
+| GET | `/api/v1/auth/health` | Public | Auth controller health check |
 
 ---
 
@@ -24,7 +27,7 @@ Permissions are checked per-endpoint via `require_permission("<entity>:<action>"
 | GET | `/me` | user auth | Get current user data from token |
 | GET | `/settings` | user auth | Get user settings (auto_scroll, app status, deep_research_enabled) |
 | GET | `/enterprise-settings` | user auth | Get enterprise settings (app name, custom logo) |
-| GET | `/health` | public | Health check `{"status": "ok"}` |
+| GET | `/api/v1/auth/health` | public | Health check `{"status": "ok"}` |
 | GET | `/api/admin/mcp/servers` | user auth | List MCP servers (built-in tools server) |
 
 ---
