@@ -60,11 +60,16 @@ export function ClientLayout({
   const pathname = usePathname();
   const router = useRouter();
   const settings = useSettingsContext();
-  const { hasAllPermissions, isPermissionsLoading } = useUser();
+  const { hasAllPermissions, isAdmin, isPermissionsLoading, permissionsError } =
+    useUser();
   const routeConfig = getAdminRouteConfigForPathname(pathname);
   const requiredPermissions = routeConfig?.requiredPermissions ?? [];
+  const hasRoutePermissions =
+    requiredPermissions.length === 0 || hasAllPermissions(requiredPermissions);
+  const canUseAdminRoleFallback =
+    Boolean(permissionsError) && isAdmin && requiredPermissions.length > 0;
   const canViewRoute =
-    isPermissionsLoading || hasAllPermissions(requiredPermissions);
+    isPermissionsLoading || hasRoutePermissions || canUseAdminRoleFallback;
 
   useEffect(() => {
     if (!isPermissionsLoading && !canViewRoute) {

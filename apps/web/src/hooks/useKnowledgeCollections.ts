@@ -27,7 +27,9 @@ export function useKnowledgeCollections(enabled: boolean): {
     let cancelled = false;
     setIsLoading(true);
 
-    fetch("/api/datasources/knowledge-selector")
+    fetch(`/api/datasources/knowledge-selector?ts=${Date.now()}`, {
+      cache: "no-store",
+    })
       .then((r) => r.json())
       .then((data: KnowledgeCollections) => {
         if (!cancelled) setCollections(data);

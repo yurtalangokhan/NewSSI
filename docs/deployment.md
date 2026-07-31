@@ -39,6 +39,7 @@ make stack-up
 
 # 3. Verify everything is running
 curl http://localhost:8000/user-service/health
+curl http://localhost:8000/user-service/health/ready
 curl http://localhost:8000/agent-service/health
 curl http://localhost:8000/rag-service/health
 curl http://localhost:8000/tools-service/health
@@ -189,6 +190,7 @@ docker compose --env-file configs/.env -f configs/docker-compose-prod.yml up -d
 | Endpoint | Service | Expected response |
 |----------|---------|------------------|
 | `GET /api/v1/health` | user-service | `{"status": "healthy", "service": "user-service"}` |
+| `GET /api/v1/health/ready` | user-service | DB readiness status |
 | `GET /api/v1/health` | agent-service | `{"status": "ok"}` |
 | `GET /api/v1/health` | rag-service | `{"status": "ok"}` |
 | `GET /api/v1/graph/health` | rag-service (Neo4j) | `{"status": "ok", "service": "neo4j"}` |
@@ -197,8 +199,13 @@ docker compose --env-file configs/.env -f configs/docker-compose-prod.yml up -d
 Via Kong:
 ```sh
 curl http://localhost:8000/user-service/health
+curl http://localhost:8000/user-service/health/ready
+curl http://localhost:8000/user-service/api/v1/health
+curl http://localhost:8000/user-service/api/v1/health/ready
 curl http://localhost:8000/agent-service/health
+curl http://localhost:8000/agent-service/api/v1/health
 curl http://localhost:8000/rag-service/health
+curl http://localhost:8000/rag-service/api/v1/health
 curl http://localhost:8000/tools-service/health
 ```
 

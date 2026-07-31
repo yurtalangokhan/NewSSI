@@ -250,13 +250,37 @@ class KongGatewayContractTests(unittest.TestCase):
                 "__USER_SERVICE_UPSTREAM_URL__",
                 "/api/v1/health",
             ),
+            "/user-service/api/v1/health": (
+                "__USER_SERVICE_UPSTREAM_URL__",
+                "/api/v1/health",
+            ),
+            "/user-service/health/ready": (
+                "__USER_SERVICE_UPSTREAM_URL__",
+                "/api/v1/health/ready",
+            ),
+            "/user-service/api/v1/health/ready": (
+                "__USER_SERVICE_UPSTREAM_URL__",
+                "/api/v1/health/ready",
+            ),
             "/agent-service/health": (
+                "__AGENT_SERVICE_UPSTREAM_URL__",
+                "/api/v1/health",
+            ),
+            "/agent-service/api/v1/health": (
                 "__AGENT_SERVICE_UPSTREAM_URL__",
                 "/api/v1/health",
             ),
             "/rag-service/health": (
                 "__RAG_SERVICE_UPSTREAM_URL__",
                 "/api/v1/health",
+            ),
+            "/rag-service/api/v1/health": (
+                "__RAG_SERVICE_UPSTREAM_URL__",
+                "/api/v1/health",
+            ),
+            "/tools-service/health": (
+                "__TOOLS_SERVICE_UPSTREAM_URL__",
+                "/health",
             ),
         }
 
@@ -275,10 +299,22 @@ class KongGatewayContractTests(unittest.TestCase):
 
     def test_service_scoped_business_routes_are_protected(self) -> None:
         expected_paths = {
-            "/user-service": ("user-service", "__USER_SERVICE_UPSTREAM_URL__"),
-            "/agent-service": ("agent-service", "__AGENT_SERVICE_UPSTREAM_URL__"),
-            "/rag-service": ("rag-service", "__RAG_SERVICE_UPSTREAM_URL__"),
-            "/tools-service": ("tools-service-mcp", "__TOOLS_SERVICE_UPSTREAM_URL__"),
+            "/user-service/api/v1": (
+                "user-service",
+                "__USER_SERVICE_UPSTREAM_URL__/api/v1",
+            ),
+            "/agent-service/api/v1": (
+                "agent-service",
+                "__AGENT_SERVICE_UPSTREAM_URL__/api/v1",
+            ),
+            "/rag-service/api/v1": (
+                "rag-service",
+                "__RAG_SERVICE_UPSTREAM_URL__/api/v1",
+            ),
+            "/tools-service/mcp": (
+                "tools-service-mcp",
+                "__TOOLS_SERVICE_UPSTREAM_URL__/mcp",
+            ),
         }
 
         for gateway_path, (service_name, service_url) in expected_paths.items():
@@ -291,6 +327,22 @@ class KongGatewayContractTests(unittest.TestCase):
                 self.assertTrue(route["strip_path"])
                 self.assertTrue(_has_jwt_plugin(route))
                 self.assertIsNone(route.get("methods"))
+
+    def test_gateway_does_not_publish_unversioned_service_roots(self) -> None:
+        unversioned_roots = {
+            "/user-service",
+            "/agent-service",
+            "/rag-service",
+            "/tools-service",
+        }
+
+        leaked = {
+            path
+            for route in _routes_by_name(self.config).values()
+            for path in route.get("paths", [])
+            if path in unversioned_roots
+        }
+        self.assertEqual(set(), leaked)
 
     def test_service_scoped_public_auth_and_dependency_health_routes_are_public(self) -> None:
         expected_routes = {

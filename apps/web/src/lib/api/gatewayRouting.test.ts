@@ -10,6 +10,12 @@ describe("gateway service routing", () => {
     );
   });
 
+  it("maps legacy agent MCP helper paths through the proxy resource", () => {
+    expect(canonicalServicePath("agent", "/mcp/tools-builtin")).toBe(
+      "/api/v1/proxy/mcp/tools-builtin"
+    );
+  });
+
   it("adds service scope when the base URL points at Kong", () => {
     expect(
       buildServiceUrl(

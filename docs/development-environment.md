@@ -113,8 +113,13 @@ Kong-routed checks:
 
 ```sh
 curl http://localhost:8000/user-service/health
+curl http://localhost:8000/user-service/health/ready
+curl http://localhost:8000/user-service/api/v1/health
+curl http://localhost:8000/user-service/api/v1/health/ready
 curl http://localhost:8000/agent-service/health
+curl http://localhost:8000/agent-service/api/v1/health
 curl http://localhost:8000/rag-service/health
+curl http://localhost:8000/rag-service/api/v1/health
 curl http://localhost:8000/tools-service/health
 ```
 

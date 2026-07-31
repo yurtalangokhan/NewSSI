@@ -51,6 +51,10 @@ export function canonicalServicePath(
     return normalizedPath.startsWith("/mcp") ? normalizedPath : "/mcp";
   }
 
+  if (service === "agent" && normalizedPath.startsWith("/mcp/")) {
+    return `/api/v1/proxy${normalizedPath}`;
+  }
+
   if (normalizedPath.startsWith("/api/v1/")) {
     return normalizedPath;
   }

@@ -184,6 +184,8 @@ export async function proxyToBackend(
     });
 
     const requestCookie = request.headers.get("cookie") || "";
+    const isAuthRefreshRequest =
+      pathname === "/api/auth/refresh" || pathname === "/api/v1/auth/refresh";
     let body: BodyInit | undefined;
     if (["POST", "PUT", "PATCH"].includes(method)) {
       body = await request.arrayBuffer();
@@ -199,11 +201,14 @@ export async function proxyToBackend(
       };
 
       const authorization = request.headers.get("authorization");
-      if (authorization && !accessTokenOverride) {
+      if (authorization && !accessTokenOverride && !isAuthRefreshRequest) {
         headers["Authorization"] = authorization;
       } else {
         const cookieAccessToken =
-          accessTokenOverride || getCookieValue(cookieHeader, "access_token");
+          accessTokenOverride ||
+          (isAuthRefreshRequest
+            ? null
+            : getCookieValue(cookieHeader, "access_token"));
         if (cookieAccessToken) {
           headers["Authorization"] = `Bearer ${cookieAccessToken}`;
         }
@@ -228,7 +233,7 @@ export async function proxyToBackend(
     };
 
     const initialRefresh =
-      pathname !== "/api/auth/refresh" &&
+      !isAuthRefreshRequest &&
       !getCookieValue(requestCookie, "access_token") &&
       getCookieValue(requestCookie, "refresh_token")
         ? await refreshAuthCookies(requestCookie)
@@ -280,7 +285,7 @@ export async function proxyToBackend(
     });
 
     if (
-      pathname === "/api/auth/refresh" &&
+      isAuthRefreshRequest &&
       (response.status === 400 || response.status === 401)
     ) {
       clearAuthCookies(request, result);

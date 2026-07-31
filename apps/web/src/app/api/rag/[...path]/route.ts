@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCookieValue, refreshAuthCookies } from "@/lib/api/proxy";
-import { buildServiceUrl } from "@/lib/api/gatewayRouting";
+import { proxyToBackend } from "@/lib/api/proxy";
 import { getRagServiceUrl } from "@/lib/env.server";
 
 // LANGCONNECT_URL is the canonical env var for the RAG service (see configs/.env)
 const LANGCONNECT_URL = getRagServiceUrl();
+type ProxyMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
 /**
  * Proxy to LangConnect RAG service.
@@ -17,121 +17,48 @@ const LANGCONNECT_URL = getRagServiceUrl();
  */
 async function proxyToRagService(
   request: NextRequest,
-  path: string[]
+  path: string[],
+  method: ProxyMethod
 ): Promise<NextResponse> {
-  try {
-    const url = new URL(request.url);
-    const targetPath = path.join("/");
-    const targetUrl = buildServiceUrl(LANGCONNECT_URL, "rag", targetPath);
-
-    // Forward query params
-    url.searchParams.forEach((value, key) => {
-      targetUrl.searchParams.append(key, value);
-    });
-
-    const requestCookie = request.headers.get("cookie") || "";
-    const hasBody = request.method !== "GET" && request.method !== "HEAD";
-    const requestBody = hasBody ? await request.arrayBuffer() : undefined;
-
-    const buildHeaders = (
-      cookieHeader: string,
-      accessTokenOverride?: string | null
-    ) => {
-      // Forward all headers as-is so multipart boundary is preserved.
-      // Do NOT override Content-Type here.
-      const forwardedHeaders = new Headers(request.headers);
-      forwardedHeaders.delete("host");
-      forwardedHeaders.delete("content-length");
-
-      const accessToken =
-        accessTokenOverride || getCookieValue(cookieHeader, "access_token");
-      if (accessToken && !request.headers.get("authorization")) {
-        forwardedHeaders.set("authorization", `Bearer ${accessToken}`);
-      }
-      if (cookieHeader) {
-        forwardedHeaders.set("cookie", cookieHeader);
-      }
-
-      return forwardedHeaders;
-    };
-
-    const execute = (
-      cookieHeader: string,
-      accessTokenOverride?: string | null
-    ) =>
-      fetch(targetUrl.toString(), {
-        method: request.method,
-        headers: buildHeaders(cookieHeader, accessTokenOverride),
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        ...(hasBody ? ({ body: requestBody, duplex: "half" } as any) : {}),
-      });
-
-    let response = await execute(requestCookie);
-    const refreshed =
-      response.status === 401 ? await refreshAuthCookies(requestCookie) : null;
-    if (refreshed?.accessToken) {
-      response = await execute(refreshed.cookieHeader, refreshed.accessToken);
-    }
-
-    // Return 204 with no body
-    if (response.status === 204) {
-      const proxyResponse = new NextResponse(null, { status: 204 });
-      for (const cookie of refreshed?.setCookies ?? []) {
-        proxyResponse.headers.append("set-cookie", cookie);
-      }
-      return proxyResponse;
-    }
-
-    // Stream the response body back with the original status/headers
-    const responseHeaders = new Headers(response.headers);
-    const proxyResponse = new NextResponse(response.body, {
-      status: response.status,
-      headers: responseHeaders,
-    });
-    for (const cookie of refreshed?.setCookies ?? []) {
-      proxyResponse.headers.append("set-cookie", cookie);
-    }
-    return proxyResponse;
-  } catch (error) {
-    console.error("RAG service proxy error:", error);
-    return NextResponse.json(
-      { error: "RAG service proxy error" },
-      { status: 500 }
-    );
-  }
+  return proxyToBackend(request, `/${path.join("/")}`, {
+    method,
+    backendUrl: LANGCONNECT_URL,
+    backendService: "rag",
+    refreshOnUnauthorized: false,
+  });
 }
 
 export async function GET(
   request: NextRequest,
   props: { params: Promise<{ path: string[] }> }
 ) {
-  return proxyToRagService(request, (await props.params).path);
+  return proxyToRagService(request, (await props.params).path, "GET");
 }
 
 export async function POST(
   request: NextRequest,
   props: { params: Promise<{ path: string[] }> }
 ) {
-  return proxyToRagService(request, (await props.params).path);
+  return proxyToRagService(request, (await props.params).path, "POST");
 }
 
 export async function PUT(
   request: NextRequest,
   props: { params: Promise<{ path: string[] }> }
 ) {
-  return proxyToRagService(request, (await props.params).path);
+  return proxyToRagService(request, (await props.params).path, "PUT");
 }
 
 export async function PATCH(
   request: NextRequest,
   props: { params: Promise<{ path: string[] }> }
 ) {
-  return proxyToRagService(request, (await props.params).path);
+  return proxyToRagService(request, (await props.params).path, "PATCH");
 }
 
 export async function DELETE(
   request: NextRequest,
   props: { params: Promise<{ path: string[] }> }
 ) {
-  return proxyToRagService(request, (await props.params).path);
+  return proxyToRagService(request, (await props.params).path, "DELETE");
 }

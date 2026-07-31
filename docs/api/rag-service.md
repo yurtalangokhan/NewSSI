@@ -6,8 +6,8 @@
 **Auth:** JWT Bearer token, API Key, or Internal Service Token. `/api/v1/health` and `/api/v1/graph/health` are public.
 
 Permission checks call user-service for fine-grained authorization (cached 30s by default).
-Legacy `/api/rag/*` and root RAG paths remain compatibility aliases during the
-migration.
+Compatibility aliases may remain during migration. New integrations must use
+the canonical `/api/v1` paths documented here.
 
 ---
 
@@ -23,11 +23,12 @@ migration.
 
 | Method | Path | Permission | Description |
 |--------|------|------------|-------------|
-| POST | `/collections` | `collection:create` | Create vector collection (body: `name`, `metadata?`) |
-| GET | `/collections` | `collection:list` | List all collections |
-| GET | `/collections/{collection_id}` | `collection:read` | Get collection details |
-| PATCH | `/collections/{collection_id}` | `collection:update` | Update collection (name, metadata). Blocked for connector-managed or during graph builds. |
-| DELETE | `/collections/{collection_id}` | `collection:delete` | Delete collection. Blocked for connector-managed or during graph builds. |
+| POST | `/api/v1/collections` | `collection:create` | Create vector collection (body: `name`, `metadata?`) |
+| GET | `/api/v1/collections` | `collection:list` | List all collections |
+| GET | `/api/v1/collections/{collection_id}` | `collection:read` | Get collection details |
+| PATCH | `/api/v1/collections/{collection_id}` | `collection:update` | Update collection (name, metadata). Blocked for connector-managed or during graph builds. |
+| DELETE | `/api/v1/collections/{collection_id}` | `collection:delete` | Delete collection. Blocked for connector-managed or during graph builds. |
+| DELETE | `/api/v1/collections/{collection_id}/force` | `collection:delete` | Delete a collection for admin cleanup. Bypasses connector-managed read-only checks, but remains blocked during graph builds. |
 
 ---
 
@@ -35,27 +36,27 @@ migration.
 
 | Method | Path | Permission | Description |
 |--------|------|------------|-------------|
-| GET | `/datasources/knowledge-selector` | `datasource:read` | Categorized knowledge sources for agent editor (vector + graph collections) |
+| GET | `/api/v1/datasources/knowledge-selector` | `datasource:read` | Categorized knowledge sources for the agent editor. Returns vector collections visible to the current user and graph collections that still have live collection metadata. |
 
 ---
 
 ## Documents
 
-**Prefix:** `/collections/{collection_id}/documents`
+**Prefix:** `/api/v1/collections/{collection_id}/documents`
 
 | Method | Path | Permission | Description |
 |--------|------|------------|-------------|
-| POST | `/collections/{collection_id}/documents` | `document:create` | Upload files (multipart). Max 200 MB per file. Supported: PDF, DOCX, PPTX, CSV, XLSX, TXT, MD, HTML, JSON, RTF, EML. Chunked at 1000 chars, 200 overlap, upserted to Milvus. |
-| GET | `/collections/{collection_id}/documents` | `document:read` | List documents (query: `limit` default 10, `offset` default 0) |
-| GET | `/collections/{collection_id}/documents/{document_id}/chunks` | `document:read` | Get all chunks + stats for a document |
-| DELETE | `/collections/{collection_id}/documents/{document_id}` | `document:delete` | Delete document and all its chunks. Blocked for connector-managed or during graph builds. |
-| POST | `/collections/{collection_id}/documents/search` | `document:search` | Semantic search by vector similarity (body: `query`, `limit?`, `filter?`) |
+| POST | `/api/v1/collections/{collection_id}/documents` | `document:create` | Upload files (multipart). Max 200 MB per file. Supported: PDF, DOCX, PPTX, CSV, XLSX, TXT, MD, HTML, JSON, RTF, EML. Chunked at 1000 chars, 200 overlap, upserted to Milvus. |
+| GET | `/api/v1/collections/{collection_id}/documents` | `document:read` | List documents (query: `limit` default 10, `offset` default 0) |
+| GET | `/api/v1/collections/{collection_id}/documents/{document_id}/chunks` | `document:read` | Get all chunks + stats for a document |
+| DELETE | `/api/v1/collections/{collection_id}/documents/{document_id}` | `document:delete` | Delete document and all its chunks. Blocked for connector-managed or during graph builds. |
+| POST | `/api/v1/collections/{collection_id}/documents/search` | `document:search` | Semantic search by vector similarity (body: `query`, `limit?`, `filter?`) |
 
 ---
 
 ## Graph RAG
 
-**Prefix:** `/graph`
+**Prefix:** `/api/v1/graph`
 
 The graph RAG subsystem builds knowledge graphs from vector collections using LLM-based entity extraction (Ollama or OpenAI), stores entities and relationships in Neo4j.
 
@@ -63,51 +64,51 @@ The graph RAG subsystem builds knowledge graphs from vector collections using LL
 
 | Method | Path | Permission | Description |
 |--------|------|------------|-------------|
-| POST | `/graph/build` | `graph:build` | Trigger knowledge graph build from a collection (runs in background). Body: `collection_id`, `entity_types?`, `relationship_types?` |
-| GET | `/graph/build/{collection_id}/status` | `graph:read` | Get build progress (pending/extracting/building/completed/failed) |
-| POST | `/graph/build/{collection_id}/pause` | `graph:build` | Pause running build |
-| POST | `/graph/build/{collection_id}/resume` | `graph:build` | Resume paused build |
-| POST | `/graph/build/{collection_id}/stop` | `graph:build` | Cancel running build |
+| POST | `/api/v1/graph/build` | `graph:build` | Trigger knowledge graph build from a collection (runs in background). Body: `collection_id`, `entity_types?`, `relationship_types?` |
+| GET | `/api/v1/graph/build/{collection_id}/status` | `graph:read` | Get build progress (pending/extracting/building/completed/failed) |
+| POST | `/api/v1/graph/build/{collection_id}/pause` | `graph:build` | Pause running build |
+| POST | `/api/v1/graph/build/{collection_id}/resume` | `graph:build` | Resume paused build |
+| POST | `/api/v1/graph/build/{collection_id}/stop` | `graph:build` | Cancel running build |
 
 ### Graph data
 
 | Method | Path | Permission | Description |
 |--------|------|------------|-------------|
-| GET | `/graph/collections` | `graph:read` | List collection IDs that have a knowledge graph |
-| GET | `/graph/collections/{collection_id}/nodes` | `graph:read` | List graph nodes (query: `limit`, `offset`, `label`) |
-| GET | `/graph/collections/{collection_id}/edges` | `graph:read` | List graph edges (query: `limit`, `offset`) |
-| GET | `/graph/collections/{collection_id}/data` | `graph:read` | Full graph data (nodes + edges) for visualization |
-| GET | `/graph/collections/{collection_id}/data/scalable` | `graph:read` | Scalable visualization (modes: auto/overview/expand/neighborhood/full) |
-| GET | `/graph/collections/{collection_id}/neighborhood` | `graph:read` | Ego-graph around a node (query: `node_id`, `depth`, `limit`) |
-| GET | `/graph/collections/{collection_id}/expand` | `graph:read` | Expand cluster to individual nodes (query: `label`) |
+| GET | `/api/v1/graph/collections` | `graph:read` | List collection IDs that have a knowledge graph |
+| GET | `/api/v1/graph/collections/{collection_id}/nodes` | `graph:read` | List graph nodes (query: `limit`, `offset`, `label`) |
+| GET | `/api/v1/graph/collections/{collection_id}/edges` | `graph:read` | List graph edges (query: `limit`, `offset`) |
+| GET | `/api/v1/graph/collections/{collection_id}/data` | `graph:read` | Full graph data (nodes + edges) for visualization |
+| GET | `/api/v1/graph/collections/{collection_id}/data/scalable` | `graph:read` | Scalable visualization (modes: auto/overview/expand/neighborhood/full) |
+| GET | `/api/v1/graph/collections/{collection_id}/neighborhood` | `graph:read` | Ego-graph around a node (query: `node_id`, `depth`, `limit`) |
+| GET | `/api/v1/graph/collections/{collection_id}/expand` | `graph:read` | Expand cluster to individual nodes (query: `label`) |
 
 ### Graph search
 
 | Method | Path | Permission | Description |
 |--------|------|------------|-------------|
-| POST | `/graph/search` | `graph:search` | Hybrid search: vector similarity + graph traversal with RRF fusion scoring. Body: `query`, `collection_id`, `limit?`, `vector_weight?`, `graph_weight?` |
-| GET | `/graph/collections/{collection_id}/search/entities` | `graph:search` | Search entities by name (query: `q`, `limit`) |
-| GET | `/graph/collections/{collection_id}/search/entity-clusters` | `graph:search` | Lightweight cluster search for explorer |
+| POST | `/api/v1/graph/search` | `graph:search` | Hybrid search: vector similarity + graph traversal with RRF fusion scoring. Body: `query`, `collection_id`, `limit?`, `vector_weight?`, `graph_weight?` |
+| GET | `/api/v1/graph/collections/{collection_id}/search/entities` | `graph:search` | Search entities by name (query: `q`, `limit`) |
+| GET | `/api/v1/graph/collections/{collection_id}/search/entity-clusters` | `graph:search` | Lightweight cluster search for explorer |
 
 ### Graph stats
 
 | Method | Path | Permission | Description |
 |--------|------|------------|-------------|
-| GET | `/graph/collections/{collection_id}/stats` | `graph:read` | Graph statistics (node/edge counts, labels, relationship types) |
-| GET | `/graph/collections/{collection_id}/stats/labels` | `graph:read` | Paginated entity labels with counts |
-| GET | `/graph/collections/{collection_id}/stats/relationship-types` | `graph:read` | Paginated relationship types with counts |
+| GET | `/api/v1/graph/collections/{collection_id}/stats` | `graph:read` | Graph statistics (node/edge counts, labels, relationship types) |
+| GET | `/api/v1/graph/collections/{collection_id}/stats/labels` | `graph:read` | Paginated entity labels with counts |
+| GET | `/api/v1/graph/collections/{collection_id}/stats/relationship-types` | `graph:read` | Paginated relationship types with counts |
 
 ### Cypher
 
 | Method | Path | Permission | Description |
 |--------|------|------------|-------------|
-| POST | `/graph/cypher` | `graph:search` | Execute read-only Cypher query scoped to collection (body: `query`, `collection_id`, `parameters?`) |
+| POST | `/api/v1/graph/cypher` | `graph:search` | Execute read-only Cypher query scoped to collection (body: `query`, `collection_id`, `parameters?`) |
 
 ### Deletion
 
 | Method | Path | Permission | Description |
 |--------|------|------------|-------------|
-| DELETE | `/graph/collections/{collection_id}` | `graph:delete` | Delete entire knowledge graph for a collection |
+| DELETE | `/api/v1/graph/collections/{collection_id}` | `graph:delete` | Delete entire knowledge graph for a collection |
 
 ### Graph health
 

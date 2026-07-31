@@ -10,7 +10,7 @@
 
 The service uses **FastMCP HTTP transport**. The MCP protocol endpoint is at `/mcp`.
 Kong forwards `/tools-service/mcp` to that transport. Internal callers use
-`/internal/tools-service/mcp`; `/internal/mcp` remains a legacy alias.
+`/internal/tools-service/mcp`.
 
 `GET /tools-service/health` is public through Kong and forwards to the
 FastMCP custom `/health` route.

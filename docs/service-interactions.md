@@ -82,6 +82,10 @@ runtime redirect and logout behavior consistent across those boundaries.
   security-sensitive behavior. Cover redirect URI merging, post-logout redirect
   handling, cookie creation and clearing, and open redirect validation with
   regression tests.
+- Admin pages use server-side admin checks first, then load fine-grained route
+  permissions in `UserProvider`. Permission fetch failures must not redirect an
+  already-authenticated admin to `/error/403`; only completed permission checks
+  that deny the route trigger the 403 page.
 - Validate auth changes with `make -C apps/user-service validate`. When web
   logout or callback code changes, also run web lint, typecheck, and tests. If
   services are running, verify the browser flow through Kong.
@@ -220,6 +224,7 @@ runtime redirect and logout behavior consistent across those boundaries.
 |--------|--------|---------|--------|
 | agent-service | user-service | Permission check, user lookup, memories CRUD | HTTP + internal token |
 | agent-service | rag-service | RAG collections proxy | HTTP + internal token |
+| agent-service | rag-service | Agent knowledge availability checks for selected document and graph collections | HTTP + internal token |
 | agent-service | tools-service | MCP tool execution | HTTP + JWT |
 | agent-service | Airbyte | Datasource sync management | Airbyte API |
 | rag-service | user-service | Permission check | HTTP + internal token |
@@ -249,7 +254,6 @@ Service → http://kong:8000/internal/tools-service/mcp → tools-service:8003
 ```
 
 Internal calls use `X-Internal-Service-Token` header instead of JWT.
-`/internal/mcp` remains a legacy tools-service alias while callers migrate.
 
 ---
 

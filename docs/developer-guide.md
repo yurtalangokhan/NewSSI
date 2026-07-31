@@ -156,10 +156,16 @@ while clients migrate.
 | Path | Backend service | Auth |
 |------|----------------|------|
 | `/user-service/health` | user-service | Public |
+| `/user-service/health/ready` | user-service | Public |
+| `/user-service/api/v1/health`, `/user-service/api/v1/health/ready` | user-service | Public |
 | `/agent-service/health` | agent-service | Public |
+| `/agent-service/api/v1/health` | agent-service | Public |
 | `/rag-service/health` | rag-service | Public |
+| `/rag-service/api/v1/health` | rag-service | Public |
 | `/tools-service/health` | tools-service | Public |
-| `/user-service/api/v1/auth/type`, `/user-service/api/v1/auth/login`, `/user-service/api/v1/auth/refresh` | user-service | Public |
+| `/user-service/api/v1/auth/type`, `/user-service/api/v1/auth/login`, `/user-service/api/v1/auth/external/login` | user-service | Public |
+| `/user-service/api/v1/auth/logout`, `/user-service/api/v1/auth/refresh`, `/user-service/api/v1/auth/register` | user-service | Public |
+| `/user-service/api/v1/auth/oidc/authorize`, `/user-service/api/v1/auth/oidc/callback` | user-service | Public |
 | `/agent-service/api/v1/auth/health` | agent-service | Public |
 | `/rag-service/api/v1/graph/health` | rag-service | Public |
 | `/user-service/api/v1/*` | user-service | JWT |
@@ -167,7 +173,6 @@ while clients migrate.
 | `/rag-service/api/v1/*` | rag-service | JWT |
 | `/tools-service/mcp` | tools-service | JWT |
 | `/internal/{user-service,rag-service,tools-service}/*` | respective service | Internal token |
-| `/internal/mcp` | tools-service | Internal token, legacy alias |
 
 ---
 

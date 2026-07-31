@@ -147,7 +147,8 @@ export function UserProvider({
     setPermissionsError(null);
     try {
       const response = await authenticatedFetch(
-        "/api/user-service/users/me/permissions"
+        "/api/user-service/users/me/permissions",
+        { redirectOnAuthError: false }
       );
       if (!response.ok) {
         throw new Error("Failed to fetch permissions");

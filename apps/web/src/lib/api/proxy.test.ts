@@ -97,4 +97,111 @@ describe("proxyToBackend", () => {
       expect.any(Object)
     );
   });
+
+  it("refreshes before proxying RAG requests when only a refresh token remains", async () => {
+    const refreshResponse = new Response(
+      JSON.stringify({ access_token: "fresh-access" }),
+      {
+        status: 200,
+        headers: {
+          "content-type": "application/json",
+        },
+      }
+    );
+    (
+      refreshResponse.headers as Headers & { getSetCookie?: () => string[] }
+    ).getSetCookie = () => [
+      "access_token=fresh-access; Path=/; HttpOnly",
+      "refresh_token=fresh-refresh; Path=/; HttpOnly",
+    ];
+
+    fetchSpy
+      // User-service refresh endpoint.
+      .mockResolvedValueOnce(refreshResponse)
+      // RAG collections endpoint after refresh.
+      .mockResolvedValueOnce(responseWithHeaders({}));
+
+    const request = new NextRequest("http://localhost/api/rag/collections", {
+      headers: {
+        cookie: "refresh_token=stale-refresh",
+      },
+    });
+
+    const response = await proxyToBackend(request, "/collections", {
+      backendUrl: "http://kong:8000/rag-service",
+      backendService: "rag",
+    });
+
+    expect(response.status).toBe(200);
+    expect(fetchSpy).toHaveBeenNthCalledWith(
+      2,
+      "http://kong:8000/rag-service/api/v1/collections",
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: "Bearer fresh-access",
+          Cookie: expect.stringContaining("access_token=fresh-access"),
+        }),
+      })
+    );
+    expect(fetchSpy.mock.calls[1][1].headers.Cookie).toContain(
+      "refresh_token=fresh-refresh"
+    );
+  });
+
+  it("does not refresh after a backend 401 when unauthorized refresh is disabled", async () => {
+    fetchSpy.mockResolvedValueOnce(
+      new Response(JSON.stringify({ detail: "expired token" }), {
+        status: 401,
+        headers: {
+          "content-type": "application/json",
+        },
+      })
+    );
+
+    const request = new NextRequest("http://localhost/api/rag/collections", {
+      headers: {
+        cookie: "access_token=expired-access; refresh_token=valid-refresh",
+      },
+    });
+
+    const response = await proxyToBackend(request, "/collections", {
+      backendUrl: "http://kong:8000/rag-service",
+      backendService: "rag",
+      refreshOnUnauthorized: false,
+    });
+
+    expect(response.status).toBe(401);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(fetchSpy).toHaveBeenCalledWith(
+      "http://kong:8000/rag-service/api/v1/collections",
+      expect.any(Object)
+    );
+  });
+
+  it("does not send an expired access bearer while refreshing auth cookies", async () => {
+    fetchSpy.mockResolvedValueOnce(responseWithHeaders({}));
+
+    const request = new NextRequest("http://localhost/api/auth/refresh", {
+      method: "POST",
+      headers: {
+        cookie: "access_token=expired-access; refresh_token=valid-refresh",
+      },
+    });
+
+    await proxyToBackend(request, "/api/auth/refresh", {
+      method: "POST",
+      backendUrl: "http://kong:8000",
+      backendService: "user",
+      refreshOnUnauthorized: false,
+    });
+
+    expect(fetchSpy).toHaveBeenCalledWith(
+      "http://kong:8000/user-service/api/v1/auth/refresh",
+      expect.objectContaining({
+        headers: expect.not.objectContaining({
+          Authorization: expect.any(String),
+        }),
+      })
+    );
+  });
 });

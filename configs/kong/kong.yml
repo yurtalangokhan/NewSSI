@@ -25,6 +25,39 @@ services:
         strip_path: true
         preserve_host: true
 
+  - name: user-service-health-canonical-public
+    url: __USER_SERVICE_UPSTREAM_URL__/api/v1/health
+    routes:
+      - name: user-service-health-canonical-public
+        paths:
+          - /user-service/api/v1/health
+        methods:
+          - GET
+        strip_path: true
+        preserve_host: true
+
+  - name: user-service-readiness-public
+    url: __USER_SERVICE_UPSTREAM_URL__/api/v1/health/ready
+    routes:
+      - name: user-service-readiness-public
+        paths:
+          - /user-service/health/ready
+        methods:
+          - GET
+        strip_path: true
+        preserve_host: true
+
+  - name: user-service-readiness-canonical-public
+    url: __USER_SERVICE_UPSTREAM_URL__/api/v1/health/ready
+    routes:
+      - name: user-service-readiness-canonical-public
+        paths:
+          - /user-service/api/v1/health/ready
+        methods:
+          - GET
+        strip_path: true
+        preserve_host: true
+
   - name: user-service-auth-type-public
     url: __USER_SERVICE_UPSTREAM_URL__/api/v1/auth/type
     routes:
@@ -114,11 +147,11 @@ services:
         preserve_host: true
 
   - name: user-service
-    url: __USER_SERVICE_UPSTREAM_URL__
+    url: __USER_SERVICE_UPSTREAM_URL__/api/v1
     routes:
       - name: user-service-scoped
         paths:
-          - /user-service
+          - /user-service/api/v1
         strip_path: true
         preserve_host: true
         plugins: &jwt_plugin
@@ -148,6 +181,17 @@ services:
         strip_path: true
         preserve_host: true
 
+  - name: agent-service-health-canonical-public
+    url: __AGENT_SERVICE_UPSTREAM_URL__/api/v1/health
+    routes:
+      - name: agent-service-health-canonical-public
+        paths:
+          - /agent-service/api/v1/health
+        methods:
+          - GET
+        strip_path: true
+        preserve_host: true
+
   - name: agent-service-auth-health-public
     url: __AGENT_SERVICE_UPSTREAM_URL__/api/v1/auth/health
     routes:
@@ -160,11 +204,11 @@ services:
         preserve_host: true
 
   - name: agent-service
-    url: __AGENT_SERVICE_UPSTREAM_URL__
+    url: __AGENT_SERVICE_UPSTREAM_URL__/api/v1
     routes:
       - name: agent-service-scoped
         paths:
-          - /agent-service
+          - /agent-service/api/v1
         strip_path: true
         preserve_host: true
         plugins: *jwt_plugin
@@ -183,6 +227,17 @@ services:
         strip_path: true
         preserve_host: true
 
+  - name: rag-service-health-canonical-public
+    url: __RAG_SERVICE_UPSTREAM_URL__/api/v1/health
+    routes:
+      - name: rag-service-health-canonical-public
+        paths:
+          - /rag-service/api/v1/health
+        methods:
+          - GET
+        strip_path: true
+        preserve_host: true
+
   - name: rag-service-graph-health-public
     url: __RAG_SERVICE_UPSTREAM_URL__/api/v1/graph/health
     routes:
@@ -195,11 +250,11 @@ services:
         preserve_host: true
 
   - name: rag-service
-    url: __RAG_SERVICE_UPSTREAM_URL__
+    url: __RAG_SERVICE_UPSTREAM_URL__/api/v1
     routes:
       - name: rag-service-scoped
         paths:
-          - /rag-service
+          - /rag-service/api/v1
         strip_path: true
         preserve_host: true
         plugins: *jwt_plugin
@@ -207,12 +262,23 @@ services:
   # --------------------------------------------------------------------------
   # Tools Service (MCP)
   # --------------------------------------------------------------------------
+  - name: tools-service-health-public
+    url: __TOOLS_SERVICE_UPSTREAM_URL__/health
+    routes:
+      - name: tools-service-health-public
+        paths:
+          - /tools-service/health
+        methods:
+          - GET
+        strip_path: true
+        preserve_host: true
+
   - name: tools-service-mcp
-    url: __TOOLS_SERVICE_UPSTREAM_URL__
+    url: __TOOLS_SERVICE_UPSTREAM_URL__/mcp
     routes:
       - name: tools-service-mcp-scoped
         paths:
-          - /tools-service
+          - /tools-service/mcp
         strip_path: true
         preserve_host: true
         plugins: *jwt_plugin
@@ -223,7 +289,7 @@ services:
   # layer, so these routes bypass Kong's JWT validation entirely.
   #
   # strip_path=true removes the /internal/{service} prefix so the upstream
-  # receives the original internal path (e.g. /api/users/internal/...).
+  # receives the original internal path (e.g. /api/v1/internal/users/...).
   # --------------------------------------------------------------------------
 
   - name: internal-user-service
