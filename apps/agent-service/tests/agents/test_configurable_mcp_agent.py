@@ -4,6 +4,7 @@ from collections.abc import AsyncGenerator
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from langchain_core.messages import SystemMessage
 
 from agents.configurable_mcp_agent import ConfigurableMCPAgent
 
@@ -119,3 +120,25 @@ class TestConfigurableMCPAgent:
         assert "- Fact 8" in context
         assert "- Fact 9" not in context
         assert "(4 more stored facts omitted for brevity)" in context
+
+    def test_create_agent_graph_uses_runtime_system_prompt(self, monkeypatch):
+        captured = {}
+
+        def fake_create_react_agent(**kwargs):
+            captured.update(kwargs)
+            return object()
+
+        monkeypatch.setattr(
+            "agents.configurable_mcp_agent.create_react_agent",
+            fake_create_react_agent,
+        )
+        monkeypatch.setattr("agents.configurable_mcp_agent.get_model", lambda _model: object())
+
+        agent = ConfigurableMCPAgent()
+        agent._create_agent_graph(
+            system_prompt="Always answer in Turkish.",
+            mcp_tool_names=[],
+        )
+
+        assert isinstance(captured["prompt"], SystemMessage)
+        assert captured["prompt"].content == "Always answer in Turkish."

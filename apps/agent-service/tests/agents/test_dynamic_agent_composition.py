@@ -46,3 +46,32 @@ async def test_dynamic_agent_load_uses_async_builder_for_sub_agent_ids(monkeypat
     assert isinstance(agent.get_graph(), FakeGraph)
     assert calls["config"]["sub_agent_ids"] == ["00000000-0000-0000-0000-000000000001"]
     assert calls["repository_set"] is True
+
+
+def test_dynamic_agent_runtime_system_prompt_overrides_definition(monkeypatch):
+    """Project/runtime instructions should replace the stored prompt for a run."""
+    from agents.dynamic_agent import DynamicAgent
+
+    calls = {}
+
+    class FakeBuilder:
+        def __init__(self, **kwargs):
+            calls["builder_kwargs"] = kwargs
+
+    monkeypatch.setattr("agents.dynamic_agent.GraphBuilder", FakeBuilder)
+    monkeypatch.setattr("agents.dynamic_agent.get_model_from_config", lambda *_args: object())
+
+    agent = DynamicAgent(
+        {
+            "name": "dynamic",
+            "graph_schema": "zero_shot",
+            "system_prompt": "Stored prompt.",
+        }
+    )
+
+    _, _, build_config = agent._prepare_graph_build(
+        runtime_config={"system_prompt": "Always answer in Turkish."}
+    )
+
+    assert calls["builder_kwargs"]["system_prompt"] == "Always answer in Turkish."
+    assert build_config["system_prompt"] == "Always answer in Turkish."
