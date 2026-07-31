@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import logging
+import re
+import unicodedata
 from typing import Any
 
 from langconnect.database.neo4j.queries.search import (
@@ -14,12 +16,50 @@ from langconnect.database.neo4j.queries.search import (
     SEARCH_ENTITIES_CONTAINS,
     SEARCH_ENTITY_CLUSTERS,
     SEARCH_NEIGHBORHOOD_EDGES,
+    SEARCH_RELATIONSHIPS_BY_TYPE,
     SEARCH_SUBCLUSTERS,
 )
 from langconnect.database.neo4j.repositories.base import Neo4jRepository
 from langconnect.models.graph import GraphData, GraphEdge, GraphNode
 
 logger = logging.getLogger(__name__)
+
+_RELATIONSHIP_ALIASES: tuple[tuple[str, tuple[str, ...]], ...] = (
+    (
+        "GENERAL_MANAGER",
+        (
+            "genel mudur",
+            "genel mudurl",
+            "general manager",
+            "general managers",
+        ),
+    ),
+)
+
+
+def _normalize_relation_text(text: str) -> str:
+    """Normalize natural-language relation text for simple alias matching."""
+    ascii_text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode()
+    lowered = ascii_text.lower().replace("_", " ")
+    return re.sub(r"\s+", " ", re.sub(r"[^a-z0-9]+", " ", lowered)).strip()
+
+
+def relationship_type_candidates(query: str) -> list[str]:
+    """Return Neo4j relationship types likely requested by a natural query."""
+    normalized = _normalize_relation_text(query)
+    if not normalized:
+        return []
+
+    candidates: list[str] = []
+    snake_case = normalized.upper().replace(" ", "_")
+    if "_" in query or snake_case in {alias[0] for alias in _RELATIONSHIP_ALIASES}:
+        candidates.append(snake_case)
+
+    for relationship_type, aliases in _RELATIONSHIP_ALIASES:
+        if any(alias in normalized for alias in aliases):
+            candidates.append(relationship_type)
+
+    return list(dict.fromkeys(candidates))
 
 
 class SearchRepository(Neo4jRepository):
@@ -136,6 +176,46 @@ class SearchRepository(Neo4jRepository):
                 limit=limit,
             )
             return [self._map_edge(record) async for record in result]
+
+    async def search_relationships_by_type(
+        self,
+        query: str,
+        *,
+        limit: int = 10,
+    ) -> GraphData:
+        """Search graph relationships by natural-language relationship intent."""
+        relationship_types = relationship_type_candidates(query)
+        if not relationship_types:
+            return GraphData(nodes=[], edges=[])
+
+        nodes_by_id: dict[str, GraphNode] = {}
+        edges: list[GraphEdge] = []
+
+        async with self._session() as session:
+            result = await session.run(
+                SEARCH_RELATIONSHIPS_BY_TYPE,
+                cid=self.cid,
+                relationship_types=relationship_types,
+                limit=limit,
+            )
+            async for record in result:
+                src = GraphNode(
+                    id=record["src_id"],
+                    label=record["src_label"] or "Entity",
+                    name=record["src_name"],
+                    properties=self._clean_node_props(record["src_props"]),
+                )
+                tgt = GraphNode(
+                    id=record["tgt_id"],
+                    label=record["tgt_label"] or "Entity",
+                    name=record["tgt_name"],
+                    properties=self._clean_node_props(record["tgt_props"]),
+                )
+                nodes_by_id[src.id] = src
+                nodes_by_id[tgt.id] = tgt
+                edges.append(self._map_edge(record))
+
+        return GraphData(nodes=list(nodes_by_id.values()), edges=edges)
 
     # ------------------------------------------------------------------
     # Entity cluster search (label → count)

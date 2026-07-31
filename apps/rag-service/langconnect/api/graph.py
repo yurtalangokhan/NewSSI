@@ -417,6 +417,7 @@ async def search_graph(
         limit=query.limit,
         vector_weight=query.vector_weight,
         graph_weight=query.graph_weight,
+        include_vector_context=query.include_vector_context,
     )
 
 

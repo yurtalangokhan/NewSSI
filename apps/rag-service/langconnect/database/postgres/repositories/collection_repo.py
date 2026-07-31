@@ -9,6 +9,7 @@ from typing import Any
 
 from sqlalchemy import delete, or_, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.sql.elements import ColumnElement
 
 from langconnect import config
 from langconnect.database.postgres.models import PgCollection
@@ -29,6 +30,14 @@ class CollectionRepository(BaseRepository):
     @property
     def _is_internal(self) -> bool:
         return self.user_id == "internal-service"
+
+    @property
+    def _visible_owner_filter(self) -> ColumnElement[bool]:
+        return or_(
+            PgCollection.cmetadata["owner_id"].as_string() == self.user_id,
+            PgCollection.cmetadata["owner_id"].as_string() == "internal-service",
+            PgCollection.cmetadata["owner_id"].as_string().is_(None),
+        )
 
     @staticmethod
     def _parse_metadata(raw: Any) -> dict[str, Any]:
@@ -73,14 +82,7 @@ class CollectionRepository(BaseRepository):
             if not self._is_internal:
                 # JSON operator ->> returns text. Include internal/legacy rows so
                 # collections created by ingestion jobs remain visible in the UI.
-                stmt = stmt.where(
-                    or_(
-                        PgCollection.cmetadata["owner_id"].as_string() == self.user_id,
-                        PgCollection.cmetadata["owner_id"].as_string()
-                        == "internal-service",
-                        PgCollection.cmetadata["owner_id"].as_string().is_(None),
-                    )
-                )
+                stmt = stmt.where(self._visible_owner_filter)
 
             stmt = stmt.order_by(PgCollection.cmetadata["name"].as_string())
             result = await session.execute(stmt)
@@ -93,14 +95,7 @@ class CollectionRepository(BaseRepository):
         async with self._session() as session:
             stmt = select(PgCollection).where(PgCollection.uuid == collection_id)
             if not self._is_internal:
-                stmt = stmt.where(
-                    or_(
-                        PgCollection.cmetadata["owner_id"].as_string() == self.user_id,
-                        PgCollection.cmetadata["owner_id"].as_string()
-                        == "internal-service",
-                        PgCollection.cmetadata["owner_id"].as_string().is_(None),
-                    )
-                )
+                stmt = stmt.where(self._visible_owner_filter)
 
             result = await session.execute(stmt)
             row = result.scalar_one_or_none()
@@ -190,9 +185,7 @@ class CollectionRepository(BaseRepository):
                 stmt = (
                     update(PgCollection)
                     .where(PgCollection.uuid == collection_id)
-                    .where(
-                        PgCollection.cmetadata["owner_id"].as_string() == self.user_id
-                    )
+                    .where(self._visible_owner_filter)
                     .values(cmetadata=merged)
                     .returning(PgCollection)
                 )
@@ -205,9 +198,7 @@ class CollectionRepository(BaseRepository):
                 sel = (
                     select(PgCollection)
                     .where(PgCollection.uuid == collection_id)
-                    .where(
-                        PgCollection.cmetadata["owner_id"].as_string() == self.user_id
-                    )
+                    .where(self._visible_owner_filter)
                 )
                 result = await session.execute(sel)
                 row = result.scalar_one_or_none()
@@ -229,7 +220,7 @@ class CollectionRepository(BaseRepository):
             stmt = (
                 delete(PgCollection)
                 .where(PgCollection.uuid == collection_id)
-                .where(PgCollection.cmetadata["owner_id"].as_string() == self.user_id)
+                .where(self._visible_owner_filter)
             )
             result = await session.execute(stmt)
             return result.rowcount

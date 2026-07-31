@@ -73,6 +73,19 @@ async def collections_delete(
     return "Collection deleted successfully."
 
 
+@router.delete("/{collection_id}/force", status_code=status.HTTP_204_NO_CONTENT)
+async def collections_force_delete(
+    user: Annotated[
+        AuthenticatedUser, Depends(require_permission("collection:delete"))
+    ],
+    collection_id: UUID,
+):
+    """Deletes a collection while bypassing connector-managed read-only checks."""
+    ensure_collection_mutable(str(collection_id))
+    await CollectionsManager(user.identity).delete(str(collection_id))
+    return "Collection deleted successfully."
+
+
 @router.patch("/{collection_id}", response_model=CollectionResponse)
 async def collections_update(
     user: Annotated[

@@ -29,8 +29,10 @@ async def knowledge_selector(
     - ``document_processing``: all Milvus-backed collections (vector similarity search)
     - ``knowledge_graph``: collections that have a built knowledge graph in Neo4j
     """
-    # 1. Fetch all vector collections (use internal identity to bypass owner filter)
-    all_collections = await CollectionsManager("internal-service").list()
+    # 1. Fetch collections visible to the current user. Do not use the
+    # internal identity here; the agent editor must not expose other users'
+    # private collections or stale test/dev rows.
+    all_collections = await CollectionsManager(user.identity).list()
 
     def _normalize_collection_name(
         col: dict[str, Any], metadata: dict[str, Any]
@@ -77,16 +79,6 @@ async def knowledge_selector(
             col = col_lookup.get(cid)
             if col:
                 knowledge_graph.append(_build_item(col))
-            else:
-                # Collection exists in Neo4j but not in vector collections (orphan)
-                knowledge_graph.append(
-                    {
-                        "id": cid,
-                        "name": cid,
-                        "connector_type": "",
-                        "sync_status": "idle",
-                    }
-                )
     except Exception:
         logger.warning("Neo4j is not available — knowledge_graph list will be empty.")
 

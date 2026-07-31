@@ -19,6 +19,8 @@ from langconnect.models.graph import (
     BuildProgress,
     BuildStatus,
     ExtractionResult,
+    GraphData,
+    GraphEdge,
     GraphNode,
     GraphSearchResult,
 )
@@ -241,15 +243,18 @@ class GraphRAGService:
         limit: int = 10,
         vector_weight: float = 0.4,
         graph_weight: float = 0.6,
+        include_vector_context: bool = False,
     ) -> GraphSearchResult:
-        """Perform hybrid retrieval with **entity-centric RRF** fusion.
+        """Perform graph retrieval with optional vector-assisted RRF fusion.
 
-        Two retrieval signals:
+        Retrieval signals:
 
-        1. **Vector (cosine)** — Milvus similarity on embedded chunks.
-        2. **Graph BM25** — Neo4j fulltext (Lucene) on entity names/labels.
+        1. **Graph BM25** — Neo4j fulltext (Lucene) on entity names/labels.
+        2. **Relationship type** — Neo4j relationship type intent matching.
+        3. **Vector (cosine)** — optional Milvus similarity on embedded chunks.
 
-        RRF fusion is **entity-centric**: each entity receives an RRF
+        When vector context is enabled, RRF fusion is **entity-centric**:
+        each entity receives an RRF
         contribution from *both* signals when it appears in both:
         - BM25 signal: entity rank → ``graph_weight / (k + rank + 1)``
         - Vector signal: for each ranked chunk, any BM25-matched entity
@@ -262,11 +267,20 @@ class GraphRAGService:
         The final node list is **sorted by RRF score** and the overall
         relevance score is derived from the best RRF score.
         """
-        # Run both searches concurrently
-        vector_task = asyncio.create_task(self._vector_search(query, limit=limit))
+        # Run graph searches concurrently. Vector search is opt-in so a graph-only
+        # agent does not search Milvus or return document snippets from Graph_Search.
         bm25_task = asyncio.create_task(self._graph_bm25_search(query, limit=limit))
+        relationship_task = asyncio.create_task(
+            self._relationship_type_search(query, limit=limit)
+        )
 
-        vector_results, bm25_results = await asyncio.gather(vector_task, bm25_task)
+        bm25_results, relationship_results = await asyncio.gather(
+            bm25_task,
+            relationship_task,
+        )
+        vector_results: list[dict[str, Any]] = []
+        if include_vector_context:
+            vector_results = await self._vector_search(query, limit=limit)
 
         # ----- Entity-centric RRF fusion -----
         rrf_k = 60  # standard RRF constant
@@ -340,8 +354,16 @@ class GraphRAGService:
                 seed_entity_names.append(n)
                 seen_names.add(n)
 
+        seen_node_ids = {node.id for node in merged_nodes}
+        for node in relationship_results.nodes:
+            if node.id in seen_node_ids or len(merged_nodes) >= limit:
+                continue
+            merged_nodes.append(node)
+            seed_entity_names.append(node.name)
+            seen_node_ids.add(node.id)
+
         # ----- Fetch edges connecting the RRF-ranked entities -----
-        matched_edges: list = []
+        matched_edges: list[GraphEdge] = []
         if seed_entity_names:
             try:
                 matched_edges = await self.graph_store.fetch_edges_for_nodes(
@@ -353,20 +375,18 @@ class GraphRAGService:
                     "Edge fetch failed for %s", self.collection_id, exc_info=True
                 )
 
+        seen_edge_ids = {edge.id for edge in matched_edges}
+        for edge in relationship_results.edges:
+            if edge.id not in seen_edge_ids:
+                matched_edges.append(edge)
+                seen_edge_ids.add(edge.id)
+
         # ----- Build combined context (RRF-ranked order) -----
         context_parts: list[str] = []
 
-        # Vector context (cosine similarity results)
-        if vector_results:
-            context_parts.append("== Vector Search Results ==")
-            for item in vector_results[:limit]:
-                content = item.get("content", "")
-                if content:
-                    context_parts.append(content)
-
         # RRF-ranked entity summary
         if sorted_entities:
-            context_parts.append("\n== RRF-Ranked Entities ==")
+            context_parts.append("== RRF-Ranked Entities ==")
             for rank, (name, score) in enumerate(sorted_entities[:limit], 1):
                 hit = entity_lookup.get(name)
                 label = hit["node"].label if hit else "?"
@@ -378,14 +398,29 @@ class GraphRAGService:
                     f"(RRF={score:.4f}  BM25={bm25:.3f}  vec={in_vector})"
                 )
 
+        relationship_context = self._format_relationship_context(relationship_results)
+        if relationship_context:
+            context_parts.append("== Relationship Matches ==")
+            context_parts.append(relationship_context)
+
         # Knowledge graph context — focused on seed entities
         if seed_entity_names:
             graph_context = await self.graph_store.get_entity_context_focused(
                 seed_entity_names[:limit],
             )
             if graph_context:
-                context_parts.append("\n== Knowledge Graph Context ==")
+                context_parts.append("== Knowledge Graph Context ==")
                 context_parts.append(graph_context)
+
+        # Vector context supports graph-ranked entities, but Graph_Search must
+        # not return vector-only content when no graph entity matched.
+        has_graph_evidence = bool(sorted_entities or relationship_results.edges)
+        if vector_results and has_graph_evidence:
+            context_parts.append("== Vector Search Results ==")
+            for item in vector_results[:limit]:
+                content = item.get("content", "")
+                if content:
+                    context_parts.append(content)
 
         # ----- Overall relevance score from RRF -----
         # Max possible single-entity RRF = both signals at rank 0:
@@ -393,6 +428,8 @@ class GraphRAGService:
         max_possible_rrf = 1.0 / (rrf_k + 1)
         best_rrf = sorted_entities[0][1] if sorted_entities else 0.0
         relevance = best_rrf / max_possible_rrf if max_possible_rrf > 0 else 0.0
+        if relationship_results.edges and relevance == 0:
+            relevance = graph_weight
 
         return GraphSearchResult(
             nodes=merged_nodes,
@@ -400,6 +437,26 @@ class GraphRAGService:
             context="\n\n".join(context_parts),
             score=round(min(relevance, 1.0), 4),
         )
+
+    def _format_relationship_context(self, graph_data: GraphData) -> str:
+        """Render matched relationship edges as graph-search context."""
+        if not graph_data.edges:
+            return ""
+
+        nodes_by_id = {node.id: node for node in graph_data.nodes}
+        lines: list[str] = []
+        seen: set[str] = set()
+        for edge in graph_data.edges:
+            source = nodes_by_id.get(edge.source)
+            target = nodes_by_id.get(edge.target)
+            if source is None or target is None:
+                continue
+            line = f"{source.name} --[{edge.type}]--> {target.name}"
+            if line not in seen:
+                seen.add(line)
+                lines.append(line)
+
+        return "\n".join(lines)
 
     async def _vector_search(
         self,
@@ -467,3 +524,23 @@ class GraphRAGService:
                 exc_info=True,
             )
             return []
+
+    async def _relationship_type_search(
+        self,
+        query: str,
+        *,
+        limit: int = 10,
+    ) -> GraphData:
+        """Search by relationship type when the query names a relation."""
+        try:
+            return await self.graph_store.search_relationships_by_type(
+                query,
+                limit=limit,
+            )
+        except Exception:
+            logger.warning(
+                "Relationship type graph search failed for %s",
+                self.collection_id,
+                exc_info=True,
+            )
+            return GraphData(nodes=[], edges=[])

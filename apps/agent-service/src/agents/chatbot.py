@@ -58,6 +58,10 @@ async def call_model(
             user_id,
         )
 
+    system_prompt = configurable.get("system_prompt")
+    if isinstance(system_prompt, str) and system_prompt.strip():
+        messages = [SystemMessage(content=system_prompt.strip())] + list(messages)
+
     response = await model.ainvoke(messages)
     tag_response_with_ltm_recall(response, memories)
 

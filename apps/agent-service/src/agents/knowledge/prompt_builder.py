@@ -44,13 +44,15 @@ NOTE: THE USER CANNOT SEE THE RAW TOOL RESPONSE — synthesise the results into 
 _GRAPH_ADDENDUM = f"""
 ---Knowledge Graph Access---
 Today's date is {_CURRENT_DATE}.
-You have access to **Graph_Search**, which performs hybrid retrieval combining:
-  1. Vector similarity search (cosine on document embeddings)
-  2. BM25 graph search (Neo4j fulltext on entity names / labels)
-  3. Entity-centric Reciprocal Rank Fusion (RRF) to merge results
+You have access to **Graph_Search**, which searches only the configured Neo4j
+knowledge graph:
+  1. BM25 graph search on entity names / labels
+  2. Relationship type search for graph relations
+  3. Direct graph context around matched entities and relationships
 
-Each call returns Vector Search Results, RRF-Ranked Entities, and
-Knowledge Graph Context — use ALL of these sections when building your answer.
+Each call returns graph evidence such as Relationship Matches, RRF-Ranked
+Entities, and Knowledge Graph Context. Use only the evidence returned by
+Graph_Search when building your answer.
 
 Multi-Step Search Strategy:
 ALWAYS search before answering any factual question.  You may — and SHOULD —
@@ -91,7 +93,8 @@ You have two retrieval tools available:
   • **Database_Search** – Vector similarity search over document collections.
     Use for broad document retrieval and keyword-based questions.
 
-  • **Graph_Search** – Hybrid vector + Neo4j knowledge graph search.
+  • **Graph_Search** – Neo4j knowledge graph search for entities,
+    relationships, and graph context.
     Use for entity relationships, concept graphs, and multi-hop reasoning.
 
 Search strategy:

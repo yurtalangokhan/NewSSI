@@ -329,6 +329,14 @@ _LANGCONNECT_BASE_URL = env.RAG_SERVICE_API_URL or "http://langconnect-api:8080"
 _LANGCONNECT_SERVICE_TOKEN = env.INTERNAL_SERVICE_TOKEN or ""
 
 
+def _langconnect_url(path: str) -> str:
+    base_url = _LANGCONNECT_BASE_URL.rstrip("/")
+    normalized_path = path if path.startswith("/") else f"/{path}"
+    if base_url.endswith("/api/v1"):
+        return f"{base_url}{normalized_path}"
+    return f"{base_url}/api/v1{normalized_path}"
+
+
 def graph_search_func(
     query: str,
     config: Annotated[RunnableConfig, InjectedToolArg],
@@ -361,11 +369,12 @@ def graph_search_func(
             "Content-Type": "application/json",
             "User-Agent": "python-httpx",
         }
-        access_token = str(configurable.get("access_token") or "").strip()
-        if access_token:
-            headers["Authorization"] = f"Bearer {access_token}"
-        else:
+        if _LANGCONNECT_SERVICE_TOKEN:
             headers["X-Internal-Service-Token"] = _LANGCONNECT_SERVICE_TOKEN
+        else:
+            access_token = str(configurable.get("access_token") or "").strip()
+            if access_token:
+                headers["Authorization"] = f"Bearer {access_token}"
 
         for collection_uuid in collection_ids:
             try:
@@ -375,11 +384,12 @@ def graph_search_func(
                     "limit": 10,
                     "vector_weight": 0.4,
                     "graph_weight": 0.6,
+                    "include_vector_context": False,
                 }
 
                 with httpx.Client(timeout=30.0) as client:
                     resp = client.post(
-                        f"{_LANGCONNECT_BASE_URL}/graph/search",
+                        _langconnect_url("/graph/search"),
                         json=payload,
                         headers=headers,
                     )

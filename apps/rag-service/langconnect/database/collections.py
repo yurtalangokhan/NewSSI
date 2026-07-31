@@ -23,6 +23,7 @@ from langconnect.database.postgres.repositories.collection_repo import (
 from langconnect.models.collection import CollectionDetails
 
 logger = logging.getLogger(__name__)
+MILVUS_QUERY_BATCH_SIZE = 10_000
 
 
 def _parse_milvus_meta(raw: Any) -> dict[str, Any]:
@@ -291,14 +292,14 @@ class Collection:
             return []
 
         try:
-            rows = store.col.query(
+            rows = self._fetch_milvus_rows(
+                store,
                 expr=f"{store._primary_field} >= 0",
                 output_fields=[
                     store._primary_field,
                     store._text_field,
                     store._metadata_field,
                 ],
-                limit=100_000,
             )
         except Exception as exc:
             logger.warning(
@@ -321,6 +322,40 @@ class Collection:
             self.collection_id,
         )
         return chunks
+
+    def _fetch_milvus_rows(
+        self,
+        store: Any,
+        *,
+        expr: str,
+        output_fields: list[str],
+    ) -> list[dict[str, Any]]:
+        """Fetch rows without exceeding Milvus' max query result window."""
+        if hasattr(store.col, "query_iterator"):
+            iterator = store.col.query_iterator(
+                expr=expr,
+                output_fields=output_fields,
+                batch_size=MILVUS_QUERY_BATCH_SIZE,
+                limit=-1,
+            )
+            rows: list[dict[str, Any]] = []
+            try:
+                while True:
+                    batch = iterator.next()
+                    if not batch:
+                        break
+                    rows.extend(batch)
+            finally:
+                close = getattr(iterator, "close", None)
+                if close:
+                    close()
+            return rows
+
+        return store.col.query(
+            expr=expr,
+            output_fields=output_fields,
+            limit=MILVUS_QUERY_BATCH_SIZE,
+        )
 
     async def search(
         self, query: str, *, limit: int = 4

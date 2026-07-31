@@ -251,6 +251,14 @@ class GraphStore:
     ) -> list[GraphEdge]:
         return await self._search.fetch_edges_for_nodes(node_names, limit=limit)
 
+    async def search_relationships_by_type(
+        self,
+        query: str,
+        *,
+        limit: int = 10,
+    ) -> GraphData:
+        return await self._search.search_relationships_by_type(query, limit=limit)
+
     async def search_entities(
         self,
         query: str,

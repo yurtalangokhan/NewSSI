@@ -201,6 +201,13 @@ class GraphSearchQuery(BaseModel):
         le=1.0,
         description="Weight for graph (entity traversal) results in RRF fusion.",
     )
+    include_vector_context: bool = Field(
+        default=False,
+        description=(
+            "Whether graph search should also include supporting vector results "
+            "from the source document collection."
+        ),
+    )
 
 
 class GraphSearchResult(BaseModel):

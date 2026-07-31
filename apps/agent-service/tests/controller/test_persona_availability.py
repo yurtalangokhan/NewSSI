@@ -234,3 +234,66 @@ async def test_serialized_builtin_persona_includes_availability(monkeypatch) -> 
     )
 
     assert serialized["availability"]["status"] == "available"
+
+
+@pytest.mark.asyncio
+async def test_availability_uses_rag_service_for_graph_collections(monkeypatch) -> None:
+    controller = PersonaController()
+    graph_id = "8d5f9e92-0ff8-4bdf-8c53-e5625df314ef"
+
+    async def fake_local_collection_info(collection_ids: list[str], *, source_key: str):
+        return set(), {}
+
+    async def fake_rag_collection_info(collection_ids: list[str], *, source_key: str):
+        if not collection_ids:
+            return set(), {}
+        assert source_key == "knowledge_graph"
+        assert collection_ids == [graph_id]
+        return {graph_id}, {graph_id: "Telekomünikasyon"}
+
+    async def fake_model_names():
+        return {"llama3.1:8b"}
+
+    async def fake_tool_names():
+        return set()
+
+    monkeypatch.setattr(
+        controller,
+        "_get_local_collection_info",
+        fake_local_collection_info,
+    )
+    monkeypatch.setattr(
+        controller,
+        "_get_rag_service_collection_info",
+        fake_rag_collection_info,
+    )
+    monkeypatch.setattr(
+        controller,
+        "_get_available_model_names",
+        fake_model_names,
+    )
+    monkeypatch.setattr(controller, "_get_available_mcp_tool_names", fake_tool_names)
+    monkeypatch.setattr(controller, "_is_memory_available", lambda: True)
+    monkeypatch.setattr(
+        "controller.persona_controller.settings.DEFAULT_MODEL",
+        "llama3.1:8b",
+    )
+
+    availability = await controller._get_agent_availability(
+        {
+            "rag_config": {
+                "document_processing": [],
+                "knowledge_graph": [graph_id],
+            },
+            "mcp_tools": [],
+            "memory_type": "none",
+            "long_term_memory": False,
+        }
+    )
+
+    assert availability["status"] == "available"
+    assert {
+        "component": "graph_rag",
+        "status": "ok",
+        "message": "Graph RAG collection 'Telekomünikasyon' is available.",
+    } in availability["checks"]

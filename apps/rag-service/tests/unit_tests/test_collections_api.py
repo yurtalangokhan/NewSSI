@@ -15,6 +15,10 @@ NO_SUCH_USER_HEADERS = {
     "Authorization": "Bearer no_such_user",
 }
 
+INTERNAL_HEADERS = {
+    "X-Internal-Service-Token": "internal-token",
+}
+
 
 async def test_health() -> None:
     """Test the health check endpoint."""
@@ -163,6 +167,46 @@ async def test_delete_collection_and_nonexistent() -> None:
         assert r4.status_code == 204
 
 
+async def test_user_can_rename_and_delete_internal_collection_visible_in_list(
+    monkeypatch,
+) -> None:
+    """User-visible internal collections should not 404 during mutations."""
+    monkeypatch.setattr("langconnect.auth.INTERNAL_SERVICE_TOKEN", "internal-token")
+
+    async with get_async_test_client() as client:
+        create_resp = await client.post(
+            "/api/v1/collections",
+            json={"name": "internal_visible", "metadata": {}},
+            headers=INTERNAL_HEADERS,
+        )
+        assert create_resp.status_code == 201
+        collection_id = create_resp.json()["uuid"]
+
+        list_resp = await client.get("/api/v1/collections", headers=USER_1_HEADERS)
+        assert list_resp.status_code == 200
+        assert collection_id in {c["uuid"] for c in list_resp.json()}
+
+        rename_resp = await client.patch(
+            f"/api/v1/collections/{collection_id}",
+            json={"name": "renamed_internal_visible"},
+            headers=USER_1_HEADERS,
+        )
+        assert rename_resp.status_code == 200
+        assert rename_resp.json()["name"] == "renamed_internal_visible"
+
+        delete_resp = await client.delete(
+            f"/api/v1/collections/{collection_id}",
+            headers=USER_1_HEADERS,
+        )
+        assert delete_resp.status_code == 204
+
+        get_resp = await client.get(
+            f"/api/v1/collections/{collection_id}",
+            headers=USER_1_HEADERS,
+        )
+        assert get_resp.status_code == 404
+
+
 async def test_collection_mutations_blocked_while_graph_building(
     monkeypatch,
 ) -> None:
@@ -196,6 +240,42 @@ async def test_collection_mutations_blocked_while_graph_building(
             headers=USER_1_HEADERS,
         )
         assert update_resp.status_code == 409
+
+
+async def test_force_delete_removes_connector_managed_collection() -> None:
+    """Cleanup endpoint should remove orphan connector-managed collections."""
+    async with get_async_test_client() as client:
+        create_resp = await client.post(
+            "/api/v1/collections",
+            json={
+                "name": "orphan_connector_collection",
+                "metadata": {
+                    "connector_type": "airbyte",
+                    "sync_status": "error",
+                },
+            },
+            headers=USER_1_HEADERS,
+        )
+        assert create_resp.status_code == 201
+        collection_id = create_resp.json()["uuid"]
+
+        normal_delete_resp = await client.delete(
+            f"/api/v1/collections/{collection_id}",
+            headers=USER_1_HEADERS,
+        )
+        assert normal_delete_resp.status_code == 403
+
+        force_delete_resp = await client.delete(
+            f"/api/v1/collections/{collection_id}/force",
+            headers=USER_1_HEADERS,
+        )
+        assert force_delete_resp.status_code == 204
+
+        get_resp = await client.get(
+            f"/api/v1/collections/{collection_id}",
+            headers=USER_1_HEADERS,
+        )
+        assert get_resp.status_code == 404
 
 
 async def test_patch_collection() -> None:

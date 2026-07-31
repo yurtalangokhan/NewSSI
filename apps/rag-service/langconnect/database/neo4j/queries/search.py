@@ -61,6 +61,29 @@ LIMIT $limit
 """
 
 # ------------------------------------------------------------------
+# Relationship type search
+# ------------------------------------------------------------------
+
+SEARCH_RELATIONSHIPS_BY_TYPE = """
+MATCH (a:Entity {collection_id: $cid})-[r]->(b:Entity {collection_id: $cid})
+WHERE type(r) IN $relationship_types
+RETURN elementId(a) AS src_id,
+       a.label AS src_label,
+       a.name AS src_name,
+       properties(a) AS src_props,
+       elementId(b) AS tgt_id,
+       b.label AS tgt_label,
+       b.name AS tgt_name,
+       properties(b) AS tgt_props,
+       elementId(r) AS id,
+       elementId(a) AS src,
+       elementId(b) AS tgt,
+       type(r) AS rtype,
+       properties(r) AS props
+LIMIT $limit
+"""
+
+# ------------------------------------------------------------------
 # Entity cluster search (label → count)
 # ------------------------------------------------------------------
 

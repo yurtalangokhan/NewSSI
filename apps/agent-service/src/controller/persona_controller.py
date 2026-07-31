@@ -5,6 +5,7 @@ from typing import Any
 from fastapi import HTTPException
 
 from controller.base import BaseController
+from core.env import env
 from core.settings import settings
 from service.AuthService import AuthenticatedUser
 from service.PersonaRepository import PersonaDB
@@ -396,9 +397,11 @@ class PersonaController(BaseController):
 
         return names
 
-    async def _get_existing_collection_info(
+    async def _get_local_collection_info(
         self,
         collection_ids: list[str],
+        *,
+        source_key: str,
     ) -> tuple[set[str], dict[str, str]]:
         if not collection_ids:
             return set(), {}
@@ -423,6 +426,76 @@ class PersonaController(BaseController):
 
         return existing, display_names
 
+    async def _get_rag_service_collection_info(
+        self,
+        collection_ids: list[str],
+        *,
+        source_key: str,
+    ) -> tuple[set[str], dict[str, str]]:
+        if not collection_ids:
+            return set(), {}
+
+        base_url = (env.RAG_API_URL or env.RAG_SERVICE_API_URL or "").rstrip("/")
+        if not base_url:
+            return set(), {}
+
+        headers: dict[str, str] = {}
+        token = (env.INTERNAL_SERVICE_TOKEN or "").strip()
+        if token:
+            headers["X-Internal-Service-Token"] = token
+
+        try:
+            import httpx
+
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.get(
+                    f"{base_url}/api/v1/datasources/knowledge-selector",
+                    headers=headers,
+                )
+            if response.status_code != 200:
+                return set(), {}
+            payload = response.json()
+        except Exception:
+            return set(), {}
+
+        requested = set(collection_ids)
+        rows = payload.get(source_key) if isinstance(payload, dict) else []
+        if not isinstance(rows, list):
+            return set(), {}
+
+        existing: set[str] = set()
+        display_names: dict[str, str] = {}
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            collection_id = str(row.get("id") or "")
+            if collection_id not in requested:
+                continue
+            existing.add(collection_id)
+            display_name = row.get("name") or collection_id
+            display_names[collection_id] = str(display_name)
+
+        return existing, display_names
+
+    async def _get_existing_collection_info(
+        self,
+        collection_ids: list[str],
+        *,
+        source_key: str,
+    ) -> tuple[set[str], dict[str, str]]:
+        rag_existing, rag_display_names = await self._get_rag_service_collection_info(
+            collection_ids,
+            source_key=source_key,
+        )
+        local_existing, local_display_names = await self._get_local_collection_info(
+            collection_ids,
+            source_key=source_key,
+        )
+        return (
+            rag_existing | local_existing,
+            {**local_display_names, **rag_display_names},
+        )
+
     def _is_memory_available(self) -> bool:
         try:
             from service.LangGraphStoreService import get_langgraph_store
@@ -439,12 +512,16 @@ class PersonaController(BaseController):
         available_models = await self._get_available_model_names()
         available_mcp_tools = await self._get_available_mcp_tool_names()
         available_rag_collections, rag_display_names = await self._get_existing_collection_info(
-            document_collections
+            document_collections,
+            source_key="document_processing",
         )
         (
             available_graph_rag_collections,
             graph_display_names,
-        ) = await self._get_existing_collection_info(graph_collections)
+        ) = await self._get_existing_collection_info(
+            graph_collections,
+            source_key="knowledge_graph",
+        )
         collection_display_names = {**rag_display_names, **graph_display_names}
 
         return build_agent_availability(

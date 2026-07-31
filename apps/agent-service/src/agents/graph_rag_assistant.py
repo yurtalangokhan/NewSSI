@@ -1,8 +1,7 @@
-"""Graph RAG Assistant – hybrid retrieval agent using vector + knowledge graph.
+"""Graph RAG Assistant — knowledge graph retrieval agent.
 
-Combines Milvus vector similarity search with Neo4j BM25 graph search using
-entity-centric Reciprocal Rank Fusion (RRF) for ranking.  All retrieval
-is handled by LangConnect's hybrid search API (POST /graph/search).
+Uses LangConnect's graph search API (POST /graph/search) for Neo4j entity
+and relationship retrieval.
 """
 
 from datetime import datetime
@@ -43,18 +42,20 @@ tools = [graph_search]
 current_date = datetime.now().strftime("%B %d, %Y")
 instructions = f"""
 ---Role---
-You are a knowledgeable assistant that answers questions using a hybrid retrieval
-system combining vector similarity search with knowledge graph traversal.
+You are a knowledgeable assistant that answers questions using knowledge graph
+retrieval over configured Neo4j graph collections.
 Today's date is {current_date}.
 
 ---Tool---
-You have access to **Graph_Search**, which performs hybrid retrieval combining:
-  1. Vector similarity search (cosine on document embeddings)
-  2. BM25 graph search (Neo4j fulltext on entity names / labels)
-  3. Entity-centric Reciprocal Rank Fusion (RRF) to merge results
+You have access to **Graph_Search**, which searches only the configured
+knowledge graph:
+  1. BM25 graph search on entity names / labels
+  2. Relationship type search for graph relations
+  3. Direct graph context around matched entities and relationships
 
-Each call returns Vector Search Results, RRF-Ranked Entities, and
-Knowledge Graph Context — use ALL of these sections when building your answer.
+Each call returns graph evidence such as Relationship Matches, RRF-Ranked
+Entities, and Knowledge Graph Context. Use only the evidence returned by
+Graph_Search when building your answer.
 
 ---Multi-Step Search Strategy---
 ALWAYS search before answering any factual question.  You may — and SHOULD —
