@@ -851,6 +851,19 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
                     }
                     className="h-full w-full flex flex-col items-center"
                   >
+                    {currentProjectId && currentProjectDetails?.project && (
+                      <div className="w-full max-w-[var(--app-page-main-content-width)] px-2 pt-3">
+                        <Button
+                          icon={SvgChevronLeft}
+                          onClick={handleBackToProject}
+                          tooltip={t("projectContextPanel.backToProject")}
+                          prominence="secondary"
+                          size="sm"
+                        >
+                          {currentProjectDetails.project.name}
+                        </Button>
+                      </div>
+                    )}
                     <ChatScrollContainer
                       ref={scrollContainerRef}
                       sessionId={currentChatSessionId!}
@@ -904,25 +917,6 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
                 {/* ── Middle-center: AppInputBar ── */}
                 <div className="row-start-2 flex flex-col items-center">
                   <div className="relative w-full max-w-[var(--app-page-main-content-width)] flex flex-col">
-                    {/* Back button - shown when chat is opened within a project */}
-                    {appFocus.isChat() &&
-                      currentChatSessionId &&
-                      currentProjectId &&
-                      currentProjectDetails?.project && (
-                        <div className="mb-2 flex items-center gap-2 px-2">
-                          <button
-                            onClick={handleBackToProject}
-                            aria-label={t("projectContextPanel.backToProject")}
-                            className="inline-flex items-center gap-1 rounded-lg px-2 py-1 hover:bg-background-tint-02 transition-colors"
-                          >
-                            <SvgChevronLeft size={16} className="w-4 h-4" />
-                            <span className="text-xs font-medium text-text-light">
-                              {currentProjectDetails.project.name}
-                            </span>
-                          </button>
-                        </div>
-                      )}
-
                     {/* Scroll to bottom button - positioned absolutely above AppInputBar */}
                     {appFocus.isChat() && showScrollButton && (
                       <div className="absolute top-[-3.5rem] self-center">

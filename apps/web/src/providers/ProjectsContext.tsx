@@ -43,6 +43,7 @@ import { useAppRouter } from "@/hooks/appNavigation";
 import { ChatFileType } from "@/app/app/interfaces";
 import { toast } from "@/hooks/useToast";
 import { useProjects } from "@/lib/hooks/useProjects";
+import { resolveCurrentProjectId } from "@/lib/projects/resolveProjectContext";
 import {
   generateUUID,
   mimeTypeToChatFileType,
@@ -146,9 +147,16 @@ export function ProjectsProvider({ children }: ProjectsProviderProps) {
     useState<ProjectDetails | null>(null);
   const searchParams = useSearchParams();
   const currentProjectIdRaw = searchParams.get(SEARCH_PARAM_NAMES.PROJECT_ID);
-  const currentProjectId = currentProjectIdRaw
-    ? Number.parseInt(currentProjectIdRaw)
-    : null;
+  const currentChatId = searchParams.get(SEARCH_PARAM_NAMES.CHAT_ID);
+  const currentProjectId = useMemo(
+    () =>
+      resolveCurrentProjectId({
+        projectIdParam: currentProjectIdRaw,
+        chatId: currentChatId,
+        projects,
+      }),
+    [currentProjectIdRaw, currentChatId, projects]
+  );
   const [currentMessageFiles, setCurrentMessageFiles] = useState<ProjectFile[]>(
     []
   );

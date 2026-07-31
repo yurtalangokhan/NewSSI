@@ -37,7 +37,8 @@ const ProjectFolderButton = memo(({ project }: ProjectFolderButtonProps) => {
   const [open, setOpen] = useState(false);
   const [deleteConfirmationModalOpen, setDeleteConfirmationModalOpen] =
     useState(false);
-  const { renameProject, deleteProject } = useProjectsContext();
+  const { renameProject, deleteProject, currentProjectId } =
+    useProjectsContext();
   const [isEditing, setIsEditing] = useState(false);
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [isHoveringIcon, setIsHoveringIcon] = useState(false);
@@ -149,8 +150,8 @@ const ProjectFolderButton = memo(({ project }: ProjectFolderButtonProps) => {
               />
             )}
             transient={
-              activeSidebar.isProject() &&
-              activeSidebar.getId() === String(project.id)
+              currentProjectId === project.id &&
+              (activeSidebar.isProject() || activeSidebar.isChat())
             }
             onClick={noProp(handleTextClick)}
             focused={isEditing}

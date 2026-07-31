@@ -94,6 +94,48 @@ def _coerce_project_id(value: Any) -> int | None:
         return None
 
 
+def _resolve_project_id_from_chat_context(
+    request_project_id: Any,
+    thread: dict[str, Any] | None,
+) -> int | None:
+    resolved_project_id = _coerce_project_id(request_project_id)
+    if resolved_project_id is not None or not isinstance(thread, dict):
+        return resolved_project_id
+
+    resolved_project_id = _coerce_project_id(thread.get("project_id"))
+    if resolved_project_id is not None:
+        return resolved_project_id
+
+    metadata = thread.get("metadata") or {}
+    if isinstance(metadata, dict):
+        return _coerce_project_id(metadata.get("project_id"))
+
+    return None
+
+
+def _merge_file_descriptors(
+    request_descriptors: list[dict[str, Any]],
+    project_descriptors: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    merged: dict[str, dict[str, Any]] = {}
+
+    for descriptor in [*request_descriptors, *project_descriptors]:
+        descriptor_id = descriptor.get("id") or descriptor.get("file_id")
+        if not descriptor_id:
+            descriptor_id = str(uuid.uuid4())
+            descriptor = {**descriptor, "id": descriptor_id}
+
+        existing = merged.get(str(descriptor_id))
+        if existing is None:
+            merged[str(descriptor_id)] = descriptor
+            continue
+
+        if not existing.get("data") and descriptor.get("data"):
+            merged[str(descriptor_id)] = {**existing, **descriptor}
+
+    return list(merged.values())
+
+
 def _resolve_effective_chat_user_id(identity: dict[str, Any], user_id: str | None) -> str:
     effective_user_id = get_primary_user_id(identity, user_id)
     if not effective_user_id:
@@ -546,9 +588,10 @@ async def send_chat_message(
             )
 
     thread_metadata = thread.get("metadata") if thread else None
-    resolved_project_id = _coerce_project_id(body.get("project_id"))
-    if resolved_project_id is None and isinstance(thread_metadata, dict):
-        resolved_project_id = _coerce_project_id(thread_metadata.get("project_id"))
+    resolved_project_id = _resolve_project_id_from_chat_context(
+        body.get("project_id"),
+        thread,
+    )
 
     project_instructions = await resolve_project_instructions(
         user_id=project_user_id or effective_user_id,
@@ -562,7 +605,25 @@ async def send_chat_message(
     # Process file_descriptors sent by the frontend (inline base64 flow).
     # Convert each descriptor into a LangChain content block and store the raw
     # bytes in FileService so GET /api/chat/file/{id} can serve them later.
-    file_descriptors: list[dict] = body.get("file_descriptors") or []
+    request_file_descriptors: list[dict[str, Any]] = body.get("file_descriptors") or []
+    project_file_descriptors: list[dict[str, Any]] = []
+    if resolved_project_id is not None:
+        try:
+            project_file_descriptors = await user_controller.get_project_file_descriptors_for_chat(
+                list(known_user_ids),
+                resolved_project_id,
+            )
+        except Exception as exc:
+            logger.warning(
+                "Could not resolve project files for chat context (project_id=%s): %s",
+                resolved_project_id,
+                exc,
+            )
+
+    file_descriptors = _merge_file_descriptors(
+        request_file_descriptors,
+        project_file_descriptors,
+    )
     file_content_blocks: list[dict] = []
     files_metadata: list[dict] = []
 
