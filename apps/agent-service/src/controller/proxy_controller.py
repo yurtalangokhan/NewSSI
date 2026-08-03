@@ -88,6 +88,29 @@ class ProxyController(BaseController):
                     return {}
 
             def get_tool_schema(tool: Any) -> dict[str, Any]:
+                if getattr(tool, "name", "") == "send_email":
+                    return {
+                        "type": "object",
+                        "properties": {
+                            "mail_config_id": {
+                                "type": "string",
+                                "title": "Mail config",
+                                "description": "Select a saved SMTP mail config.",
+                            },
+                            "to": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "Recipient email addresses.",
+                            },
+                            "subject": {"type": "string"},
+                            "body": {"type": "string", "widget": "textarea"},
+                            "cc": {"type": "array", "items": {"type": "string"}},
+                            "bcc": {"type": "array", "items": {"type": "string"}},
+                            "is_html": {"type": "boolean", "default": False},
+                            "reply_to": {"type": "string"},
+                        },
+                        "required": ["mail_config_id", "to", "subject", "body"],
+                    }
                 schema = getattr(tool, "inputSchema", None)
                 if schema is not None:
                     return serialize_input_schema(schema)

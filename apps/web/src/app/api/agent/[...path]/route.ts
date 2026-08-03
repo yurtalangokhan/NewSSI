@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCookieValue, refreshAuthCookies } from "@/lib/api/proxy";
+import { getCookieValue } from "@/lib/api/proxy";
 import { buildServiceUrl } from "@/lib/api/gatewayRouting";
 import { getAgentServiceUrl } from "@/lib/env.server";
 
@@ -62,13 +62,7 @@ async function proxyToAgentService(
         duplex: "half",
       });
 
-    let response = await execute(requestCookie);
-
-    const refreshed =
-      response.status === 401 ? await refreshAuthCookies(requestCookie) : null;
-    if (refreshed?.accessToken) {
-      response = await execute(refreshed.cookieHeader, refreshed.accessToken);
-    }
+    const response = await execute(requestCookie);
 
     const setCookies =
       // @ts-ignore - undici provides getSetCookie in Node runtime.
@@ -89,9 +83,6 @@ async function proxyToAgentService(
       if (cookie) {
         proxyResponse.headers.append("set-cookie", cookie);
       }
-    }
-    for (const cookie of refreshed?.setCookies ?? []) {
-      proxyResponse.headers.append("set-cookie", cookie);
     }
 
     return proxyResponse;

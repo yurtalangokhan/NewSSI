@@ -104,7 +104,9 @@ export function UserProvider({
   );
   const [permissions, setPermissions] = useState<string[]>([]);
   const [permissionsError, setPermissionsError] = useState<string | null>(null);
-  const [isPermissionsLoading, setIsPermissionsLoading] = useState(false);
+  const [isPermissionsLoading, setIsPermissionsLoading] = useState(
+    Boolean(user?.id)
+  );
 
   useEffect(() => {
     setUpToDateUser(mergeUserPreferences(user, updatedSettings));

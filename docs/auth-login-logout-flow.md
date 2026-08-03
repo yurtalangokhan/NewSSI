@@ -111,6 +111,12 @@ When an API call receives 401, the web app attempts `POST /api/auth/refresh`.
   that browser tab until a login page is mounted. The login page clears that
   marker so the first 401 after the next successful login can refresh normally.
 
+Client-facing Next.js API proxies and page middleware must return or pass
+through auth state without calling the refresh endpoint themselves. This keeps
+refresh token rotation centralized in the browser-side authenticated fetcher
+and prevents server-side request races from consuming the refresh token before
+the browser can refresh and retry the original request.
+
 Seeing 401 for `/api/auth/refresh` or `/api/auth/me` before login is expected.
 It is only a bug if successful login does not turn those requests into 200.
 

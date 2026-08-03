@@ -43,6 +43,7 @@ export interface MinimalPersonaSnapshot {
   sub_agent_ids?: string[];
   brain_type?: string | null;
   mcp_tools?: string[];
+  mcp_tool_configs?: Record<string, Record<string, string>>;
   name: string;
   description: string;
   tools: ToolSnapshot[];
@@ -120,6 +121,7 @@ export interface DynamicAgentDefinition {
   system_prompt: string | null;
   model: string | null;
   mcp_tools: string[];
+  mcp_tool_configs?: Record<string, Record<string, string>>;
   rag_config?: {
     document_processing: string[];
     knowledge_graph: string[];

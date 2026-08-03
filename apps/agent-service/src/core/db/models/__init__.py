@@ -33,6 +33,7 @@ from core.db.models.assistant import AssistantModel
 from core.db.models.base import Base
 from core.db.models.collection import PgCollection, PgEmbedding
 from core.db.models.document import DocumentModel
+from core.db.models.mail_config import MailConfigModel
 from core.db.models.mcp_provider import MCPProviderModel
 from core.db.models.mcp_tool import MCPToolModel
 from core.db.models.persona import PersonaModel
@@ -52,6 +53,7 @@ __all__ = [
     "ProjectModel",
     "MCPProviderModel",
     "MCPToolModel",
+    "MailConfigModel",
     "AgentToolsModel",
     "AgentGroupModel",
     "DocumentModel",

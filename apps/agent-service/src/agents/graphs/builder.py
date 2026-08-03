@@ -17,6 +17,7 @@ from agents.graphs.schemas import (
     GraphSchemaType,
     get_schema,
 )
+from agents.mail_tooling import append_email_tool_policy, maybe_wrap_mcp_tool
 
 logger = logging.getLogger(__name__)
 
@@ -52,12 +53,27 @@ class GraphBuilder:
         self.checkpointer = checkpointer
         self.repository = repository  # NEW: For loading sub-agents from DB
 
-    def _get_tools_for_names(self, tool_names: list[str]) -> list[Any]:
+    def _get_tools_for_names(
+        self,
+        tool_names: list[str],
+        *,
+        tool_configs: dict[str, Any] | None = None,
+        user_id: str | None = None,
+        mail_attachments: list[dict[str, Any]] | None = None,
+    ) -> list[Any]:
         """Get tool instances from names using the tools map."""
         tools = []
         for name in tool_names:
             if name in self.mcp_tools_map:
-                tools.append(self.mcp_tools_map[name])
+                tools.append(
+                    maybe_wrap_mcp_tool(
+                        tool_name=name,
+                        tool=self.mcp_tools_map[name],
+                        tool_configs=tool_configs,
+                        user_id=user_id,
+                        mail_attachments=mail_attachments,
+                    )
+                )
             else:
                 logger.warning(f"Tool '{name}' not found in tools map")
         return tools
@@ -260,6 +276,7 @@ class GraphBuilder:
             "system_prompt": agent_def.system_prompt or "You are a helpful agent.",
             "model": agent_def.model,
             "mcp_tools": agent_def.mcp_tools or [],
+            "mcp_tool_configs": agent_def.mcp_tool_configs or {},
             "rag_config": agent_def.rag_config,
             "supervisor_prompt": agent_def.supervisor_prompt,
             "stages": agent_def.stages,
@@ -301,11 +318,20 @@ class GraphBuilder:
 
     def _build_react(self, config: dict[str, Any]) -> CompiledStateGraph:
         """Build ReAct agent with tools."""
-        system_prompt = config.get("system_prompt", self.system_prompt)
+        tool_names = config.get("mcp_tools", [])
+        system_prompt = append_email_tool_policy(
+            config.get("system_prompt", self.system_prompt),
+            tool_names,
+            mail_attachments=config.get("mail_attachments"),
+        )
         model = self._get_model(config.get("model"))
 
-        tool_names = config.get("mcp_tools", [])
-        tools = self._get_tools_for_names(tool_names)
+        tools = self._get_tools_for_names(
+            tool_names,
+            tool_configs=config.get("mcp_tool_configs") or {},
+            user_id=config.get("user_id"),
+            mail_attachments=config.get("mail_attachments"),
+        )
         extra_tools = config.get("extra_tools", []) or []
         tools.extend(extra_tools)
 
@@ -354,6 +380,10 @@ class GraphBuilder:
             name = sub_agent_cfg.get("name", "agent")
             sa_system_prompt = sub_agent_cfg.get("system_prompt", "You are a helpful agent.")
             tool_names = sub_agent_cfg.get("mcp_tools", [])
+            if config.get("user_id") and not sub_agent_cfg.get("user_id"):
+                sub_agent_cfg["user_id"] = config["user_id"]
+            if config.get("mail_attachments") and not sub_agent_cfg.get("mail_attachments"):
+                sub_agent_cfg["mail_attachments"] = config["mail_attachments"]
             agent = self._build_sub_agent_graph(sub_agent_cfg)
 
             agents_list.append(agent)
@@ -409,6 +439,10 @@ class GraphBuilder:
                 continue
 
             name = stage_cfg.get("name", "stage")
+            if config.get("user_id") and not stage_cfg.get("user_id"):
+                stage_cfg["user_id"] = config["user_id"]
+            if config.get("mail_attachments") and not stage_cfg.get("mail_attachments"):
+                stage_cfg["mail_attachments"] = config["mail_attachments"]
             agent = self._build_sub_agent_graph(stage_cfg)
 
             agents_list.append(agent)
@@ -450,10 +484,19 @@ class GraphBuilder:
             return nested_builder.build(schema_type, agent_config)
 
         name = agent_config.get("name", "agent")
-        system_prompt = agent_config.get("system_prompt", "You are a helpful agent.")
         tool_names = agent_config.get("mcp_tools", [])
+        system_prompt = append_email_tool_policy(
+            agent_config.get("system_prompt", "You are a helpful agent."),
+            tool_names,
+            mail_attachments=agent_config.get("mail_attachments"),
+        )
         agent_model = self._get_model(agent_config.get("model"))
-        agent_tools = self._get_tools_for_names(tool_names)
+        agent_tools = self._get_tools_for_names(
+            tool_names,
+            tool_configs=agent_config.get("mcp_tool_configs") or {},
+            user_id=agent_config.get("user_id"),
+            mail_attachments=agent_config.get("mail_attachments"),
+        )
 
         return create_react_agent(
             model=agent_model,
@@ -464,14 +507,23 @@ class GraphBuilder:
 
     def _build_plan_execute(self, config: dict[str, Any]) -> CompiledStateGraph:
         """Build Plan & Execute graph."""
-        system_prompt = config.get(
-            "system_prompt",
-            "First create a detailed plan, then execute each step methodically.",
+        tool_names = config.get("mcp_tools", [])
+        system_prompt = append_email_tool_policy(
+            config.get(
+                "system_prompt",
+                "First create a detailed plan, then execute each step methodically.",
+            ),
+            tool_names,
+            mail_attachments=config.get("mail_attachments"),
         )
         model = self._get_model(config.get("model"))
 
-        tool_names = config.get("mcp_tools", [])
-        tools = self._get_tools_for_names(tool_names)
+        tools = self._get_tools_for_names(
+            tool_names,
+            tool_configs=config.get("mcp_tool_configs") or {},
+            user_id=config.get("user_id"),
+            mail_attachments=config.get("mail_attachments"),
+        )
         extra_tools = config.get("extra_tools", []) or []
         tools.extend(extra_tools)
 

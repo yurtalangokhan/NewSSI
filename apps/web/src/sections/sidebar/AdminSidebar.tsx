@@ -107,6 +107,7 @@ const collections = (
               sidebarItem(ADMIN_PATHS.WEB_SEARCH, t),
               sidebarItem(ADMIN_PATHS.IMAGE_GENERATION, t),
               sidebarItem(ADMIN_PATHS.CODE_INTERPRETER, t),
+              sidebarItem(ADMIN_PATHS.MAIL_CONFIGS, t),
               ...(!enableCloud && vectorDbEnabled
                 ? [
                     {

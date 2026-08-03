@@ -63,77 +63,11 @@ export function getCookieValue(
   return null;
 }
 
-export interface AuthRefreshResult {
-  accessToken: string | null;
-  cookieHeader: string;
-  setCookies: string[];
-}
-
-export async function refreshAuthCookies(
-  cookieHeader: string
-): Promise<AuthRefreshResult | null> {
-  if (!getCookieValue(cookieHeader, "refresh_token")) {
-    return null;
-  }
-
-  const response = await fetch(
-    buildServiceUrl(USER_SERVICE_URL, "user", "/api/auth/refresh").toString(),
-    {
-      method: "POST",
-      headers: cookieHeader ? { Cookie: cookieHeader } : undefined,
-      cache: "no-store",
-    }
-  );
-
-  if (!response.ok) {
-    return null;
-  }
-
-  let accessToken: string | null = null;
-  try {
-    const payload = await response.clone().json();
-    accessToken =
-      typeof payload?.access_token === "string" ? payload.access_token : null;
-  } catch {
-    accessToken = null;
-  }
-
-  const setCookies = response.headers.getSetCookie();
-  let refreshedCookieHeader = cookieHeader;
-  for (const cookie of setCookies) {
-    const nameValue = cookie.split(";", 1)[0];
-    if (!nameValue) {
-      continue;
-    }
-    const [name, ...valueParts] = nameValue.split("=");
-    const value = valueParts.join("=");
-    if (!name || !value) {
-      continue;
-    }
-    const encoded = `${name}=${value}`;
-    const parts = refreshedCookieHeader
-      .split(/;\s*/)
-      .filter((part) => part && !part.startsWith(`${name}=`));
-    parts.push(encoded);
-    refreshedCookieHeader = parts.join("; ");
-    if (name === "access_token") {
-      accessToken = decodeURIComponent(value);
-    }
-  }
-
-  return {
-    accessToken,
-    cookieHeader: refreshedCookieHeader,
-    setCookies,
-  };
-}
-
 export interface ProxyOptions {
   method?: "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
   withCredentials?: boolean;
   backendUrl?: string;
   backendService?: BackendService;
-  refreshOnUnauthorized?: boolean;
   queryParams?: Record<string, string>;
 }
 
@@ -170,7 +104,6 @@ export async function proxyToBackend(
       withCredentials = true,
       backendUrl = BACKEND_URL,
       backendService = inferBackendService(backendUrl),
-      refreshOnUnauthorized = true,
       queryParams,
     } = options;
 
@@ -232,32 +165,11 @@ export async function proxyToBackend(
       return headers;
     };
 
-    const initialRefresh =
-      !isAuthRefreshRequest &&
-      !getCookieValue(requestCookie, "access_token") &&
-      getCookieValue(requestCookie, "refresh_token")
-        ? await refreshAuthCookies(requestCookie)
-        : null;
-    const initialCookieHeader = initialRefresh?.cookieHeader ?? requestCookie;
-    const initialAccessToken = initialRefresh?.accessToken ?? null;
-
-    let response = await fetch(url.toString(), {
+    const response = await fetch(url.toString(), {
       method,
-      headers: buildHeaders(initialCookieHeader, initialAccessToken),
+      headers: buildHeaders(requestCookie),
       body,
     });
-
-    const refreshed =
-      refreshOnUnauthorized && response.status === 401
-        ? await refreshAuthCookies(initialCookieHeader)
-        : null;
-    if (refreshed?.accessToken) {
-      response = await fetch(url.toString(), {
-        method,
-        headers: buildHeaders(refreshed.cookieHeader, refreshed.accessToken),
-        body,
-      });
-    }
 
     const noContent = new Set([204, 205, 304]).has(response.status);
     const responseText = noContent ? "" : await response.text();
@@ -275,12 +187,6 @@ export async function proxyToBackend(
 
     // Forward set-cookie headers
     response.headers.getSetCookie().forEach((cookie) => {
-      result.headers.append("Set-Cookie", cookie);
-    });
-    initialRefresh?.setCookies.forEach((cookie) => {
-      result.headers.append("Set-Cookie", cookie);
-    });
-    refreshed?.setCookies.forEach((cookie) => {
       result.headers.append("Set-Cookie", cookie);
     });
 

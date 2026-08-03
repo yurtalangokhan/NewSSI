@@ -56,6 +56,7 @@ class PersonaDB:
                     builtin_key                 TEXT,
                     base_agent                  TEXT,
                     mcp_tools                   JSONB,
+                    mcp_tool_configs            JSONB NOT NULL DEFAULT '{}'::jsonb,
                     time_created                TIMESTAMPTZ NOT NULL DEFAULT now(),
                     time_updated                TIMESTAMPTZ NOT NULL DEFAULT now()
                 )

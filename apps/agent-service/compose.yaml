@@ -47,6 +47,7 @@ services:
       - KEYCLOAK_CLIENT_ID=${KEYCLOAK_CLIENT_ID:-agenticai-web}
       - KEYCLOAK_CLIENT_SECRET=${KEYCLOAK_CLIENT_SECRET:-}
       - KEYCLOAK_AUDIENCE=${KEYCLOAK_AUDIENCE:-agent-service}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY:-}
     develop:
       watch:
         - path: src/agents/

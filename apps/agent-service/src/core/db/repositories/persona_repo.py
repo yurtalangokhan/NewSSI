@@ -37,6 +37,7 @@ class PersonaRepository(BaseRepository):
             "builtin_key": row.builtin_key,
             "base_agent": row.base_agent,
             "mcp_tools": row.mcp_tools,
+            "mcp_tool_configs": row.mcp_tool_configs or {},
             "rag_config": row.rag_config,
             "long_term_memory": bool(row.long_term_memory),
             "time_created": row.time_created.isoformat() if row.time_created else None,
@@ -147,6 +148,7 @@ class PersonaRepository(BaseRepository):
             "labels",
             "base_agent",
             "mcp_tools",
+            "mcp_tool_configs",
             "rag_config",
             "long_term_memory",
         }

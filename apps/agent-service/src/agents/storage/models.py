@@ -59,6 +59,9 @@ class AgentDefinitionModel(Base):
     # Tools configuration - list of MCP tool names
     mcp_tools: Mapped[list] = mapped_column(JSON, default=list)
 
+    # Per-tool config references. Must not contain secrets.
+    mcp_tool_configs: Mapped[dict] = mapped_column(JSON, default=dict)
+
     # Knowledge collection binding used by retrieval tools
     rag_config: Mapped[dict] = mapped_column(JSON, default=dict)
 
@@ -117,6 +120,7 @@ class AgentDefinitionModel(Base):
             "system_prompt": self.system_prompt,
             "model": self.model,
             "mcp_tools": self.mcp_tools or [],
+            "mcp_tool_configs": self.mcp_tool_configs or {},
             "rag_config": self.rag_config or {},
             "sub_agents": self.sub_agents or [],
             "sub_agent_ids": self.sub_agent_ids or [],

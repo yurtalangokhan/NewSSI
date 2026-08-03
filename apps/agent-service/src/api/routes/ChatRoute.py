@@ -626,6 +626,7 @@ async def send_chat_message(
     )
     file_content_blocks: list[dict] = []
     files_metadata: list[dict] = []
+    mail_attachments: list[dict[str, Any]] = []
 
     if file_descriptors:
         import base64 as _base64
@@ -682,6 +683,14 @@ async def send_chat_message(
                 raw = _base64.b64decode(fd_data)
                 logger.debug("Storing file %s (%s): %d bytes", fd_id, m, len(raw))
                 _store_file(fd_id, raw, fd_mime, fd_name)
+                mail_attachments.append(
+                    {
+                        "id": fd_id,
+                        "filename": fd_name,
+                        "mime_type": fd_mime,
+                        "content_base64": fd_data,
+                    }
+                )
             except Exception as store_err:
                 logger.error(
                     "Could not store file %s in FileService: %s", fd_id, store_err, exc_info=True
@@ -737,6 +746,7 @@ async def send_chat_message(
         agent_config=llm_override or {},
         file_content_blocks=file_content_blocks,
         files_metadata=files_metadata,
+        mail_attachments=mail_attachments,
     )
 
     async def generate_stream():

@@ -38,5 +38,6 @@ class PersonaUpsertRequest(BaseModel):
     reflection_prompt: str | None = None
     max_iterations: int = 3
     mcp_tools: list[str] = Field(default_factory=list)
+    mcp_tool_configs: dict = Field(default_factory=dict)
     rag_config: dict | None = None
     long_term_memory: bool = False

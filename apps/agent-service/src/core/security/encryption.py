@@ -1,4 +1,4 @@
-"""Fernet-based symmetric encryption for API key storage."""
+"""Fernet-based symmetric encryption for secret storage."""
 
 from __future__ import annotations
 
@@ -14,20 +14,31 @@ def _get_fernet() -> Fernet:
     if _fernet is None:
         key = env.ENCRYPTION_KEY
         if not key:
-            raise RuntimeError("ENCRYPTION_KEY env var is required for API key storage")
+            raise RuntimeError("ENCRYPTION_KEY env var is required for secret storage")
         _fernet = Fernet(key.encode())
     return _fernet
 
 
-def encrypt_api_key(plaintext: str) -> str:
+def encrypt_secret(plaintext: str) -> str:
     return _get_fernet().encrypt(plaintext.encode()).decode()
+
+
+def decrypt_secret(token: str) -> str:
+    try:
+        return _get_fernet().decrypt(token.encode()).decode()
+    except InvalidToken:
+        raise ValueError("Failed to decrypt secret; encryption key may have rotated")
+
+
+def encrypt_api_key(plaintext: str) -> str:
+    return encrypt_secret(plaintext)
 
 
 def decrypt_api_key(token: str) -> str:
     try:
-        return _get_fernet().decrypt(token.encode()).decode()
-    except InvalidToken:
-        raise ValueError("Failed to decrypt API key — key may have rotated")
+        return decrypt_secret(token)
+    except ValueError as exc:
+        raise ValueError("Failed to decrypt API key — key may have rotated") from exc
 
 
 def mask_api_key(plaintext: str) -> str:

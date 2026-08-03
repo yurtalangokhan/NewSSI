@@ -98,32 +98,19 @@ describe("proxyToBackend", () => {
     );
   });
 
-  it("refreshes before proxying RAG requests when only a refresh token remains", async () => {
-    const refreshResponse = new Response(
-      JSON.stringify({ access_token: "fresh-access" }),
-      {
-        status: 200,
+  it("does not refresh before proxying when only a refresh token remains", async () => {
+    fetchSpy.mockResolvedValueOnce(
+      new Response(JSON.stringify({ detail: "missing access token" }), {
+        status: 401,
         headers: {
           "content-type": "application/json",
         },
-      }
+      })
     );
-    (
-      refreshResponse.headers as Headers & { getSetCookie?: () => string[] }
-    ).getSetCookie = () => [
-      "access_token=fresh-access; Path=/; HttpOnly",
-      "refresh_token=fresh-refresh; Path=/; HttpOnly",
-    ];
-
-    fetchSpy
-      // User-service refresh endpoint.
-      .mockResolvedValueOnce(refreshResponse)
-      // RAG collections endpoint after refresh.
-      .mockResolvedValueOnce(responseWithHeaders({}));
 
     const request = new NextRequest("http://localhost/api/rag/collections", {
       headers: {
-        cookie: "refresh_token=stale-refresh",
+        cookie: "refresh_token=valid-refresh",
       },
     });
 
@@ -132,19 +119,20 @@ describe("proxyToBackend", () => {
       backendService: "rag",
     });
 
-    expect(response.status).toBe(200);
-    expect(fetchSpy).toHaveBeenNthCalledWith(
-      2,
+    expect(response.status).toBe(401);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(fetchSpy).toHaveBeenCalledWith(
       "http://kong:8000/rag-service/api/v1/collections",
       expect.objectContaining({
         headers: expect.objectContaining({
-          Authorization: "Bearer fresh-access",
-          Cookie: expect.stringContaining("access_token=fresh-access"),
+          Cookie: "refresh_token=valid-refresh",
         }),
       })
     );
-    expect(fetchSpy.mock.calls[1][1].headers.Cookie).toContain(
-      "refresh_token=fresh-refresh"
+    expect(fetchSpy.mock.calls[0][1].headers).toEqual(
+      expect.not.objectContaining({
+        Authorization: expect.any(String),
+      })
     );
   });
 
@@ -167,13 +155,41 @@ describe("proxyToBackend", () => {
     const response = await proxyToBackend(request, "/collections", {
       backendUrl: "http://kong:8000/rag-service",
       backendService: "rag",
-      refreshOnUnauthorized: false,
     });
 
     expect(response.status).toBe(401);
     expect(fetchSpy).toHaveBeenCalledTimes(1);
     expect(fetchSpy).toHaveBeenCalledWith(
       "http://kong:8000/rag-service/api/v1/collections",
+      expect.any(Object)
+    );
+  });
+
+  it("does not refresh after a backend 401 by default", async () => {
+    fetchSpy.mockResolvedValueOnce(
+      new Response(JSON.stringify({ detail: "expired token" }), {
+        status: 401,
+        headers: {
+          "content-type": "application/json",
+        },
+      })
+    );
+
+    const request = new NextRequest("http://localhost/api/me", {
+      headers: {
+        cookie: "access_token=expired-access; refresh_token=valid-refresh",
+      },
+    });
+
+    const response = await proxyToBackend(request, "/api/auth/me", {
+      backendUrl: "http://kong:8000",
+      backendService: "user",
+    });
+
+    expect(response.status).toBe(401);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(fetchSpy).toHaveBeenCalledWith(
+      "http://kong:8000/user-service/api/v1/auth/me",
       expect.any(Object)
     );
   });
@@ -192,7 +208,6 @@ describe("proxyToBackend", () => {
       method: "POST",
       backendUrl: "http://kong:8000",
       backendService: "user",
-      refreshOnUnauthorized: false,
     });
 
     expect(fetchSpy).toHaveBeenCalledWith(

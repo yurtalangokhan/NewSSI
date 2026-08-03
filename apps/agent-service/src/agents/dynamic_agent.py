@@ -187,7 +187,11 @@ class DynamicAgent(LazyLoadingAgent):
             checkpointer=self._checkpointer if hasattr(self, "_checkpointer") else None,
         )
 
-        build_config: dict[str, Any] = {}
+        build_config: dict[str, Any] = {
+            "mcp_tool_configs": effective_config.get("mcp_tool_configs") or {},
+            "user_id": effective_config.get("owner_user_id") or effective_config.get("user_id"),
+            "mail_attachments": effective_config.get("mail_attachments") or [],
+        }
         rag_config = effective_config.get("rag_config") or {}
         rag_tools = []
         if rag_config:
@@ -259,7 +263,20 @@ class DynamicAgent(LazyLoadingAgent):
             return self._graph
 
         # Only build an override graph if runtime model routing fields are present.
-        if any(k in configurable for k in ("model", "llm_instance", "system_prompt", "mcp_tools")):
+        has_configured_mail_tool = "send_email" in (self._config.get("mcp_tools") or []) and bool(
+            (self._config.get("mcp_tool_configs") or {}).get("send_email")
+        )
+        runtime_keys = {
+            "model",
+            "llm_instance",
+            "system_prompt",
+            "mcp_tools",
+            "mcp_tool_configs",
+            "mail_attachments",
+        }
+        if any(k in configurable for k in runtime_keys) or (
+            has_configured_mail_tool and configurable.get("user_id")
+        ):
             return self._create_graph_from_config(runtime_config=configurable)
 
         return self._graph

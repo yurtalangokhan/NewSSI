@@ -87,6 +87,7 @@ class AgentDefinitionService:
         system_prompt: str | None = None,
         model: str | None = None,
         mcp_tools: list[str] | None = None,
+        mcp_tool_configs: dict[str, Any] | None = None,
         rag_config: dict[str, Any] | None = None,
         sub_agents: list[dict[str, Any]] | None = None,
         sub_agent_ids: list[UUID] | None = None,
@@ -100,7 +101,11 @@ class AgentDefinitionService:
     ):
         from agents.graphs.schemas import get_schema
 
-        graph_schema = self._normalize_graph_schema(graph_schema, mcp_tools, rag_config)
+        graph_schema = self._normalize_graph_schema(
+            graph_schema,
+            mcp_tools,
+            rag_config=rag_config,
+        )
 
         schema = get_schema(graph_schema)
         if not schema:
@@ -144,6 +149,7 @@ class AgentDefinitionService:
             system_prompt=system_prompt,
             model=model,
             mcp_tools=mcp_tools,
+            mcp_tool_configs=mcp_tool_configs,
             rag_config=rag_config,
             sub_agents=sub_agents,
             sub_agent_ids=sub_agent_ids,

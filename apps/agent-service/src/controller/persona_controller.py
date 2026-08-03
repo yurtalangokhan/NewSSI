@@ -152,9 +152,48 @@ def _format_tool_display_name(tool_name: str) -> str:
 class PersonaController(BaseController):
     """Owns persona CRUD and persona-related helper endpoints."""
 
+    @property
+    def _mail_config_service(self):
+        service = getattr(self, "__mail_config_service", None)
+        if service is None:
+            from service.MailConfigService import get_mail_config_service
+
+            service = get_mail_config_service()
+            setattr(self, "__mail_config_service", service)
+        return service
+
+    @_mail_config_service.setter
+    def _mail_config_service(self, value):
+        setattr(self, "__mail_config_service", value)
+
     @staticmethod
     def _dynamic_definition_name(persona_id: int) -> str:
         return f"persona-{persona_id}"
+
+    async def _validate_mcp_tool_configs(
+        self,
+        *,
+        user_id: str,
+        mcp_tools: list[str],
+        mcp_tool_configs: dict[str, Any] | None,
+    ) -> dict[str, Any]:
+        if "send_email" not in (mcp_tools or []):
+            return {}
+
+        configs = mcp_tool_configs or {}
+        send_email_config = configs.get("send_email")
+        if not isinstance(send_email_config, dict):
+            raise ValueError("send_email requires a mail config")
+
+        mail_config_id = str(send_email_config.get("mail_config_id") or "").strip()
+        if not mail_config_id:
+            raise ValueError("send_email requires a mail config")
+
+        mail_config = await self._mail_config_service.get_config(user_id, mail_config_id)
+        if not mail_config:
+            raise ValueError("Selected mail config was not found")
+
+        return {"send_email": {"mail_config_id": mail_config_id}}
 
     async def _get_dynamic_definition(self, persona_id: int):
         from agents.storage.repository import AgentDefinitionRepository
@@ -224,6 +263,7 @@ class PersonaController(BaseController):
             "system_prompt": payload.get("system_prompt") or None,
             "model": payload.get("llm_model_version_override") or None,
             "mcp_tools": payload.get("mcp_tools") or [],
+            "mcp_tool_configs": payload.get("mcp_tool_configs") or {},
             "rag_config": payload.get("rag_config")
             or {"document_processing": [], "knowledge_graph": []},
             "sub_agent_ids": payload.get("sub_agent_ids") or [],
@@ -284,6 +324,7 @@ class PersonaController(BaseController):
                 "memory_type": definition.memory_type,
                 "llm_model_version_override": definition.model,
                 "mcp_tools": definition.mcp_tools or [],
+                "mcp_tool_configs": getattr(definition, "mcp_tool_configs", {}) or {},
                 "rag_config": definition.rag_config
                 or {"document_processing": [], "knowledge_graph": []},
                 "sub_agent_ids": definition.sub_agent_ids or [],
@@ -586,6 +627,7 @@ class PersonaController(BaseController):
             for label in label_ids
         ]
         mcp_tools = persona.get("mcp_tools") or []
+        mcp_tool_configs = persona.get("mcp_tool_configs") or {}
         rag_config = persona.get("rag_config") or {
             "document_processing": [],
             "knowledge_graph": [],
@@ -626,6 +668,7 @@ class PersonaController(BaseController):
             "datetime_aware": bool(persona.get("datetime_aware", True)),
             "base_agent": persona.get("base_agent"),
             "mcp_tools": mcp_tools,
+            "mcp_tool_configs": mcp_tool_configs,
             "rag_config": rag_config,
             "long_term_memory": bool(persona.get("long_term_memory", False)),
             "search_start_date": persona.get("search_start_date"),
@@ -723,6 +766,12 @@ class PersonaController(BaseController):
         try:
             rag_config = payload.get("rag_config")
             effective_user_id = user_id or DEFAULT_USER_ID
+            mcp_tools = payload.get("mcp_tools") or []
+            mcp_tool_configs = await self._validate_mcp_tool_configs(
+                user_id=effective_user_id,
+                mcp_tools=mcp_tools,
+                mcp_tool_configs=payload.get("mcp_tool_configs") or {},
+            )
             persona = await PersonaDB.create(
                 name=payload["name"],
                 description=payload["description"],
@@ -737,10 +786,13 @@ class PersonaController(BaseController):
                 starter_messages=payload.get("starter_messages"),
                 labels=payload.get("label_ids", []),
                 base_agent=payload.get("base_agent"),
-                mcp_tools=payload.get("mcp_tools") or [],
+                mcp_tools=mcp_tools,
+                mcp_tool_configs=mcp_tool_configs,
                 rag_config=rag_config,
                 long_term_memory=bool(payload.get("long_term_memory", False)),
             )
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
         except Exception as exc:
             self._raise_internal_error(str(exc))
 
@@ -757,13 +809,19 @@ class PersonaController(BaseController):
         payload: dict[str, Any],
         user_id: str | None = None,
     ) -> dict[str, Any]:
-        _ = user_id
         try:
             existing = await PersonaDB.get(persona_id)
             if existing and existing.get("is_builtin"):
                 raise HTTPException(status_code=403, detail="Cannot update built-in agents")
 
             rag_config = payload.get("rag_config")
+            effective_user_id = user_id or str((existing or {}).get("user_id") or DEFAULT_USER_ID)
+            mcp_tools = payload.get("mcp_tools") or []
+            mcp_tool_configs = await self._validate_mcp_tool_configs(
+                user_id=effective_user_id,
+                mcp_tools=mcp_tools,
+                mcp_tool_configs=payload.get("mcp_tool_configs") or {},
+            )
             persona = await PersonaDB.update(
                 persona_id,
                 name=payload["name"],
@@ -777,7 +835,8 @@ class PersonaController(BaseController):
                 starter_messages=payload.get("starter_messages"),
                 labels=payload.get("label_ids", []),
                 base_agent=payload.get("base_agent"),
-                mcp_tools=payload.get("mcp_tools") or [],
+                mcp_tools=mcp_tools,
+                mcp_tool_configs=mcp_tool_configs,
                 rag_config=rag_config,
                 long_term_memory=bool(payload.get("long_term_memory", False)),
             )
@@ -785,6 +844,8 @@ class PersonaController(BaseController):
                 self._raise_not_found("Persona not found")
         except HTTPException:
             raise
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
         except Exception as exc:
             self._raise_internal_error(str(exc))
 

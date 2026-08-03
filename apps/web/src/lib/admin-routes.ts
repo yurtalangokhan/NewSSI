@@ -53,6 +53,7 @@ export const ADMIN_PATHS = {
   WEB_SEARCH: "/admin/configuration/web-search",
   IMAGE_GENERATION: "/admin/configuration/image-generation",
   CODE_INTERPRETER: "/admin/configuration/code-interpreter",
+  MAIL_CONFIGS: "/admin/configuration/mail-configs",
   SEARCH_SETTINGS: "/admin/configuration/search",
   DOCUMENT_PROCESSING: "/admin/configuration/document-processing",
   KNOWLEDGE_GRAPH: "/admin/kg",
@@ -212,6 +213,14 @@ export const ADMIN_ROUTE_CONFIG: Record<string, AdminRouteConfig> = {
     requiredPermissions: ["settings:read"],
     titleKey: "admin.navigation.routes.codeInterpreter.title",
     sidebarLabelKey: "admin.navigation.routes.codeInterpreter.sidebar",
+  },
+  [ADMIN_PATHS.MAIL_CONFIGS]: {
+    icon: SvgServer,
+    title: "Mail Configs",
+    sidebarLabel: "Mail Configs",
+    requiredPermissions: ["settings:read"],
+    titleKey: "admin.navigation.routes.mailConfigs.title",
+    sidebarLabelKey: "admin.navigation.routes.mailConfigs.sidebar",
   },
   [ADMIN_PATHS.SEARCH_SETTINGS]: {
     icon: SvgSearch,

@@ -19,54 +19,29 @@ function setCookieHeaders(response: Response): string[] {
 }
 
 describe("proxy middleware auth refresh", () => {
-  beforeEach(() => {
-    global.fetch = jest.fn();
-  });
-
   afterEach(() => {
     jest.restoreAllMocks();
   });
 
-  it("clears auth cookies when refresh token is invalid", async () => {
-    jest.mocked(fetch).mockResolvedValueOnce(
-      new Response(JSON.stringify({ detail: "invalid refresh token" }), {
-        status: 400,
-        headers: {
-          "Content-Type": "application/json",
-        },
-      })
-    );
+  it("does not refresh or clear auth cookies for page requests", async () => {
+    const fetchSpy = jest.spyOn(global, "fetch");
 
     const response = await proxy(
       requestWithCookie("refresh_token=stale; access_token=expired")
     );
 
-    const cookies = setCookieHeaders(response);
-    expect(cookies).toEqual(
-      expect.arrayContaining([
-        expect.stringContaining("refresh_token=;"),
-        expect.stringContaining("access_token=;"),
-        expect.stringContaining("id_token=;"),
-      ])
-    );
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(setCookieHeaders(response)).toEqual([]);
   });
 
-  it("forwards refreshed cookies when refresh succeeds", async () => {
-    jest.mocked(fetch).mockResolvedValueOnce(
-      new Response("{}", {
-        status: 200,
-        headers: {
-          "Set-Cookie": "access_token=fresh; Path=/; HttpOnly",
-        },
-      })
-    );
+  it("does not set refreshed cookies for page requests", async () => {
+    const fetchSpy = jest.spyOn(global, "fetch");
 
     const response = await proxy(
       requestWithCookie("refresh_token=valid; access_token=expired")
     );
 
-    expect(setCookieHeaders(response)).toEqual(
-      expect.arrayContaining([expect.stringContaining("access_token=fresh")])
-    );
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(setCookieHeaders(response)).toEqual([]);
   });
 });
