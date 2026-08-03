@@ -31,8 +31,14 @@ const DEBOUNCE_MS = 300;
 
 // --- Helper Functions ---
 
-function transformApiResponse(response: ChatSearchResponse): FilterableChat[] {
+export function transformApiResponse(
+  response: Partial<ChatSearchResponse> | null | undefined
+): FilterableChat[] {
   const chats: FilterableChat[] = [];
+  if (!Array.isArray(response?.groups)) {
+    return chats;
+  }
+
   for (const group of response.groups) {
     for (const chat of group.chats) {
       chats.push({
