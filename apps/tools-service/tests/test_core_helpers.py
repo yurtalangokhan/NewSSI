@@ -65,6 +65,7 @@ class _PermissionResponse:
 
 class _AsyncClient:
     captured_url: str = ""
+    captured_headers: dict[str, str] = {}
 
     def __init__(self, *args, **kwargs) -> None:
         pass
@@ -77,6 +78,7 @@ class _AsyncClient:
 
     async def get(self, url: str, **kwargs):
         self.__class__.captured_url = url
+        self.__class__.captured_headers = kwargs.get("headers", {})
         return _PermissionResponse()
 
 
@@ -87,6 +89,18 @@ async def test_get_user_service_permissions_uses_api_v1_internal_path(
         "src.core.authorization._user_service_base_url",
         lambda: "http://kong:8000/internal/user-service",
     )
+    monkeypatch.setattr(
+        "src.core.authorization.get_settings",
+        lambda: type(
+            "Settings",
+            (),
+            {
+                "user_service_url": "http://kong:8000/internal/user-service",
+                "user_permission_cache_ttl_seconds": 30.0,
+                "internal_service_token": "internal-token",
+            },
+        )(),
+    )
     monkeypatch.setattr("src.core.authorization._permission_cache_ttl", lambda: 30.0)
     monkeypatch.setattr("src.core.authorization.httpx.AsyncClient", _AsyncClient)
 
@@ -95,3 +109,4 @@ async def test_get_user_service_permissions_uses_api_v1_internal_path(
         _AsyncClient.captured_url
         == "http://kong:8000/internal/user-service/api/v1/internal/users/user-1/permissions"
     )
+    assert _AsyncClient.captured_headers["X-Internal-Service-Token"] == "internal-token"

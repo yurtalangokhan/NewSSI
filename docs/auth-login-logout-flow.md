@@ -75,9 +75,10 @@ The form login flow is:
 6. Redirects return through SP Keycloak to the web callback with an SP
    authorization code.
 7. user-service exchanges the SP code for SP tokens, mirrors the user, and sets
-   app cookies. Oversized `id_token` values are not written as cookies because
-   large upstream identity claims can make the web proxy reject the login
-   response.
+   app cookies. The app `access_token` and `refresh_token` come from SP
+   Keycloak. `id_token` values are not written as cookies when they exceed the
+   individual cookie size or total auth `Set-Cookie` header budget because large
+   upstream identity claims can make the gateway reject the login response.
 
 Because this is a browser-submitted password form, the password appears in the
 browser's own Network request payload. That is expected for any password login

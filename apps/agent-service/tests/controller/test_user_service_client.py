@@ -50,6 +50,7 @@ async def test_user_service_client_uses_api_v1_internal_permission_path(monkeypa
     }
     assert captured["method"] == "GET"
     assert captured["path"] == "/api/v1/internal/users/user-1/permissions"
+    assert captured["kwargs"]["include_internal_token"] is True
 
 
 @pytest.mark.asyncio
