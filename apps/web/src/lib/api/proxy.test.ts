@@ -55,6 +55,36 @@ describe("proxyToBackend", () => {
     expect(response.headers.get("content-type")).toBe("application/json");
   });
 
+  it("forwards set-cookie when the runtime exposes only the standard header accessor", async () => {
+    fetchSpy.mockResolvedValueOnce(
+      new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: {
+          "content-type": "application/json",
+          "set-cookie": "access_token=sp-access-token; Path=/; HttpOnly; SameSite=lax",
+        },
+      })
+    );
+
+    const request = new NextRequest("http://localhost/api/auth/external/login", {
+      method: "POST",
+      body: new URLSearchParams([["username", "external@example.com"]]),
+      headers: {
+        "content-type": "application/x-www-form-urlencoded",
+      },
+    });
+
+    const response = await proxyToBackend(request, "/api/auth/external/login", {
+      method: "POST",
+      backendUrl: "http://user-service",
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("set-cookie")).toContain(
+      "access_token=sp-access-token"
+    );
+  });
+
   it("merges explicit query params into the upstream request URL", async () => {
     fetchSpy.mockResolvedValueOnce(responseWithHeaders({}));
 

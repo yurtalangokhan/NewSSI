@@ -8,6 +8,8 @@ const routerPush = jest.fn();
 const routerBack = jest.fn();
 const appRouter = jest.fn();
 const refreshAgents = jest.fn();
+let mockOpenApiTools: unknown[] = [];
+let mockToolSelectionGroups: unknown[] = [];
 
 jest.mock("next/navigation", () => ({
   useRouter: () => ({
@@ -52,7 +54,7 @@ jest.mock("@/hooks/useMcpServersForAgentEditor", () => ({
 jest.mock("@/hooks/useOpenApiTools", () => ({
   __esModule: true,
   default: () => ({
-    openApiTools: [],
+    openApiTools: mockOpenApiTools,
     isLoading: false,
   }),
 }));
@@ -123,7 +125,7 @@ jest.mock("@/refresh-components/agents/CompositionValidator", () => ({
 
 jest.mock("@/refresh-components/agents/McpToolSelectionCard", () => ({
   __esModule: true,
-  buildMcpOnlyToolSelectionGroups: () => [],
+  buildMcpOnlyToolSelectionGroups: () => mockToolSelectionGroups,
   buildToolSelectionGroups: () => [],
   default: () => <div data-testid="mcp-tool-selection-card" />,
 }));
@@ -163,6 +165,8 @@ const existingAgent: FullPersona = {
 describe("AgentEditorPage navigation", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockOpenApiTools = [];
+    mockToolSelectionGroups = [];
     (createPersona as jest.Mock).mockResolvedValue({
       ok: true,
       json: async () => ({ id: 42, name: "Support agent" }),
@@ -224,5 +228,36 @@ describe("AgentEditorPage navigation", () => {
       expect(routerPush).toHaveBeenCalledWith("/admin/agents");
     });
     expect(appRouter).not.toHaveBeenCalled();
+  });
+
+  test("shows only the action selection card in the agent actions section", async () => {
+    mockOpenApiTools = [
+      {
+        id: 7,
+        name: "inline_action",
+        display_name: "Inline action",
+        description: "This action should not render as an inline card.",
+      },
+    ];
+
+    mockToolSelectionGroups = [
+      {
+        id: "mcp-1",
+        title: "MCP server",
+        tools: [{ name: "mcp_action" }],
+      },
+    ];
+
+    render(
+      <AgentEditorPage
+        agent={{
+          ...existingAgent,
+          base_agent: "configurable-mcp-agent",
+        }}
+      />
+    );
+
+    expect(screen.getByTestId("mcp-tool-selection-card")).toBeInTheDocument();
+    expect(screen.queryByText("Inline action")).not.toBeInTheDocument();
   });
 });

@@ -38,7 +38,6 @@ import { toast } from "@/hooks/useToast";
 import Popover, { PopoverMenu } from "@/refresh-components/Popover";
 import LineItem from "@/refresh-components/buttons/LineItem";
 import {
-  SvgActions,
   SvgImage,
   SvgLock,
   SvgNetworkGraph,
@@ -68,10 +67,8 @@ import {
   buildCategoryLabelMap,
 } from "@/lib/tools/builtInToolUtils";
 import _ from "lodash";
-import * as ActionsLayouts from "@/layouts/actions-layouts";
-import * as ExpandableCard from "@/layouts/expandable-card-layouts";
 import { getActionIcon } from "@/lib/tools/mcpUtils";
-import { MCPTool, ToolSnapshot } from "@/lib/tools/interfaces";
+import { MCPTool } from "@/lib/tools/interfaces";
 import { deleteAgent } from "@/lib/agents";
 import ConfirmationModalLayout from "@/refresh-components/layouts/ConfirmationModalLayout";
 import ShareAgentModal from "@/sections/modals/ShareAgentModal";
@@ -240,25 +237,6 @@ function AgentIconEditor({ existingAgent }: AgentIconEditorProps) {
         </Popover.Content>
       </Popover>
     </>
-  );
-}
-
-interface OpenApiToolCardProps {
-  tool: ToolSnapshot;
-}
-
-function OpenApiToolCard({ tool }: OpenApiToolCardProps) {
-  const toolFieldName = `openapi_tool_${tool.id}`;
-
-  return (
-    <ExpandableCard.Root defaultFolded>
-      <ActionsLayouts.Header
-        title={tool.display_name || tool.name}
-        description={tool.description}
-        icon={SvgActions}
-        rightChildren={<SwitchField name={toolFieldName} />}
-      />
-    </ExpandableCard.Root>
   );
 }
 
@@ -1607,16 +1585,6 @@ export default function AgentEditorPage({
                                   </InputLayouts.Vertical>
                                 )}
 
-                                {openApiTools.length > 0 && (
-                                  <GeneralLayouts.Section gap={0.5}>
-                                    {openApiTools.map((tool) => (
-                                      <OpenApiToolCard
-                                        key={tool.id}
-                                        tool={tool}
-                                      />
-                                    ))}
-                                  </GeneralLayouts.Section>
-                                )}
                               </GeneralLayouts.Section>
                             </SimpleCollapsible.Content>
                           </SimpleCollapsible>
