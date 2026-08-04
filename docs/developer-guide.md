@@ -223,7 +223,9 @@ make validate         # lint + typecheck + test
 ### Web frontend
 
 ```sh
-npm run dev           # next dev --webpack
+npm run dev           # next dev --turbopack
+npm run dev:webpack   # next dev --webpack fallback
+npm run dev:debug     # next dev --turbopack --inspect
 npm run build         # next build (output: "standalone")
 npm run lint          # eslint
 npm run types:check   # tsgo --noEmit

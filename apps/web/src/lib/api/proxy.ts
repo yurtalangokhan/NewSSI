@@ -24,6 +24,18 @@ const EXCLUDED_PROXY_RESPONSE_HEADERS = new Set([
   "upgrade",
 ]);
 
+function getSetCookieHeaders(headers: Headers): string[] {
+  const getSetCookie = (
+    headers as Headers & { getSetCookie?: () => string[] }
+  ).getSetCookie;
+  if (typeof getSetCookie === "function") {
+    return getSetCookie.call(headers);
+  }
+
+  const single = headers.get("set-cookie");
+  return single ? [single] : [];
+}
+
 function shouldUseSecureCookies(request: NextRequest): boolean {
   const publicWebOrigin = process.env.WEB_DOMAIN;
   if (publicWebOrigin) {
@@ -172,21 +184,21 @@ export async function proxyToBackend(
     });
 
     const noContent = new Set([204, 205, 304]).has(response.status);
-    const responseText = noContent ? "" : await response.text();
-    const result = new NextResponse(noContent ? null : responseText, {
-      status: response.status,
-      statusText: response.statusText,
-    });
+    const responseHeaders = new Headers();
 
-    // Copy headers
     response.headers.forEach((value, key) => {
       if (!EXCLUDED_PROXY_RESPONSE_HEADERS.has(key.toLowerCase())) {
-        result.headers.set(key, value);
+        responseHeaders.set(key, value);
       }
     });
 
-    // Forward set-cookie headers
-    response.headers.getSetCookie().forEach((cookie) => {
+    const result = new NextResponse(noContent ? null : response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: responseHeaders,
+    });
+
+    getSetCookieHeaders(response.headers).forEach((cookie) => {
       result.headers.append("Set-Cookie", cookie);
     });
 
