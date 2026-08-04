@@ -6,8 +6,11 @@
     "lib/opal"
   ],
   "scripts": {
-    "dev": "next dev --webpack",
-    "dev:profile": "NEXT_PUBLIC_ENABLE_STATS=true next dev --webpack",
+    "dev": "next dev --turbopack",
+    "dev:webpack": "next dev --webpack",
+    "dev:debug": "next dev --turbopack --inspect",
+    "dev:debug:webpack": "next dev --webpack --inspect",
+    "dev:profile": "NEXT_PUBLIC_ENABLE_STATS=true next dev --turbopack",
     "build": "next build",
     "start": "next start",
     "lint": "eslint src --ext .js,.jsx,.ts,.tsx",
