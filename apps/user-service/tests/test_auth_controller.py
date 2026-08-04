@@ -101,6 +101,24 @@ def test_set_cookies_skips_oversized_id_token_cookie():
     assert "id_token=" not in set_cookie
 
 
+def test_set_cookies_skips_id_token_when_auth_cookie_headers_exceed_proxy_budget():
+    controller = AuthController()
+    response = Response()
+
+    controller._set_cookies(
+        response=response,
+        access_token="a" * 1800,
+        refresh_token="r" * 1800,
+        id_token="i" * 1200,
+    )
+
+    set_cookie = _all_set_cookie_headers(response)
+
+    assert "access_token=" in set_cookie
+    assert "refresh_token=" in set_cookie
+    assert "id_token=" not in set_cookie
+
+
 @pytest.mark.asyncio
 async def test_external_login_passes_redirect_uri_to_auth_service():
     controller = AuthController()

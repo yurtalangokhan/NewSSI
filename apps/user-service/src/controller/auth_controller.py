@@ -9,6 +9,7 @@ from .base import BaseController
 
 logger = logging.getLogger(__name__)
 
+MAX_AUTH_SET_COOKIE_HEADER_BYTES = 3900
 MAX_ID_TOKEN_COOKIE_VALUE_BYTES = 3800
 
 
@@ -148,7 +149,7 @@ class AuthController(BaseController):
                 max_age=30 * 86400,
                 secure=False,
             )
-        if id_token and len(id_token.encode("utf-8")) <= MAX_ID_TOKEN_COOKIE_VALUE_BYTES:
+        if id_token and self._can_set_id_token_cookie(response, id_token):
             response.set_cookie(
                 key="id_token",
                 value=id_token,
@@ -157,12 +158,53 @@ class AuthController(BaseController):
                 max_age=30 * 86400,
                 secure=False,
             )
-        elif id_token:
+
+    def _can_set_id_token_cookie(self, response: Response, id_token: str) -> bool:
+        id_token_bytes = len(id_token.encode("utf-8"))
+        if id_token_bytes > MAX_ID_TOKEN_COOKIE_VALUE_BYTES:
             logger.warning(
                 "Skipping id_token cookie because it exceeds browser-safe cookie size "
                 "(%s bytes)",
-                len(id_token.encode("utf-8")),
+                id_token_bytes,
             )
+            return False
+
+        candidate_header_bytes = self._cookie_header_bytes(
+            key="id_token",
+            value=id_token,
+            max_age=30 * 86400,
+        )
+        total_header_bytes = self._set_cookie_header_bytes(response) + candidate_header_bytes
+        if total_header_bytes > MAX_AUTH_SET_COOKIE_HEADER_BYTES:
+            logger.warning(
+                "Skipping id_token cookie because auth Set-Cookie headers exceed "
+                "gateway-safe size (%s bytes)",
+                total_header_bytes,
+            )
+            return False
+
+        return True
+
+    @staticmethod
+    def _cookie_header_bytes(key: str, value: str, max_age: int) -> int:
+        response = Response()
+        response.set_cookie(
+            key=key,
+            value=value,
+            httponly=True,
+            samesite="lax",
+            max_age=max_age,
+            secure=False,
+        )
+        return AuthController._set_cookie_header_bytes(response)
+
+    @staticmethod
+    def _set_cookie_header_bytes(response: Response) -> int:
+        return sum(
+            len(value)
+            for key, value in response.raw_headers
+            if key.lower() == b"set-cookie"
+        )
 
     def _clear_cookies(self, response: Response):
         response.delete_cookie("access_token")

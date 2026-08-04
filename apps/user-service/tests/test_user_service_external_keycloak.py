@@ -110,6 +110,55 @@ async def test_upsert_user_from_keycloak_marks_users_from_external_keycloak():
 
 
 @pytest.mark.asyncio
+async def test_create_user_sets_keycloak_password_credential():
+    service = UserService()
+    service.keycloak = SimpleNamespace(
+        is_enabled=lambda: True,
+        get_user_by_email=AsyncMock(return_value=None),
+        create_user=AsyncMock(return_value="kc-123"),
+        delete_user=AsyncMock(),
+        set_realm_role=AsyncMock(return_value=True),
+    )
+    service.user_repo = SimpleNamespace(
+        exists_by_email=AsyncMock(return_value=False),
+        create=AsyncMock(return_value=_user(password_configured=True)),
+    )
+    service.role_repo = SimpleNamespace(exists=AsyncMock(return_value=True))
+    service.settings_repo = SimpleNamespace(ensure_defaults=AsyncMock())
+
+    user = await service.create_user(
+        email="USER@example.com",
+        username="newuser",
+        first_name="New",
+        last_name="User",
+        role="enduser",
+        password="securepassword123",
+    )
+
+    service.keycloak.create_user.assert_awaited_once_with(
+        {
+            "email": "user@example.com",
+            "username": "newuser",
+            "firstName": "New",
+            "lastName": "User",
+            "enabled": True,
+            "emailVerified": True,
+            "requiredActions": [],
+            "credentials": [
+                {
+                    "type": "password",
+                    "value": "securepassword123",
+                    "temporary": False,
+                }
+            ],
+        }
+    )
+    service.user_repo.create.assert_awaited_once()
+    assert service.user_repo.create.await_args.kwargs["password_configured"] is True
+    assert user["password_configured"] is True
+
+
+@pytest.mark.asyncio
 async def test_user_repository_falls_back_when_external_keycloak_flag_column_is_missing(
     monkeypatch,
 ):
