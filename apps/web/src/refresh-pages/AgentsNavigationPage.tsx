@@ -3,6 +3,7 @@
 import { useMemo, useState, useRef, useEffect } from "react";
 import AgentCard from "@/sections/cards/AgentCard";
 import { useUser } from "@/providers/UserProvider";
+import { getAgentPageAccess } from "@/lib/agentPageAccess";
 import { checkUserOwnsAgent as checkUserOwnsAgent } from "@/lib/agents";
 import { useAgents } from "@/hooks/useAgents";
 import { MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
@@ -72,7 +73,8 @@ export default function AgentsNavigationPage() {
   const { agents } = useAgents();
   const [creatorFilterOpen, setCreatorFilterOpen] = useState(false);
   const [actionsFilterOpen, setActionsFilterOpen] = useState(false);
-  const { user } = useUser();
+  const { user, isAdmin } = useUser();
+  const { canCreateAgent, canViewPersonalTab } = getAgentPageAccess(isAdmin);
   const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<"all" | "your">("all");
@@ -374,9 +376,13 @@ export default function AgentsNavigationPage() {
     } else if (selectedCreatorIds.size === 1) {
       const selectedId = Array.from(selectedCreatorIds)[0];
       const creator = uniqueCreators.find((c) => c.id === selectedId);
-      return creator ? t("agentsPage.creatorFilterBy", { email: creator.email }) : t("agentsPage.creatorFilterEveryone");
+      return creator
+        ? t("agentsPage.creatorFilterBy", { email: creator.email })
+        : t("agentsPage.creatorFilterEveryone");
     } else {
-      return t("agentsPage.creatorFilterCount", { count: selectedCreatorIds.size });
+      return t("agentsPage.creatorFilterCount", {
+        count: selectedCreatorIds.size,
+      });
     }
   }, [selectedCreatorIds, uniqueCreators, t]);
 
@@ -425,14 +431,17 @@ export default function AgentsNavigationPage() {
         title={t("agentsPage.title")}
         description={t("agentsPage.description")}
         rightChildren={
-          <Button
-            href="/app/agents/create"
-            icon={SvgPlus}
-            aria-label="AgentsPage/new-agent-button"
-          >
-            {t("agentsPage.newAgentButton")}
-          </Button>
-        }>
+          canCreateAgent ? (
+            <Button
+              href="/app/agents/create"
+              icon={SvgPlus}
+              aria-label="AgentsPage/new-agent-button"
+            >
+              {t("agentsPage.newAgentButton")}
+            </Button>
+          ) : undefined
+        }
+      >
         <div className="flex flex-col gap-2">
           <div className="flex flex-row items-center gap-2">
             <div className="flex-[2]">
@@ -444,17 +453,25 @@ export default function AgentsNavigationPage() {
                 leftSearchIcon
               />
             </div>
-            <div className="flex-1">
-              <Tabs
-                value={activeTab}
-                onValueChange={(value) => setActiveTab(value as "all" | "your")}
-              >
-                <Tabs.List>
-                  <Tabs.Trigger value="all">{t("agentsPage.allAgentsTab")}</Tabs.Trigger>
-                  <Tabs.Trigger value="your">{t("agentsPage.yourAgentsTab")}</Tabs.Trigger>
-                </Tabs.List>
-              </Tabs>
-            </div>
+            {canViewPersonalTab && (
+              <div className="flex-1">
+                <Tabs
+                  value={activeTab}
+                  onValueChange={(value) =>
+                    setActiveTab(value as "all" | "your")
+                  }
+                >
+                  <Tabs.List>
+                    <Tabs.Trigger value="all">
+                      {t("agentsPage.allAgentsTab")}
+                    </Tabs.Trigger>
+                    <Tabs.Trigger value="your">
+                      {t("agentsPage.yourAgentsTab")}
+                    </Tabs.Trigger>
+                  </Tabs.List>
+                </Tabs>
+              </div>
+            )}
           </div>
           <div className="flex flex-row gap-2">
             <Popover
@@ -657,10 +674,17 @@ export default function AgentsNavigationPage() {
               description={t("agentsPage.featuredAgentsDescription")}
               agents={featuredAgents}
             />
-            <AgentsSection title={t("agentsPage.allAgentsSectionTitle")} agents={allAgents} />
+            <AgentsSection
+              title={t("agentsPage.allAgentsSectionTitle")}
+              agents={allAgents}
+            />
             <TextSeparator
               count={agentCount}
-              text={agentCount === 1 ? t("agentsPage.agentSingular") : t("agentsPage.agentPlural")}
+              text={
+                agentCount === 1
+                  ? t("agentsPage.agentSingular")
+                  : t("agentsPage.agentPlural")
+              }
             />
           </>
         )}

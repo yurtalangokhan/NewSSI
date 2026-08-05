@@ -25,6 +25,11 @@ class UserRepository(BaseRepository):
             result = await session.execute(select(UserModel).where(UserModel.id == user_id))
             return result.scalar_one_or_none()
 
+    async def get_by_ids(self, user_ids: list[uuid.UUID]) -> list[UserModel]:
+        async with self._session() as session:
+            result = await session.execute(select(UserModel).where(UserModel.id.in_(user_ids)))
+            return list(result.scalars().all())
+
     async def get_by_email(self, email: str) -> UserModel | None:
         async with self._session() as session:
             result = await session.execute(

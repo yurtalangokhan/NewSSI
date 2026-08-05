@@ -37,6 +37,10 @@ class UserService:
             return None
         return await self._user_to_app_dict(user)
 
+    async def get_users_by_ids(self, user_ids: list[uuid.UUID]) -> list[dict[str, Any]]:
+        users = await self.user_repo.get_by_ids(user_ids)
+        return [self._user_to_dict(user) for user in users]
+
     async def get_user_permissions(self, user_id: uuid.UUID) -> dict[str, list[str]] | None:
         user = await self.user_repo.get_by_id(user_id)
         if not user:

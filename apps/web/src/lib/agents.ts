@@ -1,6 +1,10 @@
-import { AgentId, MinimalPersonaSnapshot, Persona } from "@/app/admin/agents/interfaces";
+import {
+  AgentId,
+  MinimalPersonaSnapshot,
+  Persona,
+} from "@/app/admin/agents/interfaces";
 import { User } from "./types";
-import { checkUserIsNoAuthUser } from "./user";
+
 import { personaComparator } from "@/app/admin/agents/lib";
 
 /**
@@ -8,7 +12,7 @@ import { personaComparator } from "@/app/admin/agents/lib";
  *
  * @param user - The user to check ownership for, or null if no user is logged in
  * @param assistant - The assistant to check ownership of
- * @returns true if the user owns the agent (or no auth is required), false otherwise
+ * @returns true if the user owns the agent, false otherwise
  */
 export function checkUserOwnsAgent(
   user: User | null,
@@ -20,10 +24,8 @@ export function checkUserOwnsAgent(
 /**
  * Checks if the given user ID owns the specified assistant.
  *
- * Returns true if a valid user ID is provided and any of the following conditions
- * are met (and the agent is not built-in):
- * - The user is a no-auth user (authentication is disabled)
- * - The user ID matches the agent owner's ID
+ * Returns true when a valid user ID exactly matches the agent owner's ID and
+ * the agent is not built-in.
  *
  * Returns false if userId is undefined (e.g., user is loading or unauthenticated)
  * to prevent granting ownership access prematurely.
@@ -36,11 +38,7 @@ export function checkUserIdOwnsAgent(
   userId: string | undefined,
   agent: MinimalPersonaSnapshot | Persona
 ) {
-  return (
-    !!userId &&
-    (checkUserIsNoAuthUser(userId) || agent.owner?.id === userId) &&
-    !agent.builtin_persona
-  );
+  return !!userId && agent.owner?.id === userId && !agent.builtin_persona;
 }
 
 /**
