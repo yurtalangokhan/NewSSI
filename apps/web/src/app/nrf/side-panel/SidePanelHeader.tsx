@@ -3,6 +3,7 @@
 import Logo from "@/refresh-components/Logo";
 import IconButton from "@/refresh-components/buttons/IconButton";
 import { SvgEditBig, SvgExternalLink } from "@opal/icons";
+import { buildAppPath } from "@/hooks/appNavigation";
 
 interface SidePanelHeaderProps {
   onNewChat: () => void;
@@ -14,7 +15,9 @@ export default function SidePanelHeader({
   chatSessionId,
 }: SidePanelHeaderProps) {
   const handleOpenInApp = () => {
-    const path = chatSessionId ? `/app?chatId=${chatSessionId}` : "/app";
+    const path = chatSessionId
+      ? buildAppPath({ type: "chat", id: chatSessionId })
+      : "/app";
     window.open(`${window.location.origin}${path}`, "_blank");
   };
 

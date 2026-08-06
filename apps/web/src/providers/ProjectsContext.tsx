@@ -40,6 +40,7 @@ import {
 import { useSearchParams } from "next/navigation";
 import { SEARCH_PARAM_NAMES } from "@/app/app/services/searchParams";
 import { useAppRouter } from "@/hooks/appNavigation";
+import useAppFocus from "@/hooks/useAppFocus";
 import { ChatFileType } from "@/app/app/interfaces";
 import { toast } from "@/hooks/useToast";
 import { useProjects } from "@/lib/hooks/useProjects";
@@ -146,8 +147,13 @@ export function ProjectsProvider({ children }: ProjectsProviderProps) {
   const [currentProjectDetails, setCurrentProjectDetails] =
     useState<ProjectDetails | null>(null);
   const searchParams = useSearchParams();
-  const currentProjectIdRaw = searchParams.get(SEARCH_PARAM_NAMES.PROJECT_ID);
-  const currentChatId = searchParams.get(SEARCH_PARAM_NAMES.CHAT_ID);
+  const appFocus = useAppFocus();
+  const currentProjectIdRaw = appFocus.isProject()
+    ? appFocus.getId()
+    : searchParams.get(SEARCH_PARAM_NAMES.PROJECT_ID);
+  const currentChatId = appFocus.isChat()
+    ? appFocus.getId()
+    : searchParams.get(SEARCH_PARAM_NAMES.CHAT_ID);
   const currentProjectId = useMemo(
     () =>
       resolveCurrentProjectId({

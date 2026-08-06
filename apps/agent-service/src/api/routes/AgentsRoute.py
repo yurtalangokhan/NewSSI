@@ -20,7 +20,8 @@ from langchain_core.runnables import RunnableConfig
 from langgraph.types import Interrupt
 
 from agents import DEFAULT_AGENT, AgentGraph, get_agent, get_all_agent_info
-from api.dependencies import require_permission, require_user
+from api.dependencies import AuthenticatedUser, require_permission, require_user
+from controller import get_persona_controller
 from core import settings
 from models.agents import ServiceMetadata
 from models.chat import (
@@ -176,6 +177,28 @@ async def info(_user=Depends(require_permission("agent:list"))) -> ServiceMetada
         default_agent=DEFAULT_AGENT,
         default_model=default_model or "fake",
     )
+
+
+# =============================================================================
+# Product agent catalog
+# =============================================================================
+
+
+@router.get("/catalog")
+async def agent_catalog(
+    user: AuthenticatedUser = Depends(require_permission("persona:read")),
+) -> list[dict[str, Any]]:
+    """Return lightweight product agent summaries for catalog and chat selection."""
+    return await get_persona_controller().get_agent_catalog(user)
+
+
+@router.get("/{agent_id}")
+async def agent_detail(
+    agent_id: str,
+    user: AuthenticatedUser = Depends(require_permission("persona:read")),
+) -> dict[str, Any]:
+    """Return full product agent detail for viewer, edit, share, and chat actions."""
+    return await get_persona_controller().get_agent_detail(agent_id, user)
 
 
 # =============================================================================

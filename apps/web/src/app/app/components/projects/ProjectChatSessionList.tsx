@@ -2,6 +2,7 @@
 
 import React, { useMemo } from "react";
 import Link from "next/link";
+import type { Route } from "next";
 import { ChatSessionMorePopup } from "@/components/sidebar/ChatSessionMorePopup";
 import { useProjectsContext } from "@/providers/ProjectsContext";
 import { ChatSession } from "@/app/app/interfaces";
@@ -14,6 +15,7 @@ import { UNNAMED_CHAT } from "@/lib/constants";
 import ChatSessionSkeleton from "@/refresh-components/skeletons/ChatSessionSkeleton";
 import { SvgBubbleText } from "@opal/icons";
 import { useTranslation } from "react-i18next";
+import { buildAppPath } from "@/hooks/appNavigation";
 
 export default function ProjectChatSessionList() {
   const { t } = useTranslation();
@@ -62,7 +64,7 @@ export default function ProjectChatSessionList() {
           {projectChats.map((chat) => (
             <Link
               key={chat.id}
-              href={{ pathname: "/app", query: { chatId: chat.id } }}
+              href={buildAppPath({ type: "chat", id: chat.id }) as Route}
               className="relative flex w-full"
               onMouseEnter={() => setHoveredChatId(chat.id)}
               onMouseLeave={() => setHoveredChatId(null)}

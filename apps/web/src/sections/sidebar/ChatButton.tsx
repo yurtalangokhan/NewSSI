@@ -9,7 +9,7 @@ import ConfirmationModalLayout from "@/refresh-components/layouts/ConfirmationMo
 import Button from "@/refresh-components/buttons/Button";
 import { cn, noProp } from "@/lib/utils";
 import Popover, { PopoverMenu } from "@/refresh-components/Popover";
-import { useAppRouter } from "@/hooks/appNavigation";
+import { buildAppPath, useAppRouter } from "@/hooks/appNavigation";
 import {
   Project,
   removeChatSessionFromProject,
@@ -430,7 +430,11 @@ const ChatButton = memo(
       >
         <Popover.Anchor>
           <SidebarTab
-            href={isDragging ? undefined : `/app?chatId=${chatSession.id}`}
+            href={
+              isDragging
+                ? undefined
+                : buildAppPath({ type: "chat", id: chatSession.id })
+            }
             transient={active}
             rightChildren={rightMenu}
             focused={renaming}

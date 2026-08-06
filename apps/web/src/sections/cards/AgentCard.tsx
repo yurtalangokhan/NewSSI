@@ -71,7 +71,10 @@ export default function AgentCard({ agent }: AgentCardProps) {
   const canEdit = isOwnedByUser || isAdmin;
   const shareAgentModal = useCreateModal();
   const agentViewerModal = useCreateModal();
-  const { agent: fullAgent, refresh: refreshAgent } = useAgent(agent.external_id ?? agent.id);
+  const shouldLoadAgentDetail = shareAgentModal.isOpen || agentViewerModal.isOpen;
+  const { agent: fullAgent, refresh: refreshAgent } = useAgent(
+    shouldLoadAgentDetail ? agent.external_id ?? agent.id : null
+  );
   const agentForViewer = useMemo<FullPersona>(
     () =>
       fullAgent ?? {

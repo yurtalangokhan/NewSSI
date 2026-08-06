@@ -149,6 +149,10 @@ def _format_tool_display_name(tool_name: str) -> str:
     return tool_name.replace("_", " ").replace("-", " ").title()
 
 
+def _has_web_search_tool(tool_names: list[str]) -> bool:
+    return any("web_search" in tool_name or "web-search" in tool_name for tool_name in tool_names)
+
+
 class PersonaController(BaseController):
     """Owns persona CRUD and persona-related helper endpoints."""
 
@@ -620,6 +624,133 @@ class PersonaController(BaseController):
         serialized["availability"] = await self._get_agent_availability(serialized)
         return serialized
 
+    async def _serialize_builtin_persona_summary(
+        self, persona_id: int, name: str, description: str, base_agent: str
+    ) -> dict[str, Any]:
+        serialized = {
+            "id": persona_id,
+            "external_id": None,
+            "name": name,
+            "description": description,
+            "uploaded_image_id": None,
+            "icon_name": None,
+            "is_public": True,
+            "is_visible": True,
+            "display_priority": None,
+            "featured": False,
+            "builtin_persona": True,
+            "is_dynamic": False,
+            "labels": [],
+            "owner": {"id": "system", "email": "System"},
+            "base_agent": base_agent,
+            "tools": [],
+            "starter_messages": None,
+            "document_sets": [],
+            "hierarchy_node_count": 0,
+            "attached_document_count": 0,
+            "knowledge_sources": [],
+            "llm_model_version_override": None,
+            "llm_model_provider_override": None,
+            "mcp_tools": [],
+            "action_count": 0,
+            "memory_type": "none",
+            "long_term_memory": False,
+            "capabilities": {
+                "has_actions": False,
+                "has_conversation_starters": False,
+                "has_retrieval": False,
+                "has_web_search": False,
+                "has_scoped_knowledge": False,
+                "long_term_memory": False,
+            },
+        }
+        availability = await self._get_agent_availability(
+            {
+                "llm_model_version_override": None,
+                "mcp_tools": [],
+                "rag_config": {"document_processing": [], "knowledge_graph": []},
+                "memory_type": "none",
+                "long_term_memory": False,
+            }
+        )
+        serialized["availability"] = {"status": availability.get("status", "available")}
+        return serialized
+
+    async def _serialize_custom_persona_summary(self, persona: dict[str, Any]) -> dict[str, Any]:
+        label_ids = persona.get("labels") or []
+        labels = [
+            label if isinstance(label, dict) else {"id": label, "name": f"Label {label}"}
+            for label in label_ids
+        ]
+        mcp_tools = persona.get("mcp_tools") or []
+        rag_config = persona.get("rag_config") or {
+            "document_processing": [],
+            "knowledge_graph": [],
+        }
+        document_collections = rag_config.get("document_processing") or []
+        graph_collections = rag_config.get("knowledge_graph") or []
+        has_scoped_knowledge = bool(
+            document_collections
+            or graph_collections
+            or persona.get("document_sets")
+            or persona.get("hierarchy_nodes")
+            or persona.get("attached_documents")
+            or persona.get("user_file_ids")
+        )
+        has_retrieval = bool(has_scoped_knowledge or "search" in mcp_tools)
+        long_term_memory = bool(persona.get("long_term_memory", False))
+        availability = await self._get_agent_availability(
+            {
+                "llm_model_version_override": persona.get("llm_model_version_override"),
+                "mcp_tools": mcp_tools,
+                "rag_config": rag_config,
+                "memory_type": "long_term" if long_term_memory else persona.get("memory_type"),
+                "long_term_memory": long_term_memory,
+            }
+        )
+
+        return {
+            "id": persona["id"],
+            "external_id": persona.get("external_id"),
+            "name": persona["name"],
+            "description": persona["description"],
+            "uploaded_image_id": persona.get("uploaded_image_id"),
+            "icon_name": persona.get("icon_name"),
+            "is_public": persona.get("is_public", True),
+            "is_visible": True,
+            "display_priority": persona.get("display_priority"),
+            "featured": bool(persona.get("featured", False)),
+            "builtin_persona": False,
+            "is_dynamic": persona.get("base_agent") == "dynamic-agent",
+            "labels": labels,
+            "owner": {
+                "id": str(persona.get("user_id") or DEFAULT_USER_ID),
+                "email": self._resolve_owner_email(persona),
+            },
+            "base_agent": persona.get("base_agent"),
+            "tools": self._build_tool_snapshots(persona["id"], mcp_tools, rag_config),
+            "starter_messages": persona.get("starter_messages"),
+            "document_sets": [],
+            "hierarchy_node_count": 0,
+            "attached_document_count": 0,
+            "knowledge_sources": [],
+            "llm_model_version_override": persona.get("llm_model_version_override"),
+            "llm_model_provider_override": persona.get("llm_model_provider_override"),
+            "mcp_tools": mcp_tools,
+            "action_count": len(mcp_tools),
+            "memory_type": "long_term" if long_term_memory else persona.get("memory_type"),
+            "long_term_memory": long_term_memory,
+            "availability": {"status": availability.get("status", "available")},
+            "capabilities": {
+                "has_actions": len(mcp_tools) > 0,
+                "has_conversation_starters": bool(persona.get("starter_messages")),
+                "has_retrieval": has_retrieval,
+                "has_web_search": _has_web_search_tool(mcp_tools),
+                "has_scoped_knowledge": has_scoped_knowledge,
+                "long_term_memory": long_term_memory,
+            },
+        }
+
     async def _serialize_custom_persona(self, persona: dict[str, Any]) -> dict[str, Any]:
         label_ids = persona.get("labels") or []
         labels = [
@@ -757,6 +888,61 @@ class PersonaController(BaseController):
             pass
 
         return personas
+
+    async def get_agent_catalog(
+        self,
+        user: AuthenticatedUser | None = None,
+    ) -> list[dict[str, Any]]:
+        agents = []
+
+        builtin_display = {
+            "chatbot": "Chatbot",
+            "configurable-mcp-agent": "Configurable MCP Agent",
+        }
+        for idx, (agent_key, display_name) in enumerate(builtin_display.items()):
+            from agents.agents import agents as all_agents
+
+            description = all_agents[agent_key].description if agent_key in all_agents else ""
+            agents.append(
+                await self._serialize_builtin_persona_summary(
+                    idx, display_name, description, agent_key
+                )
+            )
+
+        try:
+            custom_personas = await PersonaDB.list_all(include_builtin=False)
+            restricted_persona_ids: set[int] = set()
+            accessible_persona_ids: set[int] = set()
+            if user:
+                (
+                    restricted_persona_ids,
+                    accessible_persona_ids,
+                ) = await self._load_agent_group_visibility(user)
+            for persona in custom_personas:
+                if user and not self._can_access_persona(
+                    persona,
+                    user,
+                    restricted_persona_ids,
+                    accessible_persona_ids,
+                ):
+                    continue
+                agents.append(await self._serialize_custom_persona_summary(persona))
+        except Exception:
+            pass
+
+        return agents
+
+    async def get_agent_detail(
+        self,
+        agent_id: str,
+        user: AuthenticatedUser | None = None,
+    ) -> dict[str, Any]:
+        try:
+            persona_id = int(agent_id)
+        except (TypeError, ValueError):
+            self._raise_not_found("Agent not found")
+
+        return await self.get_persona(persona_id, user)
 
     async def create_persona(
         self,

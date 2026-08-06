@@ -121,6 +121,23 @@ runtime redirect and logout behavior consistent across those boundaries.
 5. Frontend renders streaming response in chat UI
 ```
 
+### Frontend app routing
+
+The web app uses path-based `/app` routes for durable chat, agent, and project
+identity. Query parameters are reserved for compatibility and temporary command
+state during migration.
+
+- `/app` opens a new default chat.
+- `/app/chats/{chat_id}` opens an existing chat session.
+- `/app/agents/{agent_id}` opens a new chat with an agent preselected.
+- `/app/projects/{project_id}` opens a project workspace.
+- `/app/shared/{chat_id}` remains the shared-chat route.
+
+Legacy `/app?chatId=...`, `/app?agentId=...`, and `/app?projectId=...` links
+still parse to the same app state and are replaced with the canonical path on
+the client. Chat URLs don't carry `projectId`; project context is derived from
+the chat session and project membership data.
+
 ---
 
 ## Request lifecycle: document upload + RAG

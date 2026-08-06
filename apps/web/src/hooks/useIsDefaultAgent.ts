@@ -1,12 +1,11 @@
 "use client";
 
 import { useMemo } from "react";
-import { useSearchParams } from "next/navigation";
-import { SEARCH_PARAM_NAMES } from "@/app/app/services/searchParams";
 import { CombinedSettings } from "@/interfaces/settings";
 import { ChatSession } from "@/app/app/interfaces";
 import { MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
 import { DEFAULT_AGENT_ID } from "@/lib/constants";
+import useAppFocus from "@/hooks/useAppFocus";
 
 /**
  * Determines if the current assistant is the default agent based on:
@@ -25,8 +24,8 @@ export default function useIsDefaultAgent({
   selectedChatSession: ChatSession | undefined;
   settings: CombinedSettings | null;
 }) {
-  const searchParams = useSearchParams();
-  const urlAssistantId = searchParams?.get(SEARCH_PARAM_NAMES.PERSONA_ID);
+  const appFocus = useAppFocus();
+  const urlAssistantId = appFocus.isAgent() ? appFocus.getId() : null;
 
   return useMemo(() => {
     // If default agent is disabled, it can never be the default agent

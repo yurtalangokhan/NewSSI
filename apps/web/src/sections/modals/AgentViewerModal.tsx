@@ -34,7 +34,6 @@ import EmptyMessage from "@/refresh-components/EmptyMessage";
 import { Horizontal } from "@/layouts/input-layouts";
 import Switch from "@/refresh-components/inputs/Switch";
 import Button from "@/refresh-components/buttons/Button";
-import { SEARCH_PARAM_NAMES } from "@/app/app/services/searchParams";
 import AppInputBar from "@/sections/input/AppInputBar";
 import { useFilters, useLlmManager } from "@/lib/hooks";
 import { formatMmDdYyyy } from "@/lib/dateUtils";
@@ -46,6 +45,8 @@ import { getAgentAvailabilityIssues } from "@/lib/agentAvailability";
 import { useLLMProviders } from "@/hooks/useLLMProviders";
 import { Interactive } from "@opal/core";
 import { useTranslation } from "react-i18next";
+import { buildAppPath } from "@/hooks/appNavigation";
+import { saveAppDraftCommand } from "@/app/app/services/draftCommand";
 
 /**
  * Memory section rendered inside the Actions & Tools collapsible.
@@ -216,12 +217,14 @@ export default function AgentViewerModal({ agent }: AgentViewerModalProps) {
 
   const handleStartChat = useCallback(
     (message: string) => {
-      const params = new URLSearchParams({
-        [SEARCH_PARAM_NAMES.PERSONA_ID]: String(routeAgentId),
-        [SEARCH_PARAM_NAMES.USER_PROMPT]: message,
-        [SEARCH_PARAM_NAMES.SEND_ON_LOAD]: "true",
+      saveAppDraftCommand({
+        agentId: String(routeAgentId),
+        message,
+        submitOnLoad: true,
       });
-      router.push(`/app?${params.toString()}` as Route);
+      router.push(
+        buildAppPath({ type: "agent", id: routeAgentId }) as Route
+      );
       agentViewerModal.toggle(false);
     },
     [agentViewerModal, routeAgentId, router]

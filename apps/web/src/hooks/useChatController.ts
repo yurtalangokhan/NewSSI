@@ -266,7 +266,10 @@ export default function useChatController({
     // Navigate immediately if still on chat page
     // For NRF pages (/chat/nrf, /chat/nrf/side-panel), don't navigate immediately
     // Let the streaming complete inline, then the user can continue chatting there
-    const isOnChatPage = pathname === "/app";
+    const isOnChatPage =
+      pathname === "/app" ||
+      pathname.startsWith("/app/agents/") ||
+      pathname.startsWith("/app/projects/");
 
     if (isOnChatPage && !navigatingAway.current) {
       router.push(newUrl as Route, { scroll: false });

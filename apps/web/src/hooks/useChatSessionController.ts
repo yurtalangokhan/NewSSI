@@ -37,6 +37,7 @@ interface UseChatSessionControllerProps {
   searchParams: ReadonlyURLSearchParams;
   filterManager: FilterManager;
   firstMessage?: string;
+  submitOnLoad?: boolean;
 
   // UI state setters
   setSelectedAgentFromId: (agentId: AgentId | null) => void;
@@ -67,6 +68,7 @@ export default function useChatSessionController({
   searchParams,
   filterManager,
   firstMessage,
+  submitOnLoad,
   setSelectedAgentFromId,
   setSelectedDocuments,
   setCurrentMessageFiles,
@@ -173,7 +175,7 @@ export default function useChatSessionController({
 
         // If we're supposed to submit on initial load, then do that here
         if (
-          shouldSubmitOnLoad(searchParams) &&
+          (submitOnLoad || shouldSubmitOnLoad(searchParams)) &&
           !submitOnLoadPerformed.current
         ) {
           submitOnLoadPerformed.current = true;
@@ -354,6 +356,8 @@ export default function useChatSessionController({
     };
   }, [
     existingChatSessionId,
+    firstMessage,
+    submitOnLoad,
     searchParams?.get(SEARCH_PARAM_NAMES.PERSONA_ID),
     // Note: We're intentionally not including all dependencies to avoid infinite loops
     // This effect should only run when existingChatSessionId or persona ID changes

@@ -78,6 +78,7 @@ import { errorHandlingFetcher } from "@/lib/fetcher";
 import UserAvatarPopover from "@/sections/sidebar/UserAvatarPopover";
 import ChatSearchCommandMenu from "@/sections/sidebar/ChatSearchCommandMenu";
 import { useAppMode } from "@/providers/AppModeProvider";
+import { buildAppPath } from "@/hooks/appNavigation";
 import { useQueryController } from "@/providers/QueryControllerProvider";
 import { useTranslation } from "react-i18next";
 
@@ -505,16 +506,19 @@ const MemoizedAppSidebarInner = memo(
           if (!currentProjectId) {
             return "/app";
           }
-          return `/app?projectId=${currentProjectId}`;
+          return buildAppPath({ type: "project", id: currentProjectId });
         }
 
-        const params = new URLSearchParams({
-          agentId: String(currentRouteAgentId),
-        });
+        if (currentRouteAgentId === null || currentRouteAgentId === undefined) {
+          return "/app";
+        }
+        const path = buildAppPath({ type: "agent", id: currentRouteAgentId });
+        const params = new URLSearchParams();
         if (currentProjectId) {
           params.set("projectId", String(currentProjectId));
         }
-        return `/app?${params.toString()}`;
+        const query = params.toString();
+        return query ? `${path}?${query}` : path;
       })();
       return (
         <div data-testid="AppSidebar/new-session">
