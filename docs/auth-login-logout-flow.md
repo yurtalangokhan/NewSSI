@@ -118,6 +118,15 @@ refresh token rotation centralized in the browser-side authenticated fetcher
 and prevents server-side request races from consuming the refresh token before
 the browser can refresh and retry the original request.
 
+The authenticated fetcher notifies the app shell after a successful refresh.
+The app shell then reloads the current user metadata and recalculates its local
+expiry timer. If that timer reaches the access-token deadline before another
+request triggers refresh, the app shell verifies the session through the
+authenticated fetcher. It doesn't show the expired-session state unless that
+verification confirms that refresh cannot recover the session. As a result,
+authenticated API activity keeps the session active while the refresh token
+remains valid.
+
 Seeing 401 for `/api/auth/refresh` or `/api/auth/me` before login is expected.
 It is only a bug if successful login does not turn those requests into 200.
 
