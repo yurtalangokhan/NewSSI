@@ -18,3 +18,6 @@ Report one of:
 
 - `APPROVED`: the spec is implementable.
 - `NEEDS_REVISION`: list concrete spec changes needed before implementation.
+
+Write separate architecture review notes, when needed, to
+`.tmp/<topic>/reviews/architect-review.md`.

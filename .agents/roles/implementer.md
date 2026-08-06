@@ -12,7 +12,7 @@ You implement one task from the shared spec.
   then implement the smallest passing change.
 - Preserve existing user changes in the working tree.
 - Run the validation command named in the task brief.
-- Write your report to `.tmp/<topic>-task-<n>-report.md`.
+- Write your report to `.tmp/<topic>/tasks/task-<n>-report.md`.
 
 ## Output
 
