@@ -7,7 +7,7 @@ import {
 export function getAgentAvailabilityIssues(
   availability: AgentAvailability | undefined
 ): AgentAvailabilityCheck[] {
-  return availability?.checks.filter((check) => check.status !== "ok") ?? [];
+  return availability?.checks?.filter((check) => check.status !== "ok") ?? [];
 }
 
 export function isAgentAvailableForSelection(

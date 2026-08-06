@@ -29,6 +29,14 @@ describe("getAgentAvailabilityIssues", () => {
       },
     ]);
   });
+
+  test("treats summary availability without checks as having no issues", () => {
+    expect(
+      getAgentAvailabilityIssues({
+        status: "available",
+      })
+    ).toEqual([]);
+  });
 });
 
 describe("isAgentAvailableForSelection", () => {

@@ -154,5 +154,5 @@ export interface AgentAvailabilityCheck {
 
 export interface AgentAvailability {
   status: "available" | "degraded" | "unavailable";
-  checks: AgentAvailabilityCheck[];
+  checks?: AgentAvailabilityCheck[];
 }
