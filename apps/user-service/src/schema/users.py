@@ -1,4 +1,6 @@
-from pydantic import BaseModel, field_validator
+import uuid
+
+from pydantic import BaseModel, Field, field_validator
 
 
 class UserCreateRequest(BaseModel):
@@ -77,6 +79,17 @@ class KeycloakUpsertRequest(BaseModel):
     username: str | None = None
 
 
+class InternalUserBatchRequest(BaseModel):
+    user_ids: list[uuid.UUID] = Field(min_length=1, max_length=100)
+
+    @field_validator("user_ids")
+    @classmethod
+    def user_ids_must_be_distinct(cls, user_ids: list[uuid.UUID]) -> list[uuid.UUID]:
+        if len(user_ids) != len(set(user_ids)):
+            raise ValueError("user_ids must be distinct")
+        return user_ids
+
+
 class InternalUserUpdateRequest(BaseModel):
     first_name: str | None = None
     last_name: str | None = None
@@ -91,6 +104,7 @@ class InternalAuthorizeRequest(BaseModel):
 
 __all__ = [
     "InternalAuthorizeRequest",
+    "InternalUserBatchRequest",
     "InternalUserUpdateRequest",
     "KeycloakUpsertRequest",
     "UserActiveRequest",

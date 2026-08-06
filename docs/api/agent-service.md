@@ -175,6 +175,14 @@ The `send-chat-message` endpoint handles: base64 file descriptors, LLM provider 
 
 ## Personas
 
+New personas resolve and store the authoritative local user-service UUID as
+their owner ID. If identity resolution has no primary ID, creation falls back to
+the authenticated ID. Persona responses resolve the
+current owner email from user-service. List requests resolve up to 100 distinct,
+visible UUID owner IDs in one batch. Missing users, overflow owners, invalid
+legacy IDs, and lookup failures return `Unknown user` without failing the persona
+list. Legacy email-shaped owner IDs remain visible.
+
 **Prefix:** `/api/v1/persona`
 
 Personas can include `mcp_tools` and `mcp_tool_configs`. When a persona enables
