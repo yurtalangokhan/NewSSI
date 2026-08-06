@@ -38,7 +38,6 @@ import { toast } from "@/hooks/useToast";
 import Popover, { PopoverMenu } from "@/refresh-components/Popover";
 import LineItem from "@/refresh-components/buttons/LineItem";
 import {
-  SvgActions,
   SvgImage,
   SvgLock,
   SvgNetworkGraph,
@@ -57,6 +56,7 @@ import {
   updatePersona,
   PersonaUpsertParameters,
 } from "@/app/admin/agents/lib";
+import { buildMcpToolConfigs, useMailConfigs } from "@/lib/mailConfigs";
 import useMcpServersForAgentEditor from "@/hooks/useMcpServersForAgentEditor";
 import useOpenApiTools from "@/hooks/useOpenApiTools";
 import { useAvailableTools } from "@/hooks/useAvailableTools";
@@ -67,11 +67,8 @@ import {
   buildCategoryLabelMap,
 } from "@/lib/tools/builtInToolUtils";
 import _ from "lodash";
-import * as ActionsLayouts from "@/layouts/actions-layouts";
-import * as ExpandableCard from "@/layouts/expandable-card-layouts";
 import { getActionIcon } from "@/lib/tools/mcpUtils";
-import { MCPTool, ToolSnapshot } from "@/lib/tools/interfaces";
-import { useAppRouter } from "@/hooks/appNavigation";
+import { MCPTool } from "@/lib/tools/interfaces";
 import { deleteAgent } from "@/lib/agents";
 import ConfirmationModalLayout from "@/refresh-components/layouts/ConfirmationModalLayout";
 import ShareAgentModal from "@/sections/modals/ShareAgentModal";
@@ -243,25 +240,6 @@ function AgentIconEditor({ existingAgent }: AgentIconEditorProps) {
   );
 }
 
-interface OpenApiToolCardProps {
-  tool: ToolSnapshot;
-}
-
-function OpenApiToolCard({ tool }: OpenApiToolCardProps) {
-  const toolFieldName = `openapi_tool_${tool.id}`;
-
-  return (
-    <ExpandableCard.Root defaultFolded>
-      <ActionsLayouts.Header
-        title={tool.display_name || tool.name}
-        description={tool.description}
-        icon={SvgActions}
-        rightChildren={<SwitchField name={toolFieldName} />}
-      />
-    </ExpandableCard.Root>
-  );
-}
-
 function StarterMessages() {
   const max_starters = MAX_STARTER_MESSAGES;
   const { t } = useTranslation();
@@ -351,7 +329,6 @@ export default function AgentEditorPage({
   refreshAgent,
 }: AgentEditorPageProps) {
   const router = useRouter();
-  const appRouter = useAppRouter();
   const { refresh: refreshAgents } = useAgents();
   const shareAgentModal = useCreateModal();
   const deleteAgentModal = useCreateModal();
@@ -450,6 +427,7 @@ export default function AgentEditorPage({
   // Fetch built-in tools from tools-service MCP
   const { tools: builtInTools, isLoading: isBuiltInToolsLoading } =
     useBuiltInTools();
+  const { mailConfigs, isLoading: isMailConfigsLoading } = useMailConfigs();
   const searchTool = availableTools?.find(
     (t) => t.in_code_tool_id === SEARCH_TOOL_ID
   );
@@ -585,6 +563,8 @@ export default function AgentEditorPage({
     web_search: false,
     open_url: false,
     code_interpreter: false,
+    send_email_mail_config_id:
+      existingAgent?.mcp_tool_configs?.send_email?.mail_config_id ?? "",
     // MCP tools - dynamically add fields for each tool (from MCP servers)
     ...Object.fromEntries(
       allMcpTools.map((tool) => [
@@ -733,6 +713,7 @@ export default function AgentEditorPage({
     web_search: Yup.boolean().optional(),
     open_url: Yup.boolean().optional(),
     code_interpreter: Yup.boolean().optional(),
+    send_email_mail_config_id: Yup.string().optional(),
 
     // MCP tools (from external MCP servers)
     ...Object.fromEntries(
@@ -837,6 +818,21 @@ export default function AgentEditorPage({
       }
 
       const dedupedMcpToolNames = Array.from(new Set(enabledMcpToolNames));
+      let mcpToolConfigs;
+      try {
+        mcpToolConfigs = buildMcpToolConfigs(
+          dedupedMcpToolNames,
+          values.send_email_mail_config_id
+        );
+      } catch {
+        toast.error(
+          t(
+            "agentEditor.sendEmailMailConfigRequired",
+            "Select a mail config before enabling send_email."
+          )
+        );
+        return;
+      }
 
       // Build rag_config from selected collections
       const hasKnowledge =
@@ -932,6 +928,7 @@ export default function AgentEditorPage({
         reflection_prompt: null,
         max_iterations: 3,
         mcp_tools: dedupedMcpToolNames,
+        mcp_tool_configs: mcpToolConfigs,
         long_term_memory: values.long_term_memory,
       };
 
@@ -975,8 +972,7 @@ export default function AgentEditorPage({
         refreshAgent();
       }
 
-      // Immediately start a chat with this agent.
-      appRouter({ agentId: agent.id });
+      router.push("/admin/agents");
     } catch (error) {
       console.error("Submit error:", error);
       toast.error(`${t("agentEditor.anErrorOccurred")}: ${error}`);
@@ -1062,6 +1058,8 @@ export default function AgentEditorPage({
                 .filter((tool) => (values as any)[`builtin_tool_${tool.name}`])
                 .map((tool) => tool.name),
             ];
+            const isSendEmailSelected =
+              selectedMcpToolNamesForCard.includes("send_email");
             const selectedDynamicToolNames = [
               ...allMcpTools
                 .filter((tool) => (values as any)[`mcp_tool_${tool.name}`])
@@ -1510,6 +1508,12 @@ export default function AgentEditorPage({
                                         toolNames
                                       ) => {
                                         const next = new Set(toolNames);
+                                        if (!next.has("send_email")) {
+                                          setFieldValue(
+                                            "send_email_mail_config_id",
+                                            ""
+                                          );
+                                        }
                                         allMcpTools.forEach((tool) => {
                                           setFieldValue(
                                             `mcp_tool_${tool.name}`,
@@ -1531,16 +1535,56 @@ export default function AgentEditorPage({
                                     />
                                   )}
 
-                                {openApiTools.length > 0 && (
-                                  <GeneralLayouts.Section gap={0.5}>
-                                    {openApiTools.map((tool) => (
-                                      <OpenApiToolCard
-                                        key={tool.id}
-                                        tool={tool}
+                                {isSendEmailSelected && (
+                                  <InputLayouts.Vertical
+                                    name="send_email_mail_config_id"
+                                    title={t(
+                                      "agentEditor.sendEmailMailConfigLabel",
+                                      "Mail config"
+                                    )}
+                                    description={t(
+                                      "agentEditor.sendEmailMailConfigDescription",
+                                      "This agent will send email through the selected SMTP account."
+                                    )}
+                                  >
+                                    <InputSelectField
+                                      name="send_email_mail_config_id"
+                                      disabled={isMailConfigsLoading}
+                                    >
+                                      <InputSelect.Trigger
+                                        placeholder={t(
+                                          "agentEditor.selectMailConfigPlaceholder",
+                                          "Select mail config"
+                                        )}
                                       />
-                                    ))}
-                                  </GeneralLayouts.Section>
+                                      <InputSelect.Content>
+                                        {mailConfigs
+                                          .filter((config) => config.is_active)
+                                          .map((config) => (
+                                            <InputSelect.Item
+                                              key={config.id}
+                                              value={config.id}
+                                              description={`${config.from_email} - ${config.host}:${config.port}`}
+                                            >
+                                              {config.name}
+                                            </InputSelect.Item>
+                                          ))}
+                                      </InputSelect.Content>
+                                    </InputSelectField>
+                                    {!isMailConfigsLoading &&
+                                      mailConfigs.filter(
+                                        (config) => config.is_active
+                                      ).length === 0 && (
+                                        <Text secondaryBody text03>
+                                          {t(
+                                            "agentEditor.noMailConfigsAvailable",
+                                            "Create a mail config in Configuration first."
+                                          )}
+                                        </Text>
+                                      )}
+                                  </InputLayouts.Vertical>
                                 )}
+
                               </GeneralLayouts.Section>
                             </SimpleCollapsible.Content>
                           </SimpleCollapsible>

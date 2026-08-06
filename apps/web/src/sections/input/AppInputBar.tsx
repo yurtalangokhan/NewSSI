@@ -263,6 +263,8 @@ const AppInputBar = React.memo(
 
     const combinedSettings = useContext(SettingsContext);
     const { appBackground, foregroundTextStyle } = useAppBackground();
+    const canStopGenerating =
+      chatState === "loading" || chatState === "streaming";
 
     // Track previous message to detect when lines might decrease
     const prevMessageRef = useRef("");
@@ -646,7 +648,7 @@ const AppInputBar = React.memo(
                   icon={isClassifying ? SimpleLoader : SvgSearch}
                   disabled={!message || isClassifying || hasUploadingFiles}
                   onClick={() => {
-                    if (chatState == "streaming") {
+                    if (canStopGenerating) {
                       stopGenerating();
                     } else if (message) {
                       onSubmit(message);
@@ -861,7 +863,7 @@ const AppInputBar = React.memo(
                     isClassifying
                   }
                   onClick={() => {
-                    if (chatState == "streaming") {
+                    if (canStopGenerating) {
                       stopGenerating();
                     } else if (message) {
                       onSubmit(message);

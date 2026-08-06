@@ -11,6 +11,7 @@ class UserCreateRequest(BaseModel):
     role: str = "enduser"
     invited: bool = False
     keycloak_id: str | None = None
+    password: str | None = None
 
     @field_validator("first_name", "last_name")
     @classmethod
@@ -18,6 +19,16 @@ class UserCreateRequest(BaseModel):
         stripped = value.strip()
         if not stripped:
             raise ValueError("first_name and last_name are required")
+        return stripped
+
+    @field_validator("password")
+    @classmethod
+    def password_must_not_be_blank(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError("Password is required")
         return stripped
 
 

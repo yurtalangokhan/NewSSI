@@ -85,6 +85,13 @@ class PersonaModel(Base):
     base_agent: Mapped[str | None] = mapped_column(Text, nullable=True)
     # For custom agents: list of MCP tool names to bind
     mcp_tools: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    # Per-tool configuration references. Must not contain secrets.
+    mcp_tool_configs: Mapped[dict | None] = mapped_column(
+        JSONB,
+        nullable=False,
+        default=dict,
+        server_default=text("'{}'::jsonb"),
+    )
     # Long-term memory toggle for this persona/agent
     long_term_memory: Mapped[bool] = mapped_column(
         Boolean,

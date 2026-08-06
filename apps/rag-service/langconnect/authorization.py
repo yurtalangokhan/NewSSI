@@ -50,10 +50,7 @@ class AuthorizationClient:
         permission: str,
         access_token: str | None,
     ) -> bool:
-        headers: dict[str, str] = {}
-        if access_token:
-            headers["Authorization"] = f"Bearer {access_token}"
-
+        headers = self._user_service_headers(access_token)
         try:
             async with httpx.AsyncClient(timeout=5.0) as client:
                 response = await client.post(
@@ -75,6 +72,16 @@ class AuthorizationClient:
             permission=permission,
             headers=headers,
         )
+
+    @staticmethod
+    def _user_service_headers(access_token: str | None) -> dict[str, str]:
+        headers: dict[str, str] = {}
+        if access_token:
+            headers["Authorization"] = f"Bearer {access_token}"
+        internal_token = config.INTERNAL_SERVICE_TOKEN.strip()
+        if internal_token:
+            headers["X-Internal-Service-Token"] = internal_token
+        return headers
 
     async def _fallback_to_effective_permissions(
         self,

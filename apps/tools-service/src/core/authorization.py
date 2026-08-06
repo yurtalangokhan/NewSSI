@@ -20,6 +20,15 @@ def _permission_cache_ttl() -> float:
     return get_settings().user_permission_cache_ttl_seconds
 
 
+def _user_service_headers(token: str) -> dict[str, str]:
+    settings = get_settings()
+    headers = {"Authorization": f"Bearer {token}"}
+    internal_token = settings.internal_service_token.strip()
+    if internal_token:
+        headers["X-Internal-Service-Token"] = internal_token
+    return headers
+
+
 async def get_user_service_permissions(token: str, subject: str) -> list[str]:
     """Return effective permissions from user-service, cached per subject."""
     now = time.monotonic()
@@ -34,7 +43,7 @@ async def get_user_service_permissions(token: str, subject: str) -> list[str]:
                     f"{_user_service_base_url().rstrip('/')}"
                     f"{USER_SERVICE_API_PREFIX}/internal/users/{subject}/permissions"
                 ),
-                headers={"Authorization": f"Bearer {token}"},
+                headers=_user_service_headers(token),
             )
         resp.raise_for_status()
         data = resp.json()

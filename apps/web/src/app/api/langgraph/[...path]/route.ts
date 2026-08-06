@@ -1,6 +1,6 @@
 import { getInternalUrl } from "@/lib/env.server";
 import { NextRequest, NextResponse } from "next/server";
-import { getCookieValue, refreshAuthCookies } from "@/lib/api/proxy";
+import { getCookieValue } from "@/lib/api/proxy";
 
 const INTERNAL_URL = getInternalUrl();
 
@@ -53,12 +53,7 @@ async function proxyLangGraphRequest(
       headers: buildHeaders(cookieHeader, accessTokenOverride),
     });
 
-  let response = await execute(requestCookie);
-  const refreshed =
-    response.status === 401 ? await refreshAuthCookies(requestCookie) : null;
-  if (refreshed?.accessToken) {
-    response = await execute(refreshed.cookieHeader, refreshed.accessToken);
-  }
+  const response = await execute(requestCookie);
 
   const responseHeaders = new Headers(response.headers);
   responseHeaders.delete("set-cookie");
@@ -73,9 +68,6 @@ async function proxyLangGraphRequest(
         Connection: "keep-alive",
       },
     });
-    for (const cookie of refreshed?.setCookies ?? []) {
-      proxyResponse.headers.append("set-cookie", cookie);
-    }
     return proxyResponse;
   }
 
@@ -83,9 +75,6 @@ async function proxyLangGraphRequest(
     status: response.status,
     headers: responseHeaders,
   });
-  for (const cookie of refreshed?.setCookies ?? []) {
-    proxyResponse.headers.append("set-cookie", cookie);
-  }
   return proxyResponse;
 }
 

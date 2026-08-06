@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -23,6 +23,7 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, Play, AlertCircle, CheckCircle } from "lucide-react";
 import { ToolWithCategory } from "@/lib/tools/builtInToolUtils";
 import { executeBuiltInTool, ToolExecuteResponse } from "@/lib/tools/mcpService";
+import { MailConfig, useMailConfigs } from "@/lib/mailConfigs";
 import { toast } from "@/hooks/useToast";
 import _ from "lodash";
 import { useTranslation } from "react-i18next";
@@ -35,6 +36,59 @@ interface ToolPlaygroundProps {
 
 interface FormValues {
   [key: string]: any;
+}
+
+function getSendEmailPlaygroundSchema(mailConfigs: MailConfig[]) {
+  const enumLabels = mailConfigs.reduce<Record<string, string>>((labels, config) => {
+    labels[config.id] = `${config.name} (${config.from_email})`;
+    return labels;
+  }, {});
+
+  return {
+    type: "object",
+    required: ["mail_config_id", "to", "subject", "body"],
+    properties: {
+      mail_config_id: {
+        type: "string",
+        title: "Mail config",
+        description: "Select the configured SMTP account to send from.",
+        enum: mailConfigs.map((config) => config.id),
+        enumLabels,
+      },
+      to: {
+        type: "string",
+        title: "To",
+        description: "Recipient email addresses. Separate multiple addresses with commas.",
+      },
+      subject: {
+        type: "string",
+        title: "Subject",
+      },
+      body: {
+        type: "string",
+        title: "Body",
+      },
+      cc: {
+        type: "string",
+        title: "Cc",
+        description: "Optional. Separate multiple addresses with commas.",
+      },
+      bcc: {
+        type: "string",
+        title: "Bcc",
+        description: "Optional. Separate multiple addresses with commas.",
+      },
+      is_html: {
+        type: "boolean",
+        title: "HTML",
+        default: false,
+      },
+      reply_to: {
+        type: "string",
+        title: "Reply to",
+      },
+    },
+  };
 }
 
 function SchemaForm({
@@ -113,7 +167,7 @@ function renderField(
         <SelectContent>
           {property.enum.map((option: string) => (
             <SelectItem key={option} value={option}>
-              {option}
+              {property.enumLabels?.[option] || option}
             </SelectItem>
           ))}
         </SelectContent>
@@ -251,10 +305,18 @@ export default function ToolPlayground({
   onClose,
 }: ToolPlaygroundProps) {
   const { t } = useTranslation();
+  const { mailConfigs, isLoading: isMailConfigsLoading } = useMailConfigs();
   const [inputValues, setInputValues] = useState<FormValues>({});
   const [response, setResponse] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const inputSchema = useMemo(
+    () =>
+      tool.name === "send_email"
+        ? getSendEmailPlaygroundSchema(mailConfigs)
+        : tool.input_schema,
+    [tool.name, tool.input_schema, mailConfigs]
+  );
 
   const handleExecute = useCallback(async () => {
     setIsLoading(true);
@@ -310,10 +372,17 @@ export default function ToolPlayground({
           <div className="border-t pt-4">
             <h3 className="font-medium mb-4">{t("toolPlayground.inputHeader")}</h3>
             <SchemaForm
-              schema={tool.input_schema}
+              schema={inputSchema}
               values={inputValues}
               onChange={setInputValues}
             />
+            {tool.name === "send_email" &&
+              !isMailConfigsLoading &&
+              mailConfigs.length === 0 && (
+                <p className="mt-3 text-xs text-gray-500">
+                  Add a mail config before testing send_email.
+                </p>
+              )}
           </div>
 
           <Button

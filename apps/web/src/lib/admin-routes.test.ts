@@ -21,6 +21,12 @@ describe("admin route permissions", () => {
     ]);
   });
 
+  it("registers mail configs under configuration permissions", () => {
+    expect(
+      ADMIN_ROUTE_CONFIG[ADMIN_PATHS.MAIL_CONFIGS]?.requiredPermissions
+    ).toEqual(["settings:read"]);
+  });
+
   it("supports filtering sidebar items by all required permissions", () => {
     const items = [
       sidebarItem(ADMIN_PATHS.USERS),

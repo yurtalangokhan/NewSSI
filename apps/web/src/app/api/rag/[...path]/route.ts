@@ -24,7 +24,6 @@ async function proxyToRagService(
     method,
     backendUrl: LANGCONNECT_URL,
     backendService: "rag",
-    refreshOnUnauthorized: false,
   });
 }
 

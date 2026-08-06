@@ -75,9 +75,10 @@ The form login flow is:
 6. Redirects return through SP Keycloak to the web callback with an SP
    authorization code.
 7. user-service exchanges the SP code for SP tokens, mirrors the user, and sets
-   app cookies. Oversized `id_token` values are not written as cookies because
-   large upstream identity claims can make the web proxy reject the login
-   response.
+   app cookies. The app `access_token` and `refresh_token` come from SP
+   Keycloak. `id_token` values are not written as cookies when they exceed the
+   individual cookie size or total auth `Set-Cookie` header budget because large
+   upstream identity claims can make the gateway reject the login response.
 
 Because this is a browser-submitted password form, the password appears in the
 browser's own Network request payload. That is expected for any password login
@@ -110,6 +111,12 @@ When an API call receives 401, the web app attempts `POST /api/auth/refresh`.
 - After a refresh failure, the web app suppresses repeated refresh attempts for
   that browser tab until a login page is mounted. The login page clears that
   marker so the first 401 after the next successful login can refresh normally.
+
+Client-facing Next.js API proxies and page middleware must return or pass
+through auth state without calling the refresh endpoint themselves. This keeps
+refresh token rotation centralized in the browser-side authenticated fetcher
+and prevents server-side request races from consuming the refresh token before
+the browser can refresh and retry the original request.
 
 Seeing 401 for `/api/auth/refresh` or `/api/auth/me` before login is expected.
 It is only a bug if successful login does not turn those requests into 200.

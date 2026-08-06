@@ -75,3 +75,33 @@ def test_dynamic_agent_runtime_system_prompt_overrides_definition(monkeypatch):
 
     assert calls["builder_kwargs"]["system_prompt"] == "Always answer in Turkish."
     assert build_config["system_prompt"] == "Always answer in Turkish."
+
+
+def test_dynamic_agent_forwards_mail_tool_config_and_runtime_user(monkeypatch):
+    """DynamicAgent should pass mail binding context into GraphBuilder."""
+    from agents.dynamic_agent import DynamicAgent
+
+    calls = {}
+
+    class FakeBuilder:
+        def __init__(self, **kwargs):
+            calls["builder_kwargs"] = kwargs
+
+    monkeypatch.setattr("agents.dynamic_agent.GraphBuilder", FakeBuilder)
+    monkeypatch.setattr("agents.dynamic_agent.get_model_from_config", lambda *_args: object())
+
+    agent = DynamicAgent(
+        {
+            "name": "mailer",
+            "graph_schema": "zero_shot",
+            "mcp_tools": ["send_email"],
+            "mcp_tool_configs": {"send_email": {"mail_config_id": "mail-config-1"}},
+        }
+    )
+
+    _, _, build_config = agent._prepare_graph_build(runtime_config={"user_id": "user-1"})
+
+    assert build_config["mcp_tool_configs"] == {
+        "send_email": {"mail_config_id": "mail-config-1"}
+    }
+    assert build_config["user_id"] == "user-1"

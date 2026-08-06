@@ -39,6 +39,7 @@ interface PersonaUpsertRequest {
   reflection_prompt: string | null;
   max_iterations: number;
   mcp_tools: string[];
+  mcp_tool_configs: Record<string, unknown>;
   // Hierarchy nodes (folders, spaces, channels) for scoped search
   hierarchy_node_ids: number[];
   // Individual documents for scoped search
@@ -91,6 +92,8 @@ export interface PersonaUpsertParameters {
   max_iterations?: number;
   // MCP tool names to bind to the agent
   mcp_tools?: string[];
+  // MCP tool-specific configuration references. Secrets are never included here.
+  mcp_tool_configs?: Record<string, unknown>;
   // RAG collection config
   rag_config?: {
     document_processing: string[];
@@ -136,6 +139,7 @@ function buildPersonaUpsertRequest({
   reflection_prompt,
   max_iterations,
   mcp_tools,
+  mcp_tool_configs,
   rag_config,
   long_term_memory,
 }: PersonaUpsertParameters): PersonaUpsertRequest {
@@ -176,6 +180,7 @@ function buildPersonaUpsertRequest({
     reflection_prompt: reflection_prompt ?? null,
     max_iterations: max_iterations ?? 3,
     mcp_tools: mcp_tools ?? [],
+    mcp_tool_configs: mcp_tool_configs ?? {},
     rag_config: rag_config ?? null,
     long_term_memory: long_term_memory ?? false,
   };

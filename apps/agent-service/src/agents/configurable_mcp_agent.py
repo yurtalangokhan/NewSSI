@@ -16,6 +16,7 @@ from langgraph.prebuilt import create_react_agent
 
 from agents.knowledge import KnowledgeSystemPromptBuilder, KnowledgeToolSelector
 from agents.lazy_agent import LazyLoadingAgent
+from agents.mail_tooling import append_email_tool_policy, wrap_send_email_tool
 from core import get_model, settings
 from memory.long_term import build_event_emitters, recall_memories
 
@@ -30,7 +31,6 @@ TOOL_USAGE_GUARDRAIL = (
     "When external lookup or computation is needed, call the appropriate tool directly. "
     "Do not say you will search or look up information without actually calling a tool first."
 )
-
 
 class ConfigurableMCPAgent(LazyLoadingAgent):
     """
@@ -191,14 +191,20 @@ class ConfigurableMCPAgent(LazyLoadingAgent):
         self,
         config: RunnableConfig | None,
         memory_context: str,
-    ) -> tuple[dict, str, list]:
+    ) -> tuple[dict, str, list, dict]:
         """Extract configurable dict and build the final system prompt from config + memory."""
         configurable = (config or {}).get("configurable", {})
         system_prompt = configurable.get("system_prompt", DEFAULT_SYSTEM_PROMPT)
         if memory_context:
             system_prompt = f"{system_prompt}\n{memory_context}"
         mcp_tool_names = configurable.get("mcp_tools", [])
-        return configurable, system_prompt, mcp_tool_names
+        mcp_tool_configs = configurable.get("mcp_tool_configs") or {}
+        system_prompt = append_email_tool_policy(
+            system_prompt,
+            mcp_tool_names,
+            mail_attachments=configurable.get("mail_attachments"),
+        )
+        return configurable, system_prompt, mcp_tool_names, mcp_tool_configs
 
     def _create_agent_graph(
         self,
@@ -207,6 +213,10 @@ class ConfigurableMCPAgent(LazyLoadingAgent):
         model_name: str | None = None,
         checkpointer: Any | None = None,
         extra_tools: list[BaseTool] | None = None,
+        mcp_tool_configs: dict[str, Any] | None = None,
+        user_id: str | None = None,
+        mail_config_user_id: str | None = None,
+        mail_attachments: list[dict[str, Any]] | None = None,
     ) -> CompiledStateGraph:
         """Create an agent graph with the specified configuration.
 
@@ -221,9 +231,20 @@ class ConfigurableMCPAgent(LazyLoadingAgent):
 
         # Collect MCP tools by name
         agent_tools: list[BaseTool] = []
+        tool_configs = mcp_tool_configs or {}
+        effective_mail_config_user_id = mail_config_user_id or user_id
         for tool_name in mcp_tool_names:
             if tool_name in self._mcp_tools:
-                agent_tools.append(self._mcp_tools[tool_name])
+                tool = self._mcp_tools[tool_name]
+                if tool_name == "send_email":
+                    send_email_config = tool_configs.get("send_email") or {}
+                    tool = wrap_send_email_tool(
+                        tool,
+                        mail_config_id=send_email_config.get("mail_config_id"),
+                        user_id=effective_mail_config_user_id,
+                        mail_attachments=mail_attachments,
+                    )
+                agent_tools.append(tool)
             else:
                 logger.warning(f"Tool '{tool_name}' not found in MCP cache")
 
@@ -272,7 +293,10 @@ class ConfigurableMCPAgent(LazyLoadingAgent):
         # Recall memory and merge context into system prompt (avoid extra SystemMessage).
         input, memories, user_id, memory_context = await self._prepare_memory_context(input, config)
 
-        configurable, system_prompt, mcp_tool_names = self._resolve_config(config, memory_context)
+        configurable, system_prompt, mcp_tool_names, mcp_tool_configs = self._resolve_config(
+            config,
+            memory_context,
+        )
         rag_config: dict = configurable.get("rag_config") or {}
         model_name = configurable.get("model")
         mcp_url = configurable.get("mcp_url")
@@ -308,6 +332,14 @@ class ConfigurableMCPAgent(LazyLoadingAgent):
                 model_name=model_name,
                 checkpointer=effective_checkpointer,
                 extra_tools=rag_tools,
+                mcp_tool_configs=mcp_tool_configs,
+                user_id=user_id,
+                mail_config_user_id=(
+                    configurable.get("owner_user_id")
+                    or configurable.get("mail_config_user_id")
+                    or user_id
+                ),
+                mail_attachments=configurable.get("mail_attachments"),
             )
             result = await graph.ainvoke(input, config=config, **kwargs)
         else:
@@ -347,7 +379,10 @@ class ConfigurableMCPAgent(LazyLoadingAgent):
         if recall_event is not None:
             yield ("custom", recall_event)
 
-        configurable, system_prompt, mcp_tool_names = self._resolve_config(config, memory_context)
+        configurable, system_prompt, mcp_tool_names, mcp_tool_configs = self._resolve_config(
+            config,
+            memory_context,
+        )
         rag_config: dict = configurable.get("rag_config") or {}
         model_name = configurable.get("model")
         mcp_url = configurable.get("mcp_url")
@@ -389,6 +424,14 @@ class ConfigurableMCPAgent(LazyLoadingAgent):
                 model_name=model_name,
                 checkpointer=effective_checkpointer,
                 extra_tools=rag_tools,
+                mcp_tool_configs=mcp_tool_configs,
+                user_id=user_id,
+                mail_config_user_id=(
+                    configurable.get("owner_user_id")
+                    or configurable.get("mail_config_user_id")
+                    or user_id
+                ),
+                mail_attachments=configurable.get("mail_attachments"),
             )
             async for chunk in graph.astream(input, config=config, **kwargs):
                 chunk = self._tag_output_with_recalled_memories(chunk, memories)
@@ -434,7 +477,10 @@ class ConfigurableMCPAgent(LazyLoadingAgent):
         if recall_event is not None:
             yield {"event": "custom", "data": recall_event}
 
-        configurable, system_prompt, mcp_tool_names = self._resolve_config(config, memory_context)
+        configurable, system_prompt, mcp_tool_names, mcp_tool_configs = self._resolve_config(
+            config,
+            memory_context,
+        )
         rag_config: dict = configurable.get("rag_config") or {}
         model_name = configurable.get("model")
         mcp_url = configurable.get("mcp_url")
@@ -470,6 +516,14 @@ class ConfigurableMCPAgent(LazyLoadingAgent):
                 model_name=model_name,
                 checkpointer=effective_checkpointer,
                 extra_tools=rag_tools,
+                mcp_tool_configs=mcp_tool_configs,
+                user_id=user_id,
+                mail_config_user_id=(
+                    configurable.get("owner_user_id")
+                    or configurable.get("mail_config_user_id")
+                    or user_id
+                ),
+                mail_attachments=configurable.get("mail_attachments"),
             )
             async for event in graph.astream_events(
                 input, config=config, version=version, **kwargs

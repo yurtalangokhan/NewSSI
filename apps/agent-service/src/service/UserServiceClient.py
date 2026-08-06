@@ -42,6 +42,10 @@ def _user_service_base_url() -> str:
     return str(env.get("USER_SERVICE_URL", "http://localhost:8090")).rstrip("/")
 
 
+def _is_internal_user_service_path(path: str) -> bool:
+    return path.startswith(f"{USER_SERVICE_API_PREFIX}/internal/")
+
+
 def set_current_access_token(access_token: str | None) -> None:
     _CURRENT_ACCESS_TOKEN.set(access_token)
 
@@ -95,7 +99,8 @@ async def _request(
                 url,
                 headers=_service_headers(
                     access_token=access_token,
-                    include_internal_token=include_internal_token,
+                    include_internal_token=include_internal_token
+                    or _is_internal_user_service_path(path),
                 ),
                 json=json_body,
             )
@@ -291,6 +296,7 @@ async def get_user_permissions(
         "GET",
         f"{USER_SERVICE_API_PREFIX}/internal/users/{user_id}/permissions",
         access_token=access_token,
+        include_internal_token=True,
     )
     if isinstance(data, dict):
         return data

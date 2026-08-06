@@ -191,6 +191,7 @@ class UserService:
         role: str = "enduser",
         invited: bool = False,
         keycloak_id: str | None = None,
+        password: str | None = None,
     ) -> dict[str, Any]:
         if await self.user_repo.exists_by_email(email):
             raise ValueError(f"User with email {email} already exists")
@@ -200,6 +201,7 @@ class UserService:
         normalized_username = username or normalized_email.split("@")[0]
         normalized_first_name = (first_name or "").strip() or normalized_username
         normalized_last_name = (last_name or "").strip() or "User"
+        normalized_password = password.strip() if password else None
 
         # Ensure firstName and lastName are never empty for Keycloak
         # (Keycloak may require these as non-empty for User Profile validation)
@@ -228,6 +230,14 @@ class UserService:
                     "emailVerified": True,
                     "requiredActions": [],
                 }
+                if normalized_password:
+                    keycloak_payload["credentials"] = [
+                        {
+                            "type": "password",
+                            "value": normalized_password,
+                            "temporary": False,
+                        }
+                    ]
                 logger.info(
                     f"Creating Keycloak user for {normalized_email}: "
                     f"firstName={keycloak_first_name}, lastName={keycloak_last_name}"
@@ -252,6 +262,14 @@ class UserService:
                 "requiredActions": [],
             }
             await self.keycloak.update_user(keycloak_id, keycloak_payload)
+            if normalized_password:
+                password_set = await self.keycloak.set_password(
+                    keycloak_id,
+                    normalized_password,
+                    temporary=False,
+                )
+                if not password_set:
+                    raise ValueError("Keycloak password could not be set")
 
         try:
             user = await self.user_repo.create(
@@ -262,7 +280,7 @@ class UserService:
                 role=role_value,
                 hashed_password=None,
                 invited=invited,
-                password_configured=False,
+                password_configured=bool(normalized_password),
                 keycloak_id=keycloak_id,
                 is_external_keycloak_user=False,
             )

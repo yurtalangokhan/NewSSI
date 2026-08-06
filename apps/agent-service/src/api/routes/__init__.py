@@ -11,6 +11,7 @@ from api.routes.ChatRoute import router as chat_router
 from api.routes.DatasourcesRoute import router as datasources_router
 from api.routes.FileRoute import router as file_router
 from api.routes.IngestRoute import router as ingest_router
+from api.routes.MailConfigsRoute import router as mail_configs_router
 from api.routes.MCPProvidersRoute import router as mcp_providers_router
 from api.routes.MCPToolsRoute import router as mcp_tools_router
 from api.routes.OllamaRoute import router as ollama_router
@@ -43,6 +44,7 @@ __all__ = [
     "agent_tools_router",
     "mcp_providers_router",
     "mcp_tools_router",
+    "mail_configs_router",
     "web_search_router",
     "provider_router",
     "ollama_router",

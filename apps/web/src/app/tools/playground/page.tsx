@@ -26,7 +26,70 @@ import {
   parseToolCategory,
   ToolWithCategory,
 } from "@/lib/tools/builtInToolUtils";
+import { MailConfig, useMailConfigs } from "@/lib/mailConfigs";
 import _ from "lodash";
+
+function getSendEmailPlaygroundSchema(mailConfigs: MailConfig[]) {
+  const enumLabels = mailConfigs.reduce<Record<string, string>>((labels, config) => {
+    labels[config.id] = `${config.name} (${config.from_email})`;
+    return labels;
+  }, {});
+
+  return {
+    type: "object",
+    required: ["mail_config_id", "to", "subject", "body"],
+    properties: {
+      mail_config_id: {
+        type: "string",
+        title: "Mail config",
+        description: "Select the configured SMTP account to send from.",
+        enum: mailConfigs.map((config) => config.id),
+        enumLabels,
+      },
+      to: {
+        type: "array",
+        title: "To",
+        description: "Recipient email addresses.",
+        items: { type: "string", title: "Email address" },
+      },
+      subject: {
+        type: "string",
+        title: "Subject",
+      },
+      body: {
+        type: "string",
+        title: "Body",
+        widget: "textarea",
+      },
+      cc: {
+        type: "array",
+        title: "Cc",
+        items: { type: "string", title: "Email address" },
+      },
+      bcc: {
+        type: "array",
+        title: "Bcc",
+        items: { type: "string", title: "Email address" },
+      },
+      is_html: {
+        type: "boolean",
+        title: "HTML",
+        default: false,
+      },
+      reply_to: {
+        type: "string",
+        title: "Reply to",
+      },
+    },
+  };
+}
+
+function getPlaygroundSchema(tool: ToolWithCategory | null, mailConfigs: MailConfig[]) {
+  if (tool?.name === "send_email") {
+    return getSendEmailPlaygroundSchema(mailConfigs);
+  }
+  return normalizeSchema(tool?.input_schema);
+}
 
 function getDefaultValueForSchema(schema: any): any {
   if (!schema) return null;
@@ -261,7 +324,7 @@ function renderField(
         <option value="">{t ? t("toolPlayground.selectOption") : "Select an option"}</option>
         {property.enum.map((option: string) => (
           <option key={option} value={option}>
-            {option}
+            {property.enumLabels?.[option] || option}
           </option>
         ))}
       </select>
@@ -529,6 +592,7 @@ export default function ToolsPlaygroundPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const toolName = searchParams.get("tool") || "";
+  const { mailConfigs, isLoading: isMailConfigsLoading } = useMailConfigs();
 
   const [tools, setTools] = useState<BuiltInTool[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -597,6 +661,11 @@ export default function ToolsPlaygroundPage() {
     [toolsWithCategory, toolName]
   );
 
+  const selectedSchema = useMemo(
+    () => getPlaygroundSchema(selectedTool, mailConfigs),
+    [selectedTool, mailConfigs]
+  );
+
   const handleSelectTool = useCallback(
     (tool: ToolWithCategory) => {
       setResponse(null);
@@ -622,7 +691,7 @@ export default function ToolsPlaygroundPage() {
   const handleRunTool = useCallback(async () => {
     if (!selectedTool) return;
 
-    const schema = normalizeSchema(selectedTool.input_schema);
+    const schema = selectedSchema;
     const missing = getMissingRequiredFields(schema, inputValues);
     if (missing.length > 0) {
       const errors: Record<string, string> = {};
@@ -655,7 +724,7 @@ export default function ToolsPlaygroundPage() {
     } finally {
       setIsRunning(false);
     }
-  }, [inputValues, selectedTool]);
+  }, [inputValues, selectedSchema, selectedTool, t]);
 
   const pageTitle = selectedTool
     ? t("toolPlayground.toolPlaygroundTitle", { name: _.startCase(selectedTool.name) })
@@ -753,11 +822,18 @@ export default function ToolsPlaygroundPage() {
                   {t("toolPlayground.input")}
                 </Text>
                 <SchemaForm
-                  schema={normalizeSchema(selectedTool.input_schema)}
+                  schema={selectedSchema}
                   values={inputValues}
                   onChange={handleInputChange}
                   fieldErrors={fieldErrors}
                 />
+                {selectedTool.name === "send_email" &&
+                  !isMailConfigsLoading &&
+                  mailConfigs.length === 0 && (
+                    <Text as="p" text03 secondaryBody className="mt-3 text-xs">
+                      Add a mail config before testing send_email.
+                    </Text>
+                  )}
               </div>
               {runError && (
                 <div className="rounded-lg border border-status-error-03 bg-status-error-01 p-4">
@@ -849,4 +925,3 @@ export default function ToolsPlaygroundPage() {
     </div>
   );
 }
-

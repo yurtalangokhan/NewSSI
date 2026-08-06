@@ -47,6 +47,10 @@ class UserInput(BaseModel):
         default_factory=list,
         description="Lightweight file metadata for chat history (id, type, name). No base64 data.",
     )
+    mail_attachments: list[dict[str, Any]] = Field(
+        default_factory=list,
+        description="Current request file attachments available to the send_email tool.",
+    )
 
 
 class StreamInput(UserInput):

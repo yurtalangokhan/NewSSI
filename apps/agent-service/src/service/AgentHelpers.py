@@ -62,6 +62,8 @@ async def get_graph_and_config(agent_id: str | int) -> tuple[str, dict]:
                 runtime_cfg["system_prompt"] = definition_cfg["system_prompt"]
             if definition_cfg.get("mcp_tools"):
                 runtime_cfg["mcp_tools"] = definition_cfg["mcp_tools"]
+            if definition_cfg.get("mcp_tool_configs"):
+                runtime_cfg["mcp_tool_configs"] = definition_cfg["mcp_tool_configs"]
             if definition_cfg.get("rag_config"):
                 runtime_cfg["rag_config"] = definition_cfg["rag_config"]
             if definition_cfg.get("memory_type"):
@@ -81,6 +83,7 @@ async def get_graph_and_config(agent_id: str | int) -> tuple[str, dict]:
                 # Custom persona - use base_agent, MCP tools, and RAG config
                 base_agent = persona.get("base_agent")
                 mcp_tools = persona.get("mcp_tools", [])
+                mcp_tool_configs = persona.get("mcp_tool_configs") or {}
                 rag_config = persona.get("rag_config") or {}
 
                 if base_agent == "dynamic-agent":
@@ -90,10 +93,13 @@ async def get_graph_and_config(agent_id: str | int) -> tuple[str, dict]:
                     if definition:
                         definition_cfg = definition.to_config() or {}
                         runtime_cfg: dict[str, Any] = {}
+                        if persona.get("user_id"):
+                            runtime_cfg["owner_user_id"] = str(persona["user_id"])
                         for key in (
                             "model",
                             "system_prompt",
                             "mcp_tools",
+                            "mcp_tool_configs",
                             "rag_config",
                             "memory_type",
                         ):
@@ -106,6 +112,8 @@ async def get_graph_and_config(agent_id: str | int) -> tuple[str, dict]:
 
                 if mcp_tools:
                     config["mcp_tools"] = mcp_tools
+                if mcp_tool_configs:
+                    config["mcp_tool_configs"] = mcp_tool_configs
 
                 if rag_config:
                     config["rag_config"] = rag_config
@@ -307,6 +315,9 @@ async def _handle_input(
         pass
     if selected_model is not None:
         configurable["model"] = selected_model
+    mail_attachments = getattr(user_input, "mail_attachments", [])
+    if mail_attachments:
+        configurable["mail_attachments"] = mail_attachments
 
     callbacks: list[Any] = []
     if settings.LANGFUSE_TRACING:

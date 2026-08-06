@@ -6,6 +6,5 @@ export async function POST(request: NextRequest) {
   return proxyToBackend(request, "/api/auth/refresh", {
     method: "POST",
     backendUrl: USER_SERVICE_URL,
-    refreshOnUnauthorized: false,
   });
 }

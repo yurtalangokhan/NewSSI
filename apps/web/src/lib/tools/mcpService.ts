@@ -12,6 +12,7 @@ import {
   MCPAuthenticationType,
   MCPAuthenticationPerformer,
 } from "@/lib/tools/interfaces";
+import { authenticatedFetch } from "@/lib/fetcher";
 export interface ToolStatusUpdateRequest {
   tool_ids: number[];
   enabled: boolean;
@@ -249,6 +250,45 @@ export async function executeBuiltInTool(
   toolName: string,
   arguments_: Record<string, any> = {}
 ): Promise<ToolExecuteResponse> {
+  if (toolName === "send_email") {
+    const mailConfigId = String(arguments_.mail_config_id || "").trim();
+    if (!mailConfigId) {
+      return { result: null, error: "Mail config is required for send_email" };
+    }
+    const { mail_config_id: _mailConfigId, ...payload } = arguments_;
+    const normalizeRecipients = (value: unknown) => {
+      if (Array.isArray(value)) return value;
+      if (typeof value === "string") {
+        return value
+          .split(",")
+          .map((item) => item.trim())
+          .filter(Boolean);
+      }
+      return [];
+    };
+    payload.to = normalizeRecipients(payload.to);
+    payload.cc = normalizeRecipients(payload.cc);
+    payload.bcc = normalizeRecipients(payload.bcc);
+    const response = await authenticatedFetch(
+      `/api/mail-configs/${encodeURIComponent(mailConfigId)}/send`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      return { result: null, error: errorText || "Failed to send email" };
+    }
+
+    const data = await response.json();
+    return { result: data, error: data.success ? undefined : data.message };
+  }
+
   const response = await fetch("/api/proxy/mcp/execute", {
     method: "POST",
     headers: {

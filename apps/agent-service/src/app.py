@@ -224,6 +224,7 @@ from api.routes import (  # noqa: E402,I001
     datasources_router,
     file_router,
     ingest_router,
+    mail_configs_router,
     mcp_providers_router,
     mcp_tools_router,
     ollama_router,
@@ -256,6 +257,7 @@ _include_router_with_versioned_routes(file_router)
 _include_router_with_versioned_routes(web_search_router)
 _include_router_with_versioned_routes(provider_router)
 _include_router_with_versioned_routes(ollama_router)
+_include_router_with_versioned_routes(mail_configs_router)
 _include_router_with_versioned_routes(mcp_providers_router)
 _include_router_with_versioned_routes(mcp_tools_router)
 _include_router_with_versioned_routes(agent_tools_router)

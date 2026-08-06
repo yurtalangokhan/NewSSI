@@ -72,6 +72,25 @@ describe("ClientLayout", () => {
     expect(replaceMock).not.toHaveBeenCalledWith("/error/403");
   });
 
+  it("does not redirect to 403 while route permissions are loading", () => {
+    mockUseUser.mockReturnValue({
+      user: { id: "admin-user" },
+      isAdmin: true,
+      permissionsError: null,
+      isPermissionsLoading: true,
+      hasAllPermissions: () => false,
+    });
+
+    render(
+      <ClientLayout enableEnterprise={false} enableCloud={false}>
+        <div>Admin content</div>
+      </ClientLayout>
+    );
+
+    expect(screen.getByText("Admin content")).toBeInTheDocument();
+    expect(replaceMock).not.toHaveBeenCalledWith("/error/403");
+  });
+
   it("still redirects admins when route permissions load and deny the route", async () => {
     mockUseUser.mockReturnValue({
       user: { id: "admin-user" },

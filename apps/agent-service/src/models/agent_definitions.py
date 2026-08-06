@@ -26,6 +26,7 @@ class CreateAgentDefinitionRequest(BaseModel):
     system_prompt: str | None = None
     model: str | None = None
     mcp_tools: list[str] = Field(default_factory=list)
+    mcp_tool_configs: dict[str, Any] = Field(default_factory=dict)
     rag_config: dict[str, list[str]] = Field(default_factory=dict)
     sub_agents: list[SubAgentRequest] = Field(default_factory=list)
     sub_agent_ids: list[UUID] = Field(default_factory=list)  # NEW: References to existing agents
@@ -45,6 +46,7 @@ class UpdateAgentDefinitionRequest(BaseModel):
     system_prompt: str | None = None
     model: str | None = None
     mcp_tools: list[str] | None = None
+    mcp_tool_configs: dict[str, Any] | None = None
     rag_config: dict[str, list[str]] | None = None
     sub_agents: list[dict[str, Any]] | None = None
     sub_agent_ids: list[UUID] | None = None  # NEW: References to existing agents

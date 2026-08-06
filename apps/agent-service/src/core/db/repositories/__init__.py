@@ -18,6 +18,7 @@ from core.db.repositories.airbyte_mapping_repo import AirbyteMappingRepository
 from core.db.repositories.assistant_repo import AssistantRepository
 from core.db.repositories.base import BaseRepository
 from core.db.repositories.datasource_repo import DatasourceRepository
+from core.db.repositories.mail_config_repo import MailConfigRepository
 from core.db.repositories.mcp_provider_repo import MCPProviderRepository
 from core.db.repositories.mcp_tool_repo import MCPToolRepository
 from core.db.repositories.persona_repo import PersonaRepository
@@ -36,6 +37,7 @@ __all__ = [
     "ProjectRepository",
     "MCPProviderRepository",
     "MCPToolRepository",
+    "MailConfigRepository",
     "AgentToolsRepository",
     "AgentGroupRepository",
 ]
