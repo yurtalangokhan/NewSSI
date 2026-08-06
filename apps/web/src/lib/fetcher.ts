@@ -39,6 +39,7 @@ let refreshTokenPromise: Promise<RefreshTokenResult> | null = null;
 let loginPathPromise: Promise<string> | null = null;
 let authRefreshFailed = false;
 const AUTH_REFRESH_FAILED_KEY = "auth_refresh_failed";
+export const AUTH_SESSION_REFRESHED_EVENT = "auth:session-refreshed";
 
 function hasAuthRefreshFailed(): boolean {
   if (typeof window === "undefined") {
@@ -78,6 +79,9 @@ async function tryRefreshToken(): Promise<RefreshTokenResult> {
         });
         if (res.ok) {
           clearAuthRefreshFailed();
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(new Event(AUTH_SESSION_REFRESHED_EVENT));
+          }
         } else {
           markAuthRefreshFailed();
         }

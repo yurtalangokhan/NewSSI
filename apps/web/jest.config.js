@@ -157,6 +157,7 @@ module.exports = {
         "**/src/lib/**/*.test.tsx",
         "**/src/refresh-components/**/*.test.tsx",
         "**/src/sections/input/**/*.test.tsx",
+        "**/src/sections/AppHealthBanner.test.tsx",
         // Add more patterns here as you add more integration tests
       ],
     },

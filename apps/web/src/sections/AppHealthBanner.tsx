@@ -1,6 +1,11 @@
 "use client";
 
-import { errorHandlingFetcher, RedirectError } from "@/lib/fetcher";
+import {
+  AUTH_SESSION_REFRESHED_EVENT,
+  authenticatedFetch,
+  errorHandlingFetcher,
+  RedirectError,
+} from "@/lib/fetcher";
 import useSWR from "swr";
 import Modal from "@/refresh-components/Modal";
 import { useCallback, useEffect, useState, useRef } from "react";
@@ -34,6 +39,45 @@ export default function AppHealthBanner() {
     router.push("/auth/login");
   }
 
+  const synchronizeRefreshedSession = useCallback(async () => {
+    setExpired(false);
+    setShowLoggedOutModal(false);
+    await refreshUser();
+  }, [refreshUser]);
+
+  const verifySession = useCallback(async () => {
+    try {
+      const response = await authenticatedFetch("/api/health");
+      if (response.ok) {
+        await synchronizeRefreshedSession();
+      }
+    } catch (error) {
+      if (error instanceof RedirectError) {
+        setExpired(true);
+        if (!pathname?.includes("/auth")) {
+          setShowLoggedOutModal(true);
+        }
+      }
+    }
+  }, [pathname, synchronizeRefreshedSession]);
+
+  useEffect(() => {
+    const handleSessionRefreshed = () => {
+      void synchronizeRefreshedSession();
+    };
+
+    window.addEventListener(
+      AUTH_SESSION_REFRESHED_EVENT,
+      handleSessionRefreshed
+    );
+    return () => {
+      window.removeEventListener(
+        AUTH_SESSION_REFRESHED_EVENT,
+        handleSessionRefreshed
+      );
+    };
+  }, [synchronizeRefreshedSession]);
+
   // Function to set up expiration timeout
   const setupExpirationTimeout = useCallback(
     (secondsUntilExpiration: number) => {
@@ -45,14 +89,10 @@ export default function AppHealthBanner() {
       // Set timeout to show logout modal when session expires
       const timeUntilExpire = (secondsUntilExpiration + 10) * 1000;
       expirationTimeoutRef.current = setTimeout(() => {
-        setExpired(true);
-
-        if (!pathname?.includes("/auth")) {
-          setShowLoggedOutModal(true);
-        }
+        void verifySession();
       }, timeUntilExpire);
     },
-    [pathname]
+    [verifySession]
   );
 
   // Clean up any timeouts/intervals when component unmounts
@@ -162,9 +202,7 @@ export default function AppHealthBanner() {
         <Modal.Content width="sm" height="sm">
           <Modal.Header icon={SvgLogOut} title={t("loggedOutTitle")} />
           <Modal.Body>
-            <p className="text-sm">
-              {t("sessionExpiredMessage")}
-            </p>
+            <p className="text-sm">{t("sessionExpiredMessage")}</p>
           </Modal.Body>
           <Modal.Footer>
             <Button onClick={handleLogin}>{t("logInButton")}</Button>
