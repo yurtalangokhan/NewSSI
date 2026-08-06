@@ -41,6 +41,8 @@ the canonical `/api/v1` paths documented here.
 | GET    | `/api/v1/agents/info`              | `agent:list`     | List all agents, models, default agent, default model |
 | GET    | `/api/v1/agents/catalog`           | `persona:read`   | List lightweight product agent summaries              |
 | GET    | `/api/v1/agents/{agent_id}`        | `persona:read`   | Get full product agent detail                         |
+| GET    | `/api/v1/agents/catalog`           | `persona:read`   | List lightweight product agent summaries              |
+| GET    | `/api/v1/agents/{agent_id}`        | `persona:read`   | Get full product agent detail                         |
 | POST   | `/api/v1/agents/{agent_id}/invoke` | `agent:invoke`   | Invoke agent — non-streaming response                 |
 | POST   | `/api/v1/agents/invoke`            | `agent:invoke`   | Invoke default agent — non-streaming                  |
 | POST   | `/api/v1/agents/{agent_id}/stream` | `agent:stream`   | Stream agent response (SSE events)                    |
@@ -51,16 +53,6 @@ the canonical `/api/v1` paths documented here.
 **Stream SSE events:** `token`, `message`, `reasoning_start`, `reasoning_delta`, `custom_tool_start`, `custom_tool_delta`, `custom_step_start`, `long_term_memory_recall`, `long_term_memory_save`, `error`, `[DONE]`
 
 **Thinking tags:** Built-in `<thinking>` / `<think>` tag processing (DeepSeek, Qwen models) with streaming state machine.
-
-`/api/v1/agents/catalog` is the product-facing list endpoint for frontend
-catalogs, sidebars, selectors, and initial chat load. It returns summary fields
-and cheap capability flags instead of full persona details. Use
-`/api/v1/agents/{agent_id}` when the UI needs prompts, full tools, sharing
-fields, scoped knowledge, or other detail-only data.
-
-Catalog summaries return only a shallow availability status. Component-level
-model, MCP tool, memory, and RAG availability checks are detail-only data and
-are resolved through `/api/v1/agents/{agent_id}`.
 
 ---
 

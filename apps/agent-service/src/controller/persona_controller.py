@@ -375,6 +375,8 @@ class PersonaController(BaseController):
         owner_id = str(persona.get("user_id") or DEFAULT_USER_ID)
         if "@" in owner_id:
             return owner_id
+        if persona.get("user_email"):
+            return str(persona["user_email"])
 
         stored_email = persona.get("user_email")
         if isinstance(stored_email, str) and stored_email.strip() and not _is_uuid_owner_id(owner_id):
