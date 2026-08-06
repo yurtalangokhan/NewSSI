@@ -16,13 +16,13 @@ import { SettingsContext } from "@/providers/SettingsProvider";
 import { AuthTypeMetadata } from "@/lib/userSS";
 import { updateUserPersonalization as persistPersonalization } from "@/lib/userSettings";
 import { useTheme } from "next-themes";
-import { isAdminUser } from "@/lib/auth/roles";
 import {
   hasAnyPermission as hasAnyPermissionValue,
   hasAllPermissions as hasAllPermissionsValue,
   hasPermission as hasPermissionValue,
 } from "@/lib/auth/permissions";
 import { authenticatedFetch } from "@/lib/fetcher";
+import { canAccessAnyAdminRoute } from "@/lib/admin-access";
 
 interface UserContextType {
   user: User | null;
@@ -551,7 +551,7 @@ export function UserProvider({
         updateUserDefaultModel,
         updateUserDefaultAppMode,
         toggleAgentPinnedStatus,
-        isAdmin: isAdminUser(upToDateUser),
+        isAdmin: canAccessAnyAdminRoute(permissions),
         isCurator: false,
         permissions,
         permissionsError,

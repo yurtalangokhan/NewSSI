@@ -5,7 +5,6 @@ import {
   getCurrentUserSS,
 } from "@/lib/userSS";
 import { getLoginPath } from "@/lib/auth/loginRoute";
-import { isAdminUser } from "@/lib/auth/roles";
 
 /**
  * Result of an authentication check.
@@ -72,9 +71,11 @@ export async function requireAuth(): Promise<AuthCheckResult> {
 }
 
 /**
- * Requires that the user is authenticated AND has admin role.
+ * Requires that the user is authenticated.
  * If not authenticated, redirects to login.
- * If authenticated but not admin, redirects to /chat.
+ *
+ * Fine-grained admin route authorization is handled by ClientLayout after it
+ * loads effective permissions from user-service.
  * Also checks email verification if required.
  *
  * @returns AuthCheckResult with user, auth metadata, and optional redirect
@@ -85,27 +86,10 @@ export async function requireAuth(): Promise<AuthCheckResult> {
  * if (authResult.redirect) {
  *   return redirect(authResult.redirect);
  * }
- * // User is authenticated admin, proceed with admin logic
+ * // User is authenticated, proceed with permission-based admin checks
  * const { user } = authResult;
  * ```
  */
 export async function requireAdminAuth(): Promise<AuthCheckResult> {
-  const authResult = await requireAuth();
-
-  // If already has a redirect (not authenticated or not verified), return it
-  if (authResult.redirect) {
-    return authResult;
-  }
-
-  const { user, authTypeMetadata } = authResult;
-
-  if (!isAdminUser(user)) {
-    return {
-      user,
-      authTypeMetadata,
-      redirect: "/error/403",
-    };
-  }
-
-  return authResult;
+  return requireAuth();
 }

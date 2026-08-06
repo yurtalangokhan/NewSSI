@@ -61,15 +61,17 @@ describe("ClientLayout", () => {
     jest.clearAllMocks();
   });
 
-  it("does not redirect admins to 403 when route permissions temporarily fail to load", () => {
+  it("redirects when route permissions fail instead of using an admin role fallback", async () => {
     render(
       <ClientLayout enableEnterprise={false} enableCloud={false}>
         <div>Admin content</div>
       </ClientLayout>
     );
 
-    expect(screen.getByText("Admin content")).toBeInTheDocument();
-    expect(replaceMock).not.toHaveBeenCalledWith("/error/403");
+    expect(screen.queryByText("Admin content")).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(replaceMock).toHaveBeenCalledWith("/error/403");
+    });
   });
 
   it("does not redirect to 403 while route permissions are loading", () => {
