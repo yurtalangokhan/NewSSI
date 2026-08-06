@@ -1,11 +1,38 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
 from controller.persona_controller import PersonaController
+
+
+@pytest.mark.asyncio
+async def test_create_persona_normalizes_mcp_tools_before_persisting():
+    controller = PersonaController()
+    controller._validate_mcp_tool_configs = AsyncMock(return_value={})
+    controller._upsert_dynamic_definition = AsyncMock()
+    controller._serialize_custom_persona = AsyncMock(return_value={"id": 1})
+    payload = {
+        "name": "Research agent",
+        "description": "Searches internal sources",
+        "mcp_tools": ["web_search"],
+    }
+
+    with patch(
+        "controller.persona_controller.PersonaDB.create",
+        new=AsyncMock(return_value={"id": 1}),
+    ) as create_persona:
+        await controller.create_persona(payload, user_id="user-1")
+
+    controller._validate_mcp_tool_configs.assert_awaited_once_with(
+        user_id="user-1",
+        mcp_tools=["web_search"],
+        mcp_tool_configs={},
+    )
+    assert create_persona.await_args.kwargs["mcp_tools"] == ["web_search"]
+    assert create_persona.await_args.kwargs["mcp_tool_configs"] == {}
 
 
 @pytest.mark.asyncio

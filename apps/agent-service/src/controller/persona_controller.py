@@ -181,6 +181,32 @@ class PersonaController(BaseController):
     def _dynamic_definition_name(persona_id: int) -> str:
         return f"persona-{persona_id}"
 
+    async def _validate_mcp_tool_configs(
+        self,
+        *,
+        user_id: str,
+        mcp_tools: list[str],
+        mcp_tool_configs: dict[str, Any] | None,
+    ) -> dict[str, Any]:
+        if "send_email" not in (mcp_tools or []):
+            return {}
+
+        configs = mcp_tool_configs or {}
+        send_email_config = configs.get("send_email")
+        if not isinstance(send_email_config, dict):
+            raise ValueError("send_email requires a mail config")
+
+        mail_config_id = str(send_email_config.get("mail_config_id") or "").strip()
+        if not mail_config_id:
+            raise ValueError("send_email requires a mail config")
+
+        mail_config = await self._mail_config_service.get_config(user_id, mail_config_id)
+        if not mail_config:
+            raise ValueError("Selected mail config was not found")
+
+        return {"send_email": {"mail_config_id": mail_config_id}}
+
+
     async def resolve_owner_user_id(
         self,
         request: Request,
@@ -809,6 +835,12 @@ class PersonaController(BaseController):
             if request is not None and user is not None:
                 effective_user_id = await self.resolve_owner_user_id(request, user)
             effective_user_id = effective_user_id or DEFAULT_USER_ID
+            mcp_tools = payload.get("mcp_tools") or []
+            mcp_tool_configs = await self._validate_mcp_tool_configs(
+                user_id=effective_user_id,
+                mcp_tools=mcp_tools,
+                mcp_tool_configs=payload.get("mcp_tool_configs") or {},
+            )
             persona = await PersonaDB.create(
                 name=payload["name"],
                 description=payload["description"],
