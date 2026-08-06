@@ -58,6 +58,10 @@ and cheap capability flags instead of full persona details. Use
 `/api/v1/agents/{agent_id}` when the UI needs prompts, full tools, sharing
 fields, scoped knowledge, or other detail-only data.
 
+Catalog summaries return only a shallow availability status. Component-level
+model, MCP tool, memory, and RAG availability checks are detail-only data and
+are resolved through `/api/v1/agents/{agent_id}`.
+
 ---
 
 ## Agent Definitions

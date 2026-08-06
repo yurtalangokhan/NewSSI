@@ -78,6 +78,43 @@ async def test_agent_catalog_summary_omits_detail_fields(monkeypatch) -> None:
 
 
 @pytest.mark.asyncio
+async def test_agent_catalog_summary_does_not_resolve_expensive_availability(
+    monkeypatch,
+) -> None:
+    controller = PersonaController()
+
+    async def fail_availability(_agent: dict) -> dict:
+        raise AssertionError("catalog summary must not resolve full availability")
+
+    monkeypatch.setattr(controller, "_get_agent_availability", fail_availability)
+
+    summary = await controller._serialize_custom_persona_summary(_custom_persona())
+
+    assert summary["availability"] == {"status": "available"}
+
+
+@pytest.mark.asyncio
+async def test_builtin_catalog_summary_does_not_resolve_expensive_availability(
+    monkeypatch,
+) -> None:
+    controller = PersonaController()
+
+    async def fail_availability(_agent: dict) -> dict:
+        raise AssertionError("catalog summary must not resolve full availability")
+
+    monkeypatch.setattr(controller, "_get_agent_availability", fail_availability)
+
+    summary = await controller._serialize_builtin_persona_summary(
+        0,
+        "Chatbot",
+        "Default chatbot",
+        "chatbot",
+    )
+
+    assert summary["availability"] == {"status": "available"}
+
+
+@pytest.mark.asyncio
 async def test_agent_catalog_summary_does_not_load_dynamic_definition(monkeypatch) -> None:
     controller = PersonaController()
     persona = {**_custom_persona(), "base_agent": "dynamic-agent"}

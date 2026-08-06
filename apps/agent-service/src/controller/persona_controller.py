@@ -153,6 +153,10 @@ def _has_web_search_tool(tool_names: list[str]) -> bool:
     return any("web_search" in tool_name or "web-search" in tool_name for tool_name in tool_names)
 
 
+def _build_catalog_summary_availability() -> dict[str, str]:
+    return {"status": "available"}
+
+
 class PersonaController(BaseController):
     """Owns persona CRUD and persona-related helper endpoints."""
 
@@ -664,16 +668,7 @@ class PersonaController(BaseController):
                 "long_term_memory": False,
             },
         }
-        availability = await self._get_agent_availability(
-            {
-                "llm_model_version_override": None,
-                "mcp_tools": [],
-                "rag_config": {"document_processing": [], "knowledge_graph": []},
-                "memory_type": "none",
-                "long_term_memory": False,
-            }
-        )
-        serialized["availability"] = {"status": availability.get("status", "available")}
+        serialized["availability"] = _build_catalog_summary_availability()
         return serialized
 
     async def _serialize_custom_persona_summary(self, persona: dict[str, Any]) -> dict[str, Any]:
@@ -699,16 +694,6 @@ class PersonaController(BaseController):
         )
         has_retrieval = bool(has_scoped_knowledge or "search" in mcp_tools)
         long_term_memory = bool(persona.get("long_term_memory", False))
-        availability = await self._get_agent_availability(
-            {
-                "llm_model_version_override": persona.get("llm_model_version_override"),
-                "mcp_tools": mcp_tools,
-                "rag_config": rag_config,
-                "memory_type": "long_term" if long_term_memory else persona.get("memory_type"),
-                "long_term_memory": long_term_memory,
-            }
-        )
-
         return {
             "id": persona["id"],
             "external_id": persona.get("external_id"),
@@ -740,7 +725,7 @@ class PersonaController(BaseController):
             "action_count": len(mcp_tools),
             "memory_type": "long_term" if long_term_memory else persona.get("memory_type"),
             "long_term_memory": long_term_memory,
-            "availability": {"status": availability.get("status", "available")},
+            "availability": _build_catalog_summary_availability(),
             "capabilities": {
                 "has_actions": len(mcp_tools) > 0,
                 "has_conversation_starters": bool(persona.get("starter_messages")),
