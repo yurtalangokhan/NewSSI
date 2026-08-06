@@ -7,14 +7,14 @@ describe("buildOidcLogoutUrl", () => {
       authType: AuthType.OIDC,
       issuer: "http://keycloak.local/realms/agenticai/",
       clientId: "agenticai-web",
-      postLogoutRedirectUri: "http://localhost:8126/auth/ee/login?logged_out=true",
+      postLogoutRedirectUri: "http://localhost:8126/auth/ee/login",
       idTokenHint: "id-token",
     });
 
     expect(url?.toString()).toBe(
       "http://keycloak.local/realms/agenticai/protocol/openid-connect/logout" +
         "?client_id=agenticai-web" +
-        "&post_logout_redirect_uri=http%3A%2F%2Flocalhost%3A8126%2Fauth%2Fee%2Flogin%3Flogged_out%3Dtrue" +
+        "&post_logout_redirect_uri=http%3A%2F%2Flocalhost%3A8126%2Fauth%2Fee%2Flogin" +
         "&id_token_hint=id-token"
     );
   });
