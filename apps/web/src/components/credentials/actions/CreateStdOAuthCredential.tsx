@@ -1,3 +1,5 @@
+"use client";
+
 import * as Yup from "yup";
 
 import Button from "@/refresh-components/buttons/Button";
@@ -7,6 +9,7 @@ import { Form, Formik, FormikHelpers } from "formik";
 import CardSection from "@/components/admin/CardSection";
 import { getConnectorOauthRedirectUrl } from "@/lib/connectors/oauth";
 import { OAuthAdditionalKwargDescription } from "@/lib/connectors/credentials";
+import { useTranslation } from "react-i18next";
 
 type formType = {
   [key: string]: any; // For additional credential fields
@@ -21,6 +24,7 @@ export function CreateStdOAuthCredential({
 
   additionalFields: OAuthAdditionalKwargDescription[];
 }) {
+  const { t } = useTranslation();
   const handleSubmit = async (
     values: formType,
     formikHelpers: FormikHelpers<formType>
@@ -75,7 +79,7 @@ export function CreateStdOAuthCredential({
             ))}
 
             <div className="flex w-full">
-              <Button type="submit">Create</Button>
+              <Button type="submit">{t("common.create")}</Button>
             </div>
           </CardSection>
         </Form>

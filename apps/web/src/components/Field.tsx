@@ -175,37 +175,40 @@ export const FieldLabel = ({
   label: string;
   removeLabel?: boolean;
   vertical?: boolean;
-}) => (
-  <>
-    <div
-      className={`flex ${
-        vertical ? "flex-col" : "flex-row"
-      } gap-x-2 items-start`}
-    >
-      <div className="flex gap-x-2 items-center">
-        {!removeLabel && (
-          <Label small={false} htmlFor={name}>
-            {label}
-          </Label>
+}) => {
+  const { t } = useTranslation();
+  return (
+    <>
+      <div
+        className={`flex ${
+          vertical ? "flex-col" : "flex-row"
+        } gap-x-2 items-start`}
+      >
+        <div className="flex gap-x-2 items-center">
+          {!removeLabel && (
+            <Label small={false} htmlFor={name}>
+              {label}
+            </Label>
+          )}
+          {optional ? <span>({t("common.optional")}) </span> : ""}
+          {tooltip && <ToolTipDetails>{tooltip}</ToolTipDetails>}
+        </div>
+        {error ? (
+          <ManualErrorMessage>{error}</ManualErrorMessage>
+        ) : (
+          !hideError && (
+            <ErrorMessage
+              name={name}
+              component="div"
+              className="text-action-danger-05 my-auto text-sm"
+            />
+          )
         )}
-        {optional ? <span>(optional) </span> : ""}
-        {tooltip && <ToolTipDetails>{tooltip}</ToolTipDetails>}
       </div>
-      {error ? (
-        <ManualErrorMessage>{error}</ManualErrorMessage>
-      ) : (
-        !hideError && (
-          <ErrorMessage
-            name={name}
-            component="div"
-            className="text-action-danger-05 my-auto text-sm"
-          />
-        )
-      )}
-    </div>
-    {subtext && <SubLabel>{subtext}</SubLabel>}
-  </>
-);
+      {subtext && <SubLabel>{subtext}</SubLabel>}
+    </>
+  );
+};
 
 export function TextFormField({
   name,
@@ -435,6 +438,7 @@ export function TypedFileUploadFormField({
   label: string;
   subtext?: string | JSX.Element;
 }) {
+  const { t } = useTranslation();
   const [field, , helpers] = useField<TypedFile | null>(name);
   const [customError, setCustomError] = useState<string>("");
   const [isValidating, setIsValidating] = useState(false);
@@ -525,7 +529,7 @@ export function TypedFileUploadFormField({
       {/* Validation feedback */}
       {isValidating && (
         <div className="text-status-info-05 text-sm mt-1">
-          Validating file...
+          {t("common.validatingFile")}
         </div>
       )}
 
@@ -626,6 +630,7 @@ export const MarkdownFormField = ({
   error,
   placeholder = "Enter your markdown here...",
 }: MarkdownPreviewProps) => {
+  const { t } = useTranslation();
   const [field] = useField(name);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
@@ -647,7 +652,7 @@ export const MarkdownFormField = ({
             onClick={togglePreview}
             className="text-sm font-semibold text-text-04 hover:text-text-05 focus:outline-none"
           >
-            {isPreviewOpen ? "Write" : "Preview"}
+            {isPreviewOpen ? t("common.write") : t("common.preview")}
           </button>
         </div>
         {isPreviewOpen ? (
@@ -815,6 +820,7 @@ export function TextArrayField<T extends Yup.AnyObject>({
   placeholder = "",
   disabled = false,
 }: TextArrayFieldProps<T>) {
+  const { t } = useTranslation();
   return (
     <div className="mb-4">
       <div className="flex gap-x-2 items-center">
@@ -884,7 +890,7 @@ export function TextArrayField<T extends Yup.AnyObject>({
               type="button"
               disabled={disabled}
             >
-              Add New
+              {t("common.addNew")}
             </CreateButton>
           </div>
         )}
@@ -942,6 +948,7 @@ export function SelectorFormField({
   small = false,
   disabled = false,
 }: SelectorFormFieldProps) {
+  const { t } = useTranslation();
   const [field] = useField<string>(name);
   const { setFieldValue } = useFormikContext();
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
@@ -995,7 +1002,7 @@ export function SelectorFormField({
           disabled={disabled}
         >
           <SelectTrigger className={sizeClass.input} disabled={disabled}>
-            <SelectValue placeholder="Select...">
+            <SelectValue placeholder={t("common.selectEllipsis")}>
               {currentlySelected?.name || defaultValue || ""}
             </SelectValue>
           </SelectTrigger>
@@ -1011,7 +1018,7 @@ export function SelectorFormField({
               container={container}
             >
               {options.length === 0 ? (
-                <SelectItem value="default">Select...</SelectItem>
+                <SelectItem value="default">{t("common.selectEllipsis")}</SelectItem>
               ) : (
                 options.map((option) => (
                   <SelectItem
@@ -1030,7 +1037,7 @@ export function SelectorFormField({
                   value={"__none__"}
                   onSelect={() => setFieldValue(name, null)}
                 >
-                  None
+                  {t("common.none")}
                 </SelectItem>
               )}
             </SelectContent>

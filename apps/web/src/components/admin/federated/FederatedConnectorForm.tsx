@@ -508,7 +508,7 @@ export function FederatedConnectorForm({
     if (!formState.schema) {
       return (
         <div className="text-sm text-gray-500">
-          No credential schema available for this connector type.
+          {t("federated.noCredentialSchema")}
         </div>
       );
     }
@@ -605,13 +605,12 @@ export function FederatedConnectorForm({
     if (!formState.configurationSchema) {
       return (
         <div className="text-sm text-gray-500">
-          No search configuration available for this connector type.
+          {t("federated.noSearchConfig")}
         </div>
       );
     }
 
-    const channelInputPlaceholder =
-      "Type channel name or regex pattern and press Enter";
+    const channelInputPlaceholder = t("federated.channelPatternPlaceholder");
 
     return (
       <>
@@ -763,7 +762,7 @@ export function FederatedConnectorForm({
               {isEditMode ? "Edit" : "Setup"} {sourceMetadata.displayName}
             </span>
             <Badge variant="outline" className="text-xs">
-              Federated
+              {t("federated.federatedBadge")}
             </Badge>
             <SimpleTooltip
               tooltip={

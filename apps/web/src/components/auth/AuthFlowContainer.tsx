@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 export default function AuthFlowContainer({
   children,
@@ -13,6 +14,7 @@ export default function AuthFlowContainer({
   authState?: "signup" | "login" | "join";
   footerContent?: React.ReactNode;
 }) {
+  const { t } = useTranslation();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -35,18 +37,18 @@ export default function AuthFlowContainer({
         aria-hidden="true"
       />
 
-      {/* Header with Language Switcher */}
-      <div className="absolute top-6 right-6 z-20">
+      {/* Language Switcher in top right corner */}
+      <div className="absolute top-4 right-4 z-20">
         <LanguageSwitcher variant="button" />
       </div>
 
-      <div className="w-full max-w-md flex items-start flex-col bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl p-10 z-10 text-white">
+      <div className="relative z-10 w-full max-w-md bg-[#131b2e]/90 border border-slate-700/60 shadow-2xl rounded-2xl p-8 backdrop-blur-xl transition-all">
         {/* Logo Section */}
-        <div className="flex flex-col items-center w-full mb-10">
+        <div className="flex justify-center mb-8">
           {mounted && (
             <img
               src={logoSrc}
-              alt="Turksat Logo"
+              alt={t("auth.welcomeHeading", { appName: "Logo" })}
               className="h-16 w-auto drop-shadow-lg"
               draggable={false}
             />
@@ -62,12 +64,12 @@ export default function AuthFlowContainer({
       )}
       {authState === "signup" && (
         <div className="text-sm mt-6 text-center w-full text-white/80 mainUiBody mx-auto">
-          Already have an account?{" "}
+          {t("auth.alreadyHaveAccountPrompt")}{" "}
           <Link
             href="/auth/login"
             className="text-white mainUiAction underline transition-colors duration-200"
           >
-            Sign In
+            {t("auth.signInButton")}
           </Link>
         </div>
       )}

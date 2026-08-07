@@ -194,24 +194,27 @@ export function CompactQuestionCard({
   question,
   openQuestion,
 }: CompactQuestionCardProps) {
+  const { t } = useTranslation();
   return (
     <div
       onClick={() => openQuestion(question)}
       className="max-w-[350px] gap-y-1 cursor-pointer pb-0 pt-0 mt-0 flex gap-y-0 flex-col content-start items-start gap-0"
     >
       <div className="text-sm !pb-0 !mb-0 font-semibold flex items-center gap-x-1 text-text-900 pt-0 mt-0 truncate w-full">
-        Question
+        {t("common.question")}
       </div>
       <div className="text-xs mb-0 text-text-600 line-clamp-2">
         {question.question}
       </div>
       <div className="flex mt-0 pt-0 items-center justify-between w-full">
         <span className="text-xs text-text-500">
-          {question.context_docs?.top_documents.length || 0} context docs
+          {t("common.contextDocs", {
+            count: question.context_docs?.top_documents.length || 0,
+          })}
         </span>
         {question.sub_queries && (
           <span className="text-xs text-text-500">
-            {question.sub_queries.length} subqueries
+            {t("common.subqueries", { count: question.sub_queries.length })}
           </span>
         )}
       </div>

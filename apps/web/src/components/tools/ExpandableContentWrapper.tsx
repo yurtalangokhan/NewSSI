@@ -1,3 +1,5 @@
+"use client";
+
 // ExpandableContentWrapper
 import React, { useState, useEffect } from "react";
 import { SvgDownloadCloud, SvgFold, SvgMaximize2, SvgX } from "@opal/icons";
@@ -86,14 +88,16 @@ export default function ExpandableContentWrapper({
               size="sm"
               onClick={toggleExpand}
               icon={expanded ? SvgFold : SvgMaximize2}
-              tooltip={expanded ? "Minimize" : "Full screen"}
+              tooltip={
+                expanded ? t("common.minimize") : t("common.fullScreen")
+              }
             />
             <Button
               prominence="tertiary"
               size="sm"
               onClick={close}
               icon={SvgX}
-              tooltip="Hide"
+              tooltip={t("common.hide")}
             />
           </div>
         </div>

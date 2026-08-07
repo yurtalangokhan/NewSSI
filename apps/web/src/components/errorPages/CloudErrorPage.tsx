@@ -1,22 +1,24 @@
+"use client";
+
 import Text from "@/refresh-components/texts/Text";
 import ErrorPageLayout from "@/components/errorPages/ErrorPageLayout";
 import { APP_NAME } from "@/lib/appInfo";
+import { useTranslation } from "react-i18next";
 
 export default function CloudError() {
+  const { t } = useTranslation();
   return (
     <ErrorPageLayout>
       <Text as="p" headingH2>
-        Maintenance in Progress
+        {t("errors.errorPages.cloudErrorTitle")}
       </Text>
 
       <Text as="p" text03>
-        {APP_NAME} is currently in a maintenance window. Please check back in a
-        couple of minutes.
+        {t("errors.errorPages.cloudErrorBody1", { appName: APP_NAME })}
       </Text>
 
       <Text as="p" text03>
-        We apologize for any inconvenience this may cause and appreciate your
-        patience.
+        {t("errors.errorPages.cloudErrorBody2")}
       </Text>
     </ErrorPageLayout>
   );

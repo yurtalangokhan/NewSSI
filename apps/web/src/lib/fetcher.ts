@@ -1,3 +1,5 @@
+import i18n from "@/i18n/config";
+
 export class FetchError extends Error {
   status: number;
   info: any;
@@ -16,10 +18,18 @@ export class RedirectError extends FetchError {
   }
 }
 
-const DEFAULT_AUTH_ERROR_MSG =
-  "An error occurred while fetching the data, related to the user's authentication status.";
+function getDefaultAuthErrorMsg(): string {
+  return i18n.t("common.fetchAuthError", {
+    defaultValue:
+      "An error occurred while fetching the data, related to the user's authentication status.",
+  });
+}
 
-const DEFAULT_ERROR_MSG = "An error occurred while fetching the data.";
+function getDefaultErrorMsg(): string {
+  return i18n.t("common.fetchError", {
+    defaultValue: "An error occurred while fetching the data.",
+  });
+}
 
 interface RefreshTokenResult {
   ok: boolean;
@@ -178,7 +188,7 @@ async function redirectToLogin(status: 401 | 403): Promise<never> {
   if (typeof window !== "undefined") {
     navigateTo(await getSessionExpiredRedirectUrl());
   }
-  throw new RedirectError(DEFAULT_AUTH_ERROR_MSG, status, null);
+  throw new RedirectError(getDefaultAuthErrorMsg(), status, null);
 }
 
 async function handleAuthError(status: 401 | 403): Promise<never> {
@@ -189,7 +199,7 @@ async function handleAuthError(status: 401 | 403): Promise<never> {
 
     navigateTo(`/error/${status}`);
   }
-  throw new RedirectError(DEFAULT_AUTH_ERROR_MSG, status, null);
+  throw new RedirectError(getDefaultAuthErrorMsg(), status, null);
 }
 
 export async function authenticatedFetch(
@@ -244,7 +254,7 @@ export const errorHandlingFetcher = async <T>(url: string): Promise<T> => {
   }
 
   if (!res.ok) {
-    const error = new FetchError(DEFAULT_ERROR_MSG, res.status, payload);
+    const error = new FetchError(getDefaultErrorMsg(), res.status, payload);
     throw error;
   }
 

@@ -1,3 +1,5 @@
+"use client";
+
 import { usePaidEnterpriseFeaturesEnabled } from "@/components/settings/usePaidEnterpriseFeaturesEnabled";
 import React, { useState, useEffect } from "react";
 import { FormikProps } from "formik";
@@ -5,6 +7,7 @@ import { useUserGroups } from "@/lib/hooks";
 import { BooleanFormField } from "@/components/Field";
 import { useUser } from "@/providers/UserProvider";
 import { GroupsMultiSelect } from "./GroupsMultiSelect";
+import { useTranslation } from "react-i18next";
 
 export type IsPublicGroupSelectorFormType = {
   is_public: boolean;
@@ -23,26 +26,34 @@ export const IsPublicGroupSelector = <T extends IsPublicGroupSelectorFormType>({
 }: {
   formikProps: FormikProps<T>;
   objectName: string;
-  publicToWhom?: string;
+  publicToWhom?: "Users" | "Curators";
   removeIndent?: boolean;
   enforceGroupSelection?: boolean;
   smallLabels?: boolean;
 }) => {
+  const { t } = useTranslation();
+  const isPaidEnterpriseFeaturesEnabled =
+    usePaidEnterpriseFeaturesEnabled();
+  const { user } = useUser();
+  const isAdmin = user?.role === "admin";
   const { data: userGroups, isLoading: userGroupsIsLoading } = useUserGroups();
-  const { isAdmin, user, isCurator } = useUser();
-  const isPaidEnterpriseFeaturesEnabled = usePaidEnterpriseFeaturesEnabled();
+
   const [shouldHideContent, setShouldHideContent] = useState(false);
   const canManagePublicAccess = isAdmin || isCurator;
 
   useEffect(() => {
     if (user && userGroups && isPaidEnterpriseFeaturesEnabled) {
-      if (!canManagePublicAccess && userGroups.length > 0) {
+      if (!isAdmin && userGroups.length === 1) {
+        setShouldHideContent(true);
+        formikProps.setFieldValue("is_public", false);
+        formikProps.setFieldValue("groups", [userGroups[0]!.id]);
+      } else if (!isAdmin && userGroups.length === 0) {
         formikProps.setFieldValue("is_public", false);
       }
       if (
         userGroups.length === 1 &&
         userGroups[0] !== undefined &&
-        !canManagePublicAccess
+        !isUserAdmin
       ) {
         formikProps.setFieldValue("groups", [userGroups[0].id]);
         setShouldHideContent(true);
@@ -56,7 +67,7 @@ export const IsPublicGroupSelector = <T extends IsPublicGroupSelectorFormType>({
   }, [user, userGroups, isPaidEnterpriseFeaturesEnabled, canManagePublicAccess]);
 
   if (userGroupsIsLoading) {
-    return <div>Loading...</div>;
+    return <div>{t("common.loading")}</div>;
   }
   if (!isPaidEnterpriseFeaturesEnabled) {
     return null;

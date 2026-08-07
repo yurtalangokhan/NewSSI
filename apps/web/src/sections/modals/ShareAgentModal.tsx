@@ -61,8 +61,8 @@ function ShareAgentFormContent({ agentId }: ShareAgentFormContentProps) {
     useFormikContext<ShareAgentFormValues>();
   const { data: usersData } = useShareableUsers({ includeApiKeys: true });
   const { t } = useTranslation();
-  const USERS_AND_GROUPS_TAB = t("shareAgent.usersAndGroups");
-  const YOUR_ORGANIZATION_TAB = t("shareAgent.yourOrganization");
+  const USERS_AND_GROUPS_TAB = t("shareAgent.usersAndGroupsTab");
+  const YOUR_ORGANIZATION_TAB = t("shareAgent.yourOrganizationTab");
   const { data: groupsData } = useShareableGroups();
   const { user: currentUser, isAdmin, isCurator } = useUser();
   const { agent: fullAgent } = useAgent(agentId ?? null);
@@ -224,7 +224,7 @@ function ShareAgentFormContent({ agentId }: ShareAgentFormContentProps) {
             <Tabs.Content value={USERS_AND_GROUPS_TAB}>
               <Section gap={0.5} alignItems="start">
                 <InputComboBox
-                  placeholder={t("shareAgent.addUsersAndGroups")}
+                  placeholder={t("shareAgent.addUsersPlaceholder")}
                   value=""
                   onChange={() => {}}
                   onValueChange={handleComboBoxSelect}
@@ -242,7 +242,7 @@ function ShareAgentFormContent({ agentId }: ShareAgentFormContentProps) {
                         <LineItem
                           key={`user-${user.id}`}
                           icon={SvgUser}
-                          description={isCurrentUser ? t("shareAgent.you") : undefined}
+                          description={isCurrentUser ? t("shareAgent.youLabel") : undefined}
                           rightChildren={
                             isOwner || (isCurrentUser && !agentId) ? (
                               // Owner will always have the agent "shared" with it.
@@ -252,7 +252,7 @@ function ShareAgentFormContent({ agentId }: ShareAgentFormContentProps) {
                               // This user, during creation, is assumed to be the "owner".
                               // That is why the `(isCurrentUser && !agent)` condition exists.
                               <Text secondaryBody text03>
-                                {t("shareAgent.owner")}
+                                {t("shareAgent.ownerLabel")}
                               </Text>
                             ) : (
                               // For all other cases (including for "self-unsharing"),
@@ -298,7 +298,7 @@ function ShareAgentFormContent({ agentId }: ShareAgentFormContentProps) {
                     close={false}
                     static
                     className="w-full"
-                    text={t("shareAgent.agentIsPublic")}
+                    text={t("shareAgent.agentIsPublicMessage")}
                     description={t("shareAgent.agentIsPublicDescription")}
                   />
                 </Section>
@@ -333,12 +333,11 @@ function ShareAgentFormContent({ agentId }: ShareAgentFormContentProps) {
                   onAdd={addLabel}
                   value={labelInputValue}
                   onChange={setLabelInputValue}
-                  placeholder={t("shareAgent.addLabels")}
+                  placeholder={t("shareAgent.addLabelsPlaceholder")}
                   icon={SvgTag}
                 />
                 <Text secondaryBody text04>
-                  {t("shareAgent.labelsDescription")}
-                  agent.
+                  {t("shareAgent.labelsHelperText")}
                 </Text>
               </Section>
             </Tabs.Content>
@@ -351,7 +350,7 @@ function ShareAgentFormContent({ agentId }: ShareAgentFormContentProps) {
           left={
             agentId ? (
               <Button secondary leftIcon={SvgLink} onClick={handleCopyLink}>
-                  {t("shareAgent.copyLink")}
+                  {t("shareAgent.copyLinkButton")}
               </Button>
             ) : undefined
           }

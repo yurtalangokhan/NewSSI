@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { ErrorCallout } from "@/components/ErrorCallout";
 import { LoadingAnimation } from "@/components/Loading";
 import { toast } from "@/hooks/useToast";
@@ -41,6 +42,7 @@ export const GmailMain = ({
   onCredentialCreated,
 }: GmailMainProps) => {
   const { isAdmin, user } = useUser();
+  const { t } = useTranslation();
 
   const {
     data: appCredentialData,
@@ -115,15 +117,15 @@ export const GmailMain = ({
   }
 
   if (credentialsError || !credentialsData) {
-    return <ErrorCallout errorTitle="Failed to load credentials." />;
+    return <ErrorCallout errorTitle={t("admin.connectors.failedToLoadCredentials")} />;
   }
 
   if (gmailCredentialsError || !gmailCredentials) {
-    return <ErrorCallout errorTitle="Failed to load Gmail credentials." />;
+    return <ErrorCallout errorTitle={t("admin.connectors.failedToLoadGmailCredentials")} />;
   }
 
   if (connectorIndexingStatusesError || !connectorIndexingStatuses) {
-    return <ErrorCallout errorTitle="Failed to load connectors." />;
+    return <ErrorCallout errorTitle={t("admin.connectors.failedToLoadConnectors")} />;
   }
 
   if (
@@ -131,13 +133,13 @@ export const GmailMain = ({
     !serviceAccountKeySuccessfullyFetched
   ) {
     return (
-      <ErrorCallout errorTitle="Error loading Gmail app credentials. Contact an administrator." />
+      <ErrorCallout errorTitle={t("admin.connectors.errorLoadingGmailAppCredentials")} />
     );
   }
 
   if (gmailConnectorsError) {
     return (
-      <ErrorCallout errorTitle="Failed to load Gmail associated connectors." />
+      <ErrorCallout errorTitle={t("admin.connectors.failedToLoadGmailConnectors")} />
     );
   }
 

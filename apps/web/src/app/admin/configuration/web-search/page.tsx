@@ -474,7 +474,10 @@ export default function Page() {
         <SettingsLayouts.Header
           icon={route.icon}
           title={t(route.titleKey || "", { defaultValue: route.title })}
-          description="Search settings for external search across the internet."
+          description={t("admin.webSearch.pageDescription", {
+            defaultValue:
+              "Search settings for external search across the internet.",
+          })}
           separator
         />
         <SettingsLayouts.Body>
@@ -906,7 +909,10 @@ export default function Page() {
         <SettingsLayouts.Header
           icon={route.icon}
           title={t(route.titleKey || "", { defaultValue: route.title })}
-          description="Search settings for external search across the internet."
+          description={t("admin.webSearch.pageDescription", {
+            defaultValue:
+              "Search settings for external search across the internet.",
+          })}
           separator
         />
 

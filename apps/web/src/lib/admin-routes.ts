@@ -267,6 +267,8 @@ export const ADMIN_ROUTE_CONFIG: Record<string, AdminRouteConfig> = {
     title: "Roles & Permissions",
     sidebarLabel: "Roles & Permissions",
     requiredPermissions: ["role:list", "role:read", "permission:list"],
+    titleKey: "admin.navigation.routes.roles.title",
+    sidebarLabelKey: "admin.navigation.routes.roles.sidebar",
   },
   [ADMIN_PATHS.TOKEN_RATE_LIMITS]: {
     icon: SvgShield,

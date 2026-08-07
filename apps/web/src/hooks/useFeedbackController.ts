@@ -6,6 +6,7 @@ import { FeedbackType } from "@/app/app/interfaces";
 import { handleChatFeedback, removeChatFeedback } from "@/app/app/services/lib";
 import { getMessageByMessageId } from "@/app/app/services/messageTree";
 import { toast } from "@/hooks/useToast";
+import i18n from "@/i18n/config";
 
 /**
  * Hook for managing chat message feedback (like/dislike)
@@ -90,7 +91,7 @@ export default function useFeedbackController() {
       } catch (error) {
         // Rollback on network error
         updateCurrentMessageFeedback(messageId, previousFeedback);
-        toast.error("Failed to submit feedback - network error");
+        toast.error(i18n.t("chat.toasts.feedbackSubmitFailed"));
         return false;
       }
     },

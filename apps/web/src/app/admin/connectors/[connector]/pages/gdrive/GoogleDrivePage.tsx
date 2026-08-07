@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { ErrorCallout } from "@/components/ErrorCallout";
 import { LoadingAnimation } from "@/components/Loading";
 import { ValidSources } from "@/lib/types";
@@ -26,6 +27,7 @@ import {
 
 const GDriveMain = () => {
   const { isAdmin, user } = useUser();
+  const { t } = useTranslation();
 
   // Get app credential and service account key
   const {
@@ -103,12 +105,12 @@ const GDriveMain = () => {
 
   // Error states
   if (credentialsError || !credentialsData) {
-    return <ErrorCallout errorTitle="Failed to load credentials." />;
+    return <ErrorCallout errorTitle={t("admin.connectors.failedToLoadCredentials")} />;
   }
 
   if (googleDriveCredentialsError || !googleDriveCredentials) {
     return (
-      <ErrorCallout errorTitle="Failed to load Google Drive credentials." />
+      <ErrorCallout errorTitle={t("admin.connectors.failedToLoadGDriveCredentials")} />
     );
   }
 
@@ -117,13 +119,13 @@ const GDriveMain = () => {
     !serviceAccountKeySuccessfullyFetched
   ) {
     return (
-      <ErrorCallout errorTitle="Error loading Google Drive app credentials. Contact an administrator." />
+      <ErrorCallout errorTitle={t("admin.connectors.errorLoadingGDriveAppCredentials")} />
     );
   }
 
   if (googleDriveConnectorsError) {
     return (
-      <ErrorCallout errorTitle="Failed to load Google Drive associated connectors." />
+      <ErrorCallout errorTitle={t("admin.connectors.failedToLoadGDriveConnectors")} />
     );
   }
 

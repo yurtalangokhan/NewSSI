@@ -84,9 +84,9 @@ function groupRolesByService(roles: Role[] | undefined) {
 
 function roleLabel(name: string, t: (key: string) => string) {
   const labels: Record<string, string> = {
-    "system-admin": t("admin.rolesPage.systemAdminLabel"),
-    "enterprise-admin": t("admin.rolesPage.enterpriseAdminLabel"),
-    enduser: t("admin.rolesPage.endUserLabel"),
+    "system-admin": t("systemAdminLabel"),
+    "enterprise-admin": t("enterpriseAdminLabel"),
+    enduser: t("endUserLabel"),
   };
   return labels[name] || name;
 }
@@ -1466,33 +1466,20 @@ export default function Page() {
       <SettingsLayouts.Body>
         <AdminOverviewPanel
           icon={route.icon}
-          title={t("admin.roles.workspaceTitle", {
-            defaultValue: "Access policy workspace",
-          })}
-          description={t("admin.roles.workspaceDescription", {
-            defaultValue:
-              "Review service roles, compose higher-level access profiles, and sync changes to identity infrastructure.",
-          })}
+          title={t("admin.rolesPage.workspaceTitle")}
+          description={t("admin.rolesPage.workspaceDescription")}
           metrics={[
             {
-              label: t("admin.roles.roleLayerLabel", {
-                defaultValue: "Role layer",
-              }),
-              value: t("admin.roles.roles", { defaultValue: "Roles" }),
+              label: t("admin.rolesPage.roleLayerLabel"),
+              value: t("admin.rolesPage.roles"),
             },
             {
-              label: t("admin.roles.compositeLayerLabel", {
-                defaultValue: "Composite layer",
-              }),
-              value: t("admin.roles.compositeRoles", {
-                defaultValue: "Composite Roles",
-              }),
+              label: t("admin.rolesPage.compositeLayerLabel"),
+              value: t("admin.rolesPage.compositeRoles"),
             },
             {
-              label: t("admin.roles.permissionSourceLabel", {
-                defaultValue: "Permission source",
-              }),
-              value: t("admin.roles.services", { defaultValue: "Services" }),
+              label: t("admin.rolesPage.permissionSourceLabel"),
+              value: t("admin.rolesPage.services"),
             },
           ]}
           actions={[
