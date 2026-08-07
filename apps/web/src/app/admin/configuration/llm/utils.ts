@@ -1,4 +1,5 @@
 import { JSX } from "react";
+import i18n from "@/i18n/config";
 import {
   AnthropicIcon,
   AmazonIcon,
@@ -121,7 +122,7 @@ export const fetchBedrockModels = async (
   params: BedrockFetchParams
 ): Promise<{ models: ModelConfiguration[]; error?: string }> => {
   if (!params.aws_region_name) {
-    return { models: [], error: "AWS region is required" };
+    return { models: [], error: i18n.t("llmOnboarding.awsRegionRequiredError") };
   }
 
   try {
@@ -140,7 +141,7 @@ export const fetchBedrockModels = async (
     });
 
     if (!response.ok) {
-      let errorMessage = "Failed to fetch models";
+      let errorMessage = i18n.t("llmOnboarding.failedFetchModels");
       try {
         const errorData = await response.json();
         errorMessage = errorData.detail || errorMessage;
@@ -163,7 +164,7 @@ export const fetchBedrockModels = async (
     return { models };
   } catch (error) {
     const errorMessage =
-      error instanceof Error ? error.message : "Unknown error";
+      error instanceof Error ? error.message : i18n.t("llmOnboarding.unknownError");
     return { models: [], error: errorMessage };
   }
 };
@@ -177,7 +178,7 @@ export const fetchOllamaModels = async (
 ): Promise<{ models: ModelConfiguration[]; error?: string }> => {
   const apiBase = params.api_base;
   if (!apiBase) {
-    return { models: [], error: "API Base is required" };
+    return { models: [], error: i18n.t("llmOnboarding.apiBaseRequiredError") };
   }
 
   try {
@@ -193,7 +194,7 @@ export const fetchOllamaModels = async (
     });
 
     if (!response.ok) {
-      let errorMessage = "Failed to fetch models";
+      let errorMessage = i18n.t("llmOnboarding.failedFetchModels");
       try {
         const errorData = await response.json();
         errorMessage = errorData.detail || errorMessage;
@@ -216,7 +217,7 @@ export const fetchOllamaModels = async (
     return { models };
   } catch (error) {
     const errorMessage =
-      error instanceof Error ? error.message : "Unknown error";
+      error instanceof Error ? error.message : i18n.t("llmOnboarding.unknownError");
     return { models: [], error: errorMessage };
   }
 };
@@ -231,10 +232,10 @@ export const fetchOpenRouterModels = async (
   const apiBase = params.api_base;
   const apiKey = params.api_key;
   if (!apiBase) {
-    return { models: [], error: "API Base is required" };
+    return { models: [], error: i18n.t("llmOnboarding.apiBaseRequiredError") };
   }
   if (!apiKey) {
-    return { models: [], error: "API Key is required" };
+    return { models: [], error: i18n.t("llmOnboarding.apiKeyRequiredError") };
   }
 
   try {
@@ -251,7 +252,7 @@ export const fetchOpenRouterModels = async (
     });
 
     if (!response.ok) {
-      let errorMessage = "Failed to fetch models";
+      let errorMessage = i18n.t("llmOnboarding.failedFetchModels");
       try {
         const errorData = await response.json();
         errorMessage = errorData.detail || errorMessage;
@@ -274,7 +275,7 @@ export const fetchOpenRouterModels = async (
     return { models };
   } catch (error) {
     const errorMessage =
-      error instanceof Error ? error.message : "Unknown error";
+      error instanceof Error ? error.message : i18n.t("llmOnboarding.unknownError");
     return { models: [], error: errorMessage };
   }
 };
@@ -316,7 +317,10 @@ export const fetchModels = async (
         provider_name: formValues.name,
       });
     default:
-      return { models: [], error: `Unknown provider: ${providerName}` };
+      return {
+        models: [],
+        error: i18n.t("llmOnboarding.unknownProvider", { providerName }),
+      };
   }
 };
 

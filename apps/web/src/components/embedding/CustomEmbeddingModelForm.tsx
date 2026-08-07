@@ -23,7 +23,7 @@ export function CustomEmbeddingModelForm({
   provider: EmbeddingDetails;
   embeddingType: EmbeddingProvider;
 }) {
-  const { t } = useTranslation("admin");
+  const { t } = useTranslation("common", { keyPrefix: "admin" });
 
   return (
     <div>

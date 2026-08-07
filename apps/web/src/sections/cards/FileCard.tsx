@@ -17,7 +17,7 @@ interface RemovableProps {
 }
 
 function Removable({ onRemove, children }: RemovableProps) {
-  const { t } = useTranslation("fileCard");
+  const { t } = useTranslation("common", { keyPrefix: "fileCard" });
   if (!onRemove) {
     return <>{children}</>;
   }
@@ -126,7 +126,7 @@ export function FileCard({
   onFileClick,
   compactImages = false,
 }: FileCardProps) {
-  const { t } = useTranslation("fileCard");
+  const { t } = useTranslation("common", { keyPrefix: "fileCard" });
   const typeLabel = useMemo(() => {
     const name = String(file.name || "");
     const lastDotIndex = name.lastIndexOf(".");

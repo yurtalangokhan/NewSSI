@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { toast } from "@/hooks/useToast";
 import { ChevronsDownIcon, ChevronsUpIcon } from "../icons/icons";
 import { CustomTooltip } from "../tooltip/CustomTooltip";
@@ -41,6 +42,9 @@ const DocumentFeedback = ({
   documentRank,
   feedbackType,
 }: DocumentFeedbackIconProps) => {
+  const { t } = useTranslation("common", {
+    keyPrefix: "chat.documentFeedback",
+  });
   let icon = null;
   const size = 20;
   if (feedbackType === "endorse") {
@@ -74,9 +78,9 @@ const DocumentFeedback = ({
           feedbackType
         );
         if (!errorMsg) {
-          toast.success("Thanks for your feedback!");
+          toast.success(t("thanksForFeedback"));
         } else {
-          toast.error(`Error giving feedback - ${errorMsg}`);
+          toast.error(t("errorGivingFeedback", { error: errorMsg }));
         }
       }}
       className="cursor-pointer"
@@ -97,9 +101,12 @@ export const DocumentFeedbackBlock = ({
   messageId,
   documentRank,
 }: DocumentFeedbackBlockProps) => {
+  const { t } = useTranslation("common", {
+    keyPrefix: "chat.documentFeedback",
+  });
   return (
     <div className="flex items-center gap-x-2">
-      <CustomTooltip showTick line content="Good response">
+      <CustomTooltip showTick line content={t("goodResponseTooltip")}>
         <DocumentFeedback
           documentId={documentId}
           messageId={messageId}
@@ -107,7 +114,7 @@ export const DocumentFeedbackBlock = ({
           feedbackType="endorse"
         />
       </CustomTooltip>
-      <CustomTooltip showTick line content="Bad response">
+      <CustomTooltip showTick line content={t("badResponseTooltip")}>
         <DocumentFeedback
           documentId={documentId}
           messageId={messageId}

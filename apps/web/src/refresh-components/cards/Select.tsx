@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { IconProps } from "@opal/types";
 import { cn, noProp } from "@/lib/utils";
 import { Disabled } from "@/refresh-components/Disabled";
@@ -69,6 +70,7 @@ export default function Select({
   disabled,
   ...rest
 }: SelectProps) {
+  const { t } = useTranslation();
   const sizeClass = medium ? "h-[3.75rem]" : "h-[4.25rem]";
   const containerClass = containerClasses[status];
   const [isHovered, setIsHovered] = useState(false);
@@ -152,12 +154,12 @@ export default function Select({
               {onEdit && (
                 <OpalButton
                   icon={SvgSettings}
-                  tooltip="Edit"
+                  tooltip={t("common.edit")}
                   prominence="tertiary"
                   size="sm"
                   disabled={disabled}
                   onClick={noProp(onEdit)}
-                  aria-label={`Edit ${title}`}
+                  aria-label={t("common.editItem", { name: title })}
                 />
               )}
             </>
@@ -178,12 +180,12 @@ export default function Select({
               {onEdit && (
                 <OpalButton
                   icon={SvgSettings}
-                  tooltip="Edit"
+                  tooltip={t("common.edit")}
                   prominence="tertiary"
                   size="sm"
                   disabled={disabled}
                   onClick={noProp(onEdit)}
-                  aria-label={`Edit ${title}`}
+                  aria-label={t("common.editItem", { name: title })}
                 />
               )}
             </>

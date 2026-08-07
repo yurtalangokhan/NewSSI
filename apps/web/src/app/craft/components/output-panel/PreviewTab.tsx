@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 
 interface PreviewTabProps {
@@ -17,6 +18,9 @@ interface PreviewTabProps {
  * - Has webapp URL: Shows iframe with crossfade from blank background
  */
 export default function PreviewTab({ webappUrl, refreshKey }: PreviewTabProps) {
+  const { t } = useTranslation("common", {
+    keyPrefix: "app.craft.previewTab",
+  });
   const [iframeLoaded, setIframeLoaded] = useState(false);
 
   // Reset loaded state when URL or refreshKey changes
@@ -49,7 +53,7 @@ export default function PreviewTab({ webappUrl, refreshKey }: PreviewTabProps) {
               iframeLoaded ? "opacity-100" : "opacity-0"
             )}
             sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
-            title="Web App Preview"
+            title={t("webAppPreviewTitle")}
           />
         )}
       </div>

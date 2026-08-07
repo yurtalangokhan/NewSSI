@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import Card from "@/refresh-components/cards/Card";
 import Text from "@/refresh-components/texts/Text";
 import { Content } from "@opal/layouts";
@@ -62,6 +63,9 @@ const COMING_SOON_CONNECTORS: ValidSources[] = [
 ];
 
 export default function ComingSoonConnectors() {
+  const { t } = useTranslation("common", {
+    keyPrefix: "app.craft.comingSoonConnectors",
+  });
   const [showRequestModal, setShowRequestModal] = useState(false);
 
   return (
@@ -70,10 +74,10 @@ export default function ComingSoonConnectors() {
       <div className="w-full flex items-center justify-between pb-2">
         <div className="flex flex-col gap-0.25">
           <Text mainContentEmphasis text04>
-            Coming Soon
+            {t("title")}
           </Text>
           <Text secondaryBody text03>
-            Don't see what you're looking for? Submit a connector request!
+            {t("description")}
           </Text>
         </div>
         <button
@@ -85,7 +89,7 @@ export default function ComingSoonConnectors() {
             mainUiAction
             className="text-text-dark-05 dark:text-text-light-05"
           >
-            Submit a request
+            {t("submitRequestButton")}
           </Text>
         </button>
       </div>

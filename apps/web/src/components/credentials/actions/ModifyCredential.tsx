@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import Modal from "@/refresh-components/Modal";
 import Button from "@/refresh-components/buttons/Button";
 import Text from "@/refresh-components/texts/Text";
@@ -29,6 +30,9 @@ function CredentialSelectionTable({
   currentCredentialId,
   onDeleteCredential,
 }: CredentialSelectionTableProps) {
+  const { t } = useTranslation("common", {
+    keyPrefix: "admin.modifyCredential",
+  });
   const [selectedCredentialId, setSelectedCredentialId] = useState<
     number | null
   >(null);
@@ -63,16 +67,16 @@ function CredentialSelectionTable({
           <tr className="bg-neutral-100 dark:bg-neutral-900">
             <th className="p-2 text-left font-medium text-neutral-600 dark:text-neutral-400"></th>
             <th className="p-2 text-left font-medium text-neutral-600 dark:text-neutral-400">
-              ID
+              {t("idHeader")}
             </th>
             <th className="p-2 text-left font-medium text-neutral-600 dark:text-neutral-400">
-              Name
+              {t("nameHeader")}
             </th>
             <th className="p-2 text-left font-medium text-neutral-600 dark:text-neutral-400">
-              Created
+              {t("createdHeader")}
             </th>
             <th className="p-2 text-left font-medium text-neutral-600 dark:text-neutral-400">
-              Last Updated
+              {t("lastUpdatedHeader")}
             </th>
             <th />
           </tr>
@@ -101,12 +105,12 @@ function CredentialSelectionTable({
                         className="form-radio ml-4 h-4 w-4 text-blue-600 transition duration-150 ease-in-out"
                       />
                     ) : (
-                      <Badge>selected</Badge>
+                      <Badge>{t("selectedBadge")}</Badge>
                     )}
                   </td>
                   <td className="p-2">{credential.id}</td>
                   <td className="p-2">
-                    <p>{credential.name ?? "Untitled"}</p>
+                    <p>{credential.name ?? t("untitledFallback")}</p>
                   </td>
                   <td className="p-2">
                     {new Date(credential.time_created).toLocaleString()}
@@ -140,7 +144,7 @@ function CredentialSelectionTable({
       </table>
 
       {allCredentials.length == 0 && (
-        <p className="mt-4"> No credentials exist for this connector!</p>
+        <p className="mt-4"> {t("noCredentialsMessage")}</p>
       )}
     </div>
   );
@@ -179,6 +183,9 @@ export default function ModifyCredential({
   onDeleteCredential,
   onCreateNew,
 }: ModifyCredentialProps) {
+  const { t } = useTranslation("common", {
+    keyPrefix: "admin.modifyCredential",
+  });
   const [selectedCredential, setSelectedCredential] =
     useState<Credential<any> | null>(null);
   const [confirmDeletionCredential, setConfirmDeletionCredential] =
@@ -193,14 +200,11 @@ export default function ModifyCredential({
           <Modal.Content width="sm" height="sm">
             <Modal.Header
               icon={SvgAlertTriangle}
-              title="Confirm Deletion"
+              title={t("confirmDeletionTitle")}
               onClose={() => setConfirmDeletionCredential(null)}
             />
             <Modal.Body>
-              <Text as="p">
-                Are you sure you want to delete this credential? You cannot
-                delete credentials that are linked to live connectors.
-              </Text>
+              <Text as="p">{t("confirmDeletionBody")}</Text>
             </Modal.Body>
             <Modal.Footer>
               <Button
@@ -209,13 +213,13 @@ export default function ModifyCredential({
                   setConfirmDeletionCredential(null);
                 }}
               >
-                Confirm
+                {t("confirmButton")}
               </Button>
               <Button
                 secondary
                 onClick={() => setConfirmDeletionCredential(null)}
               >
-                Cancel
+                {t("cancelButton")}
               </Button>
             </Modal.Footer>
           </Modal.Content>
@@ -224,8 +228,7 @@ export default function ModifyCredential({
 
       <div className="mb-0">
         <Text as="p" className="mb-4">
-          Select a credential as needed! Ensure that you have selected a
-          credential with the proper permissions for this connector!
+          {t("selectCredentialHint")}
         </Text>
 
         <CredentialSelectionTable
@@ -265,7 +268,7 @@ export default function ModifyCredential({
               >
                 <div className="flex gap-x-2 items-center w-full border-none">
                   <NewChatIcon className="text-white" />
-                  <p>Create</p>
+                  <p>{t("createButton")}</p>
                 </div>
               </Button>
             ) : (
@@ -291,7 +294,7 @@ export default function ModifyCredential({
             >
               <div className="flex gap-x-2 items-center w-full border-none">
                 <SwapIcon className="text-white" />
-                <p>Select</p>
+                <p>{t("selectButton")}</p>
               </div>
             </Button>
           </div>

@@ -13,7 +13,6 @@ import { getSecondsUntilExpiration } from "@/lib/time";
 import { refreshToken } from "@/lib/user";
 import { NEXT_PUBLIC_CUSTOM_REFRESH_URL } from "@/lib/constants";
 import Button from "@/refresh-components/buttons/Button";
-import { logout } from "@/lib/user";
 import { usePathname, useRouter } from "next/navigation";
 import { SvgAlertTriangle, SvgLogOut } from "@opal/icons";
 import { Content } from "@opal/layouts";
@@ -23,7 +22,7 @@ import { useTranslation } from "react-i18next";
 
 export default function AppHealthBanner() {
   const router = useRouter();
-  const { t } = useTranslation("appHealth");
+  const { t } = useTranslation("common", { keyPrefix: "appHealth" });
   const { error } = useSWR("/api/health", errorHandlingFetcher);
   const [expired, setExpired] = useState(false);
   const [showLoggedOutModal, setShowLoggedOutModal] = useState(false);

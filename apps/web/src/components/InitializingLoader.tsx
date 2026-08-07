@@ -7,7 +7,7 @@ import { useTranslation } from "react-i18next";
 import { getAppName } from "@/lib/appInfo";
 
 export default function InitializingLoader() {
-  const { t } = useTranslation("admin");
+  const { t } = useTranslation("common", { keyPrefix: "admin" });
   const settings = useContext(SettingsContext);
 
   return (

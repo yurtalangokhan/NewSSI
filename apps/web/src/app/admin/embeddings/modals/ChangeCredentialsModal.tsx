@@ -232,7 +232,7 @@ export default function ChangeCredentialsModal({
                     />
 
                     {deletionError && (
-                      <Callout type="danger" title="Error">
+                      <Callout type="danger" title={t("common.error")}>
                         {deletionError}
                       </Callout>
                     )}
@@ -261,7 +261,7 @@ export default function ChangeCredentialsModal({
                 )}
 
                 {testError && (
-                  <Callout type="danger" title="Error">
+                  <Callout type="danger" title={t("common.error")}>
                     {testError}
                   </Callout>
                 )}
@@ -290,7 +290,7 @@ export default function ChangeCredentialsModal({
             {t("changeCredentials.deleteConfig")}
           </Button>
           {deletionError && (
-            <Callout type="danger" title="Error">
+            <Callout type="danger" title={t("common.error")}>
               {deletionError}
             </Callout>
           )}

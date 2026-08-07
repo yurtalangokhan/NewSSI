@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useSWRConfig } from "swr";
 import { Button } from "@opal/components";
 import { ContentAction } from "@opal/layouts";
@@ -52,16 +53,17 @@ export function BuiltinOllamaPanelView({
   onDownload,
   onDeleteModel,
 }: ViewProps) {
+  const { t } = useTranslation("common", { keyPrefix: "admin.builtinOllama" });
   const ProviderIcon = getProviderIcon("ollama");
   const online = status?.online === true;
-  const statusLabel = online ? "Online" : "Offline";
+  const statusLabel = online ? t("online") : t("offline");
 
   return (
     <Card padding={0.75}>
       <ContentAction
         icon={ProviderIcon}
-        title="Ollama (Built-in)"
-        description={status?.base_url ?? "Configured by runtime environment"}
+        title={t("title")}
+        description={status?.base_url ?? t("configuredByRuntime")}
         sizePreset="main-content"
         variant="section"
         tag={{
@@ -73,13 +75,13 @@ export function BuiltinOllamaPanelView({
             <Button
               icon={SvgRefreshCw}
               prominence="tertiary"
-              aria-label="Refresh built-in Ollama"
+              aria-label={t("refreshAriaLabel")}
               onClick={onRefresh}
             />
             <Button
               icon={SvgDownload}
               prominence="tertiary"
-              aria-label="Download Ollama model"
+              aria-label={t("downloadAriaLabel")}
               onClick={onDownload}
             />
           </Section>
@@ -94,8 +96,17 @@ export function BuiltinOllamaPanelView({
             <SvgAlertCircle className="h-4 w-4 text-warning" />
           )}
           <Text text03>{statusLabel}</Text>
-          {status?.version && <Text text03>Version {status.version}</Text>}
-          <Text text03>{models.length || status?.model_count || 0} models</Text>
+          {status?.version && (
+            <Text text03>{t("versionLabel", { version: status.version })}</Text>
+          )}
+          <Text text03>
+            {t(
+              (models.length || status?.model_count || 0) === 1
+                ? "modelsCount_one"
+                : "modelsCount_other",
+              { count: models.length || status?.model_count || 0 }
+            )}
+          </Text>
         </div>
 
         {status?.error && (
@@ -107,7 +118,7 @@ export function BuiltinOllamaPanelView({
         {isLoading ? (
           <div className="flex items-center gap-2 py-2">
             <SvgRefreshCw className="h-4 w-4 animate-spin text-text-03" />
-            <Text text03>Loading models</Text>
+            <Text text03>{t("loadingModels")}</Text>
           </div>
         ) : models.length > 0 ? (
           <div className="flex flex-col gap-1">
@@ -123,12 +134,12 @@ export function BuiltinOllamaPanelView({
                   </span>
                   {model.supports_reasoning && (
                     <span className="rounded bg-background-neutral-03 px-1.5 py-0.5 text-xs text-text-03">
-                      reasoning
+                      {t("reasoningTag")}
                     </span>
                   )}
                   {model.max_input_tokens != null && (
                     <span className="text-xs tabular-nums text-text-03">
-                      {model.max_input_tokens.toLocaleString()} ctx
+                      {model.max_input_tokens.toLocaleString()} {t("contextSuffix")}
                     </span>
                   )}
                   {modelSize && (
@@ -139,7 +150,7 @@ export function BuiltinOllamaPanelView({
                   <Button
                     icon={SvgTrash}
                     prominence="tertiary"
-                    aria-label={`Delete ${model.name}`}
+                    aria-label={t("deleteModelAriaLabel", { model: model.name })}
                     disabled={isDeleting}
                     onClick={() => onDeleteModel(model.name)}
                   />
@@ -148,7 +159,7 @@ export function BuiltinOllamaPanelView({
             })}
           </div>
         ) : (
-          <Text text03>No models installed</Text>
+          <Text text03>{t("noModelsInstalled")}</Text>
         )}
       </div>
     </Card>
@@ -160,6 +171,7 @@ interface Props {
 }
 
 export function BuiltinOllamaPanel({ onDownload }: Props) {
+  const { t } = useTranslation("common", { keyPrefix: "admin.builtinOllama" });
   const { mutate } = useSWRConfig();
   const status = useBuiltinOllamaStatus();
   const models = useBuiltinOllamaModels();
@@ -181,10 +193,10 @@ export function BuiltinOllamaPanel({ onDownload }: Props) {
         mutate("/api/admin/providers"),
         mutate("/api/admin/providers/available-models"),
       ]);
-      toast({ message: `Deleted ${modelName}` });
+      toast({ message: t("deletedToast", { model: modelName }) });
     } catch (error) {
       toast({
-        message: error instanceof Error ? error.message : "Failed to delete model",
+        message: error instanceof Error ? error.message : t("deleteFailedToast"),
         level: "error",
       });
     } finally {

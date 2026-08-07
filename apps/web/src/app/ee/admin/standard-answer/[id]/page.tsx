@@ -1,4 +1,5 @@
 import { StandardAnswerCreationForm } from "@/app/ee/admin/standard-answer/StandardAnswerCreationForm";
+import i18n from "@/i18n/config";
 import { fetchSS } from "@/lib/utilsSS";
 import { ErrorCallout } from "@/components/ErrorCallout";
 import * as SettingsLayouts from "@/layouts/settings-layouts";
@@ -18,7 +19,7 @@ async function Main({ id }: { id: string }) {
   if (standardAnswersResponse === undefined) {
     return (
       <ErrorCallout
-        errorTitle="Something went wrong :("
+        errorTitle={i18n.t("admin.standardAnswerCategories.fetchError")}
         errorMsg={`Failed to fetch standard answers.`}
       />
     );
@@ -27,7 +28,7 @@ async function Main({ id }: { id: string }) {
   if (!standardAnswersResponse.ok) {
     return (
       <ErrorCallout
-        errorTitle="Something went wrong :("
+        errorTitle={i18n.t("admin.standardAnswerCategories.fetchError")}
         errorMsg={`Failed to fetch standard answers - ${await standardAnswersResponse.text()}`}
       />
     );
@@ -41,7 +42,7 @@ async function Main({ id }: { id: string }) {
   if (!standardAnswer) {
     return (
       <ErrorCallout
-        errorTitle="Something went wrong :("
+        errorTitle={i18n.t("admin.standardAnswerCategories.fetchError")}
         errorMsg={`Did not find standard answer with ID: ${id}`}
       />
     );
@@ -50,7 +51,7 @@ async function Main({ id }: { id: string }) {
   if (standardAnswerCategoriesResponse === undefined) {
     return (
       <ErrorCallout
-        errorTitle="Something went wrong :("
+        errorTitle={i18n.t("admin.standardAnswerCategories.fetchError")}
         errorMsg={`Failed to fetch standard answer categories.`}
       />
     );
@@ -59,7 +60,7 @@ async function Main({ id }: { id: string }) {
   if (!standardAnswerCategoriesResponse.ok) {
     return (
       <ErrorCallout
-        errorTitle="Something went wrong :("
+        errorTitle={i18n.t("admin.standardAnswerCategories.fetchError")}
         errorMsg={`Failed to fetch standard answer categories - ${await standardAnswerCategoriesResponse.text()}`}
       />
     );
@@ -83,7 +84,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
     <SettingsLayouts.Root>
       <SettingsLayouts.Header
         icon={route.icon}
-        title="Edit Standard Answer"
+        title={i18n.t("admin.standardAnswerPages.editTitle")}
         backButton
         separator
       />

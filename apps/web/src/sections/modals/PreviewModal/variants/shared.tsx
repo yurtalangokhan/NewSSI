@@ -11,7 +11,7 @@ interface DownloadButtonProps {
 }
 
 export function DownloadButton({ fileUrl, fileName }: DownloadButtonProps) {
-  const { t } = useTranslation("filePreview");
+  const { t } = useTranslation("common", { keyPrefix: "filePreview" });
 
   return (
     <a href={fileUrl} download={fileName}>
@@ -30,7 +30,7 @@ interface CopyButtonProps {
 }
 
 export function CopyButton({ getText }: CopyButtonProps) {
-  const { t } = useTranslation("filePreview");
+  const { t } = useTranslation("common", { keyPrefix: "filePreview" });
 
   return (
     <CopyIconButton
@@ -48,7 +48,7 @@ interface ZoomControlsProps {
 }
 
 export function ZoomControls({ zoom, onZoomIn, onZoomOut }: ZoomControlsProps) {
-  const { t } = useTranslation("filePreview");
+  const { t } = useTranslation("common", { keyPrefix: "filePreview" });
 
   return (
     <div className="rounded-12 bg-background-tint-00 p-1 shadow-lg">

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import { ChatSession } from "@/app/app/interfaces";
 import { deleteChatSession } from "@/app/app/services/lib";
 import { useProjectsContext } from "@/providers/ProjectsContext";
@@ -51,6 +52,9 @@ export function ChatSessionMorePopup({
   iconSize = 16,
   isVisible = false,
 }: ChatSessionMorePopupProps) {
+  const { t } = useTranslation("common", {
+    keyPrefix: "app.chatSessionMorePopup",
+  });
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const { refreshChatSessions, removeSession } = useChatSessions();
@@ -152,7 +156,7 @@ export function ChatSessionMorePopup({
             textClassName={foregroundMutedTextClass}
             onClick={noProp(() => showShareModal(chatSession))}
           >
-            Share
+            {t("shareLabel")}
           </LineItem>
         ),
         <LineItem
@@ -162,7 +166,7 @@ export function ChatSessionMorePopup({
           textClassName={foregroundMutedTextClass}
           onClick={noProp(() => setShowMoveOptions(true))}
         >
-          Move to Project
+          {t("moveToProjectLabel")}
         </LineItem>,
         projectId && (
           <LineItem
@@ -172,9 +176,11 @@ export function ChatSessionMorePopup({
             textClassName={foregroundMutedTextClass}
             onClick={noProp(() => handleRemoveChatSessionFromProject())}
           >
-            {`Remove from ${
-              projects.find((p) => p.id === projectId)?.name ?? "Project"
-            }`}
+            {t("removeFromProjectLabel", {
+              project:
+                projects.find((p) => p.id === projectId)?.name ??
+                t("projectFallback"),
+            })}
           </LineItem>
         ),
         null,
@@ -186,7 +192,7 @@ export function ChatSessionMorePopup({
           onClick={noProp(() => setIsDeleteModalOpen(true))}
           danger
         >
-          Delete
+          {t("deleteLabel")}
         </LineItem>,
       ];
     }
@@ -261,17 +267,16 @@ export function ChatSessionMorePopup({
       </div>
       {isDeleteModalOpen && (
         <ConfirmationModalLayout
-          title="Delete Chat"
+          title={t("deleteChatTitle")}
           icon={SvgTrash}
           onClose={() => setIsDeleteModalOpen(false)}
           submit={
             <Button danger onClick={handleConfirmDelete}>
-              Delete
+              {t("deleteLabel")}
             </Button>
           }
         >
-          Are you sure you want to delete this chat? This action cannot be
-          undone.
+          {t("deleteChatConfirm")}
         </ConfirmationModalLayout>
       )}
 

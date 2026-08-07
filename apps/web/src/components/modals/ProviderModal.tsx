@@ -38,7 +38,7 @@ export default function ProviderModal({
   submitLabel,
   cancelLabel,
 }: ProviderModalProps) {
-  const { t } = useTranslation("modals");
+  const { t } = useTranslation("common", { keyPrefix: "modals" });
   const resolvedSubmitLabel = submitLabel || t("providerModal.connect");
   const resolvedCancelLabel = cancelLabel || t("providerModal.cancel");
 

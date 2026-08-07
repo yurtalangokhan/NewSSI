@@ -25,7 +25,7 @@ export default function OneOfField({
   onChange,
   rootSchema,
 }: OneOfFieldProps) {
-  const { t } = useTranslation("admin");
+  const { t } = useTranslation("common", { keyPrefix: "admin" });
   const discriminatorKey = detectDiscriminatorKey(variants);
 
   const options = variants.map((v, i) => ({

@@ -20,7 +20,7 @@ export interface BillingInformation {
 }
 
 export default function page() {
-  const { t } = useTranslation("admin");
+  const { t } = useTranslation("common", { keyPrefix: "admin" });
 
   return (
     <SettingsLayouts.Root>

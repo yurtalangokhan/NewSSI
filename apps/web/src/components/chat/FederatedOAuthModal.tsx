@@ -103,7 +103,7 @@ function useFederatedOauthModal() {
 }
 
 export default function FederatedOAuthModal() {
-  const { t } = useTranslation("modals");
+  const { t } = useTranslation("common", { keyPrefix: "modals" });
   const settings = useContext(SettingsContext);
 
   const {

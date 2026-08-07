@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import Text from "@/refresh-components/texts/Text";
 import { SvgLock, SvgArrowRight } from "@opal/icons";
 import { logout } from "@/lib/user";
@@ -15,6 +16,9 @@ export default function NotAllowedModal({
   open,
   onClose,
 }: NotAllowedModalProps) {
+  const { t } = useTranslation("common", {
+    keyPrefix: "app.craft.notAllowedModal",
+  });
   const [isLoading, setIsLoading] = useState(false);
 
   const handleCreateNewAccount = async () => {
@@ -46,15 +50,13 @@ export default function NotAllowedModal({
             {/* Header */}
             <div className="flex flex-col items-center gap-2 text-center">
               <Text headingH2 text05>
-                Custom Crafting Restricted
+                {t("title")}
               </Text>
               <Text mainUiBody text03 className="max-w-sm">
-                Unfortunately, connecting your own data to Craft requires admin
-                permissions.
+                {t("description")}
                 <br />
                 <br />
-                Luckily, you can create a new Onyx account to become an admin
-                and craft with your own data!
+                {t("createAccountHint")}
               </Text>
             </div>
           </div>
@@ -66,7 +68,7 @@ export default function NotAllowedModal({
               onClick={onClose}
               className="flex items-center gap-1.5 px-4 py-2 rounded-12 border border-border-01 bg-background-tint-00 text-text-04 hover:bg-background-tint-02 transition-colors"
             >
-              <Text mainUiAction>Go Back</Text>
+              <Text mainUiAction>{t("goBackButton")}</Text>
             </button>
             <button
               type="button"
@@ -85,7 +87,7 @@ export default function NotAllowedModal({
                   !isLoading ? "text-white dark:text-black" : "text-text-02"
                 )}
               >
-                {isLoading ? "Signing out..." : "Create a new account"}
+                {isLoading ? t("signingOutButton") : t("createAccountButton")}
               </Text>
               {!isLoading && (
                 <SvgArrowRight className="w-4 h-4 text-white dark:text-black" />

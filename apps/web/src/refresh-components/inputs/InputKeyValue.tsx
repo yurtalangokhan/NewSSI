@@ -76,6 +76,7 @@ import React, {
   useId,
   useRef,
 } from "react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import InputTypeIn from "./InputTypeIn";
 import { Button as OpalButton } from "@opal/components";
@@ -119,19 +120,25 @@ const KeyValueInputItem = ({
   layout = "equal",
   fieldId,
 }: KeyValueInputItemProps) => {
+  const { t } = useTranslation("common", { keyPrefix: "common" });
   // Layout classes: equal = both flex-1, key-wide = key gets more space (3/5 vs 2/5)
   const keyClassName = layout === "equal" ? "flex-1" : "flex-[3]";
   const valueClassName = layout === "equal" ? "flex-1" : "flex-[2]";
+  const resolvedKeyPlaceholder = keyPlaceholder || t("key");
+  const resolvedValuePlaceholder = valuePlaceholder || t("value");
 
   return (
     <div className="flex gap-1 w-full">
       <div className="flex gap-2 flex-1">
         <div className={cn(keyClassName, "flex flex-col gap-y-0.5")}>
           <InputTypeIn
-            placeholder={keyPlaceholder || "Key"}
+            placeholder={resolvedKeyPlaceholder}
             value={item.key}
             onChange={(e) => onChange({ ...item, key: e.target.value })}
-            aria-label={`${keyPlaceholder || "Key"} ${index + 1}`}
+            aria-label={t("keyValueInput.fieldAriaLabel", {
+              title: resolvedKeyPlaceholder,
+              index: index + 1,
+            })}
             aria-invalid={!!error?.key}
             aria-describedby={
               error?.key ? `${fieldId}-key-error-${index}` : undefined
@@ -153,10 +160,13 @@ const KeyValueInputItem = ({
         </div>
         <div className={cn(valueClassName, "flex flex-col gap-y-0.5")}>
           <InputTypeIn
-            placeholder={valuePlaceholder || "Value"}
+            placeholder={resolvedValuePlaceholder}
             value={item.value}
             onChange={(e) => onChange({ ...item, value: e.target.value })}
-            aria-label={`${valuePlaceholder || "Value"} ${index + 1}`}
+            aria-label={t("keyValueInput.fieldAriaLabel", {
+              title: resolvedValuePlaceholder,
+              index: index + 1,
+            })}
             aria-invalid={!!error?.value}
             aria-describedby={
               error?.value ? `${fieldId}-value-error-${index}` : undefined
@@ -184,9 +194,10 @@ const KeyValueInputItem = ({
           icon={SvgMinusCircle}
           onClick={onRemove}
           disabled={disabled || !canRemove}
-          aria-label={`Remove ${keyPlaceholder || "key-value"} pair ${
-            index + 1
-          }`}
+          aria-label={t("keyValueInput.removePairAriaLabel", {
+            keyTitle: keyPlaceholder || t("key"),
+            index: index + 1,
+          })}
         />
       </div>
     </div>
@@ -258,10 +269,12 @@ const KeyValueInput = ({
   validateDuplicateKeys = true,
   validateEmptyKeys = true,
   name,
-  addButtonLabel = "Add Line",
+  addButtonLabel,
   className,
   ...rest
 }: KeyValueInputProps) => {
+  const { t } = useTranslation("common", { keyPrefix: "common" });
+  const resolvedAddButtonLabel = addButtonLabel ?? t("keyValueInput.addLineButton");
   // Try to get field context if used within FormField (safe access)
   const fieldContext = useContext(FieldContext);
 
@@ -281,7 +294,7 @@ const KeyValueInput = ({
       ) {
         const error = errorsList[index];
         if (error) {
-          error.key = "Key cannot be empty";
+          error.key = t("keyValueInput.keyCannotBeEmpty");
         }
       }
 
@@ -298,7 +311,7 @@ const KeyValueInput = ({
         if (result && result.isValid === false) {
           const error = errorsList[index];
           if (error) {
-            error.key = result.message || "Invalid key";
+            error.key = result.message || t("keyValueInput.invalidKey");
           }
         }
       }
@@ -309,7 +322,7 @@ const KeyValueInput = ({
         if (result && result.isValid === false) {
           const error = errorsList[index];
           if (error) {
-            error.value = result.message || "Invalid value";
+            error.value = result.message || t("keyValueInput.invalidValue");
           }
         }
       }
@@ -322,7 +335,7 @@ const KeyValueInput = ({
           indices.forEach((index) => {
             const error = errorsList[index];
             if (error) {
-              error.key = "Duplicate key";
+              error.key = t("keyValueInput.duplicateKey");
             }
           });
         }
@@ -336,6 +349,7 @@ const KeyValueInput = ({
     validateEmptyKeys,
     onKeyValidate,
     onValueValidate,
+    t,
   ]);
 
   const isValid = useMemo(() => {
@@ -352,23 +366,34 @@ const KeyValueInput = ({
 
     const errorCount = errors.filter((e) => e.key || e.value).length;
     const duplicateCount = errors.filter(
-      (e) => e.key === "Duplicate key"
+      (e) => e.key === t("keyValueInput.duplicateKey")
     ).length;
     const emptyCount = errors.filter(
-      (e) => e.key === "Key cannot be empty"
+      (e) => e.key === t("keyValueInput.keyCannotBeEmpty")
     ).length;
 
     if (duplicateCount > 0) {
-      return `${duplicateCount} duplicate ${
-        duplicateCount === 1 ? "key" : "keys"
-      } found`;
+      return t(
+        duplicateCount === 1
+          ? "keyValueInput.duplicateKeysFound_one"
+          : "keyValueInput.duplicateKeysFound_other",
+        { count: duplicateCount }
+      );
     } else if (emptyCount > 0) {
-      return `${emptyCount} empty ${emptyCount === 1 ? "key" : "keys"} found`;
+      return t(
+        emptyCount === 1
+          ? "keyValueInput.emptyKeysFound_one"
+          : "keyValueInput.emptyKeysFound_other",
+        { count: emptyCount }
+      );
     }
-    return `${errorCount} validation ${
-      errorCount === 1 ? "error" : "errors"
-    } found`;
-  }, [hasAnyError, errors]);
+    return t(
+      errorCount === 1
+        ? "keyValueInput.validationErrorsFound_one"
+        : "keyValueInput.validationErrorsFound_other",
+      { count: errorCount }
+    );
+  }, [hasAnyError, errors, t]);
 
   // Notify parent of validation changes
   const onValidationChangeRef = useRef(onValidationChange);
@@ -461,7 +486,7 @@ const KeyValueInput = ({
         <div
           className="flex flex-col gap-y-2"
           role="list"
-          aria-label={`${keyTitle} and ${valueTitle} pairs`}
+          aria-label={t("keyValueInput.pairsAriaLabel", { keyTitle, valueTitle })}
         >
           {items.map((item, index) => (
             <div key={index} role="listitem">
@@ -483,7 +508,7 @@ const KeyValueInput = ({
         </div>
       ) : (
         <Text as="p" text03 secondaryBody className="ml-0.5">
-          No items added yet.
+          {t("keyValueInput.noItemsYet")}
         </Text>
       )}
 
@@ -493,10 +518,10 @@ const KeyValueInput = ({
           secondary
           disabled={disabled}
           leftIcon={SvgPlusCircle}
-          aria-label={`Add ${keyTitle} and ${valueTitle} pair`}
+          aria-label={t("keyValueInput.addPairAriaLabel", { keyTitle, valueTitle })}
           type="button"
         >
-          {addButtonLabel}
+          {resolvedAddButtonLabel}
         </Button>
       </div>
     </div>

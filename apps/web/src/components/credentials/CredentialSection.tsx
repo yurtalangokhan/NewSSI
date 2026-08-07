@@ -1,6 +1,7 @@
 "use client";
 
 import { AccessType, ValidSources } from "@/lib/types";
+import { useTranslation } from "react-i18next";
 import useSWR, { mutate } from "swr";
 import { errorHandlingFetcher } from "@/lib/fetcher";
 import { FaKey } from "react-icons/fa";
@@ -49,6 +50,9 @@ export default function CredentialSection({
   sourceType,
   refresh,
 }: CredentialSectionProps) {
+  const { t } = useTranslation("common", {
+    keyPrefix: "admin.credentialSection",
+  });
   const { data: credentials } = useSWR<Credential<ConfluenceCredentialJson>[]>(
     buildSimilarCredentialInfoURL(sourceType),
     errorHandlingFetcher,
@@ -96,13 +100,13 @@ export default function CredentialSection({
       mutate(buildSimilarCredentialInfoURL(sourceType));
       refresh();
 
-      toast.success("Swapped credential successfully!");
+      toast.success(t("toastSwapSuccess"));
     } else {
       const errorData = await response.json();
       toast.error(
-        `Issue swapping credential: ${
-          errorData.detail || errorData.message || "Unknown error"
-        }`
+        t("toastSwapFailed", {
+          detail: errorData.detail || errorData.message || t("unknownError"),
+        })
       );
     }
   };
@@ -130,10 +134,10 @@ export default function CredentialSection({
       response = await updateCredential(selectedCredential.id, details);
     }
     if (response.ok) {
-      toast.success("Updated credential");
+      toast.success(t("toastUpdateSuccess"));
       onSucces();
     } else {
-      toast.error("Issue updating credential");
+      toast.error(t("toastUpdateFailed"));
     }
   };
 
@@ -187,10 +191,10 @@ export default function CredentialSection({
               <div>
                 <Text className="font-medium">
                   {ccPair.credential.name ||
-                    `Credential #${ccPair.credential.id}`}
+                    t("credentialFallbackName", { id: ccPair.credential.id })}
                 </Text>
                 <div className="text-xs text-muted-foreground/70">
-                  Created{" "}
+                  {t("createdPrefix")}{" "}
                   <i>
                     {new Date(
                       ccPair.credential.time_created
@@ -203,7 +207,8 @@ export default function CredentialSection({
                   {ccPair.credential.user_email && (
                     <>
                       {" "}
-                      by <i>{ccPair.credential.user_email}</i>
+                      {t("createdBySuffix")}{" "}
+                      <i>{ccPair.credential.user_email}</i>
                     </>
                   )}
                 </div>
@@ -221,7 +226,7 @@ export default function CredentialSection({
                   transition-colors"
               >
                 <FiEdit2 className="h-4 w-4" />
-                <span className="sr-only">Update Credentials</span>
+                <span className="sr-only">{t("updateCredentialsAriaLabel")}</span>
               </button>
             </div>
           </div>
@@ -233,7 +238,7 @@ export default function CredentialSection({
           <Modal.Content>
             <Modal.Header
               icon={SvgEdit}
-              title="Update Credentials"
+              title={t("updateCredentialsTitle")}
               onClose={closeModifyCredential}
             />
             <Modal.Body>
@@ -261,7 +266,7 @@ export default function CredentialSection({
           <Modal.Content>
             <Modal.Header
               icon={SvgEdit}
-              title="Edit Credential"
+              title={t("editCredentialTitle")}
               onClose={closeEditingCredential}
             />
             <Modal.Body>
@@ -280,7 +285,9 @@ export default function CredentialSection({
           <Modal.Content>
             <Modal.Header
               icon={SvgKey}
-              title={`Create ${getSourceDisplayName(sourceType)} Credential`}
+              title={t("createCredentialTitle", {
+                sourceType: getSourceDisplayName(sourceType),
+              })}
               onClose={closeCreateCredential}
             />
             <Modal.Body>

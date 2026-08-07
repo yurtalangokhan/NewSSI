@@ -10,7 +10,7 @@ import { useTranslation } from "react-i18next";
 export default function EditFederatedConnectorPage(props: {
   params: Promise<{ id: string }>;
 }) {
-  const { t } = useTranslation("admin");
+  const { t } = useTranslation("common", { keyPrefix: "admin" });
   const [params, setParams] = useState<{ id: string } | null>(null);
 
   useEffect(() => {

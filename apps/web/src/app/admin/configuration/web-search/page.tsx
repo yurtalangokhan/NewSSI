@@ -1105,7 +1105,7 @@ export default function Page() {
                         {isConfigured && (
                           <OpalButton
                             icon={SvgEdit}
-                            tooltip="Edit"
+                            tooltip={t("admin.webSearch.editTooltip")}
                             prominence="tertiary"
                             size="sm"
                             onClick={() => {
@@ -1301,21 +1301,29 @@ export default function Page() {
                       {isOnyxCrawler && (
                         <OpalButton
                           icon={onyxCrawlerExpanded ? SvgChevronDown : SvgChevronRight}
-                          tooltip={onyxCrawlerExpanded ? "Collapse" : "Test crawler"}
+                          tooltip={
+                            onyxCrawlerExpanded
+                              ? t("admin.webSearch.collapseTooltip")
+                              : t("admin.webSearch.testCrawlerTooltip")
+                          }
                           prominence="tertiary"
                           size="sm"
                           onClick={(e) => {
                             e.stopPropagation();
                             setOnyxCrawlerExpanded((v) => !v);
                           }}
-                          aria-label={onyxCrawlerExpanded ? "Collapse" : "Test crawler"}
+                          aria-label={
+                            onyxCrawlerExpanded
+                              ? t("admin.webSearch.collapseTooltip")
+                              : t("admin.webSearch.testCrawlerTooltip")
+                          }
                         />
                       )}
                       {provider.provider_type !== "onyx_web_crawler" &&
                         isConfigured && (
                           <OpalButton
                             icon={SvgEdit}
-                            tooltip="Edit"
+                            tooltip={t("admin.webSearch.editTooltip")}
                             prominence="tertiary"
                             size="sm"
                             onClick={() => {

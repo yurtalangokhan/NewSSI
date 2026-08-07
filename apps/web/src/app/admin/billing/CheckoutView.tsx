@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Section } from "@/layouts/general-layouts";
 import * as InputLayouts from "@/layouts/input-layouts";
 import Button from "@/refresh-components/buttons/Button";
@@ -34,6 +35,9 @@ function BillingOption({
   price,
   badge,
 }: BillingOptionProps) {
+  const { t } = useTranslation("common", {
+    keyPrefix: "admin.billing.checkout",
+  });
   return (
     <Card
       onClick={onClick}
@@ -63,7 +67,7 @@ function BillingOption({
               ${price}
             </Text>
             <Text secondaryBody text03 nowrap>
-              per seat/month
+              {t("perSeatMonth")}
             </Text>
           </div>
         </Section>
@@ -96,6 +100,9 @@ interface CheckoutViewProps {
 }
 
 export default function CheckoutView({ onAdjustPlan }: CheckoutViewProps) {
+  const { t } = useTranslation("common", {
+    keyPrefix: "admin.billing.checkout",
+  });
   const { user } = useUser();
   const { data: usersData } = useUsers({ includeApiKeys: false });
 
@@ -142,12 +149,12 @@ export default function CheckoutView({ onAdjustPlan }: CheckoutViewProps) {
       if (response.stripe_checkout_url) {
         window.location.href = response.stripe_checkout_url;
       } else {
-        throw new Error("Invalid response from checkout session");
+        throw new Error(t("invalidCheckoutResponse"));
       }
     } catch (err) {
       console.error("Error creating checkout session:", err);
       setError(
-        err instanceof Error ? err.message : "Failed to create checkout session"
+        err instanceof Error ? err.message : t("checkoutSessionFailed")
       );
     } finally {
       setIsSubmitting(false);
@@ -173,11 +180,11 @@ export default function CheckoutView({ onAdjustPlan }: CheckoutViewProps) {
         >
           <SvgUsers size={24} />
           <Text headingH2 text04>
-            Business
+            {t("planName")}
           </Text>
         </Section>
         <Button secondary onClick={onAdjustPlan}>
-          Adjust Plan
+          {t("adjustPlanButton")}
         </Button>
       </Section>
 
@@ -192,8 +199,8 @@ export default function CheckoutView({ onAdjustPlan }: CheckoutViewProps) {
         >
           {/* Billing Cycle */}
           <InputLayouts.Horizontal
-            title="Billing Cycle"
-            description="after your 1-month free trial"
+            title={t("billingCycleTitle")}
+            description={t("billingCycleDescription")}
           >
             <Section
               flexDirection="row"
@@ -205,15 +212,15 @@ export default function CheckoutView({ onAdjustPlan }: CheckoutViewProps) {
               <BillingOption
                 selected={billingPeriod === "monthly"}
                 onClick={() => setBillingPeriod("monthly")}
-                title="Monthly"
+                title={t("monthlyLabel")}
                 price={monthlyPrice}
               />
               <BillingOption
                 selected={billingPeriod === "annual"}
                 onClick={() => setBillingPeriod("annual")}
-                title="Annual"
+                title={t("annualLabel")}
                 price={annualPrice}
-                badge="Save 20%"
+                badge={t("annualBadge")}
               />
             </Section>
           </InputLayouts.Horizontal>
@@ -222,10 +229,11 @@ export default function CheckoutView({ onAdjustPlan }: CheckoutViewProps) {
 
           {/* Seats */}
           <InputLayouts.Horizontal
-            title="Seats"
-            description={`Minimum ${minRequiredSeats} seat${
-              minRequiredSeats !== 1 ? "s" : ""
-            } required for your current users and Slack accounts.`}
+            title={t("seatsTitle")}
+            description={t("seatsDescription", {
+              count: minRequiredSeats,
+              plural: minRequiredSeats !== 1 ? "s" : "",
+            })}
           >
             <InputNumber
               value={seats}
@@ -252,18 +260,18 @@ export default function CheckoutView({ onAdjustPlan }: CheckoutViewProps) {
           </Text>
         ) : !annualPriceSelected ? (
           <Text secondaryBody text03>
-            You will be billed on{" "}
+            {t("billedOnPrefix")}{" "}
             <Text secondaryBody text04>
               {trialEndDate}
             </Text>{" "}
-            After your 1-month free trial ends.
+            {t("billedOnSuffix")}
           </Text>
         ) : (
           // Empty div to maintain space-between alignment
           <div></div>
         )}
         <Button main primary onClick={handleSubmit} disabled={isSubmitting}>
-          {isSubmitting ? "Loading..." : "Continue to Payment"}
+          {isSubmitting ? t("loadingButton") : t("continueToPaymentButton")}
         </Button>
       </Section>
     </Card>

@@ -85,7 +85,7 @@ interface SelectedConnectorState {
  * Uses SettingsLayouts like AgentEditorPage does.
  */
 export default function BuildConfigPage() {
-  const { t } = useTranslation("app");
+  const { t } = useTranslation("common", { keyPrefix: "app" });
   const { isAdmin, isCurator } = useUser();
   const { llmProviders } = useLLMProviders();
   const { openPersonaEditor, openLlmSetup } = useOnboarding();

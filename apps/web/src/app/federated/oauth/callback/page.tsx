@@ -4,7 +4,7 @@ import OAuthCallbackPage from "@/components/oauth/OAuthCallbackPage";
 import { useTranslation } from "react-i18next";
 
 export default function FederatedOAuthCallbackPage() {
-  const { t } = useTranslation("auth");
+  const { t } = useTranslation("common", { keyPrefix: "auth" });
   const federatedConfig = {
     processingMessage: t("oauthCallback.processing"),
     processingDetails: t("oauthCallback.federatedProcessingDetails"),

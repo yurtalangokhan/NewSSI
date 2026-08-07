@@ -24,7 +24,7 @@ export default function EditPropertyModal({
   onClose,
   onSubmit,
 }: EditPropertyModalProps) {
-  const { t } = useTranslation("modals");
+  const { t } = useTranslation("common", { keyPrefix: "modals" });
   return (
     <Modal open onOpenChange={onClose}>
       <Modal.Content width="sm">

@@ -46,7 +46,7 @@ interface HeaderProps {
 }
 
 function Header({ children, onClose }: HeaderProps) {
-  const { t } = useTranslation("documentSidebar");
+  const { t } = useTranslation("common", { keyPrefix: "documentSidebar" });
   return (
     <div className="sticky top-0 z-sticky bg-background-tint-01">
       <div className="flex flex-row w-full items-center justify-between gap-2 py-3">
@@ -96,7 +96,7 @@ const DocumentsSidebar = memo(
     selectedDocuments,
     setPresentingDocument,
   }: DocumentsSidebarProps) => {
-    const { t } = useTranslation("documentSidebar");
+    const { t } = useTranslation("common", { keyPrefix: "documentSidebar" });
     const idOfMessageToDisplay = useSelectedNodeForDocDisplay();
     const currentMessageTree = useCurrentMessageTree();
 

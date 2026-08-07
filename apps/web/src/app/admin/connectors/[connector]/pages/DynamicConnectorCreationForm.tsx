@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import CredentialSubText from "@/components/credentials/CredentialFields";
 import { ConnectionConfiguration } from "@/lib/connectors/connectors";
 import { TextFormField } from "@/components/Field";
@@ -23,6 +24,9 @@ export default function DynamicConnectionForm({
   connector,
   currentCredential,
 }: DynamicConnectionFormProps) {
+  const { t } = useTranslation("common", {
+    keyPrefix: "admin.dynamicConnectorForm",
+  });
   const { setFieldValue } = useFormikContext<any>(); // Get Formik's context functions
 
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
@@ -50,9 +54,9 @@ export default function DynamicConnectionForm({
       )}
 
       <TextFormField
-        subtext="A descriptive name for the connector."
+        subtext={t("connectorNameSubtext")}
         type={"text"}
-        label={"Connector Name"}
+        label={t("connectorNameLabel")}
         name={"name"}
       />
 

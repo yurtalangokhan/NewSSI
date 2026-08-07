@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import { ThreeDotsLoader } from "@/components/Loading";
 import { getDatesList } from "@/app/ee/admin/performance/lib";
 import { useEffect, useState, useMemo } from "react";
@@ -25,6 +26,7 @@ type AgentStatsResponse = {
 };
 
 export function AgentStats({ agentId }: { agentId: number }) {
+  const { t } = useTranslation("common", { keyPrefix: "admin.agentStats" });
   const [agentStats, setAgentStats] = useState<AgentStatsResponse | null>(null);
   const { agents } = useAgents();
   const [isLoading, setIsLoading] = useState(false);
@@ -52,17 +54,15 @@ export function AgentStats({ agentId }: { agentId: number }) {
 
         if (!res.ok) {
           if (res.status === 403) {
-            throw new Error("You don't have permission to view these stats.");
+            throw new Error(t("noPermission"));
           }
-          throw new Error("Failed to fetch agent stats");
+          throw new Error(t("fetchFailed"));
         }
 
         const data = (await res.json()) as AgentStatsResponse;
         setAgentStats(data);
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "An unknown error occurred"
-        );
+        setError(err instanceof Error ? err.message : t("unknownError"));
       } finally {
         setIsLoading(false);
       }
@@ -98,12 +98,12 @@ export function AgentStats({ agentId }: { agentId: number }) {
       .map((dateStr) => {
         const dayData = statsMap.get(dateStr);
         return {
-          Day: dateStr,
-          Messages: dayData?.total_messages || 0,
-          "Unique Users": dayData?.total_unique_users || 0,
+          [t("dayLabel")]: dateStr,
+          [t("messagesLabel")]: dayData?.total_messages || 0,
+          [t("uniqueUsersLabel")]: dayData?.total_unique_users || 0,
         };
       });
-  }, [agentStats, dateRange]);
+  }, [agentStats, dateRange, t]);
 
   const totalMessages = agentStats?.total_messages ?? 0;
   const totalUniqueUsers = agentStats?.total_unique_users ?? 0;
@@ -124,9 +124,7 @@ export function AgentStats({ agentId }: { agentId: number }) {
   } else if (!agentStats?.daily_stats?.length) {
     content = (
       <div className="h-80 text-text-500 flex flex-col">
-        <p className="m-auto">
-          No data found for this agent in the selected date range
-        </p>
+        <p className="m-auto">{t("noDataFound")}</p>
       </div>
     );
   } else if (chartData) {
@@ -134,8 +132,8 @@ export function AgentStats({ agentId }: { agentId: number }) {
       <AreaChartDisplay
         className="mt-4"
         data={chartData}
-        categories={["Messages", "Unique Users"]}
-        index="Day"
+        categories={[t("messagesLabel"), t("uniqueUsersLabel")]}
+        index={t("dayLabel")}
         colors={["#4A4A4A", "#A0A0A0"]}
         yAxisWidth={60}
       />
@@ -145,7 +143,7 @@ export function AgentStats({ agentId }: { agentId: number }) {
   return (
     <Card className="w-full">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <p className="text-base font-normal text-2xl">Agent Analytics</p>
+        <p className="text-base font-normal text-2xl">{t("title")}</p>
         <AdminDateRangeSelector
           value={dateRange}
           onValueChange={setDateRange}
@@ -169,13 +167,13 @@ export function AgentStats({ agentId }: { agentId: number }) {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm font-medium text-text-500">
-                    Total Messages
+                    {t("totalMessagesLabel")}
                   </p>
                   <p className="text-2xl font-normal">{totalMessages}</p>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-text-500">
-                    Total Unique Users
+                    {t("totalUniqueUsersLabel")}
                   </p>
                   <p className="text-2xl font-normal">{totalUniqueUsers}</p>
                 </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import Text from "@/refresh-components/texts/Text";
 import IconButton from "@/refresh-components/buttons/IconButton";
@@ -259,6 +260,7 @@ function MessageInner(
   }: MessageProps,
   ref: React.ForwardedRef<HTMLDivElement>
 ) {
+  const { t } = useTranslation("common", { keyPrefix: "common" });
   const type = flash ? "flash" : staticProp ? "static" : "flash";
   const level = info
     ? "info"
@@ -342,7 +344,7 @@ function MessageInner(
             onClick={onAction}
             className={size === "large" ? "p-2" : "p-1"}
           >
-            {typeof actions === "string" ? actions : "Cancel"}
+            {typeof actions === "string" ? actions : t("cancel")}
           </Button>
         </div>
       )}
@@ -355,7 +357,7 @@ function MessageInner(
               internal
               icon={SvgX}
               onClick={onClose}
-              aria-label="Close"
+              aria-label={t("close")}
               className={size === "large" ? "p-2 rounded-12" : "p-1 rounded-08"}
             />
           </div>

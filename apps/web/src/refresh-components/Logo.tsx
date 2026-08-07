@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import Text from "@/refresh-components/texts/Text";
 import Truncated from "@/refresh-components/texts/Truncated";
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { useTheme } from "next-themes";
 
 export interface LogoProps {
@@ -60,6 +61,7 @@ function TurksatWordmark({ darkMode, size, className }: { darkMode: boolean; siz
 }
 
 export default function Logo({ folded, size, className }: LogoProps) {
+  const { t } = useTranslation("common", { keyPrefix: "common" });
   const foldedSize = size ?? LOGO_FOLDED_SIZE_PX;
   const unfoldedSize = size ?? LOGO_UNFOLDED_SIZE_PX;
   const settings = useSettingsContext();
@@ -103,7 +105,7 @@ export default function Logo({ folded, size, className }: LogoProps) {
                 className={"line-clamp-1 truncate"}
                 nowrap
               >
-                Powered by Onyx
+                {t("poweredByOnyx")}
               </Text>
             )}
           </div>

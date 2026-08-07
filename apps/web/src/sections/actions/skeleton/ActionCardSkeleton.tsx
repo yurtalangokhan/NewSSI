@@ -11,7 +11,7 @@ interface ActionCardSkeletonProps {
 const ActionCardSkeleton: React.FC<ActionCardSkeletonProps> = ({
   className,
 }) => {
-  const { t } = useTranslation("tools");
+  const { t } = useTranslation("common", { keyPrefix: "tools" });
 
   return (
     <div

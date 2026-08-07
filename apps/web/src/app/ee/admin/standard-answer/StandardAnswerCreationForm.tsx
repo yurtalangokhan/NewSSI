@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import { toast } from "@/hooks/useToast";
 import { StandardAnswerCategory, StandardAnswer } from "@/lib/types";
 import CardSection from "@/components/admin/CardSection";
@@ -37,6 +38,9 @@ export const StandardAnswerCreationForm = ({
   standardAnswerCategories: StandardAnswerCategory[];
   existingStandardAnswer?: StandardAnswer;
 }) => {
+  const { t } = useTranslation("common", {
+    keyPrefix: "admin.standardAnswerForm",
+  });
   const isUpdate = existingStandardAnswer !== undefined;
   const router = useRouter();
 
@@ -63,13 +67,13 @@ export const StandardAnswerCreationForm = ({
           }}
           validationSchema={Yup.object().shape({
             keyword: Yup.string()
-              .required("Keywords or pattern is required")
+              .required(t("keywordRequired"))
               .max(255)
               .min(1),
-            answer: Yup.string().required("Answer is required").min(1),
+            answer: Yup.string().required(t("answerRequired")).min(1),
             categories: Yup.array()
               .required()
-              .min(1, "At least one category is required"),
+              .min(1, t("atLeastOneCategoryRequired")),
           })}
           onSubmit={async (values, formikHelpers) => {
             formikHelpers.setSubmitting(true);
@@ -99,8 +103,8 @@ export const StandardAnswerCreationForm = ({
               const errorMsg = responseJson.detail || responseJson.message;
               toast.error(
                 isUpdate
-                  ? `Error updating Standard Answer - ${errorMsg}`
-                  : `Error creating Standard Answer - ${errorMsg}`
+                  ? t("updateErrorToast", { error: errorMsg })
+                  : t("createErrorToast", { error: errorMsg })
               );
             }
           }}
@@ -110,45 +114,45 @@ export const StandardAnswerCreationForm = ({
               {values.matchRegex ? (
                 <TextFormField
                   name="keyword"
-                  label="Regex pattern"
+                  label={t("regexPatternLabel")}
                   isCode
-                  tooltip="Triggers if the question matches this regex pattern (using Python `re.search()`)"
+                  tooltip={t("regexPatternTooltip")}
                   placeholder="(?:it|support)\s*ticket"
                 />
               ) : values.matchAnyKeywords == "any" ? (
                 <TextFormField
                   name="keyword"
-                  label="Any of these keywords, separated by spaces"
-                  tooltip="A question must match these keywords in order to trigger the answer."
-                  placeholder="ticket problem issue"
+                  label={t("anyKeywordsLabel")}
+                  tooltip={t("keywordsTooltip")}
+                  placeholder={t("anyKeywordsPlaceholder")}
                 />
               ) : (
                 <TextFormField
                   name="keyword"
-                  label="All of these keywords, in any order, separated by spaces"
-                  tooltip="A question must match these keywords in order to trigger the answer."
-                  placeholder="it ticket"
+                  label={t("allKeywordsLabel")}
+                  tooltip={t("keywordsTooltip")}
+                  placeholder={t("allKeywordsPlaceholder")}
                 />
               )}
               <BooleanFormField
-                subtext="Match a regex pattern instead of an exact keyword"
+                subtext={t("matchRegexSubtext")}
                 optional
-                label="Match regex"
+                label={t("matchRegexLabel")}
                 name="matchRegex"
               />
               {values.matchRegex ? null : (
                 <SelectorFormField
                   defaultValue={`all`}
-                  label="Keyword detection strategy"
-                  subtext="Choose whether to require the user's question to contain any or all of the keywords above to show this answer."
+                  label={t("strategyLabel")}
+                  subtext={t("strategySubtext")}
                   name="matchAnyKeywords"
                   options={[
                     {
-                      name: "All keywords",
+                      name: t("allKeywordsOption"),
                       value: "all",
                     },
                     {
-                      name: "Any keywords",
+                      name: t("anyKeywordsOption"),
                       value: "any",
                     },
                   ]}
@@ -160,14 +164,14 @@ export const StandardAnswerCreationForm = ({
               <div className="w-full">
                 <MarkdownFormField
                   name="answer"
-                  label="Answer"
-                  placeholder="The answer in Markdown. Example: If you need any help from the IT team, please email internalsupport@company.com"
+                  label={t("answerLabel")}
+                  placeholder={t("answerPlaceholder")}
                 />
               </div>
               <div className="w-4/12">
                 <MultiSelectDropdown
                   name="categories"
-                  label="Categories:"
+                  label={t("categoriesLabel")}
                   onChange={(selected_options) => {
                     const selected_categories = selected_options.map(
                       (option) => {
@@ -203,7 +207,7 @@ export const StandardAnswerCreationForm = ({
                   disabled={isSubmitting}
                   className="mx-auto w-64"
                 >
-                  {isUpdate ? "Update!" : "Create!"}
+                  {isUpdate ? t("updateButton") : t("createButton")}
                 </Button>
               </div>
             </Form>

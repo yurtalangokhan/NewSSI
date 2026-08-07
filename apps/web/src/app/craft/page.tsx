@@ -12,7 +12,7 @@ import { useTranslation } from "react-i18next";
  * This page exists for backwards compatibility.
  */
 export default function BuildPage() {
-  const { t } = useTranslation("app");
+  const { t } = useTranslation("common", { keyPrefix: "app" });
   const router = useRouter();
 
   useEffect(() => {

@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import * as SelectPrimitive from "@radix-ui/react-select";
 import { cn, noProp } from "@/lib/utils";
 import LineItem, { LineItemProps } from "@/refresh-components/buttons/LineItem";
@@ -202,6 +203,7 @@ function InputSelectTrigger({
   ref,
   ...props
 }: InputSelectTriggerProps) {
+  const { t } = useTranslation("common", { keyPrefix: "common" });
   const { variant, selectedItemDisplay } = useInputSelectContext();
 
   // Don't memoize - we need to read the latest ref values on every render
@@ -218,7 +220,7 @@ function InputSelectTrigger({
       )
     ) : (
       <Text as="p" text03>
-        Select an option
+        {t("selectAnOption")}
       </Text>
     );
   } else {

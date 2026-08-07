@@ -1,25 +1,19 @@
 import React, { forwardRef } from "react";
-import { Formik, Form, FormikProps, FieldArray, Field } from "formik";
+import { useTranslation } from "react-i18next";
+import { Formik, Form, FormikProps } from "formik";
 import * as Yup from "yup";
 import {
   AdvancedSearchConfiguration,
   EmbeddingPrecision,
   LLMContextualCost,
 } from "../interfaces";
-import {
-  BooleanFormField,
-  Label,
-  SubLabel,
-  SelectorFormField,
-} from "@/components/Field";
+import { BooleanFormField, SelectorFormField } from "@/components/Field";
 import NumberInput from "../../connectors/[connector]/pages/ConnectorInput/NumberInput";
 import { StringOrNumberOption } from "@/components/Dropdown";
 import useSWR from "swr";
 import { LLM_CONTEXTUAL_COST_ADMIN_URL } from "@/lib/llmConfig/constants";
 import { errorHandlingFetcher } from "@/lib/fetcher";
-import Button from "@/refresh-components/buttons/Button";
 import { NEXT_PUBLIC_CLOUD_ENABLED } from "@/lib/constants";
-import { SvgPlusCircle, SvgTrash } from "@opal/icons";
 // Number of tokens to show cost calculation for
 const COST_CALCULATION_TOKENS = 1_000_000;
 
@@ -55,6 +49,9 @@ const AdvancedEmbeddingFormPage = forwardRef<
     },
     ref
   ) => {
+    const { t } = useTranslation("common", {
+      keyPrefix: "admin.embeddings.advancedForm",
+    });
     // Fetch contextual costs
     const { data: contextualCosts, error: costError } = useSWR<
       LLMContextualCost[]
@@ -108,7 +105,7 @@ const AdvancedEmbeddingFormPage = forwardRef<
               .nullable()
               .test(
                 "required-if-contextual-rag",
-                "LLM must be selected when Contextual RAG is enabled",
+                t("llmRequiredForContextualRag"),
                 function (value) {
                   const enableContextualRag = this.parent.enable_contextual_rag;
                   console.log("enableContextualRag", enableContextualRag);
@@ -121,12 +118,12 @@ const AdvancedEmbeddingFormPage = forwardRef<
               .nullable()
               .test(
                 "positive",
-                "Must be larger than or equal to 256",
+                t("reducedDimensionMinError"),
                 (value) => value === null || value === undefined || value >= 256
               )
               .test(
                 "openai",
-                "Reduced Dimensions is only supported for OpenAI embedding models",
+                t("reducedDimensionOpenAIOnlyError"),
                 (value) => {
                   return embeddingProviderType === "openai" || value === null;
                 }
@@ -176,7 +173,7 @@ const AdvancedEmbeddingFormPage = forwardRef<
                       .nullable()
                       .test(
                         "required-if-contextual-rag",
-                        "LLM must be selected when Contextual RAG is enabled",
+                        t("llmRequiredForContextualRag"),
                         function (value) {
                           const enableContextualRag =
                             this.parent.enable_contextual_rag;
@@ -188,13 +185,13 @@ const AdvancedEmbeddingFormPage = forwardRef<
                       .nullable()
                       .test(
                         "positive",
-                        "Must be larger than or equal to 256",
+                        t("reducedDimensionMinError"),
                         (value) =>
                           value === null || value === undefined || value >= 256
                       )
                       .test(
                         "openai",
-                        "Reduced Dimensions is only supported for OpenAI embedding models",
+                        t("reducedDimensionOpenAIOnlyError"),
                         (value) => {
                           return (
                             embeddingProviderType === "openai" || value === null
@@ -223,34 +220,34 @@ const AdvancedEmbeddingFormPage = forwardRef<
           {({ values }) => (
             <Form>
               <BooleanFormField
-                subtext="Enable multipass indexing for both mini and large chunks."
+                subtext={t("multipassIndexingSubtext")}
                 optional
-                label="Multipass Indexing"
+                label={t("multipassIndexingLabel")}
                 name="multipass_indexing"
               />
               <BooleanFormField
                 subtext={
                   NEXT_PUBLIC_CLOUD_ENABLED
-                    ? "Contextual RAG disabled in Onyx Cloud"
-                    : "Enable contextual RAG for all chunk sizes."
+                    ? t("contextualRagCloudDisabled")
+                    : t("contextualRagSubtext")
                 }
                 optional
-                label="Contextual RAG"
+                label={t("contextualRagLabel")}
                 name="enable_contextual_rag"
                 disabled={NEXT_PUBLIC_CLOUD_ENABLED}
               />
               <div>
                 <SelectorFormField
                   name="contextual_rag_llm"
-                  label="Contextual RAG LLM"
+                  label={t("contextualRagLlmLabel")}
                   subtext={
                     costError
-                      ? "Error loading LLM models. Please try again later."
+                      ? t("errorLoadingModels")
                       : !contextualCosts
-                        ? "Loading available LLM models..."
+                        ? t("loadingModels")
                         : values.enable_contextual_rag
-                          ? "Select the LLM model to use for contextual RAG processing."
-                          : "Enable Contextual RAG above to select an LLM model."
+                          ? t("selectLlmForContextualRag")
+                          : t("enableContextualRagFirst")
                   }
                   options={llmOptions}
                   disabled={
@@ -265,8 +262,9 @@ const AdvancedEmbeddingFormPage = forwardRef<
                     <div className="mt-2 text-sm text-text-600">
                       {contextualCosts ? (
                         <>
-                          Estimated cost for processing{" "}
-                          {COST_CALCULATION_TOKENS.toLocaleString()} tokens:{" "}
+                          {t("estimatedCostPrefix")}{" "}
+                          {COST_CALCULATION_TOKENS.toLocaleString()}{" "}
+                          {t("estimatedCostSuffix")}{" "}
                           <span className="font-medium">
                             {getSelectedModelCost(values.contextual_rag_llm)
                               ? formatCost(
@@ -274,29 +272,26 @@ const AdvancedEmbeddingFormPage = forwardRef<
                                     values.contextual_rag_llm
                                   )!.cost
                                 )
-                              : "Cost information not available"}
+                              : t("costNotAvailable")}
                           </span>
                         </>
                       ) : (
-                        "Loading cost information..."
+                        t("loadingCostInfo")
                       )}
                     </div>
                   )}
               </div>
               <SelectorFormField
                 name="embedding_precision"
-                label="Embedding Precision"
+                label={t("embeddingPrecisionLabel")}
                 options={embeddingPrecisionOptions}
-                subtext="Select the precision for embedding vectors. Lower precision uses less storage but may reduce accuracy."
+                subtext={t("embeddingPrecisionSubtext")}
               />
 
               <NumberInput
-                description="Number of dimensions to reduce the embedding to.
-              Will reduce memory usage but may reduce accuracy.
-              If not specified, will just use the selected model's default dimensionality without any reduction.
-              Currently only supported for OpenAI embedding models"
+                description={t("reducedDimensionDescription")}
                 optional={true}
-                label="Reduced Dimension"
+                label={t("reducedDimensionLabel")}
                 name="reduced_dimension"
               />
             </Form>

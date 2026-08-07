@@ -15,3 +15,4 @@ agent-service-toolkit
 .opencode/
 .codex/
 #.agents/
+.claude/

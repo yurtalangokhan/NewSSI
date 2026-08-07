@@ -74,7 +74,7 @@ export default function ActionCard({
   ariaLabel,
   className,
 }: ActionCardProps) {
-  const { t } = useTranslation("tools");
+  const { t } = useTranslation("common", { keyPrefix: "tools" });
   // Internal state for uncontrolled mode
   const [internalExpanded, setInternalExpanded] = useState(initialExpanded);
 

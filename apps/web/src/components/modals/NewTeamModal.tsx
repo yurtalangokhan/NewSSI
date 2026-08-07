@@ -24,7 +24,7 @@ export interface TenantByDomainResponse {
 }
 
 export default function NewTeamModal() {
-  const { t } = useTranslation("modals");
+  const { t } = useTranslation("common", { keyPrefix: "modals" });
   const { showNewTeamModal, setShowNewTeamModal } = useModalContext();
   const [existingTenant, setExistingTenant] =
     useState<TenantByDomainResponse | null>(null);
@@ -74,7 +74,7 @@ export default function NewTeamModal() {
       setExistingTenant(data);
     } catch (error) {
       console.error("Failed to fetch tenant info:", error);
-      setError("Could not retrieve team information. Please try again later.");
+      setError(t("newTeam.couldNotRetrieveTeam"));
     } finally {
       setIsLoading(false);
     }
@@ -97,14 +97,14 @@ export default function NewTeamModal() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || "Failed to request invite");
+        throw new Error(errorData.message || t("newTeam.toastInviteFailed"));
       }
 
       setHasRequestedInvite(true);
-      toast.success(t("newTeam.inviteRequestSent"));
+      toast.success(t("newTeam.toastInviteSent"));
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "Failed to request an invite";
+        error instanceof Error ? error.message : t("newTeam.toastInviteFailed");
       setError(message);
       toast.error(message);
     } finally {
@@ -141,12 +141,12 @@ export default function NewTeamModal() {
             {hasRequestedInvite ? (
               <>
                 <SvgCheckCircle className="mr-2 h-5 w-5 stroke-text-05" />
-                {t("newTeam.joinRequestSent")}
+                {t("newTeam.joinRequestSentTitle")}
               </>
             ) : (
               <>
                 <SvgOrganization className="mr-2 h-5 w-5 stroke-text-04" />
-                {t("newTeam.foundExistingTeam", { domain: appDomain })}
+                {t("newTeam.existingTeamFoundTitle", { domain: appDomain })}
               </>
             )}
           </Dialog.Title>
@@ -154,7 +154,7 @@ export default function NewTeamModal() {
           {isLoading ? (
             <div className="py-8 text-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-border-05 mx-auto mb-4"></div>
-              <p>{t("newTeam.loadingTeamInformation")}</p>
+              <p>{t("newTeam.loadingTeamInfo")}</p>
             </div>
           ) : error ? (
             <div className="space-y-4">
@@ -172,7 +172,7 @@ export default function NewTeamModal() {
           ) : hasRequestedInvite ? (
             <div className="space-y-4">
               <p className="text-text-04">
-                {t("newTeam.joinRequestSentDescription", { domain: appDomain })}
+                {t("newTeam.joinRequestSentBody", { domain: appDomain })}
               </p>
               <div className="flex w-full pt-2">
                 <Button
@@ -187,7 +187,7 @@ export default function NewTeamModal() {
           ) : (
             <div className="space-y-4">
               <p className="text-text-03 text-sm mb-2">
-                {t("newTeam.joinRequestApprovalInfo", { domain: appDomain })}
+                {t("newTeam.joinRequestInfo", { domain: appDomain })}
               </p>
               <div className="flex flex-col items-center justify-center gap-4 mt-4">
                 <Button

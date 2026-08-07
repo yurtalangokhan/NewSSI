@@ -42,7 +42,7 @@ export default function MCPApiKeyModal({
   isAuthenticated = false,
   existingCredentials,
 }: MCPApiKeyModalProps) {
-  const { t } = useTranslation("modals");
+  const { t } = useTranslation("common", { keyPrefix: "modals" });
   const [apiKey, setApiKey] = useState("");
   const [showApiKey, setShowApiKey] = useState(false);
   const [credentials, setCredentials] = useState<Record<string, string>>({});

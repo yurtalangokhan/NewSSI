@@ -1,7 +1,8 @@
+import { useTranslation } from "react-i18next";
 import Button from "@/refresh-components/buttons/Button";
 import Text from "@/components/ui/text";
 
-import { FaNewspaper, FaTrash } from "react-icons/fa";
+import { FaNewspaper } from "react-icons/fa";
 import { TextFormField, TypedFileUploadFormField } from "@/components/Field";
 import { Form, Formik, FormikHelpers } from "formik";
 import { toast } from "@/hooks/useToast";
@@ -28,6 +29,9 @@ export default function EditCredential({
   onClose,
   onUpdate,
 }: EditCredentialProps) {
+  const { t } = useTranslation("common", {
+    keyPrefix: "admin.editCredential",
+  });
   const validationSchema = createEditingValidationSchema(
     credential.credential_json
   );
@@ -42,7 +46,7 @@ export default function EditCredential({
       await onUpdate(credential, values, onClose);
     } catch (error) {
       console.error("Error updating credential:", error);
-      toast.error("Error updating credential");
+      toast.error(t("updateError"));
     } finally {
       formikHelpers.setSubmitting(false);
     }
@@ -50,9 +54,7 @@ export default function EditCredential({
 
   return (
     <div className="flex flex-col gap-y-6">
-      <Text>
-        Ensure that you update to a credential with the proper permissions!
-      </Text>
+      <Text>{t("permissionsHint")}</Text>
 
       <Formik
         initialValues={initialValues}
@@ -65,7 +67,7 @@ export default function EditCredential({
               includeRevert
               name="name"
               placeholder={credential.name || ""}
-              label="Name (optional):"
+              label={t("nameOptionalLabel")}
             />
 
             {Object.entries(credential.credential_json).map(([key, value]) =>
@@ -94,7 +96,7 @@ export default function EditCredential({
             )}
             <div className="flex justify-between w-full">
               <Button onClick={() => resetForm()} leftIcon={SvgTrash}>
-                Reset Changes
+                {t("resetChangesButton")}
               </Button>
               <Button
                 type="submit"
@@ -102,7 +104,7 @@ export default function EditCredential({
                 className="bg-indigo-500 hover:bg-indigo-400"
                 leftIcon={FaNewspaper}
               >
-                Update
+                {t("updateButton")}
               </Button>
             </div>
           </Form>

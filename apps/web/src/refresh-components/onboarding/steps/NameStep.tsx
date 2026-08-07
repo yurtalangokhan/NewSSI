@@ -72,7 +72,7 @@ const NameStep = React.memo(
           setButtonActive(true);
           goToStep(OnboardingStep.Name);
         }}
-        aria-label="Edit display name"
+        aria-label={t("nameStep.editDisplayNameAriaLabel")}
         role="button"
         tabIndex={0}
       >
@@ -97,7 +97,7 @@ const NameStep = React.memo(
           <IconButton
             internal
             icon={SvgEdit}
-            tooltip="Edit"
+            tooltip={t("common.edit")}
             className="opacity-0 group-hover:opacity-100 transition-opacity"
           />
           <SvgCheckCircle

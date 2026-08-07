@@ -83,6 +83,7 @@ import React, {
   useId,
   useEffect,
 } from "react";
+import { useTranslation } from "react-i18next";
 import {
   useFloating,
   autoUpdate,
@@ -91,7 +92,7 @@ import {
   shift,
   size,
 } from "@floating-ui/react-dom";
-import { cn, noProp } from "@/lib/utils";
+import { noProp } from "@/lib/utils";
 import InputTypeIn from "../InputTypeIn";
 import { FieldContext } from "../../form/FieldContext";
 import { Button } from "@opal/components";
@@ -132,6 +133,7 @@ const InputComboBox = ({
   showOtherOptions = false,
   ...rest
 }: WithoutStyles<InputComboBoxProps>) => {
+  const { t } = useTranslation("common", { keyPrefix: "common" });
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const fieldContext = useContext(FieldContext);
@@ -400,7 +402,7 @@ const InputComboBox = ({
                   onClick={noProp(toggleDropdown)}
                   disabled={disabled}
                   icon={isOpen ? SvgChevronUp : SvgChevronDown}
-                  aria-label={isOpen ? "Close dropdown" : "Open dropdown"}
+                  aria-label={isOpen ? t("closeDropdown") : t("openDropdown")}
                   tabIndex={-1}
                   type="button"
                 />

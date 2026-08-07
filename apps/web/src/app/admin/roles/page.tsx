@@ -27,6 +27,7 @@ import {
 import useSWR from "swr";
 import useSWRMutation from "swr/mutation";
 import { useTranslation } from "react-i18next";
+import i18n from "@/i18n/config";
 import { useUser } from "@/providers/UserProvider";
 import AdminOverviewPanel from "@/components/admin/AdminOverviewPanel";
 
@@ -62,12 +63,6 @@ interface CompositeRole {
 
 // ─── Helpers ────────────────────────────────────────────────────────
 
-const COMPOSITE_ROLE_LABELS: Record<string, string> = {
-  "system-admin": "System Admin",
-  "enterprise-admin": "Enterprise Admin",
-  enduser: "End User",
-};
-
 const UNEDITABLE_ROLES = new Set(["system-admin"]);
 
 function rolePath(name: string) {
@@ -87,8 +82,13 @@ function groupRolesByService(roles: Role[] | undefined) {
   return grouped;
 }
 
-function roleLabel(name: string) {
-  return COMPOSITE_ROLE_LABELS[name] || name;
+function roleLabel(name: string, t: (key: string) => string) {
+  const labels: Record<string, string> = {
+    "system-admin": t("admin.rolesPage.systemAdminLabel"),
+    "enterprise-admin": t("admin.rolesPage.enterpriseAdminLabel"),
+    enduser: t("admin.rolesPage.endUserLabel"),
+  };
+  return labels[name] || name;
 }
 
 function EmptyState({
@@ -122,8 +122,8 @@ async function putPermissions(
     body: JSON.stringify(arg),
   });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: "Failed to save" }));
-    throw new Error(err.detail || "Failed to save permissions");
+    const err = await res.json().catch(() => ({ detail: i18n.t("admin.rolesPage.saveFailedGeneric") }));
+    throw new Error(err.detail || i18n.t("admin.rolesPage.savePermissionsFailed"));
   }
   return res.json();
 }
@@ -138,8 +138,8 @@ async function putRoleIds(
     body: JSON.stringify(arg),
   });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: "Failed to save" }));
-    throw new Error(err.detail || "Failed to save role assignment");
+    const err = await res.json().catch(() => ({ detail: i18n.t("admin.rolesPage.saveFailedGeneric") }));
+    throw new Error(err.detail || i18n.t("admin.rolesPage.saveRoleAssignmentFailed"));
   }
   return res.json();
 }
@@ -149,8 +149,8 @@ async function postSync(_url: string) {
     method: "POST",
   });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: "Sync failed" }));
-    throw new Error(err.detail || "Sync to Keycloak failed");
+    const err = await res.json().catch(() => ({ detail: i18n.t("admin.rolesPage.syncFailedGeneric") }));
+    throw new Error(err.detail || i18n.t("admin.rolesPage.syncToKeycloakFailed"));
   }
   return res.json();
 }
@@ -170,8 +170,8 @@ async function postCreateRole(
     method: "POST",
   });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: "Create failed" }));
-    throw new Error(err.detail || "Failed to create role");
+    const err = await res.json().catch(() => ({ detail: i18n.t("admin.rolesPage.createFailedGeneric") }));
+    throw new Error(err.detail || i18n.t("admin.rolesPage.createRoleFailed"));
   }
   return res.json();
 }
@@ -186,8 +186,8 @@ async function postCreateCompositeRole(
     method: "POST",
   });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: "Create failed" }));
-    throw new Error(err.detail || "Failed to create composite role");
+    const err = await res.json().catch(() => ({ detail: i18n.t("admin.rolesPage.createFailedGeneric") }));
+    throw new Error(err.detail || i18n.t("admin.rolesPage.createCompositeRoleFailed"));
   }
   return res.json();
 }
@@ -201,8 +201,8 @@ async function patchRole(
     method: "PATCH",
   });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: "Update failed" }));
-    throw new Error(err.detail || "Failed to update role");
+    const err = await res.json().catch(() => ({ detail: i18n.t("admin.rolesPage.updateFailedGeneric") }));
+    throw new Error(err.detail || i18n.t("admin.rolesPage.updateRoleFailed"));
   }
   return res.json();
 }
@@ -210,8 +210,8 @@ async function patchRole(
 async function deleteRole(url: string) {
   const res = await fetch(url, { method: "DELETE" });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: "Delete failed" }));
-    throw new Error(err.detail || "Failed to delete role");
+    const err = await res.json().catch(() => ({ detail: i18n.t("admin.rolesPage.deleteFailedGeneric") }));
+    throw new Error(err.detail || i18n.t("admin.rolesPage.deleteRoleFailed"));
   }
   return res.json();
 }
@@ -227,6 +227,7 @@ function CreateRoleModal({
   onClose: () => void;
   onCreated: () => void;
 }) {
+  const { t } = useTranslation("common", { keyPrefix: "admin.rolesPage" });
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [serviceClient, setServiceClient] = useState("user-service");
@@ -235,7 +236,7 @@ function CreateRoleModal({
 
   const handleCreate = async () => {
     if (!name.trim()) {
-      setError("Role name is required");
+      setError(t("roleNameRequired"));
       return;
     }
     setLoading(true);
@@ -253,7 +254,7 @@ function CreateRoleModal({
       setName("");
       setDescription("");
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Unknown error");
+      setError(e instanceof Error ? e.message : t("unknownError"));
     } finally {
       setLoading(false);
     }
@@ -262,7 +263,7 @@ function CreateRoleModal({
   return (
     <Modal open={open} onOpenChange={onClose}>
       <Modal.Content>
-        <Modal.Header title="Create Role" onClose={onClose} />
+        <Modal.Header title={t("createRoleTitle")} onClose={onClose} />
         <Modal.Body>
           {error && (
             <div className="mb-3 p-2 rounded-06 bg-background-danger-02">
@@ -274,18 +275,18 @@ function CreateRoleModal({
           <div className="flex flex-col gap-3">
             <div>
               <Text secondaryBody text-02 className="mb-1 block">
-                Role Name
+                {t("roleNameLabel")}
               </Text>
               <input
                 className="w-full px-3 py-2 rounded-06 border-01 bg-background-neutral-01 text-01 text-sm outline-none focus:border-action-link-05"
-                placeholder="e.g. analyst"
+                placeholder={t("roleNamePlaceholder")}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
             </div>
             <div>
               <Text secondaryBody text-02 className="mb-1 block">
-                Service Client
+                {t("serviceClientLabel")}
               </Text>
               <select
                 className="w-full px-3 py-2 rounded-06 border-01 bg-background-neutral-01 text-01 text-sm outline-none focus:border-action-link-05"
@@ -300,11 +301,11 @@ function CreateRoleModal({
             </div>
             <div>
               <Text secondaryBody text-02 className="mb-1 block">
-                Description
+                {t("descriptionLabel")}
               </Text>
               <input
                 className="w-full px-3 py-2 rounded-06 border-01 bg-background-neutral-01 text-01 text-sm outline-none focus:border-action-link-05"
-                placeholder="Optional description"
+                placeholder={t("optionalDescriptionPlaceholder")}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
               />
@@ -313,10 +314,10 @@ function CreateRoleModal({
         </Modal.Body>
         <Modal.Footer>
           <Button secondary onClick={onClose}>
-            Cancel
+            {t("cancelButton")}
           </Button>
           <Button onClick={handleCreate} disabled={loading}>
-            {loading ? "Creating..." : "Create Role"}
+            {loading ? t("creatingButton") : t("createRoleTitle")}
           </Button>
         </Modal.Footer>
       </Modal.Content>
@@ -333,6 +334,7 @@ function CreateCompositeRoleModal({
   onClose: () => void;
   onCreated: (name: string) => void;
 }) {
+  const { t } = useTranslation("common", { keyPrefix: "admin.rolesPage" });
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -353,7 +355,7 @@ function CreateCompositeRoleModal({
   const handleCreate = async () => {
     const nextName = name.trim();
     if (!nextName) {
-      setError("Composite role name is required");
+      setError(t("compositeRoleNameRequired"));
       return;
     }
     setLoading(true);
@@ -369,7 +371,7 @@ function CreateCompositeRoleModal({
       reset();
       onClose();
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Unknown error");
+      setError(e instanceof Error ? e.message : t("unknownError"));
     } finally {
       setLoading(false);
     }
@@ -378,7 +380,10 @@ function CreateCompositeRoleModal({
   return (
     <Modal open={open} onOpenChange={handleClose}>
       <Modal.Content>
-        <Modal.Header title="Create Composite Role" onClose={handleClose} />
+        <Modal.Header
+          title={t("createCompositeRoleTitle")}
+          onClose={handleClose}
+        />
         <Modal.Body>
           {error && (
             <div className="mb-3 rounded-06 bg-background-danger-02 p-2">
@@ -390,22 +395,22 @@ function CreateCompositeRoleModal({
           <div className="flex flex-col gap-3">
             <div>
               <Text secondaryBody text-02 className="mb-1 block">
-                Composite Role Name
+                {t("compositeRoleNameLabel")}
               </Text>
               <input
                 className="w-full rounded-06 border-01 bg-background-neutral-01 px-3 py-2 text-01 text-sm outline-none focus:border-action-link-05"
-                placeholder="e.g. agent-admin"
+                placeholder={t("compositeRoleNamePlaceholder")}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
             </div>
             <div>
               <Text secondaryBody text-02 className="mb-1 block">
-                Description
+                {t("descriptionLabel")}
               </Text>
               <input
                 className="w-full rounded-06 border-01 bg-background-neutral-01 px-3 py-2 text-01 text-sm outline-none focus:border-action-link-05"
-                placeholder="Optional description"
+                placeholder={t("optionalDescriptionPlaceholder")}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
               />
@@ -414,10 +419,10 @@ function CreateCompositeRoleModal({
         </Modal.Body>
         <Modal.Footer>
           <Button secondary onClick={handleClose} disabled={loading}>
-            Cancel
+            {t("cancelButton")}
           </Button>
           <Button onClick={handleCreate} disabled={loading}>
-            {loading ? "Creating..." : "Create Composite Role"}
+            {loading ? t("creatingButton") : t("createCompositeRoleTitle")}
           </Button>
         </Modal.Footer>
       </Modal.Content>
@@ -428,6 +433,7 @@ function CreateCompositeRoleModal({
 // ─── Roles Tab ──────────────────────────────────────────────────────
 
 function RolesTab() {
+  const { t } = useTranslation("common", { keyPrefix: "admin.rolesPage" });
   const { hasPermission } = useUser();
   const canManageRoles = hasPermission("role:manage");
   const [selectedRole, setSelectedRole] = useState<string>("");
@@ -477,7 +483,7 @@ function RolesTab() {
     {
       onSuccess: () => {
         mutateRolePerms();
-        toast.success("Permissions saved");
+        toast.success(t("permissionsSavedToast"));
       },
       onError: (err) => toast.error(err.message),
     }
@@ -487,7 +493,7 @@ function RolesTab() {
     "/api/user-service/roles/sync-keycloak",
     postSync,
     {
-      onSuccess: () => toast.success(`Synced to Keycloak`),
+      onSuccess: () => toast.success(t("syncedToKeycloakToast")),
       onError: (err) => toast.error(err.message),
     }
   );
@@ -637,7 +643,7 @@ function RolesTab() {
           if (first) setSelectedRole(first.name);
         }
         setDeleteConfirmRole(null);
-        toast.success("Role deleted");
+        toast.success(t("roleDeletedToast"));
       } catch (err: any) {
         toast.error(err.message);
       } finally {
@@ -655,7 +661,7 @@ function RolesTab() {
           { arg: { description } }
         );
         mutateRoles();
-        toast.success("Role updated");
+        toast.success(t("roleUpdatedToast"));
       } catch (err: any) {
         toast.error(err.message);
       }
@@ -687,10 +693,10 @@ function RolesTab() {
       <div className="flex items-center justify-between gap-2">
         <div>
           <Text headingH3 text01 className="block">
-            Service roles
+            {t("serviceRolesTitle")}
           </Text>
           <Text secondaryBody text-03 className="mt-1 block">
-            Choose a role, select permissions, then save the assignment.
+            {t("serviceRolesDescription")}
           </Text>
         </div>
         <div className="flex items-center gap-2">
@@ -700,7 +706,7 @@ function RolesTab() {
               secondary
               onClick={() => setCreateModalOpen(true)}
             >
-              New role
+              {t("newRoleButton")}
             </Button>
           )}
           <Button
@@ -708,15 +714,15 @@ function RolesTab() {
             disabled={isSyncing || !canManageRoles}
             onClick={() => syncToKeycloak()}
           >
-            {isSyncing ? "Syncing..." : "Sync"}
+            {isSyncing ? t("syncingButton") : t("syncButton")}
           </Button>
         </div>
       </div>
 
       {!hasRoles ? (
         <EmptyState
-          title="No roles found"
-          description="Create a service role before assigning permissions."
+          title={t("noRolesFoundTitle")}
+          description={t("noRolesFoundDescription")}
         />
       ) : (
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-[20rem_minmax(0,1fr)]">
@@ -761,7 +767,9 @@ function RolesTab() {
                                 selected ? "text-text-light-03" : "text-text-04"
                               )}
                             >
-                              {role.permissions.length} permissions
+                              {t("permissionsCount", {
+                                count: role.permissions.length,
+                              })}
                             </Text>
                           </span>
                           {selected && <SvgCheck size={14} />}
@@ -803,20 +811,20 @@ function RolesTab() {
                             setEditingDescription(false);
                           }}
                         >
-                          Save
+                          {t("saveButton")}
                         </button>
                         <button
                           type="button"
                           className="text-sm text-text-03 hover:underline"
                           onClick={() => setEditingDescription(false)}
                         >
-                          Cancel
+                          {t("cancelButton")}
                         </button>
                       </div>
                     ) : (
                       <div className="mt-2 flex items-center gap-2">
                         <Text secondaryBody text-04 className="truncate italic">
-                          {selectedRoleData.description || "No description"}
+                          {selectedRoleData.description || t("noDescription")}
                         </Text>
                         {canMutate && (
                           <button
@@ -828,7 +836,7 @@ function RolesTab() {
                               setEditingDescription(true);
                             }}
                             className="shrink-0 text-text-03 hover:text-text-01"
-                            aria-label="Edit role description"
+                            aria-label={t("editRoleDescriptionAriaLabel")}
                           >
                             <SvgEdit size={14} />
                           </button>
@@ -842,7 +850,7 @@ function RolesTab() {
                       disabled={isSaving || !canMutate}
                       onClick={handleSave}
                     >
-                      {isSaving ? "Saving..." : "Save"}
+                      {isSaving ? t("savingButton") : t("saveButton")}
                     </Button>
                     {canMutate && (
                       <Button
@@ -851,7 +859,7 @@ function RolesTab() {
                         className="text-danger-03"
                         onClick={() => setDeleteConfirmRole(selectedRole)}
                       >
-                        Delete
+                        {t("deleteButton")}
                       </Button>
                     )}
                   </div>
@@ -867,7 +875,7 @@ function RolesTab() {
               <input
                 ref={searchRef}
                 className="w-full pl-9 pr-8 py-2 rounded-06 border-01 bg-background-neutral-01 text-01 text-sm outline-none focus:border-action-link-05"
-                placeholder="Search permissions..."
+                placeholder={t("searchPermissionsPlaceholder")}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -972,8 +980,8 @@ function RolesTab() {
               <div className="py-8 text-center">
                 <Text secondaryBody text-03>
                   {searchQuery
-                    ? "No permissions match your search"
-                    : "No permissions found"}
+                    ? t("noPermissionsMatchSearch")
+                    : t("noPermissionsFound")}
                 </Text>
               </div>
             )}
@@ -993,21 +1001,21 @@ function RolesTab() {
       >
         <Modal.Content>
           <Modal.Header
-            title="Delete Role"
+            title={t("deleteRoleTitle")}
             onClose={() => setDeleteConfirmRole(null)}
           />
           <Modal.Body>
             <Text secondaryBody text-02 as="span">
-              Are you sure you want to delete{" "}
+              {t("confirmDeletePrefix")}{" "}
               <span className="font-medium text-text-01">
                 {deleteConfirmRole}
               </span>
-              ?
+              {t("confirmDeleteSuffix")}
             </Text>
           </Modal.Body>
           <Modal.Footer>
             <Button secondary onClick={() => setDeleteConfirmRole(null)}>
-              Cancel
+              {t("cancelButton")}
             </Button>
             <Button
               danger
@@ -1017,7 +1025,7 @@ function RolesTab() {
               }}
               disabled={isDeleting}
             >
-              {isDeleting ? "Deleting..." : "Delete Role"}
+              {isDeleting ? t("deletingButton") : t("deleteRoleTitle")}
             </Button>
           </Modal.Footer>
         </Modal.Content>
@@ -1029,6 +1037,7 @@ function RolesTab() {
 // ─── Composite Roles Tab ────────────────────────────────────────────
 
 function CompositeRolesTab() {
+  const { t } = useTranslation("common", { keyPrefix: "admin.rolesPage" });
   const { hasPermission } = useUser();
   const canManage = hasPermission("role:manage");
   const [selectedComposite, setSelectedComposite] = useState<string>("");
@@ -1080,9 +1089,9 @@ function CompositeRolesTab() {
       onSuccess: (data) => {
         mutateRoleIds();
         toast.success(
-          `Role assignment saved — ${
+          `${t("permissionsSavedToast")} — ${
             data.effective_permissions?.length ?? 0
-          } effective permissions`
+          }`
         );
       },
       onError: (err) => toast.error(err.message),
@@ -1151,11 +1160,10 @@ function CompositeRolesTab() {
       <div className="flex items-center justify-between gap-2">
         <div>
           <Text headingH3 text01 className="block">
-            Composite roles
+            {t("compositeRolesTitle")}
           </Text>
           <Text secondaryBody text-03 className="mt-1 block">
-            Select a composite role and assign the service roles it should
-            include.
+            {t("compositeRolesDescription")}
           </Text>
         </div>
         {canManage && (
@@ -1164,15 +1172,15 @@ function CompositeRolesTab() {
             secondary
             onClick={() => setCreateModalOpen(true)}
           >
-            New composite role
+            {t("newCompositeRoleButton")}
           </Button>
         )}
       </div>
 
       {(compData?.composite_roles ?? []).length === 0 ? (
         <EmptyState
-          title="No composite roles found"
-          description="Create a composite role before assigning service roles."
+          title={t("noCompositeRolesFoundTitle")}
+          description={t("noCompositeRolesFoundDescription")}
         />
       ) : (
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-[20rem_minmax(0,1fr)]">
@@ -1201,7 +1209,7 @@ function CompositeRolesTab() {
                           selected ? "text-text-light-05" : "text-text-02"
                         )}
                       >
-                        {roleLabel(cr.name)}
+                        {roleLabel(cr.name, t)}
                       </Text>
                       <Text
                         secondaryBody
@@ -1211,7 +1219,7 @@ function CompositeRolesTab() {
                           selected ? "text-text-light-03" : "text-text-04"
                         )}
                       >
-                        {(cr.role_ids?.length ?? 0) + " assigned roles"}
+                        {t("assignedRolesCount", { count: cr.role_ids?.length ?? 0 })}
                       </Text>
                     </span>
                     {selected && <SvgCheck size={14} />}
@@ -1228,11 +1236,11 @@ function CompositeRolesTab() {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <Text headingH3 text01 className="truncate">
-                        {roleLabel(selectedComp.name)}
+                        {roleLabel(selectedComp.name, t)}
                       </Text>
                       {isLocked && (
                         <span className="rounded-04 bg-background-neutral-02 px-2 py-0.5 text-xs text-text-03">
-                          built-in
+                          {t("builtInBadge")}
                         </span>
                       )}
                     </div>
@@ -1256,27 +1264,27 @@ function CompositeRolesTab() {
                                 { arg: { description: descriptionDraft } }
                               );
                               mutateComp();
-                              toast.success("Updated");
+                              toast.success(t("updatedToast"));
                             } catch (err: any) {
                               toast.error(err.message);
                             }
                             setEditingDescription(false);
                           }}
                         >
-                          Save
+                          {t("saveButton")}
                         </button>
                         <button
                           type="button"
                           className="text-sm text-text-03 hover:underline"
                           onClick={() => setEditingDescription(false)}
                         >
-                          Cancel
+                          {t("cancelButton")}
                         </button>
                       </div>
                     ) : (
                       <div className="mt-2 flex items-center gap-2">
                         <Text secondaryBody text-04 className="truncate italic">
-                          {selectedComp.description || "No description"}
+                          {selectedComp.description || t("noDescription")}
                         </Text>
                         {canMutate && (
                           <button
@@ -1288,7 +1296,7 @@ function CompositeRolesTab() {
                               setEditingDescription(true);
                             }}
                             className="shrink-0 text-text-03 hover:text-text-01"
-                            aria-label="Edit composite role description"
+                            aria-label={t("editCompositeRoleDescriptionAriaLabel")}
                           >
                             <SvgEdit size={14} />
                           </button>
@@ -1297,8 +1305,10 @@ function CompositeRolesTab() {
                     )}
                     <Text secondaryBody text-04 className="mt-2 block">
                       {selectedRoleIds.size > 0
-                        ? `${selectedRoleIds.size} service roles assigned`
-                        : "No service roles assigned"}
+                        ? t("serviceRolesAssignedCount", {
+                            count: selectedRoleIds.size,
+                          })
+                        : t("noServiceRolesAssigned")}
                     </Text>
                   </div>
                   {canMutate && (
@@ -1308,7 +1318,7 @@ function CompositeRolesTab() {
                       className="shrink-0 text-danger-03"
                       onClick={() => setDeleteConfirmRole(selectedComposite)}
                     >
-                      Delete
+                      {t("deleteButton")}
                     </Button>
                   )}
                 </div>
@@ -1366,7 +1376,9 @@ function CompositeRolesTab() {
                                 text-04
                                 className="block text-xs"
                               >
-                                {role.permissions.length} permissions
+                                {t("permissionsCount", {
+                                  count: role.permissions.length,
+                                })}
                               </Text>
                             </span>
                           </label>
@@ -1387,21 +1399,21 @@ function CompositeRolesTab() {
       >
         <Modal.Content>
           <Modal.Header
-            title="Delete Composite Role"
+            title={t("deleteCompositeRoleTitle")}
             onClose={() => setDeleteConfirmRole(null)}
           />
           <Modal.Body>
             <Text secondaryBody text-02 as="span">
-              Are you sure you want to delete{" "}
+              {t("confirmDeletePrefix")}{" "}
               <span className="font-medium text-text-01">
                 {deleteConfirmRole}
               </span>
-              ? This cannot be undone.
+              {t("confirmDeleteCompositeSuffix")}
             </Text>
           </Modal.Body>
           <Modal.Footer>
             <Button secondary onClick={() => setDeleteConfirmRole(null)}>
-              Cancel
+              {t("cancelButton")}
             </Button>
             <Button
               danger
@@ -1414,7 +1426,7 @@ function CompositeRolesTab() {
                   );
                   mutateComp();
                   setDeleteConfirmRole(null);
-                  toast.success("Deleted");
+                  toast.success(t("deletedToast"));
                 } catch (err: any) {
                   toast.error(err.message);
                 } finally {
@@ -1423,7 +1435,7 @@ function CompositeRolesTab() {
               }}
               disabled={isDeleting}
             >
-              {isDeleting ? "Deleting..." : "Delete Role"}
+              {isDeleting ? t("deletingButton") : t("deleteCompositeRoleTitle")}
             </Button>
           </Modal.Footer>
         </Modal.Content>
@@ -1500,12 +1512,12 @@ export default function Page() {
         <SimpleTabs
           tabs={{
             roles: {
-              name: "Roles",
+              name: t("admin.rolesPage.rolesTabLabel"),
               content: <RolesTab />,
               icon: SvgServer,
             },
             compositeRoles: {
-              name: "Composite Roles",
+              name: t("admin.rolesPage.compositeRolesTabLabel"),
               content: <CompositeRolesTab />,
               icon: SvgShield,
             },

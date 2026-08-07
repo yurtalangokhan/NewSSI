@@ -1,4 +1,5 @@
 import { SlackChannelConfigCreationForm } from "../SlackChannelConfigCreationForm";
+import i18n from "@/i18n/config";
 import { fetchSS } from "@/lib/utilsSS";
 import { ErrorCallout } from "@/components/ErrorCallout";
 import { DocumentSetSummary } from "@/lib/types";
@@ -31,7 +32,7 @@ async function NewChannelConfigPage(props: {
   if (!documentSetsResponse.ok) {
     return (
       <ErrorCallout
-        errorTitle="Something went wrong :("
+        errorTitle={i18n.t("admin.standardAnswerCategories.fetchError")}
         errorMsg={`Failed to fetch document sets - ${await documentSetsResponse.text()}`}
       />
     );
@@ -42,7 +43,7 @@ async function NewChannelConfigPage(props: {
   if (agentsResponse[1]) {
     return (
       <ErrorCallout
-        errorTitle="Something went wrong :("
+        errorTitle={i18n.t("admin.standardAnswerCategories.fetchError")}
         errorMsg={`Failed to fetch agents - ${agentsResponse[1]}`}
       />
     );
@@ -52,7 +53,7 @@ async function NewChannelConfigPage(props: {
     <SettingsLayouts.Root>
       <SettingsLayouts.Header
         icon={SvgSlack}
-        title="Configure OnyxBot for Slack Channel"
+        title={i18n.t("admin.newChannelConfigPage.title")}
         separator
         backButton
       />

@@ -20,7 +20,7 @@ export function ModelPreview({
   display?: boolean;
   showDetails?: boolean;
 }) {
-  const { t } = useTranslation("admin");
+  const { t } = useTranslation("common", { keyPrefix: "admin" });
   const currentModelCopy = getCurrentModelCopy(model.model_name);
 
   return (
@@ -184,7 +184,7 @@ export function ModelOption({
   onSelect?: (model: HostedEmbeddingModel) => void;
   selected: boolean;
 }) {
-  const { t } = useTranslation("admin");
+  const { t } = useTranslation("common", { keyPrefix: "admin" });
   const currentModelCopy = getCurrentModelCopy(model.model_name);
 
   return (

@@ -196,7 +196,7 @@ export function FederatedConnectorForm({
   preloadedConnectorData,
   preloadedCredentialSchema,
 }: FederatedConnectorFormProps) {
-  const { t } = useTranslation("admin");
+  const { t } = useTranslation("common", { keyPrefix: "admin" });
   const router = useRouter();
   const sourceMetadata = getSourceMetadata(connector);
   const isEditMode = connectorId !== undefined;
