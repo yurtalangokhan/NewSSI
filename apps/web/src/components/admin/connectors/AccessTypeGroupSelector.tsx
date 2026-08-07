@@ -40,6 +40,7 @@ export function AccessTypeGroupSelector({
   const isPaidEnterpriseFeaturesEnabled = usePaidEnterpriseFeaturesEnabled();
   const [shouldHideContent, setShouldHideContent] = useState(false);
   const isAutoSyncSupported = isValidAutoSyncSource(connector);
+  const canManagePublicAccess = isAdmin || isCurator;
 
   const [access_type, meta, access_type_helpers] =
     useField<AccessType>("access_type");
@@ -47,14 +48,13 @@ export function AccessTypeGroupSelector({
 
   useEffect(() => {
     if (user && userGroups && isPaidEnterpriseFeaturesEnabled) {
-      const isUserAdmin = user.role !== "enduser";
       if (!isPaidEnterpriseFeaturesEnabled) {
         access_type_helpers.setValue("public");
         return;
       }
 
       // Only set default access type if it's not already set, to avoid overriding user selections
-      if (!access_type.value && !isUserAdmin && !isAutoSyncSupported) {
+      if (!access_type.value && !canManagePublicAccess && !isAutoSyncSupported) {
         access_type_helpers.setValue("private");
       }
 
@@ -62,7 +62,7 @@ export function AccessTypeGroupSelector({
         access_type.value === "private" &&
         userGroups.length === 1 &&
         userGroups[0] !== undefined &&
-        !isUserAdmin
+        !canManagePublicAccess
       ) {
         groups_helpers.setValue([userGroups[0].id]);
         setShouldHideContent(true);
@@ -82,6 +82,7 @@ export function AccessTypeGroupSelector({
     groups_helpers,
     isPaidEnterpriseFeaturesEnabled,
     isAutoSyncSupported,
+    canManagePublicAccess,
   ]);
 
   if (userGroupsIsLoading) {

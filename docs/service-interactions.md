@@ -82,10 +82,13 @@ runtime redirect and logout behavior consistent across those boundaries.
   security-sensitive behavior. Cover redirect URI merging, post-logout redirect
   handling, cookie creation and clearing, and open redirect validation with
   regression tests.
-- Admin pages use server-side admin checks first, then load fine-grained route
-  permissions in `UserProvider`. Permission fetch failures must not redirect an
-  already-authenticated admin to `/error/403`; only completed permission checks
-  that deny the route trigger the 403 page.
+- Admin pages use server-side authentication first, then load fine-grained route
+  permissions in `UserProvider`. Web admin menus and pages don't authorize by
+  hardcoded role names. They use user-service's effective permissions, which
+  user-service resolves from the user's assigned role, direct role permissions,
+  and service coarse-role permissions. Permission fetch failures must not grant
+  admin access; completed permission checks that deny the route trigger the
+  `403` page.
 - Validate auth changes with `make -C apps/user-service validate`. When web
   logout or callback code changes, also run web lint, typecheck, and tests. If
   services are running, verify the browser flow through Kong.

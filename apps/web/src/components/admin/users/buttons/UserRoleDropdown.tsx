@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import useSWR from "swr";
 import useSWRMutation from "swr/mutation";
 import { errorHandlingFetcher } from "@/lib/fetcher";
-import { getEffectiveUserRole } from "@/lib/auth/roles";
 
 import InputSelect from "@/refresh-components/inputs/InputSelect";
 import { useTranslation } from "react-i18next";
@@ -27,7 +26,7 @@ export default function UserRoleDropdown({
   onError,
 }: UserRoleDropdownProps) {
   const { t } = useTranslation();
-  const [selectedRole, setSelectedRole] = useState(getEffectiveUserRole(user));
+  const [selectedRole, setSelectedRole] = useState(user.role);
 
   const { data: roles, isLoading: isRolesLoading } = useSWR<{ roles: Role[] }>(
     "/api/user-service/roles",
@@ -40,7 +39,7 @@ export default function UserRoleDropdown({
   );
 
   useEffect(() => {
-    setSelectedRole(getEffectiveUserRole(user));
+    setSelectedRole(user.role);
   }, [user]);
 
   const handleChange = async (value: string) => {
