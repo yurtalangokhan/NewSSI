@@ -17,6 +17,7 @@ It excludes:
 ## Shared Context
 
 - Coordinating agent:
+- Local branch:
 - Relevant roles from `.agents/team.yaml`:
 - Related docs:
 - Related existing specs:
@@ -59,9 +60,17 @@ Behavior changes should use TDD.
 
 ## Agent Handoff Notes
 
-- Task briefs must live at `.tmp/<topic>-task-<n>-brief.md`.
-- Task reports must live at `.tmp/<topic>-task-<n>-report.md`.
-- Progress must be tracked at `.tmp/<topic>-progress.md`.
+- This spec must live at `.tmp/<topic>/design.md`.
+- This spec must start on its own local branch before implementation work
+  begins.
+- Progress must be tracked at `.tmp/<topic>/progress.md`.
+- Task briefs must live at `.tmp/<topic>/tasks/task-<n>-brief.md`.
+- Task reports must live at `.tmp/<topic>/tasks/task-<n>-report.md`.
+- Task diffs, when needed, must live at
+  `.tmp/<topic>/tasks/task-<n>-diff.md`.
+- Task reviews must live at `.tmp/<topic>/reviews/task-<n>-review.md`.
+- Re-reviews must live at
+  `.tmp/<topic>/reviews/task-<n>-rereview-<m>.md`.
 - Each implementer reads only the task brief, the shared spec sections named in
   the brief, and the files needed for its task.
 

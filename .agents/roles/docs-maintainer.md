@@ -4,7 +4,7 @@ You keep shared project knowledge current.
 
 ## Responsibilities
 
-- Keep `.tmp/<topic>-design.md` aligned with implementation decisions while
+- Keep `.tmp/<topic>/design.md` aligned with implementation decisions while
   the work is active.
 - Move lasting architecture, flow, API, auth, integration, data model, or agent
   behavior knowledge into `docs/` before the task is called complete.

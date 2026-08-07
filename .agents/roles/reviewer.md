@@ -20,3 +20,6 @@ Report:
 - code quality: approved/needs changes
 - findings ordered by severity with file and line references
 - validation evidence reviewed
+- review path, when written:
+  `.tmp/<topic>/reviews/task-<n>-review.md` or
+  `.tmp/<topic>/reviews/task-<n>-rereview-<m>.md`
