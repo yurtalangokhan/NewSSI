@@ -149,6 +149,23 @@ async def get_current_user(access_token: str) -> dict[str, Any] | None:
     return None
 
 
+async def get_users_by_ids(
+    user_ids: list[str],
+    access_token: str | None = None,
+) -> list[dict[str, Any]]:
+    """Fetch matching user snapshots through user-service's internal batch API."""
+    data = await _request(
+        "POST",
+        f"{USER_SERVICE_API_PREFIX}/internal/users/batch",
+        json_body={"user_ids": user_ids},
+        access_token=access_token,
+        include_internal_token=access_token is None,
+    )
+    if isinstance(data, list):
+        return [user for user in data if isinstance(user, dict)]
+    return []
+
+
 async def update_user_settings(
     user_id: str,
     updates: dict[str, Any],

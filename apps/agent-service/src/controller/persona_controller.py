@@ -1,17 +1,28 @@
 """Controller for persona endpoints."""
 
+import logging
+import uuid
 from typing import Any
 
-from fastapi import HTTPException
+from fastapi import HTTPException, Request
 
 from controller.base import BaseController
 from core.env import env
 from core.settings import settings
-from service.AuthService import AuthenticatedUser
+from service.AuthService import AuthenticatedUser, get_auth_service, get_primary_user_id
 from service.PersonaRepository import PersonaDB
 
 DEFAULT_USER_ID = "dev-user"
 ADMIN_ROLE_NAMES = {"admin", "system-admin", "enterprise-admin", "super_admin", "superuser"}
+logger = logging.getLogger(__name__)
+
+
+def _is_uuid_owner_id(owner_id: str) -> bool:
+    try:
+        uuid.UUID(owner_id)
+    except ValueError:
+        return False
+    return True
 
 
 def build_agent_availability(
@@ -203,6 +214,16 @@ class PersonaController(BaseController):
 
         return {"send_email": {"mail_config_id": mail_config_id}}
 
+    async def resolve_owner_user_id(
+        self,
+        request: Request,
+        user: AuthenticatedUser,
+    ) -> str:
+        identity = await get_auth_service().resolve_user_identity(
+            request=request, user_id=user.user_id, user=user
+        )
+        return get_primary_user_id(identity, user.user_id) or user.user_id
+
     async def _get_dynamic_definition(self, persona_id: int):
         from agents.storage.repository import AgentDefinitionRepository
 
@@ -346,16 +367,50 @@ class PersonaController(BaseController):
         )
         return serialized
 
-    def _resolve_owner_email(self, persona: dict[str, Any]) -> str:
-        stored_email = persona.get("user_email")
-        if isinstance(stored_email, str) and stored_email.strip():
-            return stored_email
-
+    def _resolve_owner_email(
+        self,
+        persona: dict[str, Any],
+        owner_emails: dict[str, str] | None = None,
+    ) -> str:
         owner_id = str(persona.get("user_id") or DEFAULT_USER_ID)
         if "@" in owner_id:
             return owner_id
 
-        return "user@local.dev"
+        stored_email = persona.get("user_email")
+        if isinstance(stored_email, str) and stored_email.strip() and not _is_uuid_owner_id(owner_id):
+            return stored_email
+
+        return (owner_emails or {}).get(owner_id, "Unknown user")
+
+    async def _load_owner_emails(
+        self,
+        personas: list[dict[str, Any]],
+    ) -> dict[str, str]:
+        owner_ids = list(
+            dict.fromkeys(
+                owner_id
+                for persona in personas
+                if (owner_id := str(persona.get("user_id") or ""))
+                and "@" not in owner_id
+                and _is_uuid_owner_id(owner_id)
+            )
+        )[:100]
+        if not owner_ids:
+            return {}
+
+        try:
+            from service.UserServiceClient import get_users_by_ids
+
+            users = await get_users_by_ids(owner_ids)
+        except Exception:
+            logger.warning("Failed to resolve persona owner emails", exc_info=True)
+            return {}
+
+        return {
+            str(user["id"]): str(user["email"])
+            for user in users
+            if user.get("id") and user.get("email")
+        }
 
     def _extract_rag_tool_names(self, rag_config: dict[str, Any] | None) -> list[str]:
         rag = rag_config or {}
@@ -736,7 +791,14 @@ class PersonaController(BaseController):
             },
         }
 
-    async def _serialize_custom_persona(self, persona: dict[str, Any]) -> dict[str, Any]:
+    async def _serialize_custom_persona(
+        self,
+        persona: dict[str, Any],
+        owner_emails: dict[str, str] | None = None,
+    ) -> dict[str, Any]:
+        if owner_emails is None:
+            owner_emails = await self._load_owner_emails([persona])
+
         label_ids = persona.get("labels") or []
         labels = [
             label if isinstance(label, dict) else {"id": label, "name": f"Label {label}"}
@@ -771,7 +833,7 @@ class PersonaController(BaseController):
             "labels": labels,
             "owner": {
                 "id": str(persona.get("user_id") or DEFAULT_USER_ID),
-                "email": self._resolve_owner_email(persona),
+                "email": self._resolve_owner_email(persona, owner_emails),
             },
             "user_file_ids": persona.get("user_file_ids") or [],
             "users": persona.get("users") or [],
@@ -860,15 +922,20 @@ class PersonaController(BaseController):
                     restricted_persona_ids,
                     accessible_persona_ids,
                 ) = await self._load_agent_group_visibility(user)
-            for persona in custom_personas:
-                if user and not self._can_access_persona(
+            visible_personas = [
+                persona
+                for persona in custom_personas
+                if not user
+                or self._can_access_persona(
                     persona,
                     user,
                     restricted_persona_ids,
                     accessible_persona_ids,
-                ):
-                    continue
-                personas.append(await self._serialize_custom_persona(persona))
+                )
+            ]
+            owner_emails = await self._load_owner_emails(visible_personas)
+            for persona in visible_personas:
+                personas.append(await self._serialize_custom_persona(persona, owner_emails))
         except Exception:
             pass
 
@@ -933,10 +1000,15 @@ class PersonaController(BaseController):
         self,
         payload: dict[str, Any],
         user_id: str | None = None,
+        request: Request | None = None,
+        user: AuthenticatedUser | None = None,
     ) -> dict[str, Any]:
         try:
             rag_config = payload.get("rag_config")
-            effective_user_id = user_id or DEFAULT_USER_ID
+            effective_user_id = user_id
+            if request is not None and user is not None:
+                effective_user_id = await self.resolve_owner_user_id(request, user)
+            effective_user_id = effective_user_id or DEFAULT_USER_ID
             mcp_tools = payload.get("mcp_tools") or []
             mcp_tool_configs = await self._validate_mcp_tool_configs(
                 user_id=effective_user_id,

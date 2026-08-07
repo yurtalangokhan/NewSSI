@@ -11,6 +11,7 @@ from src.api.dependencies import (
 from src.controller import get_user_controller
 from src.schema.users import (
     InternalAuthorizeRequest,
+    InternalUserBatchRequest,
     InternalUserUpdateRequest,
     KeycloakUpsertRequest,
     UserActiveRequest,
@@ -123,6 +124,14 @@ async def download_csv(
         media_type="text/csv",
         headers={"Content-Disposition": "attachment; filename=users.csv"},
     )
+
+
+@internal_router.post("/batch")
+async def get_users_by_ids_internal(
+    payload: Annotated[InternalUserBatchRequest, Body()],
+    authenticated_user_id: Annotated[str, Depends(require_auth_or_internal_service_token)],  # noqa: ARG001
+):
+    return await get_user_controller().get_users_by_ids(payload.user_ids)
 
 
 # Internal endpoint for agent-service to sync users from Keycloak

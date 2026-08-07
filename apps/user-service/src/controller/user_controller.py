@@ -23,6 +23,9 @@ class UserController(BaseController):
             self._raise_not_found("User not found")
         return user
 
+    async def get_users_by_ids(self, user_ids: list[uuid.UUID]) -> list[dict[str, Any]]:
+        return await self.user_service.get_users_by_ids(user_ids)
+
     async def get_user_permissions(self, user_id: uuid.UUID) -> dict[str, list[str]]:
         permissions = await self.user_service.get_user_permissions(user_id)
         if not permissions:

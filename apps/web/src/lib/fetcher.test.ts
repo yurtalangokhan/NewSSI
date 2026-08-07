@@ -66,6 +66,20 @@ describe("authenticatedFetch", () => {
     });
   });
 
+  it("notifies the browser after refreshing the access token", async () => {
+    const refreshListener = jest.fn();
+    window.addEventListener("auth:session-refreshed", refreshListener);
+    fetchMock()
+      .mockResolvedValueOnce(response(401))
+      .mockResolvedValueOnce(response(200))
+      .mockResolvedValueOnce(response(200));
+
+    await authenticatedFetch("/api/me");
+
+    expect(refreshListener).toHaveBeenCalledTimes(1);
+    window.removeEventListener("auth:session-refreshed", refreshListener);
+  });
+
   it("redirects to login when refresh token is expired or invalid", async () => {
     fetchMock()
       .mockResolvedValueOnce(response(401))

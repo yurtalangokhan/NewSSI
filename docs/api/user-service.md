@@ -86,10 +86,13 @@ Authentication supports three modes: OIDC (Keycloak browser redirect), Direct Ac
 **Prefix:** `/api/v1/internal/users`
 
 Used by other services (agent-service, rag-service) for service-to-service user lookups.
+The batch endpoint accepts 1 to 100 distinct UUID values in the
+`user_ids` array and returns public snapshots for matching users only.
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
 | POST | `/api/v1/internal/users/upsert-from-keycloak` | JWT / Internal | Create/update user from Keycloak OIDC profile |
+| POST | `/api/v1/internal/users/batch` | JWT / Internal | Get matching public user snapshots for up to 100 distinct UUIDs |
 | GET | `/api/v1/internal/users/by-keycloak-id/{keycloak_id}` | JWT / Internal | Get user by Keycloak subject ID |
 | PATCH | `/api/v1/internal/users/{target_id}` | JWT / Internal | Update user profile |
 | GET | `/api/v1/internal/users/{target_id}/permissions` | JWT / Internal | Get user's permissions |

@@ -242,7 +242,7 @@ the chat session and project membership data.
 
 | Caller | Callee | Purpose | Method |
 |--------|--------|---------|--------|
-| agent-service | user-service | Permission check, user lookup, memories CRUD | HTTP + internal token |
+| agent-service | user-service | Permission checks, batched persona owner lookup, user lookup, and memories CRUD | HTTP + internal token |
 | agent-service | rag-service | RAG collections proxy | HTTP + internal token |
 | agent-service | rag-service | Agent knowledge availability checks for selected document and graph collections | HTTP + internal token |
 | agent-service | tools-service | MCP tool execution | HTTP + JWT |
@@ -296,6 +296,10 @@ Service A has a Keycloak subject ID, needs the local user:
   Header: X-Internal-Service-Token
   ← Returns user dict with local user_id, email, role
 ```
+
+Persona creation uses this identity resolution path before persistence. It stores
+the returned local user ID when available and otherwise falls back to the
+authenticated ID.
 
 ### Pattern 3: User memory recall
 
