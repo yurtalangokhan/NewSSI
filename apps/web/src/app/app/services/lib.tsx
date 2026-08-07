@@ -435,7 +435,7 @@ export function buildChatUrl(
   chatSessionId: string | null,
   personaId: string | number | null,
   search?: boolean,
-  skipReload?: boolean
+  _skipReload?: boolean
 ) {
   if (!search) {
     const finalSearchParams = new URLSearchParams();
@@ -473,10 +473,6 @@ export function buildChatUrl(
       finalSearchParams.push(`${key}=${value}`);
     }
   });
-
-  if (skipReload) {
-    finalSearchParams.push(`${SEARCH_PARAM_NAMES.SKIP_RELOAD}=true`);
-  }
 
   const finalSearchParamsString = finalSearchParams.join("&");
 

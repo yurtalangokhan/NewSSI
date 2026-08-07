@@ -33,6 +33,15 @@ export interface StarterMessage extends StarterMessageBase {
   name: string;
 }
 
+export interface AgentCatalogCapabilities {
+  has_actions: boolean;
+  has_conversation_starters: boolean;
+  has_retrieval: boolean;
+  has_web_search: boolean;
+  has_scoped_knowledge: boolean;
+  long_term_memory: boolean;
+}
+
 export interface MinimalPersonaSnapshot {
   id: number;
   external_id?: string | null;
@@ -58,6 +67,8 @@ export interface MinimalPersonaSnapshot {
   llm_model_version_override?: string;
   llm_model_provider_override?: string;
   availability?: AgentAvailability;
+  action_count?: number;
+  capabilities?: AgentCatalogCapabilities;
   memory_type?: string | null;
   long_term_memory?: boolean;
 

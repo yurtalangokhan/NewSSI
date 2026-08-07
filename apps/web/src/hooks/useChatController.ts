@@ -254,13 +254,12 @@ export default function useChatController({
     chatSessionId: string,
     personaId: AgentId | null
   ) => {
-    // Build URL with skip-reload parameter
     const newUrl = buildChatUrl(
       searchParams,
       chatSessionId,
       personaId,
       false,
-      true // skipReload
+      true
     );
 
     // Navigate immediately if still on chat page

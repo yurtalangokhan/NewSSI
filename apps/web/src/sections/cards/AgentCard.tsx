@@ -173,7 +173,8 @@ export default function AgentCard({ agent }: AgentCardProps) {
   }, [agent.id, agent.name, refreshAgents, deleteModal]);
 
   const actionCount =
-    agent.tools.length > 0 ? agent.tools.length : (agent.mcp_tools?.length ?? 0);
+    agent.action_count ??
+    (agent.tools.length > 0 ? agent.tools.length : (agent.mcp_tools?.length ?? 0));
 
   return (
     <>

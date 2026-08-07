@@ -1,4 +1,4 @@
-import { render, setupUser } from "@tests/setup/test-utils";
+import { render, screen, setupUser } from "@tests/setup/test-utils";
 import AppInputBar from "@/sections/input/AppInputBar";
 import type React from "react";
 import type { MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
@@ -223,7 +223,11 @@ const selectedAgent: MinimalPersonaSnapshot = {
   owner: null,
 };
 
-function renderInputBar(chatState: ChatState, stopGenerating = jest.fn()) {
+function renderInputBar(
+  chatState: ChatState,
+  stopGenerating = jest.fn(),
+  agent: MinimalPersonaSnapshot = selectedAgent
+) {
   return {
     stopGenerating,
     ...render(
@@ -255,7 +259,7 @@ function renderInputBar(chatState: ChatState, stopGenerating = jest.fn()) {
         onSubmit={jest.fn()}
         removeDocs={jest.fn()}
         retrievalEnabled={false}
-        selectedAgent={selectedAgent}
+        selectedAgent={agent}
         selectedDocuments={[]}
         stopGenerating={stopGenerating}
         toggleDeepResearch={jest.fn()}
@@ -273,5 +277,27 @@ describe("AppInputBar", () => {
     await user.click(container.querySelector("#onyx-chat-input-send-button")!);
 
     expect(stopGenerating).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows actions from catalog capabilities without full tool snapshots", () => {
+    renderInputBar(
+      "input",
+      jest.fn(),
+      {
+        ...selectedAgent,
+        tools: [],
+        action_count: 2,
+        capabilities: {
+          has_actions: true,
+          has_conversation_starters: false,
+          has_retrieval: false,
+          has_web_search: false,
+          has_scoped_knowledge: false,
+          long_term_memory: false,
+        },
+      } as unknown as MinimalPersonaSnapshot
+    );
+
+    expect(screen.getByTestId("actions-popover")).toBeInTheDocument();
   });
 });

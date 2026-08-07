@@ -21,4 +21,10 @@ describe("buildChatUrl", () => {
       "/app?searchId=search-1"
     );
   });
+
+  it("does not generate skip-reload query state for search sessions", () => {
+    expect(buildChatUrl(null, "search-1", null, true, true)).toBe(
+      "/app?searchId=search-1"
+    );
+  });
 });
