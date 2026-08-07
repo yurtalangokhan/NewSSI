@@ -16,8 +16,7 @@ const handleLogout = async (request: NextRequest) => {
     }
   })();
   const requestedNextPath = request.nextUrl.searchParams.get("next");
-  const nextPath =
-    requestedNextPath || `${getLoginPath(authTypeMetadata)}?logged_out=true`;
+  const nextPath = requestedNextPath || getLoginPath(authTypeMetadata);
   const postLogoutRedirectUri = new URL(nextPath, publicWebOrigin).toString();
 
   // Call backend logout — this terminates the Keycloak SSO session
