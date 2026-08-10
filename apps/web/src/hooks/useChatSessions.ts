@@ -14,6 +14,10 @@ import { AgentId, MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
 import useAppFocus from "./useAppFocus";
 import { agentIdsMatch, useAgents } from "./useAgents";
 import { DEFAULT_AGENT_ID } from "@/lib/constants";
+import {
+  getChatSessionsPageKey,
+  mergeChatSessionsByFreshness,
+} from "@/lib/chat/chatSessionActivity";
 
 const PAGE_SIZE = 50;
 const MIN_LOADING_DURATION_MS = 500;
@@ -21,6 +25,10 @@ const MIN_LOADING_DURATION_MS = 500;
 interface ChatSessionsResponse {
   sessions: ChatSession[];
   has_more: boolean;
+  next_cursor?: {
+    before_activity?: string | null;
+    before_id?: string | null;
+  } | null;
 }
 
 function isValidChatSession(session: unknown): session is ChatSession {
@@ -111,45 +119,6 @@ function usePendingSessions(): ChatSession[] {
   );
 }
 
-function dedupeChatSessionsById(sessions: ChatSession[]): ChatSession[] {
-  const toTimestamp = (value?: string | null): number => {
-    if (!value) return 0;
-    const parsed = Date.parse(value);
-    return Number.isNaN(parsed) ? 0 : parsed;
-  };
-
-  const byId = new Map<string, ChatSession>();
-  for (const session of sessions) {
-    if (!isValidChatSession(session)) {
-      continue;
-    }
-
-    const existing = byId.get(session.id);
-    if (!existing) {
-      byId.set(session.id, session);
-      continue;
-    }
-
-    const existingTime = toTimestamp(existing.time_updated);
-    const currentTime = toTimestamp(session.time_updated);
-    if (currentTime >= existingTime) {
-      byId.set(session.id, session);
-    }
-  }
-  return Array.from(byId.values()).sort(
-    (left, right) => {
-      const diff =
-        toTimestamp(right.time_updated) - toTimestamp(left.time_updated);
-      if (diff !== 0) {
-        return diff;
-      }
-
-      // Stable deterministic fallback when timestamps are equal/invalid.
-      return right.id.localeCompare(left.id);
-    }
-  );
-}
-
 // ---------------------------------------------------------------------------
 // Helper hooks
 // ---------------------------------------------------------------------------
@@ -188,26 +157,8 @@ export default function useChatSessions(): UseChatSessionsOutput {
   const getKey = (
     pageIndex: number,
     previousPageData: ChatSessionsResponse | null
-  ): string | null => {
-    // No more pages
-    if (previousPageData && !previousPageData.has_more) return null;
-
-    // First page — no cursor
-    if (pageIndex === 0) {
-      return `/api/chat/get-user-chat-sessions?page_size=${PAGE_SIZE}`;
-    }
-
-    // Subsequent pages — cursor from the last session of the previous page
-    const lastSession =
-      previousPageData!.sessions[previousPageData!.sessions.length - 1];
-    if (!lastSession) return null;
-
-    const params = new URLSearchParams({
-      page_size: PAGE_SIZE.toString(),
-      before: lastSession.time_updated,
-    });
-    return `/api/chat/get-user-chat-sessions?${params.toString()}`;
-  };
+  ): string | null =>
+    getChatSessionsPageKey(pageIndex, previousPageData, PAGE_SIZE);
 
   const { data, error, setSize, mutate } = useSWRInfinite<ChatSessionsResponse>(
     getKey,
@@ -290,7 +241,10 @@ export default function useChatSessions(): UseChatSessionsOutput {
     );
 
     // Pending sessions go first (most recent), then fetched sessions
-    return dedupeChatSessionsById([...remainingPending, ...allFetchedSessions]);
+    return mergeChatSessionsByFreshness([
+      ...remainingPending,
+      ...allFetchedSessions,
+    ]);
   }, [allFetchedSessions, pendingSessions]);
 
   const currentChatSessionId = appFocus.isChat() ? appFocus.getId() : null;
@@ -319,6 +273,8 @@ export default function useChatSessions(): UseChatSessionsOutput {
         persona_id: personaId,
         time_created: now,
         time_updated: now,
+        last_message_at: now,
+        last_accessed_at: null,
         shared_status: ChatSessionSharedStatus.Private,
         project_id: projectId ?? null,
         current_alternate_model: "",

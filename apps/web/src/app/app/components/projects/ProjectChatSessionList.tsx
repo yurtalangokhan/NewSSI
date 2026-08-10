@@ -16,6 +16,10 @@ import ChatSessionSkeleton from "@/refresh-components/skeletons/ChatSessionSkele
 import { SvgBubbleText } from "@opal/icons";
 import { useTranslation } from "react-i18next";
 import { buildAppPath } from "@/hooks/appNavigation";
+import {
+  compareChatSessionsByActivityDesc,
+  getChatSessionActivityTime,
+} from "@/lib/chat/chatSessionActivity";
 
 export default function ProjectChatSessionList() {
   const { t } = useTranslation();
@@ -33,10 +37,7 @@ export default function ProjectChatSessionList() {
 
   const projectChats: ChatSession[] = useMemo(() => {
     const sessions = currentProjectDetails?.project?.chat_sessions || [];
-    return [...sessions].sort(
-      (a, b) =>
-        new Date(b.time_updated).getTime() - new Date(a.time_updated).getTime()
-    );
+    return [...sessions].sort(compareChatSessionsByActivityDesc);
   }, [currentProjectDetails?.project?.chat_sessions]);
 
   if (!currentProjectId) return null;
@@ -143,7 +144,9 @@ export default function ProjectChatSessionList() {
                       className="truncate"
                     >
                       {t("projectContextPanel.lastMessage", {
-                        time: formatRelativeTime(chat.time_updated),
+                        time: formatRelativeTime(
+                          getChatSessionActivityTime(chat)
+                        ),
                       })}
                     </Text>
                   </div>

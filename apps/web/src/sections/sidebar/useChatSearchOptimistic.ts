@@ -3,8 +3,12 @@ import useSWRInfinite from "swr/infinite";
 import useChatSessions from "@/hooks/useChatSessions";
 import { useProjects } from "@/lib/hooks/useProjects";
 import { errorHandlingFetcher } from "@/lib/fetcher";
-import { ChatSearchResponse } from "@/app/app/interfaces";
+import { ChatSearchResponse, ChatSession } from "@/app/app/interfaces";
 import { UNNAMED_CHAT } from "@/lib/constants";
+import {
+  getChatSessionActivityTime,
+  mergeChatSessionsByFreshness,
+} from "@/lib/chat/chatSessionActivity";
 
 export interface FilterableChat {
   id: string;
@@ -44,7 +48,7 @@ export function transformApiResponse(
       chats.push({
         id: chat.id,
         label: chat.name || UNNAMED_CHAT,
-        time: chat.time_created,
+        time: getChatSessionActivityTime(chat),
       });
     }
   }
@@ -60,6 +64,16 @@ function filterLocalSessions(
   }
   const term = searchQuery.toLowerCase();
   return sessions.filter((chat) => chat.label.toLowerCase().includes(term));
+}
+
+export function transformLocalSessionsToFilterableChats(
+  sessions: ChatSession[]
+): FilterableChat[] {
+  return mergeChatSessionsByFreshness(sessions).map((chat) => ({
+    id: chat.id,
+    label: chat.name || UNNAMED_CHAT,
+    time: getChatSessionActivityTime(chat),
+  }));
 }
 
 // --- Hook ---
@@ -81,32 +95,12 @@ export function useChatSearchOptimistic(
 
   // 2. Build combined fallback data (instant display)
   const fallbackSessions = useMemo<FilterableChat[]>(() => {
-    const chatMap = new Map<string, FilterableChat>();
-
-    // Add regular chats from useChatSessions
-    for (const chat of chatSessions) {
-      chatMap.set(chat.id, {
-        id: chat.id,
-        label: chat.name || UNNAMED_CHAT,
-        time: chat.time_updated || chat.time_created,
-      });
-    }
-
-    // Add project chats from useProjects
+    const localSessions: ChatSession[] = [...chatSessions];
     for (const project of projects) {
-      for (const chat of project.chat_sessions) {
-        chatMap.set(chat.id, {
-          id: chat.id,
-          label: chat.name || UNNAMED_CHAT,
-          time: chat.time_updated || chat.time_created,
-        });
-      }
+      localSessions.push(...project.chat_sessions);
     }
 
-    // Sort by most recent
-    return Array.from(chatMap.values()).sort(
-      (a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()
-    );
+    return transformLocalSessionsToFilterableChats(localSessions);
   }, [chatSessions, projects]);
 
   // Debounce the search query

@@ -42,6 +42,9 @@ export interface ChatSessionSummary {
   name: string | null;
   persona_id: AgentId | null;
   time_created: string;
+  time_updated?: string | null;
+  last_message_at?: string | null;
+  last_accessed_at?: string | null;
   shared_status: ChatSessionSharedStatus;
   current_alternate_model: string | null;
   current_temperature_override: number | null;
@@ -125,10 +128,12 @@ export interface ToolCallFinalResult {
 export interface ChatSession {
   id: string;
   name: string;
-  description?: string;  // Optional - returned by some endpoints
+  description?: string; // Optional - returned by some endpoints
   persona_id: AgentId;
   time_created: string;
   time_updated: string;
+  last_message_at?: string | null;
+  last_accessed_at?: string | null;
   shared_status: ChatSessionSharedStatus;
   project_id: number | null;
   current_alternate_model: string;
@@ -188,6 +193,8 @@ export interface BackendChatSession {
   messages: BackendMessage[];
   time_created: string;
   time_updated: string;
+  last_message_at?: string | null;
+  last_accessed_at?: string | null;
   shared_status: ChatSessionSharedStatus;
   current_temperature_override: number | null;
   current_alternate_model?: string;
@@ -197,7 +204,7 @@ export interface BackendChatSession {
 }
 
 export function toChatSession(backend: BackendChatSession): ChatSession {
-  return {
+  const session: ChatSession = {
     id: backend.chat_session_id,
     name: backend.description,
     persona_id: backend.persona_id,
@@ -208,6 +215,15 @@ export function toChatSession(backend: BackendChatSession): ChatSession {
     current_alternate_model: backend.current_alternate_model ?? "",
     current_temperature_override: backend.current_temperature_override,
   };
+
+  if (Object.hasOwn(backend, "last_message_at")) {
+    session.last_message_at = backend.last_message_at;
+  }
+  if (Object.hasOwn(backend, "last_accessed_at")) {
+    session.last_accessed_at = backend.last_accessed_at;
+  }
+
+  return session;
 }
 
 export interface BackendMessage {

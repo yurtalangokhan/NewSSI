@@ -19,6 +19,21 @@ jest.mock("@/providers/ProjectsContext", () => ({
             persona_id: 0,
             time_created: "2026-07-30T10:00:00Z",
             time_updated: "2026-07-30T11:00:00Z",
+            last_message_at: "2026-07-30T11:00:00Z",
+            last_accessed_at: null,
+            shared_status: ChatSessionSharedStatus.Private,
+            project_id: 42,
+            current_alternate_model: "",
+            current_temperature_override: null,
+          },
+          {
+            id: "chat-456",
+            name: "Viewed but unchanged",
+            persona_id: 0,
+            time_created: "2026-07-30T09:00:00Z",
+            time_updated: "2026-07-30T12:00:00Z",
+            last_message_at: "2026-07-30T10:00:00Z",
+            last_accessed_at: "2026-07-30T12:00:00Z",
             shared_status: ChatSessionSharedStatus.Private,
             project_id: 42,
             current_alternate_model: "",
@@ -47,9 +62,19 @@ describe("ProjectChatSessionList", () => {
   it("opens project chats without putting project context in the URL", () => {
     render(<ProjectChatSessionList />);
 
-    expect(screen.getByRole("link", { name: /roadmap notes/i })).toHaveAttribute(
-      "href",
-      "/app/chats/chat-123"
-    );
+    expect(
+      screen.getByRole("link", { name: /roadmap notes/i })
+    ).toHaveAttribute("href", "/app/chats/chat-123");
+  });
+
+  it("orders project chats by message activity instead of access-time updates", () => {
+    render(<ProjectChatSessionList />);
+
+    const links = screen.getAllByRole("link");
+
+    expect(links.map((link) => link.textContent)).toEqual([
+      expect.stringContaining("Roadmap notes"),
+      expect.stringContaining("Viewed but unchanged"),
+    ]);
   });
 });
