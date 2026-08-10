@@ -5,7 +5,9 @@
 **Canonical API prefix:** `/api/v1`
 **Auth:** JWT Bearer token, API Key, or Internal Service Token. `/api/v1/health` and `/api/v1/graph/health` are public.
 
-Permission checks call user-service for fine-grained authorization (cached 30s by default).
+RAG resolves bearer-token identity through user-service before using its local
+JWT or API-key fallback. Permission checks also call user-service for
+fine-grained authorization (cached 30s by default).
 Compatibility aliases may remain during migration. New integrations must use
 the canonical `/api/v1` paths documented here.
 

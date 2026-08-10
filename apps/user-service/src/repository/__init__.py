@@ -21,3 +21,15 @@ __all__ = [
     "UserRepository",
     "UserSettingsRepository",
 ]
+
+from .organization_repository import OrganizationRepository
+from .permission_audit_repository import PermissionAuditRepository
+from .resource_permission_repository import ResourcePermissionRepository
+from .user_organization_repository import UserOrganizationRepository
+
+__all__.extend([
+    "OrganizationRepository",
+    "PermissionAuditRepository",
+    "ResourcePermissionRepository",
+    "UserOrganizationRepository",
+])

@@ -229,6 +229,40 @@ Permissions are synced from service manifests (user-service, agent-service, rag-
 
 ---
 
+## Organizations and scoped resource access
+
+Organizations form one enterprise tree. Only one root organization may exist.
+Enterprise administrators can manage the full tree. A member with the
+`unit_manager` organization role can manage membership, organization roles,
+and direct resource access for their own unit and its descendants.
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/v1/organizations` | JWT | List organizations |
+| POST | `/api/v1/organizations` | Enterprise admin | Create an organization; rejects a second root |
+| GET | `/api/v1/organizations/tree` | JWT | Return the organization tree |
+| GET | `/api/v1/organizations/{org_id}/management-capability` | JWT | Report whether the actor can manage the unit |
+| POST | `/api/v1/organizations/{org_id}/move` | Manager scope | Move below another unit; moving to the root is rejected |
+| GET | `/api/v1/organizations/{org_id}/users` | JWT | List organization members |
+| POST | `/api/v1/organizations/{org_id}/users` | Manager scope | Add an organization member |
+| PATCH | `/api/v1/organizations/{org_id}/users/{user_id}` | Manager scope | Change membership state or organization role |
+| DELETE | `/api/v1/organizations/{org_id}/users/{user_id}` | Manager scope | Remove an organization member |
+| GET | `/api/v1/permissions/organizations/{org_id}/targets/{target_type}/{target_id}/resources/{resource_type}` | Manager scope | List direct scoped resource permissions |
+| PUT | `/api/v1/permissions/organizations/{org_id}/targets/{target_type}/{target_id}/resources/{resource_type}` | Manager scope | Replace direct scoped resource permissions |
+
+`target_type` is `organization` or `user`; `resource_type` is `agent` or
+`collection`. An organization target must match `org_id`. A user target must be
+an active member of that organization. The scoped `PUT` synchronizes the
+submitted direct grants atomically: omitted grants are revoked, existing grants
+are updated, and new grants are created. Parent-unit permissions are not
+inherited by child units or their users.
+
+Scope violations return `403`, invalid targets return `400`, and missing
+organizations return `404`. A concurrent attempt to create a second root
+returns `409`.
+
+---
+
 ## System Settings
 
 **Prefix:** `/api/v1/system-settings`

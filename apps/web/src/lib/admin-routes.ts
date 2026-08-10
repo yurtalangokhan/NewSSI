@@ -60,6 +60,7 @@ export const ADMIN_PATHS = {
   USERS: "/admin/users",
   API_KEYS: "/admin/api-key",
   ROLES: "/admin/roles",
+  ORGANIZATIONS: "/admin/organizations",
   TOKEN_RATE_LIMITS: "/admin/token-rate-limits",
   USAGE: "/admin/performance/usage",
   QUERY_HISTORY: "/admin/performance/query-history",
@@ -257,6 +258,14 @@ export const ADMIN_ROUTE_CONFIG: Record<string, AdminRouteConfig> = {
     requiredPermissions: ["graph:read"],
     titleKey: "admin.navigation.routes.knowledgeGraph.title",
     sidebarLabelKey: "admin.navigation.routes.knowledgeGraph.sidebar",
+  },
+  [ADMIN_PATHS.ORGANIZATIONS]: {
+    icon: SvgUser,
+    title: "Manage Organizations",
+    sidebarLabel: "Organizations",
+    requiredPermissions: ["org:list"],
+    titleKey: "admin.navigation.routes.organizations.title",
+    sidebarLabelKey: "admin.navigation.routes.organizations.sidebar",
   },
   [ADMIN_PATHS.USERS]: {
     icon: SvgUser,

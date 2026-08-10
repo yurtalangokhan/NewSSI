@@ -228,8 +228,8 @@ async def resolve_user(
 ) -> AuthenticatedUser | None:
     """Resolve user from the credentials or allow internal service access.
 
-    Tries Keycloak JWT validation first (if enabled), then falls through
-    to API key validation.
+    Resolves bearer-token identity through user-service first, then falls back
+    to local Keycloak JWT or API-key validation.
     """
     token = _extract_auth_token(request, credentials)
 
@@ -237,6 +237,12 @@ async def resolve_user(
         raise HTTPException(status_code=401, detail=t("auth.invalid_scheme"))
 
     if token:
+        user_data = await _get_user_service_user(token)
+        if user_data and user_data.get("id"):
+            user_id = str(user_data["id"])
+            display_name = str(user_data.get("email") or user_id)
+            return AuthenticatedUser(user_id, display_name, access_token=token)
+
         # Validate Keycloak JWTs before considering legacy API keys. When Keycloak
         # is enabled, invalid Bearer tokens must fail closed instead of falling
         # through to dev/API-key auth.
@@ -245,19 +251,6 @@ async def resolve_user(
             sub = claims.get("sub", "")
             if not sub:
                 raise HTTPException(status_code=401, detail=t("auth.invalid_bearer_token"))
-
-            user_data = await _get_user_service_user(token)
-            if user_data:
-                user_id = str(user_data.get("id") or sub)
-                email = str(
-                    user_data.get("email")
-                    or claims.get("email")
-                    or claims.get("preferred_username")
-                    or sub
-                )
-                return AuthenticatedUser(
-                    user_id, email, access_token=token, claims=claims
-                )
 
             email = (
                 claims.get("email", "") or claims.get("preferred_username", "") or sub

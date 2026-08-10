@@ -38,7 +38,7 @@ export const useAdminPersonas = (options?: UseAdminPersonasOptions) => {
         page_num: pageNum,
         page_size: pageSize,
       })
-    : buildApiPath("/api/admin/persona", {
+    : buildApiPath("/api/persona", {
         include_deleted: includeDeleted,
         get_editable: getEditable,
       });

@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 
 const USER_SERVICE_COLLECTION_PATHS = new Set([
   "coarse-roles",
+  "organizations",
   "permissions",
   "roles",
   "users",
@@ -12,7 +13,7 @@ export function isUserServiceCollectionPath(path: string[]): boolean {
 }
 
 export function buildUserServicePath(path: string[], request: NextRequest) {
-  let result = `/api/${path.join("/")}`;
+  let result = `/api/v1/${path.join("/")}`;
   if (
     (isUserServiceCollectionPath(path) ||
       request.nextUrl.pathname.endsWith("/")) &&

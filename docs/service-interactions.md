@@ -269,7 +269,7 @@ the chat session and project membership data.
 | agent-service | rag-service             | Agent knowledge availability checks for selected document and graph collections | HTTP + internal token |
 | agent-service | tools-service           | MCP tool execution                                                              | HTTP + JWT            |
 | agent-service | Airbyte                 | Datasource sync management                                                      | Airbyte API           |
-| rag-service   | user-service            | Permission check                                                                | HTTP + internal token |
+| rag-service   | user-service            | Bearer-token identity resolution and permission checks                                                                | HTTP + forwarded JWT or internal token |
 | tools-service | user-service            | Permission resolution                                                           | HTTP + internal token |
 | rag-service   | Ollama/OpenAI           | LLM calls for graph extraction                                                  | HTTP (outbound)       |
 | agent-service | Ollama/OpenAI/Anthropic | LLM inference                                                                   | HTTP (outbound)       |
@@ -346,7 +346,31 @@ Agent needs to run a tool:
     ← Return result
 ```
 
-### Pattern 5: RAG proxy
+### Pattern 5: Organization-scoped access management
+
+User-service is the policy authority for organization membership and direct
+agent or collection grants. Enterprise administrators can manage the entire
+tree; unit managers can manage their own unit and descendants, including
+appointing or removing other unit managers in that scope.
+
+```text
+Organization page selects Unit B
+  GET /api/v1/organizations/{unit_b}/management-capability
+  GET /api/v1/organizations/{unit_b}/users
+  GET /api/v1/permissions/organizations/{unit_b}/targets/{type}/{id}/resources/{resource_type}
+  PUT /api/v1/permissions/organizations/{unit_b}/targets/{type}/{id}/resources/{resource_type}
+    -> user-service validates manager scope
+    -> user targets must be active members of Unit B
+    -> direct grants are synchronized and audited
+```
+
+Resource grants do not inherit from parent units. This allows directors and
+subunits to use different agents and collections. Membership and role mutation
+endpoints apply the same subtree check, so a unit manager cannot change an
+ancestor or unrelated branch. The model permits one root only; creating a
+second root or moving a unit to root is rejected.
+
+### Pattern 6: RAG proxy
 
 ```
 Agent needs to list RAG collections:
