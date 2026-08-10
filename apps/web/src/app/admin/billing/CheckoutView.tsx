@@ -232,7 +232,6 @@ export default function CheckoutView({ onAdjustPlan }: CheckoutViewProps) {
             title={t("seatsTitle")}
             description={t("seatsDescription", {
               count: minRequiredSeats,
-              plural: minRequiredSeats !== 1 ? "s" : "",
             })}
           >
             <InputNumber

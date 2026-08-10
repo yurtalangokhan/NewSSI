@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useTranslation } from "react-i18next";
 import type { Components } from "react-markdown";
 import Text from "@/refresh-components/texts/Text";
 import Truncated from "@/refresh-components/texts/Truncated";
@@ -76,10 +77,11 @@ function PreviewLogo({
   size: number;
   className?: string;
 }) {
+  const { t } = useTranslation("common", { keyPrefix: "themePreview" });
   return logoSrc && !forceOnyxIcon ? (
     <img
       src={logoSrc}
-      alt="Logo"
+      alt={t("logoAlt")}
       style={{
         objectFit: "cover",
         height: `${size}px`,

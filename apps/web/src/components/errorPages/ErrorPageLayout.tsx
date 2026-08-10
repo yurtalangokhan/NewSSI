@@ -1,15 +1,17 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 
 interface ErrorPageLayoutProps {
   children: React.ReactNode;
 }
 
 export default function ErrorPageLayout({ children }: ErrorPageLayoutProps) {
+  const { t } = useTranslation("common", { keyPrefix: "common" });
   return (
     <div className="flex flex-col items-center justify-center w-full h-screen gap-4">
       <img
         src="/logo.turksat.svg"
-        alt="Turksat Logo"
+        alt={t("turksatLogoAlt")}
         className="h-auto w-[120px]"
         draggable={false}
       />

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import {
   Collapsible,
@@ -29,6 +30,9 @@ export default function WorkingPill({
   toolCalls,
   isLatest = true,
 }: WorkingPillProps) {
+  const { t } = useTranslation("common", {
+    keyPrefix: "app.craft.workingPill",
+  });
   const [isOpen, setIsOpen] = useState(true); // Auto-expanded by default
 
   // Auto-collapse when this is no longer the latest working group
@@ -66,7 +70,9 @@ export default function WorkingPill({
               <SvgPencilRuler className="size-4 stroke-text-03 shrink-0" />
 
               {/* Title */}
-              <span className="text-sm font-medium text-text-04">Working</span>
+              <span className="text-sm font-medium text-text-04">
+                {t("workingLabel")}
+              </span>
             </div>
 
             {/* Expand arrow */}

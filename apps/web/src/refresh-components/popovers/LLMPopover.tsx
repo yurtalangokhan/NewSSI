@@ -457,7 +457,7 @@ export default function LLMPopover({
             <span className="truncate min-w-0">{option.displayName}</span>
             {option.isRemote && (
               <span className="inline-flex items-center px-1.5 py-0.5 rounded-08 bg-background-tint-02 text-text-03 font-figure-small-label leading-none shrink-0">
-                Cloud
+                {t("app.llmPopover.cloudBadge")}
               </span>
             )}
           </span>

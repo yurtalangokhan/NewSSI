@@ -423,16 +423,9 @@ function SeatsCard({
               </InputLayouts.ErrorTextLayout>
             ) : seatDifference !== 0 ? (
               <Text secondaryBody text03>
-                {t(
-                  isAdding
-                    ? seatCount === 1
-                      ? "seatsToBeAdded_one"
-                      : "seatsToBeAdded_other"
-                    : seatCount === 1
-                      ? "seatsToBeRemoved_one"
-                      : "seatsToBeRemoved_other",
-                  { count: seatCount }
-                )}
+                {t(isAdding ? "seatsToBeAdded" : "seatsToBeRemoved", {
+                  count: seatCount,
+                })}
               </Text>
             ) : null}
 

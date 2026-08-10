@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 
 const messages = [
   "Punching wood...",
@@ -20,6 +21,9 @@ const LINE_PAUSE = 800;
 const RESET_DELAY = 2000;
 
 export default function CraftingLoader() {
+  const { t } = useTranslation("common", {
+    keyPrefix: "app.craft.craftingLoader",
+  });
   const [display, setDisplay] = useState({
     lines: [] as string[],
     currentText: "",
@@ -127,7 +131,7 @@ export default function CraftingLoader() {
       </div>
 
       <p className="mt-6 text-neutral-500 text-sm font-mono">
-        Crafting your next great idea...
+        {t("loadingMessage")}
       </p>
     </div>
   );

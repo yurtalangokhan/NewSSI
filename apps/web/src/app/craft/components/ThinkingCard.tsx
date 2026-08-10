@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import {
   Collapsible,
@@ -23,6 +24,9 @@ export default function ThinkingCard({
   content,
   isStreaming,
 }: ThinkingCardProps) {
+  const { t } = useTranslation("common", {
+    keyPrefix: "app.craft.thinkingCard",
+  });
   const [isOpen, setIsOpen] = useState(true);
 
   if (!content) return null;
@@ -58,7 +62,7 @@ export default function ThinkingCard({
                   isStreaming ? "text-theme-blue-05" : "text-text-04"
                 )}
               >
-                Thinking
+                {t("thinkingLabel")}
               </span>
               {isStreaming && (
                 <span className="text-xs text-theme-blue-04 animate-pulse">

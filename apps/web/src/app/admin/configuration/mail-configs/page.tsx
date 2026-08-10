@@ -201,12 +201,7 @@ export default function Page() {
                   <Text as="p" secondaryBody text03>
                     {isLoading
                       ? t("loadingAccounts")
-                      : t(
-                          activeConfigs.length === 1
-                            ? "activeConfigCount_one"
-                            : "activeConfigCount_other",
-                          { count: activeConfigs.length }
-                        )}
+                      : t("activeConfigCount", { count: activeConfigs.length })}
                   </Text>
                 </div>
                 <Button leftIcon={SvgPlus} onClick={() => setForm(EMPTY_FORM)}>

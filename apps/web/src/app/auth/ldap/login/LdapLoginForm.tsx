@@ -51,10 +51,10 @@ export default function LdapLoginForm() {
 
       <div className="flex flex-col items-center w-full mb-6">
         <h1 className="text-xl font-semibold text-white">
-          Enterprise LDAP Login
+          {t("ldapLogin.title")}
         </h1>
         <p className="text-sm text-white/60 mt-1">
-          Sign in with your enterprise LDAP credentials
+          {t("ldapLogin.subtitle")}
         </p>
       </div>
 

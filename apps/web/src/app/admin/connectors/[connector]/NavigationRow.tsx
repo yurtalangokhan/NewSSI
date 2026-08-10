@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { useFormContext } from "@/components/context/FormContext";
 import Button from "@/refresh-components/buttons/Button";
 import { SvgArrowLeft, SvgArrowRight, SvgPlusCircle } from "@opal/icons";
@@ -15,6 +16,9 @@ const NavigationRow = ({
   noCredentials: boolean;
   activatedCredential: boolean;
 }) => {
+  const { t } = useTranslation("common", {
+    keyPrefix: "admin.connectorNavigationRow",
+  });
   const { formStep, prevFormStep, nextFormStep } = useFormContext();
 
   return (
@@ -23,7 +27,7 @@ const NavigationRow = ({
         {((formStep > 0 && !noCredentials) ||
           (formStep > 1 && !noAdvanced)) && (
           <Button secondary onClick={prevFormStep} leftIcon={SvgArrowLeft}>
-            Previous
+            {t("previousButton")}
           </Button>
         )}
       </div>
@@ -34,7 +38,7 @@ const NavigationRow = ({
             rightIcon={SvgPlusCircle}
             onClick={onSubmit}
           >
-            Create Connector
+            {t("createConnectorButton")}
           </Button>
         )}
       </div>
@@ -46,7 +50,7 @@ const NavigationRow = ({
             rightIcon={SvgArrowRight}
             onClick={() => nextFormStep()}
           >
-            Continue
+            {t("continueButton")}
           </Button>
         )}
         {!noAdvanced && formStep === 1 && (
@@ -56,7 +60,7 @@ const NavigationRow = ({
             rightIcon={SvgArrowRight}
             onClick={() => nextFormStep()}
           >
-            Advanced
+            {t("advancedButton")}
           </Button>
         )}
       </div>

@@ -178,7 +178,7 @@ export const GmailMain = ({
   return (
     <>
       <Title className="mb-2 mt-6 ml-auto mr-auto">
-        Step 1: Provide your Credentials
+        {t("googleCredentials.step1ProvideCredentials")}
       </Title>
       <GmailJsonUploadSection
         appCredentialData={appCredentialData}
@@ -193,7 +193,7 @@ export const GmailMain = ({
       {isAdmin && hasUploadedCredentials && (
         <>
           <Title className="mb-2 mt-6 ml-auto mr-auto">
-            Step 2: Authenticate with Onyx
+            {t("googleCredentials.step2Authenticate")}
           </Title>
           <GmailAuthSection
             refreshCredentials={handleRefresh}

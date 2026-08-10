@@ -154,7 +154,9 @@ const GDriveMain = () => {
 
   return (
     <>
-      <Title className="mb-2 mt-6">Step 1: Provide your Credentials</Title>
+      <Title className="mb-2 mt-6">
+        {t("googleCredentials.step1ProvideCredentials")}
+      </Title>
       <DriveJsonUploadSection
         appCredentialData={appCredentialData}
         serviceAccountCredentialData={serviceAccountKeyData}
@@ -170,7 +172,9 @@ const GDriveMain = () => {
         (appCredentialData?.client_id ||
           serviceAccountKeyData?.service_account_email) && (
           <>
-            <Title className="mb-2 mt-6">Step 2: Authenticate with Onyx</Title>
+            <Title className="mb-2 mt-6">
+              {t("googleCredentials.step2Authenticate")}
+            </Title>
             <DriveAuthSection
               refreshCredentials={handleRefresh}
               googleDrivePublicUploadedCredential={

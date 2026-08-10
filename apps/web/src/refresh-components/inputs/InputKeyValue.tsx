@@ -373,26 +373,11 @@ const KeyValueInput = ({
     ).length;
 
     if (duplicateCount > 0) {
-      return t(
-        duplicateCount === 1
-          ? "keyValueInput.duplicateKeysFound_one"
-          : "keyValueInput.duplicateKeysFound_other",
-        { count: duplicateCount }
-      );
+      return t("keyValueInput.duplicateKeysFound", { count: duplicateCount });
     } else if (emptyCount > 0) {
-      return t(
-        emptyCount === 1
-          ? "keyValueInput.emptyKeysFound_one"
-          : "keyValueInput.emptyKeysFound_other",
-        { count: emptyCount }
-      );
+      return t("keyValueInput.emptyKeysFound", { count: emptyCount });
     }
-    return t(
-      errorCount === 1
-        ? "keyValueInput.validationErrorsFound_one"
-        : "keyValueInput.validationErrorsFound_other",
-      { count: errorCount }
-    );
+    return t("keyValueInput.validationErrorsFound", { count: errorCount });
   }, [hasAnyError, errors, t]);
 
   // Notify parent of validation changes

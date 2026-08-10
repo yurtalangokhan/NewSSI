@@ -274,13 +274,7 @@ export default function UserFilesModal({
             {onPickRecent && (
               <Section flexDirection="row" justifyContent="start" gap={0.5}>
                 <Text as="p" text03>
-                  {selectedCount === 1
-                    ? t("app.userFiles.fileSelectedSingular", {
-                        count: selectedCount,
-                      })
-                    : t("app.userFiles.fileSelectedPlural", {
-                        count: selectedCount,
-                      })}
+                  {t("app.userFiles.fileSelected", { count: selectedCount })}
                 </Text>
                 <OpalButton
                   icon={SvgEye}

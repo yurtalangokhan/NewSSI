@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import useSWR from "swr";
 import Text from "@/refresh-components/texts/Text";
 import Button from "@/refresh-components/buttons/Button";
@@ -33,6 +34,9 @@ export default function ArtifactsTab({
   artifacts,
   sessionId,
 }: ArtifactsTabProps) {
+  const { t } = useTranslation("common", {
+    keyPrefix: "app.craft.artifactsTab",
+  });
   const webappArtifacts = artifacts.filter(
     (a) => a.type === "nextjs_app" || a.type === "web_app"
   );
@@ -130,10 +134,10 @@ export default function ArtifactsTab({
       >
         <SvgFiles size={48} className="stroke-text-02" />
         <Text headingH3 text03>
-          No artifacts yet
+          {t("noArtifactsYetTitle")}
         </Text>
         <Text secondaryBody text02>
-          Output files and web apps will appear here
+          {t("noArtifactsYetDescription")}
         </Text>
       </Section>
     );
@@ -156,7 +160,7 @@ export default function ArtifactsTab({
                   {artifact.name}
                 </Text>
                 <Text secondaryBody text02>
-                  Next.js Application
+                  {t("nextjsApplication")}
                 </Text>
               </div>
 
@@ -167,7 +171,7 @@ export default function ArtifactsTab({
                   leftIcon={SvgDownloadCloud}
                   onClick={handleWebappDownload}
                 >
-                  Download
+                  {t("downloadButton")}
                 </Button>
               </div>
             </div>
@@ -202,6 +206,9 @@ function OutputEntryRow({
   depth,
   onDownload,
 }: OutputEntryRowProps) {
+  const { t } = useTranslation("common", {
+    keyPrefix: "app.craft.artifactsTab",
+  });
   const [expanded, setExpanded] = useState(false);
   const [children, setChildren] = useState<FileSystemEntry[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -271,7 +278,7 @@ function OutputEntryRow({
               onDownload(entry.path, entry.is_directory);
             }}
           >
-            Download
+            {t("downloadButton")}
           </Button>
         </div>
       </div>

@@ -393,11 +393,19 @@ function Main() {
   }
 
   if (documentSetsError || !documentSets) {
-    return <div>Error: {documentSetsError}</div>;
+    return (
+      <div>
+        {t("common.error")}: {documentSetsError}
+      </div>
+    );
   }
 
   if (editableDocumentSetsError || !editableDocumentSets) {
-    return <div>Error: {editableDocumentSetsError}</div>;
+    return (
+      <div>
+        {t("common.error")}: {editableDocumentSetsError}
+      </div>
+    );
   }
 
   return (

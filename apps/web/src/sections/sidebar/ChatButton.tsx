@@ -458,7 +458,7 @@ const ChatButton = memo(
       <>
         {deleteConfirmationModalOpen && (
           <ConfirmationModalLayout
-            title="Delete Chat"
+            title={t("sidebar.deleteChatTitle")}
             icon={SvgTrash}
             onClose={() => setDeleteConfirmationModalOpen(false)}
             submit={
@@ -469,12 +469,11 @@ const ChatButton = memo(
                   handleChatDelete();
                 }}
               >
-                Delete
+                {t("sidebar.deleteButton")}
               </Button>
             }
           >
-            Are you sure you want to delete this chat? This action cannot be
-            undone.
+            {t("sidebar.deleteChatConfirmation")}
           </ConfirmationModalLayout>
         )}
 

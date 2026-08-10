@@ -139,7 +139,7 @@ export default function UpgradingPage({
               <div>{t("admin.searchUpgrading.cancelBody")}</div>
             </Modal.Body>
             <Modal.Footer>
-              <Button onClick={onCancel}>Confirm</Button>
+              <Button onClick={onCancel}>{t("modals.confirm")}</Button>
               <Button onClick={() => setIsCancelling(false)} secondary>
                 {t("admin.searchUpgrading.cancelButton")}
               </Button>

@@ -247,8 +247,9 @@ export default function OAuthCallbackPage({ config }: OAuthCallbackPageProps) {
             {isSuccess && secondsLeft !== null && (
               <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 mb-6">
                 <p className="text-green-800 dark:text-green-200 text-sm">
-                  Redirecting in {secondsLeft}{" "}
-                  {secondsLeft === 1 ? "second" : "seconds"}...
+                  {t("auth.oauthCallback.redirectingInSeconds", {
+                    count: secondsLeft,
+                  })}
                 </p>
               </div>
             )}

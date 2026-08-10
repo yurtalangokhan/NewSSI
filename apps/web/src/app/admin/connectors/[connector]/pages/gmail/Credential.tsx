@@ -363,7 +363,7 @@ export const GmailJsonUploadSection = ({
                   }
                 }}
               >
-                Delete Credentials
+                {t("googleCredentials.deleteCredentials")}
               </Button>
             </div>
           )}
@@ -489,7 +489,7 @@ export const GmailAuthSection = ({
                 primary
                 onClick={() => onCredentialCreated(existingCredential)}
               >
-                Continue
+                {t("googleCredentials.continue")}
               </Button>
             )}
           </Section>

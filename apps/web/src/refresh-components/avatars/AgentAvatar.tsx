@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import { MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
 import { buildImgUrl } from "@/app/app/components/files/images/utils";
 import {
@@ -18,11 +19,12 @@ export default function AgentAvatar({
   size = DEFAULT_AGENT_AVATAR_SIZE_PX,
   ...props
 }: AgentAvatarProps) {
+  const { t } = useTranslation("common", { keyPrefix: "common" });
   if (agent.id === DEFAULT_AGENT_ID) {
     return (
       <img
         src="/logo.single.svg"
-        alt="Agent Logo"
+        alt={t("agentLogoAlt")}
         className="shrink-0"
         style={{ width: size, height: size }}
         draggable={false}

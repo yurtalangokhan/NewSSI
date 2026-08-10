@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { motion } from "motion/react";
 import { usePostHog } from "posthog-js/react";
 import { OnyxLogoTypeIcon } from "@/components/icons/icons";
@@ -16,6 +17,9 @@ export default function BuildModeIntroContent({
   onClose,
   onTryBuildMode,
 }: BuildModeIntroContentProps) {
+  const { t } = useTranslation("common", {
+    keyPrefix: "app.craft.introContent",
+  });
   const posthog = usePostHog();
 
   // Track when user sees the craft intro
@@ -58,7 +62,7 @@ export default function BuildModeIntroContent({
                   className="pointer-events-none absolute top-3 -right-14 text-[1em] uppercase tracking-[0.2em] !text-white"
                   style={{ fontFamily: "var(--font-kh-teka)", fontWeight: 500 }}
                 >
-                  BETA
+                  {t("betaBadge")}
                 </span>
               </div>
             </div>

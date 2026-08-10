@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Formik, Form, useFormikContext } from "formik";
 import { Section } from "@/layouts/general-layouts";
 import Button from "@/refresh-components/buttons/Button";
@@ -30,6 +31,7 @@ function ConnectorConfigForm({
   onSuccess,
   onBack,
 }: ConnectorConfigStepProps) {
+  const { t } = useTranslation();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { values } = useFormikContext<Record<string, any>>();
   const { user } = useUser();
@@ -96,7 +98,7 @@ function ConnectorConfigForm({
           ))}
         <Section flexDirection="row" justifyContent="between" height="fit">
           <Button secondary onClick={onBack} disabled={isSubmitting}>
-            Back
+            {t("admin.craftConfigureConnector.backButton")}
           </Button>
           <Button
             primary

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AdminPageTitle } from "@/components/admin/Title";
 import { getSourceMetadata, isValidSource } from "@/lib/sources";
@@ -9,17 +10,20 @@ import CardSection from "@/components/admin/CardSection";
 import { handleOAuthAuthorizationResponse } from "@/lib/oauth_utils";
 import { SvgKey } from "@opal/icons";
 export default function OAuthCallbackPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const [statusMessage, setStatusMessage] = useState("Processing...");
+  const [statusMessage, setStatusMessage] = useState(
+    t("auth.oauthCallback.processing")
+  );
   const [statusDetails, setStatusDetails] = useState(
-    "Please wait while we complete the setup."
+    t("auth.oauthCallback.federatedProcessingDetails")
   );
   const [redirectUrl, setRedirectUrl] = useState<string | null>(null);
   const [isError, setIsError] = useState(false);
   const [pageTitle, setPageTitle] = useState(
-    "Authorize with Third-Party service"
+    t("admin.connectorOAuth.authorizeThirdPartyTitle")
   );
 
   // Extract query parameters
@@ -120,11 +124,11 @@ export default function OAuthCallbackPage() {
           {redirectUrl && !isError && (
             <div className="mt-4">
               <p className="text-sm">
-                Click{" "}
+                {t("admin.connectorOAuth.clickPrefix")}{" "}
                 <a href={redirectUrl} className="text-blue-500 underline">
-                  here
+                  {t("admin.connectorOAuth.hereLink")}
                 </a>{" "}
-                to continue.
+                {t("admin.connectorOAuth.toContinueSuffix")}
               </p>
             </div>
           )}

@@ -314,7 +314,7 @@ export default function ExpandableTextDisplay({
               prominence="tertiary"
               size="sm"
               icon={SvgMaximize2}
-              tooltip={t("viewFullText")}
+              tooltip={t("common.viewFullText")}
               onClick={() => setIsModalOpen(true)}
             />
           )}

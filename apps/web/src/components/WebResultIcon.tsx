@@ -3,6 +3,7 @@
 import { ValidSources } from "@/lib/types";
 import { SourceIcon } from "./SourceIcon";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { OnyxIcon } from "./icons/icons";
 
 export function WebResultIcon({
@@ -12,6 +13,7 @@ export function WebResultIcon({
   url: string;
   size?: number;
 }) {
+  const { t } = useTranslation("common", { keyPrefix: "common" });
   const [error, setError] = useState(false);
   let hostname;
   try {
@@ -27,7 +29,7 @@ export function WebResultIcon({
         <img
           className="my-0 rounded-full py-0"
           src={`https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://${hostname}&size=128`}
-          alt="favicon"
+          alt={t("faviconAlt")}
           height={size}
           onError={() => setError(true)}
           width={size}

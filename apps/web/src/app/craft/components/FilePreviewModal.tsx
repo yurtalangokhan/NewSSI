@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import Modal from "@/refresh-components/Modal";
 import Text from "@/refresh-components/texts/Text";
 import Button from "@/refresh-components/buttons/Button";
@@ -19,6 +20,9 @@ export default function FilePreviewModal({
   entry,
   onClose,
 }: FilePreviewModalProps) {
+  const { t } = useTranslation("common", {
+    keyPrefix: "app.craft.filePreviewModal",
+  });
   const [content, setContent] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -90,11 +94,11 @@ export default function FilePreviewModal({
         <Modal.Footer>
           <a href={downloadUrl} download={entry.name}>
             <Button action secondary leftIcon={SvgDownloadCloud}>
-              Download
+              {t("downloadButton")}
             </Button>
           </a>
           <Button action primary onClick={onClose}>
-            Close
+            {t("closeButton")}
           </Button>
         </Modal.Footer>
       </Modal.Content>

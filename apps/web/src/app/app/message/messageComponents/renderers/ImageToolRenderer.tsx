@@ -115,7 +115,7 @@ export const ImageToolRenderer: MessageRenderer<
               ) : (
                 <div className="py-4 text-center text-gray-500 dark:text-gray-400 ml-7">
                   <SvgImage className="w-6 h-6 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">No images generated</p>
+                  <p className="text-sm">{t("timeline.noImagesGenerated")}</p>
                 </div>
               )}
             </div>
@@ -195,10 +195,12 @@ export const ImageToolRenderer: MessageRenderer<
   return children([
     {
       icon: SvgImage,
-      status: "Image generation",
+      status: t("timeline.imageGenerationLabel"),
       supportsCollapsible: false,
       content: (
-        <div className="text-sm text-muted-foreground">Image generation</div>
+        <div className="text-sm text-muted-foreground">
+          {t("timeline.imageGenerationLabel")}
+        </div>
       ),
     },
   ]);

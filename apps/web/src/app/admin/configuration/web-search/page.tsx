@@ -1550,10 +1550,10 @@ export default function Page() {
             searchModal.message.text
           ) : searchModal.phase === "validating" ||
             searchModal.phase === "saving" ? (
-            "Checking connection..."
+            t("admin.webSearch.checkingConnection")
           ) : (
             <>
-              Paste your{" "}
+              {t("admin.webSearch.pasteApiKeyPrefix")}{" "}
               <a
                 href={
                   (selectedProviderType
@@ -1564,9 +1564,9 @@ export default function Page() {
                 rel="noopener noreferrer"
                 className="underline"
               >
-                API key
+                {t("admin.webSearch.apiKeyLinkText")}
               </a>{" "}
-              to access your search engine.
+              {t("admin.webSearch.pasteApiKeySuffix")}
             </>
           )
         }

@@ -100,12 +100,9 @@ export function BuiltinOllamaPanelView({
             <Text text03>{t("versionLabel", { version: status.version })}</Text>
           )}
           <Text text03>
-            {t(
-              (models.length || status?.model_count || 0) === 1
-                ? "modelsCount_one"
-                : "modelsCount_other",
-              { count: models.length || status?.model_count || 0 }
-            )}
+            {t("modelsCount", {
+              count: models.length || status?.model_count || 0,
+            })}
           </Text>
         </div>
 

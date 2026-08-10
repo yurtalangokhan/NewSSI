@@ -31,7 +31,10 @@ export const IsPublicGroupSelector = <T extends IsPublicGroupSelectorFormType>({
   enforceGroupSelection?: boolean;
   smallLabels?: boolean;
 }) => {
-  const { t } = useTranslation();
+  const { t } = useTranslation("common", {
+    keyPrefix: "isPublicGroupSelector",
+  });
+  const { t: tCommon } = useTranslation();
   const isPaidEnterpriseFeaturesEnabled =
     usePaidEnterpriseFeaturesEnabled();
   const { user } = useUser();
@@ -67,7 +70,7 @@ export const IsPublicGroupSelector = <T extends IsPublicGroupSelectorFormType>({
   }, [user, userGroups, isPaidEnterpriseFeaturesEnabled, canManagePublicAccess]);
 
   if (userGroupsIsLoading) {
-    return <div>{t("common.loading")}</div>;
+    return <div>{tCommon("common.loading")}</div>;
   }
   if (!isPaidEnterpriseFeaturesEnabled) {
     return null;
@@ -86,7 +89,7 @@ export const IsPublicGroupSelector = <T extends IsPublicGroupSelectorFormType>({
       <>
         {userGroups && (
           <div className="mb-1 font-medium text-base">
-            This {objectName} will be assigned to group{" "}
+            {t("assignedToGroup", { objectName })}{" "}
             <b>{firstUserGroupName}</b>.
           </div>
         )}
@@ -104,16 +107,17 @@ export const IsPublicGroupSelector = <T extends IsPublicGroupSelectorFormType>({
             small={smallLabels}
             label={
               publicToWhom === "Curators"
-                ? `Make this ${objectName} Curator Accessible?`
-                : `Make this ${objectName} Public?`
+                ? t("makeCuratorAccessible", { objectName })
+                : t("makePublic", { objectName })
             }
             disabled={!isAdmin}
             subtext={
               <span className="block mt-2 text-sm text-text-600 dark:text-neutral-400">
-                If set, then this {objectName} will be usable by{" "}
-                <b>All {publicToWhom}</b>. Otherwise, only <b>Admins</b> and{" "}
-                <b>{publicToWhom}</b> who have explicitly been given access to
-                this {objectName} (e.g. via a User Group) will have access.
+                {t("usableByAllPrefix", { objectName })}{" "}
+                <b>{t("allPublicToWhom", { publicToWhom })}</b>.{" "}
+                {t("usableByAllSuffix")} <b>{t("adminsLabel")}</b>{" "}
+                {t("andLabel")} <b>{publicToWhom}</b>{" "}
+                {t("accessDescriptionSuffix", { objectName })}
               </span>
             }
           />
@@ -122,14 +126,14 @@ export const IsPublicGroupSelector = <T extends IsPublicGroupSelectorFormType>({
 
       <GroupsMultiSelect
         formikProps={formikProps}
-        label={`Assign group access for this ${objectName}`}
+        label={t("assignGroupAccessLabel", { objectName })}
         subtext={
           isAdmin || !enforceGroupSelection
-            ? `This ${objectName} will be visible/accessible by the groups selected below`
-            : `Curators must select one or more groups to give access to this ${objectName}`
+            ? t("visibleByGroupsSubtext", { objectName })
+            : t("curatorsMustSelectSubtext", { objectName })
         }
-        disabled={formikProps.values.is_public && !isCurator}
-        disabledMessage={`This ${objectName} is public and available to all users.`}
+        disabled={formikProps.values.is_public && !isAdmin}
+        disabledMessage={t("publicDisabledMessage", { objectName })}
       />
     </div>
   );

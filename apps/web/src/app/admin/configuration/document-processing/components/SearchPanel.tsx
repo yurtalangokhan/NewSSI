@@ -17,6 +17,9 @@ interface SearchPanelProps {
 }
 
 function ScoreBadge({ score }: { score: number }) {
+  const { t } = useTranslation("common", {
+    keyPrefix: "admin.documentProcessing.searchPanel",
+  });
   const pct = Math.round(score * 100);
   const color =
     pct >= 80
@@ -32,7 +35,7 @@ function ScoreBadge({ score }: { score: number }) {
         color
       )}
     >
-      {pct}% match
+      {t("matchLabel", { percent: pct })}
     </span>
   );
 }
