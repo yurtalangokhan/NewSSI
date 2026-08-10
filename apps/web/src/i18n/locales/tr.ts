@@ -1601,8 +1601,7 @@ const tr = {
     waitingForResponse: "Yanıt bekleniyor...",
   },
   generatedFile: {
-    downloadButton: "İndir",
-    downloadAriaLabel: "{{filename}} dosyasını indir",
+    openAriaLabel: "{{filename}} dosyasını aç",
   },
   sharedChat: {
     notFoundTitle: "Paylaşılan Sohbet Bulunamadı",

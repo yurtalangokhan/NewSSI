@@ -1595,8 +1595,7 @@ const en = {
     waitingForResponse: "Waiting for response...",
   },
   generatedFile: {
-    downloadButton: "Download",
-    downloadAriaLabel: "Download {{filename}}",
+    openAriaLabel: "Open {{filename}}",
   },
   sharedChat: {
     notFoundTitle: "Shared Chat Not Found",

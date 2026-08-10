@@ -431,9 +431,13 @@ are always present unless `DOCUMENT_TOOLS_ENABLED=false` (see
   (`controller/chat_controller.py`) recognize this via the shared
   `service/GeneratedFilePacket.py` helpers and emit a `generated_file` SSE
   packet (`type: "generated_file"`) alongside the existing `custom_tool_delta`
-  timeline packet. The frontend renders it as an inline download card in the
+  timeline packet. The frontend renders it as an inline file card in the
   message body (`GeneratedFileRenderer.tsx`), not inside the collapsible tool
-  timeline.
+  timeline. Clicking the card opens the same shared file-preview modal used
+  for uploaded chat files (`sections/modals/TextViewModal.tsx`, keyed by
+  `file_id`) rather than downloading directly — the modal has its own
+  download action. The `?download=1` variant exists for callers that need a
+  forced attachment response directly.
 
 ---
 

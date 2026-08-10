@@ -1,15 +1,26 @@
 import { render, screen } from "@tests/setup/test-utils";
+import userEvent from "@testing-library/user-event";
 import { GeneratedFileRenderer } from "@/app/app/message/messageComponents/renderers/GeneratedFileRenderer";
 import { RenderType } from "@/app/app/message/messageComponents/interfaces";
 import {
   GeneratedFilePacket,
   PacketType,
 } from "@/app/app/services/streamingModels";
+import { MinimalOnyxDocument } from "@/lib/search/interfaces";
 
 jest.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (_key: string, fallback?: string) => fallback ?? _key,
   }),
+}));
+
+const textViewModalSpy = jest.fn();
+jest.mock("@/sections/modals/TextViewModal", () => ({
+  __esModule: true,
+  default: (props: { presentingDocument: MinimalOnyxDocument; onClose: () => void }) => {
+    textViewModalSpy(props);
+    return <div data-testid="text-view-modal">preview open</div>;
+  },
 }));
 
 function makePacket(
@@ -29,89 +40,79 @@ function makePacket(
   };
 }
 
+function renderCard(packets: GeneratedFilePacket[], onComplete = jest.fn()) {
+  return render(
+    <GeneratedFileRenderer
+      packets={packets}
+      state={{}}
+      onComplete={onComplete}
+      renderType={RenderType.FULL}
+      animate={false}
+      stopPacketSeen={true}
+    >
+      {(results) => (
+        <>
+          {results.map((r, i) => (
+            <div key={i}>{r.content}</div>
+          ))}
+        </>
+      )}
+    </GeneratedFileRenderer>
+  );
+}
+
 describe("GeneratedFileRenderer", () => {
-  test("renders filename, human-readable size, and a download link", () => {
-    render(
-      <GeneratedFileRenderer
-        packets={[makePacket()]}
-        state={{}}
-        onComplete={jest.fn()}
-        renderType={RenderType.FULL}
-        animate={false}
-        stopPacketSeen={true}
-      >
-        {(results) => (
-          <>
-            {results.map((r, i) => (
-              <div key={i}>{r.content}</div>
-            ))}
-          </>
-        )}
-      </GeneratedFileRenderer>
-    );
+  beforeEach(() => {
+    textViewModalSpy.mockClear();
+  });
+
+  test("renders filename and human-readable size", () => {
+    renderCard([makePacket()]);
 
     expect(screen.getByText("rapor.pdf")).toBeInTheDocument();
     expect(screen.getByText("24 KB")).toBeInTheDocument();
+  });
 
-    const link = screen.getByRole("link");
-    expect(link).toHaveAttribute("href", "/api/chat/file/abc123?download=1");
+  test("does not render a raw download link — opening is via the file-preview modal", () => {
+    renderCard([makePacket()]);
+
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+  });
+
+  test("opens the shared file-preview modal (same as uploaded files) when clicked, without downloading", async () => {
+    const user = userEvent.setup();
+    renderCard([makePacket()]);
+
+    expect(screen.queryByTestId("text-view-modal")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button"));
+
+    expect(screen.getByTestId("text-view-modal")).toBeInTheDocument();
+    expect(textViewModalSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        presentingDocument: {
+          document_id: "abc123",
+          semantic_identifier: "rapor.pdf",
+        },
+      })
+    );
   });
 
   test("finds the file packet even when a trailing SECTION_END packet is appended", () => {
-    // packetProcessor.ts appends a synthetic SECTION_END to the group once the
-    // turn closes — the real-world shape is never a single lone packet.
     const sectionEndPacket = {
       placement: { turn_index: 0, tab_index: 0 },
       obj: { type: PacketType.SECTION_END },
     } as unknown as GeneratedFilePacket;
 
-    render(
-      <GeneratedFileRenderer
-        packets={[makePacket(), sectionEndPacket]}
-        state={{}}
-        onComplete={jest.fn()}
-        renderType={RenderType.FULL}
-        animate={false}
-        stopPacketSeen={true}
-      >
-        {(results) => (
-          <>
-            {results.map((r, i) => (
-              <div key={i}>{r.content}</div>
-            ))}
-          </>
-        )}
-      </GeneratedFileRenderer>
-    );
+    renderCard([makePacket(), sectionEndPacket]);
 
     expect(screen.getByText("rapor.pdf")).toBeInTheDocument();
     expect(screen.queryByText("Unknown")).not.toBeInTheDocument();
-
-    const link = screen.getByRole("link");
-    expect(link).toHaveAttribute("href", "/api/chat/file/abc123?download=1");
   });
 
   test("calls onComplete immediately since the file is already fully known", () => {
     const onComplete = jest.fn();
-
-    render(
-      <GeneratedFileRenderer
-        packets={[makePacket()]}
-        state={{}}
-        onComplete={onComplete}
-        renderType={RenderType.FULL}
-        animate={false}
-        stopPacketSeen={true}
-      >
-        {(results) => (
-          <>
-            {results.map((r, i) => (
-              <div key={i}>{r.content}</div>
-            ))}
-          </>
-        )}
-      </GeneratedFileRenderer>
-    );
+    renderCard([makePacket()], onComplete);
 
     expect(onComplete).toHaveBeenCalledTimes(1);
   });
