@@ -155,6 +155,15 @@ the canonical `/api/v1` paths documented here.
 
 The `send-chat-message` endpoint handles: base64 file descriptors, LLM provider resolution (fetches provider API keys, base URLs), MinIO persistence, thread ownership checks.
 
+Chat session list and detail responses include `time_created`, `time_updated`,
+`last_message_at`, and `last_accessed_at`. Use `last_message_at` for
+conversation activity ordering. If the field is present and `null`, the session
+has no accepted user-message activity and orders by `time_created`. Use
+`last_accessed_at` only for read telemetry; opening a chat must not move it in
+Recents or project chat lists. The list endpoints accept `page_size`,
+`before_activity`, and `before_id` for activity-keyset pagination and return
+`next_cursor` with the same cursor field names when another page is available.
+
 ---
 
 ## Threads
@@ -414,6 +423,10 @@ include `filename`, `mime_type`, and `content_base64`.
 | GET    | `/api/v1/user/projects/{project_id}/token-count`       | `project:read`   | Get token count                       |
 | POST   | `/api/v1/user/projects/{project_id}/move_chat_session` | `project:update` | Move session to project               |
 | POST   | `/api/v1/user/projects/remove_chat_session`            | `project:update` | Remove session from project           |
+
+Project responses embed chat sessions with the same timestamp fields as the
+chat session list. Project chat ordering follows `last_message_at` activity,
+not `last_accessed_at` or read-time metadata updates.
 
 ---
 
