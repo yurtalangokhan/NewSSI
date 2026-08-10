@@ -22,7 +22,7 @@ router = APIRouter(prefix="", tags=["user-organizations"])
 async def get_organization_users(
     org_id: str,
     _user_id: Annotated[str, Depends(require_permission("org:read"))],
-    role_in_org: str | None = Query(None, pattern="^(unit_manager|member|viewer)$"),
+    role_in_org: str | None = Query(None, min_length=1, max_length=100),
     include_inactive: bool = False,
 ):
     """Get users in organization."""

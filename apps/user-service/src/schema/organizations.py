@@ -36,14 +36,14 @@ class UserOrganizationAssignRequest(BaseModel):
     """Request to assign user to organization."""
 
     user_id: uuid.UUID
-    role_in_org: str = Field(..., pattern="^(unit_manager|member|viewer)$")
+    role_in_org: str = Field(..., min_length=1, max_length=100)
     is_primary: bool = False
 
 
 class UserOrganizationUpdateRequest(BaseModel):
     """Request to update user-organization relationship."""
 
-    role_in_org: str | None = Field(None, pattern="^(unit_manager|member|viewer)$")
+    role_in_org: str | None = Field(None, min_length=1, max_length=100)
     is_active: bool | None = None
 
 
@@ -102,4 +102,4 @@ class BulkUserAssignRequest(BaseModel):
     """Request for bulk user assignment."""
 
     user_ids: list[uuid.UUID] = Field(..., min_length=1, max_length=100)
-    role_in_org: str = Field(default="member", pattern="^(unit_manager|member|viewer)$")
+    role_in_org: str = Field(default="member", min_length=1, max_length=100)

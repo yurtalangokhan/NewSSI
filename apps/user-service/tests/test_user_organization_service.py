@@ -12,6 +12,7 @@ from src.api.dependencies import require_auth
 from src.api.routes import user_organizations_route
 from src.core.database.models import OrganizationModel
 from src.core.exceptions import ConflictError, ForbiddenError
+from src.repository.user_organization_repository import UserOrganizationRepository
 from src.service.organization_service import OrganizationService
 from src.service.user_organization_service import UserOrganizationService
 
@@ -128,7 +129,101 @@ async def test_membership_mutations_reject_actor_outside_managed_subtree(
 
     service.repo.create.assert_not_called()
     service.repo.update.assert_not_called()
-    service.repo.delete.assert_not_called()
+    service.repo.delete_and_cleanup_orphan_permissions.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("remaining_memberships", "deleted_permissions"),
+    [(1, 0), (0, 3)],
+)
+async def test_membership_removal_atomically_cleans_only_orphaned_user_permissions(
+    remaining_memberships: int, deleted_permissions: int
+) -> None:
+    """The repository preserves grants until the final active membership is removed."""
+    repository = UserOrganizationRepository()
+    session = AsyncMock()
+    lock_result = MagicMock()
+    membership_delete_result = MagicMock(rowcount=1)
+    count_result = MagicMock()
+    count_result.scalar_one.return_value = remaining_memberships
+    permission_delete_result = MagicMock(rowcount=deleted_permissions)
+    session.execute.side_effect = [
+        lock_result,
+        membership_delete_result,
+        count_result,
+        permission_delete_result,
+    ]
+    context = AsyncMock()
+    context.__aenter__.return_value = session
+    repository._session = MagicMock(return_value=context)
+
+    result = await repository.delete_and_cleanup_orphan_permissions(uuid.uuid4(), uuid.uuid4())
+
+    assert result == (True, deleted_permissions)
+    expected_execute_count = 4 if remaining_memberships == 0 else 3
+    assert session.execute.await_count == expected_execute_count
+    if remaining_memberships == 0:
+        cleanup_statement = str(session.execute.await_args_list[3].args[0])
+        assert "resource_permissions.user_id" in cleanup_statement
+        assert "resource_permissions.organization_id" not in cleanup_statement
+
+
+async def test_assignment_accepts_authoritative_composite_role(
+    service: UserOrganizationService,
+) -> None:
+    """Organization membership accepts a role exposed by the shared role catalog."""
+    actor_id = uuid.uuid4()
+    target_user_id = uuid.uuid4()
+    org_id = uuid.uuid4()
+    service.can_manage_organization = AsyncMock(return_value=True)
+    service.user_repo.get_by_id = AsyncMock(return_value=SimpleNamespace(id=target_user_id))
+    service.org_repo.get_by_id = AsyncMock(return_value={"id": org_id})
+    service.repo.get_by_user_and_org = AsyncMock(return_value=None)
+    service.role_repo.get_by_name = AsyncMock(return_value=SimpleNamespace(name="enterprise-admin"))
+    service.repo.create = AsyncMock(return_value={"role_in_org": "enterprise-admin"})
+
+    result = await service.assign_user_to_organization(
+        target_user_id,
+        org_id,
+        role_in_org="enterprise-admin",
+        assigned_by=actor_id,
+    )
+
+    assert result["role_in_org"] == "enterprise-admin"
+    service.role_repo.get_by_name.assert_awaited_once_with("enterprise-admin")
+
+
+@pytest.mark.parametrize("role_name", ["member", "viewer", "invented-role"])
+async def test_role_update_rejects_role_missing_from_catalog(
+    service: UserOrganizationService, role_name: str
+) -> None:
+    """Legacy and arbitrary client-supplied role names are not persisted."""
+    actor_id = uuid.uuid4()
+    target_user_id = uuid.uuid4()
+    org_id = uuid.uuid4()
+    service.can_manage_organization = AsyncMock(return_value=True)
+    service.repo.get_by_user_and_org = AsyncMock(
+        return_value={"id": uuid.uuid4(), "is_active": True}
+    )
+    service.role_repo.get_by_name = AsyncMock(return_value=None)
+
+    with pytest.raises(ValueError, match=f"Unknown organization role '{role_name}'"):
+        await service.update_user_organization_role(
+            target_user_id,
+            org_id,
+            role_name,
+            actor_id=actor_id,
+        )
+
+    service.repo.update.assert_not_called()
+
+
+async def test_unit_manager_remains_an_organization_specific_role(
+    service: UserOrganizationService,
+) -> None:
+    """Unit manager is valid without becoming a global platform role."""
+    await service._require_valid_organization_role("unit_manager")
+    service.role_repo.get_by_name.assert_not_called()
 
 
 async def test_organization_service_rejects_a_second_root_organization() -> None:
@@ -185,6 +280,36 @@ def test_membership_route_forwards_actor_and_translates_scope_denial(monkeypatch
         user_id=target_user_id,
         organization_id=organization_id,
         role_in_org="unit_manager",
+        is_primary=False,
+        assigned_by=actor_id,
+    )
+
+
+def test_membership_route_accepts_bounded_catalog_role_name(monkeypatch) -> None:
+    """Request validation permits dynamic role names for service-level validation."""
+    actor_id = uuid.uuid4()
+    target_user_id = uuid.uuid4()
+    organization_id = uuid.uuid4()
+    service = MagicMock()
+    service.assign_user_to_organization = AsyncMock(
+        return_value={"role_in_org": "enterprise-admin"}
+    )
+    monkeypatch.setattr(user_organizations_route, "get_user_organization_service", lambda: service)
+
+    app = FastAPI()
+    app.include_router(user_organizations_route.router)
+    app.dependency_overrides[require_auth] = lambda: str(actor_id)
+
+    response = TestClient(app).post(
+        f"/organizations/{organization_id}/users",
+        json={"user_id": str(target_user_id), "role_in_org": "enterprise-admin"},
+    )
+
+    assert response.status_code == 200
+    service.assign_user_to_organization.assert_awaited_once_with(
+        user_id=target_user_id,
+        organization_id=organization_id,
+        role_in_org="enterprise-admin",
         is_primary=False,
         assigned_by=actor_id,
     )

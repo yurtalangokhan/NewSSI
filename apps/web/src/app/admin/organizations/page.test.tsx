@@ -5,6 +5,17 @@ import { render, setupUser } from "@tests/setup/test-utils";
 
 let managementEditable = false;
 
+jest.mock("react-i18next", () => ({
+  useTranslation: () => ({
+    t: (key: string) =>
+      ({
+        "admin.users.roles.enduser": "End User",
+        "admin.users.roles.enterprise-admin": "Enterprise Admin",
+        "admin.users.roles.system-admin": "System Admin",
+      })[key] ?? key,
+  }),
+}));
+
 jest.mock("swr", () => ({
   ...jest.requireActual("swr"),
   __esModule: true,
@@ -43,6 +54,18 @@ jest.mock("swr", () => ({
     }
     if (key?.endsWith("/management-capability")) {
       return { data: { editable: managementEditable }, isLoading: false };
+    }
+    if (key === "/api/user-service/roles") {
+      return {
+        data: {
+          roles: [
+            { name: "enduser" },
+            { name: "enterprise-admin" },
+            { name: "system-admin" },
+          ],
+        },
+        isLoading: false,
+      };
     }
     return { data: undefined, isLoading: false };
   }),
@@ -149,7 +172,7 @@ describe("OrganizationsPage", () => {
       screen.getByRole("combobox", { name: "Role for member@example.com" })
     );
     await user.click(
-      (await screen.findAllByRole("option", { name: "Unit manager" }))[0]!
+      (await screen.findAllByRole("option", { name: "Birim Yöneticisi" }))[0]!
     );
 
     await waitFor(() => {
@@ -161,5 +184,30 @@ describe("OrganizationsPage", () => {
         })
       );
     });
+  });
+
+  it("uses the Users page role catalog plus Birim Yöneticisi", async () => {
+    managementEditable = true;
+    const user = setupUser();
+    render(<OrganizationsPage />);
+    await user.click(screen.getByRole("button", { name: "Select Platform" }));
+    await user.click(screen.getByRole("button", { name: "Add user" }));
+    await user.click(screen.getByRole("combobox", { name: "New member role" }));
+
+    expect(
+      screen.getByRole("option", { name: "End User" })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("option", { name: "Enterprise Admin" })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("option", { name: "System Admin" })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("option", { name: "Birim Yöneticisi" })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("option", { name: "Viewer" })
+    ).not.toBeInTheDocument();
   });
 });

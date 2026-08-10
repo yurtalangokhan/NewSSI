@@ -236,6 +236,16 @@ Enterprise administrators can manage the full tree. A member with the
 `unit_manager` organization role can manage membership, organization roles,
 and direct resource access for their own unit and its descendants.
 
+Organization membership role selectors reuse the authoritative composite-role
+catalog returned by `GET /api/v1/roles` and add the organization-specific
+`unit_manager` value. Membership writes accept a current composite-role name or
+`unit_manager`. The UI displays that special value as **Birim Yöneticisi**.
+Other values, including `member` and `viewer`, must exist in the catalog.
+Unknown role names return `400`. A catalog role stored in
+`role_in_org` does not grant enterprise-wide administrator scope—only an
+actor's platform role or an explicit `unit_manager` membership affects
+organization-management scope.
+
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
 | GET | `/api/v1/organizations` | JWT | List organizations |
@@ -256,6 +266,13 @@ an active member of that organization. The scoped `PUT` synchronizes the
 submitted direct grants atomically: omitted grants are revoked, existing grants
 are updated, and new grants are created. Parent-unit permissions are not
 inherited by child units or their users.
+
+Membership deletion and orphan cleanup are atomic. Removing a user from one
+unit preserves their direct agent, collection, and other user-target resource
+permissions while they retain another active organization membership. Removing
+their final active membership deletes all `resource_permissions` rows targeted
+to that user. Permissions targeted to organizations or other users and the
+permission audit history are not deleted.
 
 Scope violations return `403`, invalid targets return `400`, and missing
 organizations return `404`. A concurrent attempt to create a second root

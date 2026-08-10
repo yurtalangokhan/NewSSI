@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import useSWR, { mutate } from "swr";
 
 import SvgOrganization from "@opal/icons/organization";
@@ -32,7 +33,7 @@ interface OrganizationMember {
   id: string;
   user_id: string;
   organization_id: string;
-  role_in_org: "viewer" | "member" | "unit_manager";
+  role_in_org: string;
   is_active?: boolean;
   user?: {
     id: string;
@@ -48,14 +49,9 @@ interface AvailableUser {
   email: string;
 }
 
-const ROLE_OPTIONS: Array<{
-  value: OrganizationMember["role_in_org"];
-  label: string;
-}> = [
-  { value: "viewer", label: "Viewer" },
-  { value: "member", label: "Member" },
-  { value: "unit_manager", label: "Unit manager" },
-];
+interface RoleCatalogResponse {
+  roles: Array<{ name: string }>;
+}
 
 const DEFAULT_TREE_PANE_WIDTH = 480;
 const MIN_TREE_PANE_WIDTH = 320;
@@ -491,15 +487,26 @@ function UserAssignmentsPanel({
   onRemove: (userId: string) => Promise<void>;
   editable: boolean;
 }) {
+  const { t } = useTranslation();
   const [showAddUser, setShowAddUser] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState("");
-  const [selectedRole, setSelectedRole] =
-    useState<OrganizationMember["role_in_org"]>("member");
+  const [selectedRole, setSelectedRole] = useState("unit_manager");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { data: rolesData, isLoading: rolesLoading } =
+    useSWR<RoleCatalogResponse>("/api/user-service/roles", fetchJson);
   const { data: usersData } = useSWR<{ users: AvailableUser[]; total: number }>(
     showAddUser ? "/api/user-service/users/" : null,
     fetchJson
   );
+  const roleOptions = [
+    ...(rolesData?.roles ?? [])
+      .filter((role) => role.name !== "unit_manager")
+      .map((role) => ({
+        value: role.name,
+        label: t(`admin.users.roles.${role.name}`),
+      })),
+    { value: "unit_manager", label: "Birim Yöneticisi" },
+  ];
 
   async function submitUser() {
     if (!selectedUserId) return;
@@ -508,7 +515,7 @@ function UserAssignmentsPanel({
       await onAdd(selectedUserId, selectedRole);
       setShowAddUser(false);
       setSelectedUserId("");
-      setSelectedRole("member");
+      setSelectedRole("unit_manager");
       toast.success("Member added");
     } catch (error) {
       toast.error(
@@ -574,13 +581,12 @@ function UserAssignmentsPanel({
             </Text>
             <InputSelect
               value={selectedRole}
-              onValueChange={(value) =>
-                setSelectedRole(value as OrganizationMember["role_in_org"])
-              }
+              onValueChange={setSelectedRole}
+              disabled={rolesLoading}
             >
               <InputSelect.Trigger aria-label="New member role" />
               <InputSelect.Content>
-                {ROLE_OPTIONS.map((role) => (
+                {roleOptions.map((role) => (
                   <InputSelect.Item key={role.value} value={role.value}>
                     {role.label}
                   </InputSelect.Item>
@@ -644,7 +650,7 @@ function UserAssignmentsPanel({
                 >
                   <InputSelect.Trigger aria-label={`Role for ${label}`} />
                   <InputSelect.Content>
-                    {ROLE_OPTIONS.map((role) => (
+                    {roleOptions.map((role) => (
                       <InputSelect.Item key={role.value} value={role.value}>
                         {role.label}
                       </InputSelect.Item>

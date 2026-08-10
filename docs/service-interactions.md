@@ -353,6 +353,15 @@ agent or collection grants. Enterprise administrators can manage the entire
 tree; unit managers can manage their own unit and descendants, including
 appointing or removing other unit managers in that scope.
 
+The organization membership UI reads the same composite-role catalog as the
+admin Users page and adds `unit_manager`, displayed as **Birim Yöneticisi**, as
+a scoped management role.
+User-service validates submitted catalog names against its role repository;
+arbitrary client-supplied names are rejected. Catalog roles stored on a
+membership remain organization metadata and do not elevate the actor's global
+administrator status. Values such as `member` and `viewer` are accepted only
+when they exist in the authoritative catalog.
+
 ```text
 Organization page selects Unit B
   GET /api/v1/organizations/{unit_b}/management-capability
@@ -369,6 +378,13 @@ subunits to use different agents and collections. Membership and role mutation
 endpoints apply the same subtree check, so a unit manager cannot change an
 ancestor or unrelated branch. The model permits one root only; creating a
 second root or moving a unit to root is rejected.
+
+Removing a membership locks the user and performs membership deletion plus
+orphan permission cleanup in one user-service transaction. Direct user grants
+survive transfers between units while another active membership exists. When
+the final active membership is removed, all user-target resource permissions
+are deleted; organization grants, grants for other users, and audit history are
+preserved.
 
 ### Pattern 6: RAG proxy
 

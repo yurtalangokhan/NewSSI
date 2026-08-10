@@ -49,10 +49,7 @@ class UserOrganizationService:
                 f"User {user_id} is already assigned to organization {organization_id}"
             )
 
-        # Validate role
-        valid_roles = {"unit_manager", "member", "viewer"}
-        if role_in_org not in valid_roles:
-            raise ValueError(f"Invalid role '{role_in_org}'. Must be one of: {valid_roles}")
+        await self._require_valid_organization_role(role_in_org)
 
         return await self.repo.create(
             user_id=user_id,
@@ -74,7 +71,10 @@ class UserOrganizationService:
         if not existing:
             raise ValueError(f"User {user_id} is not assigned to organization {organization_id}")
 
-        return await self.repo.delete(user_id, organization_id)
+        deleted, _deleted_permissions = await self.repo.delete_and_cleanup_orphan_permissions(
+            user_id, organization_id
+        )
+        return deleted
 
     async def update_user_organization_role(
         self,
@@ -89,10 +89,7 @@ class UserOrganizationService:
         if not user_org:
             raise ValueError(f"User {user_id} is not assigned to organization {organization_id}")
 
-        # Validate role
-        valid_roles = {"unit_manager", "member", "viewer"}
-        if new_role not in valid_roles:
-            raise ValueError(f"Invalid role '{new_role}'. Must be one of: {valid_roles}")
+        await self._require_valid_organization_role(new_role)
 
         updated = await self.repo.update(user_org["id"], role_in_org=new_role)
         if not updated:
@@ -176,6 +173,14 @@ class UserOrganizationService:
         if actor_id is None or not await self.can_manage_organization(actor_id, organization_id):
             raise ForbiddenError("Actor cannot manage the selected organization")
 
+    async def _require_valid_organization_role(self, role_name: str) -> None:
+        """Accept Unit Manager or a role from the authoritative catalog."""
+        if role_name == "unit_manager":
+            return
+        if await self.role_repo.get_by_name(role_name):
+            return
+        raise ValueError(f"Unknown organization role '{role_name}'")
+
     async def check_user_organization_permission(
         self,
         user_id: uuid.UUID,
@@ -200,13 +205,7 @@ class UserOrganizationService:
         if not required_role:
             return True
 
-        # Role hierarchy: unit_manager > member > viewer
-        role_hierarchy = {"unit_manager": 3, "member": 2, "viewer": 1}
-
-        user_level = role_hierarchy.get(user_org["role_in_org"], 0)
-        required_level = role_hierarchy.get(required_role, 0)
-
-        return user_level >= required_level
+        return user_org["role_in_org"] == required_role
 
     async def is_unit_manager(self, user_id: uuid.UUID, organization_id: uuid.UUID) -> bool:
         """Check if user is unit manager of organization."""

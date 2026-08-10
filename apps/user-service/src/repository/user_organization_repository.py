@@ -5,7 +5,11 @@ from typing import Any
 
 from sqlalchemy import delete, func, select
 
-from src.core.database.models import UserOrganizationModel
+from src.core.database.models import (
+    ResourcePermissionModel,
+    UserModel,
+    UserOrganizationModel,
+)
 
 from .base_repository import BaseRepository
 
@@ -136,6 +140,40 @@ class UserOrganizationRepository(BaseRepository):
                 )
             )
             return result.rowcount > 0
+
+    async def delete_and_cleanup_orphan_permissions(
+        self, user_id: uuid.UUID, organization_id: uuid.UUID
+    ) -> tuple[bool, int]:
+        """Remove membership and delete user grants only after the final membership."""
+        async with self._session() as session:
+            # Serialize concurrent membership removals for the same user so two
+            # transactions cannot both observe another membership and leave
+            # orphaned permissions behind.
+            await session.execute(
+                select(UserModel.id).where(UserModel.id == user_id).with_for_update()
+            )
+            membership_result = await session.execute(
+                delete(UserOrganizationModel).where(
+                    UserOrganizationModel.user_id == user_id,
+                    UserOrganizationModel.organization_id == organization_id,
+                )
+            )
+            if membership_result.rowcount == 0:
+                return False, 0
+
+            remaining_result = await session.execute(
+                select(func.count(UserOrganizationModel.id)).where(
+                    UserOrganizationModel.user_id == user_id,
+                    UserOrganizationModel.is_active,
+                )
+            )
+            if remaining_result.scalar_one() > 0:
+                return True, 0
+
+            permission_result = await session.execute(
+                delete(ResourcePermissionModel).where(ResourcePermissionModel.user_id == user_id)
+            )
+            return True, permission_result.rowcount
 
     async def set_primary(
         self, user_id: uuid.UUID, organization_id: uuid.UUID
