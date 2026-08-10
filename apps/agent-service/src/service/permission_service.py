@@ -5,11 +5,10 @@ Replaces legacy agent_groups with new organization-based permission system
 by delegating to user-service.
 """
 
-import httpx
 import logging
-from functools import lru_cache
 from typing import Any
 
+import httpx
 from config import get_settings
 
 logger = logging.getLogger(__name__)

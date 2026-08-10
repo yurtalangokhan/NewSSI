@@ -1,15 +1,15 @@
 /**
  * OrganizationTree Component
- * 
+ *
  * Enterprise-grade hierarchical organization tree management with:
  * - Drag & drop support
  * - Inline editing
  * - Context menu actions
  * - Permission visualization
  * - User assignment
- * 
+ *
  * Uses react-arborist for high-performance tree rendering.
- * 
+ *
  * @requires react-arborist (run: npm install react-arborist)
  */
 
@@ -17,7 +17,9 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { Tree, NodeRendererProps } from "react-arborist";
+import { SvgEdit, SvgFolderPlus, SvgTrash } from "@opal/icons";
 import Button from "@/refresh-components/buttons/Button";
+import IconButton from "@/refresh-components/buttons/IconButton";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
 import Text from "@/refresh-components/texts/Text";
 import { cn } from "@/lib/utils";
@@ -37,7 +39,10 @@ interface OrganizationNode {
 interface OrganizationTreeProps {
   organizations: OrganizationNode[];
   onCreateOrg: (parentId: string | null, name: string) => Promise<void>;
-  onUpdateOrg: (id: string, updates: Partial<OrganizationNode>) => Promise<void>;
+  onUpdateOrg: (
+    id: string,
+    updates: Partial<OrganizationNode>
+  ) => Promise<void>;
   onDeleteOrg: (id: string) => Promise<void>;
   onMoveOrg: (id: string, newParentId: string | null) => Promise<void>;
   onSelectOrg: (org: OrganizationNode) => void;
@@ -48,7 +53,10 @@ interface OrganizationTreeProps {
 interface OrganizationNodeRendererProps
   extends NodeRendererProps<OrganizationNode> {
   onCreateOrg: (parentId: string | null) => Promise<void>;
-  onUpdateOrg: (id: string, updates: Partial<OrganizationNode>) => Promise<void>;
+  onUpdateOrg: (
+    id: string,
+    updates: Partial<OrganizationNode>
+  ) => Promise<void>;
   onDeleteOrg: (id: string) => Promise<void>;
 }
 
@@ -62,7 +70,6 @@ function Node({
 }: OrganizationNodeRendererProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(node.data.name);
-  const [showMenu, setShowMenu] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleSave = useCallback(() => {
@@ -87,10 +94,10 @@ function Node({
   return (
     <div
       className={cn(
-        "flex items-center gap-2 py-2 px-3 rounded-md cursor-pointer transition-colors",
+        "group flex min-w-0 items-center gap-2 rounded-md px-3 py-2 cursor-pointer transition-colors",
         "hover:bg-background-neutral-02",
-        node.isSelected && "bg-background-primary-01 border border-border-primary",
-        "group"
+        node.isSelected &&
+          "bg-background-primary-01 border border-border-primary"
       )}
       style={style}
       ref={dragHandle}
@@ -98,7 +105,10 @@ function Node({
     >
       {/* Expand/Collapse Icon */}
       {node.isInternal ? (
-        <div className={cn("flex h-4 w-4 items-center justify-center")} aria-hidden="true">
+        <div
+          className={cn("flex h-4 w-4 items-center justify-center")}
+          aria-hidden="true"
+        >
           {node.isOpen ? "−" : "+"}
         </div>
       ) : (
@@ -117,87 +127,69 @@ function Node({
           autoFocus
         />
       ) : (
-        <Text className={cn("flex-1 text-sm font-medium text-text-01")}>
+        <Text
+          className={cn(
+            "min-w-0 flex-1 truncate text-sm font-medium text-text-01"
+          )}
+        >
           {node.data.name}
         </Text>
       )}
 
       {/* Metadata badges */}
-      <div className={cn("flex items-center gap-2 ml-auto transition-opacity")}>
+      <div
+        className={cn(
+          "ml-auto flex shrink-0 items-center gap-1 transition-opacity"
+        )}
+      >
         {node.data.user_count !== undefined && node.data.user_count > 0 && (
-          <div className={cn("flex items-center gap-1 px-2 py-1 rounded bg-background-neutral-02")}>
-            <Text className={cn("text-xs text-text-03")}>{node.data.user_count}</Text>
+          <div
+            className={cn(
+              "flex items-center gap-1 px-2 py-1 rounded bg-background-neutral-02"
+            )}
+          >
+            <Text className={cn("text-xs text-text-03")}>
+              {node.data.user_count}
+            </Text>
           </div>
         )}
 
-        {/* Action menu */}
-        <div className={cn("relative")}>
-          <Button
-            tertiary
-            size="md"
-            aria-label={`Actions for ${node.data.name}`}
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowMenu(!showMenu);
-            }}
-          >
-            Actions
-          </Button>
-
-          {showMenu && (
-            <div
-              className={cn(
-                "absolute right-0 top-full mt-1 z-50",
-                "bg-background-neutral-01 border border-border-02 rounded-md shadow-lg",
-                "min-w-[160px] py-1"
-              )}
-            >
-              <Button
-                tertiary
-                size="md"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowMenu(false);
-                  setIsEditing(true);
-                }}
-                className={cn("w-full justify-start")}
-              >
-                Rename
-              </Button>
-
-              <Button
-                tertiary
-                size="md"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowMenu(false);
-                  void onCreateOrg(node.data.id);
-                }}
-                className={cn("w-full justify-start")}
-              >
-                Add child
-              </Button>
-
-              <hr className={cn("my-1 border-border-02")} />
-
-              <Button
-                danger
-                tertiary
-                size="md"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowMenu(false);
-                  if (confirm(`Delete "${node.data.name}"?`)) {
-                    void onDeleteOrg(node.data.id);
-                  }
-                }}
-                className={cn("w-full justify-start")}
-              >
-                Delete
-              </Button>
-            </div>
-          )}
-        </div>
+        <IconButton
+          icon={SvgEdit}
+          tooltip="Rename"
+          tertiary
+          small
+          aria-label={`Rename ${node.data.name}`}
+          onClick={(event) => {
+            event.stopPropagation();
+            setIsEditing(true);
+          }}
+        />
+        <IconButton
+          icon={SvgFolderPlus}
+          tooltip="Add child"
+          tertiary
+          small
+          aria-label={`Add child to ${node.data.name}`}
+          onClick={(event) => {
+            event.stopPropagation();
+            void onCreateOrg(node.data.id);
+          }}
+        />
+        <IconButton
+          icon={SvgTrash}
+          tooltip="Delete"
+          danger
+          tertiary
+          small
+          aria-label={`Delete ${node.data.name}`}
+          onClick={(event) => {
+            event.stopPropagation();
+            if (confirm(`Delete "${node.data.name}"?`)) {
+              void onDeleteOrg(node.data.id);
+            }
+          }}
+        />
       </div>
     </div>
   );
@@ -275,7 +267,11 @@ export function OrganizationTree({
   return (
     <div className={cn("flex flex-col h-full", className)}>
       {/* Header */}
-      <div className={cn("flex items-center justify-between p-4 border-b border-border-02")}>
+      <div
+        className={cn(
+          "flex items-center justify-between p-4 border-b border-border-02"
+        )}
+      >
         <div className={cn("flex items-center gap-2")}>
           <Text className={cn("text-lg font-semibold text-text-01")}>
             Organizations
@@ -283,12 +279,7 @@ export function OrganizationTree({
         </div>
 
         {organizations.length === 0 && (
-          <Button
-            action
-            primary
-            size="md"
-            onClick={() => handleCreate(null)}
-          >
+          <Button action primary size="md" onClick={() => handleCreate(null)}>
             Add Root Organization
           </Button>
         )}
@@ -297,17 +288,18 @@ export function OrganizationTree({
       {/* Tree */}
       <div ref={containerRef} className={cn("flex-1 overflow-hidden p-4")}>
         {organizations.length === 0 ? (
-          <div className={cn("flex flex-col items-center justify-center h-full text-center")}>
-            <Text className={cn("text-text-02 mb-2")}>No organizations yet</Text>
+          <div
+            className={cn(
+              "flex flex-col items-center justify-center h-full text-center"
+            )}
+          >
+            <Text className={cn("text-text-02 mb-2")}>
+              No organizations yet
+            </Text>
             <Text className={cn("text-text-03 text-sm mb-4")}>
               Create your first organization to get started
             </Text>
-            <Button
-              action
-              primary
-              size="md"
-              onClick={() => handleCreate(null)}
-            >
+            <Button action primary size="md" onClick={() => handleCreate(null)}>
               Create Organization
             </Button>
           </div>

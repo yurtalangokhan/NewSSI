@@ -34,6 +34,13 @@ async def get_personas(user: AuthenticatedUser = Depends(require_permission("per
     return await _get_controller().get_personas(user)
 
 
+@router.get("/api/persona/options")
+async def get_persona_options(
+    user: AuthenticatedUser = Depends(require_permission("persona:read")),
+):
+    return await _get_controller().get_persona_options(user)
+
+
 @router.get("/api/persona/labels")
 async def get_persona_labels(
     _user: AuthenticatedUser = Depends(require_permission("persona:read")),

@@ -1,14 +1,14 @@
 import { screen, waitFor } from "@testing-library/react";
 
-import { useAdminPersonas } from "@/hooks/useAdminPersonas";
+import { usePersonaOptions } from "@/hooks/usePersonaOptions";
 import { useCollections } from "@/lib/langconnect";
 import { OrganizationAccessPanel } from "@/components/organization/OrganizationAccessPanel";
 import { render, setupUser } from "@tests/setup/test-utils";
 
-jest.mock("@/hooks/useAdminPersonas", () => ({ useAdminPersonas: jest.fn() }));
+jest.mock("@/hooks/usePersonaOptions", () => ({ usePersonaOptions: jest.fn() }));
 jest.mock("@/lib/langconnect", () => ({ useCollections: jest.fn() }));
 
-const mockedUseAdminPersonas = jest.mocked(useAdminPersonas);
+const mockedUsePersonaOptions = jest.mocked(usePersonaOptions);
 const mockedUseCollections = jest.mocked(useCollections);
 
 describe("OrganizationAccessPanel", () => {
@@ -20,9 +20,8 @@ describe("OrganizationAccessPanel", () => {
   });
 
   beforeEach(() => {
-    mockedUseAdminPersonas.mockReturnValue({
-      personas: [{ id: 11, name: "Research agent" }] as never,
-      totalItems: 1,
+    mockedUsePersonaOptions.mockReturnValue({
+      personas: [{ id: 11, name: "Research agent", description: "" }],
       error: undefined,
       isLoading: false,
       refresh: jest.fn(),
@@ -33,7 +32,7 @@ describe("OrganizationAccessPanel", () => {
       isLoading: false,
       mutate: jest.fn(),
     });
-    jest.spyOn(global, "fetch").mockImplementation(async (request) => {
+    jest.spyOn(global, "fetch").mockImplementation(async (_request) => {
       // Serves scoped direct-permission GET requests.
       return new Response(JSON.stringify({ permissions: [], count: 0 }), {
         status: 200,

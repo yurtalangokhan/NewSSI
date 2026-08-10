@@ -1,16 +1,30 @@
 import { screen } from "@testing-library/react";
 
 import { OrganizationTree } from "@/components/organization/OrganizationTree";
-import { render } from "@tests/setup/test-utils";
+import { render, setupUser } from "@tests/setup/test-utils";
 
 jest.mock("react-arborist", () => ({
-  Tree: ({ onMove }: { onMove: (args: unknown) => void }) => (
-    <button
-      data-testid="organization-tree"
-      onClick={() => onMove({ dragIds: ["child"], parentId: null })}
-    >
-      Simulate root drop
-    </button>
+  Tree: ({ onMove, children, data }: any) => (
+    <div>
+      <button
+        data-testid="organization-tree"
+        onClick={() => onMove({ dragIds: ["child"], parentId: null })}
+      >
+        Simulate root drop
+      </button>
+      {data[0] &&
+        children({
+          node: {
+            data: data[0],
+            isInternal: false,
+            isSelected: false,
+            isOpen: false,
+            toggle: jest.fn(),
+          },
+          style: {},
+          dragHandle: null,
+        })}
+    </div>
   ),
 }));
 
@@ -73,5 +87,37 @@ describe("OrganizationTree single-root action", () => {
 
     screen.getByTestId("organization-tree").click();
     expect(handlers.onMoveOrg).not.toHaveBeenCalled();
+  });
+
+  it("exposes rename, add-child, and delete as direct row actions", async () => {
+    const user = setupUser();
+    render(
+      <OrganizationTree
+        organizations={[
+          {
+            id: "root",
+            name: "Enterprise",
+            path: "/enterprise",
+            parent_id: null,
+            children: [],
+          },
+        ]}
+        {...handlers}
+      />
+    );
+
+    expect(
+      screen.queryByRole("button", { name: "Actions for Enterprise" })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Rename Enterprise" })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Add child to Enterprise" })
+    ).toBeInTheDocument();
+
+    jest.spyOn(window, "confirm").mockReturnValue(true);
+    await user.click(screen.getByRole("button", { name: "Delete Enterprise" }));
+    expect(handlers.onDeleteOrg).toHaveBeenCalledWith("root");
   });
 });

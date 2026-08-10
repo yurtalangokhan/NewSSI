@@ -53,7 +53,9 @@ jest.mock("@/components/organization/OrganizationTree", () => ({
   OrganizationTree: ({ organizations, onSelectOrg }: any) => (
     <div>
       <span>{organizations.length} root</span>
-      <button onClick={() => onSelectOrg(organizations[0])}>Select Platform</button>
+      <button onClick={() => onSelectOrg(organizations[0])}>
+        Select Platform
+      </button>
     </div>
   ),
 }));
@@ -61,7 +63,8 @@ jest.mock("@/components/organization/OrganizationTree", () => ({
 jest.mock("@/components/organization/OrganizationAccessPanel", () => ({
   OrganizationAccessPanel: ({ organization, editable }: any) => (
     <div>
-      Access workspace for {organization.name}: {editable ? "editable" : "read only"}
+      Access workspace for {organization.name}:{" "}
+      {editable ? "editable" : "read only"}
     </div>
   ),
 }));
@@ -105,6 +108,23 @@ describe("OrganizationsPage", () => {
     expect(global.fetch).not.toHaveBeenCalledWith(
       expect.stringContaining("/management-capability")
     );
+  });
+
+  it("resizes the organization pane with the accessible splitter", async () => {
+    const user = setupUser();
+    render(<OrganizationsPage />);
+
+    const splitter = screen.getByRole("separator", {
+      name: "Resize organization tree",
+    });
+    expect(splitter).toHaveAttribute("aria-valuenow", "480");
+
+    splitter.focus();
+    await user.keyboard("{ArrowRight}");
+    expect(splitter).toHaveAttribute("aria-valuenow", "496");
+    expect(screen.getByTestId("organization-tree-pane")).toHaveStyle({
+      width: "496px",
+    });
   });
 
   it("loads management capability and disables membership controls for a viewer", async () => {

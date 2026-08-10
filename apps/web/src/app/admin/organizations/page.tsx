@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import useSWR, { mutate } from "swr";
 
 import SvgOrganization from "@opal/icons/organization";
@@ -48,22 +48,31 @@ interface AvailableUser {
   email: string;
 }
 
-const ROLE_OPTIONS: Array<{ value: OrganizationMember["role_in_org"]; label: string }> = [
+const ROLE_OPTIONS: Array<{
+  value: OrganizationMember["role_in_org"];
+  label: string;
+}> = [
   { value: "viewer", label: "Viewer" },
   { value: "member", label: "Member" },
   { value: "unit_manager", label: "Unit manager" },
 ];
 
+const DEFAULT_TREE_PANE_WIDTH = 480;
+const MIN_TREE_PANE_WIDTH = 320;
+const TREE_PANE_WIDTH_STORAGE_KEY = "admin-organizations-tree-pane-width";
+
 async function fetchJson<T>(url: string): Promise<T> {
   const response = await fetch(url);
-  if (!response.ok) throw new Error(await responseDetail(response, "Request failed"));
+  if (!response.ok)
+    throw new Error(await responseDetail(response, "Request failed"));
   return response.json();
 }
 
 async function responseDetail(response: Response, fallback: string) {
-  const data = (await response.json().catch(() => null)) as
-    | { detail?: string; message?: string }
-    | null;
+  const data = (await response.json().catch(() => null)) as {
+    detail?: string;
+    message?: string;
+  } | null;
   return data?.detail || data?.message || fallback;
 }
 
@@ -77,6 +86,62 @@ function memberLabel(member: OrganizationMember) {
 export default function OrganizationsPage() {
   const [selectedOrg, setSelectedOrg] = useState<OrganizationNode | null>(null);
   const [activeTab, setActiveTab] = useState("users");
+  const workspaceRef = useRef<HTMLElement>(null);
+  const [treePaneWidth, setTreePaneWidth] = useState(() => {
+    if (typeof window === "undefined") return DEFAULT_TREE_PANE_WIDTH;
+    const storedWidth = Number(
+      window.sessionStorage.getItem(TREE_PANE_WIDTH_STORAGE_KEY)
+    );
+    return Number.isFinite(storedWidth) && storedWidth >= MIN_TREE_PANE_WIDTH
+      ? storedWidth
+      : DEFAULT_TREE_PANE_WIDTH;
+  });
+
+  const clampTreePaneWidth = useCallback((width: number) => {
+    const workspaceWidth = workspaceRef.current?.clientWidth || 1440;
+    const maximumWidth = Math.max(
+      MIN_TREE_PANE_WIDTH,
+      Math.floor(workspaceWidth * 0.45)
+    );
+    return Math.min(maximumWidth, Math.max(MIN_TREE_PANE_WIDTH, width));
+  }, []);
+
+  useEffect(() => {
+    window.sessionStorage.setItem(
+      TREE_PANE_WIDTH_STORAGE_KEY,
+      String(treePaneWidth)
+    );
+  }, [treePaneWidth]);
+
+  const handleSplitterPointerDown = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      event.preventDefault();
+      const handlePointerMove = (pointerEvent: PointerEvent) => {
+        const workspaceLeft =
+          workspaceRef.current?.getBoundingClientRect().left ?? 0;
+        setTreePaneWidth(
+          clampTreePaneWidth(pointerEvent.clientX - workspaceLeft)
+        );
+      };
+      const handlePointerUp = () => {
+        window.removeEventListener("pointermove", handlePointerMove);
+        window.removeEventListener("pointerup", handlePointerUp);
+      };
+      window.addEventListener("pointermove", handlePointerMove);
+      window.addEventListener("pointerup", handlePointerUp);
+    },
+    [clampTreePaneWidth]
+  );
+
+  const handleSplitterKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLDivElement>) => {
+      if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+      event.preventDefault();
+      const direction = event.key === "ArrowRight" ? 1 : -1;
+      setTreePaneWidth((width) => clampTreePaneWidth(width + direction * 16));
+    },
+    [clampTreePaneWidth]
+  );
 
   const { data: treeData, isLoading } = useSWR<
     { roots: OrganizationNode[] } | OrganizationNode[]
@@ -89,15 +154,18 @@ export default function OrganizationsPage() {
   const membersKey = selectedOrg
     ? `/api/user-service/organizations/${selectedOrg.id}/users`
     : null;
-  const { data: membersData } = useSWR<{ users: OrganizationMember[]; count: number }>(
-    membersKey,
-    fetchJson
-  );
+  const { data: membersData } = useSWR<{
+    users: OrganizationMember[];
+    count: number;
+  }>(membersKey, fetchJson);
   const members = membersData?.users ?? [];
   const capabilityKey = selectedOrg
     ? `/api/user-service/organizations/${selectedOrg.id}/management-capability`
     : null;
-  const { data: capability } = useSWR<{ editable: boolean }>(capabilityKey, fetchJson);
+  const { data: capability } = useSWR<{ editable: boolean }>(
+    capabilityKey,
+    fetchJson
+  );
   const editable = capability?.editable === true;
 
   const refreshOrganizations = useCallback(async () => {
@@ -119,7 +187,9 @@ export default function OrganizationsPage() {
         body: JSON.stringify({ name, code, parent_id: parentId }),
       });
       if (!response.ok) {
-        toast.error(await responseDetail(response, "Organization could not be created"));
+        toast.error(
+          await responseDetail(response, "Organization could not be created")
+        );
         return;
       }
       await refreshOrganizations();
@@ -136,11 +206,14 @@ export default function OrganizationsPage() {
         body: JSON.stringify(updates),
       });
       if (!response.ok) {
-        toast.error(await responseDetail(response, "Organization could not be updated"));
+        toast.error(
+          await responseDetail(response, "Organization could not be updated")
+        );
         return;
       }
       await refreshOrganizations();
-      if (selectedOrg?.id === id) setSelectedOrg({ ...selectedOrg, ...updates });
+      if (selectedOrg?.id === id)
+        setSelectedOrg({ ...selectedOrg, ...updates });
     },
     [refreshOrganizations, selectedOrg]
   );
@@ -151,7 +224,9 @@ export default function OrganizationsPage() {
         method: "DELETE",
       });
       if (!response.ok) {
-        toast.error(await responseDetail(response, "Organization could not be deleted"));
+        toast.error(
+          await responseDetail(response, "Organization could not be deleted")
+        );
         return;
       }
       await refreshOrganizations();
@@ -162,13 +237,18 @@ export default function OrganizationsPage() {
 
   const handleMoveOrg = useCallback(
     async (id: string, newParentId: string | null) => {
-      const response = await fetch(`/api/user-service/organizations/${id}/move`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ new_parent_id: newParentId }),
-      });
+      const response = await fetch(
+        `/api/user-service/organizations/${id}/move`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ new_parent_id: newParentId }),
+        }
+      );
       if (!response.ok) {
-        toast.error(await responseDetail(response, "Organization could not be moved"));
+        toast.error(
+          await responseDetail(response, "Organization could not be moved")
+        );
         return;
       }
       await refreshOrganizations();
@@ -181,7 +261,10 @@ export default function OrganizationsPage() {
     await refreshOrganizations();
   }
 
-  async function handleAddUser(userId: string, role: OrganizationMember["role_in_org"]) {
+  async function handleAddUser(
+    userId: string,
+    role: OrganizationMember["role_in_org"]
+  ) {
     if (!selectedOrg) return;
     const response = await fetch(
       `/api/user-service/organizations/${selectedOrg.id}/users`,
@@ -192,7 +275,9 @@ export default function OrganizationsPage() {
       }
     );
     if (!response.ok) {
-      throw new Error(await responseDetail(response, "Member could not be added"));
+      throw new Error(
+        await responseDetail(response, "Member could not be added")
+      );
     }
     await refreshMembers();
   }
@@ -211,7 +296,9 @@ export default function OrganizationsPage() {
       }
     );
     if (!response.ok) {
-      toast.error(await responseDetail(response, "Member role could not be updated"));
+      toast.error(
+        await responseDetail(response, "Member role could not be updated")
+      );
       return;
     }
     await refreshMembers();
@@ -225,7 +312,9 @@ export default function OrganizationsPage() {
       { method: "DELETE" }
     );
     if (!response.ok) {
-      toast.error(await responseDetail(response, "Member could not be removed"));
+      toast.error(
+        await responseDetail(response, "Member could not be removed")
+      );
       return;
     }
     await refreshMembers();
@@ -240,8 +329,20 @@ export default function OrganizationsPage() {
   }
 
   return (
-    <main className={cn("flex h-screen bg-background-neutral-01")}>
-      <aside className={cn("flex w-96 flex-col overflow-x-auto border-r border-border-02")}>
+    <main
+      ref={workspaceRef}
+      className={cn(
+        "flex h-screen flex-col bg-background-neutral-01 md:flex-row"
+      )}
+    >
+      <aside
+        data-testid="organization-tree-pane"
+        className={cn(
+          "flex h-[40vh] w-full shrink-0 flex-col overflow-hidden border-b border-border-02 max-md:!w-full",
+          "md:h-auto md:border-b-0"
+        )}
+        style={{ width: `${treePaneWidth}px` }}
+      >
         <OrganizationTree
           organizations={organizations}
           onCreateOrg={handleCreateOrg}
@@ -256,20 +357,48 @@ export default function OrganizationsPage() {
         />
       </aside>
 
+      <div
+        role="separator"
+        aria-label="Resize organization tree"
+        aria-orientation="vertical"
+        aria-valuemin={MIN_TREE_PANE_WIDTH}
+        aria-valuemax={clampTreePaneWidth(Number.MAX_SAFE_INTEGER)}
+        aria-valuenow={treePaneWidth}
+        tabIndex={0}
+        onPointerDown={handleSplitterPointerDown}
+        onKeyDown={handleSplitterKeyDown}
+        className={cn(
+          "group relative hidden w-2 shrink-0 cursor-col-resize touch-none outline-none md:block",
+          "before:absolute before:inset-y-0 before:left-1/2 before:w-px before:-translate-x-1/2 before:bg-border-02",
+          "hover:before:w-0.5 hover:before:bg-action-link-05 focus-visible:before:w-0.5 focus-visible:before:bg-action-link-05"
+        )}
+      />
+
       <section className={cn("flex min-w-0 flex-1 flex-col")}>
         {selectedOrg ? (
           <>
-            <header className={cn("flex flex-col gap-4 border-b border-border-02 p-6")}>
+            <header
+              className={cn(
+                "flex flex-col gap-4 border-b border-border-02 p-6"
+              )}
+            >
               <div className={cn("flex items-start justify-between gap-6")}>
                 <div className={cn("flex min-w-0 items-center gap-3")}>
-                  <div className={cn("rounded-12 bg-background-neutral-03 p-2")}>
+                  <div
+                    className={cn("rounded-12 bg-background-neutral-03 p-2")}
+                  >
                     <SvgOrganization className={cn("h-5 w-5 stroke-text-03")} />
                   </div>
                   <div className={cn("min-w-0")}>
                     <Text headingH2 text04 as="p" className={cn("truncate")}>
                       {selectedOrg.name}
                     </Text>
-                    <Text secondaryBody text03 as="p" className={cn("truncate")}>
+                    <Text
+                      secondaryBody
+                      text03
+                      as="p"
+                      className={cn("truncate")}
+                    >
                       {selectedOrg.path}
                     </Text>
                   </div>
@@ -324,7 +453,11 @@ export default function OrganizationsPage() {
             </div>
           </>
         ) : (
-          <div className={cn("flex flex-1 flex-col items-center justify-center gap-2 p-8 text-center")}>
+          <div
+            className={cn(
+              "flex flex-1 flex-col items-center justify-center gap-2 p-8 text-center"
+            )}
+          >
             <SvgOrganization className={cn("mb-2 h-12 w-12 stroke-text-02")} />
             <Text headingH3 text03 as="p">
               Select an organization
@@ -347,7 +480,10 @@ function UserAssignmentsPanel({
   editable,
 }: {
   assignments: OrganizationMember[];
-  onAdd: (userId: string, role: OrganizationMember["role_in_org"]) => Promise<void>;
+  onAdd: (
+    userId: string,
+    role: OrganizationMember["role_in_org"]
+  ) => Promise<void>;
   onRoleChange: (
     userId: string,
     role: OrganizationMember["role_in_org"]
@@ -357,9 +493,8 @@ function UserAssignmentsPanel({
 }) {
   const [showAddUser, setShowAddUser] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState("");
-  const [selectedRole, setSelectedRole] = useState<OrganizationMember["role_in_org"]>(
-    "member"
-  );
+  const [selectedRole, setSelectedRole] =
+    useState<OrganizationMember["role_in_org"]>("member");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { data: usersData } = useSWR<{ users: AvailableUser[]; total: number }>(
     showAddUser ? "/api/user-service/users/" : null,
@@ -376,7 +511,9 @@ function UserAssignmentsPanel({
       setSelectedRole("member");
       toast.success("Member added");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Member could not be added");
+      toast.error(
+        error instanceof Error ? error.message : "Member could not be added"
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -405,13 +542,23 @@ function UserAssignmentsPanel({
       </div>
 
       {showAddUser && (
-        <div className={cn("grid gap-3 rounded-12 border border-border-01 bg-background-neutral-00 p-4 md:grid-cols-2")}>
+        <div
+          className={cn(
+            "grid gap-3 rounded-12 border border-border-01 bg-background-neutral-00 p-4 md:grid-cols-2"
+          )}
+        >
           <div className={cn("flex flex-col gap-2")}>
             <Text secondaryAction text03>
               User
             </Text>
-            <InputSelect value={selectedUserId} onValueChange={setSelectedUserId}>
-              <InputSelect.Trigger aria-label="User" placeholder="Select a user" />
+            <InputSelect
+              value={selectedUserId}
+              onValueChange={setSelectedUserId}
+            >
+              <InputSelect.Trigger
+                aria-label="User"
+                placeholder="Select a user"
+              />
               <InputSelect.Content>
                 {(usersData?.users ?? []).map((user) => (
                   <InputSelect.Item key={user.id} value={user.id}>
@@ -459,7 +606,11 @@ function UserAssignmentsPanel({
       )}
 
       {assignments.length === 0 ? (
-        <Text text03 as="p" className={cn("rounded-12 bg-background-neutral-00 p-8 text-center")}>
+        <Text
+          text03
+          as="p"
+          className={cn("rounded-12 bg-background-neutral-00 p-8 text-center")}
+        >
           No users are assigned to this organization.
         </Text>
       ) : (
@@ -469,7 +620,9 @@ function UserAssignmentsPanel({
             return (
               <div
                 key={assignment.id}
-                className={cn("grid items-center gap-3 rounded-12 border border-border-01 bg-background-neutral-00 p-4 md:grid-cols-[minmax(0,1fr)_11rem_auto]")}
+                className={cn(
+                  "grid items-center gap-3 rounded-12 border border-border-01 bg-background-neutral-00 p-4 md:grid-cols-[minmax(0,1fr)_11rem_auto]"
+                )}
               >
                 <div className={cn("min-w-0")}>
                   <Text mainUiAction text04 as="p" className={cn("truncate")}>

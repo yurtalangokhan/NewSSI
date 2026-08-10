@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import useSWR from "swr";
 
-import { useAdminPersonas } from "@/hooks/useAdminPersonas";
+import { usePersonaOptions } from "@/hooks/usePersonaOptions";
 import { useCollections } from "@/lib/langconnect";
 import InputSelect from "@/refresh-components/inputs/InputSelect";
 import Tabs from "@/refresh-components/Tabs";
@@ -152,7 +152,7 @@ export function OrganizationAccessPanel({
     activeMembers[0]?.user_id ?? ""
   );
   const { personas, isLoading: agentsLoading, error: agentsError, refresh } =
-    useAdminPersonas();
+    usePersonaOptions();
   const {
     collections,
     isLoading: collectionsLoading,
