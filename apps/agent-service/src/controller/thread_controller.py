@@ -9,7 +9,10 @@ from service.StoreService import (
     add_thread,
     delete_thread_from_store,
     get_thread_from_store,
+    list_chat_sessions_by_activity_from_store,
     list_threads_from_store,
+    mark_thread_accessed,
+    mark_thread_message_activity,
     update_thread_in_store,
 )
 
@@ -41,6 +44,21 @@ class ThreadController(BaseController):
     ) -> list[dict[str, Any]]:
         """List threads with optional metadata filter."""
         return await list_threads_from_store(limit, offset, metadata)
+
+    async def list_chat_sessions_by_activity(
+        self,
+        page_size: int = 100,
+        before_activity: str | None = None,
+        before_id: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> list[dict[str, Any]]:
+        """List chat sessions using conversational activity ordering."""
+        return await list_chat_sessions_by_activity_from_store(
+            page_size,
+            before_activity,
+            before_id,
+            metadata,
+        )
 
     async def create_thread(
         self,
@@ -80,6 +98,14 @@ class ThreadController(BaseController):
             {"metadata": metadata},
             update_timestamp=update_timestamp,
         )
+
+    async def mark_message_activity(self, thread_id: str) -> dict[str, Any] | None:
+        """Record accepted user-message activity for a thread."""
+        return await mark_thread_message_activity(thread_id)
+
+    async def mark_accessed(self, thread_id: str) -> dict[str, Any] | None:
+        """Record a read without changing conversation activity."""
+        return await mark_thread_accessed(thread_id)
 
     async def delete_thread(self, thread_id: str) -> bool:
         """Delete a thread."""

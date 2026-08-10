@@ -202,8 +202,15 @@ async def _resolve_model_supports_reasoning(
 async def get_chat_sessions(
     request: Request,
     user: Annotated[AuthenticatedUser, Depends(require_permission("chat:read"))],
+    page_size: int = 100,
+    before_activity: str | None = None,
+    before_id: str | None = None,
 ):
-    return await (await _get_user_chat_controller(request, user)).get_chat_sessions()
+    return await (await _get_user_chat_controller(request, user)).get_chat_sessions(
+        page_size=page_size,
+        before_activity=before_activity,
+        before_id=before_id,
+    )
 
 
 @router.post("/api/chat/sessions")
@@ -564,6 +571,11 @@ async def send_chat_message(
                 needs_update = True
         if needs_update:
             await thread_ctrl.update_thread(session_id, metadata)
+
+    try:
+        await thread_ctrl.mark_message_activity(session_id)
+    except Exception:
+        logger.exception("Could not record accepted message activity for session %s", session_id)
 
     assistant_id = DEFAULT_AGENT
 

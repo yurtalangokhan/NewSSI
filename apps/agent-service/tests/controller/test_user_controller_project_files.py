@@ -126,7 +126,7 @@ async def test_user_projects_use_owner_ids_without_leaking_other_threads(monkeyp
     controller = UserController(session_controller=object())
     controller._project_repo = _ProjectRepo()
 
-    async def fake_list_threads_from_store(*args, **kwargs):
+    async def fake_list_chat_sessions_by_activity_from_store(*args, **kwargs):
         return [
             {
                 "thread_id": "owned-thread",
@@ -145,8 +145,8 @@ async def test_user_projects_use_owner_ids_without_leaking_other_threads(monkeyp
         ]
 
     monkeypatch.setattr(
-        "controller.user_controller.list_threads_from_store",
-        fake_list_threads_from_store,
+        "controller.user_controller.list_chat_sessions_by_activity_from_store",
+        fake_list_chat_sessions_by_activity_from_store,
     )
 
     projects = await controller.get_user_projects(

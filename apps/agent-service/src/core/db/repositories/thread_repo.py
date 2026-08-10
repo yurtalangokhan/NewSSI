@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import cast, delete, select
+from sqlalchemy import cast, delete, func, select, tuple_, update
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
@@ -24,6 +24,13 @@ def _ensure_datetime(val: Any) -> datetime:
     if isinstance(val, str):
         return datetime.fromisoformat(val)
     return datetime.now(UTC)
+
+
+def _ensure_optional_datetime(val: Any) -> datetime | None:
+    """Convert an optional ISO-format timestamp to ``datetime``."""
+    if val is None:
+        return None
+    return _ensure_datetime(val)
 
 
 def _parse_thread_id(thread_id: str) -> UUID | None:
@@ -71,6 +78,8 @@ class ThreadRepository(BaseRepository):
             "project_id": ThreadRepository._resolve_project_id(row),
             "created_at": row.created_at.isoformat() if row.created_at else None,
             "updated_at": row.updated_at.isoformat() if row.updated_at else None,
+            "last_message_at": row.last_message_at.isoformat() if row.last_message_at else None,
+            "last_accessed_at": row.last_accessed_at.isoformat() if row.last_accessed_at else None,
         }
 
     # ---- read -----------------------------------------------------------
@@ -96,6 +105,38 @@ class ThreadRepository(BaseRepository):
             result = await session.execute(stmt)
             rows = result.scalars().all()
         return [self._to_dict(r) for r in rows]
+
+    async def list_chat_sessions_by_activity(
+        self,
+        *,
+        page_size: int = 100,
+        before_activity: str | datetime | None = None,
+        before_id: str | None = None,
+        metadata_filter: dict[str, Any] | None = None,
+    ) -> list[dict[str, Any]]:
+        """Return chat sessions ordered by conversational activity.
+
+        This chat-specific query deliberately does not alter the SDK-compatible
+        ``list_threads`` ordering.  When both cursor values are supplied, it
+        returns the page immediately following that activity key.
+        """
+        activity_at = func.coalesce(ThreadModel.last_message_at, ThreadModel.created_at)
+        stmt = select(ThreadModel)
+        if metadata_filter:
+            stmt = stmt.where(ThreadModel.metadata_.op("@>")(cast(metadata_filter, JSONB)))
+
+        parsed_before_id = _parse_thread_id(before_id) if before_id else None
+        if before_activity is not None and parsed_before_id is not None:
+            stmt = stmt.where(
+                tuple_(activity_at, ThreadModel.thread_id)
+                < tuple_(_ensure_datetime(before_activity), parsed_before_id)
+            )
+
+        stmt = stmt.order_by(activity_at.desc(), ThreadModel.thread_id.desc()).limit(page_size)
+        async with self._session() as session:
+            result = await session.execute(stmt)
+            rows = result.scalars().all()
+        return [self._to_dict(row) for row in rows]
 
     async def get_thread(self, thread_id: str) -> dict[str, Any] | None:
         """Fetch a single thread by UUID."""
@@ -129,18 +170,28 @@ class ThreadRepository(BaseRepository):
             "created_at": _ensure_datetime(thread.get("created_at", now)),
             "updated_at": _ensure_datetime(thread.get("updated_at", now)),
         }
+        activity_fields = ("last_message_at", "last_accessed_at")
+        for field in activity_fields:
+            if field in thread:
+                values[field] = _ensure_optional_datetime(thread[field])
+
+        conflict_updates = {
+            "metadata": values["metadata_"],
+            "updated_at": values["updated_at"],
+            "status": values["status"],
+            "project_id": values["project_id"],
+        }
+        for field in activity_fields:
+            if field in values:
+                conflict_updates[field] = values[field]
+
         async with self._session() as session:
             stmt = (
                 pg_insert(ThreadModel)
                 .values(**values)
                 .on_conflict_do_update(
                     index_elements=["thread_id"],
-                    set_={
-                        "metadata": values["metadata_"],
-                        "updated_at": values["updated_at"],
-                        "status": values["status"],
-                        "project_id": values["project_id"],
-                    },
+                    set_=conflict_updates,
                 )
                 .returning(ThreadModel)
             )
@@ -174,6 +225,41 @@ class ThreadRepository(BaseRepository):
         if update_timestamp:
             current["updated_at"] = datetime.now(UTC).isoformat()
         return await self.add_thread(current)
+
+    async def mark_message_activity(self, thread_id: str) -> dict[str, Any] | None:
+        """Record accepted user-message activity without rewriting thread metadata."""
+        parsed_thread_id = _parse_thread_id(thread_id)
+        if parsed_thread_id is None:
+            return None
+
+        now = datetime.now(UTC)
+        async with self._session() as session:
+            stmt = (
+                update(ThreadModel)
+                .where(ThreadModel.thread_id == parsed_thread_id)
+                .values(last_message_at=now, updated_at=now)
+                .returning(ThreadModel)
+            )
+            result = await session.execute(stmt)
+            row = result.scalar_one_or_none()
+        return self._to_dict(row) if row is not None else None
+
+    async def mark_accessed(self, thread_id: str) -> dict[str, Any] | None:
+        """Record a read without rewriting thread metadata or activity."""
+        parsed_thread_id = _parse_thread_id(thread_id)
+        if parsed_thread_id is None:
+            return None
+
+        async with self._session() as session:
+            stmt = (
+                update(ThreadModel)
+                .where(ThreadModel.thread_id == parsed_thread_id)
+                .values(last_accessed_at=datetime.now(UTC))
+                .returning(ThreadModel)
+            )
+            result = await session.execute(stmt)
+            row = result.scalar_one_or_none()
+        return self._to_dict(row) if row is not None else None
 
     async def delete_thread(self, thread_id: str) -> bool:
         """Delete a thread by UUID.  Returns ``True`` if a row was removed."""
