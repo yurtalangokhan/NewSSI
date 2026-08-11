@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, Integer, String, Text, text
+from sqlalchemy import DateTime, Index, Integer, String, Text, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -16,7 +16,7 @@ class AgentGroupModel(Base):
 
     __tablename__ = "agent_groups"
 
-    id: Mapped[int | None] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(120), nullable=False, unique=True)
     description: Mapped[str] = mapped_column(
         Text, nullable=False, default="", server_default=text("''")
@@ -38,3 +38,5 @@ class AgentGroupModel(Base):
         nullable=False,
         server_default=text("now()"),
     )
+
+    __table_args__ = (Index("ix_agent_groups_name", "name"),)

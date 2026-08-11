@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -17,7 +17,6 @@ class UserSettingsModel(Base):
         ForeignKey("users.id", ondelete="CASCADE"),
         unique=True,
         nullable=False,
-        index=True,
     )
     theme_preference: Mapped[str | None] = mapped_column(String(20), nullable=True)
     chat_background: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -43,3 +42,5 @@ class UserSettingsModel(Base):
     )
 
     user: Mapped["UserModel"] = relationship("UserModel", back_populates="settings")
+
+    __table_args__ = (Index("ix_user_settings_user_id", "user_id"),)

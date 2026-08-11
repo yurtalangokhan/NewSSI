@@ -47,7 +47,7 @@ def upgrade() -> None:
     """)
     op.execute("""
         ALTER TABLE agent_definitions
-        ADD COLUMN IF NOT EXISTS mcp_tool_configs JSON NOT NULL DEFAULT '{}'
+        ADD COLUMN IF NOT EXISTS mcp_tool_configs JSONB NOT NULL DEFAULT '{}'::jsonb
     """)
 
 

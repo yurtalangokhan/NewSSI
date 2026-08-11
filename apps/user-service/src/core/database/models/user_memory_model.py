@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Index, String, Text
+from sqlalchemy import DateTime, ForeignKey, Index, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -27,4 +27,7 @@ class UserMemoryModel(Base):
         DateTime(timezone=True), nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow
     )
 
-    __table_args__ = (Index("idx_user_memory_user_time", "user_id", "time_created"),)
+    __table_args__ = (
+        Index("idx_user_memory_user_time", "user_id", "time_created"),
+        Index("uq_user_memory_user_content_lower", "user_id", func.lower(content), unique=True),
+    )

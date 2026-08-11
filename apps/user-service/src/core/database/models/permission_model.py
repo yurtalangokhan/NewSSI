@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, String, Text
+from sqlalchemy import Boolean, DateTime, Index, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .base import Base
@@ -19,4 +19,9 @@ class PermissionModel(Base):
     is_system: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )
+
+    __table_args__ = (
+        Index("ix_permissions_service", "service"),
+        Index("ix_permissions_entity", "entity"),
     )

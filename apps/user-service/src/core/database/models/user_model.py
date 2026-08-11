@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, String
+from sqlalchemy import Boolean, DateTime, Index, String
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -19,11 +19,9 @@ class UserModel(Base):
     __tablename__ = "users"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    keycloak_id: Mapped[str | None] = mapped_column(
-        String(255), unique=True, nullable=True, index=True
-    )
-    email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
-    username: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)
+    keycloak_id: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True)
+    email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    username: Mapped[str | None] = mapped_column(String(100), nullable=True)
     first_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
     last_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
     hashed_password: Mapped[str | None] = mapped_column(String(255), nullable=True)
@@ -63,4 +61,10 @@ class UserModel(Base):
         back_populates="user",
         cascade="all, delete-orphan",
         lazy="selectin",
+    )
+
+    __table_args__ = (
+        Index("ix_users_email", "email"),
+        Index("ix_users_username", "username"),
+        Index("ix_users_keycloak_id", "keycloak_id"),
     )

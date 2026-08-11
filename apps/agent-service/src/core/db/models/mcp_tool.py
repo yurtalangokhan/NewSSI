@@ -29,9 +29,9 @@ class MCPToolModel(Base):
         nullable=False,
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    description: Mapped[str] = mapped_column(
+    description: Mapped[str | None] = mapped_column(
         Text,
-        nullable=False,
+        nullable=True,
         default="",
         server_default=text("''"),
     )

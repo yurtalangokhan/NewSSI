@@ -11,6 +11,7 @@ from idempotency import AsyncRedisPool, IdempotencyConfig, IdempotencyMiddleware
 from src.config import get_settings
 from src.core.api_versioning import API_PREFIX
 from src.core.database.engine import close_db_engine
+from src.core.database.startup import run_startup_migrations
 
 _here = Path(__file__).resolve().parent
 locales_dir = _here.parent / "locales"
@@ -23,6 +24,7 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    run_startup_migrations()
     try:
         from src.service.system_settings_service import get_system_settings_service
 

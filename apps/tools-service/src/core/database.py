@@ -1,8 +1,6 @@
-"""
-Database connection management.
-Provides a singleton DatabaseManager for async connection pooling.
-"""
+"""Database connection management."""
 
+from inspect import isawaitable
 from typing import Optional
 
 try:
@@ -11,6 +9,31 @@ except ImportError:  # pragma: no cover - optional dependency in local dev
     asyncpg = None
 
 from .settings import get_settings
+
+
+async def ensure_database_exists() -> None:
+    """Create the configured tools-service database if it doesn't exist."""
+    if asyncpg is None:
+        raise RuntimeError("asyncpg is not installed")
+
+    config = get_settings().postgres_config
+    conn = await asyncpg.connect(
+        user=config["user"],
+        password=config["password"],
+        host=config["host"],
+        port=config["port"],
+        database="postgres",
+        timeout=5,
+    )
+    try:
+        exists = await conn.fetchval(
+            "SELECT 1 FROM pg_database WHERE datname = $1",
+            config["database"],
+        )
+        if not exists:
+            await conn.execute(f'CREATE DATABASE "{config["database"]}"')
+    finally:
+        await conn.close()
 
 
 class DatabaseManager:
@@ -45,6 +68,9 @@ class DatabaseManager:
             raise RuntimeError("asyncpg is not installed")
 
         if self._pool is None:
+            ensure_result = ensure_database_exists()
+            if isawaitable(ensure_result):
+                await ensure_result
             config = self.config
             self._pool = await asyncpg.create_pool(
                 user=config["user"],

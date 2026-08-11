@@ -25,7 +25,7 @@ from langconnect.config import (
     REDIS_PORT,
 )
 from langconnect.database.collections import CollectionsManager
-from langconnect.database.postgres.schema_bootstrap import ensure_schema
+from langconnect.database.postgres.startup import run_startup_migrations
 
 # Configure logging
 logging.basicConfig(
@@ -55,7 +55,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Lifespan context manager for FastAPI application."""
     logger.info("App is starting up. Creating background worker...")
     await AsyncRedisPool.connect(_idempotency_config)
-    await ensure_schema()
+    run_startup_migrations()
     await CollectionsManager.setup()
 
     # Initialize Neo4j connection (best-effort - graph features degrade gracefully)

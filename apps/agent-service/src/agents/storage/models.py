@@ -4,8 +4,8 @@ from datetime import datetime
 from typing import Any
 from uuid import uuid4
 
-from sqlalchemy import JSON, Boolean, DateTime, Index, Integer, String, Text
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Boolean, DateTime, Index, Integer, String, Text
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from core.db.models.base import Base
@@ -57,20 +57,20 @@ class AgentDefinitionModel(Base):
     model: Mapped[str] = mapped_column(String(100), nullable=True)
 
     # Tools configuration - list of MCP tool names
-    mcp_tools: Mapped[list] = mapped_column(JSON, default=list)
+    mcp_tools: Mapped[list] = mapped_column(JSONB, default=list)
 
     # Per-tool config references. Must not contain secrets.
-    mcp_tool_configs: Mapped[dict] = mapped_column(JSON, default=dict)
+    mcp_tool_configs: Mapped[dict] = mapped_column(JSONB, default=dict)
 
     # Knowledge collection binding used by retrieval tools
-    rag_config: Mapped[dict] = mapped_column(JSON, default=dict)
+    rag_config: Mapped[dict] = mapped_column(JSONB, default=dict)
 
     # Sub-agents for supervisor/pipeline schemas (JSON array of dicts)
-    sub_agents: Mapped[list] = mapped_column(JSON, default=list)
+    sub_agents: Mapped[list] = mapped_column(JSONB, default=list)
 
     # Sub-agent IDs for referencing existing agents (for composition)
     # NEW: Allows agents to reference other agents instead of inlining configs
-    sub_agent_ids: Mapped[list] = mapped_column(JSON, default=list)
+    sub_agent_ids: Mapped[list] = mapped_column(JSONB, default=list)
 
     # Version counter for cache validation
     sub_agent_config_version: Mapped[int] = mapped_column(Integer, default=0)
@@ -79,7 +79,7 @@ class AgentDefinitionModel(Base):
     supervisor_prompt: Mapped[str] = mapped_column(Text, nullable=True)
 
     # Pipeline stages (JSON array of dicts)
-    stages: Mapped[list] = mapped_column(JSON, default=list)
+    stages: Mapped[list] = mapped_column(JSONB, default=list)
 
     # Pipeline prompt for pipeline schema
     pipeline_prompt: Mapped[str] = mapped_column(Text, nullable=True)
@@ -90,7 +90,7 @@ class AgentDefinitionModel(Base):
 
     # Metadata
     version: Mapped[str] = mapped_column(String(20), default="1.0.0")
-    tags: Mapped[list] = mapped_column(JSON, default=list)
+    tags: Mapped[list] = mapped_column(JSONB, default=list)
 
     # Status
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
@@ -107,6 +107,11 @@ class AgentDefinitionModel(Base):
         Index("ix_agent_definitions_graph_schema", "graph_schema"),
         Index("ix_agent_definitions_active", "is_active"),
         Index("ix_agent_definitions_name", "name"),
+        Index(
+            "ix_agent_definitions_sub_agent_ids",
+            "sub_agent_ids",
+            postgresql_using="gin",
+        ),
     )
 
     def to_config(self) -> dict[str, Any]:
