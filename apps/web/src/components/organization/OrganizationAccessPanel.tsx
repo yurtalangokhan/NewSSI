@@ -33,6 +33,7 @@ interface OrganizationAccessPanelProps {
   organization: { id: string; name: string };
   members: OrganizationAccessMember[];
   editable: boolean;
+  onSaveComplete?: () => void | Promise<void>;
 }
 
 interface ScopedPermissionsResponse {
@@ -85,6 +86,7 @@ function ScopedResourcePanel({
   resourcesLoading,
   resourcesError,
   onRetryResources,
+  onSaveComplete,
 }: {
   organizationId: string;
   targetType: TargetType;
@@ -96,6 +98,7 @@ function ScopedResourcePanel({
   resourcesLoading: boolean;
   resourcesError?: string;
   onRetryResources?: () => void;
+  onSaveComplete?: () => void | Promise<void>;
 }) {
   const endpoint = `/api/user-service/permissions/organizations/${organizationId}/targets/${targetType}/${targetId}/resources/${resourceType}`;
   const { data, error, isLoading, mutate } = useSWR<ScopedPermissionsResponse>(
@@ -114,6 +117,11 @@ function ScopedResourcePanel({
     }
     const saved = (await response.json()) as ScopedPermissionsResponse;
     await mutate(saved, { revalidate: false });
+    try {
+      await onSaveComplete?.();
+    } catch {
+      // Count refresh is ancillary; the permission PUT has already succeeded.
+    }
     return saved.permissions;
   }
 
@@ -142,6 +150,7 @@ export function OrganizationAccessPanel({
   organization,
   members,
   editable,
+  onSaveComplete,
 }: OrganizationAccessPanelProps) {
   const [targetType, setTargetType] = useState<TargetType>("organization");
   const activeMembers = useMemo(
@@ -230,6 +239,7 @@ export function OrganizationAccessPanel({
               agentsError ? errorMessage(agentsError, "Agents could not be loaded") : undefined
             }
             onRetryResources={() => void refresh()}
+            onSaveComplete={onSaveComplete}
           />
           <ScopedResourcePanel
             organizationId={organization.id}
@@ -246,6 +256,7 @@ export function OrganizationAccessPanel({
                 : undefined
             }
             onRetryResources={() => void refreshCollections()}
+            onSaveComplete={onSaveComplete}
           />
         </div>
       ) : null}

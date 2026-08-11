@@ -39,7 +39,9 @@ describe("user-service API proxy routing", () => {
 
     const url = getBackendUrl(["user-service", "users", "me"]);
 
-    expect(url.toString()).toBe("http://kong:8000/user-service/api/v1/users/me");
+    expect(url.toString()).toBe(
+      "http://kong:8000/user-service/api/v1/users/me"
+    );
   });
 
   it("adds backend trailing slashes for FastAPI collection routes only", () => {
@@ -53,6 +55,28 @@ describe("user-service API proxy routing", () => {
     expect(buildUserServicePath(["users", "me"], request)).toBe(
       "/api/v1/users/me"
     );
+  });
+
+  it("forwards organization layout paths without treating them as collections", () => {
+    const layoutUrl = getBackendUrl([
+      "user-service",
+      "organizations",
+      "layout",
+    ]);
+    const request = new NextRequest(
+      "http://localhost/api/user-service/organizations/layout"
+    );
+    const trailingSlashRequest = new NextRequest(
+      "http://localhost/api/user-service/organizations/layout/"
+    );
+
+    expect(layoutUrl.pathname).toBe("/api/v1/organizations/layout");
+    expect(buildUserServicePath(["organizations", "layout"], request)).toBe(
+      "/api/v1/organizations/layout"
+    );
+    expect(
+      buildUserServicePath(["organizations", "layout"], trailingSlashRequest)
+    ).toBe("/api/v1/organizations/layout/");
   });
 
   it("does not expose a user-organizations collection the backend does not define", () => {

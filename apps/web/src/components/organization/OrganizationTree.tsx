@@ -17,24 +17,13 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { Tree, NodeRendererProps } from "react-arborist";
-import { SvgEdit, SvgFolderPlus, SvgTrash } from "@opal/icons";
+import type { OrganizationNode } from "@/components/organization/organizationTypes";
+import { SvgEdit, SvgFolderPlus, SvgMaximize2, SvgTrash } from "@/icons";
 import Button from "@/refresh-components/buttons/Button";
 import IconButton from "@/refresh-components/buttons/IconButton";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
 import Text from "@/refresh-components/texts/Text";
 import { cn } from "@/lib/utils";
-
-interface OrganizationNode {
-  id: string;
-  name: string;
-  path: string;
-  parent_id: string | null;
-  description?: string;
-  metadata?: Record<string, any>;
-  children?: OrganizationNode[];
-  user_count?: number;
-  permission_count?: number;
-}
 
 interface OrganizationTreeProps {
   organizations: OrganizationNode[];
@@ -46,6 +35,7 @@ interface OrganizationTreeProps {
   onDeleteOrg: (id: string) => Promise<void>;
   onMoveOrg: (id: string, newParentId: string | null) => Promise<void>;
   onSelectOrg: (org: OrganizationNode) => void;
+  onOpenDesigner?: () => void;
   selectedOrgId?: string | null;
   className?: string;
 }
@@ -202,6 +192,7 @@ export function OrganizationTree({
   onDeleteOrg,
   onMoveOrg,
   onSelectOrg,
+  onOpenDesigner,
   selectedOrgId,
   className,
 }: OrganizationTreeProps) {
@@ -278,11 +269,22 @@ export function OrganizationTree({
           </Text>
         </div>
 
-        {organizations.length === 0 && (
-          <Button action primary size="md" onClick={() => handleCreate(null)}>
-            Add Root Organization
-          </Button>
-        )}
+        <div className={cn("flex items-center gap-2")}>
+          {organizations.length === 0 && (
+            <Button action primary size="md" onClick={() => handleCreate(null)}>
+              Add Root Organization
+            </Button>
+          )}
+          {onOpenDesigner && (
+            <IconButton
+              icon={SvgMaximize2}
+              tooltip="Open organization designer"
+              aria-label="Open organization designer"
+              tertiary
+              onClick={onOpenDesigner}
+            />
+          )}
+        </div>
       </div>
 
       {/* Tree */}

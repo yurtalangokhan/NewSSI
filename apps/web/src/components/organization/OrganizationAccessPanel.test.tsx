@@ -32,8 +32,8 @@ describe("OrganizationAccessPanel", () => {
       isLoading: false,
       mutate: jest.fn(),
     });
+    // Serves scoped direct-permission GET requests.
     jest.spyOn(global, "fetch").mockImplementation(async (_request) => {
-      // Serves scoped direct-permission GET requests.
       return new Response(JSON.stringify({ permissions: [], count: 0 }), {
         status: 200,
         headers: { "Content-Type": "application/json" },
@@ -101,7 +101,9 @@ describe("OrganizationAccessPanel", () => {
 
   it("loads and saves the exact selected member agent target", async () => {
     const user = setupUser();
+    const onSaveComplete = jest.fn();
     const fetchMock = jest.mocked(global.fetch);
+    // Serves scoped permission GET and PUT requests for the selected member.
     fetchMock.mockImplementation(async (_request, options) => {
       if (options?.method === "PUT") {
         return new Response(
@@ -136,6 +138,7 @@ describe("OrganizationAccessPanel", () => {
           },
         ]}
         editable
+        onSaveComplete={onSaveComplete}
       />
     );
 
@@ -145,7 +148,9 @@ describe("OrganizationAccessPanel", () => {
         "/api/user-service/permissions/organizations/org-1/targets/user/user-1/resources/agent"
       )
     );
-    await user.click(screen.getByRole("checkbox", { name: "Select Research agent" }));
+    await user.click(
+      await screen.findByRole("checkbox", { name: "Select Research agent" })
+    );
     await user.click(screen.getAllByRole("button", { name: "Save changes" })[0]!);
 
     await waitFor(() =>
@@ -165,5 +170,50 @@ describe("OrganizationAccessPanel", () => {
         })
       )
     );
+    expect(onSaveComplete).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps a successful permission save successful when count refresh fails", async () => {
+    const user = setupUser();
+    const onSaveComplete = jest.fn().mockRejectedValue(new Error("Tree unavailable"));
+    // Serves scoped permission GET and PUT requests for the ancillary-refresh case.
+    jest.mocked(global.fetch).mockImplementation(async (_request, options) => {
+      if (options?.method === "PUT") {
+        return new Response(
+          JSON.stringify({
+            permissions: [
+              {
+                resource_id: "11",
+                resource_name: "Research agent",
+                permission_level: "read",
+              },
+            ],
+            count: 1,
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        );
+      }
+      return new Response(JSON.stringify({ permissions: [], count: 0 }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    });
+    render(
+      <OrganizationAccessPanel
+        organization={{ id: "org-1", name: "Platform" }}
+        members={[]}
+        editable
+        onSaveComplete={onSaveComplete}
+      />
+    );
+
+    await user.click(
+      await screen.findByRole("checkbox", { name: "Select Research agent" })
+    );
+    const save = screen.getAllByRole("button", { name: "Save changes" })[0]!;
+    await user.click(save);
+
+    await waitFor(() => expect(onSaveComplete).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(save).toBeDisabled());
   });
 });

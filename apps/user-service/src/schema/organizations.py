@@ -32,6 +32,34 @@ class OrganizationMoveRequest(BaseModel):
     new_parent_id: uuid.UUID | None = None
 
 
+class OrganizationLayoutPosition(BaseModel):
+    """One canvas coordinate for an organization."""
+
+    organization_id: uuid.UUID
+    x: float = Field(ge=-1_000_000, le=1_000_000, allow_inf_nan=False)
+    y: float = Field(ge=-1_000_000, le=1_000_000, allow_inf_nan=False)
+
+
+class OrganizationLayoutUpdateRequest(BaseModel):
+    """Shared organization positions to create or update atomically."""
+
+    positions: list[OrganizationLayoutPosition] = Field(max_length=500)
+
+
+class OrganizationLayoutReadResponse(BaseModel):
+    """Shared positions and the organizations that the actor may move."""
+
+    positions: list[OrganizationLayoutPosition]
+    writable_organization_ids: list[uuid.UUID]
+
+
+class OrganizationLayoutUpdateResponse(BaseModel):
+    """Positions saved by a shared-layout update."""
+
+    positions: list[OrganizationLayoutPosition]
+    count: int
+
+
 class UserOrganizationAssignRequest(BaseModel):
     """Request to assign user to organization."""
 

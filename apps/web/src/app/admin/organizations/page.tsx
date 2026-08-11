@@ -1,61 +1,41 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useTranslation } from "react-i18next";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import useSWR, { mutate } from "swr";
 
-import SvgOrganization from "@opal/icons/organization";
-import SvgShield from "@opal/icons/shield";
-import SvgUsers from "@opal/icons/users";
-
 import { OrganizationAccessPanel } from "@/components/organization/OrganizationAccessPanel";
+import { OrganizationDesigner } from "@/components/organization/OrganizationDesigner";
 import { OrganizationTree } from "@/components/organization/OrganizationTree";
+import type {
+  OrganizationMember,
+  OrganizationNode,
+} from "@/components/organization/organizationTypes";
+import { OrganizationUserAssignmentsPanel } from "@/components/organization/OrganizationUserAssignmentsPanel";
 import { toast } from "@/hooks/useToast";
-import Button from "@/refresh-components/buttons/Button";
-import InputSelect from "@/refresh-components/inputs/InputSelect";
+import { useUser } from "@/providers/UserProvider";
+import { SvgOrganization, SvgShield, SvgUsers } from "@/icons";
 import Tabs from "@/refresh-components/Tabs";
 import Text from "@/refresh-components/texts/Text";
 import { cn } from "@/lib/utils";
 
-interface OrganizationNode {
-  id: string;
-  name: string;
-  path: string;
-  parent_id: string | null;
-  description?: string;
-  metadata?: Record<string, unknown>;
-  children?: OrganizationNode[];
-  user_count?: number;
-  permission_count?: number;
-}
-
-interface OrganizationMember {
-  id: string;
-  user_id: string;
-  organization_id: string;
-  role_in_org: string;
-  is_active?: boolean;
-  user?: {
-    id: string;
-    email?: string;
-    first_name?: string;
-    last_name?: string;
-    username?: string;
-  } | null;
-}
-
-interface AvailableUser {
-  id: string;
-  email: string;
-}
-
-interface RoleCatalogResponse {
-  roles: Array<{ name: string }>;
-}
-
 const DEFAULT_TREE_PANE_WIDTH = 480;
 const MIN_TREE_PANE_WIDTH = 320;
 const TREE_PANE_WIDTH_STORAGE_KEY = "admin-organizations-tree-pane-width";
+const ORGANIZATION_TREE_KEY = "/api/user-service/organizations/tree";
+const ORGANIZATION_LAYOUT_KEY = "/api/user-service/organizations/layout";
+
+function findOrganization(
+  organizations: OrganizationNode[],
+  id: string | null
+): OrganizationNode | null {
+  if (!id) return null;
+  for (const organization of organizations) {
+    if (organization.id === id) return organization;
+    const match = findOrganization(organization.children ?? [], id);
+    if (match) return match;
+  }
+  return null;
+}
 
 async function fetchJson<T>(url: string): Promise<T> {
   const response = await fetch(url);
@@ -72,16 +52,13 @@ async function responseDetail(response: Response, fallback: string) {
   return data?.detail || data?.message || fallback;
 }
 
-function memberLabel(member: OrganizationMember) {
-  const name = [member.user?.first_name, member.user?.last_name]
-    .filter(Boolean)
-    .join(" ");
-  return name || member.user?.email || member.user?.username || member.user_id;
-}
-
 export default function OrganizationsPage() {
-  const [selectedOrg, setSelectedOrg] = useState<OrganizationNode | null>(null);
+  const { hasPermission } = useUser();
+  const canCreateRoot = hasPermission("org:create");
+  const canEditLayout = hasPermission("org:update");
+  const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("users");
+  const [isDesignerOpen, setIsDesignerOpen] = useState(false);
   const workspaceRef = useRef<HTMLElement>(null);
   const [treePaneWidth, setTreePaneWidth] = useState(() => {
     if (typeof window === "undefined") return DEFAULT_TREE_PANE_WIDTH;
@@ -141,12 +118,16 @@ export default function OrganizationsPage() {
 
   const { data: treeData, isLoading } = useSWR<
     { roots: OrganizationNode[] } | OrganizationNode[]
-  >("/api/user-service/organizations/tree", fetchJson);
+  >(ORGANIZATION_TREE_KEY, fetchJson);
   const organizations = treeData
     ? "roots" in treeData
       ? treeData.roots
       : treeData
     : [];
+  const selectedOrg = useMemo(
+    () => findOrganization(organizations, selectedOrgId),
+    [organizations, selectedOrgId]
+  );
   const membersKey = selectedOrg
     ? `/api/user-service/organizations/${selectedOrg.id}/users`
     : null;
@@ -158,14 +139,28 @@ export default function OrganizationsPage() {
   const capabilityKey = selectedOrg
     ? `/api/user-service/organizations/${selectedOrg.id}/management-capability`
     : null;
-  const { data: capability } = useSWR<{ editable: boolean }>(
+  const { data: capability, isLoading: capabilityLoading } = useSWR<{
+    editable: boolean;
+  }>(
     capabilityKey,
     fetchJson
   );
   const editable = capability?.editable === true;
 
   const refreshOrganizations = useCallback(async () => {
-    await mutate("/api/user-service/organizations/tree");
+    await mutate(ORGANIZATION_TREE_KEY);
+  }, []);
+
+  const refreshOrganizationsAndLayout = useCallback(async () => {
+    await Promise.all([
+      mutate(ORGANIZATION_TREE_KEY),
+      mutate(ORGANIZATION_LAYOUT_KEY),
+    ]);
+  }, []);
+
+  const handleSelectOrg = useCallback((organization: OrganizationNode) => {
+    setSelectedOrgId(organization.id);
+    setActiveTab("users");
   }, []);
 
   const handleCreateOrg = useCallback(
@@ -188,10 +183,10 @@ export default function OrganizationsPage() {
         );
         return;
       }
-      await refreshOrganizations();
+      await refreshOrganizationsAndLayout();
       toast.success("Organization created");
     },
-    [refreshOrganizations]
+    [refreshOrganizationsAndLayout]
   );
 
   const handleUpdateOrg = useCallback(
@@ -208,10 +203,8 @@ export default function OrganizationsPage() {
         return;
       }
       await refreshOrganizations();
-      if (selectedOrg?.id === id)
-        setSelectedOrg({ ...selectedOrg, ...updates });
     },
-    [refreshOrganizations, selectedOrg]
+    [refreshOrganizations]
   );
 
   const handleDeleteOrg = useCallback(
@@ -225,10 +218,10 @@ export default function OrganizationsPage() {
         );
         return;
       }
-      await refreshOrganizations();
-      if (selectedOrg?.id === id) setSelectedOrg(null);
+      await refreshOrganizationsAndLayout();
+      if (selectedOrgId === id) setSelectedOrgId(null);
     },
-    [refreshOrganizations, selectedOrg]
+    [refreshOrganizationsAndLayout, selectedOrgId]
   );
 
   const handleMoveOrg = useCallback(
@@ -247,9 +240,9 @@ export default function OrganizationsPage() {
         );
         return;
       }
-      await refreshOrganizations();
+      await refreshOrganizationsAndLayout();
     },
-    [refreshOrganizations]
+    [refreshOrganizationsAndLayout]
   );
 
   async function refreshMembers() {
@@ -345,9 +338,10 @@ export default function OrganizationsPage() {
           onUpdateOrg={handleUpdateOrg}
           onDeleteOrg={handleDeleteOrg}
           onMoveOrg={handleMoveOrg}
-          onSelectOrg={(organization) => {
-            setSelectedOrg(organization);
-            setActiveTab("users");
+          onSelectOrg={handleSelectOrg}
+          onOpenDesigner={() => {
+            setIsDesignerOpen(true);
+            void refreshOrganizations();
           }}
           selectedOrgId={selectedOrg?.id}
         />
@@ -432,7 +426,7 @@ export default function OrganizationsPage() {
 
             <div className={cn("flex-1 overflow-y-auto p-6")}>
               {activeTab === "users" ? (
-                <UserAssignmentsPanel
+                <OrganizationUserAssignmentsPanel
                   assignments={members}
                   onAdd={handleAddUser}
                   onRoleChange={handleRoleChange}
@@ -444,6 +438,7 @@ export default function OrganizationsPage() {
                   organization={selectedOrg}
                   members={members}
                   editable={editable}
+                  onSaveComplete={refreshOrganizations}
                 />
               )}
             </div>
@@ -464,213 +459,27 @@ export default function OrganizationsPage() {
           </div>
         )}
       </section>
+      {isDesignerOpen && (
+        <OrganizationDesigner
+          organizations={organizations}
+          selectedOrg={selectedOrg}
+          members={members}
+          editable={editable}
+          capabilityLoading={Boolean(selectedOrg) && capabilityLoading}
+          canCreateRoot={canCreateRoot}
+          canEditLayout={canEditLayout}
+          onClose={() => setIsDesignerOpen(false)}
+          onSelectOrg={handleSelectOrg}
+          onCreateOrg={handleCreateOrg}
+          onUpdateOrg={handleUpdateOrg}
+          onDeleteOrg={handleDeleteOrg}
+          onMoveOrg={handleMoveOrg}
+          onAddUser={handleAddUser}
+          onRoleChange={handleRoleChange}
+          onRemoveUser={handleRemoveUser}
+          onAccessSaveComplete={refreshOrganizations}
+        />
+      )}
     </main>
-  );
-}
-
-function UserAssignmentsPanel({
-  assignments,
-  onAdd,
-  onRoleChange,
-  onRemove,
-  editable,
-}: {
-  assignments: OrganizationMember[];
-  onAdd: (
-    userId: string,
-    role: OrganizationMember["role_in_org"]
-  ) => Promise<void>;
-  onRoleChange: (
-    userId: string,
-    role: OrganizationMember["role_in_org"]
-  ) => Promise<void>;
-  onRemove: (userId: string) => Promise<void>;
-  editable: boolean;
-}) {
-  const { t } = useTranslation();
-  const [showAddUser, setShowAddUser] = useState(false);
-  const [selectedUserId, setSelectedUserId] = useState("");
-  const [selectedRole, setSelectedRole] = useState("unit_manager");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const { data: rolesData, isLoading: rolesLoading } =
-    useSWR<RoleCatalogResponse>("/api/user-service/roles", fetchJson);
-  const { data: usersData } = useSWR<{ users: AvailableUser[]; total: number }>(
-    showAddUser ? "/api/user-service/users/" : null,
-    fetchJson
-  );
-  const roleOptions = [
-    ...(rolesData?.roles ?? [])
-      .filter((role) => role.name !== "unit_manager")
-      .map((role) => ({
-        value: role.name,
-        label: t(`admin.users.roles.${role.name}`),
-      })),
-    { value: "unit_manager", label: "Birim Yöneticisi" },
-  ];
-
-  async function submitUser() {
-    if (!selectedUserId) return;
-    setIsSubmitting(true);
-    try {
-      await onAdd(selectedUserId, selectedRole);
-      setShowAddUser(false);
-      setSelectedUserId("");
-      setSelectedRole("unit_manager");
-      toast.success("Member added");
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Member could not be added"
-      );
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
-
-  return (
-    <div className={cn("flex flex-col gap-4")}>
-      <div className={cn("flex items-center justify-between gap-4")}>
-        <div>
-          <Text headingH3 text04 as="p">
-            Members
-          </Text>
-          <Text secondaryBody text03 as="p">
-            Manage unit membership and appoint unit managers.
-          </Text>
-        </div>
-        <Button
-          action
-          primary
-          size="md"
-          disabled={!editable}
-          onClick={() => setShowAddUser(true)}
-        >
-          Add user
-        </Button>
-      </div>
-
-      {showAddUser && (
-        <div
-          className={cn(
-            "grid gap-3 rounded-12 border border-border-01 bg-background-neutral-00 p-4 md:grid-cols-2"
-          )}
-        >
-          <div className={cn("flex flex-col gap-2")}>
-            <Text secondaryAction text03>
-              User
-            </Text>
-            <InputSelect
-              value={selectedUserId}
-              onValueChange={setSelectedUserId}
-            >
-              <InputSelect.Trigger
-                aria-label="User"
-                placeholder="Select a user"
-              />
-              <InputSelect.Content>
-                {(usersData?.users ?? []).map((user) => (
-                  <InputSelect.Item key={user.id} value={user.id}>
-                    {user.email}
-                  </InputSelect.Item>
-                ))}
-              </InputSelect.Content>
-            </InputSelect>
-          </div>
-          <div className={cn("flex flex-col gap-2")}>
-            <Text secondaryAction text03>
-              Role
-            </Text>
-            <InputSelect
-              value={selectedRole}
-              onValueChange={setSelectedRole}
-              disabled={rolesLoading}
-            >
-              <InputSelect.Trigger aria-label="New member role" />
-              <InputSelect.Content>
-                {roleOptions.map((role) => (
-                  <InputSelect.Item key={role.value} value={role.value}>
-                    {role.label}
-                  </InputSelect.Item>
-                ))}
-              </InputSelect.Content>
-            </InputSelect>
-          </div>
-          <div className={cn("flex justify-end gap-2 md:col-span-2")}>
-            <Button secondary size="md" onClick={() => setShowAddUser(false)}>
-              Cancel
-            </Button>
-            <Button
-              action
-              primary
-              size="md"
-              disabled={!selectedUserId || isSubmitting}
-              onClick={submitUser}
-            >
-              {isSubmitting ? "Adding…" : "Add user"}
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {assignments.length === 0 ? (
-        <Text
-          text03
-          as="p"
-          className={cn("rounded-12 bg-background-neutral-00 p-8 text-center")}
-        >
-          No users are assigned to this organization.
-        </Text>
-      ) : (
-        <div className={cn("flex flex-col gap-2")}>
-          {assignments.map((assignment) => {
-            const label = memberLabel(assignment);
-            return (
-              <div
-                key={assignment.id}
-                className={cn(
-                  "grid items-center gap-3 rounded-12 border border-border-01 bg-background-neutral-00 p-4 md:grid-cols-[minmax(0,1fr)_11rem_auto]"
-                )}
-              >
-                <div className={cn("min-w-0")}>
-                  <Text mainUiAction text04 as="p" className={cn("truncate")}>
-                    {label}
-                  </Text>
-                  <Text secondaryBody text03 as="p">
-                    Direct member of this unit
-                  </Text>
-                </div>
-                <InputSelect
-                  value={assignment.role_in_org}
-                  disabled={!editable}
-                  onValueChange={(value) =>
-                    void onRoleChange(
-                      assignment.user_id,
-                      value as OrganizationMember["role_in_org"]
-                    )
-                  }
-                >
-                  <InputSelect.Trigger aria-label={`Role for ${label}`} />
-                  <InputSelect.Content>
-                    {roleOptions.map((role) => (
-                      <InputSelect.Item key={role.value} value={role.value}>
-                        {role.label}
-                      </InputSelect.Item>
-                    ))}
-                  </InputSelect.Content>
-                </InputSelect>
-                <Button
-                  danger
-                  secondary
-                  size="md"
-                  disabled={!editable}
-                  onClick={() => void onRemove(assignment.user_id)}
-                >
-                  Remove
-                </Button>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
   );
 }

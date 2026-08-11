@@ -6,9 +6,13 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
 from src.api.dependencies import require_permission
+from src.controller import get_organization_layout_controller
 from src.core.exceptions import ConflictError
 from src.schema.organizations import (
     OrganizationCreateRequest,
+    OrganizationLayoutReadResponse,
+    OrganizationLayoutUpdateRequest,
+    OrganizationLayoutUpdateResponse,
     OrganizationMoveRequest,
     OrganizationUpdateRequest,
 )
@@ -94,6 +98,28 @@ async def search_organizations(
         return {"results": results, "query": q}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
+
+
+@router.get("/layout", response_model=OrganizationLayoutReadResponse)
+async def get_organization_layout(
+    user_id: Annotated[str, Depends(require_permission("org:read"))],
+) -> OrganizationLayoutReadResponse:
+    """Return the shared canvas positions and organizations the actor may move."""
+    result = await get_organization_layout_controller().get_layout(uuid.UUID(user_id))
+    return OrganizationLayoutReadResponse.model_validate(result)
+
+
+@router.put("/layout", response_model=OrganizationLayoutUpdateResponse)
+async def save_organization_layout(
+    payload: OrganizationLayoutUpdateRequest,
+    user_id: Annotated[str, Depends(require_permission("org:update"))],
+) -> OrganizationLayoutUpdateResponse:
+    """Atomically create or update shared canvas positions."""
+    positions = [position.model_dump() for position in payload.positions]
+    result = await get_organization_layout_controller().save_layout(
+        uuid.UUID(user_id), positions
+    )
+    return OrganizationLayoutUpdateResponse.model_validate(result)
 
 
 @router.get("/{org_id}")

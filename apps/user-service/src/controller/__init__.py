@@ -8,6 +8,10 @@ from .settings_controller import SettingsController, get_settings_controller
 from .system_settings_controller import SystemSettingsController, get_system_settings_controller
 from .user_controller import UserController, get_user_controller
 from .user_memory_controller import UserMemoryController, get_user_memory_controller
+from .organization_layout_controller import (
+    OrganizationLayoutController,
+    get_organization_layout_controller,
+)
 
 __all__ = [
     "ApiKeyController",
@@ -29,4 +33,6 @@ __all__ = [
     "get_user_controller",
     "UserMemoryController",
     "get_user_memory_controller",
+    "OrganizationLayoutController",
+    "get_organization_layout_controller",
 ]

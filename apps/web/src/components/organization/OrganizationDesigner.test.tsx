@@ -1,0 +1,380 @@
+import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { useState } from "react";
+
+import { OrganizationDesigner } from "@/components/organization/OrganizationDesigner";
+import { useOrganizationLayout } from "@/components/organization/useOrganizationLayout";
+import { render, setupUser } from "@tests/setup/test-utils";
+
+const fitView = jest.fn();
+
+jest.mock("@xyflow/react", () => {
+  const React = jest.requireActual("react");
+  return {
+    Background: () => <div data-testid="flow-background" />,
+    Controls: () => <div data-testid="flow-controls" />,
+    MiniMap: () => <div data-testid="flow-minimap" />,
+    ReactFlowProvider: ({ children }: { children: React.ReactNode }) => children,
+    useNodesState: (initialNodes: any[]) => {
+      const [nodes, setNodes] = React.useState(initialNodes);
+      const onNodesChange = React.useCallback((changes: any[]) => {
+        setNodes((current: any[]) =>
+          current.map((node) => {
+            const change = changes.find((candidate) => candidate.id === node.id);
+            return change?.position ? { ...node, position: change.position } : node;
+          })
+        );
+      }, []);
+      return [nodes, setNodes, onNodesChange];
+    },
+    ReactFlow: ({
+      nodes,
+      edges,
+      onInit,
+      onNodeClick,
+      onNodeDragStop,
+      onNodesChange,
+      children,
+    }: any) => {
+      React.useEffect(() => onInit?.({ fitView }), [onInit]);
+      return (
+        <div data-testid="react-flow" data-edge-count={edges.length}>
+          {nodes.map((node: any) => (
+            <button
+              key={node.id}
+              onClick={() => onNodeClick?.({}, node)}
+              onPointerUp={() =>
+                {
+                  onNodesChange?.([
+                    { id: node.id, type: "position", position: { x: 80, y: 110 }, dragging: true },
+                    { id: node.id, type: "position", position: { x: 90, y: 120 }, dragging: false },
+                  ]);
+                  onNodeDragStop?.({}, { ...node, position: { x: 90, y: 120 } });
+                }
+              }
+              onKeyDown={(event) => {
+                if (event.key === "ArrowRight") {
+                  onNodesChange?.([
+                    {
+                      id: node.id,
+                      type: "position",
+                      position: { x: node.position.x + 5, y: node.position.y },
+                    },
+                  ]);
+                }
+              }}
+              data-position-x={node.position.x}
+            >
+              {node.data.name} {node.draggable ? "movable" : "locked"}
+            </button>
+          ))}
+          {children}
+        </div>
+      );
+    },
+  };
+});
+
+jest.mock("@/components/organization/useOrganizationLayout", () => ({
+  useOrganizationLayout: jest.fn(),
+}));
+
+jest.mock("@/components/organization/OrganizationDesignerInspector", () => ({
+  OrganizationDesignerInspector: ({ organization, mobileOpen, onBackToMap }: any) => (
+    <aside data-testid="inspector" data-mobile-open={mobileOpen}>
+      {organization ? `Inspector ${organization.name}` : "No selection"}
+      {organization && <button onClick={onBackToMap}>Back to map</button>}
+    </aside>
+  ),
+}));
+
+const mockedUseOrganizationLayout = jest.mocked(useOrganizationLayout);
+const layoutActions = {
+  positions: {},
+  writableOrganizationIds: new Set(["root"]),
+  status: "idle" as const,
+  error: undefined,
+  isLoading: false,
+  hasDirtyPositions: false,
+  isWritable: (id: string) => id === "root",
+  setPosition: jest.fn(),
+  flush: jest.fn().mockResolvedValue(true),
+  retry: jest.fn().mockResolvedValue(true),
+  discard: jest.fn(),
+  refresh: jest.fn(),
+};
+
+const organizations = [
+  {
+    id: "root",
+    name: "Enterprise",
+    path: "/enterprise",
+    parent_id: null,
+    children: [
+      {
+        id: "child",
+        name: "Platform",
+        path: "/enterprise/platform",
+        parent_id: "root",
+        children: [],
+      },
+    ],
+  },
+];
+
+const handlers = {
+  canCreateRoot: false,
+  canEditLayout: true,
+  onClose: jest.fn(),
+  onSelectOrg: jest.fn(),
+  onCreateOrg: jest.fn().mockResolvedValue(undefined),
+  onUpdateOrg: jest.fn().mockResolvedValue(undefined),
+  onDeleteOrg: jest.fn().mockResolvedValue(undefined),
+  onMoveOrg: jest.fn().mockResolvedValue(undefined),
+  onAddUser: jest.fn().mockResolvedValue(undefined),
+  onRoleChange: jest.fn().mockResolvedValue(undefined),
+  onRemoveUser: jest.fn().mockResolvedValue(undefined),
+};
+
+describe("OrganizationDesigner", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockedUseOrganizationLayout.mockReturnValue({ ...layoutActions });
+  });
+
+  it("renders the operational map and changes coordinates without reparenting", async () => {
+    const user = setupUser();
+    render(
+      <OrganizationDesigner
+        organizations={organizations}
+        selectedOrg={organizations[0]!}
+        members={[]}
+        editable
+        capabilityLoading={false}
+        {...handlers}
+      />
+    );
+
+    expect(screen.getByRole("dialog", { name: "Organization designer" })).toBeInTheDocument();
+    expect(screen.getByTestId("flow-controls")).toBeInTheDocument();
+    expect(screen.getByTestId("flow-minimap")).toBeInTheDocument();
+    expect(screen.getByTestId("react-flow")).toHaveAttribute("data-edge-count", "1");
+    expect(layoutActions.refresh).toHaveBeenCalledTimes(1);
+
+    await user.click(screen.getByRole("button", { name: /Platform locked/ }));
+    expect(handlers.onSelectOrg).toHaveBeenCalledWith(organizations[0]!.children![0]);
+
+    layoutActions.setPosition.mockClear();
+    fireEvent.pointerUp(
+      screen.getByRole("button", { name: /Enterprise movable/ })
+    );
+    expect(layoutActions.setPosition).toHaveBeenCalledWith("root", {
+      x: 90,
+      y: 120,
+    });
+    expect(layoutActions.setPosition).toHaveBeenCalledTimes(1);
+    expect(handlers.onMoveOrg).not.toHaveBeenCalled();
+
+    const rootNode = screen.getByRole("button", { name: /Enterprise movable/ });
+    rootNode.focus();
+    await user.keyboard("{ArrowRight}");
+    expect(rootNode).toHaveAttribute("data-position-x", "85");
+
+    await user.click(screen.getByRole("button", { name: "Fit view" }));
+    expect(fitView).toHaveBeenCalled();
+  });
+
+  it("lets mobile users return to the map and reopen the selected inspector", async () => {
+    const user = setupUser();
+    render(
+      <OrganizationDesigner
+        organizations={organizations}
+        selectedOrg={organizations[0]!}
+        members={[]}
+        editable
+        capabilityLoading={false}
+        {...handlers}
+      />
+    );
+
+    await user.click(screen.getByRole("button", { name: "Back to map" }));
+    expect(screen.getByTestId("inspector")).toHaveAttribute(
+      "data-mobile-open",
+      "false"
+    );
+    await user.click(screen.getByRole("button", { name: "Show inspector" }));
+    expect(screen.getByTestId("inspector")).toHaveAttribute(
+      "data-mobile-open",
+      "true"
+    );
+  });
+
+  it("creates the first root organization from an empty map", async () => {
+    const user = setupUser();
+    jest.spyOn(window, "prompt").mockReturnValue("Enterprise");
+    render(
+      <OrganizationDesigner
+        organizations={[]}
+        selectedOrg={null}
+        members={[]}
+        editable={false}
+        capabilityLoading={false}
+        {...handlers}
+        canCreateRoot
+      />
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: "Create root organization" })
+    );
+    expect(handlers.onCreateOrg).toHaveBeenCalledWith(null, "Enterprise");
+  });
+
+  it("does not expose root creation without the global org:create permission", () => {
+    render(
+      <OrganizationDesigner
+        organizations={[]}
+        selectedOrg={null}
+        members={[]}
+        editable={false}
+        capabilityLoading={false}
+        {...handlers}
+      />
+    );
+
+    expect(
+      screen.queryByRole("button", { name: "Create root organization" })
+    ).not.toBeInTheDocument();
+  });
+
+  it("keeps backend-writable nodes locked without coarse org:update permission", () => {
+    render(
+      <OrganizationDesigner
+        organizations={organizations}
+        selectedOrg={organizations[0]!}
+        members={[]}
+        editable
+        capabilityLoading={false}
+        {...handlers}
+        canEditLayout={false}
+      />
+    );
+
+    const rootNode = screen.getByRole("button", { name: /Enterprise locked/ });
+    fireEvent.pointerUp(rootNode);
+    expect(layoutActions.setPosition).not.toHaveBeenCalled();
+  });
+
+  it("waits for a successful pending-layout flush before closing", async () => {
+    let resolveFlush: ((saved: boolean) => void) | undefined;
+    const flush = jest.fn(
+      () => new Promise<boolean>((resolve) => (resolveFlush = resolve))
+    );
+    mockedUseOrganizationLayout.mockReturnValue({
+      ...layoutActions,
+      hasDirtyPositions: true,
+      flush,
+    });
+    const user = setupUser();
+    render(
+      <OrganizationDesigner
+        organizations={organizations}
+        selectedOrg={organizations[0]!}
+        members={[]}
+        editable
+        capabilityLoading={false}
+        {...handlers}
+      />
+    );
+
+    await user.click(screen.getByRole("button", { name: "Close designer" }));
+    expect(handlers.onClose).not.toHaveBeenCalled();
+    resolveFlush?.(true);
+    await waitFor(() => expect(handlers.onClose).toHaveBeenCalledTimes(1));
+  });
+
+  it("keeps a failed close open until retry or explicit discard", async () => {
+    mockedUseOrganizationLayout.mockReturnValue({
+      ...layoutActions,
+      hasDirtyPositions: true,
+      status: "error",
+      error: new Error("Layout is locked"),
+      flush: jest.fn().mockResolvedValue(false),
+    });
+    const user = setupUser();
+    render(
+      <OrganizationDesigner
+        organizations={organizations}
+        selectedOrg={organizations[0]!}
+        members={[]}
+        editable
+        capabilityLoading={false}
+        {...handlers}
+      />
+    );
+
+    await user.click(screen.getByRole("button", { name: "Close designer" }));
+    expect(handlers.onClose).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Discard and close" })
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Discard and close" }));
+    expect(layoutActions.discard).toHaveBeenCalledTimes(1);
+    expect(handlers.onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("routes Escape through the same close safeguard", async () => {
+    const user = setupUser();
+    render(
+      <OrganizationDesigner
+        organizations={organizations}
+        selectedOrg={organizations[0]!}
+        members={[]}
+        editable
+        capabilityLoading={false}
+        {...handlers}
+      />
+    );
+
+    await user.keyboard("{Escape}");
+    expect(layoutActions.flush).toHaveBeenCalledTimes(1);
+    expect(handlers.onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("focuses and traps the modal, then restores focus to its launcher", async () => {
+    function Harness() {
+      const [open, setOpen] = useState(false);
+      return (
+        <>
+          <button onClick={() => setOpen(true)}>Launch designer</button>
+          {open && (
+            <OrganizationDesigner
+              organizations={organizations}
+              selectedOrg={organizations[0]!}
+              members={[]}
+              editable
+              capabilityLoading={false}
+              {...handlers}
+              onClose={() => setOpen(false)}
+            />
+          )}
+        </>
+      );
+    }
+
+    const user = setupUser();
+    render(<Harness />);
+    const launcher = screen.getByRole("button", { name: "Launch designer" });
+    await user.click(launcher);
+
+    const dialog = screen.getByRole("dialog", { name: "Organization designer" });
+    expect(dialog).toHaveFocus();
+    expect(launcher.closest('[aria-hidden="true"]')).not.toBeNull();
+    await user.tab({ shift: true });
+    expect(dialog).toContainElement(document.activeElement as HTMLElement);
+
+    await user.click(screen.getByRole("button", { name: "Close designer" }));
+    await waitFor(() => expect(launcher).toHaveFocus());
+  });
+});

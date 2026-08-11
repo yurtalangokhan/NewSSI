@@ -12,6 +12,7 @@ from .organization_model import OrganizationModel
 from .user_organization_model import UserOrganizationModel
 from .resource_permission_model import ResourcePermissionModel
 from .permission_audit_model import PermissionAuditModel
+from .organization_layout_model import OrganizationLayoutModel
 
 __all__ = [
     "ApiKeyModel",
@@ -28,4 +29,5 @@ __all__ = [
     "UserOrganizationModel",
     "ResourcePermissionModel",
     "PermissionAuditModel",
+    "OrganizationLayoutModel",
 ]

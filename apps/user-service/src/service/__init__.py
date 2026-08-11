@@ -38,6 +38,7 @@ from .organization_service import OrganizationService, get_organization_service
 from .permission_audit_service import PermissionAuditService, get_permission_audit_service
 from .resource_permission_service import ResourcePermissionService, get_resource_permission_service
 from .user_organization_service import UserOrganizationService, get_user_organization_service
+from .organization_layout_service import OrganizationLayoutService, get_organization_layout_service
 
 __all__.extend([
     "OrganizationService",
@@ -48,4 +49,6 @@ __all__.extend([
     "get_resource_permission_service",
     "UserOrganizationService",
     "get_user_organization_service",
+    "OrganizationLayoutService",
+    "get_organization_layout_service",
 ])

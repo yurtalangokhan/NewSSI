@@ -386,7 +386,61 @@ the final active membership is removed, all user-target resource permissions
 are deleted; organization grants, grants for other users, and audit history are
 preserved.
 
-### Pattern 6: RAG proxy
+### Pattern 6: Shared organization visual designer
+
+The Organizations page owns the hierarchy, selection, membership data,
+management capability, and existing mutation callbacks. The full-screen visual
+designer reuses that state and those callbacks; it doesn't introduce separate
+organization, membership, or resource-access workflows.
+
+```text
+Administrator opens the organization designer
+  Browser GET /api/user-service/organizations/tree
+    -> Next.js user-service proxy forwards GET /api/v1/organizations/tree
+  Browser GET /api/user-service/organizations/layout
+    -> Next.js user-service proxy forwards GET /api/v1/organizations/layout
+    -> saved positions place known nodes
+    -> deterministic positions place new nodes
+    -> writable IDs control node dragging
+
+Administrator selects a node
+  Browser GET /api/user-service/organizations/{org_id}/management-capability
+  Browser GET /api/user-service/organizations/{org_id}/users
+  -> Details and Users reuse the page's existing mutation callbacks
+  -> Access owns its scoped permission PUT through OrganizationAccessPanel
+     at /api/user-service/permissions/organizations/{org_id}/targets/{type}/{id}/resources/{resource_type}
+  -> a successful Access PUT asks the page to revalidate the hierarchy/counts
+
+Administrator drags writable nodes
+  -> only local canvas coordinates change
+  Browser PUT /api/user-service/organizations/layout
+    -> Next.js user-service proxy forwards PUT /api/v1/organizations/layout
+    -> dirty coordinates are debounced and saved as one atomic batch
+
+Administrator chooses Move to...
+  Browser POST /api/user-service/organizations/{org_id}/move
+    -> Next.js user-service proxy forwards POST /api/v1/organizations/{org_id}/move
+    -> hierarchy changes only through this explicit action
+```
+
+Mutation controls remain disabled until the selected organization's capability
+request completes. Read-only nodes stay selectable, and the actor can pan,
+zoom, fit the view, and inspect the hierarchy without mutation access.
+When the hierarchy is empty, the designer shows root creation only when the
+authenticated permission set includes `org:create`, which is the same
+permission enforced by the user-service create route.
+
+Pointer drag completion and completed keyboard movement both add coordinates
+to the same debounced layout batch. Pointer drag change events don't add
+duplicate writes. The client retains dirty coordinates when a layout save
+fails. **Retry** sends
+the retained batch again. Closing flushes a pending debounce and waits for an
+active save. If that save fails, the overlay stays open until the administrator
+retries or chooses **Discard and close**. Closing preserves the selected
+organization on the underlying page. Layout writes use last-write-wins
+semantics across administrators.
+
+### Pattern 7: RAG proxy
 
 ```
 Agent needs to list RAG collections:

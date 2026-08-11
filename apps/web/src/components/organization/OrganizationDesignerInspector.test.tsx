@@ -1,0 +1,166 @@
+import { screen } from "@testing-library/react";
+
+import { OrganizationDesignerInspector } from "@/components/organization/OrganizationDesignerInspector";
+import { render, setupUser } from "@tests/setup/test-utils";
+
+jest.mock("@/components/organization/OrganizationAccessPanel", () => ({
+  OrganizationAccessPanel: ({ editable, onSaveComplete }: any) => (
+    <div>
+      Access panel {editable ? "editable" : "read only"}
+      <button onClick={onSaveComplete}>Complete access save</button>
+    </div>
+  ),
+}));
+
+jest.mock("@/components/organization/OrganizationUserAssignmentsPanel", () => ({
+  OrganizationUserAssignmentsPanel: ({ editable }: { editable: boolean }) => (
+    <div>Users panel {editable ? "editable" : "read only"}</div>
+  ),
+}));
+
+const root = {
+  id: "root",
+  name: "Enterprise",
+  path: "/enterprise",
+  parent_id: null,
+  children: [
+    {
+      id: "platform",
+      name: "Platform",
+      path: "/enterprise/platform",
+      parent_id: "root",
+      children: [],
+    },
+  ],
+};
+const operations = {
+  id: "operations",
+  name: "Operations",
+  path: "/operations",
+  parent_id: null,
+  children: [],
+};
+
+const handlers = {
+  onCreateOrg: jest.fn().mockResolvedValue(undefined),
+  onUpdateOrg: jest.fn().mockResolvedValue(undefined),
+  onDeleteOrg: jest.fn().mockResolvedValue(undefined),
+  onMoveOrg: jest.fn().mockResolvedValue(undefined),
+  onAddUser: jest.fn().mockResolvedValue(undefined),
+  onRoleChange: jest.fn().mockResolvedValue(undefined),
+  onRemoveUser: jest.fn().mockResolvedValue(undefined),
+};
+
+describe("OrganizationDesignerInspector", () => {
+  beforeAll(() => {
+    HTMLElement.prototype.hasPointerCapture = jest.fn();
+    HTMLElement.prototype.setPointerCapture = jest.fn();
+    HTMLElement.prototype.releasePointerCapture = jest.fn();
+    HTMLElement.prototype.scrollIntoView = jest.fn();
+  });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("reuses organization CRUD callbacks and moves only through Move to", async () => {
+    const user = setupUser();
+    jest.spyOn(window, "prompt").mockReturnValue("Security");
+    jest.spyOn(window, "confirm").mockReturnValue(true);
+    render(
+      <OrganizationDesignerInspector
+        organization={root.children[0]!}
+        organizations={[root, operations]}
+        members={[]}
+        editable
+        capabilityLoading={false}
+        {...handlers}
+      />
+    );
+
+    const name = screen.getByRole("textbox", { name: "Organization name" });
+    await user.clear(name);
+    await user.type(name, "Platform Engineering");
+    await user.click(screen.getByRole("button", { name: "Save details" }));
+    expect(handlers.onUpdateOrg).toHaveBeenCalledWith("platform", {
+      name: "Platform Engineering",
+    });
+
+    await user.click(screen.getByRole("button", { name: "Add child" }));
+    expect(handlers.onCreateOrg).toHaveBeenCalledWith("platform", "Security");
+
+    await user.click(screen.getByRole("combobox", { name: "Move to" }));
+    await user.click(screen.getByRole("option", { name: "Operations" }));
+    expect(handlers.onMoveOrg).toHaveBeenCalledWith("platform", "operations");
+
+    await user.click(screen.getByRole("button", { name: "Delete organization" }));
+    expect(handlers.onDeleteOrg).toHaveBeenCalledWith("platform");
+  });
+
+  it("keeps every mutation surface disabled while capability loads", async () => {
+    const user = setupUser();
+    render(
+      <OrganizationDesignerInspector
+        organization={root.children[0]!}
+        organizations={[root, operations]}
+        members={[]}
+        editable
+        capabilityLoading
+        {...handlers}
+      />
+    );
+
+    expect(screen.getByRole("button", { name: "Save details" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Add child" })).toBeDisabled();
+    expect(screen.getByRole("combobox", { name: "Move to" })).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Delete organization" })
+    ).toBeDisabled();
+
+    await user.click(screen.getByRole("tab", { name: "Users" }));
+    expect(screen.getByText("Users panel read only")).toBeInTheDocument();
+    await user.click(screen.getByRole("tab", { name: "Access" }));
+    expect(screen.getByText("Access panel read only")).toBeInTheDocument();
+  });
+
+  it("exposes mobile map navigation and enables mutations after capability resolves", async () => {
+    const onBackToMap = jest.fn();
+    const onAccessSaveComplete = jest.fn();
+    const user = setupUser();
+    const { rerender } = render(
+      <OrganizationDesignerInspector
+        organization={root.children[0]!}
+        organizations={[root, operations]}
+        members={[]}
+        editable
+        capabilityLoading
+        mobileOpen
+        onBackToMap={onBackToMap}
+        onAccessSaveComplete={onAccessSaveComplete}
+        {...handlers}
+      />
+    );
+
+    await user.click(screen.getByRole("button", { name: "Back to map" }));
+    expect(onBackToMap).toHaveBeenCalledTimes(1);
+
+    rerender(
+      <OrganizationDesignerInspector
+        organization={root.children[0]!}
+        organizations={[root, operations]}
+        members={[]}
+        editable
+        capabilityLoading={false}
+        mobileOpen
+        onBackToMap={onBackToMap}
+        onAccessSaveComplete={onAccessSaveComplete}
+        {...handlers}
+      />
+    );
+    expect(screen.getByRole("button", { name: "Add child" })).toBeEnabled();
+
+    await user.click(screen.getByRole("tab", { name: "Access" }));
+    await user.click(screen.getByRole("button", { name: "Complete access save" }));
+    expect(onAccessSaveComplete).toHaveBeenCalledTimes(1);
+  });
+});

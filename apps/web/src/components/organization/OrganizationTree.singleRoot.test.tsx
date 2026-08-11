@@ -34,9 +34,25 @@ const handlers = {
   onDeleteOrg: jest.fn().mockResolvedValue(undefined),
   onMoveOrg: jest.fn().mockResolvedValue(undefined),
   onSelectOrg: jest.fn(),
+  onOpenDesigner: jest.fn(),
 };
 
 describe("OrganizationTree single-root action", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("opens the visual designer from an accessible title-row control", async () => {
+    const user = setupUser();
+    render(<OrganizationTree organizations={[]} {...handlers} />);
+
+    await user.click(
+      screen.getByRole("button", { name: "Open organization designer" })
+    );
+
+    expect(handlers.onOpenDesigner).toHaveBeenCalledTimes(1);
+  });
+
   it("hides root creation once the organization tree has a root", () => {
     render(
       <OrganizationTree

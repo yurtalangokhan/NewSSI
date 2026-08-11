@@ -251,6 +251,8 @@ organization-management scope.
 | GET | `/api/v1/organizations` | JWT | List organizations |
 | POST | `/api/v1/organizations` | Enterprise admin | Create an organization; rejects a second root |
 | GET | `/api/v1/organizations/tree` | JWT | Return the organization tree |
+| GET | `/api/v1/organizations/layout` | `org:read` | Return shared canvas positions and writable organization IDs |
+| PUT | `/api/v1/organizations/layout` | `org:update` and manager scope | Atomically upsert shared canvas positions |
 | GET | `/api/v1/organizations/{org_id}/management-capability` | JWT | Report whether the actor can manage the unit |
 | POST | `/api/v1/organizations/{org_id}/move` | Manager scope | Move below another unit; moving to the root is rejected |
 | GET | `/api/v1/organizations/{org_id}/users` | JWT | List organization members |
@@ -277,6 +279,56 @@ permission audit history are not deleted.
 Scope violations return `403`, invalid targets return `400`, and missing
 organizations return `404`. A concurrent attempt to create a second root
 returns `409`.
+
+### Shared visual layout
+
+The organization designer stores one shared set of canvas coordinates. Layout
+records are separate from organization metadata and use the organization ID as
+their key. Deleting an organization cascades to its layout record.
+
+`GET /api/v1/organizations/layout` returns all saved positions in ascending
+organization-ID order:
+
+```json
+{
+  "positions": [
+    {
+      "organization_id": "8a60ec52-f318-45cf-9880-361b725b8d51",
+      "x": 120.5,
+      "y": 240
+    }
+  ],
+  "writable_organization_ids": [
+    "8a60ec52-f318-45cf-9880-361b725b8d51"
+  ]
+}
+```
+
+The writable-ID list reflects the actor's organization-management scope and
+lets the client disable dragging without making one capability request per
+node. Read-only nodes remain selectable.
+
+`PUT /api/v1/organizations/layout` accepts up to 500 unique positions. Each
+coordinate must be a finite number from `-1000000` through `1000000`:
+
+```json
+{
+  "positions": [
+    {
+      "organization_id": "8a60ec52-f318-45cf-9880-361b725b8d51",
+      "x": 160,
+      "y": 280
+    }
+  ]
+}
+```
+
+The service validates every organization and the actor's scope before writing
+the batch. A mixed-authority batch fails without saving any positions. An
+empty batch succeeds with `{"positions": [], "count": 0}`. Duplicate IDs
+return `400`, scope violations return `403`, missing or concurrently deleted
+organizations return `404`, persistence conflicts return `409`, and schema or
+coordinate violations return `422`.
 
 ---
 
