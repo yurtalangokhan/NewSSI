@@ -5,28 +5,47 @@ import { OrganizationTree } from "@/components/organization/OrganizationTree";
 import { render, setupUser } from "@tests/setup/test-utils";
 
 jest.mock("react-arborist", () => ({
-  Tree: ({ onMove, children, data, initialOpenState, selection }: any) => (
-    <div data-initial-open-state={JSON.stringify(initialOpenState)}>
-      <button
-        data-testid="organization-tree"
-        onClick={() => onMove({ dragIds: ["child"], parentId: null })}
+  Tree: ({
+    onMove,
+    children,
+    data,
+    initialOpenState,
+    selection,
+    searchTerm,
+    searchMatch,
+  }: any) => {
+    const flattened = (nodes: any[]): any[] =>
+      nodes.flatMap((node) => [node, ...flattened(node.children ?? [])]);
+    const visibleNode = searchTerm
+      ? flattened(data).find((node) => searchMatch({ data: node }, searchTerm))
+      : data[0];
+
+    return (
+      <div
+        data-initial-open-state={JSON.stringify(initialOpenState)}
+        data-search-term={searchTerm}
       >
-        Simulate root drop
-      </button>
-      {data[0] &&
-        children({
-          node: {
-            data: data[0],
-            isInternal: false,
-            isSelected: data[0].id === selection,
-            isOpen: false,
-            toggle: jest.fn(),
-          },
-          style: {},
-          dragHandle: null,
-        })}
-    </div>
-  ),
+        <button
+          data-testid="organization-tree"
+          onClick={() => onMove({ dragIds: ["child"], parentId: null })}
+        >
+          Simulate root drop
+        </button>
+        {visibleNode &&
+          children({
+            node: {
+              data: visibleNode,
+              isInternal: false,
+              isSelected: visibleNode.id === selection,
+              isOpen: false,
+              toggle: jest.fn(),
+            },
+            style: {},
+            dragHandle: null,
+          })}
+      </div>
+    );
+  },
 }));
 
 const handlers = {
@@ -91,6 +110,44 @@ describe("OrganizationTree single-root action", () => {
     );
 
     expect(screen.getByText("Enterprise")).toHaveClass("text-text-05");
+  });
+
+  it("shows search matches through the existing tree row renderer", async () => {
+    const user = setupUser();
+    render(
+      <OrganizationTree
+        organizations={[
+          {
+            id: "root",
+            name: "Enterprise",
+            path: "/enterprise",
+            parent_id: null,
+            children: [
+              {
+                id: "platform",
+                name: "Platform",
+                path: "/enterprise/platform",
+                parent_id: "root",
+                children: [],
+              },
+            ],
+          },
+        ]}
+        {...handlers}
+      />
+    );
+
+    await user.type(
+      screen.getByRole("textbox", { name: "Search organizations" }),
+      "plat"
+    );
+
+    expect(screen.getByText("Platform").parentElement).toHaveAttribute(
+      "data-search-match",
+      "true"
+    );
+    expect(screen.getByText("1 result")).toBeInTheDocument();
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
   });
 
   it("differentiates the selected organization with a light gray background", () => {
@@ -172,7 +229,9 @@ describe("OrganizationTree single-root action", () => {
       />
     );
 
-    expect(screen.getByTestId("organization-tree").parentElement).toHaveAttribute(
+    expect(
+      screen.getByTestId("organization-tree").parentElement
+    ).toHaveAttribute(
       "data-initial-open-state",
       JSON.stringify({ root: true })
     );

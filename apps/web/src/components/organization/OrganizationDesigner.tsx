@@ -32,11 +32,16 @@ import type {
   OrganizationNode,
   UpdateOrganization,
 } from "@/components/organization/organizationTypes";
+import {
+  getOrganizationMatches,
+  normalizeOrganizationSearch,
+} from "@/components/organization/organizationSearch";
 import { useOrganizationLayout } from "@/components/organization/useOrganizationLayout";
 import { toast } from "@/hooks/useToast";
 import { SvgExpand, SvgX } from "@/icons";
 import Button from "@/refresh-components/buttons/Button";
 import IconButton from "@/refresh-components/buttons/IconButton";
+import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
 import Text from "@/refresh-components/texts/Text";
 import { cn } from "@/lib/utils";
 
@@ -92,7 +97,7 @@ function OrganizationDesignerCanvas({
   onRemoveUser,
   onAccessSaveComplete,
 }: OrganizationDesignerProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const {
     positions,
     writableOrganizationIds,
@@ -118,6 +123,8 @@ function OrganizationDesignerCanvas({
   const [mobileInspectorOpen, setMobileInspectorOpen] = useState(
     Boolean(selectedOrg)
   );
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeSearchMatchIndex, setActiveSearchMatchIndex] = useState(-1);
   const [draftParentId, setDraftParentId] = useState<string | null | undefined>(
     undefined
   );
@@ -127,6 +134,17 @@ function OrganizationDesignerCanvas({
   const organizationsById = useMemo(
     () => indexOrganizations(organizations),
     [organizations]
+  );
+  const searchMatches = useMemo(
+    () => getOrganizationMatches(organizations, searchQuery, i18n.language),
+    [i18n.language, organizations, searchQuery]
+  );
+  const hasSearch = Boolean(
+    normalizeOrganizationSearch(searchQuery, i18n.language)
+  );
+  const matchingOrganizationIds = useMemo(
+    () => new Set(searchMatches.map((organization) => organization.id)),
+    [searchMatches]
   );
   const canvasWritableOrganizationIds = useMemo(
     () => (canEditLayout ? writableOrganizationIds : new Set<string>()),
@@ -167,6 +185,8 @@ function OrganizationDesignerCanvas({
       ...node,
       data: {
         ...node.data,
+        searchMatch: hasSearch && matchingOrganizationIds.has(node.id),
+        searchDimmed: hasSearch && !matchingOrganizationIds.has(node.id),
         canAddChild:
           node.id === selectedOrg?.id && editable && !capabilityLoading,
         canManage:
@@ -183,7 +203,18 @@ function OrganizationDesignerCanvas({
         onRename: (name: string) => onUpdateOrg(node.id, { name }),
       },
     }));
-    const edges = [...baseGraph.edges];
+    const edges = baseGraph.edges.map((edge) => ({
+      ...edge,
+      style: {
+        ...edge.style,
+        opacity: hasSearch
+          ? matchingOrganizationIds.has(edge.source) ||
+            matchingOrganizationIds.has(edge.target)
+            ? 0.62
+            : 0.16
+          : 1,
+      },
+    }));
 
     if (draftParentId !== undefined) {
       const parentNode =
@@ -218,7 +249,11 @@ function OrganizationDesignerCanvas({
           selectable: false,
           focusable: false,
           data: { active: true },
-          style: { stroke: "var(--action-link-05)", strokeWidth: 2 },
+          style: {
+            stroke: "var(--action-link-05)",
+            strokeWidth: 2,
+            opacity: 1,
+          },
         });
       }
     }
@@ -231,6 +266,8 @@ function OrganizationDesignerCanvas({
     capabilityLoading,
     draftParentId,
     editable,
+    hasSearch,
+    matchingOrganizationIds,
     nodeAction,
     onDeleteOrg,
     onUpdateOrg,
@@ -339,6 +376,23 @@ function OrganizationDesignerCanvas({
             ? t("admin.organizations.designer.unsavedChanges")
             : t("admin.organizations.designer.ready");
 
+  const focusNextSearchMatch = useCallback(() => {
+    if (searchMatches.length === 0) return;
+    const nextIndex = (activeSearchMatchIndex + 1) % searchMatches.length;
+    const organization = searchMatches[nextIndex]!;
+    const flowNode = graph.nodes.find((node) => node.id === organization.id);
+    setActiveSearchMatchIndex(nextIndex);
+    onSelectOrg(organization);
+    setMobileInspectorOpen(true);
+    if (flowNode) {
+      void flowInstanceRef.current?.fitView({
+        nodes: [flowNode],
+        padding: 0.8,
+        duration: 300,
+      });
+    }
+  }, [activeSearchMatchIndex, graph.nodes, onSelectOrg, searchMatches]);
+
   return (
     <DialogPrimitive.Root open>
       <DialogPrimitive.Portal>
@@ -356,6 +410,11 @@ function OrganizationDesignerCanvas({
           }}
           onEscapeKeyDown={(event) => {
             event.preventDefault();
+            if (searchQuery) {
+              setSearchQuery("");
+              setActiveSearchMatchIndex(-1);
+              return;
+            }
             void requestClose();
           }}
           className={cn(
@@ -381,7 +440,52 @@ function OrganizationDesignerCanvas({
                 {error.message}
               </Text>
             )}
-            <div className={cn("ml-auto flex items-center gap-2")}>
+            <div
+              className={cn(
+                "ml-auto flex w-full max-w-md items-center gap-2 max-md:max-w-xs"
+              )}
+            >
+              <InputTypeIn
+                aria-label={t("admin.organizations.tree.searchLabel")}
+                className={cn(
+                  "border border-border-02 bg-background-neutral-01 shadow-sm transition-[border-color,box-shadow] duration-200 focus-within:border-action-link-05 focus-within:ring-1 focus-within:ring-action-link-05 motion-reduce:transition-none"
+                )}
+                leftSearchIcon
+                placeholder={t("admin.organizations.tree.searchPlaceholder")}
+                value={searchQuery}
+                onChange={(event) => {
+                  setSearchQuery(event.target.value);
+                  setActiveSearchMatchIndex(-1);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    focusNextSearchMatch();
+                  } else if (event.key === "Escape") {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    setSearchQuery("");
+                    setActiveSearchMatchIndex(-1);
+                  }
+                }}
+              />
+              {searchQuery.trim() && (
+                <Text
+                  aria-live="polite"
+                  secondaryMono
+                  text04
+                  className={cn(
+                    "shrink-0 rounded-08 bg-background-neutral-03 px-2 py-1"
+                  )}
+                >
+                  {t("admin.organizations.tree.searchResults", {
+                    count: searchMatches.length,
+                  })}
+                </Text>
+              )}
+            </div>
+            <div className={cn("flex items-center gap-2")}>
               {error && (
                 <Button secondary size="md" onClick={() => void handleRetry()}>
                   {t("admin.organizations.actions.retry")}

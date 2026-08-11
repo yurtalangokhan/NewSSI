@@ -163,9 +163,15 @@ export function OrganizationFlowNode({
         name: data.name,
       })}
       data-selected={selected ? "true" : "false"}
+      data-search-state={
+        data.searchMatch ? "match" : data.searchDimmed ? "dimmed" : "idle"
+      }
       data-testid={`organization-flow-node-${id}`}
       className={cn(
-        "w-64 rounded-12 border bg-background-neutral-00 p-4 shadow-none transition-colors",
+        "w-64 rounded-12 border bg-background-neutral-00 p-4 shadow-none transition-[opacity,background-color,border-color,box-shadow] duration-200 motion-reduce:transition-none",
+        data.searchMatch &&
+          "border-action-link-05 bg-background-neutral-03 ring-2 ring-action-link-05 shadow-md",
+        data.searchDimmed && "opacity-30",
         selected
           ? "border-action-link-05 ring-1 ring-action-link-05"
           : "border-border-02"

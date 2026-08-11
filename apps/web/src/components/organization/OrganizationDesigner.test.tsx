@@ -82,6 +82,13 @@ jest.mock("@xyflow/react", () => {
                 }
               }}
               data-position-x={node.position.x}
+              data-search-state={
+                node.data.searchMatch
+                  ? "match"
+                  : node.data.searchDimmed
+                    ? "dimmed"
+                    : "idle"
+              }
             >
               {node.data.name} {node.draggable ? "movable" : "locked"}
             </button>
@@ -240,6 +247,45 @@ describe("OrganizationDesigner", () => {
       "data-mobile-open",
       "true"
     );
+  });
+
+  it("keeps the full graph visible and emphasizes inline search matches", async () => {
+    const user = setupUser();
+    render(
+      <OrganizationDesigner
+        organizations={organizations}
+        selectedOrg={null}
+        members={[]}
+        editable={false}
+        capabilityLoading={false}
+        {...handlers}
+      />
+    );
+
+    const search = screen.getByRole("textbox", {
+      name: "Search organizations",
+    });
+    await user.type(search, "plat");
+
+    expect(
+      screen.getByRole("button", { name: /Platform locked/ })
+    ).toHaveAttribute("data-search-state", "match");
+    expect(
+      screen.getByRole("button", { name: /Enterprise movable/ })
+    ).toHaveAttribute("data-search-state", "dimmed");
+    expect(screen.getByText("1 result")).toBeInTheDocument();
+
+    await user.keyboard("{Enter}");
+    expect(handlers.onSelectOrg).toHaveBeenCalledWith(
+      organizations[0]!.children![0]
+    );
+    expect(fitView).toHaveBeenCalledWith(
+      expect.objectContaining({ duration: 300 })
+    );
+
+    await user.keyboard("{Escape}");
+    expect(search).toHaveValue("");
+    expect(handlers.onClose).not.toHaveBeenCalled();
   });
 
   it("starts first-root creation with a temporary canvas node", async () => {

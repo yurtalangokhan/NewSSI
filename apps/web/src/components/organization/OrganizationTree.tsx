@@ -15,10 +15,14 @@
 
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { Tree, NodeRendererProps } from "react-arborist";
 import { useTranslation } from "react-i18next";
 import type { OrganizationNode } from "@/components/organization/organizationTypes";
+import {
+  getOrganizationMatches,
+  organizationMatchesSearch,
+} from "@/components/organization/organizationSearch";
 import { SvgEdit, SvgFolderPlus, SvgMaximize2, SvgTrash, SvgX } from "@/icons";
 import Button from "@/refresh-components/buttons/Button";
 import IconButton from "@/refresh-components/buttons/IconButton";
@@ -50,6 +54,8 @@ interface OrganizationNodeRendererProps
   ) => Promise<void>;
   onDeleteOrg: (id: string) => Promise<void>;
   selectedOrgId?: string | null;
+  searchQuery: string;
+  language: string;
 }
 
 interface InlineOrganizationCreateProps {
@@ -128,12 +134,19 @@ function Node({
   onUpdateOrg,
   onDeleteOrg,
   selectedOrgId,
+  searchQuery,
+  language,
 }: OrganizationNodeRendererProps) {
   const { t } = useTranslation();
   const [isEditing, setIsEditing] = useState(false);
   const [isCreatingChild, setIsCreatingChild] = useState(false);
   const [editName, setEditName] = useState(node.data.name);
   const inputRef = useRef<HTMLInputElement>(null);
+  const isSearchMatch = organizationMatchesSearch(
+    node.data,
+    searchQuery,
+    language
+  );
 
   const handleSave = useCallback(() => {
     if (editName.trim() && editName !== node.data.name) {
@@ -157,9 +170,12 @@ function Node({
   return (
     <div style={style} ref={dragHandle}>
       <div
+        data-search-match={isSearchMatch ? "true" : undefined}
         className={cn(
-          "group flex min-w-0 items-center gap-2 rounded-md px-3 py-2 cursor-pointer transition-colors",
+          "group flex min-w-0 items-center gap-2 rounded-md px-3 py-2 cursor-pointer transition-[background-color,border-color,box-shadow] duration-200 motion-reduce:transition-none",
           "hover:bg-background-neutral-02",
+          isSearchMatch &&
+            "bg-background-neutral-03 ring-1 ring-action-link-05",
           selectedOrgId &&
             node.data.parent_id === selectedOrgId &&
             "bg-background-neutral-02",
@@ -194,9 +210,7 @@ function Node({
         ) : (
           <Text
             text05
-            className={cn(
-              "min-w-0 flex-1 truncate text-sm font-medium"
-            )}
+            className={cn("min-w-0 flex-1 truncate text-sm font-medium")}
           >
             {node.data.name}
           </Text>
@@ -298,10 +312,15 @@ export function OrganizationTree({
   selectedOrgId,
   className,
 }: OrganizationTreeProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [isCreating, setIsCreating] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
   const [treeHeight, setTreeHeight] = useState(600);
+  const searchMatches = useMemo(
+    () => getOrganizationMatches(organizations, searchQuery, i18n.language),
+    [i18n.language, organizations, searchQuery]
+  );
 
   // Update tree height when container resizes
   useEffect(() => {
@@ -349,18 +368,11 @@ export function OrganizationTree({
   return (
     <div className={cn("flex flex-col h-full", className)}>
       {/* Header */}
-      <div
-        className={cn(
-          "flex items-center justify-between p-4 border-b border-border-02"
-        )}
-      >
-        <div className={cn("flex items-center gap-2")}>
+      <div className={cn("border-b border-border-02 p-4")}>
+        <div className={cn("flex items-center justify-between gap-2")}>
           <Text className={cn("text-lg font-semibold text-text-01")}>
             {t("admin.organizations.tree.title")}
           </Text>
-        </div>
-
-        <div className={cn("flex items-center gap-2")}>
           {onOpenDesigner && (
             <IconButton
               icon={SvgMaximize2}
@@ -369,6 +381,38 @@ export function OrganizationTree({
               tertiary
               onClick={onOpenDesigner}
             />
+          )}
+        </div>
+        <div className={cn("mt-3 flex items-center gap-2")}>
+          <InputTypeIn
+            aria-label={t("admin.organizations.tree.searchLabel")}
+            className={cn(
+              "border border-border-02 bg-background-neutral-01 shadow-sm transition-[border-color,box-shadow] duration-200 focus-within:border-action-link-05 focus-within:ring-1 focus-within:ring-action-link-05 motion-reduce:transition-none"
+            )}
+            leftSearchIcon
+            placeholder={t("admin.organizations.tree.searchPlaceholder")}
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") {
+                event.stopPropagation();
+                setSearchQuery("");
+              }
+            }}
+          />
+          {searchQuery.trim() && (
+            <Text
+              aria-live="polite"
+              secondaryMono
+              text04
+              className={cn(
+                "shrink-0 rounded-08 bg-background-neutral-03 px-2 py-1"
+              )}
+            >
+              {t("admin.organizations.tree.searchResults", {
+                count: searchMatches.length,
+              })}
+            </Text>
           )}
         </div>
       </div>
@@ -421,6 +465,10 @@ export function OrganizationTree({
             rowHeight={40}
             overscanCount={10}
             selection={selectedOrgId ?? undefined}
+            searchTerm={searchQuery}
+            searchMatch={(node, term) =>
+              organizationMatchesSearch(node.data, term, i18n.language)
+            }
             onSelect={(nodes) => {
               const node = nodes[0];
               if (node) {
@@ -436,6 +484,8 @@ export function OrganizationTree({
                 onUpdateOrg={onUpdateOrg}
                 onDeleteOrg={onDeleteOrg}
                 selectedOrgId={selectedOrgId}
+                searchQuery={searchQuery}
+                language={i18n.language}
               />
             )}
           </Tree>

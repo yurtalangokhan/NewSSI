@@ -1978,6 +1978,10 @@ const en = {
         childNameLabel: "New child organization name",
         namePlaceholder: "Organization name",
         childPlaceholder: "New child organization",
+        searchLabel: "Search organizations",
+        searchPlaceholder: "Find an organization",
+        searchResults_one: "{{count}} result",
+        searchResults_other: "{{count}} results",
       },
       actions: {
         addChild: "Add child",

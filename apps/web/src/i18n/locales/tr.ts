@@ -1984,6 +1984,10 @@ const tr = {
         childNameLabel: "Yeni alt organizasyon adı",
         namePlaceholder: "Organizasyon adı",
         childPlaceholder: "Yeni alt organizasyon",
+        searchLabel: "Organizasyonlarda ara",
+        searchPlaceholder: "Bir organizasyon bulun",
+        searchResults_one: "{{count}} sonuç",
+        searchResults_other: "{{count}} sonuç",
       },
       actions: {
         addChild: "Alt organizasyon ekle",
