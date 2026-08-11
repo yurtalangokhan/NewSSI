@@ -17,6 +17,7 @@ import {
 import Button from "@/refresh-components/buttons/Button";
 import IconButton from "@/refresh-components/buttons/IconButton";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
+import InputSelect from "@/refresh-components/inputs/InputSelect";
 import Text from "@/refresh-components/texts/Text";
 import { cn } from "@/lib/utils";
 
@@ -172,6 +173,8 @@ export function OrganizationFlowNode({
         data.searchMatch &&
           "border-action-link-05 bg-background-neutral-03 ring-2 ring-action-link-05 shadow-md",
         data.searchDimmed && "opacity-30",
+        data.isDropTarget &&
+          "border-status-success-03 bg-background-neutral-03 ring-2 ring-status-success-03",
         selected
           ? "border-action-link-05 ring-1 ring-action-link-05"
           : "border-border-02"
@@ -188,44 +191,62 @@ export function OrganizationFlowNode({
         </div>
         <div className={cn("min-w-0 flex-1")}>
           {data.actionMode === "rename" ? (
-            <div className={cn("nodrag nopan flex items-center gap-1")}>
-              <InputTypeIn
-                aria-label={t(
-                  "admin.organizations.designer.organizationNameFor",
-                  {
+            <div className={cn("nodrag nopan flex flex-col gap-2")}>
+              <div className={cn("flex items-center gap-1")}>
+                <InputTypeIn
+                  aria-label={t(
+                    "admin.organizations.designer.organizationNameFor",
+                    {
+                      name: data.name,
+                    }
+                  )}
+                  autoFocus
+                  showClearButton={false}
+                  value={editName}
+                  variant={isSubmitting ? "disabled" : "primary"}
+                  onChange={(event) => setEditName(event.target.value)}
+                  onKeyDown={(event) => {
+                    event.stopPropagation();
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      void submitRename();
+                    } else if (event.key === "Escape") {
+                      event.preventDefault();
+                      setEditName(data.name);
+                      data.onCancelAction?.();
+                    }
+                  }}
+                />
+                <IconButton
+                  aria-label={t("admin.organizations.actions.cancelRename", {
                     name: data.name,
-                  }
-                )}
-                autoFocus
-                showClearButton={false}
-                value={editName}
-                variant={isSubmitting ? "disabled" : "primary"}
-                onChange={(event) => setEditName(event.target.value)}
-                onKeyDown={(event) => {
-                  event.stopPropagation();
-                  if (event.key === "Enter") {
-                    event.preventDefault();
-                    void submitRename();
-                  } else if (event.key === "Escape") {
-                    event.preventDefault();
+                  })}
+                  icon={SvgX}
+                  small
+                  tertiary
+                  tooltip={t("admin.organizations.actions.cancel")}
+                  onClick={() => {
                     setEditName(data.name);
                     data.onCancelAction?.();
-                  }
-                }}
-              />
-              <IconButton
-                aria-label={t("admin.organizations.actions.cancelRename", {
-                  name: data.name,
-                })}
-                icon={SvgX}
-                small
-                tertiary
-                tooltip={t("admin.organizations.actions.cancel")}
-                onClick={() => {
-                  setEditName(data.name);
-                  data.onCancelAction?.();
-                }}
-              />
+                  }}
+                />
+              </div>
+              <InputSelect
+                value={data.parentId ?? ""}
+                disabled={data.parentId === null}
+                onValueChange={(parentId) => data.onRequestMove?.(parentId)}
+              >
+                <InputSelect.Trigger
+                  aria-label={t("admin.organizations.inspector.moveTo")}
+                />
+                <InputSelect.Content>
+                  {(data.parentOptions ?? []).map((parent) => (
+                    <InputSelect.Item key={parent.id} value={parent.id}>
+                      {parent.name}
+                    </InputSelect.Item>
+                  ))}
+                </InputSelect.Content>
+              </InputSelect>
             </div>
           ) : (
             <Text mainUiAction text04 as="p" className={cn("truncate")}>

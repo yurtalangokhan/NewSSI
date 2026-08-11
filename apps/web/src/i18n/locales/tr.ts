@@ -2006,6 +2006,12 @@ const tr = {
         saveChanges: "Değişiklikleri kaydet",
         saving: "Kaydediliyor…",
       },
+      moveConfirm: {
+        title: "Üst organizasyon değiştirilsin mi?",
+        description: "{{name}} seçilen üst organizasyona taşınacak.",
+        confirm: "Değişikliği onayla",
+        noParent: "Üst organizasyon yok",
+      },
       page: {
         loading: "Organizasyon yükleniyor…",
         resizeTree: "Organizasyon ağacını yeniden boyutlandır",

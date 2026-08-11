@@ -20,6 +20,10 @@ export interface OrganizationFlowNodeData extends Record<string, unknown> {
   isDraft?: boolean;
   searchMatch?: boolean;
   searchDimmed?: boolean;
+  parentId?: string | null;
+  parentOptions?: Array<{ id: string; name: string }>;
+  onRequestMove?: (parentId: string) => void;
+  isDropTarget?: boolean;
   onAddChild?: () => void;
   onBeginDelete?: () => void;
   onBeginRename?: () => void;
@@ -106,6 +110,7 @@ export function organizationTreeToFlowGraph(
         name: organization.name,
         path: organization.path,
         childCount: children.length,
+        parentId: organization.parent_id,
         readOnly: !writableOrganizationIds.has(organization.id),
       },
       selected: organization.id === selectedOrganizationId,

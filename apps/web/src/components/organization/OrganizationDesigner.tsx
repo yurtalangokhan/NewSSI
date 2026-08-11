@@ -20,6 +20,7 @@ import "@xyflow/react/dist/style.css";
 
 import { OrganizationDesignerInspector } from "@/components/organization/OrganizationDesignerInspector";
 import { OrganizationFlowNode } from "@/components/organization/OrganizationFlowNode";
+import { OrganizationMoveConfirmationModal } from "@/components/organization/OrganizationMoveConfirmationModal";
 import {
   organizationTreeToFlowGraph,
   type OrganizationFlowEdge,
@@ -35,6 +36,7 @@ import type {
 } from "@/components/organization/organizationTypes";
 import {
   getOrganizationMatches,
+  flattenOrganizations,
   normalizeOrganizationSearch,
 } from "@/components/organization/organizationSearch";
 import { useOrganizationLayout } from "@/components/organization/useOrganizationLayout";
@@ -77,6 +79,12 @@ function indexOrganizations(organizations: OrganizationNode[]) {
   }
   organizations.forEach(visit);
   return byId;
+}
+
+function descendantIds(organization: OrganizationNode) {
+  return new Set(
+    flattenOrganizations(organization.children ?? []).map((item) => item.id)
+  );
 }
 
 function OrganizationDesignerCanvas({
@@ -126,6 +134,11 @@ function OrganizationDesignerCanvas({
   );
   const [searchQuery, setSearchQuery] = useState("");
   const [activeSearchMatchIndex, setActiveSearchMatchIndex] = useState(-1);
+  const [pendingMove, setPendingMove] = useState<{
+    organization: OrganizationNode;
+    parent: OrganizationNode;
+  } | null>(null);
+  const [dropTargetId, setDropTargetId] = useState<string | null>(null);
   const [draftParentId, setDraftParentId] = useState<string | null | undefined>(
     undefined
   );
@@ -134,6 +147,10 @@ function OrganizationDesignerCanvas({
   >(undefined);
   const organizationsById = useMemo(
     () => indexOrganizations(organizations),
+    [organizations]
+  );
+  const allOrganizations = useMemo(
+    () => flattenOrganizations(organizations),
     [organizations]
   );
   const searchMatches = useMemo(
@@ -188,6 +205,23 @@ function OrganizationDesignerCanvas({
         ...node.data,
         searchMatch: hasSearch && matchingOrganizationIds.has(node.id),
         searchDimmed: hasSearch && !matchingOrganizationIds.has(node.id),
+        isDropTarget: dropTargetId === node.id,
+        parentOptions: allOrganizations
+          .filter((candidate) => {
+            const source = organizationsById.get(node.id);
+            return (
+              source &&
+              candidate.id !== node.id &&
+              !descendantIds(source).has(candidate.id)
+            );
+          })
+          .map(({ id, name }) => ({ id, name })),
+        onRequestMove: (parentId: string) => {
+          const organization = organizationsById.get(node.id);
+          const parent = organizationsById.get(parentId);
+          if (organization && parent && organization.parent_id !== parent.id)
+            setPendingMove({ organization, parent });
+        },
         canAddChild:
           node.id === selectedOrg?.id && editable && !capabilityLoading,
         canManage:
@@ -267,8 +301,11 @@ function OrganizationDesignerCanvas({
     capabilityLoading,
     draftParentId,
     editable,
+    allOrganizations,
+    dropTargetId,
     hasSearch,
     matchingOrganizationIds,
+    organizationsById,
     nodeAction,
     onDeleteOrg,
     onUpdateOrg,
@@ -326,9 +363,47 @@ function OrganizationDesignerCanvas({
   const handleNodeDragStop: OnNodeDrag<OrganizationCanvasNode> = useCallback(
     (_event, node) => {
       if (!canEditLayout) return;
+      const organization = organizationsById.get(node.id);
+      const targetNode = flowInstanceRef.current
+        ?.getIntersectingNodes?.(node)
+        .find((candidate) => {
+          const parent = organizationsById.get(candidate.id);
+          return (
+            parent &&
+            organization &&
+            parent.id !== organization.id &&
+            !descendantIds(organization).has(parent.id)
+          );
+        });
+      const parent = targetNode && organizationsById.get(targetNode.id);
+      setDropTargetId(null);
+      if (organization && parent && organization.parent_id !== parent.id) {
+        setPendingMove({ organization, parent });
+        setNodes(graph.nodes);
+        return;
+      }
       setPosition(node.id, node.position);
     },
-    [canEditLayout, setPosition]
+    [canEditLayout, graph.nodes, organizationsById, setNodes, setPosition]
+  );
+
+  const handleNodeDrag: OnNodeDrag<OrganizationCanvasNode> = useCallback(
+    (_event, node) => {
+      const organization = organizationsById.get(node.id);
+      const target = flowInstanceRef.current
+        ?.getIntersectingNodes?.(node)
+        .find((candidate) => {
+          const parent = organizationsById.get(candidate.id);
+          return (
+            parent &&
+            organization &&
+            parent.id !== organization.id &&
+            !descendantIds(organization).has(parent.id)
+          );
+        });
+      setDropTargetId(target?.id ?? null);
+    },
+    [organizationsById]
   );
 
   const handleNodesChange = useCallback(
@@ -574,6 +649,7 @@ function OrganizationDesignerCanvas({
                 onInit={handleInit}
                 onNodeClick={handleNodeClick}
                 onNodesChange={handleNodesChange}
+                onNodeDrag={handleNodeDrag}
                 onNodeDragStop={handleNodeDragStop}
               >
                 <Background color="var(--border-01)" gap={24} size={1} />
@@ -635,6 +711,24 @@ function OrganizationDesignerCanvas({
               onRemoveUser={onRemoveUser}
             />
           </div>
+          {pendingMove && (
+            <OrganizationMoveConfirmationModal
+              organizationName={pendingMove.organization.name}
+              currentParentName={
+                organizationsById.get(pendingMove.organization.parent_id ?? "")
+                  ?.name ?? t("admin.organizations.moveConfirm.noParent")
+              }
+              newParentName={pendingMove.parent.name}
+              onCancel={() => setPendingMove(null)}
+              onConfirm={() => {
+                void onMoveOrg(
+                  pendingMove.organization.id,
+                  pendingMove.parent.id
+                );
+                setPendingMove(null);
+              }}
+            />
+          )}
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>

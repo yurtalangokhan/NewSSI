@@ -20,6 +20,7 @@ import { Tree, NodeRendererProps, type TreeApi } from "react-arborist";
 import { SvgChevronLeft, SvgChevronRight } from "@opal/icons";
 import { useTranslation } from "react-i18next";
 import type { OrganizationNode } from "@/components/organization/organizationTypes";
+import { OrganizationMoveConfirmationModal } from "@/components/organization/OrganizationMoveConfirmationModal";
 import {
   flattenOrganizations,
   getOrganizationMatches,
@@ -29,6 +30,7 @@ import { SvgEdit, SvgFolderPlus, SvgMaximize2, SvgTrash, SvgX } from "@/icons";
 import Button from "@/refresh-components/buttons/Button";
 import IconButton from "@/refresh-components/buttons/IconButton";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
+import InputSelect from "@/refresh-components/inputs/InputSelect";
 import Text from "@/refresh-components/texts/Text";
 import { cn } from "@/lib/utils";
 
@@ -59,6 +61,11 @@ interface OrganizationNodeRendererProps
   searchQuery: string;
   language: string;
   activeSearchMatchId?: string;
+  organizations: OrganizationNode[];
+  onRequestMove: (
+    organization: OrganizationNode,
+    parent: OrganizationNode
+  ) => void;
 }
 
 interface InlineOrganizationCreateProps {
@@ -140,6 +147,8 @@ function Node({
   searchQuery,
   language,
   activeSearchMatchId,
+  organizations,
+  onRequestMove,
 }: OrganizationNodeRendererProps) {
   const { t } = useTranslation();
   const [isEditing, setIsEditing] = useState(false);
@@ -152,6 +161,12 @@ function Node({
     language
   );
   const hasSearch = Boolean(searchQuery.trim());
+  const descendants = new Set(
+    flattenOrganizations(node.data.children ?? []).map((item) => item.id)
+  );
+  const parentOptions = organizations.filter(
+    (item) => item.id !== node.data.id && !descendants.has(item.id)
+  );
 
   const handleSave = useCallback(() => {
     if (editName.trim() && editName !== node.data.name) {
@@ -207,15 +222,44 @@ function Node({
 
         {/* Name (editable) */}
         {isEditing ? (
-          <InputTypeIn
-            ref={inputRef}
-            value={editName}
-            onChange={(e) => setEditName(e.target.value)}
-            onBlur={handleSave}
-            onKeyDown={handleKeyDown}
-            className={cn("flex-1")}
-            autoFocus
-          />
+          <div
+            className={cn("flex min-w-0 flex-1 items-center gap-2")}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <InputTypeIn
+              ref={inputRef}
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              onKeyDown={handleKeyDown}
+              className={cn("flex-1")}
+              autoFocus
+            />
+            <InputSelect
+              value={node.data.parent_id ?? ""}
+              disabled={node.data.parent_id === null}
+              onValueChange={(parentId) => {
+                const parent = organizations.find(
+                  (item) => item.id === parentId
+                );
+                if (parent && parentId !== node.data.parent_id)
+                  onRequestMove(node.data, parent);
+              }}
+            >
+              <InputSelect.Trigger
+                aria-label={t("admin.organizations.inspector.moveTo")}
+              />
+              <InputSelect.Content>
+                {parentOptions.map((parent) => (
+                  <InputSelect.Item key={parent.id} value={parent.id}>
+                    {parent.name}
+                  </InputSelect.Item>
+                ))}
+              </InputSelect.Content>
+            </InputSelect>
+            <Button secondary size="md" onClick={handleSave}>
+              {t("admin.organizations.actions.saveChanges")}
+            </Button>
+          </div>
         ) : (
           <Text
             text05
@@ -325,6 +369,10 @@ export function OrganizationTree({
   const [isCreating, setIsCreating] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeSearchMatchIndex, setActiveSearchMatchIndex] = useState(-1);
+  const [pendingMove, setPendingMove] = useState<{
+    organization: OrganizationNode;
+    parent: OrganizationNode;
+  } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const treeRef = useRef<TreeApi<OrganizationNode> | null>(null);
   const previousOpenIdsRef = useRef<Set<string> | null>(null);
@@ -409,11 +457,16 @@ export function OrganizationTree({
     }) => {
       if (parentId === null) return;
 
-      for (const id of dragIds) {
-        await onMoveOrg(id, parentId);
-      }
+      const organization = flattenOrganizations(organizations).find(
+        (item) => item.id === dragIds[0]
+      );
+      const parent = flattenOrganizations(organizations).find(
+        (item) => item.id === parentId
+      );
+      if (organization && parent && organization.parent_id !== parent.id)
+        setPendingMove({ organization, parent });
     },
-    [onMoveOrg]
+    [organizations]
   );
 
   return (
@@ -565,11 +618,31 @@ export function OrganizationTree({
                 searchQuery={searchQuery}
                 language={i18n.language}
                 activeSearchMatchId={activeSearchMatchId}
+                organizations={flattenOrganizations(organizations)}
+                onRequestMove={(organization, parent) =>
+                  setPendingMove({ organization, parent })
+                }
               />
             )}
           </Tree>
         )}
       </div>
+      {pendingMove && (
+        <OrganizationMoveConfirmationModal
+          organizationName={pendingMove.organization.name}
+          currentParentName={
+            flattenOrganizations(organizations).find(
+              (item) => item.id === pendingMove.organization.parent_id
+            )?.name ?? t("admin.organizations.moveConfirm.noParent")
+          }
+          newParentName={pendingMove.parent.name}
+          onCancel={() => setPendingMove(null)}
+          onConfirm={() => {
+            void onMoveOrg(pendingMove.organization.id, pendingMove.parent.id);
+            setPendingMove(null);
+          }}
+        />
+      )}
     </div>
   );
 }

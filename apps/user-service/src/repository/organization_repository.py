@@ -191,7 +191,7 @@ class OrganizationRepository(BaseRepository):
                     raise ValueError(f"Parent organization {new_parent_id} not found")
 
                 # Check for circular reference
-                if str(new_parent_id) in org.path:
+                if str(org_id) in parent.path:
                     raise ValueError("Cannot move organization to its own descendant")
 
                 new_path = f"{parent.path}{new_parent_id}/"

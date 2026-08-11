@@ -77,7 +77,7 @@ export function OrganizationDesignerInspector({
   onRemoveUser,
 }: OrganizationDesignerInspectorProps) {
   const { t } = useTranslation();
-  const [activeTab, setActiveTab] = useState("details");
+  const [activeTab, setActiveTab] = useState("users");
   const [name, setName] = useState(organization?.name ?? "");
 
   const moveTargets = useMemo(() => {
@@ -160,9 +160,6 @@ export function OrganizationDesignerInspector({
                   "[&_[data-state=active]]:text-text-05"
                 )}
               >
-                <Tabs.Trigger value="details" icon={SvgOrganization}>
-                  {t("admin.organizations.inspector.details")}
-                </Tabs.Trigger>
                 <Tabs.Trigger value="users" icon={SvgUsers}>
                   {t("admin.organizations.page.usersTab")}
                 </Tabs.Trigger>

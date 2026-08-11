@@ -2000,6 +2000,12 @@ const en = {
         saveChanges: "Save changes",
         saving: "Saving…",
       },
+      moveConfirm: {
+        title: "Change parent organization?",
+        description: "Move {{name}} to the selected parent.",
+        confirm: "Approve change",
+        noParent: "No parent",
+      },
       page: {
         loading: "Loading organizations…",
         resizeTree: "Resize organization tree",

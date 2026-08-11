@@ -42,7 +42,10 @@ jest.mock("@xyflow/react", () => {
       proOptions,
       children,
     }: any) => {
-      React.useEffect(() => onInit?.({ fitView }), [onInit]);
+      React.useEffect(
+        () => onInit?.({ fitView, getIntersectingNodes: () => [] }),
+        [onInit]
+      );
       return (
         <div
           data-testid="react-flow"

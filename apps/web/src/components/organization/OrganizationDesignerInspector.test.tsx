@@ -70,10 +70,7 @@ describe("OrganizationDesignerInspector", () => {
     jest.clearAllMocks();
   });
 
-  it("reuses organization CRUD callbacks and moves only through Move to", async () => {
-    const user = setupUser();
-    const promptSpy = jest.spyOn(window, "prompt");
-    const confirmSpy = jest.spyOn(window, "confirm");
+  it("aligns the inspector with the organization tabs", () => {
     render(
       <OrganizationDesignerInspector
         organization={root.children[0]!}
@@ -85,29 +82,14 @@ describe("OrganizationDesignerInspector", () => {
       />
     );
 
-    const name = screen.getByRole("textbox", { name: "Organization name" });
-    await user.clear(name);
-    await user.type(name, "Platform Engineering");
-    await user.click(screen.getByRole("button", { name: "Save details" }));
-    expect(handlers.onUpdateOrg).toHaveBeenCalledWith("platform", {
-      name: "Platform Engineering",
-    });
-
-    await user.click(screen.getByRole("button", { name: "Add child" }));
-    expect(handlers.onBeginCreateChild).toHaveBeenCalledWith("platform");
-    expect(promptSpy).not.toHaveBeenCalled();
-    expect(handlers.onCreateOrg).not.toHaveBeenCalled();
-
-    await user.click(screen.getByRole("combobox", { name: "Move to" }));
-    await user.click(screen.getByRole("option", { name: "Operations" }));
-    expect(handlers.onMoveOrg).toHaveBeenCalledWith("platform", "operations");
-
-    await user.click(
-      screen.getByRole("button", { name: "Delete organization" })
+    expect(
+      screen.queryByRole("tab", { name: "Details" })
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Users" })).toHaveAttribute(
+      "data-state",
+      "active"
     );
-    expect(handlers.onBeginDelete).toHaveBeenCalledWith("platform");
-    expect(confirmSpy).not.toHaveBeenCalled();
-    expect(handlers.onDeleteOrg).not.toHaveBeenCalled();
+    expect(screen.getByText("Users panel editable")).toBeInTheDocument();
   });
 
   it("keeps every mutation surface disabled while capability loads", async () => {
@@ -123,14 +105,9 @@ describe("OrganizationDesignerInspector", () => {
       />
     );
 
-    expect(screen.getByRole("button", { name: "Save details" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Add child" })).toBeDisabled();
-    expect(screen.getByRole("combobox", { name: "Move to" })).toBeDisabled();
     expect(
-      screen.getByRole("button", { name: "Delete organization" })
-    ).toBeDisabled();
-
-    await user.click(screen.getByRole("tab", { name: "Users" }));
+      screen.queryByRole("tab", { name: "Details" })
+    ).not.toBeInTheDocument();
     expect(screen.getByText("Users panel read only")).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Agents" })).toBeInTheDocument();
     expect(
@@ -189,8 +166,6 @@ describe("OrganizationDesignerInspector", () => {
         {...handlers}
       />
     );
-    expect(screen.getByRole("button", { name: "Add child" })).toBeEnabled();
-
     await user.click(screen.getByRole("tab", { name: "Agents" }));
     await user.click(
       screen.getByRole("button", { name: "Complete access save" })
