@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 
 import { OrganizationAccessPanel } from "@/components/organization/OrganizationAccessPanel";
 import type {
-  DeleteOrganization,
   MoveOrganization,
   OrganizationMember,
   OrganizationNode,
@@ -29,8 +28,8 @@ interface OrganizationDesignerInspectorProps {
   onBackToMap?: () => void;
   onAccessSaveComplete?: () => void | Promise<void>;
   onBeginCreateChild?: (parentId: string) => void;
+  onBeginDelete?: (organizationId: string) => void;
   onUpdateOrg: UpdateOrganization;
-  onDeleteOrg: DeleteOrganization;
   onMoveOrg: MoveOrganization;
   onAddUser: (userId: string, role: string) => Promise<void>;
   onRoleChange: (userId: string, role: string) => Promise<void>;
@@ -69,8 +68,8 @@ export function OrganizationDesignerInspector({
   onBackToMap,
   onAccessSaveComplete,
   onBeginCreateChild,
+  onBeginDelete,
   onUpdateOrg,
-  onDeleteOrg,
   onMoveOrg,
   onAddUser,
   onRoleChange,
@@ -252,16 +251,8 @@ export function OrganizationDesignerInspector({
                     danger
                     secondary
                     size="md"
-                    disabled={!canMutate}
-                    onClick={() => {
-                      if (
-                        window.confirm(
-                          `Delete "${organization.name}"?`
-                        )
-                      ) {
-                        void onDeleteOrg(organization.id);
-                      }
-                    }}
+                    disabled={!canMutate || !onBeginDelete}
+                    onClick={() => onBeginDelete?.(organization.id)}
                   >
                     Delete organization
                   </Button>

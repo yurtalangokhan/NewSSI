@@ -43,6 +43,7 @@ const operations = {
 
 const handlers = {
   onBeginCreateChild: jest.fn(),
+  onBeginDelete: jest.fn(),
   onCreateOrg: jest.fn().mockResolvedValue(undefined),
   onUpdateOrg: jest.fn().mockResolvedValue(undefined),
   onDeleteOrg: jest.fn().mockResolvedValue(undefined),
@@ -67,7 +68,7 @@ describe("OrganizationDesignerInspector", () => {
   it("reuses organization CRUD callbacks and moves only through Move to", async () => {
     const user = setupUser();
     const promptSpy = jest.spyOn(window, "prompt");
-    jest.spyOn(window, "confirm").mockReturnValue(true);
+    const confirmSpy = jest.spyOn(window, "confirm");
     render(
       <OrganizationDesignerInspector
         organization={root.children[0]!}
@@ -97,7 +98,9 @@ describe("OrganizationDesignerInspector", () => {
     expect(handlers.onMoveOrg).toHaveBeenCalledWith("platform", "operations");
 
     await user.click(screen.getByRole("button", { name: "Delete organization" }));
-    expect(handlers.onDeleteOrg).toHaveBeenCalledWith("platform");
+    expect(handlers.onBeginDelete).toHaveBeenCalledWith("platform");
+    expect(confirmSpy).not.toHaveBeenCalled();
+    expect(handlers.onDeleteOrg).not.toHaveBeenCalled();
   });
 
   it("keeps every mutation surface disabled while capability loads", async () => {

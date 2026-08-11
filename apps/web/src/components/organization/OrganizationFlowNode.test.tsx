@@ -8,6 +8,7 @@ import type { ReactElement } from "react";
 
 import { OrganizationFlowNode } from "@/components/organization/OrganizationFlowNode";
 import { SvgNetworkGraph } from "@/icons";
+import { setupUser } from "@tests/setup/test-utils";
 
 function renderFlowNode(node: ReactElement) {
   return render(<ReactFlowProvider>{node}</ReactFlowProvider>);
@@ -118,5 +119,79 @@ describe("OrganizationFlowNode", () => {
         '[data-nodeid="platform"][data-handlepos="bottom"].source'
       )
     ).toBeInTheDocument();
+  });
+
+  it("renames an editable organization inside its selected node", async () => {
+    const onRename = jest.fn().mockResolvedValue(undefined);
+    const user = setupUser();
+    renderFlowNode(
+      <OrganizationFlowNode
+        id="platform"
+        data={{
+          organizationId: "platform",
+          name: "Platform",
+          path: "root/platform/",
+          childCount: 0,
+          readOnly: false,
+          actionMode: "rename",
+          onRename,
+        }}
+        selected
+        selectable
+        draggable
+        deletable={false}
+        dragging={false}
+        zIndex={0}
+        isConnectable={false}
+        type="organization"
+        positionAbsoluteX={0}
+        positionAbsoluteY={0}
+      />
+    );
+
+    const input = screen.getByRole("textbox", {
+      name: "Organization name for Platform",
+    });
+    await user.clear(input);
+    await user.type(input, "Platform Engineering");
+    await user.keyboard("{Enter}");
+
+    expect(onRename).toHaveBeenCalledWith("Platform Engineering");
+  });
+
+  it("confirms deletion inside the selected node", async () => {
+    const onDelete = jest.fn().mockResolvedValue(undefined);
+    const user = setupUser();
+    renderFlowNode(
+      <OrganizationFlowNode
+        id="platform"
+        data={{
+          organizationId: "platform",
+          name: "Platform",
+          path: "root/platform/",
+          childCount: 0,
+          readOnly: false,
+          actionMode: "delete",
+          onDelete,
+        }}
+        selected
+        selectable
+        draggable
+        deletable={false}
+        dragging={false}
+        zIndex={0}
+        isConnectable={false}
+        type="organization"
+        positionAbsoluteX={0}
+        positionAbsoluteY={0}
+      />
+    );
+
+    expect(screen.getByText("Delete organization?")).toBeInTheDocument();
+    await user.click(
+      screen.getByRole("button", { name: "Delete Platform" })
+    );
+
+    expect(onDelete).toHaveBeenCalledTimes(1);
   });
 });

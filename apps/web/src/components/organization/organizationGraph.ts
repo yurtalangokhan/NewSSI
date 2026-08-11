@@ -15,9 +15,16 @@ export interface OrganizationFlowNodeData extends Record<string, unknown> {
   childCount: number;
   readOnly: boolean;
   canAddChild?: boolean;
+  canManage?: boolean;
+  actionMode?: "rename" | "delete";
   isDraft?: boolean;
   onAddChild?: () => void;
+  onBeginDelete?: () => void;
+  onBeginRename?: () => void;
+  onCancelAction?: () => void;
   onCancelDraft?: () => void;
+  onDelete?: () => Promise<void>;
+  onRename?: (name: string) => Promise<void>;
   onSubmitDraft?: (name: string) => Promise<void>;
 }
 

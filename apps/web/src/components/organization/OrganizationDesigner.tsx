@@ -119,6 +119,9 @@ function OrganizationDesignerCanvas({
   const [draftParentId, setDraftParentId] = useState<
     string | null | undefined
   >(undefined);
+  const [nodeAction, setNodeAction] = useState<
+    { id: string; mode: "rename" | "delete" } | undefined
+  >(undefined);
   const organizationsById = useMemo(
     () => indexOrganizations(organizations),
     [organizations]
@@ -139,7 +142,13 @@ function OrganizationDesignerCanvas({
     [canvasWritableOrganizationIds, organizations, positions, selectedOrg?.id]
   );
   const startChildCreation = useCallback((parentId: string | null) => {
+    setNodeAction(undefined);
     setDraftParentId(parentId);
+  }, []);
+  const beginNodeDelete = useCallback((organizationId: string) => {
+    setDraftParentId(undefined);
+    setNodeAction({ id: organizationId, mode: "delete" });
+    setMobileInspectorOpen(false);
   }, []);
   const cancelChildCreation = useCallback(() => {
     setDraftParentId(undefined);
@@ -159,7 +168,18 @@ function OrganizationDesignerCanvas({
         ...node.data,
         canAddChild:
           node.id === selectedOrg?.id && editable && !capabilityLoading,
+        canManage:
+          node.id === selectedOrg?.id && editable && !capabilityLoading,
+        actionMode: nodeAction?.id === node.id ? nodeAction.mode : undefined,
         onAddChild: () => startChildCreation(node.id),
+        onBeginDelete: () => beginNodeDelete(node.id),
+        onBeginRename: () => {
+          setDraftParentId(undefined);
+          setNodeAction({ id: node.id, mode: "rename" });
+        },
+        onCancelAction: () => setNodeAction(undefined),
+        onDelete: () => onDeleteOrg(node.id),
+        onRename: (name: string) => onUpdateOrg(node.id, { name }),
       },
     }));
     const edges = [...baseGraph.edges];
@@ -205,10 +225,14 @@ function OrganizationDesignerCanvas({
     return { nodes, edges };
   }, [
     baseGraph,
+    beginNodeDelete,
     cancelChildCreation,
     capabilityLoading,
     draftParentId,
     editable,
+    nodeAction,
+    onDeleteOrg,
+    onUpdateOrg,
     selectedOrg?.id,
     startChildCreation,
     submitChildCreation,
@@ -457,9 +481,9 @@ function OrganizationDesignerCanvas({
           mobileOpen={mobileInspectorOpen}
           onBackToMap={() => setMobileInspectorOpen(false)}
           onBeginCreateChild={startChildCreation}
+          onBeginDelete={beginNodeDelete}
           onAccessSaveComplete={onAccessSaveComplete}
           onUpdateOrg={onUpdateOrg}
-          onDeleteOrg={onDeleteOrg}
           onMoveOrg={onMoveOrg}
           onAddUser={onAddUser}
           onRoleChange={onRoleChange}

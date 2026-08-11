@@ -5,12 +5,15 @@ import { Handle, Position, type NodeProps } from "@xyflow/react";
 
 import type { OrganizationFlowNode as OrganizationFlowNodeType } from "@/components/organization/organizationGraph";
 import {
+  SvgEdit,
   SvgFolderPlus,
   SvgLock,
   SvgNetworkGraph,
   SvgOrganization,
+  SvgTrash,
   SvgX,
 } from "@/icons";
+import Button from "@/refresh-components/buttons/Button";
 import IconButton from "@/refresh-components/buttons/IconButton";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
 import Text from "@/refresh-components/texts/Text";
@@ -22,6 +25,7 @@ export function OrganizationFlowNode({
   selected,
 }: NodeProps<OrganizationFlowNodeType>) {
   const [draftName, setDraftName] = useState("");
+  const [editName, setEditName] = useState(data.name);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const submitDraft = useCallback(async () => {
     const name = draftName.trim();
@@ -33,6 +37,29 @@ export function OrganizationFlowNode({
       setIsSubmitting(false);
     }
   }, [data, draftName, isSubmitting]);
+
+  const submitRename = useCallback(async () => {
+    const name = editName.trim();
+    if (!name || name === data.name || isSubmitting || !data.onRename) return;
+    setIsSubmitting(true);
+    try {
+      await data.onRename(name);
+      data.onCancelAction?.();
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [data, editName, isSubmitting]);
+
+  const submitDelete = useCallback(async () => {
+    if (isSubmitting || !data.onDelete) return;
+    setIsSubmitting(true);
+    try {
+      await data.onDelete();
+      data.onCancelAction?.();
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [data, isSubmitting]);
 
   if (data.isDraft) {
     return (
@@ -76,6 +103,46 @@ export function OrganizationFlowNode({
     );
   }
 
+  if (data.actionMode === "delete") {
+    return (
+      <div
+        aria-label={`${data.name} delete confirmation`}
+        className={cn(
+          "nodrag nopan w-64 rounded-12 border border-status-error-03 bg-background-neutral-00 p-4"
+        )}
+      >
+        <Handle isConnectable={false} position={Position.Top} type="target" />
+        <Text mainUiAction text04 as="p">
+          Delete organization?
+        </Text>
+        <Text secondaryBody text03 as="p" className={cn("mt-1 truncate")}>
+          {data.name}
+        </Text>
+        <div className={cn("mt-3 flex items-center gap-2")}>
+          <Button
+            aria-label={`Delete ${data.name}`}
+            danger
+            secondary
+            size="md"
+            disabled={isSubmitting}
+            onClick={() => void submitDelete()}
+          >
+            Delete
+          </Button>
+          <Button
+            secondary
+            size="md"
+            disabled={isSubmitting}
+            onClick={() => data.onCancelAction?.()}
+          >
+            Cancel
+          </Button>
+        </div>
+        <Handle isConnectable={false} position={Position.Bottom} type="source" />
+      </div>
+    );
+  }
+
   const childLabel = `${data.childCount} ${
     data.childCount === 1 ? "child" : "children"
   }`;
@@ -102,9 +169,44 @@ export function OrganizationFlowNode({
           <SvgOrganization size={16} />
         </div>
         <div className={cn("min-w-0 flex-1")}>
-          <Text mainUiAction text04 as="p" className={cn("truncate")}>
-            {data.name}
-          </Text>
+          {data.actionMode === "rename" ? (
+            <div className={cn("nodrag nopan flex items-center gap-1")}>
+              <InputTypeIn
+                aria-label={`Organization name for ${data.name}`}
+                autoFocus
+                showClearButton={false}
+                value={editName}
+                variant={isSubmitting ? "disabled" : "primary"}
+                onChange={(event) => setEditName(event.target.value)}
+                onKeyDown={(event) => {
+                  event.stopPropagation();
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    void submitRename();
+                  } else if (event.key === "Escape") {
+                    event.preventDefault();
+                    setEditName(data.name);
+                    data.onCancelAction?.();
+                  }
+                }}
+              />
+              <IconButton
+                aria-label={`Cancel renaming ${data.name}`}
+                icon={SvgX}
+                small
+                tertiary
+                tooltip="Cancel"
+                onClick={() => {
+                  setEditName(data.name);
+                  data.onCancelAction?.();
+                }}
+              />
+            </div>
+          ) : (
+            <Text mainUiAction text04 as="p" className={cn("truncate")}>
+              {data.name}
+            </Text>
+          )}
           <Text secondaryBody text03 as="p" className={cn("mt-1 truncate")}>
             {data.path}
           </Text>
@@ -136,6 +238,29 @@ export function OrganizationFlowNode({
             tooltip="Add child"
             onClick={() => data.onAddChild?.()}
           />
+        )}
+        {data.canManage && !data.actionMode && (
+          <>
+            <IconButton
+              aria-label={`Rename ${data.name}`}
+              className={cn("nodrag nopan")}
+              icon={SvgEdit}
+              small
+              tertiary
+              tooltip="Rename"
+              onClick={() => data.onBeginRename?.()}
+            />
+            <IconButton
+              aria-label={`Delete ${data.name}`}
+              className={cn("nodrag nopan")}
+              danger
+              icon={SvgTrash}
+              small
+              tertiary
+              tooltip="Delete"
+              onClick={() => data.onBeginDelete?.()}
+            />
+          </>
         )}
       </div>
       <Handle isConnectable={false} position={Position.Bottom} type="source" />
