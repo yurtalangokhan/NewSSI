@@ -158,7 +158,7 @@ describe("OrganizationDesigner", () => {
     expect(screen.getByTestId("flow-controls")).toBeInTheDocument();
     expect(screen.getByTestId("flow-minimap")).toBeInTheDocument();
     expect(screen.getByTestId("react-flow")).toHaveAttribute("data-edge-count", "1");
-    expect(layoutActions.refresh).toHaveBeenCalledTimes(1);
+    expect(layoutActions.refresh).not.toHaveBeenCalled();
 
     await user.click(screen.getByRole("button", { name: /Platform locked/ }));
     expect(handlers.onSelectOrg).toHaveBeenCalledWith(organizations[0]!.children![0]);
@@ -262,6 +262,45 @@ describe("OrganizationDesigner", () => {
     const rootNode = screen.getByRole("button", { name: /Enterprise locked/ });
     fireEvent.pointerUp(rootNode);
     expect(layoutActions.setPosition).not.toHaveBeenCalled();
+  });
+
+  it("keeps the fallback map usable while the saved layout is loading", () => {
+    mockedUseOrganizationLayout.mockReturnValueOnce({
+      ...layoutActions,
+      isLoading: true,
+    });
+
+    render(
+      <OrganizationDesigner
+        organizations={organizations}
+        selectedOrg={null}
+        members={[]}
+        editable={false}
+        capabilityLoading={false}
+        {...handlers}
+      />
+    );
+
+    expect(screen.getByRole("button", { name: /Enterprise/ })).toBeVisible();
+    expect(
+      screen.queryByText("Loading organization map…")
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("Loading layout…")).toBeInTheDocument();
+  });
+
+  it("does not force an extra layout revalidation when the designer mounts", () => {
+    render(
+      <OrganizationDesigner
+        organizations={organizations}
+        selectedOrg={null}
+        members={[]}
+        editable={false}
+        capabilityLoading={false}
+        {...handlers}
+      />
+    );
+
+    expect(layoutActions.refresh).not.toHaveBeenCalled();
   });
 
   it("waits for a successful pending-layout flush before closing", async () => {

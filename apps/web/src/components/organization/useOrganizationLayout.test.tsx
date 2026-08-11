@@ -60,6 +60,28 @@ describe("useOrganizationLayout", () => {
     });
   });
 
+  it("does not retry a failed layout load on SWR's five-second timer", async () => {
+    const fetchSpy = jest
+      .spyOn(global, "fetch")
+      // Serves the organization layout GET with a persistent backend failure.
+      .mockResolvedValue(
+        new Response(JSON.stringify({ detail: "Layout table is unavailable" }), {
+          status: 500,
+        })
+      );
+    const { result } = renderHook(() => useOrganizationLayout(), {
+      wrapper: swrWrapper,
+    });
+
+    await waitFor(() => expect(result.current.error).toBeDefined());
+    await act(async () => {
+      jest.advanceTimersByTime(6_000);
+      await Promise.resolve();
+    });
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+  });
+
   it("exposes backend save messages and returns false when a layout write fails", async () => {
     // Serves the organization layout GET followed by its failing PUT request.
     jest

@@ -18,7 +18,7 @@ describe("OrganizationFlowNode", () => {
     expect(SvgNetworkGraph).toBeDefined();
   });
 
-  it("renders organization context, child count, and read-only state", () => {
+  it("renders organization context, child count, and position-lock state", () => {
     renderFlowNode(
       <OrganizationFlowNode
         id="product"
@@ -45,7 +45,8 @@ describe("OrganizationFlowNode", () => {
     expect(screen.getByText("Product")).toBeInTheDocument();
     expect(screen.getByText("root/product/")).toBeInTheDocument();
     expect(screen.getByText("3 children")).toBeInTheDocument();
-    expect(screen.getByText("Read-only")).toBeInTheDocument();
+    expect(screen.getByText("Position locked")).toBeInTheDocument();
+    expect(screen.queryByText("Read-only")).not.toBeInTheDocument();
   });
 
   it("exposes selected state for the active organization", () => {

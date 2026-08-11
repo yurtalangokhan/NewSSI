@@ -141,10 +141,6 @@ function OrganizationDesignerCanvas({
   }, [graph.nodes, setNodes]);
 
   useEffect(() => {
-    void refresh();
-  }, [refresh]);
-
-  useEffect(() => {
     previousFocusRef.current = document.activeElement as HTMLElement | null;
     dialogRef.current?.focus();
     const previousOverflow = document.body.style.overflow;
@@ -345,15 +341,6 @@ function OrganizationDesignerCanvas({
               maskColor="color-mix(in srgb, var(--background-neutral-01) 78%, transparent)"
             />
           </ReactFlow>
-          {isLoading && (
-            <div
-              className={cn(
-                "pointer-events-none absolute inset-0 flex items-center justify-center bg-background-neutral-01"
-              )}
-            >
-              <Text text03>Loading organization map…</Text>
-            </div>
-          )}
           {!isLoading && organizations.length === 0 && canCreateRoot && (
             <div className={cn("absolute inset-0 flex items-center justify-center")}>
               <Button

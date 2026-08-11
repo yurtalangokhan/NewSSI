@@ -115,7 +115,8 @@ export function useOrganizationLayout({
     enabled && !layout && !remoteLayout
       ? "/api/user-service/organizations/layout"
       : null,
-    getLayout
+    getLayout,
+    { shouldRetryOnError: false }
   );
   const incomingLayout = remoteLayout ?? layout ?? fetchedLayout;
   const [positions, setPositions] = useState<PositionMap>({});

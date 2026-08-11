@@ -58,7 +58,7 @@ export function OrganizationFlowNode({
           <div className={cn("flex items-center gap-1 text-text-03")}>
             <SvgLock size={14} />
             <Text secondaryMono text03>
-              Read-only
+              Position locked
             </Text>
           </div>
         )}
