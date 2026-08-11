@@ -388,7 +388,7 @@ preserved.
 
 ### Pattern 6: Shared organization visual designer
 
-The Organizations page owns the hierarchy, selection, membership data,
+The Organization page owns the hierarchy, selection, membership data,
 management capability, and existing mutation callbacks. The full-screen visual
 designer reuses that state and those callbacks; it doesn't introduce separate
 organization, membership, or resource-access workflows.

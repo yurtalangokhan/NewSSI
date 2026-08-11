@@ -57,12 +57,12 @@ describe("admin route permissions", () => {
   it("localizes the organizations sidebar label", async () => {
     await i18n.changeLanguage("en");
     expect(sidebarItem(ADMIN_PATHS.ORGANIZATIONS, i18n.t).name).toBe(
-      "Organizations"
+      "Organization"
     );
 
     await i18n.changeLanguage("tr");
     expect(sidebarItem(ADMIN_PATHS.ORGANIZATIONS, i18n.t).name).toBe(
-      "Organizasyonlar"
+      "Organizasyon"
     );
 
     await i18n.changeLanguage("en");

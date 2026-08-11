@@ -12,13 +12,10 @@ jest.mock("react-arborist", () => ({
     initialOpenState,
     selection,
     searchTerm,
-    searchMatch,
   }: any) => {
     const flattened = (nodes: any[]): any[] =>
       nodes.flatMap((node) => [node, ...flattened(node.children ?? [])]);
-    const visibleNode = searchTerm
-      ? flattened(data).find((node) => searchMatch({ data: node }, searchTerm))
-      : data[0];
+    const visibleNodes = flattened(data);
 
     return (
       <div
@@ -31,18 +28,21 @@ jest.mock("react-arborist", () => ({
         >
           Simulate root drop
         </button>
-        {visibleNode &&
-          children({
-            node: {
-              data: visibleNode,
-              isInternal: false,
-              isSelected: visibleNode.id === selection,
-              isOpen: false,
-              toggle: jest.fn(),
-            },
-            style: {},
-            dragHandle: null,
-          })}
+        {visibleNodes.map((visibleNode: any) => (
+          <div key={visibleNode.id}>
+            {children({
+              node: {
+                data: visibleNode,
+                isInternal: false,
+                isSelected: visibleNode.id === selection,
+                isOpen: false,
+                toggle: jest.fn(),
+              },
+              style: {},
+              dragHandle: null,
+            })}
+          </div>
+        ))}
       </div>
     );
   },
@@ -143,10 +143,18 @@ describe("OrganizationTree single-root action", () => {
     );
 
     expect(screen.getByText("Platform").parentElement).toHaveAttribute(
-      "data-search-match",
-      "true"
+      "data-search-state",
+      "match"
     );
-    expect(screen.getByText("1 result")).toBeInTheDocument();
+    expect(screen.getByText("Enterprise").parentElement).toHaveAttribute(
+      "data-search-state",
+      "dimmed"
+    );
+    expect(screen.getByText("1 / 1")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Next result" }));
+    expect(handlers.onSelectOrg).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "platform" })
+    );
     expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
   });
 

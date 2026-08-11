@@ -273,8 +273,16 @@ describe("OrganizationDesigner", () => {
     expect(
       screen.getByRole("button", { name: /Enterprise movable/ })
     ).toHaveAttribute("data-search-state", "dimmed");
-    expect(screen.getByText("1 result")).toBeInTheDocument();
+    expect(screen.getByText("1 / 1")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Previous result" })
+    ).toBeEnabled();
+    await user.click(screen.getByRole("button", { name: "Next result" }));
+    expect(handlers.onSelectOrg).toHaveBeenCalledWith(
+      organizations[0]!.children![0]
+    );
 
+    handlers.onSelectOrg.mockClear();
     await user.keyboard("{Enter}");
     expect(handlers.onSelectOrg).toHaveBeenCalledWith(
       organizations[0]!.children![0]

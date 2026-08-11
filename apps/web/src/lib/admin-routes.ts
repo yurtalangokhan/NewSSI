@@ -261,8 +261,8 @@ export const ADMIN_ROUTE_CONFIG: Record<string, AdminRouteConfig> = {
   },
   [ADMIN_PATHS.ORGANIZATIONS]: {
     icon: SvgUser,
-    title: "Manage Organizations",
-    sidebarLabel: "Organizations",
+    title: "Manage Organization",
+    sidebarLabel: "Organization",
     requiredPermissions: ["org:list"],
     titleKey: "admin.navigation.routes.organizations.title",
     sidebarLabelKey: "admin.navigation.routes.organizations.sidebar",

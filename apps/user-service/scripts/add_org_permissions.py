@@ -20,8 +20,8 @@ from src.core.database.models import PermissionModel
 ORGANIZATION_PERMISSIONS = [
     {
         "name": "org:create",
-        "label": "Create Organizations",
-        "description": "Create new organizations",
+        "label": "Create Organization",
+        "description": "Create new organization",
         "entity": "organization",
         "service": "user-service",
         "action": "create",
@@ -29,7 +29,7 @@ ORGANIZATION_PERMISSIONS = [
     },
     {
         "name": "org:read",
-        "label": "Read Organizations",
+        "label": "Read Organization",
         "description": "View organization details",
         "entity": "organization",
         "service": "user-service",
@@ -38,7 +38,7 @@ ORGANIZATION_PERMISSIONS = [
     },
     {
         "name": "org:list",
-        "label": "List Organizations",
+        "label": "List Organization",
         "description": "List organizations",
         "entity": "organization",
         "service": "user-service",
@@ -47,7 +47,7 @@ ORGANIZATION_PERMISSIONS = [
     },
     {
         "name": "org:update",
-        "label": "Update Organizations",
+        "label": "Update Organization",
         "description": "Update organization details",
         "entity": "organization",
         "service": "user-service",
@@ -56,7 +56,7 @@ ORGANIZATION_PERMISSIONS = [
     },
     {
         "name": "org:delete",
-        "label": "Delete Organizations",
+        "label": "Delete Organization",
         "description": "Delete organizations",
         "entity": "organization",
         "service": "user-service",
@@ -65,7 +65,7 @@ ORGANIZATION_PERMISSIONS = [
     },
     {
         "name": "org:move",
-        "label": "Move Organizations",
+        "label": "Move Organization",
         "description": "Move organizations in hierarchy",
         "entity": "organization",
         "service": "user-service",

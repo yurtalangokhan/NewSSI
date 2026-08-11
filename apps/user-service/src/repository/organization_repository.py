@@ -316,7 +316,7 @@ class OrganizationRepository(BaseRepository):
             total_orgs_result = await session.execute(select(func.count(OrganizationModel.id)))
             total_organizations = total_orgs_result.scalar_one()
 
-            # Organizations by depth
+            # Organization by depth
             depth_result = await session.execute(
                 select(OrganizationModel.level, func.count(OrganizationModel.id))
                 .group_by(OrganizationModel.level)

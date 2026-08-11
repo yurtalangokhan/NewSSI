@@ -60,7 +60,7 @@ describe("OrganizationTree", () => {
       <OrganizationTree organizations={mockOrganizations} {...mockHandlers} />
     );
 
-    expect(screen.getByText("Organizations")).toBeInTheDocument();
+    expect(screen.getByText("Organization")).toBeInTheDocument();
     expect(screen.getByTestId("organization-tree")).toBeInTheDocument();
   });
 

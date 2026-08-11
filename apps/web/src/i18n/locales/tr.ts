@@ -1975,7 +1975,7 @@ const tr = {
     },
     organizations: {
       tree: {
-        title: "Organizasyonlar",
+        title: "Organizasyon",
         openDesigner: "Organizasyon tasarımcısını aç",
         emptyTitle: "Henüz organizasyon yok",
         emptyDescription: "Başlamak için ilk organizasyonunuzu oluşturun",
@@ -1985,9 +1985,11 @@ const tr = {
         namePlaceholder: "Organizasyon adı",
         childPlaceholder: "Yeni alt organizasyon",
         searchLabel: "Organizasyonlarda ara",
-        searchPlaceholder: "Bir organizasyon bulun",
+        searchPlaceholder: "Organizasyonda ara",
         searchResults_one: "{{count}} sonuç",
         searchResults_other: "{{count}} sonuç",
+        previousResult: "Önceki sonuç",
+        nextResult: "Sonraki sonuç",
       },
       actions: {
         addChild: "Alt organizasyon ekle",
@@ -2005,7 +2007,7 @@ const tr = {
         saving: "Kaydediliyor…",
       },
       page: {
-        loading: "Organizasyonlar yükleniyor…",
+        loading: "Organizasyon yükleniyor…",
         resizeTree: "Organizasyon ağacını yeniden boyutlandır",
         activeMembers: "Aktif üyeler",
         directGrants: "Doğrudan izinler",

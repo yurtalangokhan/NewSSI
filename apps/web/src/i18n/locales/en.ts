@@ -1969,7 +1969,7 @@ const en = {
     },
     organizations: {
       tree: {
-        title: "Organizations",
+        title: "Organization",
         openDesigner: "Open organization designer",
         emptyTitle: "No organizations yet",
         emptyDescription: "Create your first organization to get started",
@@ -1979,9 +1979,11 @@ const en = {
         namePlaceholder: "Organization name",
         childPlaceholder: "New child organization",
         searchLabel: "Search organizations",
-        searchPlaceholder: "Find an organization",
+        searchPlaceholder: "Search in organization",
         searchResults_one: "{{count}} result",
         searchResults_other: "{{count}} results",
+        previousResult: "Previous result",
+        nextResult: "Next result",
       },
       actions: {
         addChild: "Add child",

@@ -23,8 +23,8 @@ describe("organization translations", () => {
     const english = en.admin.organizations;
     const turkish = tr.admin.organizations;
 
-    expect(english.tree.title).toBe("Organizations");
-    expect(turkish.tree.title).toBe("Organizasyonlar");
+    expect(english.tree.title).toBe("Organization");
+    expect(turkish.tree.title).toBe("Organizasyon");
     expect(turkish.designer.title).toBe("Organizasyon tasarımcısı");
     expect(turkish.users.title).toBe("Üyeler");
     expect(turkish.access.unitAccess).toBe("Birim erişimi");
