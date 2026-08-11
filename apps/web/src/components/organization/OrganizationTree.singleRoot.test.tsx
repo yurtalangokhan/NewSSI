@@ -72,9 +72,99 @@ describe("OrganizationTree single-root action", () => {
     expect(screen.queryByText("Add Root Organization")).not.toBeInTheDocument();
   });
 
-  it("keeps first-root creation available for an empty tree", () => {
+  it("uses the single empty-state action to create the root organization", async () => {
+    const promptSpy = jest.spyOn(window, "prompt");
+    const user = setupUser();
     render(<OrganizationTree organizations={[]} {...handlers} />);
-    expect(screen.getByText("Create Organization")).toBeInTheDocument();
+
+    expect(
+      screen.getAllByRole("button", { name: /Create Organization/i })
+    ).toHaveLength(1);
+    expect(
+      screen.queryByRole("button", { name: "Add Root Organization" })
+    ).not.toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", { name: "Create Organization" })
+    );
+
+    const input = screen.getByRole("textbox", {
+      name: "New root organization name",
+    });
+    await user.type(input, " Enterprise ");
+    await user.keyboard("{Enter}");
+
+    expect(promptSpy).not.toHaveBeenCalled();
+    expect(handlers.onCreateOrg).toHaveBeenCalledWith(null, "Enterprise");
+  });
+
+  it("creates a child organization from an inline tree input", async () => {
+    const promptSpy = jest.spyOn(window, "prompt");
+    const user = setupUser();
+    render(
+      <OrganizationTree
+        organizations={[
+          {
+            id: "root",
+            name: "Enterprise",
+            path: "/enterprise",
+            parent_id: null,
+            children: [],
+          },
+        ]}
+        {...handlers}
+      />
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: "Add child to Enterprise" })
+    );
+    const input = screen.getByRole("textbox", {
+      name: "New child organization name",
+    });
+    await user.type(input, "Operations");
+    await user.keyboard("{Enter}");
+
+    expect(promptSpy).not.toHaveBeenCalled();
+    expect(handlers.onCreateOrg).toHaveBeenCalledWith("root", "Operations");
+  });
+
+  it("cancels inline creation with Escape", async () => {
+    const user = setupUser();
+    render(<OrganizationTree organizations={[]} {...handlers} />);
+
+    await user.click(
+      screen.getByRole("button", { name: "Create Organization" })
+    );
+    await user.type(
+      screen.getByRole("textbox", { name: "New root organization name" }),
+      "Enterprise"
+    );
+    await user.keyboard("{Escape}");
+
+    expect(handlers.onCreateOrg).not.toHaveBeenCalled();
+    expect(
+      screen.queryByRole("textbox", { name: "New root organization name" })
+    ).not.toBeInTheDocument();
+  });
+
+  it("does not submit a whitespace-only organization name", async () => {
+    const user = setupUser();
+    render(<OrganizationTree organizations={[]} {...handlers} />);
+
+    await user.click(
+      screen.getByRole("button", { name: "Create Organization" })
+    );
+    await user.type(
+      screen.getByRole("textbox", { name: "New root organization name" }),
+      "   "
+    );
+    await user.keyboard("{Enter}");
+
+    expect(handlers.onCreateOrg).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole("textbox", { name: "New root organization name" })
+    ).toBeInTheDocument();
   });
 
   it("prevents moving a child to the root level", () => {
