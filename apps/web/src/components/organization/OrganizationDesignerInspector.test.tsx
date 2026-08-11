@@ -1,4 +1,5 @@
 import { screen } from "@testing-library/react";
+import "@/i18n/config";
 
 import { OrganizationDesignerInspector } from "@/components/organization/OrganizationDesignerInspector";
 import { render, setupUser } from "@tests/setup/test-utils";
@@ -97,7 +98,9 @@ describe("OrganizationDesignerInspector", () => {
     await user.click(screen.getByRole("option", { name: "Operations" }));
     expect(handlers.onMoveOrg).toHaveBeenCalledWith("platform", "operations");
 
-    await user.click(screen.getByRole("button", { name: "Delete organization" }));
+    await user.click(
+      screen.getByRole("button", { name: "Delete organization" })
+    );
     expect(handlers.onBeginDelete).toHaveBeenCalledWith("platform");
     expect(confirmSpy).not.toHaveBeenCalled();
     expect(handlers.onDeleteOrg).not.toHaveBeenCalled();
@@ -166,7 +169,9 @@ describe("OrganizationDesignerInspector", () => {
     expect(screen.getByRole("button", { name: "Add child" })).toBeEnabled();
 
     await user.click(screen.getByRole("tab", { name: "Access" }));
-    await user.click(screen.getByRole("button", { name: "Complete access save" }));
+    await user.click(
+      screen.getByRole("button", { name: "Complete access save" })
+    );
     expect(onAccessSaveComplete).toHaveBeenCalledTimes(1);
   });
 });

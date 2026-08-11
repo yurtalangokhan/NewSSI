@@ -1,11 +1,14 @@
 import { screen, waitFor } from "@testing-library/react";
+import "@/i18n/config";
 
 import { usePersonaOptions } from "@/hooks/usePersonaOptions";
 import { useCollections } from "@/lib/langconnect";
 import { OrganizationAccessPanel } from "@/components/organization/OrganizationAccessPanel";
 import { render, setupUser } from "@tests/setup/test-utils";
 
-jest.mock("@/hooks/usePersonaOptions", () => ({ usePersonaOptions: jest.fn() }));
+jest.mock("@/hooks/usePersonaOptions", () => ({
+  usePersonaOptions: jest.fn(),
+}));
 jest.mock("@/lib/langconnect", () => ({ useCollections: jest.fn() }));
 
 const mockedUsePersonaOptions = jest.mocked(usePersonaOptions);
@@ -54,8 +57,12 @@ describe("OrganizationAccessPanel", () => {
       />
     );
 
-    expect(screen.getByRole("tab", { name: "Unit access" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Member access" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("tab", { name: "Unit access" })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("tab", { name: "Member access" })
+    ).toBeInTheDocument();
     await waitFor(() => {
       expect(screen.getByText("Research agent")).toBeInTheDocument();
       expect(screen.getByText("Policies")).toBeInTheDocument();
@@ -95,7 +102,9 @@ describe("OrganizationAccessPanel", () => {
 
     await user.click(screen.getByRole("tab", { name: "Member access" }));
     await user.click(screen.getByRole("combobox", { name: "Member" }));
-    expect((await screen.findAllByText("active@example.com")).length).toBeGreaterThan(0);
+    expect(
+      (await screen.findAllByText("active@example.com")).length
+    ).toBeGreaterThan(0);
     expect(screen.queryByText("inactive@example.com")).not.toBeInTheDocument();
   });
 
@@ -151,7 +160,9 @@ describe("OrganizationAccessPanel", () => {
     await user.click(
       await screen.findByRole("checkbox", { name: "Select Research agent" })
     );
-    await user.click(screen.getAllByRole("button", { name: "Save changes" })[0]!);
+    await user.click(
+      screen.getAllByRole("button", { name: "Save changes" })[0]!
+    );
 
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
@@ -175,7 +186,9 @@ describe("OrganizationAccessPanel", () => {
 
   it("keeps a successful permission save successful when count refresh fails", async () => {
     const user = setupUser();
-    const onSaveComplete = jest.fn().mockRejectedValue(new Error("Tree unavailable"));
+    const onSaveComplete = jest
+      .fn()
+      .mockRejectedValue(new Error("Tree unavailable"));
     // Serves scoped permission GET and PUT requests for the ancillary-refresh case.
     jest.mocked(global.fetch).mockImplementation(async (_request, options) => {
       if (options?.method === "PUT") {

@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
+import { useTranslation } from "react-i18next";
 
 import type { OrganizationFlowNode as OrganizationFlowNodeType } from "@/components/organization/organizationGraph";
 import {
@@ -24,6 +25,7 @@ export function OrganizationFlowNode({
   data,
   selected,
 }: NodeProps<OrganizationFlowNodeType>) {
+  const { t } = useTranslation();
   const [draftName, setDraftName] = useState("");
   const [editName, setEditName] = useState(data.name);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -64,7 +66,7 @@ export function OrganizationFlowNode({
   if (data.isDraft) {
     return (
       <div
-        aria-label="New child organization"
+        aria-label={t("admin.organizations.designer.newChild")}
         className={cn(
           "nodrag nopan w-64 rounded-12 border border-dashed border-action-link-05 bg-background-neutral-00 p-3 ring-1 ring-action-link-05"
         )}
@@ -72,9 +74,9 @@ export function OrganizationFlowNode({
         <Handle isConnectable={false} position={Position.Top} type="target" />
         <div className={cn("flex items-center gap-1")}>
           <InputTypeIn
-            aria-label="New child organization name"
+            aria-label={t("admin.organizations.tree.childNameLabel")}
             autoFocus
-            placeholder="Organization name"
+            placeholder={t("admin.organizations.tree.namePlaceholder")}
             showClearButton={false}
             value={draftName}
             variant={isSubmitting ? "disabled" : "primary"}
@@ -91,11 +93,11 @@ export function OrganizationFlowNode({
             }}
           />
           <IconButton
-            aria-label="Cancel new organization"
+            aria-label={t("admin.organizations.actions.cancelNew")}
             icon={SvgX}
             small
             tertiary
-            tooltip="Cancel"
+            tooltip={t("admin.organizations.actions.cancel")}
             onClick={() => data.onCancelDraft?.()}
           />
         </div>
@@ -106,28 +108,32 @@ export function OrganizationFlowNode({
   if (data.actionMode === "delete") {
     return (
       <div
-        aria-label={`${data.name} delete confirmation`}
+        aria-label={t("admin.organizations.designer.deleteConfirmation", {
+          name: data.name,
+        })}
         className={cn(
           "nodrag nopan w-64 rounded-12 border border-status-error-03 bg-background-neutral-00 p-4"
         )}
       >
         <Handle isConnectable={false} position={Position.Top} type="target" />
         <Text mainUiAction text04 as="p">
-          Delete organization?
+          {t("admin.organizations.designer.deleteQuestion")}
         </Text>
         <Text secondaryBody text03 as="p" className={cn("mt-1 truncate")}>
           {data.name}
         </Text>
         <div className={cn("mt-3 flex items-center gap-2")}>
           <Button
-            aria-label={`Delete ${data.name}`}
+            aria-label={t("admin.organizations.actions.deleteNamed", {
+              name: data.name,
+            })}
             danger
             secondary
             size="md"
             disabled={isSubmitting}
             onClick={() => void submitDelete()}
           >
-            Delete
+            {t("admin.organizations.actions.delete")}
           </Button>
           <Button
             secondary
@@ -135,7 +141,7 @@ export function OrganizationFlowNode({
             disabled={isSubmitting}
             onClick={() => data.onCancelAction?.()}
           >
-            Cancel
+            {t("admin.organizations.actions.cancel")}
           </Button>
         </div>
         <Handle
@@ -147,13 +153,15 @@ export function OrganizationFlowNode({
     );
   }
 
-  const childLabel = `${data.childCount} ${
-    data.childCount === 1 ? "child" : "children"
-  }`;
+  const childLabel = t("admin.organizations.designer.childCount", {
+    count: data.childCount,
+  });
 
   return (
     <div
-      aria-label={`${data.name} organization`}
+      aria-label={t("admin.organizations.designer.organizationLabel", {
+        name: data.name,
+      })}
       data-selected={selected ? "true" : "false"}
       data-testid={`organization-flow-node-${id}`}
       className={cn(
@@ -176,7 +184,12 @@ export function OrganizationFlowNode({
           {data.actionMode === "rename" ? (
             <div className={cn("nodrag nopan flex items-center gap-1")}>
               <InputTypeIn
-                aria-label={`Organization name for ${data.name}`}
+                aria-label={t(
+                  "admin.organizations.designer.organizationNameFor",
+                  {
+                    name: data.name,
+                  }
+                )}
                 autoFocus
                 showClearButton={false}
                 value={editName}
@@ -195,11 +208,13 @@ export function OrganizationFlowNode({
                 }}
               />
               <IconButton
-                aria-label={`Cancel renaming ${data.name}`}
+                aria-label={t("admin.organizations.actions.cancelRename", {
+                  name: data.name,
+                })}
                 icon={SvgX}
                 small
                 tertiary
-                tooltip="Cancel"
+                tooltip={t("admin.organizations.actions.cancel")}
                 onClick={() => {
                   setEditName(data.name);
                   data.onCancelAction?.();
@@ -228,7 +243,7 @@ export function OrganizationFlowNode({
           <div className={cn("flex items-center gap-1 text-text-03")}>
             <SvgLock size={14} />
             <Text secondaryMono text03>
-              Position locked
+              {t("admin.organizations.designer.positionLocked")}
             </Text>
           </div>
         )}
@@ -239,34 +254,40 @@ export function OrganizationFlowNode({
           >
             {data.canAddChild && (
               <IconButton
-                aria-label={`Add child to ${data.name}`}
+                aria-label={t("admin.organizations.actions.addChildTo", {
+                  name: data.name,
+                })}
                 className={cn("nodrag nopan")}
                 icon={SvgFolderPlus}
                 small
                 tertiary
-                tooltip="Add child"
+                tooltip={t("admin.organizations.actions.addChild")}
                 onClick={() => data.onAddChild?.()}
               />
             )}
             {data.canManage && !data.actionMode && (
               <>
                 <IconButton
-                  aria-label={`Rename ${data.name}`}
+                  aria-label={t("admin.organizations.actions.renameNamed", {
+                    name: data.name,
+                  })}
                   className={cn("nodrag nopan")}
                   icon={SvgEdit}
                   small
                   tertiary
-                  tooltip="Rename"
+                  tooltip={t("admin.organizations.actions.rename")}
                   onClick={() => data.onBeginRename?.()}
                 />
                 <IconButton
-                  aria-label={`Delete ${data.name}`}
+                  aria-label={t("admin.organizations.actions.deleteNamed", {
+                    name: data.name,
+                  })}
                   className={cn("nodrag nopan")}
                   danger
                   icon={SvgTrash}
                   small
                   tertiary
-                  tooltip="Delete"
+                  tooltip={t("admin.organizations.actions.delete")}
                   onClick={() => data.onBeginDelete?.()}
                 />
               </>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { OrganizationAccessPanel } from "@/components/organization/OrganizationAccessPanel";
 import type {
@@ -75,6 +76,7 @@ export function OrganizationDesignerInspector({
   onRoleChange,
   onRemoveUser,
 }: OrganizationDesignerInspectorProps) {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState("details");
   const [name, setName] = useState(organization?.name ?? "");
 
@@ -90,7 +92,7 @@ export function OrganizationDesignerInspector({
 
   return (
     <aside
-      aria-label="Organization inspector"
+      aria-label={t("admin.organizations.inspector.label")}
       data-mobile-open={mobileOpen}
       className={cn(
         "absolute inset-0 z-10 flex min-h-0 flex-col border-l border-border-02 bg-background-neutral-00",
@@ -106,10 +108,10 @@ export function OrganizationDesignerInspector({
         >
           <SvgOrganization className={cn("h-10 w-10 stroke-text-02")} />
           <Text headingH3 text03 as="p">
-            Select an organization
+            {t("admin.organizations.page.selectTitle")}
           </Text>
           <Text secondaryBody text03 as="p">
-            Choose a node to inspect its details, users, and access.
+            {t("admin.organizations.inspector.selectDescription")}
           </Text>
         </div>
       ) : (
@@ -122,7 +124,7 @@ export function OrganizationDesignerInspector({
                 className={cn("mb-4 md:hidden")}
                 onClick={onBackToMap}
               >
-                Back to map
+                {t("admin.organizations.inspector.backToMap")}
               </Button>
             )}
             <div className={cn("mb-4 flex min-w-0 items-start gap-3")}>
@@ -143,22 +145,22 @@ export function OrganizationDesignerInspector({
               </div>
               <Text secondaryMono text03>
                 {capabilityLoading
-                  ? "Checking access…"
+                  ? t("admin.organizations.inspector.checkingAccess")
                   : canMutate
-                    ? "Editable"
-                    : "View only"}
+                    ? t("admin.organizations.inspector.editable")
+                    : t("admin.organizations.inspector.viewOnly")}
               </Text>
             </div>
             <Tabs value={activeTab} onValueChange={setActiveTab}>
               <Tabs.List variant="pill">
                 <Tabs.Trigger value="details" icon={SvgOrganization}>
-                  Details
+                  {t("admin.organizations.inspector.details")}
                 </Tabs.Trigger>
                 <Tabs.Trigger value="users" icon={SvgUsers}>
-                  Users
+                  {t("admin.organizations.page.usersTab")}
                 </Tabs.Trigger>
                 <Tabs.Trigger value="access" icon={SvgShield}>
-                  Access
+                  {t("admin.organizations.page.accessTab")}
                 </Tabs.Trigger>
               </Tabs.List>
             </Tabs>
@@ -169,10 +171,12 @@ export function OrganizationDesignerInspector({
               <div className={cn("flex flex-col gap-5")}>
                 <div className={cn("flex flex-col gap-2")}>
                   <Text secondaryAction text03>
-                    Organization name
+                    {t("admin.organizations.inspector.organizationName")}
                   </Text>
                   <InputTypeIn
-                    aria-label="Organization name"
+                    aria-label={t(
+                      "admin.organizations.inspector.organizationName"
+                    )}
                     value={name}
                     variant={canMutate ? "primary" : "disabled"}
                     onChange={(event) => setName(event.target.value)}
@@ -181,12 +185,14 @@ export function OrganizationDesignerInspector({
                     action
                     primary
                     size="md"
-                    disabled={!canMutate || !name.trim() || name === organization.name}
+                    disabled={
+                      !canMutate || !name.trim() || name === organization.name
+                    }
                     onClick={() =>
                       void onUpdateOrg(organization.id, { name: name.trim() })
                     }
                   >
-                    Save details
+                    {t("admin.organizations.inspector.saveDetails")}
                   </Button>
                 </div>
 
@@ -200,7 +206,7 @@ export function OrganizationDesignerInspector({
                       {members.length}
                     </Text>
                     <Text figureSmallLabel text03>
-                      Active members
+                      {t("admin.organizations.page.activeMembers")}
                     </Text>
                   </div>
                   <div>
@@ -208,14 +214,14 @@ export function OrganizationDesignerInspector({
                       {organization.permission_count ?? 0}
                     </Text>
                     <Text figureSmallLabel text03>
-                      Direct grants
+                      {t("admin.organizations.page.directGrants")}
                     </Text>
                   </div>
                 </div>
 
                 <div className={cn("flex flex-col gap-2")}>
                   <Text secondaryAction text03>
-                    Hierarchy
+                    {t("admin.organizations.inspector.hierarchy")}
                   </Text>
                   <Button
                     secondary
@@ -223,7 +229,7 @@ export function OrganizationDesignerInspector({
                     disabled={!canMutate || !onBeginCreateChild}
                     onClick={() => onBeginCreateChild?.(organization.id)}
                   >
-                    Add child
+                    {t("admin.organizations.actions.addChild")}
                   </Button>
                   <InputSelect
                     value={organization.parent_id ?? ""}
@@ -233,8 +239,10 @@ export function OrganizationDesignerInspector({
                     }
                   >
                     <InputSelect.Trigger
-                      aria-label="Move to"
-                      placeholder="Move to…"
+                      aria-label={t("admin.organizations.inspector.moveTo")}
+                      placeholder={t(
+                        "admin.organizations.inspector.moveToPlaceholder"
+                      )}
                     />
                     <InputSelect.Content>
                       {moveTargets.map((target) => (
@@ -254,7 +262,7 @@ export function OrganizationDesignerInspector({
                     disabled={!canMutate || !onBeginDelete}
                     onClick={() => onBeginDelete?.(organization.id)}
                   >
-                    Delete organization
+                    {t("admin.organizations.inspector.deleteOrganization")}
                   </Button>
                 </div>
               </div>

@@ -14,6 +14,7 @@ import {
   type OnInit,
 } from "@xyflow/react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
+import { useTranslation } from "react-i18next";
 import "@xyflow/react/dist/style.css";
 
 import { OrganizationDesignerInspector } from "@/components/organization/OrganizationDesignerInspector";
@@ -91,6 +92,7 @@ function OrganizationDesignerCanvas({
   onRemoveUser,
   onAccessSaveComplete,
 }: OrganizationDesignerProps) {
+  const { t } = useTranslation();
   const {
     positions,
     writableOrganizationIds,
@@ -116,9 +118,9 @@ function OrganizationDesignerCanvas({
   const [mobileInspectorOpen, setMobileInspectorOpen] = useState(
     Boolean(selectedOrg)
   );
-  const [draftParentId, setDraftParentId] = useState<
-    string | null | undefined
-  >(undefined);
+  const [draftParentId, setDraftParentId] = useState<string | null | undefined>(
+    undefined
+  );
   const [nodeAction, setNodeAction] = useState<
     { id: string; mode: "rename" | "delete" } | undefined
   >(undefined);
@@ -127,8 +129,7 @@ function OrganizationDesignerCanvas({
     [organizations]
   );
   const canvasWritableOrganizationIds = useMemo(
-    () =>
-      canEditLayout ? writableOrganizationIds : new Set<string>(),
+    () => (canEditLayout ? writableOrganizationIds : new Set<string>()),
     [canEditLayout, writableOrganizationIds]
   );
   const baseGraph = useMemo(
@@ -199,7 +200,7 @@ function OrganizationDesignerCanvas({
         draggable: false,
         data: {
           organizationId: DRAFT_NODE_ID,
-          name: "New organization",
+          name: t("admin.organizations.designer.newOrganization"),
           path: "",
           childCount: 0,
           readOnly: true,
@@ -236,6 +237,7 @@ function OrganizationDesignerCanvas({
     selectedOrg?.id,
     startChildCreation,
     submitChildCreation,
+    t,
   ]);
   const [nodes, setNodes, onNodesChange] = useNodesState(graph.nodes);
 
@@ -312,9 +314,10 @@ function OrganizationDesignerCanvas({
     [canEditLayout, onNodesChange, setPosition]
   );
 
-  const handleInit: OnInit<OrganizationCanvasNode, OrganizationFlowEdge> = useCallback((instance) => {
-    flowInstanceRef.current = instance;
-  }, []);
+  const handleInit: OnInit<OrganizationCanvasNode, OrganizationFlowEdge> =
+    useCallback((instance) => {
+      flowInstanceRef.current = instance;
+    }, []);
 
   const handleRetry = useCallback(async () => {
     const saved =
@@ -325,25 +328,27 @@ function OrganizationDesignerCanvas({
   }, [closeAttemptFailed, hasDirtyPositions, onClose, refresh, retry, status]);
 
   const statusLabel = isLoading
-    ? "Loading layout…"
+    ? t("admin.organizations.designer.loadingLayout")
     : status === "saving" || isClosing
-      ? "Saving…"
+      ? t("admin.organizations.designer.saving")
       : status === "saved"
-        ? "Saved"
+        ? t("admin.organizations.designer.saved")
         : status === "error"
-          ? "Save failed"
+          ? t("admin.organizations.designer.saveFailed")
           : hasDirtyPositions
-            ? "Unsaved changes"
-            : "Ready";
+            ? t("admin.organizations.designer.unsavedChanges")
+            : t("admin.organizations.designer.ready");
 
   return (
     <DialogPrimitive.Root open>
       <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay className={cn("fixed inset-0 z-[99] bg-background-neutral-01")} />
+        <DialogPrimitive.Overlay
+          className={cn("fixed inset-0 z-[99] bg-background-neutral-01")}
+        />
         <DialogPrimitive.Content
           ref={dialogRef}
           tabIndex={-1}
-          aria-label="Organization designer"
+          aria-label={t("admin.organizations.designer.title")}
           aria-describedby={undefined}
           onOpenAutoFocus={(event) => {
             event.preventDefault();
@@ -357,139 +362,141 @@ function OrganizationDesignerCanvas({
             "fixed inset-0 z-[100] flex flex-col bg-background-neutral-01 outline-none"
           )}
         >
-      <header
-        className={cn(
-          "flex min-h-14 items-center gap-3 border-b border-border-02 bg-background-neutral-00 px-4"
-        )}
-      >
-        <DialogPrimitive.Title className={cn("sr-only")}>
-          Organization designer
-        </DialogPrimitive.Title>
-        <Text headingH3 text04 as="p">
-          Organizations
-        </Text>
-        <Text secondaryMono text03 className={cn("ml-2")}>
-          {statusLabel}
-        </Text>
-        {error && (
-          <Text secondaryBody text02 className={cn("min-w-0 truncate")}>
-            {error.message}
-          </Text>
-        )}
-        <div className={cn("ml-auto flex items-center gap-2")}>
-          {error && (
-            <Button secondary size="md" onClick={() => void handleRetry()}>
-              Retry
-            </Button>
-          )}
-          {closeAttemptFailed && (
-            <Button
-              danger
-              secondary
-              size="md"
-              onClick={() => {
-                discard();
-                onClose();
-              }}
-            >
-              Discard and close
-            </Button>
-          )}
-          <IconButton
-            icon={SvgExpand}
-            tooltip="Fit view"
-            aria-label="Fit view"
-            tertiary
-            onClick={() => void flowInstanceRef.current?.fitView({ padding: 0.2 })}
-          />
-          <IconButton
-            icon={SvgX}
-            tooltip="Close designer"
-            aria-label="Close designer"
-            tertiary
-            disabled={isClosing}
-            onClick={() => void requestClose()}
-          />
-        </div>
-      </header>
-
-      <div className={cn("relative flex min-h-0 flex-1")}>
-        <div className={cn("relative min-w-0 flex-1")}>
-          <ReactFlow<OrganizationCanvasNode, OrganizationFlowEdge>
-            nodes={nodes}
-            edges={graph.edges}
-            nodeTypes={nodeTypes}
-            nodesConnectable={false}
-            edgesFocusable={false}
-            deleteKeyCode={null}
-            fitView
-            fitViewOptions={{ padding: 0.2 }}
-            minZoom={0.2}
-            maxZoom={2}
-            onInit={handleInit}
-            onNodeClick={handleNodeClick}
-            onNodesChange={handleNodesChange}
-            onNodeDragStop={handleNodeDragStop}
+          <header
+            className={cn(
+              "flex min-h-14 items-center gap-3 border-b border-border-02 bg-background-neutral-00 px-4"
+            )}
           >
-            <Background
-              color="var(--border-01)"
-              gap={24}
-              size={1}
-            />
-            <Controls showInteractive={false} />
-            <MiniMap
-              pannable
-              zoomable
-              nodeColor="var(--background-neutral-04)"
-              maskColor="color-mix(in srgb, var(--background-neutral-01) 78%, transparent)"
-            />
-          </ReactFlow>
-          {!isLoading &&
-            organizations.length === 0 &&
-            canCreateRoot &&
-            draftParentId === undefined && (
-            <div className={cn("absolute inset-0 flex items-center justify-center")}>
-              <Button
-                action
-                primary
-                size="md"
-                onClick={() => startChildCreation(null)}
-              >
-                Create root organization
-              </Button>
+            <DialogPrimitive.Title className={cn("sr-only")}>
+              {t("admin.organizations.designer.title")}
+            </DialogPrimitive.Title>
+            <Text headingH3 text04 as="p">
+              {t("admin.organizations.tree.title")}
+            </Text>
+            <Text secondaryMono text03 className={cn("ml-2")}>
+              {statusLabel}
+            </Text>
+            {error && (
+              <Text secondaryBody text02 className={cn("min-w-0 truncate")}>
+                {error.message}
+              </Text>
+            )}
+            <div className={cn("ml-auto flex items-center gap-2")}>
+              {error && (
+                <Button secondary size="md" onClick={() => void handleRetry()}>
+                  {t("admin.organizations.actions.retry")}
+                </Button>
+              )}
+              {closeAttemptFailed && (
+                <Button
+                  danger
+                  secondary
+                  size="md"
+                  onClick={() => {
+                    discard();
+                    onClose();
+                  }}
+                >
+                  {t("admin.organizations.designer.discardAndClose")}
+                </Button>
+              )}
+              <IconButton
+                icon={SvgExpand}
+                tooltip={t("admin.organizations.designer.fitView")}
+                aria-label={t("admin.organizations.designer.fitView")}
+                tertiary
+                onClick={() =>
+                  void flowInstanceRef.current?.fitView({ padding: 0.2 })
+                }
+              />
+              <IconButton
+                icon={SvgX}
+                tooltip={t("admin.organizations.designer.close")}
+                aria-label={t("admin.organizations.designer.close")}
+                tertiary
+                disabled={isClosing}
+                onClick={() => void requestClose()}
+              />
             </div>
-          )}
-          {selectedOrg && !mobileInspectorOpen && (
-            <Button
-              secondary
-              size="md"
-              className={cn("absolute right-4 top-4 z-10 md:hidden")}
-              onClick={() => setMobileInspectorOpen(true)}
-            >
-              Show inspector
-            </Button>
-          )}
-        </div>
+          </header>
 
-        <OrganizationDesignerInspector
-          key={selectedOrg?.id ?? "no-selection"}
-          organization={selectedOrg}
-          organizations={organizations}
-          members={members}
-          editable={editable}
-          capabilityLoading={capabilityLoading}
-          mobileOpen={mobileInspectorOpen}
-          onBackToMap={() => setMobileInspectorOpen(false)}
-          onBeginCreateChild={startChildCreation}
-          onBeginDelete={beginNodeDelete}
-          onAccessSaveComplete={onAccessSaveComplete}
-          onUpdateOrg={onUpdateOrg}
-          onMoveOrg={onMoveOrg}
-          onAddUser={onAddUser}
-          onRoleChange={onRoleChange}
-          onRemoveUser={onRemoveUser}
-        />
-      </div>
+          <div className={cn("relative flex min-h-0 flex-1")}>
+            <div className={cn("relative min-w-0 flex-1")}>
+              <ReactFlow<OrganizationCanvasNode, OrganizationFlowEdge>
+                nodes={nodes}
+                edges={graph.edges}
+                nodeTypes={nodeTypes}
+                nodesConnectable={false}
+                edgesFocusable={false}
+                deleteKeyCode={null}
+                fitView
+                fitViewOptions={{ padding: 0.2 }}
+                minZoom={0.2}
+                maxZoom={2}
+                onInit={handleInit}
+                onNodeClick={handleNodeClick}
+                onNodesChange={handleNodesChange}
+                onNodeDragStop={handleNodeDragStop}
+              >
+                <Background color="var(--border-01)" gap={24} size={1} />
+                <Controls showInteractive={false} />
+                <MiniMap
+                  pannable
+                  zoomable
+                  nodeColor="var(--background-neutral-04)"
+                  maskColor="color-mix(in srgb, var(--background-neutral-01) 78%, transparent)"
+                />
+              </ReactFlow>
+              {!isLoading &&
+                organizations.length === 0 &&
+                canCreateRoot &&
+                draftParentId === undefined && (
+                  <div
+                    className={cn(
+                      "absolute inset-0 flex items-center justify-center"
+                    )}
+                  >
+                    <Button
+                      action
+                      primary
+                      size="md"
+                      onClick={() => startChildCreation(null)}
+                    >
+                      {t("admin.organizations.designer.createRoot")}
+                    </Button>
+                  </div>
+                )}
+              {selectedOrg && !mobileInspectorOpen && (
+                <Button
+                  secondary
+                  size="md"
+                  className={cn("absolute right-4 top-4 z-10 md:hidden")}
+                  onClick={() => setMobileInspectorOpen(true)}
+                >
+                  {t("admin.organizations.designer.showInspector")}
+                </Button>
+              )}
+            </div>
+
+            <OrganizationDesignerInspector
+              key={selectedOrg?.id ?? "no-selection"}
+              organization={selectedOrg}
+              organizations={organizations}
+              members={members}
+              editable={editable}
+              capabilityLoading={capabilityLoading}
+              mobileOpen={mobileInspectorOpen}
+              onBackToMap={() => setMobileInspectorOpen(false)}
+              onBeginCreateChild={startChildCreation}
+              onBeginDelete={beginNodeDelete}
+              onAccessSaveComplete={onAccessSaveComplete}
+              onUpdateOrg={onUpdateOrg}
+              onMoveOrg={onMoveOrg}
+              onAddUser={onAddUser}
+              onRoleChange={onRoleChange}
+              onRemoveUser={onRemoveUser}
+            />
+          </div>
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>

@@ -1,4 +1,5 @@
 import { fireEvent, screen, waitFor } from "@testing-library/react";
+import "@/i18n/config";
 
 import { OrganizationDesigner } from "@/components/organization/OrganizationDesigner";
 import { useOrganizationLayout } from "@/components/organization/useOrganizationLayout";
@@ -77,7 +78,9 @@ describe("OrganizationDesigner with React Flow", () => {
     node.focus();
     await user.keyboard("{ArrowRight}");
 
-    await waitFor(() => expect(node.style.transform).not.toBe(initialTransform));
+    await waitFor(() =>
+      expect(node.style.transform).not.toBe(initialTransform)
+    );
     expect(setPosition).toHaveBeenCalledWith("root", { x: 25, y: 30 });
   });
 

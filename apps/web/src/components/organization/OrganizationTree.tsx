@@ -17,6 +17,7 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { Tree, NodeRendererProps } from "react-arborist";
+import { useTranslation } from "react-i18next";
 import type { OrganizationNode } from "@/components/organization/organizationTypes";
 import { SvgEdit, SvgFolderPlus, SvgMaximize2, SvgTrash, SvgX } from "@/icons";
 import Button from "@/refresh-components/buttons/Button";
@@ -65,6 +66,7 @@ function InlineOrganizationCreate({
   onCreateOrg,
   placeholder,
 }: InlineOrganizationCreateProps) {
+  const { t } = useTranslation();
   const [name, setName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -106,11 +108,11 @@ function InlineOrganizationCreate({
         }}
       />
       <IconButton
-        aria-label="Cancel new organization"
+        aria-label={t("admin.organizations.actions.cancelNew")}
         icon={SvgX}
         small
         tertiary
-        tooltip="Cancel"
+        tooltip={t("admin.organizations.actions.cancel")}
         onClick={onCancel}
       />
     </div>
@@ -125,6 +127,7 @@ function Node({
   onUpdateOrg,
   onDeleteOrg,
 }: OrganizationNodeRendererProps) {
+  const { t } = useTranslation();
   const [isEditing, setIsEditing] = useState(false);
   const [isCreatingChild, setIsCreatingChild] = useState(false);
   const [editName, setEditName] = useState(node.data.name);
@@ -213,10 +216,12 @@ function Node({
 
           <IconButton
             icon={SvgEdit}
-            tooltip="Rename"
+            tooltip={t("admin.organizations.actions.rename")}
             tertiary
             small
-            aria-label={`Rename ${node.data.name}`}
+            aria-label={t("admin.organizations.actions.renameNamed", {
+              name: node.data.name,
+            })}
             onClick={(event) => {
               event.stopPropagation();
               setIsEditing(true);
@@ -224,10 +229,12 @@ function Node({
           />
           <IconButton
             icon={SvgFolderPlus}
-            tooltip="Add child"
+            tooltip={t("admin.organizations.actions.addChild")}
             tertiary
             small
-            aria-label={`Add child to ${node.data.name}`}
+            aria-label={t("admin.organizations.actions.addChildTo", {
+              name: node.data.name,
+            })}
             onClick={(event) => {
               event.stopPropagation();
               setIsCreatingChild(true);
@@ -235,11 +242,13 @@ function Node({
           />
           <IconButton
             icon={SvgTrash}
-            tooltip="Delete"
+            tooltip={t("admin.organizations.actions.delete")}
             danger
             tertiary
             small
-            aria-label={`Delete ${node.data.name}`}
+            aria-label={t("admin.organizations.actions.deleteNamed", {
+              name: node.data.name,
+            })}
             onClick={(event) => {
               event.stopPropagation();
               if (confirm(`Delete "${node.data.name}"?`)) {
@@ -256,9 +265,9 @@ function Node({
           )}
         >
           <InlineOrganizationCreate
-            ariaLabel="New child organization name"
+            ariaLabel={t("admin.organizations.tree.childNameLabel")}
             parentId={node.data.id}
-            placeholder="New child organization"
+            placeholder={t("admin.organizations.tree.childPlaceholder")}
             onCancel={() => setIsCreatingChild(false)}
             onCreateOrg={onCreateOrg}
           />
@@ -279,6 +288,7 @@ export function OrganizationTree({
   selectedOrgId,
   className,
 }: OrganizationTreeProps) {
+  const { t } = useTranslation();
   const [isCreating, setIsCreating] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const [treeHeight, setTreeHeight] = useState(600);
@@ -336,7 +346,7 @@ export function OrganizationTree({
       >
         <div className={cn("flex items-center gap-2")}>
           <Text className={cn("text-lg font-semibold text-text-01")}>
-            Organizations
+            {t("admin.organizations.tree.title")}
           </Text>
         </div>
 
@@ -344,8 +354,8 @@ export function OrganizationTree({
           {onOpenDesigner && (
             <IconButton
               icon={SvgMaximize2}
-              tooltip="Open organization designer"
-              aria-label="Open organization designer"
+              tooltip={t("admin.organizations.tree.openDesigner")}
+              aria-label={t("admin.organizations.tree.openDesigner")}
               tertiary
               onClick={onOpenDesigner}
             />
@@ -362,17 +372,17 @@ export function OrganizationTree({
             )}
           >
             <Text className={cn("text-text-02 mb-2")}>
-              No organizations yet
+              {t("admin.organizations.tree.emptyTitle")}
             </Text>
             <Text className={cn("text-text-03 text-sm mb-4")}>
-              Create your first organization to get started
+              {t("admin.organizations.tree.emptyDescription")}
             </Text>
             {isCreating ? (
               <div className={cn("w-full max-w-sm")}>
                 <InlineOrganizationCreate
-                  ariaLabel="New root organization name"
+                  ariaLabel={t("admin.organizations.tree.rootNameLabel")}
                   parentId={null}
-                  placeholder="Organization name"
+                  placeholder={t("admin.organizations.tree.namePlaceholder")}
                   onCancel={() => setIsCreating(false)}
                   onCreateOrg={onCreateOrg}
                 />
@@ -384,7 +394,7 @@ export function OrganizationTree({
                 size="md"
                 onClick={() => setIsCreating(true)}
               >
-                Create Organization
+                {t("admin.organizations.tree.create")}
               </Button>
             )}
           </div>

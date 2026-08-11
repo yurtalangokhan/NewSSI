@@ -66,7 +66,10 @@ export function OrganizationUserAssignmentsPanel({
         value: role.name,
         label: t(`admin.users.roles.${role.name}`),
       })),
-    { value: "unit_manager", label: "Birim Yöneticisi" },
+    {
+      value: "unit_manager",
+      label: t("admin.organizations.users.unitManager"),
+    },
   ];
 
   async function submitUser() {
@@ -77,10 +80,12 @@ export function OrganizationUserAssignmentsPanel({
       setShowAddUser(false);
       setSelectedUserId("");
       setSelectedRole("unit_manager");
-      toast.success("Member added");
+      toast.success(t("admin.organizations.users.memberAdded"));
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Member could not be added"
+        error instanceof Error
+          ? error.message
+          : t("admin.organizations.notifications.memberAddFailed")
       );
     } finally {
       setIsSubmitting(false);
@@ -92,10 +97,10 @@ export function OrganizationUserAssignmentsPanel({
       <div className={cn("flex items-center justify-between gap-4")}>
         <div>
           <Text headingH3 text04 as="p">
-            Members
+            {t("admin.organizations.users.title")}
           </Text>
           <Text secondaryBody text03 as="p">
-            Manage unit membership and appoint unit managers.
+            {t("admin.organizations.users.description")}
           </Text>
         </div>
         <Button
@@ -105,7 +110,7 @@ export function OrganizationUserAssignmentsPanel({
           disabled={!editable}
           onClick={() => setShowAddUser(true)}
         >
-          Add user
+          {t("admin.organizations.users.addUser")}
         </Button>
       </div>
 
@@ -117,15 +122,15 @@ export function OrganizationUserAssignmentsPanel({
         >
           <div className={cn("flex flex-col gap-2")}>
             <Text secondaryAction text03>
-              User
+              {t("admin.organizations.users.user")}
             </Text>
             <InputSelect
               value={selectedUserId}
               onValueChange={setSelectedUserId}
             >
               <InputSelect.Trigger
-                aria-label="User"
-                placeholder="Select a user"
+                aria-label={t("admin.organizations.users.user")}
+                placeholder={t("admin.organizations.users.selectUser")}
               />
               <InputSelect.Content>
                 {(usersData?.users ?? []).map((user) => (
@@ -138,14 +143,16 @@ export function OrganizationUserAssignmentsPanel({
           </div>
           <div className={cn("flex flex-col gap-2")}>
             <Text secondaryAction text03>
-              Role
+              {t("admin.organizations.users.role")}
             </Text>
             <InputSelect
               value={selectedRole}
               onValueChange={setSelectedRole}
               disabled={rolesLoading}
             >
-              <InputSelect.Trigger aria-label="New member role" />
+              <InputSelect.Trigger
+                aria-label={t("admin.organizations.users.newMemberRole")}
+              />
               <InputSelect.Content>
                 {roleOptions.map((role) => (
                   <InputSelect.Item key={role.value} value={role.value}>
@@ -157,7 +164,7 @@ export function OrganizationUserAssignmentsPanel({
           </div>
           <div className={cn("flex justify-end gap-2 md:col-span-2")}>
             <Button secondary size="md" onClick={() => setShowAddUser(false)}>
-              Cancel
+              {t("admin.organizations.actions.cancel")}
             </Button>
             <Button
               action
@@ -166,7 +173,9 @@ export function OrganizationUserAssignmentsPanel({
               disabled={!selectedUserId || isSubmitting}
               onClick={submitUser}
             >
-              {isSubmitting ? "Adding…" : "Add user"}
+              {isSubmitting
+                ? t("admin.organizations.users.adding")
+                : t("admin.organizations.users.addUser")}
             </Button>
           </div>
         </div>
@@ -178,7 +187,7 @@ export function OrganizationUserAssignmentsPanel({
           as="p"
           className={cn("rounded-12 bg-background-neutral-00 p-8 text-center")}
         >
-          No users are assigned to this organization.
+          {t("admin.organizations.users.empty")}
         </Text>
       ) : (
         <div className={cn("flex flex-col gap-2")}>
@@ -196,7 +205,7 @@ export function OrganizationUserAssignmentsPanel({
                     {label}
                   </Text>
                   <Text secondaryBody text03 as="p">
-                    Direct member of this unit
+                    {t("admin.organizations.users.directMember")}
                   </Text>
                 </div>
                 <InputSelect
@@ -206,7 +215,11 @@ export function OrganizationUserAssignmentsPanel({
                     void onRoleChange(assignment.user_id, value)
                   }
                 >
-                  <InputSelect.Trigger aria-label={`Role for ${label}`} />
+                  <InputSelect.Trigger
+                    aria-label={t("admin.organizations.users.roleFor", {
+                      name: label,
+                    })}
+                  />
                   <InputSelect.Content>
                     {roleOptions.map((role) => (
                       <InputSelect.Item key={role.value} value={role.value}>
@@ -222,7 +235,7 @@ export function OrganizationUserAssignmentsPanel({
                   disabled={!editable}
                   onClick={() => void onRemove(assignment.user_id)}
                 >
-                  Remove
+                  {t("admin.organizations.users.remove")}
                 </Button>
               </div>
             );

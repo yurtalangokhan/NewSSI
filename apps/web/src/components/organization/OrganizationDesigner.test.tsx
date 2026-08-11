@@ -1,5 +1,6 @@
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { useState } from "react";
+import "@/i18n/config";
 
 import { OrganizationDesigner } from "@/components/organization/OrganizationDesigner";
 import { useOrganizationLayout } from "@/components/organization/useOrganizationLayout";
@@ -13,14 +14,19 @@ jest.mock("@xyflow/react", () => {
     Background: () => <div data-testid="flow-background" />,
     Controls: () => <div data-testid="flow-controls" />,
     MiniMap: () => <div data-testid="flow-minimap" />,
-    ReactFlowProvider: ({ children }: { children: React.ReactNode }) => children,
+    ReactFlowProvider: ({ children }: { children: React.ReactNode }) =>
+      children,
     useNodesState: (initialNodes: any[]) => {
       const [nodes, setNodes] = React.useState(initialNodes);
       const onNodesChange = React.useCallback((changes: any[]) => {
         setNodes((current: any[]) =>
           current.map((node) => {
-            const change = changes.find((candidate) => candidate.id === node.id);
-            return change?.position ? { ...node, position: change.position } : node;
+            const change = changes.find(
+              (candidate) => candidate.id === node.id
+            );
+            return change?.position
+              ? { ...node, position: change.position }
+              : node;
           })
         );
       }, []);
@@ -42,15 +48,23 @@ jest.mock("@xyflow/react", () => {
             <button
               key={node.id}
               onClick={() => onNodeClick?.({}, node)}
-              onPointerUp={() =>
-                {
-                  onNodesChange?.([
-                    { id: node.id, type: "position", position: { x: 80, y: 110 }, dragging: true },
-                    { id: node.id, type: "position", position: { x: 90, y: 120 }, dragging: false },
-                  ]);
-                  onNodeDragStop?.({}, { ...node, position: { x: 90, y: 120 } });
-                }
-              }
+              onPointerUp={() => {
+                onNodesChange?.([
+                  {
+                    id: node.id,
+                    type: "position",
+                    position: { x: 80, y: 110 },
+                    dragging: true,
+                  },
+                  {
+                    id: node.id,
+                    type: "position",
+                    position: { x: 90, y: 120 },
+                    dragging: false,
+                  },
+                ]);
+                onNodeDragStop?.({}, { ...node, position: { x: 90, y: 120 } });
+              }}
               onKeyDown={(event) => {
                 if (event.key === "ArrowRight") {
                   onNodesChange?.([
@@ -79,7 +93,11 @@ jest.mock("@/components/organization/useOrganizationLayout", () => ({
 }));
 
 jest.mock("@/components/organization/OrganizationDesignerInspector", () => ({
-  OrganizationDesignerInspector: ({ organization, mobileOpen, onBackToMap }: any) => (
+  OrganizationDesignerInspector: ({
+    organization,
+    mobileOpen,
+    onBackToMap,
+  }: any) => (
     <aside data-testid="inspector" data-mobile-open={mobileOpen}>
       {organization ? `Inspector ${organization.name}` : "No selection"}
       {organization && <button onClick={onBackToMap}>Back to map</button>}
@@ -154,14 +172,21 @@ describe("OrganizationDesigner", () => {
       />
     );
 
-    expect(screen.getByRole("dialog", { name: "Organization designer" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("dialog", { name: "Organization designer" })
+    ).toBeInTheDocument();
     expect(screen.getByTestId("flow-controls")).toBeInTheDocument();
     expect(screen.getByTestId("flow-minimap")).toBeInTheDocument();
-    expect(screen.getByTestId("react-flow")).toHaveAttribute("data-edge-count", "1");
+    expect(screen.getByTestId("react-flow")).toHaveAttribute(
+      "data-edge-count",
+      "1"
+    );
     expect(layoutActions.refresh).not.toHaveBeenCalled();
 
     await user.click(screen.getByRole("button", { name: /Platform locked/ }));
-    expect(handlers.onSelectOrg).toHaveBeenCalledWith(organizations[0]!.children![0]);
+    expect(handlers.onSelectOrg).toHaveBeenCalledWith(
+      organizations[0]!.children![0]
+    );
 
     layoutActions.setPosition.mockClear();
     fireEvent.pointerUp(
@@ -411,7 +436,9 @@ describe("OrganizationDesigner", () => {
     const launcher = screen.getByRole("button", { name: "Launch designer" });
     await user.click(launcher);
 
-    const dialog = screen.getByRole("dialog", { name: "Organization designer" });
+    const dialog = screen.getByRole("dialog", {
+      name: "Organization designer",
+    });
     expect(dialog).toHaveFocus();
     expect(launcher.closest('[aria-hidden="true"]')).not.toBeNull();
     await user.tab({ shift: true });

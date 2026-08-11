@@ -5,6 +5,7 @@
 import { ReactFlow, ReactFlowProvider, type Node } from "@xyflow/react";
 import { render, screen } from "@testing-library/react";
 import type { ReactElement } from "react";
+import "@/i18n/config";
 
 import { OrganizationFlowNode } from "@/components/organization/OrganizationFlowNode";
 import { SvgNetworkGraph } from "@/icons";

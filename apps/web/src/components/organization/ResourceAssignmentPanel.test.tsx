@@ -1,4 +1,5 @@
 import { screen, waitFor } from "@testing-library/react";
+import "@/i18n/config";
 
 import { toast } from "@/hooks/useToast";
 import {
@@ -109,10 +110,9 @@ describe("ResourceAssignmentPanel", () => {
     await user.type(screen.getByPlaceholderText("Search agents"), "support");
     await user.click(screen.getByRole("button", { name: "Select visible" }));
 
-    expect(screen.getByRole("checkbox", { name: "Select Support agent" })).toHaveAttribute(
-      "aria-checked",
-      "true"
-    );
+    expect(
+      screen.getByRole("checkbox", { name: "Select Support agent" })
+    ).toHaveAttribute("aria-checked", "true");
     expect(screen.getByText("1 selected")).toBeInTheDocument();
   });
 
@@ -183,8 +183,12 @@ describe("ResourceAssignmentPanel", () => {
         onSave={jest.fn()}
       />
     );
-    expect(screen.getByText("Collections could not be loaded")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
+    expect(
+      screen.getByText("Collections could not be loaded")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Try again" })
+    ).toBeInTheDocument();
 
     rerender(
       <ResourceAssignmentPanel

@@ -1,5 +1,6 @@
 import { screen, waitFor } from "@testing-library/react";
 import { mutate } from "swr";
+import "@/i18n/config";
 
 import OrganizationsPage from "@/app/admin/organizations/page";
 import { render, setupUser } from "@tests/setup/test-utils";
@@ -16,17 +17,6 @@ jest.mock("@/providers/UserProvider", () => ({
     hasPermission: (permission: string) =>
       (permission === "org:create" && globalCanCreateRoot) ||
       (permission === "org:update" && globalCanEditLayout),
-  }),
-}));
-
-jest.mock("react-i18next", () => ({
-  useTranslation: () => ({
-    t: (key: string) =>
-      ({
-        "admin.users.roles.enduser": "End User",
-        "admin.users.roles.enterprise-admin": "Enterprise Admin",
-        "admin.users.roles.system-admin": "System Admin",
-      })[key] ?? key,
   }),
 }));
 
@@ -116,22 +106,41 @@ jest.mock("@/components/organization/OrganizationDesigner", () => ({
   }: any) => (
     <div role="dialog" aria-label="Organization designer">
       Designer selection: {selectedOrg?.name ?? "none"} {selectedOrg?.path}
-      Children: {selectedOrg?.children?.map((child: any) => child.name).join(", ")}
-      <span>{canCreateRoot ? "Root creation permitted" : "Root creation denied"}</span>
-      <span>{canEditLayout ? "Layout editing permitted" : "Layout editing denied"}</span>
+      Children:{" "}
+      {selectedOrg?.children?.map((child: any) => child.name).join(", ")}
+      <span>
+        {canCreateRoot ? "Root creation permitted" : "Root creation denied"}
+      </span>
+      <span>
+        {canEditLayout ? "Layout editing permitted" : "Layout editing denied"}
+      </span>
       <button onClick={onClose}>Close designer</button>
       <button
         onClick={() => onUpdateOrg(selectedOrg.id, { name: "Platform Core" })}
       >
         Rename in designer
       </button>
-      <button onClick={() => onCreateOrg(selectedOrg?.id ?? null, "Security")}>Create in designer</button>
-      <button onClick={() => onMoveOrg(selectedOrg.id, "org-2")}>Move in designer</button>
-      <button onClick={() => onDeleteOrg(selectedOrg.id)}>Delete in designer</button>
-      <button onClick={() => onAddUser("user-2", "member")}>Add member in designer</button>
-      <button onClick={() => onRoleChange("user-1", "unit_manager")}>Change member role in designer</button>
-      <button onClick={() => onRemoveUser("user-1")}>Remove member in designer</button>
-      <button onClick={onAccessSaveComplete}>Complete access save in designer</button>
+      <button onClick={() => onCreateOrg(selectedOrg?.id ?? null, "Security")}>
+        Create in designer
+      </button>
+      <button onClick={() => onMoveOrg(selectedOrg.id, "org-2")}>
+        Move in designer
+      </button>
+      <button onClick={() => onDeleteOrg(selectedOrg.id)}>
+        Delete in designer
+      </button>
+      <button onClick={() => onAddUser("user-2", "member")}>
+        Add member in designer
+      </button>
+      <button onClick={() => onRoleChange("user-1", "unit_manager")}>
+        Change member role in designer
+      </button>
+      <button onClick={() => onRemoveUser("user-1")}>
+        Remove member in designer
+      </button>
+      <button onClick={onAccessSaveComplete}>
+        Complete access save in designer
+      </button>
     </div>
   ),
 }));
@@ -210,7 +219,9 @@ describe("OrganizationsPage", () => {
     expect(
       screen.getByRole("dialog", { name: "Organization designer" })
     ).toHaveTextContent("Designer selection: Platform");
-    await user.click(screen.getByRole("button", { name: "Rename in designer" }));
+    await user.click(
+      screen.getByRole("button", { name: "Rename in designer" })
+    );
     await waitFor(() =>
       expect(global.fetch).toHaveBeenCalledWith(
         "/api/user-service/organizations/org-1",
@@ -268,7 +279,7 @@ describe("OrganizationsPage", () => {
       screen.getByRole("combobox", { name: "Role for member@example.com" })
     );
     await user.click(
-      (await screen.findAllByRole("option", { name: "Birim Yöneticisi" }))[0]!
+      (await screen.findAllByRole("option", { name: "Unit manager" }))[0]!
     );
 
     await waitFor(() => {
@@ -282,7 +293,7 @@ describe("OrganizationsPage", () => {
     });
   });
 
-  it("uses the Users page role catalog plus Birim Yöneticisi", async () => {
+  it("uses the Users page role catalog plus the localized unit manager role", async () => {
     managementEditable = true;
     const user = setupUser();
     render(<OrganizationsPage />);
@@ -300,7 +311,7 @@ describe("OrganizationsPage", () => {
       screen.getByRole("option", { name: "System Admin" })
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("option", { name: "Birim Yöneticisi" })
+      screen.getByRole("option", { name: "Unit manager" })
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("option", { name: "Viewer" })
@@ -311,7 +322,9 @@ describe("OrganizationsPage", () => {
     const user = setupUser();
     const view = render(<OrganizationsPage />);
     await user.click(screen.getByRole("button", { name: "Select Platform" }));
-    await user.click(screen.getByRole("button", { name: "Open organization designer" }));
+    await user.click(
+      screen.getByRole("button", { name: "Open organization designer" })
+    );
 
     organizationPath = "/enterprise/platform";
     organizationChildren = [
@@ -325,7 +338,9 @@ describe("OrganizationsPage", () => {
     ];
     view.rerender(<OrganizationsPage />);
 
-    const designer = screen.getByRole("dialog", { name: "Organization designer" });
+    const designer = screen.getByRole("dialog", {
+      name: "Organization designer",
+    });
     expect(designer).toHaveTextContent("/enterprise/platform");
     expect(designer).toHaveTextContent("Children: Runtime");
   });
@@ -335,10 +350,14 @@ describe("OrganizationsPage", () => {
     const user = setupUser();
     render(<OrganizationsPage />);
     await user.click(screen.getByRole("button", { name: "Select Platform" }));
-    await user.click(screen.getByRole("button", { name: "Open organization designer" }));
+    await user.click(
+      screen.getByRole("button", { name: "Open organization designer" })
+    );
     jest.mocked(mutate).mockClear();
 
-    await user.click(screen.getByRole("button", { name: "Create in designer" }));
+    await user.click(
+      screen.getByRole("button", { name: "Create in designer" })
+    );
     await waitFor(() => expect(jest.mocked(mutate)).toHaveBeenCalledTimes(2));
     expect(jest.mocked(mutate).mock.calls).toEqual([
       ["/api/user-service/organizations/tree"],
@@ -351,7 +370,9 @@ describe("OrganizationsPage", () => {
     const user = setupUser();
     render(<OrganizationsPage />);
     await user.click(screen.getByRole("button", { name: "Select Platform" }));
-    await user.click(screen.getByRole("button", { name: "Open organization designer" }));
+    await user.click(
+      screen.getByRole("button", { name: "Open organization designer" })
+    );
     jest.mocked(mutate).mockClear();
 
     await user.click(screen.getByRole("button", { name: "Move in designer" }));
@@ -367,10 +388,14 @@ describe("OrganizationsPage", () => {
     const user = setupUser();
     render(<OrganizationsPage />);
     await user.click(screen.getByRole("button", { name: "Select Platform" }));
-    await user.click(screen.getByRole("button", { name: "Open organization designer" }));
+    await user.click(
+      screen.getByRole("button", { name: "Open organization designer" })
+    );
     jest.mocked(mutate).mockClear();
 
-    await user.click(screen.getByRole("button", { name: "Delete in designer" }));
+    await user.click(
+      screen.getByRole("button", { name: "Delete in designer" })
+    );
     await waitFor(() => expect(jest.mocked(mutate)).toHaveBeenCalledTimes(2));
     expect(jest.mocked(mutate).mock.calls).toEqual([
       ["/api/user-service/organizations/tree"],
@@ -383,10 +408,14 @@ describe("OrganizationsPage", () => {
     const user = setupUser();
     render(<OrganizationsPage />);
     await user.click(screen.getByRole("button", { name: "Select Platform" }));
-    await user.click(screen.getByRole("button", { name: "Open organization designer" }));
+    await user.click(
+      screen.getByRole("button", { name: "Open organization designer" })
+    );
     jest.mocked(mutate).mockClear();
 
-    await user.click(screen.getByRole("button", { name: "Complete access save in designer" }));
+    await user.click(
+      screen.getByRole("button", { name: "Complete access save in designer" })
+    );
     await waitFor(() => expect(jest.mocked(mutate)).toHaveBeenCalledTimes(1));
     expect(jest.mocked(mutate).mock.calls).toEqual([
       ["/api/user-service/organizations/tree"],
@@ -396,24 +425,34 @@ describe("OrganizationsPage", () => {
   it.each([
     [true, "Root creation permitted"],
     [false, "Root creation denied"],
-  ])("passes global org:create permission %s to the designer", async (allowed, label) => {
-    globalCanCreateRoot = allowed;
-    const user = setupUser();
-    render(<OrganizationsPage />);
-    await user.click(screen.getByRole("button", { name: "Open organization designer" }));
-    expect(screen.getByText(label)).toBeInTheDocument();
-  });
+  ])(
+    "passes global org:create permission %s to the designer",
+    async (allowed, label) => {
+      globalCanCreateRoot = allowed;
+      const user = setupUser();
+      render(<OrganizationsPage />);
+      await user.click(
+        screen.getByRole("button", { name: "Open organization designer" })
+      );
+      expect(screen.getByText(label)).toBeInTheDocument();
+    }
+  );
 
   it.each([
     [true, "Layout editing permitted"],
     [false, "Layout editing denied"],
-  ])("passes coarse org:update permission %s to the designer", async (allowed, label) => {
-    globalCanEditLayout = allowed;
-    const user = setupUser();
-    render(<OrganizationsPage />);
-    await user.click(screen.getByRole("button", { name: "Open organization designer" }));
-    expect(screen.getByText(label)).toBeInTheDocument();
-  });
+  ])(
+    "passes coarse org:update permission %s to the designer",
+    async (allowed, label) => {
+      globalCanEditLayout = allowed;
+      const user = setupUser();
+      render(<OrganizationsPage />);
+      await user.click(
+        screen.getByRole("button", { name: "Open organization designer" })
+      );
+      expect(screen.getByText(label)).toBeInTheDocument();
+    }
+  );
 
   it("keeps designer member add, role, and remove operations on existing handlers", async () => {
     managementEditable = true;
@@ -421,11 +460,19 @@ describe("OrganizationsPage", () => {
     const user = setupUser();
     render(<OrganizationsPage />);
     await user.click(screen.getByRole("button", { name: "Select Platform" }));
-    await user.click(screen.getByRole("button", { name: "Open organization designer" }));
+    await user.click(
+      screen.getByRole("button", { name: "Open organization designer" })
+    );
 
-    await user.click(screen.getByRole("button", { name: "Add member in designer" }));
-    await user.click(screen.getByRole("button", { name: "Change member role in designer" }));
-    await user.click(screen.getByRole("button", { name: "Remove member in designer" }));
+    await user.click(
+      screen.getByRole("button", { name: "Add member in designer" })
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Change member role in designer" })
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Remove member in designer" })
+    );
 
     expect(global.fetch).toHaveBeenCalledWith(
       "/api/user-service/organizations/org-1/users",

@@ -1,4 +1,5 @@
 import { screen } from "@testing-library/react";
+import "@/i18n/config";
 
 import { OrganizationTree } from "@/components/organization/OrganizationTree";
 import { render, setupUser } from "@tests/setup/test-utils";

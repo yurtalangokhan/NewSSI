@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import useSWR, { mutate } from "swr";
+import { useTranslation } from "react-i18next";
 
 import { OrganizationAccessPanel } from "@/components/organization/OrganizationAccessPanel";
 import { OrganizationDesigner } from "@/components/organization/OrganizationDesigner";
@@ -53,6 +54,7 @@ async function responseDetail(response: Response, fallback: string) {
 }
 
 export default function OrganizationsPage() {
+  const { t } = useTranslation();
   const { hasPermission } = useUser();
   const canCreateRoot = hasPermission("org:create");
   const canEditLayout = hasPermission("org:update");
@@ -141,10 +143,7 @@ export default function OrganizationsPage() {
     : null;
   const { data: capability, isLoading: capabilityLoading } = useSWR<{
     editable: boolean;
-  }>(
-    capabilityKey,
-    fetchJson
-  );
+  }>(capabilityKey, fetchJson);
   const editable = capability?.editable === true;
 
   const refreshOrganizations = useCallback(async () => {
@@ -179,14 +178,17 @@ export default function OrganizationsPage() {
       });
       if (!response.ok) {
         toast.error(
-          await responseDetail(response, "Organization could not be created")
+          await responseDetail(
+            response,
+            t("admin.organizations.notifications.createFailed")
+          )
         );
         return;
       }
       await refreshOrganizationsAndLayout();
-      toast.success("Organization created");
+      toast.success(t("admin.organizations.notifications.created"));
     },
-    [refreshOrganizationsAndLayout]
+    [refreshOrganizationsAndLayout, t]
   );
 
   const handleUpdateOrg = useCallback(
@@ -198,13 +200,16 @@ export default function OrganizationsPage() {
       });
       if (!response.ok) {
         toast.error(
-          await responseDetail(response, "Organization could not be updated")
+          await responseDetail(
+            response,
+            t("admin.organizations.notifications.updateFailed")
+          )
         );
         return;
       }
       await refreshOrganizations();
     },
-    [refreshOrganizations]
+    [refreshOrganizations, t]
   );
 
   const handleDeleteOrg = useCallback(
@@ -214,14 +219,17 @@ export default function OrganizationsPage() {
       });
       if (!response.ok) {
         toast.error(
-          await responseDetail(response, "Organization could not be deleted")
+          await responseDetail(
+            response,
+            t("admin.organizations.notifications.deleteFailed")
+          )
         );
         return;
       }
       await refreshOrganizationsAndLayout();
       if (selectedOrgId === id) setSelectedOrgId(null);
     },
-    [refreshOrganizationsAndLayout, selectedOrgId]
+    [refreshOrganizationsAndLayout, selectedOrgId, t]
   );
 
   const handleMoveOrg = useCallback(
@@ -236,13 +244,16 @@ export default function OrganizationsPage() {
       );
       if (!response.ok) {
         toast.error(
-          await responseDetail(response, "Organization could not be moved")
+          await responseDetail(
+            response,
+            t("admin.organizations.notifications.moveFailed")
+          )
         );
         return;
       }
       await refreshOrganizationsAndLayout();
     },
-    [refreshOrganizationsAndLayout]
+    [refreshOrganizationsAndLayout, t]
   );
 
   async function refreshMembers() {
@@ -265,7 +276,10 @@ export default function OrganizationsPage() {
     );
     if (!response.ok) {
       throw new Error(
-        await responseDetail(response, "Member could not be added")
+        await responseDetail(
+          response,
+          t("admin.organizations.notifications.memberAddFailed")
+        )
       );
     }
     await refreshMembers();
@@ -286,23 +300,33 @@ export default function OrganizationsPage() {
     );
     if (!response.ok) {
       toast.error(
-        await responseDetail(response, "Member role could not be updated")
+        await responseDetail(
+          response,
+          t("admin.organizations.notifications.memberRoleUpdateFailed")
+        )
       );
       return;
     }
     await refreshMembers();
-    toast.success("Member role updated");
+    toast.success(t("admin.organizations.notifications.memberRoleUpdated"));
   }
 
   async function handleRemoveUser(userId: string) {
-    if (!selectedOrg || !confirm("Remove user from this organization?")) return;
+    if (
+      !selectedOrg ||
+      !confirm(t("admin.organizations.notifications.memberRemoveConfirm"))
+    )
+      return;
     const response = await fetch(
       `/api/user-service/organizations/${selectedOrg.id}/users/${userId}`,
       { method: "DELETE" }
     );
     if (!response.ok) {
       toast.error(
-        await responseDetail(response, "Member could not be removed")
+        await responseDetail(
+          response,
+          t("admin.organizations.notifications.memberRemoveFailed")
+        )
       );
       return;
     }
@@ -312,7 +336,7 @@ export default function OrganizationsPage() {
   if (isLoading) {
     return (
       <div className={cn("flex h-screen items-center justify-center")}>
-        <Text text03>Loading organizations…</Text>
+        <Text text03>{t("admin.organizations.page.loading")}</Text>
       </div>
     );
   }
@@ -349,7 +373,7 @@ export default function OrganizationsPage() {
 
       <div
         role="separator"
-        aria-label="Resize organization tree"
+        aria-label={t("admin.organizations.page.resizeTree")}
         aria-orientation="vertical"
         aria-valuemin={MIN_TREE_PANE_WIDTH}
         aria-valuemax={clampTreePaneWidth(Number.MAX_SAFE_INTEGER)}
@@ -399,7 +423,7 @@ export default function OrganizationsPage() {
                       {members.length}
                     </Text>
                     <Text figureSmallLabel text03>
-                      Active members
+                      {t("admin.organizations.page.activeMembers")}
                     </Text>
                   </div>
                   <div className={cn("text-right")}>
@@ -407,7 +431,7 @@ export default function OrganizationsPage() {
                       {selectedOrg.permission_count ?? 0}
                     </Text>
                     <Text figureSmallLabel text03>
-                      Direct grants
+                      {t("admin.organizations.page.directGrants")}
                     </Text>
                   </div>
                 </div>
@@ -415,10 +439,10 @@ export default function OrganizationsPage() {
               <Tabs value={activeTab} onValueChange={setActiveTab}>
                 <Tabs.List variant="pill">
                   <Tabs.Trigger value="users" icon={SvgUsers}>
-                    Users
+                    {t("admin.organizations.page.usersTab")}
                   </Tabs.Trigger>
                   <Tabs.Trigger value="access" icon={SvgShield}>
-                    Access
+                    {t("admin.organizations.page.accessTab")}
                   </Tabs.Trigger>
                 </Tabs.List>
               </Tabs>
@@ -451,10 +475,10 @@ export default function OrganizationsPage() {
           >
             <SvgOrganization className={cn("mb-2 h-12 w-12 stroke-text-02")} />
             <Text headingH3 text03 as="p">
-              Select an organization
+              {t("admin.organizations.page.selectTitle")}
             </Text>
             <Text text03 as="p">
-              Choose a unit from the tree to manage members and direct access.
+              {t("admin.organizations.page.selectDescription")}
             </Text>
           </div>
         )}

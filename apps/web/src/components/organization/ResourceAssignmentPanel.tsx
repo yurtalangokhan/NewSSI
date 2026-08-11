@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import Button from "@/refresh-components/buttons/Button";
 import Checkbox from "@/refresh-components/inputs/Checkbox";
@@ -58,7 +59,9 @@ function mapToPermissions(
   draft: Map<string, DirectResourcePermission>,
   resources: AssignableResource[]
 ) {
-  const order = new Map(resources.map((resource, index) => [resource.id, index]));
+  const order = new Map(
+    resources.map((resource, index) => [resource.id, index])
+  );
   return Array.from(draft.values()).sort(
     (left, right) =>
       (order.get(left.resource_id) ?? Number.MAX_SAFE_INTEGER) -
@@ -76,6 +79,7 @@ export function ResourceAssignmentPanel({
   onRetry,
   onSave,
 }: ResourceAssignmentPanelProps) {
+  const { t, i18n } = useTranslation();
   const incomingSignature = useMemo(
     () => permissionSignature(permissions),
     [permissions]
@@ -108,7 +112,7 @@ export function ResourceAssignmentPanel({
   const allVisibleSelected =
     visibleResources.length > 0 &&
     visibleResources.every((resource) => draft.has(resource.id));
-  const resourceLabel = title.toLowerCase();
+  const resourceLabel = title.toLocaleLowerCase(i18n.language);
 
   function toggleResource(resource: AssignableResource, checked: boolean) {
     setDraft((current) => {
@@ -151,10 +155,16 @@ export function ResourceAssignmentPanel({
       const nextPermissions = saved ?? draftPermissions;
       setDraft(toPermissionMap(nextPermissions));
       setSavedSignature(permissionSignature(nextPermissions));
-      toast.success(`${title} access saved`);
+      toast.success(
+        t("admin.organizations.access.accessSaved", { resource: title })
+      );
     } catch (saveError) {
       toast.error(
-        saveError instanceof Error ? saveError.message : `${title} access could not be saved`
+        saveError instanceof Error
+          ? saveError.message
+          : t("admin.organizations.access.accessSaveFailed", {
+              resource: title,
+            })
       );
     } finally {
       setIsSaving(false);
@@ -162,19 +172,29 @@ export function ResourceAssignmentPanel({
   }
 
   return (
-    <section className={cn("flex flex-col gap-4 rounded-12 border border-border-01 bg-background-neutral-00 p-4")}>
+    <section
+      className={cn(
+        "flex flex-col gap-4 rounded-12 border border-border-01 bg-background-neutral-00 p-4"
+      )}
+    >
       <div className={cn("flex flex-wrap items-start justify-between gap-3")}>
         <div className={cn("flex flex-col gap-1")}>
           <Text headingH3 text04 as="p">
             {title}
           </Text>
           <Text secondaryBody text03 as="p">
-            Assign direct {resourceLabel} access for this target.
+            {t("admin.organizations.access.assignDescription", {
+              resource: resourceLabel,
+            })}
           </Text>
         </div>
         <div className={cn("flex items-center gap-2")}>
           <Text secondaryAction text03>
-            {editable ? (isDirty ? "Unsaved changes" : "All changes saved") : "View only"}
+            {editable
+              ? isDirty
+                ? t("admin.organizations.designer.unsavedChanges")
+                : t("admin.organizations.access.allChangesSaved")
+              : t("admin.organizations.inspector.viewOnly")}
           </Text>
           <Button
             action
@@ -183,54 +203,80 @@ export function ResourceAssignmentPanel({
             disabled={!editable || !isDirty || isSaving}
             onClick={handleSave}
           >
-            {isSaving ? "Saving…" : "Save changes"}
+            {isSaving
+              ? t("admin.organizations.actions.saving")
+              : t("admin.organizations.actions.saveChanges")}
           </Button>
         </div>
       </div>
 
       {isLoading ? (
         <Text text03 as="p">
-          Loading {resourceLabel}…
+          {t("admin.organizations.access.loadingResources", {
+            resource: resourceLabel,
+          })}
         </Text>
       ) : error ? (
-        <div className={cn("flex items-center justify-between gap-3 rounded-08 border border-border-02 bg-background-neutral-01 p-3")}>
+        <div
+          className={cn(
+            "flex items-center justify-between gap-3 rounded-08 border border-border-02 bg-background-neutral-01 p-3"
+          )}
+        >
           <Text text02 as="p">
             {error}
           </Text>
           {onRetry && (
             <Button secondary size="md" onClick={onRetry}>
-              Try again
+              {t("admin.organizations.actions.tryAgain")}
             </Button>
           )}
         </div>
       ) : resources.length === 0 ? (
-        <Text text03 as="p" className={cn("rounded-08 bg-background-neutral-01 p-4 text-center")}>
-          No {resourceLabel} available
+        <Text
+          text03
+          as="p"
+          className={cn("rounded-08 bg-background-neutral-01 p-4 text-center")}
+        >
+          {t("admin.organizations.access.noResources", {
+            resource: resourceLabel,
+          })}
         </Text>
       ) : (
         <>
           <div className={cn("grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]")}>
             <InputTypeIn
               leftSearchIcon
-              placeholder={`Search ${resourceLabel}`}
+              placeholder={t("admin.organizations.access.searchResources", {
+                resource: resourceLabel,
+              })}
               value={query}
               onChange={(event) => setQuery(event.target.value)}
             />
-            <label className={cn("flex items-center gap-2 rounded-08 border border-border-01 px-3 py-2")}>
+            <label
+              className={cn(
+                "flex items-center gap-2 rounded-08 border border-border-01 px-3 py-2"
+              )}
+            >
               <Checkbox
                 checked={selectedOnly}
                 onCheckedChange={setSelectedOnly}
-                aria-label="Selected only"
+                aria-label={t("admin.organizations.access.selectedOnly")}
               />
               <Text secondaryAction text02>
-                Selected only
+                {t("admin.organizations.access.selectedOnly")}
               </Text>
             </label>
           </div>
 
-          <div className={cn("flex items-center justify-between gap-3 border-b border-border-01 pb-3")}>
+          <div
+            className={cn(
+              "flex items-center justify-between gap-3 border-b border-border-01 pb-3"
+            )}
+          >
             <Text secondaryBody text03>
-              {draft.size} selected
+              {t("admin.organizations.access.selectedCount", {
+                count: draft.size,
+              })}
             </Text>
             <Button
               tertiary
@@ -238,13 +284,17 @@ export function ResourceAssignmentPanel({
               disabled={!editable || visibleResources.length === 0}
               onClick={toggleAllVisible}
             >
-              {allVisibleSelected ? "Clear visible" : "Select visible"}
+              {allVisibleSelected
+                ? t("admin.organizations.access.clearVisible")
+                : t("admin.organizations.access.selectVisible")}
             </Button>
           </div>
 
           {visibleResources.length === 0 ? (
             <Text text03 as="p" className={cn("py-5 text-center")}>
-              No {resourceLabel} match the current filters
+              {t("admin.organizations.access.noFilterMatches", {
+                resource: resourceLabel,
+              })}
             </Text>
           ) : (
             <div className={cn("flex flex-col gap-2")}>
@@ -263,26 +313,43 @@ export function ResourceAssignmentPanel({
                     <Checkbox
                       checked={Boolean(permission)}
                       disabled={!editable}
-                      onCheckedChange={(checked) => toggleResource(resource, checked)}
-                      aria-label={`Select ${resource.name}`}
+                      onCheckedChange={(checked) =>
+                        toggleResource(resource, checked)
+                      }
+                      aria-label={t(
+                        "admin.organizations.access.selectResource",
+                        {
+                          name: resource.name,
+                        }
+                      )}
                     />
                     <div className={cn("min-w-0")}>
-                      <Text mainUiAction text04 as="p" className={cn("truncate")}>
+                      <Text
+                        mainUiAction
+                        text04
+                        as="p"
+                        className={cn("truncate")}
+                      >
                         {resource.name}
                       </Text>
                       {resource.description && (
-                        <Text secondaryBody text03 as="p" className={cn("truncate")}>
+                        <Text
+                          secondaryBody
+                          text03
+                          as="p"
+                          className={cn("truncate")}
+                        >
                           {resource.description}
                         </Text>
                       )}
                     </div>
                     {permission ? (
                       <Text secondaryBody text03>
-                        Assigned
+                        {t("admin.organizations.access.assigned")}
                       </Text>
                     ) : (
                       <Text secondaryBody text03>
-                        Not assigned
+                        {t("admin.organizations.access.notAssigned")}
                       </Text>
                     )}
                   </div>

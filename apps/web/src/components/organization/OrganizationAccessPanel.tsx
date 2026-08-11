@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import useSWR from "swr";
 
 import { usePersonaOptions } from "@/hooks/usePersonaOptions";
@@ -45,16 +46,20 @@ type TargetType = "organization" | "user";
 type ResourceType = "agent" | "rag_collection";
 
 async function readErrorDetail(response: Response, fallback: string) {
-  const data = (await response.json().catch(() => null)) as
-    | { detail?: string; message?: string }
-    | null;
+  const data = (await response.json().catch(() => null)) as {
+    detail?: string;
+    message?: string;
+  } | null;
   return data?.detail || data?.message || fallback;
 }
 
-async function permissionFetcher(url: string): Promise<ScopedPermissionsResponse> {
+async function permissionFetcher(
+  url: string,
+  fallback: string
+): Promise<ScopedPermissionsResponse> {
   const response = await fetch(url);
   if (!response.ok) {
-    throw new Error(await readErrorDetail(response, "Direct permissions could not be loaded"));
+    throw new Error(await readErrorDetail(response, fallback));
   }
   return response.json();
 }
@@ -63,7 +68,9 @@ function memberLabel(member: OrganizationAccessMember) {
   const fullName = [member.user?.first_name, member.user?.last_name]
     .filter(Boolean)
     .join(" ");
-  return fullName || member.user?.email || member.user?.username || member.user_id;
+  return (
+    fullName || member.user?.email || member.user?.username || member.user_id
+  );
 }
 
 function errorMessage(error: unknown, fallback: string) {
@@ -100,10 +107,15 @@ function ScopedResourcePanel({
   onRetryResources?: () => void;
   onSaveComplete?: () => void | Promise<void>;
 }) {
+  const { t } = useTranslation();
   const endpoint = `/api/user-service/permissions/organizations/${organizationId}/targets/${targetType}/${targetId}/resources/${resourceType}`;
   const { data, error, isLoading, mutate } = useSWR<ScopedPermissionsResponse>(
     endpoint,
-    permissionFetcher
+    (url: string) =>
+      permissionFetcher(
+        url,
+        t("admin.organizations.access.directPermissionsLoadFailed")
+      )
   );
 
   async function save(permissions: DirectResourcePermission[]) {
@@ -113,7 +125,12 @@ function ScopedResourcePanel({
       body: JSON.stringify({ permissions }),
     });
     if (!response.ok) {
-      throw new Error(await readErrorDetail(response, `${title} access could not be saved`));
+      throw new Error(
+        await readErrorDetail(
+          response,
+          t("admin.organizations.access.accessSaveFailed", { resource: title })
+        )
+      );
     }
     const saved = (await response.json()) as ScopedPermissionsResponse;
     await mutate(saved, { revalidate: false });
@@ -126,7 +143,10 @@ function ScopedResourcePanel({
   }
 
   const loadError = error
-    ? errorMessage(error, `${title} access could not be loaded`)
+    ? errorMessage(
+        error,
+        t("admin.organizations.access.accessLoadFailed", { resource: title })
+      )
     : resourcesError;
 
   return (
@@ -152,6 +172,7 @@ export function OrganizationAccessPanel({
   editable,
   onSaveComplete,
 }: OrganizationAccessPanelProps) {
+  const { t } = useTranslation();
   const [targetType, setTargetType] = useState<TargetType>("organization");
   const activeMembers = useMemo(
     () => members.filter((member) => member.is_active !== false),
@@ -160,8 +181,12 @@ export function OrganizationAccessPanel({
   const [selectedMemberId, setSelectedMemberId] = useState(
     activeMembers[0]?.user_id ?? ""
   );
-  const { personas, isLoading: agentsLoading, error: agentsError, refresh } =
-    usePersonaOptions();
+  const {
+    personas,
+    isLoading: agentsLoading,
+    error: agentsError,
+    refresh,
+  } = usePersonaOptions();
   const {
     collections,
     isLoading: collectionsLoading,
@@ -173,7 +198,7 @@ export function OrganizationAccessPanel({
     (member) => member.user_id === selectedMemberId
   )
     ? selectedMemberId
-    : (activeMembers[0]?.user_id ?? "");
+    : activeMembers[0]?.user_id ?? "";
   const targetId =
     targetType === "organization" ? organization.id : effectiveSelectedMemberId;
   const agentResources = personas.map((persona) => ({
@@ -189,29 +214,43 @@ export function OrganizationAccessPanel({
   return (
     <div className={cn("flex flex-col gap-4")}>
       <div className={cn("rounded-12 bg-background-neutral-01 p-1")}>
-        <Tabs value={targetType} onValueChange={(value) => setTargetType(value as TargetType)}>
+        <Tabs
+          value={targetType}
+          onValueChange={(value) => setTargetType(value as TargetType)}
+        >
           <Tabs.List variant="contained">
-            <Tabs.Trigger value="organization">Unit access</Tabs.Trigger>
-            <Tabs.Trigger value="user">Member access</Tabs.Trigger>
+            <Tabs.Trigger value="organization">
+              {t("admin.organizations.access.unitAccess")}
+            </Tabs.Trigger>
+            <Tabs.Trigger value="user">
+              {t("admin.organizations.access.memberAccess")}
+            </Tabs.Trigger>
           </Tabs.List>
         </Tabs>
       </div>
 
       {targetType === "user" && (
-        <div className={cn("flex flex-col gap-2 rounded-12 border border-border-01 bg-background-neutral-00 p-4")}>
+        <div
+          className={cn(
+            "flex flex-col gap-2 rounded-12 border border-border-01 bg-background-neutral-00 p-4"
+          )}
+        >
           <Text mainUiAction text04 as="p">
-            Member
+            {t("admin.organizations.access.member")}
           </Text>
           {activeMembers.length === 0 ? (
             <Text text03 as="p">
-              Add an active member to this unit before assigning individual access.
+              {t("admin.organizations.access.noActiveMembers")}
             </Text>
           ) : (
             <InputSelect
               value={effectiveSelectedMemberId}
               onValueChange={setSelectedMemberId}
             >
-              <InputSelect.Trigger aria-label="Member" placeholder="Select a member" />
+              <InputSelect.Trigger
+                aria-label={t("admin.organizations.access.member")}
+                placeholder={t("admin.organizations.access.selectMember")}
+              />
               <InputSelect.Content>
                 {activeMembers.map((member) => (
                   <InputSelect.Item key={member.user_id} value={member.user_id}>
@@ -231,12 +270,19 @@ export function OrganizationAccessPanel({
             targetType={targetType}
             targetId={targetId}
             resourceType="agent"
-            title="Agents"
+            title={t("admin.organizations.access.agents")}
             resources={agentResources}
             editable={editable}
             resourcesLoading={agentsLoading}
             resourcesError={
-              agentsError ? errorMessage(agentsError, "Agents could not be loaded") : undefined
+              agentsError
+                ? errorMessage(
+                    agentsError,
+                    t("admin.organizations.access.resourceLoadFailed", {
+                      resource: t("admin.organizations.access.agents"),
+                    })
+                  )
+                : undefined
             }
             onRetryResources={() => void refresh()}
             onSaveComplete={onSaveComplete}
@@ -246,13 +292,18 @@ export function OrganizationAccessPanel({
             targetType={targetType}
             targetId={targetId}
             resourceType="rag_collection"
-            title="Collections"
+            title={t("admin.organizations.access.collections")}
             resources={collectionResources}
             editable={editable}
             resourcesLoading={collectionsLoading}
             resourcesError={
               collectionsError
-                ? errorMessage(collectionsError, "Collections could not be loaded")
+                ? errorMessage(
+                    collectionsError,
+                    t("admin.organizations.access.resourceLoadFailed", {
+                      resource: t("admin.organizations.access.collections"),
+                    })
+                  )
                 : undefined
             }
             onRetryResources={() => void refreshCollections()}
