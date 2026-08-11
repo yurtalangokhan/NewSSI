@@ -140,6 +140,102 @@ export function inferOrganizationLayoutOrientation(
   return horizontal.step > vertical.step ? "horizontal" : "vertical";
 }
 
+export function repositionOrganizationSubtree(
+  organizations: OrganizationTreeNode[],
+  positions: OrganizationPositionMap,
+  organizationId: string,
+  newParentId: string,
+  orientation: OrganizationLayoutOrientation
+): OrganizationPositionMap {
+  function findOrganization(
+    nodes: OrganizationTreeNode[],
+    targetId: string
+  ): OrganizationTreeNode | undefined {
+    for (const organization of nodes) {
+      if (organization.id === targetId) return organization;
+      const descendant = findOrganization(
+        organization.children ?? [],
+        targetId
+      );
+      if (descendant) return descendant;
+    }
+    return undefined;
+  }
+  const movedOrganization = findOrganization(organizations, organizationId);
+
+  const movedPosition = positions[organizationId];
+  const parentPosition = positions[newParentId];
+  if (!movedOrganization || !movedPosition || !parentPosition) return {};
+
+  const subtreeIds = new Set<string>();
+  function collectSubtree(organization: OrganizationTreeNode) {
+    subtreeIds.add(organization.id);
+    (organization.children ?? []).forEach(collectSubtree);
+  }
+  collectSubtree(movedOrganization);
+
+  const vertical = orientation === "vertical";
+  const levelGap = vertical ? LEVEL_GAP : HORIZONTAL_LEVEL_GAP;
+  const siblingGap = vertical ? SIBLING_GAP : HORIZONTAL_SIBLING_GAP;
+  const targetLevel =
+    (vertical ? parentPosition.y : parentPosition.x) + levelGap;
+  const parentSiblingCoordinate = vertical
+    ? parentPosition.x
+    : parentPosition.y;
+  const occupiedSiblingCoordinates = Object.entries(positions)
+    .filter(([id, position]) => {
+      if (subtreeIds.has(id)) return false;
+      const levelCoordinate = vertical ? position.y : position.x;
+      return Math.abs(levelCoordinate - targetLevel) < levelGap / 2;
+    })
+    .map(([, position]) => (vertical ? position.x : position.y));
+
+  let slotOffset = 0;
+  for (
+    let distance = 0;
+    distance <= occupiedSiblingCoordinates.length;
+    distance += 1
+  ) {
+    const offsets = distance === 0 ? [0] : [distance, -distance];
+    const availableOffset = offsets.find((offset) => {
+      const candidate = parentSiblingCoordinate + offset * siblingGap;
+      return occupiedSiblingCoordinates.every(
+        (occupied) => Math.abs(occupied - candidate) >= siblingGap * 0.8
+      );
+    });
+    if (availableOffset !== undefined) {
+      slotOffset = availableOffset;
+      break;
+    }
+  }
+
+  const targetPosition = vertical
+    ? {
+        x: parentSiblingCoordinate + slotOffset * siblingGap,
+        y: targetLevel,
+      }
+    : {
+        x: targetLevel,
+        y: parentSiblingCoordinate + slotOffset * siblingGap,
+      };
+  const delta = {
+    x: targetPosition.x - movedPosition.x,
+    y: targetPosition.y - movedPosition.y,
+  };
+
+  return Object.fromEntries(
+    Array.from(subtreeIds)
+      .filter((id) => positions[id])
+      .map((id) => [
+        id,
+        {
+          x: positions[id]!.x + delta.x,
+          y: positions[id]!.y + delta.y,
+        },
+      ])
+  );
+}
+
 function isOnSelectedPath(
   organization: OrganizationTreeNode,
   selectedOrganizationId: string | undefined

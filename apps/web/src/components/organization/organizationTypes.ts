@@ -37,5 +37,4 @@ export type DeleteOrganization = (id: string) => Promise<void>;
 export type MoveOrganization = (
   id: string,
   newParentId: string | null
-) => Promise<void>;
-
+) => Promise<boolean>;

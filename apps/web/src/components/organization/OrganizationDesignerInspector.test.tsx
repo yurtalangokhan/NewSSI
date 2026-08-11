@@ -52,7 +52,7 @@ const handlers = {
   onCreateOrg: jest.fn().mockResolvedValue(undefined),
   onUpdateOrg: jest.fn().mockResolvedValue(undefined),
   onDeleteOrg: jest.fn().mockResolvedValue(undefined),
-  onMoveOrg: jest.fn().mockResolvedValue(undefined),
+  onMoveOrg: jest.fn().mockResolvedValue(true),
   onAddUser: jest.fn().mockResolvedValue(undefined),
   onRoleChange: jest.fn().mockResolvedValue(undefined),
   onRemoveUser: jest.fn().mockResolvedValue(undefined),

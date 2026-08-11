@@ -54,48 +54,64 @@ jest.mock("@xyflow/react", () => {
           data-hide-attribution={String(proOptions?.hideAttribution)}
         >
           {nodes.map((node: any) => (
-            <button
-              key={node.id}
-              onClick={() => onNodeClick?.({}, node)}
-              onPointerUp={() => {
-                onNodesChange?.([
-                  {
-                    id: node.id,
-                    type: "position",
-                    position: { x: 80, y: 110 },
-                    dragging: true,
-                  },
-                  {
-                    id: node.id,
-                    type: "position",
-                    position: { x: 90, y: 120 },
-                    dragging: false,
-                  },
-                ]);
-                onNodeDragStop?.({}, { ...node, position: { x: 90, y: 120 } });
-              }}
-              onKeyDown={(event) => {
-                if (event.key === "ArrowRight") {
+            <React.Fragment key={node.id}>
+              <button
+                onClick={() => onNodeClick?.({}, node)}
+                onPointerUp={() => {
                   onNodesChange?.([
                     {
                       id: node.id,
                       type: "position",
-                      position: { x: node.position.x + 5, y: node.position.y },
+                      position: { x: 80, y: 110 },
+                      dragging: true,
+                    },
+                    {
+                      id: node.id,
+                      type: "position",
+                      position: { x: 90, y: 120 },
+                      dragging: false,
                     },
                   ]);
+                  onNodeDragStop?.(
+                    {},
+                    { ...node, position: { x: 90, y: 120 } }
+                  );
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "ArrowRight") {
+                    onNodesChange?.([
+                      {
+                        id: node.id,
+                        type: "position",
+                        position: {
+                          x: node.position.x + 5,
+                          y: node.position.y,
+                        },
+                      },
+                    ]);
+                  }
+                }}
+                data-position-x={node.position.x}
+                data-search-state={
+                  node.data.searchMatch
+                    ? "match"
+                    : node.data.searchDimmed
+                      ? "dimmed"
+                      : "idle"
                 }
-              }}
-              data-position-x={node.position.x}
-              data-search-state={
-                node.data.searchMatch
-                  ? "match"
-                  : node.data.searchDimmed
-                    ? "dimmed"
-                    : "idle"
-              }
-            >
-              {node.data.name} {node.draggable ? "movable" : "locked"}
-            </button>
+              >
+                {node.data.name} {node.draggable ? "movable" : "locked"}
+              </button>
+              {node.data.onRequestMove && node.data.parentOptions?.at(-1) && (
+                <button
+                  onClick={() =>
+                    node.data.onRequestMove(node.data.parentOptions.at(-1).id)
+                  }
+                >
+                  Move {node.data.name}
+                </button>
+              )}
+            </React.Fragment>
           ))}
           {children}
         </div>
@@ -156,6 +172,39 @@ const organizations = [
   },
 ];
 
+const movableOrganizations = [
+  {
+    id: "root",
+    name: "Enterprise",
+    path: "/enterprise",
+    parent_id: null,
+    children: [
+      {
+        id: "source",
+        name: "Source",
+        path: "/enterprise/source",
+        parent_id: "root",
+        children: [
+          {
+            id: "leaf",
+            name: "Leaf",
+            path: "/enterprise/source/leaf",
+            parent_id: "source",
+            children: [],
+          },
+        ],
+      },
+      {
+        id: "target",
+        name: "Target",
+        path: "/enterprise/target",
+        parent_id: "root",
+        children: [],
+      },
+    ],
+  },
+];
+
 const handlers = {
   canCreateRoot: false,
   canEditLayout: true,
@@ -164,7 +213,7 @@ const handlers = {
   onCreateOrg: jest.fn().mockResolvedValue(undefined),
   onUpdateOrg: jest.fn().mockResolvedValue(undefined),
   onDeleteOrg: jest.fn().mockResolvedValue(undefined),
-  onMoveOrg: jest.fn().mockResolvedValue(undefined),
+  onMoveOrg: jest.fn().mockResolvedValue(true),
   onAddUser: jest.fn().mockResolvedValue(undefined),
   onRoleChange: jest.fn().mockResolvedValue(undefined),
   onRemoveUser: jest.fn().mockResolvedValue(undefined),
@@ -227,6 +276,71 @@ describe("OrganizationDesigner", () => {
 
     await user.click(screen.getByRole("button", { name: "Fit view" }));
     expect(fitView).toHaveBeenCalled();
+  });
+
+  it("repositions and saves only the moved subtree after a successful reparent", async () => {
+    const user = setupUser();
+    mockedUseOrganizationLayout.mockReturnValue({
+      ...layoutActions,
+      positions: {
+        root: { x: 200, y: 0 },
+        source: { x: 0, y: 180 },
+        leaf: { x: 0, y: 360 },
+        target: { x: 400, y: 180 },
+      },
+    });
+
+    render(
+      <OrganizationDesigner
+        organizations={movableOrganizations}
+        selectedOrg={movableOrganizations[0]!.children![0]!}
+        members={[]}
+        editable
+        capabilityLoading={false}
+        {...handlers}
+      />
+    );
+
+    await user.click(screen.getByRole("button", { name: "Move Source" }));
+    await user.click(screen.getByRole("button", { name: "Approve change" }));
+
+    await waitFor(() =>
+      expect(handlers.onMoveOrg).toHaveBeenCalledWith("source", "target")
+    );
+    await waitFor(() =>
+      expect(layoutActions.replacePositionsAndSave).toHaveBeenCalledWith({
+        source: { x: 400, y: 360 },
+        leaf: { x: 400, y: 540 },
+      })
+    );
+    expect(fitView).toHaveBeenCalledWith(
+      expect.objectContaining({
+        nodes: [expect.objectContaining({ id: "source" })],
+        duration: 300,
+      })
+    );
+  });
+
+  it("keeps diagram positions unchanged when reparenting fails", async () => {
+    const user = setupUser();
+    handlers.onMoveOrg.mockResolvedValueOnce(false);
+
+    render(
+      <OrganizationDesigner
+        organizations={movableOrganizations}
+        selectedOrg={movableOrganizations[0]!.children![0]!}
+        members={[]}
+        editable
+        capabilityLoading={false}
+        {...handlers}
+      />
+    );
+
+    await user.click(screen.getByRole("button", { name: "Move Source" }));
+    await user.click(screen.getByRole("button", { name: "Approve change" }));
+
+    await waitFor(() => expect(handlers.onMoveOrg).toHaveBeenCalled());
+    expect(layoutActions.replacePositionsAndSave).not.toHaveBeenCalled();
   });
 
   it("lets mobile users return to the map and reopen the selected inspector", async () => {

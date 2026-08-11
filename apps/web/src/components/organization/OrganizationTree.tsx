@@ -19,7 +19,10 @@ import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { Tree, NodeRendererProps, type TreeApi } from "react-arborist";
 import { SvgChevronLeft, SvgChevronRight } from "@opal/icons";
 import { useTranslation } from "react-i18next";
-import type { OrganizationNode } from "@/components/organization/organizationTypes";
+import type {
+  MoveOrganization,
+  OrganizationNode,
+} from "@/components/organization/organizationTypes";
 import { OrganizationMoveConfirmationModal } from "@/components/organization/OrganizationMoveConfirmationModal";
 import {
   flattenOrganizations,
@@ -42,7 +45,7 @@ interface OrganizationTreeProps {
     updates: Partial<OrganizationNode>
   ) => Promise<void>;
   onDeleteOrg: (id: string) => Promise<void>;
-  onMoveOrg: (id: string, newParentId: string | null) => Promise<void>;
+  onMoveOrg: MoveOrganization;
   onSelectOrg: (org: OrganizationNode) => void;
   onOpenDesigner?: () => void;
   selectedOrgId?: string | null;

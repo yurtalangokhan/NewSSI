@@ -1,5 +1,6 @@
 import {
   inferOrganizationLayoutOrientation,
+  repositionOrganizationSubtree,
   organizationTreeToLayoutPositions,
   organizationTreeToFlowGraph,
   type OrganizationTreeNode,
@@ -263,5 +264,91 @@ describe("organization connection routing", () => {
     expect(
       inferOrganizationLayoutOrientation(wideOrganizations, positions)
     ).toBe("horizontal");
+  });
+});
+
+describe("repositionOrganizationSubtree", () => {
+  const moveTree: OrganizationTreeNode[] = [
+    {
+      id: "root",
+      name: "Root",
+      path: "root/",
+      parent_id: null,
+      children: [
+        {
+          id: "moved",
+          name: "Moved",
+          path: "root/moved/",
+          parent_id: "root",
+          children: [
+            {
+              id: "descendant",
+              name: "Descendant",
+              path: "root/moved/descendant/",
+              parent_id: "moved",
+              children: [],
+            },
+          ],
+        },
+        {
+          id: "parent",
+          name: "New parent",
+          path: "root/parent/",
+          parent_id: "root",
+          children: [
+            {
+              id: "occupied",
+              name: "Occupied slot",
+              path: "root/parent/occupied/",
+              parent_id: "parent",
+              children: [],
+            },
+          ],
+        },
+      ],
+    },
+  ];
+  const movePositions = {
+    root: { x: 0, y: 0 },
+    moved: { x: -800, y: 180 },
+    descendant: { x: -800, y: 360 },
+    parent: { x: 400, y: 180 },
+    occupied: { x: 400, y: 360 },
+  };
+
+  it("places a vertical moved subtree in the nearest free child slot", () => {
+    const movedPositions = repositionOrganizationSubtree(
+      moveTree,
+      movePositions,
+      "moved",
+      "parent",
+      "vertical"
+    );
+
+    expect(movedPositions).toEqual({
+      moved: { x: 680, y: 360 },
+      descendant: { x: 680, y: 540 },
+    });
+  });
+
+  it("places a horizontal moved subtree in the nearest free child slot", () => {
+    const movedPositions = repositionOrganizationSubtree(
+      moveTree,
+      {
+        root: { x: 0, y: 0 },
+        moved: { x: 360, y: -500 },
+        descendant: { x: 720, y: -500 },
+        parent: { x: 360, y: 300 },
+        occupied: { x: 720, y: 300 },
+      },
+      "moved",
+      "parent",
+      "horizontal"
+    );
+
+    expect(movedPositions).toEqual({
+      moved: { x: 720, y: 480 },
+      descendant: { x: 1080, y: 480 },
+    });
   });
 });

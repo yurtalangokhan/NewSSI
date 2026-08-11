@@ -30,6 +30,7 @@ import {
   organizationTreeToFlowGraph,
   organizationTreeToLayoutPositions,
   inferOrganizationLayoutOrientation,
+  repositionOrganizationSubtree,
   type OrganizationLayoutOrientation,
   type OrganizationFlowEdge,
   type OrganizationFlowNode as OrganizationCanvasNode,
@@ -501,6 +502,61 @@ function OrganizationDesignerCanvas({
     t,
   ]);
 
+  const confirmOrganizationMove = useCallback(async () => {
+    if (!pendingMove) return;
+    const move = pendingMove;
+    setPendingMove(null);
+    const moved = await onMoveOrg(move.organization.id, move.parent.id);
+    if (!moved) return;
+
+    const movedPositions = repositionOrganizationSubtree(
+      organizations,
+      positions,
+      move.organization.id,
+      move.parent.id,
+      layoutOrientation
+    );
+    if (Object.keys(movedPositions).length === 0) return;
+    const saved = await replacePositionsAndSave(movedPositions);
+    if (!saved) return;
+
+    let movedNode: OrganizationCanvasNode | undefined;
+    setNodes((currentNodes) =>
+      currentNodes.map((node) => {
+        const position = movedPositions[node.id];
+        if (!position) return node;
+        const updatedNode = { ...node, position };
+        if (node.id === move.organization.id) movedNode = updatedNode;
+        return updatedNode;
+      })
+    );
+    const graphNode = graph.nodes.find(
+      (node) => node.id === move.organization.id
+    );
+    if (!movedNode && graphNode) {
+      movedNode = {
+        ...graphNode,
+        position: movedPositions[graphNode.id] ?? graphNode.position,
+      };
+    }
+    if (movedNode) {
+      void flowInstanceRef.current?.fitView({
+        nodes: [movedNode],
+        padding: 0.8,
+        duration: 300,
+      });
+    }
+  }, [
+    graph.nodes,
+    layoutOrientation,
+    onMoveOrg,
+    organizations,
+    pendingMove,
+    positions,
+    replacePositionsAndSave,
+    setNodes,
+  ]);
+
   const statusLabel = isLoading
     ? t("admin.organizations.designer.loadingLayout")
     : status === "saving" || isClosing
@@ -807,13 +863,7 @@ function OrganizationDesignerCanvas({
               }
               newParentName={pendingMove.parent.name}
               onCancel={() => setPendingMove(null)}
-              onConfirm={() => {
-                void onMoveOrg(
-                  pendingMove.organization.id,
-                  pendingMove.parent.id
-                );
-                setPendingMove(null);
-              }}
+              onConfirm={() => void confirmOrganizationMove()}
             />
           )}
           {pendingLayoutReset && (

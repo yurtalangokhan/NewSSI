@@ -249,10 +249,11 @@ export default function OrganizationsPage() {
             t("admin.organizations.notifications.moveFailed")
           )
         );
-        return;
+        return false;
       }
       await refreshOrganizationsAndLayout();
       toast.success(t("admin.organizations.notifications.moved"));
+      return true;
     },
     [refreshOrganizationsAndLayout, t]
   );
