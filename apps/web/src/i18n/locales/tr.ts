@@ -2043,8 +2043,8 @@ const tr = {
         deleteQuestion: "Organizasyon silinsin mi?",
         organizationLabel: "{{name}} organizasyonu",
         organizationNameFor: "{{name}} için organizasyon adı",
-        childCount_one: "{{count}} alt organizasyon",
-        childCount_other: "{{count}} alt organizasyon",
+        childCount_one: "{{count}} alt birim",
+        childCount_other: "{{count}} alt birim",
         positionLocked: "Konum kilitli",
       },
       inspector: {

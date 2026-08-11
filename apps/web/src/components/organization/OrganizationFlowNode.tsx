@@ -226,9 +226,6 @@ export function OrganizationFlowNode({
               {data.name}
             </Text>
           )}
-          <Text secondaryBody text03 as="p" className={cn("mt-1 truncate")}>
-            {data.path}
-          </Text>
         </div>
       </div>
 

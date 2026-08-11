@@ -45,7 +45,7 @@ describe("OrganizationFlowNode", () => {
     );
 
     expect(screen.getByText("Product")).toBeInTheDocument();
-    expect(screen.getByText("root/product/")).toBeInTheDocument();
+    expect(screen.queryByText("root/product/")).not.toBeInTheDocument();
     expect(screen.getByText("3 children")).toBeInTheDocument();
     expect(screen.getByText("Position locked")).toBeInTheDocument();
     expect(screen.queryByText("Read-only")).not.toBeInTheDocument();

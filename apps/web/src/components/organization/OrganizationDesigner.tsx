@@ -433,6 +433,7 @@ function OrganizationDesignerCanvas({
                 fitViewOptions={{ padding: 0.2 }}
                 minZoom={0.2}
                 maxZoom={2}
+                proOptions={{ hideAttribution: true }}
                 onInit={handleInit}
                 onNodeClick={handleNodeClick}
                 onNodesChange={handleNodesChange}

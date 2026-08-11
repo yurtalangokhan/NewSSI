@@ -5,8 +5,8 @@ import { OrganizationTree } from "@/components/organization/OrganizationTree";
 import { render, setupUser } from "@tests/setup/test-utils";
 
 jest.mock("react-arborist", () => ({
-  Tree: ({ onMove, children, data }: any) => (
-    <div>
+  Tree: ({ onMove, children, data, initialOpenState }: any) => (
+    <div data-initial-open-state={JSON.stringify(initialOpenState)}>
       <button
         data-testid="organization-tree"
         onClick={() => onMove({ dragIds: ["child"], parentId: null })}
@@ -71,6 +71,44 @@ describe("OrganizationTree single-root action", () => {
     );
 
     expect(screen.queryByText("Add Root Organization")).not.toBeInTheDocument();
+  });
+
+  it("opens root organizations initially without opening level-2 nodes", () => {
+    render(
+      <OrganizationTree
+        organizations={[
+          {
+            id: "root",
+            name: "Enterprise",
+            path: "/enterprise",
+            parent_id: null,
+            children: [
+              {
+                id: "division",
+                name: "Division",
+                path: "/enterprise/division",
+                parent_id: "root",
+                children: [
+                  {
+                    id: "team",
+                    name: "Team",
+                    path: "/enterprise/division/team",
+                    parent_id: "division",
+                    children: [],
+                  },
+                ],
+              },
+            ],
+          },
+        ]}
+        {...handlers}
+      />
+    );
+
+    expect(screen.getByTestId("organization-tree").parentElement).toHaveAttribute(
+      "data-initial-open-state",
+      JSON.stringify({ root: true })
+    );
   });
 
   it("uses the single empty-state action to create the root organization", async () => {

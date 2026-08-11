@@ -402,6 +402,9 @@ export function OrganizationTree({
           <Tree
             data={organizations}
             openByDefault={false}
+            initialOpenState={Object.fromEntries(
+              organizations.map((organization) => [organization.id, true])
+            )}
             width="100%"
             height={treeHeight}
             indent={24}

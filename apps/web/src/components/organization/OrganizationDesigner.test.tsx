@@ -39,11 +39,16 @@ jest.mock("@xyflow/react", () => {
       onNodeClick,
       onNodeDragStop,
       onNodesChange,
+      proOptions,
       children,
     }: any) => {
       React.useEffect(() => onInit?.({ fitView }), [onInit]);
       return (
-        <div data-testid="react-flow" data-edge-count={edges.length}>
+        <div
+          data-testid="react-flow"
+          data-edge-count={edges.length}
+          data-hide-attribution={String(proOptions?.hideAttribution)}
+        >
           {nodes.map((node: any) => (
             <button
               key={node.id}
@@ -180,6 +185,10 @@ describe("OrganizationDesigner", () => {
     expect(screen.getByTestId("react-flow")).toHaveAttribute(
       "data-edge-count",
       "1"
+    );
+    expect(screen.getByTestId("react-flow")).toHaveAttribute(
+      "data-hide-attribution",
+      "true"
     );
     expect(layoutActions.refresh).not.toHaveBeenCalled();
 

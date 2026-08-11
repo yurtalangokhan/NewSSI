@@ -29,4 +29,13 @@ describe("organization translations", () => {
     expect(turkish.users.title).toBe("Üyeler");
     expect(turkish.access.unitAccess).toBe("Birim erişimi");
   });
+
+  it("describes child organizations as alt birim in Turkish", () => {
+    expect(tr.admin.organizations.designer.childCount_one).toBe(
+      "{{count}} alt birim"
+    );
+    expect(tr.admin.organizations.designer.childCount_other).toBe(
+      "{{count}} alt birim"
+    );
+  });
 });
