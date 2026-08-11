@@ -208,9 +208,9 @@ describe("OrganizationDesigner", () => {
     );
   });
 
-  it("creates the first root organization from an empty map", async () => {
+  it("starts first-root creation with a temporary canvas node", async () => {
     const user = setupUser();
-    jest.spyOn(window, "prompt").mockReturnValue("Enterprise");
+    const promptSpy = jest.spyOn(window, "prompt");
     render(
       <OrganizationDesigner
         organizations={[]}
@@ -226,7 +226,11 @@ describe("OrganizationDesigner", () => {
     await user.click(
       screen.getByRole("button", { name: "Create root organization" })
     );
-    expect(handlers.onCreateOrg).toHaveBeenCalledWith(null, "Enterprise");
+    expect(
+      screen.getByRole("button", { name: /New organization locked/ })
+    ).toBeInTheDocument();
+    expect(promptSpy).not.toHaveBeenCalled();
+    expect(handlers.onCreateOrg).not.toHaveBeenCalled();
   });
 
   it("does not expose root creation without the global org:create permission", () => {

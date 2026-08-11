@@ -14,6 +14,11 @@ export interface OrganizationFlowNodeData extends Record<string, unknown> {
   path: string;
   childCount: number;
   readOnly: boolean;
+  canAddChild?: boolean;
+  isDraft?: boolean;
+  onAddChild?: () => void;
+  onCancelDraft?: () => void;
+  onSubmitDraft?: (name: string) => Promise<void>;
 }
 
 export type OrganizationFlowNode = Node<

@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 
 import { OrganizationAccessPanel } from "@/components/organization/OrganizationAccessPanel";
 import type {
-  CreateOrganization,
   DeleteOrganization,
   MoveOrganization,
   OrganizationMember,
@@ -29,7 +28,7 @@ interface OrganizationDesignerInspectorProps {
   mobileOpen?: boolean;
   onBackToMap?: () => void;
   onAccessSaveComplete?: () => void | Promise<void>;
-  onCreateOrg: CreateOrganization;
+  onBeginCreateChild?: (parentId: string) => void;
   onUpdateOrg: UpdateOrganization;
   onDeleteOrg: DeleteOrganization;
   onMoveOrg: MoveOrganization;
@@ -69,7 +68,7 @@ export function OrganizationDesignerInspector({
   mobileOpen = true,
   onBackToMap,
   onAccessSaveComplete,
-  onCreateOrg,
+  onBeginCreateChild,
   onUpdateOrg,
   onDeleteOrg,
   onMoveOrg,
@@ -222,13 +221,8 @@ export function OrganizationDesignerInspector({
                   <Button
                     secondary
                     size="md"
-                    disabled={!canMutate}
-                    onClick={() => {
-                      const childName = window.prompt("Enter organization name:");
-                      if (childName?.trim()) {
-                        void onCreateOrg(organization.id, childName.trim());
-                      }
-                    }}
+                    disabled={!canMutate || !onBeginCreateChild}
+                    onClick={() => onBeginCreateChild?.(organization.id)}
                   >
                     Add child
                   </Button>

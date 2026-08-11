@@ -42,6 +42,7 @@ const operations = {
 };
 
 const handlers = {
+  onBeginCreateChild: jest.fn(),
   onCreateOrg: jest.fn().mockResolvedValue(undefined),
   onUpdateOrg: jest.fn().mockResolvedValue(undefined),
   onDeleteOrg: jest.fn().mockResolvedValue(undefined),
@@ -65,7 +66,7 @@ describe("OrganizationDesignerInspector", () => {
 
   it("reuses organization CRUD callbacks and moves only through Move to", async () => {
     const user = setupUser();
-    jest.spyOn(window, "prompt").mockReturnValue("Security");
+    const promptSpy = jest.spyOn(window, "prompt");
     jest.spyOn(window, "confirm").mockReturnValue(true);
     render(
       <OrganizationDesignerInspector
@@ -87,7 +88,9 @@ describe("OrganizationDesignerInspector", () => {
     });
 
     await user.click(screen.getByRole("button", { name: "Add child" }));
-    expect(handlers.onCreateOrg).toHaveBeenCalledWith("platform", "Security");
+    expect(handlers.onBeginCreateChild).toHaveBeenCalledWith("platform");
+    expect(promptSpy).not.toHaveBeenCalled();
+    expect(handlers.onCreateOrg).not.toHaveBeenCalled();
 
     await user.click(screen.getByRole("combobox", { name: "Move to" }));
     await user.click(screen.getByRole("option", { name: "Operations" }));

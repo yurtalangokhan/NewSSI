@@ -1,4 +1,4 @@
-import { fireEvent, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 
 import { OrganizationDesigner } from "@/components/organization/OrganizationDesigner";
 import { useOrganizationLayout } from "@/components/organization/useOrganizationLayout";
@@ -79,5 +79,56 @@ describe("OrganizationDesigner with React Flow", () => {
 
     await waitFor(() => expect(node.style.transform).not.toBe(initialTransform));
     expect(setPosition).toHaveBeenCalledWith("root", { x: 25, y: 30 });
+  });
+
+  it("creates a child from a temporary connected canvas node", async () => {
+    const user = setupUser();
+    const onCreateOrg = jest.fn().mockResolvedValue(undefined);
+    const organization = {
+      id: "root",
+      name: "Enterprise",
+      path: "/enterprise",
+      parent_id: null,
+      children: [],
+    };
+    const promptSpy = jest.spyOn(window, "prompt");
+
+    render(
+      <OrganizationDesigner
+        organizations={[organization]}
+        selectedOrg={organization}
+        members={[]}
+        editable
+        canCreateRoot={false}
+        canEditLayout
+        capabilityLoading={false}
+        onClose={jest.fn()}
+        onSelectOrg={jest.fn()}
+        onCreateOrg={onCreateOrg}
+        onUpdateOrg={jest.fn().mockResolvedValue(undefined)}
+        onDeleteOrg={jest.fn().mockResolvedValue(undefined)}
+        onMoveOrg={jest.fn().mockResolvedValue(undefined)}
+        onAddUser={jest.fn().mockResolvedValue(undefined)}
+        onRoleChange={jest.fn().mockResolvedValue(undefined)}
+        onRemoveUser={jest.fn().mockResolvedValue(undefined)}
+      />
+    );
+
+    await user.click(
+      await waitFor(() =>
+        screen.getByLabelText("Add child to Enterprise", {
+          selector: "button",
+        })
+      )
+    );
+    const draftName = await screen.findByLabelText(
+      "New child organization name",
+      { selector: "input" }
+    );
+    await user.type(draftName, "Security");
+    await user.keyboard("{Enter}");
+
+    expect(promptSpy).not.toHaveBeenCalled();
+    expect(onCreateOrg).toHaveBeenCalledWith("root", "Security");
   });
 });

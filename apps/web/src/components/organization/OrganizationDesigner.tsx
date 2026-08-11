@@ -60,6 +60,7 @@ interface OrganizationDesignerProps {
 }
 
 const nodeTypes = { organization: OrganizationFlowNode };
+const DRAFT_NODE_ID = "__new-organization__";
 
 function indexOrganizations(organizations: OrganizationNode[]) {
   const byId = new Map<string, OrganizationNode>();
@@ -115,6 +116,9 @@ function OrganizationDesignerCanvas({
   const [mobileInspectorOpen, setMobileInspectorOpen] = useState(
     Boolean(selectedOrg)
   );
+  const [draftParentId, setDraftParentId] = useState<
+    string | null | undefined
+  >(undefined);
   const organizationsById = useMemo(
     () => indexOrganizations(organizations),
     [organizations]
@@ -124,7 +128,7 @@ function OrganizationDesignerCanvas({
       canEditLayout ? writableOrganizationIds : new Set<string>(),
     [canEditLayout, writableOrganizationIds]
   );
-  const graph = useMemo(
+  const baseGraph = useMemo(
     () =>
       organizationTreeToFlowGraph(
         organizations,
@@ -134,6 +138,81 @@ function OrganizationDesignerCanvas({
       ),
     [canvasWritableOrganizationIds, organizations, positions, selectedOrg?.id]
   );
+  const startChildCreation = useCallback((parentId: string | null) => {
+    setDraftParentId(parentId);
+  }, []);
+  const cancelChildCreation = useCallback(() => {
+    setDraftParentId(undefined);
+  }, []);
+  const submitChildCreation = useCallback(
+    async (name: string) => {
+      if (draftParentId === undefined) return;
+      await onCreateOrg(draftParentId, name);
+      setDraftParentId(undefined);
+    },
+    [draftParentId, onCreateOrg]
+  );
+  const graph = useMemo(() => {
+    const nodes: OrganizationCanvasNode[] = baseGraph.nodes.map((node) => ({
+      ...node,
+      data: {
+        ...node.data,
+        canAddChild:
+          node.id === selectedOrg?.id && editable && !capabilityLoading,
+        onAddChild: () => startChildCreation(node.id),
+      },
+    }));
+    const edges = [...baseGraph.edges];
+
+    if (draftParentId !== undefined) {
+      const parentNode =
+        draftParentId === null
+          ? undefined
+          : nodes.find((node) => node.id === draftParentId);
+      nodes.push({
+        id: DRAFT_NODE_ID,
+        type: "organization",
+        position: parentNode
+          ? { x: parentNode.position.x, y: parentNode.position.y + 180 }
+          : { x: 0, y: 0 },
+        selectable: false,
+        draggable: false,
+        data: {
+          organizationId: DRAFT_NODE_ID,
+          name: "New organization",
+          path: "",
+          childCount: 0,
+          readOnly: true,
+          isDraft: true,
+          onCancelDraft: cancelChildCreation,
+          onSubmitDraft: submitChildCreation,
+        },
+      });
+      if (draftParentId !== null) {
+        edges.push({
+          id: `${draftParentId}-${DRAFT_NODE_ID}`,
+          source: draftParentId,
+          target: DRAFT_NODE_ID,
+          type: "smoothstep",
+          selectable: false,
+          focusable: false,
+          data: { active: true },
+          style: { stroke: "var(--action-link-05)", strokeWidth: 2 },
+        });
+      }
+    }
+
+    return { nodes, edges };
+  }, [
+    baseGraph,
+    cancelChildCreation,
+    capabilityLoading,
+    draftParentId,
+    editable,
+    selectedOrg?.id,
+    startChildCreation,
+    submitChildCreation,
+  ]);
   const [nodes, setNodes, onNodesChange] = useNodesState(graph.nodes);
 
   useEffect(() => {
@@ -341,16 +420,16 @@ function OrganizationDesignerCanvas({
               maskColor="color-mix(in srgb, var(--background-neutral-01) 78%, transparent)"
             />
           </ReactFlow>
-          {!isLoading && organizations.length === 0 && canCreateRoot && (
+          {!isLoading &&
+            organizations.length === 0 &&
+            canCreateRoot &&
+            draftParentId === undefined && (
             <div className={cn("absolute inset-0 flex items-center justify-center")}>
               <Button
                 action
                 primary
                 size="md"
-                onClick={() => {
-                  const name = window.prompt("Enter organization name:");
-                  if (name?.trim()) void onCreateOrg(null, name.trim());
-                }}
+                onClick={() => startChildCreation(null)}
               >
                 Create root organization
               </Button>
@@ -377,8 +456,8 @@ function OrganizationDesignerCanvas({
           capabilityLoading={capabilityLoading}
           mobileOpen={mobileInspectorOpen}
           onBackToMap={() => setMobileInspectorOpen(false)}
+          onBeginCreateChild={startChildCreation}
           onAccessSaveComplete={onAccessSaveComplete}
-          onCreateOrg={onCreateOrg}
           onUpdateOrg={onUpdateOrg}
           onDeleteOrg={onDeleteOrg}
           onMoveOrg={onMoveOrg}
