@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { TurnGroup, TransformedStep } from "../transformers";
+import { stepIsComplete } from "../packetHelpers";
 
 // =============================================================================
 // Timeline UI State Machine
@@ -111,6 +112,9 @@ export function useTimelineUIState(
       finalAnswerComing,
     } = input;
 
+    const isLastStepComplete =
+      stopPacketSeen || (!!lastStep && stepIsComplete(lastStep.packets));
+
     // Derive the primary UI state
     let uiState: TimelineUIState;
 
@@ -118,8 +122,8 @@ export function useTimelineUIState(
       uiState = TimelineUIState.EMPTY;
     } else if (hasDisplayContent && !hasPackets && !isGeneratingImage) {
       uiState = TimelineUIState.DISPLAY_CONTENT_ONLY;
-    } else if (!stopPacketSeen && (!hasDisplayContent || isGeneratingImage)) {
-      // Actively executing tools
+    } else if (!stopPacketSeen && (!hasDisplayContent || isGeneratingImage || !isLastStepComplete)) {
+      // Actively executing tools / reasoning
       uiState = lastTurnGroup?.isParallel
         ? TimelineUIState.STREAMING_PARALLEL
         : TimelineUIState.STREAMING_SEQUENTIAL;
@@ -140,7 +144,7 @@ export function useTimelineUIState(
       uiState === TimelineUIState.COMPLETED_EXPANDED ||
       uiState === TimelineUIState.STOPPED;
     const isActivelyExecuting =
-      !stopPacketSeen && (!hasDisplayContent || isGeneratingImage);
+      !stopPacketSeen && (!hasDisplayContent || isGeneratingImage || !isLastStepComplete);
 
     // Parallel tabs in header only when collapsed during streaming
     const showParallelTabs =
@@ -166,9 +170,9 @@ export function useTimelineUIState(
       parallelActiveStepHasCollapsedContent;
 
     // Done step: shown when expanded and completed (either normally or with display content)
-    // Also shown when finalAnswerComing is true (MESSAGE_START received)
+    // Only shown when the current step (such as thinking) has completed!
     const showDoneStep =
-      (stopPacketSeen || finalAnswerComing) &&
+      (stopPacketSeen || (finalAnswerComing && isLastStepComplete)) &&
       isExpanded &&
       (!userStopped || hasDisplayContent);
 
@@ -178,7 +182,7 @@ export function useTimelineUIState(
 
     // For stepIsLast calculation: done indicator present (excludes research agent)
     const hasDoneIndicator =
-      (stopPacketSeen || finalAnswerComing) &&
+      (stopPacketSeen || (finalAnswerComing && isLastStepComplete)) &&
       isExpanded &&
       !userStopped &&
       !lastStepIsResearchAgent;
@@ -204,3 +208,4 @@ export function useTimelineUIState(
     };
   }, [input]);
 }
+

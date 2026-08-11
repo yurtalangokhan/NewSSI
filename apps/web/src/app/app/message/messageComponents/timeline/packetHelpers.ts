@@ -150,3 +150,14 @@ export const isLongTermMemoryPackets = (packets: Packet[]): boolean =>
       p.obj.type === PacketType.LONG_TERM_MEMORY_RECALL ||
       p.obj.type === PacketType.LONG_TERM_MEMORY_SAVE
   );
+
+// Check if step packets have completed execution (has SECTION_END, ERROR, STOP, or REASONING_DONE)
+export const stepIsComplete = (packets: Packet[]): boolean =>
+  packets.some(
+    (p) =>
+      p.obj.type === PacketType.SECTION_END ||
+      p.obj.type === PacketType.ERROR ||
+      p.obj.type === PacketType.STOP ||
+      (p.obj as any).type === PacketType.REASONING_DONE
+  );
+
