@@ -34,6 +34,7 @@ interface OrganizationAccessPanelProps {
   organization: { id: string; name: string };
   members: OrganizationAccessMember[];
   editable: boolean;
+  resourceType?: ResourceType;
   onSaveComplete?: () => void | Promise<void>;
 }
 
@@ -43,7 +44,7 @@ interface ScopedPermissionsResponse {
 }
 
 type TargetType = "organization" | "user";
-type ResourceType = "agent" | "rag_collection";
+export type ResourceType = "agent" | "rag_collection";
 
 async function readErrorDetail(response: Response, fallback: string) {
   const data = (await response.json().catch(() => null)) as {
@@ -166,10 +167,80 @@ function ScopedResourcePanel({
   );
 }
 
+interface ResourceWorkspaceProps {
+  organizationId: string;
+  targetType: TargetType;
+  targetId: string;
+  editable: boolean;
+  onSaveComplete?: () => void | Promise<void>;
+}
+
+function AgentAccessWorkspace(props: ResourceWorkspaceProps) {
+  const { t } = useTranslation();
+  const { personas, isLoading, error, refresh } = usePersonaOptions();
+  const resources = personas.map((persona) => ({
+    id: String(persona.id),
+    name: persona.name,
+    description: persona.description,
+  }));
+
+  return (
+    <ScopedResourcePanel
+      {...props}
+      resourceType="agent"
+      title={t("admin.organizations.access.agents")}
+      resources={resources}
+      resourcesLoading={isLoading}
+      resourcesError={
+        error
+          ? errorMessage(
+              error,
+              t("admin.organizations.access.resourceLoadFailed", {
+                resource: t("admin.organizations.access.agents"),
+              })
+            )
+          : undefined
+      }
+      onRetryResources={() => void refresh()}
+    />
+  );
+}
+
+function CollectionAccessWorkspace(props: ResourceWorkspaceProps) {
+  const { t } = useTranslation();
+  const { collections, isLoading, error, mutate } = useCollections();
+  const resources = collections.map((collection) => ({
+    id: collection.uuid,
+    name: collection.name,
+  }));
+
+  return (
+    <ScopedResourcePanel
+      {...props}
+      resourceType="rag_collection"
+      title={t("admin.organizations.access.collections")}
+      resources={resources}
+      resourcesLoading={isLoading}
+      resourcesError={
+        error
+          ? errorMessage(
+              error,
+              t("admin.organizations.access.resourceLoadFailed", {
+                resource: t("admin.organizations.access.collections"),
+              })
+            )
+          : undefined
+      }
+      onRetryResources={() => void mutate()}
+    />
+  );
+}
+
 export function OrganizationAccessPanel({
   organization,
   members,
   editable,
+  resourceType,
   onSaveComplete,
 }: OrganizationAccessPanelProps) {
   const { t } = useTranslation();
@@ -181,19 +252,6 @@ export function OrganizationAccessPanel({
   const [selectedMemberId, setSelectedMemberId] = useState(
     activeMembers[0]?.user_id ?? ""
   );
-  const {
-    personas,
-    isLoading: agentsLoading,
-    error: agentsError,
-    refresh,
-  } = usePersonaOptions();
-  const {
-    collections,
-    isLoading: collectionsLoading,
-    error: collectionsError,
-    mutate: refreshCollections,
-  } = useCollections();
-
   const effectiveSelectedMemberId = activeMembers.some(
     (member) => member.user_id === selectedMemberId
   )
@@ -201,16 +259,6 @@ export function OrganizationAccessPanel({
     : activeMembers[0]?.user_id ?? "";
   const targetId =
     targetType === "organization" ? organization.id : effectiveSelectedMemberId;
-  const agentResources = personas.map((persona) => ({
-    id: String(persona.id),
-    name: persona.name,
-    description: persona.description,
-  }));
-  const collectionResources = collections.map((collection) => ({
-    id: collection.uuid,
-    name: collection.name,
-  }));
-
   return (
     <div className={cn("flex flex-col gap-4")}>
       <div className={cn("rounded-12 bg-background-neutral-01 p-1")}>
@@ -264,51 +312,25 @@ export function OrganizationAccessPanel({
       )}
 
       {targetId ? (
-        <div className={cn("grid gap-4 xl:grid-cols-2")}>
-          <ScopedResourcePanel
-            organizationId={organization.id}
-            targetType={targetType}
-            targetId={targetId}
-            resourceType="agent"
-            title={t("admin.organizations.access.agents")}
-            resources={agentResources}
-            editable={editable}
-            resourcesLoading={agentsLoading}
-            resourcesError={
-              agentsError
-                ? errorMessage(
-                    agentsError,
-                    t("admin.organizations.access.resourceLoadFailed", {
-                      resource: t("admin.organizations.access.agents"),
-                    })
-                  )
-                : undefined
-            }
-            onRetryResources={() => void refresh()}
-            onSaveComplete={onSaveComplete}
-          />
-          <ScopedResourcePanel
-            organizationId={organization.id}
-            targetType={targetType}
-            targetId={targetId}
-            resourceType="rag_collection"
-            title={t("admin.organizations.access.collections")}
-            resources={collectionResources}
-            editable={editable}
-            resourcesLoading={collectionsLoading}
-            resourcesError={
-              collectionsError
-                ? errorMessage(
-                    collectionsError,
-                    t("admin.organizations.access.resourceLoadFailed", {
-                      resource: t("admin.organizations.access.collections"),
-                    })
-                  )
-                : undefined
-            }
-            onRetryResources={() => void refreshCollections()}
-            onSaveComplete={onSaveComplete}
-          />
+        <div className={cn("grid gap-4")}>
+          {resourceType !== "rag_collection" && (
+            <AgentAccessWorkspace
+              organizationId={organization.id}
+              targetType={targetType}
+              targetId={targetId}
+              editable={editable}
+              onSaveComplete={onSaveComplete}
+            />
+          )}
+          {resourceType !== "agent" && (
+            <CollectionAccessWorkspace
+              organizationId={organization.id}
+              targetType={targetType}
+              targetId={targetId}
+              editable={editable}
+              onSaveComplete={onSaveComplete}
+            />
+          )}
         </div>
       ) : null}
     </div>

@@ -146,9 +146,9 @@ jest.mock("@/components/organization/OrganizationDesigner", () => ({
 }));
 
 jest.mock("@/components/organization/OrganizationAccessPanel", () => ({
-  OrganizationAccessPanel: ({ organization, editable }: any) => (
+  OrganizationAccessPanel: ({ organization, editable, resourceType }: any) => (
     <div>
-      Access workspace for {organization.name}:{" "}
+      {resourceType} workspace for {organization.name}:{" "}
       {editable ? "editable" : "read only"}
     </div>
   ),
@@ -188,19 +188,38 @@ describe("OrganizationsPage", () => {
     jest.restoreAllMocks();
   });
 
-  it("integrates Users and Access tabs without placeholder tabs", async () => {
+  it("promotes Agents and Collections beside Users as main tabs", async () => {
     const user = setupUser();
+    organizationPath = "/788fd2b4-b7ce-42cb-8591-d5b0dec29d76/";
     render(<OrganizationsPage />);
     await user.click(screen.getByRole("button", { name: "Select Platform" }));
 
+    expect(
+      screen.queryByText("/788fd2b4-b7ce-42cb-8591-d5b0dec29d76/")
+    ).not.toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Users" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Access" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Agents" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("tab", { name: "Collections" })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("tab", { name: "Access" })
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("tablist")).toHaveClass(
+      "bg-background-neutral-02",
+      "[&_[data-state=active]]:bg-background-neutral-04",
+      "[&_[data-state=active]]:text-text-05"
+    );
     expect(screen.queryByText("Permissions")).not.toBeInTheDocument();
     expect(screen.queryByText("Statistics")).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("tab", { name: "Access" }));
+    await user.click(screen.getByRole("tab", { name: "Agents" }));
     expect(
-      screen.getByText("Access workspace for Platform: read only")
+      screen.getByText("agent workspace for Platform: read only")
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("tab", { name: "Collections" }));
+    expect(
+      screen.getByText("rag_collection workspace for Platform: read only")
     ).toBeInTheDocument();
     expect(global.fetch).not.toHaveBeenCalledWith(
       expect.stringContaining("/management-capability")

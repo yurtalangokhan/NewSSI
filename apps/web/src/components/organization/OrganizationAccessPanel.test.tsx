@@ -48,12 +48,13 @@ describe("OrganizationAccessPanel", () => {
     jest.restoreAllMocks();
   });
 
-  it("renders separate agent and collection panels for the organization target", async () => {
+  it("renders only the requested agent panel for the organization target", async () => {
     render(
       <OrganizationAccessPanel
         organization={{ id: "org-1", name: "Platform" }}
         members={[]}
         editable
+        resourceType="agent"
       />
     );
 
@@ -65,13 +66,35 @@ describe("OrganizationAccessPanel", () => {
     ).toBeInTheDocument();
     await waitFor(() => {
       expect(screen.getByText("Research agent")).toBeInTheDocument();
-      expect(screen.getByText("Policies")).toBeInTheDocument();
     });
+    expect(screen.queryByText("Policies")).not.toBeInTheDocument();
     expect(global.fetch).toHaveBeenCalledWith(
       "/api/user-service/permissions/organizations/org-1/targets/organization/org-1/resources/agent"
     );
+    expect(global.fetch).not.toHaveBeenCalledWith(
+      expect.stringContaining("/resources/rag_collection")
+    );
+  });
+
+  it("renders only the requested collection panel", async () => {
+    render(
+      <OrganizationAccessPanel
+        organization={{ id: "org-1", name: "Platform" }}
+        members={[]}
+        editable
+        resourceType="rag_collection"
+      />
+    );
+
+    await waitFor(() =>
+      expect(screen.getByText("Policies")).toBeInTheDocument()
+    );
+    expect(screen.queryByText("Research agent")).not.toBeInTheDocument();
     expect(global.fetch).toHaveBeenCalledWith(
       "/api/user-service/permissions/organizations/org-1/targets/organization/org-1/resources/rag_collection"
+    );
+    expect(global.fetch).not.toHaveBeenCalledWith(
+      expect.stringContaining("/resources/agent")
     );
   });
 
@@ -97,6 +120,7 @@ describe("OrganizationAccessPanel", () => {
           },
         ]}
         editable
+        resourceType="agent"
       />
     );
 
@@ -147,6 +171,7 @@ describe("OrganizationAccessPanel", () => {
           },
         ]}
         editable
+        resourceType="agent"
         onSaveComplete={onSaveComplete}
       />
     );
@@ -216,6 +241,7 @@ describe("OrganizationAccessPanel", () => {
         organization={{ id: "org-1", name: "Platform" }}
         members={[]}
         editable
+        resourceType="agent"
         onSaveComplete={onSaveComplete}
       />
     );

@@ -5,9 +5,13 @@ import { OrganizationDesignerInspector } from "@/components/organization/Organiz
 import { render, setupUser } from "@tests/setup/test-utils";
 
 jest.mock("@/components/organization/OrganizationAccessPanel", () => ({
-  OrganizationAccessPanel: ({ editable, onSaveComplete }: any) => (
+  OrganizationAccessPanel: ({
+    editable,
+    onSaveComplete,
+    resourceType,
+  }: any) => (
     <div>
-      Access panel {editable ? "editable" : "read only"}
+      {resourceType} access panel {editable ? "editable" : "read only"}
       <button onClick={onSaveComplete}>Complete access save</button>
     </div>
   ),
@@ -128,8 +132,27 @@ describe("OrganizationDesignerInspector", () => {
 
     await user.click(screen.getByRole("tab", { name: "Users" }));
     expect(screen.getByText("Users panel read only")).toBeInTheDocument();
-    await user.click(screen.getByRole("tab", { name: "Access" }));
-    expect(screen.getByText("Access panel read only")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Agents" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("tab", { name: "Collections" })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("tab", { name: "Access" })
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("tablist")).toHaveClass(
+      "bg-background-neutral-02",
+      "[&_[data-state=active]]:bg-background-neutral-04",
+      "[&_[data-state=active]]:text-text-05"
+    );
+
+    await user.click(screen.getByRole("tab", { name: "Agents" }));
+    expect(
+      screen.getByText("agent access panel read only")
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("tab", { name: "Collections" }));
+    expect(
+      screen.getByText("rag_collection access panel read only")
+    ).toBeInTheDocument();
   });
 
   it("exposes mobile map navigation and enables mutations after capability resolves", async () => {
@@ -168,7 +191,7 @@ describe("OrganizationDesignerInspector", () => {
     );
     expect(screen.getByRole("button", { name: "Add child" })).toBeEnabled();
 
-    await user.click(screen.getByRole("tab", { name: "Access" }));
+    await user.click(screen.getByRole("tab", { name: "Agents" }));
     await user.click(
       screen.getByRole("button", { name: "Complete access save" })
     );

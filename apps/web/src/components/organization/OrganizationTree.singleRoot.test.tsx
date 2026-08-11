@@ -5,7 +5,7 @@ import { OrganizationTree } from "@/components/organization/OrganizationTree";
 import { render, setupUser } from "@tests/setup/test-utils";
 
 jest.mock("react-arborist", () => ({
-  Tree: ({ onMove, children, data, initialOpenState }: any) => (
+  Tree: ({ onMove, children, data, initialOpenState, selection }: any) => (
     <div data-initial-open-state={JSON.stringify(initialOpenState)}>
       <button
         data-testid="organization-tree"
@@ -18,7 +18,7 @@ jest.mock("react-arborist", () => ({
           node: {
             data: data[0],
             isInternal: false,
-            isSelected: false,
+            isSelected: data[0].id === selection,
             isOpen: false,
             toggle: jest.fn(),
           },
@@ -66,11 +66,78 @@ describe("OrganizationTree single-root action", () => {
             children: [],
           },
         ]}
+        selectedOrgId="root"
         {...handlers}
       />
     );
 
     expect(screen.queryByText("Add Root Organization")).not.toBeInTheDocument();
+  });
+
+  it("renders organization names with the highest-contrast text token", () => {
+    render(
+      <OrganizationTree
+        organizations={[
+          {
+            id: "root",
+            name: "Enterprise",
+            path: "/enterprise",
+            parent_id: null,
+            children: [],
+          },
+        ]}
+        {...handlers}
+      />
+    );
+
+    expect(screen.getByText("Enterprise")).toHaveClass("text-text-05");
+  });
+
+  it("differentiates the selected organization with a light gray background", () => {
+    render(
+      <OrganizationTree
+        organizations={[
+          {
+            id: "root",
+            name: "Enterprise",
+            path: "/enterprise",
+            parent_id: null,
+            children: [],
+          },
+        ]}
+        selectedOrgId="root"
+        {...handlers}
+      />
+    );
+
+    expect(screen.getByText("Enterprise").parentElement).toHaveClass(
+      "bg-background-neutral-02"
+    );
+  });
+
+  it("gives direct subitems of the selected organization the same gray background", () => {
+    render(
+      <OrganizationTree
+        organizations={[
+          {
+            id: "child",
+            name: "Platform",
+            path: "/enterprise/platform",
+            parent_id: "root",
+            children: [],
+          },
+        ]}
+        selectedOrgId="root"
+        {...handlers}
+      />
+    );
+
+    expect(screen.getByText("Platform").parentElement).toHaveClass(
+      "bg-background-neutral-02"
+    );
+    expect(screen.getByText("Platform").parentElement).not.toHaveClass(
+      "border-border-primary"
+    );
   });
 
   it("opens root organizations initially without opening level-2 nodes", () => {
@@ -151,6 +218,7 @@ describe("OrganizationTree single-root action", () => {
             children: [],
           },
         ]}
+        selectedOrgId="root"
         {...handlers}
       />
     );
@@ -247,6 +315,7 @@ describe("OrganizationTree single-root action", () => {
             children: [],
           },
         ]}
+        selectedOrgId="root"
         {...handlers}
       />
     );
@@ -264,5 +333,32 @@ describe("OrganizationTree single-root action", () => {
     jest.spyOn(window, "confirm").mockReturnValue(true);
     await user.click(screen.getByRole("button", { name: "Delete Enterprise" }));
     expect(handlers.onDeleteOrg).toHaveBeenCalledWith("root");
+  });
+
+  it("hides row actions when the organization is not selected", () => {
+    render(
+      <OrganizationTree
+        organizations={[
+          {
+            id: "root",
+            name: "Enterprise",
+            path: "/enterprise",
+            parent_id: null,
+            children: [],
+          },
+        ]}
+        {...handlers}
+      />
+    );
+
+    expect(
+      screen.queryByRole("button", { name: "Rename Enterprise" })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Add child to Enterprise" })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Delete Enterprise" })
+    ).not.toBeInTheDocument();
   });
 });

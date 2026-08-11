@@ -14,7 +14,7 @@ import type {
 import { OrganizationUserAssignmentsPanel } from "@/components/organization/OrganizationUserAssignmentsPanel";
 import { toast } from "@/hooks/useToast";
 import { useUser } from "@/providers/UserProvider";
-import { SvgOrganization, SvgShield, SvgUsers } from "@/icons";
+import { SvgOrganization, SvgUsers } from "@/icons";
 import Tabs from "@/refresh-components/Tabs";
 import Text from "@/refresh-components/texts/Text";
 import { cn } from "@/lib/utils";
@@ -407,14 +407,6 @@ export default function OrganizationsPage() {
                     <Text headingH2 text04 as="p" className={cn("truncate")}>
                       {selectedOrg.name}
                     </Text>
-                    <Text
-                      secondaryBody
-                      text03
-                      as="p"
-                      className={cn("truncate")}
-                    >
-                      {selectedOrg.path}
-                    </Text>
                   </div>
                 </div>
                 <div className={cn("flex gap-6")}>
@@ -437,12 +429,22 @@ export default function OrganizationsPage() {
                 </div>
               </div>
               <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <Tabs.List variant="pill">
+                <Tabs.List
+                  variant="pill"
+                  className={cn(
+                    "bg-background-neutral-02",
+                    "[&_[data-state=active]]:bg-background-neutral-04",
+                    "[&_[data-state=active]]:text-text-05"
+                  )}
+                >
                   <Tabs.Trigger value="users" icon={SvgUsers}>
                     {t("admin.organizations.page.usersTab")}
                   </Tabs.Trigger>
-                  <Tabs.Trigger value="access" icon={SvgShield}>
-                    {t("admin.organizations.page.accessTab")}
+                  <Tabs.Trigger value="agents">
+                    {t("admin.organizations.access.agents")}
+                  </Tabs.Trigger>
+                  <Tabs.Trigger value="collections">
+                    {t("admin.organizations.access.collections")}
                   </Tabs.Trigger>
                 </Tabs.List>
               </Tabs>
@@ -462,6 +464,9 @@ export default function OrganizationsPage() {
                   organization={selectedOrg}
                   members={members}
                   editable={editable}
+                  resourceType={
+                    activeTab === "agents" ? "agent" : "rag_collection"
+                  }
                   onSaveComplete={refreshOrganizations}
                 />
               )}

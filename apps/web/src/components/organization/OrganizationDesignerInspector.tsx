@@ -11,7 +11,7 @@ import type {
   UpdateOrganization,
 } from "@/components/organization/organizationTypes";
 import { OrganizationUserAssignmentsPanel } from "@/components/organization/OrganizationUserAssignmentsPanel";
-import { SvgOrganization, SvgShield, SvgUsers } from "@/icons";
+import { SvgOrganization, SvgUsers } from "@/icons";
 import Button from "@/refresh-components/buttons/Button";
 import InputSelect from "@/refresh-components/inputs/InputSelect";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
@@ -152,15 +152,25 @@ export function OrganizationDesignerInspector({
               </Text>
             </div>
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <Tabs.List variant="pill">
+              <Tabs.List
+                variant="pill"
+                className={cn(
+                  "bg-background-neutral-02",
+                  "[&_[data-state=active]]:bg-background-neutral-04",
+                  "[&_[data-state=active]]:text-text-05"
+                )}
+              >
                 <Tabs.Trigger value="details" icon={SvgOrganization}>
                   {t("admin.organizations.inspector.details")}
                 </Tabs.Trigger>
                 <Tabs.Trigger value="users" icon={SvgUsers}>
                   {t("admin.organizations.page.usersTab")}
                 </Tabs.Trigger>
-                <Tabs.Trigger value="access" icon={SvgShield}>
-                  {t("admin.organizations.page.accessTab")}
+                <Tabs.Trigger value="agents">
+                  {t("admin.organizations.access.agents")}
+                </Tabs.Trigger>
+                <Tabs.Trigger value="collections">
+                  {t("admin.organizations.access.collections")}
                 </Tabs.Trigger>
               </Tabs.List>
             </Tabs>
@@ -280,6 +290,9 @@ export function OrganizationDesignerInspector({
                 members={members}
                 editable={canMutate}
                 onSaveComplete={onAccessSaveComplete}
+                resourceType={
+                  activeTab === "agents" ? "agent" : "rag_collection"
+                }
               />
             )}
           </div>

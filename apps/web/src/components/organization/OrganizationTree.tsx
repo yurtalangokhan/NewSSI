@@ -49,6 +49,7 @@ interface OrganizationNodeRendererProps
     updates: Partial<OrganizationNode>
   ) => Promise<void>;
   onDeleteOrg: (id: string) => Promise<void>;
+  selectedOrgId?: string | null;
 }
 
 interface InlineOrganizationCreateProps {
@@ -126,6 +127,7 @@ function Node({
   onCreateOrg,
   onUpdateOrg,
   onDeleteOrg,
+  selectedOrgId,
 }: OrganizationNodeRendererProps) {
   const { t } = useTranslation();
   const [isEditing, setIsEditing] = useState(false);
@@ -158,8 +160,11 @@ function Node({
         className={cn(
           "group flex min-w-0 items-center gap-2 rounded-md px-3 py-2 cursor-pointer transition-colors",
           "hover:bg-background-neutral-02",
+          selectedOrgId &&
+            node.data.parent_id === selectedOrgId &&
+            "bg-background-neutral-02",
           node.isSelected &&
-            "bg-background-primary-01 border border-border-primary"
+            "bg-background-neutral-02 border border-border-primary"
         )}
         onClick={() => node.isInternal && node.toggle()}
       >
@@ -188,8 +193,9 @@ function Node({
           />
         ) : (
           <Text
+            text05
             className={cn(
-              "min-w-0 flex-1 truncate text-sm font-medium text-text-01"
+              "min-w-0 flex-1 truncate text-sm font-medium"
             )}
           >
             {node.data.name}
@@ -214,48 +220,52 @@ function Node({
             </div>
           )}
 
-          <IconButton
-            icon={SvgEdit}
-            tooltip={t("admin.organizations.actions.rename")}
-            tertiary
-            small
-            aria-label={t("admin.organizations.actions.renameNamed", {
-              name: node.data.name,
-            })}
-            onClick={(event) => {
-              event.stopPropagation();
-              setIsEditing(true);
-            }}
-          />
-          <IconButton
-            icon={SvgFolderPlus}
-            tooltip={t("admin.organizations.actions.addChild")}
-            tertiary
-            small
-            aria-label={t("admin.organizations.actions.addChildTo", {
-              name: node.data.name,
-            })}
-            onClick={(event) => {
-              event.stopPropagation();
-              setIsCreatingChild(true);
-            }}
-          />
-          <IconButton
-            icon={SvgTrash}
-            tooltip={t("admin.organizations.actions.delete")}
-            danger
-            tertiary
-            small
-            aria-label={t("admin.organizations.actions.deleteNamed", {
-              name: node.data.name,
-            })}
-            onClick={(event) => {
-              event.stopPropagation();
-              if (confirm(`Delete "${node.data.name}"?`)) {
-                void onDeleteOrg(node.data.id);
-              }
-            }}
-          />
+          {node.isSelected && (
+            <>
+              <IconButton
+                icon={SvgEdit}
+                tooltip={t("admin.organizations.actions.rename")}
+                tertiary
+                small
+                aria-label={t("admin.organizations.actions.renameNamed", {
+                  name: node.data.name,
+                })}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setIsEditing(true);
+                }}
+              />
+              <IconButton
+                icon={SvgFolderPlus}
+                tooltip={t("admin.organizations.actions.addChild")}
+                tertiary
+                small
+                aria-label={t("admin.organizations.actions.addChildTo", {
+                  name: node.data.name,
+                })}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setIsCreatingChild(true);
+                }}
+              />
+              <IconButton
+                icon={SvgTrash}
+                tooltip={t("admin.organizations.actions.delete")}
+                danger
+                tertiary
+                small
+                aria-label={t("admin.organizations.actions.deleteNamed", {
+                  name: node.data.name,
+                })}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  if (confirm(`Delete "${node.data.name}"?`)) {
+                    void onDeleteOrg(node.data.id);
+                  }
+                }}
+              />
+            </>
+          )}
         </div>
       </div>
       {isCreatingChild && (
@@ -425,6 +435,7 @@ export function OrganizationTree({
                 onCreateOrg={onCreateOrg}
                 onUpdateOrg={onUpdateOrg}
                 onDeleteOrg={onDeleteOrg}
+                selectedOrgId={selectedOrgId}
               />
             )}
           </Tree>
