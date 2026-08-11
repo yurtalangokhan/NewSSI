@@ -1,4 +1,6 @@
 import { GroupedPacket } from "./hooks/packetProcessor";
+import { PacketType } from "@/app/app/services/streamingModels";
+import { getReasoningTextContent } from "@/app/app/services/packetUtils";
 
 /**
  * Transformed step data ready for rendering
@@ -42,7 +44,38 @@ export function transformPacketGroup(group: GroupedPacket): TransformedStep {
 export function transformPacketGroups(
   groups: GroupedPacket[]
 ): TransformedStep[] {
-  return groups.map(transformPacketGroup);
+  const steps = groups.map(transformPacketGroup);
+  const result: TransformedStep[] = [];
+  const seenReasoningTexts = new Set<string>();
+
+  for (const step of steps) {
+    const isReasoning = step.packets.some(
+      (p) =>
+        p.obj.type === PacketType.REASONING_START ||
+        p.obj.type === PacketType.REASONING_DELTA
+    );
+
+    if (isReasoning) {
+      const text = getReasoningTextContent(step.packets).trim();
+      if (text) {
+        const isDuplicate = Array.from(seenReasoningTexts).some(
+          (seen) =>
+            seen === text ||
+            (text.length > 50 &&
+              seen.length > 50 &&
+              (seen.startsWith(text) || text.startsWith(seen)))
+        );
+        if (isDuplicate) {
+          continue;
+        }
+        seenReasoningTexts.add(text);
+      }
+    }
+
+    result.push(step);
+  }
+
+  return result;
 }
 
 /**

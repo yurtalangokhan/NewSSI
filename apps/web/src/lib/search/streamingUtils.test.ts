@@ -159,4 +159,111 @@ describe("handleSSEStream", () => {
       stack_trace: "",
     });
   });
+  it("keeps a document generation and its file in one timeline turn", async () => {
+    // The skeleton must be replaced in place by the finished file card, even
+    // when the model streams answer text between the two.
+    const response = createStreamingResponse([
+      'data: {"type":"token","content":"Hazırlıyorum"}\n',
+      'data: {"type":"document_generation_start","tool_name":"create_document","filename":null,"format":null,"phase":"writing"}\n',
+      'data: {"type":"document_generation_progress","tool_name":"create_document","filename":"rapor","format":"pdf","phase":"writing","chars":600}\n',
+      'data: {"type":"token","content":"biraz sürebilir"}\n',
+      'data: {"type":"generated_file","file_id":"abc123","filename":"rapor.pdf","mime_type":"application/pdf","size_bytes":42,"download_url":"/api/chat/file/abc123?download=1"}\n',
+      'data: {"type":"document_generation_end","tool_name":"create_document","filename":"rapor.pdf","format":"pdf","status":"success","error":null}\n',
+      'data: [DONE]\n',
+    ]);
+
+    const packets: any[] = [];
+    for await (const packet of handleSSEStream<any>(response)) {
+      packets.push(packet);
+    }
+
+    const turnOf = (type: string) =>
+      packets.find((p) => p.obj?.type === type)?.placement.turn_index;
+
+    const documentTurn = turnOf("document_generation_start");
+    expect(documentTurn).toBeDefined();
+    expect(turnOf("document_generation_progress")).toBe(documentTurn);
+    expect(turnOf("generated_file")).toBe(documentTurn);
+    expect(turnOf("document_generation_end")).toBe(documentTurn);
+
+    // The generation shares the answer's turn rather than splitting it: a model
+    // that starts its tool call mid-sentence would otherwise cut the reply in
+    // two around the file card. The packet processor still gives the document
+    // its own group via the "genfile" group suffix.
+    expect(documentTurn).toBe(packets[0]!.placement.turn_index);
+    const answerTurns = packets
+      .filter((p) => p.obj?.type === "message_delta")
+      .map((p) => p.placement.turn_index);
+    expect(new Set(answerTurns).size).toBe(1);
+  });
+
+  it("does not open a new turn for a file packet with no generation around it", async () => {
+    const response = createStreamingResponse([
+      'data: {"type":"generated_file","file_id":"abc123","filename":"rapor.pdf","mime_type":"application/pdf","size_bytes":42,"download_url":"/api/chat/file/abc123?download=1"}\n',
+      'data: [DONE]\n',
+    ]);
+
+    const packets = [];
+    for await (const packet of handleSSEStream<any>(response)) {
+      packets.push(packet);
+    }
+
+    expect(packets[0]).toMatchObject({
+      placement: { turn_index: 0 },
+      obj: { type: "generated_file" },
+    });
+  });
+  it("keeps a retry after a rejected tool call in the same turn", async () => {
+    // The agent is told to fix its arguments and call the tool again; the
+    // successful retry must replace the failure notice, not stack under it.
+    const response = createStreamingResponse([
+      'data: {"type":"document_generation_start","tool_name":"create_document","filename":null,"format":null,"phase":"writing"}\n',
+      'data: {"type":"document_generation_end","tool_name":"create_document","filename":null,"format":"pdf","status":"error","error":"Error: missing content"}\n',
+      'data: {"type":"document_generation_start","tool_name":"create_document","filename":"rapor","format":"pdf","phase":"writing"}\n',
+      'data: {"type":"generated_file","file_id":"abc123","filename":"rapor.pdf","mime_type":"application/pdf","size_bytes":42,"download_url":"/api/chat/file/abc123?download=1"}\n',
+      'data: {"type":"document_generation_end","tool_name":"create_document","filename":"rapor.pdf","format":"pdf","status":"success","error":null}\n',
+      'data: [DONE]\n',
+    ]);
+
+    const packets: any[] = [];
+    for await (const packet of handleSSEStream<any>(response)) {
+      packets.push(packet);
+    }
+
+    const documentTurns = new Set(
+      packets
+        .filter((p) => String(p.obj?.type).startsWith("document_generation"))
+        .concat(packets.filter((p) => p.obj?.type === "generated_file"))
+        .map((p) => p.placement.turn_index)
+    );
+    expect(documentTurns.size).toBe(1);
+  });
+
+  it("handles document generation arriving during reasoning without altering tool turn pacing", async () => {
+    const response = createStreamingResponse([
+      'data: {"type":"reasoning_start"}\n',
+      'data: {"type":"reasoning_delta","reasoning":"Thinking about document..."}\n',
+      'data: {"type":"document_generation_start","tool_name":"create_document","filename":null,"format":null,"phase":"writing"}\n',
+      'data: {"type":"document_generation_progress","tool_name":"create_document","filename":"report","format":"pdf","phase":"writing","chars":200}\n',
+      'data: {"type":"reasoning_delta","reasoning":"Still thinking..."}\n',
+      'data: {"type":"generated_file","file_id":"abc123","filename":"report.pdf","mime_type":"application/pdf","size_bytes":42,"download_url":"/api/chat/file/abc123?download=1"}\n',
+      'data: {"type":"document_generation_end","tool_name":"create_document","filename":"report.pdf","format":"pdf","status":"success","error":null}\n',
+      'data: [DONE]\n',
+    ]);
+
+    const packets: any[] = [];
+    for await (const packet of handleSSEStream<any>(response)) {
+      packets.push(packet);
+    }
+
+    const reasoningPackets = packets.filter((p) =>
+      String(p.obj?.type).startsWith("reasoning")
+    );
+    const reasoningTurns = new Set(
+      reasoningPackets.map((p) => p.placement.turn_index)
+    );
+    // Reasoning should remain in a single turn index, not split by document generation packets
+    expect(reasoningTurns.size).toBe(1);
+  });
 });
+

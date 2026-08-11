@@ -41,6 +41,12 @@ export enum PacketType {
 
   // Agent-generated document/spreadsheet output (create_document / create_spreadsheet)
   GENERATED_FILE = "generated_file",
+  // Progress of an in-flight document/spreadsheet generation. The document body
+  // is written into tool-call arguments, which stream no visible tokens — these
+  // packets are what keeps the UI from looking frozen while that happens.
+  DOCUMENT_GENERATION_START = "document_generation_start",
+  DOCUMENT_GENERATION_PROGRESS = "document_generation_progress",
+  DOCUMENT_GENERATION_END = "document_generation_end",
   // Memory tool packets
   MEMORY_TOOL_START = "memory_tool_start",
   MEMORY_TOOL_DELTA = "memory_tool_delta",
@@ -178,6 +184,7 @@ export interface FetchToolDocuments extends BaseObj {
 export interface CustomToolStart extends BaseObj {
   type: "custom_tool_start";
   tool_name: string;
+  args?: Record<string, any> | string | null;
 }
 
 export interface CustomToolDelta extends BaseObj {
@@ -223,6 +230,36 @@ export interface GeneratedFile extends BaseObj {
   mime_type: string;
   size_bytes: number;
   download_url: string;
+}
+
+// Document generation lifecycle packets
+export type DocumentGenerationPhase = "writing" | "rendering";
+export type DocumentGenerationStatus = "success" | "error" | "incomplete";
+
+interface DocumentGenerationBase extends BaseObj {
+  tool_name: string | null;
+  /** Known as soon as the model has streamed the `filename` argument. */
+  filename: string | null;
+  /** "pdf" | "docx" | "xlsx" | ... — null until the argument is streamed. */
+  format: string | null;
+}
+
+export interface DocumentGenerationStart extends DocumentGenerationBase {
+  type: "document_generation_start";
+  phase: DocumentGenerationPhase;
+}
+
+export interface DocumentGenerationProgress extends DocumentGenerationBase {
+  type: "document_generation_progress";
+  phase: DocumentGenerationPhase;
+  /** Characters of document body written so far (approximate). */
+  chars: number;
+}
+
+export interface DocumentGenerationEnd extends DocumentGenerationBase {
+  type: "document_generation_end";
+  status: DocumentGenerationStatus;
+  error: string | null;
 }
 
 // Memory Tool Packets
@@ -376,6 +413,16 @@ export type NewToolObj =
   | MemoryToolObj
   | LongTermMemoryObj;
 
+// A generated file and the progress of the generation that produced it share
+// one renderer and one timeline group: the skeleton becomes the file card.
+export type GeneratedFileObj =
+  | GeneratedFile
+  | DocumentGenerationStart
+  | DocumentGenerationProgress
+  | DocumentGenerationEnd
+  | SectionEnd
+  | PacketError;
+
 export type GraphStageObj = GraphStageStart | GraphStageEnd;
 
 export type ReasoningObj =
@@ -416,7 +463,7 @@ export type ObjTypes =
   | DeepResearchPlanObj
   | ResearchAgentObj
   | PacketErrorObj
-  | GeneratedFile
+  | GeneratedFileObj
   | CitationObj;
 
 // Placement interface for packet positioning
@@ -484,7 +531,7 @@ export interface MemoryToolPacket {
 
 export interface GeneratedFilePacket {
   placement: Placement;
-  obj: GeneratedFile;
+  obj: GeneratedFileObj;
 }
 
 export interface ReasoningPacket {

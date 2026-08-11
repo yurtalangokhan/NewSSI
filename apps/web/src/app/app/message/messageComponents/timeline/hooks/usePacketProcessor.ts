@@ -10,6 +10,7 @@ import {
   ProcessorState,
   GroupedPacket,
   createInitialState,
+  isDocumentGroup,
   processPackets,
 } from "@/app/app/message/messageComponents/timeline/hooks/packetProcessor";
 import {
@@ -36,6 +37,8 @@ export interface UsePacketProcessorResult {
   generatedImageCount: number;
   // Whether final answer is coming (MESSAGE_START seen)
   finalAnswerComing: boolean;
+  // Whether a document/spreadsheet is currently being written or rendered
+  documentGenerationInFlight: boolean;
   // Tool processing duration from backend (via MESSAGE_START packet)
   toolProcessingDuration: number | undefined;
 
@@ -108,7 +111,10 @@ export function usePacketProcessor(
     if (effectiveFinalAnswerComing || state.toolGroups.length === 0) {
       return state.potentialDisplayGroups;
     }
-    return [];
+    // Display content is hidden while the agent is working on tools — but a
+    // generated file is a finished artifact, not answer-in-progress text, so
+    // its card (or the skeleton producing it) stays put.
+    return state.potentialDisplayGroups.filter(isDocumentGroup);
   }, [
     effectiveFinalAnswerComing,
     state.toolGroups.length,
@@ -149,6 +155,7 @@ export function usePacketProcessor(
     isGeneratingImage: state.isGeneratingImage,
     generatedImageCount: state.generatedImageCount,
     finalAnswerComing: state.finalAnswerComing,
+    documentGenerationInFlight: state.documentGenerationInFlight,
     toolProcessingDuration: state.toolProcessingDuration,
 
     // Completion: stopPacketSeen && renderComplete

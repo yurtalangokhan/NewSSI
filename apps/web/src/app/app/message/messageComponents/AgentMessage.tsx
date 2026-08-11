@@ -12,6 +12,7 @@ import { handleCopy } from "@/app/app/message/copyingUtils";
 import { useMessageSwitching } from "@/app/app/message/messageComponents/hooks/useMessageSwitching";
 import { RendererComponent } from "@/app/app/message/messageComponents/renderMessageComponent";
 import { usePacketProcessor } from "@/app/app/message/messageComponents/timeline/hooks/usePacketProcessor";
+import { withPinnedDocumentGroups } from "@/app/app/message/messageComponents/timeline/hooks/packetProcessor";
 import { usePacedTurnGroups } from "@/app/app/message/messageComponents/timeline/hooks/usePacedTurnGroups";
 import MessageToolbar from "@/app/app/message/messageComponents/MessageToolbar";
 import { LlmDescriptor, LlmManager } from "@/lib/hooks";
@@ -178,6 +179,13 @@ const AgentMessage = React.memo(function AgentMessage({
       finalAnswerComing
     );
 
+  // The generation skeleton and the file card it turns into are never withheld
+  // by step pacing — they would blink out whenever another step is revealed.
+  const visibleDisplayGroups = useMemo(
+    () => withPinnedDocumentGroups(displayGroups, pacedDisplayGroups),
+    [displayGroups, pacedDisplayGroups]
+  );
+
   // Memoize merged citations separately to avoid creating new object when neither source changed
   const mergedCitations = useMemo(
     () => ({
@@ -235,7 +243,7 @@ const AgentMessage = React.memo(function AgentMessage({
         chatState={effectiveChatState}
         stopPacketSeen={stopPacketSeen}
         stopReason={stopReason}
-        hasDisplayContent={pacedDisplayGroups.length > 0}
+        hasDisplayContent={visibleDisplayGroups.length > 0}
         processingDurationSeconds={processingDurationSeconds}
         isGeneratingImage={isGeneratingImage}
         generatedImageCount={generatedImageCount}
@@ -256,17 +264,17 @@ const AgentMessage = React.memo(function AgentMessage({
           }
         }}
       >
-        {pacedDisplayGroups.length > 0 && (
+        {visibleDisplayGroups.length > 0 && (
           <div ref={finalAnswerRef}>
-            {pacedDisplayGroups.map((displayGroup, index) => (
+            {visibleDisplayGroups.map((displayGroup, index) => (
               <RendererComponent
-                key={`${displayGroup.turn_index}-${displayGroup.tab_index}`}
+                key={displayGroup.key}
                 packets={displayGroup.packets}
                 chatState={effectiveChatState}
                 onComplete={() => {
                   // Only mark complete on the last display group
                   // Hook handles the finalAnswerComing check internally
-                  if (index === pacedDisplayGroups.length - 1) {
+                  if (index === visibleDisplayGroups.length - 1) {
                     onRenderComplete();
                   }
                 }}
@@ -286,7 +294,7 @@ const AgentMessage = React.memo(function AgentMessage({
           </div>
         )}
         {/* Show stopped message when user cancelled and no display content */}
-        {pacedDisplayGroups.length === 0 &&
+        {visibleDisplayGroups.length === 0 &&
           stopReason === StopReason.USER_CANCELLED && (
             <Text
               as="p"

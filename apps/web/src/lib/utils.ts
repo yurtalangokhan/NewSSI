@@ -57,8 +57,12 @@ export function ensureHrefProtocol(
 export function transformLinkUri(href: string): string | null {
   if (!href) return null;
 
-  const trimmedHref = href.trim();
+  let trimmedHref = href.trim();
   if (!trimmedHref) return null;
+
+  if (trimmedHref.startsWith("sandbox:")) {
+    trimmedHref = trimmedHref.slice("sandbox:".length);
+  }
 
   try {
     const parsedUrl = new URL(trimmedHref);

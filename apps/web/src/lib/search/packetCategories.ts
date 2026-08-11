@@ -26,6 +26,13 @@ export interface PacketCategory {
 }
 
 /**
+ * The category holding a document generation and the file it produces. Named
+ * because the streaming layer keeps every packet of one generation on a single
+ * turn index, so the skeleton is replaced in place by the finished file card.
+ */
+export const GENERATED_FILE_CATEGORY_ID = "generated-file";
+
+/**
  * Single source of truth for all agent-service packet categorisation.
  *
  * Order does not matter — lookups use Set membership, not array position.
@@ -63,8 +70,15 @@ export const PACKET_CATEGORIES: ReadonlyArray<PacketCategory> = [
     splitsFromOthers: false,
   },
   {
-    id: "generated-file",
-    types: new Set(["generated_file"]),
+    // The progress packets and the file they produce share one group so the
+    // skeleton is replaced in place by the finished file card.
+    id: GENERATED_FILE_CATEGORY_ID,
+    types: new Set([
+      "document_generation_start",
+      "document_generation_progress",
+      "document_generation_end",
+      "generated_file",
+    ]),
     groupSuffix: "genfile",
     splitsFromOthers: true,
   },

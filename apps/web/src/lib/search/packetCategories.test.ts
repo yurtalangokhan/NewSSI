@@ -23,3 +23,34 @@ describe("generated_file category", () => {
     expect(TOOL_PACKET_TYPES.has("generated_file")).toBe(true);
   });
 });
+
+describe("document generation packets", () => {
+  const lifecycle = [
+    "document_generation_start",
+    "document_generation_progress",
+    "document_generation_end",
+  ];
+
+  test("share the generated_file group so the skeleton is replaced by the file card", () => {
+    for (const type of lifecycle) {
+      expect(getGroupSuffix(type)).toBe("genfile");
+      expect(getCategoryFor(type)?.id).toBe("generated-file");
+      expect(shouldSplitCategories(type, "generated_file")).toBe(false);
+    }
+  });
+
+  test("split from tool and reasoning packets so they get their own group", () => {
+    expect(shouldSplitCategories("reasoning_delta", "document_generation_start")).toBe(
+      true
+    );
+    expect(
+      shouldSplitCategories("document_generation_progress", "custom_tool_start")
+    ).toBe(true);
+  });
+
+  test("are included in TOOL_PACKET_TYPES for live-stream turn tracking", () => {
+    for (const type of lifecycle) {
+      expect(TOOL_PACKET_TYPES.has(type)).toBe(true);
+    }
+  });
+});

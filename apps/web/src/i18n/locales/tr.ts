@@ -1163,6 +1163,8 @@ const tr = {
     readingFile: "Dosya okunuyor",
     executingToolNamed: "{{toolName}} çalıştırılıyor",
     executingTool: "Araç çalıştırılıyor",
+    creatingDocument: "Doküman oluşturuluyor",
+    creatingSpreadsheet: "Tablo oluşturuluyor",
     updatingMemory: "Bellek güncelleniyor...",
     updatingMemoryActive: "Bellek güncelleniyor",
     ltmRecalling: "Anılar hatırlanıyor...",
@@ -1602,6 +1604,13 @@ const tr = {
   },
   generatedFile: {
     openAriaLabel: "{{filename}} dosyasını aç",
+  },
+  documentGeneration: {
+    untitled: "Doküman",
+    writing: "Doküman yazılıyor...",
+    rendering: "Dosya hazırlanıyor...",
+    progress: "{{label}} ({{chars}} karakter)",
+    failed: "Doküman oluşturulamadı.",
   },
   sharedChat: {
     notFoundTitle: "Paylaşılan Sohbet Bulunamadı",

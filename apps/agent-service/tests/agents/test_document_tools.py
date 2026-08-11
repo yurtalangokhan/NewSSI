@@ -349,3 +349,107 @@ def test_document_tool_prompt_explicitly_forbids_calling_on_greetings():
     assert "greeting" in prompt or "small talk" in prompt
     assert "do not" in prompt or "don't" in prompt
     assert "when in doubt" in prompt
+
+
+class TestRecoverDocumentToolArgs:
+    """Local models often put the document body somewhere other than `content`.
+
+    Rejecting those calls costs a full regeneration of a long document, so the
+    body is recovered wherever it is unambiguous.
+    """
+
+    def test_leaves_a_well_formed_call_untouched(self):
+        args = {"filename": "rapor", "format": "pdf", "content": "# Başlık"}
+
+        assert document_tools.recover_document_tool_args(args) == args
+
+    def test_recovers_the_body_from_an_alias_key(self):
+        recovered = document_tools.recover_document_tool_args(
+            {"filename": "rapor", "format": "pdf", "text": "# Başlık\n\nGövde"}
+        )
+
+        assert recovered["content"] == "# Başlık\n\nGövde"
+        assert "text" not in recovered
+
+    def test_recovers_a_body_wrapped_in_pseudo_xml_inside_another_argument(self):
+        recovered = document_tools.recover_document_tool_args(
+            {
+                "filename": "rapor",
+                "format": "docx",
+                "title": "<content># Başlık\n\nGövde</content>",
+            }
+        )
+
+        assert recovered["content"] == "# Başlık\n\nGövde"
+        # The wrapper was the whole value, so the borrowed argument is dropped.
+        assert "title" not in recovered
+
+    def test_keeps_the_rest_of_a_partially_wrapped_argument(self):
+        recovered = document_tools.recover_document_tool_args(
+            {
+                "filename": "rapor",
+                "format": "docx",
+                "title": "Rapor <content>Gövde</content>",
+            }
+        )
+
+        assert recovered["content"] == "Gövde"
+        assert recovered["title"] == "Rapor"
+
+    def test_does_not_invent_content_from_an_unrelated_argument(self):
+        """A description is not the document body — let validation reject it."""
+        args = {
+            "filename": "rapor",
+            "format": "pdf",
+            "description": "Bu dosya üniversite tarihi içerir.",
+        }
+
+        assert document_tools.recover_document_tool_args(args) == args
+
+    def test_ignores_blank_aliases(self):
+        args = {"filename": "rapor", "format": "pdf", "body": "   "}
+
+        assert document_tools.recover_document_tool_args(args) == args
+
+    def test_recovers_a_body_that_only_kept_its_closing_tag(self):
+        """The provider's own parser often eats the opening tag."""
+        recovered = document_tools.recover_document_tool_args(
+            {
+                "filename": "hacet_tarihcesi.docx",
+                "format": "docx",
+                "belge": "# Hacettepe\n\n" + "Uzun gövde. " * 30 + "\n(Türkçe)</content>",
+            }
+        )
+
+        assert recovered["content"].startswith("# Hacettepe")
+        assert "</content>" not in recovered["content"]
+        assert recovered["filename"] == "hacet_tarihcesi.docx"
+
+    def test_recovers_a_long_multiline_stray_argument(self):
+        body = "# Başlık\n\n" + "Gövde metni. " * 40
+        recovered = document_tools.recover_document_tool_args(
+            {"filename": "rapor", "format": "pdf", "icerik": body}
+        )
+
+        assert recovered["content"] == body.strip()
+
+    def test_cleans_markup_out_of_a_content_that_was_passed_correctly(self):
+        recovered = document_tools.recover_document_tool_args(
+            {
+                "filename": "rapor",
+                "format": "pdf",
+                "content": "<content># Başlık\n\nGövde</content>",
+            }
+        )
+
+        assert recovered["content"] == "# Başlık\n\nGövde"
+
+    def test_never_promotes_a_short_single_line_argument(self):
+        args = {"filename": "rapor", "format": "pdf", "konu": "üniversite tarihi"}
+
+        assert document_tools.recover_document_tool_args(args) == args
+
+    def test_never_borrows_the_filename_as_the_body(self):
+        args = {"filename": "x" * 400 + "\nsatır", "format": "pdf"}
+
+        assert document_tools.recover_document_tool_args(args) == args

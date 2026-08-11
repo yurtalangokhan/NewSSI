@@ -63,7 +63,15 @@ export function isDisplayPacket(packet: Packet) {
     packet.obj.type === PacketType.MESSAGE_START ||
     packet.obj.type === PacketType.MESSAGE_DELTA ||
     packet.obj.type === PacketType.IMAGE_GENERATION_TOOL_START ||
-    packet.obj.type === PacketType.GENERATED_FILE
+    packet.obj.type === PacketType.GENERATED_FILE ||
+    // The generation skeleton renders in the same slot the file card will
+    // occupy, so its group must be classified as display. Every lifecycle
+    // packet counts: a group is classified by whichever arrives first, and a
+    // model that writes its whole tool call inside a reasoning block produces
+    // no `start` until the tool is already rendering.
+    packet.obj.type === PacketType.DOCUMENT_GENERATION_START ||
+    packet.obj.type === PacketType.DOCUMENT_GENERATION_PROGRESS ||
+    packet.obj.type === PacketType.DOCUMENT_GENERATION_END
   );
 }
 
@@ -190,6 +198,20 @@ export function getTextContent(packets: Packet[]) {
       }
       if (packet.obj.type === PacketType.MESSAGE_DELTA) {
         return (packet.obj as MessageDelta).content || "";
+      }
+      return "";
+    })
+    .join("");
+}
+
+export function getReasoningTextContent(packets: Packet[]): string {
+  return packets
+    .map((packet) => {
+      if (packet.obj.type === PacketType.REASONING_DELTA) {
+        return (packet.obj as any).reasoning || "";
+      }
+      if (packet.obj.type === PacketType.REASONING_START) {
+        return (packet.obj as any).reasoning || (packet.obj as any).content || "";
       }
       return "";
     })

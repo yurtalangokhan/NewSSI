@@ -312,9 +312,9 @@ async def test_get_chat_session_reconstructs_generated_file_packet_from_tool_mes
     assert generated_file_packets[0]["obj"]["filename"] == "rapor.pdf"
     assert generated_file_packets[0]["obj"]["download_url"] == "/api/chat/file/abc123?download=1"
 
-    # The tool-result timeline packet must still be present alongside it.
+    # Document tools emit tool step packets so they register in the timeline.
     assert any(
-        p["obj"]["type"] == "custom_tool_delta" and p["obj"]["tool_name"] == "create_document"
+        p["obj"]["type"] == "custom_tool_start" and p["obj"].get("tool_name") == "create_document"
         for p in all_packets
     )
 

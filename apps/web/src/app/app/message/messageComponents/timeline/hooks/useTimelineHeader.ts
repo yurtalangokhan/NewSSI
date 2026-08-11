@@ -106,8 +106,18 @@ export function useTimelineHeader(
 
     if (packetType === PacketType.CUSTOM_TOOL_START) {
       const toolName = (firstPacket.obj as CustomToolStart).tool_name;
+      let headerText: string;
+      if (toolName === "create_document") {
+        headerText = t("timeline.creatingDocument");
+      } else if (toolName === "create_spreadsheet") {
+        headerText = t("timeline.creatingSpreadsheet");
+      } else {
+        headerText = toolName
+          ? t("timeline.executingToolNamed", { toolName })
+          : t("timeline.executingTool");
+      }
       return {
-        headerText: toolName ? t("timeline.executingToolNamed", { toolName }) : t("timeline.executingTool"),
+        headerText,
         hasPackets,
         userStopped,
       };

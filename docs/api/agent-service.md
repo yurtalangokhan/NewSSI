@@ -424,20 +424,96 @@ are always present unless `DOCUMENT_TOOLS_ENABLED=false` (see
   attempts `model.bind_tools(...)`; if the model doesn't support tool
   binding, it silently falls back to the original plain-call behavior — no
   crash, no tools available for that model.
+- Bad tool calls: models regularly call `create_document` without the required
+  `content` (or with the body under an invented key), which makes LangChain
+  raise a pydantic `ValidationError` from `tool.ainvoke`. In this hand-rolled
+  loop that exception used to escape the graph node and kill the SSE stream
+  mid-answer. `_run_tool_call` now mirrors LangGraph's prebuilt `ToolNode`:
+  the failure comes back as the tool's `ToolMessage` content, naming the
+  missing or invalid arguments, so the next loop iteration can correct itself.
+  React-based agents already got this from `ToolNode`. Before validation runs,
+  `recover_document_tool_args` repairs the two shapes local models produce most
+  often — the body under an alias key (`text`, `body`, `markdown`, …) or inlined
+  as `<content>…</content>` inside an unrelated argument — because rejecting
+  those costs the user a full regeneration of a long document. It only ever
+  *adds* `content`; a description-shaped argument is never promoted to the body,
+  so genuinely wrong calls still fail loudly. Two related guards:
+  a tool call without an `id` gets a synthetic one rather than raising, and if
+  the loop exhausts `_MAX_DOCUMENT_TOOL_ITERATIONS` while the model is still
+  calling tools, one final **unbound** `model.ainvoke` produces a plain text
+  answer — otherwise the reply would be a raw tool result with no assistant
+  text. On the client, a failed attempt keeps its timeline turn pinned
+  (`lib/search/streamingUtils.ts`) and a fresh `document_generation_start`
+  clears the previous outcome, so a successful retry replaces the failure
+  notice instead of stacking underneath it.
 - Wire format: each tool call returns a JSON string as its `ToolMessage`
   content, shaped `{"__generated_file__": true, "file_id", "filename",
   "mime_type", "size_bytes", "download_url"}`. Both the live SSE path
   (`AgentsRoute.message_generator`) and the chat-history rebuild path
   (`controller/chat_controller.py`) recognize this via the shared
   `service/GeneratedFilePacket.py` helpers and emit a `generated_file` SSE
-  packet (`type: "generated_file"`) alongside the existing `custom_tool_delta`
-  timeline packet. The frontend renders it as an inline file card in the
-  message body (`GeneratedFileRenderer.tsx`), not inside the collapsible tool
-  timeline. Clicking the card opens the same shared file-preview modal used
-  for uploaded chat files (`sections/modals/TextViewModal.tsx`, keyed by
-  `file_id`) rather than downloading directly — the modal has its own
-  download action. The `?download=1` variant exists for callers that need a
-  forced attachment response directly.
+  packet (`type: "generated_file"`). Neither path emits the generic
+  `custom_tool_start` / `custom_tool_delta` timeline packets for these two
+  tools — the file card and the progress packets below replace them, so live
+  streaming and a page refresh render the same thing. The frontend renders the
+  card inline in the message body (`GeneratedFileRenderer.tsx`), not inside the
+  collapsible tool timeline. Clicking the card opens the same shared
+  file-preview modal used for uploaded chat files
+  (`sections/modals/TextViewModal.tsx`, keyed by `file_id`) rather than
+  downloading directly — the modal has its own download action. The
+  `?download=1` variant exists for callers that need a forced attachment
+  response directly.
+- Progress: the model writes the whole document body into the tool call's
+  `content` argument, which `remove_tool_calls()` strips — so for the entire
+  time the document is being written the stream emits nothing and looks frozen.
+  `service/DocumentProgressTracker.py` watches the streamed `tool_call_chunks`
+  and turns that silence into three packets:
+
+  | Packet | Emitted when | Payload |
+  | ------ | ------------ | ------- |
+  | `document_generation_start` | first argument chunk of a document tool call | `tool_name`, `filename`, `format`, `phase` |
+  | `document_generation_progress` | every ~300 argument characters, and once when rendering begins | as above plus `chars` |
+  | `document_generation_end` | tool result arrives (or the stream dies) | as above plus `status` (`success` / `error` / `incomplete`), `error` |
+
+  `filename` and `format` are recovered from the partially streamed JSON
+  arguments, so they are usually known long before the file exists; both are
+  `null` until then. `phase` moves from `"writing"` to `"rendering"` when the
+  arguments are complete and the tool starts producing bytes. Every `start` is
+  followed by exactly one `end` — the generator flushes an in-flight generation
+  in its `finally` block so a dropped stream cannot leave the UI waiting
+  forever. These packets share a timeline turn with the `generated_file` packet
+  (`lib/search/packetCategories.ts`), so the frontend skeleton
+  (`DocumentGenerationSkeleton.tsx`) is replaced in place by the file card.
+  Unlike every other tool packet, they do **not** advance the turn index in
+  `lib/search/streamingUtils.ts`: a model often begins its tool call mid-word,
+  and treating that as a turn boundary cut the reply in half around the card.
+  They ride the answer's turn and are kept apart by the category's `genfile`
+  group suffix, which is why `GroupedPacket` carries an explicit `key` — two
+  display groups can now share one turn_index/tab_index pair.
+  History rebuilds emit no progress packets: nothing is being generated on a
+  refresh, so the card is rendered directly.
+- Live tool packets: a node's `updates` only reach the stream once the whole
+  node returns, and the default `chatbot` graph runs its entire tool loop inside
+  one `call_model` node. `agents/document_tools.py` therefore publishes the
+  rendering-phase progress packet, the `generated_file` packet and the closing
+  `document_generation_end` through LangGraph's `get_stream_writer()` (custom
+  stream mode) as soon as the file exists, instead of waiting for the node.
+  `message_generator` de-duplicates by `file_id` and calls
+  `DocumentProgressTracker.close()` so the same file is never announced twice
+  when the `ToolMessage` shows up at node end; the tracker also ignores a tool
+  call id it has already finished. Emitting is best-effort — outside a graph
+  runtime `get_stream_writer()` raises and the ToolMessage path still covers it.
+- Token streaming across an in-node tool loop: `message_generator` filters
+  tokens by the first LLM call's message id so background calls (memory
+  extraction) stay out of the answer. That id is normally reset by the `updates`
+  event for a tool call — which never arrives in time when the tool loop lives
+  inside one node, so the entire post-tool answer used to be dropped and then
+  delivered as a single `message` packet with no streaming animation. The filter
+  now also advances when the current call produced `tool_call_chunks` (a call
+  that made tool calls is always followed by an answer call), and the final
+  `message` packet is suppressed for any message id whose tokens already
+  streamed. Memory extraction is tagged `skip_stream` (`memory/long_term.py`)
+  so it is filtered by tag rather than by id heuristics.
 
 ---
 

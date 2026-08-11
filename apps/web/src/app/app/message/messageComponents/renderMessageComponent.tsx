@@ -110,7 +110,14 @@ function isMemoryToolPacket(packet: Packet) {
 }
 
 function isGeneratedFilePacket(packet: Packet) {
-  return packet.obj.type === PacketType.GENERATED_FILE;
+  // The in-progress skeleton and the finished file card are one renderer, so a
+  // slow generation animates in the exact slot its file will land in.
+  return (
+    packet.obj.type === PacketType.GENERATED_FILE ||
+    packet.obj.type === PacketType.DOCUMENT_GENERATION_START ||
+    packet.obj.type === PacketType.DOCUMENT_GENERATION_PROGRESS ||
+    packet.obj.type === PacketType.DOCUMENT_GENERATION_END
+  );
 }
 
 

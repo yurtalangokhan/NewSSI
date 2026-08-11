@@ -54,6 +54,7 @@ function createDisplayGroup(turnIndex: number): GroupedPacket {
   return {
     turn_index: turnIndex,
     tab_index: 0,
+    key: `${turnIndex}-0`,
     packets: [
       {
         placement: { turn_index: turnIndex, tab_index: 0 },

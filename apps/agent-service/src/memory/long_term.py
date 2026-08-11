@@ -235,8 +235,12 @@ async def extract_and_save_memories(
         from langchain_core.messages import SystemMessage
 
         logger.debug("[LongTermMemory] Invoking model for extraction")
+        # `skip_stream` keeps this background call out of the answer stream —
+        # it runs inside the same graph node as the reply, so the SSE layer
+        # cannot tell it apart from the reply by message id alone.
         response = await model.ainvoke(
             [SystemMessage(content=extraction_prompt)],
+            config={"tags": ["skip_stream"]},
         )
 
         content = response.content.strip()

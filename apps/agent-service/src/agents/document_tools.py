@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import uuid
 from typing import Annotated, Any
 
@@ -36,9 +37,13 @@ SPREADSHEET_FORMATS = ("xlsx", "csv")
 DOCUMENT_TOOL_PROMPT = (
     "Document output:\n"
     "- Use create_document to produce a downloadable PDF, DOCX, MD or TXT file "
-    "from Markdown content (headings, paragraphs, lists, tables).\n"
+    "from Markdown content (headings, paragraphs, lists, tables). It requires "
+    "all three of filename, format and content — `content` must hold the "
+    "complete document body as Markdown, never a summary or a description of "
+    "it. A call without `content` is rejected.\n"
     "- Use create_spreadsheet to produce a downloadable XLSX or CSV file from "
-    "tabular data (one or more named sheets of rows).\n"
+    "tabular data. It requires filename, format and sheets, where `sheets` is "
+    "a list of {\"name\": ..., \"rows\": [[...], ...]} objects.\n"
     "- Do NOT call these tools for greetings, small talk, or ordinary questions "
     "that only need a normal chat reply. Only call them when the user "
     "explicitly asks for a document/report/file/spreadsheet/export, or "
@@ -57,6 +62,154 @@ def _download_url(file_id: str) -> str:
     return f"/api/chat/file/{file_id}?download=1"
 
 
+# Keys smaller models reach for instead of `content` when passing the body.
+_CONTENT_ALIASES = (
+    "content",
+    "text",
+    "body",
+    "markdown",
+    "md",
+    "document",
+    "document_content",
+    "content_markdown",
+)
+
+# Some models emit the body wrapped in pseudo-XML inside another argument,
+# e.g. {"filename": "...", "title": "<content># Başlık\n...</content>"}. The
+# tags also turn up unpaired, with the provider's parser having eaten the other
+# half, so opening and closing markers are matched independently.
+_CONTENT_TAG_RE = re.compile(
+    r"</?\s*(content|document|body|markdown|tool_call)\s*>", re.IGNORECASE
+)
+
+# Arguments that are never the document body.
+_NON_BODY_KEYS = frozenset({"filename", "format", "title", "name", "path"})
+
+# A stray argument this long, spanning several lines, is the body rather than a
+# stray label — short values are left alone so a description is never promoted.
+_BODY_MIN_LENGTH = 200
+
+
+def strip_content_markup(text: str) -> str:
+    """Remove pseudo-XML content/tool-call markers a model left in the body."""
+    return _CONTENT_TAG_RE.sub("", text).strip()
+
+
+def recover_document_tool_args(args: dict[str, Any]) -> dict[str, Any]:
+    """Repair a `create_document` call that put the body somewhere else.
+
+    Local models pass the document under `text`/`body`, or inline it as
+    `<content>…</content>` — often with only one half of the tag pair surviving
+    the provider's own parser. Rejecting those costs the user a full
+    regeneration of a long document, so recover the body where the intent is
+    clear and leave anything ambiguous to normal validation.
+
+    Only ever *adds* `content` (and cleans markup out of it); the document body
+    is never invented from a short unrelated argument.
+    """
+    if not isinstance(args, dict):
+        return args
+
+    repaired = dict(args)
+
+    existing = repaired.get("content")
+    if isinstance(existing, str) and existing.strip():
+        cleaned = strip_content_markup(existing)
+        if cleaned and cleaned != existing:
+            repaired["content"] = cleaned
+            return repaired
+        return args
+
+    for alias in _CONTENT_ALIASES:
+        value = repaired.get(alias)
+        if isinstance(value, str) and value.strip():
+            repaired["content"] = strip_content_markup(value)
+            if alias != "content":
+                repaired.pop(alias, None)
+            return repaired
+
+    # A full <content>…</content> pair is unambiguous wherever it appears.
+    for key, value in list(repaired.items()):
+        if not isinstance(value, str):
+            continue
+        match = re.search(
+            r"<\s*(content|document|body)\s*>(.*?)</\s*\1\s*>", value, re.DOTALL | re.IGNORECASE
+        )
+        if not match or not match.group(2).strip():
+            continue
+        repaired["content"] = match.group(2).strip()
+        remainder = strip_content_markup(value.replace(match.group(0), ""))
+        if remainder:
+            repaired[key] = remainder
+        else:
+            repaired.pop(key, None)
+        return repaired
+
+    # Otherwise take a stray argument that carries a lone marker, or one long
+    # enough that it can only be the document itself.
+    for key, value in list(repaired.items()):
+        if key in _NON_BODY_KEYS or not isinstance(value, str):
+            continue
+        looks_like_body = _CONTENT_TAG_RE.search(value) or (
+            len(value) >= _BODY_MIN_LENGTH and "\n" in value
+        )
+        if not looks_like_body:
+            continue
+        cleaned = strip_content_markup(value)
+        if not cleaned:
+            continue
+        repaired["content"] = cleaned
+        repaired.pop(key, None)
+        return repaired
+
+    return args
+
+
+def _emit_stream_event(payload: dict[str, Any]) -> None:
+    """Best-effort live SSE packet from inside a tool call.
+
+    A node's updates only reach the stream once the whole node returns. The
+    default chatbot graph runs its entire tool loop inside one node, so without
+    these the UI learns the file exists only after the model has already
+    written its closing answer. Failing here is never fatal — the ToolMessage
+    still carries the same information at node end.
+    """
+    try:
+        from langgraph.config import get_stream_writer
+
+        writer = get_stream_writer()
+        if writer:
+            writer(payload)
+    except Exception as exc:
+        logger.debug("Could not emit document stream event: %s", exc)
+
+
+def _emit_rendering_started(tool_name: str, filename: str, fmt: str, chars: int) -> None:
+    _emit_stream_event(
+        {
+            "type": "document_generation_progress",
+            "tool_name": tool_name,
+            "filename": filename,
+            "format": fmt,
+            "phase": "rendering",
+            "chars": chars,
+        }
+    )
+
+
+def _emit_generation_failed(tool_name: str, filename: str, fmt: str, error: str) -> None:
+    _emit_stream_event(
+        {
+            "type": "document_generation_end",
+            "tool_name": tool_name,
+            "filename": filename,
+            "format": fmt,
+            "status": "error",
+            "error": error,
+        }
+    )
+
+
 def _configurable(config: RunnableConfig) -> dict[str, Any]:
     return (config or {}).get("configurable", {}) or {}
 
@@ -68,6 +221,7 @@ async def _persist_generated_file(
     data: bytes,
     mime_type: str,
     config: RunnableConfig,
+    tool_name: str,
 ) -> str:
     """Store bytes in the in-memory cache, MinIO, and the document table.
 
@@ -121,6 +275,23 @@ async def _persist_generated_file(
         "size_bytes": len(data),
         "download_url": _download_url(file_id),
     }
+
+    # Publish the finished file straight away so the UI can swap its progress
+    # skeleton for the file card now, rather than when the node returns.
+    from service.GeneratedFilePacket import build_generated_file_packet_obj
+
+    _emit_stream_event(build_generated_file_packet_obj(payload))
+    _emit_stream_event(
+        {
+            "type": "document_generation_end",
+            "tool_name": tool_name,
+            "filename": filename,
+            "format": fmt,
+            "status": "success",
+            "error": None,
+        }
+    )
+
     return json.dumps(payload)
 
 
@@ -147,6 +318,10 @@ async def create_document(
     if format not in DOCUMENT_FORMATS:
         return f"Error: unsupported document format '{format}'. Use one of: {', '.join(DOCUMENT_FORMATS)}."
 
+    safe_filename = docgen.sanitize_filename(filename, format)
+    mime_type = docgen.mime_for_format(format)
+    _emit_rendering_started("create_document", safe_filename, format, len(content or ""))
+
     try:
         if format == "pdf":
             data = docgen.render_pdf(title, content)
@@ -155,13 +330,12 @@ async def create_document(
         else:
             data = docgen.render_markdown_text(title, content)
     except ValueError as exc:
+        _emit_generation_failed("create_document", safe_filename, format, str(exc))
         return f"Error: could not create document: {exc}"
     except Exception as exc:
         logger.error("Document rendering failed for format=%s: %s", format, exc)
+        _emit_generation_failed("create_document", safe_filename, format, str(exc))
         return f"Error: could not create document: {exc}"
-
-    safe_filename = docgen.sanitize_filename(filename, format)
-    mime_type = docgen.mime_for_format(format)
 
     try:
         return await _persist_generated_file(
@@ -170,8 +344,10 @@ async def create_document(
             data=data,
             mime_type=mime_type,
             config=config,
+            tool_name="create_document",
         )
     except ValueError as exc:
+        _emit_generation_failed("create_document", safe_filename, format, str(exc))
         return f"Error: could not create document: {exc}"
 
 
@@ -199,6 +375,11 @@ async def create_spreadsheet(
             f"Use one of: {', '.join(SPREADSHEET_FORMATS)}."
         )
 
+    safe_filename = docgen.sanitize_filename(filename, format)
+    mime_type = docgen.mime_for_format(format)
+    row_count = sum(len(sheet.get("rows") or []) for sheet in sheets or [])
+    _emit_rendering_started("create_spreadsheet", safe_filename, format, row_count)
+
     try:
         if format == "xlsx":
             data = docgen.render_xlsx(sheets)
@@ -208,13 +389,12 @@ async def create_spreadsheet(
                 raise ValueError("sheets must contain at least one sheet with rows")
             data = docgen.render_csv(first_sheet["rows"])
     except ValueError as exc:
+        _emit_generation_failed("create_spreadsheet", safe_filename, format, str(exc))
         return f"Error: could not create spreadsheet: {exc}"
     except Exception as exc:
         logger.error("Spreadsheet rendering failed for format=%s: %s", format, exc)
+        _emit_generation_failed("create_spreadsheet", safe_filename, format, str(exc))
         return f"Error: could not create spreadsheet: {exc}"
-
-    safe_filename = docgen.sanitize_filename(filename, format)
-    mime_type = docgen.mime_for_format(format)
 
     try:
         return await _persist_generated_file(
@@ -223,8 +403,10 @@ async def create_spreadsheet(
             data=data,
             mime_type=mime_type,
             config=config,
+            tool_name="create_spreadsheet",
         )
     except ValueError as exc:
+        _emit_generation_failed("create_spreadsheet", safe_filename, format, str(exc))
         return f"Error: could not create spreadsheet: {exc}"
 
 
