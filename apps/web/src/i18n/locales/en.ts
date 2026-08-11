@@ -4243,6 +4243,10 @@ const en = {
           title: "Knowledge Graph",
           sidebar: "Knowledge Graph",
         },
+        organizations: {
+          title: "Manage Organization",
+          sidebar: "Organization",
+        },
         users: {
           title: "Manage Users",
           sidebar: "Users",

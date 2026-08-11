@@ -4250,6 +4250,10 @@ const tr = {
           title: "Bilgi Grafiği",
           sidebar: "Bilgi Grafiği",
         },
+        organizations: {
+          title: "Organizasyonu Yönet",
+          sidebar: "Organizasyon",
+        },
         users: {
           title: "Kullanıcıları Yönet",
           sidebar: "Kullanıcılar",
