@@ -16,7 +16,9 @@ def test_run_startup_migrations_ensures_database_before_alembic(monkeypatch):
         def set_main_option(self, key: str, value: str) -> None:
             options[key] = value
 
-    monkeypatch.setattr(startup, "ensure_database_exists", lambda: events.append("ensure"))
+    monkeypatch.setattr(
+        startup, "ensure_database_exists", lambda: events.append("ensure")
+    )
     monkeypatch.setattr(startup, "Config", FakeConfig)
     monkeypatch.setattr(
         startup.command,
@@ -24,7 +26,9 @@ def test_run_startup_migrations_ensures_database_before_alembic(monkeypatch):
         lambda config, revision: events.append(f"upgrade:{revision}"),
     )
     revision_states = iter([("0002", "0003"), ("0003", "0003")])
-    monkeypatch.setattr(startup, "_migration_revision_state", lambda config: next(revision_states))
+    monkeypatch.setattr(
+        startup, "_migration_revision_state", lambda config: next(revision_states)
+    )
     monkeypatch.setattr(
         startup.logger,
         "info",

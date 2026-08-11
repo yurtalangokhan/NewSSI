@@ -67,3 +67,9 @@ class UserModel(Base):
         Index("ix_users_username", "username"),
         Index("ix_users_keycloak_id", "keycloak_id"),
     )
+
+    __table_args__ = (
+        Index("ix_users_email", "email"),
+        Index("ix_users_username", "username"),
+        Index("ix_users_keycloak_id", "keycloak_id"),
+    )

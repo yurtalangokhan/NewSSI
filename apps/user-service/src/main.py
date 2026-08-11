@@ -20,6 +20,7 @@ locales_dir = _here.parent / "locales"
 if not locales_dir.exists():
     locales_dir = _here / "locales"
 init_service_i18n(locales_dir)
+from src.core.database.startup import run_startup_migrations
 
 logger = logging.getLogger(__name__)
 

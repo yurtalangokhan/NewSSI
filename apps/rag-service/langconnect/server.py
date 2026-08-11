@@ -17,7 +17,7 @@ from langconnect.api import (
 from langconnect.api_versioning import API_PREFIX
 from langconnect.config import ALLOWED_ORIGINS
 from langconnect.database.collections import CollectionsManager
-from langconnect.database.postgres.startup import run_startup_migrations
+from langconnect.database.postgres.schema_bootstrap import ensure_schema
 from langconnect.idempotency import (
     build_idempotency_config,
     build_idempotency_exclude_paths,
@@ -43,7 +43,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Lifespan context manager for FastAPI application."""
     logger.info("App is starting up. Creating background worker...")
     await AsyncRedisPool.connect(_idempotency_config)
-    run_startup_migrations()
+    await ensure_schema()
     await CollectionsManager.setup()
 
     # Initialize Neo4j connection (best-effort - graph features degrade gracefully)
