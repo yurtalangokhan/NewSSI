@@ -138,7 +138,11 @@ export function OrganizationFlowNode({
             Cancel
           </Button>
         </div>
-        <Handle isConnectable={false} position={Position.Bottom} type="source" />
+        <Handle
+          isConnectable={false}
+          position={Position.Bottom}
+          type="source"
+        />
       </div>
     );
   }
@@ -228,39 +232,46 @@ export function OrganizationFlowNode({
             </Text>
           </div>
         )}
-        {data.canAddChild && (
-          <IconButton
-            aria-label={`Add child to ${data.name}`}
-            className={cn("nodrag nopan")}
-            icon={SvgFolderPlus}
-            small
-            tertiary
-            tooltip="Add child"
-            onClick={() => data.onAddChild?.()}
-          />
-        )}
-        {data.canManage && !data.actionMode && (
-          <>
-            <IconButton
-              aria-label={`Rename ${data.name}`}
-              className={cn("nodrag nopan")}
-              icon={SvgEdit}
-              small
-              tertiary
-              tooltip="Rename"
-              onClick={() => data.onBeginRename?.()}
-            />
-            <IconButton
-              aria-label={`Delete ${data.name}`}
-              className={cn("nodrag nopan")}
-              danger
-              icon={SvgTrash}
-              small
-              tertiary
-              tooltip="Delete"
-              onClick={() => data.onBeginDelete?.()}
-            />
-          </>
+        {(data.canAddChild || (data.canManage && !data.actionMode)) && (
+          <div
+            data-testid="organization-node-actions"
+            className={cn("ml-auto flex items-center gap-0.5")}
+          >
+            {data.canAddChild && (
+              <IconButton
+                aria-label={`Add child to ${data.name}`}
+                className={cn("nodrag nopan")}
+                icon={SvgFolderPlus}
+                small
+                tertiary
+                tooltip="Add child"
+                onClick={() => data.onAddChild?.()}
+              />
+            )}
+            {data.canManage && !data.actionMode && (
+              <>
+                <IconButton
+                  aria-label={`Rename ${data.name}`}
+                  className={cn("nodrag nopan")}
+                  icon={SvgEdit}
+                  small
+                  tertiary
+                  tooltip="Rename"
+                  onClick={() => data.onBeginRename?.()}
+                />
+                <IconButton
+                  aria-label={`Delete ${data.name}`}
+                  className={cn("nodrag nopan")}
+                  danger
+                  icon={SvgTrash}
+                  small
+                  tertiary
+                  tooltip="Delete"
+                  onClick={() => data.onBeginDelete?.()}
+                />
+              </>
+            )}
+          </div>
         )}
       </div>
       <Handle isConnectable={false} position={Position.Bottom} type="source" />

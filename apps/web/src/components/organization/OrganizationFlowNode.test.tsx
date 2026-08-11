@@ -188,10 +188,47 @@ describe("OrganizationFlowNode", () => {
     );
 
     expect(screen.getByText("Delete organization?")).toBeInTheDocument();
-    await user.click(
-      screen.getByRole("button", { name: "Delete Platform" })
-    );
+    await user.click(screen.getByRole("button", { name: "Delete Platform" }));
 
     expect(onDelete).toHaveBeenCalledTimes(1);
+  });
+
+  it("groups add, rename, and delete actions with compact spacing", () => {
+    renderFlowNode(
+      <OrganizationFlowNode
+        id="platform"
+        data={{
+          organizationId: "platform",
+          name: "Platform",
+          path: "root/platform/",
+          childCount: 2,
+          readOnly: false,
+          canAddChild: true,
+          canManage: true,
+        }}
+        selected
+        selectable
+        draggable
+        deletable={false}
+        dragging={false}
+        zIndex={0}
+        isConnectable={false}
+        type="organization"
+        positionAbsoluteX={0}
+        positionAbsoluteY={0}
+      />
+    );
+
+    const actions = screen.getByTestId("organization-node-actions");
+    expect(actions).toHaveClass("gap-0.5");
+    expect(actions).toContainElement(
+      screen.getByRole("button", { name: "Add child to Platform" })
+    );
+    expect(actions).toContainElement(
+      screen.getByRole("button", { name: "Rename Platform" })
+    );
+    expect(actions).toContainElement(
+      screen.getByRole("button", { name: "Delete Platform" })
+    );
   });
 });
