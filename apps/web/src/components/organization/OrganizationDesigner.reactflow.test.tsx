@@ -28,6 +28,7 @@ describe("OrganizationDesigner with React Flow", () => {
       hasDirtyPositions: false,
       isWritable: () => true,
       setPosition,
+      replacePositionsAndSave: jest.fn().mockResolvedValue(true),
       flush: jest.fn().mockResolvedValue(true),
       retry: jest.fn().mockResolvedValue(true),
       discard: jest.fn(),

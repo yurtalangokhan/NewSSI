@@ -267,6 +267,71 @@ export function useOrganizationLayout({
     return saved;
   }, [saveDirtyPositions]);
 
+  const replacePositionsAndSave = useCallback(
+    async (nextPositions: PositionMap): Promise<boolean> => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = undefined;
+      }
+      const writablePositions = Object.fromEntries(
+        Object.entries(nextPositions).filter(([organizationId]) =>
+          writableOrganizationIds.has(organizationId)
+        )
+      );
+      const pendingPositions = Object.entries(writablePositions).map(
+        ([organization_id, { x, y }]) => ({ organization_id, x, y })
+      );
+      if (pendingPositions.length === 0) return true;
+      dirtyPositionsRef.current = {};
+      setPositions((currentPositions) => ({
+        ...currentPositions,
+        ...writablePositions,
+      }));
+      setStatus("saving");
+      setSaveError(undefined);
+      setDirtyVersion((version) => version + 1);
+      try {
+        const result = await saveLayout(pendingPositions);
+        const requestBaseline = mergeLayoutBaseline(
+          latestRemoteRef.current,
+          pendingPositions,
+          writableIds
+        );
+        const savedBaseline = mergeLayoutBaseline(
+          requestBaseline,
+          result.positions,
+          writableIds
+        );
+        latestRemoteRef.current = savedBaseline;
+        void refreshLayout(savedBaseline, { revalidate: false });
+        setIfMounted(() => {
+          setPositions(positionMap(savedBaseline));
+          setStatus("saved");
+          setDirtyVersion((version) => version + 1);
+        });
+        return true;
+      } catch (caughtError) {
+        dirtyPositionsRef.current = writablePositions;
+        setIfMounted(() => {
+          setStatus("error");
+          setSaveError(
+            caughtError instanceof Error
+              ? caughtError
+              : new Error("Organization layout could not be saved")
+          );
+        });
+        return false;
+      }
+    },
+    [
+      refreshLayout,
+      saveLayout,
+      setIfMounted,
+      writableIds,
+      writableOrganizationIds,
+    ]
+  );
+
   const retry = useCallback(async () => {
     return flush();
   }, [flush]);
@@ -294,6 +359,7 @@ export function useOrganizationLayout({
     isWritable: (organizationId: string) =>
       writableOrganizationIds.has(organizationId),
     setPosition,
+    replacePositionsAndSave,
     flush,
     retry,
     discard,

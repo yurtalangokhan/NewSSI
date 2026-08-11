@@ -4,6 +4,7 @@ import "@/i18n/config";
 
 import { OrganizationDesigner } from "@/components/organization/OrganizationDesigner";
 import { useOrganizationLayout } from "@/components/organization/useOrganizationLayout";
+import { toast } from "@/hooks/useToast";
 import { render, setupUser } from "@tests/setup/test-utils";
 
 const fitView = jest.fn();
@@ -130,6 +131,7 @@ const layoutActions = {
   hasDirtyPositions: false,
   isWritable: (id: string) => id === "root",
   setPosition: jest.fn(),
+  replacePositionsAndSave: jest.fn().mockResolvedValue(true),
   flush: jest.fn().mockResolvedValue(true),
   retry: jest.fn().mockResolvedValue(true),
   discard: jest.fn(),
@@ -357,6 +359,83 @@ describe("OrganizationDesigner", () => {
     const rootNode = screen.getByRole("button", { name: /Enterprise locked/ });
     fireEvent.pointerUp(rootNode);
     expect(layoutActions.setPosition).not.toHaveBeenCalled();
+    expect(
+      screen.queryByRole("button", { name: "Reset diagram vertically" })
+    ).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ["Reset diagram vertically", "vertical"],
+    ["Reset diagram horizontally", "horizontal"],
+  ])(
+    "confirms, persists, and fits the %s layout",
+    async (buttonName, orientation) => {
+      const successToast = jest.spyOn(toast, "success");
+      const user = setupUser();
+      render(
+        <OrganizationDesigner
+          organizations={organizations}
+          selectedOrg={organizations[0]!}
+          members={[]}
+          editable
+          capabilityLoading={false}
+          {...handlers}
+        />
+      );
+
+      await user.click(screen.getByRole("button", { name: buttonName }));
+      expect(
+        screen.getByRole("dialog", { name: "Reset diagram layout?" })
+      ).toBeInTheDocument();
+      expect(layoutActions.replacePositionsAndSave).not.toHaveBeenCalled();
+
+      await user.click(screen.getByRole("button", { name: "Reset layout" }));
+
+      await waitFor(() =>
+        expect(layoutActions.replacePositionsAndSave).toHaveBeenCalledWith(
+          expect.objectContaining({
+            root: expect.any(Object),
+            child: expect.any(Object),
+          })
+        )
+      );
+      const positions =
+        layoutActions.replacePositionsAndSave.mock.calls.at(-1)![0];
+      if (orientation === "vertical") {
+        expect(positions.root.y).toBeLessThan(positions.child.y);
+      } else {
+        expect(positions.root.x).toBeLessThan(positions.child.x);
+      }
+      await waitFor(() =>
+        expect(fitView).toHaveBeenCalledWith(
+          expect.objectContaining({ duration: 300 })
+        )
+      );
+      expect(successToast).toHaveBeenCalledWith(
+        "Diagram layout reset and saved"
+      );
+    }
+  );
+
+  it("cancels diagram reset without saving positions", async () => {
+    const user = setupUser();
+    render(
+      <OrganizationDesigner
+        organizations={organizations}
+        selectedOrg={organizations[0]!}
+        members={[]}
+        editable
+        capabilityLoading={false}
+        {...handlers}
+      />
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: "Reset diagram vertically" })
+    );
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(layoutActions.replacePositionsAndSave).not.toHaveBeenCalled();
   });
 
   it("keeps the fallback map usable while the saved layout is loading", () => {

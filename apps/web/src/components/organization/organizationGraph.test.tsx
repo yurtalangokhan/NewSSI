@@ -1,4 +1,6 @@
 import {
+  inferOrganizationLayoutOrientation,
+  organizationTreeToLayoutPositions,
   organizationTreeToFlowGraph,
   type OrganizationTreeNode,
 } from "@/components/organization/organizationGraph";
@@ -72,6 +74,22 @@ const unevenOrganizations: OrganizationTreeNode[] = [
         ],
       },
     ],
+  },
+];
+
+const wideOrganizations: OrganizationTreeNode[] = [
+  {
+    id: "wide-root",
+    name: "Wide root",
+    path: "wide-root/",
+    parent_id: null,
+    children: Array.from({ length: 12 }, (_, index) => ({
+      id: `wide-child-${index}`,
+      name: `Wide child ${index}`,
+      path: `wide-root/wide-child-${index}/`,
+      parent_id: "wide-root",
+      children: [],
+    })),
   },
 ];
 
@@ -155,5 +173,95 @@ describe("organizationTreeToFlowGraph", () => {
     expect(first.nodes.find(({ id }) => id === "a3")?.position).not.toEqual(
       first.nodes.find(({ id }) => id === "b1")?.position
     );
+  });
+});
+
+describe("organizationTreeToLayoutPositions", () => {
+  it("places hierarchy levels top-to-bottom for vertical layout", () => {
+    const positions = organizationTreeToLayoutPositions(
+      organizations,
+      "vertical"
+    );
+
+    expect(positions.root!.y).toBeLessThan(positions.product!.y);
+    expect(positions.product!.y).toBe(positions.sales!.y);
+    expect(positions.product!.x).not.toBe(positions.sales!.x);
+  });
+
+  it("places hierarchy levels left-to-right for horizontal layout", () => {
+    const positions = organizationTreeToLayoutPositions(
+      organizations,
+      "horizontal"
+    );
+
+    expect(positions.root!.x).toBeLessThan(positions.product!.x);
+    expect(positions.product!.x).toBe(positions.sales!.x);
+    expect(positions.product!.y).not.toBe(positions.sales!.y);
+  });
+});
+
+describe("organization connection routing", () => {
+  it("routes vertical edges from bottom to top", () => {
+    const graph = organizationTreeToFlowGraph(
+      organizations,
+      organizationTreeToLayoutPositions(organizations, "vertical")
+    );
+
+    expect(graph.edges[0]).toEqual(
+      expect.objectContaining({ sourceHandle: "bottom", targetHandle: "top" })
+    );
+    expect(graph.nodes[0]?.data.layoutOrientation).toBe("vertical");
+  });
+
+  it("routes horizontal edges from right to left", () => {
+    const positions = organizationTreeToLayoutPositions(
+      organizations,
+      "horizontal"
+    );
+    const graph = organizationTreeToFlowGraph(
+      organizations,
+      positions,
+      new Set(),
+      undefined,
+      "horizontal"
+    );
+
+    expect(graph.edges[0]).toEqual(
+      expect.objectContaining({ sourceHandle: "right", targetHandle: "left" })
+    );
+    expect(graph.nodes[0]?.data.layoutOrientation).toBe("horizontal");
+  });
+
+  it("infers a reopened horizontal layout from saved coordinates", () => {
+    const positions = organizationTreeToLayoutPositions(
+      organizations,
+      "horizontal"
+    );
+
+    expect(inferOrganizationLayoutOrientation(organizations, positions)).toBe(
+      "horizontal"
+    );
+  });
+
+  it("does not confuse wide vertical sibling spread with horizontal depth", () => {
+    const positions = organizationTreeToLayoutPositions(
+      wideOrganizations,
+      "vertical"
+    );
+
+    expect(
+      inferOrganizationLayoutOrientation(wideOrganizations, positions)
+    ).toBe("vertical");
+  });
+
+  it("does not confuse tall horizontal sibling spread with vertical depth", () => {
+    const positions = organizationTreeToLayoutPositions(
+      wideOrganizations,
+      "horizontal"
+    );
+
+    expect(
+      inferOrganizationLayoutOrientation(wideOrganizations, positions)
+    ).toBe("horizontal");
   });
 });

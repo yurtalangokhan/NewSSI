@@ -3,6 +3,7 @@ import { mutate } from "swr";
 import "@/i18n/config";
 
 import OrganizationsPage from "@/app/admin/organizations/page";
+import { toast } from "@/hooks/useToast";
 import { render, setupUser } from "@tests/setup/test-utils";
 
 let managementEditable = false;
@@ -386,6 +387,7 @@ describe("OrganizationsPage", () => {
 
   it("revalidates exactly tree and layout after move", async () => {
     managementEditable = true;
+    const successToast = jest.spyOn(toast, "success");
     const user = setupUser();
     render(<OrganizationsPage />);
     await user.click(screen.getByRole("button", { name: "Select Platform" }));
@@ -400,6 +402,9 @@ describe("OrganizationsPage", () => {
       ["/api/user-service/organizations/tree"],
       ["/api/user-service/organizations/layout"],
     ]);
+    expect(successToast).toHaveBeenCalledWith(
+      "Organization moved successfully"
+    );
   });
 
   it("revalidates exactly tree and layout after delete", async () => {

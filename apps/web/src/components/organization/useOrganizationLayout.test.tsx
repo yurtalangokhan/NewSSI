@@ -65,9 +65,12 @@ describe("useOrganizationLayout", () => {
       .spyOn(global, "fetch")
       // Serves the organization layout GET with a persistent backend failure.
       .mockResolvedValue(
-        new Response(JSON.stringify({ detail: "Layout table is unavailable" }), {
-          status: 500,
-        })
+        new Response(
+          JSON.stringify({ detail: "Layout table is unavailable" }),
+          {
+            status: 500,
+          }
+        )
       );
     const { result } = renderHook(() => useOrganizationLayout(), {
       wrapper: swrWrapper,
@@ -135,6 +138,33 @@ describe("useOrganizationLayout", () => {
     );
     await waitFor(() => expect(result.current.status).toBe("saved"));
     expect(result.current.positions.root).toEqual({ x: 120, y: 240 });
+    expect(result.current.positions["read-only"]).toEqual({ x: 30, y: 40 });
+  });
+
+  it("replaces writable positions and saves them immediately", async () => {
+    const saveLayout = jest.fn().mockResolvedValue({ positions: [], count: 1 });
+    const { result } = renderHook(() =>
+      useOrganizationLayout({ remoteLayout, saveLayout, debounceMs: 10_000 })
+    );
+    await waitFor(() =>
+      expect(result.current.positions.root).toEqual({ x: 10, y: 20 })
+    );
+
+    let saved!: boolean;
+    await act(async () => {
+      saved = await result.current.replacePositionsAndSave({
+        root: { x: 200, y: 300 },
+        "read-only": { x: 400, y: 500 },
+      });
+    });
+
+    expect(saved).toBe(true);
+    expect(saveLayout).toHaveBeenCalledWith([
+      { organization_id: "root", x: 200, y: 300 },
+    ]);
+    await waitFor(() =>
+      expect(result.current.positions.root).toEqual({ x: 200, y: 300 })
+    );
     expect(result.current.positions["read-only"]).toEqual({ x: 30, y: 40 });
   });
 

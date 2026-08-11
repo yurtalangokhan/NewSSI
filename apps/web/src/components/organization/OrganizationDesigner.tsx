@@ -14,7 +14,12 @@ import {
   type OnInit,
 } from "@xyflow/react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { SvgChevronLeft, SvgChevronRight } from "@opal/icons";
+import {
+  SvgArrowExchange,
+  SvgArrowUpDown,
+  SvgChevronLeft,
+  SvgChevronRight,
+} from "@opal/icons";
 import { useTranslation } from "react-i18next";
 import "@xyflow/react/dist/style.css";
 
@@ -23,6 +28,9 @@ import { OrganizationFlowNode } from "@/components/organization/OrganizationFlow
 import { OrganizationMoveConfirmationModal } from "@/components/organization/OrganizationMoveConfirmationModal";
 import {
   organizationTreeToFlowGraph,
+  organizationTreeToLayoutPositions,
+  inferOrganizationLayoutOrientation,
+  type OrganizationLayoutOrientation,
   type OrganizationFlowEdge,
   type OrganizationFlowNode as OrganizationCanvasNode,
 } from "@/components/organization/organizationGraph";
@@ -41,10 +49,11 @@ import {
 } from "@/components/organization/organizationSearch";
 import { useOrganizationLayout } from "@/components/organization/useOrganizationLayout";
 import { toast } from "@/hooks/useToast";
-import { SvgExpand, SvgX } from "@/icons";
+import { SvgExpand, SvgOrganization, SvgX } from "@/icons";
 import Button from "@/refresh-components/buttons/Button";
 import IconButton from "@/refresh-components/buttons/IconButton";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
+import ConfirmationModalLayout from "@/refresh-components/layouts/ConfirmationModalLayout";
 import Text from "@/refresh-components/texts/Text";
 import { cn } from "@/lib/utils";
 
@@ -115,6 +124,7 @@ function OrganizationDesignerCanvas({
     isLoading,
     hasDirtyPositions,
     setPosition,
+    replacePositionsAndSave,
     flush,
     retry,
     discard,
@@ -138,6 +148,8 @@ function OrganizationDesignerCanvas({
     organization: OrganizationNode;
     parent: OrganizationNode;
   } | null>(null);
+  const [pendingLayoutReset, setPendingLayoutReset] =
+    useState<OrganizationLayoutOrientation | null>(null);
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);
   const [draftParentId, setDraftParentId] = useState<string | null | undefined>(
     undefined
@@ -168,15 +180,26 @@ function OrganizationDesignerCanvas({
     () => (canEditLayout ? writableOrganizationIds : new Set<string>()),
     [canEditLayout, writableOrganizationIds]
   );
+  const layoutOrientation = useMemo(
+    () => inferOrganizationLayoutOrientation(organizations, positions),
+    [organizations, positions]
+  );
   const baseGraph = useMemo(
     () =>
       organizationTreeToFlowGraph(
         organizations,
         positions,
         canvasWritableOrganizationIds,
-        selectedOrg?.id
+        selectedOrg?.id,
+        layoutOrientation
       ),
-    [canvasWritableOrganizationIds, organizations, positions, selectedOrg?.id]
+    [
+      canvasWritableOrganizationIds,
+      layoutOrientation,
+      organizations,
+      positions,
+      selectedOrg?.id,
+    ]
   );
   const startChildCreation = useCallback((parentId: string | null) => {
     setNodeAction(undefined);
@@ -270,6 +293,7 @@ function OrganizationDesignerCanvas({
           path: "",
           childCount: 0,
           readOnly: true,
+          layoutOrientation,
           isDraft: true,
           onCancelDraft: cancelChildCreation,
           onSubmitDraft: submitChildCreation,
@@ -280,6 +304,8 @@ function OrganizationDesignerCanvas({
           id: `${draftParentId}-${DRAFT_NODE_ID}`,
           source: draftParentId,
           target: DRAFT_NODE_ID,
+          sourceHandle: layoutOrientation === "horizontal" ? "right" : "bottom",
+          targetHandle: layoutOrientation === "horizontal" ? "left" : "top",
           type: "smoothstep",
           selectable: false,
           focusable: false,
@@ -305,6 +331,7 @@ function OrganizationDesignerCanvas({
     dropTargetId,
     hasSearch,
     matchingOrganizationIds,
+    layoutOrientation,
     organizationsById,
     nodeAction,
     onDeleteOrg,
@@ -439,6 +466,40 @@ function OrganizationDesignerCanvas({
         : Boolean(await refresh());
     if (saved && closeAttemptFailed) onClose();
   }, [closeAttemptFailed, hasDirtyPositions, onClose, refresh, retry, status]);
+
+  const confirmLayoutReset = useCallback(async () => {
+    if (!pendingLayoutReset) return;
+    const nextPositions = organizationTreeToLayoutPositions(
+      organizations,
+      pendingLayoutReset
+    );
+    setPendingLayoutReset(null);
+    const saved = await replacePositionsAndSave(nextPositions);
+    if (!saved) return;
+    setNodes((currentNodes) =>
+      currentNodes.map((node) => ({
+        ...node,
+        position: nextPositions[node.id] ?? node.position,
+      }))
+    );
+    const fittedNodes = graph.nodes.map((node) => ({
+      ...node,
+      position: nextPositions[node.id] ?? node.position,
+    }));
+    void flowInstanceRef.current?.fitView({
+      nodes: fittedNodes,
+      padding: 0.2,
+      duration: 300,
+    });
+    toast.success(t("admin.organizations.designer.resetSuccess"));
+  }, [
+    graph.nodes,
+    organizations,
+    pendingLayoutReset,
+    replacePositionsAndSave,
+    setNodes,
+    t,
+  ]);
 
   const statusLabel = isLoading
     ? t("admin.organizations.designer.loadingLayout")
@@ -661,6 +722,32 @@ function OrganizationDesignerCanvas({
                   maskColor="color-mix(in srgb, var(--background-neutral-01) 78%, transparent)"
                 />
               </ReactFlow>
+              {canEditLayout && organizations.length > 0 && (
+                <div
+                  className={cn(
+                    "absolute right-4 top-4 z-10 flex items-center gap-1 rounded-12 border border-border-02 bg-background-neutral-00 p-1 shadow-md"
+                  )}
+                >
+                  <IconButton
+                    aria-label={t("admin.organizations.designer.resetVertical")}
+                    disabled={status === "saving"}
+                    icon={SvgArrowUpDown}
+                    tertiary
+                    tooltip={t("admin.organizations.designer.resetVertical")}
+                    onClick={() => setPendingLayoutReset("vertical")}
+                  />
+                  <IconButton
+                    aria-label={t(
+                      "admin.organizations.designer.resetHorizontal"
+                    )}
+                    disabled={status === "saving"}
+                    icon={SvgArrowExchange}
+                    tertiary
+                    tooltip={t("admin.organizations.designer.resetHorizontal")}
+                    onClick={() => setPendingLayoutReset("horizontal")}
+                  />
+                </div>
+              )}
               {!isLoading &&
                 organizations.length === 0 &&
                 canCreateRoot &&
@@ -728,6 +815,32 @@ function OrganizationDesignerCanvas({
                 setPendingMove(null);
               }}
             />
+          )}
+          {pendingLayoutReset && (
+            <ConfirmationModalLayout
+              icon={SvgOrganization}
+              title={t("admin.organizations.designer.resetTitle")}
+              onClose={() => setPendingLayoutReset(null)}
+              submit={
+                <Button
+                  action
+                  primary
+                  onClick={() => void confirmLayoutReset()}
+                >
+                  {t("admin.organizations.designer.resetConfirm")}
+                </Button>
+              }
+            >
+              <Text mainUiBody text04>
+                {t("admin.organizations.designer.resetDescription", {
+                  orientation: t(
+                    pendingLayoutReset === "vertical"
+                      ? "admin.organizations.designer.resetOrientationVertical"
+                      : "admin.organizations.designer.resetOrientationHorizontal"
+                  ),
+                })}
+              </Text>
+            </ConfirmationModalLayout>
           )}
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>

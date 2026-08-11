@@ -4,7 +4,10 @@ import { useCallback, useState } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { useTranslation } from "react-i18next";
 
-import type { OrganizationFlowNode as OrganizationFlowNodeType } from "@/components/organization/organizationGraph";
+import type {
+  OrganizationFlowNode as OrganizationFlowNodeType,
+  OrganizationLayoutOrientation,
+} from "@/components/organization/organizationGraph";
 import {
   SvgEdit,
   SvgFolderPlus,
@@ -20,6 +23,54 @@ import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
 import InputSelect from "@/refresh-components/inputs/InputSelect";
 import Text from "@/refresh-components/texts/Text";
 import { cn } from "@/lib/utils";
+
+interface OrganizationHandlesProps {
+  orientation?: OrganizationLayoutOrientation;
+}
+
+function OrganizationHandles({
+  orientation = "vertical",
+}: OrganizationHandlesProps) {
+  const handleClass = (active: boolean) =>
+    cn(
+      "!h-2 !w-2 !border-background-neutral-00 !bg-text-04 transition-opacity duration-200 motion-reduce:transition-none",
+      active ? "!opacity-100" : "!opacity-30"
+    );
+  const vertical = orientation === "vertical";
+
+  return (
+    <>
+      <Handle
+        id="top"
+        className={handleClass(vertical)}
+        isConnectable={false}
+        position={Position.Top}
+        type="target"
+      />
+      <Handle
+        id="bottom"
+        className={handleClass(vertical)}
+        isConnectable={false}
+        position={Position.Bottom}
+        type="source"
+      />
+      <Handle
+        id="left"
+        className={handleClass(!vertical)}
+        isConnectable={false}
+        position={Position.Left}
+        type="target"
+      />
+      <Handle
+        id="right"
+        className={handleClass(!vertical)}
+        isConnectable={false}
+        position={Position.Right}
+        type="source"
+      />
+    </>
+  );
+}
 
 export function OrganizationFlowNode({
   id,
@@ -72,7 +123,7 @@ export function OrganizationFlowNode({
           "nodrag nopan w-64 rounded-12 border border-dashed border-action-link-05 bg-background-neutral-00 p-3 ring-1 ring-action-link-05"
         )}
       >
-        <Handle isConnectable={false} position={Position.Top} type="target" />
+        <OrganizationHandles orientation={data.layoutOrientation} />
         <div className={cn("flex items-center gap-1")}>
           <InputTypeIn
             aria-label={t("admin.organizations.tree.childNameLabel")}
@@ -116,7 +167,7 @@ export function OrganizationFlowNode({
           "nodrag nopan w-64 rounded-12 border border-status-error-03 bg-background-neutral-00 p-4"
         )}
       >
-        <Handle isConnectable={false} position={Position.Top} type="target" />
+        <OrganizationHandles orientation={data.layoutOrientation} />
         <Text mainUiAction text04 as="p">
           {t("admin.organizations.designer.deleteQuestion")}
         </Text>
@@ -145,11 +196,6 @@ export function OrganizationFlowNode({
             {t("admin.organizations.actions.cancel")}
           </Button>
         </div>
-        <Handle
-          isConnectable={false}
-          position={Position.Bottom}
-          type="source"
-        />
       </div>
     );
   }
@@ -180,7 +226,7 @@ export function OrganizationFlowNode({
           : "border-border-02"
       )}
     >
-      <Handle isConnectable={false} position={Position.Top} type="target" />
+      <OrganizationHandles orientation={data.layoutOrientation} />
       <div className={cn("flex items-start gap-3")}>
         <div
           className={cn(
@@ -319,7 +365,6 @@ export function OrganizationFlowNode({
           </div>
         )}
       </div>
-      <Handle isConnectable={false} position={Position.Bottom} type="source" />
     </div>
   );
 }

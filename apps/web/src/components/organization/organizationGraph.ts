@@ -24,6 +24,7 @@ export interface OrganizationFlowNodeData extends Record<string, unknown> {
   parentOptions?: Array<{ id: string; name: string }>;
   onRequestMove?: (parentId: string) => void;
   isDropTarget?: boolean;
+  layoutOrientation?: OrganizationLayoutOrientation;
   onAddChild?: () => void;
   onBeginDelete?: () => void;
   onBeginRename?: () => void;
@@ -44,10 +45,99 @@ export type OrganizationPositionMap = Record<string, XYPosition>;
 const ROOT_GAP = 360;
 const SIBLING_GAP = 280;
 const LEVEL_GAP = 180;
+const HORIZONTAL_LEVEL_GAP = 360;
+const HORIZONTAL_SIBLING_GAP = 180;
+
+export type OrganizationLayoutOrientation = "vertical" | "horizontal";
 
 interface OrganizationGraph {
   nodes: OrganizationFlowNode[];
   edges: OrganizationFlowEdge[];
+}
+
+export function organizationTreeToLayoutPositions(
+  organizations: OrganizationTreeNode[],
+  orientation: OrganizationLayoutOrientation
+): OrganizationPositionMap {
+  const positions: OrganizationPositionMap = {};
+  const siblingGap =
+    orientation === "vertical" ? SIBLING_GAP : HORIZONTAL_SIBLING_GAP;
+  const levelGap =
+    orientation === "vertical" ? LEVEL_GAP : HORIZONTAL_LEVEL_GAP;
+  let nextLeafPosition = 0;
+
+  function placeSubtree(
+    organization: OrganizationTreeNode,
+    depth: number
+  ): number {
+    const children = organization.children ?? [];
+    let siblingPosition: number;
+    if (children.length === 0) {
+      siblingPosition = nextLeafPosition;
+      nextLeafPosition += siblingGap;
+    } else {
+      const childPositions = children.map((child) =>
+        placeSubtree(child, depth + 1)
+      );
+      siblingPosition =
+        (childPositions[0]! + childPositions[childPositions.length - 1]!) / 2;
+    }
+    positions[organization.id] =
+      orientation === "vertical"
+        ? { x: siblingPosition, y: depth * levelGap }
+        : { x: depth * levelGap, y: siblingPosition };
+    return siblingPosition;
+  }
+
+  organizations.forEach((organization, rootIndex) => {
+    if (rootIndex > 0) {
+      const rootGap = orientation === "vertical" ? ROOT_GAP : SIBLING_GAP;
+      nextLeafPosition += Math.max(0, rootGap - siblingGap);
+    }
+    placeSubtree(organization, 0);
+  });
+
+  return positions;
+}
+
+export function inferOrganizationLayoutOrientation(
+  organizations: OrganizationTreeNode[],
+  positions: OrganizationPositionMap
+): OrganizationLayoutOrientation {
+  const horizontalSteps: number[] = [];
+  const verticalSteps: number[] = [];
+
+  function visit(organization: OrganizationTreeNode) {
+    const parentPosition = positions[organization.id];
+    for (const child of organization.children ?? []) {
+      const childPosition = positions[child.id];
+      if (parentPosition && childPosition) {
+        horizontalSteps.push(childPosition.x - parentPosition.x);
+        verticalSteps.push(childPosition.y - parentPosition.y);
+      }
+      visit(child);
+    }
+  }
+
+  organizations.forEach(visit);
+  if (horizontalSteps.length === 0) return "vertical";
+
+  function axisConsistency(steps: number[]) {
+    const sorted = [...steps].sort((first, second) => first - second);
+    const median = sorted[Math.floor(sorted.length / 2)] ?? 0;
+    const range = (sorted[sorted.length - 1] ?? 0) - (sorted[0] ?? 0);
+    return {
+      score: range / Math.max(Math.abs(median), 1),
+      step: Math.abs(median),
+    };
+  }
+
+  const horizontal = axisConsistency(horizontalSteps);
+  const vertical = axisConsistency(verticalSteps);
+  if (horizontal.score !== vertical.score) {
+    return horizontal.score < vertical.score ? "horizontal" : "vertical";
+  }
+  return horizontal.step > vertical.step ? "horizontal" : "vertical";
 }
 
 function isOnSelectedPath(
@@ -65,37 +155,21 @@ export function organizationTreeToFlowGraph(
   organizations: OrganizationTreeNode[],
   savedPositions: OrganizationPositionMap = {},
   writableOrganizationIds = new Set<string>(),
-  selectedOrganizationId?: string
+  selectedOrganizationId?: string,
+  layoutOrientation = inferOrganizationLayoutOrientation(
+    organizations,
+    savedPositions
+  )
 ): OrganizationGraph {
   const nodes: OrganizationFlowNode[] = [];
   const edges: OrganizationFlowEdge[] = [];
-  const fallbackPositions = new Map<string, XYPosition>();
-  let nextLeafX = 0;
-
-  function placeSubtree(
-    organization: OrganizationTreeNode,
-    depth: number
-  ): number {
-    const children = organization.children ?? [];
-    let x: number;
-    if (children.length === 0) {
-      x = nextLeafX;
-      nextLeafX += SIBLING_GAP;
-    } else {
-      const childXs = children.map((child) => placeSubtree(child, depth + 1));
-      x = (childXs[0]! + childXs[childXs.length - 1]!) / 2;
-    }
-    fallbackPositions.set(organization.id, { x, y: depth * LEVEL_GAP });
-    return x;
-  }
-
-  organizations.forEach((organization, rootIndex) => {
-    if (rootIndex > 0) nextLeafX += Math.max(0, ROOT_GAP - SIBLING_GAP);
-    placeSubtree(organization, 0);
-  });
+  const fallbackPositions = organizationTreeToLayoutPositions(
+    organizations,
+    "vertical"
+  );
 
   function visit(organization: OrganizationTreeNode) {
-    const fallbackPosition = fallbackPositions.get(organization.id)!;
+    const fallbackPosition = fallbackPositions[organization.id]!;
     const position = savedPositions[organization.id] ?? fallbackPosition;
     const children = organization.children ?? [];
 
@@ -112,6 +186,7 @@ export function organizationTreeToFlowGraph(
         childCount: children.length,
         parentId: organization.parent_id,
         readOnly: !writableOrganizationIds.has(organization.id),
+        layoutOrientation,
       },
       selected: organization.id === selectedOrganizationId,
     });
@@ -122,6 +197,8 @@ export function organizationTreeToFlowGraph(
         id: `${organization.id}-${child.id}`,
         source: organization.id,
         target: child.id,
+        sourceHandle: layoutOrientation === "horizontal" ? "right" : "bottom",
+        targetHandle: layoutOrientation === "horizontal" ? "left" : "top",
         type: "smoothstep",
         selectable: false,
         focusable: false,

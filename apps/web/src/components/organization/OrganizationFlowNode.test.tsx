@@ -81,7 +81,7 @@ describe("OrganizationFlowNode", () => {
     );
   });
 
-  it("provides source and target anchors when rendered on a React Flow canvas", () => {
+  it("provides four directional anchors when rendered on a React Flow canvas", () => {
     const nodes: Node[] = [
       {
         id: "platform",
@@ -93,6 +93,7 @@ describe("OrganizationFlowNode", () => {
           path: "root/platform/",
           childCount: 0,
           readOnly: false,
+          layoutOrientation: "horizontal",
         },
       },
     ];
@@ -113,6 +114,16 @@ describe("OrganizationFlowNode", () => {
     expect(
       container.querySelector(
         '[data-nodeid="platform"][data-handlepos="top"].target'
+      )
+    ).toBeInTheDocument();
+    expect(
+      container.querySelector(
+        '[data-nodeid="platform"][data-handlepos="left"][data-handleid="left"].target'
+      )
+    ).toBeInTheDocument();
+    expect(
+      container.querySelector(
+        '[data-nodeid="platform"][data-handlepos="right"][data-handleid="right"].source'
       )
     ).toBeInTheDocument();
     expect(

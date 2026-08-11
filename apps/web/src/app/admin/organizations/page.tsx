@@ -252,6 +252,7 @@ export default function OrganizationsPage() {
         return;
       }
       await refreshOrganizationsAndLayout();
+      toast.success(t("admin.organizations.notifications.moved"));
     },
     [refreshOrganizationsAndLayout, t]
   );
