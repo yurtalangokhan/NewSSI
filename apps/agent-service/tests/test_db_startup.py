@@ -29,9 +29,17 @@ def test_run_startup_migrations_ensures_database_before_alembic(monkeypatch):
     from core.db import startup
 
     events: list[str] = []
+    options: dict[str, str] = {}
+
+    class FakeConfig:
+        def __init__(self, path: str) -> None:
+            self.path = path
+
+        def set_main_option(self, key: str, value: str) -> None:
+            options[key] = value
 
     monkeypatch.setattr(startup, "ensure_database_exists", lambda: events.append("ensure"))
-    monkeypatch.setattr(startup, "Config", lambda path: f"config:{path}")
+    monkeypatch.setattr(startup, "Config", FakeConfig)
     monkeypatch.setattr(
         startup.command,
         "upgrade",
@@ -41,6 +49,8 @@ def test_run_startup_migrations_ensures_database_before_alembic(monkeypatch):
     startup.run_startup_migrations()
 
     assert events == ["ensure", "upgrade:head"]
+    assert options["script_location"].endswith("apps/agent-service/src/core/db/migrations")
+    assert options["prepend_sys_path"].endswith("apps/agent-service/src")
 
 
 def test_ensure_database_exists_creates_missing_database(monkeypatch):

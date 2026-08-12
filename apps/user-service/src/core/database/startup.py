@@ -28,6 +28,17 @@ def _service_root() -> Path:
     raise RuntimeError("Could not locate user-service alembic.ini")
 
 
+def _build_alembic_config() -> Config:
+    service_root = _service_root()
+    alembic_cfg = Config(str(service_root / "alembic.ini"))
+    alembic_cfg.set_main_option(
+        "script_location",
+        str(service_root / "src/core/database/migrations"),
+    )
+    alembic_cfg.set_main_option("prepend_sys_path", str(service_root / "src"))
+    return alembic_cfg
+
+
 def ensure_database_exists() -> None:
     """Create the configured service database if it doesn't exist."""
     settings = get_settings()
@@ -57,6 +68,5 @@ def ensure_database_exists() -> None:
 def run_startup_migrations() -> None:
     """Ensure the service database exists and apply Alembic migrations."""
     ensure_database_exists()
-    alembic_cfg = Config(str(_service_root() / "alembic.ini"))
-    command.upgrade(alembic_cfg, "head")
+    command.upgrade(_build_alembic_config(), "head")
     logger.info("User service database migrations are at head.")
