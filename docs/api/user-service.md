@@ -351,6 +351,12 @@ coordinate violations return `422`.
 
 **Prefix:** `/api/v1/system-settings`
 
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/v1/system-settings/keycloak` | `system.settings:read` | Get full Keycloak configuration |
+| PATCH | `/api/v1/system-settings/keycloak` | `system.settings:update` | Update Keycloak configuration (fields encrypted before storage) |
+| PATCH | `/api/v1/system-settings/keycloak/realm-session` | `system.settings:update` | Update Keycloak realm session token lifespans |
+| POST | `/api/v1/system-settings/keycloak/external-idp/sync` | `system.settings:update` | Sync external identity provider to Keycloak |
 | Method | Path                                                 | Auth         | Description                                                     |
 | ------ | ---------------------------------------------------- | ------------ | --------------------------------------------------------------- |
 | GET    | `/api/v1/system-settings/keycloak`                   | System Admin | Get full Keycloak configuration                                 |

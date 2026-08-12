@@ -8,6 +8,7 @@ class PermissionDefinition(BaseModel):
     entity: str = Field(min_length=1, max_length=50)
     service: str = Field(min_length=1, max_length=50)
     action: str = Field(min_length=1, max_length=50)
+    feature: str | None = None
     is_system: bool = False
 
 

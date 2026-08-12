@@ -15,6 +15,7 @@ class PermissionModel(Base):
     entity: Mapped[str] = mapped_column(String(50), nullable=False)
     service: Mapped[str] = mapped_column(String(50), nullable=False)
     action: Mapped[str] = mapped_column(String(50), nullable=False)
+    feature: Mapped[str] = mapped_column(String(50), default="system", nullable=False)
     is_system: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.utcnow, nullable=False

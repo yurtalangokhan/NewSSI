@@ -31,6 +31,7 @@ class PermissionService:
             "entity": permission.entity,
             "service": permission.service,
             "action": permission.action,
+            "feature": permission.feature,
             "is_system": permission.is_system,
         }
 

@@ -282,12 +282,12 @@ persona-shaped payload. Use `/api/v1/persona/{persona_id}` or
 
 | Method | Path                                       | Permission        | Description                                       |
 | ------ | ------------------------------------------ | ----------------- | ------------------------------------------------- |
-| GET    | `/api/v1/datasources/schedules`            | user auth         | List all sync schedules                           |
+| GET    | `/api/v1/datasources/schedules`            | `schedule:read`   | List all sync schedules                           |
 | POST   | `/api/v1/datasources/{id}/schedule`        | `schedule:create` | Create sync schedule (cron on Airbyte connection) |
-| GET    | `/api/v1/datasources/{id}/schedule`        | user auth         | Get schedule for datasource                       |
+| GET    | `/api/v1/datasources/{id}/schedule`        | `schedule:read`   | Get schedule for datasource                       |
 | PUT    | `/api/v1/datasources/{id}/schedule`        | `schedule:update` | Update schedule                                   |
 | DELETE | `/api/v1/datasources/{id}/schedule`        | `schedule:delete` | Delete schedule (set to manual)                   |
-| GET    | `/api/v1/datasources/{id}/schedule/status` | user auth         | Get combined sync + schedule status               |
+| GET    | `/api/v1/datasources/{id}/schedule/status` | `schedule:read`   | Get combined sync + schedule status               |
 
 ---
 
@@ -378,13 +378,13 @@ include `filename`, `mime_type`, and `content_base64`.
 
 | Method | Path                                                         | Auth      | Description                    |
 | ------ | ------------------------------------------------------------ | --------- | ------------------------------ |
-| GET    | `/api/v1/admin/web-search/search-providers`                  | user auth | List search providers          |
-| GET    | `/api/v1/admin/web-search/content-providers`                 | user auth | List content providers         |
-| POST   | `/api/v1/admin/web-search/content-providers/test`            | user auth | Test content provider          |
-| POST   | `/api/v1/admin/web-search/content-providers/crawl`           | user auth | Crawl a URL                    |
-| POST   | `/api/v1/admin/web-search/content-providers/reset-default`   | user auth | Reset default content provider |
-| POST   | `/api/v1/admin/web-search/content-providers/{id}/activate`   | user auth | Activate content provider      |
-| POST   | `/api/v1/admin/web-search/content-providers/{id}/deactivate` | user auth | Deactivate content provider    |
+| GET    | `/api/v1/admin/web-search/search-providers`                  | `web_search:manage` | List search providers          |
+| GET    | `/api/v1/admin/web-search/content-providers`                 | `web_search:manage` | List content providers         |
+| POST   | `/api/v1/admin/web-search/content-providers/test`            | `web_search:test` | Test content provider          |
+| POST   | `/api/v1/admin/web-search/content-providers/crawl`           | `web_search:manage` | Crawl a URL                    |
+| POST   | `/api/v1/admin/web-search/content-providers/reset-default`   | `web_search:manage` | Reset default content provider |
+| POST   | `/api/v1/admin/web-search/content-providers/{id}/activate`   | `web_search:manage` | Activate content provider      |
+| POST   | `/api/v1/admin/web-search/content-providers/{id}/deactivate` | `web_search:manage` | Deactivate content provider    |
 
 ---
 
@@ -679,5 +679,6 @@ not `last_accessed_at` or read-time metadata updates.
 | `project:create`, `project:delete`, `project:read`, `project:update`                                          | User/Projects        |
 | `provider:create`, `provider:delete`, `provider:read`, `provider:update`                                      | Providers            |
 | `run:cancel`, `run:create`, `run:read`                                                                        | Runs                 |
-| `schedule:create`, `schedule:delete`, `schedule:update`                                                       | Sync Schedules       |
+| `schedule:create`, `schedule:read`, `schedule:update`, `schedule:delete`                                       | Sync Schedules       |
 | `thread:create`, `thread:delete`, `thread:read`, `thread:search`, `thread:update`                             | Threads              |
+| `web_search:manage`, `web_search:test`                                                                          | Web Search Admin     |

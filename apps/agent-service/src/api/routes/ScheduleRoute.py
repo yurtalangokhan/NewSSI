@@ -32,7 +32,9 @@ def _get_controller() -> ScheduleController:
 
 
 @router.get("/datasources/schedules", response_model=list[SyncScheduleListItem])
-async def list_all_schedules():
+async def list_all_schedules(
+    _user: AuthenticatedUser = Depends(require_permission("schedule:read")),
+):
     """Return every sync schedule across all datasources."""
     ctrl = _get_controller()
     return await ctrl.list_all_schedules()
@@ -50,7 +52,10 @@ async def create_schedule(
 
 
 @router.get("/datasources/{datasource_id}/schedule", response_model=SyncScheduleResponse)
-async def get_schedule(datasource_id: str):
+async def get_schedule(
+    datasource_id: str,
+    _user: AuthenticatedUser = Depends(require_permission("schedule:read")),
+):
     """Get the sync schedule for a datasource."""
     ctrl = _get_controller()
     return await ctrl.get_schedule(datasource_id)
@@ -78,7 +83,10 @@ async def delete_schedule(
 
 
 @router.get("/datasources/{datasource_id}/schedule/status", response_model=ScheduleRunStatus)
-async def get_schedule_run_status(datasource_id: str):
+async def get_schedule_run_status(
+    datasource_id: str,
+    _user: AuthenticatedUser = Depends(require_permission("schedule:read")),
+):
     """Get combined sync + schedule status for real-time UI updates."""
     ctrl = _get_controller()
     return await ctrl.get_schedule_run_status(datasource_id)

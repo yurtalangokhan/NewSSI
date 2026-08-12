@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Button from "@/refresh-components/buttons/Button";
 import Checkbox from "@/refresh-components/inputs/Checkbox";
 import Modal from "@/refresh-components/Modal";
-import SimpleTabs from "@/refresh-components/SimpleTabs";
 import Text from "@/refresh-components/texts/Text";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Spinner } from "@/components/Spinner";
@@ -20,7 +19,6 @@ import {
   SvgRefreshCw,
   SvgSearch,
   SvgShield,
-  SvgServer,
   SvgTrash,
   SvgX,
 } from "@opal/icons";
@@ -42,14 +40,8 @@ interface Permission {
   entity: string;
   service: string;
   action: string;
+  feature: string | null;
   is_system: boolean;
-}
-
-interface Role {
-  name: string;
-  description: string | null;
-  service_client: string;
-  permissions: string[];
 }
 
 interface CompositeRole {
@@ -61,34 +53,94 @@ interface CompositeRole {
   is_admin: boolean;
 }
 
+interface CoarseRole {
+  name: string;
+  description: string | null;
+  service_client: string;
+  permissions: string[];
+}
+
+// ─── Feature taxonomy ───────────────────────────────────────────────
+
+const FEATURE_LABELS: Record<string, string> = {
+  access: "Users & Access",
+  agents: "Agents & Assistants",
+  chat: "Chat & Conversations",
+  knowledge: "Knowledge & RAG",
+  tools: "Tools & Integrations",
+  workspace: "Workspace & Projects",
+  system: "System Administration",
+};
+
+const FEATURE_ORDER = [
+  "access",
+  "agents",
+  "chat",
+  "knowledge",
+  "tools",
+  "workspace",
+  "system",
+];
+
+const COMPOSITE_ROLE_LABELS: Record<string, string> = {
+  "system-admin": "System Admin",
+  "enterprise-admin": "Enterprise Admin",
+  enduser: "End User",
+};
+
+function featureLabel(feature: string): string {
+  return FEATURE_LABELS[feature] ?? feature.replace(/_/g, " ");
+}
+
 // ─── Helpers ────────────────────────────────────────────────────────
 
-const UNEDITABLE_ROLES = new Set(["system-admin"]);
+function roleLabel(name: string) {
+  return COMPOSITE_ROLE_LABELS[name] || name;
+}
 
 function rolePath(name: string) {
   return encodeURIComponent(name);
 }
 
-function groupRolesByService(roles: Role[] | undefined) {
-  const grouped: Record<string, Role[]> = {};
-  for (const role of roles ?? []) {
-    const serviceRoles = grouped[role.service_client];
-    if (serviceRoles) {
-      serviceRoles.push(role);
-    } else {
-      grouped[role.service_client] = [role];
+function groupByFeature(
+  permissions: Permission[]
+): Record<string, Record<string, Permission[]>> {
+  const grouped: Record<string, Record<string, Permission[]>> = {};
+  for (const perm of permissions) {
+    const feature = perm.feature ?? "system";
+    let entities = grouped[feature];
+    if (!entities) {
+      entities = {};
+      grouped[feature] = entities;
     }
+    let list = entities[perm.entity];
+    if (!list) {
+      list = [];
+      entities[perm.entity] = list;
+    }
+    list.push(perm);
+  }
+  for (const feature of Object.keys(grouped)) {
+    const entities = grouped[feature];
+    if (!entities) continue;
+    const sorted: Record<string, Permission[]> = {};
+    for (const entity of Object.keys(entities).sort()) {
+      const perms = entities[entity];
+      if (perms) sorted[entity] = perms;
+    }
+    grouped[feature] = sorted;
   }
   return grouped;
 }
 
-function roleLabel(name: string, t: (key: string) => string) {
-  const labels: Record<string, string> = {
-    "system-admin": t("systemAdminLabel"),
-    "enterprise-admin": t("enterpriseAdminLabel"),
-    enduser: t("endUserLabel"),
-  };
-  return labels[name] || name;
+function orderedFeatures(
+  grouped: Record<string, Record<string, Permission[]>>
+): string[] {
+  const known = FEATURE_ORDER.filter((feature) => grouped[feature]);
+  const unknown = Object.keys(grouped).filter(
+    (feature) => !FEATURE_ORDER.includes(feature)
+  );
+  return [...known, ...unknown];
 }
 
 function EmptyState({
@@ -122,8 +174,12 @@ async function putPermissions(
     body: JSON.stringify(arg),
   });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: i18n.t("admin.rolesPage.saveFailedGeneric") }));
-    throw new Error(err.detail || i18n.t("admin.rolesPage.savePermissionsFailed"));
+    const err = await res
+      .json()
+      .catch(() => ({ detail: i18n.t("admin.rolesPage.saveFailedGeneric") }));
+    throw new Error(
+      err.detail || i18n.t("admin.rolesPage.savePermissionsFailed")
+    );
   }
   return res.json();
 }
@@ -138,8 +194,12 @@ async function putRoleIds(
     body: JSON.stringify(arg),
   });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: i18n.t("admin.rolesPage.saveFailedGeneric") }));
-    throw new Error(err.detail || i18n.t("admin.rolesPage.saveRoleAssignmentFailed"));
+    const err = await res
+      .json()
+      .catch(() => ({ detail: i18n.t("admin.rolesPage.saveFailedGeneric") }));
+    throw new Error(
+      err.detail || i18n.t("admin.rolesPage.saveRoleAssignmentFailed")
+    );
   }
   return res.json();
 }
@@ -149,29 +209,12 @@ async function postSync(_url: string) {
     method: "POST",
   });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: i18n.t("admin.rolesPage.syncFailedGeneric") }));
-    throw new Error(err.detail || i18n.t("admin.rolesPage.syncToKeycloakFailed"));
-  }
-  return res.json();
-}
-
-async function postCreateRole(
-  _url: string,
-  {
-    arg,
-  }: { arg: { name: string; description: string; service_client: string } }
-) {
-  const params = new URLSearchParams({
-    name: arg.name,
-    service_client: arg.service_client,
-  });
-  if (arg.description) params.set("description", arg.description);
-  const res = await fetch(`/api/user-service/coarse-roles/?${params}`, {
-    method: "POST",
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: i18n.t("admin.rolesPage.createFailedGeneric") }));
-    throw new Error(err.detail || i18n.t("admin.rolesPage.createRoleFailed"));
+    const err = await res
+      .json()
+      .catch(() => ({ detail: i18n.t("admin.rolesPage.syncFailedGeneric") }));
+    throw new Error(
+      err.detail || i18n.t("admin.rolesPage.syncToKeycloakFailed")
+    );
   }
   return res.json();
 }
@@ -186,8 +229,12 @@ async function postCreateCompositeRole(
     method: "POST",
   });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: i18n.t("admin.rolesPage.createFailedGeneric") }));
-    throw new Error(err.detail || i18n.t("admin.rolesPage.createCompositeRoleFailed"));
+    const err = await res
+      .json()
+      .catch(() => ({ detail: i18n.t("admin.rolesPage.createFailedGeneric") }));
+    throw new Error(
+      err.detail || i18n.t("admin.rolesPage.createCompositeRoleFailed")
+    );
   }
   return res.json();
 }
@@ -201,7 +248,9 @@ async function patchRole(
     method: "PATCH",
   });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: i18n.t("admin.rolesPage.updateFailedGeneric") }));
+    const err = await res
+      .json()
+      .catch(() => ({ detail: i18n.t("admin.rolesPage.updateFailedGeneric") }));
     throw new Error(err.detail || i18n.t("admin.rolesPage.updateRoleFailed"));
   }
   return res.json();
@@ -210,119 +259,12 @@ async function patchRole(
 async function deleteRole(url: string) {
   const res = await fetch(url, { method: "DELETE" });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: i18n.t("admin.rolesPage.deleteFailedGeneric") }));
+    const err = await res
+      .json()
+      .catch(() => ({ detail: i18n.t("admin.rolesPage.deleteFailedGeneric") }));
     throw new Error(err.detail || i18n.t("admin.rolesPage.deleteRoleFailed"));
   }
   return res.json();
-}
-
-// ─── Create Role Modal ──────────────────────────────────────────────
-
-function CreateRoleModal({
-  open,
-  onClose,
-  onCreated,
-}: {
-  open: boolean;
-  onClose: () => void;
-  onCreated: () => void;
-}) {
-  const { t } = useTranslation("common", { keyPrefix: "admin.rolesPage" });
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [serviceClient, setServiceClient] = useState("user-service");
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  const handleCreate = async () => {
-    if (!name.trim()) {
-      setError(t("roleNameRequired"));
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    try {
-      await postCreateRole("", {
-        arg: {
-          name: name.trim(),
-          description: description.trim(),
-          service_client: serviceClient,
-        },
-      });
-      onCreated();
-      onClose();
-      setName("");
-      setDescription("");
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : t("unknownError"));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <Modal open={open} onOpenChange={onClose}>
-      <Modal.Content>
-        <Modal.Header title={t("createRoleTitle")} onClose={onClose} />
-        <Modal.Body>
-          {error && (
-            <div className="mb-3 p-2 rounded-06 bg-background-danger-02">
-              <Text secondaryBody text-03>
-                {error}
-              </Text>
-            </div>
-          )}
-          <div className="flex flex-col gap-3">
-            <div>
-              <Text secondaryBody text-02 className="mb-1 block">
-                {t("roleNameLabel")}
-              </Text>
-              <input
-                className="w-full px-3 py-2 rounded-06 border-01 bg-background-neutral-01 text-01 text-sm outline-none focus:border-action-link-05"
-                placeholder={t("roleNamePlaceholder")}
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
-            </div>
-            <div>
-              <Text secondaryBody text-02 className="mb-1 block">
-                {t("serviceClientLabel")}
-              </Text>
-              <select
-                className="w-full px-3 py-2 rounded-06 border-01 bg-background-neutral-01 text-01 text-sm outline-none focus:border-action-link-05"
-                value={serviceClient}
-                onChange={(e) => setServiceClient(e.target.value)}
-              >
-                <option value="user-service">user-service</option>
-                <option value="agent-service">agent-service</option>
-                <option value="rag-service">rag-service</option>
-                <option value="tools-service">tools-service</option>
-              </select>
-            </div>
-            <div>
-              <Text secondaryBody text-02 className="mb-1 block">
-                {t("descriptionLabel")}
-              </Text>
-              <input
-                className="w-full px-3 py-2 rounded-06 border-01 bg-background-neutral-01 text-01 text-sm outline-none focus:border-action-link-05"
-                placeholder={t("optionalDescriptionPlaceholder")}
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-              />
-            </div>
-          </div>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button secondary onClick={onClose}>
-            {t("cancelButton")}
-          </Button>
-          <Button onClick={handleCreate} disabled={loading}>
-            {loading ? t("creatingButton") : t("createRoleTitle")}
-          </Button>
-        </Modal.Footer>
-      </Modal.Content>
-    </Modal>
-  );
 }
 
 function CreateCompositeRoleModal({
@@ -430,29 +372,37 @@ function CreateCompositeRoleModal({
   );
 }
 
-// ─── Roles Tab ──────────────────────────────────────────────────────
+// ─── Roles Manager ──────────────────────────────────────────────────
 
-function RolesTab() {
+function RolesManager() {
   const { t } = useTranslation("common", { keyPrefix: "admin.rolesPage" });
   const { hasPermission } = useUser();
   const canManageRoles = hasPermission("role:manage");
   const [selectedRole, setSelectedRole] = useState<string>("");
   const [createModalOpen, setCreateModalOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [roleSearch, setRoleSearch] = useState("");
+  const [permSearch, setPermSearch] = useState("");
+  const [includedSearch, setIncludedSearch] = useState("");
   const [editingDescription, setEditingDescription] = useState(false);
   const [descriptionDraft, setDescriptionDraft] = useState("");
   const [deleteConfirmRole, setDeleteConfirmRole] = useState<string | null>(
     null
   );
   const [isDeleting, setIsDeleting] = useState(false);
-  const searchRef = useRef<HTMLInputElement>(null);
+  const permSearchRef = useRef<HTMLInputElement>(null);
 
   const {
-    data: rolesData,
-    isLoading: rolesLoading,
-    mutate: mutateRoles,
+    data: compData,
+    isLoading: compLoading,
+    mutate: mutateComp,
   } = useSWR<{
-    roles: Role[];
+    composite_roles: CompositeRole[];
+  }>("/api/user-service/roles/", errorHandlingFetcher, {
+    dedupingInterval: 30000,
+  });
+
+  const { data: coarseData, isLoading: coarseLoading } = useSWR<{
+    roles: CoarseRole[];
   }>("/api/user-service/coarse-roles/", errorHandlingFetcher, {
     dedupingInterval: 30000,
   });
@@ -469,7 +419,19 @@ function RolesTab() {
     isLoading: rolePermsLoading,
   } = useSWR<{ name: string; permissions: string[] }>(
     selectedRole
-      ? `/api/user-service/coarse-roles/${rolePath(selectedRole)}/permissions`
+      ? `/api/user-service/roles/${rolePath(selectedRole)}/permissions`
+      : null,
+    errorHandlingFetcher,
+    { dedupingInterval: 5000 }
+  );
+
+  const {
+    data: roleIdsData,
+    mutate: mutateRoleIds,
+    isLoading: roleIdsLoading,
+  } = useSWR<{ name: string; role_ids: string[] }>(
+    selectedRole
+      ? `/api/user-service/roles/${rolePath(selectedRole)}/role-ids`
       : null,
     errorHandlingFetcher,
     { dedupingInterval: 5000 }
@@ -477,13 +439,31 @@ function RolesTab() {
 
   const { trigger: savePermissions, isMutating: isSaving } = useSWRMutation(
     selectedRole
-      ? `/api/user-service/coarse-roles/${rolePath(selectedRole)}/permissions`
+      ? `/api/user-service/roles/${rolePath(selectedRole)}/permissions`
       : null,
     putPermissions,
     {
       onSuccess: () => {
         mutateRolePerms();
         toast.success(t("permissionsSavedToast"));
+      },
+      onError: (err) => toast.error(err.message),
+    }
+  );
+
+  const { trigger: saveRoleIds, isMutating: isSavingRoleIds } = useSWRMutation(
+    selectedRole
+      ? `/api/user-service/roles/${rolePath(selectedRole)}/role-ids`
+      : null,
+    putRoleIds,
+    {
+      onSuccess: (data) => {
+        mutateRoleIds();
+        toast.success(
+          `Role assignment saved — ${
+            data.effective_permissions?.length ?? 0
+          } effective permissions`
+        );
       },
       onError: (err) => toast.error(err.message),
     }
@@ -498,81 +478,18 @@ function RolesTab() {
     }
   );
 
-  const groupedRoles = useMemo(
-    () => groupRolesByService(rolesData?.roles),
-    [rolesData]
+  const roles = useMemo(() => compData?.composite_roles ?? [], [compData]);
+
+  const selectedComp = useMemo(
+    () => roles.find((role) => role.name === selectedRole) ?? null,
+    [roles, selectedRole]
   );
 
-  const selectedRoleData = useMemo(() => {
-    return rolesData?.roles.find((r) => r.name === selectedRole) ?? null;
-  }, [rolesData, selectedRole]);
-
-  const selectedServiceClient = selectedRoleData?.service_client ?? "";
-
-  const groupedPermissions = useMemo(() => {
-    if (!permsData?.permissions) return {};
-    const permissionPool = selectedServiceClient
-      ? permsData.permissions.filter(
-          (permission) => permission.service === selectedServiceClient
-        )
-      : [];
-    const grouped: Record<string, Record<string, Permission[]>> = {};
-    for (const perm of permissionPool) {
-      let serviceGroup = grouped[perm.service];
-      if (!serviceGroup) {
-        serviceGroup = {};
-        grouped[perm.service] = serviceGroup;
-      }
-      let entityList = serviceGroup[perm.entity];
-      if (!entityList) {
-        entityList = [];
-        serviceGroup[perm.entity] = entityList;
-      }
-      entityList.push(perm);
-    }
-    return grouped;
-  }, [permsData, selectedServiceClient]);
-
-  const assignablePermissionNames = useMemo(() => {
-    const names = new Set<string>();
-    for (const entities of Object.values(groupedPermissions)) {
-      for (const permissions of Object.values(entities)) {
-        for (const permission of permissions) {
-          names.add(permission.name);
-        }
-      }
-    }
-    return names;
-  }, [groupedPermissions]);
-
-  const filteredGrouped = useMemo(() => {
-    if (!searchQuery.trim()) return groupedPermissions;
-    const q = searchQuery.toLowerCase();
-    const result: Record<string, Record<string, Permission[]>> = {};
-    for (const [service, entities] of Object.entries(groupedPermissions)) {
-      const filteredEntities: Record<string, Permission[]> = {};
-      for (const [entity, perms] of Object.entries(entities)) {
-        const filtered = perms.filter(
-          (p) =>
-            p.name.toLowerCase().includes(q) ||
-            p.label.toLowerCase().includes(q) ||
-            p.action.toLowerCase().includes(q) ||
-            entity.toLowerCase().includes(q)
-        );
-        if (filtered.length > 0) filteredEntities[entity] = filtered;
-      }
-      if (Object.keys(filteredEntities).length > 0)
-        result[service] = filteredEntities;
-    }
-    return result;
-  }, [groupedPermissions, searchQuery]);
-
-  const selectedPermsSet = useMemo(() => {
-    return new Set(rolePermsData?.permissions ?? []);
-  }, [rolePermsData]);
+  const isBuiltin = selectedComp?.is_builtin ?? false;
+  const isWildcard = (rolePermsData?.permissions ?? []).includes("*");
+  const canMutate = canManageRoles && !isBuiltin;
 
   useEffect(() => {
-    const roles = rolesData?.roles ?? [];
     if (roles.length === 0) {
       setSelectedRole("");
       return;
@@ -580,10 +497,71 @@ function RolesTab() {
     if (!roles.some((role) => role.name === selectedRole)) {
       setSelectedRole(roles[0]?.name ?? "");
     }
-  }, [rolesData, selectedRole]);
+  }, [roles, selectedRole]);
+
+  const filteredRoles = useMemo(() => {
+    if (!roleSearch.trim()) return roles;
+    const q = roleSearch.toLowerCase();
+    return roles.filter(
+      (role) =>
+        role.name.toLowerCase().includes(q) ||
+        roleLabel(role.name).toLowerCase().includes(q)
+    );
+  }, [roles, roleSearch]);
+
+  const groupedPermissions = useMemo(
+    () => groupByFeature(permsData?.permissions ?? []),
+    [permsData]
+  );
+
+  const filteredGrouped = useMemo(() => {
+    if (!permSearch.trim()) return groupedPermissions;
+    const q = permSearch.toLowerCase();
+    const result: Record<string, Record<string, Permission[]>> = {};
+    for (const [feature, entities] of Object.entries(groupedPermissions)) {
+      const filteredEntities: Record<string, Permission[]> = {};
+      for (const [entity, perms] of Object.entries(entities)) {
+        const filtered = perms.filter(
+          (p) =>
+            p.name.toLowerCase().includes(q) ||
+            p.label.toLowerCase().includes(q) ||
+            p.action.toLowerCase().includes(q) ||
+            entity.toLowerCase().includes(q) ||
+            featureLabel(feature).toLowerCase().includes(q)
+        );
+        if (filtered.length > 0) filteredEntities[entity] = filtered;
+      }
+      if (Object.keys(filteredEntities).length > 0)
+        result[feature] = filteredEntities;
+    }
+    return result;
+  }, [groupedPermissions, permSearch]);
+
+  const catalogNames = useMemo(() => {
+    return new Set((permsData?.permissions ?? []).map((perm) => perm.name));
+  }, [permsData]);
+
+  const selectedPermsSet = useMemo(() => {
+    return new Set(rolePermsData?.permissions ?? []);
+  }, [rolePermsData]);
+
+  const selectedRoleIds = useMemo(
+    () => new Set(roleIdsData?.role_ids ?? []),
+    [roleIdsData]
+  );
+
+  const includedCoarseRoles = useMemo(() => {
+    const q = includedSearch.trim().toLowerCase();
+    const pool = coarseData?.roles ?? [];
+    const filtered = q
+      ? pool.filter((role) => role.name.toLowerCase().includes(q))
+      : pool;
+    return filtered;
+  }, [coarseData, includedSearch]);
 
   const handleToggle = useCallback(
     (name: string) => {
+      if (!canMutate) return;
       mutateRolePerms(
         (prev) => {
           const perms = prev?.permissions ?? [];
@@ -598,15 +576,16 @@ function RolesTab() {
         { revalidate: false }
       );
     },
-    [mutateRolePerms, selectedRole]
+    [canMutate, mutateRolePerms, selectedRole]
   );
 
   const handleSelectAll = useCallback(
-    (entityPerms: Permission[], checked: boolean) => {
+    (perms: Permission[], checked: boolean) => {
+      if (!canMutate) return;
       mutateRolePerms(
         (prev) => {
           const current = new Set(prev?.permissions ?? []);
-          for (const p of entityPerms) {
+          for (const p of perms) {
             if (checked) current.add(p.name);
             else current.delete(p.name);
           }
@@ -615,70 +594,71 @@ function RolesTab() {
         { revalidate: false }
       );
     },
-    [mutateRolePerms, selectedRole]
+    [canMutate, mutateRolePerms, selectedRole]
   );
 
   const handleSave = useCallback(() => {
     savePermissions({
       permissions: Array.from(selectedPermsSet).filter((permission) =>
-        assignablePermissionNames.has(permission)
+        catalogNames.has(permission)
       ),
     });
-  }, [assignablePermissionNames, selectedPermsSet, savePermissions]);
+  }, [catalogNames, selectedPermsSet, savePermissions]);
 
-  const handleDeleteRoleAction = useCallback(
-    async (roleName: string) => {
-      if (!canManageRoles) return;
-      setIsDeleting(true);
-      try {
-        await deleteRole(
-          `/api/user-service/coarse-roles/${rolePath(roleName)}`
-        );
-        mutateRoles();
-        if (roleName === selectedRole) {
-          const remaining = (rolesData?.roles ?? []).filter(
-            (r) => r.name !== roleName
-          );
-          const first = remaining[0];
-          if (first) setSelectedRole(first.name);
-        }
-        setDeleteConfirmRole(null);
-        toast.success(t("roleDeletedToast"));
-      } catch (err: any) {
-        toast.error(err.message);
-      } finally {
-        setIsDeleting(false);
-      }
+  const handleToggleRole = useCallback(
+    (roleName: string) => {
+      if (!canMutate || !selectedRole) return;
+      const current = new Set(roleIdsData?.role_ids ?? []);
+      if (current.has(roleName)) current.delete(roleName);
+      else current.add(roleName);
+      saveRoleIds({ role_ids: Array.from(current) });
     },
-    [canManageRoles, selectedRole, mutateRoles, rolesData]
+    [canMutate, selectedRole, roleIdsData, saveRoleIds]
   );
 
   const handleUpdateDescription = useCallback(
     async (description: string) => {
       try {
-        await patchRole(
-          `/api/user-service/coarse-roles/${rolePath(selectedRole)}`,
-          { arg: { description } }
-        );
-        mutateRoles();
-        toast.success(t("roleUpdatedToast"));
+        await patchRole(`/api/user-service/roles/${rolePath(selectedRole)}`, {
+          arg: { description },
+        });
+        mutateComp();
+        toast.success("Role updated");
       } catch (err: any) {
         toast.error(err.message);
       }
     },
-    [selectedRole, mutateRoles]
+    [selectedRole, mutateComp]
   );
 
-  const isLocked = false; // no "built-in" concept for roles
-  const canMutate = canManageRoles && !isLocked;
+  const handleDeleteRole = useCallback(async () => {
+    if (!deleteConfirmRole) return;
+    setIsDeleting(true);
+    try {
+      await deleteRole(
+        `/api/user-service/roles/${rolePath(deleteConfirmRole)}`
+      );
+      mutateComp();
+      if (deleteConfirmRole === selectedRole) {
+        const remaining = roles.filter(
+          (role) => role.name !== deleteConfirmRole
+        );
+        setSelectedRole(remaining[0]?.name ?? "");
+      }
+      setDeleteConfirmRole(null);
+      toast.success("Role deleted");
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [deleteConfirmRole, selectedRole, roles, mutateComp]);
 
-  const hasRoles = (rolesData?.roles ?? []).length > 0;
-  const waitingForSelectedRole = hasRoles && !selectedRoleData;
   const allLoading =
-    rolesLoading ||
+    compLoading ||
+    coarseLoading ||
     permsLoading ||
-    waitingForSelectedRole ||
-    (Boolean(selectedRole) && rolePermsLoading);
+    (Boolean(selectedRole) && (rolePermsLoading || roleIdsLoading));
 
   if (allLoading) {
     return (
@@ -687,6 +667,8 @@ function RolesTab() {
       </div>
     );
   }
+
+  const hasRoles = roles.length > 0;
 
   return (
     <div className="space-y-4">
@@ -711,6 +693,7 @@ function RolesTab() {
           )}
           <Button
             leftIcon={SvgRefreshCw}
+            secondary
             disabled={isSyncing || !canManageRoles}
             onClick={() => syncToKeycloak()}
           >
@@ -727,73 +710,102 @@ function RolesTab() {
       ) : (
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-[20rem_minmax(0,1fr)]">
           <div className="rounded-08 border border-border-01 bg-background-neutral-01 p-3">
-            <div className="flex flex-col gap-4">
-              {Object.entries(groupedRoles).map(([service, roles]) => (
-                <div key={service}>
-                  <Text secondaryBody text-04 className="mb-2 block text-xs">
-                    {service}
-                  </Text>
-                  <div className="flex flex-col gap-1">
-                    {roles.map((role) => {
-                      const selected = selectedRole === role.name;
-                      return (
-                        <button
-                          key={role.name}
-                          type="button"
-                          onClick={() => setSelectedRole(role.name)}
+            <div className="relative mb-2">
+              <SvgSearch
+                size={16}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-03 pointer-events-none"
+              />
+              <input
+                className="w-full pl-9 pr-3 py-2 rounded-06 border-01 bg-background-neutral-00 text-01 text-sm outline-none focus:border-action-link-05"
+                placeholder="Search roles..."
+                value={roleSearch}
+                onChange={(e) => setRoleSearch(e.target.value)}
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              {filteredRoles.map((role) => {
+                const selected = selectedRole === role.name;
+                const isAll = (role.permissions ?? []).includes("*");
+                return (
+                  <button
+                    key={role.name}
+                    type="button"
+                    onClick={() => setSelectedRole(role.name)}
+                    className={cn(
+                      "flex w-full items-center justify-between gap-2 rounded-06 px-3 py-2 text-left transition-colors",
+                      selected
+                        ? "bg-action-link-05 text-text-light-05"
+                        : "bg-background-neutral-00 text-text-02 hover:bg-background-neutral-02"
+                    )}
+                  >
+                    <span className="min-w-0">
+                      <span className="flex items-center gap-2">
+                        <Text
+                          secondaryBody
+                          as="span"
                           className={cn(
-                            "flex w-full items-center justify-between gap-2 rounded-06 px-3 py-2 text-left transition-colors",
-                            selected
-                              ? "bg-action-link-05 text-text-light-05"
-                              : "bg-background-neutral-00 text-text-02 hover:bg-background-neutral-02"
+                            "block truncate",
+                            selected ? "text-text-light-05" : "text-text-02"
                           )}
                         >
-                          <span className="min-w-0">
-                            <Text
-                              secondaryBody
-                              as="span"
-                              className={cn(
-                                "block truncate",
-                                selected ? "text-text-light-05" : "text-text-02"
-                              )}
-                            >
-                              {role.name}
-                            </Text>
-                            <Text
-                              secondaryBody
-                              as="span"
-                              className={cn(
-                                "block truncate text-xs",
-                                selected ? "text-text-light-03" : "text-text-04"
-                              )}
-                            >
-                              {t("permissionsCount", {
-                                count: role.permissions.length,
-                              })}
-                            </Text>
+                          {roleLabel(role.name)}
+                        </Text>
+                        {role.is_builtin && (
+                          <span
+                            className={cn(
+                              "shrink-0 rounded-04 px-1.5 py-0.5 text-[0.65rem]",
+                              selected
+                                ? "bg-text-light-05/20 text-text-light-05"
+                                : "bg-background-neutral-02 text-text-04"
+                            )}
+                          >
+                            {t("builtInBadge")}
                           </span>
-                          {selected && <SvgCheck size={14} />}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
+                        )}
+                      </span>
+                      <Text
+                        secondaryBody
+                        as="span"
+                        className={cn(
+                          "block truncate text-xs",
+                          selected ? "text-text-light-03" : "text-text-04"
+                        )}
+                      >
+                        {isAll
+                          ? "All permissions"
+                          : `${role.permissions.length} permissions`}
+                        {role.role_ids.length > 0 &&
+                          ` · ${role.role_ids.length} included`}
+                      </Text>
+                    </span>
+                    {selected && <SvgCheck size={14} />}
+                  </button>
+                );
+              })}
+              {filteredRoles.length === 0 && (
+                <Text secondaryBody text-04 className="px-3 py-2">
+                  {t("noRolesMatchSearch", {
+                    defaultValue: "No roles match",
+                  })}
+                </Text>
+              )}
             </div>
           </div>
 
           <div className="min-w-0">
-            {selectedRoleData && (
+            {selectedComp && (
               <div className="mb-4 rounded-08 border border-border-01 bg-background-neutral-01 p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <Text headingH3 text01 className="truncate">
-                        {selectedRoleData.name}
+                        {roleLabel(selectedComp.name)}
                       </Text>
-                      <span className="rounded-04 bg-background-neutral-02 px-2 py-0.5 text-xs text-text-03">
-                        {selectedRoleData.service_client}
-                      </span>
+                      {isBuiltin && (
+                        <span className="rounded-04 bg-background-neutral-02 px-2 py-0.5 text-xs text-text-03">
+                          {t("builtInBadge")}
+                        </span>
+                      )}
                     </div>
                     {editingDescription ? (
                       <div className="mt-3 flex items-center gap-2">
@@ -824,14 +836,14 @@ function RolesTab() {
                     ) : (
                       <div className="mt-2 flex items-center gap-2">
                         <Text secondaryBody text-04 className="truncate italic">
-                          {selectedRoleData.description || t("noDescription")}
+                          {selectedComp.description || "No description"}
                         </Text>
                         {canMutate && (
                           <button
                             type="button"
                             onClick={() => {
                               setDescriptionDraft(
-                                selectedRoleData.description ?? ""
+                                selectedComp.description ?? ""
                               );
                               setEditingDescription(true);
                             }}
@@ -843,6 +855,15 @@ function RolesTab() {
                         )}
                       </div>
                     )}
+                    <Text secondaryBody text-04 className="mt-2 block">
+                      {isWildcard
+                        ? "This role grants every permission."
+                        : `${selectedPermsSet.size} direct permissions · ${
+                            selectedRoleIds.size
+                          } included role${
+                            selectedRoleIds.size === 1 ? "" : "s"
+                          }`}
+                    </Text>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
                     <Button
@@ -857,7 +878,7 @@ function RolesTab() {
                         leftIcon={SvgTrash}
                         secondary
                         className="text-danger-03"
-                        onClick={() => setDeleteConfirmRole(selectedRole)}
+                        onClick={() => setDeleteConfirmRole(selectedComp.name)}
                       >
                         {t("deleteButton")}
                       </Button>
@@ -867,132 +888,269 @@ function RolesTab() {
               </div>
             )}
 
-            <div className="relative mb-4">
-              <SvgSearch
-                size={16}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-03 pointer-events-none"
-              />
-              <input
-                ref={searchRef}
-                className="w-full pl-9 pr-8 py-2 rounded-06 border-01 bg-background-neutral-01 text-01 text-sm outline-none focus:border-action-link-05"
-                placeholder={t("searchPermissionsPlaceholder")}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              {searchQuery && (
-                <button
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-03 hover:text-01"
-                  onClick={() => setSearchQuery("")}
-                >
-                  <SvgX size={14} />
-                </button>
-              )}
-            </div>
-
-            {Object.entries(filteredGrouped).map(([service, entities]) => (
-              <div key={service} className="mb-5">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="h-px flex-1 bg-border-01" />
-                  <Text headingH3 text01 className="capitalize">
-                    {service}
-                  </Text>
-                  <div className="h-px flex-1 bg-border-01" />
-                </div>
-                {Object.entries(entities).map(([entity, perms]) => {
-                  const selectedCount = perms.filter((p) =>
-                    selectedPermsSet.has(p.name)
-                  ).length;
-                  const allSelected = selectedCount === perms.length;
-                  return (
-                    <Card key={entity} className="mb-2">
-                      <CardHeader className="flex flex-row items-center justify-between">
-                        <div className="flex items-center gap-3">
+            {selectedComp && (
+              <Card className="mb-4">
+                <CardHeader className="flex flex-row items-center justify-between gap-3">
+                  <div>
+                    <CardTitle className="text-sm">
+                      {t("includedServiceRolesTitle", {
+                        defaultValue: "Included service roles",
+                      })}
+                    </CardTitle>
+                    <Text secondaryBody text-04 className="mt-1 block">
+                      {t("includedServiceRolesDescription", {
+                        defaultValue:
+                          "Inherited service roles contribute to this role's effective permissions.",
+                      })}
+                    </Text>
+                  </div>
+                  <span className="rounded-04 bg-background-neutral-02 px-2 py-0.5 text-xs text-text-03">
+                    {t("includedServiceRolesSelectedCount", {
+                      count: selectedRoleIds.size,
+                      defaultValue: "{{count}} selected",
+                    })}
+                  </span>
+                </CardHeader>
+                <CardContent>
+                  <div className="relative mb-3">
+                    <SvgSearch
+                      size={16}
+                      className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-03"
+                    />
+                    <input
+                      className="w-full rounded-06 border-01 bg-background-neutral-00 py-2 pl-9 pr-3 text-01 text-sm outline-none focus:border-action-link-05"
+                      placeholder="Search included roles..."
+                      value={includedSearch}
+                      onChange={(e) => setIncludedSearch(e.target.value)}
+                    />
+                  </div>
+                  {includedCoarseRoles.length === 0 ? (
+                    <Text secondaryBody text-04>
+                      {t("noServiceRolesMatchSearch", {
+                        defaultValue: "No service roles match",
+                      })}
+                    </Text>
+                  ) : (
+                    <div className="grid grid-cols-1 gap-1 sm:grid-cols-2 lg:grid-cols-3">
+                      {includedCoarseRoles.map((role) => (
+                        <label
+                          key={`${role.service_client}:${role.name}`}
+                          className={cn(
+                            "flex items-center gap-2 rounded-06 px-3 py-2",
+                            canMutate
+                              ? "cursor-pointer hover:bg-background-neutral-02"
+                              : ""
+                          )}
+                        >
                           {canMutate && (
                             <Checkbox
-                              checked={allSelected}
-                              onCheckedChange={(checked) =>
-                                handleSelectAll(perms, !!checked)
+                              checked={selectedRoleIds.has(role.name)}
+                              disabled={isSavingRoleIds}
+                              onCheckedChange={() =>
+                                handleToggleRole(role.name)
                               }
                             />
                           )}
-                          <CardTitle className="capitalize text-sm">
-                            {entity.replace(/_/g, " ")}
-                          </CardTitle>
-                          <span className="text-xs text-03 bg-background-neutral-02 px-2 py-0.5 rounded-04">
-                            {selectedCount}/{perms.length}
-                          </span>
-                        </div>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1">
-                          {perms.map((perm) => (
-                            <label
-                              key={perm.name}
-                              className={cn(
-                                "flex items-center gap-2 py-1.5 px-2 rounded-06 hover:bg-background-neutral-02",
-                                canMutate ? "cursor-pointer" : ""
-                              )}
+                          <span className="min-w-0">
+                            <Text
+                              secondaryBody
+                              text-02
+                              className="block truncate"
                             >
-                              {canMutate && (
-                                <Checkbox
-                                  checked={selectedPermsSet.has(perm.name)}
-                                  onCheckedChange={() =>
-                                    handleToggle(perm.name)
-                                  }
-                                />
-                              )}
-                              <div className="flex flex-col min-w-0">
-                                <Text
-                                  secondaryBody
-                                  text-02
-                                  className="truncate"
-                                >
-                                  {perm.label}
-                                </Text>
-                                {perm.description && (
-                                  <Text
-                                    secondaryBody
-                                    text-04
-                                    className="truncate"
-                                  >
-                                    {perm.description}
-                                  </Text>
-                                )}
-                                <Text
-                                  secondaryBody
-                                  text-04
-                                  className="text-[0.7rem] font-mono truncate"
-                                >
-                                  {perm.action}
-                                </Text>
-                              </div>
-                            </label>
-                          ))}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
-            ))}
+                              {role.name}
+                            </Text>
+                            <Text
+                              secondaryBody
+                              text-04
+                              className="block truncate text-xs"
+                            >
+                              {t("serviceRolePermissionCount", {
+                                serviceClient: role.service_client,
+                                count: role.permissions.length,
+                                defaultValue:
+                                  "{{serviceClient}} · {{count}} permissions",
+                              })}
+                            </Text>
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
 
-            {Object.keys(filteredGrouped).length === 0 && (
-              <div className="py-8 text-center">
-                <Text secondaryBody text-03>
-                  {searchQuery
-                    ? t("noPermissionsMatchSearch")
-                    : t("noPermissionsFound")}
+            {isWildcard ? (
+              <div className="rounded-08 border border-border-01 bg-background-neutral-01 p-6">
+                <div className="flex items-center gap-2">
+                  <SvgShield size={18} className="text-text-03" />
+                  <Text headingH3 text01>
+                    {t("allPermissionsGrantedTitle", {
+                      defaultValue: "All permissions granted",
+                    })}
+                  </Text>
+                </div>
+                <Text secondaryBody text-03 className="mt-2 block">
+                  {t("allPermissionsGrantedDescription", {
+                    defaultValue:
+                      "This built-in role carries the wildcard permission and cannot be edited.",
+                  })}
                 </Text>
               </div>
+            ) : (
+              <>
+                <div className="relative mb-4">
+                  <SvgSearch
+                    size={16}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-03 pointer-events-none"
+                  />
+                  <input
+                    ref={permSearchRef}
+                    className="w-full pl-9 pr-8 py-2 rounded-06 border-01 bg-background-neutral-01 text-01 text-sm outline-none focus:border-action-link-05"
+                    placeholder="Search permissions..."
+                    value={permSearch}
+                    onChange={(e) => setPermSearch(e.target.value)}
+                  />
+                  {permSearch && (
+                    <button
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-03 hover:text-01"
+                      onClick={() => setPermSearch("")}
+                    >
+                      <SvgX size={14} />
+                    </button>
+                  )}
+                </div>
+
+                {orderedFeatures(filteredGrouped).map((feature) => {
+                  const entities = filteredGrouped[feature];
+                  if (!entities) return null;
+                  const featurePerms = Object.values(entities).flat();
+                  const featureSelected = featurePerms.filter((p) =>
+                    selectedPermsSet.has(p.name)
+                  ).length;
+                  const featureAll = featureSelected === featurePerms.length;
+                  return (
+                    <div key={feature} className="mb-5">
+                      <div className="mb-3 flex items-center gap-2">
+                        <div className="h-px flex-1 bg-border-01" />
+                        {canMutate && (
+                          <Checkbox
+                            checked={featureAll}
+                            onCheckedChange={(checked) =>
+                              handleSelectAll(featurePerms, !!checked)
+                            }
+                          />
+                        )}
+                        <Text headingH3 text01 className="capitalize">
+                          {featureLabel(feature)}
+                        </Text>
+                        <span className="rounded-04 bg-background-neutral-02 px-2 py-0.5 text-xs text-text-03">
+                          {featureSelected}/{featurePerms.length}
+                        </span>
+                        <div className="h-px flex-1 bg-border-01" />
+                      </div>
+                      {Object.entries(entities).map(([entity, perms]) => {
+                        const selectedCount = perms.filter((p) =>
+                          selectedPermsSet.has(p.name)
+                        ).length;
+                        const allSelected = selectedCount === perms.length;
+                        return (
+                          <Card key={entity} className="mb-2">
+                            <CardHeader className="flex flex-row items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                {canMutate && (
+                                  <Checkbox
+                                    checked={allSelected}
+                                    onCheckedChange={(checked) =>
+                                      handleSelectAll(perms, !!checked)
+                                    }
+                                  />
+                                )}
+                                <CardTitle className="capitalize text-sm">
+                                  {entity.replace(/_/g, " ")}
+                                </CardTitle>
+                                <span className="rounded-04 bg-background-neutral-02 px-2 py-0.5 text-xs text-text-03">
+                                  {selectedCount}/{perms.length}
+                                </span>
+                              </div>
+                            </CardHeader>
+                            <CardContent>
+                              <div className="grid grid-cols-1 gap-1 sm:grid-cols-2 lg:grid-cols-3">
+                                {perms.map((perm) => (
+                                  <label
+                                    key={perm.name}
+                                    className={cn(
+                                      "flex items-center gap-2 rounded-06 px-2 py-1.5 hover:bg-background-neutral-02",
+                                      canMutate ? "cursor-pointer" : ""
+                                    )}
+                                  >
+                                    {canMutate && (
+                                      <Checkbox
+                                        checked={selectedPermsSet.has(
+                                          perm.name
+                                        )}
+                                        onCheckedChange={() =>
+                                          handleToggle(perm.name)
+                                        }
+                                      />
+                                    )}
+                                    <div className="flex min-w-0 flex-col">
+                                      <Text
+                                        secondaryBody
+                                        text-02
+                                        className="truncate"
+                                      >
+                                        {perm.label}
+                                      </Text>
+                                      {perm.description && (
+                                        <Text
+                                          secondaryBody
+                                          text-04
+                                          className="truncate"
+                                        >
+                                          {perm.description}
+                                        </Text>
+                                      )}
+                                      <Text
+                                        secondaryBody
+                                        text-04
+                                        className="truncate font-mono text-[0.7rem]"
+                                      >
+                                        {perm.action}
+                                      </Text>
+                                    </div>
+                                  </label>
+                                ))}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
+
+                {Object.keys(filteredGrouped).length === 0 && (
+                  <div className="py-8 text-center">
+                    <Text secondaryBody text-03>
+                      {permSearch
+                        ? t("noPermissionsMatchSearch")
+                        : t("noPermissionsFound")}
+                    </Text>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
       )}
 
-      <CreateRoleModal
+      <CreateCompositeRoleModal
         open={createModalOpen}
         onClose={() => setCreateModalOpen(false)}
-        onCreated={() => mutateRoles()}
+        onCreated={(name) => {
+          void mutateComp().then(() => setSelectedRole(name));
+        }}
       />
 
       <Modal
@@ -1017,437 +1175,12 @@ function RolesTab() {
             <Button secondary onClick={() => setDeleteConfirmRole(null)}>
               {t("cancelButton")}
             </Button>
-            <Button
-              danger
-              onClick={() => {
-                if (deleteConfirmRole)
-                  handleDeleteRoleAction(deleteConfirmRole);
-              }}
-              disabled={isDeleting}
-            >
+            <Button danger onClick={handleDeleteRole} disabled={isDeleting}>
               {isDeleting ? t("deletingButton") : t("deleteRoleTitle")}
             </Button>
           </Modal.Footer>
         </Modal.Content>
       </Modal>
-    </div>
-  );
-}
-
-// ─── Composite Roles Tab ────────────────────────────────────────────
-
-function CompositeRolesTab() {
-  const { t } = useTranslation("common", { keyPrefix: "admin.rolesPage" });
-  const { hasPermission } = useUser();
-  const canManage = hasPermission("role:manage");
-  const [selectedComposite, setSelectedComposite] = useState<string>("");
-  const [createModalOpen, setCreateModalOpen] = useState(false);
-  const [editingDescription, setEditingDescription] = useState(false);
-  const [descriptionDraft, setDescriptionDraft] = useState("");
-  const [deleteConfirmRole, setDeleteConfirmRole] = useState<string | null>(
-    null
-  );
-  const [isDeleting, setIsDeleting] = useState(false);
-
-  const {
-    data: compData,
-    isLoading: compLoading,
-    mutate: mutateComp,
-  } = useSWR<{
-    composite_roles: CompositeRole[];
-  }>("/api/user-service/roles/", errorHandlingFetcher, {
-    dedupingInterval: 30000,
-  });
-
-  const { data: rolesData, isLoading: rolesLoading } = useSWR<{
-    roles: Role[];
-  }>("/api/user-service/coarse-roles/", errorHandlingFetcher, {
-    dedupingInterval: 30000,
-  });
-
-  const {
-    data: roleIdsData,
-    mutate: mutateRoleIds,
-    isLoading: roleIdsLoading,
-  } = useSWR<{
-    name: string;
-    role_ids: string[];
-  }>(
-    selectedComposite
-      ? `/api/user-service/roles/${rolePath(selectedComposite)}/role-ids`
-      : null,
-    errorHandlingFetcher,
-    { dedupingInterval: 5000 }
-  );
-
-  const { trigger: saveRoleIds, isMutating: isSavingRoleIds } = useSWRMutation(
-    selectedComposite
-      ? `/api/user-service/roles/${rolePath(selectedComposite)}/role-ids`
-      : null,
-    putRoleIds,
-    {
-      onSuccess: (data) => {
-        mutateRoleIds();
-        toast.success(
-          `${t("permissionsSavedToast")} — ${
-            data.effective_permissions?.length ?? 0
-          }`
-        );
-      },
-      onError: (err) => toast.error(err.message),
-    }
-  );
-
-  const selectedComp = useMemo(
-    () =>
-      compData?.composite_roles.find((r) => r.name === selectedComposite) ??
-      null,
-    [compData, selectedComposite]
-  );
-
-  const isLocked = selectedComposite
-    ? UNEDITABLE_ROLES.has(selectedComposite)
-    : false;
-  const canMutate = canManage && !isLocked;
-
-  const groupedRoles = useMemo(
-    () => groupRolesByService(rolesData?.roles),
-    [rolesData]
-  );
-
-  const selectedRoleIds = useMemo(
-    () => new Set(roleIdsData?.role_ids ?? []),
-    [roleIdsData]
-  );
-
-  useEffect(() => {
-    const roles = compData?.composite_roles ?? [];
-    if (roles.length === 0) {
-      setSelectedComposite("");
-      return;
-    }
-    if (!roles.some((role) => role.name === selectedComposite)) {
-      setSelectedComposite(roles[0]?.name ?? "");
-    }
-  }, [compData, selectedComposite]);
-
-  const handleToggleRole = useCallback(
-    (roleName: string) => {
-      if (!canMutate || !selectedComposite) return;
-      const current = new Set(roleIdsData?.role_ids ?? []);
-      if (current.has(roleName)) current.delete(roleName);
-      else current.add(roleName);
-      saveRoleIds({ role_ids: Array.from(current) });
-    },
-    [canMutate, selectedComposite, roleIdsData, saveRoleIds]
-  );
-
-  const allLoading =
-    compLoading ||
-    rolesLoading ||
-    (Boolean(selectedComposite) && roleIdsLoading);
-
-  if (allLoading) {
-    return (
-      <div className="flex justify-center py-8">
-        <Spinner />
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between gap-2">
-        <div>
-          <Text headingH3 text01 className="block">
-            {t("compositeRolesTitle")}
-          </Text>
-          <Text secondaryBody text-03 className="mt-1 block">
-            {t("compositeRolesDescription")}
-          </Text>
-        </div>
-        {canManage && (
-          <Button
-            leftIcon={SvgPlus}
-            secondary
-            onClick={() => setCreateModalOpen(true)}
-          >
-            {t("newCompositeRoleButton")}
-          </Button>
-        )}
-      </div>
-
-      {(compData?.composite_roles ?? []).length === 0 ? (
-        <EmptyState
-          title={t("noCompositeRolesFoundTitle")}
-          description={t("noCompositeRolesFoundDescription")}
-        />
-      ) : (
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[20rem_minmax(0,1fr)]">
-          <div className="rounded-08 border border-border-01 bg-background-neutral-01 p-3">
-            <div className="flex flex-col gap-1">
-              {(compData?.composite_roles ?? []).map((cr) => {
-                const selected = selectedComposite === cr.name;
-                return (
-                  <button
-                    key={cr.name}
-                    type="button"
-                    onClick={() => setSelectedComposite(cr.name)}
-                    className={cn(
-                      "flex w-full items-center justify-between gap-2 rounded-06 px-3 py-2 text-left transition-colors",
-                      selected
-                        ? "bg-action-link-05 text-text-light-05"
-                        : "bg-background-neutral-00 text-text-02 hover:bg-background-neutral-02"
-                    )}
-                  >
-                    <span className="min-w-0">
-                      <Text
-                        secondaryBody
-                        as="span"
-                        className={cn(
-                          "block truncate",
-                          selected ? "text-text-light-05" : "text-text-02"
-                        )}
-                      >
-                        {roleLabel(cr.name, t)}
-                      </Text>
-                      <Text
-                        secondaryBody
-                        as="span"
-                        className={cn(
-                          "block truncate text-xs",
-                          selected ? "text-text-light-03" : "text-text-04"
-                        )}
-                      >
-                        {t("assignedRolesCount", { count: cr.role_ids?.length ?? 0 })}
-                      </Text>
-                    </span>
-                    {selected && <SvgCheck size={14} />}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {selectedComp && (
-            <div className="min-w-0">
-              <div className="mb-4 rounded-08 border border-border-01 bg-background-neutral-01 p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <Text headingH3 text01 className="truncate">
-                        {roleLabel(selectedComp.name, t)}
-                      </Text>
-                      {isLocked && (
-                        <span className="rounded-04 bg-background-neutral-02 px-2 py-0.5 text-xs text-text-03">
-                          {t("builtInBadge")}
-                        </span>
-                      )}
-                    </div>
-                    {editingDescription ? (
-                      <div className="mt-3 flex items-center gap-2">
-                        <input
-                          className="min-w-0 flex-1 rounded-04 border-01 bg-background-neutral-00 px-2 py-1 text-sm text-text-01"
-                          value={descriptionDraft}
-                          onChange={(e) => setDescriptionDraft(e.target.value)}
-                          autoFocus
-                        />
-                        <button
-                          type="button"
-                          className="text-sm font-medium text-action-link-05 hover:underline"
-                          onClick={async () => {
-                            try {
-                              await patchRole(
-                                `/api/user-service/roles/${rolePath(
-                                  selectedComposite
-                                )}`,
-                                { arg: { description: descriptionDraft } }
-                              );
-                              mutateComp();
-                              toast.success(t("updatedToast"));
-                            } catch (err: any) {
-                              toast.error(err.message);
-                            }
-                            setEditingDescription(false);
-                          }}
-                        >
-                          {t("saveButton")}
-                        </button>
-                        <button
-                          type="button"
-                          className="text-sm text-text-03 hover:underline"
-                          onClick={() => setEditingDescription(false)}
-                        >
-                          {t("cancelButton")}
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="mt-2 flex items-center gap-2">
-                        <Text secondaryBody text-04 className="truncate italic">
-                          {selectedComp.description || t("noDescription")}
-                        </Text>
-                        {canMutate && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setDescriptionDraft(
-                                selectedComp.description ?? ""
-                              );
-                              setEditingDescription(true);
-                            }}
-                            className="shrink-0 text-text-03 hover:text-text-01"
-                            aria-label={t("editCompositeRoleDescriptionAriaLabel")}
-                          >
-                            <SvgEdit size={14} />
-                          </button>
-                        )}
-                      </div>
-                    )}
-                    <Text secondaryBody text-04 className="mt-2 block">
-                      {selectedRoleIds.size > 0
-                        ? t("serviceRolesAssignedCount", {
-                            count: selectedRoleIds.size,
-                          })
-                        : t("noServiceRolesAssigned")}
-                    </Text>
-                  </div>
-                  {canMutate && (
-                    <Button
-                      leftIcon={SvgTrash}
-                      secondary
-                      className="shrink-0 text-danger-03"
-                      onClick={() => setDeleteConfirmRole(selectedComposite)}
-                    >
-                      {t("deleteButton")}
-                    </Button>
-                  )}
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                {Object.entries(groupedRoles).map(([service, roles]) => (
-                  <Card key={service} className="rounded-08">
-                    <CardHeader className="p-4">
-                      <div className="flex items-center justify-between gap-3">
-                        <CardTitle className="text-sm capitalize">
-                          {service}
-                        </CardTitle>
-                        <span className="rounded-04 bg-background-neutral-02 px-2 py-0.5 text-xs text-text-03">
-                          {
-                            roles.filter((role) =>
-                              selectedRoleIds.has(role.name)
-                            ).length
-                          }
-                          /{roles.length}
-                        </span>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="p-4 pt-0">
-                      <div className="grid grid-cols-1 gap-1 sm:grid-cols-2 lg:grid-cols-3">
-                        {roles.map((role) => (
-                          <label
-                            key={role.name}
-                            className={cn(
-                              "flex items-center gap-2 rounded-06 px-3 py-2",
-                              canMutate
-                                ? "cursor-pointer hover:bg-background-neutral-02"
-                                : ""
-                            )}
-                          >
-                            {canMutate && (
-                              <Checkbox
-                                checked={selectedRoleIds.has(role.name)}
-                                disabled={isSavingRoleIds}
-                                onCheckedChange={() =>
-                                  handleToggleRole(role.name)
-                                }
-                              />
-                            )}
-                            <span className="min-w-0">
-                              <Text
-                                secondaryBody
-                                text-02
-                                className="block truncate"
-                              >
-                                {role.name}
-                              </Text>
-                              <Text
-                                secondaryBody
-                                text-04
-                                className="block text-xs"
-                              >
-                                {t("permissionsCount", {
-                                  count: role.permissions.length,
-                                })}
-                              </Text>
-                            </span>
-                          </label>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      <Modal
-        open={!!deleteConfirmRole}
-        onOpenChange={() => setDeleteConfirmRole(null)}
-      >
-        <Modal.Content>
-          <Modal.Header
-            title={t("deleteCompositeRoleTitle")}
-            onClose={() => setDeleteConfirmRole(null)}
-          />
-          <Modal.Body>
-            <Text secondaryBody text-02 as="span">
-              {t("confirmDeletePrefix")}{" "}
-              <span className="font-medium text-text-01">
-                {deleteConfirmRole}
-              </span>
-              {t("confirmDeleteCompositeSuffix")}
-            </Text>
-          </Modal.Body>
-          <Modal.Footer>
-            <Button secondary onClick={() => setDeleteConfirmRole(null)}>
-              {t("cancelButton")}
-            </Button>
-            <Button
-              danger
-              onClick={async () => {
-                if (!deleteConfirmRole) return;
-                setIsDeleting(true);
-                try {
-                  await deleteRole(
-                    `/api/user-service/roles/${rolePath(deleteConfirmRole)}`
-                  );
-                  mutateComp();
-                  setDeleteConfirmRole(null);
-                  toast.success(t("deletedToast"));
-                } catch (err: any) {
-                  toast.error(err.message);
-                } finally {
-                  setIsDeleting(false);
-                }
-              }}
-              disabled={isDeleting}
-            >
-              {isDeleting ? t("deletingButton") : t("deleteCompositeRoleTitle")}
-            </Button>
-          </Modal.Footer>
-        </Modal.Content>
-      </Modal>
-
-      <CreateCompositeRoleModal
-        open={createModalOpen}
-        onClose={() => setCreateModalOpen(false)}
-        onCreated={(name) => {
-          void mutateComp().then(() => setSelectedComposite(name));
-        }}
-      />
     </div>
   );
 }
@@ -1466,20 +1199,35 @@ export default function Page() {
       <SettingsLayouts.Body>
         <AdminOverviewPanel
           icon={route.icon}
-          title={t("admin.rolesPage.workspaceTitle")}
-          description={t("admin.rolesPage.workspaceDescription")}
+          title={t("admin.roles.workspaceTitle", {
+            defaultValue: "Access policy workspace",
+          })}
+          description={t("admin.roles.workspaceDescription", {
+            defaultValue:
+              "Manage the roles users hold, grant permissions grouped by capability, and sync roles to identity infrastructure.",
+          })}
           metrics={[
             {
-              label: t("admin.rolesPage.roleLayerLabel"),
-              value: t("admin.rolesPage.roles"),
+              label: t("admin.roles.featureLayerLabel", {
+                defaultValue: "Permission groups",
+              }),
+              value: t("admin.roles.features", {
+                defaultValue: "Features",
+              }),
             },
             {
-              label: t("admin.rolesPage.compositeLayerLabel"),
-              value: t("admin.rolesPage.compositeRoles"),
+              label: t("admin.roles.roleProfilesLabel", {
+                defaultValue: "Role profiles",
+              }),
+              value: t("admin.roles.roles", { defaultValue: "Roles" }),
             },
             {
-              label: t("admin.rolesPage.permissionSourceLabel"),
-              value: t("admin.rolesPage.services"),
+              label: t("admin.roles.permissionCatalogLabel", {
+                defaultValue: "Permission catalog",
+              }),
+              value: t("admin.roles.permissions", {
+                defaultValue: "Permissions",
+              }),
             },
           ]}
           actions={[
@@ -1496,21 +1244,7 @@ export default function Page() {
             },
           ]}
         />
-        <SimpleTabs
-          tabs={{
-            roles: {
-              name: t("admin.rolesPage.rolesTabLabel"),
-              content: <RolesTab />,
-              icon: SvgServer,
-            },
-            compositeRoles: {
-              name: t("admin.rolesPage.compositeRolesTabLabel"),
-              content: <CompositeRolesTab />,
-              icon: SvgShield,
-            },
-          }}
-          defaultValue="roles"
-        />
+        <RolesManager />
       </SettingsLayouts.Body>
     </SettingsLayouts.Root>
   );
