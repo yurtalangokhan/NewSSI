@@ -19,7 +19,9 @@ from core.db.repositories.thread_repo import ThreadRepository
 
 
 class _Result:
-    def __init__(self, row: ThreadModel | None = None, rows: list[ThreadModel] | None = None) -> None:
+    def __init__(
+        self, row: ThreadModel | None = None, rows: list[ThreadModel] | None = None
+    ) -> None:
         self._row = row
         self._rows = rows or []
 
@@ -153,7 +155,9 @@ async def test_add_thread_preserves_omitted_activity_timestamps_on_conflict() ->
 @pytest.mark.asyncio
 async def test_activity_updates_do_not_overwrite_each_other_when_called_concurrently() -> None:
     thread_id = uuid4()
-    session = _Session([_Result(row=_thread(thread_id=thread_id)), _Result(row=_thread(thread_id=thread_id))])
+    session = _Session(
+        [_Result(row=_thread(thread_id=thread_id)), _Result(row=_thread(thread_id=thread_id))]
+    )
     repository = _repository_with_session(session)
 
     await asyncio.gather(
@@ -185,7 +189,10 @@ async def test_activity_list_uses_keyset_order_without_changing_generic_list_ord
     )
 
     sql = _compiled_sql(session.execute.await_args.args[0])
-    assert "ORDER BY coalesce(thread.last_message_at, thread.created_at) DESC, thread.thread_id DESC" in sql
+    assert (
+        "ORDER BY coalesce(thread.last_message_at, thread.created_at) DESC, thread.thread_id DESC"
+        in sql
+    )
     assert "(coalesce(thread.last_message_at, thread.created_at), thread.thread_id) <" in sql
     assert "thread.metadata @> CAST" in sql
     assert session.execute.await_args.args[0]._limit_clause.value == 25
@@ -200,7 +207,10 @@ async def test_activity_list_uses_keyset_order_without_changing_generic_list_ord
 @pytest.mark.asyncio
 async def test_activity_list_next_page_retains_deterministic_order() -> None:
     base = datetime(2026, 8, 7, 12, tzinfo=UTC)
-    first_page = [_thread(last_message_at=base), _thread(last_message_at=base - timedelta(minutes=1))]
+    first_page = [
+        _thread(last_message_at=base),
+        _thread(last_message_at=base - timedelta(minutes=1)),
+    ]
     second_page = [
         _thread(last_message_at=base - timedelta(minutes=2)),
         _thread(last_message_at=base - timedelta(minutes=3)),
@@ -222,7 +232,9 @@ async def test_activity_list_next_page_retains_deterministic_order() -> None:
     assert "(coalesce(thread.last_message_at, thread.created_at), thread.thread_id) <" in second_sql
 
 
-def test_activity_migration_adds_and_removes_timestamp_columns_and_index(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_activity_migration_adds_and_removes_timestamp_columns_and_index(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     migration_path = (
         Path(__file__).parents[2]
         / "src/core/db/migrations/versions/0027_add_thread_activity_timestamps.py"

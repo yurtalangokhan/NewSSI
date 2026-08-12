@@ -35,9 +35,7 @@ def permission_service(mock_http_client):
 class TestPermissionService:
     """Test suite for PermissionService."""
 
-    async def test_check_agent_access_allowed(
-        self, permission_service, mock_http_client
-    ):
+    async def test_check_agent_access_allowed(self, permission_service, mock_http_client):
         """Test successful permission check."""
         user_id = str(uuid.uuid4())
         agent_id = "123"
@@ -66,9 +64,7 @@ class TestPermissionService:
         assert call_args[1]["json"]["resource_type"] == "agent"
         assert call_args[1]["json"]["resource_id"] == agent_id
 
-    async def test_check_agent_access_denied(
-        self, permission_service, mock_http_client
-    ):
+    async def test_check_agent_access_denied(self, permission_service, mock_http_client):
         """Test denied permission check."""
         user_id = str(uuid.uuid4())
         agent_id = "456"
@@ -108,9 +104,7 @@ class TestPermissionService:
                 "source": "legacy",
             }
 
-            result = await permission_service.check_agent_access(
-                user_id=user_id, agent_id=agent_id
-            )
+            result = await permission_service.check_agent_access(user_id=user_id, agent_id=agent_id)
 
             assert result["allowed"] is True
             assert result["source"] == "legacy"
@@ -126,17 +120,13 @@ class TestPermissionService:
         # Simulate unexpected exception
         mock_http_client.post.side_effect = Exception("Unexpected error")
 
-        result = await permission_service.check_agent_access(
-            user_id=user_id, agent_id=agent_id
-        )
+        result = await permission_service.check_agent_access(user_id=user_id, agent_id=agent_id)
 
         # Fail-safe: allow access
         assert result["allowed"] is True
         assert result["source"] == "fallback"
 
-    async def test_get_user_accessible_agents(
-        self, permission_service, mock_http_client
-    ):
+    async def test_get_user_accessible_agents(self, permission_service, mock_http_client):
         """Test retrieving accessible agent list."""
         user_id = str(uuid.uuid4())
 
@@ -182,9 +172,7 @@ class TestPermissionService:
         user_id = str(uuid.uuid4())
         agent_ids = ["agent-1", "agent-2", "agent-3"]
 
-        with patch.object(
-            permission_service, "check_agent_access", new=AsyncMock()
-        ) as mock_check:
+        with patch.object(permission_service, "check_agent_access", new=AsyncMock()) as mock_check:
             mock_check.side_effect = [
                 {"allowed": True},
                 {"allowed": False},
@@ -198,9 +186,7 @@ class TestPermissionService:
             assert result["agent-3"] is True
             assert mock_check.call_count == 3
 
-    async def test_internal_service_token_header(
-        self, permission_service, mock_http_client
-    ):
+    async def test_internal_service_token_header(self, permission_service, mock_http_client):
         """Test that internal service token is included when configured."""
         permission_service.internal_token = "test-token-123"
 
@@ -250,9 +236,7 @@ class TestPermissionService:
             ]
         )
 
-        with patch(
-            "service.permission_service.AgentGroupRepository", return_value=mock_repo
-        ):
+        with patch("service.permission_service.AgentGroupRepository", return_value=mock_repo):
             result = await permission_service._check_legacy_access(user_id, agent_id)
 
             assert result["allowed"] is True
@@ -276,9 +260,7 @@ class TestPermissionService:
             ]
         )
 
-        with patch(
-            "service.permission_service.AgentGroupRepository", return_value=mock_repo
-        ):
+        with patch("service.permission_service.AgentGroupRepository", return_value=mock_repo):
             result = await permission_service._check_legacy_access(user_id, agent_id)
 
             assert result["allowed"] is False

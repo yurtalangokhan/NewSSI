@@ -86,7 +86,9 @@ async def test_download_request_does_not_convert_xlsx_to_csv():
 
     response = await get_chat_file(record.file_id, download=True)
 
-    assert response.media_type == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    assert (
+        response.media_type == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
     assert response.body == xlsx_bytes
     assert 'filename="satis.xlsx"' in response.headers["Content-Disposition"]
 
@@ -106,9 +108,7 @@ async def test_missing_file_404_is_not_cacheable(monkeypatch):
         async def get_by_file_id(self, file_id):
             return None
 
-    monkeypatch.setattr(
-        "core.db.repositories.document_repo.DocumentRepository", _EmptyRepo
-    )
+    monkeypatch.setattr("core.db.repositories.document_repo.DocumentRepository", _EmptyRepo)
 
     with pytest.raises(HTTPException) as exc_info:
         await get_chat_file("does-not-exist")
@@ -131,9 +131,7 @@ async def test_minio_failure_404_is_not_cacheable(monkeypatch):
     def _boom(object_key):
         raise ConnectionError("minio unreachable")
 
-    monkeypatch.setattr(
-        "core.db.repositories.document_repo.DocumentRepository", _RepoWithDoc
-    )
+    monkeypatch.setattr("core.db.repositories.document_repo.DocumentRepository", _RepoWithDoc)
     monkeypatch.setattr("service.MinioService.download_file", _boom)
 
     with pytest.raises(HTTPException) as exc_info:

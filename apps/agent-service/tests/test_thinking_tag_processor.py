@@ -28,9 +28,7 @@ def test_plain_text_streams_through_untouched():
 
 
 def test_thinking_block_becomes_reasoning():
-    events = _feed_all(
-        ThinkingTagProcessor(), ["<think>", "düşünüyorum", "</think>", "cevap"]
-    )
+    events = _feed_all(ThinkingTagProcessor(), ["<think>", "düşünüyorum", "</think>", "cevap"])
 
     assert _text_of(events, "reasoning_delta", "reasoning") == "düşünüyorum"
     assert _text_of(events, "token", "content") == "cevap"
@@ -54,7 +52,6 @@ def test_mid_word_tool_call_is_rejoined():
 
     assert _text_of(events, "token", "content") == "bir DOCX dosyası oluşturuyorum."
     assert _text_of(events, "tool_call_text", "content") == '{"name": "create_document"}'
-
 
 
 def test_tool_call_markup_split_across_chunks_is_still_caught():
@@ -93,8 +90,6 @@ def test_unterminated_tool_call_markup_is_not_flushed_as_answer_text():
 
 
 def test_reasoning_start_is_emitted_once():
-    events = _feed_all(
-        ThinkingTagProcessor(), ["<think>a</think>b<think>c</think>d"]
-    )
+    events = _feed_all(ThinkingTagProcessor(), ["<think>a</think>b<think>c</think>d"])
 
     assert [e["type"] for e in events].count("reasoning_start") == 1

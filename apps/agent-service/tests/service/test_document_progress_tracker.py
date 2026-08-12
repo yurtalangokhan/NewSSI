@@ -30,9 +30,7 @@ def _args_chunk(args: str, index: int = 0) -> _Chunk:
     return _Chunk([{"name": None, "args": args, "id": None, "index": index}])
 
 
-def _start_chunk(
-    name: str = "create_document", index: int = 0, call_id: str = "call-1"
-) -> _Chunk:
+def _start_chunk(name: str = "create_document", index: int = 0, call_id: str = "call-1") -> _Chunk:
     return _Chunk([{"name": name, "args": "", "id": call_id, "index": index}])
 
 
@@ -104,7 +102,12 @@ def test_completed_tool_call_switches_phase_to_rendering():
     tracker.on_chunk(_start_chunk())
 
     packets = tracker.on_tool_calls(
-        [{"name": "create_document", "args": {"filename": "rapor.pdf", "format": "pdf", "content": "gövde"}}]
+        [
+            {
+                "name": "create_document",
+                "args": {"filename": "rapor.pdf", "format": "pdf", "content": "gövde"},
+            }
+        ]
     )
 
     assert _types(packets) == ["document_generation_progress"]
@@ -152,9 +155,7 @@ def test_tool_error_closes_the_generation_with_the_error_text():
     tracker = DocumentProgressTracker()
     tracker.on_chunk(_start_chunk())
 
-    packets = tracker.on_tool_result(
-        "create_document", "Error: unsupported document format 'rtf'."
-    )
+    packets = tracker.on_tool_result("create_document", "Error: unsupported document format 'rtf'.")
 
     assert packets[0]["status"] == STATUS_ERROR
     assert packets[0]["error"] == "Error: unsupported document format 'rtf'."
@@ -189,9 +190,7 @@ def test_a_second_document_call_starts_a_fresh_generation():
     tracker.on_chunk(_start_chunk())
     tracker.on_tool_result("create_document", "Error: boom")
 
-    packets = tracker.on_chunk(
-        _start_chunk(name="create_spreadsheet", index=1, call_id="call-2")
-    )
+    packets = tracker.on_chunk(_start_chunk(name="create_spreadsheet", index=1, call_id="call-2"))
 
     assert _types(packets) == ["document_generation_start"]
     assert packets[0]["tool_name"] == "create_spreadsheet"

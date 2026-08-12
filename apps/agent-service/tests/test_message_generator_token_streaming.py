@@ -37,9 +37,7 @@ def _tool_args_chunk(args: str, *, name: str | None = None) -> tuple:
             AIMessageChunk(
                 id="tool-call",
                 content="",
-                tool_call_chunks=[
-                    {"name": name, "args": args, "id": "call-1", "index": 0}
-                ],
+                tool_call_chunks=[{"name": name, "args": args, "id": "call-1", "index": 0}],
             ),
             {},
         ),
@@ -165,8 +163,7 @@ async def test_streamed_answer_is_not_repeated_as_a_full_message_packet(monkeypa
     packets = await _run(monkeypatch, _SingleNodeToolLoopAgent())
 
     assert not any(p["type"] == "message" for p in packets), (
-        "the answer already streamed as tokens; a full message packet would "
-        "render it a second time"
+        "the answer already streamed as tokens; a full message packet would render it a second time"
     )
 
 
@@ -227,9 +224,7 @@ async def test_a_tools_own_live_packets_replace_the_end_of_node_ones(monkeypatch
             },
         ),
     ]
-    packets = await _run(
-        monkeypatch, _SingleNodeToolLoopAgent(extra_events=live_events)
-    )
+    packets = await _run(monkeypatch, _SingleNodeToolLoopAgent(extra_events=live_events))
     types = [p["type"] for p in packets]
 
     # Announced once despite arriving both live and in the ToolMessage...

@@ -13,7 +13,6 @@ from controller.base import BaseController
 from controller.thread_controller import ThreadController, get_thread_controller
 from core.llm import get_model
 from service.CheckpointerService import get_checkpointer
-from service.DocumentProgressTracker import is_document_tool
 from service.GeneratedFilePacket import (
     build_generated_file_packet_obj,
     parse_generated_file_payload,
@@ -945,9 +944,8 @@ class ChatController(BaseController):
                         )
                         turn_counter += 1
 
-                    duration_sec = (
-                        _extra.get("processing_duration_seconds")
-                        or _extra.get("duration_seconds")
+                    duration_sec = _extra.get("processing_duration_seconds") or _extra.get(
+                        "duration_seconds"
                     )
                     if duration_sec is None and reasoning_text:
                         duration_sec = max(5, min(300, int(len(reasoning_text) / 25)))

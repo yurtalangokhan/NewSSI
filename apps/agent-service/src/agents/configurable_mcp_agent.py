@@ -33,6 +33,7 @@ TOOL_USAGE_GUARDRAIL = (
     "Do not say you will search or look up information without actually calling a tool first."
 )
 
+
 class ConfigurableMCPAgent(LazyLoadingAgent):
     """
     A configurable agent with MCP tool support.

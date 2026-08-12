@@ -162,9 +162,7 @@ class TestConfigurableMCPAgent:
         monkeypatch.setattr("agents.configurable_mcp_agent.get_model", lambda _model: object())
 
         fake_tool = SimpleNamespace(name="create_document")
-        monkeypatch.setattr(
-            "agents.configurable_mcp_agent.get_document_tools", lambda: [fake_tool]
-        )
+        monkeypatch.setattr("agents.configurable_mcp_agent.get_document_tools", lambda: [fake_tool])
 
         agent = ConfigurableMCPAgent()
         agent._create_agent_graph(

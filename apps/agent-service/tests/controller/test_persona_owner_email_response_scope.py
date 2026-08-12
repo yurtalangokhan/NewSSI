@@ -23,9 +23,7 @@ async def test_custom_persona_serialization_resolves_owner_without_preloaded_map
     monkeypatch.setattr("service.UserServiceClient.get_users_by_ids", fake_get_users_by_ids)
     monkeypatch.setattr(controller, "_get_agent_availability", fake_availability)
 
-    serialized = await controller._serialize_custom_persona(
-        persona_factory(10, owner_id)
-    )
+    serialized = await controller._serialize_custom_persona(persona_factory(10, owner_id))
 
     assert captured_ids == [[owner_id]]
     assert serialized["owner"] == {"id": owner_id, "email": "current@example.com"}
@@ -41,14 +39,14 @@ async def test_get_personas_caps_owner_batch_at_endpoint_limit(
 
     async def fake_list_all(*, include_builtin: bool):
         assert include_builtin is False
-        return [
-            persona_factory(index + 10, owner_id)
-            for index, owner_id in enumerate(owner_ids)
-        ]
+        return [persona_factory(index + 10, owner_id) for index, owner_id in enumerate(owner_ids)]
 
     async def fake_get_users_by_ids(user_ids: list[str]):
         captured_ids.append(user_ids)
-        return [{"id": owner_id, "email": f"owner-{index}@example.com"} for index, owner_id in enumerate(user_ids)]
+        return [
+            {"id": owner_id, "email": f"owner-{index}@example.com"}
+            for index, owner_id in enumerate(user_ids)
+        ]
 
     async def fake_availability(_agent: dict):
         return {"status": "available", "checks": []}

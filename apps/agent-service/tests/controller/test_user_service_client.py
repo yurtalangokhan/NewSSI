@@ -45,9 +45,7 @@ async def test_user_service_client_uses_api_v1_internal_permission_path(monkeypa
 
     monkeypatch.setattr(UserServiceClient, "_request", fake_request)
 
-    assert await UserServiceClient.get_user_permissions("user-1") == {
-        "permissions": ["chat:read"]
-    }
+    assert await UserServiceClient.get_user_permissions("user-1") == {"permissions": ["chat:read"]}
     assert captured["method"] == "GET"
     assert captured["path"] == "/api/v1/internal/users/user-1/permissions"
     assert captured["kwargs"]["include_internal_token"] is True

@@ -334,5 +334,7 @@ async def test_document_generation_is_closed_when_the_stream_fails(monkeypatch):
 async def test_document_tool_call_emits_a_tool_step(monkeypatch):
     packets = await _run(monkeypatch, _StreamingDocumentToolAgent())
 
-    assert any(p["type"] == "custom_tool_start" and p.get("tool_name") == "create_document" for p in packets)
-
+    assert any(
+        p["type"] == "custom_tool_start" and p.get("tool_name") == "create_document"
+        for p in packets
+    )

@@ -115,7 +115,9 @@ class DocumentProgressTracker:
 
             if is_document_tool(name):
                 call_id = chunk.get("id")
-                if (call_id and call_id in self._closed_call_ids) or (not call_id and name in self._closed_tools):
+                if (call_id and call_id in self._closed_call_ids) or (
+                    not call_id and name in self._closed_tools
+                ):
                     continue
                 if not self.active:
                     self._tool_name = name
@@ -205,7 +207,9 @@ class DocumentProgressTracker:
                 continue
 
             call_id = _field(tool_call, "id")
-            if (call_id and call_id in self._closed_call_ids) or (not call_id and name in self._closed_tools):
+            if (call_id and call_id in self._closed_call_ids) or (
+                not call_id and name in self._closed_tools
+            ):
                 continue  # replayed after the node returned; already reported
 
             if not self.active:

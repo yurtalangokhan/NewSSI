@@ -106,7 +106,9 @@ class OllamaService:
         yield 'data: {"status":"done"}\n\n'
 
     @staticmethod
-    def _extract_context_length(raw_model: dict[str, Any], show_payload: dict[str, Any]) -> int | None:
+    def _extract_context_length(
+        raw_model: dict[str, Any], show_payload: dict[str, Any]
+    ) -> int | None:
         model_info = show_payload.get("model_info")
         if isinstance(model_info, dict):
             for key, value in model_info.items():

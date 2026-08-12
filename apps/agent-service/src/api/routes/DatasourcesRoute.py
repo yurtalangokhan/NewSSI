@@ -238,7 +238,9 @@ async def create_datasource(
         )
         source_id = source["sourceId"]
     except Exception as e:
-        raise HTTPException(status_code=400, detail=t("datasource.create_source_failed", error=str(e)))
+        raise HTTPException(
+            status_code=400, detail=t("datasource.create_source_failed", error=str(e))
+        )
 
     # Get or create custom embedding destination
     collection_uuid = uuid4()
@@ -252,7 +254,9 @@ async def create_datasource(
             await client.delete_source(source_id)
         except Exception:
             pass
-        raise HTTPException(status_code=500, detail=t("datasource.setup_destination_failed", error=str(e)))
+        raise HTTPException(
+            status_code=500, detail=t("datasource.setup_destination_failed", error=str(e))
+        )
 
     # Discover schema and create connection
     try:
@@ -285,7 +289,9 @@ async def create_datasource(
             await client.delete_source(source_id)
         except Exception:
             pass
-        raise HTTPException(status_code=500, detail=t("datasource.create_connection_failed", error=str(e)))
+        raise HTTPException(
+            status_code=500, detail=t("datasource.create_connection_failed", error=str(e))
+        )
 
     # Store in PG
     now = datetime.now(UTC).isoformat()

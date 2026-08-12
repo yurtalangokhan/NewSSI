@@ -38,7 +38,7 @@ from models.chat import (
 from service.AgentHelpers import _handle_input
 from service.AssistantAgentService import AssistantAgentService
 from service.AuthService import extract_user_id_from_token
-from service.DocumentProgressTracker import DocumentProgressTracker, is_document_tool
+from service.DocumentProgressTracker import DocumentProgressTracker
 from service.GeneratedFilePacket import (
     build_generated_file_packet_obj,
     parse_generated_file_payload,
@@ -106,9 +106,7 @@ class ThinkingTagProcessor:
     # A leading "<" is sometimes consumed by the provider's own parser, leaving
     # a bare "/tool_call>" in the text.
     TOOL_CLOSE_TAGS = ("</tool_call>", "</tool_use>", "/tool_call>", "/tool_use>")
-    MAX_TAG_LEN = max(
-        len(t) for t in OPEN_TAGS + CLOSE_TAGS + TOOL_OPEN_TAGS + TOOL_CLOSE_TAGS
-    )
+    MAX_TAG_LEN = max(len(t) for t in OPEN_TAGS + CLOSE_TAGS + TOOL_OPEN_TAGS + TOOL_CLOSE_TAGS)
 
     def __init__(self):
         self.in_thinking = False
@@ -160,7 +158,9 @@ class ThinkingTagProcessor:
         if pos is not None:
             if pos > 0:
                 content = self.buffer[:pos]
-                if kind == "tool" and not content.endswith((" ", "\n", "\t", ".", "!", "?", ":", ";", ",")):
+                if kind == "tool" and not content.endswith(
+                    (" ", "\n", "\t", ".", "!", "?", ":", ";", ",")
+                ):
                     last_space = max(content.rfind(" "), content.rfind("\n"), content.rfind("\t"))
                     if last_space != -1:
                         events.append({"type": "token", "content": content[: last_space + 1]})
@@ -547,8 +547,14 @@ async def message_generator(
                     for packet in document_progress.on_tool_calls(chat_message.tool_calls):
                         yield f"data: {json.dumps(packet)}\n\n"
                     for tc in chat_message.tool_calls:
-                        tc_name = tc.get("name", "tool") if isinstance(tc, dict) else getattr(tc, "name", "tool")
-                        tc_args = tc.get("args") if isinstance(tc, dict) else getattr(tc, "args", None)
+                        tc_name = (
+                            tc.get("name", "tool")
+                            if isinstance(tc, dict)
+                            else getattr(tc, "name", "tool")
+                        )
+                        tc_args = (
+                            tc.get("args") if isinstance(tc, dict) else getattr(tc, "args", None)
+                        )
                         if tc_name not in emitted_tool_call_names:
                             emitted_tool_call_names.add(tc_name)
                             yield f"data: {json.dumps({'type': 'custom_tool_start', 'tool_name': tc_name, 'args': tc_args})}\n\n"
@@ -569,9 +575,7 @@ async def message_generator(
                             emitted_file_ids.add(file_id)
                             yield f"data: {json.dumps(build_generated_file_packet_obj(generated_file))}\n\n"
 
-                    for packet in document_progress.on_tool_result(
-                        tool_name, chat_message.content
-                    ):
+                    for packet in document_progress.on_tool_result(tool_name, chat_message.content):
                         yield f"data: {json.dumps(packet)}\n\n"
                     continue
 
@@ -580,7 +584,9 @@ async def message_generator(
                 # live timeline matches refresh reconstruction behavior.
                 if chat_message.type == "ai":
                     elapsed_duration = max(1, int(time.time() - start_time))
-                    if hasattr(message, "additional_kwargs") and isinstance(getattr(message, "additional_kwargs", None), dict):
+                    if hasattr(message, "additional_kwargs") and isinstance(
+                        getattr(message, "additional_kwargs", None), dict
+                    ):
                         message.additional_kwargs["processing_duration_seconds"] = elapsed_duration
 
                 if chat_message.type == "ai" and not saw_reasoning_for_current_answer:
@@ -658,8 +664,16 @@ async def message_generator(
                 if getattr(msg, "tool_call_chunks", None):
                     current_call_made_tool_calls = True
                     for tc_chunk in msg.tool_call_chunks:
-                        tc_name = tc_chunk.get("name") if isinstance(tc_chunk, dict) else getattr(tc_chunk, "name", None)
-                        tc_args = tc_chunk.get("args") if isinstance(tc_chunk, dict) else getattr(tc_chunk, "args", None)
+                        tc_name = (
+                            tc_chunk.get("name")
+                            if isinstance(tc_chunk, dict)
+                            else getattr(tc_chunk, "name", None)
+                        )
+                        tc_args = (
+                            tc_chunk.get("args")
+                            if isinstance(tc_chunk, dict)
+                            else getattr(tc_chunk, "args", None)
+                        )
                         if tc_name and tc_name not in emitted_tool_call_names:
                             emitted_tool_call_names.add(tc_name)
                             yield f"data: {json.dumps({'type': 'custom_tool_start', 'tool_name': tc_name, 'args': tc_args})}\n\n"
@@ -680,7 +694,9 @@ async def message_generator(
                             # Anthropic extended thinking block
                             thinking_text = block.get("thinking", "")
                             if thinking_text:
-                                for doc_packet in document_progress.on_tool_call_text(thinking_text):
+                                for doc_packet in document_progress.on_tool_call_text(
+                                    thinking_text
+                                ):
                                     yield f"data: {json.dumps(doc_packet)}\n\n"
                                 if not saw_reasoning_for_current_answer:
                                     yield f"data: {json.dumps({'type': 'reasoning_start'})}\n\n"
