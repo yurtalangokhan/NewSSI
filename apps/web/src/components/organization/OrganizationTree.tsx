@@ -66,6 +66,7 @@ interface OrganizationTreeProps {
   membersByOrganizationId?: OrganizationMembersByUnit;
   onShowMembersChange?: (show: boolean) => void;
   membersLoading?: boolean;
+  onExpandOrg?: (orgId: string) => void;
   className?: string;
 }
 
@@ -88,6 +89,7 @@ interface OrganizationNodeRendererProps
   ) => void;
   membersByOrganizationId: OrganizationMembersByUnit;
   showMembers: boolean;
+  onExpandOrg?: (orgId: string) => void;
 }
 
 interface InlineOrganizationCreateProps {
@@ -173,6 +175,7 @@ function Node({
   onRequestMove,
   membersByOrganizationId,
   showMembers,
+  onExpandOrg,
 }: OrganizationNodeRendererProps) {
   const { t } = useTranslation();
   const [isEditing, setIsEditing] = useState(false);
@@ -212,6 +215,25 @@ function Node({
     [handleSave, node.data.name]
   );
 
+  const handleToggleNode = useCallback(() => {
+    const isExpandable =
+      node.isInternal ||
+      (node.data.children !== undefined && node.data.children.length > 0) ||
+      node.data.has_children === true;
+    if (isExpandable || node.isInternal) {
+      const willOpen = !node.isOpen;
+      node.toggle();
+      if (willOpen && onExpandOrg) {
+        onExpandOrg(node.data.id);
+      }
+    }
+  }, [node, onExpandOrg]);
+
+  const isExpandable =
+    node.isInternal ||
+    (node.data.children !== undefined && node.data.children.length > 0) ||
+    node.data.has_children === true;
+
   return (
     <div style={style} ref={dragHandle}>
       <div
@@ -231,10 +253,10 @@ function Node({
           node.isSelected &&
             "bg-background-neutral-02 border border-border-primary"
         )}
-        onClick={() => node.isInternal && node.toggle()}
+        onClick={handleToggleNode}
       >
         {/* Expand/Collapse Icon */}
-        {node.isInternal ? (
+        {isExpandable ? (
           <div
             className={cn("flex h-4 w-4 items-center justify-center")}
             aria-hidden="true"
@@ -436,6 +458,7 @@ export function OrganizationTree({
   membersByOrganizationId = {},
   onShowMembersChange,
   membersLoading = false,
+  onExpandOrg,
   className,
 }: OrganizationTreeProps) {
   const { t, i18n } = useTranslation();
@@ -721,6 +744,7 @@ export function OrganizationTree({
                 }
                 showMembers={showMembers}
                 membersByOrganizationId={membersByOrganizationId}
+                onExpandOrg={onExpandOrg}
               />
             )}
           </Tree>

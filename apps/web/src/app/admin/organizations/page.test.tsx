@@ -27,7 +27,7 @@ jest.mock("swr", () => ({
   __esModule: true,
   default: jest.fn((key: string | null) => {
     swrKeys.push(key);
-    if (key === "/api/user-service/organizations/tree") {
+    if (key?.startsWith("/api/user-service/organizations/tree")) {
       return {
         data: {
           roots: [
@@ -108,6 +108,7 @@ jest.mock("@/components/organization/OrganizationTree", () => ({
     showMembers,
     membersByOrganizationId,
     onShowMembersChange,
+    onExpandOrg,
   }: any) => (
     <div data-testid="organization-tree" data-show-members={showMembers}>
       <span>{organizations.length} root</span>
@@ -119,6 +120,9 @@ jest.mock("@/components/organization/OrganizationTree", () => ({
       </button>
       <button onClick={() => onSelectOrg(organizations[0])}>
         Select Platform
+      </button>
+      <button onClick={() => onExpandOrg?.("org-1")}>
+        Expand org-1
       </button>
       <button onClick={onOpenDesigner}>Open organization designer</button>
     </div>
@@ -228,6 +232,30 @@ describe("OrganizationsPage", () => {
       ) {
         organizationName = "Platform Core";
       }
+      if (typeof request === "string" && request.endsWith("/users") && (!options || options.method === "GET")) {
+        return new Response(
+          JSON.stringify({
+            users: [
+              {
+                id: "membership-1",
+                user_id: "user-1",
+                organization_id: "org-1",
+                role_in_org: "member",
+                is_active: true,
+                user: { id: "user-1", email: "member@example.com" },
+              },
+            ],
+            count: 1,
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        );
+      }
+      if (typeof request === "string" && request.endsWith("/children")) {
+        return new Response(
+          JSON.stringify({ children: [], count: 0 }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        );
+      }
       return new Response(JSON.stringify({ role_in_org: "unit_manager" }), {
         status: 200,
         headers: { "Content-Type": "application/json" },
@@ -293,8 +321,6 @@ describe("OrganizationsPage", () => {
       "data-show-members",
       "true"
     );
-    expect(swrKeys).toContain("/api/user-service/organizations/members");
-    expect(screen.getByText("Tree members: 1")).toBeInTheDocument();
     expect(
       window.sessionStorage.getItem("admin-organizations-show-members")
     ).toBe("true");
@@ -461,7 +487,7 @@ describe("OrganizationsPage", () => {
     );
     await waitFor(() => expect(jest.mocked(mutate)).toHaveBeenCalledTimes(2));
     expect(jest.mocked(mutate).mock.calls).toEqual([
-      ["/api/user-service/organizations/tree"],
+      ["/api/user-service/organizations/tree?max_depth=1"],
       ["/api/user-service/organizations/layout"],
     ]);
   });
@@ -480,7 +506,7 @@ describe("OrganizationsPage", () => {
     await user.click(screen.getByRole("button", { name: "Move in designer" }));
     await waitFor(() => expect(jest.mocked(mutate)).toHaveBeenCalledTimes(2));
     expect(jest.mocked(mutate).mock.calls).toEqual([
-      ["/api/user-service/organizations/tree"],
+      ["/api/user-service/organizations/tree?max_depth=1"],
       ["/api/user-service/organizations/layout"],
     ]);
     expect(successToast).toHaveBeenCalledWith(
@@ -503,7 +529,7 @@ describe("OrganizationsPage", () => {
     );
     await waitFor(() => expect(jest.mocked(mutate)).toHaveBeenCalledTimes(2));
     expect(jest.mocked(mutate).mock.calls).toEqual([
-      ["/api/user-service/organizations/tree"],
+      ["/api/user-service/organizations/tree?max_depth=1"],
       ["/api/user-service/organizations/layout"],
     ]);
   });
@@ -523,7 +549,7 @@ describe("OrganizationsPage", () => {
     );
     await waitFor(() => expect(jest.mocked(mutate)).toHaveBeenCalledTimes(1));
     expect(jest.mocked(mutate).mock.calls).toEqual([
-      ["/api/user-service/organizations/tree"],
+      ["/api/user-service/organizations/tree?max_depth=1"],
     ]);
   });
 
@@ -591,5 +617,57 @@ describe("OrganizationsPage", () => {
       "/api/user-service/organizations/org-1/users/user-1",
       expect.objectContaining({ method: "DELETE" })
     );
+  });
+
+  it("lazy loads subunits and users when expanding a unit node", async () => {
+    const user = setupUser();
+    jest.spyOn(global, "fetch").mockImplementation(async (request) => {
+      if (request === "/api/user-service/organizations/org-1/children") {
+        return new Response(
+          JSON.stringify({
+            children: [
+              {
+                id: "child-1",
+                name: "Subunit 1",
+                path: "/platform/subunit-1",
+                parent_id: "org-1",
+              },
+            ],
+            count: 1,
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        );
+      }
+      if (request === "/api/user-service/organizations/org-1/users") {
+        return new Response(
+          JSON.stringify({
+            users: [
+              {
+                id: "membership-1",
+                user_id: "user-1",
+                organization_id: "org-1",
+                role_in_org: "member",
+              },
+            ],
+            count: 1,
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        );
+      }
+      return new Response(JSON.stringify({}), { status: 200 });
+    });
+
+    render(<OrganizationsPage />);
+    await user.click(screen.getByRole("button", { name: "Toggle tree users" }));
+    await user.click(screen.getByRole("button", { name: "Expand org-1" }));
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        "/api/user-service/organizations/org-1/children"
+      );
+      expect(global.fetch).toHaveBeenCalledWith(
+        "/api/user-service/organizations/org-1/users"
+      );
+    });
   });
 });

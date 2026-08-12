@@ -8,6 +8,7 @@ export interface OrganizationNode {
   children?: OrganizationNode[];
   user_count?: number;
   permission_count?: number;
+  has_children?: boolean;
 }
 
 export interface OrganizationMember {

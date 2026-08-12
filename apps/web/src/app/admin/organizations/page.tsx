@@ -23,7 +23,7 @@ import { cn } from "@/lib/utils";
 const DEFAULT_TREE_PANE_WIDTH = 480;
 const MIN_TREE_PANE_WIDTH = 320;
 const TREE_PANE_WIDTH_STORAGE_KEY = "admin-organizations-tree-pane-width";
-const ORGANIZATION_TREE_KEY = "/api/user-service/organizations/tree";
+const ORGANIZATION_TREE_KEY = "/api/user-service/organizations/tree?max_depth=1";
 const ORGANIZATION_LAYOUT_KEY = "/api/user-service/organizations/layout";
 const ORGANIZATION_MEMBERS_KEY = "/api/user-service/organizations/members";
 const SHOW_MEMBERS_STORAGE_KEY = "admin-organizations-show-members";
@@ -54,6 +54,30 @@ async function responseDetail(response: Response, fallback: string) {
     message?: string;
   } | null;
   return data?.detail || data?.message || fallback;
+}
+
+function mergeSubunits(
+  nodes: OrganizationNode[],
+  subunitsByParentId: Record<string, OrganizationNode[]>
+): OrganizationNode[] {
+  return nodes.map((node) => {
+    const loadedChildren = subunitsByParentId[node.id];
+    const existingChildren = node.children ?? [];
+    const existingIds = new Set(existingChildren.map((child) => child.id));
+    const additionalChildren = (loadedChildren ?? []).filter(
+      (child) => !existingIds.has(child.id)
+    );
+    const combinedChildren = [...existingChildren, ...additionalChildren];
+    const mergedChildren = mergeSubunits(combinedChildren, subunitsByParentId);
+    return {
+      ...node,
+      children: mergedChildren,
+      has_children:
+        (node.children && node.children.length > 0) ||
+        (loadedChildren && loadedChildren.length > 0) ||
+        node.has_children,
+    };
+  });
 }
 
 export default function OrganizationsPage() {
@@ -125,14 +149,22 @@ export default function OrganizationsPage() {
     [clampTreePaneWidth]
   );
 
+  const [subunitsByParentId, setSubunitsByParentId] = useState<
+    Record<string, OrganizationNode[]>
+  >({});
+  const [unitMembersMap, setUnitMembersMap] = useState<OrganizationMembersByUnit>({});
+
   const { data: treeData, isLoading } = useSWR<
     { roots: OrganizationNode[] } | OrganizationNode[]
   >(ORGANIZATION_TREE_KEY, fetchJson);
-  const organizations = treeData
-    ? "roots" in treeData
-      ? treeData.roots
-      : treeData
-    : [];
+  const rawOrganizations = useMemo(() => {
+    if (!treeData) return [];
+    return "roots" in treeData ? treeData.roots : treeData;
+  }, [treeData]);
+  const organizations = useMemo(
+    () => mergeSubunits(rawOrganizations, subunitsByParentId),
+    [rawOrganizations, subunitsByParentId]
+  );
   const selectedOrg = useMemo(
     () => findOrganization(organizations, selectedOrgId),
     [organizations, selectedOrgId]
@@ -152,8 +184,62 @@ export default function OrganizationsPage() {
   } = useSWR<{
     members_by_organization: OrganizationMembersByUnit;
     count: number;
-  }>(showMembers ? ORGANIZATION_MEMBERS_KEY : null, fetchJson);
-  const membersByOrganizationId = allMembersData?.members_by_organization ?? {};
+  }>(null, fetchJson);
+  const membersByOrganizationId = useMemo(() => {
+    const base = allMembersData?.members_by_organization ?? {};
+    const merged: OrganizationMembersByUnit = { ...base, ...unitMembersMap };
+    if (selectedOrg && members.length > 0 && !merged[selectedOrg.id]) {
+      merged[selectedOrg.id] = members;
+    }
+    return merged;
+  }, [allMembersData, unitMembersMap, selectedOrg, members]);
+
+  const handleExpandOrg = useCallback(
+    async (orgId: string) => {
+      const promises: Promise<void>[] = [];
+
+      if (!subunitsByParentId[orgId]) {
+        promises.push(
+          fetch(`/api/user-service/organizations/${orgId}/children`)
+            .then(async (res) => {
+              if (res.ok) {
+                const data = await res.json();
+                if (data?.children) {
+                  setSubunitsByParentId((prev) => ({
+                    ...prev,
+                    [orgId]: data.children,
+                  }));
+                }
+              }
+            })
+            .catch(() => {})
+        );
+      }
+
+      if (showMembers && !unitMembersMap[orgId]) {
+        promises.push(
+          fetch(`/api/user-service/organizations/${orgId}/users`)
+            .then(async (res) => {
+              if (res.ok) {
+                const data = await res.json();
+                if (data?.users) {
+                  setUnitMembersMap((prev) => ({
+                    ...prev,
+                    [orgId]: data.users,
+                  }));
+                }
+              }
+            })
+            .catch(() => {})
+        );
+      }
+
+      if (promises.length > 0) {
+        await Promise.all(promises);
+      }
+    },
+    [showMembers, subunitsByParentId, unitMembersMap]
+  );
   const capabilityKey = selectedOrg
     ? `/api/user-service/organizations/${selectedOrg.id}/management-capability`
     : null;
@@ -167,7 +253,12 @@ export default function OrganizationsPage() {
       SHOW_MEMBERS_STORAGE_KEY,
       String(showMembers)
     );
-  }, [showMembers]);
+    if (showMembers) {
+      rawOrganizations.forEach((org) => {
+        void handleExpandOrg(org.id);
+      });
+    }
+  }, [showMembers, rawOrganizations, handleExpandOrg]);
 
   useEffect(() => {
     if (allMembersError) {
@@ -404,6 +495,7 @@ export default function OrganizationsPage() {
           membersByOrganizationId={membersByOrganizationId}
           onShowMembersChange={setShowMembers}
           membersLoading={allMembersLoading}
+          onExpandOrg={handleExpandOrg}
         />
       </aside>
 
