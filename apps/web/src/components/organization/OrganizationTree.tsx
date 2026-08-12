@@ -21,15 +21,28 @@ import { SvgChevronLeft, SvgChevronRight } from "@opal/icons";
 import { useTranslation } from "react-i18next";
 import type {
   MoveOrganization,
+  OrganizationMembersByUnit,
   OrganizationNode,
 } from "@/components/organization/organizationTypes";
 import { OrganizationMoveConfirmationModal } from "@/components/organization/OrganizationMoveConfirmationModal";
+import {
+  organizationMemberDetail,
+  organizationMemberInitials,
+  organizationMemberName,
+} from "@/components/organization/organizationMembers";
 import {
   flattenOrganizations,
   getOrganizationMatches,
   organizationMatchesSearch,
 } from "@/components/organization/organizationSearch";
-import { SvgEdit, SvgFolderPlus, SvgMaximize2, SvgTrash, SvgX } from "@/icons";
+import {
+  SvgEdit,
+  SvgFolderPlus,
+  SvgMaximize2,
+  SvgTrash,
+  SvgUsers,
+  SvgX,
+} from "@/icons";
 import Button from "@/refresh-components/buttons/Button";
 import IconButton from "@/refresh-components/buttons/IconButton";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
@@ -49,6 +62,10 @@ interface OrganizationTreeProps {
   onSelectOrg: (org: OrganizationNode) => void;
   onOpenDesigner?: () => void;
   selectedOrgId?: string | null;
+  showMembers?: boolean;
+  membersByOrganizationId?: OrganizationMembersByUnit;
+  onShowMembersChange?: (show: boolean) => void;
+  membersLoading?: boolean;
   className?: string;
 }
 
@@ -69,6 +86,8 @@ interface OrganizationNodeRendererProps
     organization: OrganizationNode,
     parent: OrganizationNode
   ) => void;
+  membersByOrganizationId: OrganizationMembersByUnit;
+  showMembers: boolean;
 }
 
 interface InlineOrganizationCreateProps {
@@ -152,6 +171,8 @@ function Node({
   activeSearchMatchId,
   organizations,
   onRequestMove,
+  membersByOrganizationId,
+  showMembers,
 }: OrganizationNodeRendererProps) {
   const { t } = useTranslation();
   const [isEditing, setIsEditing] = useState(false);
@@ -170,6 +191,7 @@ function Node({
   const parentOptions = organizations.filter(
     (item) => item.id !== node.data.id && !descendants.has(item.id)
   );
+  const directMembers = membersByOrganizationId[node.data.id] ?? [];
 
   const handleSave = useCallback(() => {
     if (editName.trim() && editName !== node.data.name) {
@@ -338,6 +360,50 @@ function Node({
           )}
         </div>
       </div>
+      {showMembers && directMembers.length > 0 && (
+        <div
+          className={cn(
+            "ml-9 mr-2 max-h-20 overflow-y-auto border-l-2 border-border-02 pl-2 pt-1"
+          )}
+        >
+          {directMembers.map((member) => (
+            <div
+              key={member.id}
+              data-testid={`organization-member-${member.user_id}`}
+              className={cn(
+                "mb-1 flex min-w-0 items-center gap-2 rounded-08 bg-background-neutral-02 px-2 py-1"
+              )}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <span
+                aria-hidden="true"
+                className={cn(
+                  "flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-background-neutral-04 font-secondary-mono text-[10px] text-text-05"
+                )}
+              >
+                {organizationMemberInitials(member)}
+              </span>
+              <SvgUsers className={cn("h-3.5 w-3.5 shrink-0 stroke-text-03")} />
+              <div className={cn("min-w-0 flex-1")}>
+                <Text
+                  secondaryBody
+                  text04
+                  className={cn("block truncate text-xs")}
+                >
+                  {organizationMemberName(member)}
+                </Text>
+                <Text
+                  secondaryBody
+                  text02
+                  className={cn("block truncate text-[10px]")}
+                >
+                  {organizationMemberDetail(member)}
+                </Text>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
       {isCreatingChild && (
         <div
           className={cn(
@@ -366,6 +432,10 @@ export function OrganizationTree({
   onSelectOrg,
   onOpenDesigner,
   selectedOrgId,
+  showMembers = false,
+  membersByOrganizationId = {},
+  onShowMembersChange,
+  membersLoading = false,
   className,
 }: OrganizationTreeProps) {
   const { t, i18n } = useTranslation();
@@ -480,15 +550,34 @@ export function OrganizationTree({
           <Text className={cn("text-lg font-semibold text-text-01")}>
             {t("admin.organizations.tree.title")}
           </Text>
-          {onOpenDesigner && (
-            <IconButton
-              icon={SvgMaximize2}
-              tooltip={t("admin.organizations.tree.openDesigner")}
-              aria-label={t("admin.organizations.tree.openDesigner")}
-              tertiary
-              onClick={onOpenDesigner}
-            />
-          )}
+          <div className={cn("flex items-center gap-1")}>
+            {onShowMembersChange && (
+              <Button
+                aria-pressed={showMembers}
+                disabled={membersLoading}
+                secondary
+                size="md"
+                onClick={() => onShowMembersChange(!showMembers)}
+              >
+                {t(
+                  membersLoading
+                    ? "admin.organizations.tree.loadingMembers"
+                    : showMembers
+                      ? "admin.organizations.tree.hideMembers"
+                      : "admin.organizations.tree.showMembers"
+                )}
+              </Button>
+            )}
+            {onOpenDesigner && (
+              <IconButton
+                icon={SvgMaximize2}
+                tooltip={t("admin.organizations.tree.openDesigner")}
+                aria-label={t("admin.organizations.tree.openDesigner")}
+                tertiary
+                onClick={onOpenDesigner}
+              />
+            )}
+          </div>
         </div>
         <div className={cn("mt-3 flex items-center gap-2")}>
           <InputTypeIn
@@ -600,7 +689,12 @@ export function OrganizationTree({
             width="100%"
             height={treeHeight}
             indent={24}
-            rowHeight={40}
+            rowHeight={(node) =>
+              showMembers &&
+              (membersByOrganizationId[node.data.id]?.length ?? 0) > 0
+                ? 136
+                : 40
+            }
             overscanCount={10}
             selection={selectedOrgId ?? undefined}
             onSelect={(nodes) => {
@@ -625,6 +719,8 @@ export function OrganizationTree({
                 onRequestMove={(organization, parent) =>
                   setPendingMove({ organization, parent })
                 }
+                showMembers={showMembers}
+                membersByOrganizationId={membersByOrganizationId}
               />
             )}
           </Tree>

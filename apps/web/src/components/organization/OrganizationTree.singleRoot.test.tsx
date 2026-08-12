@@ -12,6 +12,7 @@ jest.mock("react-arborist", () => ({
     initialOpenState,
     selection,
     searchTerm,
+    rowHeight,
   }: any) => {
     const flattened = (nodes: any[]): any[] =>
       nodes.flatMap((node) => [node, ...flattened(node.children ?? [])]);
@@ -21,6 +22,13 @@ jest.mock("react-arborist", () => ({
       <div
         data-initial-open-state={JSON.stringify(initialOpenState)}
         data-search-term={searchTerm}
+        data-row-heights={JSON.stringify(
+          visibleNodes.map((visibleNode) =>
+            typeof rowHeight === "function"
+              ? rowHeight({ data: visibleNode })
+              : rowHeight
+          )
+        )}
       >
         <button
           data-testid="organization-tree"
@@ -110,6 +118,94 @@ describe("OrganizationTree single-root action", () => {
     );
 
     expect(screen.getByText("Enterprise")).toHaveClass("text-text-05");
+  });
+
+  it("shows inert direct-member rows in a distinct style", async () => {
+    const user = setupUser();
+    render(
+      <OrganizationTree
+        organizations={[
+          {
+            id: "root",
+            name: "Enterprise",
+            path: "/enterprise",
+            parent_id: null,
+            children: [],
+          },
+        ]}
+        showMembers
+        membersByOrganizationId={{
+          root: [
+            {
+              id: "membership-1",
+              user_id: "user-1",
+              organization_id: "root",
+              role_in_org: "member",
+              user: {
+                id: "user-1",
+                first_name: "Ada",
+                last_name: "Lovelace",
+                email: "ada@example.com",
+              },
+            },
+          ],
+        }}
+        onShowMembersChange={jest.fn()}
+        {...handlers}
+      />
+    );
+
+    expect(screen.getByText("Ada Lovelace")).toBeInTheDocument();
+    expect(screen.getByText("ada@example.com")).toBeInTheDocument();
+    expect(screen.getByTestId("organization-member-user-1")).toHaveClass(
+      "bg-background-neutral-02"
+    );
+    expect(
+      screen.queryByRole("button", { name: "Rename Ada Lovelace" })
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Hide users" }));
+  });
+
+  it("reserves extra row height only for units with visible members", () => {
+    render(
+      <OrganizationTree
+        organizations={[
+          {
+            id: "with-members",
+            name: "With members",
+            path: "/with-members",
+            parent_id: null,
+            children: [
+              {
+                id: "without-members",
+                name: "Without members",
+                path: "/with-members/without-members",
+                parent_id: "with-members",
+                children: [],
+              },
+            ],
+          },
+        ]}
+        showMembers
+        membersByOrganizationId={{
+          "with-members": [
+            {
+              id: "membership-1",
+              user_id: "user-1",
+              organization_id: "with-members",
+              role_in_org: "member",
+              user: { id: "user-1", email: "member@example.com" },
+            },
+          ],
+        }}
+        {...handlers}
+      />
+    );
+
+    expect(
+      screen.getByTestId("organization-tree").parentElement
+    ).toHaveAttribute("data-row-heights", "[136,40]");
   });
 
   it("shows search matches through the existing tree row renderer", async () => {

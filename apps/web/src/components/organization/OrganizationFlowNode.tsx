@@ -9,6 +9,11 @@ import type {
   OrganizationLayoutOrientation,
 } from "@/components/organization/organizationGraph";
 import {
+  organizationMemberDetail,
+  organizationMemberInitials,
+  organizationMemberName,
+} from "@/components/organization/organizationMembers";
+import {
   SvgEdit,
   SvgFolderPlus,
   SvgLock,
@@ -365,6 +370,57 @@ export function OrganizationFlowNode({
           </div>
         )}
       </div>
+      {data.members && data.members.length > 0 && (
+        <div
+          data-testid={`organization-members-${id}`}
+          className={cn(
+            "nodrag nopan mt-3 max-h-28 overflow-y-auto rounded-08 border border-border-01 bg-background-neutral-02 p-1.5"
+          )}
+        >
+          {data.members.slice(0, 4).map((member) => (
+            <div
+              key={member.id}
+              className={cn("flex min-w-0 items-center gap-2 px-1 py-1")}
+            >
+              <span
+                aria-hidden="true"
+                className={cn(
+                  "flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-background-neutral-04 font-secondary-mono text-[10px] text-text-05"
+                )}
+              >
+                {organizationMemberInitials(member)}
+              </span>
+              <div className={cn("min-w-0 flex-1")}>
+                <Text
+                  secondaryBody
+                  text04
+                  className={cn("block truncate text-xs")}
+                >
+                  {organizationMemberName(member)}
+                </Text>
+                <Text
+                  secondaryBody
+                  text02
+                  className={cn("block truncate text-[10px]")}
+                >
+                  {organizationMemberDetail(member)}
+                </Text>
+              </div>
+            </div>
+          ))}
+          {data.members.length > 4 && (
+            <Text
+              secondaryMono
+              text03
+              className={cn("block px-1 pt-1 text-xs")}
+            >
+              {t("admin.organizations.tree.moreMembers", {
+                count: data.members.length - 4,
+              })}
+            </Text>
+          )}
+        </div>
+      )}
     </div>
   );
 }

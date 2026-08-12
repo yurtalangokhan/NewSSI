@@ -9,7 +9,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from src.api.dependencies import require_auth
-from src.api.routes import user_organizations_route
+from src.api.routes import organizations_route, user_organizations_route
 from src.core.database.models import OrganizationModel
 from src.core.exceptions import ConflictError, ForbiddenError
 from src.repository.user_organization_repository import UserOrganizationRepository
@@ -224,6 +224,88 @@ async def test_unit_manager_remains_an_organization_specific_role(
     """Unit manager is valid without becoming a global platform role."""
     await service._require_valid_organization_role("unit_manager")
     service.role_repo.get_by_name.assert_not_called()
+
+
+async def test_repository_lists_all_active_direct_memberships() -> None:
+    """Bulk membership reads filter inactive rows and load user identities."""
+    repository = UserOrganizationRepository()
+    membership = SimpleNamespace()
+    session = AsyncMock()
+    result = MagicMock()
+    result.scalars.return_value.all.return_value = [membership]
+    session.execute.return_value = result
+    context = AsyncMock()
+    context.__aenter__.return_value = session
+    repository._session = MagicMock(return_value=context)
+    repository._to_dict = MagicMock(return_value={"organization_id": uuid.uuid4()})
+
+    memberships = await repository.get_all_active_organization_users()
+
+    assert memberships == [repository._to_dict.return_value]
+    statement = str(session.execute.await_args.args[0])
+    assert "user_organizations.is_active" in statement
+    assert "organization_id" in statement
+    assert "user_id" in statement
+
+
+async def test_service_groups_active_members_by_organization(
+    service: UserOrganizationService,
+) -> None:
+    """The bulk service response groups each direct membership under its unit."""
+    first_org_id = uuid.uuid4()
+    second_org_id = uuid.uuid4()
+    service.repo.get_all_active_organization_users = AsyncMock(
+        return_value=[
+            {"id": uuid.uuid4(), "organization_id": first_org_id},
+            {"id": uuid.uuid4(), "organization_id": second_org_id},
+            {"id": uuid.uuid4(), "organization_id": first_org_id},
+        ]
+    )
+
+    result = await service.get_all_active_organization_users()
+
+    assert list(result) == [str(first_org_id), str(second_org_id)]
+    assert len(result[str(first_org_id)]) == 2
+    assert len(result[str(second_org_id)]) == 1
+
+
+async def test_bulk_membership_route_returns_grouped_response(monkeypatch) -> None:
+    """The protected bulk route exposes grouped active direct memberships."""
+    organization_id = uuid.uuid4()
+    user_id = uuid.uuid4()
+    grouped = {
+        str(organization_id): [
+            {
+                "id": uuid.uuid4(),
+                "user_id": user_id,
+                "organization_id": organization_id,
+                "role_in_org": "member",
+                "is_active": True,
+                "user": {"id": user_id, "email": "member@example.com"},
+            }
+        ]
+    }
+    controller = MagicMock()
+    controller.get_active_members_by_organization = AsyncMock(
+        return_value={"members_by_organization": grouped, "count": 1}
+    )
+    monkeypatch.setattr(
+        organizations_route, "get_organization_members_controller", lambda: controller
+    )
+
+    response = await organizations_route.get_all_organization_members(
+        _user_id=str(uuid.uuid4())
+    )
+
+    assert response.count == 1
+    assert str(organization_id) in response.members_by_organization
+
+
+def test_bulk_membership_route_precedes_dynamic_organization_detail() -> None:
+    """The static membership path must not be parsed as an organization UUID."""
+    paths = [route.path for route in organizations_route.router.routes]
+
+    assert paths.index("/organizations/members") < paths.index("/organizations/{org_id}")
 
 
 async def test_organization_service_rejects_a_second_root_organization() -> None:

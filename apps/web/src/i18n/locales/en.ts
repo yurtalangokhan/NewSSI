@@ -1984,6 +1984,10 @@ const en = {
         searchResults_other: "{{count}} results",
         previousResult: "Previous result",
         nextResult: "Next result",
+        showMembers: "Show users",
+        hideMembers: "Hide users",
+        moreMembers: "+{{count}} more",
+        loadingMembers: "Loading users…",
       },
       actions: {
         addChild: "Add child",
@@ -2029,6 +2033,7 @@ const en = {
         memberRoleUpdateFailed: "Member role could not be updated",
         memberRemoveConfirm: "Remove user from this organization?",
         memberRemoveFailed: "Member could not be removed",
+        membersLoadFailed: "Organization users could not be loaded",
         requestFailed: "Request failed",
       },
       designer: {

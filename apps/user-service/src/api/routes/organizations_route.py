@@ -6,13 +6,17 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
 from src.api.dependencies import require_permission
-from src.controller import get_organization_layout_controller
+from src.controller import (
+    get_organization_layout_controller,
+    get_organization_members_controller,
+)
 from src.core.exceptions import ConflictError
 from src.schema.organizations import (
     OrganizationCreateRequest,
     OrganizationLayoutReadResponse,
     OrganizationLayoutUpdateRequest,
     OrganizationLayoutUpdateResponse,
+    OrganizationMembersByUnitResponse,
     OrganizationMoveRequest,
     OrganizationUpdateRequest,
 )
@@ -120,6 +124,15 @@ async def save_organization_layout(
         uuid.UUID(user_id), positions
     )
     return OrganizationLayoutUpdateResponse.model_validate(result)
+
+
+@router.get("/members", response_model=OrganizationMembersByUnitResponse)
+async def get_all_organization_members(
+    _user_id: Annotated[str, Depends(require_permission("org:read"))],
+) -> OrganizationMembersByUnitResponse:
+    """Return active direct memberships grouped by organization."""
+    result = await get_organization_members_controller().get_active_members_by_organization()
+    return OrganizationMembersByUnitResponse.model_validate(result)
 
 
 @router.get("/{org_id}")

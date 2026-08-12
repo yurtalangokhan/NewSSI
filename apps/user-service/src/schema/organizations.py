@@ -60,6 +60,34 @@ class OrganizationLayoutUpdateResponse(BaseModel):
     count: int
 
 
+class OrganizationMemberIdentity(BaseModel):
+    """Public identity fields for a directly assigned organization member."""
+
+    id: uuid.UUID
+    email: str | None = None
+    first_name: str | None = None
+    last_name: str | None = None
+    username: str | None = None
+
+
+class OrganizationDirectMember(BaseModel):
+    """One active direct organization membership."""
+
+    id: uuid.UUID
+    user_id: uuid.UUID
+    organization_id: uuid.UUID
+    role_in_org: str
+    is_active: bool
+    user: OrganizationMemberIdentity
+
+
+class OrganizationMembersByUnitResponse(BaseModel):
+    """Active direct memberships grouped by organization ID."""
+
+    members_by_organization: dict[str, list[OrganizationDirectMember]]
+    count: int
+
+
 class UserOrganizationAssignRequest(BaseModel):
     """Request to assign user to organization."""
 

@@ -12,6 +12,7 @@ let organizationPath = "/platform";
 let organizationChildren: any[] = [];
 let globalCanCreateRoot = false;
 let globalCanEditLayout = false;
+let swrKeys: Array<string | null> = [];
 
 jest.mock("@/providers/UserProvider", () => ({
   useUser: () => ({
@@ -25,6 +26,7 @@ jest.mock("swr", () => ({
   ...jest.requireActual("swr"),
   __esModule: true,
   default: jest.fn((key: string | null) => {
+    swrKeys.push(key);
     if (key === "/api/user-service/organizations/tree") {
       return {
         data: {
@@ -58,6 +60,26 @@ jest.mock("swr", () => ({
         },
       };
     }
+    if (key === "/api/user-service/organizations/members") {
+      return {
+        data: {
+          members_by_organization: {
+            "org-1": [
+              {
+                id: "membership-1",
+                user_id: "user-1",
+                organization_id: "org-1",
+                role_in_org: "member",
+                is_active: true,
+                user: { id: "user-1", email: "member@example.com" },
+              },
+            ],
+          },
+          count: 1,
+        },
+        isLoading: false,
+      };
+    }
     if (key?.endsWith("/management-capability")) {
       return { data: { editable: managementEditable }, isLoading: false };
     }
@@ -79,9 +101,22 @@ jest.mock("swr", () => ({
 }));
 
 jest.mock("@/components/organization/OrganizationTree", () => ({
-  OrganizationTree: ({ organizations, onSelectOrg, onOpenDesigner }: any) => (
-    <div>
+  OrganizationTree: ({
+    organizations,
+    onSelectOrg,
+    onOpenDesigner,
+    showMembers,
+    membersByOrganizationId,
+    onShowMembersChange,
+  }: any) => (
+    <div data-testid="organization-tree" data-show-members={showMembers}>
       <span>{organizations.length} root</span>
+      <span>
+        Tree members: {membersByOrganizationId?.["org-1"]?.length ?? 0}
+      </span>
+      <button onClick={() => onShowMembersChange(!showMembers)}>
+        Toggle tree users
+      </button>
       <button onClick={() => onSelectOrg(organizations[0])}>
         Select Platform
       </button>
@@ -104,9 +139,22 @@ jest.mock("@/components/organization/OrganizationDesigner", () => ({
     onAccessSaveComplete,
     canCreateRoot,
     canEditLayout,
+    showMembers,
+    membersByOrganizationId,
+    onShowMembersChange,
   }: any) => (
-    <div role="dialog" aria-label="Organization designer">
+    <div
+      role="dialog"
+      aria-label="Organization designer"
+      data-show-members={showMembers}
+    >
       Designer selection: {selectedOrg?.name ?? "none"} {selectedOrg?.path}
+      <span>
+        Designer members: {membersByOrganizationId?.["org-1"]?.length ?? 0}
+      </span>
+      <button onClick={() => onShowMembersChange(!showMembers)}>
+        Toggle designer users
+      </button>
       Children:{" "}
       {selectedOrg?.children?.map((child: any) => child.name).join(", ")}
       <span>
@@ -170,6 +218,8 @@ describe("OrganizationsPage", () => {
     organizationChildren = [];
     globalCanCreateRoot = false;
     globalCanEditLayout = false;
+    swrKeys = [];
+    window.sessionStorage.clear();
     // Serves organization CRUD and membership mutation endpoints used by this page.
     jest.spyOn(global, "fetch").mockImplementation(async (request, options) => {
       if (
@@ -225,6 +275,37 @@ describe("OrganizationsPage", () => {
     expect(global.fetch).not.toHaveBeenCalledWith(
       expect.stringContaining("/management-capability")
     );
+  });
+
+  it("loads direct members only after enabling the shared tree option", async () => {
+    const user = setupUser();
+    render(<OrganizationsPage />);
+
+    expect(screen.getByTestId("organization-tree")).toHaveAttribute(
+      "data-show-members",
+      "false"
+    );
+    expect(swrKeys).not.toContain("/api/user-service/organizations/members");
+
+    await user.click(screen.getByRole("button", { name: "Toggle tree users" }));
+
+    expect(screen.getByTestId("organization-tree")).toHaveAttribute(
+      "data-show-members",
+      "true"
+    );
+    expect(swrKeys).toContain("/api/user-service/organizations/members");
+    expect(screen.getByText("Tree members: 1")).toBeInTheDocument();
+    expect(
+      window.sessionStorage.getItem("admin-organizations-show-members")
+    ).toBe("true");
+
+    await user.click(
+      screen.getByRole("button", { name: "Open organization designer" })
+    );
+    expect(
+      screen.getByRole("dialog", { name: "Organization designer" })
+    ).toHaveAttribute("data-show-members", "true");
+    expect(screen.getByText("Designer members: 1")).toBeInTheDocument();
   });
 
   it("opens without changing routes, reuses page handlers, and preserves selection on close", async () => {

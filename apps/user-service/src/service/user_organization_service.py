@@ -132,6 +132,15 @@ class UserOrganizationService:
             organization_id, role_in_org, include_inactive
         )
 
+    async def get_all_active_organization_users(self) -> dict[str, list[dict[str, Any]]]:
+        """Group every active direct membership by organization ID."""
+        memberships = await self.repo.get_all_active_organization_users()
+        grouped: dict[str, list[dict[str, Any]]] = {}
+        for membership in memberships:
+            organization_id = str(membership["organization_id"])
+            grouped.setdefault(organization_id, []).append(membership)
+        return grouped
+
     async def get_user_managed_organizations(self, user_id: uuid.UUID) -> list[dict[str, Any]]:
         """Get organizations where user is unit_manager."""
         all_orgs = await self.repo.get_user_organizations(user_id, include_inactive=False)

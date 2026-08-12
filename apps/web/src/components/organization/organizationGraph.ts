@@ -1,4 +1,5 @@
 import type { Edge, Node, XYPosition } from "@xyflow/react";
+import type { OrganizationMember } from "@/components/organization/organizationTypes";
 
 export interface OrganizationTreeNode {
   id: string;
@@ -33,6 +34,7 @@ export interface OrganizationFlowNodeData extends Record<string, unknown> {
   onDelete?: () => Promise<void>;
   onRename?: (name: string) => Promise<void>;
   onSubmitDraft?: (name: string) => Promise<void>;
+  members?: OrganizationMember[];
 }
 
 export type OrganizationFlowNode = Node<

@@ -4,6 +4,7 @@ import uuid
 from typing import Any
 
 from sqlalchemy import delete, func, select
+from sqlalchemy.orm import joinedload
 
 from src.core.database.models import (
     ResourcePermissionModel,
@@ -114,6 +115,22 @@ class UserOrganizationRepository(BaseRepository):
             )
             result = await session.execute(query)
             return [self._to_dict(uo) for uo in result.scalars().all()]
+
+    async def get_all_active_organization_users(self) -> list[dict[str, Any]]:
+        """Return every active direct membership with its user identity."""
+        async with self._session() as session:
+            query = (
+                select(UserOrganizationModel)
+                .where(UserOrganizationModel.is_active)
+                .options(joinedload(UserOrganizationModel.user))
+                .order_by(
+                    UserOrganizationModel.organization_id,
+                    UserOrganizationModel.role_in_org,
+                    UserOrganizationModel.joined_at,
+                )
+            )
+            result = await session.execute(query)
+            return [self._to_dict(membership) for membership in result.scalars().all()]
 
     async def update(self, user_org_id: uuid.UUID, **updates: Any) -> dict[str, Any] | None:
         """Update user-organization relationship."""

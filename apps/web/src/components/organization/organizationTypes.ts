@@ -25,6 +25,8 @@ export interface OrganizationMember {
   } | null;
 }
 
+export type OrganizationMembersByUnit = Record<string, OrganizationMember[]>;
+
 export type CreateOrganization = (
   parentId: string | null,
   name: string

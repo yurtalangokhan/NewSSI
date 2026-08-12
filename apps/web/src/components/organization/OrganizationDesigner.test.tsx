@@ -92,6 +92,7 @@ jest.mock("@xyflow/react", () => {
                   }
                 }}
                 data-position-x={node.position.x}
+                data-member-count={node.data.members?.length ?? 0}
                 data-search-state={
                   node.data.searchMatch
                     ? "match"
@@ -276,6 +277,40 @@ describe("OrganizationDesigner", () => {
 
     await user.click(screen.getByRole("button", { name: "Fit view" }));
     expect(fitView).toHaveBeenCalled();
+  });
+
+  it("shares the user toggle and direct members with visual nodes", async () => {
+    const user = setupUser();
+    const onShowMembersChange = jest.fn();
+    render(
+      <OrganizationDesigner
+        organizations={organizations}
+        selectedOrg={organizations[0]!}
+        members={[]}
+        editable
+        capabilityLoading={false}
+        showMembers
+        membersByOrganizationId={{
+          root: [
+            {
+              id: "membership-1",
+              user_id: "user-1",
+              organization_id: "root",
+              role_in_org: "member",
+              user: { id: "user-1", email: "member@example.com" },
+            },
+          ],
+        }}
+        onShowMembersChange={onShowMembersChange}
+        {...handlers}
+      />
+    );
+
+    expect(
+      screen.getByRole("button", { name: /Enterprise movable/ })
+    ).toHaveAttribute("data-member-count", "1");
+    await user.click(screen.getByRole("button", { name: "Hide users" }));
+    expect(onShowMembersChange).toHaveBeenCalledWith(false);
   });
 
   it("repositions and saves only the moved subtree after a successful reparent", async () => {

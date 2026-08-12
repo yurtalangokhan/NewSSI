@@ -262,17 +262,17 @@ the chat session and project membership data.
 
 ### Service-to-service calls
 
-| Caller        | Callee                  | Purpose                                                                         | Method                |
-| ------------- | ----------------------- | ------------------------------------------------------------------------------- | --------------------- |
-| agent-service | user-service            | Permission checks, batched persona owner lookup, user lookup, and memories CRUD | HTTP + internal token |
-| agent-service | rag-service             | RAG collections proxy                                                           | HTTP + internal token |
-| agent-service | rag-service             | Agent knowledge availability checks for selected document and graph collections | HTTP + internal token |
-| agent-service | tools-service           | MCP tool execution                                                              | HTTP + JWT            |
-| agent-service | Airbyte                 | Datasource sync management                                                      | Airbyte API           |
-| rag-service   | user-service            | Bearer-token identity resolution and permission checks                                                                | HTTP + forwarded JWT or internal token |
-| tools-service | user-service            | Permission resolution                                                           | HTTP + internal token |
-| rag-service   | Ollama/OpenAI           | LLM calls for graph extraction                                                  | HTTP (outbound)       |
-| agent-service | Ollama/OpenAI/Anthropic | LLM inference                                                                   | HTTP (outbound)       |
+| Caller        | Callee                  | Purpose                                                                         | Method                                 |
+| ------------- | ----------------------- | ------------------------------------------------------------------------------- | -------------------------------------- |
+| agent-service | user-service            | Permission checks, batched persona owner lookup, user lookup, and memories CRUD | HTTP + internal token                  |
+| agent-service | rag-service             | RAG collections proxy                                                           | HTTP + internal token                  |
+| agent-service | rag-service             | Agent knowledge availability checks for selected document and graph collections | HTTP + internal token                  |
+| agent-service | tools-service           | MCP tool execution                                                              | HTTP + JWT                             |
+| agent-service | Airbyte                 | Datasource sync management                                                      | Airbyte API                            |
+| rag-service   | user-service            | Bearer-token identity resolution and permission checks                          | HTTP + forwarded JWT or internal token |
+| tools-service | user-service            | Permission resolution                                                           | HTTP + internal token                  |
+| rag-service   | Ollama/OpenAI           | LLM calls for graph extraction                                                  | HTTP (outbound)                        |
+| agent-service | Ollama/OpenAI/Anthropic | LLM inference                                                                   | HTTP (outbound)                        |
 
 ---
 
@@ -403,6 +403,13 @@ Administrator opens the organization designer
     -> deterministic positions place new nodes
     -> writable IDs control node dragging
 
+Administrator enables Show users in either organization view
+  Browser GET /api/user-service/organizations/members
+    -> Next.js user-service proxy forwards GET /api/v1/organizations/members
+    -> one response groups active direct members by organization ID
+    -> textual and visual trees reuse the same session-scoped preference
+    -> users render inside their owning unit without becoming hierarchy nodes
+
 Administrator selects a node
   Browser GET /api/user-service/organizations/{org_id}/management-capability
   Browser GET /api/user-service/organizations/{org_id}/users
@@ -426,6 +433,9 @@ Administrator chooses Move to...
 Mutation controls remain disabled until the selected organization's capability
 request completes. Read-only nodes stay selectable, and the actor can pan,
 zoom, fit the view, and inspect the hierarchy without mutation access.
+The optional member request remains disabled until **Show users** is enabled.
+Membership mutations revalidate the selected-unit membership list and the bulk
+member map while the option is active.
 When the hierarchy is empty, the designer shows root creation only when the
 authenticated permission set includes `org:create`, which is the same
 permission enforced by the user-service create route.

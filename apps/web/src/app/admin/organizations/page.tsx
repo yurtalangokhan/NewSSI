@@ -9,6 +9,7 @@ import { OrganizationDesigner } from "@/components/organization/OrganizationDesi
 import { OrganizationTree } from "@/components/organization/OrganizationTree";
 import type {
   OrganizationMember,
+  OrganizationMembersByUnit,
   OrganizationNode,
 } from "@/components/organization/organizationTypes";
 import { OrganizationUserAssignmentsPanel } from "@/components/organization/OrganizationUserAssignmentsPanel";
@@ -24,6 +25,8 @@ const MIN_TREE_PANE_WIDTH = 320;
 const TREE_PANE_WIDTH_STORAGE_KEY = "admin-organizations-tree-pane-width";
 const ORGANIZATION_TREE_KEY = "/api/user-service/organizations/tree";
 const ORGANIZATION_LAYOUT_KEY = "/api/user-service/organizations/layout";
+const ORGANIZATION_MEMBERS_KEY = "/api/user-service/organizations/members";
+const SHOW_MEMBERS_STORAGE_KEY = "admin-organizations-show-members";
 
 function findOrganization(
   organizations: OrganizationNode[],
@@ -61,6 +64,10 @@ export default function OrganizationsPage() {
   const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("users");
   const [isDesignerOpen, setIsDesignerOpen] = useState(false);
+  const [showMembers, setShowMembers] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.sessionStorage.getItem(SHOW_MEMBERS_STORAGE_KEY) === "true";
+  });
   const workspaceRef = useRef<HTMLElement>(null);
   const [treePaneWidth, setTreePaneWidth] = useState(() => {
     if (typeof window === "undefined") return DEFAULT_TREE_PANE_WIDTH;
@@ -138,6 +145,15 @@ export default function OrganizationsPage() {
     count: number;
   }>(membersKey, fetchJson);
   const members = membersData?.users ?? [];
+  const {
+    data: allMembersData,
+    error: allMembersError,
+    isLoading: allMembersLoading,
+  } = useSWR<{
+    members_by_organization: OrganizationMembersByUnit;
+    count: number;
+  }>(showMembers ? ORGANIZATION_MEMBERS_KEY : null, fetchJson);
+  const membersByOrganizationId = allMembersData?.members_by_organization ?? {};
   const capabilityKey = selectedOrg
     ? `/api/user-service/organizations/${selectedOrg.id}/management-capability`
     : null;
@@ -145,6 +161,19 @@ export default function OrganizationsPage() {
     editable: boolean;
   }>(capabilityKey, fetchJson);
   const editable = capability?.editable === true;
+
+  useEffect(() => {
+    window.sessionStorage.setItem(
+      SHOW_MEMBERS_STORAGE_KEY,
+      String(showMembers)
+    );
+  }, [showMembers]);
+
+  useEffect(() => {
+    if (allMembersError) {
+      toast.error(t("admin.organizations.notifications.membersLoadFailed"));
+    }
+  }, [allMembersError, t]);
 
   const refreshOrganizations = useCallback(async () => {
     await mutate(ORGANIZATION_TREE_KEY);
@@ -260,6 +289,7 @@ export default function OrganizationsPage() {
 
   async function refreshMembers() {
     if (membersKey) await mutate(membersKey);
+    if (showMembers) await mutate(ORGANIZATION_MEMBERS_KEY);
     await refreshOrganizations();
   }
 
@@ -370,6 +400,10 @@ export default function OrganizationsPage() {
             void refreshOrganizations();
           }}
           selectedOrgId={selectedOrg?.id}
+          showMembers={showMembers}
+          membersByOrganizationId={membersByOrganizationId}
+          onShowMembersChange={setShowMembers}
+          membersLoading={allMembersLoading}
         />
       </aside>
 
@@ -509,6 +543,10 @@ export default function OrganizationsPage() {
           onRoleChange={handleRoleChange}
           onRemoveUser={handleRemoveUser}
           onAccessSaveComplete={refreshOrganizations}
+          showMembers={showMembers}
+          membersByOrganizationId={membersByOrganizationId}
+          onShowMembersChange={setShowMembers}
+          membersLoading={allMembersLoading}
         />
       )}
     </main>

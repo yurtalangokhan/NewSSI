@@ -13,10 +13,10 @@ the canonical `/api/v1` paths documented here.
 
 ## Health
 
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| GET | `/api/v1/health` | Public | Simple health check `{"status": "healthy", "service": "user-service"}` |
-| GET | `/api/v1/health/ready` | Public | Readiness check with DB ping |
+| Method | Path                   | Auth   | Description                                                            |
+| ------ | ---------------------- | ------ | ---------------------------------------------------------------------- |
+| GET    | `/api/v1/health`       | Public | Simple health check `{"status": "healthy", "service": "user-service"}` |
+| GET    | `/api/v1/health/ready` | Public | Readiness check with DB ping                                           |
 
 ---
 
@@ -26,18 +26,18 @@ the canonical `/api/v1` paths documented here.
 
 Authentication supports three modes: OIDC (Keycloak browser redirect), Direct Access Grant (username/password), and external Keycloak broker (federated IdP).
 
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| GET | `/api/v1/auth/type` | Public | Returns auth type (`oidc` or `basic`) and Keycloak config status |
-| POST | `/api/v1/auth/login` | Public | Login with username/password (Keycloak Direct Access Grant). Sets cookies. |
-| POST | `/api/v1/auth/external/login` | Public | Login via external Keycloak identity provider broker |
-| POST | `/api/v1/auth/logout` | Public | Logout — clears cookies, triggers Keycloak backchannel logout |
-| POST | `/api/v1/auth/refresh` | Public | Refresh tokens using `refresh_token` cookie |
-| GET | `/api/v1/auth/oidc/authorize` | Public | Get Keycloak OIDC authorization URL (query: `redirect_uri`, `kc_idp_hint`, `prompt`) |
-| GET | `/api/v1/auth/oidc/callback` | Public | Handle OIDC callback — exchanges code for tokens, upserts user |
-| GET | `/api/v1/auth/me` | JWT | Get current user's full profile with preferences |
-| POST | `/api/v1/auth/sync-users` | `user:manage` | Sync all users and roles from Keycloak to local database |
-| POST | `/api/v1/auth/register` | Public | Register new user (currently raises ValueError — managed by Keycloak) |
+| Method | Path                          | Auth          | Description                                                                          |
+| ------ | ----------------------------- | ------------- | ------------------------------------------------------------------------------------ |
+| GET    | `/api/v1/auth/type`           | Public        | Returns auth type (`oidc` or `basic`) and Keycloak config status                     |
+| POST   | `/api/v1/auth/login`          | Public        | Login with username/password (Keycloak Direct Access Grant). Sets cookies.           |
+| POST   | `/api/v1/auth/external/login` | Public        | Login via external Keycloak identity provider broker                                 |
+| POST   | `/api/v1/auth/logout`         | Public        | Logout — clears cookies, triggers Keycloak backchannel logout                        |
+| POST   | `/api/v1/auth/refresh`        | Public        | Refresh tokens using `refresh_token` cookie                                          |
+| GET    | `/api/v1/auth/oidc/authorize` | Public        | Get Keycloak OIDC authorization URL (query: `redirect_uri`, `kc_idp_hint`, `prompt`) |
+| GET    | `/api/v1/auth/oidc/callback`  | Public        | Handle OIDC callback — exchanges code for tokens, upserts user                       |
+| GET    | `/api/v1/auth/me`             | JWT           | Get current user's full profile with preferences                                     |
+| POST   | `/api/v1/auth/sync-users`     | `user:manage` | Sync all users and roles from Keycloak to local database                             |
+| POST   | `/api/v1/auth/register`       | Public        | Register new user (currently raises ValueError — managed by Keycloak)                |
 
 **Cookie-based auth:** Tokens stored in `access_token`, `refresh_token`, `id_token` HTTP-only cookies with `SameSite=Lax`.
 
@@ -49,29 +49,40 @@ Authentication supports three modes: OIDC (Keycloak browser redirect), Direct Ac
 
 **Prefix:** `/api/v1/users`
 
-| Method | Path | Permission | Description |
-|--------|------|------------|-------------|
-| GET | `/api/v1/users/me` | JWT | Get own profile with preferences and personalization |
-| GET | `/api/v1/users/me/permissions` | JWT | Get own resolved permissions |
-| PATCH | `/api/v1/users/me` | JWT | Update own profile |
-| POST | `/api/v1/users/me/password` | JWT | Change own password (raises ValueError — managed by Keycloak) |
-| GET | `/api/v1/users/` | `user:list` | List users with pagination and filters (skip, limit, query, role, roles, is_active, invited) |
-| POST | `/api/v1/users/` | `user:create` | Create user (local + Keycloak) |
-| GET | `/api/v1/users/invited` | `user:list` | List pending invited users |
-| GET | `/api/v1/users/download/csv` | `user:list` | Download users as CSV |
-| POST | `/api/v1/users/invite` | `user:create` | Invite users by email (bulk) |
-| POST | `/api/v1/users/{target_id}/role` | `user:update` | Set user role |
-| POST | `/api/v1/users/{target_id}/reset-password` | `user:update` | Reset password (raises ValueError) |
-| PATCH | `/api/v1/users/{target_id}/active` | `user:update` | Activate/deactivate user |
-| POST | `/api/v1/users/{target_id}/password` | `user:update` | Set user password (raises ValueError) |
-| GET | `/api/v1/users/{target_id}` | `user:read` | Get user by ID |
-| PATCH | `/api/v1/users/{target_id}` | `user:update` | Update user profile |
-| DELETE | `/api/v1/users/{target_id}` | `user:delete` | Delete user (local + Keycloak) |
+| Method | Path                                       | Permission    | Description                                                                                  |
+| ------ | ------------------------------------------ | ------------- | -------------------------------------------------------------------------------------------- |
+| GET    | `/api/v1/users/me`                         | JWT           | Get own profile with preferences and personalization                                         |
+| GET    | `/api/v1/users/me/permissions`             | JWT           | Get own resolved permissions                                                                 |
+| PATCH  | `/api/v1/users/me`                         | JWT           | Update own profile                                                                           |
+| POST   | `/api/v1/users/me/password`                | JWT           | Change own password (raises ValueError — managed by Keycloak)                                |
+| GET    | `/api/v1/users/`                           | `user:list`   | List users with pagination and filters (skip, limit, query, role, roles, is_active, invited) |
+| POST   | `/api/v1/users/`                           | `user:create` | Create user (local + Keycloak)                                                               |
+| GET    | `/api/v1/users/invited`                    | `user:list`   | List pending invited users                                                                   |
+| GET    | `/api/v1/users/download/csv`               | `user:list`   | Download users as CSV                                                                        |
+| POST   | `/api/v1/users/invite`                     | `user:create` | Invite users by email (bulk)                                                                 |
+| POST   | `/api/v1/users/{target_id}/role`           | `user:update` | Set user role                                                                                |
+| POST   | `/api/v1/users/{target_id}/reset-password` | `user:update` | Reset password (raises ValueError)                                                           |
+| PATCH  | `/api/v1/users/{target_id}/active`         | `user:update` | Activate/deactivate user                                                                     |
+| POST   | `/api/v1/users/{target_id}/password`       | `user:update` | Set user password (raises ValueError)                                                        |
+| GET    | `/api/v1/users/{target_id}`                | `user:read`   | Get user by ID                                                                               |
+| PATCH  | `/api/v1/users/{target_id}`                | `user:update` | Update user profile                                                                          |
+| DELETE | `/api/v1/users/{target_id}`                | `user:delete` | Delete user (local + Keycloak)                                                               |
 
 **Response shape example (`GET /api/v1/users/`):**
+
 ```json
 {
-  "items": [{ "id": "...", "email": "...", "username": "...", "first_name": "...", "last_name": "...", "role": "...", "is_active": true }],
+  "items": [
+    {
+      "id": "...",
+      "email": "...",
+      "username": "...",
+      "first_name": "...",
+      "last_name": "...",
+      "role": "...",
+      "is_active": true
+    }
+  ],
   "total_items": 42,
   "total": 42,
   "skip": 0,
@@ -89,14 +100,14 @@ Used by other services (agent-service, rag-service) for service-to-service user 
 The batch endpoint accepts 1 to 100 distinct UUID values in the
 `user_ids` array and returns public snapshots for matching users only.
 
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| POST | `/api/v1/internal/users/upsert-from-keycloak` | JWT / Internal | Create/update user from Keycloak OIDC profile |
-| POST | `/api/v1/internal/users/batch` | JWT / Internal | Get matching public user snapshots for up to 100 distinct UUIDs |
-| GET | `/api/v1/internal/users/by-keycloak-id/{keycloak_id}` | JWT / Internal | Get user by Keycloak subject ID |
-| PATCH | `/api/v1/internal/users/{target_id}` | JWT / Internal | Update user profile |
-| GET | `/api/v1/internal/users/{target_id}/permissions` | JWT / Internal | Get user's permissions |
-| POST | `/api/v1/internal/users/authorize` | JWT / Internal | Check if user has a specific permission |
+| Method | Path                                                  | Auth           | Description                                                     |
+| ------ | ----------------------------------------------------- | -------------- | --------------------------------------------------------------- |
+| POST   | `/api/v1/internal/users/upsert-from-keycloak`         | JWT / Internal | Create/update user from Keycloak OIDC profile                   |
+| POST   | `/api/v1/internal/users/batch`                        | JWT / Internal | Get matching public user snapshots for up to 100 distinct UUIDs |
+| GET    | `/api/v1/internal/users/by-keycloak-id/{keycloak_id}` | JWT / Internal | Get user by Keycloak subject ID                                 |
+| PATCH  | `/api/v1/internal/users/{target_id}`                  | JWT / Internal | Update user profile                                             |
+| GET    | `/api/v1/internal/users/{target_id}/permissions`      | JWT / Internal | Get user's permissions                                          |
+| POST   | `/api/v1/internal/users/authorize`                    | JWT / Internal | Check if user has a specific permission                         |
 
 ---
 
@@ -104,24 +115,24 @@ The batch endpoint accepts 1 to 100 distinct UUID values in the
 
 **Prefix:** `/api/v1/users/me/settings`
 
-| Method | Path | Permission | Description |
-|--------|------|------------|-------------|
-| GET | `/api/v1/users/me/settings/` | `settings:read` | Get own settings |
-| PATCH | `/api/v1/users/me/settings/` | `settings:update` | Update own settings |
-| POST | `/api/v1/users/me/settings/prompt-shortcuts` | `settings:update` | Create prompt shortcut |
-| PATCH | `/api/v1/users/me/settings/prompt-shortcuts/{shortcut_id}` | `settings:update` | Update prompt shortcut |
+| Method | Path                                                       | Permission        | Description            |
+| ------ | ---------------------------------------------------------- | ----------------- | ---------------------- |
+| GET    | `/api/v1/users/me/settings/`                               | `settings:read`   | Get own settings       |
+| PATCH  | `/api/v1/users/me/settings/`                               | `settings:update` | Update own settings    |
+| POST   | `/api/v1/users/me/settings/prompt-shortcuts`               | `settings:update` | Create prompt shortcut |
+| PATCH  | `/api/v1/users/me/settings/prompt-shortcuts/{shortcut_id}` | `settings:update` | Update prompt shortcut |
 | DELETE | `/api/v1/users/me/settings/prompt-shortcuts/{shortcut_id}` | `settings:update` | Delete prompt shortcut |
 
 ### Settings — Internal
 
 **Prefix:** `/api/v1/internal/users`
 
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| GET | `/api/v1/internal/users/{target_id}/settings` | JWT / Internal | Get any user's settings |
-| PATCH | `/api/v1/internal/users/{target_id}/settings` | JWT / Internal | Update any user's settings |
-| POST | `/api/v1/internal/users/{target_id}/settings/prompt-shortcuts` | JWT / Internal | Create shortcut for any user |
-| PATCH | `/api/v1/internal/users/{target_id}/settings/prompt-shortcuts/{shortcut_id}` | JWT / Internal | Update shortcut for any user |
+| Method | Path                                                                         | Auth           | Description                  |
+| ------ | ---------------------------------------------------------------------------- | -------------- | ---------------------------- |
+| GET    | `/api/v1/internal/users/{target_id}/settings`                                | JWT / Internal | Get any user's settings      |
+| PATCH  | `/api/v1/internal/users/{target_id}/settings`                                | JWT / Internal | Update any user's settings   |
+| POST   | `/api/v1/internal/users/{target_id}/settings/prompt-shortcuts`               | JWT / Internal | Create shortcut for any user |
+| PATCH  | `/api/v1/internal/users/{target_id}/settings/prompt-shortcuts/{shortcut_id}` | JWT / Internal | Update shortcut for any user |
 | DELETE | `/api/v1/internal/users/{target_id}/settings/prompt-shortcuts/{shortcut_id}` | JWT / Internal | Delete shortcut for any user |
 
 ---
@@ -132,29 +143,29 @@ The batch endpoint accepts 1 to 100 distinct UUID values in the
 
 User memories store facts about the user for agent recall (long-term memory).
 
-| Method | Path | Permission | Description |
-|--------|------|------------|-------------|
-| GET | `/api/v1/users/me/memories/` | `memory:read` | List memories (query: `page`, `page_size`) |
-| POST | `/api/v1/users/me/memories/` | `memory:create` | Create memory (body: `{"content": "..."}`) — returns 201 |
-| GET | `/api/v1/users/me/memories/{memory_id}` | `memory:read` | Get memory by ID |
-| PATCH | `/api/v1/users/me/memories/{memory_id}` | `memory:update` | Update memory content |
-| DELETE | `/api/v1/users/me/memories/{memory_id}` | `memory:delete` | Delete memory — returns 204 |
-| DELETE | `/api/v1/users/me/memories/` | `memory:delete` | Delete all memories — returns `{"deleted": count}` |
+| Method | Path                                    | Permission      | Description                                              |
+| ------ | --------------------------------------- | --------------- | -------------------------------------------------------- |
+| GET    | `/api/v1/users/me/memories/`            | `memory:read`   | List memories (query: `page`, `page_size`)               |
+| POST   | `/api/v1/users/me/memories/`            | `memory:create` | Create memory (body: `{"content": "..."}`) — returns 201 |
+| GET    | `/api/v1/users/me/memories/{memory_id}` | `memory:read`   | Get memory by ID                                         |
+| PATCH  | `/api/v1/users/me/memories/{memory_id}` | `memory:update` | Update memory content                                    |
+| DELETE | `/api/v1/users/me/memories/{memory_id}` | `memory:delete` | Delete memory — returns 204                              |
+| DELETE | `/api/v1/users/me/memories/`            | `memory:delete` | Delete all memories — returns `{"deleted": count}`       |
 
 ### Memories — Internal
 
 **Prefix:** `/api/v1/internal/users/{target_id}/memories`
 
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| GET | `/api/v1/internal/users/{target_id}/memories` | JWT / Internal | List any user's memories |
-| GET | `/api/v1/internal/users/{target_id}/memories/recall` | JWT / Internal | Get memories for agent recall (content-only strings) |
-| POST | `/api/v1/internal/users/{target_id}/memories` | JWT / Internal | Create memory for any user |
-| POST | `/api/v1/internal/users/{target_id}/memories/bulk` | JWT / Internal | Bulk add facts (body: `{"contents": [...], "source?": "..."}`) |
-| GET | `/api/v1/internal/users/{target_id}/memories/{memory_id}` | JWT / Internal | Get specific memory |
-| PATCH | `/api/v1/internal/users/{target_id}/memories/{memory_id}` | JWT / Internal | Update memory |
-| DELETE | `/api/v1/internal/users/{target_id}/memories/{memory_id}` | JWT / Internal | Delete memory — 204 |
-| DELETE | `/api/v1/internal/users/{target_id}/memories` | JWT / Internal | Delete all memories for user |
+| Method | Path                                                      | Auth           | Description                                                    |
+| ------ | --------------------------------------------------------- | -------------- | -------------------------------------------------------------- |
+| GET    | `/api/v1/internal/users/{target_id}/memories`             | JWT / Internal | List any user's memories                                       |
+| GET    | `/api/v1/internal/users/{target_id}/memories/recall`      | JWT / Internal | Get memories for agent recall (content-only strings)           |
+| POST   | `/api/v1/internal/users/{target_id}/memories`             | JWT / Internal | Create memory for any user                                     |
+| POST   | `/api/v1/internal/users/{target_id}/memories/bulk`        | JWT / Internal | Bulk add facts (body: `{"contents": [...], "source?": "..."}`) |
+| GET    | `/api/v1/internal/users/{target_id}/memories/{memory_id}` | JWT / Internal | Get specific memory                                            |
+| PATCH  | `/api/v1/internal/users/{target_id}/memories/{memory_id}` | JWT / Internal | Update memory                                                  |
+| DELETE | `/api/v1/internal/users/{target_id}/memories/{memory_id}` | JWT / Internal | Delete memory — 204                                            |
+| DELETE | `/api/v1/internal/users/{target_id}/memories`             | JWT / Internal | Delete all memories for user                                   |
 
 ---
 
@@ -164,11 +175,11 @@ User memories store facts about the user for agent recall (long-term memory).
 
 API keys are SHA-256 hashed and Fernet encrypted. The raw key is returned only once on creation.
 
-| Method | Path | Permission | Description |
-|--------|------|------------|-------------|
-| POST | `/api/v1/users/me/api-keys/` | `api_key:create` | Create API key (query: `name`). Returns `full_key` only once. |
-| GET | `/api/v1/users/me/api-keys/` | `api_key:read` | List own API keys |
-| DELETE | `/api/v1/users/me/api-keys/{key_id}` | `api_key:delete` | Revoke/delete API key |
+| Method | Path                                 | Permission       | Description                                                   |
+| ------ | ------------------------------------ | ---------------- | ------------------------------------------------------------- |
+| POST   | `/api/v1/users/me/api-keys/`         | `api_key:create` | Create API key (query: `name`). Returns `full_key` only once. |
+| GET    | `/api/v1/users/me/api-keys/`         | `api_key:read`   | List own API keys                                             |
+| DELETE | `/api/v1/users/me/api-keys/{key_id}` | `api_key:delete` | Revoke/delete API key                                         |
 
 ---
 
@@ -178,17 +189,17 @@ API keys are SHA-256 hashed and Fernet encrypted. The raw key is returned only o
 
 Coarse roles group permissions scoped to a service client.
 
-| Method | Path | Permission | Description |
-|--------|------|------------|-------------|
-| GET | `/api/v1/coarse-roles/` | `permission:list` | List coarse roles (query: `service_client`) |
-| POST | `/api/v1/coarse-roles/` | `role:manage` | Create coarse role (query: `name`, `service_client`, `description?`) |
-| GET | `/api/v1/coarse-roles/{role_name}` | `permission:list` | Get coarse role by name |
-| PATCH | `/api/v1/coarse-roles/{role_name}` | `role:manage` | Update coarse role |
-| DELETE | `/api/v1/coarse-roles/{role_name}` | `role:manage` | Delete coarse role |
-| GET | `/api/v1/coarse-roles/{role_name}/permissions` | `permission:list` | Get permissions on role |
-| PUT | `/api/v1/coarse-roles/{role_name}/permissions` | `role:manage` | Set permissions on role |
-| GET | `/api/v1/coarse-roles/aggregated/` | `permission:list` | Aggregate permissions from multiple role names (query: `names` CSV) |
-| GET | `/api/v1/coarse-roles/service-clients/list` | `permission:list` | List all service clients |
+| Method | Path                                           | Permission        | Description                                                          |
+| ------ | ---------------------------------------------- | ----------------- | -------------------------------------------------------------------- |
+| GET    | `/api/v1/coarse-roles/`                        | `permission:list` | List coarse roles (query: `service_client`)                          |
+| POST   | `/api/v1/coarse-roles/`                        | `role:manage`     | Create coarse role (query: `name`, `service_client`, `description?`) |
+| GET    | `/api/v1/coarse-roles/{role_name}`             | `permission:list` | Get coarse role by name                                              |
+| PATCH  | `/api/v1/coarse-roles/{role_name}`             | `role:manage`     | Update coarse role                                                   |
+| DELETE | `/api/v1/coarse-roles/{role_name}`             | `role:manage`     | Delete coarse role                                                   |
+| GET    | `/api/v1/coarse-roles/{role_name}/permissions` | `permission:list` | Get permissions on role                                              |
+| PUT    | `/api/v1/coarse-roles/{role_name}/permissions` | `role:manage`     | Set permissions on role                                              |
+| GET    | `/api/v1/coarse-roles/aggregated/`             | `permission:list` | Aggregate permissions from multiple role names (query: `names` CSV)  |
+| GET    | `/api/v1/coarse-roles/service-clients/list`    | `permission:list` | List all service clients                                             |
 
 ---
 
@@ -198,18 +209,18 @@ Coarse roles group permissions scoped to a service client.
 
 Composite roles aggregate coarse roles and permissions. Changes to composite roles invalidate user sessions.
 
-| Method | Path | Permission | Description |
-|--------|------|------------|-------------|
-| GET | `/api/v1/roles/` | `role:list` | List all composite roles |
-| POST | `/api/v1/roles/` | `role:manage` | Create composite role (body: `name`, `description?`, `permissions?`, `role_ids?`) |
-| GET | `/api/v1/roles/{role_name}` | `role:read` | Get composite role by name |
-| PATCH | `/api/v1/roles/{role_name}` | `role:manage` | Update composite role |
-| DELETE | `/api/v1/roles/{role_name}` | `role:manage` | Delete composite role (blocked if built-in or users assigned) |
-| GET | `/api/v1/roles/{role_name}/permissions` | `role:read` | Get effective permissions (direct + aggregated) |
-| PUT | `/api/v1/roles/{role_name}/permissions` | `role:manage` | Set permissions |
-| GET | `/api/v1/roles/{role_name}/role-ids` | `role:read` | Get coarse role references |
-| PUT | `/api/v1/roles/{role_name}/role-ids` | `role:manage` | Set coarse role references |
-| POST | `/api/v1/roles/sync-keycloak` | `role:manage` | Sync all roles to Keycloak |
+| Method | Path                                    | Permission    | Description                                                                       |
+| ------ | --------------------------------------- | ------------- | --------------------------------------------------------------------------------- |
+| GET    | `/api/v1/roles/`                        | `role:list`   | List all composite roles                                                          |
+| POST   | `/api/v1/roles/`                        | `role:manage` | Create composite role (body: `name`, `description?`, `permissions?`, `role_ids?`) |
+| GET    | `/api/v1/roles/{role_name}`             | `role:read`   | Get composite role by name                                                        |
+| PATCH  | `/api/v1/roles/{role_name}`             | `role:manage` | Update composite role                                                             |
+| DELETE | `/api/v1/roles/{role_name}`             | `role:manage` | Delete composite role (blocked if built-in or users assigned)                     |
+| GET    | `/api/v1/roles/{role_name}/permissions` | `role:read`   | Get effective permissions (direct + aggregated)                                   |
+| PUT    | `/api/v1/roles/{role_name}/permissions` | `role:manage` | Set permissions                                                                   |
+| GET    | `/api/v1/roles/{role_name}/role-ids`    | `role:read`   | Get coarse role references                                                        |
+| PUT    | `/api/v1/roles/{role_name}/role-ids`    | `role:manage` | Set coarse role references                                                        |
+| POST   | `/api/v1/roles/sync-keycloak`           | `role:manage` | Sync all roles to Keycloak                                                        |
 
 ---
 
@@ -219,13 +230,13 @@ Composite roles aggregate coarse roles and permissions. Changes to composite rol
 
 Permissions are synced from service manifests (user-service, agent-service, rag-service, tools-service).
 
-| Method | Path | Permission | Description |
-|--------|------|------------|-------------|
-| GET | `/api/v1/permissions/` | `permission:list` | List permissions (query: `service` filter) |
-| GET | `/api/v1/permissions/entities` | `permission:list` | List all unique permission entities |
-| GET | `/api/v1/permissions/services` | `permission:list` | List services with permission counts |
-| POST | `/api/v1/permissions/sync` | `permission:manage` | Sync permissions from all service manifests |
-| GET | `/api/v1/permissions/{permission_name}` | `permission:read` | Get permission by name |
+| Method | Path                                    | Permission          | Description                                 |
+| ------ | --------------------------------------- | ------------------- | ------------------------------------------- |
+| GET    | `/api/v1/permissions/`                  | `permission:list`   | List permissions (query: `service` filter)  |
+| GET    | `/api/v1/permissions/entities`          | `permission:list`   | List all unique permission entities         |
+| GET    | `/api/v1/permissions/services`          | `permission:list`   | List services with permission counts        |
+| POST   | `/api/v1/permissions/sync`              | `permission:manage` | Sync permissions from all service manifests |
+| GET    | `/api/v1/permissions/{permission_name}` | `permission:read`   | Get permission by name                      |
 
 ---
 
@@ -246,21 +257,22 @@ Unknown role names return `400`. A catalog role stored in
 actor's platform role or an explicit `unit_manager` membership affects
 organization-management scope.
 
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| GET | `/api/v1/organizations` | JWT | List organizations |
-| POST | `/api/v1/organizations` | Enterprise admin | Create an organization; rejects a second root |
-| GET | `/api/v1/organizations/tree` | JWT | Return the organization tree |
-| GET | `/api/v1/organizations/layout` | `org:read` | Return shared canvas positions and writable organization IDs |
-| PUT | `/api/v1/organizations/layout` | `org:update` and manager scope | Atomically upsert shared canvas positions |
-| GET | `/api/v1/organizations/{org_id}/management-capability` | JWT | Report whether the actor can manage the unit |
-| POST | `/api/v1/organizations/{org_id}/move` | Manager scope | Move below another unit; moving to the root is rejected |
-| GET | `/api/v1/organizations/{org_id}/users` | JWT | List organization members |
-| POST | `/api/v1/organizations/{org_id}/users` | Manager scope | Add an organization member |
-| PATCH | `/api/v1/organizations/{org_id}/users/{user_id}` | Manager scope | Change membership state or organization role |
-| DELETE | `/api/v1/organizations/{org_id}/users/{user_id}` | Manager scope | Remove an organization member |
-| GET | `/api/v1/permissions/organizations/{org_id}/targets/{target_type}/{target_id}/resources/{resource_type}` | Manager scope | List direct scoped resource permissions |
-| PUT | `/api/v1/permissions/organizations/{org_id}/targets/{target_type}/{target_id}/resources/{resource_type}` | Manager scope | Replace direct scoped resource permissions |
+| Method | Path                                                                                                     | Auth                           | Description                                                  |
+| ------ | -------------------------------------------------------------------------------------------------------- | ------------------------------ | ------------------------------------------------------------ |
+| GET    | `/api/v1/organizations`                                                                                  | JWT                            | List organizations                                           |
+| POST   | `/api/v1/organizations`                                                                                  | Enterprise admin               | Create an organization; rejects a second root                |
+| GET    | `/api/v1/organizations/tree`                                                                             | JWT                            | Return the organization tree                                 |
+| GET    | `/api/v1/organizations/layout`                                                                           | `org:read`                     | Return shared canvas positions and writable organization IDs |
+| PUT    | `/api/v1/organizations/layout`                                                                           | `org:update` and manager scope | Atomically upsert shared canvas positions                    |
+| GET    | `/api/v1/organizations/members`                                                                          | `org:read`                     | Return active direct memberships grouped by organization ID  |
+| GET    | `/api/v1/organizations/{org_id}/management-capability`                                                   | JWT                            | Report whether the actor can manage the unit                 |
+| POST   | `/api/v1/organizations/{org_id}/move`                                                                    | Manager scope                  | Move below another unit; moving to the root is rejected      |
+| GET    | `/api/v1/organizations/{org_id}/users`                                                                   | JWT                            | List organization members                                    |
+| POST   | `/api/v1/organizations/{org_id}/users`                                                                   | Manager scope                  | Add an organization member                                   |
+| PATCH  | `/api/v1/organizations/{org_id}/users/{user_id}`                                                         | Manager scope                  | Change membership state or organization role                 |
+| DELETE | `/api/v1/organizations/{org_id}/users/{user_id}`                                                         | Manager scope                  | Remove an organization member                                |
+| GET    | `/api/v1/permissions/organizations/{org_id}/targets/{target_type}/{target_id}/resources/{resource_type}` | Manager scope                  | List direct scoped resource permissions                      |
+| PUT    | `/api/v1/permissions/organizations/{org_id}/targets/{target_type}/{target_id}/resources/{resource_type}` | Manager scope                  | Replace direct scoped resource permissions                   |
 
 `target_type` is `organization` or `user`; `resource_type` is `agent` or
 `collection`. An organization target must match `org_id`. A user target must be
@@ -275,6 +287,11 @@ permissions while they retain another active organization membership. Removing
 their final active membership deletes all `resource_permissions` rows targeted
 to that user. Permissions targeted to organizations or other users and the
 permission audit history are not deleted.
+
+The bulk organization-members response contains direct active memberships
+only. It includes each member's public identity fields and groups memberships
+by their owning organization ID. It doesn't include inherited or descendant
+unit memberships.
 
 Scope violations return `403`, invalid targets return `400`, and missing
 organizations return `404`. A concurrent attempt to create a second root
@@ -298,9 +315,7 @@ organization-ID order:
       "y": 240
     }
   ],
-  "writable_organization_ids": [
-    "8a60ec52-f318-45cf-9880-361b725b8d51"
-  ]
+  "writable_organization_ids": ["8a60ec52-f318-45cf-9880-361b725b8d51"]
 }
 ```
 
@@ -336,12 +351,12 @@ coordinate violations return `422`.
 
 **Prefix:** `/api/v1/system-settings`
 
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| GET | `/api/v1/system-settings/keycloak` | System Admin | Get full Keycloak configuration |
-| PATCH | `/api/v1/system-settings/keycloak` | System Admin | Update Keycloak configuration (fields encrypted before storage) |
-| PATCH | `/api/v1/system-settings/keycloak/realm-session` | System Admin | Update Keycloak realm session token lifespans |
-| POST | `/api/v1/system-settings/keycloak/external-idp/sync` | System Admin | Sync external identity provider to Keycloak |
+| Method | Path                                                 | Auth         | Description                                                     |
+| ------ | ---------------------------------------------------- | ------------ | --------------------------------------------------------------- |
+| GET    | `/api/v1/system-settings/keycloak`                   | System Admin | Get full Keycloak configuration                                 |
+| PATCH  | `/api/v1/system-settings/keycloak`                   | System Admin | Update Keycloak configuration (fields encrypted before storage) |
+| PATCH  | `/api/v1/system-settings/keycloak/realm-session`     | System Admin | Update Keycloak realm session token lifespans                   |
+| POST   | `/api/v1/system-settings/keycloak/external-idp/sync` | System Admin | Sync external identity provider to Keycloak                     |
 
 ---
 

@@ -1990,6 +1990,10 @@ const tr = {
         searchResults_other: "{{count}} sonuç",
         previousResult: "Önceki sonuç",
         nextResult: "Sonraki sonuç",
+        showMembers: "Kullanıcıları göster",
+        hideMembers: "Kullanıcıları gizle",
+        moreMembers: "+{{count}} kullanıcı daha",
+        loadingMembers: "Kullanıcılar yükleniyor…",
       },
       actions: {
         addChild: "Alt organizasyon ekle",
@@ -2035,6 +2039,7 @@ const tr = {
         memberRoleUpdateFailed: "Üye rolü güncellenemedi",
         memberRemoveConfirm: "Kullanıcı bu organizasyondan kaldırılsın mı?",
         memberRemoveFailed: "Üye kaldırılamadı",
+        membersLoadFailed: "Organizasyon kullanıcıları yüklenemedi",
         requestFailed: "İstek başarısız oldu",
       },
       designer: {

@@ -40,6 +40,7 @@ import type {
   DeleteOrganization,
   MoveOrganization,
   OrganizationMember,
+  OrganizationMembersByUnit,
   OrganizationNode,
   UpdateOrganization,
 } from "@/components/organization/organizationTypes";
@@ -76,10 +77,15 @@ interface OrganizationDesignerProps {
   onRoleChange: (userId: string, role: string) => Promise<void>;
   onRemoveUser: (userId: string) => Promise<void>;
   onAccessSaveComplete?: () => void | Promise<void>;
+  showMembers?: boolean;
+  membersByOrganizationId?: OrganizationMembersByUnit;
+  onShowMembersChange?: (show: boolean) => void;
+  membersLoading?: boolean;
 }
 
 const nodeTypes = { organization: OrganizationFlowNode };
 const DRAFT_NODE_ID = "__new-organization__";
+const EMPTY_MEMBERS_BY_ORGANIZATION: OrganizationMembersByUnit = {};
 
 function indexOrganizations(organizations: OrganizationNode[]) {
   const byId = new Map<string, OrganizationNode>();
@@ -115,6 +121,10 @@ function OrganizationDesignerCanvas({
   onRoleChange,
   onRemoveUser,
   onAccessSaveComplete,
+  showMembers = false,
+  membersByOrganizationId = EMPTY_MEMBERS_BY_ORGANIZATION,
+  onShowMembersChange,
+  membersLoading = false,
 }: OrganizationDesignerProps) {
   const { t, i18n } = useTranslation();
   const {
@@ -230,6 +240,7 @@ function OrganizationDesignerCanvas({
         searchMatch: hasSearch && matchingOrganizationIds.has(node.id),
         searchDimmed: hasSearch && !matchingOrganizationIds.has(node.id),
         isDropTarget: dropTargetId === node.id,
+        members: showMembers ? membersByOrganizationId[node.id] ?? [] : [],
         parentOptions: allOrganizations
           .filter((candidate) => {
             const source = organizationsById.get(node.id);
@@ -333,11 +344,13 @@ function OrganizationDesignerCanvas({
     hasSearch,
     matchingOrganizationIds,
     layoutOrientation,
+    membersByOrganizationId,
     organizationsById,
     nodeAction,
     onDeleteOrg,
     onUpdateOrg,
     selectedOrg?.id,
+    showMembers,
     startChildCreation,
     submitChildCreation,
     t,
@@ -711,6 +724,23 @@ function OrganizationDesignerCanvas({
               )}
             </div>
             <div className={cn("flex items-center gap-2")}>
+              {onShowMembersChange && (
+                <Button
+                  aria-pressed={showMembers}
+                  disabled={membersLoading}
+                  secondary
+                  size="md"
+                  onClick={() => onShowMembersChange(!showMembers)}
+                >
+                  {t(
+                    membersLoading
+                      ? "admin.organizations.tree.loadingMembers"
+                      : showMembers
+                        ? "admin.organizations.tree.hideMembers"
+                        : "admin.organizations.tree.showMembers"
+                  )}
+                </Button>
+              )}
               {error && (
                 <Button secondary size="md" onClick={() => void handleRetry()}>
                   {t("admin.organizations.actions.retry")}

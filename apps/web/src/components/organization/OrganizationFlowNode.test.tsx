@@ -81,6 +81,50 @@ describe("OrganizationFlowNode", () => {
     );
   });
 
+  it("renders a bounded distinct preview of direct members", () => {
+    const members = Array.from({ length: 6 }, (_, index) => ({
+      id: `membership-${index}`,
+      user_id: `user-${index}`,
+      organization_id: "sales",
+      role_in_org: "member",
+      user: {
+        id: `user-${index}`,
+        first_name: `User ${index + 1}`,
+        last_name: "Example",
+        email: `user${index + 1}@example.com`,
+      },
+    }));
+    renderFlowNode(
+      <OrganizationFlowNode
+        id="sales"
+        data={{
+          organizationId: "sales",
+          name: "Sales",
+          path: "root/sales/",
+          childCount: 0,
+          readOnly: false,
+          members,
+        }}
+        selected={false}
+        selectable
+        draggable
+        deletable={false}
+        dragging={false}
+        zIndex={0}
+        isConnectable={false}
+        type="organization"
+        positionAbsoluteX={0}
+        positionAbsoluteY={0}
+      />
+    );
+
+    const section = screen.getByTestId("organization-members-sales");
+    expect(section).toHaveClass("bg-background-neutral-02", "max-h-28");
+    expect(screen.getByText("User 1 Example")).toBeInTheDocument();
+    expect(screen.queryByText("User 5 Example")).not.toBeInTheDocument();
+    expect(screen.getByText("+2 more")).toBeInTheDocument();
+  });
+
   it("provides four directional anchors when rendered on a React Flow canvas", () => {
     const nodes: Node[] = [
       {
