@@ -751,13 +751,12 @@ class KeycloakService(KeycloakBrokerMixin):
             return {"status": "skipped", "reason": "EXTERNAL_KEYCLOAK is disabled"}
 
         alias = self.get_external_keycloak_alias()
-        payload = self._external_idp_payload()
-
         existing_resp = await self._keycloak_request(
             "GET",
             f"/identity-provider/instances/{quote(alias, safe='')}",
         )
         if existing_resp.status_code == 404:
+            payload = self._external_idp_payload()
             resp = await self._keycloak_request(
                 "POST",
                 "/identity-provider/instances",
@@ -766,16 +765,24 @@ class KeycloakService(KeycloakBrokerMixin):
             if resp.status_code not in (200, 201, 204, 409):
                 resp.raise_for_status()
             action = "created"
+            sync_result: dict[str, str] = {"status": action}
         else:
             existing_resp.raise_for_status()
-            resp = await self._keycloak_request(
-                "PUT",
-                f"/identity-provider/instances/{quote(alias, safe='')}",
-                json=payload,
-            )
-            if resp.status_code not in (200, 204):
-                resp.raise_for_status()
-            action = "updated"
+            try:
+                payload = self._external_idp_payload()
+            except ValueError as exc:
+                action = "exists"
+                sync_result = {"status": "skipped", "reason": str(exc)}
+            else:
+                resp = await self._keycloak_request(
+                    "PUT",
+                    f"/identity-provider/instances/{quote(alias, safe='')}",
+                    json=payload,
+                )
+                if resp.status_code not in (200, 204):
+                    resp.raise_for_status()
+                action = "updated"
+                sync_result = {"status": action}
 
         default_role_result = await self._ensure_enduser_default_realm_role()
         mapper_result = await self._remove_external_enduser_mapper(alias)
@@ -784,6 +791,7 @@ class KeycloakService(KeycloakBrokerMixin):
         return {
             "status": action,
             "alias": alias,
+            "sync": sync_result,
             "default_role": default_role_result,
             "external_client": external_client_result,
             "mapper": mapper_result,

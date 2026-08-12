@@ -1,5 +1,5 @@
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, call
 
 import httpx
 import pytest
@@ -889,6 +889,58 @@ async def test_ensure_external_identity_provider_removes_legacy_mapper(monkeypat
     }
     remove_mapper.assert_awaited_once_with("external-keycloak")
     ensure_groups_mappers.assert_awaited_once_with("external-keycloak")
+
+
+@pytest.mark.asyncio
+async def test_ensure_external_identity_provider_keeps_existing_idp_without_local_payload_config(
+    monkeypatch,
+):
+    service = KeycloakService()
+    KeycloakService.set_runtime_settings({})
+    monkeypatch.setenv("EXTERNAL_KEYCLOAK", "true")
+    monkeypatch.delenv("EXTERNAL_KEYCLOAK_CLIENT_ID", raising=False)
+    monkeypatch.delenv("EXTERNAL_KEYCLOAK_CLIENT_SECRET", raising=False)
+    monkeypatch.setattr(keycloak_service._settings, "EXTERNAL_KEYCLOAK_CLIENT_ID", None)
+    monkeypatch.setattr(keycloak_service._settings, "EXTERNAL_KEYCLOAK_CLIENT_SECRET", None)
+
+    get_response = SimpleNamespace(
+        status_code=200,
+        raise_for_status=lambda: None,
+        json=lambda: {"alias": "external-keycloak"},
+    )
+    request = AsyncMock(return_value=get_response)
+    monkeypatch.setattr(service, "_keycloak_request", request)
+    monkeypatch.setattr(
+        service,
+        "_ensure_enduser_default_realm_role",
+        AsyncMock(return_value={"status": "exists"}),
+    )
+    monkeypatch.setattr(
+        service,
+        "_remove_external_enduser_mapper",
+        AsyncMock(return_value={"status": "skipped"}),
+    )
+    monkeypatch.setattr(
+        service,
+        "_ensure_external_groups_mappers",
+        AsyncMock(return_value={"status": "skipped"}),
+    )
+    monkeypatch.setattr(
+        service,
+        "ensure_external_client_redirect_uri",
+        AsyncMock(return_value={"status": "skipped"}),
+    )
+
+    result = await service.ensure_external_identity_provider()
+
+    assert result["status"] == "exists"
+    assert result["sync"] == {
+        "status": "skipped",
+        "reason": "EXTERNAL_KEYCLOAK_CLIENT_ID must be configured",
+    }
+    assert request.await_args_list == [
+        call("GET", "/identity-provider/instances/external-keycloak")
+    ]
 
 
 @pytest.mark.asyncio
