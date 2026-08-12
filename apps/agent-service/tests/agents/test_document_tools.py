@@ -173,6 +173,88 @@ async def test_create_document_rejects_empty_content(fake_repo, fake_minio_uploa
 
 
 @pytest.mark.asyncio
+async def test_create_document_renders_json_format(fake_repo, fake_minio_upload):
+    from service.FileService import get_file
+
+    result = await document_tools.create_document.ainvoke(
+        {
+            "filename": "veri",
+            "format": "json",
+            "content": '{"a": 1, "b": [1, 2, 3]}',
+        },
+        _config(),
+    )
+
+    payload = json.loads(result)
+    assert payload["__generated_file__"] is True
+    assert payload["filename"] == "veri.json"
+    assert payload["mime_type"] == "application/json"
+
+    record = get_file(payload["file_id"])
+    assert record is not None
+    assert json.loads(record.data.decode()) == {"a": 1, "b": [1, 2, 3]}
+
+
+@pytest.mark.asyncio
+async def test_create_document_json_format_wraps_title(fake_repo, fake_minio_upload):
+    from service.FileService import get_file
+
+    result = await document_tools.create_document.ainvoke(
+        {
+            "filename": "veri",
+            "format": "json",
+            "content": "[1, 2, 3]",
+            "title": "Liste",
+        },
+        _config(),
+    )
+
+    payload = json.loads(result)
+    record = get_file(payload["file_id"])
+    assert json.loads(record.data.decode()) == {"title": "Liste", "content": [1, 2, 3]}
+
+
+@pytest.mark.asyncio
+async def test_create_document_rejects_invalid_json_content(fake_repo, fake_minio_upload):
+    result = await document_tools.create_document.ainvoke(
+        {
+            "filename": "veri",
+            "format": "json",
+            "content": "not valid json",
+        },
+        _config(),
+    )
+
+    assert "__generated_file__" not in result
+    assert "json" in result.lower()
+    assert fake_repo.created == []
+    assert fake_minio_upload == []
+
+
+@pytest.mark.asyncio
+async def test_create_document_json_format_recovers_dict_content(fake_repo, fake_minio_upload):
+    """A model naturally passes a dict for json content; the raw tool schema
+    requires a string, so `_run_tool_call` in chatbot.py runs
+    `recover_document_tool_args` first — replicate that here.
+    """
+    from service.FileService import get_file
+
+    args = document_tools.recover_document_tool_args(
+        {
+            "filename": "veri",
+            "format": "json",
+            "content": {"baslik": "Kahve", "puan": [1, 2, 3]},
+        }
+    )
+    result = await document_tools.create_document.ainvoke(args, _config())
+
+    payload = json.loads(result)
+    assert payload["__generated_file__"] is True
+    record = get_file(payload["file_id"])
+    assert json.loads(record.data.decode()) == {"baslik": "Kahve", "puan": [1, 2, 3]}
+
+
+@pytest.mark.asyncio
 async def test_create_document_survives_minio_upload_failure(fake_repo, monkeypatch):
     def _boom(**kwargs):
         raise RuntimeError("minio unreachable")
@@ -495,6 +577,28 @@ class TestRecoverDocumentToolArgs:
         args = {"filename": "rapor", "format": "pdf", "content": "# Başlık"}
 
         assert document_tools.recover_document_tool_args(args) == args
+
+    def test_serializes_a_dict_content_for_json_format(self):
+        recovered = document_tools.recover_document_tool_args(
+            {"filename": "veri", "format": "json", "content": {"baslik": "Kahve", "n": 1}}
+        )
+
+        assert recovered["content"] == json.dumps({"baslik": "Kahve", "n": 1}, ensure_ascii=False)
+
+    def test_serializes_a_list_content_for_json_format(self):
+        recovered = document_tools.recover_document_tool_args(
+            {"filename": "veri", "format": "json", "content": [1, 2, 3]}
+        )
+
+        assert recovered["content"] == "[1, 2, 3]"
+
+    def test_serializes_a_dict_under_an_alias_key_for_json_format(self):
+        recovered = document_tools.recover_document_tool_args(
+            {"filename": "veri", "format": "json", "body": {"a": 1}}
+        )
+
+        assert recovered["content"] == json.dumps({"a": 1}, ensure_ascii=False)
+        assert "body" not in recovered
 
     def test_recovers_the_body_from_an_alias_key(self):
         recovered = document_tools.recover_document_tool_args(

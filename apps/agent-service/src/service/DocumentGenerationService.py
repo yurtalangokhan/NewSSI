@@ -36,7 +36,7 @@ from service.documents.options import (
     parse_spreadsheet_options,
 )
 from service.documents.pdf_renderer import render_pdf
-from service.documents.text_renderer import render_markdown_text
+from service.documents.text_renderer import render_json, render_markdown_text
 from service.documents.xlsx_renderer import render_csv, render_xlsx
 
 __all__ = [
@@ -65,6 +65,7 @@ __all__ = [
     "render_csv",
     "render_docx",
     "render_markdown_text",
+    "render_json",
     "render_pdf",
     "render_xlsx",
     "sanitize_filename",

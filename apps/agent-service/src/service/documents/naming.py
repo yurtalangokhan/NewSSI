@@ -15,6 +15,7 @@ _MIME_TYPES: dict[str, str] = {
     "csv": "text/csv",
     "md": "text/markdown",
     "txt": "text/plain",
+    "json": "application/json",
 }
 
 

@@ -31,16 +31,18 @@ from service import DocumentGenerationService as docgen
 
 logger = logging.getLogger(__name__)
 
-DOCUMENT_FORMATS = ("pdf", "docx", "md", "txt")
+DOCUMENT_FORMATS = ("pdf", "docx", "md", "txt", "json")
 SPREADSHEET_FORMATS = ("xlsx", "csv")
 
 DOCUMENT_TOOL_PROMPT = (
     "Document output:\n"
-    "- Use create_document to produce a downloadable PDF, DOCX, MD or TXT file "
-    "from Markdown content (headings, paragraphs, lists, tables). It requires "
-    "all three of filename, format and content — `content` must hold the "
-    "complete document body as Markdown, never a summary or a description of "
-    "it. A call without `content` is rejected.\n"
+    "- Use create_document to produce a downloadable PDF, DOCX, MD, TXT or "
+    "JSON file. For pdf/docx/md/txt, `content` must hold the complete "
+    "document body as Markdown (headings, paragraphs, lists, tables), never "
+    "a summary or a description of it. For json, `content` must be a valid "
+    "JSON string (object or array); invalid JSON is rejected. It requires "
+    "all three of filename, format and content — a call without `content` "
+    "is rejected.\n"
     "- Use create_spreadsheet to produce a downloadable XLSX or CSV file from "
     "tabular data. It requires filename, format and sheets, where `sheets` is "
     'a list of {"name": ..., "rows": [[...], ...]} objects.\n'
@@ -95,8 +97,9 @@ options (all optional; unknown/invalid values fall back to defaults and never fa
 """
 
 _SHORT_DOCUMENT_DESCRIPTION = (
-    "Create a downloadable document (PDF, DOCX, Markdown or plain text) from "
-    "Markdown content. Requires filename, format, content. Optional: title, "
+    "Create a downloadable document (PDF, DOCX, Markdown, plain text, or "
+    "JSON) from Markdown content (or a JSON string for the json format). "
+    "Requires filename, format, content. Optional: title, "
     "options (theme/page/header/footer/cover/toc/numbering/tables/watermark — "
     "omit for a sensibly-themed default)."
 )
@@ -206,7 +209,15 @@ def recover_document_tool_args(args: dict[str, Any]) -> dict[str, Any]:
 def _recover_content(args: dict[str, Any]) -> dict[str, Any]:
     repaired = dict(args)
 
+    # For format="json", a model naturally reaches for a dict/list rather
+    # than a pre-serialized string; `content` is typed str, so pydantic would
+    # reject the call outright. Serialize it here instead of forcing the
+    # model to notice and redo the call.
     existing = repaired.get("content")
+    if isinstance(existing, (dict, list)):
+        repaired["content"] = json.dumps(existing, ensure_ascii=False)
+        return repaired
+
     if isinstance(existing, str) and existing.strip():
         cleaned = strip_content_markup(existing)
         if cleaned and cleaned != existing:
@@ -216,6 +227,11 @@ def _recover_content(args: dict[str, Any]) -> dict[str, Any]:
 
     for alias in _CONTENT_ALIASES:
         value = repaired.get(alias)
+        if isinstance(value, (dict, list)):
+            repaired["content"] = json.dumps(value, ensure_ascii=False)
+            if alias != "content":
+                repaired.pop(alias, None)
+            return repaired
         if isinstance(value, str) and value.strip():
             repaired["content"] = strip_content_markup(value)
             if alias != "content":
@@ -398,14 +414,18 @@ async def create_document(
     title: str | None = None,
     options: dict[str, Any] | str | None = None,
 ) -> str:
-    """Create a downloadable document (PDF, DOCX, Markdown or plain text) from Markdown content.
+    """Create a downloadable document (PDF, DOCX, Markdown, plain text, or JSON).
 
     Args:
         filename: Base file name, without or with the correct extension.
-        format: One of "pdf", "docx", "md", "txt". Any other value is rejected.
-        content: The document body as Markdown (headings, paragraphs, lists,
-            pipe tables, and fenced code blocks are supported).
-        title: Optional document title, rendered above the content.
+        format: One of "pdf", "docx", "md", "txt", "json". Any other value is rejected.
+        content: The document body. For pdf/docx/md/txt this is Markdown
+            (headings, paragraphs, lists, pipe tables, and fenced code blocks
+            are supported). For json, this must be a valid JSON string (an
+            object or array) — it is parsed and re-serialized pretty-printed;
+            invalid JSON is rejected rather than written as-is.
+        title: Optional document title, rendered above the content. For json,
+            wraps the value as `{"title": ..., "content": ...}`.
         options: Optional style/layout configuration (theme, fonts, colors,
             page setup, cover page, table of contents, heading numbering,
             header/footer, tables, watermark) — see the options reference
@@ -429,6 +449,8 @@ async def create_document(
             data = docgen.render_pdf(title, content, options=parsed_options)
         elif format == "docx":
             data = docgen.render_docx(title, content, options=parsed_options)
+        elif format == "json":
+            data = docgen.render_json(title, content, options=parsed_options)
         else:
             data = docgen.render_markdown_text(title, content, options=parsed_options)
     except ValueError as exc:
