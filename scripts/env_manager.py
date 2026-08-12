@@ -112,6 +112,7 @@ def var(
 
 def build_specs() -> dict[str, EnvFileSpec]:
     common_host = "10.101.90.13"
+    local_postgres_host = "localhost"
     internal_token = "dev-internal-service-token-change-me"
     auth_secret = "change-me-in-production-use-at-least-32-chars"
     postgres_password = "your-super-secret-and-long-postgres-password"
@@ -271,7 +272,7 @@ def build_specs() -> dict[str, EnvFileSpec]:
                 var("DATABASE_TYPE", "Checkpoint/database backend type.", "postgres"),
                 var("MODE", "Runtime mode.", "dev"),
                 var("PORT", "Agent-service bind port.", "8123"),
-                var("POSTGRES_HOST", "Postgres host.", common_host),
+                var("POSTGRES_HOST", "Postgres host.", local_postgres_host),
                 var("POSTGRES_PORT", "Postgres host port.", "8124"),
                 var("POSTGRES_USER", "Postgres user.", "postgres"),
                 var("POSTGRES_PASSWORD", "Postgres password.", postgres_password),
@@ -299,6 +300,7 @@ def build_specs() -> dict[str, EnvFileSpec]:
                 var("USER_SERVICE_URL", "User-service internal URL through Kong.", "http://localhost:8000/internal/user-service"),
                 var("INTERNAL_SERVICE_TOKEN", "Shared service-to-service token.", internal_token),
                 var("AUTH_SECRET", "Fallback auth signing secret.", auth_secret),
+                var("ENCRYPTION_KEY", "Fernet key for persisted secrets."),
                 var("KEYCLOAK_ENABLED", "Enable Keycloak auth.", "true"),
                 var("KEYCLOAK_BASE_URL", "Keycloak public base URL.", keycloak_base),
                 var("KEYCLOAK_ISSUER_URL", "Keycloak issuer URL.", keycloak_issuer),
@@ -324,7 +326,7 @@ def build_specs() -> dict[str, EnvFileSpec]:
             path=ROOT / "apps/rag-service/.env",
             title="RAG service",
             variables=(
-                var("POSTGRES_HOST", "Postgres host.", common_host),
+                var("POSTGRES_HOST", "Postgres host.", local_postgres_host),
                 var("POSTGRES_PORT", "Postgres host port.", "8124"),
                 var("POSTGRES_USER", "Postgres user.", "postgres"),
                 var("POSTGRES_PASSWORD", "Postgres password.", postgres_password),
@@ -365,7 +367,7 @@ def build_specs() -> dict[str, EnvFileSpec]:
                 var("SERVICE_NAME", "Service name used in JWT audience defaults.", "user-service"),
                 var("SERVICE_HOST", "Service bind host.", "0.0.0.0"),
                 var("SERVICE_PORT", "Service bind port.", "8090"),
-                var("POSTGRES_HOST", "Postgres host.", common_host),
+                var("POSTGRES_HOST", "Postgres host.", local_postgres_host),
                 var("POSTGRES_PORT", "Postgres host port.", "8124"),
                 var("POSTGRES_USER", "Postgres user.", "postgres"),
                 var("POSTGRES_PASSWORD", "Postgres password.", postgres_password),
@@ -421,7 +423,7 @@ def build_specs() -> dict[str, EnvFileSpec]:
             variables=(
                 var("MCP_HOST", "MCP service bind host.", "0.0.0.0"),
                 var("MCP_PORT", "MCP service bind port.", "8003"),
-                var("POSTGRES_HOST", "Postgres host.", common_host),
+                var("POSTGRES_HOST", "Postgres host.", local_postgres_host),
                 var("POSTGRES_PORT", "Postgres host port.", "8124"),
                 var("POSTGRES_USER", "Postgres user.", "postgres"),
                 var("POSTGRES_PASSWORD", "Postgres password.", postgres_password),
