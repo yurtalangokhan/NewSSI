@@ -41,6 +41,8 @@ the canonical `/api/v1` paths documented here.
 | GET    | `/api/v1/agents/info`              | `agent:list`     | List all agents, models, default agent, default model |
 | GET    | `/api/v1/agents/catalog`           | `persona:read`   | List lightweight product agent summaries              |
 | GET    | `/api/v1/agents/{agent_id}`        | `persona:read`   | Get full product agent detail                         |
+| GET    | `/api/v1/agents/catalog`           | `persona:read`   | List lightweight product agent summaries              |
+| GET    | `/api/v1/agents/{agent_id}`        | `persona:read`   | Get full product agent detail                         |
 | POST   | `/api/v1/agents/{agent_id}/invoke` | `agent:invoke`   | Invoke agent — non-streaming response                 |
 | POST   | `/api/v1/agents/invoke`            | `agent:invoke`   | Invoke default agent — non-streaming                  |
 | POST   | `/api/v1/agents/{agent_id}/stream` | `agent:stream`   | Stream agent response (SSE events)                    |
@@ -51,16 +53,6 @@ the canonical `/api/v1` paths documented here.
 **Stream SSE events:** `token`, `message`, `reasoning_start`, `reasoning_delta`, `custom_tool_start`, `custom_tool_delta`, `custom_step_start`, `long_term_memory_recall`, `long_term_memory_save`, `error`, `[DONE]`
 
 **Thinking tags:** Built-in `<thinking>` / `<think>` tag processing (DeepSeek, Qwen models) with streaming state machine.
-
-`/api/v1/agents/catalog` is the product-facing list endpoint for frontend
-catalogs, sidebars, selectors, and initial chat load. It returns summary fields
-and cheap capability flags instead of full persona details. Use
-`/api/v1/agents/{agent_id}` when the UI needs prompts, full tools, sharing
-fields, scoped knowledge, or other detail-only data.
-
-Catalog summaries return only a shallow availability status. Component-level
-model, MCP tool, memory, and RAG availability checks are detail-only data and
-are resolved through `/api/v1/agents/{agent_id}`.
 
 ---
 
@@ -162,6 +154,15 @@ are resolved through `/api/v1/agents/{agent_id}`.
 | GET         | `/api/v1/chat/available-context-tokens/{session_id}` | `chat:read`   | Get context tokens for session        |
 
 The `send-chat-message` endpoint handles: base64 file descriptors, LLM provider resolution (fetches provider API keys, base URLs), MinIO persistence, thread ownership checks.
+
+Chat session list and detail responses include `time_created`, `time_updated`,
+`last_message_at`, and `last_accessed_at`. Use `last_message_at` for
+conversation activity ordering. If the field is present and `null`, the session
+has no accepted user-message activity and orders by `time_created`. Use
+`last_accessed_at` only for read telemetry; opening a chat must not move it in
+Recents or project chat lists. The list endpoints accept `page_size`,
+`before_activity`, and `before_id` for activity-keyset pagination and return
+`next_cursor` with the same cursor field names when another page is available.
 
 ---
 
@@ -422,6 +423,10 @@ include `filename`, `mime_type`, and `content_base64`.
 | GET    | `/api/v1/user/projects/{project_id}/token-count`       | `project:read`   | Get token count                       |
 | POST   | `/api/v1/user/projects/{project_id}/move_chat_session` | `project:update` | Move session to project               |
 | POST   | `/api/v1/user/projects/remove_chat_session`            | `project:update` | Remove session from project           |
+
+Project responses embed chat sessions with the same timestamp fields as the
+chat session list. Project chat ordering follows `last_message_at` activity,
+not `last_accessed_at` or read-time metadata updates.
 
 ---
 

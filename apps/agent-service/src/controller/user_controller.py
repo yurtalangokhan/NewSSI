@@ -13,7 +13,7 @@ from controller.base import BaseController
 from controller.session_controller import SessionController, get_session_controller
 from core.db.repositories.project_repo import ProjectRepository
 from core.env import env
-from service.StoreService import list_threads_from_store
+from service.StoreService import list_chat_sessions_by_activity_from_store
 
 logger = logging.getLogger(__name__)
 
@@ -118,6 +118,43 @@ class UserController(BaseController):
 
         return False
 
+    async def _list_project_threads_for_owner_ids(
+        self,
+        owner_ids: list[str],
+    ) -> list[dict[str, Any]]:
+        """Iterate activity pages until all owner-matching project threads are collected."""
+        matching_threads: list[dict[str, Any]] = []
+        before_activity: str | None = None
+        before_id: str | None = None
+        batch_size = 100
+
+        while True:
+            batch = await list_chat_sessions_by_activity_from_store(
+                page_size=batch_size,
+                before_activity=before_activity,
+                before_id=before_id,
+            )
+            if not batch:
+                break
+
+            matching_threads.extend(
+                thread
+                for thread in batch
+                if self._thread_project_id(thread) is not None
+                and self._thread_belongs_to_owner_ids(thread, owner_ids)
+            )
+
+            if len(batch) < batch_size:
+                break
+
+            last_thread = batch[-1]
+            before_activity = self._chat_session_activity_time(last_thread)
+            before_id = last_thread.get("thread_id") or ""
+            if not before_activity or not before_id:
+                break
+
+        return matching_threads
+
     @staticmethod
     def _serialize_chat_session(thread: dict[str, Any]) -> dict[str, Any]:
         metadata = thread.get("metadata", {}) or {}
@@ -129,11 +166,20 @@ class UserController(BaseController):
             "persona_id": metadata.get("persona_id", 0),
             "time_created": thread.get("created_at"),
             "time_updated": thread.get("updated_at"),
+            "last_message_at": thread.get("last_message_at"),
+            "last_accessed_at": thread.get("last_accessed_at"),
             "shared_status": "private",
             "project_id": UserController._thread_project_id(thread),
             "current_alternate_model": metadata.get("current_alternate_model", ""),
             "current_temperature_override": metadata.get("current_temperature_override"),
         }
+
+    @staticmethod
+    def _chat_session_activity_time(session: dict[str, Any]) -> str:
+        """Return the backwards-compatible product activity time for a session."""
+        if "last_message_at" in session:
+            return session.get("last_message_at") or session.get("time_created") or ""
+        return session.get("time_updated") or session.get("time_created") or ""
 
     async def get_recent_files(self, user_id: str | None) -> list[Any]:
         effective_user_id = await self._resolve_or_raise_user_id(user_id)
@@ -486,17 +532,12 @@ class UserController(BaseController):
         effective_owner_ids = self._normalize_owner_ids(user_id, owner_ids)
         projects = await self._project_repo.list_by_user_ids(effective_owner_ids)
         project_ids = {project["id"] for project in projects}
-        threads = await list_threads_from_store(
-            limit=1000,
-            offset=0,
-        )
+        threads = await self._list_project_threads_for_owner_ids(effective_owner_ids)
 
         sessions_by_project: dict[int, list[dict[str, Any]]] = {}
         for thread in threads:
             project_id = self._thread_project_id(thread)
             if project_id is None or project_id not in project_ids:
-                continue
-            if not self._thread_belongs_to_owner_ids(thread, effective_owner_ids):
                 continue
             sessions_by_project.setdefault(project_id, []).append(
                 self._serialize_chat_session(thread)
@@ -505,7 +546,13 @@ class UserController(BaseController):
         for project in projects:
             project_id = project["id"]
             project_sessions = sessions_by_project.get(project_id, [])
-            project_sessions.sort(key=lambda s: s.get("time_updated") or "", reverse=True)
+            project_sessions.sort(
+                key=lambda session: (
+                    self._chat_session_activity_time(session),
+                    session.get("id") or "",
+                ),
+                reverse=True,
+            )
             project["chat_sessions"] = project_sessions
 
         return projects
@@ -529,17 +576,19 @@ class UserController(BaseController):
         if not project:
             raise HTTPException(status_code=404, detail="Project not found")
 
-        threads = await list_threads_from_store(
-            limit=1000,
-            offset=0,
-        )
+        threads = await self._list_project_threads_for_owner_ids(effective_owner_ids)
         chat_sessions = [
             self._serialize_chat_session(thread)
             for thread in threads
             if self._thread_project_id(thread) == project_id
-            and self._thread_belongs_to_owner_ids(thread, effective_owner_ids)
         ]
-        chat_sessions.sort(key=lambda s: s.get("time_updated") or "", reverse=True)
+        chat_sessions.sort(
+            key=lambda session: (
+                self._chat_session_activity_time(session),
+                session.get("id") or "",
+            ),
+            reverse=True,
+        )
         project["chat_sessions"] = chat_sessions
         return project
 

@@ -124,6 +124,28 @@ runtime redirect and logout behavior consistent across those boundaries.
 5. Frontend renders streaming response in chat UI
 ```
 
+### Chat session timestamps
+
+Chat session ordering uses conversational activity, not access time. The thread
+row stores these timestamp meanings:
+
+- `created_at` is the row creation time.
+- `updated_at` tracks durable metadata or content bookkeeping. Read access
+  doesn't update it.
+- `last_message_at` is set when the backend accepts a user message for an
+  authorized chat session. It is set before response streaming starts, so
+  provider failure, partial streaming, and client cancellation don't roll it
+  back.
+- `last_accessed_at` records that a user opened or viewed the chat. It doesn't
+  affect Recents or project chat ordering.
+
+Recents and project chat lists order sessions by
+`COALESCE(last_message_at, created_at) DESC`, with `thread_id DESC` as the
+stable tie-breaker. Older frontend responses that don't include
+`last_message_at` can temporarily fall back to `time_updated`, but explicit
+`last_message_at: null` means the session has no accepted user-message activity
+and orders by `time_created`.
+
 ### Frontend app routing
 
 The web app uses path-based `/app` routes for durable chat, agent, and project
@@ -240,17 +262,17 @@ the chat session and project membership data.
 
 ### Service-to-service calls
 
-| Caller | Callee | Purpose | Method |
-|--------|--------|---------|--------|
-| agent-service | user-service | Permission checks, batched persona owner lookup, user lookup, and memories CRUD | HTTP + internal token |
-| agent-service | rag-service | RAG collections proxy | HTTP + internal token |
-| agent-service | rag-service | Agent knowledge availability checks for selected document and graph collections | HTTP + internal token |
-| agent-service | tools-service | MCP tool execution | HTTP + JWT |
-| agent-service | Airbyte | Datasource sync management | Airbyte API |
-| rag-service | user-service | Permission check | HTTP + internal token |
-| tools-service | user-service | Permission resolution | HTTP + internal token |
-| rag-service | Ollama/OpenAI | LLM calls for graph extraction | HTTP (outbound) |
-| agent-service | Ollama/OpenAI/Anthropic | LLM inference | HTTP (outbound) |
+| Caller        | Callee                  | Purpose                                                                         | Method                |
+| ------------- | ----------------------- | ------------------------------------------------------------------------------- | --------------------- |
+| agent-service | user-service            | Permission checks, batched persona owner lookup, user lookup, and memories CRUD | HTTP + internal token |
+| agent-service | rag-service             | RAG collections proxy                                                           | HTTP + internal token |
+| agent-service | rag-service             | Agent knowledge availability checks for selected document and graph collections | HTTP + internal token |
+| agent-service | tools-service           | MCP tool execution                                                              | HTTP + JWT            |
+| agent-service | Airbyte                 | Datasource sync management                                                      | Airbyte API           |
+| rag-service   | user-service            | Permission check                                                                | HTTP + internal token |
+| tools-service | user-service            | Permission resolution                                                           | HTTP + internal token |
+| rag-service   | Ollama/OpenAI           | LLM calls for graph extraction                                                  | HTTP (outbound)       |
+| agent-service | Ollama/OpenAI/Anthropic | LLM inference                                                                   | HTTP (outbound)       |
 
 ---
 

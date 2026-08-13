@@ -123,6 +123,21 @@ async def list_threads_from_store(
     return await _thread_repo().list_threads(limit=limit, offset=offset, metadata_filter=metadata)
 
 
+async def list_chat_sessions_by_activity_from_store(
+    page_size: int = 100,
+    before_activity: str | None = None,
+    before_id: str | None = None,
+    metadata: dict | None = None,
+) -> list[dict]:
+    """List chat threads using the dedicated conversational activity order."""
+    return await _thread_repo().list_chat_sessions_by_activity(
+        page_size=page_size,
+        before_activity=before_activity,
+        before_id=before_id,
+        metadata_filter=metadata,
+    )
+
+
 async def update_thread_in_store(
     thread_id: str,
     updates: dict,
@@ -133,6 +148,16 @@ async def update_thread_in_store(
         updates,
         update_timestamp=update_timestamp,
     )
+
+
+async def mark_thread_message_activity(thread_id: str) -> dict | None:
+    """Record accepted user-message activity for a thread."""
+    return await _thread_repo().mark_message_activity(thread_id)
+
+
+async def mark_thread_accessed(thread_id: str) -> dict | None:
+    """Record a read of a thread without mutating its message activity."""
+    return await _thread_repo().mark_accessed(thread_id)
 
 
 async def delete_thread_from_store(thread_id: str) -> bool:

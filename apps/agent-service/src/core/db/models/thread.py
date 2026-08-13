@@ -52,8 +52,23 @@ class ThreadModel(Base):
         nullable=False,
         server_default=text("now()"),
     )
+    last_message_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    last_accessed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
 
-    __table_args__ = (Index("ix_thread_metadata_gin", metadata_, postgresql_using="gin"),)
+    __table_args__ = (
+        Index("ix_thread_metadata_gin", metadata_, postgresql_using="gin"),
+        Index(
+            "idx_thread_activity_order",
+            text("COALESCE(last_message_at, created_at) DESC"),
+            text("thread_id DESC"),
+        ),
+    )
 
     def __repr__(self) -> str:
         return f"<Thread id={self.thread_id!s} status={self.status!r}>"

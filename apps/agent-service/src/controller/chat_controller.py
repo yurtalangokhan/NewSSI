@@ -74,6 +74,60 @@ class ChatController(BaseController):
         ]
         return matching_threads[offset : offset + limit]
 
+    @staticmethod
+    def _activity_time(thread: dict[str, Any]) -> str:
+        """Return the backward-compatible activity timestamp for a thread or session."""
+        created_at = thread.get("created_at") or thread.get("time_created") or ""
+        updated_at = thread.get("updated_at") or thread.get("time_updated") or ""
+        if "last_message_at" in thread:
+            return thread.get("last_message_at") or created_at
+        return updated_at or created_at
+
+    async def _list_user_threads_by_activity(
+        self,
+        page_size: int,
+        before_activity: str | None,
+        before_id: str | None,
+    ) -> list[dict[str, Any]]:
+        if len(self._owner_ids) <= 1:
+            return await self._thread_controller.list_chat_sessions_by_activity(
+                page_size=page_size,
+                before_activity=before_activity,
+                before_id=before_id,
+                metadata={"user_id": self._user_id},
+            )
+
+        matching_threads: list[dict[str, Any]] = []
+        cursor_activity = before_activity
+        cursor_id = before_id
+        batch_size = max(page_size, 100)
+
+        while len(matching_threads) < page_size:
+            batch = await self._thread_controller.list_chat_sessions_by_activity(
+                page_size=batch_size,
+                before_activity=cursor_activity,
+                before_id=cursor_id,
+            )
+            if not batch:
+                break
+
+            for thread in batch:
+                if self._matches_owner(thread.get("metadata", {}) or {}):
+                    matching_threads.append(thread)
+                    if len(matching_threads) >= page_size:
+                        break
+
+            if len(batch) < batch_size:
+                break
+
+            last_thread = batch[-1]
+            cursor_activity = self._activity_time(last_thread)
+            cursor_id = last_thread.get("thread_id") or ""
+            if not cursor_activity or not cursor_id:
+                break
+
+        return matching_threads
+
     async def _ensure_thread_belongs_to_user(
         self, thread_id: str, thread: dict[str, Any] | None
     ) -> bool:
@@ -86,7 +140,7 @@ class ChatController(BaseController):
         # Migration path for old records created before ownership was enforced.
         if not owner:
             metadata["user_id"] = self._user_id
-            await self._thread_controller.update_thread(thread_id, metadata)
+            await self._thread_controller.update_thread(thread_id, metadata, update_timestamp=False)
             return True
 
         if str(owner) == self._user_id:
@@ -101,7 +155,7 @@ class ChatController(BaseController):
 
             metadata["legacy_user_ids"] = legacy_owner_ids
             metadata["user_id"] = self._user_id
-            await self._thread_controller.update_thread(thread_id, metadata)
+            await self._thread_controller.update_thread(thread_id, metadata, update_timestamp=False)
             return True
 
         return False
@@ -380,8 +434,24 @@ class ChatController(BaseController):
 
         return default_name
 
-    async def get_chat_sessions(self) -> dict[str, Any]:
-        threads = await self._list_user_threads(limit=100, offset=0)
+    async def get_chat_sessions(
+        self,
+        page_size: int = 100,
+        before_activity: str | None = None,
+        before_id: str | None = None,
+    ) -> dict[str, Any]:
+        page_size = max(1, min(page_size, 100))
+        threads = await self._list_user_threads_by_activity(
+            page_size=page_size + 1,
+            before_activity=before_activity,
+            before_id=before_id,
+        )
+        threads.sort(
+            key=lambda thread: (self._activity_time(thread), thread.get("thread_id") or ""),
+            reverse=True,
+        )
+        has_more = len(threads) > page_size
+        threads = threads[:page_size]
 
         checkpointer = get_checkpointer()
         sessions: list[dict[str, Any]] = []
@@ -413,6 +483,8 @@ class ChatController(BaseController):
                     "persona_id": metadata.get("persona_id", 0),
                     "time_created": thread.get("created_at"),
                     "time_updated": thread.get("updated_at"),
+                    "last_message_at": thread.get("last_message_at"),
+                    "last_accessed_at": thread.get("last_accessed_at"),
                     "shared_status": "private",
                     "project_id": self._thread_project_id(thread),
                     "current_alternate_model": metadata.get("current_alternate_model"),
@@ -420,8 +492,19 @@ class ChatController(BaseController):
                 }
             )
 
-        sessions.sort(key=lambda s: s.get("time_updated") or "", reverse=True)
-        return {"sessions": sessions, "chat_sessions": sessions, "has_more": False}
+        next_cursor = None
+        if has_more and threads:
+            last_thread = threads[-1]
+            next_cursor = {
+                "before_activity": self._activity_time(last_thread),
+                "before_id": last_thread["thread_id"],
+            }
+        return {
+            "sessions": sessions,
+            "chat_sessions": sessions,
+            "has_more": has_more,
+            "next_cursor": next_cursor,
+        }
 
     async def create_chat_session(
         self,
@@ -450,6 +533,8 @@ class ChatController(BaseController):
             "persona_id": thread.get("metadata", {}).get("persona_id", persona_id),
             "time_created": thread.get("created_at", now),
             "time_updated": thread.get("updated_at", now),
+            "last_message_at": thread.get("last_message_at"),
+            "last_accessed_at": thread.get("last_accessed_at"),
             "shared_status": "private",
             "project_id": thread.get("project_id"),
             "current_alternate_model": None,
@@ -470,6 +555,8 @@ class ChatController(BaseController):
                 "messages": [],
                 "time_created": None,
                 "time_updated": None,
+                "last_message_at": None,
+                "last_accessed_at": None,
                 "shared_status": "private",
                 "current_temperature_override": None,
                 "current_alternate_model": None,
@@ -478,6 +565,13 @@ class ChatController(BaseController):
             }
 
         metadata = thread.get("metadata", {}) or {}
+        try:
+            accessed_thread = await self._thread_controller.mark_accessed(chat_session_id)
+            if accessed_thread:
+                thread = accessed_thread
+                metadata = thread.get("metadata", {}) or {}
+        except Exception:
+            logger.warning("Could not record chat session access for %s", chat_session_id)
         messages: list[dict[str, Any]] = []
         packets_2d: list[list[dict[str, Any]]] = []
 
@@ -962,6 +1056,8 @@ class ChatController(BaseController):
             "messages": messages,
             "time_created": thread.get("created_at"),
             "time_updated": thread.get("updated_at"),
+            "last_message_at": thread.get("last_message_at"),
+            "last_accessed_at": thread.get("last_accessed_at"),
             "shared_status": "private",
             "current_temperature_override": metadata.get("current_temperature_override"),
             "current_alternate_model": metadata.get("current_alternate_model"),

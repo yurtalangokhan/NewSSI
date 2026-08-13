@@ -3,7 +3,10 @@
 import React, { useState, useEffect, useCallback } from "react";
 import useSWR from "swr";
 import { ChatSession, ChatSessionSharedStatus } from "@/app/app/interfaces";
-import { deleteChatSession, deleteAllChatSessions } from "@/app/app/services/lib";
+import {
+  deleteChatSession,
+  deleteAllChatSessions,
+} from "@/app/app/services/lib";
 import { errorHandlingFetcher } from "@/lib/fetcher";
 import Button from "@/refresh-components/buttons/Button";
 import IconButton from "@/refresh-components/buttons/IconButton";
@@ -11,6 +14,10 @@ import Checkbox from "@/refresh-components/inputs/Checkbox";
 import ConfirmationModalLayout from "@/refresh-components/layouts/ConfirmationModalLayout";
 import { showErrorNotification } from "@/sections/sidebar/sidebarUtils";
 import { UNNAMED_CHAT } from "@/lib/constants";
+import {
+  getChatSessionActivityTime,
+  mergeChatSessionsByFreshness,
+} from "@/lib/chat/chatSessionActivity";
 import {
   SvgTrash,
   SvgX,
@@ -22,25 +29,7 @@ import {
 import { useTranslation } from "react-i18next";
 
 function dedupeChatHistorySessions(sessions: ChatSession[]): ChatSession[] {
-  const byId = new Map<string, ChatSession>();
-  for (const session of sessions) {
-    const existing = byId.get(session.id);
-    if (!existing) {
-      byId.set(session.id, session);
-      continue;
-    }
-    const existingTime = existing.time_updated || "";
-    const currentTime = session.time_updated || "";
-    if (currentTime >= existingTime) {
-      byId.set(session.id, session);
-    }
-  }
-
-  return Array.from(byId.values()).sort(
-    (left, right) =>
-      new Date(right.time_updated || 0).getTime() -
-      new Date(left.time_updated || 0).getTime()
-  );
+  return mergeChatSessionsByFreshness(sessions);
 }
 
 interface ChatHistoryResponse {
@@ -110,7 +99,9 @@ export default function ChatHistoryModal({
     if (selectedChats.has("__select_all__")) {
       setSelectedChats(new Set());
     } else {
-      setSelectedChats(new Set(["__select_all__", ...allSessions.map((s) => s.id)]));
+      setSelectedChats(
+        new Set(["__select_all__", ...allSessions.map((s) => s.id)])
+      );
     }
   }, [allSessions, selectedChats]);
 
@@ -119,7 +110,9 @@ export default function ChatHistoryModal({
 
     setIsDeleting(true);
     try {
-      const chatIds = Array.from(selectedChats).filter((id) => id !== "__select_all__");
+      const chatIds = Array.from(selectedChats).filter(
+        (id) => id !== "__select_all__"
+      );
       for (const chatId of chatIds) {
         await deleteChatSession(chatId);
       }
@@ -182,10 +175,7 @@ export default function ChatHistoryModal({
       {/* Modal Overlay */}
       <div className="fixed inset-0 z-50 flex items-center justify-center">
         {/* Backdrop */}
-        <div
-          className="absolute inset-0 bg-black/50"
-          onClick={onClose}
-        />
+        <div className="absolute inset-0 bg-black/50" onClick={onClose} />
 
         {/* Modal Content */}
         <div className="relative z-10 flex h-[80vh] w-[90vw] max-w-4xl flex-col rounded-lg bg-white shadow-xl">
@@ -237,10 +227,7 @@ export default function ChatHistoryModal({
                 </>
               ) : (
                 <>
-                  <Button
-                    onClick={() => setIsSelectionMode(true)}
-                    secondary
-                  >
+                  <Button onClick={() => setIsSelectionMode(true)} secondary>
                     {t("app.chatHistory.selectButton")}
                   </Button>
                   <Button
@@ -316,19 +303,22 @@ export default function ChatHistoryModal({
                       >
                         <div className="flex items-center justify-between">
                           <span className="font-medium">
-                            {session.name || session.description || UNNAMED_CHAT}
+                            {session.name ||
+                              session.description ||
+                              UNNAMED_CHAT}
                           </span>
                           <span className="text-sm text-gray-500">
-                            {formatDate(session.time_updated)}
+                            {formatDate(getChatSessionActivityTime(session))}
                           </span>
                         </div>
-                        {session.persona_id !== null && session.persona_id !== 0 && (
-                          <span className="text-xs text-gray-400">
-                            {t("app.chatHistory.agentIdLabel", {
-                              id: session.persona_id,
-                            })}
-                          </span>
-                        )}
+                        {session.persona_id !== null &&
+                          session.persona_id !== 0 && (
+                            <span className="text-xs text-gray-400">
+                              {t("app.chatHistory.agentIdLabel", {
+                                id: session.persona_id,
+                              })}
+                            </span>
+                          )}
                       </div>
                     </div>
                   );
@@ -337,10 +327,7 @@ export default function ChatHistoryModal({
                 {/* Load More */}
                 {hasMore && (
                   <div className="flex justify-center py-4">
-                    <Button
-                      onClick={() => setPage((p) => p + 1)}
-                      secondary
-                    >
+                    <Button onClick={() => setPage((p) => p + 1)} secondary>
                       {t("app.chatHistory.loadMoreButton")}
                     </Button>
                   </div>
@@ -358,11 +345,7 @@ export default function ChatHistoryModal({
           icon={SvgTrash}
           onClose={() => setDeleteAllModalOpen(false)}
           submit={
-            <Button
-              danger
-              onClick={handleDeleteAll}
-              disabled={isDeleting}
-            >
+            <Button danger onClick={handleDeleteAll} disabled={isDeleting}>
               {isDeleting
                 ? t("app.chatHistory.deletingButton")
                 : t("app.chatHistory.deleteAllButton")}

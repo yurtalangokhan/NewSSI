@@ -26,6 +26,7 @@ class DummyThreadListController:
     def __init__(self, threads: list[dict]):
         self._threads = threads
         self.list_calls: list[dict] = []
+        self.activity_list_calls: list[dict] = []
 
     async def list_threads(self, limit: int = 100, offset: int = 0, metadata: dict | None = None):
         self.list_calls.append({"limit": limit, "offset": offset, "metadata": metadata})
@@ -39,6 +40,23 @@ class DummyThreadListController:
                 )
             ][offset : offset + limit]
         return self._threads[offset : offset + limit]
+
+    async def list_chat_sessions_by_activity(
+        self,
+        page_size: int = 100,
+        before_activity: str | None = None,
+        before_id: str | None = None,
+        metadata: dict | None = None,
+    ):
+        self.activity_list_calls.append(
+            {
+                "page_size": page_size,
+                "before_activity": before_activity,
+                "before_id": before_id,
+                "metadata": metadata,
+            }
+        )
+        return self._threads[:page_size]
 
 
 @pytest.mark.asyncio
@@ -71,7 +89,7 @@ async def test_get_chat_sessions_includes_legacy_keycloak_owner_ids():
     result = await controller.get_chat_sessions()
 
     assert [session["id"] for session in result["sessions"]] == ["legacy-thread"]
-    assert thread_controller.list_calls[0]["metadata"] is None
+    assert thread_controller.activity_list_calls[0]["metadata"] is None
 
 
 @pytest.mark.asyncio
