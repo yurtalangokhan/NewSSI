@@ -37,8 +37,7 @@ export const IsPublicGroupSelector = <T extends IsPublicGroupSelectorFormType>({
   const { t: tCommon } = useTranslation();
   const isPaidEnterpriseFeaturesEnabled =
     usePaidEnterpriseFeaturesEnabled();
-  const { user } = useUser();
-  const isAdmin = user?.role === "admin";
+  const { user, isAdmin, isCurator } = useUser();
   const { data: userGroups, isLoading: userGroupsIsLoading } = useUserGroups();
 
   const [shouldHideContent, setShouldHideContent] = useState(false);
@@ -56,7 +55,7 @@ export const IsPublicGroupSelector = <T extends IsPublicGroupSelectorFormType>({
       if (
         userGroups.length === 1 &&
         userGroups[0] !== undefined &&
-        !isUserAdmin
+        !canManagePublicAccess
       ) {
         formikProps.setFieldValue("groups", [userGroups[0].id]);
         setShouldHideContent(true);

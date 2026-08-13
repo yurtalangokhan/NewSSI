@@ -324,10 +324,6 @@
         "name": "Text Analysis",
         "description": "Count words, lines, and characters in text."
       },
-      "case_transform": {
-        "name": "Text Case Transformer",
-        "description": "Transform text case (upper, lower, title, camel, snake, kebab)."
-      },
       "translate_text": {
         "name": "Translate Text",
         "description": "Translate text between languages."
@@ -411,10 +407,6 @@
       "git_commit": {
         "name": "Commit Git Changes",
         "description": "Commit staged changes."
-      },
-      "git_checkout": {
-        "name": "Checkout Git Branch",
-        "description": "Switch or checkout a Git branch."
       },
       "git_branch": {
         "name": "Manage Git Branches",

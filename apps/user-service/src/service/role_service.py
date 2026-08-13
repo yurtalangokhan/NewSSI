@@ -444,14 +444,7 @@ class CompositeRoleService:
         if role and role.role_ids:
             # DB-stored role IDs — resolve service client from COARSE_SERVICE_ROLES
             for name in role.role_ids or []:
-                found_svc = None
-                for svc_client, realm_map in COARSE_SERVICE_ROLES.items():
-                    for svc_names in realm_map.values():
-                        if name in svc_names:
-                            found_svc = svc_client
-                            break
-                    if found_svc:
-                        break
+                found_svc = self._service_client_for_coarse_role(name)
                 if found_svc:
                     child_roles.append(
                         {
@@ -460,7 +453,7 @@ class CompositeRoleService:
                             "clientId": found_svc,
                         }
                     )
-        else:
+        if not child_roles:
             # Fallback: hardcoded mapping
             for svc_client, coarse_names in _coarse_roles_for_db_role(role_name).items():
                 for name in coarse_names:
@@ -472,6 +465,13 @@ class CompositeRoleService:
                         }
                     )
         return child_roles
+
+    def _service_client_for_coarse_role(self, role_name: str) -> str | None:
+        for svc_client, realm_map in COARSE_SERVICE_ROLES.items():
+            for svc_names in realm_map.values():
+                if role_name in svc_names:
+                    return svc_client
+        return None
 
     async def _set_role_coarse_composites(self, role_name: str) -> None:
         child_roles = await self._build_coarse_composite_children(role_name)

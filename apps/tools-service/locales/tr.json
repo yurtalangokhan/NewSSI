@@ -324,10 +324,6 @@
         "name": "Metin Analizi",
         "description": "Metindeki kelimeleri, satırları ve karakterleri sayın."
       },
-      "case_transform": {
-        "name": "Metin Harf Dönüştürücü",
-        "description": "Metin harf durumunu dönüştürün (büyük, küçük, başlık, deve, yılan, kebap)."
-      },
       "translate_text": {
         "name": "Metin Çevir",
         "description": "Metinleri diller arasında çevirin."
@@ -411,10 +407,6 @@
       "git_commit": {
         "name": "Git İşlemini Kaydet (Commit)",
         "description": "Hazırlanan değişiklikleri commit edin."
-      },
-      "git_checkout": {
-        "name": "Git Dalına Geç (Checkout)",
-        "description": "Farklı bir Git dalına geçin."
       },
       "git_branch": {
         "name": "Git Dallarını Yönet (Branch)",

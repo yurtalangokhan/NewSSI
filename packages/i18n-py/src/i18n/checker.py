@@ -158,6 +158,48 @@ def scan_python_code_for_keys(src_dir: Path) -> Set[str]:
         except Exception:
             pass
 
+    found_keys.update(scan_tools_service_metadata_keys(src_dir))
+    return found_keys
+
+
+def scan_tools_service_metadata_keys(service_dir: Path) -> Set[str]:
+    """Find tool name/description keys resolved dynamically by tools-service.
+
+    The tools-service registry builds metadata keys as
+    `tools.{category}.{tool}.name` and `tools.{category}.{tool}.description`
+    when wrapping FastMCP tools. Those keys are intentionally dynamic, so the
+    generic literal-call scanner cannot see them.
+    """
+    tools_dir = service_dir / "src" / "tools"
+    if service_dir.name != "tools-service" or not tools_dir.exists():
+        return set()
+
+    found_keys: Set[str] = set()
+    category_pattern = re.compile(
+        r"def\s+name\s*\([^)]*\)\s*->\s*str\s*:\s*return\s*[\"']([a-zA-Z0-9_]+)[\"']",
+        re.MULTILINE,
+    )
+    tool_pattern = re.compile(
+        r"@mcp\.tool\([^)]*\)\s*(?:async\s+)?def\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(",
+        re.MULTILINE,
+    )
+
+    for py_file in tools_dir.rglob("*_tools.py"):
+        try:
+            content = py_file.read_text(encoding="utf-8")
+        except Exception:
+            continue
+
+        category_match = category_pattern.search(content)
+        if not category_match:
+            continue
+
+        category = category_match.group(1)
+        for tool_match in tool_pattern.finditer(content):
+            tool_name = tool_match.group(1)
+            found_keys.add(f"tools.{category}.{tool_name}.name")
+            found_keys.add(f"tools.{category}.{tool_name}.description")
+
     return found_keys
 
 

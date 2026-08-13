@@ -150,3 +150,64 @@ class TestCheckMissingTranslationsCatchesDeadKeys:
             )
 
         assert check_missing_translations(tmp_path) is True
+
+    def test_tools_service_dynamic_tool_metadata_keys_are_counted_as_used(
+        self, tmp_path: Path
+    ):
+        apps_dir = tmp_path / "apps"
+        for name in ["agent-service", "rag-service", "user-service"]:
+            self._make_service(
+                apps_dir,
+                name,
+                en={"greeting": "Hello"},
+                tr={"greeting": "Merhaba"},
+                code='x = t("greeting")',
+            )
+
+        tools_dir = apps_dir / "tools-service"
+        locales = tools_dir / "locales"
+        tools_src = tools_dir / "src" / "tools"
+        locales.mkdir(parents=True)
+        tools_src.mkdir(parents=True)
+        locale_data = {
+            "categories": {
+                "calculator": {
+                    "label": "Calculator",
+                    "description": "Safe math",
+                }
+            },
+            "tools": {
+                "calculator": {
+                    "calculate": {
+                        "name": "Calculate",
+                        "description": "Evaluate math",
+                    }
+                }
+            },
+        }
+        (locales / "en.json").write_text(json.dumps(locale_data), encoding="utf-8")
+        (locales / "tr.json").write_text(json.dumps(locale_data), encoding="utf-8")
+        (tools_src / "calculator_tools.py").write_text(
+            """
+class CalculatorTools(BaseToolCategory):
+    @property
+    def name(self) -> str:
+        return "calculator"
+
+    @property
+    def description(self) -> str:
+        return t("categories.calculator.description", default="Safe math")
+
+    @property
+    def label(self) -> str:
+        return t("categories.calculator.label", default="Calculator")
+
+    def register_tools(self, mcp):
+        @mcp.tool()
+        def calculate(expression: str) -> str:
+            return expression
+""",
+            encoding="utf-8",
+        )
+
+        assert check_missing_translations(tmp_path) is True

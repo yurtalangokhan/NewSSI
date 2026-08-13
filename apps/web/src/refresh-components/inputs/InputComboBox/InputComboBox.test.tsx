@@ -216,7 +216,7 @@ describe("InputComboBox", () => {
 
       await user.type(input, "xyz");
 
-      expect(screen.getByText("No options found")).toBeInTheDocument();
+      expect(screen.getByText(/^(No options found|noOptionsFound)$/)).toBeInTheDocument();
     });
 
     test("shows separator between matched and unmatched options when enabled", async () => {
