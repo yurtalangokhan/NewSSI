@@ -38,6 +38,9 @@ export enum PacketType {
   // File reader tool packets
   FILE_READER_START = "file_reader_start",
   FILE_READER_RESULT = "file_reader_result",
+
+  // Agent-generated document/spreadsheet output (create_document / create_spreadsheet)
+  GENERATED_FILE = "generated_file",
   // Memory tool packets
   MEMORY_TOOL_START = "memory_tool_start",
   MEMORY_TOOL_DELTA = "memory_tool_delta",
@@ -212,6 +215,16 @@ export interface FileReaderResult extends BaseObj {
   preview_start: string;
   preview_end: string;
 }
+// Agent-generated file packet (create_document / create_spreadsheet result)
+export interface GeneratedFile extends BaseObj {
+  type: "generated_file";
+  file_id: string;
+  filename: string;
+  mime_type: string;
+  size_bytes: number;
+  download_url: string;
+}
+
 // Memory Tool Packets
 export interface MemoryToolStart extends BaseObj {
   type: "memory_tool_start";
@@ -403,6 +416,7 @@ export type ObjTypes =
   | DeepResearchPlanObj
   | ResearchAgentObj
   | PacketErrorObj
+  | GeneratedFile
   | CitationObj;
 
 // Placement interface for packet positioning
@@ -466,6 +480,11 @@ export interface FileReaderToolPacket {
 export interface MemoryToolPacket {
   placement: Placement;
   obj: MemoryToolObj;
+}
+
+export interface GeneratedFilePacket {
+  placement: Placement;
+  obj: GeneratedFile;
 }
 
 export interface ReasoningPacket {

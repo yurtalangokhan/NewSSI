@@ -14,6 +14,7 @@ from langchain_core.tools import BaseTool
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.prebuilt import create_react_agent
 
+from agents.document_tools import DOCUMENT_TOOL_PROMPT, get_document_tools
 from agents.knowledge import KnowledgeSystemPromptBuilder, KnowledgeToolSelector
 from agents.lazy_agent import LazyLoadingAgent
 from agents.mail_tooling import append_email_tool_policy, wrap_send_email_tool
@@ -259,6 +260,11 @@ class ConfigurableMCPAgent(LazyLoadingAgent):
         # Append any extra tools (e.g. database_search, graph_search)
         if extra_tools:
             agent_tools.extend(extra_tools)
+
+        document_tools = get_document_tools()
+        if document_tools:
+            agent_tools.extend(document_tools)
+            system_prompt = f"{system_prompt}\n{DOCUMENT_TOOL_PROMPT}"
 
         agent = create_react_agent(
             model=model,

@@ -37,6 +37,10 @@ from models.chat import (
 from service.AgentHelpers import _handle_input
 from service.AssistantAgentService import AssistantAgentService
 from service.AuthService import extract_user_id_from_token
+from service.GeneratedFilePacket import (
+    build_generated_file_packet_obj,
+    parse_generated_file_payload,
+)
 from service.Utils import (
     convert_message_content_to_string,
     langchain_to_chat_message,
@@ -406,6 +410,10 @@ async def message_generator(
                     saw_visible_answer_tokens = False
                     saw_reasoning_for_current_answer = False
                     yield f"data: {json.dumps({'type': 'custom_tool_delta', 'tool_name': tool_name, 'response_type': 'tool_result', 'data': chat_message.content})}\n\n"
+
+                    generated_file = parse_generated_file_payload(chat_message.content)
+                    if generated_file is not None:
+                        yield f"data: {json.dumps(build_generated_file_packet_obj(generated_file))}\n\n"
                     continue
 
                 # Some providers do not stream reasoning chunks and only attach

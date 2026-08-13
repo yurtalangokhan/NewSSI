@@ -77,21 +77,25 @@ def _safe_disposition(disposition: str, filename: str) -> str:
 
 
 @router.get("/api/chat/file/{file_id}")
-async def get_chat_file(file_id: str) -> Response:
+async def get_chat_file(file_id: str, download: bool = False) -> Response:
     """
-    Serve a previously uploaded file.
+    Serve a previously uploaded or agent-generated file.
 
     Checks in-memory cache first; falls back to MinIO if the service
     restarted since the file was uploaded.
 
     XLSX/XLS files are converted to CSV text so that the frontend's CsvContent
-    component can render them as a table without any extra parsing logic.
+    component can render them as a table without any extra parsing logic —
+    unless ``?download=1`` is set, in which case the original bytes and
+    filename are served with ``Content-Disposition: attachment`` so the
+    browser downloads the real .xlsx file instead.
     """
     record = await _resolve_file(file_id)
     m = record.mime_type.lower().split(";")[0].strip()
 
-    # Serve XLSX as CSV so the CsvContent component can parse it directly
-    if m in _EXCEL_MIMES:
+    # Serve XLSX as CSV so the CsvContent component can parse it directly —
+    # but not when the caller explicitly wants to download the real file.
+    if not download and m in _EXCEL_MIMES:
         csv_text = to_csv_text(record)
         return Response(
             content=csv_text.encode("utf-8"),
@@ -101,11 +105,12 @@ async def get_chat_file(file_id: str) -> Response:
             },
         )
 
+    disposition = "attachment" if download else "inline"
     return Response(
         content=record.data,
         media_type=record.mime_type,
         headers={
-            "Content-Disposition": _safe_disposition("inline", record.filename),
+            "Content-Disposition": _safe_disposition(disposition, record.filename),
             "Cache-Control": "private, max-age=3600",
         },
     )

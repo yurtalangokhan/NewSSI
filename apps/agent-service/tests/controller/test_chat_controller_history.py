@@ -1,7 +1,9 @@
 """Tests for chat history reconstruction in ChatController."""
 
+import json
+
 import pytest
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 
 from controller.chat_controller import ChatController
 
@@ -264,3 +266,85 @@ async def test_get_chat_session_preserves_trailing_tool_packets_without_final_ai
     assert len(packets) == 1
     assert packets[0][0]["obj"]["type"] == "custom_tool_start"
     assert packets[0][1]["obj"]["type"] == "custom_tool_delta"
+
+
+@pytest.mark.asyncio
+async def test_get_chat_session_reconstructs_generated_file_packet_from_tool_message():
+    payload = json.dumps(
+        {
+            "__generated_file__": True,
+            "file_id": "abc123",
+            "filename": "rapor.pdf",
+            "mime_type": "application/pdf",
+            "size_bytes": 42,
+            "download_url": "/api/chat/file/abc123?download=1",
+        }
+    )
+    thread = {
+        "thread_id": "thread-6",
+        "metadata": {"user_id": "user-1", "persona_id": 0, "name": "Chat"},
+    }
+    state = {
+        "values": {
+            "messages": [
+                HumanMessage(content="Bana bir rapor hazırla"),
+                AIMessage(
+                    content="",
+                    tool_calls=[{"name": "create_document", "args": {}, "id": "call-1"}],
+                ),
+                ToolMessage(content=payload, tool_call_id="call-1", name="create_document"),
+                AIMessage(content="İşte dosyanız."),
+            ]
+        }
+    }
+
+    controller = ChatController(
+        thread_controller=DummyThreadController(thread=thread, state=state),
+        user_id="user-1",
+    )
+
+    result = await controller.get_chat_session("thread-6")
+    all_packets = [packet for turn in result["packets"] for packet in turn]
+
+    generated_file_packets = [p for p in all_packets if p["obj"]["type"] == "generated_file"]
+    assert len(generated_file_packets) == 1
+    assert generated_file_packets[0]["obj"]["file_id"] == "abc123"
+    assert generated_file_packets[0]["obj"]["filename"] == "rapor.pdf"
+    assert generated_file_packets[0]["obj"]["download_url"] == "/api/chat/file/abc123?download=1"
+
+    # The tool-result timeline packet must still be present alongside it.
+    assert any(
+        p["obj"]["type"] == "custom_tool_delta" and p["obj"]["tool_name"] == "create_document"
+        for p in all_packets
+    )
+
+
+@pytest.mark.asyncio
+async def test_get_chat_session_skips_generated_file_packet_for_plain_tool_result():
+    thread = {
+        "thread_id": "thread-7",
+        "metadata": {"user_id": "user-1", "persona_id": 0, "name": "Chat"},
+    }
+    state = {
+        "values": {
+            "messages": [
+                HumanMessage(content="2+2 kaç eder"),
+                AIMessage(
+                    content="",
+                    tool_calls=[{"name": "Calculator", "args": {}, "id": "call-1"}],
+                ),
+                ToolMessage(content="4", tool_call_id="call-1", name="Calculator"),
+                AIMessage(content="4 eder."),
+            ]
+        }
+    }
+
+    controller = ChatController(
+        thread_controller=DummyThreadController(thread=thread, state=state),
+        user_id="user-1",
+    )
+
+    result = await controller.get_chat_session("thread-7")
+    all_packets = [packet for turn in result["packets"] for packet in turn]
+
+    assert not any(p["obj"]["type"] == "generated_file" for p in all_packets)

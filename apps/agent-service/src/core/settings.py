@@ -143,6 +143,10 @@ class Settings(BaseSettings):
     IDEMPOTENCY_TTL: int = 86_400
     IDEMPOTENCY_ENABLED: bool = True
 
+    # Document output tools (create_document / create_spreadsheet) — always
+    # available to every agent and the default chatbot, not opt-in per agent.
+    DOCUMENT_TOOLS_ENABLED: bool = True
+
     @computed_field
     @property
     def BASE_URL(self) -> str:

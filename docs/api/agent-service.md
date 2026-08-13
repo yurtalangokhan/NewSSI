@@ -393,7 +393,47 @@ include `filename`, `mime_type`, and `content_base64`.
 | Method | Path                               | Auth      | Description                                                           |
 | ------ | ---------------------------------- | --------- | --------------------------------------------------------------------- |
 | GET    | `/api/v1/chat/file/{file_id}`      | user auth | Serve file bytes (XLSX as CSV). In-memory cache, falls back to MinIO. |
+| GET    | `/api/v1/chat/file/{file_id}?download=1` | user auth | Same file, forced `Content-Disposition: attachment` with original bytes/filename (no XLSX-to-CSV conversion). Used for agent-generated document downloads. |
 | GET    | `/api/v1/chat/file/{file_id}/text` | user auth | Extract plain text from document (docx, pdf, pptx)                    |
+
+---
+
+## Document output tools
+
+Two LangChain tools — `create_document` (PDF/DOCX/MD/TXT from a restricted
+Markdown subset) and `create_spreadsheet` (XLSX/CSV from tabular rows) — are
+injected into every agent graph built by `GraphBuilder`
+(`agents/graphs/builder.py`), `ConfigurableMCPAgent`, and the default
+`chatbot` graph. They are **not** opt-in MCP tools configured per agent; they
+are always present unless `DOCUMENT_TOOLS_ENABLED=false` (see
+`core/settings.py`).
+
+- Rendering: `service/DocumentGenerationService.py` (pure, no I/O). PDF
+  Unicode text (Turkish characters) requires the `DejaVuSans` TTF font,
+  installed via `fonts-dejavu-core` in `docker/Dockerfile.service`; without it
+  PDFs silently fall back to Helvetica (ASCII only).
+- Persistence: `agents/document_tools.py` stores bytes in the in-memory
+  `FileService` cache, uploads to MinIO (`service/MinioService.py`), and
+  writes a `document` row scoped to the current `thread_id`/`user_id` — the
+  same table and MinIO bucket layout used for user-uploaded chat files. Both
+  MinIO and DB writes are best-effort: a failure there is logged and the file
+  is still served for the current session, since `FileService` already has
+  it.
+- The default `chatbot` graph (`agents/chatbot.py`) is otherwise a single
+  `model.ainvoke()` call with no tool loop. `_run_with_document_tools`
+  attempts `model.bind_tools(...)`; if the model doesn't support tool
+  binding, it silently falls back to the original plain-call behavior — no
+  crash, no tools available for that model.
+- Wire format: each tool call returns a JSON string as its `ToolMessage`
+  content, shaped `{"__generated_file__": true, "file_id", "filename",
+  "mime_type", "size_bytes", "download_url"}`. Both the live SSE path
+  (`AgentsRoute.message_generator`) and the chat-history rebuild path
+  (`controller/chat_controller.py`) recognize this via the shared
+  `service/GeneratedFilePacket.py` helpers and emit a `generated_file` SSE
+  packet (`type: "generated_file"`) alongside the existing `custom_tool_delta`
+  timeline packet. The frontend renders it as an inline download card in the
+  message body (`GeneratedFileRenderer.tsx`), not inside the collapsible tool
+  timeline.
 
 ---
 

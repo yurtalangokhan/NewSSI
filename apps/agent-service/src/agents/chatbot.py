@@ -1,8 +1,9 @@
-from langchain_core.messages import SystemMessage
+from langchain_core.messages import SystemMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, MessagesState, StateGraph
 from langgraph.store.base import BaseStore
 
+from agents.document_tools import DOCUMENT_TOOL_PROMPT, bind_document_tools, get_document_tools
 from core import settings
 from core.llm import get_model_from_config
 from core.logger import get_logger
@@ -15,6 +16,59 @@ from memory.long_term import (
 )
 
 logger = get_logger(__name__)
+
+# Bounded so a model that keeps emitting tool_calls can't loop forever.
+_MAX_DOCUMENT_TOOL_ITERATIONS = 4
+
+
+async def _run_with_document_tools(
+    model,
+    messages: list,
+    config: RunnableConfig,
+) -> list:
+    """Run a bounded tool-calling loop restricted to the document output tools.
+
+    Returns every new message produced (tool-call AIMessages, ToolMessages,
+    and the final answer) so the caller can persist them all onto the graph
+    state — matching how react-based agents expose tool steps natively.
+    """
+    document_tools = get_document_tools()
+    if not document_tools:
+        response = await model.ainvoke(messages)
+        return [response]
+
+    bound_model, tools_enabled = bind_document_tools(model, document_tools)
+    if not tools_enabled:
+        response = await model.ainvoke(messages)
+        return [response]
+
+    tools_by_name = {tool.name: tool for tool in document_tools}
+    conversation = [SystemMessage(content=DOCUMENT_TOOL_PROMPT), *messages]
+    new_messages: list = []
+
+    for _ in range(_MAX_DOCUMENT_TOOL_ITERATIONS):
+        ai_message = await bound_model.ainvoke(conversation)
+        conversation.append(ai_message)
+        new_messages.append(ai_message)
+
+        tool_calls = getattr(ai_message, "tool_calls", None) or []
+        if not tool_calls:
+            break
+
+        for call in tool_calls:
+            tool = tools_by_name.get(call["name"])
+            if tool is None:
+                tool_message = ToolMessage(
+                    content=f"Error: unknown tool '{call['name']}'.",
+                    tool_call_id=call["id"],
+                )
+            else:
+                result = await tool.ainvoke(call["args"], config)
+                tool_message = ToolMessage(content=str(result), tool_call_id=call["id"])
+            conversation.append(tool_message)
+            new_messages.append(tool_message)
+
+    return new_messages
 
 
 async def call_model(
@@ -62,7 +116,8 @@ async def call_model(
     if isinstance(system_prompt, str) and system_prompt.strip():
         messages = [SystemMessage(content=system_prompt.strip())] + list(messages)
 
-    response = await model.ainvoke(messages)
+    new_messages = await _run_with_document_tools(model, messages, config)
+    response = new_messages[-1]
     tag_response_with_ltm_recall(response, memories)
 
     # Long-term memory: extract and save new facts
@@ -72,7 +127,7 @@ async def call_model(
             await extract_and_save_memories(
                 store,
                 user_id,
-                list(state["messages"]) + [response],
+                list(state["messages"]) + new_messages,
                 model,
                 memories,
                 on_save=on_save,
@@ -82,7 +137,7 @@ async def call_model(
         except Exception as e:
             logger.error("ERROR during extraction: %s", e)
 
-    return {"messages": [response]}
+    return {"messages": new_messages}
 
 
 workflow = StateGraph(MessagesState)

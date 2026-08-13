@@ -1600,6 +1600,10 @@ const tr = {
     downloadButton: "İndir",
     waitingForResponse: "Yanıt bekleniyor...",
   },
+  generatedFile: {
+    downloadButton: "İndir",
+    downloadAriaLabel: "{{filename}} dosyasını indir",
+  },
   sharedChat: {
     notFoundTitle: "Paylaşılan Sohbet Bulunamadı",
     idNotFound: "Belirtilen ID ile paylaşılan bir sohbet bulunamadı.",

@@ -1594,6 +1594,10 @@ const en = {
     downloadButton: "Download",
     waitingForResponse: "Waiting for response...",
   },
+  generatedFile: {
+    downloadButton: "Download",
+    downloadAriaLabel: "Download {{filename}}",
+  },
   sharedChat: {
     notFoundTitle: "Shared Chat Not Found",
     idNotFound: "Did not find a shared chat with the specified ID.",

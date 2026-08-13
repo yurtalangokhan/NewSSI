@@ -62,7 +62,8 @@ export function isDisplayPacket(packet: Packet) {
   return (
     packet.obj.type === PacketType.MESSAGE_START ||
     packet.obj.type === PacketType.MESSAGE_DELTA ||
-    packet.obj.type === PacketType.IMAGE_GENERATION_TOOL_START
+    packet.obj.type === PacketType.IMAGE_GENERATION_TOOL_START ||
+    packet.obj.type === PacketType.GENERATED_FILE
   );
 }
 

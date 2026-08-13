@@ -19,6 +19,7 @@ import { ImageToolRenderer } from "./renderers/ImageToolRenderer";
 import { PythonToolRenderer } from "./timeline/renderers/code/PythonToolRenderer";
 import { ReasoningRenderer } from "./timeline/renderers/reasoning/ReasoningRenderer";
 import CustomToolRenderer from "./renderers/CustomToolRenderer";
+import GeneratedFileRenderer from "./renderers/GeneratedFileRenderer";
 import { FileReaderToolRenderer } from "./timeline/renderers/filereader/FileReaderToolRenderer";
 import { FetchToolRenderer } from "./timeline/renderers/fetch/FetchToolRenderer";
 import { MemoryToolRenderer } from "./timeline/renderers/memory/MemoryToolRenderer";
@@ -108,6 +109,10 @@ function isMemoryToolPacket(packet: Packet) {
   );
 }
 
+function isGeneratedFilePacket(packet: Packet) {
+  return packet.obj.type === PacketType.GENERATED_FILE;
+}
+
 
 function isReasoningPacket(packet: Packet): packet is ReasoningPacket {
   return (
@@ -152,6 +157,10 @@ export function findRenderer(
   }
   if (groupedPackets.packets.some((packet) => isResearchAgentPacket(packet))) {
     return ResearchAgentRenderer;
+  }
+
+  if (groupedPackets.packets.some((packet) => isGeneratedFilePacket(packet))) {
+    return GeneratedFileRenderer;
   }
 
   // Standard tool checks

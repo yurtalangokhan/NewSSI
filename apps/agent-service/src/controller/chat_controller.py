@@ -13,6 +13,10 @@ from controller.base import BaseController
 from controller.thread_controller import ThreadController, get_thread_controller
 from core.llm import get_model
 from service.CheckpointerService import get_checkpointer
+from service.GeneratedFilePacket import (
+    build_generated_file_packet_obj,
+    parse_generated_file_payload,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -794,6 +798,14 @@ class ChatController(BaseController):
                             },
                         }
                     )
+                    generated_file = parse_generated_file_payload(tool_content)
+                    if generated_file is not None:
+                        pending_tool_packets.append(
+                            {
+                                "placement": {"turn_index": 0, "sub_turn_index": None},
+                                "obj": build_generated_file_packet_obj(generated_file),
+                            }
+                        )
                     continue
 
                 if raw_type == "system":

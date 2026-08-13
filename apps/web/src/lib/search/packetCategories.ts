@@ -62,6 +62,12 @@ export const PACKET_CATEGORIES: ReadonlyArray<PacketCategory> = [
     ]),
     splitsFromOthers: false,
   },
+  {
+    id: "generated-file",
+    types: new Set(["generated_file"]),
+    groupSuffix: "genfile",
+    splitsFromOthers: true,
+  },
 ] as const;
 
 // ---------------------------------------------------------------------------

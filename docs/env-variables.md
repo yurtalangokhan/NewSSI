@@ -104,6 +104,7 @@
 | `AIRBYTE_API_URL`        | Airbyte API base URL                                                                     | `http://localhost:8006`                                       |
 | `AIRBYTE_API_USERNAME`   | Airbyte API username                                                                     | `airbyte`                                                     |
 | `AIRBYTE_API_PASSWORD`   | Airbyte API password                                                                     | —                                                             |
+| `DOCUMENT_TOOLS_ENABLED` | Always-on `create_document`/`create_spreadsheet` tools on every agent graph              | `true`                                                        |
 
 ---
 
