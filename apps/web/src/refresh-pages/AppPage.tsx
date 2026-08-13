@@ -1,6 +1,7 @@
 "use client";
 
 import { redirect, useRouter, useSearchParams } from "next/navigation";
+import type { Route } from "next";
 import {
   personaIncludesRetrieval,
   getAvailableContextTokens,
@@ -53,6 +54,7 @@ import ChatScrollContainer, {
 } from "@/sections/chat/ChatScrollContainer";
 import ProjectContextPanel from "@/app/app/components/projects/ProjectContextPanel";
 import { useProjectsContext } from "@/providers/ProjectsContext";
+import { buildAppPath } from "@/hooks/appNavigation";
 import {
   getProjectTokenCount,
   getMaxSelectedDocumentTokens,
@@ -84,6 +86,8 @@ import { motion, AnimatePresence } from "motion/react";
 import { useAppMode } from "@/providers/AppModeProvider";
 import { useTranslation } from "react-i18next";
 import { getLoginPath } from "@/lib/auth/loginRoute";
+import { consumeAppDraftCommand } from "@/app/app/services/draftCommand";
+import type { AppDraftCommand } from "@/app/app/services/draftCommand";
 
 interface FadeProps {
   show: boolean;
@@ -226,8 +230,23 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
 
   const router = useRouter();
   const appFocus = useAppFocus();
+  const routeAgentId = appFocus.isAgent() ? appFocus.getId() : null;
+  const [draftCommand, setDraftCommand] = useState<AppDraftCommand | null>(
+    null
+  );
   const { setAppMode } = useAppMode();
   const searchParams = useSearchParams();
+
+  useEffect(() => {
+    if (!routeAgentId) {
+      return;
+    }
+
+    const command = consumeAppDraftCommand({ agentId: routeAgentId });
+    if (command) {
+      setDraftCommand(command);
+    }
+  }, [routeAgentId]);
 
   // Use SWR hooks for data fetching
   const {
@@ -481,7 +500,8 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
       existingChatSessionId: currentChatSessionId,
       searchParams,
       filterManager,
-      firstMessage,
+      firstMessage: draftCommand?.message ?? firstMessage,
+      submitOnLoad: draftCommand?.submitOnLoad ?? false,
       setSelectedAgentFromId,
       setSelectedDocuments,
       setCurrentMessageFiles,
@@ -594,25 +614,29 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
 
   const handleSwitchAgent = useCallback(
     (agent: (typeof agents)[0]) => {
+      const path = buildAppPath({
+        type: "agent",
+        id: agent.external_id ?? agent.id,
+      });
       const params = new URLSearchParams();
-      params.set(
-        SEARCH_PARAM_NAMES.PERSONA_ID,
-        String(agent.external_id ?? agent.id)
-      );
       // Preserve project context when switching agent
       if (currentProjectId) {
         params.set(SEARCH_PARAM_NAMES.PROJECT_ID, String(currentProjectId));
       }
-      router.push(`/app?${params.toString()}`, { scroll: false });
+      const query = params.toString();
+      router.push((query ? `${path}?${query}` : path) as Route, {
+        scroll: false,
+      });
     },
     [router, currentProjectId]
   );
 
   const handleBackToProject = useCallback(() => {
     if (currentProjectId) {
-      const params = new URLSearchParams();
-      params.set(SEARCH_PARAM_NAMES.PROJECT_ID, String(currentProjectId));
-      router.push(`/app?${params.toString()}`, { scroll: false });
+      router.push(
+        buildAppPath({ type: "project", id: currentProjectId }) as Route,
+        { scroll: false }
+      );
     }
   }, [currentProjectId, router]);
 
@@ -993,7 +1017,8 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
                         retrievalEnabled={retrievalEnabled}
                         selectedDocuments={selectedDocuments}
                         initialMessage={
-                          searchParams?.get(SEARCH_PARAM_NAMES.USER_PROMPT) ||
+                          draftCommand?.message ??
+                          searchParams?.get(SEARCH_PARAM_NAMES.USER_PROMPT) ??
                           ""
                         }
                         stopGenerating={stopGenerating}

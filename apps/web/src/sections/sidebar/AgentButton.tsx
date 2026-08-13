@@ -12,7 +12,8 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import useOnMount from "@/hooks/useOnMount";
 import AgentAvatar from "@/refresh-components/avatars/AgentAvatar";
-import { SvgPin, SvgX } from "@opal/icons";
+import { SvgX } from "@opal/icons";
+import { buildAppPath } from "@/hooks/appNavigation";
 
 interface SortableItemProps {
   id: number;
@@ -57,11 +58,13 @@ const AgentButton = memo(({ agent }: AgentButtonProps) => {
   const isActuallyPinned = pinnedAgents.some((a) => a.id === agent.id);
   const isCurrentAgent = currentAgent?.id === agent.id;
   const href = useMemo(() => {
-    const params = new URLSearchParams({ agentId: String(routeAgentId) });
+    const path = buildAppPath({ type: "agent", id: routeAgentId });
+    const params = new URLSearchParams();
     if (currentProjectId) {
       params.set("projectId", String(currentProjectId));
     }
-    return `/app?${params.toString()}`;
+    const query = params.toString();
+    return query ? `${path}?${query}` : path;
   }, [routeAgentId, currentProjectId]);
 
   const handleClick = async () => {

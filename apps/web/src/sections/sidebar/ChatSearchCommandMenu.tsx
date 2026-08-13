@@ -31,6 +31,7 @@ import {
 } from "@opal/icons";
 import TextSeparator from "@/refresh-components/TextSeparator";
 import { useTranslation } from "react-i18next";
+import { buildAppPath } from "@/hooks/appNavigation";
 
 /**
  * Dynamic footer that shows contextual action labels based on highlighted item type
@@ -171,16 +172,19 @@ export default function ChatSearchCommandMenu({
         if (!currentProjectId) {
           return "/app";
         }
-        return `/app?projectId=${currentProjectId}`;
+        return buildAppPath({ type: "project", id: currentProjectId });
       }
 
-      const params = new URLSearchParams({
-        agentId: String(currentRouteAgentId),
-      });
+      if (currentRouteAgentId === null || currentRouteAgentId === undefined) {
+        return "/app";
+      }
+      const path = buildAppPath({ type: "agent", id: currentRouteAgentId });
+      const params = new URLSearchParams();
       if (currentProjectId) {
         params.set("projectId", String(currentProjectId));
       }
-      return `/app?${params.toString()}`;
+      const query = params.toString();
+      return query ? `${path}?${query}` : path;
     })();
     router.push(href as Route);
     setOpen(false);
@@ -188,7 +192,7 @@ export default function ChatSearchCommandMenu({
 
   const handleChatSelect = useCallback(
     (chatId: string) => {
-      router.push(`/app?chatId=${chatId}` as Route);
+      router.push(buildAppPath({ type: "chat", id: chatId }) as Route);
       setOpen(false);
     },
     [router]
@@ -196,7 +200,7 @@ export default function ChatSearchCommandMenu({
 
   const handleProjectSelect = useCallback(
     (projectId: number) => {
-      router.push(`/app?projectId=${projectId}` as Route);
+      router.push(buildAppPath({ type: "project", id: projectId }) as Route);
       setOpen(false);
     },
     [router]

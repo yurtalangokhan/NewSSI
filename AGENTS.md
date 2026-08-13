@@ -187,28 +187,35 @@ Load the relevant skill first:
 
 ### Spec-driven implementation workflow
 
-Features and larger changes start with a detailed spec document in `.tmp/`.
-This spec is the bridge between design brainstorming and code implementation.
+Features and larger changes start with a detailed spec document in a topic
+folder under `.tmp/`. This spec is the bridge between design brainstorming and
+code implementation.
 
-1. **Spec location:** Active spec documents live in `.tmp/` at the repo root.
-   Name pattern: `.tmp/<topic>-design.md`. Start from
+1. **Spec location:** Active spec documents live in `.tmp/<topic>/`.
+   Name pattern: `.tmp/<topic>/design.md`. Start from
    `.agents/templates/spec-template.md` unless an existing spec already covers
-   the work.
-2. **Spec content:** Cover architecture, component interfaces, data flow, error
+   the work. Keep task briefs and handoff reports inside the same topic folder
+   instead of placing them directly under `.tmp/`.
+2. **Spec branch:** Each new spec must start on its own local branch before
+   the spec is written. Use the existing branch style, for example
+   `feature/<topic>` for product changes and `docs/<topic>` for process-only
+   specs. If a dirty worktree already exists, create the branch without
+   reverting unrelated user changes and document that context in the spec.
+3. **Spec content:** Cover architecture, component interfaces, data flow, error
    handling, testing strategy, implementation order, per-file changes,
    validation gates, acceptance criteria, resolved decisions, and agent handoff
    notes.
-3. **Before implementing:** Read the full spec and confirm the design is clear.
+4. **Before implementing:** Read the full spec and confirm the design is clear.
    If the spec is unclear or incomplete, update it before coding.
-4. **Follow the spec order:** Implement steps in the order listed in the
+5. **Follow the spec order:** Implement steps in the order listed in the
    spec's "Implementation order" section. Each step maps to a concrete set of
    file changes.
-5. **Validation gates:** After each spec step, run the relevant service
+6. **Validation gates:** After each spec step, run the relevant service
    `make validate` before moving to the next step. Docker/compose changes
    require `make docker-verify`.
-6. **Spec updates:** If implementation reveals design gaps, update the spec
+7. **Spec updates:** If implementation reveals design gaps, update the spec
    document first, then continue coding. The spec is the source of truth.
-7. **Cleanup:** Once the feature is complete and validated, move durable
+8. **Cleanup:** Once the feature is complete and validated, move durable
    knowledge from the spec into `docs/`.
 
 ### Spec-driven agent team workflow
@@ -224,7 +231,7 @@ cross-service work, or tasks where shared context and review loops reduce risk.
 - `.agents/roles/*.md` defines role-specific instructions for planner,
   architect, implementer, tester, reviewer, and docs-maintainer agents.
 - `.agents/templates/spec-template.md` is the durable template for new
-  `.tmp/<topic>-design.md` specs.
+  `.tmp/<topic>/design.md` specs.
 
 **Provider mapping rules:**
 
@@ -238,18 +245,26 @@ cross-service work, or tasks where shared context and review loops reduce risk.
 
 **Shared context contract:**
 
-- `.tmp/<topic>-design.md` is the single active source of truth for the task.
-- `.tmp/<topic>-task-<n>-brief.md` contains the exact requirements for one
-  implementation step.
-- `.tmp/<topic>-task-<n>-report.md` contains the implementer's status, changed
-  files, validation commands, results, and concerns.
-- `.tmp/<topic>-progress.md` records completed steps so future agents can
+- `.tmp/<topic>/design.md` is the single active source of truth for the task.
+- `.tmp/<topic>/plan.md` contains the implementation plan when the task needs
+  one.
+- `.tmp/<topic>/progress.md` records completed steps so future agents can
   resume without rereading conversation history.
+- `.tmp/<topic>/tasks/task-<n>-brief.md` contains the exact requirements for
+  one implementation step.
+- `.tmp/<topic>/tasks/task-<n>-report.md` contains the implementer's status,
+  changed files, validation commands, results, and concerns.
+- `.tmp/<topic>/tasks/task-<n>-diff.md` contains a task-specific diff package
+  when a reviewer needs one.
+- `.tmp/<topic>/reviews/task-<n>-review.md` and
+  `.tmp/<topic>/reviews/task-<n>-rereview-<m>.md` contain reviewer output.
+- `.tmp/<topic>/reviews/architect-review.md` contains architect review output
+  when a separate architecture check is used.
 
 **Role flow:**
 
 1. **Planner:** Analyzes the request, reads relevant docs, creates or updates
-   the `.tmp/<topic>-design.md` shared spec, and defines implementation order.
+   the `.tmp/<topic>/design.md` shared spec, and defines implementation order.
 2. **Architect:** Reviews the spec for service boundaries, interfaces, data
    flow, and validation gaps before implementation begins.
 3. **Implementer:** Works one task brief at a time, follows TDD for behavior
@@ -270,7 +285,7 @@ cross-service work, or tasks where shared context and review loops reduce risk.
 - Give each subagent the smallest useful context: its role prompt, the task
   brief, the shared spec sections named in the brief, and relevant files.
 - Keep long handoffs in files, not pasted conversation text.
-- Update `.tmp/<topic>-progress.md` after each reviewed task completes.
+- Update `.tmp/<topic>/progress.md` after each reviewed task completes.
 - If implementation reveals a spec gap, update the spec before continuing.
 - Final responses must state which roles/skills were used, which validation
   gates passed or failed, and whether the code is ready to push.

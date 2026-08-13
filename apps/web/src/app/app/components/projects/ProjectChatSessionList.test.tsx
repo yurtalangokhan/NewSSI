@@ -49,7 +49,7 @@ describe("ProjectChatSessionList", () => {
 
     expect(screen.getByRole("link", { name: /roadmap notes/i })).toHaveAttribute(
       "href",
-      "/app?chatId=chat-123"
+      "/app/chats/chat-123"
     );
   });
 });

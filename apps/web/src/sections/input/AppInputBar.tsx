@@ -444,12 +444,20 @@ const AppInputBar = React.memo(
         combinedSettings?.settings?.deep_research_enabled ?? true;
       return (
         deepResearchGloballyEnabled &&
-        hasSearchToolsAvailable(selectedAgent?.tools || [])
+        (selectedAgent?.capabilities?.has_retrieval ||
+          hasSearchToolsAvailable(selectedAgent?.tools || []))
       );
     }, [
+      selectedAgent?.capabilities?.has_retrieval,
       selectedAgent?.tools,
       combinedSettings?.settings?.deep_research_enabled,
     ]);
+
+    const selectedAgentHasActions = Boolean(
+      selectedAgent &&
+        (selectedAgent.capabilities?.has_actions ||
+          (selectedAgent.action_count ?? selectedAgent.tools.length) > 0)
+    );
 
     function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
       if (!user?.preferences?.shortcut_enabled || !showPrompts) return;
@@ -757,7 +765,7 @@ const AppInputBar = React.memo(
                     controlsLoading && "invisible"
                   )}
                 >
-                  {selectedAgent && selectedAgent.tools.length > 0 && (
+                  {selectedAgent && selectedAgentHasActions && (
                     <ActionsPopover
                       selectedAgent={selectedAgent}
                       filterManager={filterManager}

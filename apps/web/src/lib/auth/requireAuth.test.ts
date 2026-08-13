@@ -1,4 +1,4 @@
-import { requireAuth } from "./requireAuth";
+import { requireAdminAuth, requireAuth } from "./requireAuth";
 import {
   type AuthTypeMetadata,
   getAuthTypeMetadataSS,
@@ -37,5 +37,20 @@ describe("requireAuth", () => {
       user: null,
       redirect: "/auth/login",
     });
+  });
+
+  it("does not reject authenticated users by hardcoded admin role", async () => {
+    const user = {
+      id: "user-1",
+      role: "enduser",
+      is_superuser: false,
+      is_verified: true,
+    };
+    jest.mocked(getCurrentUserSS).mockResolvedValue(user as never);
+
+    const result = await requireAdminAuth();
+
+    expect(result).toMatchObject({ user });
+    expect(result).not.toHaveProperty("redirect");
   });
 });

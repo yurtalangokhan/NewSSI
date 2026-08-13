@@ -28,6 +28,7 @@ import { useModal } from "@/refresh-components/contexts/ModalContext";
 import { useUser } from "@/providers/UserProvider";
 import { Formik, useFormikContext } from "formik";
 import { useAgent } from "@/hooks/useAgents";
+import { buildAppPath } from "@/hooks/appNavigation";
 import { Button as OpalButton } from "@opal/components";
 import { useLabels } from "@/lib/hooks";
 import { PersonaLabel } from "@/app/admin/agents/interfaces";
@@ -115,7 +116,10 @@ function ShareAgentFormContent({ agentId }: ShareAgentFormContentProps) {
 
   function handleCopyLink() {
     if (!agentId) return;
-    const url = `${window.location.origin}/app?agentId=${agentId}`;
+    const url = `${window.location.origin}${buildAppPath({
+      type: "agent",
+      id: agentId,
+    })}`;
     navigator.clipboard.writeText(url);
   }
 

@@ -4,9 +4,8 @@ import { AgentId, MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChatSession } from "@/app/app/interfaces";
 import { agentIdsMatch, useAgents, usePinnedAgents } from "@/hooks/useAgents";
-import { useSearchParams } from "next/navigation";
-import { SEARCH_PARAM_NAMES } from "@/app/app/services/searchParams";
 import { useSettingsContext } from "@/providers/SettingsProvider";
+import useAppFocus from "@/hooks/useAppFocus";
 
 export default function useAgentController({
   selectedChatSession,
@@ -15,13 +14,12 @@ export default function useAgentController({
   selectedChatSession: ChatSession | null | undefined;
   onAgentSelect?: () => void;
 }) {
-  const searchParams = useSearchParams();
+  const appFocus = useAppFocus();
   const { agents: availableAgents } = useAgents();
   const { pinnedAgents: pinnedAgents } = usePinnedAgents();
   const combinedSettings = useSettingsContext();
 
-  const defaultAgentIdRaw = searchParams?.get(SEARCH_PARAM_NAMES.PERSONA_ID);
-  const defaultAgentId = defaultAgentIdRaw ?? undefined;
+  const defaultAgentId = appFocus.isAgent() ? appFocus.getId() ?? undefined : undefined;
 
   const existingChatSessionAgentId = selectedChatSession?.persona_id;
   const resolveAgentById = useCallback(

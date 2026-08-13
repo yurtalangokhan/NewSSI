@@ -1,6 +1,7 @@
 "use client";
 
 import useSWR from "swr";
+import { useSWRConfig } from "swr";
 import { errorHandlingFetcher } from "@/lib/fetcher";
 import {
   LLMProviderDescriptor,
@@ -42,15 +43,24 @@ import { LLM_PROVIDERS_ADMIN_URL } from "@/lib/llmConfig/constants";
  * - `error` — The SWR error object, if any.
  * - `refetch` — SWR `mutate` function to trigger a revalidation.
  */
-export function useLLMProviders(personaId?: number) {
+interface UseLLMProvidersOptions {
+  enabled?: boolean;
+}
+
+export function useLLMProviders(
+  personaId?: number,
+  options: UseLLMProvidersOptions = {}
+) {
   const url =
     personaId !== undefined
       ? `/api/llm/persona/${personaId}/providers`
       : "/api/llm/provider";
+  const enabled = options.enabled ?? true;
+  const { mutate: mutateKey } = useSWRConfig();
 
   const { data, error, mutate } = useSWR<
     LLMProviderResponse<LLMProviderDescriptor>
-  >(url, errorHandlingFetcher, {
+  >(enabled ? url : null, errorHandlingFetcher, {
     revalidateOnFocus: false,
     dedupingInterval: 60000,
   });
@@ -61,7 +71,7 @@ export function useLLMProviders(personaId?: number) {
     defaultVision: data?.default_vision ?? null,
     isLoading: !error && !data,
     error,
-    refetch: mutate,
+    refetch: enabled ? mutate : () => mutateKey(url),
   };
 }
 

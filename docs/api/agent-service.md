@@ -39,6 +39,8 @@ the canonical `/api/v1` paths documented here.
 | Method | Path                               | Permission       | Description                                           |
 | ------ | ---------------------------------- | ---------------- | ----------------------------------------------------- |
 | GET    | `/api/v1/agents/info`              | `agent:list`     | List all agents, models, default agent, default model |
+| GET    | `/api/v1/agents/catalog`           | `persona:read`   | List lightweight product agent summaries              |
+| GET    | `/api/v1/agents/{agent_id}`        | `persona:read`   | Get full product agent detail                         |
 | POST   | `/api/v1/agents/{agent_id}/invoke` | `agent:invoke`   | Invoke agent — non-streaming response                 |
 | POST   | `/api/v1/agents/invoke`            | `agent:invoke`   | Invoke default agent — non-streaming                  |
 | POST   | `/api/v1/agents/{agent_id}/stream` | `agent:stream`   | Stream agent response (SSE events)                    |
@@ -49,6 +51,16 @@ the canonical `/api/v1` paths documented here.
 **Stream SSE events:** `token`, `message`, `reasoning_start`, `reasoning_delta`, `custom_tool_start`, `custom_tool_delta`, `custom_step_start`, `long_term_memory_recall`, `long_term_memory_save`, `error`, `[DONE]`
 
 **Thinking tags:** Built-in `<thinking>` / `<think>` tag processing (DeepSeek, Qwen models) with streaming state machine.
+
+`/api/v1/agents/catalog` is the product-facing list endpoint for frontend
+catalogs, sidebars, selectors, and initial chat load. It returns summary fields
+and cheap capability flags instead of full persona details. Use
+`/api/v1/agents/{agent_id}` when the UI needs prompts, full tools, sharing
+fields, scoped knowledge, or other detail-only data.
+
+Catalog summaries return only a shallow availability status. Component-level
+model, MCP tool, memory, and RAG availability checks are detail-only data and
+are resolved through `/api/v1/agents/{agent_id}`.
 
 ---
 
@@ -130,15 +142,20 @@ the canonical `/api/v1` paths documented here.
 | Method      | Path                                                 | Permission    | Description                           |
 | ----------- | ---------------------------------------------------- | ------------- | ------------------------------------- |
 | GET         | `/api/v1/chat/get-user-chat-sessions`                | `chat:read`   | List user's chat sessions             |
+| GET         | `/api/v1/chat/sessions`                              | `chat:read`   | REST alias for listing sessions       |
 | POST        | `/api/v1/chat/create-chat-session`                   | `chat:send`   | Create chat session                   |
+| POST        | `/api/v1/chat/sessions`                              | `chat:send`   | REST alias for creating a session     |
 | GET         | `/api/v1/chat/get-chat-session/{session_id}`         | `chat:read`   | Get session with messages             |
+| GET         | `/api/v1/chat/sessions/{session_id}`                 | `chat:read`   | REST alias for getting a session      |
 | POST/DELETE | `/api/v1/chat/delete-chat-session/{session_id}`      | `chat:delete` | Delete chat session                   |
+| DELETE      | `/api/v1/chat/sessions/{session_id}`                 | `chat:delete` | REST alias for deleting a session     |
 | POST/DELETE | `/api/v1/chat/delete-all-chat-sessions`              | `chat:delete` | Delete all user sessions              |
 | PUT/PATCH   | `/api/v1/chat/rename-chat-session`                   | `chat:send`   | Rename session                        |
 | PUT         | `/api/v1/chat/update-chat-session-model`             | `chat:send`   | Update model override                 |
 | PUT         | `/api/v1/chat/update-chat-session-temperature`       | `chat:send`   | Update temperature override           |
 | POST        | `/api/v1/chat/stop-chat-session/{session_id}`        | `chat:send`   | Stop running session                  |
 | POST        | `/api/v1/chat/send-chat-message`                     | `chat:send`   | Send message (streaming SSE response) |
+| POST        | `/api/v1/chat/messages`                              | `chat:send`   | REST alias for sending a message      |
 | POST        | `/api/v1/chat/create-chat-message-feedback`          | `chat:send`   | Create message feedback               |
 | DELETE      | `/api/v1/chat/remove-chat-message-feedback`          | `chat:delete` | Remove message feedback               |
 | GET         | `/api/v1/chat/available-context-tokens`              | `chat:read`   | Get available context tokens          |
@@ -193,6 +210,11 @@ current chat, agent-service passes those files to the mail tool as a
 request-scoped `mail_attachments` runtime context. The agent sees only the file
 names in its tool policy, and the service resolves the base64 attachment payload
 server-side when `send_email` runs.
+
+New frontend list views must prefer `/api/v1/agents/catalog`. The persona list
+endpoint remains available for compatibility and returns the existing full
+persona-shaped payload. Use `/api/v1/persona/{persona_id}` or
+`/api/v1/agents/{agent_id}` when full detail is required.
 
 | Method | Path                                 | Permission       | Description                       |
 | ------ | ------------------------------------ | ---------------- | --------------------------------- |

@@ -9,10 +9,13 @@ import {
 } from "@/app/admin/agents/interfaces";
 import { errorHandlingFetcher } from "@/lib/fetcher";
 import { pinAgents } from "@/lib/agents";
+import {
+  AGENT_CATALOG_API_PATH,
+  buildAgentDetailApiPath,
+} from "@/lib/agents/apiPaths";
 import { useUser } from "@/providers/UserProvider";
-import { useSearchParams } from "next/navigation";
-import { SEARCH_PARAM_NAMES } from "@/app/app/services/searchParams";
 import useChatSessions from "./useChatSessions";
+import useAppFocus from "@/hooks/useAppFocus";
 
 export function agentIdsMatch(
   left: AgentId | MinimalPersonaSnapshot | null | undefined,
@@ -58,7 +61,7 @@ function sortAgents(left: MinimalPersonaSnapshot, right: MinimalPersonaSnapshot)
  */
 export function useAgents() {
   const { data, error, mutate } = useSWR<MinimalPersonaSnapshot[]>(
-    "/api/persona",
+    AGENT_CATALOG_API_PATH,
     errorHandlingFetcher,
     {
       revalidateOnFocus: false,
@@ -104,7 +107,9 @@ export function useAgents() {
  */
 export function useAgent(agentId: AgentId | null) {
   const { data: personaData, error: personaError, isLoading: isPersonaLoading, mutate: mutatePersona } = useSWR<FullPersona>(
-    agentId && typeof agentId === "number" ? `/api/persona/${agentId}` : null,
+    agentId && typeof agentId === "number"
+      ? buildAgentDetailApiPath(agentId)
+      : null,
     errorHandlingFetcher,
     {
       revalidateOnFocus: false,
@@ -211,9 +216,8 @@ export function usePinnedAgents() {
  */
 export function useCurrentAgent(): MinimalPersonaSnapshot | null {
   const { agents } = useAgents();
-  const searchParams = useSearchParams();
-
-  const agentIdRaw = searchParams?.get(SEARCH_PARAM_NAMES.PERSONA_ID);
+  const appFocus = useAppFocus();
+  const agentIdRaw = appFocus.isAgent() ? appFocus.getId() : null;
   const { currentChatSession } = useChatSessions();
 
   const currentAgent = useMemo(() => {

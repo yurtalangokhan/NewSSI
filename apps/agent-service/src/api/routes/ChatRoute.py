@@ -197,6 +197,7 @@ async def _resolve_model_supports_reasoning(
     return None
 
 
+@router.get("/api/chat/sessions")
 @router.get("/api/chat/get-user-chat-sessions")
 async def get_chat_sessions(
     request: Request,
@@ -205,6 +206,7 @@ async def get_chat_sessions(
     return await (await _get_user_chat_controller(request, user)).get_chat_sessions()
 
 
+@router.post("/api/chat/sessions")
 @router.post("/api/chat/create-chat-session")
 async def create_chat_session(
     request: Request,
@@ -218,6 +220,7 @@ async def create_chat_session(
     )
 
 
+@router.get("/api/chat/sessions/{chat_session_id}")
 @router.get("/api/chat/get-chat-session/{chat_session_id}")
 async def get_chat_session(
     request: Request,
@@ -232,6 +235,7 @@ async def get_chat_session(
         raise HTTPException(status_code=403, detail=str(exc)) from exc
 
 
+@router.delete("/api/chat/sessions/{chat_session_id}")
 @router.post("/api/chat/delete-chat-session/{chat_session_id}")
 @router.delete("/api/chat/delete-chat-session/{chat_session_id}")
 async def delete_chat_session(
@@ -369,6 +373,7 @@ async def remove_chat_message_feedback(
     return await (await _get_user_chat_controller(request, user)).remove_chat_message_feedback()
 
 
+@router.post("/api/chat/messages")
 @router.post("/api/chat/send-chat-message")
 async def send_chat_message(
     request: Request,

@@ -10,11 +10,19 @@ team:
 
 shared_context:
   active_dir: .tmp
+  branch_per_spec: true
+  branch_pattern: "<type>/<kebab-case-topic>"
   spec_template: .agents/templates/spec-template.md
-  spec_pattern: ".tmp/<topic>-design.md"
-  task_brief_pattern: ".tmp/<topic>-task-<n>-brief.md"
-  task_report_pattern: ".tmp/<topic>-task-<n>-report.md"
-  progress_pattern: ".tmp/<topic>-progress.md"
+  topic_dir_pattern: ".tmp/<topic>/"
+  spec_pattern: ".tmp/<topic>/design.md"
+  plan_pattern: ".tmp/<topic>/plan.md"
+  progress_pattern: ".tmp/<topic>/progress.md"
+  task_brief_pattern: ".tmp/<topic>/tasks/task-<n>-brief.md"
+  task_report_pattern: ".tmp/<topic>/tasks/task-<n>-report.md"
+  task_diff_pattern: ".tmp/<topic>/tasks/task-<n>-diff.md"
+  task_review_pattern: ".tmp/<topic>/reviews/task-<n>-review.md"
+  task_rereview_pattern: ".tmp/<topic>/reviews/task-<n>-rereview-<m>.md"
+  architect_review_pattern: ".tmp/<topic>/reviews/architect-review.md"
   durable_docs_dir: docs
 
 provider_contract:
@@ -83,6 +91,7 @@ roles:
 
 workflows:
   spec_driven_development:
+    require_local_branch_per_spec: true
     require_spec_before_implementation: true
     require_shared_context: true
     require_implementation_order: true

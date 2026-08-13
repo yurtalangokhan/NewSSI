@@ -435,8 +435,27 @@ export function buildChatUrl(
   chatSessionId: string | null,
   personaId: string | number | null,
   search?: boolean,
-  skipReload?: boolean
+  _skipReload?: boolean
 ) {
+  if (!search) {
+    const finalSearchParams = new URLSearchParams();
+    existingSearchParams?.forEach((value, key) => {
+      if (!PARAMS_TO_SKIP.includes(key)) {
+        finalSearchParams.append(key, value);
+      }
+    });
+    const finalSearchParamsString = finalSearchParams.toString();
+    const querySuffix = finalSearchParamsString ? `?${finalSearchParamsString}` : "";
+
+    if (chatSessionId) {
+      return `/app/chats/${encodeURIComponent(chatSessionId)}${querySuffix}`;
+    }
+    if (personaId !== null) {
+      return `/app/agents/${encodeURIComponent(String(personaId))}${querySuffix}`;
+    }
+    return `/app${querySuffix}`;
+  }
+
   const finalSearchParams: string[] = [];
   if (chatSessionId) {
     finalSearchParams.push(
@@ -454,10 +473,6 @@ export function buildChatUrl(
       finalSearchParams.push(`${key}=${value}`);
     }
   });
-
-  if (skipReload) {
-    finalSearchParams.push(`${SEARCH_PARAM_NAMES.SKIP_RELOAD}=true`);
-  }
 
   const finalSearchParamsString = finalSearchParams.join("&");
 

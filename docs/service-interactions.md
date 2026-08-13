@@ -82,10 +82,13 @@ runtime redirect and logout behavior consistent across those boundaries.
   security-sensitive behavior. Cover redirect URI merging, post-logout redirect
   handling, cookie creation and clearing, and open redirect validation with
   regression tests.
-- Admin pages use server-side admin checks first, then load fine-grained route
-  permissions in `UserProvider`. Permission fetch failures must not redirect an
-  already-authenticated admin to `/error/403`; only completed permission checks
-  that deny the route trigger the 403 page.
+- Admin pages use server-side authentication first, then load fine-grained route
+  permissions in `UserProvider`. Web admin menus and pages don't authorize by
+  hardcoded role names. They use user-service's effective permissions, which
+  user-service resolves from the user's assigned role, direct role permissions,
+  and service coarse-role permissions. Permission fetch failures must not grant
+  admin access; completed permission checks that deny the route trigger the
+  `403` page.
 - Validate auth changes with `make -C apps/user-service validate`. When web
   logout or callback code changes, also run web lint, typecheck, and tests. If
   services are running, verify the browser flow through Kong.
@@ -120,6 +123,23 @@ runtime redirect and logout behavior consistent across those boundaries.
    ▼
 5. Frontend renders streaming response in chat UI
 ```
+
+### Frontend app routing
+
+The web app uses path-based `/app` routes for durable chat, agent, and project
+identity. Query parameters are reserved for compatibility and temporary command
+state during migration.
+
+- `/app` opens a new default chat.
+- `/app/chats/{chat_id}` opens an existing chat session.
+- `/app/agents/{agent_id}` opens a new chat with an agent preselected.
+- `/app/projects/{project_id}` opens a project workspace.
+- `/app/shared/{chat_id}` remains the shared-chat route.
+
+Legacy `/app?chatId=...`, `/app?agentId=...`, and `/app?projectId=...` links
+still parse to the same app state and are replaced with the canonical path on
+the client. Chat URLs don't carry `projectId`; project context is derived from
+the chat session and project membership data.
 
 ---
 

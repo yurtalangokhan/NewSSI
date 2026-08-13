@@ -254,19 +254,21 @@ export default function useChatController({
     chatSessionId: string,
     personaId: AgentId | null
   ) => {
-    // Build URL with skip-reload parameter
     const newUrl = buildChatUrl(
       searchParams,
       chatSessionId,
       personaId,
       false,
-      true // skipReload
+      true
     );
 
     // Navigate immediately if still on chat page
     // For NRF pages (/chat/nrf, /chat/nrf/side-panel), don't navigate immediately
     // Let the streaming complete inline, then the user can continue chatting there
-    const isOnChatPage = pathname === "/app";
+    const isOnChatPage =
+      pathname === "/app" ||
+      pathname.startsWith("/app/agents/") ||
+      pathname.startsWith("/app/projects/");
 
     if (isOnChatPage && !navigatingAway.current) {
       router.push(newUrl as Route, { scroll: false });

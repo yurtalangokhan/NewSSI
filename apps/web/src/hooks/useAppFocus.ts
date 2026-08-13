@@ -5,15 +5,10 @@
 //
 // This is useful in determining what `SidebarTab` should be active, for example.
 
-import { SEARCH_PARAM_NAMES } from "@/app/app/services/searchParams";
+import { AppFocusValue, parseAppFocus } from "@/hooks/appNavigation";
 import { usePathname, useSearchParams } from "next/navigation";
 
-export type AppFocusType =
-  | { type: "agent" | "project" | "chat"; id: string }
-  | "new-session"
-  | "more-agents"
-  | "user-settings"
-  | "shared-chat";
+export type AppFocusType = AppFocusValue;
 
 export class AppFocus {
   constructor(public value: AppFocusType) {}
@@ -66,31 +61,5 @@ export default function useAppFocus(): AppFocus {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  // Check if we're viewing a shared chat
-  if (pathname.startsWith("/app/shared/")) {
-    return new AppFocus("shared-chat");
-  }
-
-  // Check if we're on the user settings page
-  if (pathname.startsWith("/app/settings")) {
-    return new AppFocus("user-settings");
-  }
-
-  // Check if we're on the agents page
-  if (pathname.startsWith("/app/agents")) {
-    return new AppFocus("more-agents");
-  }
-
-  // Check search params for chat, agent, or project
-  const chatId = searchParams.get(SEARCH_PARAM_NAMES.CHAT_ID);
-  if (chatId) return new AppFocus({ type: "chat", id: chatId });
-
-  const agentId = searchParams.get(SEARCH_PARAM_NAMES.PERSONA_ID);
-  if (agentId) return new AppFocus({ type: "agent", id: agentId });
-
-  const projectId = searchParams.get(SEARCH_PARAM_NAMES.PROJECT_ID);
-  if (projectId) return new AppFocus({ type: "project", id: projectId });
-
-  // No search params means we're on a new session
-  return new AppFocus("new-session");
+  return new AppFocus(parseAppFocus(pathname, searchParams));
 }
