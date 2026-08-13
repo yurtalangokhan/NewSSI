@@ -20,6 +20,8 @@ function resolveMimeType(mimeType: string, fileName: string): string {
     return "text/markdown";
   if (lower.endsWith(".txt")) return "text/plain";
   if (lower.endsWith(".csv")) return "text/csv";
+  if (lower.endsWith(".docx") || lower.endsWith(".doc"))
+    return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
   return mimeType;
 }
 
@@ -34,6 +36,7 @@ export default function PreviewModal({
 }: PreviewModalProps) {
   const { t } = useTranslation();
   const [fileContent, setFileContent] = useState("");
+  const [fileBlob, setFileBlob] = useState<Blob | null>(null);
   const [fileUrl, setFileUrl] = useState("");
   const [fileName, setFileName] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -73,14 +76,13 @@ export default function PreviewModal({
     setIsLoading(true);
     setLoadError(null);
     setFileContent("");
+    setFileBlob(null);
 
     // For files not persisted yet (e.g. image chosen in input, not sent yet),
     // render directly from inline data URL and skip backend fetch.
     if (presentingDocument.preview_url) {
       setFileUrl(presentingDocument.preview_url);
-      setFileName(
-        presentingDocument.semantic_identifier || "document"
-      );
+      setFileName(presentingDocument.semantic_identifier || "document");
       setMimeType(
         presentingDocument.preview_mime_type || "application/octet-stream"
       );
@@ -96,6 +98,7 @@ export default function PreviewModal({
       const response = await fetchChatFile(fileIdLocal);
 
       const blob = await response.blob();
+      setFileBlob(blob);
       const url = window.URL.createObjectURL(blob);
       setFileUrl((prev) => {
         if (prev) window.URL.revokeObjectURL(prev);
@@ -147,6 +150,7 @@ export default function PreviewModal({
   const ctx: PreviewContext = useMemo(
     () => ({
       fileContent,
+      fileBlob,
       fileUrl,
       fileName,
       language,
@@ -159,6 +163,7 @@ export default function PreviewModal({
     }),
     [
       fileContent,
+      fileBlob,
       fileUrl,
       fileName,
       language,

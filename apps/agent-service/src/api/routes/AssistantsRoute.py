@@ -137,7 +137,9 @@ async def create_assistant(
     agent_exists = any(a.get("key") == request.graph_id for a in all_agents)
 
     if not agent_exists:
-        raise HTTPException(status_code=404, detail=t("assistant.graph_not_found", graph_id=request.graph_id))
+        raise HTTPException(
+            status_code=404, detail=t("assistant.graph_not_found", graph_id=request.graph_id)
+        )
 
     return await ctrl.create_assistant(
         graph_id=request.graph_id,
@@ -175,7 +177,9 @@ async def update_assistant(
     all_agents = ctrl.list_agents()
     for agent_info in all_agents:
         if agent_info.get("key") == assistant_id:
-            raise HTTPException(status_code=403, detail=t("assistant.cannot_update_system_template"))
+            raise HTTPException(
+                status_code=403, detail=t("assistant.cannot_update_system_template")
+            )
 
     raise HTTPException(status_code=404, detail=t("assistant.not_found", assistant_id=assistant_id))
 

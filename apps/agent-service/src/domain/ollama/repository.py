@@ -44,7 +44,8 @@ class OllamaRepository:
 
     async def delete_model(self, model_name: str) -> bool:
         async with httpx.AsyncClient(timeout=20.0) as client:
-            response = await client.delete(
+            response = await client.request(
+                "DELETE",
                 f"{self.base_url}/api/delete",
                 json={"name": model_name},
             )

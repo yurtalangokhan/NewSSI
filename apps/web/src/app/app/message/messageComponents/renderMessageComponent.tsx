@@ -19,6 +19,7 @@ import { ImageToolRenderer } from "./renderers/ImageToolRenderer";
 import { PythonToolRenderer } from "./timeline/renderers/code/PythonToolRenderer";
 import { ReasoningRenderer } from "./timeline/renderers/reasoning/ReasoningRenderer";
 import CustomToolRenderer from "./renderers/CustomToolRenderer";
+import GeneratedFileRenderer from "./renderers/GeneratedFileRenderer";
 import { FileReaderToolRenderer } from "./timeline/renderers/filereader/FileReaderToolRenderer";
 import { FetchToolRenderer } from "./timeline/renderers/fetch/FetchToolRenderer";
 import { MemoryToolRenderer } from "./timeline/renderers/memory/MemoryToolRenderer";
@@ -108,6 +109,17 @@ function isMemoryToolPacket(packet: Packet) {
   );
 }
 
+function isGeneratedFilePacket(packet: Packet) {
+  // The in-progress skeleton and the finished file card are one renderer, so a
+  // slow generation animates in the exact slot its file will land in.
+  return (
+    packet.obj.type === PacketType.GENERATED_FILE ||
+    packet.obj.type === PacketType.DOCUMENT_GENERATION_START ||
+    packet.obj.type === PacketType.DOCUMENT_GENERATION_PROGRESS ||
+    packet.obj.type === PacketType.DOCUMENT_GENERATION_END
+  );
+}
+
 
 function isReasoningPacket(packet: Packet): packet is ReasoningPacket {
   return (
@@ -152,6 +164,10 @@ export function findRenderer(
   }
   if (groupedPackets.packets.some((packet) => isResearchAgentPacket(packet))) {
     return ResearchAgentRenderer;
+  }
+
+  if (groupedPackets.packets.some((packet) => isGeneratedFilePacket(packet))) {
+    return GeneratedFileRenderer;
   }
 
   // Standard tool checks

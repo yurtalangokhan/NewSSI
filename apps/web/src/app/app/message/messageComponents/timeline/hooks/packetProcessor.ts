@@ -17,12 +17,43 @@ import {
   isActualToolCallPacket,
   isToolPacket,
   isDisplayPacket,
+  getTextContent,
+  getReasoningTextContent,
 } from "@/app/app/services/packetUtils";
 import { parseToolKey } from "@/app/app/message/messageComponents/toolDisplayHelpers";
 import { getGroupSuffix } from "@/lib/search/packetCategories";
 
 // Re-export parseToolKey for consumers that import from this module
 export { parseToolKey };
+
+function isDuplicateReasoningPacket(state: ProcessorState, packet: Packet): boolean {
+  if (packet.obj.type !== PacketType.REASONING_START && packet.obj.type !== PacketType.REASONING_DELTA) {
+    return false;
+  }
+
+  const groupKey = getGroupKey(packet);
+  const incomingText =
+    ((packet.obj as any).reasoning || (packet.obj as any).content || "").trim();
+
+  if (incomingText) {
+    for (const [existingKey, existingPackets] of state.groupedPacketsMap.entries()) {
+      if (existingKey !== groupKey && existingKey.endsWith("-reasoning")) {
+        const existingText = getReasoningTextContent(existingPackets).trim();
+        if (
+          existingText &&
+          (existingText === incomingText ||
+            (incomingText.length > 50 &&
+              existingText.length > 50 &&
+              (existingText.startsWith(incomingText) || incomingText.startsWith(existingText))))
+        ) {
+          return true;
+        }
+      }
+    }
+  }
+
+  return false;
+}
 
 // ============================================================================
 // Types
@@ -59,6 +90,9 @@ export interface ProcessorState {
   stopPacketSeen: boolean;
   stopReason: StopReason | undefined;
 
+  // A document/spreadsheet is being written or rendered right now
+  documentGenerationInFlight: boolean;
+
   // Tool processing duration from backend (captured when MESSAGE_START arrives)
   toolProcessingDuration: number | undefined;
 
@@ -71,6 +105,12 @@ export interface GroupedPacket {
   turn_index: number;
   tab_index: number;
   packets: Packet[];
+  /**
+   * The group's identity, including any category suffix. Two groups can share a
+   * turn (a document generation renders alongside the answer text it interrupts),
+   * so turn_index/tab_index alone is not unique — use this as the React key.
+   */
+  key: string;
 }
 
 // ============================================================================
@@ -96,6 +136,7 @@ export function createInitialState(nodeId: number): ProcessorState {
     finalAnswerComing: false,
     stopPacketSeen: false,
     stopReason: undefined,
+    documentGenerationInFlight: false,
     toolProcessingDuration: undefined,
     toolGroups: [],
     potentialDisplayGroups: [],
@@ -105,6 +146,44 @@ export function createInitialState(nodeId: number): ProcessorState {
 // ============================================================================
 // Helper Functions
 // ============================================================================
+
+const DOCUMENT_GENERATION_TYPES = new Set<string>([
+  PacketType.DOCUMENT_GENERATION_START,
+  PacketType.DOCUMENT_GENERATION_PROGRESS,
+  PacketType.DOCUMENT_GENERATION_END,
+  PacketType.GENERATED_FILE,
+]);
+
+/** True when a display group holds a document generation or the file it made. */
+export function isDocumentGroup(group: GroupedPacket): boolean {
+  return group.packets.some((packet) =>
+    DOCUMENT_GENERATION_TYPES.has(packet.obj.type as string)
+  );
+}
+
+/**
+ * Release display groups that step pacing is still holding back, once a
+ * document generation is among them.
+ *
+ * Pacing exists to stagger tool steps, but a generation skeleton — and the file
+ * card that replaces it — must never blink out because an unrelated step was
+ * revealed a moment ago. The answer text is released with it: a document is
+ * written *during* the answer, and hiding the text while showing the card
+ * unmounts the text renderer, which restarts its typing animation from the
+ * beginning every time. Messages with no document keep normal pacing.
+ */
+export function withPinnedDocumentGroups(
+  displayGroups: GroupedPacket[],
+  pacedDisplayGroups: GroupedPacket[]
+): GroupedPacket[] {
+  if (pacedDisplayGroups.length === displayGroups.length) {
+    return pacedDisplayGroups; // nothing is being held back
+  }
+  if (!displayGroups.some(isDocumentGroup)) {
+    return pacedDisplayGroups;
+  }
+  return displayGroups;
+}
 
 function getGroupKey(packet: Packet): string {
   const turnIndex = packet.placement.turn_index;
@@ -118,6 +197,11 @@ function injectSectionEnd(state: ProcessorState, groupKey: string): void {
     return; // Already has SECTION_END
   }
 
+  const existingGroup = state.groupedPacketsMap.get(groupKey);
+  if (!existingGroup) {
+    return; // Group was deleted (e.g. duplicate reasoning)
+  }
+
   const { turn_index, tab_index } = parseToolKey(groupKey);
 
   const syntheticPacket: Packet = {
@@ -125,10 +209,7 @@ function injectSectionEnd(state: ProcessorState, groupKey: string): void {
     obj: { type: PacketType.SECTION_END },
   };
 
-  const existingGroup = state.groupedPacketsMap.get(groupKey);
-  if (existingGroup) {
-    existingGroup.push(syntheticPacket);
-  }
+  existingGroup.push(syntheticPacket);
   state.groupKeysWithSectionEnd.add(groupKey);
 }
 
@@ -156,6 +237,9 @@ const CONTENT_PACKET_TYPES_SET = new Set<PacketType>([
 function hasContentPackets(packets: Packet[]): boolean {
   return packets.some((packet) => {
     const type = packet.obj.type as PacketType;
+    if (type === PacketType.REASONING_START) {
+      return getReasoningTextContent(packets).trim().length > 0;
+    }
     return (
       type !== PacketType.SECTION_END &&
       type !== PacketType.ERROR &&
@@ -174,6 +258,11 @@ const FINAL_ANSWER_PACKET_TYPES_SET = new Set<PacketType>([
   PacketType.MESSAGE_DELTA,
   PacketType.IMAGE_GENERATION_TOOL_START,
   PacketType.IMAGE_GENERATION_TOOL_DELTA,
+  // A document being written is user-visible output too: the skeleton lives in
+  // the display area, which stays hidden until final answer content is coming.
+  PacketType.DOCUMENT_GENERATION_START,
+  PacketType.DOCUMENT_GENERATION_PROGRESS,
+  PacketType.GENERATED_FILE,
 ]);
 
 // ============================================================================
@@ -268,12 +357,27 @@ function handleStreamingStatusPacket(
   }
 }
 
+function handleDocumentGenerationPacket(
+  state: ProcessorState,
+  packet: Packet
+): void {
+  if (
+    packet.obj.type === PacketType.DOCUMENT_GENERATION_START ||
+    packet.obj.type === PacketType.DOCUMENT_GENERATION_PROGRESS
+  ) {
+    state.documentGenerationInFlight = true;
+  } else if (packet.obj.type === PacketType.DOCUMENT_GENERATION_END) {
+    state.documentGenerationInFlight = false;
+  }
+}
+
 function handleStopPacket(state: ProcessorState, packet: Packet): void {
   if (packet.obj.type !== PacketType.STOP || state.stopPacketSeen) {
     return;
   }
 
   state.stopPacketSeen = true;
+  state.documentGenerationInFlight = false;
 
   // Extract and store the stop reason
   const stopPacket = packet.obj as Stop;
@@ -295,6 +399,13 @@ function handleToolAfterMessagePacket(
   // calling packets. We use isActualToolCallPacket instead of isToolPacket
   // to exclude reasoning packets - reasoning is just the model thinking,
   // not an actual tool call that would produce new content.
+  // While a document is being generated the skeleton must stay on screen —
+  // a tool call issued in the same turn (e.g. a search feeding the document)
+  // would otherwise hide the display area mid-generation.
+  if (state.documentGenerationInFlight) {
+    return;
+  }
+
   if (
     state.finalAnswerComing &&
     !state.stopPacketSeen &&
@@ -338,6 +449,16 @@ function processPacket(state: ProcessorState, packet: Packet): void {
     return;
   }
 
+  // Prevent duplicate reasoning groups when exact same reasoning text arrives
+  if (isDuplicateReasoningPacket(state, packet)) {
+    const groupKey = getGroupKey(packet);
+    state.toolGroupKeys.delete(groupKey);
+    state.displayGroupKeys.delete(groupKey);
+    state.groupedPacketsMap.delete(groupKey);
+    state.seenGroupKeys.delete(groupKey);
+    return;
+  }
+
   // Handle turn transitions (inject SECTION_END for previous groups)
   handleTurnTransition(state, packet);
 
@@ -361,11 +482,9 @@ function processPacket(state: ProcessorState, packet: Packet): void {
   if (isFirstPacket) {
     if (isToolPacket(packet, false)) {
       state.toolGroupKeys.add(groupKey);
-      console.log('[packetProcessor] Added to toolGroupKeys:', groupKey);
     }
     if (isDisplayPacket(packet)) {
       state.displayGroupKeys.add(groupKey);
-      console.log('[packetProcessor] Added to displayGroupKeys:', groupKey);
     }
   } else if (isActualToolCallPacket(packet) && state.displayGroupKeys.has(groupKey)) {
     // A tool-call packet arrived in a group that was initially classified as display
@@ -374,7 +493,6 @@ function processPacket(state: ProcessorState, packet: Packet): void {
     // the "Thought for some time" section instead of as a separate message bubble.
     state.displayGroupKeys.delete(groupKey);
     state.toolGroupKeys.add(groupKey);
-    console.log('[packetProcessor] Reclassified group from display → tool:', groupKey);
   }
 
   // Track image generation for header display (regardless of group position)
@@ -391,6 +509,7 @@ function processPacket(state: ProcessorState, packet: Packet): void {
   // Handle specific packet types
   handleCitationPacket(state, packet);
   handleDocumentPacket(state, packet);
+  handleDocumentGenerationPacket(state, packet);
   handleStreamingStatusPacket(state, packet);
   handleStopPacket(state, packet);
   handleToolAfterMessagePacket(state, packet);
@@ -482,7 +601,7 @@ function buildGroupsFromKeys(
       const { turn_index, tab_index } = parseToolKey(key);
       const packets = state.groupedPacketsMap.get(key);
       // Spread to create new array reference - ensures React detects changes for re-renders
-      return packets ? { turn_index, tab_index, packets: [...packets] } : null;
+      return packets ? { turn_index, tab_index, key, packets: [...packets] } : null;
     })
     .filter(
       (g): g is GroupedPacket => g !== null && hasContentPackets(g.packets)

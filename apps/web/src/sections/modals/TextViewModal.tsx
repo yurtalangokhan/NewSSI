@@ -51,9 +51,18 @@ const isPptxFormat = (mimeType: string) =>
   PPTX_MIMES.some((m) => mimeType.startsWith(m));
 
 const isMarkdownFormat = (mimeType: string) =>
-  ["text/markdown", "text/x-markdown", "text/plain", "text/csv", "text/x-rst", "text/x-org", "txt"].some(
-    (f) => mimeType.startsWith(f)
-  );
+  [
+    "text/markdown",
+    "text/x-markdown",
+    "text/plain",
+    "text/csv",
+    "text/x-rst",
+    "text/x-org",
+    "txt",
+    "application/json",
+  ].some((f) => mimeType.startsWith(f));
+
+const isJsonFormat = (mimeType: string) => mimeType.startsWith("application/json");
 
 const isImageFormat = (mimeType: string) =>
   ["image/png", "image/jpeg", "image/gif", "image/svg+xml"].some((f) =>
@@ -85,6 +94,15 @@ export default function TextViewModal({
     const headers = lines.length > 0 ? lines[0]?.split(",") ?? [] : [];
     const rows = lines.slice(1).map((line) => line.split(","));
     return { headers, rows } as { headers: string[]; rows: string[][] };
+  }, [fileContent, fileType]);
+
+  const jsonContent = useMemo(() => {
+    if (!isJsonFormat(fileType)) return null;
+    try {
+      return JSON.stringify(JSON.parse(fileContent), null, 2);
+    } catch {
+      return fileContent;
+    }
   }, [fileContent, fileType]);
 
   const fetchFile = useCallback(
@@ -148,6 +166,8 @@ export default function TextViewModal({
             contentType = "text/plain";
           } else if (lowerName.endsWith(".csv")) {
             contentType = "text/csv";
+          } else if (lowerName.endsWith(".json")) {
+            contentType = "application/json";
           } else if (lowerName.endsWith(".docx") || lowerName.endsWith(".doc")) {
             contentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
           } else if (lowerName.endsWith(".pptx") || lowerName.endsWith(".ppt")) {
@@ -320,6 +340,11 @@ export default function TextViewModal({
                           ))}
                         </TableBody>
                       </Table>
+                    ) : jsonContent !== null ? (
+                      <MinimalMarkdown
+                        content={`\`\`\`json\n${jsonContent}\n\`\`\``}
+                        className="w-full pb-4 h-full text-lg break-words"
+                      />
                     ) : (
                       <MinimalMarkdown
                         content={fileContent}

@@ -75,4 +75,3 @@ async def delete_agent_group(
     if not deleted:
         raise HTTPException(status_code=404, detail=t("agent.group_not_found"))
     return {"success": True}
-

@@ -1,6 +1,8 @@
 import { PacketType } from "@/app/app/services/lib";
 import {
+  GENERATED_FILE_CATEGORY_ID,
   TOOL_PACKET_TYPES,
+  getCategoryFor,
   shouldSplitCategories,
 } from "./packetCategories";
 
@@ -157,7 +159,11 @@ export async function* handleSSEStream<T extends PacketType>(
   // full "message" packet from backend to avoid duplicate text rendering.
   let sawTokenForCurrentAnswer = false;
   let hasMessageStartForCurrentAnswer = false;
-  
+  // Turn index of the document generation currently in flight. Its progress
+  // packets and the resulting file must share one group even if the model
+  // interleaves answer text, otherwise the skeleton would never be replaced.
+  let documentTurnIndex: number | null = null;
+
   if (signal) {
     signal.addEventListener("abort", () => {
       reader?.cancel();
@@ -217,8 +223,20 @@ export async function* handleSSEStream<T extends PacketType>(
 
           // Advance turn_index at both transitions (display→tool and tool→display)
           // so each section lands in its own group for the packetProcessor.
-          const isToolPkt = TOOL_PACKET_TYPES.has(backendPacket.type);
-          if (isToolPkt) {
+          //
+          // Document packets are deliberately exempt: a model often starts its
+          // tool call mid-sentence, and treating that as a tool boundary would
+          // cut the answer in half (sometimes mid-word) around the file card.
+          // They ride the current turn and get their own group from the
+          // "genfile" group suffix instead, so the card renders after the text.
+          const isGeneratedFilePkt =
+            getCategoryFor(backendPacket.type)?.id === GENERATED_FILE_CATEGORY_ID;
+          const isToolPkt =
+            TOOL_PACKET_TYPES.has(backendPacket.type) && !isGeneratedFilePkt;
+          if (isGeneratedFilePkt) {
+            // Document generation packets ride the current turn (or documentTurnIndex)
+            // without breaking tool or display pacing state.
+          } else if (isToolPkt) {
             if (!sawToolPackets) {
               turnIndex++; // display → tool: pre-tool text gets its own group
               sawTokenForCurrentAnswer = false;
@@ -243,6 +261,21 @@ export async function* handleSSEStream<T extends PacketType>(
             hasMessageStartForCurrentAnswer = false;
           }
 
+          if (backendPacket.type === "message_start") {
+            const duration = (backendPacket as any).pre_answer_processing_seconds;
+            yield {
+              placement: { turn_index: turnIndex, sub_turn_index: null },
+              obj: {
+                type: "message_start",
+                content: "",
+                final_documents: null,
+                pre_answer_processing_seconds: duration,
+              },
+            } as T;
+            hasMessageStartForCurrentAnswer = true;
+            continue;
+          }
+
           if (backendPacket.type === "token" && !hasMessageStartForCurrentAnswer) {
             yield {
               placement: { turn_index: turnIndex, sub_turn_index: null },
@@ -256,19 +289,38 @@ export async function* handleSSEStream<T extends PacketType>(
           }
 
           if (backendPacket.type === "message" && !hasMessageStartForCurrentAnswer) {
+            const duration = (backendPacket as any).content?.additional_kwargs?.processing_duration_seconds;
             yield {
               placement: { turn_index: turnIndex, sub_turn_index: null },
               obj: {
                 type: "message_start",
                 content: "",
                 final_documents: null,
+                pre_answer_processing_seconds: duration,
               },
             } as T;
             hasMessageStartForCurrentAnswer = true;
           }
 
           const mappedPacket = mapBackendToFrontend(backendPacket);
-          mappedPacket.placement.turn_index = turnIndex;
+
+          if (backendPacket.type === "document_generation_start") {
+            documentTurnIndex = turnIndex;
+          }
+          mappedPacket.placement.turn_index =
+            isGeneratedFilePkt && documentTurnIndex !== null
+              ? documentTurnIndex
+              : turnIndex;
+          if (
+            backendPacket.type === "document_generation_end" &&
+            (backendPacket as any).status === "success"
+          ) {
+            // A failed attempt keeps the turn pinned: the agent is told to fix
+            // its tool call and retry, and that retry belongs in the same slot
+            // so its result replaces the failure instead of stacking under it.
+            documentTurnIndex = null;
+          }
+
           yield mappedPacket as T;
         } catch (error) {
           console.error("Error parsing SSE data:", error);

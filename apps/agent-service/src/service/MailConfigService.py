@@ -136,9 +136,7 @@ class MailConfigService:
         for attachment in attachments or []:
             filename = str(attachment.get("filename") or "").strip()
             content_base64 = str(attachment.get("content_base64") or "").strip()
-            mime_type = str(
-                attachment.get("mime_type") or "application/octet-stream"
-            ).split(";")[0]
+            mime_type = str(attachment.get("mime_type") or "application/octet-stream").split(";")[0]
             maintype, _, subtype = mime_type.partition("/")
             if not filename or not content_base64:
                 raise ValueError(t("mailConfig.attachmentRequired"))
@@ -218,7 +216,11 @@ class MailConfigService:
                     smtp.login(str(config["username"]), str(config["password"]))
                     smtp.send_message(message)
         except smtplib.SMTPAuthenticationError as exc:
-            detail = exc.smtp_error.decode(errors="ignore") if isinstance(exc.smtp_error, bytes) else str(exc.smtp_error)
+            detail = (
+                exc.smtp_error.decode(errors="ignore")
+                if isinstance(exc.smtp_error, bytes)
+                else str(exc.smtp_error)
+            )
             return json.dumps(
                 {
                     "success": False,

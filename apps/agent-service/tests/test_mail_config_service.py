@@ -188,9 +188,7 @@ def test_mail_config_delete_blocks_active_agent_bindings_in_turkish():
         with pytest.raises(ValueError, match="temsilciye bağlı"):
             import asyncio
 
-            asyncio.get_event_loop().run_until_complete(
-                service.delete_config("user-1", "config-1")
-            )
+            asyncio.get_event_loop().run_until_complete(service.delete_config("user-1", "config-1"))
     finally:
         set_locale("en")
 

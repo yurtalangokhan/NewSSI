@@ -87,20 +87,20 @@ async def main() -> None:
     datasources: list[dict] = []
     async with await psycopg.AsyncConnection.connect(DATABASE_URI) as conn:
         async with conn.cursor(row_factory=dict_row) as cur:
-            await cur.execute(
-                "SELECT uuid, name, cmetadata FROM langchain_pg_collection"
-            )
+            await cur.execute("SELECT uuid, name, cmetadata FROM langchain_pg_collection")
             rows = await cur.fetchall()
             for row in rows:
                 meta = row.get("cmetadata") or {}
                 if isinstance(meta, str):
                     meta = json.loads(meta)
                 if meta.get("connector_type"):
-                    datasources.append({
-                        "id": str(row["uuid"]),
-                        "name": row["name"],
-                        "meta": meta,
-                    })
+                    datasources.append(
+                        {
+                            "id": str(row["uuid"]),
+                            "name": row["name"],
+                            "meta": meta,
+                        }
+                    )
     logger.info("Step 3: Found %d datasources with connector info", len(datasources))
 
     # ------------------------------------------------------------------ #
@@ -114,7 +114,9 @@ async def main() -> None:
             if resp.status_code == 200:
                 logger.info("Step 4: Airbyte API is healthy ✅")
             else:
-                logger.warning("Step 4: Airbyte API returned %d — continuing anyway", resp.status_code)
+                logger.warning(
+                    "Step 4: Airbyte API returned %d — continuing anyway", resp.status_code
+                )
         except Exception as e:
             logger.error("Step 4: Cannot reach Airbyte API: %s", e)
             logger.error("Make sure Airbyte OSS is running. Aborting.")
@@ -157,9 +159,7 @@ async def main() -> None:
             continue
 
         try:
-            async with httpx.AsyncClient(
-                base_url=AIRBYTE_API_URL, timeout=60.0
-            ) as client:
+            async with httpx.AsyncClient(base_url=AIRBYTE_API_URL, timeout=60.0) as client:
                 # Get workspace
                 ws_resp = await client.post("/workspaces/list")
                 ws_data = ws_resp.json()
@@ -173,7 +173,9 @@ async def main() -> None:
                 sd_data = sd_resp.json()
                 source_def = None
                 for sd in sd_data.get("sourceDefinitions", []):
-                    if sd["name"].lower().replace(" ", "-") == connector_type.lower().replace("source-", ""):
+                    if sd["name"].lower().replace(" ", "-") == connector_type.lower().replace(
+                        "source-", ""
+                    ):
                         source_def = sd
                         break
                     if connector_type in sd.get("name", "").lower():
@@ -211,7 +213,10 @@ async def main() -> None:
                 destinations = dst_data.get("destinations", [])
                 local_json_dst = None
                 for d in destinations:
-                    if "local" in d.get("destinationName", "").lower() and "json" in d.get("destinationName", "").lower():
+                    if (
+                        "local" in d.get("destinationName", "").lower()
+                        and "json" in d.get("destinationName", "").lower()
+                    ):
                         local_json_dst = d
                         break
 
@@ -233,8 +238,12 @@ async def main() -> None:
                             "/destinations/create",
                             json={
                                 "workspaceId": workspace_id,
-                                "destinationDefinitionId": local_json_def["destinationDefinitionId"],
-                                "connectionConfiguration": {"destination_path": "/tmp/airbyte_local"},
+                                "destinationDefinitionId": local_json_def[
+                                    "destinationDefinitionId"
+                                ],
+                                "connectionConfiguration": {
+                                    "destination_path": "/tmp/airbyte_local"
+                                },
                                 "name": "Local JSON (agent-service)",
                             },
                         )
@@ -258,14 +267,16 @@ async def main() -> None:
                 streams_config = []
                 for stream_entry in catalog.get("streams", []):
                     stream = stream_entry.get("stream", {})
-                    streams_config.append({
-                        "stream": stream,
-                        "config": {
-                            "syncMode": "full_refresh",
-                            "destinationSyncMode": "overwrite",
-                            "selected": True,
-                        },
-                    })
+                    streams_config.append(
+                        {
+                            "stream": stream,
+                            "config": {
+                                "syncMode": "full_refresh",
+                                "destinationSyncMode": "overwrite",
+                                "selected": True,
+                            },
+                        }
+                    )
 
                 # Create connection
                 conn_body: dict = {
@@ -355,9 +366,7 @@ async def main() -> None:
             "Old sync_schedules table still exists with %d rows.",
             len(old_schedules),
         )
-        logger.info(
-            "You can drop it manually after verifying the migration:"
-        )
+        logger.info("You can drop it manually after verifying the migration:")
         logger.info("  DROP TABLE IF EXISTS sync_schedules;")
 
 

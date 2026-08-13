@@ -478,9 +478,7 @@ async def _handle_input(
                     ]
                 }
     else:
-        raise HTTPException(
-            status_code=400, detail=t("agent.message_or_messages_required")
-        )
+        raise HTTPException(status_code=400, detail=t("agent.message_or_messages_required"))
 
     kwargs = {
         "input": input,

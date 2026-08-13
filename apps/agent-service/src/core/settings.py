@@ -143,6 +143,16 @@ class Settings(BaseSettings):
     IDEMPOTENCY_TTL: int = 86_400
     IDEMPOTENCY_ENABLED: bool = True
 
+    # Document output tools (create_document / create_spreadsheet) — always
+    # available to every agent and the default chatbot, not opt-in per agent.
+    DOCUMENT_TOOLS_ENABLED: bool = True
+
+    # The full `options` reference (~350 tokens) is appended to the tool
+    # description on every request. Disable for token-sensitive or small
+    # local-model setups; `options` keeps working, the model just isn't told
+    # about it in detail.
+    DOCUMENT_TOOLS_RICH_OPTIONS: bool = True
+
     @computed_field
     @property
     def BASE_URL(self) -> str:

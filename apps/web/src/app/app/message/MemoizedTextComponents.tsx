@@ -162,9 +162,18 @@ export const MemoizedLink = memo(
       }
     }, [document, updatePresentingDocument, question, openQuestion]);
 
-    if (value?.toString().startsWith("*")) {
+    const textValue =
+      typeof value === "string"
+        ? value
+        : Array.isArray(value)
+          ? value
+              .map((v) => (typeof v === "string" ? v : ""))
+              .join("")
+          : "";
+
+    if (textValue.startsWith("*")) {
       return <BlinkingBar addMargin />;
-    } else if (value?.toString().startsWith("[")) {
+    } else if (textValue.startsWith("[")) {
       const sourceInfo = documentSourceInfo || questionSourceInfo;
       if (!sourceInfo) {
         return <>{rest.children}</>;

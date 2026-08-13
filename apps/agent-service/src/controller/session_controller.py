@@ -239,6 +239,11 @@ class SessionController(BaseController):
                                             if isinstance(tc, dict)
                                             else getattr(tc, "name", "tool")
                                         )
+                                        tc_args = (
+                                            tc.get("args")
+                                            if isinstance(tc, dict)
+                                            else getattr(tc, "args", None)
+                                        )
                                         pending_tool_packets.append(
                                             {
                                                 "placement": {
@@ -248,6 +253,7 @@ class SessionController(BaseController):
                                                 "obj": {
                                                     "type": "custom_tool_start",
                                                     "tool_name": tc_name,
+                                                    "args": tc_args,
                                                 },
                                             }
                                         )

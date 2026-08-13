@@ -1,5 +1,6 @@
 import { PreviewVariant } from "@/sections/modals/PreviewModal/interfaces";
 import { codeVariant } from "@/sections/modals/PreviewModal/variants/codeVariant";
+import { docxVariant } from "@/sections/modals/PreviewModal/variants/docxVariant";
 import { imageVariant } from "@/sections/modals/PreviewModal/variants/imageVariant";
 import { pdfVariant } from "@/sections/modals/PreviewModal/variants/pdfVariant";
 import { csvVariant } from "@/sections/modals/PreviewModal/variants/csvVariant";
@@ -12,6 +13,7 @@ const PREVIEW_VARIANTS: PreviewVariant[] = [
   codeVariant,
   imageVariant,
   pdfVariant,
+  docxVariant,
   csvVariant,
   dataVariant,
   markdownVariant,

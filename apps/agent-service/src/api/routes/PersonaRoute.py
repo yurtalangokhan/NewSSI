@@ -27,8 +27,6 @@ def _require_admin(user: AuthenticatedUser) -> AuthenticatedUser:
     return user
 
 
-
-
 @router.get("/api/persona")
 async def get_personas(user: AuthenticatedUser = Depends(require_permission("persona:read"))):
     return await _get_controller().get_personas(user)

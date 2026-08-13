@@ -101,7 +101,5 @@ def test_dynamic_agent_forwards_mail_tool_config_and_runtime_user(monkeypatch):
 
     _, _, build_config = agent._prepare_graph_build(runtime_config={"user_id": "user-1"})
 
-    assert build_config["mcp_tool_configs"] == {
-        "send_email": {"mail_config_id": "mail-config-1"}
-    }
+    assert build_config["mcp_tool_configs"] == {"send_email": {"mail_config_id": "mail-config-1"}}
     assert build_config["user_id"] == "user-1"

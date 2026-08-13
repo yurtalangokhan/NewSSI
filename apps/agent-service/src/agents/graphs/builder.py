@@ -13,6 +13,7 @@ from langgraph.graph.state import CompiledStateGraph
 from langgraph.prebuilt import create_react_agent
 from langgraph.pregel import Pregel
 
+from agents.document_tools import DOCUMENT_TOOL_PROMPT, get_document_tools
 from agents.graphs.schemas import (
     GraphSchemaType,
     get_schema,
@@ -290,7 +291,7 @@ class GraphBuilder:
         """Build zero-shot chat graph."""
         tool_names = config.get("mcp_tools", [])
         extra_tools = config.get("extra_tools", []) or []
-        if tool_names or extra_tools:
+        if tool_names or extra_tools or get_document_tools():
             return self._build_react(config)
 
         from langgraph.graph import END, MessagesState, StateGraph
@@ -334,6 +335,11 @@ class GraphBuilder:
         )
         extra_tools = config.get("extra_tools", []) or []
         tools.extend(extra_tools)
+
+        document_tools = get_document_tools()
+        if document_tools:
+            tools.extend(document_tools)
+            system_prompt = f"{system_prompt}\n{DOCUMENT_TOOL_PROMPT}"
 
         agent = create_react_agent(
             model=model,
@@ -498,6 +504,11 @@ class GraphBuilder:
             mail_attachments=agent_config.get("mail_attachments"),
         )
 
+        document_tools = get_document_tools()
+        if document_tools:
+            agent_tools.extend(document_tools)
+            system_prompt = f"{system_prompt}\n{DOCUMENT_TOOL_PROMPT}"
+
         return create_react_agent(
             model=agent_model,
             tools=agent_tools,
@@ -526,6 +537,11 @@ class GraphBuilder:
         )
         extra_tools = config.get("extra_tools", []) or []
         tools.extend(extra_tools)
+
+        document_tools = get_document_tools()
+        if document_tools:
+            tools.extend(document_tools)
+            system_prompt = f"{system_prompt}\n{DOCUMENT_TOOL_PROMPT}"
 
         agent = create_react_agent(
             model=model,

@@ -1158,6 +1158,8 @@ const en = {
     readingFile: "Reading file",
     executingToolNamed: "Executing {{toolName}}",
     executingTool: "Executing tool",
+    creatingDocument: "Creating document",
+    creatingSpreadsheet: "Creating spreadsheet",
     updatingMemory: "Updating memory...",
     updatingMemoryActive: "Updating memory",
     ltmRecalling: "Recalling memories...",
@@ -1593,6 +1595,16 @@ const en = {
     openButton: "Open",
     downloadButton: "Download",
     waitingForResponse: "Waiting for response...",
+  },
+  generatedFile: {
+    openAriaLabel: "Open {{filename}}",
+  },
+  documentGeneration: {
+    untitled: "Document",
+    writing: "Writing document...",
+    rendering: "Preparing file...",
+    progress: "{{label}} ({{chars}} characters)",
+    failed: "The document could not be created.",
   },
   sharedChat: {
     notFoundTitle: "Shared Chat Not Found",

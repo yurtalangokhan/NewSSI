@@ -29,7 +29,9 @@ export const dataVariant: PreviewVariant = {
 
   headerDescription: (ctx) =>
     ctx.fileContent
-      ? `${ctx.language} - ${ctx.t("filePreview.lines", { count: ctx.lineCount })} · ${ctx.fileSize}`
+      ? `${ctx.language} - ${ctx.t("lines", { count: ctx.lineCount })} · ${
+          ctx.fileSize
+        }`
       : "",
 
   renderContent: (ctx) => {

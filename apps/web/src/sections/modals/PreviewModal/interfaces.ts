@@ -4,6 +4,7 @@ import { TFunction } from "i18next";
 
 export interface PreviewContext {
   fileContent: string;
+  fileBlob: Blob | null;
   fileUrl: string;
   fileName: string;
   language: string;

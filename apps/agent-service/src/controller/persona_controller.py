@@ -380,7 +380,11 @@ class PersonaController(BaseController):
             return str(persona["user_email"])
 
         stored_email = persona.get("user_email")
-        if isinstance(stored_email, str) and stored_email.strip() and not _is_uuid_owner_id(owner_id):
+        if (
+            isinstance(stored_email, str)
+            and stored_email.strip()
+            and not _is_uuid_owner_id(owner_id)
+        ):
             return stored_email
 
         return (owner_emails or {}).get(owner_id, "Unknown user")
@@ -1022,8 +1026,8 @@ class PersonaController(BaseController):
         ]
 
         custom_personas = await PersonaDB.list_all(include_builtin=False)
-        restricted_persona_ids, accessible_persona_ids = (
-            await self._load_agent_group_visibility(user)
+        restricted_persona_ids, accessible_persona_ids = await self._load_agent_group_visibility(
+            user
         )
         options.extend(
             {

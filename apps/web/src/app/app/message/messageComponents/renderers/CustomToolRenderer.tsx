@@ -26,6 +26,7 @@ function constructCustomToolState(packets: CustomToolPacket[]) {
   )?.obj as SectionEnd | null;
 
   const toolName = toolStart?.tool_name || toolDeltas[0]?.tool_name || "Tool";
+  const args = toolStart?.args;
   const latestDelta = toolDeltas[toolDeltas.length - 1] || null;
   const responseType = latestDelta?.response_type || null;
   const data = latestDelta?.data;
@@ -37,6 +38,7 @@ function constructCustomToolState(packets: CustomToolPacket[]) {
 
   return {
     toolName,
+    args,
     responseType,
     data,
     fileIds,
@@ -52,7 +54,7 @@ export const CustomToolRenderer: MessageRenderer<CustomToolPacket, {}> = ({
   children,
 }) => {
   const { t } = useTranslation();
-  const { toolName, responseType, data, fileIds, isRunning, isComplete } =
+  const { toolName, args, responseType, data, fileIds, isRunning, isComplete } =
     constructCustomToolState(packets);
 
   useEffect(() => {
@@ -74,6 +76,39 @@ export const CustomToolRenderer: MessageRenderer<CustomToolPacket, {}> = ({
   }, [toolName, responseType, isComplete, isRunning, t]);
 
   const icon = FiTool;
+
+  const formattedData = useMemo(() => {
+    if (data !== undefined && data !== null) {
+      if (typeof data === "string") {
+        try {
+          const parsed = JSON.parse(data);
+          return JSON.stringify(parsed, null, 2);
+        } catch {
+          return data;
+        }
+      }
+      return JSON.stringify(data, null, 2);
+    }
+    if (args !== undefined && args !== null) {
+      let parsedArgs: any = args;
+      if (typeof args === "string") {
+        try {
+          parsedArgs = JSON.parse(args);
+        } catch {
+          return args;
+        }
+      }
+      if (typeof parsedArgs === "object" && parsedArgs !== null) {
+        const cleaned: Record<string, any> = { ...parsedArgs };
+        if (typeof cleaned.content === "string" && cleaned.content.length > 150) {
+          cleaned.content = `[Doküman İçeriği: ${cleaned.content.length} karakter]`;
+        }
+        return JSON.stringify(cleaned, null, 2);
+      }
+      return String(parsedArgs);
+    }
+    return null;
+  }, [data, args]);
 
   if (renderType === RenderType.COMPACT) {
     return children([
@@ -122,15 +157,21 @@ export const CustomToolRenderer: MessageRenderer<CustomToolPacket, {}> = ({
             </div>
           )}
 
-          {data !== undefined && data !== null && (
+          {formattedData && (
             <div className="text-xs bg-gray-50 dark:bg-gray-800 p-3 rounded border max-h-96 overflow-y-auto font-mono whitespace-pre-wrap break-all">
-              {typeof data === "string" ? data : JSON.stringify(data, null, 2)}
+              {formattedData}
             </div>
           )}
 
-          {!fileIds && (data === undefined || data === null) && isRunning && (
+          {!fileIds && !formattedData && isRunning && (
             <div className="text-xs text-gray-500 italic">
               {t("customTool.waitingForResponse")}
+            </div>
+          )}
+
+          {!fileIds && !formattedData && isComplete && (
+            <div className="text-xs text-gray-500 italic">
+              {t("customTool.completed", { toolName })}
             </div>
           )}
         </div>

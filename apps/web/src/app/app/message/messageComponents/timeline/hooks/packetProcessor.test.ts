@@ -11,6 +11,7 @@ import {
   StopReason,
 } from "@/app/app/services/streamingModels";
 import { createInitialState, processPackets } from "./packetProcessor";
+import { transformPacketGroups } from "../transformers";
 import {
   createPacket,
   createStopPacket,
@@ -931,6 +932,88 @@ describe("packetProcessor", () => {
     });
   });
 
+  describe("document generation", () => {
+    const startPacket = (turn = 0) =>
+      createPacket(PacketType.DOCUMENT_GENERATION_START, { turn_index: turn }, {
+        tool_name: "create_document",
+        filename: null,
+        format: null,
+        phase: "writing",
+      });
+
+    const endPacket = (turn = 0) =>
+      createPacket(PacketType.DOCUMENT_GENERATION_END, { turn_index: turn }, {
+        tool_name: "create_document",
+        filename: "rapor.pdf",
+        format: "pdf",
+        status: "success",
+        error: null,
+      });
+
+    test("DOCUMENT_GENERATION_START opens the display area so the skeleton is visible", () => {
+      const result = processPackets(createInitialState(1), [startPacket()]);
+
+      // Without finalAnswerComing the display groups stay hidden behind the
+      // timeline, and the skeleton would never reach the screen.
+      expect(result.finalAnswerComing).toBe(true);
+      expect(result.documentGenerationInFlight).toBe(true);
+      expect(result.potentialDisplayGroups).toHaveLength(1);
+    });
+
+    test("a tool call during generation does not hide the skeleton", () => {
+      const result = processPackets(createInitialState(1), [
+        startPacket(0),
+        createSearchToolStartPacket({ turn_index: 1 }),
+      ]);
+
+      expect(result.finalAnswerComing).toBe(true);
+    });
+
+    test("DOCUMENT_GENERATION_END closes the generation", () => {
+      const result = processPackets(createInitialState(1), [
+        startPacket(0),
+        endPacket(0),
+      ]);
+
+      expect(result.documentGenerationInFlight).toBe(false);
+    });
+
+    test("a tool call after the generation ends hides display content again", () => {
+      const result = processPackets(createInitialState(1), [
+        startPacket(0),
+        endPacket(0),
+        createSearchToolStartPacket({ turn_index: 1 }),
+      ]);
+
+      expect(result.finalAnswerComing).toBe(false);
+    });
+
+    test("an interrupted stream clears the in-flight flag on STOP", () => {
+      const result = processPackets(createInitialState(1), [
+        startPacket(0),
+        createStopPacket(),
+      ]);
+
+      expect(result.documentGenerationInFlight).toBe(false);
+    });
+
+    test("the generation and its file land in one group", () => {
+      const filePacket = createPacket(
+        PacketType.GENERATED_FILE,
+        { turn_index: 0 },
+        { file_id: "abc123", filename: "rapor.pdf", size_bytes: 42 }
+      );
+      const result = processPackets(createInitialState(1), [
+        startPacket(0),
+        filePacket,
+        endPacket(0),
+      ]);
+
+      expect(result.potentialDisplayGroups).toHaveLength(1);
+      expect(result.potentialDisplayGroups[0]!.packets).toHaveLength(3);
+    });
+  });
+
   describe("image generation counting", () => {
     test("sets isGeneratingImage on IMAGE_GENERATION_TOOL_START", () => {
       const state = createInitialState(1);
@@ -1224,6 +1307,27 @@ describe("packetProcessor", () => {
       const result = processPackets(state, packets);
 
       expect(result.toolGroupKeys.has("0-999")).toBe(true);
+    });
+
+    test("deduplicates reasoning packets with identical reasoning text across different turns", () => {
+      const state = createInitialState(1);
+      const reasoningText = "The user asked for a DOCX document about the history of Bursa.";
+      const packets = [
+        createPacket(PacketType.REASONING_START, { turn_index: 1 }),
+        createPacket(PacketType.REASONING_DELTA, { turn_index: 1 }, { reasoning: reasoningText }),
+        createPacket(PacketType.CUSTOM_TOOL_START, { turn_index: 2 }, { tool_name: "create_document" }),
+        createPacket(PacketType.REASONING_START, { turn_index: 3 }),
+        createPacket(PacketType.REASONING_DELTA, { turn_index: 3 }, { reasoning: reasoningText }),
+        createPacket(PacketType.REASONING_START, { turn_index: 4 }),
+        createPacket(PacketType.REASONING_DELTA, { turn_index: 4 }, { reasoning: reasoningText }),
+      ];
+
+      const result = processPackets(state, packets);
+      const steps = transformPacketGroups(result.toolGroups);
+
+      expect(steps.some((s) => s.key === "1-0")).toBe(true);
+      expect(steps.some((s) => s.key === "3-0")).toBe(false);
+      expect(steps.some((s) => s.key === "4-0")).toBe(false);
     });
   });
 });

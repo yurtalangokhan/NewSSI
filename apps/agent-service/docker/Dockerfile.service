@@ -11,6 +11,13 @@ COPY packages/idempotency-py/ packages/idempotency-py/
 COPY packages/i18n-py/ packages/i18n-py/
 RUN pip install uv
 
+# DejaVu ships the Unicode glyphs (ğ ş ı İ …) that reportlab's base-14 fonts lack.
+# DocumentGenerationService registers it for PDF output; without it PDFs fall
+# back to Helvetica and Turkish characters are dropped.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends fonts-dejavu-core \
+    && rm -rf /var/lib/apt/lists/*
+
 # Fix local-dev relative package paths for the Docker WORKDIR
 RUN sed -i \
     -e 's|path = "../../packages/idempotency-py"|path = "packages/idempotency-py"|' \

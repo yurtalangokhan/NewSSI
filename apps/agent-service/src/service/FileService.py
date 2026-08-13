@@ -51,6 +51,7 @@ CSV_MIMES = {
 PLAIN_TEXT_MIMES = {
     "text/plain",
     "text/markdown",
+    "application/json",
 }
 
 # All accepted upload MIME types

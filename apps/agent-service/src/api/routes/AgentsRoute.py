@@ -9,6 +9,7 @@ import inspect
 import json
 import logging
 import re
+import time
 from collections.abc import AsyncGenerator
 from typing import Any
 
@@ -37,6 +38,11 @@ from models.chat import (
 from service.AgentHelpers import _handle_input
 from service.AssistantAgentService import AssistantAgentService
 from service.AuthService import extract_user_id_from_token
+from service.DocumentProgressTracker import DocumentProgressTracker
+from service.GeneratedFilePacket import (
+    build_generated_file_packet_obj,
+    parse_generated_file_payload,
+)
 from service.Utils import (
     convert_message_content_to_string,
     langchain_to_chat_message,
@@ -84,65 +90,165 @@ def _stream_error_payload(exc: Exception) -> dict[str, Any]:
 
 
 class ThinkingTagProcessor:
-    """Tag-based thinking models (<think>...</think>) için streaming state machine."""
+    """Tag-based thinking models (<think>...</think>) için streaming state machine.
+
+    Also strips tool-call markup: models that are not natively tool-calling emit
+    `<tool_call>{...}</tool_call>` as ordinary text, and whatever the provider's
+    parser leaves behind would otherwise be rendered in the chat. That text is
+    reported as `tool_call_text` events instead of being dropped outright, so
+    callers can still see what the model is writing (a document body streamed
+    this way is the only progress signal available for those models).
+    """
 
     OPEN_TAGS = ("<thinking>", "<think>")
     CLOSE_TAGS = ("</thinking>", "</think>")
-    MAX_TAG_LEN = max(len(t) for t in OPEN_TAGS + CLOSE_TAGS)  # = 11
+    TOOL_OPEN_TAGS = ("<tool_call>", "<tool_use>")
+    # A leading "<" is sometimes consumed by the provider's own parser, leaving
+    # a bare "/tool_call>" in the text.
+    TOOL_CLOSE_TAGS = ("</tool_call>", "</tool_use>", "/tool_call>", "/tool_use>")
+    MAX_TAG_LEN = max(len(t) for t in OPEN_TAGS + CLOSE_TAGS + TOOL_OPEN_TAGS + TOOL_CLOSE_TAGS)
+    MAX_TAG_LEN = max(len(t) for t in OPEN_TAGS + CLOSE_TAGS + TOOL_OPEN_TAGS + TOOL_CLOSE_TAGS)
 
     def __init__(self):
         self.in_thinking = False
+        self.in_tool_call = False
         self.reasoning_started = False
         self.buffer = ""
+        self.pending_prefix = ""
 
     def feed(self, text: str) -> list[dict]:
         self.buffer += text
         events: list[dict] = []
 
         while self.buffer:
-            if not self.in_thinking:
-                pos, tag = self._find_tag(self.buffer, self.OPEN_TAGS)
-                if pos is not None:
-                    if pos > 0:
-                        events.append({"type": "token", "content": self.buffer[:pos]})
-                    if not self.reasoning_started:
-                        events.append({"type": "reasoning_start"})
-                        self.reasoning_started = True
-                    self.in_thinking = True
-                    self.buffer = self.buffer[pos + len(tag) :]
-                else:
-                    safe_len = max(0, len(self.buffer) - self.MAX_TAG_LEN)
-                    if safe_len > 0:
-                        events.append({"type": "token", "content": self.buffer[:safe_len]})
-                        self.buffer = self.buffer[safe_len:]
+            if self.in_tool_call:
+                if not self._consume_tool_call(events):
                     break
-            else:
-                pos, tag = self._find_tag(self.buffer, self.CLOSE_TAGS)
-                if pos is not None:
-                    if pos > 0:
-                        events.append({"type": "reasoning_delta", "reasoning": self.buffer[:pos]})
-                    self.in_thinking = False
-                    self.buffer = self.buffer[pos + len(tag) :]
-                else:
-                    safe_len = max(0, len(self.buffer) - self.MAX_TAG_LEN)
-                    if safe_len > 0:
-                        events.append(
-                            {"type": "reasoning_delta", "reasoning": self.buffer[:safe_len]}
-                        )
-                        self.buffer = self.buffer[safe_len:]
+            elif not self.in_thinking:
+                if not self._consume_answer(events):
                     break
+            elif not self._consume_thinking(events):
+                break
 
         return events
+
+    def _consume_tool_call(self, events: list[dict]) -> bool:
+        """Inside tool-call markup: report it separately, never as answer text."""
+        pos, tag = self._find_tag(self.buffer, self.TOOL_CLOSE_TAGS)
+        if pos is not None:
+            if pos > 0:
+                events.append({"type": "tool_call_text", "content": self.buffer[:pos]})
+            self.in_tool_call = False
+            self.buffer = self.pending_prefix + self.buffer[pos + len(tag) :]
+            self.pending_prefix = ""
+            return True
+
+        safe_len = max(0, len(self.buffer) - self.MAX_TAG_LEN)
+        if safe_len > 0:
+            events.append({"type": "tool_call_text", "content": self.buffer[:safe_len]})
+            self.buffer = self.buffer[safe_len:]
+        return False
+
+    def _consume_answer(self, events: list[dict]) -> bool:
+        pos, tag, kind = self._find_first(
+            self.buffer,
+            (self.OPEN_TAGS, "think"),
+            (self.TOOL_OPEN_TAGS, "tool"),
+            (self.TOOL_CLOSE_TAGS, "stray"),
+        )
+        if pos is not None:
+            if pos > 0:
+                content = self.buffer[:pos]
+                if kind == "tool" and not content.endswith(
+                    (" ", "\n", "\t", ".", "!", "?", ":", ";", ",")
+                ):
+                    last_space = max(content.rfind(" "), content.rfind("\n"), content.rfind("\t"))
+                    if last_space != -1:
+                        events.append({"type": "token", "content": content[: last_space + 1]})
+                        self.pending_prefix = content[last_space + 1 :]
+                        self.buffer = self.buffer[pos + len(tag) :]
+                    else:
+                        events.append({"type": "token", "content": content})
+                        self.buffer = self.buffer[pos + len(tag) :]
+                else:
+                    events.append({"type": "token", "content": content})
+                    self.buffer = self.buffer[pos + len(tag) :]
+            else:
+                self.buffer = self.buffer[pos + len(tag) :]
+
+            if kind == "think":
+                if not self.reasoning_started:
+                    events.append({"type": "reasoning_start"})
+                    self.reasoning_started = True
+                self.in_thinking = True
+            elif kind == "tool":
+                self.in_tool_call = True
+            # "stray": an unmatched close tag is simply dropped.
+            return True
+
+        has_partial_tag = False
+        last_lt = self.buffer.rfind("<")
+        if last_lt != -1 and (len(self.buffer) - last_lt) <= self.MAX_TAG_LEN:
+            has_partial_tag = True
+
+        safe_len = max(0, last_lt) if has_partial_tag else len(self.buffer)
+        if safe_len > 0:
+            target_content = self.buffer[:safe_len]
+            last_space = max(
+                target_content.rfind(" "),
+                target_content.rfind("\n"),
+                target_content.rfind("\t"),
+            )
+            if last_space != -1:
+                events.append({"type": "token", "content": self.buffer[: last_space + 1]})
+                self.buffer = self.buffer[last_space + 1 :]
+        return False
+
+    def _consume_thinking(self, events: list[dict]) -> bool:
+        pos, tag, kind = self._find_first(
+            self.buffer,
+            (self.CLOSE_TAGS, "think_end"),
+            (self.TOOL_OPEN_TAGS, "tool"),
+        )
+        if pos is not None:
+            if pos > 0:
+                events.append({"type": "reasoning_delta", "reasoning": self.buffer[:pos]})
+            self.buffer = self.buffer[pos + len(tag) :]
+            if kind == "think_end":
+                self.in_thinking = False
+            else:
+                # Models write their tool call inside the reasoning block too.
+                self.in_tool_call = True
+            return True
+
+        safe_len = max(0, len(self.buffer) - self.MAX_TAG_LEN)
+        if safe_len > 0:
+            events.append({"type": "reasoning_delta", "reasoning": self.buffer[:safe_len]})
+            self.buffer = self.buffer[safe_len:]
+        return False
 
     def flush(self) -> list[dict]:
         """Stream bitişinde kalan buffer'ı emit et."""
         if not self.buffer:
             return []
-        t = "reasoning_delta" if self.in_thinking else "token"
-        key = "reasoning" if self.in_thinking else "content"
-        event = {"type": t, key: self.buffer}
+        if self.in_tool_call:
+            event = {"type": "tool_call_text", "content": self.buffer}
+        elif self.in_thinking:
+            event = {"type": "reasoning_delta", "reasoning": self.buffer}
+        else:
+            event = {"type": "token", "content": self.buffer}
         self.buffer = ""
         return [event]
+
+    @classmethod
+    def _find_first(cls, text: str, *groups: tuple) -> tuple:
+        """Find the earliest tag across several labelled tag groups."""
+        best_pos, best_tag, best_kind = None, None, None
+        for tags, kind in groups:
+            pos, tag = cls._find_tag(text, tags)
+            if pos is not None and (best_pos is None or pos < best_pos):
+                best_pos, best_tag, best_kind = pos, tag, kind
+        return best_pos, best_tag, best_kind
 
     @staticmethod
     def _find_tag(text: str, tags: tuple) -> tuple:
@@ -299,11 +405,26 @@ async def message_generator(
     kwargs, run_id = await _handle_input(user_input, agent, user_id)
 
     thinking_processor = ThinkingTagProcessor()
+    # Document tools write their whole payload into tool-call arguments, which
+    # produce no visible tokens — this turns that silence into progress packets.
+    document_progress = DocumentProgressTracker()
     saw_reasoning_for_current_answer = False
     # Track the first LLM call's message ID so that subsequent LLM calls
     # (e.g. background memory extraction) don't emit tokens to the stream.
     first_llm_call_id: str | None = None
+    # Whether the LLM call we are currently streaming produced tool calls. A
+    # call that did is always followed by an answer call, which must be let
+    # through even though it has a different message id.
+    current_call_made_tool_calls = False
     saw_visible_answer_tokens = False
+    # Message ids whose tokens already reached the client, so the final full
+    # `message` packet for them can be dropped without guessing.
+    streamed_message_ids: set[str] = set()
+    # Generated files already announced (a tool may emit its own live packet
+    # before the node's ToolMessage reaches this loop).
+    emitted_file_ids: set[str] = set()
+    emitted_tool_call_names: set[str] = set()
+    start_time = time.time()
 
     try:
         async for stream_event in agent.astream(
@@ -377,6 +498,32 @@ async def message_generator(
                     if msg_type in ("long_term_memory_recall", "long_term_memory_save"):
                         yield f"data: {json.dumps(message)}\n\n"
                         continue
+                    # Live packets written from inside a tool call. A node's
+                    # updates only arrive once the whole node returns — for the
+                    # single-node chatbot graph that is after the closing answer
+                    # has streamed, so these are the only timely signal that the
+                    # file is ready.
+                    if msg_type in (
+                        "document_generation_progress",
+                        "document_generation_end",
+                        "generated_file",
+                    ):
+                        # The generation may never have been announced (a model
+                        # can write its whole tool call inside a reasoning
+                        # block) — open one so the UI has something to update.
+                        for packet in document_progress.adopt_live_packet(message):
+                            yield f"data: {json.dumps(packet)}\n\n"
+                        if msg_type == "generated_file":
+                            file_id = message.get("file_id")
+                            if file_id in emitted_file_ids:
+                                continue
+                            emitted_file_ids.add(file_id)
+                        if msg_type == "document_generation_end":
+                            # The tool closed the generation itself; keep the
+                            # tracker from emitting a second end packet.
+                            document_progress.close()
+                        yield f"data: {json.dumps(message)}\n\n"
+                        continue
 
                 try:
                     chat_message = langchain_to_chat_message(message)
@@ -395,22 +542,54 @@ async def message_generator(
                 if chat_message.type == "ai" and chat_message.tool_calls:
                     # New tool phase: allow post-tool model call tokens/reasoning through.
                     first_llm_call_id = None
+                    current_call_made_tool_calls = False
                     saw_visible_answer_tokens = False
                     saw_reasoning_for_current_answer = False
+                    for packet in document_progress.on_tool_calls(chat_message.tool_calls):
+                        yield f"data: {json.dumps(packet)}\n\n"
                     for tc in chat_message.tool_calls:
-                        yield f"data: {json.dumps({'type': 'custom_tool_start', 'tool_name': tc.get('name', 'tool')})}\n\n"
+                        tc_name = (
+                            tc.get("name", "tool")
+                            if isinstance(tc, dict)
+                            else getattr(tc, "name", "tool")
+                        )
+                        tc_args = (
+                            tc.get("args") if isinstance(tc, dict) else getattr(tc, "args", None)
+                        )
+                        if tc_name not in emitted_tool_call_names:
+                            emitted_tool_call_names.add(tc_name)
+                            yield f"data: {json.dumps({'type': 'custom_tool_start', 'tool_name': tc_name, 'args': tc_args})}\n\n"
                     continue
                 elif chat_message.type == "tool":
                     tool_name = getattr(message, "name", "") or ""
                     # Keep subsequent assistant phase visible even when prior phase streamed tokens.
                     saw_visible_answer_tokens = False
                     saw_reasoning_for_current_answer = False
-                    yield f"data: {json.dumps({'type': 'custom_tool_delta', 'tool_name': tool_name, 'response_type': 'tool_result', 'data': chat_message.content})}\n\n"
+
+                    generated_file = parse_generated_file_payload(chat_message.content)
+                    if generated_file is None:
+                        yield f"data: {json.dumps({'type': 'custom_tool_delta', 'tool_name': tool_name, 'response_type': 'tool_result', 'data': chat_message.content})}\n\n"
+
+                    if generated_file is not None:
+                        file_id = generated_file.get("file_id")
+                        if file_id not in emitted_file_ids:
+                            emitted_file_ids.add(file_id)
+                            yield f"data: {json.dumps(build_generated_file_packet_obj(generated_file))}\n\n"
+
+                    for packet in document_progress.on_tool_result(tool_name, chat_message.content):
+                        yield f"data: {json.dumps(packet)}\n\n"
                     continue
 
                 # Some providers do not stream reasoning chunks and only attach
                 # reasoning to final AI message metadata. Emit fallback packets so
                 # live timeline matches refresh reconstruction behavior.
+                if chat_message.type == "ai":
+                    elapsed_duration = max(1, int(time.time() - start_time))
+                    if hasattr(message, "additional_kwargs") and isinstance(
+                        getattr(message, "additional_kwargs", None), dict
+                    ):
+                        message.additional_kwargs["processing_duration_seconds"] = elapsed_duration
+
                 if chat_message.type == "ai" and not saw_reasoning_for_current_answer:
                     final_reasoning = _extract_reasoning_text_from_message(message)
                     if final_reasoning:
@@ -422,12 +601,14 @@ async def message_generator(
                 # the assistant answer incrementally via `token` packets.
                 # Emitting the final full `message` packet as well causes the UI
                 # to render the full answer and then animate tokens on top of it.
-                if (
-                    chat_message.type == "ai"
-                    and user_input.stream_tokens
-                    and saw_visible_answer_tokens
-                ):
-                    continue
+                # `saw_visible_answer_tokens` is reset at every tool boundary, so
+                # it cannot cover a graph that reports all of its messages at
+                # once (the chatbot tool loop) — match on the message id too.
+                if chat_message.type == "ai" and user_input.stream_tokens:
+                    if saw_visible_answer_tokens:
+                        continue
+                    if getattr(message, "id", None) in streamed_message_ids:
+                        continue
 
                 # Strip <think>/<thinking> tags from AI responses
                 if chat_message.type == "ai" and chat_message.content:
@@ -446,12 +627,18 @@ async def message_generator(
                 yield f"data: {json.dumps({'type': 'message', 'content': chat_message.model_dump()})}\n\n"
 
             if stream_mode == "messages":
-                if not user_input.stream_tokens:
-                    continue
                 msg, metadata = event
                 if "skip_stream" in metadata.get("tags", []):
                     continue
                 if not isinstance(msg, AIMessageChunk):
+                    continue
+
+                # A document body streams as tool-call arguments, never as
+                # tokens, so this runs regardless of `stream_tokens`.
+                for packet in document_progress.on_chunk(msg):
+                    yield f"data: {json.dumps(packet)}\n\n"
+
+                if not user_input.stream_tokens:
                     continue
 
                 # Filter out tokens from secondary LLM calls (e.g. memory extraction).
@@ -461,8 +648,36 @@ async def message_generator(
                 if msg_id:
                     if first_llm_call_id is None:
                         first_llm_call_id = msg_id
+                        current_call_made_tool_calls = False
                     elif msg_id != first_llm_call_id:
-                        continue
+                        # A call that ended in tool calls is always followed by
+                        # the answer call. When both happen inside one node (the
+                        # chatbot graph runs its whole tool loop in `call_model`)
+                        # the updates event that would reset this id only arrives
+                        # after the node returns — so without this the entire
+                        # answer is dropped and then dumped at once as a single
+                        # `message` packet, with no streaming animation.
+                        if not current_call_made_tool_calls:
+                            continue
+                        first_llm_call_id = msg_id
+                        current_call_made_tool_calls = False
+
+                if getattr(msg, "tool_call_chunks", None):
+                    current_call_made_tool_calls = True
+                    for tc_chunk in msg.tool_call_chunks:
+                        tc_name = (
+                            tc_chunk.get("name")
+                            if isinstance(tc_chunk, dict)
+                            else getattr(tc_chunk, "name", None)
+                        )
+                        tc_args = (
+                            tc_chunk.get("args")
+                            if isinstance(tc_chunk, dict)
+                            else getattr(tc_chunk, "args", None)
+                        )
+                        if tc_name and tc_name not in emitted_tool_call_names:
+                            emitted_tool_call_names.add(tc_name)
+                            yield f"data: {json.dumps({'type': 'custom_tool_start', 'tool_name': tc_name, 'args': tc_args})}\n\n"
 
                 content = remove_tool_calls(msg.content)
                 reasoning_text = _extract_reasoning_text(msg)
@@ -480,6 +695,8 @@ async def message_generator(
                             # Anthropic extended thinking block
                             thinking_text = block.get("thinking", "")
                             if thinking_text:
+                                for doc_packet in document_progress.on_tool_call_text(thinking_text):
+                                    yield f"data: {json.dumps(doc_packet)}\n\n"
                                 if not saw_reasoning_for_current_answer:
                                     yield f"data: {json.dumps({'type': 'reasoning_start'})}\n\n"
                                     saw_reasoning_for_current_answer = True
@@ -498,6 +715,8 @@ async def message_generator(
                             text = block.get("text", "")
                             if text:
                                 saw_visible_answer_tokens = True
+                                if msg_id:
+                                    streamed_message_ids.add(msg_id)
                                 yield f"data: {json.dumps({'type': 'token', 'content': text})}\n\n"
                     if reasoning_text and not emitted_reasoning:
                         if not saw_reasoning_for_current_answer:
@@ -509,8 +728,20 @@ async def message_generator(
                     token_str = convert_message_content_to_string(content)
                     if token_str:
                         for evt in thinking_processor.feed(token_str):
+                            # Tool-call markup never reaches the chat; it only
+                            # tells us a document is being written.
+                            if evt.get("type") == "tool_call_text":
+                                for packet in document_progress.on_tool_call_text(
+                                    evt.get("content", "")
+                                ):
+                                    yield f"data: {json.dumps(packet)}\n\n"
+                                continue
+                            if evt.get("type") in ("reasoning_start", "reasoning_delta"):
+                                saw_reasoning_for_current_answer = True
                             if evt.get("type") == "token" and evt.get("content"):
                                 saw_visible_answer_tokens = True
+                                if msg_id:
+                                    streamed_message_ids.add(msg_id)
                             yield f"data: {json.dumps(evt)}\n\n"
                     elif reasoning_text:
                         if not saw_reasoning_for_current_answer:
@@ -533,7 +764,14 @@ async def message_generator(
         yield f"data: {json.dumps(payload)}\n\n"
     finally:
         for evt in thinking_processor.flush():
+            # Unterminated tool-call markup must not spill into the chat either.
+            if evt.get("type") == "tool_call_text":
+                continue
             yield f"data: {json.dumps(evt)}\n\n"
+        # Never leave the frontend showing a skeleton for a generation that
+        # died with the stream.
+        for packet in document_progress.flush():
+            yield f"data: {json.dumps(packet)}\n\n"
         yield "data: [DONE]\n\n"
 
 

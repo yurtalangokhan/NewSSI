@@ -110,7 +110,9 @@ async def test_get_graph_and_config_preserves_dynamic_persona_owner_id(monkeypat
         "agents.storage.repository.AgentDefinitionRepository",
         FakeDefinitionRepository,
     )
-    monkeypatch.setattr("service.StoreService.get_assistant_from_store", AsyncMock(return_value=None))
+    monkeypatch.setattr(
+        "service.StoreService.get_assistant_from_store", AsyncMock(return_value=None)
+    )
 
     graph_id, config = await get_graph_and_config(23)
 

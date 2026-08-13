@@ -13,6 +13,10 @@ from controller.base import BaseController
 from controller.thread_controller import ThreadController, get_thread_controller
 from core.llm import get_model
 from service.CheckpointerService import get_checkpointer
+from service.GeneratedFilePacket import (
+    build_generated_file_packet_obj,
+    parse_generated_file_payload,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -783,17 +787,29 @@ class ChatController(BaseController):
                         or "tool"
                     )
                     tool_content = _extract_content(raw_msg)
-                    pending_tool_packets.append(
-                        {
-                            "placement": {"turn_index": 0, "sub_turn_index": None},
-                            "obj": {
-                                "type": "custom_tool_delta",
-                                "tool_name": tool_name,
-                                "response_type": "tool_result",
-                                "data": tool_content,
-                            },
-                        }
-                    )
+                    generated_file = parse_generated_file_payload(tool_content)
+                    # Document tools are represented by their generated_file card
+                    # alone — same as the live stream, which replaces their
+                    # timeline step with the document_generation_* packets.
+                    if generated_file is None:
+                        pending_tool_packets.append(
+                            {
+                                "placement": {"turn_index": 0, "sub_turn_index": None},
+                                "obj": {
+                                    "type": "custom_tool_delta",
+                                    "tool_name": tool_name,
+                                    "response_type": "tool_result",
+                                    "data": tool_content,
+                                },
+                            }
+                        )
+                    if generated_file is not None:
+                        pending_tool_packets.append(
+                            {
+                                "placement": {"turn_index": 0, "sub_turn_index": None},
+                                "obj": build_generated_file_packet_obj(generated_file),
+                            }
+                        )
                     continue
 
                 if raw_type == "system":
@@ -840,12 +856,18 @@ class ChatController(BaseController):
                                 if isinstance(tool_call, dict)
                                 else getattr(tool_call, "name", "tool")
                             )
+                            tool_args = (
+                                tool_call.get("args")
+                                if isinstance(tool_call, dict)
+                                else getattr(tool_call, "args", None)
+                            )
                             pending_tool_packets.append(
                                 {
                                     "placement": {"turn_index": 0, "sub_turn_index": None},
                                     "obj": {
                                         "type": "custom_tool_start",
                                         "tool_name": tool_name,
+                                        "args": tool_args,
                                     },
                                 }
                             )
@@ -922,6 +944,14 @@ class ChatController(BaseController):
                         )
                         turn_counter += 1
 
+                    duration_sec = _extra.get("processing_duration_seconds") or _extra.get(
+                        "duration_seconds"
+                    )
+                    if duration_sec is None and reasoning_text:
+                        duration_sec = max(5, min(300, int(len(reasoning_text) / 25)))
+                    elif duration_sec is None and turn_packets:
+                        duration_sec = max(3, len(turn_packets) * 2)
+
                     display_turn = turn_counter
                     turn_packets.append(
                         {
@@ -930,6 +960,7 @@ class ChatController(BaseController):
                                 "type": "message_start",
                                 "content": msg_content,
                                 "final_documents": None,
+                                "pre_answer_processing_seconds": duration_sec,
                             },
                         }
                     )
@@ -962,7 +993,7 @@ class ChatController(BaseController):
                             "files": [],
                             "tool_call": None,
                             "current_feedback": None,
-                            "processing_duration_seconds": None,
+                            "processing_duration_seconds": duration_sec,
                             "sub_questions": [],
                             "comments": None,
                             "parentMessageId": parent_msg_id,

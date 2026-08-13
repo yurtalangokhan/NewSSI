@@ -1,11 +1,13 @@
 """Tests for the Configurable MCP Agent streaming behavior."""
 
 from collections.abc import AsyncGenerator
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 import pytest
 from langchain_core.messages import SystemMessage
 
+from agents import document_tools
 from agents.configurable_mcp_agent import ConfigurableMCPAgent
 
 
@@ -133,6 +135,9 @@ class TestConfigurableMCPAgent:
             fake_create_react_agent,
         )
         monkeypatch.setattr("agents.configurable_mcp_agent.get_model", lambda _model: object())
+        # Isolate this test from the always-on document tools feature — it only
+        # cares about runtime system prompt propagation.
+        monkeypatch.setattr("agents.configurable_mcp_agent.get_document_tools", lambda: [])
 
         agent = ConfigurableMCPAgent()
         agent._create_agent_graph(
@@ -142,3 +147,51 @@ class TestConfigurableMCPAgent:
 
         assert isinstance(captured["prompt"], SystemMessage)
         assert captured["prompt"].content == "Always answer in Turkish."
+
+    def test_create_agent_graph_includes_document_tools_and_prompt(self, monkeypatch):
+        captured = {}
+
+        def fake_create_react_agent(**kwargs):
+            captured.update(kwargs)
+            return object()
+
+        monkeypatch.setattr(
+            "agents.configurable_mcp_agent.create_react_agent",
+            fake_create_react_agent,
+        )
+        monkeypatch.setattr("agents.configurable_mcp_agent.get_model", lambda _model: object())
+
+        fake_tool = SimpleNamespace(name="create_document")
+        monkeypatch.setattr("agents.configurable_mcp_agent.get_document_tools", lambda: [fake_tool])
+
+        agent = ConfigurableMCPAgent()
+        agent._create_agent_graph(
+            system_prompt="Be helpful.",
+            mcp_tool_names=[],
+        )
+
+        assert fake_tool in captured["tools"]
+        assert document_tools.DOCUMENT_TOOL_PROMPT in captured["prompt"].content
+
+    def test_create_agent_graph_skips_document_tools_when_disabled(self, monkeypatch):
+        captured = {}
+
+        def fake_create_react_agent(**kwargs):
+            captured.update(kwargs)
+            return object()
+
+        monkeypatch.setattr(
+            "agents.configurable_mcp_agent.create_react_agent",
+            fake_create_react_agent,
+        )
+        monkeypatch.setattr("agents.configurable_mcp_agent.get_model", lambda _model: object())
+        monkeypatch.setattr("agents.configurable_mcp_agent.get_document_tools", lambda: [])
+
+        agent = ConfigurableMCPAgent()
+        agent._create_agent_graph(
+            system_prompt="Be helpful.",
+            mcp_tool_names=[],
+        )
+
+        assert captured["tools"] == []
+        assert document_tools.DOCUMENT_TOOL_PROMPT not in captured["prompt"].content

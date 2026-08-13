@@ -30,9 +30,22 @@ export default function FileDisplay({ files, alignBubble }: FileDisplayProps) {
   const imageFiles = uniqueFiles.filter((file) => file.type === ChatFileType.IMAGE);
   const csvFiles = uniqueFiles.filter((file) => file.type === ChatFileType.CSV);
 
+  // A just-sent message's FileDescriptor still carries the inline base64
+  // payload client-side — preview from that directly instead of fetching
+  // `/api/chat/file/{id}`, which can race with the backend's MinIO/DB persist
+  // for a file attached to the message that triggered this very request.
+  // Historical messages (loaded from server) never carry `data`, so they
+  // fall back to the existing backend-fetch path in TextViewModal.
+  const previewUrl =
+    previewingFile?.data && previewingFile?.mime_type
+      ? `data:${previewingFile.mime_type};base64,${previewingFile.data}`
+      : undefined;
+
   const presentingDocument: MinimalOnyxDocument = {
     document_id: previewingFile?.id ?? "",
     semantic_identifier: previewingFile?.name ?? "",
+    preview_url: previewUrl,
+    preview_mime_type: previewingFile?.mime_type ?? undefined,
   };
 
   return (

@@ -77,9 +77,7 @@ class PermissionService:
             return response.json()
 
         except httpx.HTTPError as e:
-            logger.warning(
-                f"Permission check failed for user {user_id}, agent {agent_id}: {e}"
-            )
+            logger.warning(f"Permission check failed for user {user_id}, agent {agent_id}: {e}")
             # Fallback to legacy system
             return await self._check_legacy_access(user_id, agent_id)
         except Exception as e:
@@ -91,9 +89,7 @@ class PermissionService:
                 "source": "fallback",
             }
 
-    async def _check_legacy_access(
-        self, user_id: str, agent_id: str | int
-    ) -> dict[str, Any]:
+    async def _check_legacy_access(self, user_id: str, agent_id: str | int) -> dict[str, Any]:
         """
         Fallback: check legacy agent_groups.
 
@@ -106,12 +102,10 @@ class PermissionService:
                 user_ids = group.get("user_ids", [])
                 persona_ids = group.get("persona_ids", [])
 
-                if str(user_id) in [str(uid) for uid in user_ids] and int(
-                    agent_id
-                ) in [int(pid) for pid in persona_ids]:
-                    logger.info(
-                        f"Legacy access granted for user {user_id}, agent {agent_id}"
-                    )
+                if str(user_id) in [str(uid) for uid in user_ids] and int(agent_id) in [
+                    int(pid) for pid in persona_ids
+                ]:
+                    logger.info(f"Legacy access granted for user {user_id}, agent {agent_id}")
                     return {
                         "allowed": True,
                         "permission_level": "execute",
@@ -178,9 +172,7 @@ class PermissionService:
             logger.error(f"Legacy accessible agents check failed: {e}")
             return []
 
-    async def check_bulk_access(
-        self, user_id: str, agent_ids: list[str | int]
-    ) -> dict[str, bool]:
+    async def check_bulk_access(self, user_id: str, agent_ids: list[str | int]) -> dict[str, bool]:
         """
         Check access for multiple agents at once.
 
