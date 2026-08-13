@@ -588,7 +588,7 @@ function ResponseViewer({
 }
 
 export default function ToolsPlaygroundPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
   const toolName = searchParams.get("tool") || "";
@@ -625,7 +625,7 @@ export default function ToolsPlaygroundPage() {
     }
 
     loadTools();
-  }, []);
+  }, [i18n.language]);
 
   const toolsWithCategory = useMemo(
     () => tools.map((tool) => parseToolCategory(tool)),

@@ -64,10 +64,16 @@ import {
 import { connectProviderFlow } from "@/app/admin/configuration/web-search/connectProviderFlow";
 
 function getContentProviderDisplayLabel(providerType: WebContentProviderType) {
-  return providerType
-    .split("_")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
+  if (providerType === "atlas_web_crawler" || providerType === "onyx_web_crawler") {
+    return CONTENT_PROVIDER_DETAILS.atlas_web_crawler?.label || "ATLAS Web Crawler";
+  }
+  return (
+    CONTENT_PROVIDER_DETAILS[providerType]?.label ||
+    providerType
+      .split("_")
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(" ")
+  );
 }
 
 interface WebSearchProviderView {
@@ -290,8 +296,12 @@ export default function Page() {
       return {
         key: provider?.id ?? providerType,
         providerType,
-        label: getSearchProviderDisplayLabel(providerType, provider?.name),
-        subtitle: details.subtitle,
+        label: t(`admin.webSearch.searchProviders.${providerType}.label`, {
+          defaultValue: getSearchProviderDisplayLabel(providerType, provider?.name),
+        }),
+        subtitle: t(`admin.webSearch.searchProviders.${providerType}.subtitle`, {
+          defaultValue: details.subtitle,
+        }),
         logoSrc: details.logoSrc,
         provider,
       };
@@ -337,8 +347,11 @@ export default function Page() {
       searchProviderValues.config
     );
   const contentProviderLabel = selectedContentProviderType
-    ? CONTENT_PROVIDER_DETAILS[selectedContentProviderType]?.label ||
-      selectedContentProviderType
+    ? t(`admin.webSearch.contentProviders.${selectedContentProviderType}.label`, {
+        defaultValue:
+          CONTENT_PROVIDER_DETAILS[selectedContentProviderType]?.label ||
+          selectedContentProviderType,
+      })
     : "";
   const contentProviderValues = useMemo(
     () => ({
@@ -407,11 +420,11 @@ export default function Page() {
       const existing = byType.get(providerType);
       if (existing) return existing;
 
-      if (providerType === "onyx_web_crawler") {
+      if (providerType === "atlas_web_crawler" || providerType === "onyx_web_crawler") {
         return {
           id: -1,
-          name: "Onyx Web Crawler",
-          provider_type: "onyx_web_crawler",
+          name: "ATLAS Web Crawler",
+          provider_type: "atlas_web_crawler",
           is_active: true,
           config: null,
           has_api_key: true,
@@ -653,7 +666,7 @@ export default function Page() {
     setContentActivationError(null);
 
     try {
-      if (provider.provider_type === "onyx_web_crawler") {
+      if (provider.provider_type === "atlas_web_crawler" || provider.provider_type === "onyx_web_crawler") {
         const response = await fetch(
           "/api/admin/web-search/content-providers/reset-default",
           {
@@ -744,7 +757,7 @@ export default function Page() {
       // For onyx_web_crawler (virtual provider with id -1), use reset-default
       // For real providers, use the deactivate endpoint
       const endpoint =
-        providerType === "onyx_web_crawler" || providerId < 0
+        providerType === "atlas_web_crawler" || providerType === "onyx_web_crawler" || providerId < 0
           ? "/api/admin/web-search/content-providers/reset-default"
           : `/api/admin/web-search/content-providers/${providerId}/deactivate`;
 
@@ -1186,13 +1199,27 @@ export default function Page() {
             <div className="flex flex-col gap-2">
               {combinedContentProviders.map((provider) => {
                 const label =
-                  provider.name ||
-                  CONTENT_PROVIDER_DETAILS[provider.provider_type]?.label ||
-                  provider.provider_type;
+                  provider.name &&
+                  provider.name !== "Onyx Web Crawler" &&
+                  provider.name !== "ATLAS Web Crawler"
+                    ? provider.name
+                    : t(
+                        `admin.webSearch.contentProviders.${provider.provider_type}.label`,
+                        {
+                          defaultValue:
+                            CONTENT_PROVIDER_DETAILS[provider.provider_type]?.label ||
+                            provider.provider_type,
+                        }
+                      );
 
-                const subtitle =
-                  CONTENT_PROVIDER_DETAILS[provider.provider_type]?.subtitle ||
-                  provider.provider_type;
+                const subtitle = t(
+                  `admin.webSearch.contentProviders.${provider.provider_type}.subtitle`,
+                  {
+                    defaultValue:
+                      CONTENT_PROVIDER_DETAILS[provider.provider_type]?.subtitle ||
+                      provider.provider_type,
+                  }
+                );
 
                 const providerId = provider.id;
                 const isConfigured = isContentProviderConfigured(
@@ -1231,6 +1258,7 @@ export default function Page() {
 
                   const canActivate =
                     providerId > 0 ||
+                    provider.provider_type === "atlas_web_crawler" ||
                     provider.provider_type === "onyx_web_crawler" ||
                     isConfigured;
 
@@ -1257,7 +1285,9 @@ export default function Page() {
                   }
                 };
 
-                const isOnyxCrawler = provider.provider_type === "onyx_web_crawler";
+                const isOnyxCrawler =
+                  provider.provider_type === "atlas_web_crawler" ||
+                  provider.provider_type === "onyx_web_crawler";
 
                 return (
                   <div
@@ -1290,8 +1320,9 @@ export default function Page() {
                             ?.logoSrc,
                         alt: `${label} logo`,
                         fallback:
+                          provider.provider_type === "atlas_web_crawler" ||
                           provider.provider_type === "onyx_web_crawler" ? (
-                            <SvgOnyxLogo size={16} />
+                            <Image src="/logo.single.svg" alt="ATLAS logo" width={16} height={16} />
                           ) : undefined,
                         size: 16,
                         isHighlighted: isCurrentCrawler,
@@ -1325,7 +1356,8 @@ export default function Page() {
                           }
                         />
                       )}
-                      {provider.provider_type !== "onyx_web_crawler" &&
+                      {provider.provider_type !== "atlas_web_crawler" &&
+                        provider.provider_type !== "onyx_web_crawler" &&
                         isConfigured && (
                           <OpalButton
                             icon={SvgEdit}
@@ -1486,9 +1518,12 @@ export default function Page() {
         })}
         description={
           selectedProviderType
-            ? SEARCH_PROVIDER_DETAILS[selectedProviderType]?.helper ??
-              SEARCH_PROVIDER_DETAILS[selectedProviderType]?.subtitle ??
-              ""
+            ? t(`admin.webSearch.searchProviders.${selectedProviderType}.helper`, {
+                defaultValue:
+                  SEARCH_PROVIDER_DETAILS[selectedProviderType]?.helper ??
+                  SEARCH_PROVIDER_DETAILS[selectedProviderType]?.subtitle ??
+                  "",
+              })
             : ""
         }
         apiKeyValue={searchModal.apiKeyValue}
@@ -1604,21 +1639,28 @@ export default function Page() {
           alt: `${
             contentProviderLabel || selectedContentProviderType || "provider"
           } logo`,
-          fallback:
-            selectedContentProviderType === "onyx_web_crawler" ? (
-              <SvgOnyxLogo size={24} className="text-text-05" />
-            ) : undefined,
-          size: 24,
-          containerSize: 28,
-        })}
-        description={
-          selectedContentProviderType
-            ? CONTENT_PROVIDER_DETAILS[selectedContentProviderType]
-                ?.description ||
-              CONTENT_PROVIDER_DETAILS[selectedContentProviderType]?.subtitle ||
-              `Provide credentials for ${contentProviderLabel} to enable crawling.`
-            : ""
-        }
+        fallback:
+          selectedContentProviderType === "atlas_web_crawler" ||
+          selectedContentProviderType === "onyx_web_crawler" ? (
+            <Image src="/logo.single.svg" alt="ATLAS logo" width={24} height={24} className="shrink-0" />
+          ) : undefined,
+        size: 24,
+        containerSize: 28,
+      })}
+      description={
+        selectedContentProviderType
+          ? t(
+              `admin.webSearch.contentProviders.${selectedContentProviderType}.description`,
+              {
+                defaultValue:
+                  CONTENT_PROVIDER_DETAILS[selectedContentProviderType]
+                    ?.description ||
+                  CONTENT_PROVIDER_DETAILS[selectedContentProviderType]?.subtitle ||
+                  `Provide credentials for ${contentProviderLabel} to enable crawling.`,
+              }
+            )
+          : ""
+      }
         apiKeyValue={contentModal.apiKeyValue}
         onApiKeyChange={(value) =>
           dispatchContentModal({ type: "SET_API_KEY", value })
@@ -1627,12 +1669,12 @@ export default function Page() {
         optionalField={
           selectedContentProviderType === "firecrawl"
             ? {
-                label: "API Base URL",
+                label: t("admin.webSearch.firecrawlBaseUrlLabel", { defaultValue: "Firecrawl Base URL" }),
                 value: contentModal.configValue,
                 onChange: (value) =>
                   dispatchContentModal({ type: "SET_CONFIG_VALUE", value }),
-                placeholder: "https://",
-                description: "Your Firecrawl API base URL.",
+                placeholder: t("admin.webSearch.firecrawlBaseUrlPlaceholder", { defaultValue: "https://api.firecrawl.dev/v2/scrape" }),
+                description: t("admin.webSearch.firecrawlBaseUrlDescription", { defaultValue: "Base URL for your Firecrawl instance." }),
                 showFirst: true,
               }
             : undefined

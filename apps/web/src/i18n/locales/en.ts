@@ -3479,12 +3479,16 @@ const en = {
       editTooltip: "Edit",
       collapseTooltip: "Collapse",
       testCrawlerTooltip: "Test crawler",
+      atlasCrawlerTestDescription: "Enter a URL to test the built-in crawler and preview the extracted content.",
       onyxCrawlerTestDescription: "Enter a URL to test the built-in crawler and preview the extracted content.",
       crawling: "Crawling...",
       testCrawl: "Test",
       chars: "characters",
       noContent: "(no content extracted)",
-      providers: {
+      firecrawlBaseUrlLabel: "Firecrawl Base URL",
+      firecrawlBaseUrlPlaceholder: "https://api.firecrawl.dev/v2/scrape",
+      firecrawlBaseUrlDescription: "Base URL for your Firecrawl instance.",
+      searchProviders: {
         google_pse: {
           label: "Google PSE",
           subtitle: "Google",
@@ -3510,11 +3514,22 @@ const en = {
           subtitle: "Brave Search API",
           helper: "Connect to Brave Search API to set up web search.",
         },
-        onyx_web_crawler: {
+      },
+      contentProviders: {
+        atlas_web_crawler: {
           label: "ATLAS Web Crawler",
+          subtitle: "Built-in web crawler. Works for most pages but less performant in edge cases.",
+          description: "ATLAS's built-in crawler processes URLs returned by your search engine.",
         },
         firecrawl: {
           label: "Firecrawl",
+          subtitle: "Leading open-source crawler.",
+          description: "Connect Firecrawl to fetch and summarize page content from search results.",
+        },
+        exa: {
+          label: "Exa",
+          subtitle: "Exa.ai",
+          description: "Use Exa to fetch and summarize page content from search results.",
         },
       },
     },

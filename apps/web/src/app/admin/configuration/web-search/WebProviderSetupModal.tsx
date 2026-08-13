@@ -8,7 +8,8 @@ import PasswordInputTypeIn from "@/refresh-components/inputs/PasswordInputTypeIn
 import Modal from "@/refresh-components/Modal";
 import Button from "@/refresh-components/buttons/Button";
 
-import { SvgArrowExchange, SvgOnyxLogo } from "@opal/icons";
+import Image from "next/image";
+import { SvgArrowExchange } from "@opal/icons";
 import type { IconProps } from "@opal/types";
 import { useTranslation } from "react-i18next";
 
@@ -70,7 +71,7 @@ export const WebProviderSetupModal = memo(
             <SvgArrowExchange className="size-3 text-text-04" />
           </div>
           <div className="flex items-center justify-center size-7 p-0.5 shrink-0 overflow-clip">
-            <SvgOnyxLogo size={24} className="text-text-04 shrink-0" />
+            <Image src="/logo.single.svg" alt="ATLAS logo" width={24} height={24} className="shrink-0" />
           </div>
         </div>
       );

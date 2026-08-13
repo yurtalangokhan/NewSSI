@@ -38,7 +38,7 @@ function ToolCard({
   return (
     <div className="border border-border-01 rounded-lg p-4 hover:bg-background-tint-00 transition-colors">
       <div className="flex items-center justify-between gap-2 mb-2">
-        <h3 className="font-medium truncate">{_.startCase(tool.name)}</h3>
+        <h3 className="font-medium truncate">{tool.title || _.startCase(tool.name)}</h3>
         {tool.category && (
           <Badge variant="secondary" className="shrink-0 text-xs">
             {tool.categoryLabel || tool.category}
@@ -74,7 +74,7 @@ function ToolCardSkeleton() {
 export default function BuiltInToolsSection({
   onToolSelect,
 }: BuiltInToolsSectionProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const router = useRouter();
   const [tools, setTools] = useState<BuiltInTool[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -105,7 +105,7 @@ export default function BuiltInToolsSection({
     }
 
     fetchTools();
-  }, []);
+  }, [i18n.language]);
 
   const toolsWithCategory = useMemo(() => {
     return tools.map((tool) => parseToolCategory(tool));

@@ -12,6 +12,7 @@ import {
   MCPAuthenticationType,
   MCPAuthenticationPerformer,
 } from "@/lib/tools/interfaces";
+import i18n from "@/i18n/config";
 import { authenticatedFetch } from "@/lib/fetcher";
 export interface ToolStatusUpdateRequest {
   tool_ids: number[];
@@ -233,7 +234,13 @@ export interface ToolExecuteResponse {
  * Get list of available tools from the built-in tools-service
  */
 export async function getBuiltInTools(): Promise<BuiltInToolsResponse> {
-  const response = await fetch("/api/proxy/mcp/tools-builtin");
+  const currentLang = i18n.language || "en";
+  const response = await fetch("/api/proxy/mcp/tools-builtin", {
+    headers: {
+      "X-Language": currentLang,
+      "Accept-Language": currentLang,
+    },
+  });
   
   if (!response.ok) {
     const errorText = await response.text();
@@ -289,10 +296,12 @@ export async function executeBuiltInTool(
     return { result: data, error: data.success ? undefined : data.message };
   }
 
+  const currentLang = i18n.language || "en";
   const response = await fetch("/api/proxy/mcp/execute", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      "X-Language": currentLang,
     },
     body: JSON.stringify({
       tool_name: toolName,

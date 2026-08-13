@@ -1,5 +1,6 @@
 import { USER_SERVICE_URL } from "@/lib/constants";
 import { buildServiceUrl } from "@/lib/api/gatewayRouting";
+import { getLanguageHeaders } from "@/lib/api/proxy";
 import { NextRequest, NextResponse } from "next/server";
 
 async function proxyToUserService(request: NextRequest, method: string) {
@@ -7,6 +8,7 @@ async function proxyToUserService(request: NextRequest, method: string) {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
       Cookie: request.headers.get("cookie") || "",
+      ...getLanguageHeaders(request),
     };
     const auth = request.headers.get("authorization");
     if (auth) headers["Authorization"] = auth;

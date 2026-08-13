@@ -1,8 +1,10 @@
 const CATEGORY_TAG_REGEX = /\[category:([^\]]+)\]/;
 const CATEGORY_LABEL_TAG_REGEX = /\[category_label:([^\]]+)\]/;
+const TITLE_TAG_REGEX = /\[title:([^\]]+)\]/;
 
 export interface ToolWithCategory {
   name: string;
+  title?: string;
   description: string;
   input_schema: Record<string, any>;
   category?: string;
@@ -14,15 +16,18 @@ export function parseToolCategory(tool: ToolWithCategory): ToolWithCategory {
 
   const categoryMatch = tool.description.match(CATEGORY_TAG_REGEX);
   const labelMatch = tool.description.match(CATEGORY_LABEL_TAG_REGEX);
+  const titleMatch = tool.description.match(TITLE_TAG_REGEX);
 
-  if (categoryMatch || labelMatch) {
+  if (categoryMatch || labelMatch || titleMatch) {
     return {
       ...tool,
+      title: titleMatch ? titleMatch[1] : tool.title,
       category: categoryMatch ? categoryMatch[1] : undefined,
       categoryLabel: labelMatch ? labelMatch[1] : undefined,
       description: tool.description
         .replace(CATEGORY_TAG_REGEX, "")
         .replace(CATEGORY_LABEL_TAG_REGEX, "")
+        .replace(TITLE_TAG_REGEX, "")
         .trim(),
     };
   }

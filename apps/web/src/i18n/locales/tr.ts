@@ -3484,12 +3484,16 @@ const tr = {
       editTooltip: "Düzenle",
       collapseTooltip: "Daralt",
       testCrawlerTooltip: "Crawler'ı test et",
-      onyxCrawlerTestDescription: "Yerleşik crawler'ı test etmek için bir URL girin ve çıkarılan içeriği önizleyin.",
+      atlasCrawlerTestDescription: "Yerleşik tarayıcıyı test etmek için bir URL girin ve çıkarılan içeriği önizleyin.",
+      onyxCrawlerTestDescription: "Yerleşik tarayıcıyı test etmek için bir URL girin ve çıkarılan içeriği önizleyin.",
       crawling: "Crawl ediliyor...",
       testCrawl: "Test",
       chars: "karakter",
       noContent: "(içerik çıkarılamadı)",
-      providers: {
+      firecrawlBaseUrlLabel: "Firecrawl Temel URL'si",
+      firecrawlBaseUrlPlaceholder: "https://api.firecrawl.dev/v2/scrape",
+      firecrawlBaseUrlDescription: "Firecrawl sunucunuz için temel URL.",
+      searchProviders: {
         google_pse: {
           label: "Google PSE",
           subtitle: "Google",
@@ -3515,11 +3519,22 @@ const tr = {
           subtitle: "Brave Arama API",
           helper: "Web aramasını ayarlamak için Brave Arama API'sine bağlanın.",
         },
-        onyx_web_crawler: {
-          label: "ATLAS Web Tarayıcı",
+      },
+      contentProviders: {
+        atlas_web_crawler: {
+          label: "ATLAS Web Crawler",
+          subtitle: "Yerleşik web tarayıcısı. Çoğu sayfa için çalışır ancak uç durumlarda daha düşük performans gösterir.",
+          description: "ATLAS'ın yerleşik tarayıcısı, arama motorunuz tarafından döndürülen URL'leri işler.",
         },
         firecrawl: {
           label: "Firecrawl",
+          subtitle: "Lider açık kaynaklı web tarayıcısı.",
+          description: "Arama sonuçlarından sayfa içeriğini çekmek ve özetlemek için Firecrawl'u bağlayın.",
+        },
+        exa: {
+          label: "Exa",
+          subtitle: "Exa.ai",
+          description: "Arama sonuçlarından sayfa içeriğini çekmek ve özetlemek için Exa'yı kullanın.",
         },
       },
     },

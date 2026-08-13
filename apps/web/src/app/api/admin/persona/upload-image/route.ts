@@ -1,10 +1,11 @@
 import { getInternalUrl } from "@/lib/env.server";
 import { buildServiceUrl } from "@/lib/api/gatewayRouting";
-import { NextResponse } from "next/server";
+import { getLanguageHeaders } from "@/lib/api/proxy";
+import { NextRequest, NextResponse } from "next/server";
 
 const INTERNAL_URL = getInternalUrl();
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
     const cookie = request.headers.get("cookie") || "";
@@ -19,6 +20,7 @@ export async function POST(request: Request) {
         method: "POST",
         body: formData,
         headers: {
+          ...getLanguageHeaders(request),
           ...(cookie ? { Cookie: cookie } : {}),
           ...(authorization ? { Authorization: authorization } : {}),
         },

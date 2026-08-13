@@ -106,7 +106,7 @@ test.describe("Web Content Provider Configuration", () => {
       console.log("[web-content-test] Firecrawl configured successfully");
     });
 
-    test("should switch back to Onyx Web Crawler from Firecrawl", async ({
+    test("should switch back to ATLAS Web Crawler from Firecrawl", async ({
       page,
     }) => {
       // First, ensure Firecrawl is configured and active
@@ -156,11 +156,11 @@ test.describe("Web Content Provider Configuration", () => {
       ).toBeVisible({ timeout: 15000 });
 
       console.log(
-        "[web-content-test] Firecrawl configured, now switching to Onyx Web Crawler..."
+        "[web-content-test] Firecrawl configured, now switching to ATLAS Web Crawler..."
       );
 
-      // Switch to Onyx Web Crawler
-      const onyxCrawlerCard = await findProviderCard(page, "Onyx Web Crawler");
+      // Switch to ATLAS Web Crawler
+      const onyxCrawlerCard = await findProviderCard(page, "ATLAS Web Crawler");
       await onyxCrawlerCard.waitFor({ state: "visible", timeout: 10000 });
 
       const onyxSetDefault = onyxCrawlerCard.getByRole("button", {
@@ -176,7 +176,7 @@ test.describe("Web Content Provider Configuration", () => {
         onyxCrawlerCard.getByRole("button", { name: "Current Crawler" })
       ).toBeVisible({ timeout: 15000 });
 
-      console.log("[web-content-test] Switched back to Onyx Web Crawler");
+      console.log("[web-content-test] Switched back to ATLAS Web Crawler");
     });
   });
 });
