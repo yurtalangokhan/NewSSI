@@ -3,7 +3,13 @@
  * Tests different authentication methods: IAM, Access Key, Long-term API Key
  */
 import React from "react";
-import { render, screen, waitFor, setupUser } from "@tests/setup/test-utils";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  setupUser,
+} from "@tests/setup/test-utils";
 import "@testing-library/jest-dom";
 import { BedrockOnboardingForm } from "../BedrockOnboardingForm";
 import {
@@ -267,16 +273,17 @@ describe("BedrockOnboardingForm", () => {
       const accessKeyInput = screen.getByPlaceholderText(
         "AKIAIOSFODNN7EXAMPLE"
       );
-      await user.type(accessKeyInput, "AKIAIOSFODNN7EXAMPLE");
+      fireEvent.change(accessKeyInput, {
+        target: { value: "AKIAIOSFODNN7EXAMPLE" },
+      });
 
       // Fill Secret Access Key
       const secretKeyInput = screen.getByPlaceholderText(
         "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
       );
-      await user.type(
-        secretKeyInput,
-        "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
-      );
+      fireEvent.change(secretKeyInput, {
+        target: { value: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY" },
+      });
 
       // Click fetch models button - find by aria-label
       const fetchButton = screen.getByRole("button", {
@@ -291,7 +298,9 @@ describe("BedrockOnboardingForm", () => {
 
       // Fill model - use the textbox with the specific placeholder
       const modelInput = screen.getByPlaceholderText(modelPlaceholder);
-      await user.type(modelInput, "anthropic.claude-3-sonnet");
+      fireEvent.change(modelInput, {
+        target: { value: "anthropic.claude-3-sonnet" },
+      });
     }
 
     test("submits with Access Key credentials", async () => {
@@ -388,12 +397,16 @@ describe("BedrockOnboardingForm", () => {
       const accessKeyInput = screen.getByPlaceholderText(
         "AKIAIOSFODNN7EXAMPLE"
       );
-      await user.type(accessKeyInput, "invalid-key");
+      fireEvent.change(accessKeyInput, {
+        target: { value: "invalid-key" },
+      });
 
       const secretKeyInput = screen.getByPlaceholderText(
         "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
       );
-      await user.type(secretKeyInput, "invalid-secret");
+      fireEvent.change(secretKeyInput, {
+        target: { value: "invalid-secret" },
+      });
 
       // Click fetch models button - find by aria-label
       const fetchButton = screen.getByRole("button", {
@@ -407,7 +420,9 @@ describe("BedrockOnboardingForm", () => {
       });
 
       const modelInput = screen.getByPlaceholderText(modelPlaceholder);
-      await user.type(modelInput, "anthropic.claude-3-sonnet");
+      fireEvent.change(modelInput, {
+        target: { value: "anthropic.claude-3-sonnet" },
+      });
     }
 
     test("displays error message when API test fails", async () => {
