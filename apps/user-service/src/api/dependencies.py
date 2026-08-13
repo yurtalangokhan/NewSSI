@@ -129,7 +129,11 @@ def require_permission(permission: str):
 
             role = await CompositeRoleRepository().get_by_name(user.role)
             if role:
-                if role.permissions == ["*"] or permission in (role.permissions or []):
+                if (
+                    role.name == "system-admin"
+                    or role.permissions == ["*"]
+                    or permission in (role.permissions or [])
+                ):
                     return user_id
                 # Check role permissions via role_ids
                 role_ids = role.role_ids or []
