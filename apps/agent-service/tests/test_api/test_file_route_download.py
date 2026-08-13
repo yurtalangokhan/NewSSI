@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+from fastapi import HTTPException
 
 from api.routes.FileRoute import get_chat_file
 from service.FileService import store_file
@@ -88,3 +89,56 @@ async def test_download_request_does_not_convert_xlsx_to_csv():
     assert response.media_type == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     assert response.body == xlsx_bytes
     assert 'filename="satis.xlsx"' in response.headers["Content-Disposition"]
+
+
+# ---------------------------------------------------------------------------
+# Missing file — the 404 must never be cached by the browser. Without an
+# explicit no-store, a single transient failure (e.g. a MinIO hiccup while the
+# service warms its in-memory cache) gets cached by the browser as a 404 and
+# every later preview attempt for that file_id fails from disk cache without
+# ever hitting the backend again, even after the file becomes available.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_missing_file_404_is_not_cacheable(monkeypatch):
+    class _EmptyRepo:
+        async def get_by_file_id(self, file_id):
+            return None
+
+    monkeypatch.setattr(
+        "core.db.repositories.document_repo.DocumentRepository", _EmptyRepo
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        await get_chat_file("does-not-exist")
+
+    assert exc_info.value.status_code == 404
+    assert exc_info.value.headers is not None
+    assert exc_info.value.headers.get("Cache-Control") == "no-store"
+
+
+@pytest.mark.asyncio
+async def test_minio_failure_404_is_not_cacheable(monkeypatch):
+    class _RepoWithDoc:
+        async def get_by_file_id(self, file_id):
+            return {
+                "minio_object_key": "documents/user-1/does-not-exist/file.txt",
+                "mime_type": "text/plain",
+                "filename": "file.txt",
+            }
+
+    def _boom(object_key):
+        raise ConnectionError("minio unreachable")
+
+    monkeypatch.setattr(
+        "core.db.repositories.document_repo.DocumentRepository", _RepoWithDoc
+    )
+    monkeypatch.setattr("service.MinioService.download_file", _boom)
+
+    with pytest.raises(HTTPException) as exc_info:
+        await get_chat_file("some-file-id")
+
+    assert exc_info.value.status_code == 404
+    assert exc_info.value.headers is not None
+    assert exc_info.value.headers.get("Cache-Control") == "no-store"

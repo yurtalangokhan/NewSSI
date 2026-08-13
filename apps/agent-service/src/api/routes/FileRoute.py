@@ -51,7 +51,7 @@ async def _resolve_file(file_id: str) -> FileRecord:
 
         doc = await DocumentRepository().get_by_file_id(file_id)
         if doc is None:
-            raise HTTPException(status_code=404, detail=t("file.not_found"))
+            raise _not_found()
 
         data = minio_download(doc["minio_object_key"])
         # Warm the in-memory cache for subsequent requests this session
@@ -61,7 +61,19 @@ async def _resolve_file(file_id: str) -> FileRecord:
         raise
     except Exception as exc:
         logger.error("Failed to retrieve file %s from MinIO: %s", file_id, exc)
-        raise HTTPException(status_code=404, detail=t("file.not_found")) from exc
+        raise _not_found() from exc
+
+
+def _not_found() -> HTTPException:
+    """404 with no-store — a transient failure (e.g. MinIO down while the
+    in-memory cache is cold) must never be cached by the browser, or every
+    later preview attempt for that file_id will fail from disk cache without
+    ever hitting the backend again, even once the file becomes available."""
+    return HTTPException(
+        status_code=404,
+        detail=t("file.not_found"),
+        headers={"Cache-Control": "no-store"},
+    )
 
 
 def _safe_disposition(disposition: str, filename: str) -> str:
