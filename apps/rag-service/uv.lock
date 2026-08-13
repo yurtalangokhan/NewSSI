@@ -774,6 +774,17 @@ wheels = [
 ]
 
 [[package]]
+name = "i18n-py"
+version = "0.1.0"
+source = { directory = "../../packages/i18n-py" }
+dependencies = [
+    { name = "starlette" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "starlette", specifier = ">=0.27.0" }]
+
+[[package]]
 name = "idempotency"
 version = "0.1.0"
 source = { directory = "../../packages/idempotency-py" }
@@ -1056,6 +1067,7 @@ dependencies = [
     { name = "beautifulsoup4" },
     { name = "fastapi" },
     { name = "httpx" },
+    { name = "i18n-py" },
     { name = "idempotency" },
     { name = "langchain" },
     { name = "langchain-community" },
@@ -1102,6 +1114,7 @@ requires-dist = [
     { name = "beautifulsoup4", specifier = ">=4.12.3" },
     { name = "fastapi", specifier = ">=0.115.6" },
     { name = "httpx", specifier = ">=0.28.1" },
+    { name = "i18n-py", directory = "../../packages/i18n-py" },
     { name = "idempotency", directory = "../../packages/idempotency-py" },
     { name = "langchain", specifier = ">=0.3.20" },
     { name = "langchain-community", specifier = ">=0.0.20" },
@@ -1851,10 +1864,10 @@ resolution-markers = [
     "python_full_version == '3.14.*' and sys_platform != 'emscripten' and sys_platform != 'win32'",
 ]
 dependencies = [
-    { name = "numpy", marker = "python_full_version >= '3.14'" },
-    { name = "python-dateutil", marker = "python_full_version >= '3.14'" },
-    { name = "pytz", marker = "python_full_version >= '3.14'" },
-    { name = "tzdata", marker = "python_full_version >= '3.14'" },
+    { name = "numpy" },
+    { name = "python-dateutil" },
+    { name = "pytz" },
+    { name = "tzdata" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/33/01/d40b85317f86cf08d853a4f495195c73815fdf205eef3993821720274518/pandas-2.3.3.tar.gz", hash = "sha256:e05e1af93b977f7eafa636d043f9f94c7ee3ac81af99c13508215942e64c993b", size = 4495223, upload-time = "2025-09-29T23:34:51.853Z" }
 wheels = [
@@ -1916,9 +1929,9 @@ resolution-markers = [
     "python_full_version < '3.12.4' and sys_platform != 'emscripten' and sys_platform != 'win32'",
 ]
 dependencies = [
-    { name = "numpy", marker = "python_full_version < '3.14'" },
-    { name = "python-dateutil", marker = "python_full_version < '3.14'" },
-    { name = "tzdata", marker = "(python_full_version < '3.14' and sys_platform == 'emscripten') or (python_full_version < '3.14' and sys_platform == 'win32')" },
+    { name = "numpy" },
+    { name = "python-dateutil" },
+    { name = "tzdata", marker = "sys_platform == 'emscripten' or sys_platform == 'win32'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/da/99/b342345300f13440fe9fe385c3c481e2d9a595ee3bab4d3219247ac94e9a/pandas-3.0.2.tar.gz", hash = "sha256:f4753e73e34c8d83221ba58f232433fca2748be8b18dbca02d242ed153945043", size = 4645855, upload-time = "2026-03-31T06:48:30.816Z" }
 wheels = [

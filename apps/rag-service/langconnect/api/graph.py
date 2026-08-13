@@ -12,6 +12,7 @@ import logging
 from typing import Annotated, Any
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
+from i18n import t
 
 from langconnect.auth import AuthenticatedUser, require_permission
 from langconnect.database.collections import Collection
@@ -72,7 +73,7 @@ async def build_graph(
     if doc_count == 0:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Cannot build a knowledge graph: the collection contains no documents.",
+            detail=t("graph.build_no_documents"),
         )
 
     # Check if a build is already in progress
@@ -81,7 +82,7 @@ async def build_graph(
         return GraphBuildResponse(
             collection_id=request.collection_id,
             status=existing.status,
-            message="Build already in progress.",
+            message=t("graph.build_already_in_progress"),
         )
 
     # Pre-register a pending record so status polls return "pending"
@@ -98,7 +99,7 @@ async def build_graph(
     return GraphBuildResponse(
         collection_id=request.collection_id,
         status="pending",
-        message="Graph build started. Poll /graph/build/{collection_id}/status for progress.",
+        message=t("graph.build_started"),
     )
 
 
@@ -129,12 +130,12 @@ async def pause_build(
     if progress is None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="No running graph build found to pause.",
+            detail=t("graph.no_running_build_pause"),
         )
     return GraphBuildResponse(
         collection_id=collection_id,
         status=progress.status,
-        message="Graph build paused.",
+        message=t("graph.build_paused"),
     )
 
 
@@ -148,12 +149,12 @@ async def resume_build(
     if progress is None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="No running graph build found to resume.",
+            detail=t("graph.no_running_build_resume"),
         )
     return GraphBuildResponse(
         collection_id=collection_id,
         status=progress.status,
-        message="Graph build resumed.",
+        message=t("graph.build_resumed"),
     )
 
 
@@ -167,12 +168,12 @@ async def stop_build(
     if progress is None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="No running graph build found to stop.",
+            detail=t("graph.no_running_build_stop"),
         )
     return GraphBuildResponse(
         collection_id=collection_id,
         status=progress.status,
-        message="Graph build stop requested.",
+        message=t("graph.build_stop_requested"),
     )
 
 
@@ -485,7 +486,7 @@ async def execute_cypher(
         logger.exception("Cypher query failed")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Cypher query error: {exc!s}",
+            detail=t("graph.cypher_query_error", error=str(exc)),
         )
 
 
@@ -518,7 +519,7 @@ async def graph_health():
     if not healthy:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Neo4j is not reachable",
+            detail=t("graph.neo4j_unreachable"),
         )
     return {"status": "ok", "service": "neo4j"}
 

@@ -1,4 +1,5 @@
 from fastapi import HTTPException, status
+from i18n import t
 
 from langconnect.services.graph_rag_service import get_build_progress
 
@@ -11,10 +12,7 @@ def ensure_collection_mutable(collection_id: str) -> None:
     if progress and progress.status in _ACTIVE_BUILD_STATUSES:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=(
-                "Collection is locked while Graph RAG build is in progress. "
-                "Try again after the build completes."
-            ),
+            detail=t("collection.locked_graph_build_in_progress"),
         )
 
 
@@ -32,8 +30,5 @@ async def ensure_not_connector_managed_collection(collection_id: str) -> None:
     if connector_type:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=(
-                "This collection is managed by a connector and is read-only. "
-                "Rename, delete, upload, and document deletion are not allowed."
-            ),
+            detail=t("collection.connector_managed_readonly"),
         )

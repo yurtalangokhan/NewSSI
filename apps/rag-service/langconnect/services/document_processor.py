@@ -4,6 +4,7 @@ import re
 import uuid
 
 from fastapi import HTTPException, UploadFile
+from i18n import t
 from langchain_community.document_loaders.parsers import BS4HTMLParser, PDFMinerParser
 from langchain_community.document_loaders.parsers.generic import MimeTypeBasedParser
 from langchain_community.document_loaders.parsers.txt import TextParser
@@ -479,11 +480,14 @@ async def process_document(
     # ── Enforce 200 MB file-size limit ────────────────────────────────
     if len(contents) > MAX_FILE_SIZE_BYTES:
         size_mb = len(contents) / (1024 * 1024)
+        limit_mb = MAX_FILE_SIZE_BYTES / (1024 * 1024)
         raise HTTPException(
             status_code=413,
-            detail=(
-                f"File '{file.filename}' is {size_mb:.1f} MB which exceeds "
-                f"the 200 MB upload limit."
+            detail=t(
+                "document.file_too_large",
+                filename=file.filename,
+                size_mb=f"{size_mb:.1f}",
+                limit_mb=f"{limit_mb:.0f}",
             ),
         )
 

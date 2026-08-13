@@ -3,6 +3,7 @@ from typing import Self
 
 import pytest
 from fastapi import HTTPException
+from i18n.core import set_locale
 
 from langconnect import auth
 
@@ -142,6 +143,72 @@ async def test_resolve_user_maps_keycloak_token_to_local_user(
     assert user.identity == "local-user-id"
     assert user.display_name == "local@example.com"
     assert user.access_token == "jwt-token"
+
+
+def test_decode_keycloak_token_translates_invalid_token_error(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    monkeypatch.setattr(auth.config, "KEYCLOAK_ISSUER_URL", "https://issuer")
+
+    class _FakeJWKSClient:
+        def __init__(self, *args: object, **kwargs: object) -> None:
+            pass
+
+        def get_signing_key_from_jwt(self, token):
+            raise auth.InvalidTokenError("Signature verification failed")
+
+    monkeypatch.setattr(auth, "PyJWKClient", _FakeJWKSClient)
+
+    with pytest.raises(HTTPException) as exc:
+        auth.decode_keycloak_token("bad-token")
+
+    assert exc.value.status_code == 401
+    assert exc.value.detail == "Invalid bearer token: Signature verification failed"
+
+
+def test_decode_keycloak_token_error_is_translated_for_turkish_locale(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    monkeypatch.setattr(auth.config, "KEYCLOAK_ISSUER_URL", "https://issuer")
+
+    class _FakeJWKSClient:
+        def __init__(self, *args: object, **kwargs: object) -> None:
+            pass
+
+        def get_signing_key_from_jwt(self, token):
+            raise auth.InvalidTokenError("Signature verification failed")
+
+    monkeypatch.setattr(auth, "PyJWKClient", _FakeJWKSClient)
+
+    set_locale("tr")
+    try:
+        with pytest.raises(HTTPException) as exc:
+            auth.decode_keycloak_token("bad-token")
+    finally:
+        set_locale("en")
+
+    assert exc.value.detail == "Geçersiz taşıyıcı token: Signature verification failed"
+
+
+async def test_require_permission_translates_missing_permission_detail(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    monkeypatch.setattr(auth, "IS_TESTING", True)
+    monkeypatch.setattr(auth.config, "KEYCLOAK_ENABLED", False)
+
+    async def _deny_permission(self, user_id, permission, access_token=None):
+        return False
+
+    monkeypatch.setattr(
+        "langconnect.authorization.AuthorizationClient.has_permission", _deny_permission
+    )
+
+    check = auth.require_permission("collection:create")
+    with pytest.raises(HTTPException) as exc:
+        await check(_request(), _credentials("some-user"))
+
+    assert exc.value.status_code == 403
+    assert exc.value.detail == "Missing required permission: collection:create"
 
 
 async def test_get_user_service_user_uses_api_v1_auth_me_path(
