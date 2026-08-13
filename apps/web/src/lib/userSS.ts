@@ -164,6 +164,23 @@ export const getCurrentUserSS = async (): Promise<User | null> => {
   }
 };
 
+export const getCurrentUserPermissionsSS = async (): Promise<string[]> => {
+  try {
+    if (!(await hasAuthSessionCookieSS())) {
+      return [];
+    }
+
+    const response = await fetchUserServiceSS("/api/users/me/permissions");
+    if (!response.ok) {
+      return [];
+    }
+    const payload = (await response.json()) as { permissions?: string[] };
+    return payload.permissions ?? [];
+  } catch {
+    return [];
+  }
+};
+
 export const hasAuthSessionCookieSS = async (): Promise<boolean> => {
   const cookieStore = await getCookies();
   return (

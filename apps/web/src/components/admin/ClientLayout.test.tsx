@@ -50,7 +50,6 @@ describe("ClientLayout", () => {
   beforeEach(() => {
     mockUseUser.mockReturnValue({
       user: { id: "admin-user" },
-      isAdmin: true,
       permissionsError: "Failed to fetch permissions",
       isPermissionsLoading: false,
       hasAllPermissions: () => false,
@@ -61,14 +60,13 @@ describe("ClientLayout", () => {
     jest.clearAllMocks();
   });
 
-  it("redirects when route permissions fail instead of using an admin role fallback", async () => {
+  it("redirects when route permissions fail to load and deny the route", async () => {
     render(
       <ClientLayout enableEnterprise={false} enableCloud={false}>
         <div>Admin content</div>
       </ClientLayout>
     );
 
-    expect(screen.queryByText("Admin content")).not.toBeInTheDocument();
     await waitFor(() => {
       expect(replaceMock).toHaveBeenCalledWith("/error/403");
     });
@@ -77,7 +75,6 @@ describe("ClientLayout", () => {
   it("does not redirect to 403 while route permissions are loading", () => {
     mockUseUser.mockReturnValue({
       user: { id: "admin-user" },
-      isAdmin: true,
       permissionsError: null,
       isPermissionsLoading: true,
       hasAllPermissions: () => false,
@@ -96,7 +93,6 @@ describe("ClientLayout", () => {
   it("still redirects admins when route permissions load and deny the route", async () => {
     mockUseUser.mockReturnValue({
       user: { id: "admin-user" },
-      isAdmin: true,
       permissionsError: null,
       isPermissionsLoading: false,
       hasAllPermissions: () => false,

@@ -3,9 +3,15 @@ interface AgentPageAccess {
   canViewPersonalTab: boolean;
 }
 
-export function getAgentPageAccess(isAdmin: boolean): AgentPageAccess {
+export function getAgentPageAccess({
+  canCreateAgent,
+  canListAgents,
+}: {
+  canCreateAgent: boolean;
+  canListAgents: boolean;
+}): AgentPageAccess {
   return {
-    canCreateAgent: isAdmin,
-    canViewPersonalTab: isAdmin,
+    canCreateAgent,
+    canViewPersonalTab: canListAgents,
   };
 }

@@ -20,14 +20,14 @@ depends_on: str | Sequence[str] | None = None
 
 
 # ---------------------------------------------------------------------------
-# Coarse role seed data — maps each coarse role to its permissions.
-# These are service-client roles like tool-admin, user-manager, etc.
+# Coarse role seed data — maps each feature bundle to its permissions.
+# These are compact service-client roles like tooling-admin and access-manager.
 # ---------------------------------------------------------------------------
 
 COARSE_ROLES_SEED = [
     # ── user-service ──────────────────────────────────────────────
     {
-        "name": "user-admin",
+        "name": "access-admin",
         "description": "Full user management — create, read, update, delete users, roles, permissions, audit logs, groups, API keys",
         "service_client": "user-service",
         "permissions": [
@@ -52,6 +52,7 @@ COARSE_ROLES_SEED = [
             "role:manage",
             "user:create",
             "user:delete",
+            "user:impersonate",
             "user:list",
             "user:read",
             "user:update",
@@ -60,7 +61,7 @@ COARSE_ROLES_SEED = [
         ],
     },
     {
-        "name": "user-manager",
+        "name": "access-manager",
         "description": "Operational user management — read, list, update users; read roles, permissions, audit logs, groups",
         "service_client": "user-service",
         "permissions": [
@@ -79,8 +80,8 @@ COARSE_ROLES_SEED = [
         ],
     },
     {
-        "name": "enduser",
-        "description": "Basic user-service permissions for end users",
+        "name": "account-self-service",
+        "description": "Basic account self-service permissions for end users",
         "service_client": "user-service",
         "permissions": [
             "api_key:create",
@@ -92,7 +93,7 @@ COARSE_ROLES_SEED = [
     },
     # ── agent-service ─────────────────────────────────────────────
     {
-        "name": "agent-admin",
+        "name": "agent-workspace-admin",
         "description": "Full agent management — create, read, update, delete agents, assistants, conversations, analytics, threads, runs, personas, projects, memories, schedules, agent definitions",
         "service_client": "agent-service",
         "permissions": [
@@ -149,7 +150,7 @@ COARSE_ROLES_SEED = [
         ],
     },
     {
-        "name": "agent-manager",
+        "name": "agent-workspace-manager",
         "description": "Operational agent management — list, read, create, update agents, assistants, threads, runs, personas, projects",
         "service_client": "agent-service",
         "permissions": [
@@ -185,7 +186,7 @@ COARSE_ROLES_SEED = [
         ],
     },
     {
-        "name": "agent-enduser",
+        "name": "agent-workspace-user",
         "description": "End-user agent permissions — invoke agents, read assistants, manage own threads and runs",
         "service_client": "agent-service",
         "permissions": [
@@ -220,7 +221,7 @@ COARSE_ROLES_SEED = [
     },
     # ── rag-service ───────────────────────────────────────────────
     {
-        "name": "rag-admin",
+        "name": "knowledge-admin",
         "description": "Full RAG management — collections, documents, datasources, chunks, embeddings, graphs, web search",
         "service_client": "rag-service",
         "permissions": [
@@ -251,7 +252,7 @@ COARSE_ROLES_SEED = [
         ],
     },
     {
-        "name": "rag-manager",
+        "name": "knowledge-manager",
         "description": "Operational RAG management — read, search, create documents and collections, sync datasources",
         "service_client": "rag-service",
         "permissions": [
@@ -275,7 +276,7 @@ COARSE_ROLES_SEED = [
         ],
     },
     {
-        "name": "rag-enduser",
+        "name": "knowledge-search-user",
         "description": "End-user RAG permissions — search documents and chunks, read collections, search graph",
         "service_client": "rag-service",
         "permissions": [
@@ -292,7 +293,7 @@ COARSE_ROLES_SEED = [
     },
     # ── tools-service ─────────────────────────────────────────────
     {
-        "name": "tool-admin",
+        "name": "tooling-admin",
         "description": "Full tools management — execute tools, manage MCP tools, providers and all tool configurations",
         "service_client": "tools-service",
         "permissions": [
@@ -303,17 +304,34 @@ COARSE_ROLES_SEED = [
             "mcp_provider:update",
             "mcp_tool:read",
             "mcp_tool:sync",
+            "mail_config:create",
+            "mail_config:delete",
+            "mail_config:read",
+            "mail_config:send",
+            "mail_config:test",
+            "mail_config:update",
+            "provider:create",
+            "provider:delete",
+            "provider:read",
+            "provider:update",
             "tool:execute",
             "tool:read",
         ],
     },
     {
-        "name": "tool-user",
+        "name": "tooling-user",
         "description": "Basic tool user — execute tools and read tool/MCP catalog",
         "service_client": "tools-service",
         "permissions": [
             "mcp_provider:read",
             "mcp_tool:read",
+            "mail_config:create",
+            "mail_config:delete",
+            "mail_config:read",
+            "mail_config:send",
+            "mail_config:test",
+            "mail_config:update",
+            "provider:read",
             "tool:execute",
             "tool:read",
         ],
@@ -328,22 +346,22 @@ COARSE_ROLES_SEED = [
 
 REALM_ROLE_COARSE_MAP: dict[str, list[str]] = {
     "system-admin": [
-        "user-admin",
-        "agent-admin",
-        "rag-admin",
-        "tool-admin",
+        "access-admin",
+        "agent-workspace-admin",
+        "knowledge-admin",
+        "tooling-admin",
     ],
     "enterprise-admin": [
-        "user-manager",
-        "agent-manager",
-        "rag-manager",
-        "tool-user",
+        "access-manager",
+        "agent-workspace-manager",
+        "knowledge-manager",
+        "tooling-user",
     ],
     "enduser": [
-        "enduser",
-        "agent-enduser",
-        "rag-enduser",
-        "tool-user",
+        "account-self-service",
+        "agent-workspace-user",
+        "knowledge-search-user",
+        "tooling-user",
     ],
 }
 

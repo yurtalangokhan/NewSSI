@@ -49,6 +49,7 @@ FEATURE_MAP: Final[dict[tuple[str, str], str]] = {
     ("tools-service", "tool"): "tools",
     ("agent-service", "mcp_provider"): "tools",
     ("agent-service", "mcp_tool"): "tools",
+    ("agent-service", "mail_config"): "tools",
     ("agent-service", "datasource"): "tools",
     ("agent-service", "web_search"): "tools",
     ("agent-service", "provider"): "tools",

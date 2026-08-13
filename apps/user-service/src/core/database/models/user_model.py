@@ -27,7 +27,6 @@ class UserModel(Base):
     hashed_password: Mapped[str | None] = mapped_column(String(255), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    is_superuser: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     role: Mapped[str] = mapped_column(String(50), default="enduser", nullable=False)
     groups: Mapped[list[str]] = mapped_column(JSONB, default=list, nullable=False)
     invited: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)

@@ -5,7 +5,6 @@ import Modal from "@/refresh-components/Modal";
 import Button from "@/refresh-components/buttons/Button";
 import Text from "@/refresh-components/texts/Text";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
-import InputComboBox from "@/refresh-components/inputs/InputComboBox";
 import { FormikField } from "@/refresh-components/form/FormikField";
 import { FormField } from "@/refresh-components/form/FormField";
 import { APIKey } from "./types";
@@ -41,14 +40,12 @@ export default function OnyxApiKeyForm({
         <Formik
           initialValues={{
             name: apiKey?.api_key_name || "",
-            role: apiKey?.api_key_role || "enduser",
           }}
           onSubmit={async (values, formikHelpers) => {
             formikHelpers.setSubmitting(true);
 
             const payload = {
-              ...values,
-              role: values.role,
+              name: values.name,
             };
 
             let response;
@@ -99,38 +96,6 @@ export default function OnyxApiKeyForm({
                           showClearButton={false}
                         />
                       </FormField.Control>
-                    </FormField>
-                  )}
-                />
-
-                <FormikField<string>
-                  name="role"
-                  render={(field, helper, _meta, state) => (
-                    <FormField name="role" state={state} className="w-full">
-                      <FormField.Label>
-                        {t("admin.apiKey.roleLabel")}
-                      </FormField.Label>
-                      <FormField.Control>
-                        <InputComboBox
-                          value={field.value}
-                          onValueChange={(value) => helper.setValue(value)}
-                          options={[
-                            {
-                              label: "End User",
-                              value: "enduser",
-                            },
-                            {
-                              label: "Admin",
-                              value: "admin",
-                            },
-                          ]}
-                          placeholder={t("admin.apiKey.roleSelectPlaceholder")}
-                          strict
-                        />
-                      </FormField.Control>
-                      <FormField.Description>
-                        {t("admin.apiKey.roleDescription")}
-                      </FormField.Description>
                     </FormField>
                   )}
                 />

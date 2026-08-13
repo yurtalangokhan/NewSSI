@@ -7,11 +7,7 @@ import { ConnectorTitle } from "@/components/admin/connectors/ConnectorTitle";
 import AddMemberForm from "./AddMemberForm";
 import { updateUserGroup } from "./lib";
 import { LoadingAnimation } from "@/components/Loading";
-import {
-  User,
-  UserGroup,
-  ConnectorStatus,
-} from "@/lib/types";
+import { User, UserGroup, ConnectorStatus } from "@/lib/types";
 import AddConnectorForm from "./AddConnectorForm";
 import Separator from "@/refresh-components/Separator";
 import Text from "@/components/ui/text";
@@ -31,6 +27,7 @@ import { BookmarkIcon, RobotIcon } from "@/components/icons/icons";
 import { AddTokenRateLimitForm } from "./AddTokenRateLimitForm";
 import { GenericTokenRateLimitTable } from "@/app/admin/token-rate-limits/TokenRateLimitTables";
 import { useUser } from "@/providers/UserProvider";
+import { formatRoleName } from "@/lib/auth/roles";
 
 interface GroupDisplayProps {
   users: User[];
@@ -41,7 +38,13 @@ interface GroupDisplayProps {
 
 const UserRoleDropdown = ({ user }: { user: User }) => {
   const { t } = useTranslation();
-  return <div>{t(`admin.users.roles.${user.role}`)}</div>;
+  return (
+    <div>
+      {t(`admin.users.roles.${user.role}`, {
+        defaultValue: formatRoleName(user.role),
+      })}
+    </div>
+  );
 };
 
 export const GroupDisplay = ({

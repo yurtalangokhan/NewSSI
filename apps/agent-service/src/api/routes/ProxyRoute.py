@@ -13,7 +13,7 @@ import logging
 
 from fastapi import APIRouter, Body, Depends, Query
 
-from api.dependencies import require_user
+from api.dependencies import require_permission, require_user
 from controller import ProxyController, get_proxy_controller
 from core import settings
 from core.env import env
@@ -30,6 +30,7 @@ def _get_controller() -> ProxyController:
 
 @router.get("/mcp/tools")
 async def get_mcp_tools(
+    _user=Depends(require_permission("mcp_tool:read")),
     url: str = Query(
         default="http://tools-service:8003/mcp",
         description="MCP Server URL",
@@ -44,7 +45,7 @@ async def get_mcp_tools(
 
 
 @router.get("/ollama/models")
-async def get_ollama_models() -> dict:
+async def get_ollama_models(_user=Depends(require_permission("provider:read"))) -> dict:
     """
     Get list of available Ollama models.
     Fetches from Ollama API at OLLAMA_BASE_URL.
@@ -55,7 +56,7 @@ async def get_ollama_models() -> dict:
 
 
 @router.get("/rag/collections")
-async def get_rag_collections() -> dict:
+async def get_rag_collections(_user=Depends(require_permission("collection:list"))) -> dict:
     """Proxy endpoint to get RAG collections from langconnect-api."""
     rag_api_url = env.RAG_API_URL or "http://langconnect-api:8080"
     ctrl = _get_controller()
@@ -63,7 +64,7 @@ async def get_rag_collections() -> dict:
 
 
 @router.get("/mcp/tools-builtin")
-async def get_builtin_mcp_tools() -> dict:
+async def get_builtin_mcp_tools(_user=Depends(require_permission("mcp_tool:read"))) -> dict:
     """
     Get list of available MCP tools from the built-in tools-service.
     Uses TOOLS_SERVICE_URL from settings (default: http://localhost:8003/mcp).
@@ -75,6 +76,7 @@ async def get_builtin_mcp_tools() -> dict:
 
 @router.post("/mcp/execute")
 async def execute_mcp_tool(
+    _user=Depends(require_permission("tool:execute")),
     tool_name: str = Body(..., description="Name of the tool to execute"),
     arguments: dict = Body(default={}, description="Arguments to pass to the tool"),
     url: str = Query(

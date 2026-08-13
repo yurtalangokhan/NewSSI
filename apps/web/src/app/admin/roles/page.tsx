@@ -28,6 +28,7 @@ import { useTranslation } from "react-i18next";
 import i18n from "@/i18n/config";
 import { useUser } from "@/providers/UserProvider";
 import AdminOverviewPanel from "@/components/admin/AdminOverviewPanel";
+import { formatRoleName } from "@/lib/auth/roles";
 
 const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.ROLES]!;
 
@@ -82,12 +83,6 @@ const FEATURE_ORDER = [
   "system",
 ];
 
-const COMPOSITE_ROLE_LABELS: Record<string, string> = {
-  "system-admin": "System Admin",
-  "enterprise-admin": "Enterprise Admin",
-  enduser: "End User",
-};
-
 function featureLabel(feature: string): string {
   return FEATURE_LABELS[feature] ?? feature.replace(/_/g, " ");
 }
@@ -95,7 +90,11 @@ function featureLabel(feature: string): string {
 // ─── Helpers ────────────────────────────────────────────────────────
 
 function roleLabel(name: string) {
-  return COMPOSITE_ROLE_LABELS[name] || name;
+  return formatRoleName(name);
+}
+
+function coarseRoleLabel(name: string) {
+  return formatRoleName(name);
 }
 
 function rolePath(name: string) {
@@ -378,9 +377,14 @@ function RolesManager() {
   const { t } = useTranslation("common", { keyPrefix: "admin.rolesPage" });
   const { hasPermission } = useUser();
   const canManageRoles = hasPermission("role:manage");
+  const [activeLayer, setActiveLayer] = useState<"composite" | "coarse">(
+    "composite"
+  );
   const [selectedRole, setSelectedRole] = useState<string>("");
+  const [selectedCoarseRole, setSelectedCoarseRole] = useState<string>("");
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [roleSearch, setRoleSearch] = useState("");
+  const [coarseRoleSearch, setCoarseRoleSearch] = useState("");
   const [permSearch, setPermSearch] = useState("");
   const [includedSearch, setIncludedSearch] = useState("");
   const [editingDescription, setEditingDescription] = useState(false);
@@ -437,19 +441,36 @@ function RolesManager() {
     { dedupingInterval: 5000 }
   );
 
-  const { trigger: savePermissions, isMutating: isSaving } = useSWRMutation(
-    selectedRole
-      ? `/api/user-service/roles/${rolePath(selectedRole)}/permissions`
+  const {
+    data: coarseRolePermsData,
+    mutate: mutateCoarseRolePerms,
+    isLoading: coarseRolePermsLoading,
+  } = useSWR<{ name: string; permissions: string[] }>(
+    selectedCoarseRole
+      ? `/api/user-service/coarse-roles/${rolePath(
+          selectedCoarseRole
+        )}/permissions`
       : null,
-    putPermissions,
-    {
-      onSuccess: () => {
-        mutateRolePerms();
-        toast.success(t("permissionsSavedToast"));
-      },
-      onError: (err) => toast.error(err.message),
-    }
+    errorHandlingFetcher,
+    { dedupingInterval: 5000 }
   );
+
+  const { trigger: saveCoarsePermissions, isMutating: isSaving } =
+    useSWRMutation(
+      selectedCoarseRole
+        ? `/api/user-service/coarse-roles/${rolePath(
+            selectedCoarseRole
+          )}/permissions`
+        : null,
+      putPermissions,
+      {
+        onSuccess: () => {
+          mutateCoarseRolePerms();
+          toast.success("Permissions saved");
+        },
+        onError: (err) => toast.error(err.message),
+      }
+    );
 
   const { trigger: saveRoleIds, isMutating: isSavingRoleIds } = useSWRMutation(
     selectedRole
@@ -485,9 +506,23 @@ function RolesManager() {
     [roles, selectedRole]
   );
 
+  const coarseRoles = useMemo(() => coarseData?.roles ?? [], [coarseData]);
+
+  const selectedCoarse = useMemo(
+    () => coarseRoles.find((role) => role.name === selectedCoarseRole) ?? null,
+    [coarseRoles, selectedCoarseRole]
+  );
+
   const isBuiltin = selectedComp?.is_builtin ?? false;
-  const isWildcard = (rolePermsData?.permissions ?? []).includes("*");
+  const effectivePermissions = rolePermsData?.permissions ?? [];
+  const isWildcard = effectivePermissions.includes("*");
+  const selectedCoarseIsWildcard =
+    selectedCoarse?.permissions?.includes("*") ||
+    coarseRolePermsData?.permissions?.includes("*") ||
+    false;
   const canMutate = canManageRoles && !isBuiltin;
+  const canMutateCoarse =
+    canManageRoles && Boolean(selectedCoarseRole) && !selectedCoarseIsWildcard;
 
   useEffect(() => {
     if (roles.length === 0) {
@@ -499,6 +534,16 @@ function RolesManager() {
     }
   }, [roles, selectedRole]);
 
+  useEffect(() => {
+    if (coarseRoles.length === 0) {
+      setSelectedCoarseRole("");
+      return;
+    }
+    if (!coarseRoles.some((role) => role.name === selectedCoarseRole)) {
+      setSelectedCoarseRole(coarseRoles[0]?.name ?? "");
+    }
+  }, [coarseRoles, selectedCoarseRole]);
+
   const filteredRoles = useMemo(() => {
     if (!roleSearch.trim()) return roles;
     const q = roleSearch.toLowerCase();
@@ -508,6 +553,17 @@ function RolesManager() {
         roleLabel(role.name).toLowerCase().includes(q)
     );
   }, [roles, roleSearch]);
+
+  const filteredCoarseRoles = useMemo(() => {
+    if (!coarseRoleSearch.trim()) return coarseRoles;
+    const q = coarseRoleSearch.toLowerCase();
+    return coarseRoles.filter(
+      (role) =>
+        role.name.toLowerCase().includes(q) ||
+        coarseRoleLabel(role.name).toLowerCase().includes(q) ||
+        (role.description ?? "").toLowerCase().includes(q)
+    );
+  }, [coarseRoles, coarseRoleSearch]);
 
   const groupedPermissions = useMemo(
     () => groupByFeature(permsData?.permissions ?? []),
@@ -542,8 +598,16 @@ function RolesManager() {
   }, [permsData]);
 
   const selectedPermsSet = useMemo(() => {
-    return new Set(rolePermsData?.permissions ?? []);
-  }, [rolePermsData]);
+    const permissions = coarseRolePermsData?.permissions ?? [];
+    if (permissions.includes("*")) {
+      return new Set((permsData?.permissions ?? []).map((perm) => perm.name));
+    }
+    return new Set(permissions);
+  }, [coarseRolePermsData, permsData]);
+
+  const effectivePermsSet = useMemo(() => {
+    return new Set(effectivePermissions);
+  }, [effectivePermissions]);
 
   const selectedRoleIds = useMemo(
     () => new Set(roleIdsData?.role_ids ?? []),
@@ -552,58 +616,58 @@ function RolesManager() {
 
   const includedCoarseRoles = useMemo(() => {
     const q = includedSearch.trim().toLowerCase();
-    const pool = coarseData?.roles ?? [];
+    const pool = coarseRoles;
     const filtered = q
       ? pool.filter((role) => role.name.toLowerCase().includes(q))
       : pool;
     return filtered;
-  }, [coarseData, includedSearch]);
+  }, [coarseRoles, includedSearch]);
 
   const handleToggle = useCallback(
     (name: string) => {
-      if (!canMutate) return;
-      mutateRolePerms(
+      if (!canMutateCoarse) return;
+      mutateCoarseRolePerms(
         (prev) => {
           const perms = prev?.permissions ?? [];
           if (perms.includes(name)) {
             return {
-              name: selectedRole,
+              name: selectedCoarseRole,
               permissions: perms.filter((p) => p !== name),
             };
           }
-          return { name: selectedRole, permissions: [...perms, name] };
+          return { name: selectedCoarseRole, permissions: [...perms, name] };
         },
         { revalidate: false }
       );
     },
-    [canMutate, mutateRolePerms, selectedRole]
+    [canMutateCoarse, mutateCoarseRolePerms, selectedCoarseRole]
   );
 
   const handleSelectAll = useCallback(
     (perms: Permission[], checked: boolean) => {
-      if (!canMutate) return;
-      mutateRolePerms(
+      if (!canMutateCoarse) return;
+      mutateCoarseRolePerms(
         (prev) => {
           const current = new Set(prev?.permissions ?? []);
           for (const p of perms) {
             if (checked) current.add(p.name);
             else current.delete(p.name);
           }
-          return { name: selectedRole, permissions: Array.from(current) };
+          return { name: selectedCoarseRole, permissions: Array.from(current) };
         },
         { revalidate: false }
       );
     },
-    [canMutate, mutateRolePerms, selectedRole]
+    [canMutateCoarse, mutateCoarseRolePerms, selectedCoarseRole]
   );
 
   const handleSave = useCallback(() => {
-    savePermissions({
+    saveCoarsePermissions({
       permissions: Array.from(selectedPermsSet).filter((permission) =>
         catalogNames.has(permission)
       ),
     });
-  }, [catalogNames, selectedPermsSet, savePermissions]);
+  }, [catalogNames, selectedPermsSet, saveCoarsePermissions]);
 
   const handleToggleRole = useCallback(
     (roleName: string) => {
@@ -658,7 +722,12 @@ function RolesManager() {
     compLoading ||
     coarseLoading ||
     permsLoading ||
-    (Boolean(selectedRole) && (rolePermsLoading || roleIdsLoading));
+    (activeLayer === "composite" &&
+      Boolean(selectedRole) &&
+      (rolePermsLoading || roleIdsLoading)) ||
+    (activeLayer === "coarse" &&
+      Boolean(selectedCoarseRole) &&
+      coarseRolePermsLoading);
 
   if (allLoading) {
     return (
@@ -669,6 +738,9 @@ function RolesManager() {
   }
 
   const hasRoles = roles.length > 0;
+  const hasCoarseRoles = coarseRoles.length > 0;
+  const hasActiveItems =
+    activeLayer === "composite" ? hasRoles : hasCoarseRoles;
 
   return (
     <div className="space-y-4">
@@ -676,9 +748,12 @@ function RolesManager() {
         <div>
           <Text headingH3 text01 className="block">
             {t("serviceRolesTitle")}
+            Role management
           </Text>
           <Text secondaryBody text-03 className="mt-1 block">
             {t("serviceRolesDescription")}
+            Compose user-facing roles from feature bundles, then grant
+            permissions inside each bundle.
           </Text>
         </div>
         <div className="flex items-center gap-2">
@@ -702,10 +777,47 @@ function RolesManager() {
         </div>
       </div>
 
-      {!hasRoles ? (
+      <div className="inline-flex rounded-08 border border-border-01 bg-background-neutral-01 p-1">
+        <button
+          type="button"
+          className={cn(
+            "rounded-06 px-3 py-1.5 text-sm font-medium",
+            activeLayer === "composite"
+              ? "bg-action-link-05 text-text-light-05"
+              : "text-text-03 hover:bg-background-neutral-02"
+          )}
+          onClick={() => setActiveLayer("composite")}
+        >
+          Composite roles
+        </button>
+        <button
+          type="button"
+          className={cn(
+            "rounded-06 px-3 py-1.5 text-sm font-medium",
+            activeLayer === "coarse"
+              ? "bg-action-link-05 text-text-light-05"
+              : "text-text-03 hover:bg-background-neutral-02"
+          )}
+          onClick={() => setActiveLayer("coarse")}
+        >
+          Feature bundles
+        </button>
+      </div>
+
+      {!hasActiveItems ? (
         <EmptyState
           title={t("noRolesFoundTitle")}
           description={t("noRolesFoundDescription")}
+          title={
+            activeLayer === "composite"
+              ? "No roles found"
+              : "No feature bundles found"
+          }
+          description={
+            activeLayer === "composite"
+              ? "Create a role before assigning feature bundles."
+              : "Create a feature bundle before assigning permissions."
+          }
         />
       ) : (
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-[20rem_minmax(0,1fr)]">
@@ -717,72 +829,128 @@ function RolesManager() {
               />
               <input
                 className="w-full pl-9 pr-3 py-2 rounded-06 border-01 bg-background-neutral-00 text-01 text-sm outline-none focus:border-action-link-05"
-                placeholder="Search roles..."
-                value={roleSearch}
-                onChange={(e) => setRoleSearch(e.target.value)}
+                placeholder={
+                  activeLayer === "composite"
+                    ? "Search roles..."
+                    : "Search feature bundles..."
+                }
+                value={
+                  activeLayer === "composite" ? roleSearch : coarseRoleSearch
+                }
+                onChange={(e) =>
+                  activeLayer === "composite"
+                    ? setRoleSearch(e.target.value)
+                    : setCoarseRoleSearch(e.target.value)
+                }
               />
             </div>
             <div className="flex flex-col gap-1">
-              {filteredRoles.map((role) => {
-                const selected = selectedRole === role.name;
-                const isAll = (role.permissions ?? []).includes("*");
-                return (
-                  <button
-                    key={role.name}
-                    type="button"
-                    onClick={() => setSelectedRole(role.name)}
-                    className={cn(
-                      "flex w-full items-center justify-between gap-2 rounded-06 px-3 py-2 text-left transition-colors",
-                      selected
-                        ? "bg-action-link-05 text-text-light-05"
-                        : "bg-background-neutral-00 text-text-02 hover:bg-background-neutral-02"
-                    )}
-                  >
-                    <span className="min-w-0">
-                      <span className="flex items-center gap-2">
+              {activeLayer === "composite" &&
+                filteredRoles.map((role) => {
+                  const selected = selectedRole === role.name;
+                  const isAll = (role.permissions ?? []).includes("*");
+                  return (
+                    <button
+                      key={role.name}
+                      type="button"
+                      onClick={() => setSelectedRole(role.name)}
+                      className={cn(
+                        "flex w-full items-center justify-between gap-2 rounded-06 px-3 py-2 text-left transition-colors",
+                        selected
+                          ? "bg-action-link-05 text-text-light-05"
+                          : "bg-background-neutral-00 text-text-02 hover:bg-background-neutral-02"
+                      )}
+                    >
+                      <span className="min-w-0">
+                        <span className="flex items-center gap-2">
+                          <Text
+                            secondaryBody
+                            as="span"
+                            className={cn(
+                              "block truncate",
+                              selected ? "text-text-light-05" : "text-text-02"
+                            )}
+                          >
+                            {roleLabel(role.name)}
+                          </Text>
+                          {role.is_builtin && (
+                            <span
+                              className={cn(
+                                "shrink-0 rounded-04 px-1.5 py-0.5 text-[0.65rem]",
+                                selected
+                                  ? "bg-text-light-05/20 text-text-light-05"
+                                  : "bg-background-neutral-02 text-text-04"
+                              )}
+                            >
+                              {t("builtInBadge")}
+                            </span>
+                          )}
+                        </span>
                         <Text
                           secondaryBody
                           as="span"
                           className={cn(
-                            "block truncate",
+                            "block truncate text-xs",
+                            selected ? "text-text-light-03" : "text-text-04"
+                          )}
+                        >
+                          {isAll
+                            ? "All permissions"
+                            : `${role.permissions.length} permissions`}
+                          {role.role_ids.length > 0 &&
+                            ` · ${role.role_ids.length} included`}
+                        </Text>
+                      </span>
+                      {selected && <SvgCheck size={14} />}
+                    </button>
+                  );
+                })}
+              {activeLayer === "coarse" &&
+                filteredCoarseRoles.map((role) => {
+                  const selected = selectedCoarseRole === role.name;
+                  return (
+                    <button
+                      key={role.name}
+                      type="button"
+                      onClick={() => setSelectedCoarseRole(role.name)}
+                      className={cn(
+                        "flex w-full items-center justify-between gap-2 rounded-06 px-3 py-2 text-left transition-colors",
+                        selected
+                          ? "bg-action-link-05 text-text-light-05"
+                          : "bg-background-neutral-00 text-text-02 hover:bg-background-neutral-02"
+                      )}
+                    >
+                      <span className="min-w-0">
+                        <Text
+                          secondaryBody
+                          as="span"
+                          className={cn(
+                            "block truncate capitalize",
                             selected ? "text-text-light-05" : "text-text-02"
                           )}
                         >
-                          {roleLabel(role.name)}
+                          {coarseRoleLabel(role.name)}
                         </Text>
-                        {role.is_builtin && (
-                          <span
-                            className={cn(
-                              "shrink-0 rounded-04 px-1.5 py-0.5 text-[0.65rem]",
-                              selected
-                                ? "bg-text-light-05/20 text-text-light-05"
-                                : "bg-background-neutral-02 text-text-04"
-                            )}
-                          >
-                            {t("builtInBadge")}
-                          </span>
-                        )}
+                        <Text
+                          secondaryBody
+                          as="span"
+                          className={cn(
+                            "block truncate text-xs",
+                            selected ? "text-text-light-03" : "text-text-04"
+                          )}
+                        >
+                          {role.permissions.includes("*")
+                            ? "All permissions"
+                            : `${role.permissions.length} permissions`}
+                        </Text>
                       </span>
-                      <Text
-                        secondaryBody
-                        as="span"
-                        className={cn(
-                          "block truncate text-xs",
-                          selected ? "text-text-light-03" : "text-text-04"
-                        )}
-                      >
-                        {isAll
-                          ? "All permissions"
-                          : `${role.permissions.length} permissions`}
-                        {role.role_ids.length > 0 &&
-                          ` · ${role.role_ids.length} included`}
-                      </Text>
-                    </span>
-                    {selected && <SvgCheck size={14} />}
-                  </button>
-                );
-              })}
-              {filteredRoles.length === 0 && (
+                      {selected && <SvgCheck size={14} />}
+                    </button>
+                  );
+                })}
+              {((activeLayer === "composite" && filteredRoles.length === 0) ||
+                (activeLayer === "coarse" &&
+                  filteredCoarseRoles.length === 0)) && (
                 <Text secondaryBody text-04 className="px-3 py-2">
                   {t("noRolesMatchSearch", {
                     defaultValue: "No roles match",
@@ -793,7 +961,7 @@ function RolesManager() {
           </div>
 
           <div className="min-w-0">
-            {selectedComp && (
+            {activeLayer === "composite" && selectedComp && (
               <div className="mb-4 rounded-08 border border-border-01 bg-background-neutral-01 p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
@@ -858,11 +1026,15 @@ function RolesManager() {
                     <Text secondaryBody text-04 className="mt-2 block">
                       {isWildcard
                         ? "This role grants every permission."
-                        : `${selectedPermsSet.size} direct permissions · ${
+                        : `${selectedRoleIds.size} feature bundle${
                             selectedRoleIds.size
-                          } included role${
-                            selectedRoleIds.size === 1 ? "" : "s"
-                          }`}
+                              ? selectedRoleIds.size === 1
+                                ? ""
+                                : "s"
+                              : "s"
+                          } · ${
+                            effectivePermissions.length
+                          } effective permissions`}
                     </Text>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
@@ -980,25 +1152,161 @@ function RolesManager() {
               </Card>
             )}
 
-            {isWildcard ? (
-              <div className="rounded-08 border border-border-01 bg-background-neutral-01 p-6">
-                <div className="flex items-center gap-2">
-                  <SvgShield size={18} className="text-text-03" />
-                  <Text headingH3 text01>
-                    {t("allPermissionsGrantedTitle", {
-                      defaultValue: "All permissions granted",
-                    })}
-                  </Text>
+            {activeLayer === "coarse" && selectedCoarse && (
+              <div className="mb-4 rounded-08 border border-border-01 bg-background-neutral-01 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <Text
+                      headingH3
+                      text01
+                      className="block truncate capitalize"
+                    >
+                      {coarseRoleLabel(selectedCoarse.name)}
+                    </Text>
+                    <Text secondaryBody text-04 className="mt-2 block">
+                      {selectedCoarse.description || "No description"}
+                    </Text>
+                    <Text secondaryBody text-04 className="mt-2 block">
+                      {selectedCoarseIsWildcard
+                        ? "All permissions"
+                        : `${selectedPermsSet.size} permissions selected`}
+                    </Text>
+                  </div>
+                  {!selectedCoarseIsWildcard && (
+                    <Button
+                      leftIcon={SvgCheck}
+                      disabled={isSaving || !canMutateCoarse}
+                      onClick={handleSave}
+                    >
+                      {isSaving ? "Saving..." : "Save"}
+                    </Button>
+                  )}
                 </div>
-                <Text secondaryBody text-03 className="mt-2 block">
-                  {t("allPermissionsGrantedDescription", {
-                    defaultValue:
-                      "This built-in role carries the wildcard permission and cannot be edited.",
-                  })}
-                </Text>
               </div>
+            )}
+
+            {activeLayer === "composite" ? (
+              <>
+                <div>
+                  <Text headingH3 text01 className="mb-2 block">
+                    Included feature bundles
+                  </Text>
+                  <Text secondaryBody text-03 className="mb-3 block">
+                    Grant this user-facing role the permissions collected in
+                    feature bundles.
+                  </Text>
+                  <div className="relative mb-3">
+                    <SvgSearch
+                      size={16}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 text-03 pointer-events-none"
+                    />
+                    <input
+                      className="w-full pl-9 pr-3 py-2 rounded-06 border-01 bg-background-neutral-01 text-01 text-sm outline-none focus:border-action-link-05"
+                      placeholder="Search feature bundles..."
+                      value={includedSearch}
+                      onChange={(e) => setIncludedSearch(e.target.value)}
+                    />
+                  </div>
+                  <Card className="rounded-08">
+                    <CardContent className="p-4">
+                      {includedCoarseRoles.length === 0 ? (
+                        <Text secondaryBody text-04 className="py-2">
+                          No feature bundles available.
+                        </Text>
+                      ) : (
+                        <div className="grid grid-cols-1 gap-1 sm:grid-cols-2 lg:grid-cols-3">
+                          {includedCoarseRoles.map((role) => (
+                            <label
+                              key={role.name}
+                              className={cn(
+                                "flex items-center gap-2 rounded-06 px-3 py-2",
+                                canMutate
+                                  ? "cursor-pointer hover:bg-background-neutral-02"
+                                  : ""
+                              )}
+                            >
+                              {canMutate && (
+                                <Checkbox
+                                  checked={selectedRoleIds.has(role.name)}
+                                  disabled={isSavingRoleIds}
+                                  onCheckedChange={() =>
+                                    handleToggleRole(role.name)
+                                  }
+                                />
+                              )}
+                              <span className="min-w-0">
+                                <Text
+                                  secondaryBody
+                                  text-02
+                                  className="block truncate capitalize"
+                                >
+                                  {coarseRoleLabel(role.name)}
+                                </Text>
+                                <Text
+                                  secondaryBody
+                                  text-04
+                                  className="block text-xs"
+                                >
+                                  {role.permissions.length} permissions
+                                </Text>
+                              </span>
+                            </label>
+                          ))}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <div className="mt-6">
+                  <Text headingH3 text01 className="mb-2 block">
+                    Effective permissions
+                  </Text>
+                  <Text secondaryBody text-03 className="mb-3 block">
+                    These permissions are resolved from the selected feature
+                    bundles and are shown read-only.
+                  </Text>
+                  {effectivePermissions.length === 0 ? (
+                    <Text secondaryBody text-04>
+                      No effective permissions.
+                    </Text>
+                  ) : (
+                    <div className="grid grid-cols-1 gap-1 sm:grid-cols-2 lg:grid-cols-3">
+                      {effectivePermissions.map((permission) => (
+                        <div
+                          key={permission}
+                          className="rounded-06 bg-background-neutral-01 px-3 py-2"
+                        >
+                          <Text
+                            secondaryBody
+                            text-02
+                            className="block truncate font-mono text-xs"
+                          >
+                            {permission}
+                          </Text>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </>
             ) : (
               <>
+                {selectedCoarseIsWildcard && (
+                  <div className="mb-4 rounded-08 border border-border-01 bg-background-neutral-01 p-6">
+                    <div className="flex items-center gap-2">
+                      <SvgShield size={18} className="text-text-03" />
+                      <Text headingH3 text01>
+                        All permissions granted
+                      </Text>
+                    </div>
+                    <Text secondaryBody text-03 className="mt-2 block">
+                      This feature bundle grants every permission and is managed
+                      by the platform seed.
+                    </Text>
+                  </div>
+                )}
+
                 <div className="relative mb-4">
                   <SvgSearch
                     size={16}
@@ -1033,7 +1341,7 @@ function RolesManager() {
                     <div key={feature} className="mb-5">
                       <div className="mb-3 flex items-center gap-2">
                         <div className="h-px flex-1 bg-border-01" />
-                        {canMutate && (
+                        {canMutateCoarse && (
                           <Checkbox
                             checked={featureAll}
                             onCheckedChange={(checked) =>
@@ -1058,7 +1366,7 @@ function RolesManager() {
                           <Card key={entity} className="mb-2">
                             <CardHeader className="flex flex-row items-center justify-between">
                               <div className="flex items-center gap-3">
-                                {canMutate && (
+                                {canMutateCoarse && (
                                   <Checkbox
                                     checked={allSelected}
                                     onCheckedChange={(checked) =>
@@ -1081,11 +1389,14 @@ function RolesManager() {
                                     key={perm.name}
                                     className={cn(
                                       "flex items-center gap-2 rounded-06 px-2 py-1.5 hover:bg-background-neutral-02",
-                                      canMutate ? "cursor-pointer" : ""
+                                      canMutateCoarse ? "cursor-pointer" : ""
                                     )}
                                   >
-                                    {canMutate && (
+                                    {canMutateCoarse && (
                                       <Checkbox
+                                        checked={selectedPermsSet.has(
+                                          perm.name
+                                        )}
                                         checked={selectedPermsSet.has(
                                           perm.name
                                         )}

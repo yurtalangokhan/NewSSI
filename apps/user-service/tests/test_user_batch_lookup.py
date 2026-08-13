@@ -23,7 +23,6 @@ def _user(user_id: uuid.UUID, email: str) -> SimpleNamespace:
         last_name="User",
         is_active=True,
         is_verified=True,
-        is_superuser=False,
         role="enduser",
         invited=False,
         password_configured=False,

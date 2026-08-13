@@ -7,9 +7,8 @@ class User(BaseModel):
     id: str = "dev-user-1"
     email: str = "dev@local.dev"
     is_active: bool = True
-    is_superuser: bool = True
     is_verified: bool = True
-    role: str = "admin"
+    role: str = "enduser"
     preferences: dict = Field(default_factory=lambda: DEFAULT_PREFERENCES.copy())
     team_name: str | None = None
     is_anonymous_user: bool = False

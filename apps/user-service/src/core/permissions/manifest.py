@@ -51,6 +51,7 @@ SERVICE_PERMISSIONS: list[PermissionManifestItem] = [
     _permission("settings", "update", "Update Settings"),
     _permission("user", "create", "Create Users"),
     _permission("user", "delete", "Delete Users"),
+    _permission("user", "impersonate", "Impersonate Users", is_system=True),
     _permission("user", "list", "List Users"),
     _permission("user", "manage", "Manage Users"),
     _permission("user", "read", "Read Users"),

@@ -46,6 +46,7 @@ import {
 } from "@opal/icons";
 import { Button as OpalButton } from "@opal/components";
 import { cn } from "@/lib/utils";
+import { formatRoleName } from "@/lib/auth/roles";
 
 const ITEMS_PER_PAGE = 10;
 const PAGES_PER_BATCH = 2;
@@ -248,7 +249,9 @@ export default function SignedUpUserTable({
           </Text>
           {selectedRoles.map((role) => (
             <Chip key={role} onRemove={() => removeRole(role)}>
-              {t(`admin.users.roles.${role}`)}
+              {t(`admin.users.roles.${role}`, {
+                defaultValue: formatRoleName(role),
+              })}
             </Chip>
           ))}
         </div>
@@ -535,7 +538,9 @@ function DynamicRoleFilterCheckboxes({
             )
           }
         >
-          {t(`admin.users.roles.${role.name}`)}
+          {t(`admin.users.roles.${role.name}`, {
+            defaultValue: formatRoleName(role.name),
+          })}
         </LineItem>
       ))}
     </>

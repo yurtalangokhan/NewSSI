@@ -10,55 +10,6 @@ from .keycloak_service import get_keycloak_service
 
 logger = logging.getLogger(__name__)
 
-# Maps realm role → per-service coarse client roles to assign.
-# These coarse roles appear in the JWT resource_access claim (small, fixed-size).
-# Fine-grained permission resolution happens in user-service DB.
-COARSE_SERVICE_ROLES: dict[str, dict[str, list[str]]] = {
-    "user-service": {
-        "system-admin": ["user-admin"],
-        "enterprise-admin": ["user-manager"],
-        "enduser": ["enduser"],
-    },
-    "agent-service": {
-        "system-admin": ["agent-admin"],
-        "enterprise-admin": ["agent-manager"],
-        "enduser": ["agent-enduser"],
-    },
-    "rag-service": {
-        "system-admin": ["rag-admin"],
-        "enterprise-admin": ["rag-manager"],
-        "enduser": ["rag-enduser"],
-    },
-    "tools-service": {
-        "system-admin": ["tool-admin"],
-        "enterprise-admin": ["tool-user"],
-        "enduser": ["tool-user"],
-    },
-}
-
-# All known coarse role names — used during cleanup to avoid deleting them.
-ALL_COARSE_ROLE_NAMES: set[str] = {
-    name
-    for svc_roles in COARSE_SERVICE_ROLES.values()
-    for names in svc_roles.values()
-    for name in names
-}
-
-
-def _coarse_roles_for_db_role(role_name: str) -> dict[str, list[str]]:
-    """Return the coarse role mapping for a given DB role name.
-    Unknown roles get enduser-level access by default.
-    """
-    for _svc_client, realm_map in COARSE_SERVICE_ROLES.items():
-        if role_name in realm_map:
-            result: dict[str, list[str]] = {}
-            for svc, mapping in COARSE_SERVICE_ROLES.items():
-                result[svc] = mapping.get(role_name, mapping.get("enduser", []))
-            return result
-    # Fallback: enduser level for unknown roles
-    return _coarse_roles_for_db_role("enduser")
-
-
 class CompositeRoleService:
     def __init__(self):
         self.role_repo = CompositeRoleRepository()
@@ -296,13 +247,16 @@ class CompositeRoleService:
             "realm_roles_created": 0,
             "role_composites_set": 0,
             "user_realm_roles_synced": 0,
+            "user_sessions_invalidated": 0,
             "errors": [],
         }
 
         all_roles = await self.role_repo.get_all()
+        cr_svc = get_role_service()
+        service_clients = await cr_svc.list_service_clients()
 
         # Step 1: Ensure all backend service clients exist
-        for svc_client in COARSE_SERVICE_ROLES:
+        for svc_client in service_clients:
             try:
                 if await self.keycloak.ensure_client(svc_client):
                     stats["service_clients_ensured"] += 1
@@ -310,7 +264,7 @@ class CompositeRoleService:
                 stats["errors"].append(f"Failed to ensure client '{svc_client}': {e}")
 
         # Step 2: Clean up permission-level client roles, create coarse roles
-        for svc_client in COARSE_SERVICE_ROLES:
+        for svc_client in service_clients:
             try:
                 stats["permission_roles_cleaned"] += await self._cleanup_permission_roles(
                     svc_client
@@ -352,6 +306,13 @@ class CompositeRoleService:
             try:
                 await self.keycloak.set_realm_role(user.keycloak_id, str(user.role))
                 stats["user_realm_roles_synced"] += 1
+                logged_out = await self.keycloak.logout_user_sessions(user.keycloak_id)
+                if logged_out:
+                    stats["user_sessions_invalidated"] += 1
+                else:
+                    stats["errors"].append(
+                        f"Failed to invalidate active Keycloak sessions for user '{user.email}'"
+                    )
             except Exception as e:
                 stats["errors"].append(f"Failed to sync user '{user.email}' role: {e}")
 
@@ -362,8 +323,10 @@ class CompositeRoleService:
     # ----------------------------------------------------------------
 
     async def _sync_role_to_keycloak(self, role) -> None:
+        cr_svc = get_role_service()
+
         # Ensure backend service clients exist
-        for svc_client in COARSE_SERVICE_ROLES:
+        for svc_client in await cr_svc.list_service_clients():
             await self.keycloak.ensure_client(svc_client)
 
         # Ensure realm role exists
@@ -373,27 +336,19 @@ class CompositeRoleService:
                 role.description or f"{role.name} composite role",
             )
 
-        # Ensure roles exist and set composites
-        # Uses DB-stored role_ids if available, falls back to hardcoded mapping
+        # Ensure roles exist and set composites from DB-stored feature bundles.
         role_id_names = list(role.role_ids or [])
-        if not role_id_names:
-            # Fallback: use hardcoded COARSE_SERVICE_ROLES mapping
-            for svc_client in COARSE_SERVICE_ROLES:
-                names = _coarse_roles_for_db_role(role.name).get(svc_client, [])
-                role_id_names.extend(names)
-
+        coarse_roles = await cr_svc.repo.get_by_names(role_id_names)
+        coarse_role_by_name = {role.name: role for role in coarse_roles}
         for name in role_id_names:
-            # Find which service client this role belongs to
-            found_svc = None
-            for svc_client, realm_map in COARSE_SERVICE_ROLES.items():
-                for svc_names in realm_map.values():
-                    if name in svc_names:
-                        found_svc = svc_client
-                        break
-                if found_svc:
-                    break
+            coarse_role = coarse_role_by_name.get(name)
+            found_svc = coarse_role.service_client if coarse_role else None
             if found_svc and not await self.keycloak.get_client_role(name, client_id=found_svc):
-                await self.keycloak.create_client_role(name, description=name, client_id=found_svc)
+                await self.keycloak.create_client_role(
+                    name,
+                    description=coarse_role.description or name,
+                    client_id=found_svc,
+                )
 
         # Set realm role composites to client roles
         await self._set_role_coarse_composites(role.name)
@@ -404,13 +359,18 @@ class CompositeRoleService:
 
     async def _cleanup_permission_roles(self, svc_client: str) -> int:
         """Delete all client roles on the given service client that are NOT
-        in ALL_COARSE_ROLE_NAMES. These are permission-level roles that were
+        known feature bundles. These are permission-level roles that were
         created by a previous sync and should not appear in the JWT."""
         all_roles = await self.keycloak.get_client_roles(client_id=svc_client)
+        cr_svc = get_role_service()
+        db_role_names = {
+            role.name
+            for role in await cr_svc.repo.get_all(service_client=svc_client)
+        }
         cleaned = 0
         for role in all_roles:
             name = role.get("name", "") if isinstance(role, dict) else ""
-            if name not in ALL_COARSE_ROLE_NAMES:
+            if name not in db_role_names:
                 try:
                     await self.keycloak.delete_client_role(name, client_id=svc_client)
                     cleaned += 1
@@ -421,47 +381,42 @@ class CompositeRoleService:
     async def _ensure_coarse_roles(self, svc_client: str) -> int:
         """Ensure all coarse roles for a service client exist in Keycloak."""
         created = 0
-        for _realm_role_name, coarse_names in COARSE_SERVICE_ROLES[svc_client].items():
-            for name in coarse_names:
-                exists = await self.keycloak.get_client_role(name, client_id=svc_client)
-                if not exists:
-                    await self.keycloak.create_client_role(
-                        name, description=name, client_id=svc_client
-                    )
-                    created += 1
+        cr_svc = get_role_service()
+        for role in await cr_svc.repo.get_all(service_client=svc_client):
+            exists = await self.keycloak.get_client_role(role.name, client_id=svc_client)
+            if not exists:
+                await self.keycloak.create_client_role(
+                    role.name,
+                    description=role.description or role.name,
+                    client_id=svc_client,
+                )
+                created += 1
         return created
 
     async def _build_coarse_composite_children(self, role_name: str) -> list[dict[str, Any]]:
         """Build a list of client-role objects for a realm role.
-        Uses DB-stored role_ids if available, falls back to hardcoded mapping."""
+        Uses DB-stored role_ids as the single source of truth."""
         # Try to fetch the role's role_ids from DB
         role = await self.role_repo.get_by_name(role_name)
 
         child_roles: list[dict[str, Any]] = []
 
-        if role and role.role_ids:
-            # DB-stored role IDs — resolve service client from COARSE_SERVICE_ROLES
-            for name in role.role_ids or []:
-                found_svc = self._service_client_for_coarse_role(name)
-                if found_svc:
-                    child_roles.append(
-                        {
-                            "name": name,
-                            "clientRole": True,
-                            "clientId": found_svc,
-                        }
-                    )
-        if not child_roles:
-            # Fallback: hardcoded mapping
-            for svc_client, coarse_names in _coarse_roles_for_db_role(role_name).items():
-                for name in coarse_names:
-                    child_roles.append(
-                        {
-                            "name": name,
-                            "clientRole": True,
-                            "clientId": svc_client,
-                        }
-                    )
+        if not role or not role.role_ids:
+            return child_roles
+
+        cr_svc = get_role_service()
+        coarse_roles = await cr_svc.repo.get_by_names(role.role_ids or [])
+        coarse_role_by_name = {coarse_role.name: coarse_role for coarse_role in coarse_roles}
+        for name in role.role_ids or []:
+            coarse_role = coarse_role_by_name.get(name)
+            if coarse_role:
+                child_roles.append(
+                    {
+                        "name": name,
+                        "clientRole": True,
+                        "clientId": coarse_role.service_client,
+                    }
+                )
         return child_roles
 
     def _service_client_for_coarse_role(self, role_name: str) -> str | None:

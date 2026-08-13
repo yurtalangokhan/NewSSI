@@ -58,14 +58,12 @@ export interface User {
   last_name?: string | null;
   full_name?: string | null;
   is_active: boolean;
-  is_superuser: boolean;
   is_verified: boolean;
   role: string;
   preferences: UserPreferences;
   current_token_created_at?: Date;
   current_token_expiry_length?: number;
   oidc_expiry?: Date;
-  is_cloud_superuser?: boolean;
   team_name: string | null;
   is_anonymous_user?: boolean;
   // If user does not have a configured password

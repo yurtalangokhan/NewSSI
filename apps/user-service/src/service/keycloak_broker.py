@@ -65,8 +65,11 @@ class KeycloakBrokerMixin:
 
     def _rewrite_keycloak_url_for_backend(self, url: str) -> str:
         rewritten = html.unescape(url)
-        external_issuer = self._external_issuer_url()
-        external_backend_issuer = self._external_backend_issuer_url()
+        try:
+            external_issuer = self._external_issuer_url()
+            external_backend_issuer = self._external_backend_issuer_url()
+        except ValueError:
+            return rewritten
         if external_backend_issuer != external_issuer and rewritten.startswith(external_issuer):
             return external_backend_issuer + rewritten[len(external_issuer) :]
         return rewritten
@@ -104,7 +107,11 @@ class KeycloakBrokerMixin:
             return None
 
         parsed = urlparse(str(response.url))
-        if not str(response.url).startswith(self.get_external_issuer_url()):
+        try:
+            external_issuer_url = self.get_external_issuer_url()
+        except ValueError:
+            return None
+        if not str(response.url).startswith(external_issuer_url):
             return None
 
         query = parse_qs(parsed.query)

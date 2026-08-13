@@ -17,7 +17,6 @@ def _user(**overrides):
         "last_name": "User",
         "is_active": True,
         "is_verified": True,
-        "is_superuser": False,
         "role": "enduser",
         "invited": False,
         "password_configured": False,
@@ -40,6 +39,7 @@ def _service(external_keycloak: bool) -> UserService:
     )
     service.user_repo = SimpleNamespace(
         list_paginated=AsyncMock(return_value=([_user()], 1)),
+        get_by_keycloak_id=AsyncMock(return_value=None),
         upsert_by_keycloak_id=AsyncMock(return_value=_user()),
     )
     service.settings_repo = SimpleNamespace(ensure_defaults=AsyncMock())

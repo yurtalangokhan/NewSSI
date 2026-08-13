@@ -52,9 +52,8 @@ async def create_persona(
     request: Request,
     user: Annotated[AuthenticatedUser, Depends(require_permission("persona:create"))],
 ):
-    admin = _require_admin(user)
     return await _get_controller().create_persona(
-        persona_request.model_dump(), request=request, user=admin
+        persona_request.model_dump(), request=request, user=user
     )
 
 
@@ -89,5 +88,4 @@ async def delete_persona(
 async def upload_persona_image(
     user: AuthenticatedUser = Depends(require_permission("persona:create")),
 ):
-    _require_admin(user)
     return await _get_controller().upload_persona_image()

@@ -16,6 +16,7 @@ import { useTranslation } from "react-i18next";
 import { errorHandlingFetcher } from "@/lib/fetcher";
 import useSWR from "swr";
 import AdminOverviewPanel from "@/components/admin/AdminOverviewPanel";
+import { formatRoleName } from "@/lib/auth/roles";
 
 const usersRoute = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.USERS]!;
 
@@ -209,7 +210,9 @@ export default function AddUserPage() {
                   <InputSelect.Content>
                     {roles?.roles?.map((r) => (
                       <InputSelect.Item key={r.name} value={r.name}>
-                        {t(`admin.users.roles.${r.name}`)}
+                        {t(`admin.users.roles.${r.name}`, {
+                          defaultValue: formatRoleName(r.name),
+                        })}
                       </InputSelect.Item>
                     ))}
                   </InputSelect.Content>

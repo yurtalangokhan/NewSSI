@@ -136,7 +136,6 @@ async def test_refresh_access_token_uses_keycloak_without_local_session_lookup()
         groups=["engineering"],
         is_active=True,
         is_verified=True,
-        is_superuser=False,
     )
     auth_service.user_repo.upsert_by_keycloak_id = AsyncMock(return_value=user)
 
@@ -184,9 +183,7 @@ async def test_logout_delegates_session_invalidation_to_keycloak():
     result = await auth_service.logout("refresh-token")
 
     assert result == {"message": "Logged out successfully"}
-    auth_service.keycloak.backchannel_logout.assert_awaited_once_with(
-        refresh_token="refresh-token"
-    )
+    auth_service.keycloak.backchannel_logout.assert_awaited_once_with(refresh_token="refresh-token")
     assert not hasattr(auth_service, "session_repo")
 
 
@@ -210,9 +207,7 @@ async def test_logout_ensures_post_logout_redirect_uri():
         "http://localhost:8126/auth/oidc/callback",
         post_logout_redirect_uri="http://localhost:8126/auth/ee/login",
     )
-    auth_service.keycloak.backchannel_logout.assert_awaited_once_with(
-        refresh_token="refresh-token"
-    )
+    auth_service.keycloak.backchannel_logout.assert_awaited_once_with(refresh_token="refresh-token")
 
 
 def test_extract_roles_from_claims_supports_realm_and_client_roles():
@@ -231,12 +226,53 @@ def test_extract_roles_from_claims_supports_realm_and_client_roles():
     assert "manage-account" in roles
 
 
-def test_resolve_role_detects_admin_from_client_roles():
+def test_resolve_role_keeps_claim_role_names_without_admin_alias_mapping():
     roles = ["manage-account", "ADMIN", "view-profile"]
 
     resolved = AuthService._resolve_role(roles)
 
-    assert resolved == "system-admin"
+    assert resolved == "admin"
+
+
+@pytest.mark.asyncio
+async def test_login_does_not_promote_bootstrap_admin_from_env_mapping(monkeypatch):
+    monkeypatch.setattr(
+        "src.service.auth_service._settings.KEYCLOAK_BOOTSTRAP_ADMIN_EMAIL",
+        "admin@example.com",
+    )
+    auth_service = AuthService()
+    keycloak_id = "sp-keycloak-id"
+    id_token = jwt.encode(
+        {
+            "sub": keycloak_id,
+            "email": "admin@example.com",
+            "preferred_username": "admin",
+            "realm_access": {"roles": ["member"]},
+        },
+        "unused",
+        algorithm="HS256",
+    )
+    auth_service.user_repo.upsert_by_keycloak_id = AsyncMock(
+        return_value=SimpleNamespace(
+            id=uuid.uuid4(),
+            email="admin@example.com",
+            username="admin",
+            first_name=None,
+            last_name=None,
+            role="member",
+            groups=[],
+            is_active=True,
+            is_verified=True,
+        )
+    )
+    auth_service.user_repo.update = AsyncMock()
+
+    result = await auth_service._upsert_user_from_token_data(
+        {"id_token": id_token, "access_token": "access", "refresh_token": "refresh"}
+    )
+
+    assert result["user"]["role"] == "member"
+    auth_service.user_repo.update.assert_not_awaited()
 
 
 def test_get_auth_type_includes_external_keycloak_metadata():
@@ -294,7 +330,6 @@ async def test_basic_login_uses_keycloak_tokens_without_local_password_storage()
         groups=[],
         is_active=True,
         is_verified=True,
-        is_superuser=False,
     )
     auth_service.user_repo.upsert_by_keycloak_id = AsyncMock(return_value=user)
 
@@ -375,7 +410,6 @@ async def test_external_keycloak_login_uses_sp_brokered_idp_credentials():
             groups=["engineering"],
             is_active=True,
             is_verified=True,
-            is_superuser=False,
         )
     )
 
@@ -446,7 +480,6 @@ async def test_handle_oidc_callback_persists_groups_from_sp_id_token():
             groups=["engineering", "arge"],
             is_active=True,
             is_verified=True,
-            is_superuser=False,
         )
     )
 

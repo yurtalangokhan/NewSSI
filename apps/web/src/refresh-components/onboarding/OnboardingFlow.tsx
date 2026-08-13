@@ -25,10 +25,11 @@ const OnboardingFlowInner = ({
   actions: onboardingActions,
   llmDescriptors,
 }: OnboardingFlowProps) => {
-  const { user, isAdmin } = useUser();
+  const { user, hasPermission } = useUser();
   const hasStarted = onboardingState.currentStep !== OnboardingStep.Welcome;
+  const canConfigureProviders = hasPermission("provider:create");
 
-  return isAdmin ? (
+  return canConfigureProviders ? (
     showOnboarding ? (
       <div
         className="flex flex-col items-center justify-center w-full max-w-[var(--app-page-main-content-width)] gap-2 mb-4"

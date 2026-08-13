@@ -22,6 +22,16 @@ class CompositeRoleRepository(BaseRepository):
             )
             return list(result.scalars().all())
 
+    async def get_default_admin_role(self) -> CompositeRoleModel | None:
+        async with self._session() as session:
+            result = await session.execute(
+                select(CompositeRoleModel)
+                .where(CompositeRoleModel.is_admin.is_(True))
+                .order_by(CompositeRoleModel.is_builtin.desc(), CompositeRoleModel.name)
+                .limit(1)
+            )
+            return result.scalar_one_or_none()
+
     async def create(
         self,
         name: str,

@@ -48,6 +48,7 @@ export function AccessTypeGroupSelector({
 
   useEffect(() => {
     if (user && userGroups && isPaidEnterpriseFeaturesEnabled) {
+      const isUserAdmin = isAdmin;
       if (!isPaidEnterpriseFeaturesEnabled) {
         access_type_helpers.setValue("public");
         return;
@@ -76,6 +77,7 @@ export function AccessTypeGroupSelector({
     }
   }, [
     user,
+    isAdmin,
     userGroups,
     access_type.value,
     access_type_helpers,

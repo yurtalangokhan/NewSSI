@@ -48,9 +48,6 @@ class UserService:
         if not user:
             return None
 
-        if user.is_superuser:
-            return {"permissions": ["*"]}
-
         role = await self.role_repo.get_by_name(user.role)
         if not role:
             return {"permissions": []}
@@ -115,12 +112,8 @@ class UserService:
             return resolved_user_id
 
         user = await self.user_repo.get_by_id(authenticated_uuid)
-        if user:
-            if user.is_superuser:
-                return resolved_user_id
-            role = await self.role_repo.get_by_name(user.role)
-            if role and role.is_admin:
-                return resolved_user_id
+        if user and await self.user_has_permission(user.id, "user:read"):
+            return resolved_user_id
 
         raise ForbiddenError(t("auth.forbidden"))
 
@@ -477,7 +470,6 @@ class UserService:
             "full_name": f"{user.first_name or ''} {user.last_name or ''}".strip() or None,
             "is_active": user.is_active,
             "is_verified": user.is_verified,
-            "is_superuser": user.is_superuser,
             "role": normalize_user_role(user.role),
             "invited": user.invited,
             "password_configured": user.password_configured,
@@ -519,11 +511,11 @@ class UserService:
         }
         return payload
 
-    async def _resolve_role_from_roles(self, roles: list[dict[str, Any]]) -> str:
+    async def _resolve_role_from_roles(self, roles: list[dict[str, Any]]) -> str | None:
         """
         Resolve user role from Keycloak role mappings.
         Picks the first role that exists in the local roles DB.
-        Falls back to 'enduser'.
+        Returns None when Keycloak only carries stale or non-application roles.
         """
         all_roles = await self.role_repo.get_all()
         valid_role_names = {r.name for r in all_roles}
@@ -531,9 +523,9 @@ class UserService:
         for name in role_names:
             if name in valid_role_names:
                 return name
-        return "enduser"
+        return None
 
-    async def _resolve_role_from_realm_roles(self, realm_roles: list[dict[str, Any]]) -> str:
+    async def _resolve_role_from_realm_roles(self, realm_roles: list[dict[str, Any]]) -> str | None:
         return await self._resolve_role_from_roles(realm_roles)
 
     async def upsert_user_from_keycloak(
@@ -549,6 +541,7 @@ class UserService:
         Called by agent-service during OIDC callback to ensure user exists in user-service.
         """
         is_external_user = await self._is_external_keycloak_user(keycloak_id)
+        existing_user = await self.user_repo.get_by_keycloak_id(keycloak_id)
         updates: dict[str, Any] = {
             "email": email,
             "first_name": first_name,
@@ -558,7 +551,7 @@ class UserService:
             "is_verified": True,
             "is_external_keycloak_user": is_external_user,
         }
-        if is_external_user:
+        if not existing_user:
             updates["role"] = "enduser"
 
         user = await self.user_repo.upsert_by_keycloak_id(keycloak_id=keycloak_id, **updates)
@@ -623,16 +616,11 @@ class UserService:
                     if not email:
                         continue
 
-                    # Prefer client-role assignments; fall back to legacy realm roles.
                     is_external_user = await self._is_external_keycloak_user(keycloak_id)
-                    role = (
-                        "enduser"
-                        if is_external_user
-                        else await self._resolve_role_from_keycloak(keycloak_id) or "enduser"
-                    )
-
                     # Check if user exists in DB
                     existing_user = await self.user_repo.get_by_keycloak_id(keycloak_id)
+                    resolved_role = await self._resolve_role_from_keycloak(keycloak_id)
+                    role = resolved_role or (existing_user.role if existing_user else "enduser")
 
                     if existing_user:
                         await self.user_repo.update(

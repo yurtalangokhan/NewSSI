@@ -73,8 +73,11 @@ export default function AgentsNavigationPage() {
   const { agents } = useAgents();
   const [creatorFilterOpen, setCreatorFilterOpen] = useState(false);
   const [actionsFilterOpen, setActionsFilterOpen] = useState(false);
-  const { user, isAdmin } = useUser();
-  const { canCreateAgent, canViewPersonalTab } = getAgentPageAccess(isAdmin);
+  const { user, hasPermission } = useUser();
+  const { canCreateAgent, canViewPersonalTab } = getAgentPageAccess({
+    canCreateAgent: hasPermission("agent:create"),
+    canListAgents: hasPermission("agent:list"),
+  });
   const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<"all" | "your">("all");

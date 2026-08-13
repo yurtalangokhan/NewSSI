@@ -60,39 +60,60 @@ async def require_admin(
     request: Request,
     user_id: Annotated[str, Depends(require_auth)],
 ) -> str:
-    try:
-        repo = UserRepository()
-        user = await repo.get_by_id(uuid.UUID(user_id))
-        if not user:
-            raise HTTPException(status_code=403, detail=t("auth.admin_required"))
-        if user.is_superuser:
-            return user_id
-        role = await CompositeRoleRepository().get_by_name(user.role)
-        if role and role.is_admin:
-            return user_id
-    except HTTPException:
-        raise
-    except Exception:
-        pass
-
-    raise HTTPException(status_code=403, detail=t("auth.admin_required"))
+    return await _require_any_permission(
+        request,
+        user_id,
+        (
+            "role:list",
+            "user:list",
+            "permission:list",
+            "system.settings:read",
+        ),
+        "Admin access required",
+    )
 
 
 async def require_system_admin(
     request: Request,
     user_id: Annotated[str, Depends(require_auth)],
 ) -> str:
+    return await _require_any_permission(
+        request,
+        user_id,
+        ("system.settings:update",),
+        "System administration permission required",
+    )
+
+
+async def _require_any_permission(
+    request: Request,
+    user_id: str,
+    permissions: tuple[str, ...],
+    detail: str,
+) -> str:
     try:
         repo = UserRepository()
         user = await repo.get_by_id(uuid.UUID(user_id))
         if not user:
-            raise HTTPException(status_code=403, detail=t("auth.sysadmin_required"))
+            raise HTTPException(status_code=403, detail="System admin access required")
         if user.is_superuser:
             return user_id
 
         role = await CompositeRoleRepository().get_by_name(user.role)
-        if role and (role.name == "system-admin" or role.permissions == ["*"]):
-            return user_id
+        if role:
+            direct_permissions = set(role.permissions or [])
+            if "*" in direct_permissions or direct_permissions.intersection(permissions):
+                return user_id
+
+            role_ids = role.role_ids or []
+            if role_ids:
+                from src.service.coarse_role_service import get_role_service
+
+                role_permissions = set(
+                    await get_role_service().get_aggregated_permissions(role_ids)
+                )
+                if "*" in role_permissions or role_permissions.intersection(permissions):
+                    return user_id
     except HTTPException:
         raise
     except Exception:
@@ -123,9 +144,6 @@ def require_permission(permission: str):
             user = await repo.get_by_id(uuid.UUID(user_id))
             if not user:
                 raise HTTPException(status_code=401, detail=t("user.not_found"))
-
-            if user.is_superuser:
-                return user_id
 
             role = await CompositeRoleRepository().get_by_name(user.role)
             if role:

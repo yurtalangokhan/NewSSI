@@ -261,17 +261,17 @@ persona-shaped payload. Use `/api/v1/persona/{persona_id}` or
 
 | Method | Path                                             | Permission          | Description                                                   |
 | ------ | ------------------------------------------------ | ------------------- | ------------------------------------------------------------- |
-| GET    | `/api/v1/datasources/connectors`                 | user auth           | List Airbyte source connectors (filter: `category`, `search`) |
-| GET    | `/api/v1/datasources/connectors/{name}/spec`     | user auth           | Get connector JSON Schema config spec                         |
-| POST   | `/api/v1/datasources/connectors/{name}/validate` | user auth           | Validate connector config                                     |
-| POST   | `/api/v1/datasources/connectors/{name}/streams`  | user auth           | Get available streams for connector                           |
-| GET    | `/api/v1/datasources`                            | user auth           | List configured datasources                                   |
+| GET    | `/api/v1/datasources/connectors`                 | `datasource:read`   | List Airbyte source connectors (filter: `category`, `search`) |
+| GET    | `/api/v1/datasources/connectors/{name}/spec`     | `datasource:read`   | Get connector JSON Schema config spec                         |
+| POST   | `/api/v1/datasources/connectors/{name}/validate` | `datasource:create` | Validate connector config                                     |
+| POST   | `/api/v1/datasources/connectors/{name}/streams`  | `datasource:create` | Get available streams for connector                           |
+| GET    | `/api/v1/datasources`                            | `datasource:read`   | List configured datasources                                   |
 | POST   | `/api/v1/datasources`                            | `datasource:create` | Create datasource (Airbyte source + connection + destination) |
-| GET    | `/api/v1/datasources/{id}/details`               | user auth           | Get datasource details with paginated chunks                  |
+| GET    | `/api/v1/datasources/{id}/details`               | `datasource:read`   | Get datasource details with paginated chunks                  |
 | PUT    | `/api/v1/datasources/{id}`                       | `datasource:update` | Update datasource                                             |
 | POST   | `/api/v1/datasources/{id}/sync`                  | `datasource:sync`   | Trigger sync                                                  |
-| GET    | `/api/v1/datasources/{id}/status`                | user auth           | Get sync status                                               |
-| GET    | `/api/v1/datasources/{id}/sync-history`          | user auth           | Get sync job history                                          |
+| GET    | `/api/v1/datasources/{id}/status`                | `datasource:read`   | Get sync status                                               |
+| GET    | `/api/v1/datasources/{id}/sync-history`          | `datasource:read`   | Get sync job history                                          |
 | DELETE | `/api/v1/datasources/{id}`                       | `datasource:delete` | Delete datasource                                             |
 
 ---
@@ -343,13 +343,13 @@ and only resolves them at runtime when an agent calls `send_email`.
 
 | Method | Path                                    | Auth      | Description                                                           |
 | ------ | --------------------------------------- | --------- | --------------------------------------------------------------------- |
-| GET    | `/api/v1/mail-configs`                  | user auth | List active SMTP mail configs for the current user                    |
-| POST   | `/api/v1/mail-configs`                  | user auth | Create an SMTP mail config with encrypted password storage            |
-| GET    | `/api/v1/mail-configs/{config_id}`      | user auth | Get a masked mail config by ID                                        |
-| PATCH  | `/api/v1/mail-configs/{config_id}`      | user auth | Update an SMTP mail config; omit `password` to keep the stored secret |
-| DELETE | `/api/v1/mail-configs/{config_id}`      | user auth | Deactivate a mail config                                              |
-| POST   | `/api/v1/mail-configs/{config_id}/test` | user auth | Send a test email through the selected SMTP config                    |
-| POST   | `/api/v1/mail-configs/{config_id}/send` | user auth | Send an email through the selected SMTP config                        |
+| GET    | `/api/v1/mail-configs`                  | `mail_config:read`   | List active SMTP mail configs for the current user                    |
+| POST   | `/api/v1/mail-configs`                  | `mail_config:create` | Create an SMTP mail config with encrypted password storage            |
+| GET    | `/api/v1/mail-configs/{config_id}`      | `mail_config:read`   | Get a masked mail config by ID                                        |
+| PATCH  | `/api/v1/mail-configs/{config_id}`      | `mail_config:update` | Update an SMTP mail config; omit `password` to keep the stored secret |
+| DELETE | `/api/v1/mail-configs/{config_id}`      | `mail_config:delete` | Deactivate a mail config                                              |
+| POST   | `/api/v1/mail-configs/{config_id}/test` | `mail_config:test`   | Send a test email through the selected SMTP config                    |
+| POST   | `/api/v1/mail-configs/{config_id}/send` | `mail_config:send`   | Send an email through the selected SMTP config                        |
 
 `POST /api/v1/mail-configs/{config_id}/send` accepts the same safe email
 payload used by the playground: `to`, `subject`, `body`, optional `cc`, `bcc`,
@@ -364,11 +364,11 @@ include `filename`, `mime_type`, and `content_base64`.
 
 | Method | Path                              | Auth      | Description                            |
 | ------ | --------------------------------- | --------- | -------------------------------------- |
-| GET    | `/api/v1/proxy/mcp/tools`         | user auth | List MCP tools from a server URL       |
-| GET    | `/api/v1/proxy/ollama/models`     | user auth | List Ollama models                     |
-| GET    | `/api/v1/proxy/rag/collections`   | user auth | Proxy to RAG collections               |
-| GET    | `/api/v1/proxy/mcp/tools-builtin` | user auth | List tools from built-in tools-service |
-| POST   | `/api/v1/proxy/mcp/execute`       | user auth | Execute MCP tool                       |
+| GET    | `/api/v1/proxy/mcp/tools`         | `mcp_tool:read`   | List MCP tools from a server URL       |
+| GET    | `/api/v1/proxy/ollama/models`     | `provider:read`   | List Ollama models                     |
+| GET    | `/api/v1/proxy/rag/collections`   | `collection:list` | Proxy to RAG collections               |
+| GET    | `/api/v1/proxy/mcp/tools-builtin` | `mcp_tool:read`   | List tools from built-in tools-service |
+| POST   | `/api/v1/proxy/mcp/execute`       | `tool:execute`    | Execute MCP tool                       |
 
 ---
 
@@ -672,7 +672,8 @@ not `last_accessed_at` or read-time metadata updates.
 | `agent:invoke`, `agent:stream`                                                                                | Agents invoke/stream |
 | `assistant:create`, `assistant:delete`, `assistant:read`, `assistant:search`, `assistant:update`              | Assistants           |
 | `chat:delete`, `chat:read`, `chat:send`                                                                       | Chat                 |
-| `datasource:create`, `datasource:delete`, `datasource:sync`, `datasource:update`                              | Datasources          |
+| `datasource:create`, `datasource:delete`, `datasource:read`, `datasource:sync`, `datasource:update`           | Datasources          |
+| `mail_config:create`, `mail_config:delete`, `mail_config:read`, `mail_config:send`, `mail_config:test`, `mail_config:update` | Mail configs         |
 | `mcp_provider:create`, `mcp_provider:delete`, `mcp_provider:read`, `mcp_provider:sync`, `mcp_provider:update` | MCP Providers        |
 | `mcp_tool:read`, `mcp_tool:sync`                                                                              | MCP Tools            |
 | `persona:create`, `persona:delete`, `persona:read`, `persona:update`                                          | Personas             |

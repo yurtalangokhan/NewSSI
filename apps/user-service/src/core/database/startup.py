@@ -8,6 +8,7 @@ from pathlib import Path
 import psycopg
 from alembic import command
 from alembic.config import Config
+from alembic.script import ScriptDirectory
 from psycopg import sql
 
 from src.config import get_settings
@@ -36,7 +37,31 @@ def _build_alembic_config() -> Config:
         str(service_root / "src/core/database/migrations"),
     )
     alembic_cfg.set_main_option("prepend_sys_path", str(service_root / "src"))
+    alembic_cfg.attributes["configure_logger"] = False
     return alembic_cfg
+
+
+def _migration_revision_state(alembic_cfg: Config) -> tuple[str, str]:
+    settings = get_settings()
+    current = "unknown"
+    try:
+        with psycopg.connect(
+            host=settings.POSTGRES_HOST,
+            port=settings.POSTGRES_PORT,
+            user=settings.POSTGRES_USER or "user_service",
+            password=settings.POSTGRES_PASSWORD or "user_service_pass",
+            dbname=_require(settings.POSTGRES_DB or "user_service", "POSTGRES_DB"),
+            connect_timeout=5,
+        ) as conn:
+            rows = conn.execute("SELECT version_num FROM alembic_version_user").fetchall()
+            current = ",".join(sorted(row[0] for row in rows)) if rows else "base"
+    except Exception as exc:  # pragma: no cover - defensive startup diagnostics
+        current = f"unknown ({exc})"
+
+    script = ScriptDirectory.from_config(alembic_cfg)
+    heads = script.get_heads()
+    target = ",".join(sorted(heads)) if heads else "base"
+    return current, target
 
 
 def ensure_database_exists() -> None:
@@ -68,5 +93,9 @@ def ensure_database_exists() -> None:
 def run_startup_migrations() -> None:
     """Ensure the service database exists and apply Alembic migrations."""
     ensure_database_exists()
-    command.upgrade(_build_alembic_config(), "head")
-    logger.info("User service database migrations are at head.")
+    alembic_cfg = _build_alembic_config()
+    current, target = _migration_revision_state(alembic_cfg)
+    logger.info("User service database migration check: current=%s target=%s", current, target)
+    command.upgrade(alembic_cfg, "head")
+    current, target = _migration_revision_state(alembic_cfg)
+    logger.info("User service database migrations completed: current=%s target=%s", current, target)

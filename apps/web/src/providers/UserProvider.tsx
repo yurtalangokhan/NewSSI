@@ -16,6 +16,7 @@ import { SettingsContext } from "@/providers/SettingsProvider";
 import { AuthTypeMetadata } from "@/lib/userSS";
 import { updateUserPersonalization as persistPersonalization } from "@/lib/userSettings";
 import { useTheme } from "next-themes";
+import { isAdminFromPermissions } from "@/lib/auth/roles";
 import {
   hasAnyPermission as hasAnyPermissionValue,
   hasAllPermissions as hasAllPermissionsValue,
@@ -35,7 +36,6 @@ interface UserContextType {
   hasAnyPermission: (permissions: readonly string[]) => boolean;
   hasAllPermissions: (permissions: readonly string[]) => boolean;
   refreshUser: () => Promise<void>;
-  isCloudSuperuser: boolean;
   authTypeMetadata: AuthTypeMetadata;
   updateUserAutoScroll: (autoScroll: boolean) => Promise<void>;
   updateUserShortcuts: (enabled: boolean) => Promise<void>;
@@ -551,7 +551,7 @@ export function UserProvider({
         updateUserDefaultModel,
         updateUserDefaultAppMode,
         toggleAgentPinnedStatus,
-        isAdmin: canAccessAnyAdminRoute(permissions),
+        isAdmin: isAdminFromPermissions(permissions),
         isCurator: false,
         permissions,
         permissionsError,
@@ -559,7 +559,6 @@ export function UserProvider({
         hasPermission,
         hasAnyPermission,
         hasAllPermissions,
-        isCloudSuperuser: upToDateUser?.is_cloud_superuser ?? false,
       }}
     >
       {children}

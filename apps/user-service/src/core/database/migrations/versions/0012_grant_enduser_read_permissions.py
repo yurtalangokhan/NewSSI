@@ -75,11 +75,11 @@ def _jsonb_remove_permissions(table: str, role_name: str, permissions: list[str]
 
 def upgrade() -> None:
     _jsonb_add_permissions("composite_roles", "enduser", ENDUSER_DIRECT_PERMISSIONS)
-    _jsonb_add_permissions("roles", "rag-enduser", RAG_ENDUSER_PERMISSIONS)
-    _jsonb_add_permissions("roles", "tool-user", TOOL_USER_PERMISSIONS)
+    _jsonb_add_permissions("roles", "knowledge-search-user", RAG_ENDUSER_PERMISSIONS)
+    _jsonb_add_permissions("roles", "tooling-user", TOOL_USER_PERMISSIONS)
 
 
 def downgrade() -> None:
-    _jsonb_remove_permissions("roles", "tool-user", TOOL_USER_PERMISSIONS)
-    _jsonb_remove_permissions("roles", "rag-enduser", RAG_ENDUSER_PERMISSIONS)
+    _jsonb_remove_permissions("roles", "tooling-user", TOOL_USER_PERMISSIONS)
+    _jsonb_remove_permissions("roles", "knowledge-search-user", RAG_ENDUSER_PERMISSIONS)
     _jsonb_remove_permissions("composite_roles", "enduser", ENDUSER_DIRECT_PERMISSIONS)

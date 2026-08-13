@@ -3,20 +3,17 @@ import { getSelectedRoleName } from "./roleSelection";
 describe("getSelectedRoleName", () => {
   it("selects the first backend role when nothing is selected", () => {
     expect(
-      getSelectedRoleName(
-        [{ name: "enduser" }, { name: "enterprise-admin" }],
-        ""
-      )
+      getSelectedRoleName([{ name: "enduser" }, { name: "system-admin" }], "")
     ).toBe("enduser");
   });
 
   it("keeps an existing selected role when it is still present", () => {
     expect(
       getSelectedRoleName(
-        [{ name: "enduser" }, { name: "enterprise-admin" }],
-        "enterprise-admin"
+        [{ name: "enduser" }, { name: "system-admin" }],
+        "system-admin"
       )
-    ).toBe("enterprise-admin");
+    ).toBe("system-admin");
   });
 
   it("falls back to the first role when the selected role disappears", () => {

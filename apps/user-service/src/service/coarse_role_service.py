@@ -147,19 +147,9 @@ class RoleService:
         if invalid:
             raise ValueError(t("permission.invalid_permissions", permissions=invalid))
 
-        wrong_service = [
-            permission
-            for permission in permissions
-            if permission != "*" and permission_by_name[permission].service != service_client
-        ]
-        if wrong_service:
-            raise ValueError(
-                t(
-                    "permission.wrong_service",
-                    service_client=service_client,
-                    permissions=wrong_service,
-                )
-            )
+        # service_client controls where the compact Keycloak client role lives.
+        # Authorization scope comes from the permission catalog, so feature
+        # bundles can group product capabilities that cross backend services.
 
 
 _role_service_instance: RoleService | None = None

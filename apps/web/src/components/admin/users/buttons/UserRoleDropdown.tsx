@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import useSWR from "swr";
 import useSWRMutation from "swr/mutation";
 import { errorHandlingFetcher } from "@/lib/fetcher";
+import { formatRoleName, getEffectiveUserRole } from "@/lib/auth/roles";
 
 import InputSelect from "@/refresh-components/inputs/InputSelect";
 import { useTranslation } from "react-i18next";
@@ -76,10 +77,12 @@ export default function UserRoleDropdown({
                   key={role.name}
                   value={role.name}
                   data-testid={`user-role-dropdown-${role.name}`}
-                  title={t(`admin.users.rolesHover.${role.name}`) ?? ""}
+                  title={role.description ?? ""}
                   data-tooltip-delay="0"
                 >
-                  {t(`admin.users.roles.${role.name}`)}
+                  {t(`admin.users.roles.${role.name}`, {
+                    defaultValue: formatRoleName(role.name),
+                  })}
                 </InputSelect.Item>
               ))
             : null}

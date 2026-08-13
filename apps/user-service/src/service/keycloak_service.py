@@ -1904,6 +1904,7 @@ class KeycloakService(KeycloakBrokerMixin):
         if last_name:
             payload["lastName"] = last_name
 
+        created_new_user = False
         if user and user.get("id"):
             await self.update_user(str(user["id"]), {**user, **payload})
             keycloak_id = str(user["id"])
@@ -1915,13 +1916,15 @@ class KeycloakService(KeycloakBrokerMixin):
             if not created_id:
                 raise ValueError(t("keycloak.sp_user_create_failed"))
             keycloak_id = created_id
+            created_new_user = True
 
         await self.add_federated_identity(
             keycloak_id,
             external_user_id=external_subject,
             external_username=username,
         )
-        await self.set_realm_role(keycloak_id, "enduser")
+        if created_new_user:
+            await self.set_realm_role(keycloak_id, "enduser")
         profile = await self.get_user_profile(keycloak_id)
         return profile or {"id": keycloak_id, **payload}
 

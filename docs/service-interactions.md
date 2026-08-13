@@ -59,9 +59,48 @@ require_auth_or_internal_service_token
       └─ returns "internal-service" for X-Internal-Service-Token
 
 require_auth             → 401 if no user
-require_admin            → require_auth → checks superuser or admin role
+require_admin            → require_auth → checks admin-area permissions
 require_permission("X")  → require_auth → checks via user-service
 ```
+
+### Compact token authorization model
+
+JWTs carry role markers, not the full permission catalog. Keycloak tokens use
+`realm_access.roles` for user-facing composite roles and `resource_access` for
+compact service-client feature bundles. Backend services must not rely on those
+feature bundle names as fine-grained permissions.
+
+Runtime authorization follows this chain:
+
+```text
+endpoint require_permission("entity:action")
+  -> service calls user-service
+  -> user-service resolves the user's composite role
+  -> composite role expands feature bundles
+  -> feature bundles expand permissions
+  -> user-service returns allow or deny
+```
+
+This keeps tokens small and lets administrators change feature-bundle
+permissions without adding fine-grained claims to the JWT.
+
+Composite role names don't carry special authorization semantics in application
+code. The built-in user-facing composite role catalog is limited to
+`system-admin`, `enterprise-admin`, and `enduser`; the database assignment from
+those composite roles to feature bundles is the source of truth.
+
+User records keep one composite role assignment. New users receive the default
+`enduser` composite role when no local assignment exists. Login, refresh, OIDC
+callback, and external Keycloak sync flows preserve existing local composite
+roles; they don't downgrade users from token client roles or federated identity
+metadata.
+
+User-service owns default administrator bootstrap. During startup it runs
+migrations, syncs the DB role catalog to Keycloak, then ensures the configured
+bootstrap admin email exists in Keycloak and has the catalog role marked
+`is_admin=true`. If the canonical catalog or the bootstrap user configuration
+is missing, startup fails instead of continuing with partial authorization
+state.
 
 ### OIDC redirect and logout invariants
 
