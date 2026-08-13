@@ -3,6 +3,7 @@
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
+from i18n import t
 
 from api.dependencies import AuthenticatedUser, require_permission, require_user
 from service.MCPToolService import MCPToolService
@@ -66,7 +67,7 @@ async def get_tool(
 ) -> dict[str, Any]:
     tool = await service.get_tool(tool_id)
     if not tool:
-        raise HTTPException(status_code=404, detail=f"Tool {tool_id} not found")
+        raise HTTPException(status_code=404, detail=t("tool.not_found", tool_id=tool_id))
     return tool
 
 
@@ -106,5 +107,5 @@ async def delete_tool(
 ) -> dict[str, Any]:
     deleted = await service.delete_tool(tool_id)
     if not deleted:
-        raise HTTPException(status_code=404, detail=f"Tool {tool_id} not found")
+        raise HTTPException(status_code=404, detail=t("tool.not_found", tool_id=tool_id))
     return {"status": "ok", "tool_id": tool_id}

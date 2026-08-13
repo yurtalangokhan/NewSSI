@@ -30,7 +30,7 @@ async def list_content_providers() -> list[dict[str, Any]]:
 
 @router.post("/content-providers/test")
 async def test_content_provider(payload: dict[str, Any]) -> dict[str, Any]:
-    provider_type = payload.get("provider_type", "onyx_web_crawler")
+    provider_type = payload.get("provider_type", "atlas_web_crawler")
     return _get_controller().test_content_provider(provider_type)
 
 

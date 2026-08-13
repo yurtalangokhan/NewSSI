@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
+from i18n import t
 
 from agents import get_agent_or_lazy
 from api.dependencies import require_permission, require_user
@@ -101,7 +102,7 @@ async def stream_run(
 
     if not assistant_id:
         logger.debug("No stored assistant found")
-        raise HTTPException(status_code=400, detail="assistant_id is required")
+        raise HTTPException(status_code=400, detail=t("run.assistant_id_required"))
 
     agent = get_agent_or_lazy(assistant_id)
     logger.debug("stream_run: Got agent type: %s", type(agent).__name__)

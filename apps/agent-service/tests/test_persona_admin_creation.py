@@ -12,6 +12,7 @@ def test_require_admin_rejects_end_user() -> None:
         _require_admin(user)
 
     assert exc_info.value.status_code == 403
+    assert exc_info.value.detail == "Admin role required"
 
 
 def test_require_admin_accepts_admin() -> None:

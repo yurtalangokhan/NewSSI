@@ -76,10 +76,13 @@ dependencies = [
     "requests >=2.31.0",
     "minio>=7.0",
     "idempotency",
+    "i18n-py",
 ]
 
 [tool.uv.sources]
 idempotency = { path = "../../packages/idempotency-py" }
+i18n-py = { path = "../../packages/i18n-py" }
+
 
 [dependency-groups]
 dev = [
@@ -112,7 +115,7 @@ extend-select = ["I", "U"]
 
 [tool.pytest]
 addopts = ["--import-mode=importlib"]
-pythonpath = ["src"]
+pythonpath = ["src", "../../packages/i18n-py/src"]
 asyncio_default_fixture_loop_scope = "function"
 
 [tool.pytest_env]

@@ -4,6 +4,8 @@ import logging
 import re
 from typing import Any
 
+from i18n import t
+
 from controller.base import BaseController
 from core.env import env
 from service.CheckpointerService import get_checkpointer
@@ -578,7 +580,7 @@ class SessionController(BaseController):
         try:
             existing = await PersonaDB.get(persona_id)
             if existing and existing.get("is_builtin"):
-                return {"error": "Cannot update built-in agents"}, 403
+                return {"error": t("persona.cannot_update_builtin")}, 403
 
             persona = await PersonaDB.update(
                 persona_id,
@@ -613,7 +615,7 @@ class SessionController(BaseController):
                     "base_agent": persona.get("base_agent"),
                     "mcp_tools": persona.get("mcp_tools", []),
                 }
-            return {"error": "Persona not found"}, 404
+            return {"error": t("persona.not_found")}, 404
         except Exception as e:
             return {"error": str(e)}, 500
 
@@ -621,7 +623,7 @@ class SessionController(BaseController):
         try:
             persona = await PersonaDB.get(persona_id)
             if persona and persona.get("is_builtin"):
-                return {"error": "Cannot delete built-in agents"}, 403
+                return {"error": t("persona.cannot_delete_builtin")}, 403
             await PersonaDB.delete(persona_id)
         except Exception as e:
             return {"error": str(e)}, 500

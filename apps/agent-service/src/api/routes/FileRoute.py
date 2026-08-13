@@ -16,6 +16,7 @@ import logging
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
+from i18n import t
 
 from api.dependencies import require_user
 from service.FileService import (
@@ -50,7 +51,7 @@ async def _resolve_file(file_id: str) -> FileRecord:
 
         doc = await DocumentRepository().get_by_file_id(file_id)
         if doc is None:
-            raise HTTPException(status_code=404, detail="File not found.")
+            raise HTTPException(status_code=404, detail=t("file.not_found"))
 
         data = minio_download(doc["minio_object_key"])
         # Warm the in-memory cache for subsequent requests this session
@@ -60,7 +61,7 @@ async def _resolve_file(file_id: str) -> FileRecord:
         raise
     except Exception as exc:
         logger.error("Failed to retrieve file %s from MinIO: %s", file_id, exc)
-        raise HTTPException(status_code=404, detail="File not found.") from exc
+        raise HTTPException(status_code=404, detail=t("file.not_found")) from exc
 
 
 def _safe_disposition(disposition: str, filename: str) -> str:
@@ -119,7 +120,7 @@ async def get_chat_file_text(file_id: str) -> Response:
     if text is None:
         raise HTTPException(
             status_code=422,
-            detail="Cannot extract text from this file type (images are not supported).",
+            detail=t("file.text_extraction_unsupported"),
         )
 
     return Response(

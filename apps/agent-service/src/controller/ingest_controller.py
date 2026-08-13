@@ -15,7 +15,7 @@ class IngestController(BaseController):
 
     async def ingest_batch(self, req: BatchRequest) -> BatchResponse:
         if not req.datasource_id:
-            self._raise_bad_request("datasource_id is required")
+            self._raise_bad_request("datasource.id_required")
         try:
             return await self._service.ingest_batch(req)
         except LookupError as exc:
@@ -25,7 +25,7 @@ class IngestController(BaseController):
 
     async def source_preview(self, req: SourcePreviewRequest) -> dict[str, Any]:
         if not req.datasource_id:
-            self._raise_bad_request("datasource_id is required")
+            self._raise_bad_request("datasource.id_required")
         try:
             return await self._service.source_preview(req)
         except LookupError as exc:

@@ -163,7 +163,7 @@ class DataController(BaseController):
 
         connector = await find_connector_by_name(connector_type)
         if not connector:
-            self._raise_bad_request(f"Unknown connector: {connector_type}")
+            self._raise_bad_request("datasource.unknown_connector", connector_type=connector_type)
 
         client = get_airbyte_client()
 
@@ -175,7 +175,7 @@ class DataController(BaseController):
             )
             source_id = source["sourceId"]
         except Exception as e:
-            self._raise_bad_request(f"Failed to create Airbyte source: {e}")
+            self._raise_bad_request("datasource.create_source_failed", error=str(e))
 
         collection_uuid = uuid4()
         try:
@@ -187,7 +187,7 @@ class DataController(BaseController):
                 await client.delete_source(source_id)
             except Exception:
                 pass
-            self._raise_internal_error(f"Failed to setup destination: {e}")
+            self._raise_internal_error("datasource.setup_destination_failed", error=str(e))
 
         try:
             schema = await client.discover_source_schema(source_id)
@@ -217,7 +217,7 @@ class DataController(BaseController):
                 await client.delete_source(source_id)
             except Exception:
                 pass
-            self._raise_internal_error(f"Failed to create connection: {e}")
+            self._raise_internal_error("datasource.create_connection_failed", error=str(e))
 
         now = datetime.now(UTC).isoformat()
         meta = {
@@ -234,7 +234,7 @@ class DataController(BaseController):
             cmetadata=meta,
         )
         if not row:
-            self._raise_internal_error("Failed to create collection")
+            self._raise_internal_error("datasource.create_collection_failed")
 
         await AirbyteMappingDB.create(
             datasource_id=str(collection_uuid),
@@ -262,7 +262,7 @@ class DataController(BaseController):
         """Update a data source."""
         row = await self._ds_repo.get_collection(datasource_id)
         if not row:
-            self._raise_not_found(f"DataSource {datasource_id} not found")
+            self._raise_not_found("datasource.not_found", datasource_id=datasource_id)
 
         meta = row.get("cmetadata", {})
 
@@ -271,7 +271,7 @@ class DataController(BaseController):
 
         mapping = await AirbyteMappingDB.get(datasource_id)
         if not mapping:
-            self._raise_bad_request("No Airbyte mapping found for this datasource")
+            self._raise_bad_request("datasource.no_airbyte_mapping")
 
         client = get_airbyte_client()
 
@@ -284,8 +284,7 @@ class DataController(BaseController):
         dm = destination_sync_mode or "overwrite"
         if (sm, dm) not in valid_combos:
             self._raise_bad_request(
-                f"Invalid sync mode combination: {sm} | {dm}. "
-                f"Valid combos: full_refresh|overwrite, full_refresh|append, incremental|append"
+                "datasource.invalid_sync_mode_combination", sync_mode=sm, dest_mode=dm
             )
 
         if connector_config is not None:
@@ -296,7 +295,7 @@ class DataController(BaseController):
                     name=name,
                 )
             except Exception as e:
-                self._raise_bad_request(f"Failed to update Airbyte source: {e}")
+                self._raise_bad_request("datasource.update_source_failed", error=str(e))
         elif name is not None:
             source_data = await client.get_source(mapping["airbyte_source_id"])
             try:
@@ -306,7 +305,7 @@ class DataController(BaseController):
                     name=name,
                 )
             except Exception as e:
-                self._raise_bad_request(f"Failed to update Airbyte source name: {e}")
+                self._raise_bad_request("datasource.update_source_name_failed", error=str(e))
 
         conn_update_fields: dict[str, Any] = {}
         if streams is not None or sync_mode is not None or destination_sync_mode is not None:
@@ -334,7 +333,7 @@ class DataController(BaseController):
 
                 conn_update_fields["syncCatalog"] = {"streams": catalog_streams}
             except Exception as e:
-                self._raise_bad_request(f"Failed to update connection streams: {e}")
+                self._raise_bad_request("datasource.update_streams_failed", error=str(e))
 
         if conn_update_fields:
             try:
@@ -343,7 +342,7 @@ class DataController(BaseController):
                     **conn_update_fields,
                 )
             except Exception as e:
-                self._raise_bad_request(f"Failed to update Airbyte connection: {e}")
+                self._raise_bad_request("datasource.update_connection_failed", error=str(e))
 
         updated = False
         if name is not None:
@@ -368,7 +367,7 @@ class DataController(BaseController):
         """Delete a data source."""
         row = await self._ds_repo.get_collection(datasource_id)
         if not row:
-            self._raise_not_found(f"DataSource {datasource_id} not found")
+            self._raise_not_found("datasource.not_found", datasource_id=datasource_id)
 
         from service.AirbyteApiClientService import get_airbyte_client
         from service.AirbyteMappingRepository import AirbyteMappingDB
@@ -398,7 +397,7 @@ class DataController(BaseController):
         """Get detailed information about a data source."""
         row = await self._ds_repo.get_collection(datasource_id)
         if not row:
-            self._raise_not_found(f"DataSource {datasource_id} not found")
+            self._raise_not_found("datasource.not_found", datasource_id=datasource_id)
 
         col_meta = row.get("cmetadata", {})
         connector_type = col_meta.get("connector_type", "unknown")
@@ -460,7 +459,7 @@ class DataController(BaseController):
         """Trigger synchronization for a data source."""
         row = await self._ds_repo.get_collection(datasource_id)
         if not row:
-            self._raise_not_found(f"DataSource {datasource_id} not found")
+            self._raise_not_found("datasource.not_found", datasource_id=datasource_id)
 
         meta = row.get("cmetadata", {})
         meta["sync_status"] = "starting"
@@ -491,7 +490,7 @@ class DataController(BaseController):
         """Get current sync status."""
         row = await self._ds_repo.get_collection(datasource_id)
         if not row:
-            self._raise_not_found(f"DataSource {datasource_id} not found")
+            self._raise_not_found("datasource.not_found", datasource_id=datasource_id)
 
         meta = row.get("cmetadata", {})
 

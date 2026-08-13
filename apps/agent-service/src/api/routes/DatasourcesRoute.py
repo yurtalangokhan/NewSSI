@@ -12,6 +12,7 @@ from typing import Any
 from uuid import uuid4
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from i18n import t
 
 from api.dependencies import AuthenticatedUser, require_permission, require_user
 from controller import DataController, get_data_controller
@@ -216,14 +217,14 @@ async def create_datasource(
     if existing:
         raise HTTPException(
             status_code=409,
-            detail=f"A data source named '{input.name}' already exists. Please choose a different name.",
+            detail=t("datasource.duplicate_name", name=input.name),
         )
 
     connector = await find_connector_by_name(input.config.connector_type)
     if not connector:
         raise HTTPException(
             status_code=400,
-            detail=f"Unknown connector: {input.config.connector_type}",
+            detail=t("datasource.unknown_connector", connector_type=input.config.connector_type),
         )
 
     client = get_airbyte_client()
@@ -237,7 +238,7 @@ async def create_datasource(
         )
         source_id = source["sourceId"]
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Failed to create Airbyte source: {e}")
+        raise HTTPException(status_code=400, detail=t("datasource.create_source_failed", error=str(e)))
 
     # Get or create custom embedding destination
     collection_uuid = uuid4()
@@ -251,7 +252,7 @@ async def create_datasource(
             await client.delete_source(source_id)
         except Exception:
             pass
-        raise HTTPException(status_code=500, detail=f"Failed to setup destination: {e}")
+        raise HTTPException(status_code=500, detail=t("datasource.setup_destination_failed", error=str(e)))
 
     # Discover schema and create connection
     try:
@@ -284,7 +285,7 @@ async def create_datasource(
             await client.delete_source(source_id)
         except Exception:
             pass
-        raise HTTPException(status_code=500, detail=f"Failed to create connection: {e}")
+        raise HTTPException(status_code=500, detail=t("datasource.create_connection_failed", error=str(e)))
 
     # Store in PG
     now = datetime.now(UTC).isoformat()
@@ -313,11 +314,11 @@ async def create_datasource(
         if "UniqueViolation" in err_msg or "duplicate key" in err_msg.lower():
             raise HTTPException(
                 status_code=409,
-                detail=f"A data source named '{input.name}' already exists. Please choose a different name.",
+                detail=t("datasource.duplicate_name", name=input.name),
             )
-        raise HTTPException(status_code=500, detail="Failed to create collection")
+        raise HTTPException(status_code=500, detail=t("datasource.create_collection_failed"))
     if not row:
-        raise HTTPException(status_code=500, detail="Failed to create collection")
+        raise HTTPException(status_code=500, detail=t("datasource.create_collection_failed"))
 
     # Store Airbyte mapping
     from service.AirbyteMappingRepository import AirbyteMappingDB
@@ -370,7 +371,7 @@ async def get_datasource_details(id: str, page: int = 1, page_size: int = 10):
 
     row = await ds_repo.get_collection(id)
     if not row:
-        raise HTTPException(status_code=404, detail="DataSource not found")
+        raise HTTPException(status_code=404, detail=t("datasource.not_found", datasource_id=id))
 
     col_meta = row.get("cmetadata", {})
     connector_type = col_meta.get("connector_type", "unknown")
@@ -606,7 +607,7 @@ async def update_datasource(
     # 1. Verify datasource exists
     row = await ds_repo.get_collection(id)
     if not row:
-        raise HTTPException(status_code=404, detail="DataSource not found")
+        raise HTTPException(status_code=404, detail=t("datasource.not_found", datasource_id=id))
 
     meta = row.get("cmetadata", {})
 
@@ -616,7 +617,7 @@ async def update_datasource(
 
     mapping = await AirbyteMappingDB.get(id)
     if not mapping:
-        raise HTTPException(status_code=400, detail="No Airbyte mapping found for this datasource")
+        raise HTTPException(status_code=400, detail=t("datasource.no_airbyte_mapping"))
 
     client = get_airbyte_client()
 
@@ -627,8 +628,7 @@ async def update_datasource(
         if (sm, dm) not in _VALID_SYNC_COMBOS:
             raise HTTPException(
                 status_code=400,
-                detail=f"Invalid sync mode combination: {sm} | {dm}. "
-                f"Valid combos: full_refresh|overwrite, full_refresh|append, incremental|append",
+                detail=t("datasource.invalid_sync_mode_combination", sync_mode=sm, dest_mode=dm),
             )
 
     # 4. Update Airbyte source config if provided
@@ -642,7 +642,7 @@ async def update_datasource(
         except Exception as e:
             raise HTTPException(
                 status_code=400,
-                detail=f"Failed to update Airbyte source: {e}",
+                detail=t("datasource.update_source_failed", error=str(e)),
             )
     elif input.name is not None:
         # Update name only
@@ -656,7 +656,7 @@ async def update_datasource(
         except Exception as e:
             raise HTTPException(
                 status_code=400,
-                detail=f"Failed to update Airbyte source name: {e}",
+                detail=t("datasource.update_source_name_failed", error=str(e)),
             )
 
     # 5. Update connection streams and/or sync mode
@@ -699,7 +699,7 @@ async def update_datasource(
         except Exception as e:
             raise HTTPException(
                 status_code=400,
-                detail=f"Failed to update connection streams: {e}",
+                detail=t("datasource.update_streams_failed", error=str(e)),
             )
 
     if conn_update_fields:
@@ -711,7 +711,7 @@ async def update_datasource(
         except Exception as e:
             raise HTTPException(
                 status_code=400,
-                detail=f"Failed to update Airbyte connection: {e}",
+                detail=t("datasource.update_connection_failed", error=str(e)),
             )
 
     # 5. Update local PG metadata
@@ -752,7 +752,7 @@ async def sync_datasource(
 
     row = await ds_repo.get_collection(id)
     if not row:
-        raise HTTPException(status_code=404, detail="DataSource not found")
+        raise HTTPException(status_code=404, detail=t("datasource.not_found", datasource_id=id))
 
     # Update sync status
     meta = row.get("cmetadata", {})
@@ -792,7 +792,7 @@ async def get_sync_status(id: str):
 
     row = await ds_repo.get_collection(id)
     if not row:
-        raise HTTPException(status_code=404, detail="DataSource not found")
+        raise HTTPException(status_code=404, detail=t("datasource.not_found", datasource_id=id))
 
     meta = row.get("cmetadata", {})
 
@@ -856,7 +856,7 @@ async def get_sync_history(id: str, limit: int = Query(20, ge=1, le=100)):
 
     mapping = await AirbyteMappingDB.get(id)
     if not mapping:
-        raise HTTPException(status_code=404, detail="No Airbyte mapping found for this datasource")
+        raise HTTPException(status_code=404, detail=t("datasource.no_airbyte_mapping"))
 
     try:
         client = get_airbyte_client()
@@ -943,7 +943,7 @@ async def delete_datasource(
     # Verify exists
     row = await ds_repo.get_collection(id)
     if not row:
-        raise HTTPException(status_code=404, detail="DataSource not found")
+        raise HTTPException(status_code=404, detail=t("datasource.not_found", datasource_id=id))
 
     # Delete collection (cascade will remove embeddings via FK)
     await ds_repo.delete_collection(id)

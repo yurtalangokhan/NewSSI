@@ -10,6 +10,8 @@ from email.message import EmailMessage
 from email.utils import formataddr, make_msgid
 from typing import Any
 
+from i18n import t
+
 from core.db.repositories.mail_config_repo import MailConfigRepository
 from core.security.encryption import decrypt_secret, encrypt_secret
 
@@ -49,7 +51,7 @@ class MailConfigService:
     async def get_decrypted_config(self, user_id: str, config_id: str) -> dict[str, Any]:
         row = await self.repo.get_by_id(user_id, config_id)
         if not row:
-            raise ValueError("Mail config not found")
+            raise ValueError(t("mailConfig.notFound"))
         config = self._masked(row)
         config["password"] = decrypt_secret(row["password_encrypted"])
         return config
@@ -78,7 +80,7 @@ class MailConfigService:
 
     async def delete_config(self, user_id: str, config_id: str) -> bool:
         if await self.repo.has_active_bindings(user_id, config_id):
-            raise ValueError("Mail config is attached to an agent")
+            raise ValueError(t("mailConfig.attachedToAgent"))
         return await self.repo.deactivate(user_id, config_id)
 
     async def send_test_email(self, user_id: str, config_id: str, to_email: str) -> dict[str, Any]:
@@ -96,9 +98,9 @@ class MailConfigService:
         error_detail = parsed.get("error")
         error_category = parsed.get("error_category", "smtp")
         message = (
-            "Test email sent."
+            t("mailConfig.testEmailSent")
             if success
-            else f"Test email failed: {error_detail or error_category}"
+            else t("mailConfig.testEmailFailed", detail=error_detail or error_category)
         )
         return {"success": success, "message": message, "result": result}
 
@@ -114,7 +116,11 @@ class MailConfigService:
         success = bool(parsed.get("success"))
         error_detail = parsed.get("error")
         error_category = parsed.get("error_category", "smtp")
-        message = "Email sent." if success else f"Email failed: {error_detail or error_category}"
+        message = (
+            t("mailConfig.emailSent")
+            if success
+            else t("mailConfig.emailFailed", detail=error_detail or error_category)
+        )
         return {"success": success, "message": message, "result": result}
 
     @staticmethod
@@ -135,7 +141,7 @@ class MailConfigService:
             ).split(";")[0]
             maintype, _, subtype = mime_type.partition("/")
             if not filename or not content_base64:
-                raise ValueError("Attachment filename and content are required.")
+                raise ValueError(t("mailConfig.attachmentRequired"))
             if not maintype or not subtype:
                 maintype, subtype = "application", "octet-stream"
             content = base64.b64decode(content_base64, validate=True)
@@ -160,7 +166,7 @@ class MailConfigService:
                 {
                     "success": False,
                     "error_category": "validation",
-                    "error": "Recipient, subject, and body are required before sending email.",
+                    "error": t("mailConfig.recipientSubjectBodyRequired"),
                 }
             )
 
@@ -189,7 +195,7 @@ class MailConfigService:
                 {
                     "success": False,
                     "error_category": "validation",
-                    "error": "Email attachment payload is invalid.",
+                    "error": t("mailConfig.attachmentInvalid"),
                 }
             )
 
@@ -217,7 +223,7 @@ class MailConfigService:
                 {
                     "success": False,
                     "error_category": "authentication",
-                    "error": f"SMTP authentication failed: {detail or exc.smtp_code}",
+                    "error": t("mailConfig.smtpAuthFailedDetail", detail=detail or exc.smtp_code),
                 }
             )
         except (TimeoutError, OSError, smtplib.SMTPConnectError) as exc:
@@ -225,7 +231,7 @@ class MailConfigService:
                 {
                     "success": False,
                     "error_category": "connection",
-                    "error": f"SMTP server could not be reached: {exc}",
+                    "error": t("mailConfig.smtpConnectionFailed", error=str(exc)),
                 }
             )
         except smtplib.SMTPRecipientsRefused:
@@ -233,7 +239,7 @@ class MailConfigService:
                 {
                     "success": False,
                     "error_category": "recipient",
-                    "error": "SMTP server rejected one or more recipients.",
+                    "error": t("mailConfig.recipientsRejected"),
                 }
             )
         except smtplib.SMTPException as exc:
@@ -241,7 +247,7 @@ class MailConfigService:
                 {
                     "success": False,
                     "error_category": "smtp",
-                    "error": f"SMTP server rejected the message: {exc}",
+                    "error": t("mailConfig.messageRejected", error=str(exc)),
                 }
             )
         return json.dumps(
@@ -290,7 +296,7 @@ class MailConfigService:
                 {
                     "success": False,
                     "error_category": "authentication",
-                    "error": "SMTP authentication failed.",
+                    "error": t("mailConfig.smtpAuthFailed"),
                 }
             )
         except (TimeoutError, OSError, smtplib.SMTPConnectError) as exc:
@@ -298,7 +304,7 @@ class MailConfigService:
                 {
                     "success": False,
                     "error_category": "connection",
-                    "error": f"SMTP server could not be reached: {exc}",
+                    "error": t("mailConfig.smtpConnectionFailed", error=str(exc)),
                 }
             )
         except smtplib.SMTPRecipientsRefused:
@@ -306,7 +312,7 @@ class MailConfigService:
                 {
                     "success": False,
                     "error_category": "recipient",
-                    "error": "SMTP server rejected the test recipient.",
+                    "error": t("mailConfig.testRecipientRejected"),
                 }
             )
         except smtplib.SMTPException as exc:
@@ -314,7 +320,7 @@ class MailConfigService:
                 {
                     "success": False,
                     "error_category": "smtp",
-                    "error": f"SMTP server rejected the test message: {exc}",
+                    "error": t("mailConfig.testMessageRejected", error=str(exc)),
                 }
             )
         return json.dumps({"success": True})

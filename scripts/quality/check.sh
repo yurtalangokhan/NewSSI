@@ -161,6 +161,11 @@ for service in agent-service rag-service user-service tools-service; do
   fi
 done
 
+if has_changed_path '^(apps/(agent-service|rag-service|user-service|tools-service)/|packages/i18n-py/|scripts/quality/check_i18n.py)'; then
+  run "backend i18n check" python3 scripts/quality/check_i18n.py
+fi
+
+
 if has_changed_path '^apps/web/(src|tests|package.json|package-lock.json|next.config|tsconfig|jest.config|playwright.config)'; then
   run "web validate" run_web_checks
 fi

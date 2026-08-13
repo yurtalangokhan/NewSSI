@@ -12,6 +12,7 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
+from i18n import t
 
 from agents import DEFAULT_AGENT
 from api.dependencies import AuthenticatedUser, require_permission
@@ -139,7 +140,7 @@ def _merge_file_descriptors(
 def _resolve_effective_chat_user_id(identity: dict[str, Any], user_id: str | None) -> str:
     effective_user_id = get_primary_user_id(identity, user_id)
     if not effective_user_id:
-        raise HTTPException(status_code=401, detail="Not authenticated")
+        raise HTTPException(status_code=401, detail=t("auth.not_authenticated"))
     return effective_user_id
 
 
@@ -254,7 +255,7 @@ async def delete_chat_session(
         chat_session_id
     )
     if result.get("success") is False and result.get("error") == "Forbidden":
-        raise HTTPException(status_code=403, detail="Forbidden")
+        raise HTTPException(status_code=403, detail=t("common.forbidden"))
     return result
 
 
@@ -279,7 +280,7 @@ async def rename_chat_session(
         name=body.get("name"),
     )
     if result.get("success") is False and result.get("error") == "Forbidden":
-        raise HTTPException(status_code=403, detail="Forbidden")
+        raise HTTPException(status_code=403, detail=t("common.forbidden"))
     return result
 
 
@@ -294,7 +295,7 @@ async def update_chat_session_model(
         model=body.get("model"),
     )
     if result.get("success") is False and result.get("error") == "Forbidden":
-        raise HTTPException(status_code=403, detail="Forbidden")
+        raise HTTPException(status_code=403, detail=t("common.forbidden"))
     return result
 
 
@@ -309,7 +310,7 @@ async def update_chat_session_temperature(
         temperature=body.get("temperature"),
     )
     if result.get("success") is False and result.get("error") == "Forbidden":
-        raise HTTPException(status_code=403, detail="Forbidden")
+        raise HTTPException(status_code=403, detail=t("common.forbidden"))
     return result
 
 

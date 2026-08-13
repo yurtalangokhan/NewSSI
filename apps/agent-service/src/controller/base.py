@@ -3,6 +3,7 @@
 from typing import Any
 
 from fastapi import HTTPException
+from i18n import t
 
 
 class BaseController:
@@ -27,17 +28,17 @@ class BaseController:
                 return item
     """
 
-    def _raise_not_found(self, detail: str) -> None:
-        """Raise 404 HTTPException."""
-        raise HTTPException(status_code=404, detail=detail)
+    def _raise_not_found(self, detail: str = "common.not_found", **kwargs: Any) -> None:
+        """Raise 404 HTTPException. ``detail`` may be a locale key or raw text."""
+        raise HTTPException(status_code=404, detail=t(detail, **kwargs))
 
-    def _raise_bad_request(self, detail: str) -> None:
-        """Raise 400 HTTPException."""
-        raise HTTPException(status_code=400, detail=detail)
+    def _raise_bad_request(self, detail: str = "common.bad_request", **kwargs: Any) -> None:
+        """Raise 400 HTTPException. ``detail`` may be a locale key or raw text."""
+        raise HTTPException(status_code=400, detail=t(detail, **kwargs))
 
-    def _raise_internal_error(self, detail: str = "Internal server error") -> None:
-        """Raise 500 HTTPException."""
-        raise HTTPException(status_code=500, detail=detail)
+    def _raise_internal_error(self, detail: str = "common.internal_error", **kwargs: Any) -> None:
+        """Raise 500 HTTPException. ``detail`` may be a locale key or raw text."""
+        raise HTTPException(status_code=500, detail=t(detail, **kwargs))
 
     def _to_dict(self, obj: Any) -> dict[str, Any]:
         """Convert model to dict if it has model_dump."""

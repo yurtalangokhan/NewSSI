@@ -13,6 +13,7 @@ import httpx
 import jwt
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from i18n import t
 from jwt import InvalidTokenError, PyJWKClient
 
 from core.logger import get_logger
@@ -118,7 +119,7 @@ class AuthService:
         if not issuer:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="KEYCLOAK_ISSUER_URL is not configured",
+                detail=t("auth.keycloak_not_configured"),
             )
         return issuer.rstrip("/")
 
@@ -199,18 +200,18 @@ class AuthService:
         except jwt.PyJWKClientError as exc:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=f"Unable to resolve token signing key: {exc}",
+                detail=t("auth.signing_key_resolution_failed", error=str(exc)),
             ) from exc
         except InvalidTokenError as exc:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=f"Invalid bearer token: {exc}",
+                detail=t("auth.invalid_bearer_token_detail", error=str(exc)),
             ) from exc
         except Exception as exc:
             logger.exception("Failed to validate Keycloak token")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Token validation failed",
+                detail=t("auth.token_validation_failed"),
             ) from exc
 
     @staticmethod
@@ -656,7 +657,7 @@ async def require_user(
         if not token:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Missing bearer token",
+                detail=t("auth.missing_bearer_token"),
             )
         try:
             claims = _decode_keycloak_token(token)
@@ -675,7 +676,7 @@ async def require_user(
     if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Missing bearer token",
+            detail=t("auth.missing_bearer_token"),
         )
 
     if token in valid_keys:
@@ -696,7 +697,7 @@ async def require_user(
 
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Invalid bearer token",
+        detail=t("auth.invalid_bearer_token"),
     )
 
 
@@ -737,7 +738,7 @@ def require_permission(permission: str):
 
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"Missing required permission: {permission}",
+            detail=t("auth.missing_permission", permission=permission),
         )
 
     return _check_permission
@@ -776,7 +777,7 @@ def verify_bearer(
         if not token:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Missing bearer token",
+                detail=t("auth.missing_bearer_token"),
             )
         _decode_keycloak_token(token)
         return
@@ -794,7 +795,7 @@ def verify_bearer(
 
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Invalid bearer token",
+        detail=t("auth.invalid_bearer_token"),
     )
 
 
@@ -818,7 +819,7 @@ def verify_api_key(
                 continue
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid bearer token",
+            detail=t("auth.invalid_bearer_token"),
         )
 
     token = _extract_auth_token(http_auth, request)
@@ -834,7 +835,7 @@ def verify_api_key(
         return uid
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Invalid API key",
+        detail=t("auth.invalid_api_key"),
     )
 
 

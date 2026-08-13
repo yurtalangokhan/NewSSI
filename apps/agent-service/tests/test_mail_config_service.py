@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import json
+import smtplib
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
+from i18n.core import set_locale
 
 from service.MailConfigService import MailConfigService
 
@@ -142,6 +144,109 @@ def test_mail_config_test_email_reports_connection_timeout(monkeypatch):
     assert payload["success"] is False
     assert payload["error_category"] == "connection"
     assert "could not be reached" in payload["error"]
+
+
+def test_mail_config_test_email_reports_connection_timeout_in_turkish(monkeypatch):
+    class TimeoutSMTP:
+        def __init__(self, *_args, **_kwargs):
+            raise TimeoutError("timed out")
+
+    monkeypatch.setattr("service.MailConfigService.smtplib.SMTP", TimeoutSMTP)
+
+    set_locale("tr")
+    try:
+        result = MailConfigService._send_email_message(
+            {
+                "host": "smtp.mailersend.net",
+                "port": 587,
+                "username": "smtp-user",
+                "password": "secret",
+                "from_email": "sender@example.com",
+                "security": "starttls",
+            },
+            "sender@example.com",
+            "Diagnostic",
+            "Body",
+        )
+    finally:
+        set_locale("en")
+
+    payload = json.loads(result)
+    assert payload["success"] is False
+    assert payload["error"] == "SMTP sunucusuna ulaşılamadı: timed out"
+
+
+def test_mail_config_delete_blocks_active_agent_bindings_in_turkish():
+    repo = SimpleNamespace(
+        has_active_bindings=AsyncMock(return_value=True),
+        deactivate=AsyncMock(),
+    )
+    service = MailConfigService(repo=repo)
+
+    set_locale("tr")
+    try:
+        with pytest.raises(ValueError, match="temsilciye bağlı"):
+            import asyncio
+
+            asyncio.get_event_loop().run_until_complete(
+                service.delete_config("user-1", "config-1")
+            )
+    finally:
+        set_locale("en")
+
+
+class TestSmtpAuthenticationErrorIsTranslatedByExceptionType:
+    """Mirrors the Keycloak invalid_grant fix: match on the exception TYPE
+    (smtplib.SMTPAuthenticationError), translate the static wrapper text, and
+    keep the SMTP server's own dynamic response text (which we cannot
+    pre-translate) appended untranslated.
+    """
+
+    def test_send_email_payload_translates_auth_failure_wrapper(self, monkeypatch):
+        class AuthFailSMTP:
+            def __init__(self, *_args, **_kwargs):
+                pass
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return None
+
+            def starttls(self, *_args, **_kwargs):
+                return None
+
+            def login(self, *_args, **_kwargs):
+                raise smtplib.SMTPAuthenticationError(535, b"Authentication failed")
+
+        monkeypatch.setattr("service.MailConfigService.smtplib.SMTP", AuthFailSMTP)
+        monkeypatch.setattr(
+            "service.MailConfigService.ssl.create_default_context", lambda: "context"
+        )
+
+        set_locale("tr")
+        try:
+            result = MailConfigService._send_email_payload(
+                {
+                    "host": "smtp.example.com",
+                    "port": 587,
+                    "username": "sender@example.com",
+                    "password": "wrong-secret",
+                    "from_email": "sender@example.com",
+                    "security": "starttls",
+                },
+                {
+                    "to": ["recipient@example.com"],
+                    "subject": "Report",
+                    "body": "Body",
+                },
+            )
+        finally:
+            set_locale("en")
+
+        payload = json.loads(result)
+        assert payload["success"] is False
+        assert payload["error"] == "SMTP kimlik doğrulaması başarısız oldu: Authentication failed"
 
 
 def test_send_email_payload_attaches_base64_files(monkeypatch):

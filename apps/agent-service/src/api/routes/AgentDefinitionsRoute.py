@@ -29,6 +29,7 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from i18n import t
 
 from agents.storage.repository import AgentDefinitionRepository
 from api.dependencies import require_permission, require_user
@@ -233,7 +234,7 @@ async def validate_composition(
         if not graph_schema:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="graph_schema is required",
+                detail=t("agent.graph_schema_required"),
             )
 
         sub_agent_ids_raw = body.get("sub_agent_ids", [])
@@ -244,7 +245,7 @@ async def validate_composition(
             except (ValueError, TypeError):
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Invalid UUID: {sid}",
+                    detail=t("agent.invalid_uuid", id=sid),
                 )
 
         service = _get_service()
@@ -401,7 +402,7 @@ async def update_sub_agents(
         if not isinstance(sub_agent_ids_raw, list):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="sub_agent_ids must be an array",
+                detail=t("agent.sub_agent_ids_must_be_array"),
             )
 
         sub_agent_ids = []
@@ -411,7 +412,7 @@ async def update_sub_agents(
             except (ValueError, TypeError):
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Invalid UUID: {sid}",
+                    detail=t("agent.invalid_uuid", id=sid),
                 )
 
         service = _get_service()
@@ -420,7 +421,7 @@ async def update_sub_agents(
         if not updated:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Agent definition {definition_id} not found",
+                detail=t("agent.definition_not_found", definition_id=definition_id),
             )
 
         return _definition_to_dict(updated)
@@ -450,7 +451,7 @@ async def get_agent_definition(
     if not definition:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Agent definition {definition_id} not found",
+            detail=t("agent.definition_not_found", definition_id=definition_id),
         )
     return _definition_to_dict(definition)
 
@@ -468,7 +469,7 @@ async def update_agent_definition(
     if not updates:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No fields to update",
+            detail=t("agent.no_fields_to_update"),
         )
 
     try:
@@ -479,7 +480,7 @@ async def update_agent_definition(
     if not definition:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Agent definition {definition_id} not found",
+            detail=t("agent.definition_not_found", definition_id=definition_id),
         )
     return _definition_to_dict(definition)
 
@@ -495,6 +496,6 @@ async def delete_agent_definition(
     if not deleted:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Agent definition {definition_id} not found",
+            detail=t("agent.definition_not_found", definition_id=definition_id),
         )
     return {"status": "deleted", "id": str(definition_id)}

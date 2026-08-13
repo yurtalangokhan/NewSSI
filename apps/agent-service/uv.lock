@@ -24,6 +24,7 @@ dependencies = [
     { name = "fastapi" },
     { name = "grpcio" },
     { name = "httpx" },
+    { name = "i18n-py" },
     { name = "idempotency" },
     { name = "jiter" },
     { name = "langchain" },
@@ -106,6 +107,7 @@ requires-dist = [
     { name = "fastapi", specifier = "~=0.115.5" },
     { name = "grpcio", specifier = ">=1.68.0" },
     { name = "httpx", specifier = "~=0.28.0" },
+    { name = "i18n-py", directory = "../../packages/i18n-py" },
     { name = "idempotency", directory = "../../packages/idempotency-py" },
     { name = "jiter", specifier = "~=0.8.2" },
     { name = "langchain", specifier = "~=1.0.5" },
@@ -1919,6 +1921,17 @@ sdist = { url = "https://files.pythonhosted.org/packages/02/e7/94f8232d4a74cc995
 wheels = [
     { url = "https://files.pythonhosted.org/packages/48/30/47d0bf6072f7252e6521f3447ccfa40b421b6824517f82854703d0f5a98b/hyperframe-6.1.0-py3-none-any.whl", hash = "sha256:b03380493a519fce58ea5af42e4a42317bf9bd425596f7a0835ffce80f1a42e5", size = 13007, upload-time = "2025-01-22T21:41:47.295Z" },
 ]
+
+[[package]]
+name = "i18n-py"
+version = "0.1.0"
+source = { directory = "../../packages/i18n-py" }
+dependencies = [
+    { name = "starlette" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "starlette", specifier = ">=0.27.0" }]
 
 [[package]]
 name = "idempotency"

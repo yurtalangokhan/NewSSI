@@ -5,6 +5,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from i18n import t
+
 from controller.base import BaseController
 from service.web_search.onyx_web_crawler import OnyxWebCrawler
 
@@ -12,8 +14,8 @@ logger = logging.getLogger(__name__)
 
 _DEFAULT_CONTENT_PROVIDER: dict[str, Any] = {
     "id": 1,
-    "name": "Onyx Web Crawler",
-    "provider_type": "onyx_web_crawler",
+    "name": "ATLAS Web Crawler",
+    "provider_type": "atlas_web_crawler",
     "is_active": True,
     "config": None,
     "has_api_key": False,
@@ -47,7 +49,7 @@ class WebSearchController(BaseController):
     # =========================================================================
 
     def list_content_providers(self) -> list[dict[str, Any]]:
-        """Return active content providers. The built-in Onyx Web Crawler is
+        """Return active content providers. The built-in ATLAS Web Crawler is
         always present; additional providers are not yet persisted."""
         return [_DEFAULT_CONTENT_PROVIDER]
 
@@ -70,13 +72,13 @@ class WebSearchController(BaseController):
         Raises HTTPException (400) when the provider type is unsupported or the
         test URL cannot be fetched successfully.
         """
-        if provider_type != "onyx_web_crawler":
-            self._raise_bad_request(f"Unsupported content provider type: {provider_type}")
+        if provider_type != "atlas_web_crawler":
+            self._raise_bad_request("web_search.unsupported_provider_type", provider_type=provider_type)
 
         try:
             results = self._crawler.contents(["https://example.com"])
             if results and not results[0].scrape_successful:
-                self._raise_bad_request(results[0].failure_reason or "Failed to fetch test URL")
+                self._raise_bad_request(results[0].failure_reason or t("web_search.test_fetch_failed"))
         except Exception as exc:
             logger.warning("OnyxWebCrawler test failed: %s", exc)
             self._raise_bad_request(str(exc))
@@ -93,16 +95,16 @@ class WebSearchController(BaseController):
         """
         url = url.strip()
         if not url:
-            self._raise_bad_request("A non-empty 'url' field is required.")
+            self._raise_bad_request("web_search.url_required")
 
         if not url.startswith(("http://", "https://")):
-            self._raise_bad_request("URL must start with http:// or https://")
+            self._raise_bad_request("web_search.url_invalid_scheme")
 
         try:
             results = self._crawler.contents([url])
             result = results[0] if results else None
             if result is None:
-                self._raise_internal_error("No result returned from crawler.")
+                self._raise_internal_error("web_search.no_crawler_result")
 
             return {
                 "title": result.title,
