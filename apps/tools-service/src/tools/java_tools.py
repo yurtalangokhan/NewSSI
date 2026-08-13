@@ -10,6 +10,8 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
+from i18n import t
+
 from ..core.base import BaseToolCategory
 from ..core.settings import optional_env
 
@@ -34,11 +36,11 @@ class JavaTools(BaseToolCategory):
 
     @property
     def description(self) -> str:
-        return "Run JAR files, compile and execute Java code, syntax checking"
+        return t("categories.java.description", default="Run JAR files, compile and execute Java code, syntax checking")
 
     @property
     def label(self) -> str:
-        return "Java"
+        return t("categories.java.label", default="Java")
 
     def register_tools(self, mcp: Any) -> None:
         """Register all Java tools with MCP."""
@@ -72,10 +74,10 @@ class JavaTools(BaseToolCategory):
                 jar_path = os.path.join(WORKSPACE_DIR, jar_path)
 
             if not os.path.exists(jar_path):
-                return f"Error: JAR file not found: {jar_path}"
+                return t("java.jar_not_found", path=jar_path)
 
             if not jar_path.endswith(".jar"):
-                return f"Error: Not a JAR file: {jar_path}"
+                return t("java.not_a_jar", path=jar_path)
 
             try:
                 cmd = ["java"]
@@ -116,11 +118,11 @@ class JavaTools(BaseToolCategory):
                 return output if output.strip() else "[No output]"
 
             except FileNotFoundError:
-                return "Error: Java (JDK/JRE) is not installed or not in PATH"
+                return t("java.jdk_not_installed")
             except subprocess.TimeoutExpired:
-                return f"Error: JAR execution timed out after {timeout} seconds"
+                return t("java.jar_timeout", seconds=timeout)
             except Exception as e:
-                return f"Error executing JAR: {str(e)}"
+                return t("java.jar_execution_error", error=str(e))
 
         # ----------------------------------------------------------------
         # 2) Compile & Run Java source code
@@ -161,7 +163,7 @@ class JavaTools(BaseToolCategory):
 
                     if compile_result.returncode != 0:
                         errors = compile_result.stderr or compile_result.stdout
-                        return f"✗ Compilation failed:\n{errors}"
+                        return t("java.compilation_failed", errors=errors)
 
                     # Run
                     run_result = subprocess.run(
@@ -185,11 +187,11 @@ class JavaTools(BaseToolCategory):
                     return output if output.strip() else "[No output]"
 
             except FileNotFoundError:
-                return "Error: Java (JDK) is not installed or not in PATH. javac is required."
+                return t("java.jdk_javac_not_installed")
             except subprocess.TimeoutExpired:
-                return f"Error: Execution timed out after {timeout} seconds"
+                return t("java.run_timeout", seconds=timeout)
             except Exception as e:
-                return f"Error: {str(e)}"
+                return t("common.error", error=str(e))
 
         # ----------------------------------------------------------------
         # 3) Compile a Java file (no execution)
@@ -215,7 +217,7 @@ class JavaTools(BaseToolCategory):
                 file_path = os.path.join(WORKSPACE_DIR, file_path)
 
             if not os.path.exists(file_path):
-                return f"Error: File not found: {file_path}"
+                return t("java.file_not_found", path=file_path)
 
             try:
                 cmd = ["javac"]
@@ -241,14 +243,14 @@ class JavaTools(BaseToolCategory):
                     return f"✓ Compilation successful: {Path(file_path).name}"
                 else:
                     errors = result.stderr or result.stdout
-                    return f"✗ Compilation failed:\n{errors}"
+                    return t("java.compilation_failed", errors=errors)
 
             except FileNotFoundError:
-                return "Error: javac not found. JDK is required."
+                return t("java.javac_not_found")
             except subprocess.TimeoutExpired:
-                return f"Error: Compilation timed out after {timeout} seconds"
+                return t("java.compile_timeout", seconds=timeout)
             except Exception as e:
-                return f"Error: {str(e)}"
+                return t("common.error", error=str(e))
 
         # ----------------------------------------------------------------
         # 4) Java Syntax Check (compile-only, no .class output)
@@ -292,14 +294,14 @@ class JavaTools(BaseToolCategory):
                         return "✓ Java syntax is valid – no errors or warnings"
                     else:
                         errors = result.stderr or result.stdout
-                        return f"✗ Java syntax errors:\n{errors}"
+                        return t("java.syntax_errors", errors=errors)
 
             except FileNotFoundError:
-                return "Error: javac not found. JDK is required for validation."
+                return t("java.javac_not_found_validate")
             except subprocess.TimeoutExpired:
-                return "Error: Validation timed out"
+                return t("java.validation_timeout")
             except Exception as e:
-                return f"Error: {str(e)}"
+                return t("common.error", error=str(e))
 
         # ----------------------------------------------------------------
         # 5) Validate a Java file on disk
@@ -319,7 +321,7 @@ class JavaTools(BaseToolCategory):
                 file_path = os.path.join(WORKSPACE_DIR, file_path)
 
             if not os.path.exists(file_path):
-                return f"Error: File not found: {file_path}"
+                return t("java.file_not_found", path=file_path)
 
             try:
                 name = Path(file_path).name
@@ -342,14 +344,14 @@ class JavaTools(BaseToolCategory):
                         return f"✓ {name} – no syntax errors"
                     else:
                         errors = result.stderr or result.stdout
-                        return f"✗ {name} has errors:\n{errors}"
+                        return t("java.file_has_errors", name=name, errors=errors)
 
             except FileNotFoundError:
-                return "Error: javac not found. JDK is required."
+                return t("java.javac_not_found")
             except subprocess.TimeoutExpired:
-                return "Error: Validation timed out"
+                return t("java.validation_timeout")
             except Exception as e:
-                return f"Error: {str(e)}"
+                return t("common.error", error=str(e))
 
         # ----------------------------------------------------------------
         # 6) Inspect JAR contents
@@ -370,7 +372,7 @@ class JavaTools(BaseToolCategory):
                 jar_path = os.path.join(WORKSPACE_DIR, jar_path)
 
             if not os.path.exists(jar_path):
-                return f"Error: JAR file not found: {jar_path}"
+                return t("java.jar_not_found", path=jar_path)
 
             try:
                 # List contents
@@ -382,7 +384,7 @@ class JavaTools(BaseToolCategory):
                 )
 
                 if list_result.returncode != 0:
-                    return f"Error listing JAR: {list_result.stderr}"
+                    return t("java.list_error", error=list_result.stderr)
 
                 entries = list_result.stdout.strip().split("\n")
                 output = f"📦 JAR: {Path(jar_path).name}\n"
@@ -421,6 +423,6 @@ class JavaTools(BaseToolCategory):
                 return output
 
             except FileNotFoundError:
-                return "Error: jar/unzip command not found"
+                return t("java.jar_unzip_not_found")
             except Exception as e:
-                return f"Error inspecting JAR: {str(e)}"
+                return t("java.inspect_error", error=str(e))

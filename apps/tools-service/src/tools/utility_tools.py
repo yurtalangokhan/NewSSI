@@ -8,6 +8,8 @@ import hashlib
 import uuid
 from typing import Any
 
+from i18n import t
+
 from ..core.base import BaseToolCategory
 
 
@@ -20,11 +22,11 @@ class UtilityTools(BaseToolCategory):
 
     @property
     def description(self) -> str:
-        return "UUID generation, encoding, and hashing utilities"
+        return t("categories.utilities.description", default="UUID generation, encoding, and hashing utilities")
 
     @property
     def label(self) -> str:
-        return "Utilities"
+        return t("categories.utilities.label", default="Utilities")
 
     def register_tools(self, mcp: Any) -> None:
         """Register all utility tools with MCP."""
@@ -66,7 +68,7 @@ class UtilityTools(BaseToolCategory):
             try:
                 return base64.b64decode(encoded).decode()
             except Exception as e:
-                return f"Decode error: {str(e)}"
+                return t("utility.decode_error", error=str(e))
 
         @mcp.tool()
         def hash_text(text: str, algorithm: str = "sha256") -> str:
@@ -88,6 +90,6 @@ class UtilityTools(BaseToolCategory):
             }
 
             if algorithm not in algorithms:
-                return f"Unknown algorithm. Supported: {', '.join(algorithms.keys())}"
+                return t("utility.unknown_algorithm", algorithms=", ".join(algorithms.keys()))
 
             return algorithms[algorithm](text.encode()).hexdigest()

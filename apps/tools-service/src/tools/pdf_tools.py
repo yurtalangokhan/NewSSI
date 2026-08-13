@@ -6,6 +6,8 @@ Provides tools for reading and analyzing PDF documents.
 import os
 from typing import Any
 
+from i18n import t
+
 from ..core.base import BaseToolCategory
 
 
@@ -18,11 +20,11 @@ class PDFTools(BaseToolCategory):
 
     @property
     def description(self) -> str:
-        return "PDF document reading and analysis"
+        return t("categories.pdf.description", default="PDF document reading and analysis")
 
     @property
     def label(self) -> str:
-        return "PDF"
+        return t("categories.pdf.label", default="PDF")
 
     def register_tools(self, mcp: Any) -> None:
         """Register all PDF tools with MCP."""
@@ -43,7 +45,7 @@ class PDFTools(BaseToolCategory):
                 import fitz  # PyMuPDF
 
                 if not os.path.exists(file_path):
-                    return self.error_response(f"File not found: {file_path}")
+                    return self.error_response("pdf.file_not_found", file_path=file_path)
 
                 doc = fitz.open(file_path)
                 total_pages = len(doc)
@@ -66,11 +68,9 @@ class PDFTools(BaseToolCategory):
                     }
                 )
             except ImportError:
-                return self.error_response(
-                    "PyMuPDF (fitz) library not installed. Install with: pip install pymupdf"
-                )
+                return self.error_response("pdf.pymupdf_not_installed")
             except Exception as e:
-                return self.error_response(str(e))
+                return self.error_response("common.error", error=str(e))
 
         @mcp.tool()
         async def read_pdf_page(file_path: str, page_number: int) -> str:
@@ -88,14 +88,14 @@ class PDFTools(BaseToolCategory):
                 import fitz  # PyMuPDF
 
                 if not os.path.exists(file_path):
-                    return self.error_response(f"File not found: {file_path}")
+                    return self.error_response("pdf.file_not_found", file_path=file_path)
 
                 doc = fitz.open(file_path)
                 total_pages = len(doc)
 
                 if page_number < 1 or page_number > total_pages:
                     doc.close()
-                    return self.error_response(f"Invalid page number. PDF has {total_pages} pages.")
+                    return self.error_response("pdf.invalid_page", total_pages=total_pages)
 
                 page = doc[page_number - 1]
                 text = page.get_text()
@@ -116,11 +116,9 @@ class PDFTools(BaseToolCategory):
                     }
                 )
             except ImportError:
-                return self.error_response(
-                    "PyMuPDF (fitz) library not installed. Install with: pip install pymupdf"
-                )
+                return self.error_response("pdf.pymupdf_not_installed")
             except Exception as e:
-                return self.error_response(str(e))
+                return self.error_response("common.error", error=str(e))
 
         @mcp.tool()
         async def get_pdf_info(file_path: str) -> str:
@@ -137,7 +135,7 @@ class PDFTools(BaseToolCategory):
                 import fitz  # PyMuPDF
 
                 if not os.path.exists(file_path):
-                    return self.error_response(f"File not found: {file_path}")
+                    return self.error_response("pdf.file_not_found", file_path=file_path)
 
                 doc = fitz.open(file_path)
                 metadata = doc.metadata
@@ -161,11 +159,9 @@ class PDFTools(BaseToolCategory):
 
                 return self.success_response(info)
             except ImportError:
-                return self.error_response(
-                    "PyMuPDF (fitz) library not installed. Install with: pip install pymupdf"
-                )
+                return self.error_response("pdf.pymupdf_not_installed")
             except Exception as e:
-                return self.error_response(str(e))
+                return self.error_response("common.error", error=str(e))
 
         @mcp.tool()
         async def search_pdf(file_path: str, search_text: str, case_sensitive: bool = False) -> str:
@@ -184,10 +180,10 @@ class PDFTools(BaseToolCategory):
                 import fitz  # PyMuPDF
 
                 if not os.path.exists(file_path):
-                    return self.error_response(f"File not found: {file_path}")
+                    return self.error_response("pdf.file_not_found", file_path=file_path)
 
                 if not search_text:
-                    return self.error_response("Search text cannot be empty")
+                    return self.error_response("pdf.search_empty")
 
                 doc = fitz.open(file_path)
                 results = []
@@ -246,11 +242,9 @@ class PDFTools(BaseToolCategory):
                     }
                 )
             except ImportError:
-                return self.error_response(
-                    "PyMuPDF (fitz) library not installed. Install with: pip install pymupdf"
-                )
+                return self.error_response("pdf.pymupdf_not_installed")
             except Exception as e:
-                return self.error_response(str(e))
+                return self.error_response("common.error", error=str(e))
 
         @mcp.tool()
         async def extract_pdf_tables(file_path: str, page_number: int | None = None) -> str:
@@ -268,14 +262,14 @@ class PDFTools(BaseToolCategory):
                 import fitz  # PyMuPDF
 
                 if not os.path.exists(file_path):
-                    return self.error_response(f"File not found: {file_path}")
+                    return self.error_response("pdf.file_not_found", file_path=file_path)
 
                 doc = fitz.open(file_path)
                 total_pages = len(doc)
 
                 if page_number and (page_number < 1 or page_number > total_pages):
                     doc.close()
-                    return self.error_response(f"Invalid page number. PDF has {total_pages} pages.")
+                    return self.error_response("pdf.invalid_page", total_pages=total_pages)
 
                 tables_data = []
                 pages_to_process = [page_number - 1] if page_number else range(total_pages)
@@ -308,8 +302,6 @@ class PDFTools(BaseToolCategory):
                     {"file": file_path, "tables_found": len(tables_data), "tables": tables_data}
                 )
             except ImportError:
-                return self.error_response(
-                    "PyMuPDF (fitz) library not installed. Install with: pip install pymupdf"
-                )
+                return self.error_response("pdf.pymupdf_not_installed")
             except Exception as e:
-                return self.error_response(str(e))
+                return self.error_response("common.error", error=str(e))

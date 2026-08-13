@@ -6,6 +6,8 @@ Provides tools for text analysis and transformation.
 import json
 from typing import Any
 
+from i18n import t
+
 from ..core.base import BaseToolCategory
 
 
@@ -18,11 +20,11 @@ class TextTools(BaseToolCategory):
 
     @property
     def description(self) -> str:
-        return "Text analysis and transformation utilities"
+        return t("categories.text_processing.description", default="Text analysis and transformation utilities")
 
     @property
     def label(self) -> str:
-        return "Text Processing"
+        return t("categories.text_processing.label", default="Text Processing")
 
     def register_tools(self, mcp: Any) -> None:
         """Register all text processing tools with MCP."""

@@ -6,6 +6,8 @@ Provides tools for time and date operations.
 from datetime import datetime
 from typing import Any
 
+from i18n import t
+
 from ..core.base import BaseToolCategory
 
 
@@ -18,11 +20,11 @@ class TimeTools(BaseToolCategory):
 
     @property
     def description(self) -> str:
-        return "Time and date utilities"
+        return t("categories.time_date.description", default="Time and date utilities")
 
     @property
     def label(self) -> str:
-        return "Time & Date"
+        return t("categories.time_date.label", default="Time & Date")
 
     def register_tools(self, mcp: Any) -> None:
         """Register all time tools with MCP."""
@@ -48,4 +50,4 @@ class TimeTools(BaseToolCategory):
 
                 return now.strftime("%Y-%m-%d %H:%M:%S %Z").strip()
             except Exception as e:
-                return f"Error: {str(e)}"
+                return t("time.error", error=str(e))

@@ -6,6 +6,8 @@ Provides tools for service/container restart operations.
 import subprocess
 from typing import Any
 
+from i18n import t
+
 from ..core.base import BaseToolCategory
 
 
@@ -18,11 +20,11 @@ class ServiceTools(BaseToolCategory):
 
     @property
     def description(self) -> str:
-        return "Docker and systemd service restart operations"
+        return t("categories.service_management.description", default="Docker and systemd service restart operations")
 
     @property
     def label(self) -> str:
-        return "Service Management"
+        return t("categories.service_management.label", default="Service Management")
 
     def register_tools(self, mcp: Any) -> None:
         """Register all service management tools with MCP."""
@@ -61,4 +63,4 @@ class ServiceTools(BaseToolCategory):
                     return f"Service {service_name} restarted successfully"
                 return result.stderr
             except Exception as e:
-                return f"Service restart error: {str(e)}"
+                return t("service.restart_error", error=str(e))

@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 
 from fastmcp import FastMCP
+from starlette.middleware import Middleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
@@ -31,14 +32,20 @@ if sys.platform == "win32":
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
 
-from src.core.registry import ToolRegistry
-from src.core.database import close_db_pool
+from i18n import I18nMiddleware, init_service_i18n
+
 from src.core.auth import KeycloakTokenVerifier
+from src.core.database import close_db_pool
+from src.core.registry import ToolRegistry
 from src.core.settings import get_settings
 
+locales_dir = Path(__file__).parent / "locales"
+init_service_i18n(locales_dir)
 
 # Initialize FastMCP server
 mcp = FastMCP("open-agent-tools", auth=KeycloakTokenVerifier())
+mcp_middleware = [Middleware(I18nMiddleware)]
+
 
 
 @mcp.custom_route("/health", methods=["GET"], name="health", include_in_schema=True)
@@ -66,13 +73,13 @@ if __name__ == "__main__":
     settings = get_settings()
     port = settings.mcp_port
     host = settings.mcp_host
-    
+
     print(f"\n{'='*60}")
-    print(f"MCP Server - Modular Architecture")
+    print("MCP Server - Modular Architecture")
     print(f"{'='*60}")
     print(f"Starting FastMCP Server on http://{host}:{port}")
     print(f"MCP endpoint: http://{host}:{port}/mcp")
     print(f"{'='*60}\n")
-    
+
     # Use HTTP transport (serves at /mcp endpoint)
-    mcp.run(transport="http", host=host, port=port)
+    mcp.run(transport="http", host=host, port=port, middleware=mcp_middleware)
