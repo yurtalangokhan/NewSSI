@@ -9,6 +9,26 @@ export interface OrganizationNode {
   user_count?: number;
   permission_count?: number;
   has_children?: boolean;
+  children_count?: number;
+  order_index?: number | null;
+}
+
+export interface OrganizationRevealRequest {
+  id: number;
+  result: OrganizationNode;
+  ancestorIds: string[];
+}
+
+export interface OrganizationSearchProps {
+  searchResults: OrganizationNode[];
+  searchLoading: boolean;
+  searchError: string | null;
+  resultsLimited: boolean;
+  revealLoading: boolean;
+  onSearch: (query: string) => void;
+  onRevealResult: (result: OrganizationNode) => void;
+  revealRequest?: OrganizationRevealRequest | null;
+  onRevealReady?: (organization: OrganizationNode) => void;
 }
 
 export interface OrganizationMember {

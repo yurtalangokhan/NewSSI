@@ -15,14 +15,15 @@
 
 "use client";
 
-import { useState, useCallback, useRef, useEffect, useMemo } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { Tree, NodeRendererProps, type TreeApi } from "react-arborist";
-import { SvgChevronLeft, SvgChevronRight } from "@opal/icons";
 import { useTranslation } from "react-i18next";
+import { OrganizationSearchCombobox } from "@/components/organization/OrganizationSearchCombobox";
 import type {
   MoveOrganization,
   OrganizationMembersByUnit,
   OrganizationNode,
+  OrganizationSearchProps,
 } from "@/components/organization/organizationTypes";
 import { OrganizationMoveConfirmationModal } from "@/components/organization/OrganizationMoveConfirmationModal";
 import {
@@ -32,7 +33,6 @@ import {
 } from "@/components/organization/organizationMembers";
 import {
   flattenOrganizations,
-  getOrganizationMatches,
   organizationMatchesSearch,
 } from "@/components/organization/organizationSearch";
 import {
@@ -50,7 +50,7 @@ import InputSelect from "@/refresh-components/inputs/InputSelect";
 import Text from "@/refresh-components/texts/Text";
 import { cn } from "@/lib/utils";
 
-interface OrganizationTreeProps {
+interface OrganizationTreeProps extends Partial<OrganizationSearchProps> {
   organizations: OrganizationNode[];
   onCreateOrg: (parentId: string | null, name: string) => Promise<void>;
   onUpdateOrg: (
@@ -460,6 +460,15 @@ export function OrganizationTree({
   membersLoading = false,
   onExpandOrg,
   className,
+  searchResults = [],
+  searchLoading = false,
+  searchError = null,
+  resultsLimited = false,
+  revealLoading = false,
+  onSearch = () => {},
+  onRevealResult = () => {},
+  revealRequest = null,
+  onRevealReady = onSelectOrg,
 }: OrganizationTreeProps) {
   const { t, i18n } = useTranslation();
   const [isCreating, setIsCreating] = useState(false);
@@ -473,12 +482,8 @@ export function OrganizationTree({
   const treeRef = useRef<TreeApi<OrganizationNode> | null>(null);
   const previousOpenIdsRef = useRef<Set<string> | null>(null);
   const [treeHeight, setTreeHeight] = useState(600);
-  const searchMatches = useMemo(
-    () => getOrganizationMatches(organizations, searchQuery, i18n.language),
-    [i18n.language, organizations, searchQuery]
-  );
   const activeSearchMatchId =
-    searchMatches[activeSearchMatchIndex >= 0 ? activeSearchMatchIndex : 0]?.id;
+    searchResults[activeSearchMatchIndex >= 0 ? activeSearchMatchIndex : 0]?.id;
 
   useEffect(() => {
     const tree = treeRef.current;
@@ -499,23 +504,24 @@ export function OrganizationTree({
     }
   }, [organizations, searchQuery]);
 
-  const navigateSearch = useCallback(
-    (direction: 1 | -1) => {
-      if (!searchMatches.length) return;
-      const nextIndex =
-        activeSearchMatchIndex < 0
-          ? direction === 1
-            ? 0
-            : searchMatches.length - 1
-          : (activeSearchMatchIndex + direction + searchMatches.length) %
-            searchMatches.length;
-      const organization = searchMatches[nextIndex]!;
-      setActiveSearchMatchIndex(nextIndex);
-      onSelectOrg(organization);
+  const completedRevealIdRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!revealRequest || completedRevealIdRef.current === revealRequest.id) {
+      return;
+    }
+    const organization = flattenOrganizations(organizations).find(
+      ({ id }) => id === revealRequest.result.id
+    );
+    if (!organization) return;
+    revealRequest.ancestorIds.forEach((id) => treeRef.current?.open(id));
+    completedRevealIdRef.current = revealRequest.id;
+    onRevealReady(organization);
+    window.requestAnimationFrame(() => {
       void treeRef.current?.scrollTo(organization.id, "center");
-    },
-    [activeSearchMatchIndex, onSelectOrg, searchMatches]
-  );
+      treeRef.current?.focus(organization.id);
+    });
+  }, [onRevealReady, organizations, revealRequest]);
 
   // Update tree height when container resizes
   useEffect(() => {
@@ -602,68 +608,20 @@ export function OrganizationTree({
             )}
           </div>
         </div>
-        <div className={cn("mt-3 flex items-center gap-2")}>
-          <InputTypeIn
-            aria-label={t("admin.organizations.tree.searchLabel")}
-            className={cn(
-              "border border-border-02 bg-background-neutral-01 shadow-sm transition-[border-color,box-shadow] duration-200 focus-within:border-action-link-05 focus-within:ring-1 focus-within:ring-action-link-05 motion-reduce:transition-none"
-            )}
-            leftSearchIcon
-            placeholder={t("admin.organizations.tree.searchPlaceholder")}
-            value={searchQuery}
-            onChange={(event) => {
-              setSearchQuery(event.target.value);
-              setActiveSearchMatchIndex(-1);
-            }}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                event.preventDefault();
-                navigateSearch(event.shiftKey ? -1 : 1);
-              } else if (event.key === "Escape") {
-                event.stopPropagation();
-                setSearchQuery("");
-                setActiveSearchMatchIndex(-1);
-              }
-            }}
-          />
-          {searchQuery.trim() && (
-            <div className={cn("flex shrink-0 items-center gap-1")}>
-              <IconButton
-                aria-label={t("admin.organizations.tree.previousResult")}
-                disabled={!searchMatches.length}
-                icon={SvgChevronLeft}
-                small
-                tertiary
-                tooltip={t("admin.organizations.tree.previousResult")}
-                onClick={() => navigateSearch(-1)}
-              />
-              <Text
-                aria-live="polite"
-                secondaryMono
-                text04
-                className={cn(
-                  "min-w-12 rounded-08 bg-background-neutral-03 px-2 py-1 text-center"
-                )}
-              >
-                {searchMatches.length
-                  ? activeSearchMatchIndex >= 0
-                    ? activeSearchMatchIndex + 1
-                    : 1
-                  : 0}{" "}
-                / {searchMatches.length}
-              </Text>
-              <IconButton
-                aria-label={t("admin.organizations.tree.nextResult")}
-                disabled={!searchMatches.length}
-                icon={SvgChevronRight}
-                small
-                tertiary
-                tooltip={t("admin.organizations.tree.nextResult")}
-                onClick={() => navigateSearch(1)}
-              />
-            </div>
-          )}
-        </div>
+        <OrganizationSearchCombobox
+          className={cn("mt-3")}
+          query={searchQuery}
+          activeIndex={activeSearchMatchIndex}
+          results={searchResults}
+          loading={searchLoading}
+          error={searchError}
+          limited={resultsLimited}
+          revealLoading={revealLoading}
+          onQueryChange={setSearchQuery}
+          onActiveIndexChange={setActiveSearchMatchIndex}
+          onSearch={onSearch}
+          onReveal={onRevealResult}
+        />
       </div>
 
       {/* Tree */}

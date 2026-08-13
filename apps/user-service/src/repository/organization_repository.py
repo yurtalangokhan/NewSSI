@@ -147,7 +147,23 @@ class OrganizationRepository(BaseRepository):
 
             query = query.order_by(OrganizationModel.level, OrganizationModel.order_index)
             result = await session.execute(query)
-            return [self._to_dict(org) for org in result.scalars().all()]
+            org_dicts = [self._to_dict(org) for org in result.scalars().all()]
+
+            if org_dicts:
+                org_uuids = [uuid.UUID(str(d["id"])) for d in org_dicts]
+                counts_query = (
+                    select(OrganizationModel.parent_id, func.count(OrganizationModel.id))
+                    .where(OrganizationModel.parent_id.in_(org_uuids))
+                    .group_by(OrganizationModel.parent_id)
+                )
+                counts_res = await session.execute(counts_query)
+                child_counts = {str(row[0]): row[1] for row in counts_res.all()}
+                for d in org_dicts:
+                    cnt = child_counts.get(str(d["id"]), 0)
+                    d["children_count"] = cnt
+                    d["has_children"] = cnt > 0
+
+            return org_dicts
 
     async def get_ancestors(self, org_id: uuid.UUID) -> list[dict[str, Any]]:
         """Get all ancestor organizations up to root."""
@@ -294,6 +310,21 @@ class OrganizationRepository(BaseRepository):
                         org_dict[parent_id_str]["children"].append(org_data)
                 else:
                     root_nodes.append(org_data)
+
+            # Query direct child counts for all orgs in tree
+            if org_dict:
+                org_uuids = [uuid.UUID(str(id_str)) for id_str in org_dict.keys()]
+                counts_query = (
+                    select(OrganizationModel.parent_id, func.count(OrganizationModel.id))
+                    .where(OrganizationModel.parent_id.in_(org_uuids))
+                    .group_by(OrganizationModel.parent_id)
+                )
+                counts_res = await session.execute(counts_query)
+                child_counts = {str(row[0]): row[1] for row in counts_res.all()}
+                for org_id_str, org_data in org_dict.items():
+                    cnt = child_counts.get(org_id_str, len(org_data.get("children", [])))
+                    org_data["children_count"] = cnt
+                    org_data["has_children"] = cnt > 0
 
             # Return single root or list of roots
             if root_id:

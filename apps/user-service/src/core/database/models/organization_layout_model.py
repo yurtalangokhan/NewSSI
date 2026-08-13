@@ -16,11 +16,11 @@ class OrganizationLayoutModel(Base):
     __tablename__ = "organization_layouts"
     __table_args__ = (
         CheckConstraint(
-            "position_x >= -1000000 AND position_x <= 1000000",
+            "position_x >= -100000000 AND position_x <= 100000000",
             name="ck_organization_layouts_position_x_bounds",
         ),
         CheckConstraint(
-            "position_y >= -1000000 AND position_y <= 1000000",
+            "position_y >= -100000000 AND position_y <= 100000000",
             name="ck_organization_layouts_position_y_bounds",
         ),
     )

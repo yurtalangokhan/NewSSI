@@ -70,6 +70,10 @@ describe("OrganizationTree single-root action", () => {
     jest.clearAllMocks();
   });
 
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   it("opens the visual designer from an accessible title-row control", async () => {
     const user = setupUser();
     render(<OrganizationTree organizations={[]} {...handlers} />);
@@ -208,8 +212,18 @@ describe("OrganizationTree single-root action", () => {
     ).toHaveAttribute("data-row-heights", "[136,40]");
   });
 
-  it("shows search matches through the existing tree row renderer", async () => {
+  it("debounces remote search and reveals a keyboard-selected suggestion", async () => {
+    jest.useFakeTimers();
     const user = setupUser();
+    const onSearch = jest.fn();
+    const onRevealResult = jest.fn();
+    const runtime = {
+      id: "runtime",
+      name: "Runtime",
+      path: "/enterprise/platform/runtime",
+      parent_id: "platform",
+      children: [],
+    };
     render(
       <OrganizationTree
         organizations={[
@@ -229,29 +243,61 @@ describe("OrganizationTree single-root action", () => {
             ],
           },
         ]}
+        searchResults={[runtime]}
+        searchLoading={false}
+        searchError={null}
+        resultsLimited={false}
+        onSearch={onSearch}
+        onRevealResult={onRevealResult}
+        {...handlers}
+      />
+    );
+
+    const search = screen.getByRole("combobox", {
+      name: "Search organizations",
+    });
+    await user.type(search, "ru");
+    expect(onSearch).not.toHaveBeenCalled();
+    await jest.advanceTimersByTimeAsync(249);
+    expect(onSearch).not.toHaveBeenCalled();
+    await jest.advanceTimersByTimeAsync(1);
+    expect(onSearch).toHaveBeenCalledWith("ru");
+
+    expect(screen.getByRole("listbox")).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: /Runtime/ })).toHaveTextContent(
+      "/enterprise/platform/runtime"
+    );
+    await user.keyboard("{ArrowDown}{Enter}");
+    expect(onRevealResult).toHaveBeenCalledWith(runtime);
+    jest.useRealTimers();
+  });
+
+  it("labels a capped remote result set", async () => {
+    const user = setupUser();
+    render(
+      <OrganizationTree
+        organizations={[]}
+        searchResults={Array.from({ length: 100 }, (_, index) => ({
+          id: `org-${index}`,
+          name: `Organization ${index}`,
+          path: `/organization-${index}`,
+          parent_id: null,
+          children: [],
+        }))}
+        searchLoading={false}
+        searchError={null}
+        resultsLimited
+        onSearch={jest.fn()}
+        onRevealResult={jest.fn()}
         {...handlers}
       />
     );
 
     await user.type(
-      screen.getByRole("textbox", { name: "Search organizations" }),
-      "plat"
+      screen.getByRole("combobox", { name: "Search organizations" }),
+      "or"
     );
-
-    expect(screen.getByText("Platform").parentElement).toHaveAttribute(
-      "data-search-state",
-      "match"
-    );
-    expect(screen.getByText("Enterprise").parentElement).toHaveAttribute(
-      "data-search-state",
-      "dimmed"
-    );
-    expect(screen.getByText("1 / 1")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Next result" }));
-    expect(handlers.onSelectOrg).toHaveBeenCalledWith(
-      expect.objectContaining({ id: "platform" })
-    );
-    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    expect(screen.getByText("Showing the first 100 results")).toBeInTheDocument();
   });
 
   it("differentiates the selected organization with a light gray background", () => {

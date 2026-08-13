@@ -7,7 +7,9 @@ import type { ReactNode } from "react";
 import useSWR, { SWRConfig } from "swr";
 
 import {
+  createOrganizationLayoutPayload,
   useOrganizationLayout,
+  type OrganizationLayoutPosition,
   type OrganizationLayoutResponse,
 } from "@/components/organization/useOrganizationLayout";
 
@@ -41,6 +43,26 @@ describe("useOrganizationLayout", () => {
   afterEach(() => {
     jest.useRealTimers();
     jest.restoreAllMocks();
+  });
+
+  it("accepts 100,000 writable positions and rejects 100,001", () => {
+    const positions = Object.fromEntries(
+      Array.from({ length: 100_001 }, (_, index) => [
+        `organization-${index}`,
+        { x: index, y: index },
+      ])
+    );
+    const organizationIds = Object.keys(positions);
+    const writableOrganizationIds = new Set(organizationIds.slice(0, 100_000));
+
+    expect(
+      createOrganizationLayoutPayload(positions, writableOrganizationIds)
+    ).toHaveLength(100_000);
+
+    writableOrganizationIds.add(organizationIds[100_000]!);
+    expect(() =>
+      createOrganizationLayoutPayload(positions, writableOrganizationIds)
+    ).toThrow("Organization layout cannot exceed 100000 positions");
   });
 
   it("exposes backend load detail and ends loading after a rejected layout request", async () => {
@@ -166,6 +188,144 @@ describe("useOrganizationLayout", () => {
       expect(result.current.positions.root).toEqual({ x: 200, y: 300 })
     );
     expect(result.current.positions["read-only"]).toEqual({ x: 30, y: 40 });
+  });
+
+  it("saves a complete replacement above the legacy batch size in one request", async () => {
+    const organizationIds = Array.from(
+      { length: 501 },
+      (_, index) => `organization-${index}`
+    );
+    const completeLayout: OrganizationLayoutResponse = {
+      positions: [],
+      writable_organization_ids: organizationIds,
+    };
+    const nextPositions = Object.fromEntries(
+      organizationIds.map((organizationId, index) => [
+        organizationId,
+        { x: index * 10, y: index * 20 },
+      ])
+    );
+    // Serves the single atomic organization layout PUT request.
+    const fetchSpy = jest.spyOn(global, "fetch").mockImplementation(
+      async (_input, init) => {
+        const body = JSON.parse(String(init?.body)) as {
+          positions: Array<{ organization_id: string; x: number; y: number }>;
+        };
+        return new Response(
+          JSON.stringify({
+            positions: body.positions,
+            count: body.positions.length,
+          }),
+          { status: 200 }
+        );
+      }
+    );
+    const { result } = renderHook(() =>
+      useOrganizationLayout({ layout: completeLayout })
+    );
+    await waitFor(() =>
+      expect(result.current.writableOrganizationIds.size).toBe(501)
+    );
+
+    let saved!: boolean;
+    await act(async () => {
+      saved = await result.current.replacePositionsAndSave(nextPositions);
+    });
+
+    expect(saved).toBe(true);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(
+      JSON.parse(String(fetchSpy.mock.calls[0]?.[1]?.body)).positions
+    ).toHaveLength(501);
+  });
+
+  it("keeps the saved baseline visible when a replacement fails, then retries it", async () => {
+    const saveLayout = jest
+      .fn()
+      .mockRejectedValueOnce(new Error("Replacement failed"))
+      .mockResolvedValueOnce({
+        positions: [{ organization_id: "root", x: 200, y: 300 }],
+        count: 1,
+      });
+    const { result } = renderHook(() =>
+      useOrganizationLayout({ remoteLayout, saveLayout })
+    );
+    await waitFor(() =>
+      expect(result.current.positions.root).toEqual({ x: 10, y: 20 })
+    );
+
+    await act(async () => {
+      expect(
+        await result.current.replacePositionsAndSave({
+          root: { x: 200, y: 300 },
+        })
+      ).toBe(false);
+    });
+
+    expect(result.current.positions.root).toEqual({ x: 10, y: 20 });
+    expect(result.current.status).toBe("error");
+
+    await act(async () => {
+      expect(await result.current.retry()).toBe(true);
+    });
+
+    expect(saveLayout).toHaveBeenCalledTimes(2);
+    expect(result.current.positions.root).toEqual({ x: 200, y: 300 });
+    expect(result.current.status).toBe("saved");
+  });
+
+  it("waits for an active ordinary save before starting a complete replacement", async () => {
+    let resolveOrdinarySave: (() => void) | undefined;
+    const saveLayout = jest
+      .fn()
+      .mockImplementationOnce(
+        () =>
+          new Promise<{ positions: OrganizationLayoutPosition[]; count: 1 }>(
+            (resolve) => {
+              resolveOrdinarySave = () =>
+                resolve({
+                  positions: [
+                    { organization_id: "root", x: 100, y: 200 },
+                  ],
+                  count: 1,
+                });
+            }
+          )
+      )
+      .mockResolvedValueOnce({
+        positions: [{ organization_id: "root", x: 900, y: 800 }],
+        count: 1,
+      });
+    const { result } = renderHook(() =>
+      useOrganizationLayout({ remoteLayout, saveLayout, debounceMs: 250 })
+    );
+
+    act(() => {
+      result.current.setPosition("root", { x: 100, y: 200 });
+      jest.advanceTimersByTime(250);
+    });
+    await waitFor(() => expect(saveLayout).toHaveBeenCalledTimes(1));
+
+    let replacementPromise!: Promise<boolean>;
+    act(() => {
+      replacementPromise = result.current.replacePositionsAndSave({
+        root: { x: 900, y: 800 },
+      });
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(saveLayout).toHaveBeenCalledTimes(1);
+
+    resolveOrdinarySave?.();
+    await act(async () => {
+      expect(await replacementPromise).toBe(true);
+    });
+
+    expect(saveLayout).toHaveBeenNthCalledWith(2, [
+      { organization_id: "root", x: 900, y: 800 },
+    ]);
+    expect(result.current.positions.root).toEqual({ x: 900, y: 800 });
   });
 
   it("keeps failed local positions across remote refreshes and retries them", async () => {

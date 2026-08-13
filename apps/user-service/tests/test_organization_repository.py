@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.core.database.models.organizations import OrganizationModel
+from src.core.database.models import OrganizationModel
 from src.repository.organization_repository import OrganizationRepository
 
 

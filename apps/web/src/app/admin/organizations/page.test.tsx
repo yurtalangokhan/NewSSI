@@ -109,8 +109,18 @@ jest.mock("@/components/organization/OrganizationTree", () => ({
     membersByOrganizationId,
     onShowMembersChange,
     onExpandOrg,
+    onSearch,
+    searchResults,
+    searchLoading,
+    searchError,
+    resultsLimited,
+    onRevealResult,
   }: any) => (
-    <div data-testid="organization-tree" data-show-members={showMembers}>
+    <div
+      data-testid="organization-tree"
+      data-show-members={showMembers}
+      data-organizations={JSON.stringify(organizations)}
+    >
       <span>{organizations.length} root</span>
       <span>
         Tree members: {membersByOrganizationId?.["org-1"]?.length ?? 0}
@@ -123,6 +133,25 @@ jest.mock("@/components/organization/OrganizationTree", () => ({
       </button>
       <button onClick={() => onExpandOrg?.("org-1")}>
         Expand org-1
+      </button>
+      <button onClick={() => onSearch("runtime")}>Search runtime</button>
+      <button onClick={() => onSearch("security")}>Search security</button>
+      <span>Search loading: {String(searchLoading)}</span>
+      <span>Search error: {searchError ?? "none"}</span>
+      <span>Search limited: {String(resultsLimited)}</span>
+      <span>
+        Search results: {searchResults?.map((result: any) => result.name).join(", ")}
+      </span>
+      <span>
+        Loaded platform children:{" "}
+        {organizations
+          .flatMap((organization: any) => [organization, ...(organization.children ?? [])])
+          .find((organization: any) => organization.id === "platform")
+          ?.children?.map((child: any) => child.name)
+          .join(", ")}
+      </span>
+      <button onClick={() => onRevealResult(searchResults[0])}>
+        Reveal first result
       </button>
       <button onClick={onOpenDesigner}>Open organization designer</button>
     </div>
@@ -146,6 +175,10 @@ jest.mock("@/components/organization/OrganizationDesigner", () => ({
     showMembers,
     membersByOrganizationId,
     onShowMembersChange,
+    organizations,
+    onSearch,
+    searchResults,
+    onRevealResult,
   }: any) => (
     <div
       role="dialog"
@@ -159,6 +192,16 @@ jest.mock("@/components/organization/OrganizationDesigner", () => ({
       <button onClick={() => onShowMembersChange(!showMembers)}>
         Toggle designer users
       </button>
+      <button onClick={() => onSearch("runtime")}>Designer search runtime</button>
+      <span>
+        Designer search results: {searchResults?.map((result: any) => result.name).join(", ")}
+      </span>
+      <button onClick={() => onRevealResult(searchResults[0])}>
+        Designer reveal first result
+      </button>
+      <span>
+        Designer roots: {organizations.map((organization: any) => organization.name).join(", ")}
+      </span>
       Children:{" "}
       {selectedOrg?.children?.map((child: any) => child.name).join(", ")}
       <span>
@@ -487,7 +530,7 @@ describe("OrganizationsPage", () => {
     );
     await waitFor(() => expect(jest.mocked(mutate)).toHaveBeenCalledTimes(2));
     expect(jest.mocked(mutate).mock.calls).toEqual([
-      ["/api/user-service/organizations/tree?max_depth=1"],
+      ["/api/user-service/organizations/tree?max_depth=2"],
       ["/api/user-service/organizations/layout"],
     ]);
   });
@@ -506,7 +549,7 @@ describe("OrganizationsPage", () => {
     await user.click(screen.getByRole("button", { name: "Move in designer" }));
     await waitFor(() => expect(jest.mocked(mutate)).toHaveBeenCalledTimes(2));
     expect(jest.mocked(mutate).mock.calls).toEqual([
-      ["/api/user-service/organizations/tree?max_depth=1"],
+      ["/api/user-service/organizations/tree?max_depth=2"],
       ["/api/user-service/organizations/layout"],
     ]);
     expect(successToast).toHaveBeenCalledWith(
@@ -529,7 +572,7 @@ describe("OrganizationsPage", () => {
     );
     await waitFor(() => expect(jest.mocked(mutate)).toHaveBeenCalledTimes(2));
     expect(jest.mocked(mutate).mock.calls).toEqual([
-      ["/api/user-service/organizations/tree?max_depth=1"],
+      ["/api/user-service/organizations/tree?max_depth=2"],
       ["/api/user-service/organizations/layout"],
     ]);
   });
@@ -549,7 +592,7 @@ describe("OrganizationsPage", () => {
     );
     await waitFor(() => expect(jest.mocked(mutate)).toHaveBeenCalledTimes(1));
     expect(jest.mocked(mutate).mock.calls).toEqual([
-      ["/api/user-service/organizations/tree?max_depth=1"],
+      ["/api/user-service/organizations/tree?max_depth=2"],
     ]);
   });
 
@@ -669,5 +712,108 @@ describe("OrganizationsPage", () => {
         "/api/user-service/organizations/org-1/users"
       );
     });
+  });
+
+  it("cancels obsolete database searches and ignores their stale results", async () => {
+    const user = setupUser();
+    let resolveRuntime!: (response: Response) => void;
+    let runtimeSignal: AbortSignal | undefined;
+    jest.spyOn(global, "fetch").mockImplementation((request, options) => {
+      if (request === "/api/user-service/organizations/search?q=runtime&max_results=100") {
+        runtimeSignal = options?.signal as AbortSignal;
+        return new Promise<Response>((resolve) => {
+          resolveRuntime = resolve;
+        });
+      }
+      if (request === "/api/user-service/organizations/search?q=security&max_results=100") {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              results: [{ id: "security", name: "Security", path: "/security", parent_id: null }],
+            }),
+            { status: 200 }
+          )
+        );
+      }
+      return Promise.resolve(new Response(JSON.stringify({}), { status: 200 }));
+    });
+
+    render(<OrganizationsPage />);
+    await user.click(screen.getByRole("button", { name: "Search runtime" }));
+    await user.click(screen.getByRole("button", { name: "Search security" }));
+
+    await waitFor(() => expect(runtimeSignal?.aborted).toBe(true));
+    await waitFor(() =>
+      expect(screen.getByText(/Search results: Security/)).toBeInTheDocument()
+    );
+    resolveRuntime(
+      new Response(
+        JSON.stringify({
+          results: [{ id: "runtime", name: "Runtime", path: "/runtime", parent_id: null }],
+        }),
+        { status: 200 }
+      )
+    );
+    await Promise.resolve();
+    expect(screen.queryByText(/Search results: Runtime/)).not.toBeInTheDocument();
+  });
+
+  it("reveals an unloaded result with one sorted hierarchy-state update", async () => {
+    const user = setupUser();
+    organizationChildren = [
+      {
+        id: "platform",
+        name: "Engineering",
+        path: "/org-1/platform",
+        parent_id: "org-1",
+        order_index: 1,
+        children: [],
+        has_children: true,
+      },
+    ];
+    jest.spyOn(global, "fetch").mockImplementation(async (request) => {
+      if (request === "/api/user-service/organizations/search?q=runtime&max_results=100") {
+        return new Response(
+          JSON.stringify({
+            results: [{
+              id: "runtime",
+              name: "Runtime",
+              path: "/org-1/platform/runtime",
+              parent_id: "platform",
+              order_index: 2,
+            }],
+          }),
+          { status: 200 }
+        );
+      }
+      if (request === "/api/user-service/organizations/runtime/ancestors") {
+        return new Response(
+          JSON.stringify({
+            ancestors: [
+              { id: "org-1", name: "Platform", path: "/org-1", parent_id: null, order_index: 0 },
+              { id: "platform", name: "Engineering", path: "/org-1/platform", parent_id: "org-1", order_index: 1 },
+            ],
+          }),
+          { status: 200 }
+        );
+      }
+      return new Response(JSON.stringify({}), { status: 200 });
+    });
+
+    render(<OrganizationsPage />);
+    await user.click(screen.getByRole("button", { name: "Search runtime" }));
+    await waitFor(() =>
+      expect(screen.getByText(/Search results: Runtime/)).toBeInTheDocument()
+    );
+    await user.click(screen.getByRole("button", { name: "Reveal first result" }));
+
+    await waitFor(() =>
+      expect(global.fetch).toHaveBeenCalledWith(
+        "/api/user-service/organizations/runtime/ancestors"
+      )
+    );
+    await waitFor(() =>
+      expect(screen.getByText("Search error: none")).toBeInTheDocument()
+    );
   });
 });

@@ -14,8 +14,10 @@ export interface OrganizationLayoutResponse {
 }
 
 export type OrganizationLayoutStatus = "idle" | "saving" | "saved" | "error";
+export const MAX_ORGANIZATION_LAYOUT_POSITIONS = 100_000;
 
-type PositionMap = Record<string, XYPosition>;
+export type OrganizationPositionMap = Record<string, XYPosition>;
+type PositionMap = OrganizationPositionMap;
 type SaveLayout = (
   positions: OrganizationLayoutPosition[]
 ) => Promise<{ positions: OrganizationLayoutPosition[]; count: number }>;
@@ -42,6 +44,11 @@ async function getLayout(url: string): Promise<OrganizationLayoutResponse> {
 async function saveOrganizationLayout(
   positions: OrganizationLayoutPosition[]
 ): Promise<{ positions: OrganizationLayoutPosition[]; count: number }> {
+  if (positions.length > MAX_ORGANIZATION_LAYOUT_POSITIONS) {
+    throw new Error(
+      `Organization layout cannot exceed ${MAX_ORGANIZATION_LAYOUT_POSITIONS} positions`
+    );
+  }
   const response = await fetch("/api/user-service/organizations/layout", {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
@@ -77,6 +84,23 @@ function positionMap(
 
 function positionsEqual(first: XYPosition, second: XYPosition) {
   return first.x === second.x && first.y === second.y;
+}
+
+export function createOrganizationLayoutPayload(
+  positions: OrganizationPositionMap,
+  writableOrganizationIds: ReadonlySet<string>
+): OrganizationLayoutPosition[] {
+  const payload = Object.entries(positions)
+    .filter(([organizationId]) =>
+      writableOrganizationIds.has(organizationId)
+    )
+    .map(([organization_id, { x, y }]) => ({ organization_id, x, y }));
+  if (payload.length > MAX_ORGANIZATION_LAYOUT_POSITIONS) {
+    throw new Error(
+      `Organization layout cannot exceed ${MAX_ORGANIZATION_LAYOUT_POSITIONS} positions`
+    );
+  }
+  return payload;
 }
 
 function mergeLayoutBaseline(
@@ -130,6 +154,10 @@ export function useOrganizationLayout({
   );
   const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const savePromiseRef = useRef<Promise<boolean> | undefined>(undefined);
+  const replacementPromiseRef = useRef<Promise<boolean> | undefined>(
+    undefined
+  );
+  const failedReplacementRef = useRef<PositionMap | undefined>(undefined);
   const mountedRef = useRef(true);
 
   const setIfMounted = useCallback((callback: () => void) => {
@@ -166,6 +194,14 @@ export function useOrganizationLayout({
   );
 
   const saveDirtyPositions = useCallback(async (): Promise<boolean> => {
+    if (replacementPromiseRef.current) {
+      return replacementPromiseRef.current.then(async (saved) => {
+        if (!saved || Object.keys(dirtyPositionsRef.current).length === 0) {
+          return saved;
+        }
+        return saveDirtyPositions();
+      });
+    }
     if (savePromiseRef.current) {
       return savePromiseRef.current.then(async (saved) => {
         if (!saved || Object.keys(dirtyPositionsRef.current).length === 0) {
@@ -269,58 +305,92 @@ export function useOrganizationLayout({
 
   const replacePositionsAndSave = useCallback(
     async (nextPositions: PositionMap): Promise<boolean> => {
+      if (replacementPromiseRef.current) {
+        return replacementPromiseRef.current;
+      }
       if (timerRef.current) {
         clearTimeout(timerRef.current);
         timerRef.current = undefined;
       }
-      const writablePositions = Object.fromEntries(
-        Object.entries(nextPositions).filter(([organizationId]) =>
-          writableOrganizationIds.has(organizationId)
-        )
-      );
-      const pendingPositions = Object.entries(writablePositions).map(
-        ([organization_id, { x, y }]) => ({ organization_id, x, y })
-      );
-      if (pendingPositions.length === 0) return true;
-      dirtyPositionsRef.current = {};
-      setPositions((currentPositions) => ({
-        ...currentPositions,
-        ...writablePositions,
-      }));
-      setStatus("saving");
-      setSaveError(undefined);
-      setDirtyVersion((version) => version + 1);
-      try {
-        const result = await saveLayout(pendingPositions);
-        const requestBaseline = mergeLayoutBaseline(
-          latestRemoteRef.current,
-          pendingPositions,
-          writableIds
+      const activeSave = savePromiseRef.current;
+      const replacementPromise = (async () => {
+        if (activeSave) await activeSave;
+        if (timerRef.current) {
+          clearTimeout(timerRef.current);
+          timerRef.current = undefined;
+        }
+
+        const writablePositions = Object.fromEntries(
+          Object.entries(nextPositions).filter(([organizationId]) =>
+            writableOrganizationIds.has(organizationId)
+          )
         );
-        const savedBaseline = mergeLayoutBaseline(
-          requestBaseline,
-          result.positions,
-          writableIds
-        );
-        latestRemoteRef.current = savedBaseline;
-        void refreshLayout(savedBaseline, { revalidate: false });
+        let pendingPositions: OrganizationLayoutPosition[];
+        try {
+          pendingPositions = createOrganizationLayoutPayload(
+            writablePositions,
+            writableOrganizationIds
+          );
+        } catch (caughtError) {
+          failedReplacementRef.current = writablePositions;
+          setIfMounted(() => {
+            setStatus("error");
+            setSaveError(
+              caughtError instanceof Error
+                ? caughtError
+                : new Error("Organization layout could not be saved")
+            );
+          });
+          return false;
+        }
+        if (pendingPositions.length === 0) return true;
         setIfMounted(() => {
-          setPositions(positionMap(savedBaseline));
-          setStatus("saved");
+          setStatus("saving");
+          setSaveError(undefined);
           setDirtyVersion((version) => version + 1);
         });
-        return true;
-      } catch (caughtError) {
-        dirtyPositionsRef.current = writablePositions;
-        setIfMounted(() => {
-          setStatus("error");
-          setSaveError(
-            caughtError instanceof Error
-              ? caughtError
-              : new Error("Organization layout could not be saved")
+        try {
+          const result = await saveLayout(pendingPositions);
+          const requestBaseline = mergeLayoutBaseline(
+            latestRemoteRef.current,
+            pendingPositions,
+            writableIds
           );
-        });
-        return false;
+          const savedBaseline = mergeLayoutBaseline(
+            requestBaseline,
+            result.positions,
+            writableIds
+          );
+          latestRemoteRef.current = savedBaseline;
+          dirtyPositionsRef.current = {};
+          failedReplacementRef.current = undefined;
+          void refreshLayout(savedBaseline, { revalidate: false });
+          setIfMounted(() => {
+            setPositions(positionMap(savedBaseline));
+            setStatus("saved");
+            setDirtyVersion((version) => version + 1);
+          });
+          return true;
+        } catch (caughtError) {
+          failedReplacementRef.current = writablePositions;
+          setIfMounted(() => {
+            setStatus("error");
+            setSaveError(
+              caughtError instanceof Error
+                ? caughtError
+                : new Error("Organization layout could not be saved")
+            );
+          });
+          return false;
+        }
+      })();
+      replacementPromiseRef.current = replacementPromise;
+      try {
+        return await replacementPromise;
+      } finally {
+        if (replacementPromiseRef.current === replacementPromise) {
+          replacementPromiseRef.current = undefined;
+        }
       }
     },
     [
@@ -333,8 +403,11 @@ export function useOrganizationLayout({
   );
 
   const retry = useCallback(async () => {
+    if (failedReplacementRef.current) {
+      return replacePositionsAndSave(failedReplacementRef.current);
+    }
     return flush();
-  }, [flush]);
+  }, [flush, replacePositionsAndSave]);
 
   const discard = useCallback(() => {
     if (timerRef.current) {
@@ -342,6 +415,7 @@ export function useOrganizationLayout({
       timerRef.current = undefined;
     }
     dirtyPositionsRef.current = {};
+    failedReplacementRef.current = undefined;
     setPositions(positionMap(latestRemoteRef.current));
     setStatus("idle");
     setSaveError(undefined);
@@ -355,7 +429,9 @@ export function useOrganizationLayout({
     error: saveError ?? loadError,
     isLoading: enabled && !layout && !remoteLayout && isLayoutLoading,
     hasDirtyPositions:
-      dirtyVersion > 0 && Object.keys(dirtyPositionsRef.current).length > 0,
+      dirtyVersion > 0 &&
+      (Object.keys(dirtyPositionsRef.current).length > 0 ||
+        Boolean(failedReplacementRef.current)),
     isWritable: (organizationId: string) =>
       writableOrganizationIds.has(organizationId),
     setPosition,

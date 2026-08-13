@@ -199,6 +199,45 @@ describe("organizationTreeToLayoutPositions", () => {
     expect(positions.product!.x).toBe(positions.sales!.x);
     expect(positions.product!.y).not.toBe(positions.sales!.y);
   });
+
+  it.each(["vertical", "horizontal"] as const)(
+    "lays out collapsed nodes in a deterministic, balanced, collision-free %s complete tree",
+    (orientation) => {
+      const collapsedNodeIds = new Set(["root", "a", "b"]);
+      const first = organizationTreeToLayoutPositions(
+        unevenOrganizations,
+        orientation,
+        new Set(),
+        collapsedNodeIds,
+        true
+      );
+      const second = organizationTreeToLayoutPositions(
+        unevenOrganizations,
+        orientation,
+        new Set(),
+        collapsedNodeIds,
+        true
+      );
+      const crossAxis = orientation === "vertical" ? "x" : "y";
+      const depthAxis = orientation === "vertical" ? "y" : "x";
+
+      expect(Object.keys(first).sort()).toEqual(
+        ["root", "a", "a1", "a2", "a3", "b", "b1", "b1-deep"].sort()
+      );
+      expect(first).toEqual(second);
+      expect(
+        new Set(Object.values(first).map(({ x, y }) => `${x}:${y}`)).size
+      ).toBe(Object.keys(first).length);
+      expect(first.root![crossAxis]).toBe(
+        (first.a![crossAxis] + first.b![crossAxis]) / 2
+      );
+      expect(first.root![depthAxis]).toBeLessThan(first.a![depthAxis]);
+      expect(first.a![depthAxis]).toBeLessThan(first.a1![depthAxis]);
+      expect(first.b1![depthAxis]).toBeLessThan(
+        first["b1-deep"]![depthAxis]
+      );
+    }
+  );
 });
 
 describe("organization connection routing", () => {

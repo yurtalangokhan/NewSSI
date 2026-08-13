@@ -11,6 +11,7 @@ import type {
   OrganizationMember,
   OrganizationMembersByUnit,
   OrganizationNode,
+  OrganizationRevealRequest,
 } from "@/components/organization/organizationTypes";
 import { OrganizationUserAssignmentsPanel } from "@/components/organization/OrganizationUserAssignmentsPanel";
 import { toast } from "@/hooks/useToast";
@@ -23,7 +24,7 @@ import { cn } from "@/lib/utils";
 const DEFAULT_TREE_PANE_WIDTH = 480;
 const MIN_TREE_PANE_WIDTH = 320;
 const TREE_PANE_WIDTH_STORAGE_KEY = "admin-organizations-tree-pane-width";
-const ORGANIZATION_TREE_KEY = "/api/user-service/organizations/tree?max_depth=1";
+const ORGANIZATION_TREE_KEY = "/api/user-service/organizations/tree?max_depth=2";
 const ORGANIZATION_LAYOUT_KEY = "/api/user-service/organizations/layout";
 const ORGANIZATION_MEMBERS_KEY = "/api/user-service/organizations/members";
 const SHOW_MEMBERS_STORAGE_KEY = "admin-organizations-show-members";
@@ -69,6 +70,10 @@ function mergeSubunits(
     );
     const combinedChildren = [...existingChildren, ...additionalChildren];
     const mergedChildren = mergeSubunits(combinedChildren, subunitsByParentId);
+    const totalChildCount =
+      loadedChildren && loadedChildren.length > 0
+        ? loadedChildren.length
+        : node.children_count ?? (node.children?.length || 0);
     return {
       ...node,
       children: mergedChildren,
@@ -76,8 +81,38 @@ function mergeSubunits(
         (node.children && node.children.length > 0) ||
         (loadedChildren && loadedChildren.length > 0) ||
         node.has_children,
+      children_count: totalChildCount,
     };
   });
+}
+
+function sortOrganizations(
+  first: OrganizationNode,
+  second: OrganizationNode
+) {
+  const orderDifference =
+    (first.order_index ?? Number.MAX_SAFE_INTEGER) -
+    (second.order_index ?? Number.MAX_SAFE_INTEGER);
+  if (orderDifference !== 0) return orderDifference;
+  const nameDifference = first.name.localeCompare(second.name);
+  return nameDifference !== 0 ? nameDifference : first.id.localeCompare(second.id);
+}
+
+function mergeOrganizationsById(...lists: OrganizationNode[][]) {
+  const organizationsById = new Map<string, OrganizationNode>();
+  lists.flat().forEach((organization) => {
+    organizationsById.set(organization.id, {
+      ...organizationsById.get(organization.id),
+      ...organization,
+    });
+  });
+  return Array.from(organizationsById.values()).sort(sortOrganizations);
+}
+
+type SearchSurface = "tree" | "designer";
+
+interface PendingReveal extends OrganizationRevealRequest {
+  surface: SearchSurface;
 }
 
 export default function OrganizationsPage() {
@@ -86,6 +121,15 @@ export default function OrganizationsPage() {
   const canCreateRoot = hasPermission("org:create");
   const canEditLayout = hasPermission("org:update");
   const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
+  const [searchResults, setSearchResults] = useState<OrganizationNode[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [resultsLimited, setResultsLimited] = useState(false);
+  const [revealLoading, setRevealLoading] = useState(false);
+  const [pendingReveal, setPendingReveal] = useState<PendingReveal | null>(null);
+  const searchControllerRef = useRef<AbortController | null>(null);
+  const searchRequestIdRef = useRef(0);
+  const revealRequestIdRef = useRef(0);
   const [activeTab, setActiveTab] = useState("users");
   const [isDesignerOpen, setIsDesignerOpen] = useState(false);
   const [showMembers, setShowMembers] = useState(() => {
@@ -168,6 +212,65 @@ export default function OrganizationsPage() {
   const selectedOrg = useMemo(
     () => findOrganization(organizations, selectedOrgId),
     [organizations, selectedOrgId]
+  );
+
+  const handleOrganizationSearch = useCallback(
+    async (query: string) => {
+      const trimmedQuery = query.trim();
+      searchControllerRef.current?.abort();
+      const requestId = ++searchRequestIdRef.current;
+      if (trimmedQuery.length < 2) {
+        setSearchResults([]);
+        setSearchLoading(false);
+        setSearchError(null);
+        setResultsLimited(false);
+        return;
+      }
+
+      const controller = new AbortController();
+      searchControllerRef.current = controller;
+      setSearchLoading(true);
+      setSearchError(null);
+      try {
+        const response = await fetch(
+          `/api/user-service/organizations/search?q=${encodeURIComponent(trimmedQuery)}&max_results=100`,
+          { signal: controller.signal }
+        );
+        if (!response.ok) throw new Error("organization-search-failed");
+        const data = (await response.json()) as {
+          results?: OrganizationNode[];
+        };
+        if (
+          controller.signal.aborted ||
+          requestId !== searchRequestIdRef.current
+        ) {
+          return;
+        }
+        const results = Array.isArray(data.results) ? data.results : [];
+        setSearchResults(results);
+        setResultsLimited(results.length === 100);
+      } catch {
+        if (
+          controller.signal.aborted ||
+          requestId !== searchRequestIdRef.current
+        ) {
+          return;
+        }
+        setSearchError(t("admin.organizations.tree.searchFailed"));
+      } finally {
+        if (requestId === searchRequestIdRef.current) {
+          setSearchLoading(false);
+        }
+      }
+    },
+    [t]
+  );
+
+  useEffect(
+    () => () => {
+      searchControllerRef.current?.abort();
+    },
+    []
   );
   const membersKey = selectedOrg
     ? `/api/user-service/organizations/${selectedOrg.id}/users`
@@ -281,6 +384,71 @@ export default function OrganizationsPage() {
     setSelectedOrgId(organization.id);
     setActiveTab("users");
   }, []);
+
+  const handleRevealResult = useCallback(
+    async (surface: SearchSurface, result: OrganizationNode) => {
+      setRevealLoading(true);
+      setSearchError(null);
+      try {
+        const ancestorsResponse = await fetch(
+          `/api/user-service/organizations/${result.id}/ancestors`
+        );
+        if (!ancestorsResponse.ok) throw new Error("reveal-failed");
+        const ancestorsData = (await ancestorsResponse.json()) as {
+          ancestors?: OrganizationNode[];
+        };
+        const ancestors = Array.isArray(ancestorsData.ancestors)
+          ? ancestorsData.ancestors.filter(
+              (ancestor) => ancestor.id !== result.id
+            )
+          : [];
+        setSubunitsByParentId((current) => {
+          const next = { ...current };
+          let nestedChild = result;
+          [...ancestors].reverse().forEach((ancestor) => {
+            next[ancestor.id] = mergeOrganizationsById(
+              current[ancestor.id] ?? [],
+              [nestedChild]
+            );
+            nestedChild = {
+              ...ancestor,
+              children: mergeOrganizationsById(
+                ancestor.children ?? [],
+                [nestedChild]
+              ),
+              has_children: true,
+            };
+          });
+          return next;
+        });
+        setPendingReveal({
+          id: ++revealRequestIdRef.current,
+          surface,
+          result,
+          ancestorIds: ancestors.map(({ id }) => id),
+        });
+      } catch (error) {
+        const message = t("admin.organizations.tree.revealFailed");
+        setSearchError(message);
+        toast.error(message);
+        if (error instanceof Error && error.message === "missing-target") {
+          setSearchResults((current) =>
+            current.filter(({ id }) => id !== result.id)
+          );
+        }
+        setRevealLoading(false);
+      }
+    },
+    [t]
+  );
+
+  const handleRevealReady = useCallback(
+    (organization: OrganizationNode) => {
+      handleSelectOrg(organization);
+      setRevealLoading(false);
+    },
+    [handleSelectOrg]
+  );
 
   const handleCreateOrg = useCallback(
     async (parentId: string | null, name: string) => {
@@ -496,6 +664,17 @@ export default function OrganizationsPage() {
           onShowMembersChange={setShowMembers}
           membersLoading={allMembersLoading}
           onExpandOrg={handleExpandOrg}
+          searchResults={searchResults}
+          searchLoading={searchLoading}
+          searchError={searchError}
+          resultsLimited={resultsLimited}
+          revealLoading={revealLoading}
+          onSearch={handleOrganizationSearch}
+          onRevealResult={(result) => void handleRevealResult("tree", result)}
+          revealRequest={
+            pendingReveal?.surface === "tree" ? pendingReveal : null
+          }
+          onRevealReady={handleRevealReady}
         />
       </aside>
 
@@ -639,6 +818,20 @@ export default function OrganizationsPage() {
           membersByOrganizationId={membersByOrganizationId}
           onShowMembersChange={setShowMembers}
           membersLoading={allMembersLoading}
+          onExpandOrg={handleExpandOrg}
+          searchResults={searchResults}
+          searchLoading={searchLoading}
+          searchError={searchError}
+          resultsLimited={resultsLimited}
+          revealLoading={revealLoading}
+          onSearch={handleOrganizationSearch}
+          onRevealResult={(result) =>
+            void handleRevealResult("designer", result)
+          }
+          revealRequest={
+            pendingReveal?.surface === "designer" ? pendingReveal : null
+          }
+          onRevealReady={handleRevealReady}
         />
       )}
     </main>

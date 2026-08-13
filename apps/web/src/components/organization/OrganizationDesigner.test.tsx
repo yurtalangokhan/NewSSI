@@ -1,13 +1,15 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import { useState } from "react";
 import "@/i18n/config";
 
 import { OrganizationDesigner } from "@/components/organization/OrganizationDesigner";
+import type { OrganizationNode } from "@/components/organization/organizationTypes";
 import { useOrganizationLayout } from "@/components/organization/useOrganizationLayout";
 import { toast } from "@/hooks/useToast";
 import { render, setupUser } from "@tests/setup/test-utils";
 
 const fitView = jest.fn();
+let mockNodesInitialized = true;
 
 jest.mock("@xyflow/react", () => {
   const React = jest.requireActual("react");
@@ -33,6 +35,7 @@ jest.mock("@xyflow/react", () => {
       }, []);
       return [nodes, setNodes, onNodesChange];
     },
+    useNodesInitialized: () => mockNodesInitialized,
     ReactFlow: ({
       nodes,
       edges,
@@ -92,6 +95,7 @@ jest.mock("@xyflow/react", () => {
                   }
                 }}
                 data-position-x={node.position.x}
+                data-position-y={node.position.y}
                 data-member-count={node.data.members?.length ?? 0}
                 data-search-state={
                   node.data.searchMatch
@@ -103,6 +107,14 @@ jest.mock("@xyflow/react", () => {
               >
                 {node.data.name} {node.draggable ? "movable" : "locked"}
               </button>
+              {node.data.hasChildren && node.data.onToggleSubtree && (
+                <button
+                  aria-label={`Toggle subtree ${node.id}`}
+                  onClick={node.data.onToggleSubtree}
+                >
+                  Toggle subtree
+                </button>
+              )}
               {node.data.onRequestMove && node.data.parentOptions?.at(-1) && (
                 <button
                   onClick={() =>
@@ -155,7 +167,7 @@ const layoutActions = {
   refresh: jest.fn(),
 };
 
-const organizations = [
+const organizations: OrganizationNode[] = [
   {
     id: "root",
     name: "Enterprise",
@@ -173,7 +185,7 @@ const organizations = [
   },
 ];
 
-const movableOrganizations = [
+const movableOrganizations: OrganizationNode[] = [
   {
     id: "root",
     name: "Enterprise",
@@ -220,10 +232,23 @@ const handlers = {
   onRemoveUser: jest.fn().mockResolvedValue(undefined),
 };
 
+function mockCompleteTreeFetch(tree = organizations) {
+  // Serves the unlimited organization tree GET used by diagram reset.
+  return jest.spyOn(global, "fetch").mockResolvedValue(
+    new Response(JSON.stringify({ roots: tree }), { status: 200 })
+  );
+}
+
 describe("OrganizationDesigner", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockNodesInitialized = true;
     mockedUseOrganizationLayout.mockReturnValue({ ...layoutActions });
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+    jest.restoreAllMocks();
   });
 
   it("renders the operational map and changes coordinates without reparenting", async () => {
@@ -403,7 +428,50 @@ describe("OrganizationDesigner", () => {
     );
   });
 
-  it("keeps the full graph visible and emphasizes inline search matches", async () => {
+  it("shows remote suggestions and reveals a keyboard-selected result", async () => {
+    jest.useFakeTimers();
+    const user = setupUser();
+    const onSearch = jest.fn();
+    const onRevealResult = jest.fn();
+    const runtime: OrganizationNode = {
+      id: "runtime",
+      name: "Runtime",
+      path: "/enterprise/platform/runtime",
+      parent_id: "child",
+      children: [],
+    };
+    render(
+      <OrganizationDesigner
+        organizations={organizations}
+        selectedOrg={null}
+        members={[]}
+        editable={false}
+        capabilityLoading={false}
+        searchResults={[runtime]}
+        searchLoading={false}
+        searchError={null}
+        resultsLimited={false}
+        onSearch={onSearch}
+        onRevealResult={onRevealResult}
+        {...handlers}
+      />
+    );
+
+    const search = screen.getByRole("combobox", {
+      name: "Search organizations",
+    });
+    await user.type(search, "ru");
+    await jest.advanceTimersByTimeAsync(250);
+    expect(onSearch).toHaveBeenCalledWith("ru");
+    expect(screen.getByRole("option", { name: /Runtime/ })).toHaveTextContent(
+      "/enterprise/platform/runtime"
+    );
+    await user.keyboard("{ArrowDown}{Enter}");
+    expect(onRevealResult).toHaveBeenCalledWith(runtime);
+    jest.useRealTimers();
+  });
+
+  it("keeps loaded-node highlighting while remote search is active", async () => {
     const user = setupUser();
     render(
       <OrganizationDesigner
@@ -412,13 +480,17 @@ describe("OrganizationDesigner", () => {
         members={[]}
         editable={false}
         capabilityLoading={false}
+        searchResults={[]}
+        searchLoading={false}
+        searchError={null}
+        resultsLimited={false}
+        onSearch={jest.fn()}
+        onRevealResult={jest.fn()}
         {...handlers}
       />
     );
 
-    const search = screen.getByRole("textbox", {
-      name: "Search organizations",
-    });
+    const search = screen.getByRole("combobox", { name: "Search organizations" });
     await user.type(search, "plat");
 
     expect(
@@ -427,24 +499,6 @@ describe("OrganizationDesigner", () => {
     expect(
       screen.getByRole("button", { name: /Enterprise movable/ })
     ).toHaveAttribute("data-search-state", "dimmed");
-    expect(screen.getByText("1 / 1")).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Previous result" })
-    ).toBeEnabled();
-    await user.click(screen.getByRole("button", { name: "Next result" }));
-    expect(handlers.onSelectOrg).toHaveBeenCalledWith(
-      organizations[0]!.children![0]
-    );
-
-    handlers.onSelectOrg.mockClear();
-    await user.keyboard("{Enter}");
-    expect(handlers.onSelectOrg).toHaveBeenCalledWith(
-      organizations[0]!.children![0]
-    );
-    expect(fitView).toHaveBeenCalledWith(
-      expect.objectContaining({ duration: 300 })
-    );
-
     await user.keyboard("{Escape}");
     expect(search).toHaveValue("");
     expect(handlers.onClose).not.toHaveBeenCalled();
@@ -520,6 +574,11 @@ describe("OrganizationDesigner", () => {
     "confirms, persists, and fits the %s layout",
     async (buttonName, orientation) => {
       const successToast = jest.spyOn(toast, "success");
+      mockedUseOrganizationLayout.mockReturnValue({
+        ...layoutActions,
+        writableOrganizationIds: new Set(["root", "child"]),
+      });
+      mockCompleteTreeFetch();
       const user = setupUser();
       render(
         <OrganizationDesigner
@@ -560,11 +619,328 @@ describe("OrganizationDesigner", () => {
           expect.objectContaining({ duration: 300 })
         )
       );
-      expect(successToast).toHaveBeenCalledWith(
-        "Diagram layout reset and saved"
+      await waitFor(() =>
+        expect(successToast).toHaveBeenCalledWith(
+          "Diagram layout reset and saved"
+        )
       );
     }
   );
+
+  it("resets from the fetched complete tree and saves positions for unloaded nodes", async () => {
+    const completeTree = [
+      {
+        ...organizations[0]!,
+        children: [
+          {
+            ...organizations[0]!.children![0]!,
+            children: [
+              {
+                id: "fetched-only",
+                name: "Fetched only",
+                path: "/enterprise/platform/fetched-only",
+                parent_id: "child",
+                children: [],
+              },
+            ],
+          },
+        ],
+      },
+    ];
+    mockedUseOrganizationLayout.mockReturnValue({
+      ...layoutActions,
+      writableOrganizationIds: new Set(["root", "child", "fetched-only"]),
+    });
+    mockCompleteTreeFetch(completeTree);
+    const user = setupUser();
+    render(
+      <OrganizationDesigner
+        organizations={organizations}
+        selectedOrg={organizations[0]!}
+        members={[]}
+        editable
+        capabilityLoading={false}
+        {...handlers}
+      />
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: "Reset diagram vertically" })
+    );
+    await user.click(screen.getByRole("button", { name: "Reset layout" }));
+
+    await waitFor(() =>
+      expect(layoutActions.replacePositionsAndSave).toHaveBeenCalledWith(
+        expect.objectContaining({
+          root: expect.any(Object),
+          child: expect.any(Object),
+          "fetched-only": expect.any(Object),
+        })
+      )
+    );
+  });
+
+  it("does not save when the complete tree contains a non-writable organization", async () => {
+    const errorToast = jest.spyOn(toast, "error");
+    const completeTree = [
+      {
+        ...organizations[0]!,
+        children: [
+          ...organizations[0]!.children!,
+          {
+            id: "read-only-fetched",
+            name: "Read only fetched",
+            path: "/enterprise/read-only-fetched",
+            parent_id: "root",
+            children: [],
+          },
+        ],
+      },
+    ];
+    mockedUseOrganizationLayout.mockReturnValue({
+      ...layoutActions,
+      writableOrganizationIds: new Set(["root", "child"]),
+    });
+    mockCompleteTreeFetch(completeTree);
+    const user = setupUser();
+    render(
+      <OrganizationDesigner
+        organizations={organizations}
+        selectedOrg={organizations[0]!}
+        members={[]}
+        editable
+        capabilityLoading={false}
+        {...handlers}
+      />
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: "Reset diagram vertically" })
+    );
+    await user.click(screen.getByRole("button", { name: "Reset layout" }));
+
+    await waitFor(() =>
+      expect(errorToast).toHaveBeenCalledWith(
+        "Layout reset requires access to every organization"
+      )
+    );
+    expect(layoutActions.replacePositionsAndSave).not.toHaveBeenCalled();
+  });
+
+  it("shows full-width completed progress through 100 percent before closing", async () => {
+    mockedUseOrganizationLayout.mockReturnValue({
+      ...layoutActions,
+      writableOrganizationIds: new Set(["root", "child"]),
+    });
+    mockCompleteTreeFetch();
+    const user = setupUser();
+    render(
+      <OrganizationDesigner
+        organizations={organizations}
+        selectedOrg={organizations[0]!}
+        members={[]}
+        editable
+        capabilityLoading={false}
+        {...handlers}
+      />
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: "Reset diagram vertically" })
+    );
+    await user.click(screen.getByRole("button", { name: "Reset layout" }));
+
+    const progress = await screen.findByRole("progressbar");
+    expect(progress).toHaveAttribute("aria-valuenow", "100");
+    expect(progress.closest('[data-testid="reset-progress-content"]')).toHaveClass(
+      "w-full"
+    );
+    expect(screen.getByText("100%")).toBeVisible();
+    expect(
+      screen
+        .getAllByRole("button", { name: "Close designer", hidden: true })
+        .every((button) => button.hasAttribute("disabled"))
+    ).toBe(true);
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    });
+    expect(screen.getByText("100%")).toBeVisible();
+    await waitFor(() =>
+      expect(screen.queryByRole("progressbar")).not.toBeInTheDocument()
+    );
+  });
+
+  it("waits for committed React Flow nodes before fitting and completing reset", async () => {
+    mockedUseOrganizationLayout.mockReturnValue({
+      ...layoutActions,
+      writableOrganizationIds: new Set(["root", "child"]),
+    });
+    mockCompleteTreeFetch();
+    mockNodesInitialized = false;
+    const user = setupUser();
+    const { rerender } = render(
+      <OrganizationDesigner
+        organizations={organizations}
+        selectedOrg={organizations[0]!}
+        members={[]}
+        editable
+        capabilityLoading={false}
+        {...handlers}
+      />
+    );
+    fitView.mockClear();
+
+    await user.click(
+      screen.getByRole("button", { name: "Reset diagram vertically" })
+    );
+    await user.click(screen.getByRole("button", { name: "Reset layout" }));
+    await waitFor(() =>
+      expect(layoutActions.replacePositionsAndSave).toHaveBeenCalled()
+    );
+
+    expect(fitView).not.toHaveBeenCalled();
+    expect(screen.getByRole("progressbar")).toHaveAttribute(
+      "aria-valuenow",
+      "75"
+    );
+
+    mockNodesInitialized = true;
+    rerender(
+      <OrganizationDesigner
+        organizations={organizations}
+        selectedOrg={organizations[0]!}
+        members={[]}
+        editable
+        capabilityLoading={false}
+        {...handlers}
+      />
+    );
+
+    await waitFor(() =>
+      expect(fitView).toHaveBeenCalledWith(
+        expect.objectContaining({
+          nodes: expect.arrayContaining([
+            expect.objectContaining({ id: "root" }),
+            expect.objectContaining({ id: "child" }),
+          ]),
+        })
+      )
+    );
+    await waitFor(() =>
+      expect(screen.getByRole("progressbar")).toHaveAttribute(
+        "aria-valuenow",
+        "100"
+      )
+    );
+  });
+
+  it("shows localized reset feedback when the atomic save fails", async () => {
+    const errorToast = jest.spyOn(toast, "error");
+    mockedUseOrganizationLayout.mockReturnValue({
+      ...layoutActions,
+      writableOrganizationIds: new Set(["root", "child"]),
+      replacePositionsAndSave: jest.fn().mockResolvedValue(false),
+    });
+    mockCompleteTreeFetch();
+    const user = setupUser();
+    render(
+      <OrganizationDesigner
+        organizations={organizations}
+        selectedOrg={organizations[0]!}
+        members={[]}
+        editable
+        capabilityLoading={false}
+        {...handlers}
+      />
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: "Reset diagram vertically" })
+    );
+    await user.click(screen.getByRole("button", { name: "Reset layout" }));
+
+    await waitFor(() =>
+      expect(errorToast).toHaveBeenCalledWith(
+        "Complete organization layout could not be saved"
+      )
+    );
+  });
+
+  it("focuses a newly loaded subtree once and uses saved full-tree positions", async () => {
+    const onExpandOrg = jest.fn().mockResolvedValue(undefined);
+    const unloadedTree = [
+      {
+        ...organizations[0]!,
+        children: [],
+        has_children: true,
+        children_count: 1,
+      },
+    ];
+    mockedUseOrganizationLayout.mockReturnValue({
+      ...layoutActions,
+      positions: {
+        root: { x: 20, y: 30 },
+        child: { x: 420, y: 330 },
+      },
+      writableOrganizationIds: new Set(["root", "child"]),
+    });
+    const { rerender } = render(
+      <OrganizationDesigner
+        organizations={unloadedTree}
+        selectedOrg={unloadedTree[0]!}
+        members={[]}
+        editable
+        capabilityLoading={false}
+        onExpandOrg={onExpandOrg}
+        {...handlers}
+      />
+    );
+    fitView.mockClear();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Toggle subtree root" })
+    );
+    expect(onExpandOrg).toHaveBeenCalledWith("root");
+    rerender(
+      <OrganizationDesigner
+        organizations={organizations}
+        selectedOrg={organizations[0]!}
+        members={[]}
+        editable
+        capabilityLoading={false}
+        onExpandOrg={onExpandOrg}
+        {...handlers}
+      />
+    );
+
+    await waitFor(() =>
+      expect(fitView).toHaveBeenCalledWith({
+        nodes: expect.arrayContaining([
+          expect.objectContaining({ id: "root" }),
+          expect.objectContaining({ id: "child" }),
+        ]),
+        padding: 0.2,
+        minZoom: 0.2,
+        maxZoom: 1.2,
+        duration: 300,
+      })
+    );
+    expect(
+      screen.getByRole("button", { name: /^Platform movable$/ })
+    ).toHaveAttribute(
+      "data-position-x",
+      "420"
+    );
+
+    const focusCallCount = fitView.mock.calls.length;
+    fireEvent.click(
+      screen.getByRole("button", { name: "Toggle subtree root" })
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Toggle subtree root" })
+    );
+    expect(fitView).toHaveBeenCalledTimes(focusCallCount);
+  });
 
   it("cancels diagram reset without saving positions", async () => {
     const user = setupUser();

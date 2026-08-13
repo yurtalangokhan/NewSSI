@@ -2,6 +2,12 @@
 
 import { useCallback, useState } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
+import {
+  SvgChevronDown,
+  SvgChevronLeft,
+  SvgChevronRight,
+  SvgChevronUp,
+} from "@opal/icons";
 import { useTranslation } from "react-i18next";
 
 import type {
@@ -205,8 +211,10 @@ export function OrganizationFlowNode({
     );
   }
 
+  const totalChildCount = data.childCount || (data.childrenCount as number) || 0;
+  const hasSubItems = Boolean(data.hasChildren || totalChildCount > 0);
   const childLabel = t("admin.organizations.designer.childCount", {
-    count: data.childCount,
+    count: totalChildCount,
   });
 
   return (
@@ -220,7 +228,7 @@ export function OrganizationFlowNode({
       }
       data-testid={`organization-flow-node-${id}`}
       className={cn(
-        "w-64 rounded-12 border bg-background-neutral-00 p-4 shadow-none transition-[opacity,background-color,border-color,box-shadow] duration-200 motion-reduce:transition-none",
+        "relative w-64 rounded-12 border bg-background-neutral-00 p-4 shadow-none transition-[opacity,background-color,border-color,box-shadow] duration-200 motion-reduce:transition-none",
         data.searchMatch &&
           "border-action-link-05 bg-background-neutral-03 ring-2 ring-action-link-05 shadow-md",
         data.searchDimmed && "opacity-30",
@@ -420,6 +428,53 @@ export function OrganizationFlowNode({
             </Text>
           )}
         </div>
+      )}
+
+      {/* Modern Expand Subtree Button */}
+      {hasSubItems && (
+        <button
+          type="button"
+          aria-label={
+            data.isSubtreeExpanded
+              ? t("admin.organizations.designer.collapseSubtree", {
+                  defaultValue: "Collapse sub-items",
+                  name: data.name,
+                })
+              : t("admin.organizations.designer.expandSubtree", {
+                  defaultValue: "Expand sub-items",
+                  name: data.name,
+                })
+          }
+          data-testid={`toggle-subtree-${id}`}
+          className={cn(
+            "nodrag nopan absolute z-10 flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs shadow-sm transition-all duration-200 hover:scale-105 hover:border-action-link-05 hover:text-action-link-05 hover:shadow-md motion-reduce:transition-none",
+            data.layoutOrientation === "horizontal"
+              ? "-right-3.5 top-1/2 -translate-y-1/2 translate-x-1/2"
+              : "-bottom-3.5 left-1/2 -translate-x-1/2",
+            data.isSubtreeExpanded
+              ? "border-border-02 bg-background-neutral-00 text-text-03"
+              : "border-action-link-05 bg-background-neutral-03 text-action-link-05 font-medium shadow-md ring-1 ring-action-link-05"
+          )}
+          onClick={(event) => {
+            event.stopPropagation();
+            data.onToggleSubtree?.();
+          }}
+        >
+          {data.layoutOrientation === "horizontal" ? (
+            data.isSubtreeExpanded ? (
+              <SvgChevronLeft size={12} />
+            ) : (
+              <SvgChevronRight size={12} />
+            )
+          ) : data.isSubtreeExpanded ? (
+            <SvgChevronUp size={12} />
+          ) : (
+            <SvgChevronDown size={12} />
+          )}
+          <span className="font-secondary-mono text-[11px] font-semibold leading-none">
+            {data.childCount}
+          </span>
+        </button>
       )}
     </div>
   );

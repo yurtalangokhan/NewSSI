@@ -36,14 +36,14 @@ class OrganizationLayoutPosition(BaseModel):
     """One canvas coordinate for an organization."""
 
     organization_id: uuid.UUID
-    x: float = Field(ge=-1_000_000, le=1_000_000, allow_inf_nan=False)
-    y: float = Field(ge=-1_000_000, le=1_000_000, allow_inf_nan=False)
+    x: float = Field(ge=-100_000_000, le=100_000_000, allow_inf_nan=False)
+    y: float = Field(ge=-100_000_000, le=100_000_000, allow_inf_nan=False)
 
 
 class OrganizationLayoutUpdateRequest(BaseModel):
     """Shared organization positions to create or update atomically."""
 
-    positions: list[OrganizationLayoutPosition] = Field(max_length=500)
+    positions: list[OrganizationLayoutPosition] = Field(max_length=100_000)
 
 
 class OrganizationLayoutReadResponse(BaseModel):

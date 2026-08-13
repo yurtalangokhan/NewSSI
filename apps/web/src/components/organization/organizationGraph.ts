@@ -14,6 +14,9 @@ export interface OrganizationFlowNodeData extends Record<string, unknown> {
   name: string;
   path: string;
   childCount: number;
+  hasChildren?: boolean;
+  isSubtreeExpanded?: boolean;
+  onToggleSubtree?: () => void;
   readOnly: boolean;
   canAddChild?: boolean;
   canManage?: boolean;
@@ -57,46 +60,104 @@ interface OrganizationGraph {
   edges: OrganizationFlowEdge[];
 }
 
+export function isNodeSubtreeExpanded(
+  nodeId: string,
+  childrenLength: number,
+  expandedNodeIds = new Set<string>(),
+  collapsedNodeIds = new Set<string>()
+): boolean {
+  if (collapsedNodeIds.has(nodeId)) return false;
+  if (expandedNodeIds.has(nodeId)) return true;
+  return childrenLength > 0;
+}
+
 export function organizationTreeToLayoutPositions(
   organizations: OrganizationTreeNode[],
-  orientation: OrganizationLayoutOrientation
+  orientation: OrganizationLayoutOrientation,
+  expandedNodeIds = new Set<string>(),
+  collapsedNodeIds = new Set<string>(),
+  allNodes = false
 ): OrganizationPositionMap {
   const positions: OrganizationPositionMap = {};
-  const siblingGap =
-    orientation === "vertical" ? SIBLING_GAP : HORIZONTAL_SIBLING_GAP;
-  const levelGap =
-    orientation === "vertical" ? LEVEL_GAP : HORIZONTAL_LEVEL_GAP;
-  let nextLeafPosition = 0;
+  const vertical = orientation === "vertical";
+  const siblingGap = vertical ? SIBLING_GAP : HORIZONTAL_SIBLING_GAP;
+  const levelGap = vertical ? LEVEL_GAP : HORIZONTAL_LEVEL_GAP;
 
-  function placeSubtree(
-    organization: OrganizationTreeNode,
-    depth: number
-  ): number {
-    const children = organization.children ?? [];
-    let siblingPosition: number;
-    if (children.length === 0) {
-      siblingPosition = nextLeafPosition;
-      nextLeafPosition += siblingGap;
-    } else {
-      const childPositions = children.map((child) =>
-        placeSubtree(child, depth + 1)
-      );
-      siblingPosition =
-        (childPositions[0]! + childPositions[childPositions.length - 1]!) / 2;
-    }
-    positions[organization.id] =
-      orientation === "vertical"
-        ? { x: siblingPosition, y: depth * levelGap }
-        : { x: depth * levelGap, y: siblingPosition };
-    return siblingPosition;
+  interface LayoutNode {
+    id: string;
+    x: number;
+    depth: number;
+    width: number;
+    children: { node: LayoutNode; leftOffset: number }[];
   }
 
+  function buildSubtree(
+    organization: OrganizationTreeNode,
+    depth: number
+  ): LayoutNode {
+    const isExpanded =
+      allNodes ||
+      isNodeSubtreeExpanded(
+        organization.id,
+        (organization.children ?? []).length,
+        expandedNodeIds,
+        collapsedNodeIds
+      );
+    const rawChildren = isExpanded ? organization.children ?? [] : [];
+
+    if (rawChildren.length === 0) {
+      return {
+        id: organization.id,
+        x: siblingGap / 2,
+        depth,
+        width: siblingGap,
+        children: [],
+      };
+    }
+
+    let currentX = 0;
+    const childrenWithOffsets: { node: LayoutNode; leftOffset: number }[] = [];
+
+    rawChildren.forEach((child) => {
+      const childLayout = buildSubtree(child, depth + 1);
+      childrenWithOffsets.push({ node: childLayout, leftOffset: currentX });
+      currentX += childLayout.width;
+    });
+
+    const firstChild = childrenWithOffsets[0]!;
+    const lastChild = childrenWithOffsets[childrenWithOffsets.length - 1]!;
+    const firstChildCenter = firstChild.leftOffset + firstChild.node.x;
+    const lastChildCenter = lastChild.leftOffset + lastChild.node.x;
+    const parentX = (firstChildCenter + lastChildCenter) / 2;
+
+    return {
+      id: organization.id,
+      x: parentX,
+      depth,
+      width: Math.max(siblingGap, currentX),
+      children: childrenWithOffsets,
+    };
+  }
+
+  function assignCoordinates(layoutNode: LayoutNode, leftX: number): void {
+    const absX = leftX + layoutNode.x;
+    positions[layoutNode.id] = vertical
+      ? { x: absX, y: layoutNode.depth * levelGap }
+      : { x: layoutNode.depth * levelGap, y: absX };
+
+    layoutNode.children.forEach(({ node: child, leftOffset }) => {
+      assignCoordinates(child, leftX + leftOffset);
+    });
+  }
+
+  let rootCursor = 0;
   organizations.forEach((organization, rootIndex) => {
     if (rootIndex > 0) {
-      const rootGap = orientation === "vertical" ? ROOT_GAP : SIBLING_GAP;
-      nextLeafPosition += Math.max(0, rootGap - siblingGap);
+      rootCursor += Math.max(ROOT_GAP, siblingGap);
     }
-    placeSubtree(organization, 0);
+    const layoutNode = buildSubtree(organization, 0);
+    assignCoordinates(layoutNode, rootCursor);
+    rootCursor += layoutNode.width;
   });
 
   return positions;
@@ -257,19 +318,63 @@ export function organizationTreeToFlowGraph(
   layoutOrientation = inferOrganizationLayoutOrientation(
     organizations,
     savedPositions
-  )
+  ),
+  expandedNodeIds = new Set<string>(),
+  collapsedNodeIds = new Set<string>()
 ): OrganizationGraph {
   const nodes: OrganizationFlowNode[] = [];
   const edges: OrganizationFlowEdge[] = [];
   const fallbackPositions = organizationTreeToLayoutPositions(
     organizations,
-    "vertical"
+    layoutOrientation,
+    expandedNodeIds,
+    collapsedNodeIds
   );
 
-  function visit(organization: OrganizationTreeNode) {
+  /**
+   * Visit a node and determine its canvas position.
+   *
+   * `parentDelta` is the translation vector between the nearest ancestor's
+   * saved (actual) position and its computed fallback position.  Children
+   * without their own saved position inherit this delta so the whole subtree
+   * branch is translated together, preserving the tree shape while aligning
+   * it under the ancestor's real location on the canvas.
+   */
+  function visit(
+    organization: OrganizationTreeNode,
+    parentDelta: XYPosition = { x: 0, y: 0 }
+  ) {
     const fallbackPosition = fallbackPositions[organization.id]!;
-    const position = savedPositions[organization.id] ?? fallbackPosition;
+    let position: XYPosition;
+    let delta: XYPosition;
+
+    if (savedPositions[organization.id]) {
+      position = savedPositions[organization.id]!;
+      delta = {
+        x: position.x - fallbackPosition.x,
+        y: position.y - fallbackPosition.y,
+      };
+    } else {
+      position = {
+        x: fallbackPosition.x + parentDelta.x,
+        y: fallbackPosition.y + parentDelta.y,
+      };
+      delta = parentDelta;
+    }
+
     const children = organization.children ?? [];
+    const childCount =
+      children.length > 0
+        ? children.length
+        : (organization as { children_count?: number }).children_count ?? 0;
+    const hasChildren =
+      childCount > 0 || (organization as { has_children?: boolean }).has_children === true;
+    const isSubtreeExpanded = isNodeSubtreeExpanded(
+      organization.id,
+      children.length,
+      expandedNodeIds,
+      collapsedNodeIds
+    );
 
     nodes.push({
       id: organization.id,
@@ -281,7 +386,9 @@ export function organizationTreeToFlowGraph(
         organizationId: organization.id,
         name: organization.name,
         path: organization.path,
-        childCount: children.length,
+        childCount,
+        hasChildren,
+        isSubtreeExpanded,
         parentId: organization.parent_id,
         readOnly: !writableOrganizationIds.has(organization.id),
         layoutOrientation,
@@ -289,27 +396,29 @@ export function organizationTreeToFlowGraph(
       selected: organization.id === selectedOrganizationId,
     });
 
-    children.forEach((child) => {
-      const active = isOnSelectedPath(child, selectedOrganizationId);
-      edges.push({
-        id: `${organization.id}-${child.id}`,
-        source: organization.id,
-        target: child.id,
-        sourceHandle: layoutOrientation === "horizontal" ? "right" : "bottom",
-        targetHandle: layoutOrientation === "horizontal" ? "left" : "top",
-        type: "smoothstep",
-        selectable: false,
-        focusable: false,
-        data: { active },
-        style: active
-          ? { stroke: "var(--action-link-05)", strokeWidth: 2 }
-          : { stroke: "var(--border-02)", strokeWidth: 1 },
+    if (isSubtreeExpanded) {
+      children.forEach((child) => {
+        const active = isOnSelectedPath(child, selectedOrganizationId);
+        edges.push({
+          id: `${organization.id}-${child.id}`,
+          source: organization.id,
+          target: child.id,
+          sourceHandle: layoutOrientation === "horizontal" ? "right" : "bottom",
+          targetHandle: layoutOrientation === "horizontal" ? "left" : "top",
+          type: "smoothstep",
+          selectable: false,
+          focusable: false,
+          data: { active },
+          style: active
+            ? { stroke: "var(--action-link-05)", strokeWidth: 2 }
+            : { stroke: "var(--border-02)", strokeWidth: 1 },
+        });
+        visit(child, delta);
       });
-      visit(child);
-    });
+    }
   }
 
-  organizations.forEach(visit);
+  organizations.forEach((org) => visit(org));
 
   return { nodes, edges };
 }
