@@ -147,6 +147,12 @@ class Settings(BaseSettings):
     # available to every agent and the default chatbot, not opt-in per agent.
     DOCUMENT_TOOLS_ENABLED: bool = True
 
+    # The full `options` reference (~350 tokens) is appended to the tool
+    # description on every request. Disable for token-sensitive or small
+    # local-model setups; `options` keeps working, the model just isn't told
+    # about it in detail.
+    DOCUMENT_TOOLS_RICH_OPTIONS: bool = True
+
     @computed_field
     @property
     def BASE_URL(self) -> str:

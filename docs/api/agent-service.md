@@ -408,10 +408,94 @@ injected into every agent graph built by `GraphBuilder`
 are always present unless `DOCUMENT_TOOLS_ENABLED=false` (see
 `core/settings.py`).
 
-- Rendering: `service/DocumentGenerationService.py` (pure, no I/O). PDF
-  Unicode text (Turkish characters) requires the `DejaVuSans` TTF font,
-  installed via `fonts-dejavu-core` in `docker/Dockerfile.service`; without it
-  PDFs silently fall back to Helvetica (ASCII only).
+- Rendering: `service/DocumentGenerationService.py` is a thin façade —
+  `from service import DocumentGenerationService as docgen` still works
+  unchanged, but the implementation lives in the `service/documents/` package,
+  split by concern: `blocks.py`/`markdown_parser.py` (the Markdown → block
+  tree, including inline bold/italic/code/link spans), `options.py` (the
+  `DocumentOptions`/`SpreadsheetOptions` schema), `themes.py` (named
+  theme→font/color resolution), `numbering.py` (heading and table/figure
+  caption numbering, shared by both renderers so DOCX and PDF stay
+  consistent), `docx_renderer.py`/`pdf_renderer.py`/`xlsx_renderer.py`/`text_renderer.py`
+  (one renderer per output format), plus `ooxml.py`, `pdf_fonts.py`,
+  `pdf_canvas.py`, `header_footer.py`/`pdf_header_footer.py`, and
+  `image_loading.py` for the low-level pieces each renderer needs. PDF
+  Unicode text (Turkish characters) requires the `DejaVuSans` family of TTF
+  fonts, installed via `fonts-dejavu-core` in `docker/Dockerfile.service`;
+  `pdf_fonts.py` maps a requested Word-style family name (`Calibri`,
+  `Georgia`, `Consolas`, …) to the closest registered DejaVu bucket
+  (sans/serif/mono), and falls back to the regular file when a bold/italic
+  variant TTF is missing rather than to base-14 Helvetica — Helvetica can't
+  render Turkish glyphs, so silently substituting it would defeat the reason
+  DejaVu was registered in the first place.
+- Styling: both tools accept an optional `options` argument (a dict, or a
+  JSON string — either is accepted) that controls theme, fonts and colors,
+  page size/orientation/margins, cover page, table of contents, heading
+  numbering, header/footer (including `{page}`/`{pages}`/`{title}`/`{date}`/`{version}`
+  placeholders), table styling, watermark, and PDF bookmarks/metadata for
+  `create_document`; and theme, header row styling, freeze pane, autofilter,
+  zebra striping, column widths/formats/alignments, and static conditional
+  cell shading for `create_spreadsheet`. Five built-in themes ship in
+  `themes.py`: `default`, `corporate_blue`, `minimal_gray`, `academic`, and
+  `dark_accent`. Parsing in `options.py` is deliberately tolerant: an unknown
+  key or an invalid value is logged and replaced with its default rather than
+  rejecting the call — a long document is too expensive to make the user
+  regenerate over one bad style field. `DOCUMENT_TOOLS_RICH_OPTIONS` (see
+  `core/settings.py`) controls how much of this the model is told about: on
+  (the default), the tool description carries the full `options` reference
+  (~350 tokens); off, it gets a short description instead — `options` still
+  works either way, the model just isn't walked through every field for
+  token-sensitive or small local-model setups.
+- Table of contents, by format: DOCX gets a real Word TOC field (`\o \h \z \u`)
+  with a cached heading list — no page numbers, since those aren't known yet
+  either — rendered in between, plus `updateFields` set in the document
+  settings. The cache exists because
+  `docx-preview` — what the web frontend uses to render the file inline —
+  does not evaluate fields, so a bare field would show as empty until the
+  file is opened in Word or LibreOffice; the cached list is what renders in
+  the browser, and Word overwrites it with real page numbers on open. PDF has
+  no such split-brain viewer problem, so its TOC is a genuine ReportLab
+  `TableOfContents` flowable built through `document.multiBuild(...)`, giving
+  real resolved page numbers directly in the generated file — see
+  `pdf_renderer.py`. PDF header/footer `{pages}` (the *total* page count)
+  has a similar timing problem of its own: ReportLab renders one page at a
+  time and has no idea how many pages the finished document will have until
+  the end, so that placeholder is resolved by `pdf_canvas.NumberedCanvas`,
+  which defers drawing until the whole document has been laid out.
+- DOCX header/footer left/center/right positioning uses a borderless
+  3-column table (`header_footer.render` in `header_footer.py`), not `w:tabs`
+  tab stops. Custom tab-stop positions are not reliably honored by every DOCX
+  viewer — in particular `docx-preview` — so a center/right-aligned segment
+  (typically the `{page} / {pages}` field) could render left-aligned near the
+  margin instead of where it was positioned. Table columns render
+  consistently across viewers.
+- Each heading gets a Word bookmark (`ooxml.add_bookmark`), and each cached
+  DOCX TOC entry is a real internal hyperlink to the matching bookmark
+  (`ooxml.add_internal_hyperlink_run`), not just plain text. This makes TOC
+  navigation work by construction rather than relying on Word regenerating
+  hyperlinked entries when it recalculates the field — which also means
+  clicking a TOC entry works in the cached preview shown by non-field-evaluating
+  viewers, not only after Word updates the field.
+- Known limitation, browser preview only: `docx-preview` has no real
+  pagination engine — per its own documentation, it only inserts a page break
+  at an explicit `<w:br w:type="page"/>`, a `pageBreakBefore` paragraph
+  property, or a cached `w:lastRenderedPageBreak` marker that MS Word itself
+  writes while laying out a document it has open. A document generated here
+  and never opened in Word carries none of the latter, so any stretch of body
+  content that doesn't cross one of our own explicit page breaks (from a
+  `<!-- pagebreak -->` marker, or the ones automatically inserted after the
+  cover page and TOC) renders in the browser as a single tall `min-height`
+  block instead of Word's correctly paginated multi-page layout — visible as
+  a page that looks too tall, fewer apparent pages than the downloaded file
+  has, and a `{page}` field that only ever shows its cached fallback value
+  since the browser only ever rendered one page-group. The downloaded file is
+  unaffected — Word and LibreOffice paginate it correctly on open, because
+  they compute real page breaks instead of relying on cached hints. Fixing
+  the in-browser preview would mean either estimating page breaks
+  server-side and inserting them explicitly, or round-tripping the file
+  through a real layout engine (e.g. headless LibreOffice) before preview;
+  neither has been done, so treat the browser preview's page count/height as
+  approximate for freshly generated files.
 - Persistence: `agents/document_tools.py` stores bytes in the in-memory
   `FileService` cache, uploads to MinIO (`service/MinioService.py`), and
   writes a `document` row scoped to the current `thread_id`/`user_id` — the
@@ -432,12 +516,16 @@ are always present unless `DOCUMENT_TOOLS_ENABLED=false` (see
   the failure comes back as the tool's `ToolMessage` content, naming the
   missing or invalid arguments, so the next loop iteration can correct itself.
   React-based agents already got this from `ToolNode`. Before validation runs,
-  `recover_document_tool_args` repairs the two shapes local models produce most
+  `recover_document_tool_args` repairs the shapes local models produce most
   often — the body under an alias key (`text`, `body`, `markdown`, …) or inlined
   as `<content>…</content>` inside an unrelated argument — because rejecting
   those costs the user a full regeneration of a long document. It only ever
   *adds* `content`; a description-shaped argument is never promoted to the body,
-  so genuinely wrong calls still fail loudly. Two related guards:
+  so genuinely wrong calls still fail loudly. It also gathers style keys a
+  model dropped at the top level instead of nesting them under `options` (for
+  example `theme="corporate_blue"` alongside `filename`/`format`/`content`)
+  into `options`, merging with — and yielding to — any `options` the model did
+  provide explicitly. Two related guards:
   a tool call without an `id` gets a synthetic one rather than raising, and if
   the loop exhausts `_MAX_DOCUMENT_TOOL_ITERATIONS` while the model is still
   calling tools, one final **unbound** `model.ainvoke` produces a plain text

@@ -34,44 +34,39 @@ TURKISH = "Çalışma özeti: ğüşıöç İĞÜŞİÖÇ"
 def test_parses_headings_with_level():
     blocks = parse_markdown_blocks("# Başlık\n\n### Alt başlık")
 
-    assert blocks == [
-        HeadingBlock(level=1, text="Başlık"),
-        HeadingBlock(level=3, text="Alt başlık"),
-    ]
+    assert [(b.level, b.text) for b in blocks] == [(1, "Başlık"), (3, "Alt başlık")]
+    assert all(isinstance(b, HeadingBlock) for b in blocks)
 
 
 def test_parses_consecutive_lines_into_one_paragraph():
     blocks = parse_markdown_blocks("ilk satır\nikinci satır\n\nayrı paragraf")
 
-    assert blocks == [
-        ParagraphBlock(text="ilk satır ikinci satır"),
-        ParagraphBlock(text="ayrı paragraf"),
-    ]
+    assert [b.text for b in blocks] == ["ilk satır ikinci satır", "ayrı paragraf"]
+    assert all(isinstance(b, ParagraphBlock) for b in blocks)
 
 
 def test_parses_bullet_list():
-    blocks = parse_markdown_blocks("- elma\n* armut\n- erik")
+    [block] = parse_markdown_blocks("- elma\n* armut\n- erik")
 
-    assert blocks == [BulletListBlock(items=["elma", "armut", "erik"])]
+    assert isinstance(block, BulletListBlock)
+    assert [i.text for i in block.items] == ["elma", "armut", "erik"]
 
 
 def test_parses_ordered_list():
-    blocks = parse_markdown_blocks("1. birinci\n2. ikinci")
+    [block] = parse_markdown_blocks("1. birinci\n2. ikinci")
 
-    assert blocks == [OrderedListBlock(items=["birinci", "ikinci"])]
+    assert isinstance(block, OrderedListBlock)
+    assert [i.text for i in block.items] == ["birinci", "ikinci"]
 
 
 def test_parses_pipe_table_with_header_and_rows():
     markdown = "| Ürün | Adet |\n| --- | --- |\n| Elma | 3 |\n| Armut | 5 |"
 
-    blocks = parse_markdown_blocks(markdown)
+    [block] = parse_markdown_blocks(markdown)
 
-    assert blocks == [
-        TableBlock(
-            header=["Ürün", "Adet"],
-            rows=[["Elma", "3"], ["Armut", "5"]],
-        )
-    ]
+    assert isinstance(block, TableBlock)
+    assert [c.text for c in block.header] == ["Ürün", "Adet"]
+    assert [[c.text for c in row] for row in block.rows] == [["Elma", "3"], ["Armut", "5"]]
 
 
 def test_parses_fenced_code_block_verbatim():
@@ -82,10 +77,15 @@ def test_parses_fenced_code_block_verbatim():
     assert blocks == [CodeBlock(text="x = 1\n\ny = 2", language="python")]
 
 
-def test_strips_inline_emphasis_markers_from_paragraph_text():
-    blocks = parse_markdown_blocks("bu **kalın** ve *eğik* ve `kod`")
+def test_preserves_inline_emphasis_as_spans_but_text_stays_plain():
+    """Inline markers are no longer stripped (Group C) — they become spans
+    that renderers turn into real formatting. `.text` still gives plain text."""
+    [block] = parse_markdown_blocks("bu **kalın** ve *eğik* ve `kod`")
 
-    assert blocks == [ParagraphBlock(text="bu kalın ve eğik ve kod")]
+    assert block.text == "bu kalın ve eğik ve kod"
+    assert any(s.bold for s in block.spans)
+    assert any(s.italic for s in block.spans)
+    assert any(s.code for s in block.spans)
 
 
 def test_returns_no_blocks_for_blank_markdown():

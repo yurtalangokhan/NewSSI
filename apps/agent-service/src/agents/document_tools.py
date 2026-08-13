@@ -43,7 +43,12 @@ DOCUMENT_TOOL_PROMPT = (
     "it. A call without `content` is rejected.\n"
     "- Use create_spreadsheet to produce a downloadable XLSX or CSV file from "
     "tabular data. It requires filename, format and sheets, where `sheets` is "
-    "a list of {\"name\": ..., \"rows\": [[...], ...]} objects.\n"
+    'a list of {"name": ..., "rows": [[...], ...]} objects.\n'
+    "- Both tools accept an optional `options` object to style the output — "
+    "theme, fonts/colors, page setup, cover page, table of contents, heading "
+    "numbering, header/footer, tables, watermark (see each tool's schema for "
+    "the full reference). Omit it for a sensibly-themed default; a malformed "
+    "options value never fails the call, it just falls back to defaults.\n"
     "- Do NOT call these tools for greetings, small talk, or ordinary questions "
     "that only need a normal chat reply. Only call them when the user "
     "explicitly asks for a document/report/file/spreadsheet/export, or "
@@ -54,7 +59,51 @@ DOCUMENT_TOOL_PROMPT = (
     "hazırla' -> call the matching tool.\n"
     "- When in doubt, do not create a file — just answer in the chat.\n"
     "- After calling the tool, briefly confirm the file was created; do not "
-    "repeat its full contents in the chat reply."
+    "repeat its full contents in the chat reply. Do NOT include the "
+    "`download_url` from the tool result (or any other link to the file) in "
+    "your reply — the UI already renders a clickable download card for it, "
+    "and a second link in your text opens without knowing the file's real "
+    "type, so it fails to preview."
+)
+
+_DOCUMENT_OPTIONS_REFERENCE = """
+options (all optional; unknown/invalid values fall back to defaults and never fail the call):
+  theme: default|corporate_blue|minimal_gray|academic|dark_accent
+  font: {body, heading, mono, size, line_spacing, space_after}
+  colors: {heading, accent, text, table_header_bg, table_header_text, table_zebra_bg, code_bg, link} (hex or CSS name)
+  page: {size: A4|Letter, orientation: portrait|landscape, margins: {top, right, bottom, left} in mm}
+  cover: {enabled, subtitle, project, version, date, author, organization, classification, logo}
+  toc: {enabled, depth, title, mode: auto|field|static}
+  numbering: {headings, max_level, separator} — renders 1 / 1.1 / 1.1.1 heading numbers
+  header / footer: {left, center, right, different_first_page, rule} — text supports {page} {pages} {title} {date} {version}
+  tables: {style: grid|zebra|minimal, header_bold, caption_prefix, figure_caption_prefix}
+  requirement_ids: {enabled, pattern} — regex highlighting for tokens like [SRS-FUNC-001]
+  watermark: {text, color}
+  pdf: {bookmarks, metadata: {author, title, subject, keywords}}
+  Example: {"theme": "corporate_blue", "cover": {"enabled": true, "version": "1.0"}, "toc": {"enabled": true}, "numbering": {"headings": true}}
+"""
+
+_SPREADSHEET_OPTIONS_REFERENCE = """
+options (all optional; unknown/invalid values fall back to defaults and never fail the call):
+  theme: default|corporate_blue|minimal_gray|academic|dark_accent
+  header_row, freeze_header, autofilter, autofit_columns, zebra: bool
+  column_widths: [int, ...]
+  column_formats: [text|number|date|percent|currency, ...]
+  column_alignments: [left|center|right, ...]
+  conditional_formats: [{column, rule: equals|greater_than|less_than|contains, value, color}]
+  Example: {"theme": "corporate_blue", "zebra": true, "conditional_formats": [{"column": 3, "rule": "equals", "value": "FAIL", "color": "#FFC7CE"}]}
+"""
+
+_SHORT_DOCUMENT_DESCRIPTION = (
+    "Create a downloadable document (PDF, DOCX, Markdown or plain text) from "
+    "Markdown content. Requires filename, format, content. Optional: title, "
+    "options (theme/page/header/footer/cover/toc/numbering/tables/watermark — "
+    "omit for a sensibly-themed default)."
+)
+_SHORT_SPREADSHEET_DESCRIPTION = (
+    "Create a downloadable spreadsheet (XLSX or CSV) from tabular data. "
+    "Requires filename, format, sheets. Optional: options (theme, header "
+    "styling, column widths/formats/alignments, conditional formatting)."
 )
 
 
@@ -78,9 +127,7 @@ _CONTENT_ALIASES = (
 # e.g. {"filename": "...", "title": "<content># Başlık\n...</content>"}. The
 # tags also turn up unpaired, with the provider's parser having eaten the other
 # half, so opening and closing markers are matched independently.
-_CONTENT_TAG_RE = re.compile(
-    r"</?\s*(content|document|body|markdown|tool_call)\s*>", re.IGNORECASE
-)
+_CONTENT_TAG_RE = re.compile(r"</?\s*(content|document|body|markdown|tool_call)\s*>", re.IGNORECASE)
 
 # Arguments that are never the document body.
 _NON_BODY_KEYS = frozenset({"filename", "format", "title", "name", "path"})
@@ -95,14 +142,57 @@ def strip_content_markup(text: str) -> str:
     return _CONTENT_TAG_RE.sub("", text).strip()
 
 
+# Top-level DocumentOptions section names — see service.documents.options.
+_OPTIONS_TOP_LEVEL_KEYS = frozenset(
+    {
+        "theme",
+        "font",
+        "colors",
+        "page",
+        "cover",
+        "toc",
+        "numbering",
+        "header",
+        "footer",
+        "front_matter",
+        "tables",
+        "requirement_ids",
+        "watermark",
+        "pdf",
+    }
+)
+
+
+def _gather_stray_options(args: dict[str, Any]) -> dict[str, Any]:
+    """Fold style keys a model placed at the top level (e.g. `theme=...`
+    alongside `filename`/`format`/`content`) into `options`, instead of
+    leaving them as unknown arguments the schema would reject.
+    """
+    stray = {key: args[key] for key in _OPTIONS_TOP_LEVEL_KEYS if key in args}
+    if not stray:
+        return args
+
+    repaired = {key: value for key, value in args.items() if key not in stray}
+    existing = args.get("options")
+    if existing is None:
+        repaired["options"] = stray
+    elif isinstance(existing, dict):
+        repaired["options"] = {**stray, **existing}
+    else:
+        repaired["options"] = existing
+    return repaired
+
+
 def recover_document_tool_args(args: dict[str, Any]) -> dict[str, Any]:
-    """Repair a `create_document` call that put the body somewhere else.
+    """Repair a `create_document` call that put the body somewhere else, or
+    style keys somewhere other than `options`.
 
     Local models pass the document under `text`/`body`, or inline it as
     `<content>…</content>` — often with only one half of the tag pair surviving
     the provider's own parser. Rejecting those costs the user a full
     regeneration of a long document, so recover the body where the intent is
-    clear and leave anything ambiguous to normal validation.
+    clear and leave anything ambiguous to normal validation. Style keys
+    dropped at the top level (`theme=...`) are gathered into `options`.
 
     Only ever *adds* `content` (and cleans markup out of it); the document body
     is never invented from a short unrelated argument.
@@ -110,6 +200,10 @@ def recover_document_tool_args(args: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(args, dict):
         return args
 
+    return _recover_content(_gather_stray_options(args))
+
+
+def _recover_content(args: dict[str, Any]) -> dict[str, Any]:
     repaired = dict(args)
 
     existing = repaired.get("content")
@@ -302,6 +396,7 @@ async def create_document(
     content: str,
     config: Annotated[RunnableConfig, InjectedToolArg],
     title: str | None = None,
+    options: dict[str, Any] | str | None = None,
 ) -> str:
     """Create a downloadable document (PDF, DOCX, Markdown or plain text) from Markdown content.
 
@@ -311,6 +406,12 @@ async def create_document(
         content: The document body as Markdown (headings, paragraphs, lists,
             pipe tables, and fenced code blocks are supported).
         title: Optional document title, rendered above the content.
+        options: Optional style/layout configuration (theme, fonts, colors,
+            page setup, cover page, table of contents, heading numbering,
+            header/footer, tables, watermark) — see the options reference
+            appended to this tool's description. Omit for a sensibly-themed
+            default; any unrecognized or invalid field silently falls back
+            to its default rather than failing the call.
 
     Returns:
         A short confirmation on success, or an error description on failure.
@@ -321,14 +422,15 @@ async def create_document(
     safe_filename = docgen.sanitize_filename(filename, format)
     mime_type = docgen.mime_for_format(format)
     _emit_rendering_started("create_document", safe_filename, format, len(content or ""))
+    parsed_options = docgen.parse_document_options(options)
 
     try:
         if format == "pdf":
-            data = docgen.render_pdf(title, content)
+            data = docgen.render_pdf(title, content, options=parsed_options)
         elif format == "docx":
-            data = docgen.render_docx(title, content)
+            data = docgen.render_docx(title, content, options=parsed_options)
         else:
-            data = docgen.render_markdown_text(title, content)
+            data = docgen.render_markdown_text(title, content, options=parsed_options)
     except ValueError as exc:
         _emit_generation_failed("create_document", safe_filename, format, str(exc))
         return f"Error: could not create document: {exc}"
@@ -357,6 +459,7 @@ async def create_spreadsheet(
     format: str,
     sheets: list[dict[str, Any]],
     config: Annotated[RunnableConfig, InjectedToolArg],
+    options: dict[str, Any] | str | None = None,
 ) -> str:
     """Create a downloadable spreadsheet (XLSX or CSV) from tabular data.
 
@@ -365,6 +468,11 @@ async def create_spreadsheet(
         format: One of "xlsx", "csv". Any other value is rejected.
         sheets: One or more sheets, each `{"name": str, "rows": [[...], ...]}`.
             For CSV output, only the first sheet's rows are used.
+        options: Optional styling (theme, header row, freeze pane, autofilter,
+            zebra striping, column widths/formats/alignments, conditional
+            formatting) — see the options reference appended to this tool's
+            description. XLSX only; ignored for CSV. Any unrecognized or
+            invalid field silently falls back to its default.
 
     Returns:
         A short confirmation on success, or an error description on failure.
@@ -382,7 +490,7 @@ async def create_spreadsheet(
 
     try:
         if format == "xlsx":
-            data = docgen.render_xlsx(sheets)
+            data = docgen.render_xlsx(sheets, options=docgen.parse_spreadsheet_options(options))
         else:
             first_sheet = sheets[0] if sheets else None
             if not first_sheet or not first_sheet.get("rows"):
@@ -410,16 +518,29 @@ async def create_spreadsheet(
         return f"Error: could not create spreadsheet: {exc}"
 
 
+create_document.description += _DOCUMENT_OPTIONS_REFERENCE
+create_spreadsheet.description += _SPREADSHEET_OPTIONS_REFERENCE
+
+
 def get_document_tools() -> list[BaseTool]:
-    """Return the always-on document tools, or [] if disabled via settings."""
+    """Return the always-on document tools, or [] if disabled via settings.
+
+    The `options` reference costs ~350 tokens per request; when
+    `DOCUMENT_TOOLS_RICH_OPTIONS` is off, token-sensitive or small
+    local-model setups get a short description instead — `options` still
+    works, the model just isn't told about it in detail.
+    """
     if not settings.DOCUMENT_TOOLS_ENABLED:
         return []
-    return [create_document, create_spreadsheet]
+    if settings.DOCUMENT_TOOLS_RICH_OPTIONS:
+        return [create_document, create_spreadsheet]
+    return [
+        create_document.model_copy(update={"description": _SHORT_DOCUMENT_DESCRIPTION}),
+        create_spreadsheet.model_copy(update={"description": _SHORT_SPREADSHEET_DESCRIPTION}),
+    ]
 
 
-def bind_document_tools(
-    model: BaseChatModel, tools: list[BaseTool]
-) -> tuple[Any, bool]:
+def bind_document_tools(model: BaseChatModel, tools: list[BaseTool]) -> tuple[Any, bool]:
     """Bind tools to a model, falling back gracefully if tool-calling is unsupported.
 
     Returns (possibly-bound model, whether binding succeeded). Callers should

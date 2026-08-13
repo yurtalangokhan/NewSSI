@@ -37,9 +37,7 @@ def _clear_file_store():
 @pytest.fixture
 def fake_repo(monkeypatch) -> _FakeDocumentRepository:
     repo = _FakeDocumentRepository()
-    monkeypatch.setattr(
-        "core.db.repositories.document_repo.DocumentRepository", lambda: repo
-    )
+    monkeypatch.setattr("core.db.repositories.document_repo.DocumentRepository", lambda: repo)
     return repo
 
 
@@ -108,9 +106,7 @@ async def test_create_document_stores_bytes_in_file_service(fake_repo, fake_mini
 
 
 @pytest.mark.asyncio
-async def test_create_document_uploads_to_minio_with_user_and_file_id(
-    fake_repo, fake_minio_upload
-):
+async def test_create_document_uploads_to_minio_with_user_and_file_id(fake_repo, fake_minio_upload):
     result = await document_tools.create_document.ainvoke(
         {
             "filename": "rapor",
@@ -128,9 +124,7 @@ async def test_create_document_uploads_to_minio_with_user_and_file_id(
 
 
 @pytest.mark.asyncio
-async def test_create_document_persists_document_row_scoped_to_thread(
-    fake_repo, fake_minio_upload
-):
+async def test_create_document_persists_document_row_scoped_to_thread(fake_repo, fake_minio_upload):
     await document_tools.create_document.ainvoke(
         {
             "filename": "rapor",
@@ -222,6 +216,71 @@ async def test_create_document_survives_db_persist_failure(fake_minio_upload, mo
 
 
 # ---------------------------------------------------------------------------
+# create_document — options
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_create_document_applies_theme_from_options(fake_repo, fake_minio_upload):
+    import io
+
+    import docx
+
+    from service.documents.themes import resolve_theme
+    from service.FileService import get_file
+
+    result = await document_tools.create_document.ainvoke(
+        {
+            "filename": "rapor",
+            "format": "docx",
+            "content": "# Başlık",
+            "options": {"theme": "academic"},
+        },
+        _config(),
+    )
+
+    payload = json.loads(result)
+    record = get_file(payload["file_id"])
+    document = docx.Document(io.BytesIO(record.data))
+    academic = resolve_theme("academic")
+    assert document.paragraphs[0].runs[0].font.name == academic.heading_font
+
+
+@pytest.mark.asyncio
+async def test_create_document_accepts_options_as_json_string(fake_repo, fake_minio_upload):
+    result = await document_tools.create_document.ainvoke(
+        {
+            "filename": "rapor",
+            "format": "pdf",
+            "content": "gövde",
+            "options": '{"theme": "corporate_blue"}',
+        },
+        _config(),
+    )
+
+    payload = json.loads(result)
+    assert payload["__generated_file__"] is True
+
+
+@pytest.mark.asyncio
+async def test_create_document_never_fails_on_malformed_options(fake_repo, fake_minio_upload):
+    """A single bad options key must not cost the model a full regeneration —
+    the tool falls back to defaults for whatever it cannot make sense of."""
+    result = await document_tools.create_document.ainvoke(
+        {
+            "filename": "rapor",
+            "format": "pdf",
+            "content": "gövde",
+            "options": {"font": {"size": 9999}, "theme": "does_not_exist", "toc": "not-an-object"},
+        },
+        _config(),
+    )
+
+    payload = json.loads(result)
+    assert payload["__generated_file__"] is True
+
+
+# ---------------------------------------------------------------------------
 # create_spreadsheet
 # ---------------------------------------------------------------------------
 
@@ -241,8 +300,7 @@ async def test_create_spreadsheet_returns_generated_file_payload(fake_repo, fake
     assert payload["__generated_file__"] is True
     assert payload["filename"] == "satis.xlsx"
     assert (
-        payload["mime_type"]
-        == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        payload["mime_type"] == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
 
@@ -294,6 +352,46 @@ async def test_create_spreadsheet_rejects_no_sheets(fake_repo, fake_minio_upload
     assert fake_repo.created == []
 
 
+@pytest.mark.asyncio
+async def test_create_spreadsheet_applies_zebra_from_options(fake_repo, fake_minio_upload):
+    import io
+
+    import openpyxl
+
+    from service.FileService import get_file
+
+    result = await document_tools.create_spreadsheet.ainvoke(
+        {
+            "filename": "satis",
+            "format": "xlsx",
+            "sheets": [{"name": "Q1", "rows": [["Ürün"], ["a"], ["b"], ["c"]]}],
+            "options": {"zebra": True},
+        },
+        _config(),
+    )
+
+    payload = json.loads(result)
+    record = get_file(payload["file_id"])
+    worksheet = openpyxl.load_workbook(io.BytesIO(record.data))["Q1"]
+    assert worksheet["A3"].fill.start_color.rgb not in (None, "00000000")
+
+
+@pytest.mark.asyncio
+async def test_create_spreadsheet_never_fails_on_malformed_options(fake_repo, fake_minio_upload):
+    result = await document_tools.create_spreadsheet.ainvoke(
+        {
+            "filename": "satis",
+            "format": "xlsx",
+            "sheets": [{"name": "Q1", "rows": [["a"]]}],
+            "options": {"theme": "does_not_exist", "column_widths": "not-a-list"},
+        },
+        _config(),
+    )
+
+    payload = json.loads(result)
+    assert payload["__generated_file__"] is True
+
+
 # ---------------------------------------------------------------------------
 # get_document_tools / bind_document_tools
 # ---------------------------------------------------------------------------
@@ -311,6 +409,27 @@ def test_get_document_tools_returns_empty_when_disabled(monkeypatch):
     monkeypatch.setattr(document_tools.settings, "DOCUMENT_TOOLS_ENABLED", False)
 
     assert document_tools.get_document_tools() == []
+
+
+def test_get_document_tools_uses_rich_description_by_default(monkeypatch):
+    monkeypatch.setattr(document_tools.settings, "DOCUMENT_TOOLS_ENABLED", True)
+    monkeypatch.setattr(document_tools.settings, "DOCUMENT_TOOLS_RICH_OPTIONS", True)
+
+    tools = {t.name: t for t in document_tools.get_document_tools()}
+
+    assert "options" in tools["create_document"].description
+    assert "options" in tools["create_spreadsheet"].description
+
+
+def test_get_document_tools_uses_short_description_when_rich_options_disabled(monkeypatch):
+    monkeypatch.setattr(document_tools.settings, "DOCUMENT_TOOLS_ENABLED", True)
+    monkeypatch.setattr(document_tools.settings, "DOCUMENT_TOOLS_RICH_OPTIONS", False)
+
+    tools = {t.name: t for t in document_tools.get_document_tools()}
+
+    assert len(tools["create_document"].description) < len(
+        document_tools.create_document.description
+    )
 
 
 def test_bind_document_tools_returns_bound_model_and_true_on_success():
@@ -349,6 +468,20 @@ def test_document_tool_prompt_explicitly_forbids_calling_on_greetings():
     assert "greeting" in prompt or "small talk" in prompt
     assert "do not" in prompt or "don't" in prompt
     assert "when in doubt" in prompt
+
+
+def test_document_tool_prompt_mentions_options():
+    assert "options" in document_tools.DOCUMENT_TOOL_PROMPT.lower()
+
+
+def test_document_tool_prompt_forbids_repeating_the_download_link():
+    """The UI already renders a clickable download card from the tool
+    result; a second link in the model's own reply text opens a preview
+    modal that doesn't know the file's real type and fails."""
+    prompt = document_tools.DOCUMENT_TOOL_PROMPT.lower()
+
+    assert "download_url" in prompt
+    assert "do not include" in prompt or "don't include" in prompt
 
 
 class TestRecoverDocumentToolArgs:
@@ -451,5 +584,62 @@ class TestRecoverDocumentToolArgs:
 
     def test_never_borrows_the_filename_as_the_body(self):
         args = {"filename": "x" * 400 + "\nsatır", "format": "pdf"}
+
+        assert document_tools.recover_document_tool_args(args) == args
+
+
+class TestRecoverDocumentToolArgsOptions:
+    """Some models flatten style keys onto the top-level call instead of
+    nesting them under `options` — these are gathered rather than rejected."""
+
+    def test_gathers_a_stray_top_level_theme_into_options(self):
+        recovered = document_tools.recover_document_tool_args(
+            {"filename": "rapor", "format": "docx", "content": "x", "theme": "corporate_blue"}
+        )
+
+        assert recovered["options"] == {"theme": "corporate_blue"}
+        assert "theme" not in recovered
+
+    def test_gathers_multiple_stray_keys(self):
+        recovered = document_tools.recover_document_tool_args(
+            {
+                "filename": "rapor",
+                "format": "docx",
+                "content": "x",
+                "toc": {"enabled": True},
+                "cover": {"enabled": True},
+            }
+        )
+
+        assert recovered["options"] == {"toc": {"enabled": True}, "cover": {"enabled": True}}
+
+    def test_merges_stray_keys_with_an_existing_options_dict(self):
+        recovered = document_tools.recover_document_tool_args(
+            {
+                "filename": "rapor",
+                "format": "docx",
+                "content": "x",
+                "options": {"toc": {"enabled": True}},
+                "theme": "academic",
+            }
+        )
+
+        assert recovered["options"] == {"toc": {"enabled": True}, "theme": "academic"}
+
+    def test_explicit_options_value_wins_over_a_stray_duplicate(self):
+        recovered = document_tools.recover_document_tool_args(
+            {
+                "filename": "rapor",
+                "format": "docx",
+                "content": "x",
+                "options": {"theme": "academic"},
+                "theme": "corporate_blue",
+            }
+        )
+
+        assert recovered["options"] == {"theme": "academic"}
+
+    def test_leaves_args_untouched_when_no_stray_option_keys_present(self):
+        args = {"filename": "rapor", "format": "docx", "content": "x"}
 
         assert document_tools.recover_document_tool_args(args) == args
