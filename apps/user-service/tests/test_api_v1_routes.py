@@ -29,6 +29,11 @@ def test_user_service_exposes_only_api_v1_routes_without_legacy_aliases() -> Non
         "/api/v1/roles/",
         "/api/v1/coarse-roles/",
         "/api/v1/permissions/",
+        "/api/v1/permissions/check",
+        (
+            "/api/v1/permissions/organizations/{org_id}/targets/{target_type}/{target_id}"
+            "/resources/{resource_type}"
+        ),
         "/api/v1/system-settings/keycloak",
         "/api/v1/internal/users/{target_id}/permissions",
         "/api/v1/internal/users/authorize",

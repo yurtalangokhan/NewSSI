@@ -526,7 +526,9 @@ class KeycloakService(KeycloakBrokerMixin):
 
     @staticmethod
     def _value_matches_pattern(value: str, patterns: list[str]) -> bool:
-        return any(pattern in ("*", "+") or fnmatch.fnmatchcase(value, pattern) for pattern in patterns)
+        return any(
+            pattern in ("*", "+") or fnmatch.fnmatchcase(value, pattern) for pattern in patterns
+        )
 
     @staticmethod
     def _origin_from_url(url: str) -> str | None:
@@ -705,11 +707,7 @@ class KeycloakService(KeycloakBrokerMixin):
             or post_logout_redirect_uri in current_post_logout_redirect_uris
             or self._value_matches_pattern(
                 post_logout_redirect_uri,
-                [
-                    uri
-                    for uri in current_post_logout_redirect_uris
-                    if uri != "+"
-                ],
+                [uri for uri in current_post_logout_redirect_uris if uri != "+"],
             )
         )
 

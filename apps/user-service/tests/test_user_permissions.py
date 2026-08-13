@@ -54,7 +54,12 @@ async def test_get_user_permissions_returns_role_permissions():
         get_by_id=AsyncMock(return_value=SimpleNamespace(is_superuser=False, role="analyst"))
     )
     service.role_repo = SimpleNamespace(
-        get_by_name=AsyncMock(return_value=SimpleNamespace(permissions=["user:list"]))
+        get_by_name=AsyncMock(
+            return_value=SimpleNamespace(
+                name="analyst",
+                permissions=["user:list"],
+            )
+        )
     )
 
     assert await service.get_user_permissions(user_id) == {"permissions": ["user:list"]}
@@ -68,7 +73,12 @@ async def test_user_has_permission_returns_allowed_decision():
         get_by_id=AsyncMock(return_value=SimpleNamespace(is_superuser=False, role="analyst"))
     )
     service.role_repo = SimpleNamespace(
-        get_by_name=AsyncMock(return_value=SimpleNamespace(permissions=["user:list"]))
+        get_by_name=AsyncMock(
+            return_value=SimpleNamespace(
+                name="analyst",
+                permissions=["user:list"],
+            )
+        )
     )
 
     assert await service.user_has_permission(user_id, "user:list") == {
@@ -89,7 +99,12 @@ async def test_get_user_permissions_preserves_role_wildcard():
         get_by_id=AsyncMock(return_value=SimpleNamespace(is_superuser=False, role="system-admin"))
     )
     service.role_repo = SimpleNamespace(
-        get_by_name=AsyncMock(return_value=SimpleNamespace(permissions=["*"]))
+        get_by_name=AsyncMock(
+            return_value=SimpleNamespace(
+                name="system-admin",
+                permissions=["*"],
+            )
+        )
     )
 
     assert await service.get_user_permissions(user_id) == {"permissions": ["*"]}

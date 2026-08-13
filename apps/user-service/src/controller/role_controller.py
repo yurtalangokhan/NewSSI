@@ -169,7 +169,9 @@ class CompositeRoleController(BaseController):
             )
             return result
         except Exception as e:
-            raise HTTPException(status_code=500, detail=t("role.keycloak_sync_failed", error=e)) from e
+            raise HTTPException(
+                status_code=500, detail=t("role.keycloak_sync_failed", error=e)
+            ) from e
 
 
 def _safe_uuid(val: str | None) -> uuid.UUID | None:

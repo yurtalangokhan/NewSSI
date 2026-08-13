@@ -70,6 +70,7 @@ def _build_idempotency_config() -> IdempotencyConfig:
 
 _idempotency_config = _build_idempotency_config()
 
+
 def create_app() -> FastAPI:
     settings = get_settings()
 
@@ -102,7 +103,6 @@ def create_app() -> FastAPI:
         },
     )
 
-
     from src.api.routes import (
         api_keys_router,
         auth_base_router,
@@ -111,11 +111,14 @@ def create_app() -> FastAPI:
         internal_settings_router,
         internal_user_memory_router,
         internal_user_router,
+        organizations_router,
         permissions_router,
+        resource_permissions_router,
         roles_router,
         settings_router,
         system_settings_router,
         user_memory_router,
+        user_organizations_router,
         user_router,
     )
     from src.api.routes.health import router as health_router
@@ -133,6 +136,9 @@ def create_app() -> FastAPI:
     app.include_router(coarse_roles_router, prefix=API_PREFIX)
     app.include_router(roles_router, prefix=API_PREFIX)
     app.include_router(permissions_router, prefix=API_PREFIX)
+    app.include_router(resource_permissions_router, prefix=API_PREFIX)
+    app.include_router(organizations_router, prefix=API_PREFIX)
+    app.include_router(user_organizations_router, prefix=API_PREFIX)
     app.include_router(system_settings_router, prefix=API_PREFIX)
 
     return app

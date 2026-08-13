@@ -55,7 +55,7 @@ class UserService:
         if not role:
             return {"permissions": []}
 
-        if role.permissions == ["*"]:
+        if role.name == "system-admin" or role.permissions == ["*"]:
             return {"permissions": ["*"]}
 
         # Aggregate: direct perms + coarse role perms

@@ -11,3 +11,6 @@ from .api_keys_route import router as api_keys_router
 from .coarse_roles_route import router as coarse_roles_router
 from .roles_route import router as roles_router
 from .permissions_route import router as permissions_router
+from .organizations_route import router as organizations_router
+from .user_organizations_route import router as user_organizations_router
+from .resource_permissions_route import router as resource_permissions_router

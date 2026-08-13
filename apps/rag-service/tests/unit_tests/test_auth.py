@@ -29,6 +29,10 @@ def clear_auth_cache(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(auth, "VALID_API_KEYS", set())
 
 
+async def _unresolved_user(_token: str) -> None:
+    return None
+
+
 def test_verify_api_key_uses_bearer_identity_in_test_mode(
     monkeypatch: pytest.MonkeyPatch,
 ):
@@ -100,6 +104,7 @@ async def test_resolve_user_uses_bearer_identity_in_test_mode(
 ):
     monkeypatch.setattr(auth, "IS_TESTING", True)
     monkeypatch.setattr(auth.config, "KEYCLOAK_ENABLED", False)
+    monkeypatch.setattr(auth, "_get_user_service_user", _unresolved_user)
     user = await auth.resolve_user(_request(), _credentials("user-123"))
     assert user is not None
     assert user.identity == "user-123"
@@ -111,6 +116,7 @@ async def test_resolve_user_uses_access_token_cookie_in_test_mode(
 ):
     monkeypatch.setattr(auth, "IS_TESTING", True)
     monkeypatch.setattr(auth.config, "KEYCLOAK_ENABLED", False)
+    monkeypatch.setattr(auth, "_get_user_service_user", _unresolved_user)
     user = await auth.resolve_user(
         _request(cookies={"access_token": "cookie-user"}),
         None,
@@ -120,7 +126,7 @@ async def test_resolve_user_uses_access_token_cookie_in_test_mode(
     assert user.access_token == "cookie-user"
 
 
-async def test_resolve_user_maps_keycloak_token_to_local_user(
+async def test_resolve_user_falls_back_to_local_keycloak_validation(
     monkeypatch: pytest.MonkeyPatch,
 ):
     monkeypatch.setattr(auth.config, "KEYCLOAK_ENABLED", True)
@@ -130,9 +136,8 @@ async def test_resolve_user_maps_keycloak_token_to_local_user(
         assert token == "jwt-token"
         return {"sub": "keycloak-sub", "email": "demo@example.com"}
 
-    async def _get_user(token: str):
+    async def _get_user(token: str) -> None:
         assert token == "jwt-token"
-        return {"id": "local-user-id", "email": "local@example.com"}
 
     monkeypatch.setattr(auth, "decode_keycloak_token", _decode_token)
     monkeypatch.setattr(auth, "_get_user_service_user", _get_user)
@@ -140,8 +145,8 @@ async def test_resolve_user_maps_keycloak_token_to_local_user(
     user = await auth.resolve_user(_request(), _credentials("jwt-token"))
 
     assert user is not None
-    assert user.identity == "local-user-id"
-    assert user.display_name == "local@example.com"
+    assert user.identity == "keycloak-sub"
+    assert user.display_name == "demo@example.com"
     assert user.access_token == "jwt-token"
 
 
@@ -209,6 +214,31 @@ async def test_require_permission_translates_missing_permission_detail(
 
     assert exc.value.status_code == 403
     assert exc.value.detail == "Missing required permission: collection:create"
+
+
+async def test_resolve_user_uses_user_service_before_local_jwt_validation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """User-service is authoritative for bearer-token identity."""
+    monkeypatch.setattr(auth.config, "KEYCLOAK_ENABLED", True)
+    monkeypatch.setattr(auth.config, "KEYCLOAK_ISSUER_URL", "https://internal-issuer")
+
+    async def _get_user(token: str) -> dict[str, str]:
+        assert token == "external-jwt"
+        return {"id": "local-user-id", "email": "external@example.com"}
+
+    def _unexpected_local_decode(_token: str) -> dict[str, str]:
+        raise AssertionError("local JWT validation must not run first")
+
+    monkeypatch.setattr(auth, "_get_user_service_user", _get_user)
+    monkeypatch.setattr(auth, "decode_keycloak_token", _unexpected_local_decode)
+
+    user = await auth.resolve_user(_request(), _credentials("external-jwt"))
+
+    assert user is not None
+    assert user.identity == "local-user-id"
+    assert user.display_name == "external@example.com"
+    assert user.access_token == "external-jwt"
 
 
 async def test_get_user_service_user_uses_api_v1_auth_me_path(

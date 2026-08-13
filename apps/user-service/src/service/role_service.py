@@ -80,9 +80,7 @@ class CompositeRoleService:
                 continue
             logged_out = await self.keycloak.logout_user_sessions(user.keycloak_id)
             if not logged_out:
-                raise ValueError(
-                    t("role.session_invalidation_failed_for_user", email=user.email)
-                )
+                raise ValueError(t("role.session_invalidation_failed_for_user", email=user.email))
             invalidated += 1
         return invalidated
 

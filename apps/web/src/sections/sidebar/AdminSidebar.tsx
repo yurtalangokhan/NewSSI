@@ -129,6 +129,7 @@ const collections = (
               ...(enableEnterprise ? [sidebarItem(ADMIN_PATHS.GROUPS, t)] : []),
               sidebarItem(ADMIN_PATHS.API_KEYS, t),
               sidebarItem(ADMIN_PATHS.ROLES, t),
+              sidebarItem(ADMIN_PATHS.ORGANIZATIONS, t),
             ],
           },
           ...(enableEnterprise

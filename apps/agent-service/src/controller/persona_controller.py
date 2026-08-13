@@ -999,6 +999,48 @@ class PersonaController(BaseController):
 
         return await self.get_persona(persona_id, user)
 
+    async def get_persona_options(
+        self,
+        user: AuthenticatedUser,
+    ) -> list[dict[str, Any]]:
+        """Return lightweight visible persona options for assignment UIs."""
+        from agents.agents import agents as all_agents
+
+        builtin_display = {
+            "chatbot": "Chatbot",
+            "configurable-mcp-agent": "Configurable MCP Agent",
+        }
+        options = [
+            {
+                "id": index,
+                "name": display_name,
+                "description": (
+                    all_agents[agent_key].description if agent_key in all_agents else ""
+                ),
+            }
+            for index, (agent_key, display_name) in enumerate(builtin_display.items())
+        ]
+
+        custom_personas = await PersonaDB.list_all(include_builtin=False)
+        restricted_persona_ids, accessible_persona_ids = (
+            await self._load_agent_group_visibility(user)
+        )
+        options.extend(
+            {
+                "id": persona["id"],
+                "name": persona["name"],
+                "description": persona.get("description") or "",
+            }
+            for persona in custom_personas
+            if self._can_access_persona(
+                persona,
+                user,
+                restricted_persona_ids,
+                accessible_persona_ids,
+            )
+        )
+        return options
+
     async def create_persona(
         self,
         payload: dict[str, Any],

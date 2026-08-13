@@ -27,4 +27,5 @@ class KeycloakRealmSessionUpdate(BaseModel):
     sso_session_idle_timeout: int | None = Field(default=None, ge=60, le=2592000)
     sso_session_max_lifespan: int | None = Field(default=None, ge=60, le=2592000)
 
+
 __all__ = ["KeycloakConfigUpdate", "KeycloakRealmSessionUpdate"]

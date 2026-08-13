@@ -220,6 +220,7 @@ persona-shaped payload. Use `/api/v1/persona/{persona_id}` or
 | Method | Path                                 | Permission       | Description                       |
 | ------ | ------------------------------------ | ---------------- | --------------------------------- |
 | GET    | `/api/v1/persona`                    | `persona:read`   | List personas (built-in + custom) |
+| GET    | `/api/v1/persona/options`            | `persona:read`   | List lightweight visible persona assignment options |
 | GET    | `/api/v1/persona/labels`             | `persona:read`   | Get persona labels                |
 | POST   | `/api/v1/persona`                    | `persona:create` | Create persona                    |
 | GET    | `/api/v1/persona/{persona_id}`       | `persona:read`   | Get persona by ID                 |

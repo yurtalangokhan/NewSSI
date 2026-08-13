@@ -1,5 +1,8 @@
 import { getBackendUrl } from "@/lib/api/routeBackendUrl";
-import { buildUserServicePath } from "@/lib/api/userServicePath";
+import {
+  buildUserServicePath,
+  isUserServiceCollectionPath,
+} from "@/lib/api/userServicePath";
 import { NextRequest } from "next/server";
 
 describe("user-service API proxy routing", () => {
@@ -36,19 +39,47 @@ describe("user-service API proxy routing", () => {
 
     const url = getBackendUrl(["user-service", "users", "me"]);
 
-    expect(url.toString()).toBe("http://kong:8000/user-service/api/v1/users/me");
+    expect(url.toString()).toBe(
+      "http://kong:8000/user-service/api/v1/users/me"
+    );
   });
 
   it("adds backend trailing slashes for FastAPI collection routes only", () => {
     const request = new NextRequest("http://localhost/api/user-service/roles");
 
-    expect(buildUserServicePath(["roles"], request)).toBe("/api/roles/");
-    expect(buildUserServicePath(["users"], request)).toBe("/api/users/");
+    expect(buildUserServicePath(["roles"], request)).toBe("/api/v1/roles/");
+    expect(buildUserServicePath(["users"], request)).toBe("/api/v1/users/");
     expect(buildUserServicePath(["roles", "sync-keycloak"], request)).toBe(
-      "/api/roles/sync-keycloak"
+      "/api/v1/roles/sync-keycloak"
     );
     expect(buildUserServicePath(["users", "me"], request)).toBe(
-      "/api/users/me"
+      "/api/v1/users/me"
     );
+  });
+
+  it("forwards organization layout paths without treating them as collections", () => {
+    const layoutUrl = getBackendUrl([
+      "user-service",
+      "organizations",
+      "layout",
+    ]);
+    const request = new NextRequest(
+      "http://localhost/api/user-service/organizations/layout"
+    );
+    const trailingSlashRequest = new NextRequest(
+      "http://localhost/api/user-service/organizations/layout/"
+    );
+
+    expect(layoutUrl.pathname).toBe("/api/v1/organizations/layout");
+    expect(buildUserServicePath(["organizations", "layout"], request)).toBe(
+      "/api/v1/organizations/layout"
+    );
+    expect(
+      buildUserServicePath(["organizations", "layout"], trailingSlashRequest)
+    ).toBe("/api/v1/organizations/layout/");
+  });
+
+  it("does not expose a user-organizations collection the backend does not define", () => {
+    expect(isUserServiceCollectionPath(["user-organizations"])).toBe(false);
   });
 });

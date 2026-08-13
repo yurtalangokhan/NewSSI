@@ -4,7 +4,9 @@ from langconnect import config
 
 
 def test_settings_from_mapping_requires_required_values():
-    with pytest.raises(ValueError, match="Required environment variable POSTGRES_HOST is not set"):
+    with pytest.raises(
+        ValueError, match="Required environment variable POSTGRES_HOST is not set"
+    ):
         config.Settings.from_mapping({})
 
 

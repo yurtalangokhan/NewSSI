@@ -52,3 +52,15 @@ class UserModel(Base):
     audit_logs: Mapped[list["AuditLogModel"]] = relationship(
         "AuditLogModel", back_populates="user", lazy="selectin"
     )
+    user_organizations: Mapped[list["UserOrganizationModel"]] = relationship(
+        "UserOrganizationModel",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+    resource_permissions: Mapped[list["ResourcePermissionModel"]] = relationship(
+        "ResourcePermissionModel",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )

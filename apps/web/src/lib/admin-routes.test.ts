@@ -5,6 +5,7 @@ import {
   sidebarItem,
 } from "./admin-routes";
 import { hasAllPermissions } from "@/lib/auth/permissions";
+import i18n from "@/i18n/config";
 
 describe("admin route permissions", () => {
   it("requires role and permission list access for the roles page", () => {
@@ -51,5 +52,19 @@ describe("admin route permissions", () => {
       getAdminRouteConfigForPathname("/admin/documents/sets/new")
         ?.requiredPermissions
     ).toEqual(["collection:list"]);
+  });
+
+  it("localizes the organizations sidebar label", async () => {
+    await i18n.changeLanguage("en");
+    expect(sidebarItem(ADMIN_PATHS.ORGANIZATIONS, i18n.t).name).toBe(
+      "Organization"
+    );
+
+    await i18n.changeLanguage("tr");
+    expect(sidebarItem(ADMIN_PATHS.ORGANIZATIONS, i18n.t).name).toBe(
+      "Organizasyon"
+    );
+
+    await i18n.changeLanguage("en");
   });
 });
