@@ -4,10 +4,47 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
+from i18n.core import set_locale
 from jose import jwt
 
 from src.config import get_settings
 from src.service.auth_service import AuthService
+
+
+@pytest.mark.asyncio
+async def test_basic_login_disabled_error_is_translated(monkeypatch):
+    auth_service = AuthService()
+    monkeypatch.setattr(auth_service.keycloak, "is_enabled", lambda: False)
+
+    with pytest.raises(ValueError) as exc:
+        await auth_service.basic_login("user", "pass")
+
+    assert str(exc.value) == "Username/password login is disabled; use Keycloak login"
+
+
+@pytest.mark.asyncio
+async def test_basic_login_disabled_error_is_translated_for_turkish_locale(monkeypatch):
+    auth_service = AuthService()
+    monkeypatch.setattr(auth_service.keycloak, "is_enabled", lambda: False)
+
+    set_locale("tr")
+    try:
+        with pytest.raises(ValueError) as exc:
+            await auth_service.basic_login("user", "pass")
+    finally:
+        set_locale("en")
+
+    assert str(exc.value) == "Kullanıcı adı/şifre ile giriş devre dışı; Keycloak girişini kullanın"
+
+
+@pytest.mark.asyncio
+async def test_upsert_user_from_token_data_translates_missing_id_token_error():
+    auth_service = AuthService()
+
+    with pytest.raises(ValueError) as exc:
+        await auth_service._upsert_user_from_token_data({}, fallback_username="user")
+
+    assert str(exc.value) == "Authentication failed — no id_token received"
 
 
 @pytest.mark.asyncio

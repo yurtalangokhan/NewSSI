@@ -3,6 +3,7 @@ from typing import Annotated
 
 from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from i18n import t
 
 from src.repository import CompositeRoleRepository, UserRepository
 from src.service import get_auth_service
@@ -47,7 +48,7 @@ async def require_auth(
     user_id: Annotated[str | None, Depends(get_current_user_id)],
 ) -> str:
     if not user_id:
-        raise HTTPException(status_code=401, detail="Authentication required")
+        raise HTTPException(status_code=401, detail=t("auth.required"))
     return user_id
 
 
@@ -63,7 +64,7 @@ async def require_admin(
         repo = UserRepository()
         user = await repo.get_by_id(uuid.UUID(user_id))
         if not user:
-            raise HTTPException(status_code=403, detail="Admin access required")
+            raise HTTPException(status_code=403, detail=t("auth.admin_required"))
         if user.is_superuser:
             return user_id
         role = await CompositeRoleRepository().get_by_name(user.role)
@@ -74,7 +75,7 @@ async def require_admin(
     except Exception:
         pass
 
-    raise HTTPException(status_code=403, detail="Admin access required")
+    raise HTTPException(status_code=403, detail=t("auth.admin_required"))
 
 
 async def require_system_admin(
@@ -85,7 +86,7 @@ async def require_system_admin(
         repo = UserRepository()
         user = await repo.get_by_id(uuid.UUID(user_id))
         if not user:
-            raise HTTPException(status_code=403, detail="System admin access required")
+            raise HTTPException(status_code=403, detail=t("auth.sysadmin_required"))
         if user.is_superuser:
             return user_id
 
@@ -97,7 +98,7 @@ async def require_system_admin(
     except Exception:
         pass
 
-    raise HTTPException(status_code=403, detail="System admin access required")
+    raise HTTPException(status_code=403, detail=t("auth.sysadmin_required"))
 
 
 def require_permission(permission: str):
@@ -121,7 +122,7 @@ def require_permission(permission: str):
             repo = UserRepository()
             user = await repo.get_by_id(uuid.UUID(user_id))
             if not user:
-                raise HTTPException(status_code=401, detail="User not found")
+                raise HTTPException(status_code=401, detail=t("user.not_found"))
 
             if user.is_superuser:
                 return user_id
@@ -155,7 +156,7 @@ def require_permission(permission: str):
 
         raise HTTPException(
             status_code=403,
-            detail=f"Missing required permission: {permission}",
+            detail=t("auth.forbidden"),
         )
 
     return _require_permission
@@ -208,4 +209,5 @@ async def require_auth_or_internal_service_token(
     if token and settings.INTERNAL_SERVICE_TOKEN and token == settings.INTERNAL_SERVICE_TOKEN:
         return "internal-service"
 
-    raise HTTPException(status_code=401, detail="Authentication required")
+    raise HTTPException(status_code=401, detail=t("auth.required"))
+

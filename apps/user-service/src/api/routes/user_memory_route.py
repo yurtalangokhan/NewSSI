@@ -2,6 +2,7 @@ import uuid
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
+from i18n import t
 
 from src.api.dependencies import require_auth_or_internal_service_token, require_permission
 from src.controller import get_user_memory_controller
@@ -34,7 +35,7 @@ async def create_memory(
 ):
     content = body.get("content", "").strip()
     if not content:
-        raise HTTPException(status_code=400, detail="Content is required")
+        raise HTTPException(status_code=400, detail=t("memory.content_required"))
     return await get_user_memory_controller().create_memory(uuid.UUID(user_id), content)
 
 
@@ -54,7 +55,7 @@ async def update_memory(
 ):
     content = body.get("content", "").strip()
     if not content:
-        raise HTTPException(status_code=400, detail="Content is required")
+        raise HTTPException(status_code=400, detail=t("memory.content_required"))
     return await get_user_memory_controller().update_memory(uuid.UUID(user_id), memory_id, content)
 
 
@@ -118,7 +119,7 @@ async def create_memory_internal(
     )
     content = body.get("content", "").strip()
     if not content:
-        raise HTTPException(status_code=400, detail="Content is required")
+        raise HTTPException(status_code=400, detail=t("memory.content_required"))
     return await get_user_memory_controller().create_memory(resolved_user_id, content)
 
 
@@ -163,7 +164,7 @@ async def update_memory_internal(
     )
     content = body.get("content", "").strip()
     if not content:
-        raise HTTPException(status_code=400, detail="Content is required")
+        raise HTTPException(status_code=400, detail=t("memory.content_required"))
     return await get_user_memory_controller().update_memory(resolved_user_id, memory_id, content)
 
 

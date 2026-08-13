@@ -5,6 +5,7 @@ from urllib.parse import quote, urlparse
 
 import httpx
 import jwt
+from i18n import t
 from jwt import PyJWKClient
 
 from src.config import get_settings
@@ -118,7 +119,7 @@ class KeycloakService(KeycloakBrokerMixin):
         if issuer_url:
             return issuer_url.rstrip("/").replace(f"/realms/{self.get_realm()}", "")
 
-        raise ValueError("KEYCLOAK_BASE_URL or KEYCLOAK_ISSUER_URL must be configured")
+        raise ValueError(t("keycloak.base_url_not_configured"))
 
     def get_realm(self) -> str:
         return (
@@ -170,9 +171,7 @@ class KeycloakService(KeycloakBrokerMixin):
                 wildcard_base = candidate.split("*", 1)[0].rstrip("/")
                 return f"{wildcard_base}/auth/oidc/callback"
 
-        raise ValueError(
-            "KEYCLOAK_REDIRECT_URI or KEYCLOAK_REDIRECT_URIS must contain an absolute callback URL"
-        )
+        raise ValueError(t("keycloak.redirect_uri_not_absolute"))
 
     def is_external_keycloak(self) -> bool:
         return self._external_bool_config(
@@ -307,7 +306,7 @@ class KeycloakService(KeycloakBrokerMixin):
 
     async def _get_service_account_admin_token(self) -> str:
         if not self.get_client_secret():
-            raise ValueError("Keycloak service account is not configured")
+            raise ValueError(t("keycloak.service_account_not_configured"))
         cached = await self._get_cached_admin_token("service-account")
         if cached:
             return cached
@@ -382,10 +381,7 @@ class KeycloakService(KeycloakBrokerMixin):
             _env.EXTERNAL_KEYCLOAK_REALM or _settings.EXTERNAL_KEYCLOAK_REALM,
         )
         if not base_url or not realm:
-            raise ValueError(
-                "EXTERNAL_KEYCLOAK_ISSUER_URL or "
-                "EXTERNAL_KEYCLOAK_BASE_URL + EXTERNAL_KEYCLOAK_REALM must be configured"
-            )
+            raise ValueError(t("keycloak.external_issuer_not_configured"))
         return f"{base_url.rstrip('/')}/realms/{realm}"
 
     def get_external_issuer_url(self) -> str:
@@ -451,7 +447,7 @@ class KeycloakService(KeycloakBrokerMixin):
             _env.EXTERNAL_KEYCLOAK_REALM or _settings.EXTERNAL_KEYCLOAK_REALM,
         )
         if not external_realm:
-            raise ValueError("EXTERNAL_KEYCLOAK_REALM must be configured")
+            raise ValueError(t("keycloak.external_realm_not_configured"))
 
         async with httpx.AsyncClient() as client:
             base_url = self._external_backend_issuer_url().rsplit("/realms/", 1)[0]
@@ -472,9 +468,9 @@ class KeycloakService(KeycloakBrokerMixin):
             _env.EXTERNAL_KEYCLOAK_CLIENT_SECRET or _settings.EXTERNAL_KEYCLOAK_CLIENT_SECRET,
         )
         if not client_id:
-            raise ValueError("EXTERNAL_KEYCLOAK_CLIENT_ID must be configured")
+            raise ValueError(t("keycloak.external_client_id_not_configured"))
         if not client_secret:
-            raise ValueError("EXTERNAL_KEYCLOAK_CLIENT_SECRET must be configured")
+            raise ValueError(t("keycloak.external_client_secret_not_configured"))
 
         alias = self.get_external_keycloak_alias()
         issuer = self._external_issuer_url()
@@ -595,7 +591,7 @@ class KeycloakService(KeycloakBrokerMixin):
             resp.raise_for_status()
             current = resp.json()
             if not isinstance(current, dict):
-                raise ValueError(f"Keycloak client '{client_id}' response is invalid")
+                raise ValueError(t("keycloak.client_response_invalid", client_id=client_id))
             action = "updated"
         except ValueError:
             current = {
@@ -692,7 +688,7 @@ class KeycloakService(KeycloakBrokerMixin):
         resp.raise_for_status()
         current = resp.json()
         if not isinstance(current, dict):
-            raise ValueError(f"Keycloak client '{client_id}' response is invalid")
+            raise ValueError(t("keycloak.client_response_invalid", client_id=client_id))
 
         current_redirect_uris = self._merge_unique_values(
             list(current.get("redirectUris") or []), []
@@ -1397,11 +1393,11 @@ class KeycloakService(KeycloakBrokerMixin):
         resp.raise_for_status()
         clients = resp.json()
         if not isinstance(clients, list) or not clients:
-            raise ValueError(f"Keycloak client '{resolved_client_id}' was not found")
+            raise ValueError(t("keycloak.client_not_found", client_id=resolved_client_id))
 
         client = clients[0]
         if not isinstance(client, dict) or not client.get("id"):
-            raise ValueError(f"Keycloak client '{resolved_client_id}' response is invalid")
+            raise ValueError(t("keycloak.client_response_invalid", client_id=resolved_client_id))
 
         client_uuid = str(client["id"])
         self._client_uuid_cache = client_uuid
@@ -1797,7 +1793,7 @@ class KeycloakService(KeycloakBrokerMixin):
                             return error_body["error"]
                 except Exception:
                     pass
-                return f"Keycloak token exchange failed (status {response.status_code})"
+                return t("keycloak.token_exchange_failed_status", status=response.status_code)
 
             resp = await client.post(token_url, data=_payload(redirect_uri))
             if resp.is_success:
@@ -1842,13 +1838,25 @@ class KeycloakService(KeycloakBrokerMixin):
             try:
                 error_body = resp.json()
                 if isinstance(error_body, dict):
-                    detail = (
-                        error_body.get("error_description")
-                        or error_body.get("error")
-                        or f"Authentication failed (status {resp.status_code})"
-                    )
+                    # Keycloak can return error="invalid_grant" for several distinct
+                    # reasons -- a genuinely wrong username/password, but also a
+                    # disabled account or, in some Keycloak versions, a misconfigured
+                    # login client not permitted for direct access grants. Only the
+                    # description Keycloak actually uses for wrong credentials is
+                    # translated; every other case (including other invalid_grant
+                    # causes) is left as Keycloak's raw description so a real
+                    # deployment/config problem isn't mislabeled as a user typo.
+                    description = (error_body.get("error_description") or "").lower()
+                    if error_body.get("error") == "invalid_grant" and "credential" in description:
+                        detail = t("auth.invalid_credentials")
+                    else:
+                        detail = (
+                            error_body.get("error_description")
+                            or error_body.get("error")
+                            or t("keycloak.auth_failed_status", status=resp.status_code)
+                        )
             except Exception:
-                detail = f"Authentication failed (status {resp.status_code})"
+                detail = t("keycloak.auth_failed_status", status=resp.status_code)
             raise ValueError(detail)
 
     async def get_external_user_info(self, access_token: str) -> dict[str, Any] | None:
@@ -1899,7 +1907,7 @@ class KeycloakService(KeycloakBrokerMixin):
                 user = await self.get_user_by_username(username)
                 created_id = str(user["id"]) if user and user.get("id") else None
             if not created_id:
-                raise ValueError("Failed to create SP user for external identity")
+                raise ValueError(t("keycloak.sp_user_create_failed"))
             keycloak_id = created_id
 
         await self.add_federated_identity(
@@ -1936,10 +1944,10 @@ class KeycloakService(KeycloakBrokerMixin):
                     detail = (
                         error_body.get("error_description")
                         or error_body.get("error")
-                        or f"Token refresh failed (status {resp.status_code})"
+                        or t("keycloak.token_refresh_failed_status", status=resp.status_code)
                     )
             except Exception:
-                detail = f"Token refresh failed (status {resp.status_code})"
+                detail = t("keycloak.token_refresh_failed_status", status=resp.status_code)
             raise ValueError(detail)
 
     # ------------------------------------------------------------------

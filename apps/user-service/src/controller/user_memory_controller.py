@@ -19,7 +19,7 @@ class UserMemoryController(BaseController):
         try:
             return await self.service.create(user_id, content)
         except Exception:
-            self._raise_conflict("Memory with this content already exists.")
+            self._raise_conflict("memory.already_exists")
 
     async def add_facts(
         self, user_id: uuid.UUID, contents: list[str], source: str = "auto_extracted"
@@ -29,13 +29,13 @@ class UserMemoryController(BaseController):
     async def update_memory(self, user_id: uuid.UUID, memory_id: uuid.UUID, content: str) -> dict:
         result = await self.service.update(memory_id, user_id, content)
         if not result:
-            self._raise_not_found("Memory not found")
+            self._raise_not_found("memory.not_found")
         return result
 
     async def delete_memory(self, user_id: uuid.UUID, memory_id: uuid.UUID) -> None:
         deleted = await self.service.delete(memory_id, user_id)
         if not deleted:
-            self._raise_not_found("Memory not found")
+            self._raise_not_found("memory.not_found")
 
     async def delete_all_memories(self, user_id: uuid.UUID) -> dict:
         count = await self.service.delete_all(user_id)
@@ -44,7 +44,7 @@ class UserMemoryController(BaseController):
     async def get_memory(self, user_id: uuid.UUID, memory_id: uuid.UUID) -> dict:
         result = await self.service.get(memory_id, user_id)
         if not result:
-            self._raise_not_found("Memory not found")
+            self._raise_not_found("memory.not_found")
         return result
 
 

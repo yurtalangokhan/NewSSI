@@ -1,6 +1,8 @@
 import logging
 from typing import Any
 
+from i18n import t
+
 from src.repository import PermissionRepository, RoleRepository
 
 logger = logging.getLogger(__name__)
@@ -46,7 +48,7 @@ class RoleService:
         permissions: list[str] | None = None,
     ) -> dict[str, Any]:
         if await self.repo.exists(name):
-            raise ValueError(f"Role '{name}' already exists")
+            raise ValueError(t("role.already_exists", name=name))
         await self._validate_permissions_for_service(permissions or [], service_client)
         role = await self.repo.create(
             name=name,
@@ -143,7 +145,7 @@ class RoleService:
             if permission not in permission_by_name and permission != "*"
         ]
         if invalid:
-            raise ValueError(f"Invalid permissions: {invalid}")
+            raise ValueError(t("permission.invalid_permissions", permissions=invalid))
 
         wrong_service = [
             permission
@@ -152,7 +154,11 @@ class RoleService:
         ]
         if wrong_service:
             raise ValueError(
-                f"Permissions do not belong to service '{service_client}': {wrong_service}"
+                t(
+                    "permission.wrong_service",
+                    service_client=service_client,
+                    permissions=wrong_service,
+                )
             )
 
 

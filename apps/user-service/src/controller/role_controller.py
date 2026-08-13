@@ -2,6 +2,7 @@ import uuid
 from typing import Any
 
 from fastapi import HTTPException
+from i18n import t
 
 from .base import BaseController
 
@@ -19,7 +20,7 @@ class CompositeRoleController(BaseController):
     async def get_role(self, name: str) -> dict[str, Any]:
         role = await self.service.get_role(name)
         if not role:
-            self._raise_not_found(f"Role '{name}' not found")
+            self._raise_not_found("role.not_found", name=name)
         return role
 
     async def create_role(
@@ -71,7 +72,7 @@ class CompositeRoleController(BaseController):
         except ValueError as e:
             self._raise_bad_request(str(e))
         if not role:
-            self._raise_not_found(f"Role '{name}' not found")
+            self._raise_not_found("role.not_found", name=name)
         audit = get_audit_service()
         await audit.log(
             action="role:update",
@@ -89,7 +90,7 @@ class CompositeRoleController(BaseController):
         except ValueError as e:
             self._raise_bad_request(str(e))
         if not success:
-            self._raise_not_found(f"Role '{name}' not found")
+            self._raise_not_found("role.not_found", name=name)
         audit = get_audit_service()
         await audit.log(
             action="role:delete",
@@ -97,7 +98,7 @@ class CompositeRoleController(BaseController):
             user_id=_safe_uuid(user_id),
             details={"name": name},
         )
-        return {"message": "Role deleted"}
+        return {"message": t("role.deleted")}
 
     async def get_role_permissions(self, name: str) -> dict[str, Any]:
         try:
@@ -105,7 +106,7 @@ class CompositeRoleController(BaseController):
         except Exception as e:
             self._raise_bad_request(str(e))
         if not result:
-            self._raise_not_found(f"Role '{name}' not found")
+            self._raise_not_found("role.not_found", name=name)
         return result
 
     async def set_role_permissions(
@@ -118,7 +119,7 @@ class CompositeRoleController(BaseController):
         except ValueError as e:
             self._raise_bad_request(str(e))
         if not result:
-            self._raise_not_found(f"Role '{name}' not found")
+            self._raise_not_found("role.not_found", name=name)
         audit = get_audit_service()
         await audit.log(
             action="role:set_permissions",
@@ -131,7 +132,7 @@ class CompositeRoleController(BaseController):
     async def get_role_role_ids(self, name: str) -> dict[str, Any]:
         result = await self.service.get_role_role_ids(name)
         if not result:
-            self._raise_not_found(f"Role '{name}' not found")
+            self._raise_not_found("role.not_found", name=name)
         return result
 
     async def set_role_role_ids(
@@ -144,7 +145,7 @@ class CompositeRoleController(BaseController):
         except ValueError as e:
             self._raise_bad_request(str(e))
         if not result:
-            self._raise_not_found(f"Role '{name}' not found")
+            self._raise_not_found("role.not_found", name=name)
         audit = get_audit_service()
         await audit.log(
             action="role:set_role_ids",
@@ -168,7 +169,7 @@ class CompositeRoleController(BaseController):
             )
             return result
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Keycloak sync failed: {e}") from e
+            raise HTTPException(status_code=500, detail=t("role.keycloak_sync_failed", error=e)) from e
 
 
 def _safe_uuid(val: str | None) -> uuid.UUID | None:

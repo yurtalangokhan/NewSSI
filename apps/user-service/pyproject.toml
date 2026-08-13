@@ -25,10 +25,13 @@ dependencies = [
     "python-jose[cryptography]>=3.3.0",
     "ldap3>=2.9.1",
     "idempotency",
+    "i18n-py",
 ]
 
 [tool.uv.sources]
 idempotency = { path = "../../packages/idempotency-py" }
+i18n-py = { path = "../../packages/i18n-py" }
+
 
 [project.optional-dependencies]
 dev = [
@@ -59,6 +62,7 @@ ignore = ["E501", "B008", "N802", "N806", "F821", "UP042"]
 "__init__.py" = ["F401", "I001"]
 
 [tool.pytest.ini_options]
+pythonpath = ["src", "../../packages/i18n-py/src"]
 asyncio_mode = "auto"
 testpaths = ["tests"]
 

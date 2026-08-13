@@ -28,7 +28,7 @@ class SystemSettingsController(BaseController):
         except ValueError as e:
             self._raise_bad_request(str(e))
         except Exception as e:
-            self._raise_bad_request(f"Keycloak realm update failed: {e}")
+            self._raise_bad_request("system_settings.keycloak_realm_update_failed", error=str(e))
 
     async def sync_external_identity_provider(self) -> dict[str, Any]:
         try:
@@ -36,7 +36,7 @@ class SystemSettingsController(BaseController):
         except ValueError as e:
             self._raise_bad_request(str(e))
         except Exception as e:
-            self._raise_bad_request(f"External Keycloak sync failed: {e}")
+            self._raise_bad_request("system_settings.external_keycloak_sync_failed", error=str(e))
 
 
 _system_settings_controller_instance: SystemSettingsController | None = None

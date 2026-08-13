@@ -2,6 +2,8 @@ import logging
 import uuid
 from typing import Any
 
+from i18n import t
+
 from src.core.database.models.user_model import normalize_user_role
 from src.core.exceptions import ForbiddenError, NotFoundError
 from src.repository import (
@@ -29,7 +31,7 @@ class UserService:
 
         logged_out = await self.keycloak.logout_user_sessions(user.keycloak_id)
         if not logged_out:
-            raise ValueError("Failed to invalidate active Keycloak sessions")
+            raise ValueError(t("user.session_invalidation_failed"))
 
     async def get_user(self, user_id: uuid.UUID) -> dict[str, Any] | None:
         user = await self.user_repo.get_by_id(user_id)
@@ -92,7 +94,7 @@ class UserService:
         if by_keycloak_id:
             return by_keycloak_id.id
 
-        raise NotFoundError("Target user not found")
+        raise NotFoundError(t("user.target_not_found"))
 
     async def authorize_target_user_id(
         self,
@@ -107,7 +109,7 @@ class UserService:
         try:
             authenticated_uuid = uuid.UUID(authenticated_user_id)
         except ValueError:
-            raise ForbiddenError("Forbidden") from None
+            raise ForbiddenError(t("auth.forbidden")) from None
 
         if resolved_user_id == authenticated_uuid:
             return resolved_user_id
@@ -120,7 +122,7 @@ class UserService:
             if role and role.is_admin:
                 return resolved_user_id
 
-        raise ForbiddenError("Forbidden")
+        raise ForbiddenError(t("auth.forbidden"))
 
     async def get_user_by_email(self, email: str) -> dict[str, Any] | None:
         user = await self.user_repo.get_by_email(email)
@@ -194,7 +196,7 @@ class UserService:
         password: str | None = None,
     ) -> dict[str, Any]:
         if await self.user_repo.exists_by_email(email):
-            raise ValueError(f"User with email {email} already exists")
+            raise ValueError(t("user.already_exists", email=email))
 
         role_value = role if await self.role_repo.exists(role) else "enduser"
         normalized_email = email.lower()
@@ -214,7 +216,7 @@ class UserService:
             if existing_keycloak_user:
                 keycloak_id = existing_keycloak_user.get("id")
                 if not keycloak_id:
-                    raise ValueError("Existing Keycloak user has no id")
+                    raise ValueError(t("user.keycloak_user_missing_id"))
                 logger.info(
                     f"Using existing Keycloak user {keycloak_id} for email {normalized_email} "
                     f"(firstName={existing_keycloak_user.get('firstName')}, "
@@ -245,11 +247,11 @@ class UserService:
 
                 keycloak_id = await self.keycloak.create_user(keycloak_payload)
                 if not keycloak_id:
-                    raise ValueError("Keycloak user could not be created")
+                    raise ValueError(t("user.keycloak_user_create_failed"))
                 created_keycloak_id = True
 
         if self.keycloak.is_enabled() and not keycloak_id:
-            raise ValueError("Keycloak user id is required")
+            raise ValueError(t("user.keycloak_id_required"))
 
         if self.keycloak.is_enabled() and keycloak_id and not created_keycloak_id:
             keycloak_payload: dict[str, Any] = {
@@ -269,7 +271,7 @@ class UserService:
                     temporary=False,
                 )
                 if not password_set:
-                    raise ValueError("Keycloak password could not be set")
+                    raise ValueError(t("user.keycloak_password_set_failed"))
 
         try:
             user = await self.user_repo.create(
@@ -327,7 +329,7 @@ class UserService:
         if "email" in filtered:
             existing = await self.user_repo.get_by_email(filtered["email"])
             if existing and existing.id != user_id:
-                raise ValueError(f"User with email {filtered['email']} already exists")
+                raise ValueError(t("user.already_exists", email=filtered["email"]))
 
         if "role" in updates and await self.role_repo.exists(updates["role"]):
             filtered["role"] = updates["role"]
@@ -426,7 +428,7 @@ class UserService:
 
     async def set_user_role(self, user_id: uuid.UUID, role: str) -> dict[str, Any] | None:
         if not await self.role_repo.exists(role):
-            raise ValueError(f"Invalid role: {role}")
+            raise ValueError(t("user.invalid_role", role=role))
 
         user = await self.user_repo.get_by_id(user_id)
         if not user:
@@ -452,10 +454,10 @@ class UserService:
         return self._user_to_dict(user)
 
     async def reset_password(self, user_id: uuid.UUID) -> tuple[str, dict[str, Any]]:
-        raise ValueError("Password management is handled by Keycloak")
+        raise ValueError(t("user.password_managed_by_keycloak"))
 
     async def set_password(self, user_id: uuid.UUID, password: str) -> dict[str, Any] | None:
-        raise ValueError("Password management is handled by Keycloak")
+        raise ValueError(t("user.password_managed_by_keycloak"))
 
     async def change_password(
         self,
@@ -463,7 +465,7 @@ class UserService:
         old_password: str,
         new_password: str,
     ) -> dict[str, Any] | None:
-        raise ValueError("Password management is handled by Keycloak")
+        raise ValueError(t("user.password_managed_by_keycloak"))
 
     def _user_to_dict(self, user) -> dict[str, Any]:
         return {

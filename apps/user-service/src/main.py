@@ -1,14 +1,22 @@
 import logging
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 import httpx
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from i18n import I18nMiddleware, init_service_i18n
 from idempotency import AsyncRedisPool, IdempotencyConfig, IdempotencyMiddleware
 
 from src.config import get_settings
 from src.core.api_versioning import API_PREFIX
 from src.core.database.engine import close_db_engine
+
+_here = Path(__file__).resolve().parent
+locales_dir = _here.parent / "locales"
+if not locales_dir.exists():
+    locales_dir = _here / "locales"
+init_service_i18n(locales_dir)
 
 logger = logging.getLogger(__name__)
 
@@ -82,6 +90,8 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
+    app.add_middleware(I18nMiddleware)
+
     app.add_middleware(
         IdempotencyMiddleware,
         config=_idempotency_config,
@@ -91,6 +101,7 @@ def create_app() -> FastAPI:
             f"{API_PREFIX}/health/ready",
         },
     )
+
 
     from src.api.routes import (
         api_keys_router,

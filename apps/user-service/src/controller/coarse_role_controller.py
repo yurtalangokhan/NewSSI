@@ -2,6 +2,7 @@ import uuid
 from typing import Any
 
 from fastapi import HTTPException
+from i18n import t
 
 from .base import BaseController
 
@@ -19,7 +20,7 @@ class RoleController(BaseController):
     async def get_role(self, name: str) -> dict[str, Any]:
         role = await self.service.get_role(name)
         if not role:
-            self._raise_not_found(f"Role '{name}' not found")
+            self._raise_not_found("role.not_found", name=name)
         return role
 
     async def create_role(
@@ -69,7 +70,7 @@ class RoleController(BaseController):
             service_client=service_client,
         )
         if not role:
-            self._raise_not_found(f"Role '{name}' not found")
+            self._raise_not_found("role.not_found", name=name)
         audit = get_audit_service()
         await audit.log(
             action="role:update",
@@ -84,7 +85,7 @@ class RoleController(BaseController):
 
         success = await self.service.delete_role(name)
         if not success:
-            self._raise_not_found(f"Role '{name}' not found")
+            self._raise_not_found("role.not_found", name=name)
         audit = get_audit_service()
         await audit.log(
             action="role:delete",
@@ -92,12 +93,12 @@ class RoleController(BaseController):
             user_id=_safe_uuid(user_id),
             details={"name": name},
         )
-        return {"message": "Role deleted"}
+        return {"message": t("role.deleted")}
 
     async def get_role_permissions(self, name: str) -> dict[str, Any]:
         result = await self.service.get_role_permissions(name)
         if not result:
-            self._raise_not_found(f"Role '{name}' not found")
+            self._raise_not_found("role.not_found", name=name)
         return result
 
     async def set_role_permissions(
@@ -110,7 +111,7 @@ class RoleController(BaseController):
         except ValueError as e:
             self._raise_bad_request(str(e))
         if not result:
-            self._raise_not_found(f"Role '{name}' not found")
+            self._raise_not_found("role.not_found", name=name)
         audit = get_audit_service()
         await audit.log(
             action="role:set_permissions",

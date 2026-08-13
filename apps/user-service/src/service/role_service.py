@@ -1,6 +1,8 @@
 import logging
 from typing import Any
 
+from i18n import t
+
 from src.repository import CompositeRoleRepository, PermissionRepository
 
 from .coarse_role_service import get_role_service
@@ -79,7 +81,7 @@ class CompositeRoleService:
             logged_out = await self.keycloak.logout_user_sessions(user.keycloak_id)
             if not logged_out:
                 raise ValueError(
-                    f"Failed to invalidate active Keycloak sessions for user {user.email}"
+                    t("role.session_invalidation_failed_for_user", email=user.email)
                 )
             invalidated += 1
         return invalidated
@@ -124,7 +126,7 @@ class CompositeRoleService:
         is_builtin: bool = False,
     ) -> dict[str, Any]:
         if await self.role_repo.exists(name):
-            raise ValueError(f"Role '{name}' already exists")
+            raise ValueError(t("role.already_exists", name=name))
         role = await self.role_repo.create(
             name=name,
             description=description,
@@ -176,9 +178,9 @@ class CompositeRoleService:
     async def delete_role(self, name: str) -> bool:
         role = await self.role_repo.get_by_name(name)
         if role and role.is_builtin:
-            raise ValueError(f"Cannot delete built-in role '{name}'")
+            raise ValueError(t("role.cannot_delete_builtin", name=name))
         if role and await self._users_with_role(name):
-            raise ValueError(f"Cannot delete role '{name}' while users are assigned to it")
+            raise ValueError(t("role.cannot_delete_in_use", name=name))
         deleted = await self.role_repo.delete(name)
         if deleted and self.keycloak.is_enabled():
             await self.keycloak.delete_realm_role(name)
@@ -232,7 +234,7 @@ class CompositeRoleService:
         valid_names = {p.name for p in all_perms}
         invalid = [p for p in permissions if p not in valid_names and p != "*"]
         if invalid:
-            raise ValueError(f"Invalid permissions: {invalid}")
+            raise ValueError(t("role.invalid_permissions", permissions=invalid))
 
         role = await self.role_repo.update(name, permissions=permissions)
         if not role:
@@ -265,7 +267,7 @@ class CompositeRoleService:
         existing_names = {r.name for r in existing}
         invalid = [n for n in role_ids if n not in existing_names]
         if invalid:
-            raise ValueError(f"Invalid roles: {invalid}")
+            raise ValueError(t("role.invalid_role_ids", roles=invalid))
 
         role = await self.role_repo.update(name, role_ids=role_ids)
         if not role:
