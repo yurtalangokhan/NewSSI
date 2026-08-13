@@ -30,6 +30,7 @@ from service.documents.blocks import (
     ParagraphBlock,
     QuoteBlock,
     TableBlock,
+    simple_table_block,
 )
 from service.documents.image_loading import load_image_bytes
 from service.documents.numbering import prepare_blocks
@@ -44,7 +45,13 @@ from service.documents.ooxml import (
     shade_cell,
     shade_paragraph,
 )
-from service.documents.options import CoverOptions, DocumentOptions, TableStyleOptions, TocOptions
+from service.documents.options import (
+    CoverOptions,
+    DocumentOptions,
+    FrontMatterOptions,
+    TableStyleOptions,
+    TocOptions,
+)
 from service.documents.themes import EffectiveStyle, resolve_effective_style
 
 if TYPE_CHECKING:
@@ -89,6 +96,9 @@ def render_docx(title: str | None, markdown: str, options: DocumentOptions | Non
     elif title:
         paragraph = document.add_paragraph(title, style="Title")
         _apply_run_style(paragraph.runs, heading_style)
+
+    if options.front_matter.has_content():
+        _add_front_matter(document, options.front_matter, style, heading_style, options.tables)
 
     if options.toc.enabled:
         _add_toc(document, options.toc, blocks, body_style, heading_bookmark_names)
@@ -202,6 +212,53 @@ def _add_cover_page(
 
     if cover.classification:
         centered_paragraph(cover.classification, bold=True)
+
+    document.add_page_break()
+
+
+def _add_front_matter(
+    document: Any,
+    front_matter: FrontMatterOptions,
+    style: EffectiveStyle,
+    heading_style: _RunStyle,
+    table_options: TableStyleOptions,
+) -> None:
+    def section_heading(text: str) -> None:
+        from docx.shared import Pt
+
+        # A bold run rather than the "Heading 2" style: Word's TOC field
+        # (`_add_toc`) picks up every "Heading N"-styled paragraph via its
+        # built-in outline levels, and these front-matter titles sit before
+        # the TOC/document content — an entry pointing there would be
+        # confusing to click.
+        paragraph = document.add_paragraph()
+        run = paragraph.add_run(text)
+        run.bold = True
+        run.font.size = Pt(14)
+        _apply_run_style(paragraph.runs, heading_style)
+
+    if front_matter.document_control:
+        section_heading("Document Control")
+        for key, value in front_matter.document_control.items():
+            paragraph = document.add_paragraph()
+            paragraph.add_run(f"{key}: ").bold = True
+            paragraph.add_run(value)
+
+    if front_matter.revision_history:
+        section_heading("Revision History")
+        table = simple_table_block(
+            ("Version", "Date", "Author", "Description"),
+            [(e.version, e.date, e.author, e.description) for e in front_matter.revision_history],
+        )
+        _add_table(document, table, style, table_options)
+
+    if front_matter.approvals:
+        section_heading("Approvals")
+        table = simple_table_block(
+            ("Role", "Name", "Date"),
+            [(e.role, e.name, e.date) for e in front_matter.approvals],
+        )
+        _add_table(document, table, style, table_options)
 
     document.add_page_break()
 

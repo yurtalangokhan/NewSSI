@@ -138,3 +138,13 @@ Block = (
     | PageBreakBlock
     | FootnoteDefBlock
 )
+
+
+def simple_table_block(headers: list[str], rows: list[tuple]) -> TableBlock:
+    """Build a `TableBlock` straight from plain strings — used to render
+    front-matter tables (revision history, approvals) through the same
+    table styling path as Markdown-authored tables."""
+    return TableBlock(
+        header=[TableCell(spans=[InlineSpan(text=h)]) for h in headers],
+        rows=[[TableCell(spans=[InlineSpan(text=str(v))]) for v in row] for row in rows],
+    )

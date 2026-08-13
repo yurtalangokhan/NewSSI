@@ -70,30 +70,35 @@ DOCUMENT_TOOL_PROMPT = (
 
 _DOCUMENT_OPTIONS_REFERENCE = """
 options (all optional; unknown/invalid values fall back to defaults and never fail the call):
-  theme: default|corporate_blue|minimal_gray|academic|dark_accent
-  font: {body, heading, mono, size, line_spacing, space_after}
-  colors: {heading, accent, text, table_header_bg, table_header_text, table_zebra_bg, code_bg, link} (hex or CSS name)
-  page: {size: A4|Letter, orientation: portrait|landscape, margins: {top, right, bottom, left} in mm}
-  cover: {enabled, subtitle, project, version, date, author, organization, classification, logo}
-  toc: {enabled, depth, title, mode: auto|field|static}
-  numbering: {headings, max_level, separator} — renders 1 / 1.1 / 1.1.1 heading numbers
-  header / footer: {left, center, right, different_first_page, rule} — text supports {page} {pages} {title} {date} {version}
-  tables: {style: grid|zebra|minimal, header_bold, caption_prefix, figure_caption_prefix}
-  requirement_ids: {enabled, pattern} — regex highlighting for tokens like [SRS-FUNC-001]
-  watermark: {text, color}
-  pdf: {bookmarks, metadata: {author, title, subject, keywords}}
-  Example: {"theme": "corporate_blue", "cover": {"enabled": true, "version": "1.0"}, "toc": {"enabled": true}, "numbering": {"headings": true}}
+  theme: default|corporate_blue|minimal_gray|academic|dark_accent (pdf/docx only)
+  font: {body, heading, mono, size, line_spacing, space_after} (pdf/docx only)
+  colors: {heading, accent, text, table_header_bg, table_header_text, table_zebra_bg, code_bg, link} (hex or CSS name; pdf/docx only)
+  page: {size: A4|Letter, orientation: portrait|landscape, margins: {top, right, bottom, left} in mm} (pdf/docx only)
+  cover: {enabled, subtitle, project, version, date, author, organization, classification, logo} — full page for pdf/docx; rendered as a metadata block for md/txt/json (logo only applies to pdf/docx)
+  toc: {enabled, depth, title, mode: auto|field|static} — real navigable TOC for pdf/docx; a plain link list for md; mode ignored outside pdf/docx
+  numbering: {headings, max_level, separator} — renders 1 / 1.1 / 1.1.1 heading numbers; applies to pdf/docx/md/txt
+  header / footer: {left, center, right, different_first_page, rule} — text supports {page} {pages} {title} {date} {version}; real page furniture for pdf/docx, a trailing text note for md/txt ({page}/{pages} have no meaning there and render empty)
+  front_matter: {revision_history: [{version, date, author, description}], approvals: [{role, name, date}], document_control: {key: value}} — rendered as tables/lists on all of pdf/docx/md/txt, and folded into a "metadata" envelope for json
+  tables: {style: grid|zebra|minimal, header_bold, caption_prefix, figure_caption_prefix} (pdf/docx only)
+  requirement_ids: {enabled, pattern} — regex highlighting for tokens like [SRS-FUNC-001] (pdf/docx only)
+  watermark: {text, color} (pdf/docx only)
+  pdf: {bookmarks, metadata: {author, title, subject, keywords}} (pdf only)
+  Example (pdf/docx): {"theme": "corporate_blue", "cover": {"enabled": true, "version": "1.0"}, "toc": {"enabled": true}, "numbering": {"headings": true}}
+  Example (md/txt/json): {"cover": {"enabled": true, "author": "Ada"}, "front_matter": {"revision_history": [{"version": "1.0", "date": "2026-01-01", "author": "Ada", "description": "Initial draft"}]}}
 """
 
 _SPREADSHEET_OPTIONS_REFERENCE = """
 options (all optional; unknown/invalid values fall back to defaults and never fail the call):
-  theme: default|corporate_blue|minimal_gray|academic|dark_accent
-  header_row, freeze_header, autofilter, autofit_columns, zebra: bool
-  column_widths: [int, ...]
-  column_formats: [text|number|date|percent|currency, ...]
-  column_alignments: [left|center|right, ...]
-  conditional_formats: [{column, rule: equals|greater_than|less_than|contains, value, color}]
-  Example: {"theme": "corporate_blue", "zebra": true, "conditional_formats": [{"column": 3, "rule": "equals", "value": "FAIL", "color": "#FFC7CE"}]}
+  theme: default|corporate_blue|minimal_gray|academic|dark_accent (xlsx only)
+  header_row, freeze_header, autofilter, autofit_columns, zebra: bool (xlsx only)
+  column_widths: [int, ...] (xlsx only)
+  column_formats: [text|number|date|percent|currency, ...] (xlsx only)
+  column_alignments: [left|center|right, ...] (xlsx only)
+  conditional_formats: [{column, rule: equals|greater_than|less_than|contains, value, color}] (xlsx only)
+  delimiter: ,|;|\\t|| (csv only, default ",")
+  csv_bom: bool — leading UTF-8 BOM so Excel opens Turkish characters correctly; disable for tools that don't expect one (csv only, default true)
+  Example (xlsx): {"theme": "corporate_blue", "zebra": true, "conditional_formats": [{"column": 3, "rule": "equals", "value": "FAIL", "color": "#FFC7CE"}]}
+  Example (csv): {"delimiter": ";", "csv_bom": false}
 """
 
 _SHORT_DOCUMENT_DESCRIPTION = (
@@ -443,6 +448,7 @@ async def create_document(
     mime_type = docgen.mime_for_format(format)
     _emit_rendering_started("create_document", safe_filename, format, len(content or ""))
     parsed_options = docgen.parse_document_options(options)
+    docgen.warn_unsupported_document_options(format, parsed_options)
 
     try:
         if format == "pdf":
@@ -493,8 +499,9 @@ async def create_spreadsheet(
         options: Optional styling (theme, header row, freeze pane, autofilter,
             zebra striping, column widths/formats/alignments, conditional
             formatting) — see the options reference appended to this tool's
-            description. XLSX only; ignored for CSV. Any unrecognized or
-            invalid field silently falls back to its default.
+            description. Most fields are XLSX-only; CSV only honors
+            `delimiter` and `csv_bom`. Any unrecognized or invalid field
+            silently falls back to its default.
 
     Returns:
         A short confirmation on success, or an error description on failure.
@@ -509,15 +516,17 @@ async def create_spreadsheet(
     mime_type = docgen.mime_for_format(format)
     row_count = sum(len(sheet.get("rows") or []) for sheet in sheets or [])
     _emit_rendering_started("create_spreadsheet", safe_filename, format, row_count)
+    parsed_options = docgen.parse_spreadsheet_options(options)
+    docgen.warn_unsupported_spreadsheet_options(format, parsed_options)
 
     try:
         if format == "xlsx":
-            data = docgen.render_xlsx(sheets, options=docgen.parse_spreadsheet_options(options))
+            data = docgen.render_xlsx(sheets, options=parsed_options)
         else:
             first_sheet = sheets[0] if sheets else None
             if not first_sheet or not first_sheet.get("rows"):
                 raise ValueError("sheets must contain at least one sheet with rows")
-            data = docgen.render_csv(first_sheet["rows"])
+            data = docgen.render_csv(first_sheet["rows"], options=parsed_options)
     except ValueError as exc:
         _emit_generation_failed("create_spreadsheet", safe_filename, format, str(exc))
         return f"Error: could not create spreadsheet: {exc}"

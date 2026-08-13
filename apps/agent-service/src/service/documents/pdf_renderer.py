@@ -33,12 +33,14 @@ from service.documents.blocks import (
     ParagraphBlock,
     QuoteBlock,
     TableBlock,
+    simple_table_block,
 )
 from service.documents.image_loading import load_image_bytes
 from service.documents.numbering import prepare_blocks
 from service.documents.options import (
     CoverOptions,
     DocumentOptions,
+    FrontMatterOptions,
     HeaderFooterOptions,
     TableStyleOptions,
     WatermarkOptions,
@@ -365,6 +367,50 @@ def _pdf_cover_flowables(
     return flowables
 
 
+def _pdf_front_matter_flowables(
+    front_matter: FrontMatterOptions, styles: dict[str, Any]
+) -> list[Any]:
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.platypus import PageBreak, Paragraph, Spacer
+
+    # A distinct style name (not "DocHeadingN") so `_DocTemplate.afterFlowable`
+    # in `render_pdf` — which keys off that name to register TOC entries and
+    # PDF bookmarks — doesn't also index these front-matter section titles;
+    # they sit on the page before the TOC/bookmarks, which would be a
+    # confusing entry to click.
+    section_style = ParagraphStyle("FrontMatterHeading", parent=styles["headings"].get(2))
+    flowables: list[Any] = []
+
+    if front_matter.document_control:
+        flowables.append(Paragraph("Document Control", section_style))
+        for key, value in front_matter.document_control.items():
+            markup = f"<b>{_escape_pdf_xml(key)}:</b> {_escape_pdf_xml(value)}"
+            flowables.append(Paragraph(markup, styles["body"]))
+        flowables.append(Spacer(1, 8))
+
+    if front_matter.revision_history:
+        flowables.append(Paragraph("Revision History", section_style))
+        table = simple_table_block(
+            ("Version", "Date", "Author", "Description"),
+            [(e.version, e.date, e.author, e.description) for e in front_matter.revision_history],
+        )
+        flowables.append(_pdf_table_flowable(table, styles))
+        flowables.append(Spacer(1, 8))
+
+    if front_matter.approvals:
+        flowables.append(Paragraph("Approvals", section_style))
+        table = simple_table_block(
+            ("Role", "Name", "Date"),
+            [(e.role, e.name, e.date) for e in front_matter.approvals],
+        )
+        flowables.append(_pdf_table_flowable(table, styles))
+        flowables.append(Spacer(1, 8))
+
+    if flowables:
+        flowables.append(PageBreak())
+    return flowables
+
+
 # ---------------------------------------------------------------------------
 # Page furniture — header/footer/watermark, drawn per page via onPage
 # ---------------------------------------------------------------------------
@@ -599,6 +645,9 @@ def render_pdf(title: str | None, markdown: str, options: DocumentOptions | None
     elif title:
         story.append(Paragraph(_escape_pdf_xml(title), styles["title"]))
         story.append(Spacer(1, 12))
+
+    if options.front_matter.has_content():
+        story.extend(_pdf_front_matter_flowables(options.front_matter, styles))
 
     toc_enabled = options.toc.enabled
     if toc_enabled:

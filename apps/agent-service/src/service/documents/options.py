@@ -314,7 +314,8 @@ class HeaderFooterOptions(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Front matter (SRS/STD-specific blocks — Phase 4 wires these into renderers)
+# Front matter (SRS/STD-specific blocks — revision history/approvals/
+# document control rendered by docx/pdf/md/txt/json renderers)
 # ---------------------------------------------------------------------------
 
 
@@ -348,6 +349,9 @@ class FrontMatterOptions(BaseModel):
                 "document_control": lambda v: isinstance(v, dict),
             },
         )
+
+    def has_content(self) -> bool:
+        return bool(self.revision_history or self.approvals or self.document_control)
 
 
 # ---------------------------------------------------------------------------
@@ -500,6 +504,73 @@ def parse_document_options(raw: dict[str, Any] | str | None) -> DocumentOptions:
 
 
 # ---------------------------------------------------------------------------
+# Per-format capability matrix — which top-level `DocumentOptions` sections a
+# given output format actually applies. Used only to warn when a caller set a
+# section a format silently cannot honor (e.g. `watermark` for `md`), so that
+# behavior stays discoverable in logs instead of being a silent no-op.
+# ---------------------------------------------------------------------------
+
+_RICH_DOCUMENT_SECTIONS = frozenset(
+    {
+        "theme",
+        "font",
+        "colors",
+        "page",
+        "cover",
+        "toc",
+        "numbering",
+        "header",
+        "footer",
+        "front_matter",
+        "tables",
+        "requirement_ids",
+        "watermark",
+    }
+)
+
+_FORMAT_OPTION_SECTIONS: dict[str, frozenset[str]] = {
+    "pdf": _RICH_DOCUMENT_SECTIONS | {"pdf"},
+    "docx": _RICH_DOCUMENT_SECTIONS,
+    "md": frozenset({"cover", "toc", "numbering", "header", "footer", "front_matter"}),
+    "txt": frozenset({"cover", "toc", "numbering", "header", "footer", "front_matter"}),
+    "json": frozenset({"cover", "front_matter"}),
+}
+
+
+def _section_is_customized(key: str, value: Any) -> bool:
+    if key == "theme":
+        return value != "default"
+    if key == "watermark":
+        return value is not None
+    if isinstance(value, BaseModel):
+        return value != type(value)()
+    return bool(value)
+
+
+def warn_unsupported_document_options(fmt: str, options: DocumentOptions) -> None:
+    """Log the option sections `fmt` cannot apply but the caller customized.
+
+    Every renderer already ignores sections it doesn't understand — this adds
+    no behavior change, just visibility for "why didn't my header show up in
+    the json output" style debugging.
+    """
+    supported = _FORMAT_OPTION_SECTIONS.get(fmt)
+    if supported is None:
+        return
+    ignored = [
+        key
+        for key in options.model_fields
+        if key not in supported and _section_is_customized(key, getattr(options, key))
+    ]
+    if ignored:
+        logger.info(
+            "Document format '%s' does not apply these customized option sections: %s",
+            fmt,
+            ", ".join(sorted(ignored)),
+        )
+
+
+# ---------------------------------------------------------------------------
 # SpreadsheetOptions
 # ---------------------------------------------------------------------------
 
@@ -538,6 +609,9 @@ def _is_str_list_of(allowed: tuple[str, ...]) -> Callable[[Any], bool]:
     return check
 
 
+_CSV_DELIMITERS = (",", ";", "\t", "|")
+
+
 class SpreadsheetOptions(BaseModel):
     theme: str = "default"
     header_row: bool = True
@@ -549,6 +623,8 @@ class SpreadsheetOptions(BaseModel):
     column_formats: list[str] | None = None
     column_alignments: list[str] | None = None
     conditional_formats: list[ConditionalFormatRule] = Field(default_factory=list)
+    delimiter: str = ","
+    csv_bom: bool = True
 
     @model_validator(mode="before")
     @classmethod
@@ -566,6 +642,12 @@ class SpreadsheetOptions(BaseModel):
         theme = cleaned.get("theme")
         if theme is not None and theme not in _KNOWN_THEMES:
             cleaned["theme"] = "default"
+
+        if "delimiter" in cleaned and cleaned["delimiter"] not in _CSV_DELIMITERS:
+            logger.warning("Invalid document option 'delimiter'; using default ','")
+            cleaned.pop("delimiter")
+        if "csv_bom" in cleaned and not isinstance(cleaned["csv_bom"], bool):
+            cleaned.pop("csv_bom")
 
         widths = cleaned.get("column_widths")
         if widths is not None and not (
@@ -624,3 +706,26 @@ def parse_spreadsheet_options(raw: dict[str, Any] | str | None) -> SpreadsheetOp
     except ValidationError as exc:
         logger.warning("spreadsheet options failed validation (%s); using defaults", exc)
         return SpreadsheetOptions()
+
+
+_CSV_OPTION_SECTIONS = frozenset({"delimiter", "csv_bom"})
+
+
+def warn_unsupported_spreadsheet_options(fmt: str, options: SpreadsheetOptions) -> None:
+    """Log spreadsheet option fields `fmt` cannot apply but the caller set.
+
+    CSV only honors `delimiter`/`csv_bom`; XLSX honors everything, so this is
+    a no-op there.
+    """
+    if fmt != "csv":
+        return
+    ignored = [
+        key
+        for key in options.model_fields
+        if key not in _CSV_OPTION_SECTIONS and _section_is_customized(key, getattr(options, key))
+    ]
+    if ignored:
+        logger.info(
+            "Spreadsheet format 'csv' does not apply these customized option fields: %s",
+            ", ".join(sorted(ignored)),
+        )

@@ -34,6 +34,8 @@ from service.documents.options import (
     SpreadsheetOptions,
     parse_document_options,
     parse_spreadsheet_options,
+    warn_unsupported_document_options,
+    warn_unsupported_spreadsheet_options,
 )
 from service.documents.pdf_renderer import render_pdf
 from service.documents.text_renderer import render_json, render_markdown_text
@@ -69,4 +71,6 @@ __all__ = [
     "render_pdf",
     "render_xlsx",
     "sanitize_filename",
+    "warn_unsupported_document_options",
+    "warn_unsupported_spreadsheet_options",
 ]

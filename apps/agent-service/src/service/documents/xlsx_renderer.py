@@ -195,10 +195,13 @@ def _apply_conditional_format(
             cell.fill = fill
 
 
-def render_csv(rows: list[list[Any]]) -> bytes:
+def render_csv(rows: list[list[Any]], options: SpreadsheetOptions | None = None) -> bytes:
+    options = options or SpreadsheetOptions()
     buffer = io.StringIO()
-    writer = csv.writer(buffer)
+    writer = csv.writer(buffer, delimiter=options.delimiter)
     for row in rows:
         writer.writerow(["" if cell is None else cell for cell in row])
-    # UTF-8 BOM so Excel opens Turkish characters correctly.
-    return b"\xef\xbb\xbf" + buffer.getvalue().encode("utf-8")
+    encoded = buffer.getvalue().encode("utf-8")
+    # UTF-8 BOM so Excel opens Turkish characters correctly; off by request
+    # for consumers (e.g. some *nix tooling) that choke on a leading BOM.
+    return (b"\xef\xbb\xbf" + encoded) if options.csv_bom else encoded

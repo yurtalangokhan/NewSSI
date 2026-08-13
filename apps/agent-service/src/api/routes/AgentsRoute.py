@@ -107,6 +107,7 @@ class ThinkingTagProcessor:
     # a bare "/tool_call>" in the text.
     TOOL_CLOSE_TAGS = ("</tool_call>", "</tool_use>", "/tool_call>", "/tool_use>")
     MAX_TAG_LEN = max(len(t) for t in OPEN_TAGS + CLOSE_TAGS + TOOL_OPEN_TAGS + TOOL_CLOSE_TAGS)
+    MAX_TAG_LEN = max(len(t) for t in OPEN_TAGS + CLOSE_TAGS + TOOL_OPEN_TAGS + TOOL_CLOSE_TAGS)
 
     def __init__(self):
         self.in_thinking = False
@@ -694,9 +695,7 @@ async def message_generator(
                             # Anthropic extended thinking block
                             thinking_text = block.get("thinking", "")
                             if thinking_text:
-                                for doc_packet in document_progress.on_tool_call_text(
-                                    thinking_text
-                                ):
+                                for doc_packet in document_progress.on_tool_call_text(thinking_text):
                                     yield f"data: {json.dumps(doc_packet)}\n\n"
                                 if not saw_reasoning_for_current_answer:
                                     yield f"data: {json.dumps({'type': 'reasoning_start'})}\n\n"
@@ -707,8 +706,6 @@ async def message_generator(
                             # Google Gemini thought block (thought=True in content part)
                             thought_text = block.get("text", "")
                             if thought_text:
-                                for doc_packet in document_progress.on_tool_call_text(thought_text):
-                                    yield f"data: {json.dumps(doc_packet)}\n\n"
                                 if not saw_reasoning_for_current_answer:
                                     yield f"data: {json.dumps({'type': 'reasoning_start'})}\n\n"
                                     saw_reasoning_for_current_answer = True
@@ -722,8 +719,6 @@ async def message_generator(
                                     streamed_message_ids.add(msg_id)
                                 yield f"data: {json.dumps({'type': 'token', 'content': text})}\n\n"
                     if reasoning_text and not emitted_reasoning:
-                        for doc_packet in document_progress.on_tool_call_text(reasoning_text):
-                            yield f"data: {json.dumps(doc_packet)}\n\n"
                         if not saw_reasoning_for_current_answer:
                             yield f"data: {json.dumps({'type': 'reasoning_start'})}\n\n"
                             saw_reasoning_for_current_answer = True
@@ -749,8 +744,6 @@ async def message_generator(
                                     streamed_message_ids.add(msg_id)
                             yield f"data: {json.dumps(evt)}\n\n"
                     elif reasoning_text:
-                        for doc_packet in document_progress.on_tool_call_text(reasoning_text):
-                            yield f"data: {json.dumps(doc_packet)}\n\n"
                         if not saw_reasoning_for_current_answer:
                             yield f"data: {json.dumps({'type': 'reasoning_start'})}\n\n"
                             saw_reasoning_for_current_answer = True
