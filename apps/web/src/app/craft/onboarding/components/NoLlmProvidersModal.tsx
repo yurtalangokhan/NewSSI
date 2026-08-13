@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import Text from "@/refresh-components/texts/Text";
 import { SvgLock, SvgArrowRight } from "@opal/icons";
 import { logout } from "@/lib/user";
@@ -19,6 +20,9 @@ export default function NoLlmProvidersModal({
   open,
   onClose,
 }: NoLlmProvidersModalProps) {
+  const { t } = useTranslation("common", {
+    keyPrefix: "app.craft.noLlmProvidersModal",
+  });
   const [isLoading, setIsLoading] = useState(false);
 
   const handleCreateNewAccount = async () => {
@@ -50,15 +54,13 @@ export default function NoLlmProvidersModal({
             {/* Header */}
             <div className="flex flex-col items-center gap-2 text-center">
               <Text headingH2 text05>
-                LLM Provider Required
+                {t("title")}
               </Text>
               <Text mainUiBody text03 className="max-w-sm">
-                Onyx Craft requires an LLM provider to be configured, but only
-                admins can set this up.
+                {t("description")}
                 <br />
                 <br />
-                Please ask your admin to configure an LLM provider, or create a
-                new Onyx account to become an admin yourself!
+                {t("adminHint")}
               </Text>
             </div>
           </div>
@@ -70,7 +72,7 @@ export default function NoLlmProvidersModal({
               onClick={onClose}
               className="flex items-center gap-1.5 px-4 py-2 rounded-12 border border-border-01 bg-background-tint-00 text-text-04 hover:bg-background-tint-02 transition-colors"
             >
-              <Text mainUiAction>Go Back</Text>
+              <Text mainUiAction>{t("goBackButton")}</Text>
             </button>
             <button
               type="button"
@@ -89,7 +91,7 @@ export default function NoLlmProvidersModal({
                   !isLoading ? "text-white dark:text-black" : "text-text-02"
                 )}
               >
-                {isLoading ? "Signing out..." : "Create a new account"}
+                {isLoading ? t("signingOutButton") : t("createAccountButton")}
               </Text>
               {!isLoading && (
                 <SvgArrowRight className="w-4 h-4 text-white dark:text-black" />

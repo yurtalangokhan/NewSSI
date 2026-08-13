@@ -9,6 +9,7 @@ import asyncio
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException
+from i18n import t
 
 from api.dependencies import require_permission, require_user
 from controller import ThreadController, get_thread_controller
@@ -112,10 +113,10 @@ async def get_thread(
     _user=Depends(require_permission("thread:read")),
 ) -> dict:
     """Get a thread."""
-    t = await _get_controller().get_thread(thread_id)
-    if not t:
-        raise HTTPException(status_code=404, detail="Thread not found")
-    return t
+    thread = await _get_controller().get_thread(thread_id)
+    if not thread:
+        raise HTTPException(status_code=404, detail=t("thread.not_found"))
+    return thread
 
 
 @router.get("/{thread_id}/state")
@@ -137,10 +138,10 @@ async def update_thread(
     _user=Depends(require_permission("thread:update")),
 ) -> dict:
     """Update a thread."""
-    t = await _get_controller().update_thread(thread_id, request.metadata)
-    if not t:
-        raise HTTPException(status_code=404, detail="Thread not found")
-    return t
+    thread = await _get_controller().update_thread(thread_id, request.metadata)
+    if not thread:
+        raise HTTPException(status_code=404, detail=t("thread.not_found"))
+    return thread
 
 
 @router.delete("/{thread_id}")
@@ -151,4 +152,4 @@ async def delete_thread(
     """Delete a thread."""
     if await _get_controller().delete_thread(thread_id):
         return {"status": "ok"}
-    raise HTTPException(status_code=404, detail="Thread not found")
+    raise HTTPException(status_code=404, detail=t("thread.not_found"))

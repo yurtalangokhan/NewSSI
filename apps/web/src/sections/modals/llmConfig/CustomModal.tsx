@@ -197,8 +197,6 @@ export function CustomModal({
 
                   <Text as="p" secondaryBody text03>
                     {t("llmConfig.fillInAsNeeded")}
-                    label={t("llmConfig.optionalApiKey")}
-                    label={t("llmConfig.optionalApiBase")}
                   </Text>
 
                   <PasswordInputTypeInField
@@ -221,18 +219,12 @@ export function CustomModal({
                   <Separator />
 
                   <Text as="p" mainUiAction>
-                    [Optional] Custom Configs
+                    {t("llmConfig.optionalCustomConfigs")}
                   </Text>
                   <Text as="p" secondaryBody text03>
-                    <div>
-                      Additional configurations needed by the model provider.
-                      These are passed to LiteLLM via environment variables and
-                      as arguments into the completion call.
-                    </div>
+                    <div>{t("llmConfig.customConfigsDescription")}</div>
                     <div className="mt-2">
-                      For example, when configuring the Cloudflare provider, you
-                      would need to set CLOUDFLARE_ACCOUNT_ID as the key and
-                      your Cloudflare account ID as the value.
+                      {t("llmConfig.customConfigsExample")}
                     </div>
                   </Text>
 

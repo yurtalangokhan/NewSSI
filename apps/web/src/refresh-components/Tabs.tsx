@@ -8,6 +8,7 @@ import React, {
   useCallback,
 } from "react";
 import * as TabsPrimitive from "@radix-ui/react-tabs";
+import { useTranslation } from "react-i18next";
 import { cn, mergeRefs } from "@/lib/utils";
 import SimpleTooltip from "@/refresh-components/SimpleTooltip";
 import { WithoutStyles } from "@/types";
@@ -410,6 +411,7 @@ const TabsList = React.forwardRef<
     },
     ref
   ) => {
+    const { t } = useTranslation("common", { keyPrefix: "common" });
     const listRef = useRef<HTMLDivElement>(null);
     const tabsContainerRef = useRef<HTMLDivElement>(null);
     const scrollArrowsRef = useRef<HTMLDivElement>(null);
@@ -509,7 +511,7 @@ const TabsList = React.forwardRef<
                 icon={SvgChevronLeft}
                 onClick={handleScrollLeft}
                 disabled={!canScrollLeft}
-                tooltip="Scroll tabs left"
+                tooltip={t("scrollTabsLeft")}
               />
               <Button
                 prominence="tertiary"
@@ -517,7 +519,7 @@ const TabsList = React.forwardRef<
                 icon={SvgChevronRight}
                 onClick={handleScrollRight}
                 disabled={!canScrollRight}
-                tooltip="Scroll tabs right"
+                tooltip={t("scrollTabsRight")}
               />
             </div>
           )}
@@ -605,6 +607,7 @@ const TabsTrigger = React.forwardRef<
     },
     ref
   ) => {
+    const { t } = useTranslation("common", { keyPrefix: "common" });
     const context = useTabsContext();
     const variant = variantProp ?? context?.variant ?? "contained";
 
@@ -625,7 +628,7 @@ const TabsTrigger = React.forwardRef<
         {isLoading && (
           <span
             className="inline-block w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin ml-1"
-            aria-label="Loading"
+            aria-label={t("loadingAriaLabel")}
           />
         )}
       </>

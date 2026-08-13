@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import Text from "@/refresh-components/texts/Text";
 import { SvgAlertTriangle } from "@opal/icons";
 import { UsageLimits } from "@/app/craft/types/streamingTypes";
@@ -19,6 +20,9 @@ export default function UpgradePlanModal({
   onClose,
   limits,
 }: UpgradePlanModalProps) {
+  const { t } = useTranslation("common", {
+    keyPrefix: "app.craft.upgradePlanModal",
+  });
   if (!open) return null;
 
   const isPaidUser = limits?.limitType === "weekly";
@@ -37,23 +41,12 @@ export default function UpgradePlanModal({
 
             <div className="flex flex-col items-center gap-2 text-center">
               <Text headingH2 text05>
-                You've reached your message limit
+                {t("title")}
               </Text>
               <Text mainUiBody text03 className="max-w-sm">
-                {isPaidUser ? (
-                  <>
-                    You've used all {limits?.limit ?? 25} messages for this
-                    week. Your message limit will automatically reset at the
-                    start of each week, allowing you to continue crafting with
-                    Onyx.
-                  </>
-                ) : (
-                  <>
-                    You've used all {limits?.limit ?? 5} free messages available
-                    in your trial. You've reached the limit for your free
-                    account.
-                  </>
-                )}
+                {isPaidUser
+                  ? t("weeklyLimitBody", { limit: limits?.limit ?? 25 })
+                  : t("totalLimitBody", { limit: limits?.limit ?? 5 })}
               </Text>
             </div>
           </div>
@@ -64,7 +57,7 @@ export default function UpgradePlanModal({
               onClick={onClose}
               className="flex items-center gap-1.5 px-4 py-2 rounded-12 border border-border-01 bg-background-tint-00 text-text-04 hover:bg-background-tint-02 transition-colors"
             >
-              <Text mainUiAction>Got it</Text>
+              <Text mainUiAction>{t("gotItButton")}</Text>
             </button>
           </div>
         </div>

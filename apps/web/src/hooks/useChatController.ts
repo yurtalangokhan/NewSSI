@@ -19,6 +19,7 @@ import {
   buildEmptyMessage,
 } from "@/app/app/services/messageTree";
 import { AgentId, MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
+import i18n from "@/i18n/config";
 import { SEARCH_PARAM_NAMES } from "@/app/app/services/searchParams";
 import { SEARCH_TOOL_ID } from "@/app/app/components/tools/constants";
 import { OnyxDocument } from "@/lib/search/interfaces";
@@ -488,9 +489,9 @@ export default function useChatController({
 
       if (currentChatState != "input") {
         if (currentChatState == "uploading") {
-          toast.error("Please wait for the content to upload");
+          toast.error(i18n.t("chat.toasts.waitUpload"));
         } else {
-          toast.error("Please wait for the response to complete");
+          toast.error(i18n.t("chat.toasts.waitResponse"));
         }
 
         return;
@@ -533,7 +534,7 @@ export default function useChatController({
           );
         } catch (error) {
           console.error("Failed to create chat session:", error);
-          toast.error("Failed to create chat session");
+          toast.error(i18n.t("chat.toasts.createSessionFailed"));
           return;
         }
 
@@ -607,9 +608,7 @@ export default function useChatController({
         : null;
 
       if (!messageToResend && hasExplicitResendTarget) {
-        toast.error(
-          "Failed to re-send message - please refresh the page and try again."
-        );
+        toast.error(i18n.t("chat.toasts.resendFailed"));
         resetRegenerationState(frozenSessionId);
         updateChatStateAction(frozenSessionId, "input");
         return;
@@ -625,7 +624,7 @@ export default function useChatController({
         (file) => file.status === UserFileStatus.UPLOADING
       );
       if (hasUploadingFiles) {
-        toast.error("Files are still uploading. Please wait for upload to finish and try again.");
+        toast.error(i18n.t("chat.toasts.filesStillUploading"));
         updateChatStateAction(frozenSessionId, "input");
         return;
       }
@@ -1084,9 +1083,7 @@ export default function useChatController({
       );
 
       if (imageFiles.length > 0 && !llmAcceptsImages) {
-        toast.error(
-          "The current model does not support image input. Please select a model with Vision support."
-        );
+        toast.error(i18n.t("chat.toasts.visionNotSupported"));
         return;
       }
       updateChatStateAction(getCurrentSessionId(), "uploading");
@@ -1147,7 +1144,7 @@ export default function useChatController({
         router.push(data.redirect_url);
       } catch (error) {
         console.error("Error seeding chat from Slack:", error);
-        toast.error("Failed to load chat from Slack");
+        toast.error(i18n.t("chat.toasts.loadSlackFailed"));
       }
     };
 

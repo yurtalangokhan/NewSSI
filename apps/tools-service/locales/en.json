@@ -1,0 +1,475 @@
+{
+  "pdf": {
+    "file_not_found": "File not found: {file_path}",
+    "invalid_page": "Invalid page number. PDF has {total_pages} pages.",
+    "search_empty": "Search text cannot be empty",
+    "pymupdf_not_installed": "PyMuPDF (fitz) library not installed. Install with: pip install pymupdf"
+  },
+  "web": {
+    "no_results": "No results found for '{query}'",
+    "fetch_error": "Error fetching webpage: {error}",
+    "search_error": "Search error: {error}"
+  },
+  "mail": {
+    "recipient_subject_body_required": "Recipient, subject, and body are required before sending email.",
+    "config_incomplete": "SMTP configuration is incomplete.",
+    "payload_invalid": "Email attachment payload is invalid.",
+    "auth_failed": "SMTP authentication failed.",
+    "connection_failed": "SMTP server could not be reached.",
+    "recipient_rejected": "SMTP server rejected one or more recipients.",
+    "message_rejected": "SMTP server rejected the message."
+  },
+  "common": {
+    "error": "Error: {error}"
+  },
+  "calculator": {
+    "invalid_character": "Invalid character in expression: {char}",
+    "calculation_error": "Calculation error: {error}"
+  },
+  "json": {
+    "invalid_json": "Invalid JSON: {error}",
+    "cannot_navigate": "Cannot navigate further at '{key}'",
+    "query_error": "Query error: {error}"
+  },
+  "service": {
+    "restart_error": "Service restart error: {error}"
+  },
+  "time": {
+    "error": "Error: {error}"
+  },
+  "utility": {
+    "decode_error": "Decode error: {error}",
+    "unknown_algorithm": "Unknown algorithm. Supported: {algorithms}"
+  },
+  "command": {
+    "blocked_pattern": "Error: Blocked command pattern detected: {pattern}",
+    "timeout": "Error: Command timed out after {seconds} seconds",
+    "execution_error": "Error executing command: {error}"
+  },
+  "docker": {
+    "build_error": "Docker build error: {error}",
+    "run_error": "Docker run error: {error}",
+    "stop_error": "Docker stop error: {error}",
+    "logs_error": "Docker logs error: {error}",
+    "ps_error": "Docker ps error: {error}"
+  },
+  "file": {
+    "read_error": "Error reading file: {error}",
+    "write_error": "Error writing file: {error}",
+    "directory_not_found": "Directory not found: {directory}",
+    "list_error": "Error listing directory: {error}",
+    "directory_exists": "Directory already exists: {dir_path}",
+    "create_directory_error": "Error creating directory: {error}",
+    "path_not_found": "Does not exist: {file_path}",
+    "check_error": "Error checking path: {error}",
+    "file_not_found": "Error: File not found: {file_path}",
+    "not_a_file": "Error: Not a file: {file_path}",
+    "text_not_found": "Error: Text not found in {file_path}.\nFile has {line_count} lines.\nFirst 20 lines:\n{preview}",
+    "multiple_occurrences": "Warning: Found {count} occurrences of the text. Please provide more specific text to match exactly one occurrence. Only replacing the first occurrence.",
+    "update_error": "Error updating file: {error}",
+    "delete_path_not_found": "Path does not exist: {file_path}",
+    "directory_not_empty": "Directory not empty. Use recursive=True to delete: {file_path}",
+    "cannot_delete": "Cannot delete: {file_path}",
+    "delete_error": "Error deleting: {error}"
+  },
+  "git": {
+    "directory_already_exists": "Error: Directory already exists: {path}",
+    "clone_error": "Git clone error: {error}",
+    "clone_timeout": "Git clone timed out after 300 seconds",
+    "repo_not_found": "Error: Repository directory not found: {path}",
+    "pull_error": "Git pull error: {error}",
+    "push_error": "Git push error: {error}",
+    "status_error": "Git status error: {error}",
+    "identity_unknown": "GIT_IDENTITY_ERROR: Git commit failed because author identity is not configured.\nYou need to set user.email and user.name before committing.\nACTION REQUIRED: Ask the user for their name and email address, then call the git_config tool with user_email and user_name parameters. After that, retry the git_commit.",
+    "commit_error": "Git commit error: {error}",
+    "branch_error": "Git branch error: {error}",
+    "already_initialized": "Repository already initialized at: {path}",
+    "init_error": "Git init error: {error}",
+    "remote_error": "Git remote error: {error}",
+    "log_error": "Git log error: {error}",
+    "invalid_scope": "Error: scope must be 'global' or 'local', got '{scope}'",
+    "repo_dir_required": "Error: repo_dir is required when scope is 'local'",
+    "config_error": "Git config error: {error}",
+    "diff_error": "Git diff error: {error}"
+  },
+  "java": {
+    "jar_not_found": "Error: JAR file not found: {path}",
+    "not_a_jar": "Error: Not a JAR file: {path}",
+    "jdk_not_installed": "Error: Java (JDK/JRE) is not installed or not in PATH",
+    "jar_timeout": "Error: JAR execution timed out after {seconds} seconds",
+    "jar_execution_error": "Error executing JAR: {error}",
+    "compilation_failed": "✗ Compilation failed:\n{errors}",
+    "jdk_javac_not_installed": "Error: Java (JDK) is not installed or not in PATH. javac is required.",
+    "run_timeout": "Error: Execution timed out after {seconds} seconds",
+    "file_not_found": "Error: File not found: {path}",
+    "javac_not_found": "Error: javac not found. JDK is required.",
+    "compile_timeout": "Error: Compilation timed out after {seconds} seconds",
+    "syntax_errors": "✗ Java syntax errors:\n{errors}",
+    "javac_not_found_validate": "Error: javac not found. JDK is required for validation.",
+    "validation_timeout": "Error: Validation timed out",
+    "file_has_errors": "✗ {name} has errors:\n{errors}",
+    "jar_unzip_not_found": "Error: jar/unzip command not found",
+    "list_error": "Error listing JAR: {error}",
+    "inspect_error": "Error inspecting JAR: {error}"
+  },
+  "code": {
+    "execution_timeout": "Error: Code execution timed out after {seconds} seconds",
+    "python_execution_error": "Error executing Python code: {error}",
+    "file_not_found": "Error: File not found: {path}",
+    "file_execution_timeout": "Error: Execution timed out after {seconds} seconds",
+    "python_file_error": "Error executing Python file: {error}",
+    "python_syntax_error": "✗ Syntax Error at line {lineno}, column {offset}:\n{msg}\n\nProblematic line:\n{text}",
+    "validation_error": "✗ Validation error: {error}",
+    "node_not_installed": "Error: Node.js is not installed or not in PATH",
+    "node_execution_error": "Error executing Node.js code: {error}",
+    "test_path_not_found": "Error: Test path not found: {path}",
+    "test_timeout": "Error: Tests timed out after {seconds} seconds",
+    "pytest_error": "Error running pytest: {error}",
+    "directory_not_found": "Error: Directory not found: {path}",
+    "package_json_not_found": "Error: No package.json found in {path}",
+    "npm_not_installed": "Error: npm is not installed or not in PATH",
+    "command_timeout": "Error: Command timed out after {seconds} seconds",
+    "npm_error": "Error running npm: {error}",
+    "json_syntax_error": "✗ JSON Error at line {lineno}, column {colno}:\n{msg}",
+    "json_validate_error": "✗ Error validating JSON: {error}",
+    "no_linter_for_extension": "No linter available for {ext} files",
+    "unknown_linter": "Unknown linter: {linter}",
+    "linter_not_installed": "Error: {linter} is not installed",
+    "linter_error": "Error running linter: {error}",
+    "port_check_error": "Error checking port: {error}"
+  },
+  "categories": {
+    "calculator": {
+      "label": "Calculator",
+      "description": "Safe mathematical expression evaluation"
+    },
+    "command_execution": {
+      "label": "Command Execution",
+      "description": "Shell command execution and system information"
+    },
+    "code_execution": {
+      "label": "Code Execution",
+      "description": "Run and test code in Python, Node.js, and other languages"
+    },
+    "json_data": {
+      "label": "JSON Data",
+      "description": "JSON formatting, validation, and querying"
+    },
+    "java": {
+      "label": "Java",
+      "description": "Run JAR files, compile and execute Java code, syntax checking"
+    },
+    "service_management": {
+      "label": "Service Management",
+      "description": "Docker and systemd service restart operations"
+    },
+    "utilities": {
+      "label": "Utilities",
+      "description": "UUID generation, encoding, and hashing utilities"
+    },
+    "text_processing": {
+      "label": "Text Processing",
+      "description": "Text analysis and transformation utilities"
+    },
+    "time_date": {
+      "label": "Time & Date",
+      "description": "Time and date utilities"
+    },
+    "file_operations": {
+      "label": "File Operations",
+      "description": "File read, write, and directory listing"
+    },
+    "docker": {
+      "label": "Docker",
+      "description": "Docker container build, run, and management"
+    },
+    "git": {
+      "label": "Git",
+      "description": "Git clone, pull, push, commit, and branch operations"
+    },
+    "pdf": {
+      "label": "PDF",
+      "description": "PDF document reading and analysis"
+    },
+    "mail": {
+      "label": "Mail",
+      "description": "SMTP email sending"
+    },
+    "web_search": {
+      "label": "Web",
+      "description": "Web search and webpage content fetching"
+    }
+  },
+  "tools": {
+    "calculator": {
+      "calculate": {
+        "name": "Calculate",
+        "description": "Evaluate a mathematical expression safely."
+      }
+    },
+    "command_execution": {
+      "execute_shell": {
+        "name": "Execute Shell Command",
+        "description": "Execute a shell command in a sandboxed environment."
+      },
+      "get_system_info": {
+        "name": "Get System Information",
+        "description": "Get system information (OS, CPU, memory, disk)."
+      }
+    },
+    "code_execution": {
+      "run_python": {
+        "name": "Run Python Code",
+        "description": "Execute Python code in an isolated subprocess."
+      },
+      "run_python_file": {
+        "name": "Run Python Script File",
+        "description": "Execute a Python script file."
+      },
+      "validate_python": {
+        "name": "Validate Python Syntax",
+        "description": "Check Python code for syntax errors without executing."
+      },
+      "run_node": {
+        "name": "Run Node.js Code",
+        "description": "Execute Node.js (JavaScript) code."
+      },
+      "run_pytest": {
+        "name": "Run Pytest",
+        "description": "Run pytest on a test file or directory."
+      },
+      "run_npm_command": {
+        "name": "Run NPM Command",
+        "description": "Run an npm command in a Node.js project directory."
+      },
+      "validate_json_file": {
+        "name": "Validate JSON File",
+        "description": "Validate a JSON file for syntax errors."
+      },
+      "run_linter": {
+        "name": "Run Code Linter",
+        "description": "Lint source code using installed linter."
+      },
+      "start_dev_server": {
+        "name": "Start Development Server",
+        "description": "Start a background development server."
+      },
+      "check_port": {
+        "name": "Check Network Port",
+        "description": "Check if a network port is open/listening."
+      }
+    },
+    "json_data": {
+      "json_format": {
+        "name": "Format JSON",
+        "description": "Format a JSON string with indentation."
+      },
+      "json_query": {
+        "name": "Query JSON",
+        "description": "Extract value from JSON by key path (dot notation)."
+      }
+    },
+    "java": {
+      "run_jar": {
+        "name": "Run JAR File",
+        "description": "Execute a runnable JAR file."
+      },
+      "run_java": {
+        "name": "Run Java Code",
+        "description": "Compile single-file Java source code and run it."
+      },
+      "compile_java_file": {
+        "name": "Compile Java File",
+        "description": "Compile a Java source file."
+      },
+      "validate_java": {
+        "name": "Validate Java Syntax",
+        "description": "Check Java source code for syntax errors without executing."
+      },
+      "validate_java_file": {
+        "name": "Validate Java File",
+        "description": "Check Java source file for syntax errors."
+      },
+      "inspect_jar": {
+        "name": "Inspect JAR File",
+        "description": "Inspect contents of a JAR file (list classes and entries)."
+      }
+    },
+    "service_management": {
+      "service_restart": {
+        "name": "Restart Service",
+        "description": "Restart a service (docker container or systemd service)."
+      }
+    },
+    "utilities": {
+      "generate_uuid": {
+        "name": "Generate UUID",
+        "description": "Generate a random UUID (v4)."
+      },
+      "encode_base64": {
+        "name": "Encode Base64",
+        "description": "Encode text to base64."
+      },
+      "decode_base64": {
+        "name": "Decode Base64",
+        "description": "Decode base64 string to text."
+      },
+      "hash_text": {
+        "name": "Hash Text",
+        "description": "Calculate hash (md5, sha1, sha256, sha512) of text."
+      }
+    },
+    "text_processing": {
+      "text_analysis": {
+        "name": "Text Analysis",
+        "description": "Count words, lines, and characters in text."
+      },
+      "translate_text": {
+        "name": "Translate Text",
+        "description": "Translate text between languages."
+      }
+    },
+    "time_date": {
+      "get_current_time": {
+        "name": "Get Current Time",
+        "description": "Get current date and time formatted."
+      }
+    },
+    "file_operations": {
+      "file_read": {
+        "name": "Read File",
+        "description": "Read contents of a text file."
+      },
+      "file_write": {
+        "name": "Write File",
+        "description": "Write content to a file."
+      },
+      "file_list": {
+        "name": "List Directory Files",
+        "description": "List contents of a directory."
+      },
+      "create_directory": {
+        "name": "Create Directory",
+        "description": "Create a new directory."
+      },
+      "file_exists": {
+        "name": "Check File Exists",
+        "description": "Check if a file or directory exists."
+      },
+      "file_update": {
+        "name": "Update File",
+        "description": "Update an existing file by replacing a specific text block."
+      },
+      "file_delete": {
+        "name": "Delete File",
+        "description": "Delete a file or directory."
+      }
+    },
+    "docker": {
+      "docker_build": {
+        "name": "Build Docker Image",
+        "description": "Build a Docker image from a Dockerfile."
+      },
+      "docker_run": {
+        "name": "Run Docker Container",
+        "description": "Run a Docker container."
+      },
+      "docker_ps": {
+        "name": "List Docker Containers",
+        "description": "List running Docker containers."
+      },
+      "docker_stop": {
+        "name": "Stop Docker Container",
+        "description": "Stop a running Docker container."
+      },
+      "docker_logs": {
+        "name": "Get Docker Container Logs",
+        "description": "Get logs from a Docker container."
+      }
+    },
+    "git": {
+      "git_clone": {
+        "name": "Clone Git Repository",
+        "description": "Clone a Git repository."
+      },
+      "git_pull": {
+        "name": "Pull Git Repository",
+        "description": "Pull latest changes from remote repository."
+      },
+      "git_push": {
+        "name": "Push Git Repository",
+        "description": "Push local commits to remote repository."
+      },
+      "git_status": {
+        "name": "Get Git Status",
+        "description": "Get Git repository status."
+      },
+      "git_commit": {
+        "name": "Commit Git Changes",
+        "description": "Commit staged changes."
+      },
+      "git_branch": {
+        "name": "Manage Git Branches",
+        "description": "List, create, or delete branches."
+      },
+      "git_init": {
+        "name": "Initialize Git Repository",
+        "description": "Initialize a new Git repository."
+      },
+      "git_remote_add": {
+        "name": "Add Git Remote",
+        "description": "Add a new remote repository."
+      },
+      "git_config": {
+        "name": "Git Configuration",
+        "description": "Get or set Git configuration values (user.email, user.name)."
+      },
+      "git_diff": {
+        "name": "Show Git Diff",
+        "description": "View git diff."
+      },
+      "git_log": {
+        "name": "Show Git Log",
+        "description": "View commit history log."
+      }
+    },
+    "pdf": {
+      "read_pdf": {
+        "name": "Read PDF Content",
+        "description": "Read text content from a PDF file."
+      },
+      "read_pdf_page": {
+        "name": "Read PDF Page",
+        "description": "Read a specific page from a PDF file."
+      },
+      "get_pdf_info": {
+        "name": "Get PDF Information",
+        "description": "Get PDF document metadata and page count information."
+      },
+      "search_pdf": {
+        "name": "Search in PDF",
+        "description": "Search for text in a PDF and return matching pages."
+      },
+      "extract_pdf_tables": {
+        "name": "Extract PDF Tables",
+        "description": "Extract tables from PDF pages."
+      }
+    },
+    "mail": {
+      "send_email": {
+        "name": "Send Email",
+        "description": "Send email using SMTP server."
+      }
+    },
+    "web_search": {
+      "web_search": {
+        "name": "Search the Web",
+        "description": "Search the web using search engine."
+      },
+      "fetch_webpage": {
+        "name": "Fetch Webpage Content",
+        "description": "Fetch content of a webpage and extract clean text."
+      }
+    }
+  }
+}

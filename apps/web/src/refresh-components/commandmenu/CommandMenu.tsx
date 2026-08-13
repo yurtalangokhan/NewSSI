@@ -10,6 +10,7 @@ import React, {
 } from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import * as VisuallyHidden from "@radix-ui/react-visually-hidden";
+import { useTranslation } from "react-i18next";
 import useContainerCenter from "@/hooks/useContainerCenter";
 import { cn } from "@/lib/utils";
 import Text from "@/refresh-components/texts/Text";
@@ -366,6 +367,7 @@ const CommandMenuContent = React.forwardRef<
   React.ComponentRef<typeof DialogPrimitive.Content>,
   CommandMenuContentProps
 >(({ children }, ref) => {
+  const { t } = useTranslation("common", { keyPrefix: "common" });
   const { handleKeyDown } = useCommandMenuContext();
   const { centerX, hasContainerCenter } = useContainerCenter();
 
@@ -411,7 +413,7 @@ const CommandMenuContent = React.forwardRef<
         )}
       >
         <VisuallyHidden.Root asChild>
-          <DialogPrimitive.Title>Command Menu</DialogPrimitive.Title>
+          <DialogPrimitive.Title>{t("commandMenuTitle")}</DialogPrimitive.Title>
         </VisuallyHidden.Root>
         {children}
       </DialogPrimitive.Content>
@@ -431,7 +433,7 @@ CommandMenuContent.displayName = "CommandMenuContent";
  * Arrow keys preventDefault at input level (to stop cursor movement) then bubble to Content.
  */
 function CommandMenuHeader({
-  placeholder = "Search...",
+  placeholder,
   filters = [],
   value = "",
   onValueChange,
@@ -439,6 +441,8 @@ function CommandMenuHeader({
   onClose,
   onEmptyBackspace,
 }: CommandMenuHeaderProps) {
+  const { t } = useTranslation("common", { keyPrefix: "common" });
+  const resolvedPlaceholder = placeholder ?? t("searchEllipsis");
   // Prevent default for arrow/enter keys so they don't move cursor or submit forms
   // The actual handling happens in Root's centralized handler via event bubbling
   const handleInputKeyDown = useCallback(
@@ -485,7 +489,7 @@ function CommandMenuHeader({
               prominence="tertiary"
               size="sm"
               onClick={onClose}
-              aria-label="Close menu"
+              aria-label={t("closeMenuAriaLabel")}
             />
           </DialogPrimitive.Close>
         )}
@@ -493,7 +497,7 @@ function CommandMenuHeader({
       {/* Search input - arrow/enter keys bubble up to Content for centralized handling */}
       <div className="px-2 pb-2 pt-0.5">
         <InputTypeIn
-          placeholder={placeholder}
+          placeholder={resolvedPlaceholder}
           value={value}
           onChange={(e) => onValueChange?.(e.target.value)}
           onKeyDown={handleInputKeyDown}
@@ -517,6 +521,7 @@ function CommandMenuHeader({
  * Uses ScrollIndicatorDiv for automatic scroll shadows.
  */
 function CommandMenuList({ children, emptyMessage }: CommandMenuListProps) {
+  const { t } = useTranslation("common", { keyPrefix: "common" });
   const { isKeyboardNav, onListMouseLeave } = useCommandMenuContext();
   const childCount = React.Children.count(children);
 
@@ -537,7 +542,7 @@ function CommandMenuList({ children, emptyMessage }: CommandMenuListProps) {
   return (
     <ScrollIndicatorDiv
       role="listbox"
-      aria-label="Command menu options"
+      aria-label={t("commandMenuOptionsAriaLabel")}
       className="p-1 gap-1 max-h-[60vh] bg-background-tint-01"
       backgroundColor="var(--background-tint-01)"
       data-command-menu-list

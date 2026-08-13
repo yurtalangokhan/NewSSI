@@ -330,9 +330,11 @@ export default function TextViewModal({
                 ) : (
                   <div className="flex flex-col items-center justify-center flex-1 min-h-0 p-6 gap-4">
                     <Text as="p" text03 mainUiBody>
-                      This file format is not supported for preview.
+                      {t("filePreview.unsupportedPreview")}
                     </Text>
-                    <Button onClick={handleDownload}>Download File</Button>
+                    <Button onClick={handleDownload}>
+                      {t("filePreview.downloadFile")}
+                    </Button>
                   </div>
                 )}
               </div>
@@ -342,7 +344,11 @@ export default function TextViewModal({
 
         <Modal.Footer>
           <BasicModalFooter
-            submit={<Button onClick={handleDownload}>Download File</Button>}
+            submit={
+              <Button onClick={handleDownload}>
+                {t("filePreview.downloadFile")}
+              </Button>
+            }
           />
         </Modal.Footer>
       </Modal.Content>

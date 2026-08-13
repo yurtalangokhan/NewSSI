@@ -29,7 +29,7 @@ export default function PrimitiveField({
   id,
   required,
 }: PrimitiveFieldProps) {
-  const { t } = useTranslation("admin");
+  const { t } = useTranslation("common", { keyPrefix: "admin" });
   const type = Array.isArray(schema.type) ? schema.type[0] : schema.type;
   const isSecret = schema.airbyte_secret === true;
   const placeholder =

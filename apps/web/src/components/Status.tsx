@@ -2,7 +2,6 @@
 
 import { ValidStatuses } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
-import { timeAgo } from "@/lib/time";
 import {
   FiAlertTriangle,
   FiCheckCircle,
@@ -24,7 +23,7 @@ export function IndexAttemptStatus({
   status: ValidStatuses | null;
   errorMsg?: string | null;
 }) {
-  const { t } = useTranslation("admin");
+  const { t } = useTranslation("common", { keyPrefix: "admin" });
   let badge;
 
   if (status === "failed") {
@@ -96,7 +95,7 @@ export function PermissionSyncStatus({
   status: PermissionSyncStatusEnum | null;
   errorMsg?: string | null;
 }) {
-  const { t } = useTranslation("admin");
+  const { t } = useTranslation("common", { keyPrefix: "admin" });
   let badge;
 
   if (status === PermissionSyncStatusEnum.FAILED) {
@@ -160,7 +159,7 @@ export function CCPairStatus({
   lastIndexAttemptStatus: ValidStatuses | undefined | null;
   size?: "xs" | "sm" | "md" | "lg";
 }) {
-  const { t } = useTranslation("admin");
+  const { t } = useTranslation("common", { keyPrefix: "admin" });
   let badge;
 
   if (ccPairStatus == ConnectorCredentialPairStatus.DELETING) {

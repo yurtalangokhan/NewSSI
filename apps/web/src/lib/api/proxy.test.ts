@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { proxyToBackend } from "@/lib/api/proxy";
+import { getLanguageHeaders, proxyToBackend } from "@/lib/api/proxy";
 
 function responseWithHeaders(headers: Record<string, string>) {
   const response = new Response(JSON.stringify({ ok: true }), {
@@ -248,5 +248,86 @@ describe("proxyToBackend", () => {
         }),
       })
     );
+  });
+
+  it("forwards the incoming X-Language header to the backend", async () => {
+    fetchSpy.mockResolvedValueOnce(responseWithHeaders({}));
+
+    const request = new NextRequest("http://localhost/api/auth/external/login", {
+      method: "POST",
+      body: new URLSearchParams([["username", "external@example.com"]]),
+      headers: {
+        "content-type": "application/x-www-form-urlencoded",
+        "x-language": "tr",
+      },
+    });
+
+    await proxyToBackend(request, "/api/auth/external/login", {
+      method: "POST",
+      backendUrl: "http://user-service",
+    });
+
+    expect(fetchSpy).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        headers: expect.objectContaining({ "X-Language": "tr" }),
+      })
+    );
+  });
+
+  it("falls back to the incoming Accept-Language header when X-Language is absent", async () => {
+    fetchSpy.mockResolvedValueOnce(responseWithHeaders({}));
+
+    const request = new NextRequest("http://localhost/api/auth/external/login", {
+      method: "POST",
+      body: new URLSearchParams([["username", "external@example.com"]]),
+      headers: {
+        "content-type": "application/x-www-form-urlencoded",
+        "accept-language": "tr-TR,tr;q=0.9",
+      },
+    });
+
+    await proxyToBackend(request, "/api/auth/external/login", {
+      method: "POST",
+      backendUrl: "http://user-service",
+    });
+
+    expect(fetchSpy).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          "Accept-Language": "tr-TR,tr;q=0.9",
+        }),
+      })
+    );
+  });
+});
+
+describe("getLanguageHeaders", () => {
+  it("prefers the app's X-Language header over Accept-Language", () => {
+    const request = new NextRequest("http://localhost/api/user/pats", {
+      headers: {
+        "x-language": "tr",
+        "accept-language": "en-US,en;q=0.9",
+      },
+    });
+
+    expect(getLanguageHeaders(request)).toEqual({ "X-Language": "tr" });
+  });
+
+  it("falls back to Accept-Language when X-Language is absent", () => {
+    const request = new NextRequest("http://localhost/api/user/pats", {
+      headers: { "accept-language": "tr-TR,tr;q=0.9" },
+    });
+
+    expect(getLanguageHeaders(request)).toEqual({
+      "Accept-Language": "tr-TR,tr;q=0.9",
+    });
+  });
+
+  it("returns no language headers when neither is present", () => {
+    const request = new NextRequest("http://localhost/api/user/pats");
+
+    expect(getLanguageHeaders(request)).toEqual({});
   });
 });

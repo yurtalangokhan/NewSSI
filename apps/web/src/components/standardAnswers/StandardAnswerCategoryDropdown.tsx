@@ -16,7 +16,7 @@ interface StandardAnswerCategoryDropdownFieldProps {
 export const StandardAnswerCategoryDropdownField: FC<
   StandardAnswerCategoryDropdownFieldProps
 > = ({ standardAnswerCategoryResponse, categories, setCategories }) => {
-  const { t } = useTranslation("admin");
+  const { t } = useTranslation("common", { keyPrefix: "admin" });
 
   if (!standardAnswerCategoryResponse.paidEnterpriseFeaturesEnabled) {
     return null;

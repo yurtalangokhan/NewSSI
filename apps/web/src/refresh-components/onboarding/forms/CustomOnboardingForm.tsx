@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import * as Yup from "yup";
+import { Trans, useTranslation } from "react-i18next";
 import { FormikField } from "@/refresh-components/form/FormikField";
 import { FormField } from "@/refresh-components/form/FormField";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
@@ -54,6 +55,7 @@ interface CustomFormValues {
 function CustomFormFields(props: OnboardingFormChildProps<CustomFormValues>) {
   const { formikProps, apiStatus, showApiMessage, errorMessage, disabled } =
     props;
+  const { t } = useTranslation();
 
   const [modelConfigError, setModelConfigError] = useState<string | null>(null);
   const [customConfigDraft, setCustomConfigDraft] = useState<KeyValue[]>(
@@ -103,11 +105,11 @@ function CustomFormFields(props: OnboardingFormChildProps<CustomFormValues>) {
         name={FIELD_PROVIDER}
         render={(field, helper, meta, state) => (
           <FormField name={FIELD_PROVIDER} state={state} className="w-full">
-            <FormField.Label>Provider Name</FormField.Label>
+            <FormField.Label>{t("llmOnboarding.custom.providerNameLabel")}</FormField.Label>
             <FormField.Control>
               <InputTypeIn
                 {...field}
-                placeholder="E.g. openai, anthropic, etc."
+                placeholder={t("llmOnboarding.custom.providerNamePlaceholder")}
                 showClearButton={false}
                 variant={disabled ? "disabled" : undefined}
               />
@@ -115,18 +117,21 @@ function CustomFormFields(props: OnboardingFormChildProps<CustomFormValues>) {
             <FormField.Message
               messages={{
                 idle: (
-                  <>
-                    See full list of supported LLM providers at{" "}
-                    <a
-                      href="https://docs.litellm.ai/docs/providers"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="underline"
-                    >
-                      LiteLLM
-                    </a>
-                    .
-                  </>
+                  <Trans
+                    i18nKey="llmOnboarding.custom.providersListHint"
+                    components={{
+                      link: (
+                        <a
+                          href="https://docs.litellm.ai/docs/providers"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="underline"
+                        >
+                          LiteLLM
+                        </a>
+                      ),
+                    }}
+                  />
                 ),
                 error: meta.error,
               }}
@@ -138,23 +143,28 @@ function CustomFormFields(props: OnboardingFormChildProps<CustomFormValues>) {
       <Separator />
 
       <Text as="p" text03 secondaryBody className="ml-0.5">
-        Fill in the following fields as needed. Refer to{" "}
-        <a
-          href="https://docs.litellm.ai/docs/"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="underline"
-        >
-          LiteLLM documentation
-        </a>{" "}
-        for instructions of the model provider you are using.
+        <Trans
+          i18nKey="llmOnboarding.custom.fieldsHint"
+          components={{
+            link: (
+              <a
+                href="https://docs.litellm.ai/docs/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline"
+              >
+                LiteLLM documentation
+              </a>
+            ),
+          }}
+        />
       </Text>
 
       <FormikField<string>
         name={FIELD_API_BASE}
         render={(field, helper, meta, state) => (
           <FormField name={FIELD_API_BASE} state={state} className="w-full">
-            <FormField.Label optional>API Base URL</FormField.Label>
+            <FormField.Label optional>{t("llmOnboarding.custom.apiBaseUrlLabel")}</FormField.Label>
             <FormField.Control>
               <InputTypeIn
                 {...field}
@@ -177,9 +187,9 @@ function CustomFormFields(props: OnboardingFormChildProps<CustomFormValues>) {
                 <FormField.APIMessage
                   state={apiStatus}
                   messages={{
-                    loading: "Checking API configuration...",
-                    success: "API key valid. Your available models updated.",
-                    error: errorMessage || "Invalid API key",
+                    loading: t("llmOnboarding.custom.checkingApiConfig"),
+                    success: t("llmOnboarding.custom.apiKeyValidModelsUpdated"),
+                    error: errorMessage || t("llmOnboarding.invalidApiKey"),
                   }}
                 />
               )}
@@ -191,7 +201,7 @@ function CustomFormFields(props: OnboardingFormChildProps<CustomFormValues>) {
         name={FIELD_API_VERSION}
         render={(field, helper, meta, state) => (
           <FormField name={FIELD_API_VERSION} state={state} className="w-full">
-            <FormField.Label optional>API Version</FormField.Label>
+            <FormField.Label optional>{t("llmOnboarding.custom.apiVersionLabel")}</FormField.Label>
             <FormField.Control>
               <InputTypeIn {...field} placeholder="" showClearButton={false} />
             </FormField.Control>
@@ -203,7 +213,7 @@ function CustomFormFields(props: OnboardingFormChildProps<CustomFormValues>) {
         name={FIELD_API_KEY}
         render={(field, helper, meta, state) => (
           <FormField name={FIELD_API_KEY} state={state} className="w-full">
-            <FormField.Label optional>API Key</FormField.Label>
+            <FormField.Label optional>{t("llmOnboarding.apiKey")}</FormField.Label>
             <FormField.Control>
               <PasswordInputTypeIn
                 {...field}
@@ -217,9 +227,9 @@ function CustomFormFields(props: OnboardingFormChildProps<CustomFormValues>) {
               <FormField.APIMessage
                 state={apiStatus}
                 messages={{
-                  loading: "Checking API key...",
-                  success: "API key valid. Your available models updated.",
-                  error: errorMessage || "Invalid API key",
+                  loading: t("llmOnboarding.custom.checkingApiKey"),
+                  success: t("llmOnboarding.custom.apiKeyValidModelsUpdated"),
+                  error: errorMessage || t("llmOnboarding.invalidApiKey"),
                 }}
               />
             )}
@@ -235,19 +245,18 @@ function CustomFormFields(props: OnboardingFormChildProps<CustomFormValues>) {
           state={formikProps.errors.custom_config ? "error" : "idle"}
           className="w-full"
         >
-          <FormField.Label optional>Additional Configs</FormField.Label>
+          <FormField.Label optional>{t("llmOnboarding.custom.additionalConfigsLabel")}</FormField.Label>
           <FormField.Description>
-            Optional additional properties as needed by the model provider. This
-            is passed to LiteLLM{" "}
+            {t("llmOnboarding.custom.additionalConfigsDescPrefix")}{" "}
             <span className="font-secondary-mono text-text-03 whitespace-nowrap inline-block">
               completion()
             </span>{" "}
-            call as arguments in the environment variable.
+            {t("llmOnboarding.custom.additionalConfigsDescSuffix")}
           </FormField.Description>
           <FormField.Control asChild>
             <KeyValueInput
-              keyTitle="Key"
-              valueTitle="Value"
+              keyTitle={t("llmOnboarding.custom.keyLabel")}
+              valueTitle={t("llmOnboarding.custom.valueLabel")}
               items={customConfigDraft}
               onChange={handleCustomConfigsChange}
               mode="line"
@@ -269,15 +278,14 @@ function CustomFormFields(props: OnboardingFormChildProps<CustomFormValues>) {
           }
           className="w-full"
         >
-          <FormField.Label>Model Configs</FormField.Label>
+          <FormField.Label>{t("llmOnboarding.custom.modelConfigsLabel")}</FormField.Label>
           <FormField.Description>
-            List LLM models you wish to use and their configurations for this
-            provider.
+            {t("llmOnboarding.custom.modelConfigsDesc")}
           </FormField.Description>
           <FormField.Control asChild>
             <KeyValueInput
-              keyTitle="Model Name"
-              valueTitle="Max Input Tokens"
+              keyTitle={t("llmOnboarding.custom.modelNameColumnLabel")}
+              valueTitle={t("llmOnboarding.custom.maxInputTokensColumnLabel")}
               items={modelConfigsAsKeyValue}
               onChange={handleModelConfigsChange}
               onValueValidate={(value) => {
@@ -285,7 +293,7 @@ function CustomFormFields(props: OnboardingFormChildProps<CustomFormValues>) {
                 if (v === "") return { isValid: true };
                 return /^\d+$/.test(v)
                   ? { isValid: true }
-                  : { isValid: false, message: "Must be a number" };
+                  : { isValid: false, message: t("llmOnboarding.custom.mustBeNumber") };
               }}
               onValidationError={setModelConfigError}
               mode="fixed-line"
@@ -305,7 +313,7 @@ function CustomFormFields(props: OnboardingFormChildProps<CustomFormValues>) {
             state={state}
             className="w-full"
           >
-            <FormField.Label>Default Model</FormField.Label>
+            <FormField.Label>{t("llmOnboarding.defaultModel")}</FormField.Label>
             <FormField.Control>
               <InputTypeIn
                 {...field}
@@ -316,7 +324,7 @@ function CustomFormFields(props: OnboardingFormChildProps<CustomFormValues>) {
             </FormField.Control>
             <FormField.Message
               messages={{
-                idle: `This model will be used by ${APP_NAME} by default for this provider. This must be one of the models listed above.`,
+                idle: t("llmOnboarding.custom.defaultModelHint", { appName: APP_NAME }),
                 error: meta.error,
               }}
             />
@@ -333,6 +341,7 @@ export function CustomOnboardingForm({
   open,
   onOpenChange,
 }: CustomOnboardingFormProps) {
+  const { t } = useTranslation();
   const initialValues = useMemo(
     (): CustomFormValues => ({
       ...buildInitialValues(),
@@ -349,15 +358,15 @@ export function CustomOnboardingForm({
   );
 
   const validationSchema = Yup.object().shape({
-    [FIELD_PROVIDER]: Yup.string().required("Provider is required"),
+    [FIELD_PROVIDER]: Yup.string().required(t("llmOnboarding.custom.providerRequired")),
     [FIELD_API_KEY]: Yup.string(),
     [FIELD_API_BASE]: Yup.string(),
     [FIELD_API_VERSION]: Yup.string(),
     [FIELD_MODEL_CONFIGURATIONS]: Yup.array()
       .of(
         Yup.object({
-          name: Yup.string().required("Model name is required"),
-          is_visible: Yup.boolean().required("Visibility is required"),
+          name: Yup.string().required(t("llmOnboardingForms.modelNameRequired")),
+          is_visible: Yup.boolean().required(t("llmOnboarding.custom.visibilityRequired")),
           max_input_tokens: Yup.number()
             .transform((value, originalValue) =>
               originalValue === "" ||
@@ -370,9 +379,9 @@ export function CustomOnboardingForm({
             .optional(),
         })
       )
-      .min(1, "At least one model configuration is required"),
+      .min(1, t("llmOnboarding.custom.atLeastOneModelRequired")),
     [FIELD_DEFAULT_MODEL_NAME]: Yup.string().required(
-      "Default model is required"
+      t("llmOnboardingForms.modelNameRequired")
     ),
     [FIELD_CUSTOM_CONFIG]: Yup.object(),
   });
@@ -386,8 +395,8 @@ export function CustomOnboardingForm({
   return (
     <OnboardingFormWrapper<CustomFormValues>
       icon={icon}
-      title="Set up Custom LLM Provider"
-      description="Connect models from other providers or your self-hosted models."
+      title={t("llmOnboarding.custom.title")}
+      description={t("llmOnboarding.custom.description")}
       isCustomProvider={true}
       onboardingState={onboardingState}
       onboardingActions={onboardingActions}

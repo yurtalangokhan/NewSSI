@@ -89,6 +89,31 @@ async def test_build_coarse_composite_children_contains_tool_user():
     assert "rag-enduser" in names
 
 
+async def test_build_coarse_composite_children_falls_back_when_role_ids_are_legacy_names():
+    role_service = CompositeRoleService()
+    role_service.role_repo = SimpleNamespace(
+        get_by_name=AsyncMock(
+            return_value=SimpleNamespace(
+                role_ids=[
+                    "account-self-service",
+                    "agent-workspace-user",
+                    "knowledge-search-user",
+                    "tooling-user",
+                ]
+            )
+        )
+    )
+
+    child_roles = await role_service._build_coarse_composite_children("enduser")
+
+    assert [r["name"] for r in child_roles] == [
+        "enduser",
+        "agent-enduser",
+        "rag-enduser",
+        "tool-user",
+    ]
+
+
 @pytest.mark.asyncio
 async def test_set_role_permissions_invalidates_sessions_for_assigned_users():
     role_service = CompositeRoleService()

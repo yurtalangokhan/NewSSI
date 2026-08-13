@@ -13,6 +13,7 @@ import { HeaderTitle } from "@/components/header/HeaderTitle";
 import Button from "@/refresh-components/buttons/Button";
 import { isValidSource, getSourceMetadata } from "@/lib/sources";
 import { FederatedConnectorForm } from "@/components/admin/federated/FederatedConnectorForm";
+import { useTranslation } from "react-i18next";
 import { useSearchParams } from "next/navigation";
 import useSWR from "swr";
 import { errorHandlingFetcher } from "@/lib/fetcher";
@@ -26,6 +27,9 @@ export default function ConnectorWrapper({
 }: {
   connector: ConfigurableSources;
 }) {
+  const { t } = useTranslation("common", {
+    keyPrefix: "admin.connectorWrapper",
+  });
   const searchParams = useSearchParams();
   const mode = searchParams?.get("mode"); // 'federated' or 'regular'
 
@@ -38,14 +42,14 @@ export default function ConnectorWrapper({
           <div className="mt-12 w-full max-w-3xl mx-auto">
             <div className="mx-auto flex flex-col gap-y-2">
               <HeaderTitle>
-                <p>&lsquo;{connector}&rsquo; is not a valid Connector Type!</p>
+                <p>{t("invalidConnectorType", { connector })}</p>
               </HeaderTitle>
               <Button
                 onClick={() => window.open("/admin/indexing/status", "_self")}
                 className="mr-auto"
               >
                 {" "}
-                Go home{" "}
+                {t("goHomeButton")}{" "}
               </Button>
             </div>
           </div>

@@ -294,9 +294,11 @@ export default function AirbyteConnectorPage({
             )}
 
             <div className="flex justify-between mt-6">
-              <Button onClick={() => setStep(0)}>Back</Button>
-              <Button primary onClick={() => setStep(2)}>
+              <Button onClick={() => setStep(0)}>
                 {t("admin.airbyteConnector.back")}
+              </Button>
+              <Button primary onClick={() => setStep(2)}>
+                {t("admin.airbyteConnector.continue")}
               </Button>
             </div>
           </CardSection>

@@ -56,7 +56,7 @@ export function ClientLayout({
   enableEnterprise,
   enableCloud,
 }: ClientLayoutProps) {
-  const { t } = useTranslation("admin");
+  const { t } = useTranslation("common", { keyPrefix: "admin" });
   const pathname = usePathname();
   const router = useRouter();
   const settings = useSettingsContext();

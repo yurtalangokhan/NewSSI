@@ -18,7 +18,7 @@ export default function GenericConfirmModal({
   onClose,
   onConfirm,
 }: GenericConfirmModalProps) {
-  const { t } = useTranslation("modals");
+  const { t } = useTranslation("common", { keyPrefix: "modals" });
   const resolvedConfirmText = confirmText || t("confirm");
 
   return (

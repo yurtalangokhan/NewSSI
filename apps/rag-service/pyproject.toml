@@ -37,10 +37,13 @@ dependencies = [
     "alembic>=1.13",
     "PyJWT>=2.10.1",
     "idempotency",
+    "i18n-py",
 ]
 
 [tool.uv.sources]
 idempotency = { path = "../../packages/idempotency-py" }
+i18n-py = { path = "../../packages/i18n-py" }
+
 
 [project.packages]
 find = { where = ["langconnect"] }
@@ -64,6 +67,7 @@ dev = [
 ]
 
 [tool.pytest.ini_options]
+pythonpath = ["langconnect", "../../packages/i18n-py/src"]
 minversion = "8.0"
 # -ra: Report all extra test outcomes (passed, skipped, failed, etc.)
 # -q: Enable quiet mode for less cluttered output
@@ -141,6 +145,7 @@ ignore = [
   "S311",    # use of non-crypto RNG
   "S105",    # test bearer token literals
   "SLF001",  # private helper assertions in focused unit tests
+  "RUF001",  # asserting on translated Turkish locale strings
 ]
 "langconnect/api/graph.py" = [
   "ANN401",  # Neo4j serialization accepts dynamic values

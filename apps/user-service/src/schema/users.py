@@ -1,5 +1,6 @@
 import uuid
 
+from i18n import t
 from pydantic import BaseModel, Field, field_validator
 
 
@@ -18,7 +19,7 @@ class UserCreateRequest(BaseModel):
     def names_must_not_be_blank(cls, value: str) -> str:
         stripped = value.strip()
         if not stripped:
-            raise ValueError("first_name and last_name are required")
+            raise ValueError(t("user.names_required"))
         return stripped
 
     @field_validator("password")
@@ -28,7 +29,7 @@ class UserCreateRequest(BaseModel):
             return None
         stripped = value.strip()
         if not stripped:
-            raise ValueError("Password is required")
+            raise ValueError(t("user.password_required"))
         return stripped
 
 
@@ -67,7 +68,7 @@ class UserChangePasswordRequest(BaseModel):
     @classmethod
     def passwords_must_not_be_blank(cls, value: str) -> str:
         if not value:
-            raise ValueError("Password is required")
+            raise ValueError(t("user.password_required"))
         return value
 
 
@@ -86,7 +87,7 @@ class InternalUserBatchRequest(BaseModel):
     @classmethod
     def user_ids_must_be_distinct(cls, user_ids: list[uuid.UUID]) -> list[uuid.UUID]:
         if len(user_ids) != len(set(user_ids)):
-            raise ValueError("user_ids must be distinct")
+            raise ValueError(t("user.ids_must_be_distinct"))
         return user_ids
 
 

@@ -112,7 +112,7 @@ export function PersonasTable({
     });
 
     if (!response.ok) {
-      toast.error(t("agents.errorUpdateOrder", { msg: await response.text() }));
+      toast.error(t("admin.agents.errorUpdateOrder", { msg: await response.text() }));
       setFinalPersonas(personas);
       await refreshPersonas();
       return;
@@ -139,7 +139,7 @@ export function PersonasTable({
         refreshPersonas();
         closeDeleteModal();
       } else {
-        toast.error(t("agents.errorDeletePersona", { msg: await response.text() }));
+        toast.error(t("admin.agents.errorDeletePersona", { msg: await response.text() }));
       }
     }
   };

@@ -1,0 +1,105 @@
+{
+  "auth": {
+    "required": "Authentication required",
+    "admin_required": "Admin access required",
+    "sysadmin_required": "System admin access required",
+    "unauthorized": "Unauthorized access",
+    "forbidden": "Forbidden",
+    "refresh_token_required": "Refresh token required",
+    "oidc_callback_failed": "OIDC callback failed: {error}",
+    "sync_failed": "Sync failed: {error}",
+    "invalid_credentials": "Invalid username or password",
+    "external_login_failed": "External sign-in failed",
+    "external_credentials_rejected": "External identity provider rejected the credentials",
+    "basic_login_disabled": "Username/password login is disabled; use Keycloak login",
+    "external_login_disabled": "External Keycloak login is disabled",
+    "registration_managed_by_keycloak": "User registration is managed by Keycloak",
+    "no_id_token": "Authentication failed — no id_token received",
+    "no_subject_in_token": "Authentication failed — no subject in token",
+    "external_no_subject_in_token": "External authentication failed — no subject in token",
+    "external_sp_user_not_created": "External authentication failed — SP user was not created",
+    "refresh_managed_by_keycloak": "Refresh token management is handled by Keycloak",
+    "refresh_no_id_token": "Token refresh failed — no id_token received",
+    "refresh_no_subject_in_token": "Token refresh failed — no subject in token"
+  },
+  "keycloak": {
+    "base_url_not_configured": "KEYCLOAK_BASE_URL or KEYCLOAK_ISSUER_URL must be configured",
+    "redirect_uri_not_absolute": "KEYCLOAK_REDIRECT_URI or KEYCLOAK_REDIRECT_URIS must contain an absolute callback URL",
+    "service_account_not_configured": "Keycloak service account is not configured",
+    "external_issuer_not_configured": "EXTERNAL_KEYCLOAK_ISSUER_URL or EXTERNAL_KEYCLOAK_BASE_URL + EXTERNAL_KEYCLOAK_REALM must be configured",
+    "external_realm_not_configured": "EXTERNAL_KEYCLOAK_REALM must be configured",
+    "external_client_id_not_configured": "EXTERNAL_KEYCLOAK_CLIENT_ID must be configured",
+    "external_client_secret_not_configured": "EXTERNAL_KEYCLOAK_CLIENT_SECRET must be configured",
+    "client_response_invalid": "Keycloak client '{client_id}' response is invalid",
+    "client_not_found": "Keycloak client '{client_id}' was not found",
+    "sp_user_create_failed": "Failed to create SP user for external identity",
+    "auth_failed_status": "Authentication failed (status {status})",
+    "token_refresh_failed_status": "Token refresh failed (status {status})",
+    "token_exchange_failed_status": "Keycloak token exchange failed (status {status})",
+    "invalid_oidc_state": "Invalid OIDC state returned from Keycloak",
+    "login_form_not_found": "External IdP login form was not found",
+    "external_redirect_uri_rejected": "External IdP rejected redirect_uri. Add this Valid Redirect URI to external Keycloak client '{client_id}': {redirect_uri}",
+    "sp_redirect_uri_rejected": "SP Keycloak rejected redirect_uri. Add this Valid Redirect URI to SP Keycloak client '{client_id}': {redirect_uri}",
+    "external_not_configured": "External Keycloak is not configured",
+    "redirect_uri_required": "redirect_uri is required for external Keycloak login",
+    "auth_secret_not_set": "Required environment variable AUTH_SECRET is not set"
+  },
+  "user": {
+    "not_found": "User not found",
+    "not_found_by_keycloak_id": "User with keycloak_id {keycloak_id} not found",
+    "target_not_found": "Target user not found",
+    "already_exists": "User with email {email} already exists",
+    "deleted": "User deleted successfully",
+    "names_required": "first_name and last_name are required",
+    "password_required": "Password is required",
+    "ids_must_be_distinct": "user_ids must be distinct",
+    "session_invalidation_failed": "Failed to invalidate active Keycloak sessions",
+    "keycloak_user_missing_id": "Existing Keycloak user has no id",
+    "keycloak_user_create_failed": "Keycloak user could not be created",
+    "keycloak_id_required": "Keycloak user id is required",
+    "keycloak_password_set_failed": "Keycloak password could not be set",
+    "invalid_role": "Invalid role: {role}",
+    "password_managed_by_keycloak": "Password management is handled by Keycloak"
+  },
+  "memory": {
+    "content_required": "Content is required",
+    "not_found": "User memory not found",
+    "already_exists": "Memory with this content already exists."
+  },
+  "role": {
+    "not_found": "Role '{name}' not found",
+    "already_exists": "Role '{name}' already exists",
+    "keycloak_sync_failed": "Keycloak sync failed: {error}",
+    "deleted": "Role deleted",
+    "session_invalidation_failed_for_user": "Failed to invalidate active Keycloak sessions for user {email}",
+    "cannot_delete_builtin": "Cannot delete built-in role '{name}'",
+    "cannot_delete_in_use": "Cannot delete role '{name}' while users are assigned to it",
+    "invalid_permissions": "Invalid permissions: {permissions}",
+    "invalid_role_ids": "Invalid roles: {roles}"
+  },
+  "permission": {
+    "not_found": "Permission '{name}' not found",
+    "invalid_permissions": "Invalid permissions: {permissions}",
+    "wrong_service": "Permissions do not belong to service '{service_client}': {permissions}"
+  },
+  "api_key": {
+    "not_found": "API key not found",
+    "revoked": "API key revoked",
+    "deleted": "API key deleted"
+  },
+  "settings": {
+    "shortcut_not_found": "Shortcut not found",
+    "shortcut_deleted": "Shortcut deleted"
+  },
+  "system_settings": {
+    "keycloak_realm_update_failed": "Keycloak realm update failed: {error}",
+    "external_keycloak_sync_failed": "External Keycloak sync failed: {error}",
+    "keycloak_disabled": "KEYCLOAK_ENABLED is disabled"
+  },
+  "common": {
+    "bad_request": "Bad request",
+    "not_found": "Resource not found",
+    "conflict": "Resource conflict",
+    "internal_error": "Internal server error"
+  }
+}

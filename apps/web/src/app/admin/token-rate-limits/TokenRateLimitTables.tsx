@@ -140,9 +140,7 @@ export const TokenRateLimitTable = ({
                   </TableCell>
                 )}
                 <TableCell>
-                  {tokenRateLimit.period_hours > 1
-                    ? t("admin.tokenRateLimits.periodHours", { count: tokenRateLimit.period_hours })
-                    : t("admin.tokenRateLimits.periodHour", { count: tokenRateLimit.period_hours })}
+                  {t("admin.tokenRateLimits.periodHours", { count: tokenRateLimit.period_hours })}
                 </TableCell>
                 <TableCell>
                   {t("admin.tokenRateLimits.thousandTokens", { count: tokenRateLimit.token_budget })}

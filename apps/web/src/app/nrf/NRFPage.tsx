@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { useSearchParams } from "next/navigation";
 import { useUser } from "@/providers/UserProvider";
 import { toast } from "@/hooks/useToast";
@@ -57,6 +58,7 @@ interface NRFPageProps {
 const AVAILABLE_CONTEXT_TOKENS = Number(DEFAULT_CONTEXT_TOKENS) * 0.5;
 
 export default function NRFPage({ isSidePanel = false }: NRFPageProps) {
+  const { t } = useTranslation();
   const { setUseOnyxAsNewTab } = useNRFPreferences();
 
   const searchParams = useSearchParams();
@@ -84,8 +86,8 @@ export default function NRFPage({ isSidePanel = false }: NRFPageProps) {
       const names = lastFailedFiles.map((f) => f.name).join(", ");
       toast.error(
         lastFailedFiles.length === 1
-          ? `File failed and was removed: ${names}`
-          : `Files failed and were removed: ${names}`
+          ? t("chat.fileFailed", { name: names })
+          : t("chat.filesFailed", { names })
       );
       clearLastFailedFiles();
     }
@@ -341,7 +343,7 @@ export default function NRFPage({ isSidePanel = false }: NRFPageProps) {
       .reverse()
       .find((m) => m.type === "user");
     if (!lastUserMsg) {
-      toast.error("No previously-submitted user message found.");
+      toast.error(t("chat.noPreviousMessage"));
       return;
     }
 
@@ -422,7 +424,7 @@ export default function NRFPage({ isSidePanel = false }: NRFPageProps) {
             icon={SvgMenu}
             onClick={toggleSettings}
             secondary
-            tooltip="Open settings"
+            tooltip={t("app.nrf.openSettingsTooltip")}
           />
         </div>
       )}
@@ -561,16 +563,16 @@ export default function NRFPage({ isSidePanel = false }: NRFPageProps) {
             <Modal.Content width="sm">
               <Modal.Header
                 icon={SvgAlertTriangle}
-                title="Turn off Onyx new tab page?"
-                description="You'll see your browser's default new tab page instead. You can turn it back on anytime in your Onyx settings."
+                title={t("app.nrf.turnOffTitle")}
+                description={t("app.nrf.turnOffDescription")}
                 onClose={() => setShowTurnOffModal(false)}
               />
               <Modal.Footer>
                 <Button secondary onClick={() => setShowTurnOffModal(false)}>
-                  Cancel
+                  {t("app.nrf.cancelButton")}
                 </Button>
                 <Button danger onClick={confirmTurnOff}>
-                  Turn off
+                  {t("app.nrf.turnOffButton")}
                 </Button>
               </Modal.Footer>
             </Modal.Content>
@@ -581,7 +583,7 @@ export default function NRFPage({ isSidePanel = false }: NRFPageProps) {
       {!user && (
         <Modal open onOpenChange={() => {}}>
           <Modal.Content width="sm" height="sm">
-            <Modal.Header icon={SvgUser} title="Welcome to Onyx" />
+            <Modal.Header icon={SvgUser} title={t("app.nrf.welcomeTitle")} />
             <Modal.Body>
               {authTypeMetadata.authType === AuthType.BASIC ? (
                 <LoginPage
@@ -602,7 +604,7 @@ export default function NRFPage({ isSidePanel = false }: NRFPageProps) {
                       }
                     }}
                   >
-                    Log in
+                    {t("app.nrf.logInButton")}
                   </Button>
                 </div>
               )}
@@ -619,7 +621,7 @@ export default function NRFPage({ isSidePanel = false }: NRFPageProps) {
             window.location.href = "/admin/configuration/llm";
           }}
         >
-          Set up an LLM.
+          {t("app.nrf.setUpLlmButton")}
         </Button>
       )}
     </div>

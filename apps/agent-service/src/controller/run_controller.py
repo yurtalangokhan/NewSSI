@@ -28,7 +28,7 @@ class RunController(BaseController):
         user_id: str | None = None,
     ) -> AsyncGenerator[str, None]:
         if not thread_id or not run_id:
-            self._raise_bad_request("thread_id and run_id are required")
+            self._raise_bad_request("run.thread_and_run_id_required")
         try:
             return self._service.event_generator(
                 agent, input_messages, config, thread_id, run_id, stream_mode, user_id
@@ -38,7 +38,7 @@ class RunController(BaseController):
 
     async def cancel_run(self, thread_id: str, run_id: str) -> dict[str, Any]:
         if not thread_id or not run_id:
-            self._raise_bad_request("thread_id and run_id are required")
+            self._raise_bad_request("run.thread_and_run_id_required")
         try:
             return await self._service.cancel_run(thread_id, run_id)
         except Exception as exc:
@@ -48,7 +48,7 @@ class RunController(BaseController):
         self, thread_id: str, limit: int = 100, before: str | None = None
     ) -> list[dict[str, Any]]:
         if not thread_id:
-            self._raise_bad_request("thread_id is required")
+            self._raise_bad_request("run.thread_id_required")
         try:
             return await self._service.get_thread_history(thread_id, limit, before)
         except Exception as exc:

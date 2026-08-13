@@ -5,6 +5,7 @@ import uuid
 from typing import Any
 
 from fastapi import HTTPException, Request
+from i18n import t
 
 from controller.base import BaseController
 from core.env import env
@@ -880,7 +881,7 @@ class PersonaController(BaseController):
 
         persona = await PersonaDB.get(persona_id)
         if not persona:
-            self._raise_not_found("Persona not found")
+            self._raise_not_found("persona.not_found")
 
         if user:
             (
@@ -893,7 +894,7 @@ class PersonaController(BaseController):
                 restricted_persona_ids,
                 accessible_persona_ids,
             ):
-                self._raise_not_found("Persona not found")
+                self._raise_not_found("persona.not_found")
 
         return await self._serialize_custom_persona(persona)
 
@@ -1057,7 +1058,7 @@ class PersonaController(BaseController):
         try:
             existing = await PersonaDB.get(persona_id)
             if existing and existing.get("is_builtin"):
-                raise HTTPException(status_code=403, detail="Cannot update built-in agents")
+                raise HTTPException(status_code=403, detail=t("persona.cannot_update_builtin"))
 
             rag_config = payload.get("rag_config")
             effective_user_id = user_id or str((existing or {}).get("user_id") or DEFAULT_USER_ID)
@@ -1086,7 +1087,7 @@ class PersonaController(BaseController):
                 long_term_memory=bool(payload.get("long_term_memory", False)),
             )
             if not persona:
-                self._raise_not_found("Persona not found")
+                self._raise_not_found("persona.not_found")
         except HTTPException:
             raise
         except ValueError as exc:
@@ -1101,7 +1102,7 @@ class PersonaController(BaseController):
         try:
             persona = await PersonaDB.get(persona_id)
             if persona and persona.get("is_builtin"):
-                raise HTTPException(status_code=403, detail="Cannot delete built-in agents")
+                raise HTTPException(status_code=403, detail=t("persona.cannot_delete_builtin"))
             if persona and persona.get("base_agent") == "dynamic-agent":
                 definition = await self._get_dynamic_definition(persona_id)
                 if definition:

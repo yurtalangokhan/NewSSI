@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Section } from "@/layouts/general-layouts";
 import Button from "@/refresh-components/buttons/Button";
 import Modal from "@/refresh-components/Modal";
@@ -63,6 +64,7 @@ export default function CredentialStep({
   isSingleStep = false,
   onConnectorSuccess,
 }: CredentialStepProps) {
+  const { t } = useTranslation();
   const [createCredentialFormToggle, setCreateCredentialFormToggle] =
     useState(false);
   const [isAuthorizing, setIsAuthorizing] = useState(false);
@@ -222,7 +224,7 @@ export default function CredentialStep({
                       }
                     }}
                   >
-                    Create New
+                    {t("admin.craftConfigureConnector.createNewButton")}
                   </Button>
                   {oauthSupportedSources.includes(
                     connectorType as ConfigurableSources

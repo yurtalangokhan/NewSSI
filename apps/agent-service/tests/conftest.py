@@ -1,7 +1,11 @@
 import os
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
+from i18n import init_service_i18n
+
+init_service_i18n(Path(__file__).resolve().parents[1] / "locales")
 
 
 def pytest_addoption(parser):

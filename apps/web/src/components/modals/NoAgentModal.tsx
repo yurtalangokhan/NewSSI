@@ -8,7 +8,7 @@ import { useUser } from "@/providers/UserProvider";
 import { SvgUser } from "@opal/icons";
 
 export default function NoAgentModal() {
-  const { t } = useTranslation("modals");
+  const { t } = useTranslation("common", { keyPrefix: "modals" });
   const { isAdmin } = useUser();
 
   return (
@@ -17,12 +17,12 @@ export default function NoAgentModal() {
         <Modal.Header icon={SvgUser} title={t("noAgent.title")} />
         <Modal.Body>
           <Text as="p">
-            {t("noAgent.description")}
+            {t("noAgent.noAgentConfiguredMessage")}
           </Text>
           {isAdmin ? (
             <>
               <Text as="p">
-                {t("noAgent.adminDescription")}
+                {t("noAgent.adminCreateAgentMessage")}
               </Text>
               <Button className="w-full" href="/admin/agents">
                 {t("noAgent.goToAdminPanel")}
@@ -30,7 +30,7 @@ export default function NoAgentModal() {
             </>
           ) : (
             <Text as="p">
-              {t("noAgent.contactAdmin")}
+              {t("noAgent.contactAdminMessage")}
             </Text>
           )}
         </Modal.Body>

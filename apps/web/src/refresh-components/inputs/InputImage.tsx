@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { cn, noProp } from "@/lib/utils";
 import { SvgPlus, SvgX } from "@opal/icons";
 import IconButton from "@/refresh-components/buttons/IconButton";
@@ -124,7 +125,7 @@ export interface InputImageProps {
 export default function InputImage({
   disabled = false,
   src,
-  alt = "Image",
+  alt,
   onEdit,
   onRemove,
   onDrop,
@@ -133,6 +134,8 @@ export default function InputImage({
   size = 120,
   className,
 }: InputImageProps) {
+  const { t } = useTranslation("common", { keyPrefix: "common" });
+  const resolvedAlt = alt ?? t("inputImage.imageAlt");
   const isInteractive = !disabled && (onEdit || onDrop);
   const hasImage = !!src;
 
@@ -143,7 +146,8 @@ export default function InputImage({
       },
       onImageRejected: (rejections) => {
         const firstRejection = rejections[0];
-        const reason = firstRejection?.errors[0]?.message || "File rejected";
+        const reason =
+          firstRejection?.errors[0]?.message || t("inputImage.fileRejected");
         onDropRejected?.(reason);
       },
       disabled: disabled || !onDrop,
@@ -193,14 +197,18 @@ export default function InputImage({
           containerClass
         )}
         aria-label={
-          isInteractive ? (hasImage ? "Edit image" : "Upload image") : undefined
+          isInteractive
+            ? hasImage
+              ? t("inputImage.editImageAriaLabel")
+              : t("inputImage.uploadImageAriaLabel")
+            : undefined
         }
       >
         {/* Content */}
         {hasImage ? (
           <img
             src={src}
-            alt={alt}
+            alt={resolvedAlt}
             className="absolute inset-0 w-full h-full object-cover pointer-events-none"
           />
         ) : (
@@ -230,7 +238,7 @@ export default function InputImage({
             )}
           >
             <div className="pointer-events-auto">
-              <SimpleTooltip tooltip="Edit" side="top">
+              <SimpleTooltip tooltip={t("edit")} side="top">
                 <div
                   className={cn(
                     "flex items-center justify-center",
@@ -241,7 +249,7 @@ export default function InputImage({
                     className="text-text-03 font-secondary-action"
                     style={{ fontSize: "12px", lineHeight: "16px" }}
                   >
-                    Edit
+                    {t("edit")}
                   </Text>
                 </div>
               </SimpleTooltip>
@@ -265,7 +273,7 @@ export default function InputImage({
             type="button"
             primary
             className="!w-5 !h-5 !p-0.5 !rounded-04"
-            aria-label="Remove image"
+            aria-label={t("inputImage.removeImageAriaLabel")}
           />
         </div>
       )}

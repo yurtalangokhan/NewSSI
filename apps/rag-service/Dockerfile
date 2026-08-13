@@ -14,13 +14,18 @@ RUN apt-get update && \
 
 COPY apps/rag-service/pyproject.toml apps/rag-service/uv.lock apps/rag-service/README.md ./
 COPY packages/idempotency-py/ packages/idempotency-py/
+COPY packages/i18n-py/ packages/i18n-py/
 
-RUN sed -i 's|path = "../../packages/idempotency-py"|path = "packages/idempotency-py"|' pyproject.toml \
+RUN sed -i \
+    -e 's|path = "../../packages/idempotency-py"|path = "packages/idempotency-py"|' \
+    -e 's|path = "../../packages/i18n-py"|path = "packages/i18n-py"|' \
+    pyproject.toml \
     && uv lock \
     && uv sync --frozen --no-dev --no-install-project
 
 COPY apps/rag-service/langconnect/ langconnect/
 COPY apps/rag-service/alembic.ini ./
+COPY apps/rag-service/locales/ locales/
 
 RUN uv sync --frozen --no-dev && \
     apt-get purge -y --auto-remove gcc libpq-dev && \

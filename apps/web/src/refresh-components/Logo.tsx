@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import Text from "@/refresh-components/texts/Text";
 import Truncated from "@/refresh-components/texts/Truncated";
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { useTheme } from "next-themes";
 
 export interface LogoProps {
@@ -20,11 +21,19 @@ export interface LogoProps {
 
 const LOGO_CACHE_BUSTER = "v=20260505-2";
 
-function TurksatMark({ size, className }: { size: number; className?: string }) {
+function TurksatMark({
+  size,
+  className,
+  ariaLabel,
+}: {
+  size: number;
+  className?: string;
+  ariaLabel: string;
+}) {
   return (
     <svg
       viewBox="0 0 48 48"
-      aria-label="Turksat Mark"
+      aria-label={ariaLabel}
       role="img"
       className={cn("flex-shrink-0", className)}
       style={{ width: size, height: size }}
@@ -37,7 +46,17 @@ function TurksatMark({ size, className }: { size: number; className?: string }) 
   );
 }
 
-function TurksatWordmark({ darkMode, size, className }: { darkMode: boolean; size: number; className?: string }) {
+function TurksatWordmark({
+  darkMode,
+  size,
+  className,
+  alt,
+}: {
+  darkMode: boolean;
+  size: number;
+  className?: string;
+  alt: string;
+}) {
   const logoSrc = darkMode
     ? `/logo.turksat.white.svg?${LOGO_CACHE_BUSTER}`
     : `/logo.turksat.svg?${LOGO_CACHE_BUSTER}`;
@@ -45,7 +64,7 @@ function TurksatWordmark({ darkMode, size, className }: { darkMode: boolean; siz
   return (
     <img
       src={logoSrc}
-      alt="Turksat Logo"
+      alt={alt}
       className={cn("flex-shrink-0", className)}
       style={{ width: size, height: (size * 42) / 241 }}
       draggable={false}
@@ -60,6 +79,7 @@ function TurksatWordmark({ darkMode, size, className }: { darkMode: boolean; siz
 }
 
 export default function Logo({ folded, size, className }: LogoProps) {
+  const { t } = useTranslation("common", { keyPrefix: "common" });
   const foldedSize = size ?? LOGO_FOLDED_SIZE_PX;
   const unfoldedSize = size ?? LOGO_UNFOLDED_SIZE_PX;
   const settings = useSettingsContext();
@@ -72,15 +92,20 @@ export default function Logo({ folded, size, className }: LogoProps) {
   const logo = useMemo(
     () =>
       folded ? (
-        <TurksatMark size={foldedSize} className={className} />
+        <TurksatMark
+          size={foldedSize}
+          className={className}
+          ariaLabel={t("turksatMarkAriaLabel")}
+        />
       ) : (
         <TurksatWordmark
           darkMode={isDarkMode}
           size={unfoldedSize}
           className={className}
+          alt={t("turksatLogoAlt")}
         />
       ),
-    [className, folded, foldedSize, isDarkMode, unfoldedSize]
+    [className, folded, foldedSize, isDarkMode, unfoldedSize, t]
   );
 
   const renderNameAndPoweredBy = (opts: {
@@ -103,7 +128,7 @@ export default function Logo({ folded, size, className }: LogoProps) {
                 className={"line-clamp-1 truncate"}
                 nowrap
               >
-                Powered by Onyx
+                {t("poweredByOnyx")}
               </Text>
             )}
           </div>

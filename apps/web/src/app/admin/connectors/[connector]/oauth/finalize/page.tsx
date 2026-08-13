@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AdminPageTitle } from "@/components/admin/Title";
 import Button from "@/refresh-components/buttons/Button";
@@ -52,12 +53,15 @@ function UpdateCloudURLOnCloudIdChange({
 }
 
 export default function OAuthFinalizePage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const [statusMessage, setStatusMessage] = useState("Processing...");
+  const [statusMessage, setStatusMessage] = useState(
+    t("auth.oauthCallback.processing")
+  );
   const [statusDetails, setStatusDetails] = useState(
-    "Please wait while we complete the setup."
+    t("auth.oauthCallback.federatedProcessingDetails")
   );
   const [redirectUrl, setRedirectUrl] = useState<string | null>(null);
   const [isError, setIsError] = useState(false);
@@ -260,7 +264,9 @@ export default function OAuthFinalizePage() {
                 <br />
                 {!redirectUrl && (
                   <Button type="submit" disabled={!isValid || isSubmitting}>
-                    {isSubmitting ? "Submitting..." : "Submit"}
+                    {isSubmitting
+                      ? t("admin.connectorOAuth.submittingButton")
+                      : t("admin.connectorOAuth.submitButton")}
                   </Button>
                 )}
               </Form>
@@ -270,11 +276,11 @@ export default function OAuthFinalizePage() {
           {redirectUrl && !isError && (
             <div className="mt-4">
               <p className="text-sm">
-                Authorization finalized. Click{" "}
+                {t("admin.connectorOAuth.finalizedClickPrefix")}{" "}
                 <a href={redirectUrl} className="text-blue-500 underline">
-                  here
+                  {t("admin.connectorOAuth.hereLink")}
                 </a>{" "}
-                to continue.
+                {t("admin.connectorOAuth.toContinueSuffix")}
               </p>
             </div>
           )}

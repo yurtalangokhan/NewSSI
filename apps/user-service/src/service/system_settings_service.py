@@ -2,6 +2,7 @@ import base64
 from typing import Any
 
 from cryptography.fernet import Fernet
+from i18n import t
 
 from src.config import get_settings
 from src.core.env import get_env
@@ -232,7 +233,7 @@ class SystemSettingsService:
 
     async def _safe_realm_session_config(self) -> dict[str, Any]:
         if not self.keycloak.is_enabled():
-            return {"reachable": False, "error": "KEYCLOAK_ENABLED is disabled"}
+            return {"reachable": False, "error": t("system_settings.keycloak_disabled")}
         try:
             return self._realm_session_response(await self.keycloak.get_realm_configuration())
         except Exception as exc:

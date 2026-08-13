@@ -1,0 +1,45 @@
+{
+  "collection": {
+    "not_found": "Collection not found",
+    "not_found_or_not_owned": "Collection '{collection_id}' not found or not owned by you",
+    "create_failed": "Failed to create collection",
+    "update_requires_attribute": "Must update at least 1 attribute",
+    "locked_graph_build_in_progress": "Collection is locked while Graph RAG build is in progress. Try again after the build completes.",
+    "connector_managed_readonly": "This collection is managed by a connector and is read-only. Rename, delete, upload, and document deletion are not allowed."
+  },
+  "document": {
+    "not_found": "Document not found",
+    "delete_failed": "Failed to delete document.",
+    "search_query_empty": "Search query cannot be empty",
+    "metadata_count_mismatch": "Number of metadata objects ({metadata_count}) does not match number of files ({file_count}).",
+    "no_documents_processed": "Failed to process any documents from the provided files.",
+    "failed_files_list": " Files that failed processing: {files}.",
+    "vectorstore_add_failed": "Failed to add document(s) to vector store after processing.",
+    "file_too_large": "File '{filename}' is {size_mb} MB which exceeds the {limit_mb} MB upload limit."
+  },
+  "graph": {
+    "build_no_documents": "Cannot build a knowledge graph: the collection contains no documents.",
+    "build_already_in_progress": "Build already in progress.",
+    "build_started": "Graph build started. Poll /graph/build/{collection_id}/status for progress.",
+    "no_running_build_pause": "No running graph build found to pause.",
+    "build_paused": "Graph build paused.",
+    "no_running_build_resume": "No running graph build found to resume.",
+    "build_resumed": "Graph build resumed.",
+    "no_running_build_stop": "No running graph build found to stop.",
+    "build_stop_requested": "Graph build stop requested.",
+    "cypher_query_error": "Cypher query error: {error}",
+    "neo4j_unreachable": "Neo4j is not reachable"
+  },
+  "auth": {
+    "invalid_scheme": "Invalid authentication scheme",
+    "invalid_bearer_token": "Invalid bearer token",
+    "invalid_bearer_token_detail": "Invalid bearer token: {error}",
+    "invalid_api_key": "Invalid API key",
+    "bearer_token_required": "Bearer token required",
+    "api_key_required": "API key required",
+    "permission_required": "Missing required permission: {permission}"
+  },
+  "common": {
+    "internal_error": "Internal server error"
+  }
+}

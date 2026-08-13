@@ -1,4 +1,5 @@
 import type { FunctionComponent } from "react";
+import { useTranslation } from "react-i18next";
 
 import { cn, noProp } from "@/lib/utils";
 import { SvgMaximize2, SvgTextLines, SvgX } from "@opal/icons";
@@ -31,6 +32,7 @@ interface RemoveButtonProps {
 }
 
 function RemoveButton({ onRemove }: RemoveButtonProps) {
+  const { t } = useTranslation("common", { keyPrefix: "common" });
   return (
     <button
       type="button"
@@ -38,8 +40,8 @@ function RemoveButton({ onRemove }: RemoveButtonProps) {
         e.stopPropagation();
         onRemove();
       }}
-      title="Remove"
-      aria-label="Remove"
+      title={t("remove")}
+      aria-label={t("remove")}
       className={cn(
         "absolute -left-1 -top-1 z-10 h-4 w-4",
         "flex items-center justify-center",

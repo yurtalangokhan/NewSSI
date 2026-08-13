@@ -7,6 +7,8 @@ import json
 import subprocess
 from typing import Any
 
+from i18n import t
+
 from ..core.base import BaseToolCategory
 
 
@@ -19,11 +21,11 @@ class DockerTools(BaseToolCategory):
 
     @property
     def description(self) -> str:
-        return "Docker container build, run, and management"
+        return t("categories.docker.description", default="Docker container build, run, and management")
 
     @property
     def label(self) -> str:
-        return "Docker"
+        return t("categories.docker.label", default="Docker")
 
     def register_tools(self, mcp: Any) -> None:
         """Register all Docker tools with MCP."""
@@ -61,7 +63,7 @@ class DockerTools(BaseToolCategory):
                 )
                 return result.stdout + result.stderr
             except Exception as e:
-                return f"Docker build error: {str(e)}"
+                return t("docker.build_error", error=str(e))
 
         @mcp.tool()
         def docker_run(
@@ -114,7 +116,7 @@ class DockerTools(BaseToolCategory):
                 result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=60)
                 return result.stdout.strip() if result.stdout else result.stderr
             except Exception as e:
-                return f"Docker run error: {str(e)}"
+                return t("docker.run_error", error=str(e))
 
         @mcp.tool()
         def docker_stop(container_name: str) -> str:
@@ -139,7 +141,7 @@ class DockerTools(BaseToolCategory):
                     return f"Container {container_name} stopped successfully"
                 return result.stderr
             except Exception as e:
-                return f"Docker stop error: {str(e)}"
+                return t("docker.stop_error", error=str(e))
 
         @mcp.tool()
         def docker_logs(container_name: str, lines: int = 100) -> str:
@@ -163,7 +165,7 @@ class DockerTools(BaseToolCategory):
                 )
                 return result.stdout + result.stderr
             except Exception as e:
-                return f"Docker logs error: {str(e)}"
+                return t("docker.logs_error", error=str(e))
 
         @mcp.tool()
         def docker_ps(all_containers: bool = False) -> str:
@@ -185,4 +187,4 @@ class DockerTools(BaseToolCategory):
                 result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=30)
                 return result.stdout
             except Exception as e:
-                return f"Docker ps error: {str(e)}"
+                return t("docker.ps_error", error=str(e))

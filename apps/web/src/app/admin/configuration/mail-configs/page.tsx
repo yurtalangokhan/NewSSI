@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import CardSection from "@/components/admin/CardSection";
 import { ADMIN_PATHS, ADMIN_ROUTE_CONFIG } from "@/lib/admin-routes";
 import {
@@ -57,49 +58,8 @@ function formFromConfig(config: MailConfig): MailConfigFormState {
   };
 }
 
-function validateForm(form: MailConfigFormState, isEditing: boolean) {
-  if (!form.name.trim()) return "Name is required.";
-  if (!form.host.trim()) return "SMTP host is required.";
-  const port = Number(form.port);
-  if (!Number.isInteger(port) || port <= 0 || port > 65535) {
-    return "Port must be between 1 and 65535.";
-  }
-  if (!form.username.trim()) return "Username is required.";
-  if (!isEditing && !form.password.trim()) return "Password is required.";
-  if (!form.from_email.trim()) return "From email is required.";
-  return null;
-}
-
-function toCreatePayload(form: MailConfigFormState): MailConfigCreatePayload {
-  return {
-    name: form.name.trim(),
-    host: form.host.trim(),
-    port: Number(form.port),
-    username: form.username.trim(),
-    password: form.password.trim(),
-    from_email: form.from_email.trim(),
-    from_name: form.from_name.trim() || null,
-    security: form.security,
-  };
-}
-
-function toUpdatePayload(form: MailConfigFormState): MailConfigUpdatePayload {
-  const payload: MailConfigUpdatePayload = {
-    name: form.name.trim(),
-    host: form.host.trim(),
-    port: Number(form.port),
-    username: form.username.trim(),
-    from_email: form.from_email.trim(),
-    from_name: form.from_name.trim() || null,
-    security: form.security,
-  };
-  if (form.password.trim()) {
-    payload.password = form.password.trim();
-  }
-  return payload;
-}
-
 export default function Page() {
+  const { t } = useTranslation("common", { keyPrefix: "admin.mailConfigs" });
   const { mailConfigs, isLoading, refreshMailConfigs } = useMailConfigs();
   const [form, setForm] = useState<MailConfigFormState>(EMPTY_FORM);
   const [isSaving, setIsSaving] = useState(false);
@@ -109,6 +69,48 @@ export default function Page() {
     [mailConfigs]
   );
   const isEditing = Boolean(form.id);
+
+  function validateForm(form: MailConfigFormState, isEditing: boolean) {
+    if (!form.name.trim()) return t("nameRequired");
+    if (!form.host.trim()) return t("hostRequired");
+    const port = Number(form.port);
+    if (!Number.isInteger(port) || port <= 0 || port > 65535) {
+      return t("portRangeError");
+    }
+    if (!form.username.trim()) return t("usernameRequired");
+    if (!isEditing && !form.password.trim()) return t("passwordRequired");
+    if (!form.from_email.trim()) return t("fromEmailRequired");
+    return null;
+  }
+
+  function toCreatePayload(form: MailConfigFormState): MailConfigCreatePayload {
+    return {
+      name: form.name.trim(),
+      host: form.host.trim(),
+      port: Number(form.port),
+      username: form.username.trim(),
+      password: form.password.trim(),
+      from_email: form.from_email.trim(),
+      from_name: form.from_name.trim() || null,
+      security: form.security,
+    };
+  }
+
+  function toUpdatePayload(form: MailConfigFormState): MailConfigUpdatePayload {
+    const payload: MailConfigUpdatePayload = {
+      name: form.name.trim(),
+      host: form.host.trim(),
+      port: Number(form.port),
+      username: form.username.trim(),
+      from_email: form.from_email.trim(),
+      from_name: form.from_name.trim() || null,
+      security: form.security,
+    };
+    if (form.password.trim()) {
+      payload.password = form.password.trim();
+    }
+    return payload;
+  }
 
   function setField<K extends keyof MailConfigFormState>(
     field: K,
@@ -128,15 +130,15 @@ export default function Page() {
     try {
       if (isEditing) {
         await updateMailConfig(form.id, toUpdatePayload(form));
-        toast.success("Mail config updated.");
+        toast.success(t("toastUpdated"));
       } else {
         await createMailConfig(toCreatePayload(form));
-        toast.success("Mail config created.");
+        toast.success(t("toastCreated"));
       }
       setForm(EMPTY_FORM);
       await refreshMailConfigs();
     } catch (error) {
-      toast.error(`Mail config could not be saved: ${error}`);
+      toast.error(t("toastSaveFailed", { error }));
     } finally {
       setIsSaving(false);
     }
@@ -150,9 +152,9 @@ export default function Page() {
         setForm(EMPTY_FORM);
       }
       await refreshMailConfigs();
-      toast.success("Mail config deleted.");
+      toast.success(t("toastDeleted"));
     } catch (error) {
-      toast.error(`Mail config could not be deleted: ${error}`);
+      toast.error(t("toastDeleteFailed", { error }));
     } finally {
       setIsSaving(false);
     }
@@ -173,7 +175,7 @@ export default function Page() {
       }
       await refreshMailConfigs();
     } catch (error) {
-      toast.error(`Test email could not be sent: ${error}`);
+      toast.error(t("toastTestFailed", { error }));
     } finally {
       setTestingConfigId(null);
     }
@@ -184,7 +186,7 @@ export default function Page() {
       <SettingsLayouts.Header
         icon={route.icon}
         title={route.title}
-        description="Manage SMTP accounts that agents can use with send_email."
+        description={t("description")}
         separator
       />
       <SettingsLayouts.Body>
@@ -194,18 +196,16 @@ export default function Page() {
               <div className="flex flex-row items-center justify-between gap-3">
                 <div className="flex flex-col gap-1">
                   <Text as="p" mainUiBody>
-                    Saved mail configs
+                    {t("savedTitle")}
                   </Text>
                   <Text as="p" secondaryBody text03>
                     {isLoading
-                      ? "Loading SMTP accounts"
-                      : `${activeConfigs.length} active config${
-                          activeConfigs.length === 1 ? "" : "s"
-                        }`}
+                      ? t("loadingAccounts")
+                      : t("activeConfigCount", { count: activeConfigs.length })}
                   </Text>
                 </div>
                 <Button leftIcon={SvgPlus} onClick={() => setForm(EMPTY_FORM)}>
-                  New
+                  {t("newButton")}
                 </Button>
               </div>
 
@@ -214,7 +214,7 @@ export default function Page() {
               {activeConfigs.length === 0 && !isLoading ? (
                 <div className="flex flex-col gap-2 py-8 text-center">
                   <Text as="p" mainContentMuted text03>
-                    No mail configs yet.
+                    {t("noConfigsYet")}
                   </Text>
                 </div>
               ) : (
@@ -234,10 +234,12 @@ export default function Page() {
                         </Text>
                         <Text as="p" secondaryBody text03>
                           {config.last_tested_at
-                            ? `Last tested: ${new Date(
-                                config.last_tested_at
-                              ).toLocaleString()}`
-                            : "Not tested yet"}
+                            ? t("lastTested", {
+                                date: new Date(
+                                  config.last_tested_at
+                                ).toLocaleString(),
+                              })
+                            : t("notTestedYet")}
                         </Text>
                       </div>
                       <div className="flex flex-row flex-wrap justify-end gap-2">
@@ -246,7 +248,7 @@ export default function Page() {
                           leftIcon={SvgEdit}
                           onClick={() => setForm(formFromConfig(config))}
                         >
-                          Edit
+                          {t("editButton")}
                         </Button>
                         <Button
                           secondary
@@ -254,7 +256,7 @@ export default function Page() {
                           disabled={testingConfigId === config.id}
                           onClick={() => handleTest(config)}
                         >
-                          Test
+                          {t("testButton")}
                         </Button>
                         <Button
                           danger
@@ -262,7 +264,7 @@ export default function Page() {
                           disabled={isSaving}
                           onClick={() => handleDelete(config)}
                         >
-                          Delete
+                          {t("deleteButton")}
                         </Button>
                       </div>
                     </div>
@@ -276,32 +278,31 @@ export default function Page() {
             <div className="flex flex-col gap-4">
               <div className="flex flex-col gap-1">
                 <Text as="p" mainUiBody>
-                  {isEditing ? "Edit config" : "Add config"}
+                  {isEditing ? t("editConfigTitle") : t("addConfigTitle")}
                 </Text>
                 <Text as="p" secondaryBody text03>
-                  Passwords are encrypted by agent-service and are never sent to
-                  agent prompts.
+                  {t("passwordsEncryptedNote")}
                 </Text>
               </div>
 
-              <InputLayouts.Vertical title="Name">
+              <InputLayouts.Vertical title={t("nameLabel")}>
                 <InputTypeIn
                   value={form.name}
-                  placeholder="Support SMTP"
+                  placeholder={t("namePlaceholder")}
                   onChange={(event) => setField("name", event.target.value)}
                 />
               </InputLayouts.Vertical>
 
-              <InputLayouts.Vertical title="SMTP host">
+              <InputLayouts.Vertical title={t("smtpHostLabel")}>
                 <InputTypeIn
                   value={form.host}
-                  placeholder="smtp.example.com"
+                  placeholder={t("smtpHostPlaceholder")}
                   onChange={(event) => setField("host", event.target.value)}
                 />
               </InputLayouts.Vertical>
 
               <div className="grid gap-3 sm:grid-cols-2">
-                <InputLayouts.Vertical title="Port">
+                <InputLayouts.Vertical title={t("portLabel")}>
                   <InputTypeIn
                     value={form.port}
                     inputMode="numeric"
@@ -310,14 +311,14 @@ export default function Page() {
                   />
                 </InputLayouts.Vertical>
 
-                <InputLayouts.Vertical title="Security">
+                <InputLayouts.Vertical title={t("securityLabel")}>
                   <InputSelect
                     value={form.security}
                     onValueChange={(value) =>
                       setField("security", value as MailSecurity)
                     }
                   >
-                    <InputSelect.Trigger placeholder="Security" />
+                    <InputSelect.Trigger placeholder={t("securityPlaceholder")} />
                     <InputSelect.Content>
                       <InputSelect.Item value="starttls">
                         STARTTLS
@@ -329,30 +330,32 @@ export default function Page() {
                 </InputLayouts.Vertical>
               </div>
 
-              <InputLayouts.Vertical title="Username">
+              <InputLayouts.Vertical title={t("usernameLabel")}>
                 <InputTypeIn
                   value={form.username}
-                  placeholder="smtp-user"
+                  placeholder={t("usernamePlaceholder")}
                   onChange={(event) => setField("username", event.target.value)}
                 />
               </InputLayouts.Vertical>
 
               <InputLayouts.Vertical
-                title={isEditing ? "Password (optional)" : "Password"}
+                title={isEditing ? t("passwordLabelOptional") : t("passwordLabel")}
                 description={
-                  isEditing
-                    ? "Leave blank to keep the stored SMTP password."
-                    : undefined
+                  isEditing ? t("passwordLeaveBlankHint") : undefined
                 }
               >
                 <PasswordInputTypeIn
                   value={form.password}
-                  placeholder={isEditing ? "Unchanged" : "SMTP password"}
+                  placeholder={
+                    isEditing
+                      ? t("passwordPlaceholderUnchanged")
+                      : t("passwordPlaceholder")
+                  }
                   onChange={(event) => setField("password", event.target.value)}
                 />
               </InputLayouts.Vertical>
 
-              <InputLayouts.Vertical title="From email">
+              <InputLayouts.Vertical title={t("fromEmailLabel")}>
                 <InputTypeIn
                   value={form.from_email}
                   placeholder="agent@example.com"
@@ -362,7 +365,7 @@ export default function Page() {
                 />
               </InputLayouts.Vertical>
 
-              <InputLayouts.Vertical title="From name">
+              <InputLayouts.Vertical title={t("fromNameLabel")}>
                 <InputTypeIn
                   value={form.from_name}
                   placeholder="Agent Mail"
@@ -374,8 +377,8 @@ export default function Page() {
 
               {isEditing && (
                 <InputLayouts.Vertical
-                  title="Test recipient"
-                  description="Used by the Test action for this config."
+                  title={t("testRecipientLabel")}
+                  description={t("testRecipientHint")}
                 >
                   <InputTypeIn
                     value={form.test_to_email}
@@ -390,7 +393,7 @@ export default function Page() {
               <div className="flex flex-row justify-end gap-2">
                 {isEditing && (
                   <Button secondary onClick={() => setForm(EMPTY_FORM)}>
-                    Cancel
+                    {t("cancelButton")}
                   </Button>
                 )}
                 <Button
@@ -398,7 +401,7 @@ export default function Page() {
                   disabled={isSaving}
                   onClick={handleSave}
                 >
-                  {isEditing ? "Save" : "Create"}
+                  {isEditing ? t("saveButton") : t("createButton")}
                 </Button>
               </div>
             </div>

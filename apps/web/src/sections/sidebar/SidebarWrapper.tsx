@@ -1,4 +1,5 @@
 import React, { useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { Button } from "@opal/components";
 import { SvgSidebar } from "@opal/icons";
@@ -10,16 +11,17 @@ interface LogoSectionProps {
 }
 
 function LogoSection({ folded, onFoldClick }: LogoSectionProps) {
+  const { t } = useTranslation("common", { keyPrefix: "sidebar" });
   const closeButton = useCallback(
     () => (
       <Button
         icon={SvgSidebar}
         prominence="tertiary"
-        tooltip="Close Sidebar"
+        tooltip={t("closeSidebar")}
         onClick={onFoldClick}
       />
     ),
-    [onFoldClick]
+    [onFoldClick, t]
   );
 
   return (

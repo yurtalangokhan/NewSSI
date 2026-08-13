@@ -13,6 +13,8 @@ from email.message import EmailMessage
 from email.utils import formataddr, make_msgid
 from typing import Any
 
+from i18n import t
+
 from ..core.base import BaseToolCategory
 
 
@@ -24,12 +26,12 @@ def _as_list(value: list[str] | str | None) -> list[str]:
     return [str(item).strip() for item in value if str(item).strip()]
 
 
-def _error_response(message: str, category: str = "smtp") -> str:
+def _error_response(key: str, category: str = "smtp") -> str:
     return json.dumps(
         {
             "success": False,
             "error_category": category,
-            "error": message,
+            "error": t(key),
         }
     )
 
@@ -72,14 +74,11 @@ def send_email_message(
     all_recipients = [*to_list, *cc_list, *bcc_list]
 
     if not all_recipients or not subject.strip() or not body.strip():
-        return _error_response(
-            "Recipient, subject, and body are required before sending email.",
-            "validation",
-        )
+        return _error_response("mail.recipient_subject_body_required", "validation")
 
     required_config = ("host", "port", "username", "password", "from_email")
     if any(not smtp_config.get(key) for key in required_config):
-        return _error_response("SMTP configuration is incomplete.", "configuration")
+        return _error_response("mail.config_incomplete", "configuration")
 
     message = EmailMessage()
     from_email = str(smtp_config["from_email"])
@@ -102,7 +101,7 @@ def send_email_message(
     try:
         _attach_files(message, attachments)
     except (ValueError, TypeError):
-        return _error_response("Email attachment payload is invalid.", "validation")
+        return _error_response("mail.payload_invalid", "validation")
 
     host = str(smtp_config["host"])
     port = int(smtp_config["port"])
@@ -124,13 +123,13 @@ def send_email_message(
                 smtp.login(username, password)
                 smtp.send_message(message)
     except smtplib.SMTPAuthenticationError:
-        return _error_response("SMTP authentication failed.", "authentication")
+        return _error_response("mail.auth_failed", "authentication")
     except (TimeoutError, OSError, smtplib.SMTPConnectError):
-        return _error_response("SMTP server could not be reached.", "connection")
+        return _error_response("mail.connection_failed", "connection")
     except smtplib.SMTPRecipientsRefused:
-        return _error_response("SMTP server rejected one or more recipients.", "recipient")
+        return _error_response("mail.recipient_rejected", "recipient")
     except smtplib.SMTPException:
-        return _error_response("SMTP server rejected the message.", "smtp")
+        return _error_response("mail.message_rejected", "smtp")
 
     return json.dumps(
         {
@@ -150,11 +149,11 @@ class MailTools(BaseToolCategory):
 
     @property
     def description(self) -> str:
-        return "SMTP email sending"
+        return t("categories.mail.description", default="SMTP email sending")
 
     @property
     def label(self) -> str:
-        return "Mail"
+        return t("categories.mail.label", default="Mail")
 
     def register_tools(self, mcp: Any) -> None:
         """Register all mail tools with MCP."""

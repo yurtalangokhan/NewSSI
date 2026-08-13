@@ -1,4 +1,5 @@
 import { memo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { SvgDownload } from "@opal/icons";
 import { ImageShape } from "@/app/app/services/streamingModels";
 import { FullImageModal } from "@/app/app/components/files/images/FullImageModal";
@@ -38,6 +39,7 @@ export const InMessageImage = memo(function InMessageImage({
   fileName,
   shape = DEFAULT_SHAPE,
 }: InMessageImageProps) {
+  const { t } = useTranslation("common", { keyPrefix: "common" });
   const [fullImageShowing, setFullImageShowing] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(loadedImages.has(fileId));
 
@@ -84,7 +86,7 @@ export const InMessageImage = memo(function InMessageImage({
         <img
           width={1200}
           height={1200}
-          alt="Chat Message Image"
+          alt={t("chatMessageImageAlt")}
           onLoad={() => {
             loadedImages.add(fileId);
             setImageLoaded(true);

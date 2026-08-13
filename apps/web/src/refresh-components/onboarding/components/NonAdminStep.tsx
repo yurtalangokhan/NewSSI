@@ -66,7 +66,7 @@ export default function NonAdminStep() {
           <div className="flex items-center gap-1">
             <SvgCheckCircle className="w-4 h-4 stroke-status-success-05" />
             <Text as="p" text03 mainUiBody>
-              You're all set!
+              {t("nameStep.allSet")}
             </Text>
           </div>
           <OpalButton
@@ -93,14 +93,14 @@ export default function NonAdminStep() {
                 {t("nameStep.whatShouldAppCallYou", { appName: APP_NAME })}
               </Text>
               <Text as="p" text03 secondaryBody>
-                We will display this name in the app.
+                {t("nameStep.nameDisplayDesc")}
               </Text>
             </div>
           </div>
           <div className="flex items-center justify-end gap-2">
             <InputTypeIn
               ref={inputRef}
-              placeholder="Your name"
+              placeholder={t("nameStep.yourName")}
               value={name || ""}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                 setName(e.target.value)
@@ -114,14 +114,14 @@ export default function NonAdminStep() {
               className="w-[26%] min-w-40"
             />
             <Button disabled={name === ""} onClick={handleSave}>
-              Save
+              {t("common.save")}
             </Button>
           </div>
         </div>
       ) : (
         <div
           className={cn(containerClasses, "group")}
-          aria-label="Edit display name"
+          aria-label={t("nameStep.editDisplayNameAriaLabel")}
           role="button"
           tabIndex={0}
           onClick={() => {
@@ -148,7 +148,7 @@ export default function NonAdminStep() {
             <IconButton
               internal
               icon={SvgEdit}
-              tooltip="Edit"
+              tooltip={t("common.edit")}
               className="opacity-0 group-hover:opacity-100 transition-opacity"
             />
             <SvgCheckCircle className="w-4 h-4 stroke-status-success-05" />

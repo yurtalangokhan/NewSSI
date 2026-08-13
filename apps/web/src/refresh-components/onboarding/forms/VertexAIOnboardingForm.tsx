@@ -1,12 +1,11 @@
 import React, { useMemo } from "react";
 import * as Yup from "yup";
+import { Trans, useTranslation } from "react-i18next";
 import { FormikField } from "@/refresh-components/form/FormikField";
 import { FormField } from "@/refresh-components/form/FormField";
 import InputComboBox from "@/refresh-components/inputs/InputComboBox";
 import InputFile from "@/refresh-components/inputs/InputFile";
 import Separator from "@/refresh-components/Separator";
-import { cn, noProp } from "@/lib/utils";
-import { SvgRefreshCw } from "@opal/icons";
 import {
   ModelConfiguration,
   WellKnownLLMProviderDescriptor,
@@ -23,7 +22,6 @@ import {
 import ConnectionProviderIcon from "@/refresh-components/ConnectionProviderIcon";
 import InlineExternalLink from "@/refresh-components/InlineExternalLink";
 import { ProviderIcon } from "@/app/admin/configuration/llm/ProviderIcon";
-import { APP_NAME } from "@/lib/appInfo";
 
 // Field name constants
 const FIELD_DEFAULT_MODEL_NAME = "default_model_name";
@@ -71,6 +69,7 @@ function VertexAIFormFields(
     disabled,
     llmDescriptor,
   } = props;
+  const { t } = useTranslation();
 
   const handleFileInputChange = async (value: string) => {
     if (!llmDescriptor || !value) return;
@@ -104,7 +103,7 @@ function VertexAIFormFields(
             state={state}
             className="w-full"
           >
-            <FormField.Label>Credentials File</FormField.Label>
+            <FormField.Label>{t("llmOnboarding.credentialsFile")}</FormField.Label>
             <FormField.Control>
               <InputFile
                 setValue={(value) => helper.setValue(value)}
@@ -124,13 +123,16 @@ function VertexAIFormFields(
               <FormField.Message
                 messages={{
                   idle: (
-                    <>
-                      {"Paste your "}
-                      <InlineExternalLink href="https://console.cloud.google.com/projectselector2/iam-admin/serviceaccounts?supportedpurview=project">
-                        service account credentials
-                      </InlineExternalLink>
-                      {" from Google Cloud Vertex AI."}
-                    </>
+                    <Trans
+                      i18nKey="llmOnboarding.pasteCredentialsHint"
+                      components={{
+                        link: (
+                          <InlineExternalLink href="https://console.cloud.google.com/projectselector2/iam-admin/serviceaccounts?supportedpurview=project">
+                            service account credentials
+                          </InlineExternalLink>
+                        ),
+                      }}
+                    />
                   ),
                   error: meta.error,
                 }}
@@ -140,9 +142,9 @@ function VertexAIFormFields(
               <FormField.APIMessage
                 state={apiStatus}
                 messages={{
-                  loading: "Verifying credentials with Vertex AI...",
-                  success: "Credentials valid. Your available models updated.",
-                  error: errorMessage || "Invalid credentials",
+                  loading: t("llmOnboarding.verifyingVertexAI"),
+                  success: t("llmOnboarding.vertexAIValid"),
+                  error: errorMessage || t("llmOnboarding.invalidCredentials"),
                 }}
               />
             )}
@@ -160,7 +162,7 @@ function VertexAIFormFields(
             state={state}
             className="w-full"
           >
-            <FormField.Label>Default Model</FormField.Label>
+            <FormField.Label>{t("llmOnboarding.defaultModel")}</FormField.Label>
             <FormField.Control>
               <InputComboBox
                 value={field.value}
@@ -171,13 +173,13 @@ function VertexAIFormFields(
                   disabled || isFetchingModels || modelOptions.length === 0
                 }
                 onBlur={field.onBlur}
-                placeholder="Select a model"
+                placeholder={t("llmOnboarding.selectOrTypeModel")}
               />
             </FormField.Control>
             {!showModelsApiErrorMessage && (
               <FormField.Message
                 messages={{
-                  idle: `This model will be used by ${APP_NAME} by default.`,
+                  idle: t("llmOnboarding.defaultModelDesc"),
                   error: meta.error,
                 }}
               />
@@ -186,9 +188,9 @@ function VertexAIFormFields(
               <FormField.APIMessage
                 state={modelsApiStatus}
                 messages={{
-                  loading: "Fetching models...",
-                  success: "Models fetched successfully.",
-                  error: modelsErrorMessage || "Failed to fetch models",
+                  loading: t("llmOnboarding.fetchingModels"),
+                  success: t("llmOnboarding.modelsFetched"),
+                  error: modelsErrorMessage || t("llmOnboarding.failedFetchModels"),
                 }}
               />
             )}
@@ -206,6 +208,7 @@ export function VertexAIOnboardingForm({
   open,
   onOpenChange,
 }: VertexAIOnboardingFormProps) {
+  const { t } = useTranslation();
   const initialValues = useMemo(
     (): VertexAIFormValues => ({
       ...buildInitialValues(),
@@ -220,9 +223,9 @@ export function VertexAIOnboardingForm({
   );
 
   const validationSchema = Yup.object().shape({
-    [FIELD_DEFAULT_MODEL_NAME]: Yup.string().required("Model name is required"),
+    [FIELD_DEFAULT_MODEL_NAME]: Yup.string().required(t("llmOnboardingForms.modelNameRequired")),
     custom_config: Yup.object().shape({
-      vertex_credentials: Yup.string().required("Credentials file is required"),
+      vertex_credentials: Yup.string().required(t("llmOnboardingForms.credentialsRequired")),
     }),
   });
 
@@ -245,8 +248,8 @@ export function VertexAIOnboardingForm({
   return (
     <OnboardingFormWrapper<VertexAIFormValues>
       icon={icon}
-      title="Set up Gemini"
-      description="Connect to Google Cloud Vertex AI and set up your Gemini models."
+      title={t("llmOnboarding.setupVertex")}
+      description={t("llmOnboarding.setupVertexDesc")}
       llmDescriptor={llmDescriptor}
       onboardingState={onboardingState}
       onboardingActions={onboardingActions}

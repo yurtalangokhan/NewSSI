@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import Text from "@/refresh-components/texts/Text";
 import { OptionItem } from "./OptionItem";
 import { ComboBoxOption } from "../types";
@@ -46,6 +47,7 @@ export const OptionsList: React.FC<OptionsListProps> = ({
   allowCreate,
   showCreateOption,
 }) => {
+  const { t } = useTranslation("common", { keyPrefix: "optionsList" });
   // Index offset for other options when create option is shown
   const indexOffset = showCreateOption ? 1 : 0;
 
@@ -56,7 +58,7 @@ export const OptionsList: React.FC<OptionsListProps> = ({
   ) {
     return (
       <div className="px-3 py-2 text-text-02 font-secondary-body">
-        No options found
+        {t("noOptionsFound")}
       </div>
     );
   }

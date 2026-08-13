@@ -427,8 +427,8 @@ export default function LLMPopover({
       capabilities.length > 0 ? capabilities.join(", ") : undefined;
     const isAvailable = isLlmOptionAvailableForSelection(option);
     const availabilityLabel = isAvailable
-      ? t("agentAvailability.available", "Available")
-      : t("agentAvailability.unavailable", "Unavailable");
+      ? t("agentAvailability.available")
+      : t("agentAvailability.unavailable");
 
     return (
       <div
@@ -457,7 +457,7 @@ export default function LLMPopover({
             <span className="truncate min-w-0">{option.displayName}</span>
             {option.isRemote && (
               <span className="inline-flex items-center px-1.5 py-0.5 rounded-08 bg-background-tint-02 text-text-03 font-figure-small-label leading-none shrink-0">
-                Cloud
+                {t("app.llmPopover.cloudBadge")}
               </span>
             )}
           </span>
@@ -520,7 +520,7 @@ export default function LLMPopover({
             {hasAgentSelection && (
               <div className="flex flex-col gap-1">
                 <Text secondaryBody text03 className="px-2 py-1">
-                  {t("app.llmPopover.agentSectionTitle", "Agents")}
+                  {t("app.llmPopover.agentSectionTitle")}
                 </Text>
                 {filteredAgents.map((agent) => (
                   (() => {
@@ -544,7 +544,7 @@ export default function LLMPopover({
                         onClick={() => handleSelectAgent(agent)}
                       >
                         {agent.id === 0
-                          ? t("app.llmPopover.defaultAgentLabel", "Default")
+                          ? t("app.llmPopover.defaultAgentLabel")
                           : agent.name}
                       </LineItem>
                     );
@@ -653,7 +653,7 @@ export default function LLMPopover({
                 />
                 <div className="flex flex-row items-center justify-between">
                   <Text secondaryBody text03>
-                    Temperature (creativity)
+                    {t("app.llmPopover.temperatureLabel")}
                   </Text>
                   <Text secondaryBody text03>
                     {localTemperature.toFixed(1)}

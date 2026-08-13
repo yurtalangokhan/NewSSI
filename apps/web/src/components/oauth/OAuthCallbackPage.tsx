@@ -6,6 +6,7 @@ import type { Route } from "next";
 import { CheckmarkIcon, TriangleAlertIcon } from "@/components/icons/icons";
 import CardSection from "@/components/admin/CardSection";
 import Button from "@/refresh-components/buttons/Button";
+import { useTranslation } from "react-i18next";
 
 interface OAuthCallbackConfig {
   // UI customization
@@ -33,14 +34,15 @@ interface OAuthCallbackPageProps {
 }
 
 export default function OAuthCallbackPage({ config }: OAuthCallbackPageProps) {
+  const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
 
   const [statusMessage, setStatusMessage] = useState(
-    config.processingMessage || "Processing..."
+    config.processingMessage || t("auth.oauthCallback.processing")
   );
   const [statusDetails, setStatusDetails] = useState(
-    config.processingDetails || "Please wait while we complete the setup."
+    config.processingDetails || t("auth.oauthCallback.federatedProcessingDetails")
   );
   const [isError, setIsError] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -245,8 +247,9 @@ export default function OAuthCallbackPage({ config }: OAuthCallbackPageProps) {
             {isSuccess && secondsLeft !== null && (
               <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 mb-6">
                 <p className="text-green-800 dark:text-green-200 text-sm">
-                  Redirecting in {secondsLeft}{" "}
-                  {secondsLeft === 1 ? "second" : "seconds"}...
+                  {t("auth.oauthCallback.redirectingInSeconds", {
+                    count: secondsLeft,
+                  })}
                 </p>
               </div>
             )}
@@ -262,14 +265,14 @@ export default function OAuthCallbackPage({ config }: OAuthCallbackPageProps) {
                     }}
                     className="w-full"
                   >
-                    {config.backButtonText || "Back to Chat"}
+                    {config.backButtonText || t("auth.oauthCallback.backToChat")}
                   </Button>
                 </div>
               )}
 
               {isLoading && (
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                  This may take a few moments...
+                  {t("auth.oauthCallback.takeMoments")}
                 </p>
               )}
             </div>

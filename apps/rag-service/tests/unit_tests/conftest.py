@@ -1,10 +1,14 @@
 import asyncio
 import os
+from pathlib import Path
 
 import pytest
+from i18n import init_service_i18n
 
 from langconnect import auth
 from langconnect.authorization import AuthorizationClient
+
+init_service_i18n(Path(__file__).resolve().parents[2] / "locales")
 
 if "OPENAI_API_KEY" in os.environ:
     raise AssertionError(

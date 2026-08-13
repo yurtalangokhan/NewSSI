@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 
+from i18n.core import set_locale
+
 from src.tools.mail_tools import send_email_message
 
 
@@ -87,6 +89,29 @@ def test_send_email_message_rejects_missing_required_fields():
 
     assert result["success"] is False
     assert result["error_category"] == "validation"
+    assert result["error"] == "Recipient, subject, and body are required before sending email."
+
+
+def test_send_email_message_error_is_translated_for_turkish_locale():
+    set_locale("tr")
+    try:
+        result = json.loads(
+            send_email_message(
+                smtp_config={},
+                to=[],
+                cc=[],
+                bcc=[],
+                subject="",
+                body="",
+                is_html=False,
+                reply_to=None,
+            )
+        )
+    finally:
+        set_locale("en")
+
+    assert result["success"] is False
+    assert result["error"] == "E-posta göndermeden önce alıcı, konu ve gövde gereklidir."
 
 
 def test_send_email_message_attaches_base64_files(monkeypatch):

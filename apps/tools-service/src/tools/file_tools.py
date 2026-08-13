@@ -6,6 +6,8 @@ Provides tools for reading, writing, and listing files.
 from pathlib import Path
 from typing import Any
 
+from i18n import t
+
 from ..core.base import BaseToolCategory
 
 
@@ -113,11 +115,11 @@ class FileTools(BaseToolCategory):
 
     @property
     def description(self) -> str:
-        return "File read, write, and directory listing"
+        return t("categories.file_operations.description", default="File read, write, and directory listing")
 
     @property
     def label(self) -> str:
-        return "File Operations"
+        return t("categories.file_operations.label", default="📁 File Operations")
 
     def register_tools(self, mcp: Any) -> None:
         """Register all file operation tools with MCP."""
@@ -142,7 +144,7 @@ class FileTools(BaseToolCategory):
                         content += f"\n... [truncated at {max_lines} lines]"
                     return content
             except Exception as e:
-                return f"Error reading file: {str(e)}"
+                return t("file.read_error", error=str(e))
 
         @mcp.tool()
         def file_write(file_path: str, content: str, append: bool = False) -> str:
@@ -167,7 +169,7 @@ class FileTools(BaseToolCategory):
                     f.write(content)
                 return f"Successfully wrote to {file_path}"
             except Exception as e:
-                return f"Error writing file: {str(e)}"
+                return t("file.write_error", error=str(e))
 
         @mcp.tool()
         def file_list(directory: str, pattern: str | None = None) -> str:
@@ -184,7 +186,7 @@ class FileTools(BaseToolCategory):
             try:
                 path = Path(directory)
                 if not path.exists():
-                    return f"Directory not found: {directory}"
+                    return t("file.directory_not_found", directory=directory)
 
                 files = list(path.glob(pattern)) if pattern else list(path.iterdir())
 
@@ -199,7 +201,7 @@ class FileTools(BaseToolCategory):
 
                 return "\n".join(result) if result else "Empty directory"
             except Exception as e:
-                return f"Error listing directory: {str(e)}"
+                return t("file.list_error", error=str(e))
 
         @mcp.tool()
         def create_directory(dir_path: str, parents: bool = True) -> str:
@@ -216,12 +218,12 @@ class FileTools(BaseToolCategory):
             try:
                 path = Path(dir_path)
                 if path.exists():
-                    return f"Directory already exists: {dir_path}"
+                    return t("file.directory_exists", dir_path=dir_path)
 
                 path.mkdir(parents=parents, exist_ok=True)
                 return f"Successfully created directory: {dir_path}"
             except Exception as e:
-                return f"Error creating directory: {str(e)}"
+                return t("file.create_directory_error", error=str(e))
 
         @mcp.tool()
         def file_exists(file_path: str) -> str:
@@ -237,7 +239,7 @@ class FileTools(BaseToolCategory):
             try:
                 path = Path(file_path)
                 if not path.exists():
-                    return f"Does not exist: {file_path}"
+                    return t("file.path_not_found", file_path=file_path)
 
                 if path.is_file():
                     size = path.stat().st_size
@@ -248,7 +250,7 @@ class FileTools(BaseToolCategory):
                 else:
                     return f"EXISTS (special): {file_path}"
             except Exception as e:
-                return f"Error checking path: {str(e)}"
+                return t("file.check_error", error=str(e))
 
         @mcp.tool()
         def file_update(file_path: str, old_text: str, new_text: str) -> str:
@@ -278,9 +280,9 @@ class FileTools(BaseToolCategory):
             try:
                 path = Path(file_path)
                 if not path.exists():
-                    return f"Error: File not found: {file_path}"
+                    return t("file.file_not_found", file_path=file_path)
                 if not path.is_file():
-                    return f"Error: Not a file: {file_path}"
+                    return t("file.not_a_file", file_path=file_path)
 
                 # Normalize escaped characters
                 old_text = normalize_content(old_text)
@@ -296,18 +298,15 @@ class FileTools(BaseToolCategory):
                     # Provide helpful context
                     lines = content.split("\n")
                     preview = "\n".join(lines[:20])
-                    return (
-                        f"Error: Text not found in {file_path}.\n"
-                        f"File has {len(lines)} lines.\n"
-                        f"First 20 lines:\n{preview}"
+                    return t(
+                        "file.text_not_found",
+                        file_path=file_path,
+                        line_count=len(lines),
+                        preview=preview,
                     )
 
                 if count > 1:
-                    return (
-                        f"Warning: Found {count} occurrences of the text. "
-                        f"Please provide more specific text to match exactly one occurrence. "
-                        f"Only replacing the first occurrence."
-                    )
+                    return t("file.multiple_occurrences", count=count)
 
                 # Replace
                 new_content = content.replace(old_text, new_text, 1)
@@ -327,7 +326,7 @@ class FileTools(BaseToolCategory):
                 )
 
             except Exception as e:
-                return f"Error updating file: {str(e)}"
+                return t("file.update_error", error=str(e))
 
         @mcp.tool()
         def file_delete(file_path: str, recursive: bool = False) -> str:
@@ -344,7 +343,7 @@ class FileTools(BaseToolCategory):
             try:
                 path = Path(file_path)
                 if not path.exists():
-                    return f"Path does not exist: {file_path}"
+                    return t("file.delete_path_not_found", file_path=file_path)
 
                 if path.is_file():
                     path.unlink()
@@ -358,10 +357,10 @@ class FileTools(BaseToolCategory):
                     else:
                         # Only delete if empty
                         if any(path.iterdir()):
-                            return f"Directory not empty. Use recursive=True to delete: {file_path}"
+                            return t("file.directory_not_empty", file_path=file_path)
                         path.rmdir()
                         return f"Successfully deleted empty directory: {file_path}"
 
-                return f"Cannot delete: {file_path}"
+                return t("file.cannot_delete", file_path=file_path)
             except Exception as e:
-                return f"Error deleting: {str(e)}"
+                return t("file.delete_error", error=str(e))

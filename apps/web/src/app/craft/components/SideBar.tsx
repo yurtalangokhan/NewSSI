@@ -1,6 +1,7 @@
 "use client";
 
 import { memo, useMemo, useCallback, useState, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { useRouter, usePathname } from "next/navigation";
 import { useBuildContext } from "@/app/craft/contexts/BuildContext";
 import {
@@ -110,6 +111,9 @@ function BuildSessionButton({
   onDelete,
   onDeleteActiveSession,
 }: BuildSessionButtonProps) {
+  const { t } = useTranslation("common", {
+    keyPrefix: "app.craft.sideBar",
+  });
   const [renaming, setRenaming] = useState(false);
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -260,10 +264,10 @@ function BuildSessionButton({
         <ConfirmationModalLayout
           title={
             deleteSuccess
-              ? "Deleted"
+              ? t("deletedTitle")
               : deleteError
-                ? "Delete Failed"
-                : "Delete Craft"
+                ? t("deleteFailedTitle")
+                : t("deleteCraftTitle")
           }
           icon={deleteSuccess ? SvgCheckCircle : SvgTrash}
           onClose={isDeleting || deleteSuccess ? undefined : closeModal}
@@ -272,11 +276,11 @@ function BuildSessionButton({
           submit={
             deleteSuccess ? (
               <Button action disabled leftIcon={SvgCheckCircle}>
-                Done
+                {t("doneButton")}
               </Button>
             ) : deleteError ? (
               <Button danger onClick={closeModal}>
-                Close
+                {t("closeButton")}
               </Button>
             ) : (
               <Button
@@ -285,7 +289,7 @@ function BuildSessionButton({
                 disabled={isDeleting}
                 leftIcon={isDeleting ? SimpleLoader : undefined}
               >
-                {isDeleting ? "Deleting..." : "Delete"}
+                {isDeleting ? t("deletingButton") : t("deleteButton")}
               </Button>
             )
           }

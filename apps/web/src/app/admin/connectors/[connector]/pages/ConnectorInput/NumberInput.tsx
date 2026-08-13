@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Label, SubLabel } from "@/components/Field";
 import { ErrorMessage, useField } from "formik";
 
@@ -14,6 +15,7 @@ export default function NumberInput({
   description?: string;
   showNeverIfZero?: boolean;
 }) {
+  const { t } = useTranslation("common", { keyPrefix: "common" });
   const [field, meta, helpers] = useField(name);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -31,7 +33,11 @@ export default function NumberInput({
       <Label>
         <>
           {label}
-          {optional && <span className="text-text-500 ml-1">(optional)</span>}
+          {optional && (
+            <span className="text-text-500 ml-1">
+              {t("optionalParenthetical")}
+            </span>
+          )}
         </>
       </Label>
       {description && <SubLabel>{description}</SubLabel>}

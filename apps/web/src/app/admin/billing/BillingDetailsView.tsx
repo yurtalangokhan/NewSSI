@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import { Section } from "@/layouts/general-layouts";
 import { Content } from "@opal/layouts";
@@ -156,9 +157,12 @@ function SubscriptionCard({
   isManualLicenseOnly?: boolean;
   onReconnect?: () => Promise<void>;
 }) {
+  const { t } = useTranslation("common", { keyPrefix: "admin.billingDetails" });
   const [isReconnecting, setIsReconnecting] = useState(false);
 
-  const planName = isManualLicenseOnly ? "Enterprise Plan" : "Business Plan";
+  const planName = isManualLicenseOnly
+    ? t("enterprisePlan")
+    : t("businessPlan");
   const PlanIcon = isManualLicenseOnly ? SvgOrganization : SvgUsers;
   const expirationDate = billing?.current_period_end ?? license?.expires_at;
   const formattedDate = formatDateShort(expirationDate);
@@ -174,13 +178,13 @@ function SubscriptionCard({
 
   let subtitle: string;
   if (isExpired) {
-    subtitle = `Expired on ${formattedDate}`;
+    subtitle = t("expiredOn", { date: formattedDate });
   } else if (isCanceling) {
-    subtitle = `Valid until ${formattedDate}`;
+    subtitle = t("validUntil", { date: formattedDate });
   } else if (billing) {
-    subtitle = `Next payment on ${formattedDate}`;
+    subtitle = t("nextPaymentOn", { date: formattedDate });
   } else {
-    subtitle = `Valid until ${formattedDate}`;
+    subtitle = t("validUntil", { date: formattedDate });
   }
 
   const handleManagePlan = async () => {
@@ -234,15 +238,15 @@ function SubscriptionCard({
         >
           {isManualLicenseOnly ? (
             <Text secondaryBody text03 className="text-right">
-              Your plan is managed through sales.
+              {t("managedThroughSales")}
               <br />
               <a
                 href={`mailto:${APP_SUPPORT_EMAIL}?subject=Billing%20change%20request`}
                 className="underline"
               >
-                Contact billing
+                {t("contactBillingLink")}
               </a>{" "}
-              to make changes.
+              {t("toMakeChangesSuffix")}
             </Text>
           ) : disabled ? (
             <Button
@@ -252,7 +256,7 @@ function SubscriptionCard({
               rightIcon={SvgArrowRight}
               disabled={isReconnecting}
             >
-              {isReconnecting ? "Connecting..." : "Connect to Stripe"}
+              {isReconnecting ? t("connectingButton") : t("connectToStripeButton")}
             </Button>
           ) : (
             <Button
@@ -261,12 +265,12 @@ function SubscriptionCard({
               onClick={handleManagePlan}
               rightIcon={SvgExternalLink}
             >
-              Manage Plan
+              {t("managePlanButton")}
             </Button>
           )}
           <Button tertiary onClick={onViewPlans} className="billing-text-link">
             <Text secondaryBody text03>
-              View Plan Details
+              {t("viewPlanDetailsButton")}
             </Text>
           </Button>
         </Section>
@@ -292,6 +296,7 @@ function SeatsCard({
   disabled?: boolean;
   hideUpdateSeats?: boolean;
 }) {
+  const { t } = useTranslation("common", { keyPrefix: "admin.billingDetails" });
   const [isEditing, setIsEditing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -346,7 +351,7 @@ function SeatsCard({
       await onRefresh?.();
       setIsEditing(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update seats");
+      setError(err instanceof Error ? err.message : t("failedToUpdateSeats"));
     } finally {
       setIsSubmitting(false);
     }
@@ -357,7 +362,6 @@ function SeatsCard({
   const isRemoving = seatDifference < 0;
   const nextBillingDate = formatDateShort(billing?.current_period_end);
   const seatCount = Math.abs(seatDifference);
-  const seatWord = seatCount === 1 ? "seat" : "seats";
 
   if (isEditing) {
     return (
@@ -375,13 +379,13 @@ function SeatsCard({
           height="auto"
         >
           <Content
-            title="Update Seats"
-            description="Add or remove seats to reflect your team size."
+            title={t("updateSeatsTitle")}
+            description={t("updateSeatsDescription")}
             sizePreset="main-content"
             variant="section"
           />
           <Button main secondary onClick={handleCancel} disabled={isSubmitting}>
-            Cancel
+            {t("cancelButton")}
           </Button>
         </Section>
 
@@ -393,7 +397,7 @@ function SeatsCard({
             padding={1}
             height="auto"
           >
-            <InputLayouts.Vertical title="Seats">
+            <InputLayouts.Vertical title={t("seatsTitle")}>
               <InputNumber
                 value={newSeatCount}
                 onChange={setNewSeatCount}
@@ -406,22 +410,22 @@ function SeatsCard({
 
             {isBelowMinimum ? (
               <InputLayouts.ErrorTextLayout type="error">
-                You cannot set seats below current{" "}
-                <span className="font-semibold">{minRequiredSeats}</span> seats
-                in use/pending.{" "}
+                {t("cannotSetBelowMinimumPrefix")}{" "}
+                <span className="font-semibold">{minRequiredSeats}</span>{" "}
+                {t("cannotSetBelowMinimumSuffix")}{" "}
                 <Link
                   href="/admin/users"
                   className="underline hover:no-underline"
                 >
-                  Remove users
+                  {t("removeUsersLink")}
                 </Link>{" "}
-                first before adjusting seats.
+                {t("firstBeforeAdjusting")}
               </InputLayouts.ErrorTextLayout>
             ) : seatDifference !== 0 ? (
               <Text secondaryBody text03>
-                {Math.abs(seatDifference)} seat
-                {Math.abs(seatDifference) !== 1 ? "s" : ""} to be{" "}
-                {isAdding ? "added" : "removed"}
+                {t(isAdding ? "seatsToBeAdded" : "seatsToBeRemoved", {
+                  count: seatCount,
+                })}
               </Text>
             ) : null}
 
@@ -442,26 +446,30 @@ function SeatsCard({
         >
           {isAdding ? (
             <Text secondaryBody text03>
-              You will be billed for the{" "}
+              {t("willBeBilledForPrefix")}{" "}
               <Text secondaryBody text04>
                 {seatCount}
               </Text>{" "}
-              additional {seatWord} at a pro-rated amount.
+              {t(
+                seatCount === 1
+                  ? "additionalSeatsSuffix_one"
+                  : "additionalSeatsSuffix_other"
+              )}
             </Text>
           ) : isRemoving ? (
             <Text secondaryBody text03>
               <Text secondaryBody text04>
                 {seatCount}
               </Text>{" "}
-              {seatWord} will be removed on{" "}
+              {t("willBeRemovedOnPrefix")}{" "}
               <Text secondaryBody text04>
                 {nextBillingDate}
               </Text>{" "}
-              (after current billing cycle).
+              {t("afterCurrentBillingCycle")}
             </Text>
           ) : (
             <Text secondaryBody text03>
-              No changes to your billing.
+              {t("noChangesToBilling")}
             </Text>
           )}
           <Button
@@ -472,7 +480,7 @@ function SeatsCard({
               isSubmitting || newSeatCount === totalSeats || isBelowMinimum
             }
           >
-            {isSubmitting ? "Saving..." : "Confirm Change"}
+            {isSubmitting ? t("savingButton") : t("confirmChangeButton")}
           </Button>
         </Section>
       </Card>
@@ -489,11 +497,14 @@ function SeatsCard({
       >
         <Section gap={0.25} alignItems="start" height="auto" width="auto">
           <Text mainContentMuted text04>
-            {totalSeats} Seats
+            {t("seatsCount", { count: totalSeats })}
           </Text>
           <Text secondaryBody text03>
-            {usedSeats} in use • {pendingSeats} pending • {remainingSeats}{" "}
-            remaining
+            {t("seatsUsageSummary", {
+              used: usedSeats,
+              pending: pendingSeats,
+              remaining: remainingSeats,
+            })}
           </Text>
         </Section>
         <Section
@@ -504,7 +515,7 @@ function SeatsCard({
           width="auto"
         >
           <Button main tertiary href="/admin/users" leftIcon={SvgExternalLink}>
-            View Users
+            {t("viewUsersButton")}
           </Button>
           {!hideUpdateSeats && (
             <Button
@@ -514,7 +525,7 @@ function SeatsCard({
               leftIcon={SvgPlus}
               disabled={isLoadingUsers || disabled || !billing}
             >
-              Update Seats
+              {t("updateSeatsButton")}
             </Button>
           )}
         </Section>
@@ -528,6 +539,7 @@ function SeatsCard({
 // ----------------------------------------------------------------------------
 
 function PaymentSection({ billing }: { billing: BillingInformation }) {
+  const { t } = useTranslation("common", { keyPrefix: "admin.billingDetails" });
   const handleOpenPortal = async () => {
     try {
       const response = await createCustomerPortalSession({
@@ -548,7 +560,7 @@ function PaymentSection({ billing }: { billing: BillingInformation }) {
   return (
     <div className="billing-payment-section">
       <Section alignItems="start" height="auto" width="full">
-        <Text mainContentEmphasis>Payment</Text>
+        <Text mainContentEmphasis>{t("paymentTitle")}</Text>
         <Section
           flexDirection="row"
           gap={0.5}
@@ -564,8 +576,8 @@ function PaymentSection({ billing }: { billing: BillingInformation }) {
             >
               <InfoBlock
                 icon={SvgWallet}
-                title="Visa ending in 1234"
-                description="Payment method"
+                title={t("visaEndingIn")}
+                description={t("paymentMethodLabel")}
               />
               <Button
                 main
@@ -573,7 +585,7 @@ function PaymentSection({ billing }: { billing: BillingInformation }) {
                 onClick={handleOpenPortal}
                 rightIcon={SvgExternalLink}
               >
-                Update
+                {t("updateButton")}
               </Button>
             </Section>
           </Card>
@@ -588,7 +600,7 @@ function PaymentSection({ billing }: { billing: BillingInformation }) {
                 <InfoBlock
                   icon={SvgFileText}
                   title={lastPaymentDate}
-                  description="Last payment"
+                  description={t("lastPaymentLabel")}
                 />
                 <Button
                   main
@@ -596,7 +608,7 @@ function PaymentSection({ billing }: { billing: BillingInformation }) {
                   onClick={handleOpenPortal}
                   rightIcon={SvgExternalLink}
                 >
-                  View Invoice
+                  {t("viewInvoiceButton")}
                 </Button>
               </Section>
             </Card>
@@ -632,6 +644,7 @@ export default function BillingDetailsView({
   hasStripeError,
   licenseCard,
 }: BillingDetailsViewProps) {
+  const { t } = useTranslation("common", { keyPrefix: "admin.billingDetails" });
   const expirationState = billing ? getExpirationState(billing, license) : null;
   const disableBillingActions =
     isAirGapped || hasStripeError || isManualLicenseOnly;
@@ -643,8 +656,8 @@ export default function BillingDetailsView({
         <Message
           static
           warning
-          text="Unable to connect to Stripe payment portal."
-          description="Check your internet connection or manually provide a license."
+          text={t("stripeErrorText")}
+          description={t("stripeErrorDescription")}
           close={false}
           className="w-full"
         />
@@ -655,8 +668,8 @@ export default function BillingDetailsView({
         <Message
           static
           info
-          text="Air-gapped deployment"
-          description="Online billing management is disabled. Contact support to update your subscription."
+          text={t("airGappedText")}
+          description={t("airGappedDescription")}
           close={false}
           className="w-full"
         />
@@ -671,16 +684,24 @@ export default function BillingDetailsView({
           text={
             expirationState.variant === "error"
               ? expirationState.daysUntilDeletion
-                ? `Your subscription has expired. Data will be deleted in ${expirationState.daysUntilDeletion} days.`
-                : "Your subscription has expired."
-              : `Your subscription is expiring in ${expirationState.daysRemaining} days.`
+                ? t("subscriptionExpiredWithDeletion", {
+                    days: expirationState.daysUntilDeletion,
+                  })
+                : t("subscriptionExpired")
+              : t("subscriptionExpiringIn", {
+                  days: expirationState.daysRemaining,
+                })
           }
           description={
             expirationState.variant === "error"
               ? expirationState.expirationDate
-                ? `Renew your subscription by ${expirationState.expirationDate} to restore access.`
-                : "Renew your subscription to restore access to paid features."
-              : `Renew your subscription by ${expirationState.expirationDate} to avoid disruption.`
+                ? t("renewByDateToRestore", {
+                    date: expirationState.expirationDate,
+                  })
+                : t("renewToRestore")
+              : t("renewByDateToAvoidDisruption", {
+                  date: expirationState.expirationDate,
+                })
           }
           close={false}
           className="w-full"

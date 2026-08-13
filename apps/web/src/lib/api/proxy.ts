@@ -75,6 +75,25 @@ export function getCookieValue(
   return null;
 }
 
+/**
+ * Forwards the app's selected language to the backend so translated
+ * error/response text matches the UI, falling back to the browser's
+ * Accept-Language when the app hasn't sent an explicit X-Language header.
+ */
+export function getLanguageHeaders(request: NextRequest): Record<string, string> {
+  const xLanguage = request.headers.get("x-language");
+  if (xLanguage) {
+    return { "X-Language": xLanguage };
+  }
+
+  const acceptLanguage = request.headers.get("accept-language");
+  if (acceptLanguage) {
+    return { "Accept-Language": acceptLanguage };
+  }
+
+  return {};
+}
+
 export interface ProxyOptions {
   method?: "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
   withCredentials?: boolean;
@@ -144,6 +163,8 @@ export async function proxyToBackend(
         "Content-Type":
           request.headers.get("content-type") || "application/json",
       };
+
+      Object.assign(headers, getLanguageHeaders(request));
 
       const authorization = request.headers.get("authorization");
       if (authorization && !accessTokenOverride && !isAuthRefreshRequest) {

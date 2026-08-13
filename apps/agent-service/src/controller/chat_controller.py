@@ -6,6 +6,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
+from i18n import t
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from controller.base import BaseController
@@ -544,7 +545,7 @@ class ChatController(BaseController):
     async def get_chat_session(self, chat_session_id: str) -> dict[str, Any]:
         thread = await self._thread_controller.get_thread(chat_session_id)
         if thread and not await self._ensure_thread_belongs_to_user(chat_session_id, thread):
-            raise PermissionError("Forbidden")
+            raise PermissionError(t("common.forbidden"))
 
         if not thread:
             return {
@@ -1068,7 +1069,7 @@ class ChatController(BaseController):
     async def delete_chat_session(self, chat_session_id: str) -> dict[str, Any]:
         thread = await self._thread_controller.get_thread(chat_session_id)
         if thread and not await self._ensure_thread_belongs_to_user(chat_session_id, thread):
-            return {"success": False, "error": "Forbidden"}
+            return {"success": False, "error": t("common.forbidden")}
 
         await self._thread_controller.delete_thread(chat_session_id)
         return {"success": True}
@@ -1088,13 +1089,13 @@ class ChatController(BaseController):
 
     async def rename_chat_session(self, session_id: str | None, name: str | None) -> dict[str, Any]:
         if not session_id:
-            return {"success": False, "error": "Missing session_id"}
+            return {"success": False, "error": t("chat.missing_session_id")}
 
         thread = await self._thread_controller.get_thread(session_id)
         if not thread:
-            return {"success": False, "error": "Session not found"}
+            return {"success": False, "error": t("chat.session_not_found")}
         if not await self._ensure_thread_belongs_to_user(session_id, thread):
-            return {"success": False, "error": "Forbidden"}
+            return {"success": False, "error": t("common.forbidden")}
 
         metadata = thread.get("metadata", {}) or {}
         trimmed_name = name.strip() if isinstance(name, str) else None
@@ -1114,7 +1115,7 @@ class ChatController(BaseController):
         self, session_id: str | None, model: str | None
     ) -> dict[str, Any]:
         if not session_id:
-            return {"success": False, "error": "Missing session_id"}
+            return {"success": False, "error": t("chat.missing_session_id")}
 
         thread = await self._thread_controller.get_thread(session_id)
         if thread and await self._ensure_thread_belongs_to_user(session_id, thread):
@@ -1122,7 +1123,7 @@ class ChatController(BaseController):
             metadata["current_alternate_model"] = model
             await self._thread_controller.update_thread(session_id, metadata)
         elif thread:
-            return {"success": False, "error": "Forbidden"}
+            return {"success": False, "error": t("common.forbidden")}
         return {"success": True}
 
     async def update_chat_session_temperature(
@@ -1131,7 +1132,7 @@ class ChatController(BaseController):
         temperature: float | None,
     ) -> dict[str, Any]:
         if not session_id:
-            return {"success": False, "error": "Missing session_id"}
+            return {"success": False, "error": t("chat.missing_session_id")}
 
         thread = await self._thread_controller.get_thread(session_id)
         if thread and await self._ensure_thread_belongs_to_user(session_id, thread):
@@ -1139,7 +1140,7 @@ class ChatController(BaseController):
             metadata["current_temperature_override"] = temperature
             await self._thread_controller.update_thread(session_id, metadata)
         elif thread:
-            return {"success": False, "error": "Forbidden"}
+            return {"success": False, "error": t("common.forbidden")}
         return {"success": True}
 
     async def stop_chat_session(self, chat_session_id: str) -> dict[str, Any]:

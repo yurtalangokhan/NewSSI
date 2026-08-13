@@ -24,6 +24,7 @@ import {
 import type { IconFunctionComponent } from "@opal/types";
 import AdminOverviewPanel from "@/components/admin/AdminOverviewPanel";
 import { useTranslation } from "react-i18next";
+import i18n from "@/i18n/config";
 
 const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.SYSTEM_SETTINGS]!;
 
@@ -122,8 +123,8 @@ function sessionFormFromSettings(data: SystemKeycloakSettings) {
 async function postSyncExternalIdp(url: string) {
   const res = await authenticatedFetch(url, { method: "POST" });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: "Sync failed" }));
-    throw new Error(err.detail || "Sync failed");
+    const err = await res.json().catch(() => ({ detail: i18n.t("admin.systemSettings.syncFailedGeneric") }));
+    throw new Error(err.detail || i18n.t("admin.systemSettings.syncFailedGeneric"));
   }
   return res.json();
 }
@@ -138,8 +139,8 @@ async function patchJson(
     body: JSON.stringify(arg),
   });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: "Save failed" }));
-    throw new Error(err.detail || "Save failed");
+    const err = await res.json().catch(() => ({ detail: i18n.t("admin.systemSettings.saveFailedGeneric") }));
+    throw new Error(err.detail || i18n.t("admin.systemSettings.saveFailedGeneric"));
   }
   return res.json();
 }
@@ -182,9 +183,9 @@ function SettingRow({
   const displayValue =
     typeof value === "boolean"
       ? value
-        ? "Enabled"
-        : "Disabled"
-      : value || "Not configured";
+        ? i18n.t("admin.systemSettings.enabled")
+        : i18n.t("admin.systemSettings.disabled")
+      : value || i18n.t("admin.systemSettings.notConfiguredValue");
 
   return (
     <div className="grid grid-cols-1 gap-1 border-b border-border-01 py-3 last:border-b-0 md:grid-cols-[180px_1fr]">
@@ -307,20 +308,21 @@ export default function SystemSettingsPage() {
 
   const idp = data?.external_keycloak.identity_provider;
   const headline = useMemo(() => {
-    if (isLoading) return "Checking Keycloak configuration";
-    if (error) return "System settings are unavailable";
-    if (!data?.keycloak.enabled) return "Keycloak is disabled";
-    if (!data.external_keycloak.enabled) return "External Keycloak is disabled";
+    if (isLoading) return t("admin.systemSettings.checkingConfig");
+    if (error) return t("admin.systemSettings.settingsUnavailable");
+    if (!data?.keycloak.enabled) return t("admin.systemSettings.keycloakDisabled");
+    if (!data.external_keycloak.enabled)
+      return t("admin.systemSettings.externalKeycloakDisabled");
     if (idp?.exists && idp.mapper?.exists)
-      return "External identity provider is ready";
-    return "External identity provider needs sync";
-  }, [data, error, idp, isLoading]);
+      return t("admin.systemSettings.externalIdpReady");
+    return t("admin.systemSettings.externalIdpNeedsSync");
+  }, [data, error, idp, isLoading, t]);
 
   const syncExternalIdp = async () => {
     try {
       const response = await trigger();
       await mutate(response.settings, false);
-      toast.success("External identity provider applied");
+      toast.success(t("admin.systemSettings.externalIdpApplied"));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : String(err));
     }
@@ -333,7 +335,7 @@ export default function SystemSettingsPage() {
       );
       const response = await saveConfig(payload);
       await mutate(response, false);
-      toast.success("System settings saved");
+      toast.success(t("admin.systemSettings.settingsSaved"));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : String(err));
     }
@@ -359,7 +361,7 @@ export default function SystemSettingsPage() {
           : undefined,
         false
       );
-      toast.success("Session settings saved");
+      toast.success(t("admin.systemSettings.sessionSettingsSaved"));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : String(err));
     }
@@ -418,26 +420,25 @@ export default function SystemSettingsPage() {
                   {headline}
                 </Text>
                 <Text as="span" secondaryBody text03>
-                  External IdP settings are read from user-service environment
-                  variables and applied to Keycloak.
+                  {t("admin.systemSettings.externalIdpEnvNote")}
                 </Text>
               </div>
               <div className="flex flex-wrap gap-2">
                 <StatusPill
                   active={Boolean(data?.keycloak.enabled)}
-                  label="Keycloak"
+                  label={t("admin.systemSettings.keycloakLabel")}
                 />
                 <StatusPill
                   active={Boolean(data?.external_keycloak.enabled)}
-                  label="External IdP"
+                  label={t("admin.systemSettings.externalIdpLabel")}
                 />
                 <StatusPill
                   active={Boolean(idp?.exists)}
-                  label="Provider exists"
+                  label={t("admin.systemSettings.providerExistsLabel")}
                 />
                 <StatusPill
                   active={Boolean(idp?.mapper?.exists)}
-                  label="Role mapper"
+                  label={t("admin.systemSettings.roleMapperLabel")}
                 />
               </div>
             </div>
@@ -446,17 +447,17 @@ export default function SystemSettingsPage() {
           {error ? (
             <section className="rounded-08 border border-status-error-02 bg-background-neutral-00 px-4 py-4">
               <Text as="span" mainUiBody className="text-status-error-05">
-                Failed to load system settings.
+                {t("admin.systemSettings.failedToLoad")}
               </Text>
             </section>
           ) : null}
 
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_1fr_360px]">
-            <Panel icon={SvgServer} title="Internal Keycloak">
+            <Panel icon={SvgServer} title={t("admin.systemSettings.internalKeycloakTitle")}>
               <div className="flex flex-col gap-3 border-b border-border-01 py-4">
                 <ToggleRow
                   checked={configForm.keycloak_enabled}
-                  label="Enable internal Keycloak"
+                  label={t("admin.systemSettings.enableInternalKeycloak")}
                   onCheckedChange={(checked) =>
                     setConfigForm((current) => ({
                       ...current,
@@ -464,7 +465,7 @@ export default function SystemSettingsPage() {
                     }))
                   }
                 />
-                <Field label="Base URL">
+                <Field label={t("admin.systemSettings.baseUrlLabel")}>
                   <InputTypeIn
                     value={configForm.keycloak_base_url}
                     onChange={(event) =>
@@ -476,7 +477,7 @@ export default function SystemSettingsPage() {
                     placeholder="http://keycloak:8080"
                   />
                 </Field>
-                <Field label="Issuer URL">
+                <Field label={t("admin.systemSettings.issuerUrlLabel")}>
                   <InputTypeIn
                     value={configForm.keycloak_issuer_url}
                     onChange={(event) =>
@@ -488,7 +489,7 @@ export default function SystemSettingsPage() {
                     placeholder="http://keycloak:8080/realms/agenticai"
                   />
                 </Field>
-                <Field label="Realm">
+                <Field label={t("admin.systemSettings.realmLabel")}>
                   <InputTypeIn
                     value={configForm.keycloak_realm}
                     onChange={(event) =>
@@ -500,7 +501,7 @@ export default function SystemSettingsPage() {
                     placeholder="agenticai"
                   />
                 </Field>
-                <Field label="Admin username">
+                <Field label={t("admin.systemSettings.adminUsernameLabel")}>
                   <InputTypeIn
                     value={configForm.keycloak_admin}
                     onChange={(event) =>
@@ -512,7 +513,7 @@ export default function SystemSettingsPage() {
                     placeholder="admin"
                   />
                 </Field>
-                <Field label="Admin password">
+                <Field label={t("admin.systemSettings.adminPasswordLabel")}>
                   <InputTypeIn
                     type="password"
                     value={configForm.keycloak_admin_password}
@@ -524,12 +525,12 @@ export default function SystemSettingsPage() {
                     }
                     placeholder={
                       data?.keycloak.admin_password_configured
-                        ? "Configured; leave blank to keep"
-                        : "Not configured"
+                        ? t("admin.systemSettings.configuredLeaveBlank")
+                        : t("admin.systemSettings.notConfiguredValue")
                     }
                   />
                 </Field>
-                <Field label="Client ID">
+                <Field label={t("admin.systemSettings.clientIdLabel")}>
                   <InputTypeIn
                     value={configForm.keycloak_client_id}
                     onChange={(event) =>
@@ -541,7 +542,7 @@ export default function SystemSettingsPage() {
                     placeholder="agenticai-web"
                   />
                 </Field>
-                <Field label="Client secret">
+                <Field label={t("admin.systemSettings.clientSecretLabel")}>
                   <InputTypeIn
                     type="password"
                     value={configForm.keycloak_client_secret}
@@ -553,27 +554,27 @@ export default function SystemSettingsPage() {
                     }
                     placeholder={
                       data?.keycloak.client_secret_configured
-                        ? "Configured; leave blank to keep"
-                        : "Optional"
+                        ? t("admin.systemSettings.configuredLeaveBlank")
+                        : t("admin.systemSettings.optionalValue")
                     }
                   />
                 </Field>
               </div>
-              <SettingRow label="Enabled" value={data?.keycloak.enabled} />
-              <SettingRow label="Source" value={data?.keycloak.source} />
-              <SettingRow label="Realm" value={data?.keycloak.realm} />
-              <SettingRow label="Base URL" value={data?.keycloak.base_url} />
+              <SettingRow label={t("admin.systemSettings.enabled")} value={data?.keycloak.enabled} />
+              <SettingRow label={t("admin.systemSettings.sourceLabel")} value={data?.keycloak.source} />
+              <SettingRow label={t("admin.systemSettings.realmLabel")} value={data?.keycloak.realm} />
+              <SettingRow label={t("admin.systemSettings.baseUrlLabel")} value={data?.keycloak.base_url} />
               <SettingRow
-                label="Admin API access"
+                label={t("admin.systemSettings.adminApiAccessLabel")}
                 value={data?.keycloak.admin_access_configured}
               />
             </Panel>
 
-            <Panel icon={SvgKey} title="External Keycloak IdP">
+            <Panel icon={SvgKey} title={t("admin.systemSettings.externalKeycloakIdpTitle")}>
               <div className="flex flex-col gap-3 border-b border-border-01 py-4">
                 <ToggleRow
                   checked={configForm.external_keycloak}
-                  label="Enable external Keycloak IdP"
+                  label={t("admin.systemSettings.enableExternalKeycloak")}
                   onCheckedChange={(checked) =>
                     setConfigForm((current) => ({
                       ...current,
@@ -581,7 +582,7 @@ export default function SystemSettingsPage() {
                     }))
                   }
                 />
-                <Field label="Alias">
+                <Field label={t("admin.systemSettings.aliasLabel")}>
                   <InputTypeIn
                     value={configForm.external_keycloak_alias}
                     onChange={(event) =>
@@ -593,7 +594,7 @@ export default function SystemSettingsPage() {
                     placeholder="external-keycloak"
                   />
                 </Field>
-                <Field label="Display name">
+                <Field label={t("admin.systemSettings.displayNameLabel")}>
                   <InputTypeIn
                     value={configForm.external_keycloak_display_name}
                     onChange={(event) =>
@@ -605,7 +606,7 @@ export default function SystemSettingsPage() {
                     placeholder="External Keycloak"
                   />
                 </Field>
-                <Field label="Issuer URL">
+                <Field label={t("admin.systemSettings.issuerUrlLabel")}>
                   <InputTypeIn
                     value={configForm.external_keycloak_issuer_url}
                     onChange={(event) =>
@@ -617,7 +618,7 @@ export default function SystemSettingsPage() {
                     placeholder="https://sso.example.com/realms/external"
                   />
                 </Field>
-                <Field label="Base URL">
+                <Field label={t("admin.systemSettings.baseUrlLabel")}>
                   <InputTypeIn
                     value={configForm.external_keycloak_base_url}
                     onChange={(event) =>
@@ -629,7 +630,7 @@ export default function SystemSettingsPage() {
                     placeholder="https://sso.example.com"
                   />
                 </Field>
-                <Field label="Realm">
+                <Field label={t("admin.systemSettings.realmLabel")}>
                   <InputTypeIn
                     value={configForm.external_keycloak_realm}
                     onChange={(event) =>
@@ -641,7 +642,7 @@ export default function SystemSettingsPage() {
                     placeholder="ldap-realm"
                   />
                 </Field>
-                <Field label="Client ID">
+                <Field label={t("admin.systemSettings.clientIdLabel")}>
                   <InputTypeIn
                     value={configForm.external_keycloak_client_id}
                     onChange={(event) =>
@@ -653,7 +654,7 @@ export default function SystemSettingsPage() {
                     placeholder="ldap-client"
                   />
                 </Field>
-                <Field label="Client secret">
+                <Field label={t("admin.systemSettings.clientSecretLabel")}>
                   <InputTypeIn
                     type="password"
                     value={configForm.external_keycloak_client_secret}
@@ -665,40 +666,43 @@ export default function SystemSettingsPage() {
                     }
                     placeholder={
                       data?.external_keycloak.client_secret_configured
-                        ? "Configured; leave blank to keep"
-                        : "Required"
+                        ? t("admin.systemSettings.configuredLeaveBlank")
+                        : t("admin.systemSettings.requiredValue")
                     }
                   />
                 </Field>
               </div>
               <SettingRow
-                label="Source"
+                label={t("admin.systemSettings.sourceLabel")}
                 value={data?.external_keycloak.source}
               />
-              <SettingRow label="Alias" value={data?.external_keycloak.alias} />
               <SettingRow
-                label="Display name"
+                label={t("admin.systemSettings.aliasLabel")}
+                value={data?.external_keycloak.alias}
+              />
+              <SettingRow
+                label={t("admin.systemSettings.displayNameLabel")}
                 value={data?.external_keycloak.display_name}
               />
               <SettingRow
-                label="Issuer URL"
+                label={t("admin.systemSettings.issuerUrlLabel")}
                 value={data?.external_keycloak.issuer_url}
               />
               <SettingRow
-                label="Client ID"
+                label={t("admin.systemSettings.clientIdLabel")}
                 value={data?.external_keycloak.client_id}
               />
               <SettingRow
-                label="Client secret"
+                label={t("admin.systemSettings.clientSecretLabel")}
                 value={
                   data?.external_keycloak.client_secret_configured
-                    ? "Configured"
+                    ? t("admin.systemSettings.configuredValue")
                     : null
                 }
               />
             </Panel>
 
-            <Panel icon={SvgShield} title="Operations">
+            <Panel icon={SvgShield} title={t("admin.systemSettings.operationsTitle")}>
               <div className="flex flex-col gap-3 py-4">
                 <Button
                   main
@@ -708,7 +712,7 @@ export default function SystemSettingsPage() {
                   onClick={onSaveConfig}
                   className="w-full"
                 >
-                  {isSavingConfig ? "Saving..." : "Save Keycloak settings"}
+                  {isSavingConfig ? t("admin.systemSettings.savingButton") : t("admin.systemSettings.saveKeycloakSettingsButton")}
                 </Button>
                 <Button
                   main
@@ -720,13 +724,13 @@ export default function SystemSettingsPage() {
                   onClick={syncExternalIdp}
                   className="w-full"
                 >
-                  {isMutating ? "Applying..." : "Apply external IdP"}
+                  {isMutating ? t("admin.systemSettings.applyingButton") : t("admin.systemSettings.applyExternalIdpButton")}
                 </Button>
                 <div className="flex flex-col gap-3 rounded-08 border border-border-01 bg-background-neutral-01 px-3 py-3">
                   <Text as="span" secondaryBody text03>
-                    Realm session durations
+                    {t("admin.systemSettings.realmSessionDurations")}
                   </Text>
-                  <Field label="Access token lifespan (seconds)">
+                  <Field label={t("admin.systemSettings.accessTokenLifespanLabel")}>
                     <InputTypeIn
                       type="number"
                       value={sessionForm.access_token_lifespan}
@@ -738,7 +742,7 @@ export default function SystemSettingsPage() {
                       }
                     />
                   </Field>
-                  <Field label="SSO idle timeout (seconds)">
+                  <Field label={t("admin.systemSettings.ssoIdleTimeoutLabel")}>
                     <InputTypeIn
                       type="number"
                       value={sessionForm.sso_session_idle_timeout}
@@ -750,7 +754,7 @@ export default function SystemSettingsPage() {
                       }
                     />
                   </Field>
-                  <Field label="SSO max lifespan (seconds)">
+                  <Field label={t("admin.systemSettings.ssoMaxLifespanLabel")}>
                     <InputTypeIn
                       type="number"
                       value={sessionForm.sso_session_max_lifespan}
@@ -770,7 +774,7 @@ export default function SystemSettingsPage() {
                     onClick={onSaveSession}
                     className="w-full"
                   >
-                    {isSavingSession ? "Saving..." : "Save session settings"}
+                    {isSavingSession ? t("admin.systemSettings.savingButton") : t("admin.systemSettings.saveSessionSettingsButton")}
                   </Button>
                 </div>
                 <Button
@@ -781,15 +785,14 @@ export default function SystemSettingsPage() {
                   onClick={() => mutate()}
                   className="w-full"
                 >
-                  Refresh status
+                  {t("admin.systemSettings.refreshStatusButton")}
                 </Button>
                 <div className="rounded-08 border border-border-01 bg-background-neutral-01 px-3 py-3">
                   <Text as="span" secondaryBody text03 className="block">
-                    Startup behavior
+                    {t("admin.systemSettings.startupBehaviorTitle")}
                   </Text>
                   <Text as="span" mainUiBody text01 className="block pt-1">
-                    When KEYCLOAK_ENABLED and EXTERNAL_KEYCLOAK are true,
-                    user-service applies this IdP on startup.
+                    {t("admin.systemSettings.startupBehaviorDescription")}
                   </Text>
                 </div>
                 {idp?.error ? (

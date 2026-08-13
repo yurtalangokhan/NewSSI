@@ -466,12 +466,12 @@ export default function EmailPasswordForm({
               )}
               {isSignup && (
                 <div className="text-sm text-center w-full text-white/60 mt-4">
-                  Already have an account?{" "}
+                  {t("auth.alreadyHaveAccountPrompt")}{" "}
                   <Link
                     href="/auth/login"
                     className="text-white font-medium underline hover:text-white/90 transition-colors duration-200"
                   >
-                    Sign In
+                    {t("auth.signInButton")}
                   </Link>
                 </div>
               )}

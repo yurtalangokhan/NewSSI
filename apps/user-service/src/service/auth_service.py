@@ -3,6 +3,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from i18n import t
 from jose import JWTError, jwt
 
 from src.config import get_settings
@@ -43,7 +44,7 @@ class AuthService:
 
     async def basic_login(self, username: str, password: str) -> dict[str, Any]:
         if not self.keycloak.is_enabled():
-            raise ValueError("Username/password login is disabled; use Keycloak login")
+            raise ValueError(t("auth.basic_login_disabled"))
 
         token_data = await self.keycloak.password_grant(username, password)
         return await self._upsert_user_from_token_data(token_data, fallback_username=username)
@@ -55,7 +56,7 @@ class AuthService:
         redirect_uri: str | None = None,
     ) -> dict[str, Any]:
         if not self.keycloak.is_enabled():
-            raise ValueError("External Keycloak login is disabled")
+            raise ValueError(t("auth.external_login_disabled"))
 
         token_data = await self.keycloak.external_broker_password_login(
             username,
@@ -72,7 +73,7 @@ class AuthService:
         first_name: str | None = None,
         last_name: str | None = None,
     ) -> dict[str, Any]:
-        raise ValueError("User registration is managed by Keycloak")
+        raise ValueError(t("auth.registration_managed_by_keycloak"))
 
     async def _build_login_response_from_record(
         self, user: dict[str, Any], id_token: str | None = None
@@ -176,12 +177,12 @@ class AuthService:
     ) -> dict[str, Any]:
         id_token = token_data.get("id_token", "")
         if not id_token:
-            raise ValueError("Authentication failed — no id_token received")
+            raise ValueError(t("auth.no_id_token"))
 
         claims = jwt.get_unverified_claims(id_token)
         keycloak_id = str(claims.get("sub") or "")
         if not keycloak_id:
-            raise ValueError("Authentication failed — no subject in token")
+            raise ValueError(t("auth.no_subject_in_token"))
 
         user_email = str(claims.get("email") or fallback_username or "").strip()
         user_username = str(
@@ -219,7 +220,7 @@ class AuthService:
     async def _upsert_external_user_from_claims(self, claims: dict[str, Any]):
         external_subject = str(claims.get("sub") or "").strip()
         if not external_subject:
-            raise ValueError("External authentication failed — no subject in token")
+            raise ValueError(t("auth.external_no_subject_in_token"))
 
         user_email = str(claims.get("email") or "").strip().lower()
         user_username = str(
@@ -241,7 +242,7 @@ class AuthService:
         )
         keycloak_id = str(sp_user.get("id") or "")
         if not keycloak_id:
-            raise ValueError("External authentication failed — SP user was not created")
+            raise ValueError(t("auth.external_sp_user_not_created"))
 
         return await self.user_repo.upsert_by_keycloak_id(
             keycloak_id,
@@ -275,7 +276,7 @@ class AuthService:
         if self.keycloak.is_enabled():
             return await self._keycloak_refresh_token(refresh_token)
 
-        raise ValueError("Refresh token management is handled by Keycloak")
+        raise ValueError(t("auth.refresh_managed_by_keycloak"))
 
     async def _keycloak_refresh_token(self, refresh_token: str) -> dict[str, Any]:
         """Refresh tokens via Keycloak's refresh_token grant."""
@@ -283,14 +284,14 @@ class AuthService:
 
         id_token = token_data.get("id_token", "")
         if not id_token:
-            raise ValueError("Token refresh failed — no id_token received")
+            raise ValueError(t("auth.refresh_no_id_token"))
 
         from jose import jwt
 
         claims = jwt.get_unverified_claims(id_token)
         keycloak_id = claims.get("sub", "")
         if not keycloak_id:
-            raise ValueError("Token refresh failed — no subject in token")
+            raise ValueError(t("auth.refresh_no_subject_in_token"))
 
         user_email = claims.get("email", "")
         user_username = claims.get("preferred_username", "")

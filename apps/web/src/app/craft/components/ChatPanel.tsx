@@ -447,7 +447,10 @@ export default function BuildChatPanel({
               {/* Scroll to bottom button - shown when user has scrolled away */}
               {showScrollButton && (
                 <div className="absolute -top-12 left-1/2 -translate-x-1/2 z-10">
-                  <SimpleTooltip tooltip="Scroll to bottom" delayDuration={200}>
+                  <SimpleTooltip
+                    tooltip={t("app.craft.chatPanel.scrollToBottomTooltip")}
+                    delayDuration={200}
+                  >
                     <button
                       onClick={scrollToBottom}
                       className={cn(
@@ -458,7 +461,7 @@ export default function BuildChatPanel({
                         "transition-all duration-200",
                         "hover:bg-background-tint-inverted-01"
                       )}
-                      aria-label="Scroll to bottom"
+                      aria-label={t("app.craft.chatPanel.scrollToBottomTooltip")}
                     >
                       <SvgChevronDown
                         size={20}

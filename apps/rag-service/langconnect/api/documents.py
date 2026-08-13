@@ -3,6 +3,7 @@ from typing import Annotated, Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
+from i18n import t
 from langchain_core.documents import Document
 from pydantic import TypeAdapter, ValidationError
 
@@ -43,15 +44,19 @@ async def documents_create(
             # (i.e. that it's a list, and every item is a dict)
             metadatas = _metadata_adapter.validate_json(metadatas_json)
         except ValidationError as e:
-            # Pydantic errors include exactly what went wrong
+            # Pydantic errors include exactly what went wrong. Left untranslated
+            # intentionally: these come from pydantic itself, not our locale
+            # files, and changing `detail` from a list to something else would
+            # break any client parsing these as structured field errors.
             raise HTTPException(status_code=400, detail=e.errors())
         # Now just check that the list length matches
         if len(metadatas) != len(files):
             raise HTTPException(
                 status_code=400,
-                detail=(
-                    f"Number of metadata objects ({len(metadatas)}) "
-                    f"does not match number of files ({len(files)})."
+                detail=t(
+                    "document.metadata_count_mismatch",
+                    metadata_count=len(metadatas),
+                    file_count=len(files),
                 ),
             )
 
@@ -84,9 +89,9 @@ async def documents_create(
 
     # If after processing all files, none yielded documents, raise error
     if not docs_to_index:
-        error_detail = "Failed to process any documents from the provided files."
+        error_detail = t("document.no_documents_processed")
         if failed_files:
-            error_detail += f" Files that failed processing: {', '.join(failed_files)}."
+            error_detail += t("document.failed_files_list", files=", ".join(failed_files))
         raise HTTPException(status_code=400, detail=error_detail)
 
     # If some files failed but others succeeded, proceed with adding successful ones
@@ -101,7 +106,7 @@ async def documents_create(
             # This might indicate a problem with the vector store itself
             raise HTTPException(
                 status_code=500,
-                detail="Failed to add document(s) to vector store after processing.",
+                detail=t("document.vectorstore_add_failed"),
             )
 
         # Construct response message
@@ -131,7 +136,7 @@ async def documents_create(
         logger.info(f"Error adding documents to vector store: {add_exc}")
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to add documents to vector store: {add_exc!s}",
+            detail=f"{t('common.internal_error')}: {add_exc!s}",
         )
 
 
@@ -222,7 +227,7 @@ async def documents_delete(
     #  Should I be deleting by ID or file ID?
     success = await collection.delete(file_id=document_id)
     if not success:
-        raise HTTPException(status_code=404, detail="Failed to delete document.")
+        raise HTTPException(status_code=404, detail=t("document.delete_failed"))
 
     return {"success": True}
 
@@ -237,7 +242,7 @@ async def documents_search(
 ):
     """Search for documents within a specific collection."""
     if not search_query.query:
-        raise HTTPException(status_code=400, detail="Search query cannot be empty")
+        raise HTTPException(status_code=400, detail=t("document.search_query_empty"))
 
     collection = Collection(
         collection_id=str(collection_id),

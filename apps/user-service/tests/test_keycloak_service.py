@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock
 
 import httpx
 import pytest
+from i18n.core import set_locale
 
 from src.service import keycloak_service
 from src.service.keycloak_service import KeycloakService
@@ -68,6 +69,134 @@ async def test_refresh_token_grant_uses_login_client_credentials(monkeypatch):
         "client_id": "agenticai-web",
         "refresh_token": "refresh-token",
     }
+
+
+@pytest.mark.asyncio
+async def test_password_grant_translates_invalid_credentials_error(monkeypatch):
+    monkeypatch.setenv("KEYCLOAK_BASE_URL", "http://keycloak:8080")
+    monkeypatch.setenv("KEYCLOAK_REALM", "agenticai")
+    monkeypatch.setenv("KEYCLOAK_LOGIN_CLIENT_ID", "agenticai-web")
+
+    class Client:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            return None
+
+        async def post(self, url: str, data: dict[str, str]) -> httpx.Response:
+            return httpx.Response(
+                401,
+                json={"error": "invalid_grant", "error_description": "Invalid user credentials"},
+                request=httpx.Request("POST", url),
+            )
+
+    monkeypatch.setattr(keycloak_service.httpx, "AsyncClient", Client)
+
+    with pytest.raises(ValueError) as exc:
+        await KeycloakService().password_grant("someone", "wrong-password")
+
+    assert str(exc.value) == "Invalid username or password"
+
+
+@pytest.mark.asyncio
+async def test_password_grant_translates_invalid_credentials_for_turkish_locale(monkeypatch):
+    monkeypatch.setenv("KEYCLOAK_BASE_URL", "http://keycloak:8080")
+    monkeypatch.setenv("KEYCLOAK_REALM", "agenticai")
+    monkeypatch.setenv("KEYCLOAK_LOGIN_CLIENT_ID", "agenticai-web")
+
+    class Client:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            return None
+
+        async def post(self, url: str, data: dict[str, str]) -> httpx.Response:
+            return httpx.Response(
+                401,
+                json={"error": "invalid_grant", "error_description": "Invalid user credentials"},
+                request=httpx.Request("POST", url),
+            )
+
+    monkeypatch.setattr(keycloak_service.httpx, "AsyncClient", Client)
+
+    set_locale("tr")
+    try:
+        with pytest.raises(ValueError) as exc:
+            await KeycloakService().password_grant("someone", "wrong-password")
+    finally:
+        set_locale("en")
+
+    assert str(exc.value) == "Geçersiz kullanıcı adı veya şifre"
+
+
+@pytest.mark.asyncio
+async def test_password_grant_keeps_raw_detail_for_non_credential_errors(monkeypatch):
+    monkeypatch.setenv("KEYCLOAK_BASE_URL", "http://keycloak:8080")
+    monkeypatch.setenv("KEYCLOAK_REALM", "agenticai")
+    monkeypatch.setenv("KEYCLOAK_LOGIN_CLIENT_ID", "agenticai-web")
+
+    class Client:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            return None
+
+        async def post(self, url: str, data: dict[str, str]) -> httpx.Response:
+            return httpx.Response(
+                400,
+                json={"error": "invalid_client", "error_description": "Client not found"},
+                request=httpx.Request("POST", url),
+            )
+
+    monkeypatch.setattr(keycloak_service.httpx, "AsyncClient", Client)
+
+    with pytest.raises(ValueError) as exc:
+        await KeycloakService().password_grant("someone", "wrong-password")
+
+    # Not a credentials issue -- an operational/config error, so it is left
+    # untranslated rather than mislabeled as "wrong password".
+    assert str(exc.value) == "Client not found"
+
+
+@pytest.mark.asyncio
+async def test_password_grant_does_not_mislabel_non_credential_invalid_grant(monkeypatch):
+    """Keycloak can return error=invalid_grant for reasons other than a wrong
+    password (e.g. a misconfigured login client not permitted for direct
+    access grants in some Keycloak versions). Only the specific "wrong
+    credentials" description should be translated as invalid_credentials --
+    otherwise a real deployment/config issue would be mislabeled as a user
+    typo, masking it from whoever is debugging the deployment.
+    """
+    monkeypatch.setenv("KEYCLOAK_BASE_URL", "http://keycloak:8080")
+    monkeypatch.setenv("KEYCLOAK_REALM", "agenticai")
+    monkeypatch.setenv("KEYCLOAK_LOGIN_CLIENT_ID", "agenticai-web")
+
+    class Client:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            return None
+
+        async def post(self, url: str, data: dict[str, str]) -> httpx.Response:
+            return httpx.Response(
+                400,
+                json={
+                    "error": "invalid_grant",
+                    "error_description": "Client not enabled to retrieve service account",
+                },
+                request=httpx.Request("POST", url),
+            )
+
+    monkeypatch.setattr(keycloak_service.httpx, "AsyncClient", Client)
+
+    with pytest.raises(ValueError) as exc:
+        await KeycloakService().password_grant("someone", "any-password")
+
+    assert str(exc.value) == "Client not enabled to retrieve service account"
 
 
 @pytest.mark.asyncio
@@ -291,6 +420,96 @@ async def test_external_broker_password_login_ensures_runtime_callback_uri(monke
         f"ensure:{callback_uri}",
         f"get:{authorize_url}",
     ]
+
+
+_LOGIN_FORM_HTML = (
+    '<form action="http://keycloak/realms/agenticai/login-actions/authenticate">'
+    '<input name="username" value="" />'
+    '<input name="password" value="" />'
+    "</form>"
+)
+
+
+def _rejected_credentials_broker_client(monkeypatch, post_status: int):
+    """Simulates: GET authorize -> login form (200), POST credentials -> rejected."""
+    service = KeycloakService()
+    callback_uri = "http://localhost:3000/auth/oidc/callback"
+    authorize_url = "http://keycloak/realms/agenticai/protocol/openid-connect/auth"
+
+    monkeypatch.setenv("EXTERNAL_KEYCLOAK", "true")
+    monkeypatch.setattr(
+        "src.service.keycloak_broker.secrets.token_urlsafe", lambda _: "expected-state"
+    )
+    monkeypatch.setattr(service, "_default_oidc_redirect_uri", lambda: callback_uri)
+    monkeypatch.setattr(service, "get_external_keycloak_alias", lambda: "external-keycloak")
+    monkeypatch.setattr(service, "_rewrite_keycloak_url_for_backend", lambda url: url)
+    monkeypatch.setattr(
+        service, "get_oidc_authorize_url", AsyncMock(return_value=authorize_url)
+    )
+    monkeypatch.setattr(service, "ensure_login_client_redirect_uri", AsyncMock())
+
+    class Client:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            return None
+
+        async def get(self, url: str, follow_redirects: bool = False) -> httpx.Response:
+            return httpx.Response(
+                200, text=_LOGIN_FORM_HTML, request=httpx.Request("GET", url)
+            )
+
+        async def post(self, url: str, data: dict, follow_redirects: bool = False) -> httpx.Response:
+            return httpx.Response(post_status, text="", request=httpx.Request("POST", url))
+
+    monkeypatch.setattr(keycloak_service.httpx, "AsyncClient", Client)
+    return service, callback_uri
+
+
+@pytest.mark.asyncio
+async def test_external_broker_password_login_translates_rejected_credentials(monkeypatch):
+    service, callback_uri = _rejected_credentials_broker_client(monkeypatch, post_status=200)
+
+    with pytest.raises(ValueError) as exc:
+        await service.external_broker_password_login(
+            "external@example.com", "wrong-secret", redirect_uri=callback_uri
+        )
+
+    assert str(exc.value) == "External identity provider rejected the credentials"
+
+
+@pytest.mark.asyncio
+async def test_external_broker_password_login_translates_rejected_credentials_for_turkish_locale(
+    monkeypatch,
+):
+    service, callback_uri = _rejected_credentials_broker_client(monkeypatch, post_status=200)
+
+    set_locale("tr")
+    try:
+        with pytest.raises(ValueError) as exc:
+            await service.external_broker_password_login(
+                "external@example.com", "wrong-secret", redirect_uri=callback_uri
+            )
+    finally:
+        set_locale("en")
+
+    assert str(exc.value) == "Harici kimlik sağlayıcı kimlik bilgilerini reddetti"
+
+
+@pytest.mark.asyncio
+async def test_external_broker_password_login_translates_auth_failed_status(monkeypatch):
+    service, callback_uri = _rejected_credentials_broker_client(monkeypatch, post_status=401)
+
+    with pytest.raises(ValueError) as exc:
+        await service.external_broker_password_login(
+            "external@example.com", "wrong-secret", redirect_uri=callback_uri
+        )
+
+    assert str(exc.value) == "External sign-in failed"
 
 
 @pytest.mark.asyncio

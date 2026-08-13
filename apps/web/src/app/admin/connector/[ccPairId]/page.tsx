@@ -613,7 +613,9 @@ function Main({ ccPairId }: { ccPairId: number }) {
                 ccPair.overall_indexing_speed !== null &&
                 ccPair.num_docs_indexed > 0 && (
                   <div className="ml-0.5 text-xs font-medium">
-                    ({ccPair.overall_indexing_speed.toFixed(1)} docs / min)
+                    {t("admin.connector.indexingSpeed", {
+                      speed: ccPair.overall_indexing_speed.toFixed(1),
+                    })}
                   </div>
                 )}
             </div>

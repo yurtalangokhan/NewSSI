@@ -1,5 +1,10 @@
 import { authenticatedFetch } from "@/lib/fetcher";
-import { buildMcpToolConfigs, createMailConfig } from "./mailConfigs";
+import i18n from "@/i18n/config";
+import {
+  buildMcpToolConfigs,
+  createMailConfig,
+  testMailConfig,
+} from "./mailConfigs";
 
 jest.mock("@/lib/fetcher", () => ({
   authenticatedFetch: jest.fn(),
@@ -48,7 +53,7 @@ describe("mail config MCP tool payloads", () => {
 
     expect(authenticatedFetchMock()).toHaveBeenCalledWith("/api/mail-configs", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "X-Language": "en" },
       body: JSON.stringify({
         name: "Support",
         host: "smtp.example.com",
@@ -59,5 +64,38 @@ describe("mail config MCP tool payloads", () => {
         security: "starttls",
       }),
     });
+  });
+
+  it("sends X-Language from the app's selected language when testing a mail config", async () => {
+    const originalLanguage = i18n.language;
+    Object.defineProperty(i18n, "language", {
+      value: "tr",
+      configurable: true,
+    });
+
+    authenticatedFetchMock().mockResolvedValueOnce(
+      new Response(JSON.stringify({ success: true, message: "Sent" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    );
+
+    try {
+      await testMailConfig("config-1", "to@example.com");
+    } finally {
+      Object.defineProperty(i18n, "language", {
+        value: originalLanguage,
+        configurable: true,
+      });
+    }
+
+    expect(authenticatedFetchMock()).toHaveBeenCalledWith(
+      "/api/mail-configs/config-1/test",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Language": "tr" },
+        body: JSON.stringify({ to_email: "to@example.com" }),
+      }
+    );
   });
 });

@@ -1,5 +1,6 @@
 from functools import lru_cache
 
+from i18n import t
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -100,7 +101,7 @@ class Settings(BaseSettings):
             return self.AUTH_SECRET
         if not self.KEYCLOAK_ENABLED:
             return "dev-auth-secret-change-in-production-32chars"
-        raise ValueError("Required environment variable AUTH_SECRET is not set")
+        raise ValueError(t("keycloak.auth_secret_not_set"))
 
     def require_encryption_key(self) -> str:
         if self.ENCRYPTION_KEY:

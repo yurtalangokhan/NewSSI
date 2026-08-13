@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import {
   Collapsible,
@@ -81,6 +82,9 @@ export default function TodoListCard({
   todoList,
   defaultOpen = true,
 }: TodoListCardProps) {
+  const { t } = useTranslation("common", {
+    keyPrefix: "app.craft.todoListCard",
+  });
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
   // Update isOpen when defaultOpen changes (for auto-collapse behavior)
@@ -126,11 +130,13 @@ export default function TodoListCard({
               )}
 
               {/* Title */}
-              <span className="text-sm font-medium text-text-04">Tasks</span>
+              <span className="text-sm font-medium text-text-04">
+                {t("tasksTitle")}
+              </span>
 
               {/* Progress count */}
               <span className="text-xs text-text-03">
-                {completed}/{total} completed
+                {t("progressCount", { completed, total })}
               </span>
             </div>
 
@@ -150,7 +156,9 @@ export default function TodoListCard({
               <TodoItemRow key={`${todoList.id}-${index}`} todo={todo} />
             ))}
             {todoList.todos.length === 0 && (
-              <span className="text-sm text-text-03 italic">No tasks</span>
+              <span className="text-sm text-text-03 italic">
+                {t("noTasks")}
+              </span>
             )}
           </div>
         </CollapsibleContent>

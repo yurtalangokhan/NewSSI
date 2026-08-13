@@ -8,6 +8,7 @@ import jwt
 from fastapi import Depends, Request
 from fastapi.exceptions import HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from i18n import t
 from jwt import InvalidTokenError, PyJWKClient
 from starlette.authentication import BaseUser
 
@@ -149,7 +150,7 @@ def decode_keycloak_token(token: str) -> dict[str, Any]:
     except InvalidTokenError as exc:
         raise HTTPException(
             status_code=401,
-            detail=f"Invalid bearer token: {exc}",
+            detail=t("auth.invalid_bearer_token_detail", error=str(exc)),
         ) from exc
 
 
@@ -233,7 +234,7 @@ async def resolve_user(
     token = _extract_auth_token(request, credentials)
 
     if credentials and credentials.scheme != "Bearer":
-        raise HTTPException(status_code=401, detail="Invalid authentication scheme")
+        raise HTTPException(status_code=401, detail=t("auth.invalid_scheme"))
 
     if token:
         # Validate Keycloak JWTs before considering legacy API keys. When Keycloak
@@ -243,7 +244,7 @@ async def resolve_user(
             claims = decode_keycloak_token(token)
             sub = claims.get("sub", "")
             if not sub:
-                raise HTTPException(status_code=401, detail="Invalid bearer token")
+                raise HTTPException(status_code=401, detail=t("auth.invalid_bearer_token"))
 
             user_data = await _get_user_service_user(token)
             if user_data:
@@ -267,7 +268,7 @@ async def resolve_user(
         if user_id:
             return AuthenticatedUser(user_id, user_id, access_token=token)
 
-        raise HTTPException(status_code=401, detail="Invalid API key")
+        raise HTTPException(status_code=401, detail=t("auth.invalid_api_key"))
 
     # Machine-only service calls may still use the internal service token.
     internal_token = request.headers.get("X-Internal-Service-Token")
@@ -277,15 +278,15 @@ async def resolve_user(
     # If no credentials provided - check if we allow anonymous
     if not credentials:
         if IS_TESTING or (config.KEYCLOAK_ENABLED and config.KEYCLOAK_ISSUER_URL):
-            raise HTTPException(status_code=401, detail="Bearer token required")
+            raise HTTPException(status_code=401, detail=t("auth.bearer_token_required"))
 
         # For development, allow access
         valid_keys = _get_valid_api_keys()
         if not valid_keys:
             return AuthenticatedUser("dev-user", "Dev User")
-        raise HTTPException(status_code=403, detail="API key required")
+        raise HTTPException(status_code=403, detail=t("auth.api_key_required"))
 
-    raise HTTPException(status_code=401, detail="Bearer token required")
+    raise HTTPException(status_code=401, detail=t("auth.bearer_token_required"))
 
 
 def require_permission(permission: str):
@@ -322,7 +323,7 @@ def require_permission(permission: str):
 
         raise HTTPException(
             status_code=403,
-            detail=f"Missing required permission: {permission}",
+            detail=t("auth.permission_required", permission=permission),
         )
 
     return _check

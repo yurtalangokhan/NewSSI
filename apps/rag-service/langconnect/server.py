@@ -1,9 +1,11 @@
 import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from i18n import I18nMiddleware, init_service_i18n
 from idempotency import AsyncRedisPool, IdempotencyConfig, IdempotencyMiddleware
 
 from langconnect.api import (
@@ -87,12 +89,20 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("App is shutting down. Stopping background worker...")
 
 
+_here = Path(__file__).resolve().parent
+locales_dir = _here.parent / "locales"
+if not locales_dir.exists():
+    locales_dir = _here / "locales"
+init_service_i18n(locales_dir)
+
 APP = FastAPI(
     title="LangConnect API",
     description="A REST API for a RAG system using FastAPI and LangChain",
     version="0.1.0",
     lifespan=lifespan,
 )
+
+APP.add_middleware(I18nMiddleware)
 
 # Add CORS middleware
 APP.add_middleware(
@@ -102,6 +112,7 @@ APP.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 APP.add_middleware(
     IdempotencyMiddleware,

@@ -1,4 +1,5 @@
 import { StandardAnswerCreationForm } from "@/app/ee/admin/standard-answer/StandardAnswerCreationForm";
+import i18n from "@/i18n/config";
 import { fetchSS } from "@/lib/utilsSS";
 import { ErrorCallout } from "@/components/ErrorCallout";
 import * as SettingsLayouts from "@/layouts/settings-layouts";
@@ -15,7 +16,7 @@ async function Page() {
   if (!standardAnswerCategoriesResponse.ok) {
     return (
       <ErrorCallout
-        errorTitle="Something went wrong :("
+        errorTitle={i18n.t("admin.standardAnswerCategories.fetchError")}
         errorMsg={`Failed to fetch standard answer categories - ${await standardAnswerCategoriesResponse.text()}`}
       />
     );
@@ -27,7 +28,7 @@ async function Page() {
     <SettingsLayouts.Root>
       <SettingsLayouts.Header
         icon={route.icon}
-        title="New Standard Answer"
+        title={i18n.t("admin.standardAnswerPages.newTitle")}
         backButton
         separator
       />

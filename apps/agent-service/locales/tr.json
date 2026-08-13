@@ -1,0 +1,115 @@
+{
+  "agent": {
+    "not_found": "{agent_id} temsilcisi bulunamadı",
+    "group_not_found": "Temsilci grubu bulunamadı",
+    "unexpected_error": "Beklenmeyen hata oluştu",
+    "graph_schema_required": "graph_schema gereklidir",
+    "invalid_uuid": "Geçersiz UUID: {id}",
+    "sub_agent_ids_must_be_array": "sub_agent_ids bir dizi olmalıdır",
+    "definition_not_found": "{definition_id} temsilci tanımı bulunamadı",
+    "no_fields_to_update": "Güncellenecek alan yok",
+    "reserved_keys_in_config": "agent_config ayrılmış anahtarlar içeriyor: {keys}",
+    "message_or_messages_required": "'message' veya 'messages' alanlarından biri sağlanmalıdır."
+  },
+  "tool": {
+    "ids_required": "tool_ids gereklidir",
+    "binding_not_found": "Araç bağlaması bulunamadı",
+    "not_found": "Araç {tool_id} bulunamadı"
+  },
+  "provider": {
+    "not_found": "Sağlayıcı bulunamadı veya silinemiyor"
+  },
+  "thread": {
+    "not_found": "Konuşma başlığı bulunamadı"
+  },
+  "persona": {
+    "not_found": "Persona bulunamadı",
+    "cannot_update_builtin": "Yerleşik temsilciler güncellenemez",
+    "cannot_delete_builtin": "Yerleşik temsilciler silinemez"
+  },
+  "file": {
+    "not_found": "Dosya bulunamadı.",
+    "text_extraction_unsupported": "Bu dosya türünden metin çıkarılamıyor (görseller desteklenmiyor)."
+  },
+  "run": {
+    "assistant_id_required": "assistant_id gereklidir",
+    "thread_and_run_id_required": "thread_id ve run_id gereklidir",
+    "thread_id_required": "thread_id gereklidir"
+  },
+  "assistant": {
+    "not_found": "{assistant_id} asistanı bulunamadı",
+    "graph_not_found": "{graph_id} grafiği bulunamadı",
+    "cannot_update_system_template": "Sistem şablonları güncellenemez",
+    "system_template_not_deleted": "Sistem şablonu silinmedi",
+    "id_required": "assistant_id gereklidir"
+  },
+  "mcp_provider": {
+    "not_found": "{provider_id} sağlayıcısı bulunamadı"
+  },
+  "mcp": {
+    "tool_not_found": "'{tool_name}' aracı bulunamadı"
+  },
+  "datasource": {
+    "duplicate_name": "'{name}' adında bir veri kaynağı zaten mevcut. Lütfen farklı bir ad seçin.",
+    "unknown_connector": "Bilinmeyen bağlayıcı: {connector_type}",
+    "create_source_failed": "Airbyte kaynağı oluşturulamadı: {error}",
+    "setup_destination_failed": "Hedef ayarlanamadı: {error}",
+    "create_connection_failed": "Bağlantı oluşturulamadı: {error}",
+    "create_collection_failed": "Koleksiyon oluşturulamadı",
+    "not_found": "{datasource_id} veri kaynağı bulunamadı",
+    "no_airbyte_mapping": "Bu veri kaynağı için Airbyte eşlemesi bulunamadı",
+    "invalid_sync_mode_combination": "Geçersiz senkronizasyon modu kombinasyonu: {sync_mode} | {dest_mode}. Geçerli kombinasyonlar: full_refresh|overwrite, full_refresh|append, incremental|append",
+    "update_source_failed": "Airbyte kaynağı güncellenemedi: {error}",
+    "update_source_name_failed": "Airbyte kaynak adı güncellenemedi: {error}",
+    "update_streams_failed": "Bağlantı akışları güncellenemedi: {error}",
+    "update_connection_failed": "Airbyte bağlantısı güncellenemedi: {error}",
+    "id_required": "datasource_id gereklidir"
+  },
+  "web_search": {
+    "unsupported_provider_type": "Desteklenmeyen içerik sağlayıcı türü: {provider_type}",
+    "test_fetch_failed": "Test URL'si alınamadı",
+    "url_required": "Boş olmayan bir 'url' alanı gereklidir.",
+    "url_invalid_scheme": "URL, http:// veya https:// ile başlamalıdır",
+    "no_crawler_result": "Tarayıcıdan sonuç dönmedi."
+  },
+  "chat": {
+    "missing_session_id": "session_id eksik",
+    "session_not_found": "Oturum bulunamadı"
+  },
+  "auth": {
+    "admin_required": "Yönetici rolü gerekli",
+    "not_authenticated": "Kimlik doğrulanmadı",
+    "keycloak_not_configured": "KEYCLOAK_ISSUER_URL yapılandırılmamış",
+    "signing_key_resolution_failed": "Token imzalama anahtarı çözümlenemedi: {error}",
+    "invalid_bearer_token_detail": "Geçersiz taşıyıcı token: {error}",
+    "token_validation_failed": "Token doğrulaması başarısız oldu",
+    "missing_bearer_token": "Taşıyıcı token eksik",
+    "invalid_bearer_token": "Geçersiz taşıyıcı token",
+    "missing_permission": "Gerekli izin eksik: {permission}",
+    "invalid_api_key": "Geçersiz API anahtarı"
+  },
+  "common": {
+    "bad_request": "Geçersiz istek",
+    "not_found": "Kaynak bulunamadı",
+    "internal_error": "Sunucu iç hatası",
+    "forbidden": "Yasak"
+  },
+  "mailConfig": {
+    "notFound": "Posta yapılandırması bulunamadı",
+    "attachedToAgent": "Posta yapılandırması bir temsilciye bağlı",
+    "attachmentRequired": "Ek dosya adı ve içeriği gereklidir.",
+    "recipientSubjectBodyRequired": "E-posta göndermeden önce alıcı, konu ve gövde gereklidir.",
+    "attachmentInvalid": "E-posta eki verisi geçersiz.",
+    "smtpAuthFailedDetail": "SMTP kimlik doğrulaması başarısız oldu: {detail}",
+    "smtpAuthFailed": "SMTP kimlik doğrulaması başarısız oldu.",
+    "smtpConnectionFailed": "SMTP sunucusuna ulaşılamadı: {error}",
+    "recipientsRejected": "SMTP sunucusu alıcılardan birini veya daha fazlasını reddetti.",
+    "testRecipientRejected": "SMTP sunucusu test alıcısını reddetti.",
+    "messageRejected": "SMTP sunucusu mesajı reddetti: {error}",
+    "testMessageRejected": "SMTP sunucusu test mesajını reddetti: {error}",
+    "emailSent": "E-posta gönderildi.",
+    "testEmailSent": "Test e-postası gönderildi.",
+    "emailFailed": "E-posta gönderilemedi: {detail}",
+    "testEmailFailed": "Test e-postası gönderilemedi: {detail}"
+  }
+}

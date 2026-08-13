@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
 import * as Yup from "yup";
+import { Trans, useTranslation } from "react-i18next";
 import { FormikField } from "@/refresh-components/form/FormikField";
 import { FormField } from "@/refresh-components/form/FormField";
 import PasswordInputTypeIn from "@/refresh-components/inputs/PasswordInputTypeIn";
@@ -18,7 +19,6 @@ import { buildInitialValues } from "../components/llmConnectionHelpers";
 import ConnectionProviderIcon from "@/refresh-components/ConnectionProviderIcon";
 import InlineExternalLink from "@/refresh-components/InlineExternalLink";
 import { ProviderIcon } from "@/app/admin/configuration/llm/ProviderIcon";
-import { APP_NAME } from "@/lib/appInfo";
 
 // Field name constants
 const FIELD_API_KEY = "api_key";
@@ -60,6 +60,7 @@ function OpenRouterFormFields(
     showModelsApiErrorMessage,
     disabled,
   } = props;
+  const { t } = useTranslation();
 
   const handleApiKeyInteraction = () => {
     if (formikProps.values.api_key) {
@@ -73,7 +74,7 @@ function OpenRouterFormFields(
         name={FIELD_API_KEY}
         render={(field, helper, meta, state) => (
           <FormField name={FIELD_API_KEY} state={state} className="w-full">
-            <FormField.Label>API Key</FormField.Label>
+            <FormField.Label>{t("llmOnboarding.apiKey")}</FormField.Label>
             <FormField.Control>
               <PasswordInputTypeIn
                 {...field}
@@ -91,13 +92,17 @@ function OpenRouterFormFields(
               <FormField.Message
                 messages={{
                   idle: (
-                    <>
-                      {"Paste your "}
-                      <InlineExternalLink href="https://openrouter.ai/settings/keys">
-                        API key
-                      </InlineExternalLink>
-                      {" from OpenRouter to access your models."}
-                    </>
+                    <Trans
+                      i18nKey="llmOnboarding.pasteApiKeyHint"
+                      values={{ provider: "OpenRouter" }}
+                      components={{
+                        link: (
+                          <InlineExternalLink href="https://openrouter.ai/settings/keys">
+                            API key
+                          </InlineExternalLink>
+                        ),
+                      }}
+                    />
                   ),
                   error: meta.error,
                 }}
@@ -107,9 +112,9 @@ function OpenRouterFormFields(
               <FormField.APIMessage
                 state={apiStatus}
                 messages={{
-                  loading: "Checking API key with OpenRouter...",
-                  success: "API key valid. Your available models updated.",
-                  error: errorMessage || "Invalid API key",
+                  loading: t("llmOnboarding.checkingOpenRouter"),
+                  success: t("llmOnboarding.openRouterValid"),
+                  error: errorMessage || t("llmOnboarding.invalidApiKey"),
                 }}
               />
             )}
@@ -127,7 +132,7 @@ function OpenRouterFormFields(
             state={state}
             className="w-full"
           >
-            <FormField.Label>Default Model</FormField.Label>
+            <FormField.Label>{t("llmOnboarding.defaultModel")}</FormField.Label>
             <FormField.Control>
               <InputComboBox
                 value={field.value}
@@ -153,18 +158,18 @@ function OpenRouterFormFields(
                       e.preventDefault();
                       handleFetchModels();
                     })}
-                    tooltip="Fetch available models"
+                    tooltip={t("llmOnboarding.fetchAvailableModels")}
                     disabled={disabled || isFetchingModels}
                   />
                 }
                 onBlur={field.onBlur}
-                placeholder="Select a model"
+                placeholder={t("llmOnboarding.selectOrTypeModel")}
               />
             </FormField.Control>
             {!showModelsApiErrorMessage && (
               <FormField.Message
                 messages={{
-                  idle: `This model will be used by ${APP_NAME} by default.`,
+                  idle: t("llmOnboarding.defaultModelDesc"),
                   error: meta.error,
                 }}
               />
@@ -173,9 +178,9 @@ function OpenRouterFormFields(
               <FormField.APIMessage
                 state={modelsApiStatus}
                 messages={{
-                  loading: "Fetching models...",
-                  success: "Models fetched successfully.",
-                  error: modelsErrorMessage || "Failed to fetch models",
+                  loading: t("llmOnboarding.fetchingModels"),
+                  success: t("llmOnboarding.modelsFetched"),
+                  error: modelsErrorMessage || t("llmOnboarding.failedFetchModels"),
                 }}
               />
             )}
@@ -193,6 +198,7 @@ export function OpenRouterOnboardingForm({
   open,
   onOpenChange,
 }: OpenRouterOnboardingFormProps) {
+  const { t } = useTranslation();
   const initialValues = useMemo(
     (): OpenRouterFormValues => ({
       ...buildInitialValues(),
@@ -204,8 +210,8 @@ export function OpenRouterOnboardingForm({
   );
 
   const validationSchema = Yup.object().shape({
-    [FIELD_API_KEY]: Yup.string().required("API Key is required"),
-    [FIELD_DEFAULT_MODEL_NAME]: Yup.string().required("Model name is required"),
+    [FIELD_API_KEY]: Yup.string().required(t("llmOnboardingForms.apiKeyRequired")),
+    [FIELD_DEFAULT_MODEL_NAME]: Yup.string().required(t("llmOnboardingForms.modelNameRequired")),
   });
 
   const icon = () => (
@@ -217,8 +223,8 @@ export function OpenRouterOnboardingForm({
   return (
     <OnboardingFormWrapper<OpenRouterFormValues>
       icon={icon}
-      title="Set up OpenRouter"
-      description="Connect to OpenRouter and set up your OpenRouter models."
+      title={t("llmOnboarding.setupOpenRouter")}
+      description={t("llmOnboarding.setupOpenRouterDesc")}
       llmDescriptor={llmDescriptor}
       onboardingState={onboardingState}
       onboardingActions={onboardingActions}

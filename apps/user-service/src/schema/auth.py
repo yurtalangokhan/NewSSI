@@ -1,3 +1,4 @@
+from i18n import t
 from pydantic import BaseModel, ConfigDict, field_validator
 
 
@@ -15,7 +16,7 @@ class RegisterRequest(BaseModel):
     def names_must_not_be_blank(cls, value: str) -> str:
         stripped = value.strip()
         if not stripped:
-            raise ValueError("first_name and last_name are required")
+            raise ValueError(t("user.names_required"))
         return stripped
 
 

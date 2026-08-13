@@ -2,6 +2,7 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from i18n import t
 
 from langconnect.auth import AuthenticatedUser, require_permission
 from langconnect.database.collections import CollectionsManager
@@ -30,7 +31,7 @@ async def collections_create(
         collection_data.name, collection_data.metadata
     )
     if not collection_info:
-        raise HTTPException(status_code=500, detail="Failed to create collection")
+        raise HTTPException(status_code=500, detail=t("collection.create_failed"))
     return CollectionResponse(**collection_info)
 
 
@@ -54,7 +55,7 @@ async def collections_get(
     if not collection:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Collection '{collection_id}' not found",
+            detail=t("collection.not_found"),
         )
     return CollectionResponse(**collection)
 
@@ -103,10 +104,6 @@ async def collections_update(
         metadata=collection_data.metadata,
     )
 
-    if not updated_collection:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Failed to update collection '{collection_id}'",
-        )
-
+    # CollectionsManager.update() always raises (400/404) rather than
+    # returning a falsy value on failure, so there is nothing to check here.
     return CollectionResponse(**updated_collection)

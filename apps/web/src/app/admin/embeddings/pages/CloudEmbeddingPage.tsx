@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import Text from "@/components/ui/text";
 import Title from "@/components/ui/title";
 import {
@@ -49,6 +50,9 @@ export default function CloudEmbeddingPage({
   >;
   advancedEmbeddingDetails: AdvancedSearchConfiguration;
 }) {
+  const { t } = useTranslation("common", {
+    keyPrefix: "admin.embeddings.cloudPage",
+  });
   function hasProviderTypeinArray(
     arr: Array<{ provider_type: string }>,
     searchName: string
@@ -96,13 +100,8 @@ export default function CloudEmbeddingPage({
 
   return (
     <div>
-      <Title className="mt-8">
-        Here are some cloud-based models to choose from.
-      </Title>
-      <Text className="mb-4">
-        These models require API keys and run in the clouds of the respective
-        providers.
-      </Text>
+      <Title className="mt-8">{t("introTitle")}</Title>
+      <Text className="mb-4">{t("introDescription")}</Text>
 
       <div className="gap-4 mt-2 pb-10 flex content-start flex-wrap">
         {providers.map((provider) => (
@@ -112,7 +111,7 @@ export default function CloudEmbeddingPage({
               <h2 className="ml-2  mt-2 text-xl font-bold">
                 {getFormattedProviderName(provider.provider_type)}{" "}
                 {provider.provider_type == EmbeddingProvider.COHERE &&
-                  "(recommended)"}
+                  t("recommendedSuffix")}
               </h2>
               <HoverPopup
                 mainContent={
@@ -137,7 +136,9 @@ export default function CloudEmbeddingPage({
               }}
               className="mb-2  hover:underline text-sm cursor-pointer"
             >
-              {provider.configured ? "Modify API key" : "Provide API key"}
+              {provider.configured
+                ? t("modifyApiKeyButton")
+                : t("provideApiKeyButton")}
             </button>
             <div className="flex flex-wrap gap-4">
               {provider.embedding_models.map((model) => (
@@ -157,16 +158,14 @@ export default function CloudEmbeddingPage({
         ))}
 
         <Text className="mt-6">
-          Alternatively, you can use a self-hosted model using the LiteLLM
-          proxy. This allows you to leverage various LLM providers through a
-          unified interface that you control.{" "}
+          {t("liteLLMIntro")}{" "}
           <a
             href="https://docs.litellm.ai/"
             target="_blank"
             rel="noopener noreferrer"
             className="text-blue-500 hover:underline"
           >
-            Learn more about LiteLLM
+            {t("learnMoreLiteLLM")}
           </a>
         </Text>
 
@@ -176,7 +175,7 @@ export default function CloudEmbeddingPage({
             <h2 className="ml-2  mt-2 text-xl font-bold">
               {getFormattedProviderName(LITELLM_CLOUD_PROVIDER.provider_type)}{" "}
               {LITELLM_CLOUD_PROVIDER.provider_type ==
-                EmbeddingProvider.COHERE && "(recommended)"}
+                EmbeddingProvider.COHERE && t("recommendedSuffix")}
             </h2>
             <HoverPopup
               mainContent={
@@ -198,7 +197,7 @@ export default function CloudEmbeddingPage({
                 onClick={() => setShowTentativeProvider(LITELLM_CLOUD_PROVIDER)}
                 className="mb-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm cursor-pointer"
               >
-                Set API Configuration
+                {t("setApiConfigButton")}
               </button>
             ) : (
               <button
@@ -207,7 +206,7 @@ export default function CloudEmbeddingPage({
                 }
                 className="mb-2 hover:underline text-sm cursor-pointer"
               >
-                Modify API Configuration
+                {t("modifyApiConfigButton")}
               </button>
             )}
 
@@ -215,18 +214,15 @@ export default function CloudEmbeddingPage({
               <CardSection className="mt-2 w-full max-w-4xl bg-background-50 border border-background-200">
                 <div className="p-4">
                   <Text className="text-lg font-semibold mb-2">
-                    API URL Required
+                    {t("apiUrlRequiredTitle")}
                   </Text>
                   <Text className="text-sm text-text-600 mb-4">
-                    Before you can add models, you need to provide an API URL
-                    for your LiteLLM proxy. Click the &quot;Provide API
-                    URL&quot; button above to set up your LiteLLM configuration.
+                    {t("apiUrlRequiredBody")}
                   </Text>
                   <div className="flex items-center">
                     <FiInfo className="text-blue-500 mr-2" size={18} />
                     <Text className="text-sm text-blue-500">
-                      Once configured, you&apos;ll be able to add and manage
-                      your LiteLLM models here.
+                      {t("apiUrlRequiredNote")}
                     </Text>
                   </div>
                 </div>
@@ -281,10 +277,7 @@ export default function CloudEmbeddingPage({
           </div>
         </div>
 
-        <Text className="mt-6">
-          You can also use Azure OpenAI models for embeddings. Azure requires
-          separate configuration for each model.
-        </Text>
+        <Text className="mt-6">{t("azureIntro")}</Text>
 
         <div key={AZURE_CLOUD_PROVIDER.provider_type} className="mt-4 w-full">
           <div className="flex items-center mb-2">
@@ -315,23 +308,19 @@ export default function CloudEmbeddingPage({
                 onClick={() => setShowTentativeProvider(AZURE_CLOUD_PROVIDER)}
                 className="mb-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm cursor-pointer"
               >
-                Configure Azure OpenAI
+                {t("configureAzureButton")}
               </button>
               <div className="mt-2 w-full max-w-4xl">
                 <CardSection className="p-4 border border-background-200 rounded-lg shadow-sm">
                   <Text className="text-base font-medium mb-2">
-                    Configure Azure OpenAI for Embeddings
+                    {t("configureAzureTitle")}
                   </Text>
                   <Text className="text-sm text-text-600 mb-3">
-                    Click &quot;Configure Azure OpenAI&quot; to set up Azure
-                    OpenAI for embeddings.
+                    {t("configureAzureBody")}
                   </Text>
                   <div className="flex items-center text-sm text-text-700">
                     <FiInfo className="text-neutral-400 mr-2" size={16} />
-                    <Text>
-                      You&apos;ll need: API version, base URL, API key, model
-                      name, and deployment name.
-                    </Text>
+                    <Text>{t("azureRequirementsNote")}</Text>
                   </div>
                 </CardSection>
               </div>
@@ -340,22 +329,22 @@ export default function CloudEmbeddingPage({
             <>
               <div className="mb-6 w-full">
                 <Text className="text-lg font-semibold mb-3">
-                  Current Azure Configuration
+                  {t("currentAzureConfigTitle")}
                 </Text>
 
                 {azureProviderDetails ? (
                   <CardSection className="bg-white shadow-sm border border-background-200 rounded-lg">
                     <div className="p-4 space-y-3">
                       <div className="flex justify-between">
-                        <span className="font-medium">API Version:</span>
+                        <span className="font-medium">{t("apiVersionLabel")}</span>
                         <span>{azureProviderDetails.api_version}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="font-medium">Base URL:</span>
+                        <span className="font-medium">{t("baseUrlLabel")}</span>
                         <span>{azureProviderDetails.api_url}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="font-medium">Deployment Name:</span>
+                        <span className="font-medium">{t("deploymentNameLabel")}</span>
                         <span>{azureProviderDetails.deployment_name}</span>
                       </div>
                     </div>
@@ -365,13 +354,13 @@ export default function CloudEmbeddingPage({
                       }
                       className="mt-2 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 text-sm"
                     >
-                      Delete Current Azure Provider
+                      {t("deleteAzureProviderButton")}
                     </button>
                   </CardSection>
                 ) : (
                   <CardSection className="bg-background-50 border border-background-200 rounded-lg">
                     <div className="p-4 text-text-500 text-center">
-                      No Azure provider has been configured yet.
+                      {t("noAzureProviderConfigured")}
                     </div>
                   </CardSection>
                 )}
@@ -424,6 +413,9 @@ export function CloudModelCard({
     React.SetStateAction<CloudEmbeddingProvider | null>
   >;
 }) {
+  const { t } = useTranslation("common", {
+    keyPrefix: "admin.embeddings.cloudPage",
+  });
   const [showDeleteModel, setShowDeleteModel] = useState(false);
   const modelId = typeof model.id === "number" ? model.id : null;
   const currentModelId =
@@ -444,19 +436,17 @@ export function CloudModelCard({
 
   const deleteModel = async () => {
     if (!model.id) {
-      toast.error("Model cannot be deleted");
+      toast.error(t("modelCannotBeDeleted"));
       return;
     }
 
     const response = await deleteSearchSettings(model.id);
 
     if (response.ok) {
-      toast.success("Model deleted successfully");
+      toast.success(t("modelDeletedSuccess"));
       setShowDeleteModel(false);
     } else {
-      toast.error(
-        "Failed to delete model. Ensure you are not attempting to delete a curently active model."
-      );
+      toast.error(t("modelDeleteFailed"));
     }
   };
 
@@ -533,7 +523,7 @@ export function CloudModelCard({
           }}
           disabled={enabled}
         >
-          {enabled ? "Selected Model" : "Select Model"}
+          {enabled ? t("selectedModelButton") : t("selectModelButton")}
         </button>
       </div>
     </div>

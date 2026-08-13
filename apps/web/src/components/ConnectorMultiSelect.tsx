@@ -208,8 +208,8 @@ export const ConnectorMultiSelect = ({
                   prominence="tertiary"
                   size="sm"
                   type="button"
-                  aria-label="Remove connector"
-                  tooltip="Remove connector"
+                  aria-label={t("connectorMultiSelect.removeConnector")}
+                  tooltip={t("connectorMultiSelect.removeConnector")}
                   onClick={() => removeConnector(connector.cc_pair_id)}
                   icon={SvgX}
                 />

@@ -73,7 +73,8 @@ const IsVisibleSection = ({
         <div className="text-xs">
           {document.hidden ? (
             <div className="flex">
-              <FiEye className="my-auto mr-1" /> Unhide
+              <FiEye className="my-auto mr-1" />{" "}
+              {t("admin.documentsFeedback.unhide")}
             </div>
           ) : (
             <div className="flex">

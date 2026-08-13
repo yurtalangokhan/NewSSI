@@ -207,8 +207,8 @@ export default function Page() {
             />
             <Tabs value={activeTab} onValueChange={setActiveTab}>
               <Tabs.List variant="contained">
-                <Tabs.Trigger value="catalog">Agents</Tabs.Trigger>
-                <Tabs.Trigger value="access-groups">Access groups</Tabs.Trigger>
+                <Tabs.Trigger value="catalog">{t("admin.agents.agentsTab", { defaultValue: "Agents" })}</Tabs.Trigger>
+                <Tabs.Trigger value="access-groups">{t("admin.agents.accessGroupsTab", { defaultValue: "Access groups" })}</Tabs.Trigger>
               </Tabs.List>
               <Tabs.Content value="catalog">
                 <MainContent

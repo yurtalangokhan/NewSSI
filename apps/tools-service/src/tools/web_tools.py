@@ -9,6 +9,7 @@ from typing import Any
 from urllib.parse import quote_plus
 
 import httpx
+from i18n import t
 
 from ..core.base import BaseToolCategory
 
@@ -61,11 +62,11 @@ class WebTools(BaseToolCategory):
 
     @property
     def description(self) -> str:
-        return "Web search and webpage content fetching"
+        return t("categories.web_search.description", default="Web search and webpage content fetching")
 
     @property
     def label(self) -> str:
-        return "Web"
+        return t("categories.web_search.label", default="Web")
 
     def register_tools(self, mcp: Any) -> None:
         """Register all web tools with MCP."""
@@ -174,7 +175,7 @@ class WebTools(BaseToolCategory):
                     return "\n".join(results).strip()
 
             except Exception as e:
-                return f"Search error: {str(e)}"
+                return t("web.search_error", error=str(e))
 
         def _try_instant_answer(client: httpx.Client, query: str, max_results: int) -> str:
             """Try DuckDuckGo Instant Answer API as fallback."""
@@ -202,7 +203,7 @@ class WebTools(BaseToolCategory):
                             results.append(f"   URL: {url}")
 
                 if not results:
-                    return f"No results found for '{query}'"
+                    return t("web.no_results", query=query)
 
                 return "\n".join(results)
 
@@ -261,4 +262,4 @@ class WebTools(BaseToolCategory):
                     return text
 
             except Exception as e:
-                return f"Error fetching webpage: {str(e)}"
+                return t("web.fetch_error", error=str(e))

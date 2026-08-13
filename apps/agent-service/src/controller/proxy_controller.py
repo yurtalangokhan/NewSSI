@@ -2,6 +2,8 @@
 
 from typing import Any
 
+from i18n import get_locale, t
+
 from controller.base import BaseController
 from core.env import env
 
@@ -159,7 +161,10 @@ class ProxyController(BaseController):
 
             tool = next((t for t in tools if t.name == tool_name), None)
             if not tool:
-                return {"error": f"Tool '{tool_name}' not found", "result": None}
+                return {
+                    "error": t("mcp.tool_not_found", tool_name=tool_name),
+                    "result": None,
+                }
 
             result = await tool.ainvoke(arguments)
 
@@ -228,14 +233,25 @@ class ProxyController(BaseController):
         return urlunparse(parsed._replace(path=path))
 
     def _mcp_connection(self, url: str) -> dict[str, Any]:
-        """Build an authenticated streamable HTTP MCP client connection."""
+        """Build an authenticated streamable HTTP MCP client connection.
+
+        This path (unlike the LangGraph agent's own MCP client construction
+        in agents/configurable_mcp_agent.py and agents/perceptrons/mcp_perceptron.py)
+        is used by human-facing endpoints -- e.g. the tools playground -- where a
+        person reads the tool's raw output directly, with no LLM in between to
+        paraphrase it into the user's language. So the caller's locale (already
+        resolved by this service's own I18nMiddleware from the incoming request)
+        is forwarded to tools-service via X-Language.
+        """
         connection: dict[str, Any] = {
             "transport": "streamable_http",
             "url": self._ensure_mcp_url_path(url),
         }
+        headers: dict[str, str] = {"X-Language": get_locale()}
         token = (env.INTERNAL_SERVICE_TOKEN or "").strip()
         if token:
-            connection["headers"] = {"Authorization": f"Bearer {token}"}
+            headers["Authorization"] = f"Bearer {token}"
+        connection["headers"] = headers
         return connection
 
 

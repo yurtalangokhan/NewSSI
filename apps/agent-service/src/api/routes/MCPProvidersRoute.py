@@ -3,6 +3,7 @@
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
+from i18n import t
 
 from api.dependencies import require_permission, require_user
 from service.MCPProviderService import MCPProviderService
@@ -35,7 +36,7 @@ async def get_provider(
 ) -> dict[str, Any]:
     provider = await service.get_provider(provider_id)
     if not provider:
-        raise HTTPException(status_code=404, detail=f"Provider {provider_id} not found")
+        raise HTTPException(status_code=404, detail=t("mcp_provider.not_found", provider_id=provider_id))
     return provider
 
 
@@ -77,7 +78,7 @@ async def update_provider(
 ) -> dict[str, Any]:
     updated = await service.update_provider(provider_id, **request)
     if not updated:
-        raise HTTPException(status_code=404, detail=f"Provider {provider_id} not found")
+        raise HTTPException(status_code=404, detail=t("mcp_provider.not_found", provider_id=provider_id))
     return updated
 
 
@@ -89,5 +90,5 @@ async def delete_provider(
 ) -> dict[str, Any]:
     deleted = await service.delete_provider(provider_id)
     if not deleted:
-        raise HTTPException(status_code=404, detail=f"Provider {provider_id} not found")
+        raise HTTPException(status_code=404, detail=t("mcp_provider.not_found", provider_id=provider_id))
     return {"status": "ok", "provider_id": provider_id}

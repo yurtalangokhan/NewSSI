@@ -8,6 +8,15 @@ import React from "react";
 import { render, screen, waitFor, setupUser } from "@tests/setup/test-utils";
 import EmailPasswordForm from "./EmailPasswordForm";
 
+const signInButtonText = /^(auth\.signInButton|Sign In)$/i;
+const createAccountButtonText = /^(auth\.createAccountButton|Create Account)$/i;
+const invalidCredentialsText =
+  /^(auth\.invalidCredentials|Invalid username\/email or password)$/i;
+const accountAlreadyExistsText =
+  /^(auth\.accountAlreadyExists|An account already exists with the specified email\.)$/i;
+const tooManyRequestsText =
+  /^(auth\.tooManyRequests|Too many requests\. Please try again later\.)$/i;
+
 // Mock next/navigation (not used by this component, but required by dependencies)
 jest.mock("next/navigation", () => ({
   useRouter: () => ({
@@ -51,7 +60,7 @@ describe("Email/Password Login Workflow", () => {
 
     // User submits the form
     const loginButton = screen.getByRole("button", {
-      name: /auth\.signInButton/i,
+      name: signInButtonText,
     });
     await user.click(loginButton);
 
@@ -65,9 +74,9 @@ describe("Email/Password Login Workflow", () => {
       "/api/auth/login",
       expect.objectContaining({
         method: "POST",
-        headers: {
+        headers: expect.objectContaining({
           "Content-Type": "application/x-www-form-urlencoded",
-        },
+        }),
       })
     );
 
@@ -93,7 +102,7 @@ describe("Email/Password Login Workflow", () => {
     await user.type(screen.getByPlaceholderText(/∗/), "password123");
     await user.click(
       screen.getByRole("button", {
-        name: /auth\.signInButton/i,
+        name: signInButtonText,
       })
     );
 
@@ -105,9 +114,9 @@ describe("Email/Password Login Workflow", () => {
       "/api/auth/external/login",
       expect.objectContaining({
         method: "POST",
-        headers: {
+        headers: expect.objectContaining({
           "Content-Type": "application/x-www-form-urlencoded",
-        },
+        }),
       })
     );
   });
@@ -129,7 +138,7 @@ describe("Email/Password Login Workflow", () => {
     await user.type(screen.getByPlaceholderText(/∗/), "password123");
     await user.click(
       screen.getByRole("button", {
-        name: /auth\.signInButton/i,
+        name: signInButtonText,
       })
     );
 
@@ -159,15 +168,13 @@ describe("Email/Password Login Workflow", () => {
 
     // User submits
     const loginButton = screen.getByRole("button", {
-      name: /auth\.signInButton/i,
+      name: signInButtonText,
     });
     await user.click(loginButton);
 
     // Verify field-level error message is displayed (not the toast)
     await waitFor(() => {
-      expect(
-        screen.getByText(/^auth\.invalidCredentials$/i)
-      ).toBeInTheDocument();
+      expect(screen.getByText(invalidCredentialsText)).toBeInTheDocument();
     });
   });
 });
@@ -213,7 +220,7 @@ describe("Email/Password Signup Workflow", () => {
 
     // User submits the signup form
     const signupButton = screen.getByRole("button", {
-      name: /auth\.createAccountButton/i,
+      name: createAccountButtonText,
     });
     await user.click(signupButton);
 
@@ -275,15 +282,13 @@ describe("Email/Password Signup Workflow", () => {
 
     // User submits
     const signupButton = screen.getByRole("button", {
-      name: /auth\.createAccountButton/i,
+      name: createAccountButtonText,
     });
     await user.click(signupButton);
 
     // Verify field-level error message is displayed (not the toast)
     await waitFor(() => {
-      expect(
-        screen.getByText(/^auth\.accountAlreadyExists$/i)
-      ).toBeInTheDocument();
+      expect(screen.getByText(accountAlreadyExistsText)).toBeInTheDocument();
     });
   });
 
@@ -314,13 +319,13 @@ describe("Email/Password Signup Workflow", () => {
 
     // User submits
     const signupButton = screen.getByRole("button", {
-      name: /auth\.createAccountButton/i,
+      name: createAccountButtonText,
     });
     await user.click(signupButton);
 
     // Verify field-level rate limit message is displayed (not the toast)
     await waitFor(() => {
-      expect(screen.getByText(/^auth\.tooManyRequests$/i)).toBeInTheDocument();
+      expect(screen.getByText(tooManyRequestsText)).toBeInTheDocument();
     });
   });
 });

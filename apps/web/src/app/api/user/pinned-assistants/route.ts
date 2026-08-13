@@ -1,5 +1,6 @@
 import { USER_SERVICE_URL } from "@/lib/constants";
 import { buildServiceUrl } from "@/lib/api/gatewayRouting";
+import { getLanguageHeaders } from "@/lib/api/proxy";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function PATCH(request: NextRequest) {
@@ -8,6 +9,7 @@ export async function PATCH(request: NextRequest) {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
       Cookie: request.headers.get("cookie") || "",
+      ...getLanguageHeaders(request),
     };
     const auth = request.headers.get("authorization");
     if (auth) headers["Authorization"] = auth;
@@ -43,6 +45,7 @@ export async function GET(request: NextRequest) {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
       Cookie: request.headers.get("cookie") || "",
+      ...getLanguageHeaders(request),
     };
     const auth = request.headers.get("authorization");
     if (auth) headers["Authorization"] = auth;

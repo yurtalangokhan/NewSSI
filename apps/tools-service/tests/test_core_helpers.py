@@ -1,3 +1,7 @@
+import json
+
+from i18n.core import set_locale
+
 from src.core.auth import _get_valid_api_keys
 from src.core.authorization import get_user_service_permissions
 from src.core.base import BaseToolCategory
@@ -53,6 +57,20 @@ def test_parse_json_param_returns_empty_dict_for_missing_or_invalid_input():
 
 def test_parse_json_param_returns_decoded_dict():
     assert BaseToolCategory.parse_json_param('{"name": "tools"}') == {"name": "tools"}
+
+
+def test_error_response_translates_key_with_interpolation():
+    result = json.loads(BaseToolCategory.error_response("pdf.file_not_found", file_path="a.pdf"))
+    assert result == {"success": False, "error": "File not found: a.pdf"}
+
+
+def test_error_response_honors_current_locale():
+    set_locale("tr")
+    try:
+        result = json.loads(BaseToolCategory.error_response("pdf.file_not_found", file_path="a.pdf"))
+    finally:
+        set_locale("en")
+    assert result == {"success": False, "error": "Dosya bulunamadı: a.pdf"}
 
 
 class _PermissionResponse:

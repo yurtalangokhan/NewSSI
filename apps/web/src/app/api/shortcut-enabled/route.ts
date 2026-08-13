@@ -1,5 +1,6 @@
 import { USER_SERVICE_URL } from "@/lib/constants";
 import { buildServiceUrl } from "@/lib/api/gatewayRouting";
+import { getLanguageHeaders } from "@/lib/api/proxy";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function PATCH(request: NextRequest) {
@@ -16,6 +17,7 @@ export async function PATCH(request: NextRequest) {
       headers: {
         "Content-Type": "application/json",
         Cookie: request.headers.get("cookie") || "",
+        ...getLanguageHeaders(request),
         ...(request.headers.get("authorization")
           ? { Authorization: request.headers.get("authorization") || "" }
           : {}),

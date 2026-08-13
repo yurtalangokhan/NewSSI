@@ -13,7 +13,7 @@ export const pdfVariant: PreviewVariant = {
     <iframe
       src={`${ctx.fileUrl}#toolbar=0`}
       className="w-full h-full flex-1 min-h-0 border-none"
-      title={ctx.t("pdfViewerTitle")}
+      title={ctx.t("filePreview.pdfViewerTitle")}
     />
   ),
 

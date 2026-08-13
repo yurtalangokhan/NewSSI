@@ -129,8 +129,8 @@ function GuildDetailContent({
           <ThreeDotsLoader />
         ) : channelsError ? (
           <ErrorCallout
-            errorTitle="Failed to load channels"
-            errorMsg={channelsError?.info?.detail || "Could not load channels"}
+            errorTitle={t("admin.discord.loadChannelsErrorTitle")}
+            errorMsg={channelsError?.info?.detail || t("admin.discord.loadChannelsErrorMsg")}
           />
         ) : (
           <DiscordChannelsTable

@@ -17,7 +17,7 @@ class PermissionController(BaseController):
     async def get_permission(self, name: str) -> dict[str, Any]:
         permission = await self.service.get_permission(name)
         if not permission:
-            self._raise_not_found(f"Permission '{name}' not found")
+            self._raise_not_found("permission.not_found", name=name)
         return permission
 
     async def list_entities(self) -> dict[str, Any]:

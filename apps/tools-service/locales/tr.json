@@ -1,0 +1,475 @@
+{
+  "pdf": {
+    "file_not_found": "Dosya bulunamadı: {file_path}",
+    "invalid_page": "Geçersiz sayfa numarası. PDF {total_pages} sayfaya sahiptir.",
+    "search_empty": "Arama metni boş olamaz",
+    "pymupdf_not_installed": "PyMuPDF (fitz) kütüphanesi kurulu değil. Kurmak için: pip install pymupdf"
+  },
+  "web": {
+    "no_results": "'{query}' için sonuç bulunamadı",
+    "fetch_error": "Web sayfası alınırken hata oluştu: {error}",
+    "search_error": "Arama hatası: {error}"
+  },
+  "mail": {
+    "recipient_subject_body_required": "E-posta göndermeden önce alıcı, konu ve gövde gereklidir.",
+    "config_incomplete": "SMTP yapılandırması eksik.",
+    "payload_invalid": "E-posta eki verisi geçersiz.",
+    "auth_failed": "SMTP kimlik doğrulaması başarısız oldu.",
+    "connection_failed": "SMTP sunucusuna ulaşılamadı.",
+    "recipient_rejected": "SMTP sunucusu alıcılardan birini veya daha fazlasını reddetti.",
+    "message_rejected": "SMTP sunucusu mesajı reddetti."
+  },
+  "common": {
+    "error": "Hata: {error}"
+  },
+  "calculator": {
+    "invalid_character": "İfadede geçersiz karakter: {char}",
+    "calculation_error": "Hesaplama hatası: {error}"
+  },
+  "json": {
+    "invalid_json": "Geçersiz JSON: {error}",
+    "cannot_navigate": "'{key}' konumunda daha ileri gidilemiyor",
+    "query_error": "Sorgu hatası: {error}"
+  },
+  "service": {
+    "restart_error": "Servis yeniden başlatma hatası: {error}"
+  },
+  "time": {
+    "error": "Hata: {error}"
+  },
+  "utility": {
+    "decode_error": "Çözme hatası: {error}",
+    "unknown_algorithm": "Bilinmeyen algoritma. Desteklenenler: {algorithms}"
+  },
+  "command": {
+    "blocked_pattern": "Hata: Engellenen komut kalıbı tespit edildi: {pattern}",
+    "timeout": "Hata: Komut {seconds} saniye sonra zaman aşımına uğradı",
+    "execution_error": "Komut çalıştırma hatası: {error}"
+  },
+  "docker": {
+    "build_error": "Docker build hatası: {error}",
+    "run_error": "Docker run hatası: {error}",
+    "stop_error": "Docker stop hatası: {error}",
+    "logs_error": "Docker logs hatası: {error}",
+    "ps_error": "Docker ps hatası: {error}"
+  },
+  "file": {
+    "read_error": "Dosya okuma hatası: {error}",
+    "write_error": "Dosya yazma hatası: {error}",
+    "directory_not_found": "Dizin bulunamadı: {directory}",
+    "list_error": "Dizin listeleme hatası: {error}",
+    "directory_exists": "Dizin zaten mevcut: {dir_path}",
+    "create_directory_error": "Dizin oluşturma hatası: {error}",
+    "path_not_found": "Mevcut değil: {file_path}",
+    "check_error": "Yol kontrol hatası: {error}",
+    "file_not_found": "Hata: Dosya bulunamadı: {file_path}",
+    "not_a_file": "Hata: Bir dosya değil: {file_path}",
+    "text_not_found": "Hata: {file_path} içinde metin bulunamadı.\nDosya {line_count} satırdan oluşuyor.\nİlk 20 satır:\n{preview}",
+    "multiple_occurrences": "Uyarı: Metnin {count} tekrarı bulundu. Lütfen tam olarak bir tekrarla eşleşecek daha spesifik metin sağlayın. Yalnızca ilk tekrar değiştiriliyor.",
+    "update_error": "Dosya güncelleme hatası: {error}",
+    "delete_path_not_found": "Yol mevcut değil: {file_path}",
+    "directory_not_empty": "Dizin boş değil. Silmek için recursive=True kullanın: {file_path}",
+    "cannot_delete": "Silinemiyor: {file_path}",
+    "delete_error": "Silme hatası: {error}"
+  },
+  "git": {
+    "directory_already_exists": "Hata: Dizin zaten mevcut: {path}",
+    "clone_error": "Git clone hatası: {error}",
+    "clone_timeout": "Git clone 300 saniye sonra zaman aşımına uğradı",
+    "repo_not_found": "Hata: Depo dizini bulunamadı: {path}",
+    "pull_error": "Git pull hatası: {error}",
+    "push_error": "Git push hatası: {error}",
+    "status_error": "Git status hatası: {error}",
+    "identity_unknown": "GIT_IDENTITY_ERROR: Yazar kimliği yapılandırılmadığı için git commit başarısız oldu.\nCommit yapmadan önce user.email ve user.name ayarlamanız gerekir.\nGEREKLİ İŞLEM: Kullanıcıdan adını ve e-posta adresini isteyin, ardından git_config aracını user_email ve user_name parametreleriyle çağırın. Ardından git_commit'i tekrar deneyin.",
+    "commit_error": "Git commit hatası: {error}",
+    "branch_error": "Git branch hatası: {error}",
+    "already_initialized": "Depo zaten şurada başlatıldı: {path}",
+    "init_error": "Git init hatası: {error}",
+    "remote_error": "Git remote hatası: {error}",
+    "log_error": "Git log hatası: {error}",
+    "invalid_scope": "Hata: scope 'global' veya 'local' olmalıdır, alınan: '{scope}'",
+    "repo_dir_required": "Hata: scope 'local' olduğunda repo_dir gereklidir",
+    "config_error": "Git config hatası: {error}",
+    "diff_error": "Git diff hatası: {error}"
+  },
+  "java": {
+    "jar_not_found": "Hata: JAR dosyası bulunamadı: {path}",
+    "not_a_jar": "Hata: Bir JAR dosyası değil: {path}",
+    "jdk_not_installed": "Hata: Java (JDK/JRE) kurulu değil veya PATH içinde değil",
+    "jar_timeout": "Hata: JAR çalıştırması {seconds} saniye sonra zaman aşımına uğradı",
+    "jar_execution_error": "JAR çalıştırma hatası: {error}",
+    "compilation_failed": "✗ Derleme başarısız oldu:\n{errors}",
+    "jdk_javac_not_installed": "Hata: Java (JDK) kurulu değil veya PATH içinde değil. javac gereklidir.",
+    "run_timeout": "Hata: Çalıştırma {seconds} saniye sonra zaman aşımına uğradı",
+    "file_not_found": "Hata: Dosya bulunamadı: {path}",
+    "javac_not_found": "Hata: javac bulunamadı. JDK gereklidir.",
+    "compile_timeout": "Hata: Derleme {seconds} saniye sonra zaman aşımına uğradı",
+    "syntax_errors": "✗ Java söz dizimi hataları:\n{errors}",
+    "javac_not_found_validate": "Hata: javac bulunamadı. Doğrulama için JDK gereklidir.",
+    "validation_timeout": "Hata: Doğrulama zaman aşımına uğradı",
+    "file_has_errors": "✗ {name} hatalar içeriyor:\n{errors}",
+    "jar_unzip_not_found": "Hata: jar/unzip komutu bulunamadı",
+    "list_error": "JAR listeleme hatası: {error}",
+    "inspect_error": "JAR inceleme hatası: {error}"
+  },
+  "code": {
+    "execution_timeout": "Hata: Kod çalıştırması {seconds} saniye sonra zaman aşımına uğradı",
+    "python_execution_error": "Python kodu çalıştırma hatası: {error}",
+    "file_not_found": "Hata: Dosya bulunamadı: {path}",
+    "file_execution_timeout": "Hata: Çalıştırma {seconds} saniye sonra zaman aşımına uğradı",
+    "python_file_error": "Python dosyası çalıştırma hatası: {error}",
+    "python_syntax_error": "✗ Satır {lineno}, sütun {offset} konumunda Söz Dizimi Hatası:\n{msg}\n\nSorunlu satır:\n{text}",
+    "validation_error": "✗ Doğrulama hatası: {error}",
+    "node_not_installed": "Hata: Node.js kurulu değil veya PATH içinde değil",
+    "node_execution_error": "Node.js kodu çalıştırma hatası: {error}",
+    "test_path_not_found": "Hata: Test yolu bulunamadı: {path}",
+    "test_timeout": "Hata: Testler {seconds} saniye sonra zaman aşımına uğradı",
+    "pytest_error": "pytest çalıştırma hatası: {error}",
+    "directory_not_found": "Hata: Dizin bulunamadı: {path}",
+    "package_json_not_found": "Hata: {path} içinde package.json bulunamadı",
+    "npm_not_installed": "Hata: npm kurulu değil veya PATH içinde değil",
+    "command_timeout": "Hata: Komut {seconds} saniye sonra zaman aşımına uğradı",
+    "npm_error": "npm çalıştırma hatası: {error}",
+    "json_syntax_error": "✗ Satır {lineno}, sütun {colno} konumunda JSON Hatası:\n{msg}",
+    "json_validate_error": "✗ JSON doğrulama hatası: {error}",
+    "no_linter_for_extension": "{ext} dosyaları için linter bulunmuyor",
+    "unknown_linter": "Bilinmeyen linter: {linter}",
+    "linter_not_installed": "Hata: {linter} kurulu değil",
+    "linter_error": "Linter çalıştırma hatası: {error}",
+    "port_check_error": "Port kontrol hatası: {error}"
+  },
+  "categories": {
+    "calculator": {
+      "label": "Hesap Makinesi",
+      "description": "Güvenli matematiksel ifade değerlendirmesi"
+    },
+    "command_execution": {
+      "label": "Komut Çalıştırma",
+      "description": "Kabuk komutu çalıştırma ve sistem bilgisi"
+    },
+    "code_execution": {
+      "label": "Kod Çalıştırma",
+      "description": "Python, Node.js ve diğer dillerde kod çalıştırma ve test etme"
+    },
+    "json_data": {
+      "label": "JSON Verisi",
+      "description": "JSON biçimlendirme, doğrulama ve sorgulama"
+    },
+    "java": {
+      "label": "Java",
+      "description": "JAR dosyalarını çalıştırma, Java kodunu derleme ve çalıştırma, söz dizimi kontrolü"
+    },
+    "service_management": {
+      "label": "Servis Yönetimi",
+      "description": "Docker ve systemd servis yeniden başlatma işlemleri"
+    },
+    "utilities": {
+      "label": "Yardımcı Araçlar",
+      "description": "UUID oluşturma, kodlama ve karma (hash) araçları"
+    },
+    "text_processing": {
+      "label": "Metin İşleme",
+      "description": "Metin analizi ve dönüştürme araçları"
+    },
+    "time_date": {
+      "label": "Zaman ve Tarih",
+      "description": "Zaman ve tarih araçları"
+    },
+    "file_operations": {
+      "label": "Dosya İşlemleri",
+      "description": "Dosya okuma, yazma ve dizin listeleme"
+    },
+    "docker": {
+      "label": "Docker",
+      "description": "Docker konteyner oluşturma, çalıştırma ve yönetimi"
+    },
+    "git": {
+      "label": "Git",
+      "description": "Git clone, pull, push, commit ve dal (branch) işlemleri"
+    },
+    "pdf": {
+      "label": "PDF",
+      "description": "PDF belgesi okuma ve analiz etme"
+    },
+    "mail": {
+      "label": "E-posta",
+      "description": "SMTP e-posta gönderimi"
+    },
+    "web_search": {
+      "label": "Web",
+      "description": "Web araması ve web sayfası içeriği alma"
+    }
+  },
+  "tools": {
+    "calculator": {
+      "calculate": {
+        "name": "Hesapla",
+        "description": "Bir matematiksel ifadeyi güvenli bir şekilde değerlendirin."
+      }
+    },
+    "command_execution": {
+      "execute_shell": {
+        "name": "Kabuk Komutu Çalıştır",
+        "description": "Korumalı bir ortamda kabuk (shell) komutu çalıştırın."
+      },
+      "get_system_info": {
+        "name": "Sistem Bilgilerini Al",
+        "description": "Sistem bilgilerini (İşletim sistemi, CPU, bellek, disk) alın."
+      }
+    },
+    "code_execution": {
+      "run_python": {
+        "name": "Python Kodu Çalıştır",
+        "description": "İzole edilmiş bir alt süreçte Python kodu çalıştırın."
+      },
+      "run_python_file": {
+        "name": "Python Betik Dosyası Çalıştır",
+        "description": "Bir Python betik dosyasını çalıştırın."
+      },
+      "validate_python": {
+        "name": "Python Söz Dizimi Kontrolü",
+        "description": "Python kodunu çalıştırmadan söz dizimi hatalarını kontrol edin."
+      },
+      "run_node": {
+        "name": "Node.js Kodu Çalıştır",
+        "description": "Node.js (JavaScript) kodu çalıştırın."
+      },
+      "run_pytest": {
+        "name": "Pytest Çalıştır",
+        "description": "Bir test dosyası veya dizininde pytest çalıştırın."
+      },
+      "run_npm_command": {
+        "name": "NPM Komutu Çalıştır",
+        "description": "Node.js proje dizininde bir npm komutu çalıştırın."
+      },
+      "validate_json_file": {
+        "name": "JSON Dosyası Doğrula",
+        "description": "Bir JSON dosyasının söz dizimi hatalarını doğrulayın."
+      },
+      "run_linter": {
+        "name": "Linter Çalıştır",
+        "description": "Yüklü linter kullanarak kaynak kodu denetleyin."
+      },
+      "start_dev_server": {
+        "name": "Geliştirme Sunucusu Başlat",
+        "description": "Arka planda bir geliştirme sunucusu başlatın."
+      },
+      "check_port": {
+        "name": "Port Kontrol Et",
+        "description": "Bir ağ bağlantı noktasının (port) açık/dinlemede olup olmadığını kontrol edin."
+      }
+    },
+    "json_data": {
+      "json_format": {
+        "name": "JSON Biçimlendir",
+        "description": "JSON dizesini girintilerle biçimlendirin."
+      },
+      "json_query": {
+        "name": "JSON Sorgula",
+        "description": "Anahtar yolu (nokta notasyonu) ile JSON'dan değer çıkarın."
+      }
+    },
+    "java": {
+      "run_jar": {
+        "name": "JAR Dosyası Çalıştır",
+        "description": "Çalıştırılabilir bir JAR dosyasını çalıştırın."
+      },
+      "run_java": {
+        "name": "Java Kodu Çalıştır",
+        "description": "Tek dosyalı Java kaynak kodunu derleyin ve çalıştırın."
+      },
+      "compile_java_file": {
+        "name": "Java Dosyası Derle",
+        "description": "Bir Java kaynak dosyasını derleyin."
+      },
+      "validate_java": {
+        "name": "Java Söz Dizimi Kontrolü",
+        "description": "Java kaynak kodunu çalıştırmadan söz dizimi hatalarını kontrol edin."
+      },
+      "validate_java_file": {
+        "name": "Java Dosyası Doğrula",
+        "description": "Bir Java kaynak dosyasının söz dizimi hatalarını kontrol edin."
+      },
+      "inspect_jar": {
+        "name": "JAR Dosyasını İncele",
+        "description": "Bir JAR dosyasının içeriğini inceleyin (sınıfları ve girdileri listeleyin)."
+      }
+    },
+    "service_management": {
+      "service_restart": {
+        "name": "Servisi Yeniden Başlat",
+        "description": "Bir servisi yeniden başlatın (docker konteyneri veya systemd servisi)."
+      }
+    },
+    "utilities": {
+      "generate_uuid": {
+        "name": "Rastgele UUID Üret",
+        "description": "Rastgele bir UUID (v4) oluşturun."
+      },
+      "encode_base64": {
+        "name": "Base64 Kodla",
+        "description": "Metni base64 formatına kodlayın."
+      },
+      "decode_base64": {
+        "name": "Base64 Çöz",
+        "description": "Base64 dizesini metne çözün."
+      },
+      "hash_text": {
+        "name": "Metin Karması Hesapla",
+        "description": "Metnin karmasını (md5, sha1, sha256, sha512) hesaplayın."
+      }
+    },
+    "text_processing": {
+      "text_analysis": {
+        "name": "Metin Analizi",
+        "description": "Metindeki kelimeleri, satırları ve karakterleri sayın."
+      },
+      "translate_text": {
+        "name": "Metin Çevir",
+        "description": "Metinleri diller arasında çevirin."
+      }
+    },
+    "time_date": {
+      "get_current_time": {
+        "name": "Mevcut Zamanı Al",
+        "description": "Mevcut tarih ve saati biçimlendirilmiş olarak alın."
+      }
+    },
+    "file_operations": {
+      "file_read": {
+        "name": "Dosya Oku",
+        "description": "Bir metin dosyasının içeriğini okuyun."
+      },
+      "file_write": {
+        "name": "Dosyaya Yaz",
+        "description": "Bir dosyaya içerik yazın."
+      },
+      "file_list": {
+        "name": "Dizin Dosyalarını Listele",
+        "description": "Bir dizindeki dosyaları ve klasörleri listeleyin."
+      },
+      "create_directory": {
+        "name": "Klasör Oluştur",
+        "description": "Yeni bir dizin (klasör) oluşturun."
+      },
+      "file_exists": {
+        "name": "Dosya Varlık Kontrolü",
+        "description": "Bir dosya veya dizinin var olup olmadığını kontrol edin."
+      },
+      "file_update": {
+        "name": "Dosya Güncelle",
+        "description": "Mevcut bir dosyada belirli bir metin bloğunu değiştirerek güncelleyin."
+      },
+      "file_delete": {
+        "name": "Dosya Sil",
+        "description": "Bir dosyayı veya dizini silin."
+      }
+    },
+    "docker": {
+      "docker_build": {
+        "name": "Docker Görüntüsü İnşa Et",
+        "description": "Dockerfile'dan bir Docker görüntüsü (image) oluşturun."
+      },
+      "docker_run": {
+        "name": "Docker Konteyneri Çalıştır",
+        "description": "Bir Docker konteyneri çalıştırın."
+      },
+      "docker_ps": {
+        "name": "Docker Konteynerlerini Listele",
+        "description": "Çalışan Docker konteynerlerini listeleyin."
+      },
+      "docker_stop": {
+        "name": "Docker Konteynerini Durdur",
+        "description": "Çalışan bir Docker konteynerini durdurun."
+      },
+      "docker_logs": {
+        "name": "Docker Konteyner Günlüklerini Al",
+        "description": "Bir Docker konteynerinin günlüklerini (logs) alın."
+      }
+    },
+    "git": {
+      "git_clone": {
+        "name": "Git Deposu Klonla",
+        "description": "Bir Git deposunu çalışma alanına klonlayın."
+      },
+      "git_pull": {
+        "name": "Git Değişikliklerini Çek (Pull)",
+        "description": "Uzak depodan en son değişiklikleri çekin."
+      },
+      "git_push": {
+        "name": "Git Değişikliklerini Gönder (Push)",
+        "description": "Yerel işlemelerinizi (commit) uzak depoya gönderin."
+      },
+      "git_status": {
+        "name": "Git Durumunu Al (Status)",
+        "description": "Git deposunun mevcut durumunu alın."
+      },
+      "git_commit": {
+        "name": "Git İşlemini Kaydet (Commit)",
+        "description": "Hazırlanan değişiklikleri commit edin."
+      },
+      "git_branch": {
+        "name": "Git Dallarını Yönet (Branch)",
+        "description": "Git dallarını listeleyin, oluşturun veya silin."
+      },
+      "git_init": {
+        "name": "Git Deposu Başlat",
+        "description": "Yeni bir Git deposu (repository) başlatın."
+      },
+      "git_remote_add": {
+        "name": "Git Uzak Depo Ekle (Remote)",
+        "description": "Yeni bir uzak depo adresi ekleyin."
+      },
+      "git_config": {
+        "name": "Git Yapılandırması",
+        "description": "Git yapılandırma değerlerini (user.email, user.name) alın veya ayarlayın."
+      },
+      "git_diff": {
+        "name": "Git Farklarını Göster (Diff)",
+        "description": "Git farklarını inceleyin."
+      },
+      "git_log": {
+        "name": "Git Geçmişini Göster (Log)",
+        "description": "İşleme (commit) geçmişini görüntüleyin."
+      }
+    },
+    "pdf": {
+      "read_pdf": {
+        "name": "PDF İçeriğini Oku",
+        "description": "Bir PDF dosyasından metin içeriğini okuyun."
+      },
+      "read_pdf_page": {
+        "name": "PDF Sayfası Oku",
+        "description": "Bir PDF dosyasından belirli bir sayfayı okuyun."
+      },
+      "get_pdf_info": {
+        "name": "PDF Bilgilerini Al",
+        "description": "PDF dokümanının meta verilerini ve bilgilerini alın."
+      },
+      "search_pdf": {
+        "name": "PDF İçinde Ara",
+        "description": "Bir PDF içinde metin araması yapın ve eşleşen sayfaları alın."
+      },
+      "extract_pdf_tables": {
+        "name": "PDF Tablolarını Ayıkla",
+        "description": "PDF sayfalarından tabloları ayıklayın."
+      }
+    },
+    "mail": {
+      "send_email": {
+        "name": "E-posta Gönder",
+        "description": "SMTP sunucusu kullanarak e-posta gönderin."
+      }
+    },
+    "web_search": {
+      "web_search": {
+        "name": "Web'de Ara",
+        "description": "SearXNG arama motorunu kullanarak web'de arama yapın."
+      },
+      "fetch_webpage": {
+        "name": "Web Sayfası İçeriğini Çek",
+        "description": "Bir web sayfasının içeriğini alın ve temiz metni çıkarın."
+      }
+    }
+  }
+}

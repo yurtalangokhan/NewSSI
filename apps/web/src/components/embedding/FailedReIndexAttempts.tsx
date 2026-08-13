@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { buildCCPairInfoUrl } from "@/app/admin/connector/[ccPairId]/lib";
 import { PageSelector } from "@/components/PageSelector";
 import { IndexAttemptStatus } from "@/components/Status";
@@ -16,7 +17,7 @@ import {
 import Text from "@/components/ui/text";
 import Link from "next/link";
 import { useState } from "react";
-import { FiLink, FiMaximize2, FiTrash } from "react-icons/fi";
+import { FiLink, FiMaximize2 } from "react-icons/fi";
 import { mutate } from "swr";
 import { toast } from "@/hooks/useToast";
 import { SvgTrash } from "@opal/icons";
@@ -25,6 +26,9 @@ export function FailedReIndexAttempts({
 }: {
   failedIndexingStatuses: FailedConnectorIndexingStatus[];
 }) {
+  const { t } = useTranslation("common", {
+    keyPrefix: "admin.embeddings.failedReindex",
+  });
   const numToDisplay = 10;
   const [page, setPage] = useState(1);
   const [pendingConnectorDeletion, setPendingConnectorDeletion] = useState<{
@@ -47,7 +51,7 @@ export function FailedReIndexAttempts({
           danger
           entityType="connector"
           entityName={pendingConnectorDeletion.name}
-          additionalDetails="Deleting this connector schedules a deletion job that removes its indexed documents and deletes it for every user."
+          additionalDetails={t("deleteConfirmationDetails")}
           onClose={() => setPendingConnectorDeletion(null)}
           onSubmit={async () => {
             try {
@@ -59,7 +63,7 @@ export function FailedReIndexAttempts({
               );
             } catch (error) {
               console.error("Error deleting connector:", error);
-              toast.error("Failed to delete connector. Please try again.");
+              toast.error(t("deleteFailed"));
             } finally {
               setPendingConnectorDeletion(null);
             }
@@ -68,26 +72,21 @@ export function FailedReIndexAttempts({
       )}
 
       <Text className="text-status-error-05 font-semibold mb-2">
-        Failed Re-indexing Attempts
+        {t("title")}
       </Text>
-      <Text className="text-status-error-05 mb-4">
-        The table below shows only the failed re-indexing attempts for existing
-        connectors. These failures require immediate attention. Once all
-        connectors have been re-indexed successfully, the new model will be used
-        for all search queries.
-      </Text>
+      <Text className="text-status-error-05 mb-4">{t("description")}</Text>
 
       <div>
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-1/8 sm:w-1/6">Connector Name</TableHead>
-              <TableHead className="w-1/8 sm:w-1/6">Status</TableHead>
-              <TableHead className="w-4/8 sm:w-2/6">Error Message</TableHead>
-              <TableHead className="w-1/8 sm:w-1/6">Visit Connector</TableHead>
+              <TableHead className="w-1/8 sm:w-1/6">{t("connectorNameHeader")}</TableHead>
+              <TableHead className="w-1/8 sm:w-1/6">{t("statusHeader")}</TableHead>
+              <TableHead className="w-4/8 sm:w-2/6">{t("errorMessageHeader")}</TableHead>
+              <TableHead className="w-1/8 sm:w-1/6">{t("visitConnectorHeader")}</TableHead>
               {anyDeletable && (
                 <TableHead className="w-1/8 sm:w-2/6">
-                  Delete Connector
+                  {t("deleteConnectorHeader")}
                 </TableHead>
               )}
             </TableRow>
@@ -124,7 +123,7 @@ export function FailedReIndexAttempts({
                         className="ctext-link cursor-pointer flex"
                       >
                         <FiLink className="my-auto mr-1" />
-                        Visit Connector
+                        {t("visitConnectorLink")}
                       </Link>
                     </TableCell>
                     <TableCell>
@@ -136,7 +135,7 @@ export function FailedReIndexAttempts({
                               connectorId: reindexingProgress.connector_id,
                               credentialId: reindexingProgress.credential_id,
                               ccPairId: reindexingProgress.cc_pair_id,
-                              name: reindexingProgress.name ?? "this connector",
+                              name: reindexingProgress.name ?? t("thisConnectorFallback"),
                             });
                             return;
                           }
@@ -154,15 +153,13 @@ export function FailedReIndexAttempts({
                             );
                           } catch (error) {
                             console.error("Error deleting connector:", error);
-                            toast.error(
-                              "Failed to delete connector. Please try again."
-                            );
+                            toast.error(t("deleteFailed"));
                           }
                         }}
                         leftIcon={SvgTrash}
                         disabled={!reindexingProgress.is_deletable}
                       >
-                        Delete
+                        {t("deleteButton")}
                       </Button>
                     </TableCell>
                   </TableRow>

@@ -1,0 +1,45 @@
+{
+  "collection": {
+    "not_found": "Koleksiyon bulunamadı",
+    "not_found_or_not_owned": "'{collection_id}' koleksiyonu bulunamadı veya size ait değil",
+    "create_failed": "Koleksiyon oluşturulamadı",
+    "update_requires_attribute": "En az 1 özellik güncellenmelidir",
+    "locked_graph_build_in_progress": "Grafik RAG derlemesi devam ederken koleksiyon kilitlidir. Derleme tamamlandıktan sonra tekrar deneyin.",
+    "connector_managed_readonly": "Bu koleksiyon bir bağlayıcı tarafından yönetilmektedir ve salt okunurdur. Yeniden adlandırma, silme, yükleme ve doküman silme işlemlerine izin verilmez."
+  },
+  "document": {
+    "not_found": "Doküman bulunamadı",
+    "delete_failed": "Doküman silinemedi.",
+    "search_query_empty": "Arama sorgusu boş olamaz",
+    "metadata_count_mismatch": "Meta veri nesnesi sayısı ({metadata_count}) dosya sayısıyla ({file_count}) eşleşmiyor.",
+    "no_documents_processed": "Sağlanan dosyalardan hiçbir doküman işlenemedi.",
+    "failed_files_list": " İşlenemeyen dosyalar: {files}.",
+    "vectorstore_add_failed": "İşleme sonrası doküman(lar) vektör deposuna eklenemedi.",
+    "file_too_large": "'{filename}' dosyası {size_mb} MB olup {limit_mb} MB yükleme sınırını aşıyor."
+  },
+  "graph": {
+    "build_no_documents": "Bilgi grafiği oluşturulamıyor: koleksiyon hiçbir doküman içermiyor.",
+    "build_already_in_progress": "Derleme zaten devam ediyor.",
+    "build_started": "Grafik derlemesi başladı. İlerlemeyi takip etmek için /graph/build/{collection_id}/status adresini yoklayın.",
+    "no_running_build_pause": "Duraklatılacak çalışan bir grafik derlemesi bulunamadı.",
+    "build_paused": "Grafik derlemesi duraklatıldı.",
+    "no_running_build_resume": "Devam ettirilecek çalışan bir grafik derlemesi bulunamadı.",
+    "build_resumed": "Grafik derlemesi devam ettirildi.",
+    "no_running_build_stop": "Durdurulacak çalışan bir grafik derlemesi bulunamadı.",
+    "build_stop_requested": "Grafik derlemesi durdurma talebi gönderildi.",
+    "cypher_query_error": "Cypher sorgu hatası: {error}",
+    "neo4j_unreachable": "Neo4j'e ulaşılamıyor"
+  },
+  "auth": {
+    "invalid_scheme": "Geçersiz kimlik doğrulama şeması",
+    "invalid_bearer_token": "Geçersiz taşıyıcı token",
+    "invalid_bearer_token_detail": "Geçersiz taşıyıcı token: {error}",
+    "invalid_api_key": "Geçersiz API anahtarı",
+    "bearer_token_required": "Taşıyıcı token gereklidir",
+    "api_key_required": "API anahtarı gereklidir",
+    "permission_required": "Gerekli izin eksik: {permission}"
+  },
+  "common": {
+    "internal_error": "Sunucu iç hatası"
+  }
+}

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import ErrorPageLayout from "@/components/errorPages/ErrorPageLayout";
 import Button from "@/refresh-components/buttons/Button";
 import Text from "@/refresh-components/texts/Text";
@@ -12,85 +13,51 @@ import {
   SvgShield,
 } from "@opal/icons";
 
-const errorContent = {
-  400: {
-    title: "Bad request",
-    label: "400",
-    description:
-      "The request could not be understood. Check the link and try again.",
-    Icon: SvgAlertTriangle,
-    iconClassName: "stroke-status-warning-05",
-  },
-  401: {
-    title: "Unauthorized",
-    label: "401",
-    description:
-      "Your session could not be verified. Sign in again to continue.",
-    Icon: SvgLock,
-    iconClassName: "stroke-status-error-05",
-  },
-  403: {
-    title: "Access denied",
-    label: "403",
-    description:
-      "You do not have permission to open this area. Ask an administrator if access is required.",
-    Icon: SvgShield,
-    iconClassName: "stroke-status-error-05",
-  },
-  404: {
-    title: "Page not found",
-    label: "404",
-    description:
-      "This page does not exist or may have moved. Return to the app and choose a valid destination.",
-    Icon: SvgSearch,
-    iconClassName: "stroke-text-04",
-  },
-  500: {
-    title: "Something went wrong",
-    label: "500",
-    description: "The app hit an unexpected problem. Try again in a moment.",
-    Icon: SvgAlertCircle,
-    iconClassName: "stroke-status-error-05",
-  },
-} as const;
+export type HttpErrorCode = 400 | 401 | 403 | 404 | 500;
 
-export type HttpErrorCode = keyof typeof errorContent;
+const ERROR_ICONS: Record<HttpErrorCode, { Icon: React.ComponentType<{ className?: string }>; iconClassName: string }> = {
+  400: { Icon: SvgAlertTriangle, iconClassName: "stroke-status-warning-05" },
+  401: { Icon: SvgLock, iconClassName: "stroke-text-04" },
+  403: { Icon: SvgShield, iconClassName: "stroke-status-danger-05" },
+  404: { Icon: SvgSearch, iconClassName: "stroke-text-04" },
+  500: { Icon: SvgAlertCircle, iconClassName: "stroke-status-danger-05" },
+};
 
-interface HttpErrorPageProps {
-  code: HttpErrorCode;
-}
-
-export const HTTP_ERROR_CODES = Object.keys(errorContent).map(Number);
-
-export function isHttpErrorCode(code: number): code is HttpErrorCode {
-  return code in errorContent;
-}
-
-export default function HttpErrorPage({ code }: HttpErrorPageProps) {
-  const content = errorContent[code];
-  const Icon = content.Icon;
-  const isAuthError = code === 401;
+export default function HttpErrorPage({
+  code,
+  error,
+}: {
+  code?: HttpErrorCode;
+  error?: Error & { digest?: string };
+}) {
+  const { t } = useTranslation();
+  const resolvedCode: HttpErrorCode =
+    code ??
+    ((error as { status?: number })?.status as HttpErrorCode) ??
+    500;
+  const validCode = (resolvedCode in ERROR_ICONS ? resolvedCode : 500) as HttpErrorCode;
+  const { Icon, iconClassName } = ERROR_ICONS[validCode];
+  const isAuthError = validCode === 401;
 
   return (
     <ErrorPageLayout>
-      <div className="flex flex-col gap-5">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex flex-col gap-2">
-            <Text as="p" figureSmallLabel text03>
-              HTTP {content.label}
-            </Text>
-            <Text as="p" headingH2 text05>
-              {content.title}
-            </Text>
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-background-neutral-02 border border-border">
+            <Icon className={`h-5 w-5 ${iconClassName}`} />
           </div>
-
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-08 border border-border bg-background-neutral-02">
-            <Icon className={`h-6 w-6 ${content.iconClassName}`} />
+          <div>
+            <span className="text-xs font-medium text-text-03 font-mono">
+              {validCode}
+            </span>
+            <Text as="p" headingH2 className="leading-tight">
+              {t(`errors.errorPages.http.${validCode}.title`)}
+            </Text>
           </div>
         </div>
 
         <Text as="p" text03>
-          {content.description}
+          {t(`errors.errorPages.http.${validCode}.description`)}
         </Text>
 
         <div className="flex flex-col gap-2 border-t border-border pt-4 sm:flex-row">
@@ -98,10 +65,10 @@ export default function HttpErrorPage({ code }: HttpErrorPageProps) {
             href={isAuthError ? "/auth/login" : "/app"}
             leftIcon={isAuthError ? SvgLock : SvgArrowLeft}
           >
-            {isAuthError ? "Sign in" : "Back to app"}
+            {isAuthError ? t("errors.errorPages.signInButton") : t("errors.errorPages.backToAppButton")}
           </Button>
           <Button secondary href="/">
-            Home
+            {t("errors.errorPages.homeButton")}
           </Button>
         </div>
       </div>

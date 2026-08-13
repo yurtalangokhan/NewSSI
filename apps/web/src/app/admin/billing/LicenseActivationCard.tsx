@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import Card from "@/refresh-components/cards/Card";
 import Button from "@/refresh-components/buttons/Button";
 import Text from "@/refresh-components/texts/Text";
@@ -29,6 +30,9 @@ export default function LicenseActivationCard({
   license,
   hideClose,
 }: LicenseActivationCardProps) {
+  const { t } = useTranslation("common", {
+    keyPrefix: "admin.licenseActivation",
+  });
   const [licenseKey, setLicenseKey] = useState("");
   const [isActivating, setIsActivating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -49,7 +53,7 @@ export default function LicenseActivationCard({
 
   const handleActivate = async () => {
     if (!licenseKey.trim()) {
-      setError("Please enter a license key");
+      setError(t("enterLicenseKeyError"));
       return;
     }
 
@@ -66,7 +70,7 @@ export default function LicenseActivationCard({
     } catch (err) {
       console.error("Error activating license:", err);
       setError(
-        err instanceof Error ? err.message : "Failed to activate license"
+        err instanceof Error ? err.message : t("activateFailed")
       );
     } finally {
       setIsActivating(false);
@@ -107,10 +111,10 @@ export default function LicenseActivationCard({
             )}
             <Text secondaryBody text03>
               {isExpired ? (
-                <>License key expired</>
+                <>{t("licenseExpired")}</>
               ) : (
                 <>
-                  License key active until{" "}
+                  {t("licenseActiveUntil")}{" "}
                   <Text secondaryBody text04>
                     {expirationDate}
                   </Text>
@@ -120,11 +124,11 @@ export default function LicenseActivationCard({
           </Section>
           <Section flexDirection="row" gap={0.5} height="auto" width="auto">
             <Button main secondary onClick={() => setShowInput(true)}>
-              Update Key
+              {t("updateKeyButton")}
             </Button>
             {!hideClose && (
               <Button main tertiary onClick={handleClose}>
-                Close
+                {t("closeButton")}
               </Button>
             )}
           </Section>
@@ -144,14 +148,16 @@ export default function LicenseActivationCard({
           alignItems="center"
         >
           <Text headingH3>
-            {hasLicense ? "Update License Key" : "Activate License Key"}
+            {hasLicense
+              ? t("updateLicenseKeyTitle")
+              : t("activateLicenseKeyTitle")}
           </Text>
           <Button secondary onClick={handleClose} disabled={isActivating}>
-            Cancel
+            {t("cancelButton")}
           </Button>
         </Section>
         <Text secondaryBody text03>
-          Manually add and activate a license for this Onyx instance.
+          {t("manuallyAddDescription")}
         </Text>
       </Section>
 
@@ -166,18 +172,14 @@ export default function LicenseActivationCard({
           {success && (
             <div className="billing-success-message">
               <Text secondaryBody>
-                License {hasLicense ? "updated" : "activated"} successfully!
+                {hasLicense ? t("updatedSuccess") : t("activatedSuccess")}
               </Text>
             </div>
           )}
 
           <InputLayouts.Vertical
-            title="License Key"
-            subDescription={
-              error
-                ? undefined
-                : "Paste or attach your license key file you received from Onyx."
-            }
+            title={t("licenseKeyLabel")}
+            subDescription={error ? undefined : t("pasteHint")}
           >
             <InputFile
               placeholder="eyJwYXlsb2FkIjogeyJ2ZXJzaW9..."
@@ -207,7 +209,7 @@ export default function LicenseActivationCard({
                     rel="noopener noreferrer"
                     className="billing-help-link"
                   >
-                    Billing Help
+                    {t("billingHelpLink")}
                   </a>
                 </Text>
               </Section>
@@ -225,10 +227,10 @@ export default function LicenseActivationCard({
           disabled={isActivating || !licenseKey.trim() || success}
         >
           {isActivating
-            ? "Activating..."
+            ? t("activatingButton")
             : hasLicense
-              ? "Update License"
-              : "Activate License"}
+              ? t("updateLicenseButton")
+              : t("activateLicenseButton")}
         </Button>
       </Section>
     </Card>

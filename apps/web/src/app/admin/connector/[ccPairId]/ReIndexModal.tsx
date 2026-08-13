@@ -2,6 +2,7 @@
 
 import Button from "@/refresh-components/buttons/Button";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "@/hooks/useToast";
 import { triggerIndexing } from "@/app/admin/connector/[ccPairId]/lib";
 import Modal from "@/refresh-components/Modal";
@@ -14,6 +15,7 @@ export function useReIndexModal(
   credentialId: number | null,
   ccPairId: number | null
 ) {
+  const { t } = useTranslation("common", { keyPrefix: "admin.reIndexModal" });
   const [reIndexPopupVisible, setReIndexPopupVisible] = useState(false);
 
   const showReIndexModal = () => {
@@ -43,18 +45,16 @@ export function useReIndexModal(
       // Show appropriate notification based on result
       if (result.success) {
         toast.success(
-          `${
-            fromBeginning ? "Complete re-indexing" : "Indexing update"
-          } started successfully`
+          fromBeginning
+            ? t("completeReindexStarted")
+            : t("indexingUpdateStarted")
         );
       } else {
-        toast.error(result.message || "Failed to start indexing");
+        toast.error(result.message || t("failedToStartIndexing"));
       }
     } catch (error) {
       console.error("Failed to trigger indexing:", error);
-      toast.error(
-        "An unexpected error occurred while trying to start indexing"
-      );
+      toast.error(t("unexpectedError"));
     }
   };
 
@@ -78,6 +78,7 @@ export interface ReIndexModalProps {
 }
 
 export default function ReIndexModal({ hide, onRunIndex }: ReIndexModalProps) {
+  const { t } = useTranslation("common", { keyPrefix: "admin.reIndexModal" });
   const [isProcessing, setIsProcessing] = useState(false);
 
   const handleRunIndex = async (fromBeginning: boolean) => {
@@ -87,9 +88,9 @@ export default function ReIndexModal({ hide, onRunIndex }: ReIndexModalProps) {
     try {
       // First show immediate feedback with a toast
       toast.info(
-        `Starting ${
-          fromBeginning ? "complete re-indexing" : "indexing update"
-        }...`
+        fromBeginning
+          ? t("startingCompleteReindex")
+          : t("startingIndexingUpdate")
       );
 
       // Then close the modal
@@ -100,7 +101,7 @@ export default function ReIndexModal({ hide, onRunIndex }: ReIndexModalProps) {
     } catch (error) {
       console.error("Error starting indexing:", error);
       // Show error in toast if needed
-      toast.error("Failed to start indexing process");
+      toast.error(t("failedToStartIndexingProcess"));
     } finally {
       setIsProcessing(false);
     }
@@ -109,29 +110,22 @@ export default function ReIndexModal({ hide, onRunIndex }: ReIndexModalProps) {
   return (
     <Modal open onOpenChange={hide}>
       <Modal.Content width="sm" height="sm">
-        <Modal.Header icon={SvgRefreshCw} title="Run Indexing" onClose={hide} />
+        <Modal.Header icon={SvgRefreshCw} title={t("title")} onClose={hide} />
         <Modal.Body>
-          <Text as="p">
-            This will pull in and index all documents that have changed and/or
-            have been added since the last successful indexing run.
-          </Text>
+          <Text as="p">{t("updateBody")}</Text>
           <Button onClick={() => handleRunIndex(false)} disabled={isProcessing}>
-            Run Update
+            {t("runUpdateButton")}
           </Button>
 
           <Separator />
 
+          <Text as="p">{t("completeReindexBody")}</Text>
           <Text as="p">
-            This will cause a complete re-indexing of all documents from the
-            source.
-          </Text>
-          <Text as="p">
-            <strong>NOTE:</strong> depending on the number of documents stored
-            in the source, this may take a long time.
+            <strong>{t("noteLabel")}</strong> {t("noteBody")}
           </Text>
 
           <Button onClick={() => handleRunIndex(true)} disabled={isProcessing}>
-            Run Complete Re-Indexing
+            {t("runCompleteReindexButton")}
           </Button>
         </Modal.Body>
       </Modal.Content>

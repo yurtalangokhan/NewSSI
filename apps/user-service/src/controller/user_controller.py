@@ -1,6 +1,8 @@
 import uuid
 from typing import Any
 
+from i18n import t
+
 from src.core.exceptions import ForbiddenError, NotFoundError
 from src.service import get_user_service
 
@@ -14,13 +16,13 @@ class UserController(BaseController):
     async def get_me(self, user_id: uuid.UUID) -> dict[str, Any]:
         user = await self.user_service.get_user(user_id)
         if not user:
-            self._raise_not_found("User not found")
+            self._raise_not_found("user.not_found")
         return user
 
     async def get_user(self, user_id: uuid.UUID) -> dict[str, Any]:
         user = await self.user_service.get_user(user_id)
         if not user:
-            self._raise_not_found("User not found")
+            self._raise_not_found("user.not_found")
         return user
 
     async def get_users_by_ids(self, user_ids: list[uuid.UUID]) -> list[dict[str, Any]]:
@@ -29,7 +31,7 @@ class UserController(BaseController):
     async def get_user_permissions(self, user_id: uuid.UUID) -> dict[str, list[str]]:
         permissions = await self.user_service.get_user_permissions(user_id)
         if not permissions:
-            self._raise_not_found("User not found")
+            self._raise_not_found("user.not_found")
         return permissions
 
     async def authorize_user_permission(
@@ -55,7 +57,7 @@ class UserController(BaseController):
     async def update_me(self, user_id: uuid.UUID, **updates: Any) -> dict[str, Any]:
         user = await self.user_service.update_user(user_id, **updates)
         if not user:
-            self._raise_not_found("User not found")
+            self._raise_not_found("user.not_found")
         return user
 
     async def change_password(
@@ -67,7 +69,7 @@ class UserController(BaseController):
         try:
             user = await self.user_service.change_password(user_id, old_password, new_password)
             if not user:
-                self._raise_not_found("User not found")
+                self._raise_not_found("user.not_found")
             return user
         except ValueError as e:
             self._raise_bad_request(str(e))
@@ -103,7 +105,7 @@ class UserController(BaseController):
         try:
             user = await self.user_service.update_user(user_id, **updates)
             if not user:
-                self._raise_not_found("User not found")
+                self._raise_not_found("user.not_found")
             return user
         except ValueError as e:
             self._raise_bad_request(str(e))
@@ -111,8 +113,8 @@ class UserController(BaseController):
     async def delete_user(self, user_id: uuid.UUID) -> dict[str, str]:
         success = await self.user_service.delete_user(user_id)
         if not success:
-            self._raise_not_found("User not found")
-        return {"message": "User deleted successfully"}
+            self._raise_not_found("user.not_found")
+        return {"message": t("user.deleted")}
 
     async def invite_users(self, emails: list[str]) -> dict[str, Any]:
         users = await self.user_service.invite_users(emails)
@@ -122,7 +124,7 @@ class UserController(BaseController):
         try:
             user = await self.user_service.set_user_role(user_id, role)
             if not user:
-                self._raise_not_found("User not found")
+                self._raise_not_found("user.not_found")
             return user
         except ValueError as e:
             self._raise_bad_request(str(e))
@@ -130,7 +132,7 @@ class UserController(BaseController):
     async def set_user_active(self, user_id: uuid.UUID, active: bool) -> dict[str, Any]:
         user = await self.user_service.set_user_active(user_id, active)
         if not user:
-            self._raise_not_found("User not found")
+            self._raise_not_found("user.not_found")
         return user
 
     async def reset_password(self, user_id: uuid.UUID) -> dict[str, Any]:
@@ -144,7 +146,7 @@ class UserController(BaseController):
         try:
             user = await self.user_service.set_password(user_id, password)
             if not user:
-                self._raise_not_found("User not found")
+                self._raise_not_found("user.not_found")
             return user
         except ValueError as e:
             self._raise_bad_request(str(e))
@@ -185,7 +187,7 @@ class UserController(BaseController):
         """Fetch user from user-service by Keycloak ID (subject)."""
         user = await self.user_service.get_user_by_keycloak_id(keycloak_id)
         if not user:
-            self._raise_not_found(f"User with keycloak_id {keycloak_id} not found")
+            self._raise_not_found("user.not_found_by_keycloak_id", keycloak_id=keycloak_id)
         return user
 
 

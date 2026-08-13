@@ -1,9 +1,6 @@
 import { PageSelector } from "@/components/PageSelector";
 import { IndexAttemptStatus } from "@/components/Status";
-import {
-  ConnectorIndexingStatus,
-  ConnectorIndexingStatusLite,
-} from "@/lib/types";
+import { ConnectorIndexingStatusLite } from "@/lib/types";
 import {
   Table,
   TableBody,
@@ -22,7 +19,7 @@ export function ReindexingProgressTable({
 }: {
   reindexingProgress: ConnectorIndexingStatusLite[];
 }) {
-  const { t } = useTranslation("admin");
+  const { t } = useTranslation("common", { keyPrefix: "admin" });
   const numToDisplay = 10;
   const [page, setPage] = useState(1);
 

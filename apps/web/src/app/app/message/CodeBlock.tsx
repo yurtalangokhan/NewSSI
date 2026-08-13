@@ -1,7 +1,10 @@
+"use client";
+
 import { cn } from "@/lib/utils";
 import Text from "@/refresh-components/texts/Text";
 import React, { useState, ReactNode, useCallback, useMemo, memo } from "react";
 import { SvgCheck, SvgCode, SvgCopy } from "@opal/icons";
+import { useTranslation } from "react-i18next";
 
 interface CodeBlockProps {
   className?: string;
@@ -18,6 +21,7 @@ export const CodeBlock = memo(function CodeBlock({
   children,
   codeText,
 }: CodeBlockProps) {
+  const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
 
   const language = useMemo(() => {
@@ -45,14 +49,14 @@ export const CodeBlock = memo(function CodeBlock({
         <div className="flex items-center space-x-2">
           <SvgCheck height={14} width={14} stroke="currentColor" />
           <Text as="p" secondaryMono>
-            Copied!
+            {t("common.copied")}
           </Text>
         </div>
       ) : (
         <div className="flex items-center space-x-2">
           <SvgCopy height={14} width={14} stroke="currentColor" />
           <Text as="p" secondaryMono>
-            Copy
+            {t("common.copy")}
           </Text>
         </div>
       )}

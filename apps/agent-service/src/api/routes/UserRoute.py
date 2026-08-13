@@ -17,6 +17,7 @@ from fastapi import (
     Request,
     UploadFile,
 )
+from i18n import t
 
 from api.dependencies import AuthenticatedUser, require_permission, require_user
 from controller import UserController, get_user_controller
@@ -48,7 +49,7 @@ async def _resolve_project_identity(
     primary_user_id = str(identity.get("primary_user_id") or user.user_id)
     effective_user_id = await controller.resolve_projects_user_id(primary_user_id)
     if not effective_user_id:
-        raise HTTPException(status_code=401, detail="Not authenticated")
+        raise HTTPException(status_code=401, detail=t("auth.not_authenticated"))
 
     owner_ids: list[str] = []
     for candidate in [effective_user_id, *(identity.get("known_user_ids") or []), user.user_id]:

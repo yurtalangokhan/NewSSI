@@ -380,7 +380,7 @@ export default function ToolPlayground({
               !isMailConfigsLoading &&
               mailConfigs.length === 0 && (
                 <p className="mt-3 text-xs text-gray-500">
-                  Add a mail config before testing send_email.
+                  {t("toolPlayground.addMailConfigFirst")}
                 </p>
               )}
           </div>

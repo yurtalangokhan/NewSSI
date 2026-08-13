@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import Text from "@/refresh-components/texts/Text";
 import SimpleTooltip from "@/refresh-components/SimpleTooltip";
 import {
@@ -30,6 +31,9 @@ export default function OnboardingInfoPages({
   workArea,
   level,
 }: OnboardingInfoPagesProps) {
+  const { t } = useTranslation("common", {
+    keyPrefix: "app.craft.onboardingInfoPages",
+  });
   // Get persona info from mapping (only if both are valid enum values)
   const personaInfo =
     workArea && level ? getPersonaInfo(workArea, level) : undefined;
@@ -44,7 +48,7 @@ export default function OnboardingInfoPages({
   };
 
   // Get position text using shared helper (only if workArea is valid enum)
-  const positionText = workArea ? getPositionText(workArea, level) : "Not set";
+  const positionText = workArea ? getPositionText(workArea, level) : t("notSet");
 
   // Determine article based on position text
   const article = getArticle(positionText);
@@ -53,17 +57,17 @@ export default function OnboardingInfoPages({
     return (
       <div className="flex-1 flex flex-col gap-6 items-center justify-center">
         <Text headingH2 text05>
-          What is Onyx Craft?
+          {t("page1Title")}
         </Text>
         <img
           src="/craft_demo_image_1.png"
-          alt="Onyx Craft"
+          alt={t("onyxCraftAlt")}
           className="max-w-full h-auto rounded-12"
         />
         <Text mainContentBody text04 className="text-center">
-          Beautiful dashboards, slides, and reports.
+          {t("page1Body")}
           <br />
-          Built by AI agents that know your world. Privately and securely.
+          {t("page1BodyContinued")}
         </Text>
       </div>
     );
@@ -73,11 +77,11 @@ export default function OnboardingInfoPages({
   return (
     <div className="flex-1 flex flex-col gap-6 items-center justify-center">
       <Text headingH2 text05>
-        Let's get started!
+        {t("page2Title")}
       </Text>
       <img
         src="/craft_demo_image_2.png"
-        alt="Onyx Craft"
+        alt={t("onyxCraftAlt")}
         className="max-w-full h-auto rounded-12"
       />
     </div>

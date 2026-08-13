@@ -15,7 +15,7 @@ export const LoadingAnimation: React.FC<LoadingAnimationProps> = ({
   text,
   size,
 }) => {
-  const { t } = useTranslation("app");
+  const { t } = useTranslation("common", { keyPrefix: "app" });
   const [dots, setDots] = useState("...");
 
   useEffect(() => {

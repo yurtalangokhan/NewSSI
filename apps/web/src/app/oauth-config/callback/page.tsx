@@ -4,7 +4,7 @@ import OAuthCallbackPage from "@/components/oauth/OAuthCallbackPage";
 import { useTranslation } from "react-i18next";
 
 export default function OAuthConfigCallbackPage() {
-  const { t } = useTranslation("auth");
+  const { t } = useTranslation("common", { keyPrefix: "auth" });
 
   return (
     <OAuthCallbackPage

@@ -2,6 +2,7 @@
 
 import useSWR from "swr";
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "@/hooks/useToast";
 import { authenticatedFetch, errorHandlingFetcher } from "@/lib/fetcher";
 import { MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
@@ -48,6 +49,9 @@ function toggleNumber(values: number[], value: number, enabled: boolean) {
 export default function AgentAccessGroupsTab({
   agents,
 }: AgentAccessGroupsTabProps) {
+  const { t } = useTranslation("common", {
+    keyPrefix: "admin.agentAccessGroups",
+  });
   const { isAdmin } = useUser();
   const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
   const [draft, setDraft] = useState<AgentGroup | null>(null);
@@ -126,7 +130,7 @@ export default function AgentAccessGroupsTab({
 
   async function saveGroup() {
     if (!editableDraft || !editableDraft.name.trim()) {
-      toast.error("Group name is required");
+      toast.error(t("groupNameRequired"));
       return;
     }
 
@@ -157,10 +161,10 @@ export default function AgentAccessGroupsTab({
       await refreshGroups();
       setSelectedGroupId(saved.id);
       setDraft(null);
-      toast.success("Agent group saved");
+      toast.success(t("toastSaved"));
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Failed to save agent group"
+        error instanceof Error ? error.message : t("toastSaveFailed")
       );
     } finally {
       setIsSaving(false);
@@ -184,10 +188,10 @@ export default function AgentAccessGroupsTab({
       await refreshGroups();
       setSelectedGroupId(null);
       setDraft(null);
-      toast.success("Agent group deleted");
+      toast.success(t("toastDeleted"));
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Failed to delete agent group"
+        error instanceof Error ? error.message : t("toastDeleteFailed")
       );
     } finally {
       setIsSaving(false);
@@ -221,29 +225,29 @@ export default function AgentAccessGroupsTab({
       <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between gap-2">
           <Text as="p" headingH3>
-            Access groups
+            {t("title")}
           </Text>
           {isAdmin && (
             <Button onClick={startNewGroup} disabled={isSaving}>
-              New
+              {t("newButton")}
             </Button>
           )}
         </div>
 
         <InputTypeIn
           value={groupSearch}
-          placeholder="Search groups..."
+          placeholder={t("searchGroupsPlaceholder")}
           onChange={(event) => setGroupSearch(event.target.value)}
           leftSearchIcon
         />
 
         {isGroupsLoading ? (
           <Card>
-            <Text as="p">Loading groups...</Text>
+            <Text as="p">{t("loadingGroups")}</Text>
           </Card>
         ) : groups.length === 0 && !draft ? (
           <Card variant="tertiary">
-            <Text as="p">No access groups yet.</Text>
+            <Text as="p">{t("noGroupsYet")}</Text>
           </Card>
         ) : (
           <div className="flex flex-col gap-2">
@@ -261,14 +265,16 @@ export default function AgentAccessGroupsTab({
                   {group.name}
                 </Text>
                 <Text as="p" text03 secondaryBody>
-                  {group.user_ids.length} users, {group.persona_ids.length}{" "}
-                  agents
+                  {t("groupMemberSummary", {
+                    userCount: group.user_ids.length,
+                    agentCount: group.persona_ids.length,
+                  })}
                 </Text>
               </Card>
             ))}
             {visibleGroups.length === 0 && (
               <Card variant="tertiary">
-                <Text as="p">No groups match this search.</Text>
+                <Text as="p">{t("noGroupsMatchSearch")}</Text>
               </Card>
             )}
           </div>
@@ -279,25 +285,24 @@ export default function AgentAccessGroupsTab({
         {!editableDraft ? (
           <div className="flex flex-col gap-2">
             <Text as="p" headingH3>
-              Select a group
+              {t("selectGroupTitle")}
             </Text>
             <Text as="p" secondaryBody text03>
-              Agent access groups let admins decide which users can use a set of
-              agents.
+              {t("selectGroupDescription")}
             </Text>
           </div>
         ) : (
           <div className="flex flex-col gap-5 w-full">
             {!isAdmin && (
               <Card variant="tertiary">
-                <Text as="p">Only admins can change agent access groups.</Text>
+                <Text as="p">{t("adminOnlyNotice")}</Text>
               </Card>
             )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full">
               <div className="flex flex-col gap-2">
                 <Text as="p" secondaryBody>
-                  Group name
+                  {t("groupNameLabel")}
                 </Text>
                 <InputTypeIn
                   value={editableDraft.name}
@@ -312,7 +317,7 @@ export default function AgentAccessGroupsTab({
               </div>
               <div className="flex flex-col gap-2">
                 <Text as="p" secondaryBody>
-                  Description
+                  {t("descriptionLabel")}
                 </Text>
                 <InputTextArea
                   rows={2}
@@ -333,11 +338,13 @@ export default function AgentAccessGroupsTab({
                 <div className="flex items-center justify-between gap-2">
                   <div>
                     <Text as="p" mainUiBody>
-                      Users
+                      {t("usersTitle")}
                     </Text>
                     <Text as="p" text03 secondaryBody>
-                      {editableDraft.user_ids.length} selected from{" "}
-                      {users.length}
+                      {t("selectedFromTotal", {
+                        selected: editableDraft.user_ids.length,
+                        total: users.length,
+                      })}
                     </Text>
                   </div>
                   <label className="flex items-center gap-2">
@@ -346,13 +353,13 @@ export default function AgentAccessGroupsTab({
                       onCheckedChange={setShowSelectedUsersOnly}
                     />
                     <Text as="span" secondaryBody>
-                      Selected
+                      {t("selectedLabel")}
                     </Text>
                   </label>
                 </div>
                 <InputTypeIn
                   value={userSearch}
-                  placeholder="Filter users by email or role..."
+                  placeholder={t("filterUsersPlaceholder")}
                   onChange={(event) => setUserSearch(event.target.value)}
                   leftSearchIcon
                 />
@@ -388,7 +395,7 @@ export default function AgentAccessGroupsTab({
                   ))}
                   {visibleUsers.length === 0 && (
                     <Card variant="tertiary">
-                      <Text as="p">No users match the current filters.</Text>
+                      <Text as="p">{t("noUsersMatch")}</Text>
                     </Card>
                   )}
                 </div>
@@ -398,11 +405,13 @@ export default function AgentAccessGroupsTab({
                 <div className="flex items-center justify-between gap-2">
                   <div>
                     <Text as="p" mainUiBody>
-                      Agents
+                      {t("agentsTitle")}
                     </Text>
                     <Text as="p" text03 secondaryBody>
-                      {editableDraft.persona_ids.length} selected from{" "}
-                      {customAgents.length}
+                      {t("selectedFromTotal", {
+                        selected: editableDraft.persona_ids.length,
+                        total: customAgents.length,
+                      })}
                     </Text>
                   </div>
                   <label className="flex items-center gap-2">
@@ -411,13 +420,13 @@ export default function AgentAccessGroupsTab({
                       onCheckedChange={setShowSelectedAgentsOnly}
                     />
                     <Text as="span" secondaryBody>
-                      Selected
+                      {t("selectedLabel")}
                     </Text>
                   </label>
                 </div>
                 <InputTypeIn
                   value={agentSearch}
-                  placeholder="Filter agents by name, owner, or description..."
+                  placeholder={t("filterAgentsPlaceholder")}
                   onChange={(event) => setAgentSearch(event.target.value)}
                   leftSearchIcon
                 />
@@ -446,14 +455,14 @@ export default function AgentAccessGroupsTab({
                           {agent.name}
                         </Text>
                         <Text as="span" text03 secondaryBody>
-                          {agent.owner?.email ?? "System"}
+                          {agent.owner?.email ?? t("systemOwner")}
                         </Text>
                       </span>
                     </label>
                   ))}
                   {visibleAgents.length === 0 && (
                     <Card variant="tertiary">
-                      <Text as="p">No agents match the current filters.</Text>
+                      <Text as="p">{t("noAgentsMatch")}</Text>
                     </Card>
                   )}
                 </div>
@@ -464,11 +473,11 @@ export default function AgentAccessGroupsTab({
               <div className="flex justify-end gap-2">
                 {editableDraft.id > 0 && (
                   <Button secondary onClick={deleteGroup} disabled={isSaving}>
-                    Delete
+                    {t("deleteButton")}
                   </Button>
                 )}
                 <Button onClick={saveGroup} disabled={isSaving}>
-                  Save changes
+                  {t("saveChangesButton")}
                 </Button>
               </div>
             )}

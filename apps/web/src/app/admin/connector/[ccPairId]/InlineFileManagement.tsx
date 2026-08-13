@@ -298,8 +298,8 @@ export default function InlineFileManagement({
                           prominence="tertiary"
                           size="sm"
                           onClick={() => handleRemoveNewFile(index)}
-                          tooltip="Remove file"
-                          title="Remove file"
+                          tooltip={t("inlineFileManagement.removeFile")}
+                          title={t("inlineFileManagement.removeFile")}
                         />
                       </TableCell>
                     )}

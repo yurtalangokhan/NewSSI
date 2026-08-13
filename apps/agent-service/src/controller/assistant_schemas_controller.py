@@ -14,7 +14,7 @@ class AssistantSchemasController(BaseController):
 
     async def get_assistant_schemas(self, assistant_id: str) -> dict[str, Any]:
         if not assistant_id:
-            self._raise_bad_request("assistant_id is required")
+            self._raise_bad_request("assistant.id_required")
         try:
             return await self._service.get_assistant_schemas(assistant_id)
         except ValueError as exc:

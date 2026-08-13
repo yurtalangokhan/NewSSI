@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import Text from "@/refresh-components/texts/Text";
 
 interface ToggleWarningModalProps {
@@ -13,6 +14,9 @@ export function ToggleWarningModal({
   onConfirm,
   onCancel,
 }: ToggleWarningModalProps) {
+  const { t } = useTranslation("common", {
+    keyPrefix: "app.craft.toggleWarningModal",
+  });
   if (!open) return null;
 
   return (
@@ -32,18 +36,17 @@ export function ToggleWarningModal({
           {/* Header */}
           <div className="flex items-center justify-center">
             <Text headingH2 text05>
-              Show all models?
+              {t("title")}
             </Text>
           </div>
 
           {/* Message */}
           <div className="flex justify-center">
             <Text mainUiBody text04 className="text-center">
-              We recommend using <strong>Claude Opus 4.5</strong> for Crafting.
+              {t("recommendedModelPrefix")} <strong>Claude Opus 4.5</strong>{" "}
+              {t("recommendedModelSuffix")}
               <br />
-              Other models may have reduced capabilities for code creation,
-              <br />
-              data analysis, and artifact creation.
+              {t("capabilitiesWarning")}
             </Text>
           </div>
 
@@ -58,7 +61,7 @@ export function ToggleWarningModal({
               className="px-4 py-2 rounded-12 bg-background-neutral-01 border border-border-02 hover:opacity-90 transition-colors"
             >
               <Text mainUiBody text05>
-                Show All Models
+                {t("showAllModelsButton")}
               </Text>
             </button>
             <button
@@ -73,7 +76,7 @@ export function ToggleWarningModal({
                 mainUiAction
                 className="text-text-light-05 dark:text-text-dark-05"
               >
-                Keep Recommended
+                {t("keepRecommendedButton")}
               </Text>
             </button>
           </div>

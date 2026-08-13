@@ -7,6 +7,8 @@ import os
 import subprocess
 from typing import Any
 
+from i18n import t
+
 from ..core.base import BaseToolCategory
 from ..core.settings import optional_env
 
@@ -29,11 +31,11 @@ class GitTools(BaseToolCategory):
 
     @property
     def description(self) -> str:
-        return "Git clone, pull, push, commit, and branch operations"
+        return t("categories.git.description", default="Git clone, pull, push, commit, and branch operations")
 
     @property
     def label(self) -> str:
-        return "Git"
+        return t("categories.git.label", default="Git")
 
     def register_tools(self, mcp: Any) -> None:
         """Register all Git tools with MCP."""
@@ -66,7 +68,7 @@ class GitTools(BaseToolCategory):
 
             # Check if directory already exists
             if os.path.exists(full_path):
-                return f"Error: Directory already exists: {full_path}"
+                return t("git.directory_already_exists", path=full_path)
 
             cmd = ["git", "clone"]
 
@@ -80,11 +82,11 @@ class GitTools(BaseToolCategory):
                 result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
                 if result.returncode == 0:
                     return f"Repository cloned successfully to: {full_path}"
-                return f"Git clone error: {result.stderr}"
+                return t("git.clone_error", error=result.stderr)
             except subprocess.TimeoutExpired:
-                return "Git clone timed out after 300 seconds"
+                return t("git.clone_timeout")
             except Exception as e:
-                return f"Git clone error: {str(e)}"
+                return t("git.clone_error", error=str(e))
 
         @mcp.tool()
         def git_pull(repo_dir: str, remote: str = "origin", branch: str | None = None) -> str:
@@ -102,7 +104,7 @@ class GitTools(BaseToolCategory):
             full_path = _resolve_repo_path(repo_dir)
 
             if not os.path.exists(full_path):
-                return f"Error: Repository directory not found: {full_path}"
+                return t("git.repo_not_found", path=full_path)
 
             cmd = ["git", "-C", full_path, "pull", remote]
             if branch:
@@ -112,7 +114,7 @@ class GitTools(BaseToolCategory):
                 result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
                 return result.stdout + result.stderr
             except Exception as e:
-                return f"Git pull error: {str(e)}"
+                return t("git.pull_error", error=str(e))
 
         @mcp.tool()
         def git_push(repo_dir: str, remote: str = "origin", branch: str | None = None) -> str:
@@ -130,7 +132,7 @@ class GitTools(BaseToolCategory):
             full_path = _resolve_repo_path(repo_dir)
 
             if not os.path.exists(full_path):
-                return f"Error: Repository directory not found: {full_path}"
+                return t("git.repo_not_found", path=full_path)
 
             cmd = ["git", "-C", full_path, "push", remote]
             if branch:
@@ -142,7 +144,7 @@ class GitTools(BaseToolCategory):
                     return "Push successful" + (f"\n{result.stdout}" if result.stdout else "")
                 return result.stderr
             except Exception as e:
-                return f"Git push error: {str(e)}"
+                return t("git.push_error", error=str(e))
 
         @mcp.tool()
         def git_status(repo_dir: str) -> str:
@@ -158,7 +160,7 @@ class GitTools(BaseToolCategory):
             full_path = _resolve_repo_path(repo_dir)
 
             if not os.path.exists(full_path):
-                return f"Error: Repository directory not found: {full_path}"
+                return t("git.repo_not_found", path=full_path)
 
             try:
                 result = subprocess.run(
@@ -166,7 +168,7 @@ class GitTools(BaseToolCategory):
                 )
                 return result.stdout
             except Exception as e:
-                return f"Git status error: {str(e)}"
+                return t("git.status_error", error=str(e))
 
         @mcp.tool()
         def git_commit(repo_dir: str, message: str, add_all: bool = True) -> str:
@@ -184,7 +186,7 @@ class GitTools(BaseToolCategory):
             full_path = _resolve_repo_path(repo_dir)
 
             if not os.path.exists(full_path):
-                return f"Error: Repository directory not found: {full_path}"
+                return t("git.repo_not_found", path=full_path)
 
             try:
                 if add_all:
@@ -200,17 +202,11 @@ class GitTools(BaseToolCategory):
 
                 # Detect "Author identity unknown" and provide actionable guidance
                 if result.returncode != 0 and "author identity unknown" in output.lower():
-                    return (
-                        "GIT_IDENTITY_ERROR: Git commit failed because author identity is not configured.\n"
-                        "You need to set user.email and user.name before committing.\n"
-                        "ACTION REQUIRED: Ask the user for their name and email address, "
-                        "then call the git_config tool with user_email and user_name parameters. "
-                        "After that, retry the git_commit."
-                    )
+                    return t("git.identity_unknown")
 
                 return output
             except Exception as e:
-                return f"Git commit error: {str(e)}"
+                return t("git.commit_error", error=str(e))
 
         @mcp.tool()
         def git_branch(repo_dir: str, branch_name: str | None = None, create: bool = False) -> str:
@@ -228,7 +224,7 @@ class GitTools(BaseToolCategory):
             full_path = _resolve_repo_path(repo_dir)
 
             if not os.path.exists(full_path):
-                return f"Error: Repository directory not found: {full_path}"
+                return t("git.repo_not_found", path=full_path)
 
             try:
                 if not branch_name:
@@ -258,7 +254,7 @@ class GitTools(BaseToolCategory):
 
                 return result.stdout + result.stderr
             except Exception as e:
-                return f"Git branch error: {str(e)}"
+                return t("git.branch_error", error=str(e))
 
         @mcp.tool()
         def git_init(repo_dir: str, initial_branch: str = "main") -> str:
@@ -281,7 +277,7 @@ class GitTools(BaseToolCategory):
             # Check if already a git repo
             git_dir = os.path.join(full_path, ".git")
             if os.path.exists(git_dir):
-                return f"Repository already initialized at: {full_path}"
+                return t("git.already_initialized", path=full_path)
 
             try:
                 result = subprocess.run(
@@ -292,9 +288,9 @@ class GitTools(BaseToolCategory):
                 )
                 if result.returncode == 0:
                     return f"Initialized empty Git repository in {full_path}"
-                return f"Git init error: {result.stderr}"
+                return t("git.init_error", error=result.stderr)
             except Exception as e:
-                return f"Git init error: {str(e)}"
+                return t("git.init_error", error=str(e))
 
         @mcp.tool()
         def git_remote_add(repo_dir: str, remote_url: str, remote_name: str = "origin") -> str:
@@ -312,7 +308,7 @@ class GitTools(BaseToolCategory):
             full_path = _resolve_repo_path(repo_dir)
 
             if not os.path.exists(full_path):
-                return f"Error: Repository directory not found: {full_path}"
+                return t("git.repo_not_found", path=full_path)
 
             try:
                 # Check if remote already exists
@@ -344,9 +340,9 @@ class GitTools(BaseToolCategory):
                     if result.returncode == 0:
                         return f"Added remote '{remote_name}': {remote_url}"
 
-                return f"Git remote error: {result.stderr}"
+                return t("git.remote_error", error=result.stderr)
             except Exception as e:
-                return f"Git remote error: {str(e)}"
+                return t("git.remote_error", error=str(e))
 
         @mcp.tool()
         def git_log(repo_dir: str, max_commits: int = 10) -> str:
@@ -363,7 +359,7 @@ class GitTools(BaseToolCategory):
             full_path = _resolve_repo_path(repo_dir)
 
             if not os.path.exists(full_path):
-                return f"Error: Repository directory not found: {full_path}"
+                return t("git.repo_not_found", path=full_path)
 
             try:
                 result = subprocess.run(
@@ -374,7 +370,7 @@ class GitTools(BaseToolCategory):
                 )
                 return result.stdout if result.stdout else "No commits yet"
             except Exception as e:
-                return f"Git log error: {str(e)}"
+                return t("git.log_error", error=str(e))
 
         @mcp.tool()
         def git_config(
@@ -401,7 +397,7 @@ class GitTools(BaseToolCategory):
             results = []
 
             if scope not in ("global", "local"):
-                return f"Error: scope must be 'global' or 'local', got '{scope}'"
+                return t("git.invalid_scope", scope=scope)
 
             scope_flag = f"--{scope}"
 
@@ -409,10 +405,10 @@ class GitTools(BaseToolCategory):
             base_cmd = ["git"]
             if scope == "local":
                 if not repo_dir:
-                    return "Error: repo_dir is required when scope is 'local'"
+                    return t("git.repo_dir_required")
                 full_path = _resolve_repo_path(repo_dir)
                 if not os.path.exists(full_path):
-                    return f"Error: Repository directory not found: {full_path}"
+                    return t("git.repo_not_found", path=full_path)
                 base_cmd = ["git", "-C", full_path]
 
             try:
@@ -460,7 +456,7 @@ class GitTools(BaseToolCategory):
 
                 return "\n".join(results)
             except Exception as e:
-                return f"Git config error: {str(e)}"
+                return t("git.config_error", error=str(e))
 
         @mcp.tool()
         def git_diff(repo_dir: str, staged: bool = False) -> str:
@@ -477,7 +473,7 @@ class GitTools(BaseToolCategory):
             full_path = _resolve_repo_path(repo_dir)
 
             if not os.path.exists(full_path):
-                return f"Error: Repository directory not found: {full_path}"
+                return t("git.repo_not_found", path=full_path)
 
             try:
                 cmd = ["git", "-C", full_path, "diff"]
@@ -487,4 +483,4 @@ class GitTools(BaseToolCategory):
                 result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
                 return result.stdout if result.stdout else "No changes"
             except Exception as e:
-                return f"Git diff error: {str(e)}"
+                return t("git.diff_error", error=str(e))

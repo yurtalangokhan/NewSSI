@@ -29,6 +29,9 @@ const DocumentDisplay = ({
   document: OnyxDocument;
   refresh: () => void;
 }) => {
+  const { t } = useTranslation("common", {
+    keyPrefix: "admin.documentExplorer",
+  });
   return (
     <div
       key={document.document_id}
@@ -52,7 +55,7 @@ const DocumentDisplay = ({
       </div>
       <div className="flex flex-wrap gap-x-2 mt-1 text-xs">
         <div className="px-1 py-0.5 bg-accent-background-hovered rounded flex">
-          <p className="mr-1 my-auto">Boost:</p>
+          <p className="mr-1 my-auto">{t("boostLabel")}</p>
           <ScoreSection
             documentId={document.document_id}
             initialScore={document.boost}
@@ -78,7 +81,7 @@ const DocumentDisplay = ({
         >
           <div className="my-auto">
             {document.hidden ? (
-              <div className="text-error">Hidden</div>
+              <div className="text-error">{t("hiddenLabel")}</div>
             ) : (
               "Visible"
             )}

@@ -13,7 +13,7 @@ export default function ExceptionTraceModal({
   onOutsideClick,
   exceptionTrace,
 }: ExceptionTraceModalProps) {
-  const { t } = useTranslation("modals");
+  const { t } = useTranslation("common", { keyPrefix: "modals" });
   const [copyClicked, setCopyClicked] = useState(false);
 
   return (

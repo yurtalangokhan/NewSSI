@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@opal/components";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
 import { PopoverMenu } from "@/refresh-components/Popover";
@@ -42,6 +43,7 @@ export default function SwitchList({
   onBack,
   footer,
 }: SwitchListProps) {
+  const { t } = useTranslation("common", { keyPrefix: "common" });
   const [searchTerm, setSearchTerm] = useState("");
   const filteredItems = useMemo(() => {
     if (!searchTerm) return items;
@@ -63,7 +65,7 @@ export default function SwitchList({
             icon={SvgChevronLeft}
             prominence="tertiary"
             size="sm"
-            aria-label="Back"
+            aria-label={t("back")}
             onClick={() => {
               setSearchTerm("");
               onBack();
@@ -83,7 +85,9 @@ export default function SwitchList({
           icon={allDisabled ? SvgPlug : SvgUnplug}
           onClick={allDisabled ? onEnableAll : onDisableAll}
         >
-          {allDisabled ? "Enable All" : "Disable All"}
+          {allDisabled
+            ? t("switchList.enableAllLabel")
+            : t("switchList.disableAllLabel")}
         </LineItem>,
 
         ...filteredItems.map((item) => {
@@ -107,7 +111,9 @@ export default function SwitchList({
                   <Switch
                     checked={item.isEnabled}
                     onCheckedChange={item.onToggle}
-                    aria-label={`Toggle ${item.label}`}
+                    aria-label={t("switchList.toggleItemAriaLabel", {
+                      label: item.label,
+                    })}
                     disabled={item.disabled}
                   />
                 }

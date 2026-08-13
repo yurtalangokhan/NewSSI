@@ -6,6 +6,8 @@ Provides safe mathematical expression evaluation.
 import math
 from typing import Any
 
+from i18n import t
+
 from ..core.base import BaseToolCategory
 
 
@@ -18,11 +20,11 @@ class CalculatorTools(BaseToolCategory):
 
     @property
     def description(self) -> str:
-        return "Safe mathematical expression evaluation"
+        return t("categories.calculator.description", default="Safe mathematical expression evaluation")
 
     @property
     def label(self) -> str:
-        return "Calculator"
+        return t("categories.calculator.label", default="Calculator")
 
     def register_tools(self, mcp: Any) -> None:
         """Register all calculator tools with MCP."""
@@ -62,9 +64,9 @@ class CalculatorTools(BaseToolCategory):
                 allowed = set("0123456789+-*/.() ,")
                 for char in expression:
                     if char not in allowed and not char.isalpha():
-                        return f"Invalid character in expression: {char}"
+                        return t("calculator.invalid_character", char=char)
 
                 result = eval(expression, {"__builtins__": {}}, safe_dict)
                 return str(result)
             except Exception as e:
-                return f"Calculation error: {str(e)}"
+                return t("calculator.calculation_error", error=str(e))

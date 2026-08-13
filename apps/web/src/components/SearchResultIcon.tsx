@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import faviconFetch from "favicon-fetch";
 import { SourceIcon } from "./SourceIcon";
 import { ValidSources } from "@/lib/types";
@@ -37,6 +38,7 @@ export async function getFaviconUrl(url: string): Promise<string | null> {
 }
 
 export function SearchResultIcon({ url }: { url: string }) {
+  const { t } = useTranslation("common", { keyPrefix: "common" });
   const [faviconUrl, setFaviconUrl] = useState<string | null>(null);
 
   useEffect(() => {
@@ -61,7 +63,7 @@ export function SearchResultIcon({ url }: { url: string }) {
         width={18}
         className="rounded-full w-full h-full object-cover"
         src={faviconUrl}
-        alt="favicon"
+        alt={t("faviconAlt")}
         onError={(e) => {
           e.currentTarget.onerror = null;
         }}

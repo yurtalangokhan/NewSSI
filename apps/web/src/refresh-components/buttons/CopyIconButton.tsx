@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Button, ButtonProps } from "@opal/components";
 import { SvgAlertTriangle, SvgCheck, SvgCopy } from "@opal/icons";
+import { useTranslation } from "react-i18next";
 
 type CopyState = "idle" | "copied" | "error";
 
@@ -95,15 +96,17 @@ export default function CopyIconButton({
     }
   }
 
+  const { t } = useTranslation();
+
   function getTooltip() {
     switch (copyState) {
       case "copied":
-        return "Copied!";
+        return t("common.copied");
       case "error":
-        return "Failed to copy";
+        return t("common.failedToCopy");
       case "idle":
       default:
-        return tooltip || "Copy";
+        return tooltip || t("common.copy");
     }
   }
 

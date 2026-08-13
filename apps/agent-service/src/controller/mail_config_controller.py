@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from fastapi import HTTPException
+from i18n import t
 
 from controller.base import BaseController
 from service.MailConfigService import MailConfigService, get_mail_config_service
@@ -28,7 +29,7 @@ class MailConfigController(BaseController):
     async def get_config(self, user_id: str, config_id: str) -> dict[str, Any]:
         config = await self.service.get_config(user_id, config_id)
         if not config:
-            raise HTTPException(status_code=404, detail="Mail config not found")
+            raise HTTPException(status_code=404, detail=t("mailConfig.notFound"))
         return config
 
     async def update_config(
@@ -42,7 +43,7 @@ class MailConfigController(BaseController):
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         if not config:
-            raise HTTPException(status_code=404, detail="Mail config not found")
+            raise HTTPException(status_code=404, detail=t("mailConfig.notFound"))
         return config
 
     async def delete_config(self, user_id: str, config_id: str) -> dict[str, bool]:
@@ -51,7 +52,7 @@ class MailConfigController(BaseController):
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         if not deleted:
-            raise HTTPException(status_code=404, detail="Mail config not found")
+            raise HTTPException(status_code=404, detail=t("mailConfig.notFound"))
         return {"success": True}
 
     async def test_config(

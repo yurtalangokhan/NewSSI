@@ -774,6 +774,24 @@ wheels = [
 ]
 
 [[package]]
+name = "i18n-py"
+version = "0.1.0"
+source = { directory = "../../packages/i18n-py" }
+dependencies = [
+    { name = "starlette" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "starlette", specifier = ">=0.27.0" }]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "httpx", specifier = ">=0.27.0" },
+    { name = "pytest", specifier = ">=8.0.0" },
+    { name = "pytest-asyncio", specifier = ">=0.24.0" },
+]
+
+[[package]]
 name = "idempotency"
 version = "0.1.0"
 source = { directory = "../../packages/idempotency-py" }
@@ -1056,6 +1074,7 @@ dependencies = [
     { name = "beautifulsoup4" },
     { name = "fastapi" },
     { name = "httpx" },
+    { name = "i18n-py" },
     { name = "idempotency" },
     { name = "langchain" },
     { name = "langchain-community" },
@@ -1102,6 +1121,7 @@ requires-dist = [
     { name = "beautifulsoup4", specifier = ">=4.12.3" },
     { name = "fastapi", specifier = ">=0.115.6" },
     { name = "httpx", specifier = ">=0.28.1" },
+    { name = "i18n-py", directory = "../../packages/i18n-py" },
     { name = "idempotency", directory = "../../packages/idempotency-py" },
     { name = "langchain", specifier = ">=0.3.20" },
     { name = "langchain-community", specifier = ">=0.0.20" },

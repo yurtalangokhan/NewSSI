@@ -1,0 +1,105 @@
+{
+  "auth": {
+    "required": "Kimlik doğrulaması gerekli",
+    "admin_required": "Yönetici erişimi gerekli",
+    "sysadmin_required": "Sistem yöneticisi erişimi gerekli",
+    "unauthorized": "Yetkisiz erişim",
+    "forbidden": "Bu işlem için yetkiniz yok",
+    "refresh_token_required": "Yenileme jetonu gerekli",
+    "oidc_callback_failed": "OIDC geri çağırma başarısız oldu: {error}",
+    "sync_failed": "Senkronizasyon başarısız oldu: {error}",
+    "invalid_credentials": "Geçersiz kullanıcı adı veya şifre",
+    "external_login_failed": "Harici oturum açma başarısız oldu",
+    "external_credentials_rejected": "Harici kimlik sağlayıcı kimlik bilgilerini reddetti",
+    "basic_login_disabled": "Kullanıcı adı/şifre ile giriş devre dışı; Keycloak girişini kullanın",
+    "external_login_disabled": "Harici Keycloak girişi devre dışı",
+    "registration_managed_by_keycloak": "Kullanıcı kaydı Keycloak tarafından yönetilmektedir",
+    "no_id_token": "Kimlik doğrulama başarısız oldu — id_token alınamadı",
+    "no_subject_in_token": "Kimlik doğrulama başarısız oldu — token içinde subject yok",
+    "external_no_subject_in_token": "Harici kimlik doğrulama başarısız oldu — token içinde subject yok",
+    "external_sp_user_not_created": "Harici kimlik doğrulama başarısız oldu — SP kullanıcısı oluşturulamadı",
+    "refresh_managed_by_keycloak": "Yenileme jetonu yönetimi Keycloak tarafından yapılmaktadır",
+    "refresh_no_id_token": "Jeton yenileme başarısız oldu — id_token alınamadı",
+    "refresh_no_subject_in_token": "Jeton yenileme başarısız oldu — token içinde subject yok"
+  },
+  "keycloak": {
+    "base_url_not_configured": "KEYCLOAK_BASE_URL veya KEYCLOAK_ISSUER_URL yapılandırılmalıdır",
+    "redirect_uri_not_absolute": "KEYCLOAK_REDIRECT_URI veya KEYCLOAK_REDIRECT_URIS mutlak bir geri çağırma URL'si içermelidir",
+    "service_account_not_configured": "Keycloak servis hesabı yapılandırılmamış",
+    "external_issuer_not_configured": "EXTERNAL_KEYCLOAK_ISSUER_URL veya EXTERNAL_KEYCLOAK_BASE_URL + EXTERNAL_KEYCLOAK_REALM yapılandırılmalıdır",
+    "external_realm_not_configured": "EXTERNAL_KEYCLOAK_REALM yapılandırılmalıdır",
+    "external_client_id_not_configured": "EXTERNAL_KEYCLOAK_CLIENT_ID yapılandırılmalıdır",
+    "external_client_secret_not_configured": "EXTERNAL_KEYCLOAK_CLIENT_SECRET yapılandırılmalıdır",
+    "client_response_invalid": "'{client_id}' Keycloak istemcisi yanıtı geçersiz",
+    "client_not_found": "'{client_id}' Keycloak istemcisi bulunamadı",
+    "sp_user_create_failed": "Harici kimlik için SP kullanıcısı oluşturulamadı",
+    "auth_failed_status": "Kimlik doğrulama başarısız oldu (durum {status})",
+    "token_refresh_failed_status": "Jeton yenileme başarısız oldu (durum {status})",
+    "token_exchange_failed_status": "Keycloak jeton değişimi başarısız oldu (durum {status})",
+    "invalid_oidc_state": "Keycloak'tan geçersiz OIDC durumu döndürüldü",
+    "login_form_not_found": "Harici IdP giriş formu bulunamadı",
+    "external_redirect_uri_rejected": "Harici IdP redirect_uri'yi reddetti. '{client_id}' harici Keycloak istemcisine bu Geçerli Yönlendirme URI'sini ekleyin: {redirect_uri}",
+    "sp_redirect_uri_rejected": "SP Keycloak redirect_uri'yi reddetti. '{client_id}' SP Keycloak istemcisine bu Geçerli Yönlendirme URI'sini ekleyin: {redirect_uri}",
+    "external_not_configured": "Harici Keycloak yapılandırılmamış",
+    "redirect_uri_required": "Harici Keycloak girişi için redirect_uri gereklidir",
+    "auth_secret_not_set": "Gerekli AUTH_SECRET ortam değişkeni ayarlanmamış"
+  },
+  "user": {
+    "not_found": "Kullanıcı bulunamadı",
+    "not_found_by_keycloak_id": "keycloak_id {keycloak_id} olan kullanıcı bulunamadı",
+    "target_not_found": "Hedef kullanıcı bulunamadı",
+    "already_exists": "{email} e-postasına sahip kullanıcı zaten mevcut",
+    "deleted": "Kullanıcı başarıyla silindi",
+    "names_required": "first_name ve last_name gereklidir",
+    "password_required": "Şifre gereklidir",
+    "ids_must_be_distinct": "user_ids birbirinden farklı olmalıdır",
+    "session_invalidation_failed": "Aktif Keycloak oturumları geçersiz kılınamadı",
+    "keycloak_user_missing_id": "Mevcut Keycloak kullanıcısının kimliği yok",
+    "keycloak_user_create_failed": "Keycloak kullanıcısı oluşturulamadı",
+    "keycloak_id_required": "Keycloak kullanıcı kimliği gereklidir",
+    "keycloak_password_set_failed": "Keycloak şifresi ayarlanamadı",
+    "invalid_role": "Geçersiz rol: {role}",
+    "password_managed_by_keycloak": "Şifre yönetimi Keycloak tarafından yapılmaktadır"
+  },
+  "memory": {
+    "content_required": "İçerik gereklidir",
+    "not_found": "Kullanıcı hafızası bulunamadı",
+    "already_exists": "Bu içeriğe sahip hafıza zaten mevcut."
+  },
+  "role": {
+    "not_found": "'{name}' rolü bulunamadı",
+    "already_exists": "'{name}' rolü zaten mevcut",
+    "keycloak_sync_failed": "Keycloak senkronizasyonu başarısız oldu: {error}",
+    "deleted": "Rol silindi",
+    "session_invalidation_failed_for_user": "{email} kullanıcısının aktif Keycloak oturumları geçersiz kılınamadı",
+    "cannot_delete_builtin": "'{name}' yerleşik rolü silinemez",
+    "cannot_delete_in_use": "'{name}' rolüne atanmış kullanıcılar varken rol silinemez",
+    "invalid_permissions": "Geçersiz izinler: {permissions}",
+    "invalid_role_ids": "Geçersiz roller: {roles}"
+  },
+  "permission": {
+    "not_found": "'{name}' izni bulunamadı",
+    "invalid_permissions": "Geçersiz izinler: {permissions}",
+    "wrong_service": "İzinler '{service_client}' servisine ait değil: {permissions}"
+  },
+  "api_key": {
+    "not_found": "API anahtarı bulunamadı",
+    "revoked": "API anahtarı iptal edildi",
+    "deleted": "API anahtarı silindi"
+  },
+  "settings": {
+    "shortcut_not_found": "Kısayol bulunamadı",
+    "shortcut_deleted": "Kısayol silindi"
+  },
+  "system_settings": {
+    "keycloak_realm_update_failed": "Keycloak realm güncellemesi başarısız oldu: {error}",
+    "external_keycloak_sync_failed": "Harici Keycloak senkronizasyonu başarısız oldu: {error}",
+    "keycloak_disabled": "KEYCLOAK_ENABLED devre dışı"
+  },
+  "common": {
+    "bad_request": "Geçersiz istek",
+    "not_found": "Kaynak bulunamadı",
+    "conflict": "Kaynak çakışması",
+    "internal_error": "Sunucu iç hatası"
+  }
+}

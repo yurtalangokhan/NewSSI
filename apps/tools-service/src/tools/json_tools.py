@@ -6,6 +6,8 @@ Provides tools for JSON formatting and querying.
 import json
 from typing import Any
 
+from i18n import t
+
 from ..core.base import BaseToolCategory
 
 
@@ -18,11 +20,11 @@ class JsonTools(BaseToolCategory):
 
     @property
     def description(self) -> str:
-        return "JSON formatting, validation, and querying"
+        return t("categories.json_data.description", default="JSON formatting, validation, and querying")
 
     @property
     def label(self) -> str:
-        return "JSON Data"
+        return t("categories.json_data.label", default="JSON Data")
 
     def register_tools(self, mcp: Any) -> None:
         """Register all JSON tools with MCP."""
@@ -43,7 +45,7 @@ class JsonTools(BaseToolCategory):
                 parsed = json.loads(data)
                 return json.dumps(parsed, indent=indent, ensure_ascii=False)
             except json.JSONDecodeError as e:
-                return f"Invalid JSON: {str(e)}"
+                return t("json.invalid_json", error=str(e))
 
         @mcp.tool()
         def json_query(data: str, path: str) -> str:
@@ -66,11 +68,11 @@ class JsonTools(BaseToolCategory):
                     elif isinstance(parsed, dict):
                         parsed = parsed[key]
                     else:
-                        return f"Cannot navigate further at '{key}'"
+                        return t("json.cannot_navigate", key=key)
 
                 if isinstance(parsed, (dict, list)):
                     return json.dumps(parsed, indent=2, ensure_ascii=False)
                 return str(parsed)
 
             except (json.JSONDecodeError, KeyError, IndexError, ValueError) as e:
-                return f"Query error: {str(e)}"
+                return t("json.query_error", error=str(e))

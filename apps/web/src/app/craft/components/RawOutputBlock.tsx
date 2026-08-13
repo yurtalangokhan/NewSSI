@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import hljs from "highlight.js/lib/core";
 
@@ -88,6 +89,9 @@ export default function RawOutputBlock({
   maxHeight = "300px",
   language,
 }: RawOutputBlockProps) {
+  const { t } = useTranslation("common", {
+    keyPrefix: "app.craft.rawOutputBlock",
+  });
   const highlightedHtml = useMemo(() => {
     if (!content) return null;
 
@@ -118,7 +122,7 @@ export default function RawOutputBlock({
         )}
         style={{ fontFamily: "var(--font-dm-mono)" }}
       >
-        No output yet...
+        {t("noOutputYet")}
       </div>
     );
   }

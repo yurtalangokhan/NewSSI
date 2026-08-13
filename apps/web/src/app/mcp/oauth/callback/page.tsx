@@ -4,7 +4,7 @@ import OAuthCallbackPage from "@/components/oauth/OAuthCallbackPage";
 import { useTranslation } from "react-i18next";
 
 export default function MCPOAuthCallbackPage() {
-  const { t } = useTranslation("auth");
+  const { t } = useTranslation("common", { keyPrefix: "auth" });
   const mcpConfig = {
     processingMessage: t("oauthCallback.processing"),
     processingDetails: t("oauthCallback.mcpProcessingDetails"),

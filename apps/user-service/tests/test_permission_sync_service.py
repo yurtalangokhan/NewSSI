@@ -1,5 +1,5 @@
-from src.service.permission_sync_service import PermissionSyncService
 from src.service import permission_sync_service
+from src.service.permission_sync_service import PermissionSyncService
 
 
 def test_collect_manifest_permissions_uses_user_service_manifest_location():

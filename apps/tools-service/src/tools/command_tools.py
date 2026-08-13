@@ -8,6 +8,8 @@ import platform
 import subprocess
 from typing import Any
 
+from i18n import t
+
 from ..core.base import BaseToolCategory
 
 
@@ -20,11 +22,11 @@ class CommandTools(BaseToolCategory):
 
     @property
     def description(self) -> str:
-        return "Shell command execution and system information"
+        return t("categories.command_execution.description", default="Shell command execution and system information")
 
     @property
     def label(self) -> str:
-        return "Command Execution"
+        return t("categories.command_execution.label", default="Command Execution")
 
     def register_tools(self, mcp: Any) -> None:
         """Register all command execution tools with MCP."""
@@ -46,7 +48,7 @@ class CommandTools(BaseToolCategory):
             blocked = ["rm -rf /", "mkfs", "dd if=", ":(){", "fork bomb"]
             for b in blocked:
                 if b in command.lower():
-                    return f"Error: Blocked command pattern detected: {b}"
+                    return t("command.blocked_pattern", pattern=b)
 
             try:
                 result = subprocess.run(
@@ -67,9 +69,9 @@ class CommandTools(BaseToolCategory):
                 return output if output.strip() else "[No output]"
 
             except subprocess.TimeoutExpired:
-                return f"Error: Command timed out after {timeout} seconds"
+                return t("command.timeout", seconds=timeout)
             except Exception as e:
-                return f"Error executing command: {str(e)}"
+                return t("command.execution_error", error=str(e))
 
         @mcp.tool()
         def get_system_info() -> str:

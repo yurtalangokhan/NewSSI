@@ -29,7 +29,7 @@ class ScheduleController(BaseController):
         self, datasource_id: str, body: SyncScheduleInput
     ) -> SyncScheduleResponse:
         if not datasource_id:
-            self._raise_bad_request("datasource_id is required")
+            self._raise_bad_request("datasource.id_required")
         try:
             return await self._service.create_schedule(datasource_id, body)
         except LookupError as exc:
@@ -41,7 +41,7 @@ class ScheduleController(BaseController):
 
     async def get_schedule(self, datasource_id: str) -> SyncScheduleResponse:
         if not datasource_id:
-            self._raise_bad_request("datasource_id is required")
+            self._raise_bad_request("datasource.id_required")
         try:
             return await self._service.get_schedule(datasource_id)
         except LookupError as exc:
@@ -53,7 +53,7 @@ class ScheduleController(BaseController):
         self, datasource_id: str, body: SyncScheduleUpdate
     ) -> SyncScheduleResponse:
         if not datasource_id:
-            self._raise_bad_request("datasource_id is required")
+            self._raise_bad_request("datasource.id_required")
         try:
             return await self._service.update_schedule(datasource_id, body)
         except LookupError as exc:
@@ -65,7 +65,7 @@ class ScheduleController(BaseController):
 
     async def delete_schedule(self, datasource_id: str) -> dict[str, Any]:
         if not datasource_id:
-            self._raise_bad_request("datasource_id is required")
+            self._raise_bad_request("datasource.id_required")
         try:
             return await self._service.delete_schedule(datasource_id)
         except LookupError as exc:
@@ -75,7 +75,7 @@ class ScheduleController(BaseController):
 
     async def get_schedule_run_status(self, datasource_id: str) -> ScheduleRunStatus:
         if not datasource_id:
-            self._raise_bad_request("datasource_id is required")
+            self._raise_bad_request("datasource.id_required")
         try:
             return await self._service.get_schedule_run_status(datasource_id)
         except LookupError as exc:

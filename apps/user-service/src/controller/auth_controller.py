@@ -72,7 +72,7 @@ class AuthController(BaseController):
     async def refresh(self, request: Request, response: Response) -> dict[str, Any]:
         refresh_token = request.cookies.get("refresh_token")
         if not refresh_token:
-            self._raise_bad_request("Refresh token required")
+            self._raise_bad_request("auth.refresh_token_required")
         try:
             result = await self.auth_service.refresh_access_token(refresh_token)
             self._set_cookies(
@@ -123,7 +123,7 @@ class AuthController(BaseController):
             )
             return result
         except Exception as e:
-            self._raise_bad_request(f"OIDC callback failed: {e}")
+            self._raise_bad_request("auth.oidc_callback_failed", error=str(e))
 
     def _set_cookies(
         self,
@@ -275,14 +275,14 @@ class AuthController(BaseController):
             result = await user_service.sync_users_from_keycloak()
             return result
         except Exception as e:
-            self._raise_bad_request(f"Sync failed: {str(e)}")
+            self._raise_bad_request("auth.sync_failed", error=str(e))
 
     async def get_me(self, request: Request, user_id: str | None = None) -> dict[str, Any]:
         from src.service import get_user_service
 
         user = await get_user_service().get_current_user(user_id)
         if not user:
-            self._raise_not_found("User not found")
+            self._raise_not_found("user.not_found")
         return user
 
 

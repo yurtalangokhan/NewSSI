@@ -1,5 +1,6 @@
 import { User } from "./types";
 import { authenticatedFetch } from "@/lib/fetcher";
+import i18n from "@/i18n/config";
 
 export const checkUserIsNoAuthUser = (userId: string) => {
   return userId === "__no_auth_user__";
@@ -41,6 +42,7 @@ export const ldapLogin = async (
     credentials: "include",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
+      "X-Language": i18n.language || "en",
     },
     body: params,
   });
@@ -61,6 +63,7 @@ export const basicLogin = async (
     credentials: "include",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
+      "X-Language": i18n.language || "en",
     },
     body: params,
   });
@@ -81,6 +84,7 @@ export const externalKeycloakLogin = async (
     credentials: "include",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
+      "X-Language": i18n.language || "en",
     },
     body: params,
   });

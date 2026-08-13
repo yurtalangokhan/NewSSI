@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import Text from "@/refresh-components/texts/Text";
 import Button from "@/refresh-components/buttons/Button";
 import {
@@ -136,6 +137,9 @@ interface FileNodeProps {
 }
 
 function FileNode({ entry, sessionId, depth, onPreview }: FileNodeProps) {
+  const { t } = useTranslation("common", {
+    keyPrefix: "app.craft.fileBrowser",
+  });
   const paddingLeft = depth * 1.25;
   const downloadUrl = getArtifactUrl(sessionId, entry.path);
 
@@ -188,7 +192,7 @@ function FileNode({ entry, sessionId, depth, onPreview }: FileNodeProps) {
               onPreview(entry);
             }}
           >
-            Preview
+            {t("previewButton")}
           </Button>
         )}
         <a
@@ -197,7 +201,7 @@ function FileNode({ entry, sessionId, depth, onPreview }: FileNodeProps) {
           onClick={(e) => e.stopPropagation()}
         >
           <Button action tertiary leftIcon={SvgDownloadCloud}>
-            Download
+            {t("downloadButton")}
           </Button>
         </a>
       </div>

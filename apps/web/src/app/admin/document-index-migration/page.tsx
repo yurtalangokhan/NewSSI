@@ -105,7 +105,7 @@ function MigrationStatusSection() {
       />
 
       <ContentAction
-        title="Completed"
+        title={t("admin.indexMigration.completed")}
         sizePreset="main-ui"
         variant="section"
         rightChildren={

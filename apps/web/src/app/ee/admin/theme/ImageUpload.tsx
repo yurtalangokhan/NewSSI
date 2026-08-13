@@ -1,6 +1,7 @@
 import { SubLabel } from "@/components/Field";
 import { toast } from "@/hooks/useToast";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import Dropzone from "react-dropzone";
 
 export function ImageUpload({
@@ -10,6 +11,9 @@ export function ImageUpload({
   selectedFile: File | null;
   setSelectedFile: (file: File) => void;
 }) {
+  const { t } = useTranslation("common", {
+    keyPrefix: "admin.imageUpload",
+  });
   const [tmpImageUrl, setTmpImageUrl] = useState<string>("");
 
   useEffect(() => {
@@ -26,13 +30,13 @@ export function ImageUpload({
     <Dropzone
       onDrop={(acceptedFiles) => {
         if (acceptedFiles.length !== 1) {
-          toast.error("Only one file can be uploaded at a time");
+          toast.error(t("onlyOneFile"));
           return;
         }
 
         const acceptedFile = acceptedFiles[0];
         if (acceptedFile === undefined) {
-          toast.error("acceptedFile cannot be undefined");
+          toast.error(t("acceptedFileUndefined"));
           return;
         }
 
@@ -54,16 +58,14 @@ export function ImageUpload({
             }
           >
             <input {...getInputProps()} />
-            <b className="text-text-darker">
-              Drag and drop a .png or .jpg file, or click to select a file!
-            </b>
+            <b className="text-text-darker">{t("dragDropHint")}</b>
           </div>
 
           {tmpImageUrl && (
             <div className="mt-4 mb-8">
-              <SubLabel>Uploaded Image:</SubLabel>
+              <SubLabel>{t("uploadedImageLabel")}</SubLabel>
               <img
-                alt="Uploaded Image"
+                alt={t("uploadedImageAlt")}
                 src={tmpImageUrl}
                 className="mt-4 max-w-xs max-h-64"
               />

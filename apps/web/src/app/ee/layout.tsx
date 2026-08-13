@@ -1,5 +1,6 @@
 import { SERVER_SIDE_ONLY__PAID_ENTERPRISE_FEATURES_ENABLED } from "@/lib/constants";
 import { fetchStandardSettingsSS } from "@/components/settings/lib";
+import i18n from "@/i18n/config";
 
 export default async function AdminLayout({
   children,
@@ -11,7 +12,7 @@ export default async function AdminLayout({
     return (
       <div className="flex h-screen">
         <div className="mx-auto my-auto text-lg font-bold text-red-500">
-          This functionality is only available in the Enterprise Edition :(
+          {i18n.t("errors.enterpriseGate.eeOnly")}
         </div>
       </div>
     );
@@ -34,7 +35,7 @@ export default async function AdminLayout({
         return (
           <div className="flex h-screen">
             <div className="mx-auto my-auto text-lg font-bold text-red-500">
-              This functionality requires an active Enterprise license.
+              {i18n.t("errors.enterpriseGate.licenseRequired")}
             </div>
           </div>
         );

@@ -41,6 +41,7 @@
 "use client";
 
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { useBoundingBox } from "@/hooks/useBoundingBox";
 import {
   Collapsible,
@@ -188,6 +189,7 @@ interface SimpleCollapsibleHeaderProps
 }
 const Header = React.forwardRef<HTMLDivElement, SimpleCollapsibleHeaderProps>(
   ({ title, description, ...props }, ref) => {
+    const { t } = useTranslation("common", { keyPrefix: "common" });
     const { open } = useSimpleCollapsible();
     const { ref: boundingRef, inside } = useBoundingBox();
 
@@ -211,7 +213,7 @@ const Header = React.forwardRef<HTMLDivElement, SimpleCollapsibleHeaderProps>(
             prominence="tertiary"
             size="sm"
             transient={inside}
-            tooltip={open ? "Fold" : "Expand"}
+            tooltip={open ? t("fold") : t("expand")}
           />
         </div>
       </CollapsibleTrigger>

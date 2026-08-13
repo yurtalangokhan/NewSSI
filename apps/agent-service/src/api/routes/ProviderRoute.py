@@ -6,6 +6,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
+from i18n import t
 
 from api.dependencies import AuthenticatedUser, require_permission, require_user
 from domain.providers.repository import ProviderRepository
@@ -77,7 +78,7 @@ async def delete_provider(
 ):
     success = await _svc.delete_url_provider(provider_id, user.user_id)
     if not success:
-        raise HTTPException(404, "Provider not found or cannot be deleted")
+        raise HTTPException(404, t("provider.not_found"))
     return {"success": True}
 
 
@@ -138,7 +139,7 @@ async def delete_user_provider(
 ):
     success = await _svc.delete_user_provider(provider_id, user.user_id)
     if not success:
-        raise HTTPException(404, "Provider not found or cannot be deleted")
+        raise HTTPException(404, t("provider.not_found"))
     return {"success": True}
 
 

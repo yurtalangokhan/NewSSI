@@ -3,6 +3,7 @@
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from i18n import t
 
 from api.dependencies import AuthenticatedUser, require_permission, require_user
 from core.db.repositories.agent_group_repo import AgentGroupRepository
@@ -61,7 +62,7 @@ async def update_agent_group(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     if not group:
-        raise HTTPException(status_code=404, detail="Agent group not found")
+        raise HTTPException(status_code=404, detail=t("agent.group_not_found"))
     return group
 
 
@@ -72,5 +73,6 @@ async def delete_agent_group(
 ) -> dict[str, bool]:
     deleted = await _repo().delete(group_id)
     if not deleted:
-        raise HTTPException(status_code=404, detail="Agent group not found")
+        raise HTTPException(status_code=404, detail=t("agent.group_not_found"))
     return {"success": True}
+

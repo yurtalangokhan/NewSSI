@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Formik, Form } from "formik";
 import * as Yup from "yup";
 import { Section } from "@/layouts/general-layouts";
@@ -27,6 +28,7 @@ export default function CreateCredentialInline({
   onSuccess,
   onCancel,
 }: CreateCredentialInlineProps) {
+  const { t } = useTranslation();
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -37,11 +39,12 @@ export default function CreateCredentialInline({
     return (
       <Section gap={0.5} alignItems="center" height="fit">
         <Text secondaryBody text03>
-          No credential configuration available for {sourceMetadata.displayName}
-          .
+          {t("admin.craftConfigureConnector.noCredentialConfig", {
+            displayName: sourceMetadata.displayName,
+          })}
         </Text>
         <Button action secondary onClick={onCancel}>
-          Cancel
+          {t("admin.craftConfigureConnector.cancelButton")}
         </Button>
       </Section>
     );
@@ -155,7 +158,7 @@ export default function CreateCredentialInline({
                 onClick={onCancel}
                 disabled={isSubmitting}
               >
-                Cancel
+                {t("admin.craftConfigureConnector.cancelButton")}
               </Button>
               <Button
                 action

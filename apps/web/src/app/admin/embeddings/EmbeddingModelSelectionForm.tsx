@@ -1,6 +1,7 @@
 "use client";
 
 import { errorHandlingFetcher } from "@/lib/fetcher";
+import { useTranslation } from "react-i18next";
 import useSWR from "swr";
 import { Dispatch, SetStateAction, useState } from "react";
 import {
@@ -62,6 +63,9 @@ export default function EmbeddingModelSelection({
   updateCurrentModel,
   advancedEmbeddingDetails,
 }: EmbeddingModelSelectionProps) {
+  const { t } = useTranslation("common", {
+    keyPrefix: "admin.embeddings.modelSelection",
+  });
   // Cloud Provider based modals
   const [showTentativeProvider, setShowTentativeProvider] =
     useState<CloudEmbeddingProvider | null>(null);
@@ -203,8 +207,7 @@ export default function EmbeddingModelSelection({
       )}
 
       <p className="mb-4">
-        Select from cloud, self-hosted models, or continue with your current
-        embedding model.
+        {t("description")}
       </p>
       <div className="text-sm mr-auto mb-6 divide-x-2 flex">
         <button
@@ -215,7 +218,7 @@ export default function EmbeddingModelSelection({
               : " hover:underline bg-neutral-100 dark:bg-neutral-900"
           }`}
         >
-          Current
+          {t("currentTab")}
         </button>
         <div className="px-2">
           <button
@@ -226,7 +229,7 @@ export default function EmbeddingModelSelection({
                 : " hover:underline bg-neutral-100 dark:bg-neutral-900"
             }`}
           >
-            Cloud-based
+            {t("cloudTab")}
           </button>
         </div>
         <div className="px-2">
@@ -238,7 +241,7 @@ export default function EmbeddingModelSelection({
                 : "hover:underline bg-neutral-100 dark:bg-neutral-900"
             }`}
           >
-            Self-hosted
+            {t("selfHostedTab")}
           </button>
         </div>
       </div>
@@ -296,7 +299,7 @@ export default function EmbeddingModelSelection({
                   setChangeCredentialsProvider(provider);
                 }}
               >
-                Update API key
+                {t("updateApiKeyButton")}
               </Button>
             </div>
           )}

@@ -1,6 +1,8 @@
 import uuid
 from typing import Any
 
+from i18n import t
+
 from src.service import get_user_settings_service
 
 from .base import BaseController
@@ -26,14 +28,14 @@ class SettingsController(BaseController):
     ) -> dict[str, Any]:
         result = await self.service.update_prompt_shortcut(user_id, shortcut_id, **updates)
         if not result:
-            self._raise_not_found("Shortcut not found")
+            self._raise_not_found("settings.shortcut_not_found")
         return result
 
     async def delete_prompt_shortcut(self, user_id: uuid.UUID, shortcut_id: int) -> dict[str, str]:
         success = await self.service.delete_prompt_shortcut(user_id, shortcut_id)
         if not success:
-            self._raise_not_found("Shortcut not found")
-        return {"message": "Shortcut deleted"}
+            self._raise_not_found("settings.shortcut_not_found")
+        return {"message": t("settings.shortcut_deleted")}
 
 
 _settings_controller: SettingsController | None = None

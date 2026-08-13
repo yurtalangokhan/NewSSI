@@ -1,10 +1,14 @@
 import html
+import logging
 import secrets
 from html.parser import HTMLParser
 from typing import Any
 from urllib.parse import parse_qs, urljoin, urlparse
 
 import httpx
+from i18n import t
+
+logger = logging.getLogger(__name__)
 
 
 class _KeycloakLoginFormParser(HTMLParser):
@@ -57,10 +61,7 @@ class KeycloakBrokerMixin:
             if parsed.scheme and parsed.netloc:
                 wildcard_base = redirect_uri.split("*", 1)[0].rstrip("/")
                 return f"{wildcard_base}/auth/oidc/callback"
-        raise ValueError(
-            "KEYCLOAK_REDIRECT_URI or KEYCLOAK_REDIRECT_URIS must contain an "
-            "absolute callback URL"
-        )
+        raise ValueError(t("keycloak.redirect_uri_not_absolute"))
 
     def _rewrite_keycloak_url_for_backend(self, url: str) -> str:
         rewritten = html.unescape(url)
@@ -85,7 +86,7 @@ class KeycloakBrokerMixin:
         code = query.get("code", [None])[0]
         state = query.get("state", [None])[0]
         if code and state != expected_state:
-            return None, "Invalid OIDC state returned from Keycloak"
+            return None, t("keycloak.invalid_oidc_state")
         return code, None
 
     @staticmethod
@@ -93,7 +94,7 @@ class KeycloakBrokerMixin:
         parser = _KeycloakLoginFormParser()
         parser.feed(response.text)
         if not parser.form_action:
-            raise ValueError("External IdP login form was not found")
+            raise ValueError(t("keycloak.login_form_not_found"))
 
         action = urljoin(str(response.url), html.unescape(parser.form_action))
         return action, dict(parser.form_inputs)
@@ -111,10 +112,10 @@ class KeycloakBrokerMixin:
         if not rejected_redirect_uri:
             return None
 
-        return (
-            "External IdP rejected redirect_uri. Add this Valid Redirect URI to "
-            f"external Keycloak client '{query.get('client_id', [''])[0]}': "
-            f"{rejected_redirect_uri}"
+        return t(
+            "keycloak.external_redirect_uri_rejected",
+            client_id=query.get("client_id", [""])[0],
+            redirect_uri=rejected_redirect_uri,
         )
 
     def _sp_redirect_uri_error(self, response: httpx.Response) -> str | None:
@@ -141,9 +142,10 @@ class KeycloakBrokerMixin:
             get_login_client_id = getattr(self, "get_login_client_id", None)
             client_id = get_login_client_id() if callable(get_login_client_id) else ""
 
-        return (
-            "SP Keycloak rejected redirect_uri. Add this Valid Redirect URI to "
-            f"SP Keycloak client '{client_id}': {rejected_redirect_uri}"
+        return t(
+            "keycloak.sp_redirect_uri_rejected",
+            client_id=client_id,
+            redirect_uri=rejected_redirect_uri,
         )
 
     @staticmethod
@@ -217,7 +219,8 @@ class KeycloakBrokerMixin:
             break
 
         detail = self._response_error_detail(current)
-        raise ValueError(f"External IdP login flow did not complete ({detail})")
+        logger.warning("External IdP login flow did not complete (%s)", detail)
+        raise ValueError(t("auth.external_login_failed"))
 
     async def external_broker_password_login(
         self,
@@ -227,10 +230,10 @@ class KeycloakBrokerMixin:
     ) -> dict[str, Any]:
         """Authenticate on the configured IdP through the SP broker."""
         if not self.is_external_keycloak():
-            raise ValueError("External Keycloak is not configured")
+            raise ValueError(t("keycloak.external_not_configured"))
 
         if not redirect_uri:
-            raise ValueError("redirect_uri is required for external Keycloak login")
+            raise ValueError(t("keycloak.redirect_uri_required"))
 
         callback_uri = redirect_uri
         ensure_login_redirect_uri = getattr(self, "ensure_login_client_redirect_uri", None)
@@ -277,9 +280,10 @@ class KeycloakBrokerMixin:
                 state,
             )
             if not code:
-                if final_response.status_code in (400, 401, 403):
-                    raise ValueError("External authentication failed")
-                raise ValueError("External IdP credentials were rejected")
+                # _follow_broker_redirects only returns without a code when the
+                # response status was 200 (the login form was re-rendered, e.g.
+                # after a wrong password); any other status raises there first.
+                raise ValueError(t("auth.external_credentials_rejected"))
 
         assert code is not None
         return await self.handle_oidc_callback(code, callback_uri)

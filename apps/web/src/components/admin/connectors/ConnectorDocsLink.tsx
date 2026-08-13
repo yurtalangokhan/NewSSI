@@ -9,7 +9,7 @@ export default function ConnectorDocsLink({
   sourceType: ValidSources;
   className?: string;
 }) {
-  const { t } = useTranslation("admin");
+  const { t } = useTranslation("common", { keyPrefix: "admin" });
   const docsLink = getSourceDocLink(sourceType);
 
   if (!docsLink) {

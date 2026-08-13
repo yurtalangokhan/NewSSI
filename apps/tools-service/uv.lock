@@ -522,6 +522,24 @@ wheels = [
 ]
 
 [[package]]
+name = "i18n-py"
+version = "0.1.0"
+source = { directory = "../../packages/i18n-py" }
+dependencies = [
+    { name = "starlette" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "starlette", specifier = ">=0.27.0" }]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "httpx", specifier = ">=0.27.0" },
+    { name = "pytest", specifier = ">=8.0.0" },
+    { name = "pytest-asyncio", specifier = ">=0.24.0" },
+]
+
+[[package]]
 name = "idna"
 version = "3.11"
 source = { registry = "https://pypi.org/simple" }
@@ -887,6 +905,7 @@ dependencies = [
     { name = "ddgs" },
     { name = "fastmcp" },
     { name = "httpx" },
+    { name = "i18n-py" },
     { name = "pyjwt" },
     { name = "pymupdf" },
 ]
@@ -905,6 +924,7 @@ requires-dist = [
     { name = "ddgs", specifier = ">=9.0.0" },
     { name = "fastmcp", specifier = ">=2.0.0" },
     { name = "httpx", specifier = ">=0.27.0" },
+    { name = "i18n-py", directory = "../../packages/i18n-py" },
     { name = "pyjwt", specifier = ">=2.10.0" },
     { name = "pymupdf", specifier = ">=1.24.0" },
 ]

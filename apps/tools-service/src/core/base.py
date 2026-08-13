@@ -7,6 +7,8 @@ import json
 from abc import ABC, abstractmethod
 from typing import Any
 
+from i18n import t
+
 
 class BaseToolCategory(ABC):
     """
@@ -43,6 +45,22 @@ class BaseToolCategory(ABC):
         Example: "📁 File Operations", "🧮 Calculator"
         """
         pass
+
+    @property
+    def translated_label(self) -> str:
+        """
+        Returns the translated display label for this tool category
+        based on current request locale.
+        """
+        return t(f"categories.{self.name}.label", default=self.label)
+
+    @property
+    def translated_description(self) -> str:
+        """
+        Returns the translated description for this tool category
+        based on current request locale.
+        """
+        return t(f"categories.{self.name}.description", default=self.description)
 
     @abstractmethod
     def register_tools(self, mcp: Any) -> None:
@@ -82,17 +100,21 @@ class BaseToolCategory(ABC):
         return json.dumps({"success": True, **data}, indent=2)
 
     @staticmethod
-    def error_response(error: str) -> str:
+    def error_response(key: str, default: str | None = None, **kwargs: Any) -> str:
         """
-        Create a standardized error response.
+        Create a standardized, translated error response.
 
         Args:
-            error: The error message.
+            key: Translation key (e.g. "pdf.file_not_found") looked up against
+                the current request locale, or a raw message understood as the
+                English default when no matching key exists.
+            default: Explicit fallback text if the key is not defined for any locale.
+            **kwargs: Values to interpolate into the translation template.
 
         Returns:
-            JSON string with success=False and the error.
+            JSON string with success=False and the translated error.
         """
-        return json.dumps({"success": False, "error": error})
+        return json.dumps({"success": False, "error": t(key, default=default, **kwargs)})
 
     @staticmethod
     def parse_json_param(param: str | None) -> dict[str, Any]:

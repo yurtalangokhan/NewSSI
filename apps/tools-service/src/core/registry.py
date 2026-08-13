@@ -8,7 +8,16 @@ import importlib.util
 from pathlib import Path
 from typing import Any
 
+from i18n import t
+
 from .base import BaseToolCategory
+
+
+def _safe_t(key: str, default: str | None = None) -> str | None:
+    val = t(key)
+    if not val or val == key or val.startswith("tools.") or val.startswith("categories."):
+        return default
+    return val
 
 
 class ToolRegistry:
@@ -30,6 +39,69 @@ class ToolRegistry:
         self.mcp = mcp
         self._categories: dict[str, BaseToolCategory] = {}
         self._enabled: dict[str, bool] = {}
+        self._setup_i18n_wrapper()
+
+    def _setup_i18n_wrapper(self) -> None:
+        """Wrap FastMCP.list_tools to dynamically translate tool metadata per request."""
+        if getattr(self.mcp, "_i18n_wrapped", False):
+            return
+
+        orig_list_tools = self.mcp.list_tools
+
+        async def list_tools_i18n(*args: Any, **kwargs: Any) -> Any:
+            tools = await orig_list_tools(*args, **kwargs)
+            translated_tools = []
+            for tool in tools:
+                cat_name = getattr(tool, "_category_name", None)
+                orig_desc = getattr(tool, "_original_doc", None)
+                orig_name = getattr(tool, "_original_name", tool.name)
+
+                desc_str = tool.description or ""
+                if not cat_name and "[category:" in desc_str:
+                    try:
+                        c_start = desc_str.find("[category:") + len("[category:")
+                        c_end = desc_str.find("]", c_start)
+                        if c_end > c_start:
+                            cat_name = desc_str[c_start:c_end]
+                    except Exception:
+                        pass
+
+                if orig_desc is None:
+                    base_desc = desc_str
+                    if "[category:" in base_desc:
+                        base_desc = base_desc.split("[category:")[0].split("[category_label:")[0].strip()
+                    orig_desc = base_desc
+
+                cat_label = _safe_t(f"categories.{cat_name}.label", cat_name or "") if cat_name else ""
+
+                trans_desc = None
+                if cat_name:
+                    trans_desc = _safe_t(f"tools.{cat_name}.{orig_name}.description")
+                if trans_desc is None:
+                    trans_desc = _safe_t(f"tools.{orig_name}.description", orig_desc)
+
+                if trans_desc and "[category:" in trans_desc:
+                    trans_desc = trans_desc.split("[category:")[0].strip()
+
+                trans_title = None
+                if cat_name:
+                    trans_title = _safe_t(f"tools.{cat_name}.{orig_name}.name")
+                if trans_title is None:
+                    trans_title = _safe_t(f"tools.{orig_name}.name", orig_name.replace("_", " ").title())
+
+                category_tag = f"[category:{cat_name}]" if cat_name else ""
+                label_tag = f"[category_label:{cat_label}]" if cat_label else ""
+                title_tag = f"[title:{trans_title}]" if trans_title else ""
+                full_desc = f"{category_tag}{label_tag}{title_tag} {trans_desc or ''}".strip()
+
+                tool.name = orig_name
+                tool.description = full_desc
+                translated_tools.append(tool)
+
+            return translated_tools
+
+        self.mcp.list_tools = list_tools_i18n
+        self.mcp._i18n_wrapped = True
 
     def register_category(self, category: BaseToolCategory) -> None:
         """
@@ -179,7 +251,8 @@ class ToolRegistry:
         return [
             {
                 "name": name,
-                "description": cat.description,
+                "description": cat.translated_description,
+                "label": cat.translated_label,
                 "enabled": self._enabled.get(name, False),
             }
             for name, cat in self._categories.items()
@@ -231,10 +304,16 @@ class _CategoryTaggedMCP:
         label_tag = f"[category_label:{self._category_label}]"
 
         def wrapper(func):
-            # Inject category and label tags into the function's docstring
             original_doc = func.__doc__ or ""
+            original_name = getattr(func, "__name__", "tool")
             func.__doc__ = f"{category_tag}{label_tag} {original_doc}"
-            return original_decorator(func)
+            res_tool = original_decorator(func)
+
+            target = res_tool if res_tool is not None else func
+            target._category_name = self._category_name
+            target._original_name = original_name
+            target._original_doc = original_doc
+            return res_tool
 
         return wrapper
 

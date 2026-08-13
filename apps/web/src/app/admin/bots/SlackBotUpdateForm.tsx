@@ -116,14 +116,14 @@ export const ExistingSlackBotForm = ({
               onClick={() => setIsExpanded(!isExpanded)}
               secondary
             >
-              Update Tokens
+              {t("admin.bots.updateTokensButton")}
             </Button>
             <Button
               danger
               onClick={() => setShowDeleteModal(true)}
               leftIcon={SvgTrash}
             >
-              Delete
+              {t("admin.bots.deleteButton")}
             </Button>
           </div>
 

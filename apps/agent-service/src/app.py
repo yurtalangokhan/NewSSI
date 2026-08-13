@@ -11,10 +11,12 @@ import logging
 import warnings
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.routing import APIRoute
+from i18n import I18nMiddleware, init_service_i18n
 from idempotency import AsyncRedisPool, IdempotencyConfig, IdempotencyMiddleware
 from langchain_core._api import LangChainBetaWarning
 from langfuse import Langfuse  # type: ignore[import-untyped]
@@ -131,7 +133,18 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 # App instance
 # =============================================================================
 
+# In local dev app.py lives under src/, one level below the service root that
+# holds locales/. In the Docker image the file is flattened directly into the
+# app root instead, so fall back to a locales/ dir next to the file itself.
+_here = Path(__file__).resolve().parent
+locales_dir = _here.parent / "locales"
+if not locales_dir.exists():
+    locales_dir = _here / "locales"
+init_service_i18n(locales_dir)
+
 app = FastAPI(lifespan=lifespan, generate_unique_id_function=custom_generate_unique_id)
+
+app.add_middleware(I18nMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
@@ -141,6 +154,7 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["Content-Location"],
 )
+
 
 app.add_middleware(
     IdempotencyMiddleware,

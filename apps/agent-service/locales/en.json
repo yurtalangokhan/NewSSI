@@ -1,0 +1,115 @@
+{
+  "agent": {
+    "not_found": "Agent {agent_id} not found",
+    "group_not_found": "Agent group not found",
+    "unexpected_error": "Unexpected error",
+    "graph_schema_required": "graph_schema is required",
+    "invalid_uuid": "Invalid UUID: {id}",
+    "sub_agent_ids_must_be_array": "sub_agent_ids must be an array",
+    "definition_not_found": "Agent definition {definition_id} not found",
+    "no_fields_to_update": "No fields to update",
+    "reserved_keys_in_config": "agent_config contains reserved keys: {keys}",
+    "message_or_messages_required": "One of 'message' or 'messages' must be provided."
+  },
+  "tool": {
+    "ids_required": "tool_ids required",
+    "binding_not_found": "Tool binding not found",
+    "not_found": "Tool {tool_id} not found"
+  },
+  "provider": {
+    "not_found": "Provider not found or cannot be deleted"
+  },
+  "thread": {
+    "not_found": "Thread not found"
+  },
+  "persona": {
+    "not_found": "Persona not found",
+    "cannot_update_builtin": "Cannot update built-in agents",
+    "cannot_delete_builtin": "Cannot delete built-in agents"
+  },
+  "file": {
+    "not_found": "File not found.",
+    "text_extraction_unsupported": "Cannot extract text from this file type (images are not supported)."
+  },
+  "run": {
+    "assistant_id_required": "assistant_id is required",
+    "thread_and_run_id_required": "thread_id and run_id are required",
+    "thread_id_required": "thread_id is required"
+  },
+  "assistant": {
+    "not_found": "Assistant {assistant_id} not found",
+    "graph_not_found": "Graph {graph_id} not found",
+    "cannot_update_system_template": "Cannot update system templates",
+    "system_template_not_deleted": "System template not deleted",
+    "id_required": "assistant_id is required"
+  },
+  "mcp_provider": {
+    "not_found": "Provider {provider_id} not found"
+  },
+  "mcp": {
+    "tool_not_found": "Tool '{tool_name}' not found"
+  },
+  "datasource": {
+    "duplicate_name": "A data source named '{name}' already exists. Please choose a different name.",
+    "unknown_connector": "Unknown connector: {connector_type}",
+    "create_source_failed": "Failed to create Airbyte source: {error}",
+    "setup_destination_failed": "Failed to setup destination: {error}",
+    "create_connection_failed": "Failed to create connection: {error}",
+    "create_collection_failed": "Failed to create collection",
+    "not_found": "DataSource {datasource_id} not found",
+    "no_airbyte_mapping": "No Airbyte mapping found for this datasource",
+    "invalid_sync_mode_combination": "Invalid sync mode combination: {sync_mode} | {dest_mode}. Valid combos: full_refresh|overwrite, full_refresh|append, incremental|append",
+    "update_source_failed": "Failed to update Airbyte source: {error}",
+    "update_source_name_failed": "Failed to update Airbyte source name: {error}",
+    "update_streams_failed": "Failed to update connection streams: {error}",
+    "update_connection_failed": "Failed to update Airbyte connection: {error}",
+    "id_required": "datasource_id is required"
+  },
+  "web_search": {
+    "unsupported_provider_type": "Unsupported content provider type: {provider_type}",
+    "test_fetch_failed": "Failed to fetch test URL",
+    "url_required": "A non-empty 'url' field is required.",
+    "url_invalid_scheme": "URL must start with http:// or https://",
+    "no_crawler_result": "No result returned from crawler."
+  },
+  "chat": {
+    "missing_session_id": "Missing session_id",
+    "session_not_found": "Session not found"
+  },
+  "auth": {
+    "admin_required": "Admin role required",
+    "not_authenticated": "Not authenticated",
+    "keycloak_not_configured": "KEYCLOAK_ISSUER_URL is not configured",
+    "signing_key_resolution_failed": "Unable to resolve token signing key: {error}",
+    "invalid_bearer_token_detail": "Invalid bearer token: {error}",
+    "token_validation_failed": "Token validation failed",
+    "missing_bearer_token": "Missing bearer token",
+    "invalid_bearer_token": "Invalid bearer token",
+    "missing_permission": "Missing required permission: {permission}",
+    "invalid_api_key": "Invalid API key"
+  },
+  "common": {
+    "bad_request": "Bad request",
+    "not_found": "Resource not found",
+    "internal_error": "Internal server error",
+    "forbidden": "Forbidden"
+  },
+  "mailConfig": {
+    "notFound": "Mail config not found",
+    "attachedToAgent": "Mail config is attached to an agent",
+    "attachmentRequired": "Attachment filename and content are required.",
+    "recipientSubjectBodyRequired": "Recipient, subject, and body are required before sending email.",
+    "attachmentInvalid": "Email attachment payload is invalid.",
+    "smtpAuthFailedDetail": "SMTP authentication failed: {detail}",
+    "smtpAuthFailed": "SMTP authentication failed.",
+    "smtpConnectionFailed": "SMTP server could not be reached: {error}",
+    "recipientsRejected": "SMTP server rejected one or more recipients.",
+    "testRecipientRejected": "SMTP server rejected the test recipient.",
+    "messageRejected": "SMTP server rejected the message: {error}",
+    "testMessageRejected": "SMTP server rejected the test message: {error}",
+    "emailSent": "Email sent.",
+    "testEmailSent": "Test email sent.",
+    "emailFailed": "Email failed: {detail}",
+    "testEmailFailed": "Test email failed: {detail}"
+  }
+}

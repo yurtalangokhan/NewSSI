@@ -7,6 +7,7 @@ import * as SettingsLayouts from "@/layouts/settings-layouts";
 import { SvgSlack } from "@opal/icons";
 import { FetchAgentsResponse, fetchAgentsSS } from "@/lib/agentsSS";
 import { getStandardAnswerCategoriesIfEE } from "@/components/standardAnswers/getStandardAnswerCategoriesIfEE";
+import i18n from "@/i18n/config";
 
 async function EditslackChannelConfigPage(props: {
   params: Promise<{ id: number }>;
@@ -30,8 +31,8 @@ async function EditslackChannelConfigPage(props: {
   if (!slackChannelsResponse.ok) {
     return (
       <ErrorCallout
-        errorTitle="Something went wrong :("
-        errorMsg={`Failed to fetch Slack Channels - ${await slackChannelsResponse.text()}`}
+        errorTitle={i18n.t("admin.bots.somethingWentWrong")}
+        errorMsg={`${i18n.t("admin.bots.failedToFetchSlackChannels")} - ${await slackChannelsResponse.text()}`}
       />
     );
   }
@@ -45,8 +46,8 @@ async function EditslackChannelConfigPage(props: {
   if (!slackChannelConfig) {
     return (
       <ErrorCallout
-        errorTitle="Something went wrong :("
-        errorMsg={`Did not find Slack Channel config with ID: ${params.id}`}
+        errorTitle={i18n.t("admin.bots.somethingWentWrong")}
+        errorMsg={`${i18n.t("admin.bots.slackChannelConfigNotFound")} ID: ${params.id}`}
       />
     );
   }
@@ -54,8 +55,8 @@ async function EditslackChannelConfigPage(props: {
   if (!documentSetsResponse.ok) {
     return (
       <ErrorCallout
-        errorTitle="Something went wrong :("
-        errorMsg={`Failed to fetch document sets - ${await documentSetsResponse.text()}`}
+        errorTitle={i18n.t("admin.bots.somethingWentWrong")}
+        errorMsg={`${i18n.t("admin.bots.failedToFetchDocumentSets")} - ${await documentSetsResponse.text()}`}
       />
     );
   }
@@ -65,8 +66,8 @@ async function EditslackChannelConfigPage(props: {
   if (agentsFetchError) {
     return (
       <ErrorCallout
-        errorTitle="Something went wrong :("
-        errorMsg={`Failed to fetch personas - ${agentsFetchError}`}
+        errorTitle={i18n.t("admin.bots.somethingWentWrong")}
+        errorMsg={`${i18n.t("admin.bots.failedToFetchPersonas")} - ${agentsFetchError}`}
       />
     );
   }

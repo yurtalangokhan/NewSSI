@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
 import * as Yup from "yup";
+import { Trans, useTranslation } from "react-i18next";
 import { FormikField } from "@/refresh-components/form/FormikField";
 import { FormField } from "@/refresh-components/form/FormField";
 import PasswordInputTypeIn from "@/refresh-components/inputs/PasswordInputTypeIn";
@@ -18,7 +19,6 @@ import { buildInitialValues } from "../components/llmConnectionHelpers";
 import ConnectionProviderIcon from "@/refresh-components/ConnectionProviderIcon";
 import InlineExternalLink from "@/refresh-components/InlineExternalLink";
 import { ProviderIcon } from "@/app/admin/configuration/llm/ProviderIcon";
-import { APP_NAME } from "@/lib/appInfo";
 
 // Field name constants
 const FIELD_API_KEY = "api_key";
@@ -48,6 +48,7 @@ interface OpenAIFormValues {
 function OpenAIFormFields(props: OnboardingFormChildProps<OpenAIFormValues>) {
   const { apiStatus, showApiMessage, errorMessage, modelOptions, disabled } =
     props;
+  const { t } = useTranslation();
 
   return (
     <>
@@ -55,7 +56,7 @@ function OpenAIFormFields(props: OnboardingFormChildProps<OpenAIFormValues>) {
         name={FIELD_API_KEY}
         render={(field, helper, meta, state) => (
           <FormField name={FIELD_API_KEY} state={state} className="w-full">
-            <FormField.Label>API Key</FormField.Label>
+            <FormField.Label>{t("llmOnboarding.apiKey")}</FormField.Label>
             <FormField.Control>
               <PasswordInputTypeIn
                 {...field}
@@ -69,13 +70,17 @@ function OpenAIFormFields(props: OnboardingFormChildProps<OpenAIFormValues>) {
               <FormField.Message
                 messages={{
                   idle: (
-                    <>
-                      {"Paste your "}
-                      <InlineExternalLink href="https://platform.openai.com/api-keys">
-                        API key
-                      </InlineExternalLink>
-                      {" from OpenAI to access your models."}
-                    </>
+                    <Trans
+                      i18nKey="llmOnboarding.pasteApiKeyHint"
+                      values={{ provider: "OpenAI" }}
+                      components={{
+                        link: (
+                          <InlineExternalLink href="https://platform.openai.com/api-keys">
+                            API key
+                          </InlineExternalLink>
+                        ),
+                      }}
+                    />
                   ),
                   error: meta.error,
                 }}
@@ -85,9 +90,9 @@ function OpenAIFormFields(props: OnboardingFormChildProps<OpenAIFormValues>) {
               <FormField.APIMessage
                 state={apiStatus}
                 messages={{
-                  loading: "Checking API key with OpenAI...",
-                  success: "API key valid.",
-                  error: errorMessage || "Invalid API key",
+                  loading: t("llmOnboarding.checkingOpenAI"),
+                  success: t("llmOnboarding.apiKeyValid"),
+                  error: errorMessage || t("llmOnboarding.invalidApiKey"),
                 }}
               />
             )}
@@ -105,7 +110,7 @@ function OpenAIFormFields(props: OnboardingFormChildProps<OpenAIFormValues>) {
             state={state}
             className="w-full"
           >
-            <FormField.Label>Default Model</FormField.Label>
+            <FormField.Label>{t("llmOnboarding.defaultModel")}</FormField.Label>
             <FormField.Control>
               <InputComboBox
                 value={field.value}
@@ -114,12 +119,12 @@ function OpenAIFormFields(props: OnboardingFormChildProps<OpenAIFormValues>) {
                 options={modelOptions}
                 disabled={disabled || modelOptions.length === 0}
                 onBlur={field.onBlur}
-                placeholder="Select a model"
+                placeholder={t("llmOnboarding.selectOrTypeModel")}
               />
             </FormField.Control>
             <FormField.Message
               messages={{
-                idle: `This model will be used by ${APP_NAME} by default.`,
+                idle: t("llmOnboarding.defaultModelDesc"),
                 error: meta.error,
               }}
             />
@@ -137,6 +142,7 @@ export function OpenAIOnboardingForm({
   open,
   onOpenChange,
 }: OpenAIOnboardingFormProps) {
+  const { t } = useTranslation();
   const initialValues = useMemo(
     (): OpenAIFormValues => ({
       ...buildInitialValues(),
@@ -148,8 +154,8 @@ export function OpenAIOnboardingForm({
   );
 
   const validationSchema = Yup.object().shape({
-    [FIELD_API_KEY]: Yup.string().required("API Key is required"),
-    [FIELD_DEFAULT_MODEL_NAME]: Yup.string().required("Model name is required"),
+    [FIELD_API_KEY]: Yup.string().required(t("llmOnboardingForms.apiKeyRequired")),
+    [FIELD_DEFAULT_MODEL_NAME]: Yup.string().required(t("llmOnboardingForms.modelNameRequired")),
   });
 
   const icon = () => (
@@ -171,8 +177,8 @@ export function OpenAIOnboardingForm({
   return (
     <OnboardingFormWrapper<OpenAIFormValues>
       icon={icon}
-      title="Set up GPT"
-      description="Connect to OpenAI and set up your ChatGPT models."
+      title={t("llmOnboarding.setupOpenAI")}
+      description={t("llmOnboarding.setupOpenAIDesc")}
       llmDescriptor={llmDescriptor}
       onboardingState={onboardingState}
       onboardingActions={onboardingActions}

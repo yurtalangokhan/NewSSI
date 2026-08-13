@@ -11,6 +11,8 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
+from i18n import t
+
 from ..core.base import BaseToolCategory
 from ..core.settings import optional_env
 
@@ -40,11 +42,11 @@ class CodeTools(BaseToolCategory):
 
     @property
     def description(self) -> str:
-        return "Run and test code in Python, Node.js, and other languages"
+        return t("categories.code_execution.description", default="Run and test code in Python, Node.js, and other languages")
 
     @property
     def label(self) -> str:
-        return "Code Execution"
+        return t("categories.code_execution.label", default="Code Execution")
 
     def register_tools(self, mcp: Any) -> None:
         """Register all code execution tools with MCP."""
@@ -102,9 +104,9 @@ class CodeTools(BaseToolCategory):
                     os.unlink(temp_file)
 
             except subprocess.TimeoutExpired:
-                return f"Error: Code execution timed out after {timeout} seconds"
+                return t("code.execution_timeout", seconds=timeout)
             except Exception as e:
-                return f"Error executing Python code: {str(e)}"
+                return t("code.python_execution_error", error=str(e))
 
         @mcp.tool()
         def run_python_file(file_path: str, args: str | None = None, timeout: int = 60) -> str:
@@ -124,7 +126,7 @@ class CodeTools(BaseToolCategory):
                 file_path = os.path.join(WORKSPACE_DIR, file_path)
 
             if not os.path.exists(file_path):
-                return f"Error: File not found: {file_path}"
+                return t("code.file_not_found", path=file_path)
 
             try:
                 cmd = ["python3", file_path]
@@ -152,9 +154,9 @@ class CodeTools(BaseToolCategory):
                 return output if output.strip() else "[No output]"
 
             except subprocess.TimeoutExpired:
-                return f"Error: Execution timed out after {timeout} seconds"
+                return t("code.file_execution_timeout", seconds=timeout)
             except Exception as e:
-                return f"Error executing Python file: {str(e)}"
+                return t("code.python_file_error", error=str(e))
 
         @mcp.tool()
         def validate_python(code: str) -> str:
@@ -175,9 +177,15 @@ class CodeTools(BaseToolCategory):
                 ast.parse(code)
                 return "✓ Python syntax is valid"
             except SyntaxError as e:
-                return f"✗ Syntax Error at line {e.lineno}, column {e.offset}:\n{e.msg}\n\nProblematic line:\n{e.text}"
+                return t(
+                    "code.python_syntax_error",
+                    lineno=e.lineno,
+                    offset=e.offset,
+                    msg=e.msg,
+                    text=e.text,
+                )
             except Exception as e:
-                return f"✗ Validation error: {str(e)}"
+                return t("code.validation_error", error=str(e))
 
         @mcp.tool()
         def run_node(code: str, timeout: int = 30) -> str:
@@ -231,11 +239,11 @@ class CodeTools(BaseToolCategory):
                     os.unlink(temp_file)
 
             except FileNotFoundError:
-                return "Error: Node.js is not installed or not in PATH"
+                return t("code.node_not_installed")
             except subprocess.TimeoutExpired:
-                return f"Error: Code execution timed out after {timeout} seconds"
+                return t("code.execution_timeout", seconds=timeout)
             except Exception as e:
-                return f"Error executing Node.js code: {str(e)}"
+                return t("code.node_execution_error", error=str(e))
 
         @mcp.tool()
         def run_pytest(test_path: str, args: str | None = None, timeout: int = 120) -> str:
@@ -255,7 +263,7 @@ class CodeTools(BaseToolCategory):
                 test_path = os.path.join(WORKSPACE_DIR, test_path)
 
             if not os.path.exists(test_path):
-                return f"Error: Test path not found: {test_path}"
+                return t("code.test_path_not_found", path=test_path)
 
             try:
                 cmd = ["python3", "-m", "pytest", test_path, "-v"]
@@ -277,9 +285,9 @@ class CodeTools(BaseToolCategory):
                 return output if output.strip() else "[No test output]"
 
             except subprocess.TimeoutExpired:
-                return f"Error: Tests timed out after {timeout} seconds"
+                return t("code.test_timeout", seconds=timeout)
             except Exception as e:
-                return f"Error running pytest: {str(e)}"
+                return t("code.pytest_error", error=str(e))
 
         @mcp.tool()
         def run_npm_command(project_dir: str, command: str, timeout: int = 120) -> str:
@@ -299,11 +307,11 @@ class CodeTools(BaseToolCategory):
                 project_dir = os.path.join(WORKSPACE_DIR, project_dir)
 
             if not os.path.exists(project_dir):
-                return f"Error: Directory not found: {project_dir}"
+                return t("code.directory_not_found", path=project_dir)
 
             package_json = os.path.join(project_dir, "package.json")
             if not os.path.exists(package_json):
-                return f"Error: No package.json found in {project_dir}"
+                return t("code.package_json_not_found", path=project_dir)
 
             try:
                 cmd = ["npm"] + command.split()
@@ -321,11 +329,11 @@ class CodeTools(BaseToolCategory):
                 return output if output.strip() else "[No output]"
 
             except FileNotFoundError:
-                return "Error: npm is not installed or not in PATH"
+                return t("code.npm_not_installed")
             except subprocess.TimeoutExpired:
-                return f"Error: Command timed out after {timeout} seconds"
+                return t("code.command_timeout", seconds=timeout)
             except Exception as e:
-                return f"Error running npm: {str(e)}"
+                return t("code.npm_error", error=str(e))
 
         @mcp.tool()
         def validate_json_file(file_path: str) -> str:
@@ -343,7 +351,7 @@ class CodeTools(BaseToolCategory):
                 file_path = os.path.join(WORKSPACE_DIR, file_path)
 
             if not os.path.exists(file_path):
-                return f"Error: File not found: {file_path}"
+                return t("code.file_not_found", path=file_path)
 
             try:
                 with open(file_path, encoding="utf-8") as f:
@@ -353,9 +361,9 @@ class CodeTools(BaseToolCategory):
                 return f"✓ JSON is valid: {file_path}"
 
             except json.JSONDecodeError as e:
-                return f"✗ JSON Error at line {e.lineno}, column {e.colno}:\n{e.msg}"
+                return t("code.json_syntax_error", lineno=e.lineno, colno=e.colno, msg=e.msg)
             except Exception as e:
-                return f"✗ Error validating JSON: {str(e)}"
+                return t("code.json_validate_error", error=str(e))
 
         @mcp.tool()
         def run_linter(file_path: str, linter: str = "auto") -> str:
@@ -374,7 +382,7 @@ class CodeTools(BaseToolCategory):
                 file_path = os.path.join(WORKSPACE_DIR, file_path)
 
             if not os.path.exists(file_path):
-                return f"Error: File not found: {file_path}"
+                return t("code.file_not_found", path=file_path)
 
             # Auto-detect linter based on file extension
             ext = Path(file_path).suffix.lower()
@@ -385,7 +393,7 @@ class CodeTools(BaseToolCategory):
                 elif ext in [".js", ".jsx", ".ts", ".tsx"]:
                     linter = "eslint"
                 else:
-                    return f"No linter available for {ext} files"
+                    return t("code.no_linter_for_extension", ext=ext)
 
             try:
                 if linter == "flake8":
@@ -395,7 +403,7 @@ class CodeTools(BaseToolCategory):
                 elif linter == "eslint":
                     cmd = ["npx", "eslint", file_path]
                 else:
-                    return f"Unknown linter: {linter}"
+                    return t("code.unknown_linter", linter=linter)
 
                 result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
 
@@ -407,9 +415,9 @@ class CodeTools(BaseToolCategory):
                 return output
 
             except FileNotFoundError:
-                return f"Error: {linter} is not installed"
+                return t("code.linter_not_installed", linter=linter)
             except Exception as e:
-                return f"Error running linter: {str(e)}"
+                return t("code.linter_error", error=str(e))
 
         @mcp.tool()
         def start_dev_server(
@@ -432,7 +440,7 @@ class CodeTools(BaseToolCategory):
                 project_dir = os.path.join(WORKSPACE_DIR, project_dir)
 
             if not os.path.exists(project_dir):
-                return f"Error: Directory not found: {project_dir}"
+                return t("code.directory_not_found", path=project_dir)
 
             # Check for package.json (Node.js project)
             package_json = os.path.join(project_dir, "package.json")
@@ -494,4 +502,4 @@ class CodeTools(BaseToolCategory):
                         return f"Port {port} is AVAILABLE"
 
             except Exception as e:
-                return f"Error checking port: {str(e)}"
+                return t("code.port_check_error", error=str(e))

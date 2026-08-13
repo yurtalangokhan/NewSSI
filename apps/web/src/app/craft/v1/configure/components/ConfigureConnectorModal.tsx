@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import useSWR from "swr";
 import Modal from "@/refresh-components/Modal";
 import { ValidSources, ConfigurableSources } from "@/lib/types";
@@ -50,6 +51,7 @@ export default function ConfigureConnectorModal({
   onClose,
   onSuccess,
 }: ConfigureConnectorModalProps) {
+  const { t } = useTranslation();
   const [step, setStep] = useState<ModalStep>("credential");
   const [selectedCredential, setSelectedCredential] =
     useState<Credential<any> | null>(null);
@@ -169,7 +171,7 @@ export default function ConfigureConnectorModal({
                     tertiary
                     action
                   >
-                    View setup documentation
+                    {t("admin.craftConfigureConnector.viewSetupDocumentation")}
                   </Button>
                 </div>
               </Section>

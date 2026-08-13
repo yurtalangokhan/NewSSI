@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import Button from "@/refresh-components/buttons/Button";
 import { ValidSources, AccessType } from "@/lib/types";
 import { FaAccusoft } from "react-icons/fa";
@@ -34,15 +35,20 @@ const CreateButton = ({
   isSubmitting: boolean;
   isAdmin: boolean;
   groups: number[];
-}) => (
-  <Button
-    onClick={onClick}
-    disabled={isSubmitting || (!isAdmin && groups.length === 0)}
-    leftIcon={SvgPlusCircle}
-  >
-    Create
-  </Button>
-);
+}) => {
+  const { t } = useTranslation("common", {
+    keyPrefix: "admin.createCredential",
+  });
+  return (
+    <Button
+      onClick={onClick}
+      disabled={isSubmitting || (!isAdmin && groups.length === 0)}
+      leftIcon={SvgPlusCircle}
+    >
+      {t("createButton")}
+    </Button>
+  );
+};
 
 type formType = IsPublicGroupSelectorFormType & {
   name: string;
@@ -85,6 +91,9 @@ export default function CreateCredential({
   // Mutating parent state
   refresh?: () => void;
 }) {
+  const { t } = useTranslation("common", {
+    keyPrefix: "admin.createCredential",
+  });
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
   const [authMethod, setAuthMethod] = useState<string>();
   const isPaidEnterpriseFeaturesEnabled = usePaidEnterpriseFeaturesEnabled();
@@ -134,14 +143,14 @@ export default function CreateCredential({
       const { message, isSuccess, credential } = response;
 
       if (!credential) {
-        throw new Error("No credential returned");
+        throw new Error(t("noCredentialReturned"));
       }
 
       if (isSuccess && swapConnector) {
         if (action === "createAndSwap") {
           onSwap(credential, swapConnector.id, accessType);
         } else {
-          toast.success("Created new credential!");
+          toast.success(t("createdSuccess"));
         }
         onClose();
       } else {
@@ -162,7 +171,7 @@ export default function CreateCredential({
       }
     } catch (error) {
       console.error("Error submitting credential:", error);
-      toast.error("Error submitting credential");
+      toast.error(t("submitError"));
     } finally {
       formikHelpers.setSubmitting(false);
     }
@@ -214,8 +223,8 @@ export default function CreateCredential({
             <CardSection className="w-full items-start dark:bg-neutral-900 mt-4 flex flex-col gap-y-6">
               <TextFormField
                 name="name"
-                placeholder="(Optional) credential name.."
-                label="Name:"
+                placeholder={t("namePlaceholder")}
+                label={t("nameLabel")}
               />
 
               <CredentialFieldsRenderer
@@ -267,7 +276,7 @@ export default function CreateCredential({
                   <FaAccusoft className="fill-text-inverted-05" />
                 )}
               >
-                Create
+                {t("createButton")}
               </Button>
             )}
           </Form>

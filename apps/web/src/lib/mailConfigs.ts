@@ -1,5 +1,6 @@
 import useSWR from "swr";
 import { authenticatedFetch } from "@/lib/fetcher";
+import i18n from "@/i18n/config";
 
 export type MailSecurity = "ssl" | "starttls" | "none";
 
@@ -56,7 +57,9 @@ export type McpToolConfigs = {
 const MAIL_CONFIGS_ENDPOINT = "/api/mail-configs";
 
 async function fetcher<T>(url: string): Promise<T> {
-  const response = await authenticatedFetch(url);
+  const response = await authenticatedFetch(url, {
+    headers: { "X-Language": i18n.language || "en" },
+  });
   if (!response.ok) {
     throw new Error(await response.text());
   }
@@ -70,7 +73,10 @@ async function requestJson<T>(
 ): Promise<T> {
   const response = await authenticatedFetch(url, {
     method,
-    headers: payload ? { "Content-Type": "application/json" } : undefined,
+    headers: {
+      "X-Language": i18n.language || "en",
+      ...(payload ? { "Content-Type": "application/json" } : {}),
+    },
     body: payload ? JSON.stringify(payload) : undefined,
   });
   if (!response.ok) {

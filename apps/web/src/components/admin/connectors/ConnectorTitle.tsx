@@ -33,7 +33,7 @@ export const ConnectorTitle = ({
   showMetadata = true,
   className = "",
 }: ConnectorTitleProps) => {
-  const { t } = useTranslation("admin");
+  const { t } = useTranslation("common", { keyPrefix: "admin" });
   const sourceMetadata = getSourceMetadata(connector.source);
 
   let additionalMetadata = new Map<string, string>();

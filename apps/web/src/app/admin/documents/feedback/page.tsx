@@ -51,10 +51,14 @@ function Main() {
 
   return (
     <div>
-      <Title className="mb-2">Most Liked Documents</Title>
+      <Title className="mb-2">
+        {t("admin.documentsFeedback.mostLikedTitle")}
+      </Title>
       <DocumentFeedbackTable documents={mostLikedDocuments} refresh={refresh} />
 
-        {t("admin.documentsFeedback.mostLikedTitle")}
+      <Title className="mb-2 mt-6">
+        {t("admin.documentsFeedback.mostDislikedTitle")}
+      </Title>
       <DocumentFeedbackTable
         documents={mostDislikedDocuments}
         refresh={refresh}
