@@ -120,9 +120,7 @@ async def save_organization_layout(
 ) -> OrganizationLayoutUpdateResponse:
     """Atomically create or update shared canvas positions."""
     positions = [position.model_dump() for position in payload.positions]
-    result = await get_organization_layout_controller().save_layout(
-        uuid.UUID(user_id), positions
-    )
+    result = await get_organization_layout_controller().save_layout(uuid.UUID(user_id), positions)
     return OrganizationLayoutUpdateResponse.model_validate(result)
 
 

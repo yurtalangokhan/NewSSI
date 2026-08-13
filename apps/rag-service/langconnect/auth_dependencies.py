@@ -1,5 +1,4 @@
-"""
-Permission check dependencies for RAG routes.
+"""Permission check dependencies for RAG routes.
 
 Use these to protect collection and connector endpoints with new permission system.
 """
@@ -18,8 +17,7 @@ async def require_collection_access(
     user: Annotated[AuthenticatedUser, Depends(require_user)],
     required_permission: str = "read",
 ) -> AuthenticatedUser:
-    """
-    Dependency to check if user can access a collection.
+    """Dependency to check if user can access a collection.
 
     Usage in route:
         @router.get("/collections/{collection_id}")
@@ -62,8 +60,7 @@ async def require_connector_access(
     user: Annotated[AuthenticatedUser, Depends(require_user)],
     required_permission: str = "read",
 ) -> AuthenticatedUser:
-    """
-    Dependency to check if user can access a connector.
+    """Dependency to check if user can access a connector.
 
     Usage in route:
         @router.get("/connectors/{connector_id}")
@@ -102,8 +99,7 @@ async def require_connector_access(
 
 
 def require_collection_permission(permission_level: str):
-    """
-    Factory to create collection permission dependency with specific level.
+    """Factory to create collection permission dependency with specific level.
 
     Usage:
         @router.delete("/collections/{collection_id}")
@@ -124,8 +120,7 @@ def require_collection_permission(permission_level: str):
 
 
 def require_connector_permission(permission_level: str):
-    """
-    Factory to create connector permission dependency with specific level.
+    """Factory to create connector permission dependency with specific level.
 
     Usage:
         @router.put("/connectors/{connector_id}")

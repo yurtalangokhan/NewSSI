@@ -13,6 +13,7 @@ async def test_knowledge_selector_only_returns_current_user_visible_collections(
     monkeypatch,
 ) -> None:
     """Knowledge selector should not expose other users' private collections."""
+
     async def fake_graph_ids() -> list[str]:
         return []
 
@@ -42,9 +43,7 @@ async def test_knowledge_selector_only_returns_current_user_visible_collections(
         )
         assert selector_resp.status_code == 200
 
-        names = {
-            item["name"] for item in selector_resp.json()["document_processing"]
-        }
+        names = {item["name"] for item in selector_resp.json()["document_processing"]}
         assert "visible-user1" in names
         assert "hidden-user2" not in names
 

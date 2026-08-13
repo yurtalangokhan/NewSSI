@@ -250,7 +250,9 @@ async def resolve_user(
             claims = decode_keycloak_token(token)
             sub = claims.get("sub", "")
             if not sub:
-                raise HTTPException(status_code=401, detail=t("auth.invalid_bearer_token"))
+                raise HTTPException(
+                    status_code=401, detail=t("auth.invalid_bearer_token")
+                )
 
             email = (
                 claims.get("email", "") or claims.get("preferred_username", "") or sub

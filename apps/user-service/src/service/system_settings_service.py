@@ -74,7 +74,9 @@ class SystemSettingsService:
                 "issuer_url": self.keycloak.get_issuer_url(),
                 "admin": self._plain_config("KEYCLOAK_ADMIN", persisted, self.env.KEYCLOAK_ADMIN),
                 "admin_password_configured": bool(
-                    self._plain_config("KEYCLOAK_ADMIN_PASSWORD", persisted, self.env.KEYCLOAK_ADMIN_PASSWORD)
+                    self._plain_config(
+                        "KEYCLOAK_ADMIN_PASSWORD", persisted, self.env.KEYCLOAK_ADMIN_PASSWORD
+                    )
                 ),
                 "client_id": self.keycloak.get_client_id(),
                 "login_client_id": self.keycloak.get_login_client_id(),
@@ -211,7 +213,9 @@ class SystemSettingsService:
 
     def _plain_config(self, key: str, persisted: dict[str, Any], *fallbacks: Any) -> Any:
         if key in SECRET_FIELDS:
-            return _decrypt_secret(persisted.get(f"{key}_ENCRYPTED")) or _configured_value(*fallbacks)
+            return _decrypt_secret(persisted.get(f"{key}_ENCRYPTED")) or _configured_value(
+                *fallbacks
+            )
         if key in persisted:
             return persisted[key]
         return _configured_value(*fallbacks)

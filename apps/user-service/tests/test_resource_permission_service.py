@@ -19,11 +19,14 @@ from src.service.resource_permission_service import ResourcePermissionService
 def mock_repo():
     """Mock repository for testing."""
     repo = MagicMock()
-    repo.grant_permission = AsyncMock()
-    repo.revoke_permission = AsyncMock()
+    repo.create = AsyncMock()
+    repo.delete = AsyncMock()
+    repo.get_by_id = AsyncMock()
+    repo.get_by_org_resource = AsyncMock(return_value=None)
+    repo.get_by_user_resource = AsyncMock(return_value=None)
+    repo.get_resource_permissions = AsyncMock(return_value=[])
     repo.get_user_permissions = AsyncMock(return_value=[])
     repo.get_organization_permissions = AsyncMock(return_value=[])
-    repo.list_by_resource = AsyncMock(return_value=[])
     return repo
 
 
@@ -32,6 +35,7 @@ def mock_org_repo():
     """Mock organization repository."""
     repo = MagicMock()
     repo.get_ancestors = AsyncMock(return_value=[])
+    repo.get_by_id = AsyncMock(return_value={"name": "Organization"})
     return repo
 
 
@@ -44,12 +48,21 @@ def mock_user_org_repo():
 
 
 @pytest.fixture
-def service(mock_repo, mock_org_repo, mock_user_org_repo):
+def mock_audit_repo():
+    """Mock permission audit repository."""
+    repo = MagicMock()
+    repo.create = AsyncMock()
+    return repo
+
+
+@pytest.fixture
+def service(mock_repo, mock_org_repo, mock_user_org_repo, mock_audit_repo):
     """ResourcePermissionService with mocked dependencies."""
     return ResourcePermissionService(
         permission_repo=mock_repo,
         organization_repo=mock_org_repo,
         user_org_repo=mock_user_org_repo,
+        audit_repo=mock_audit_repo,
     )
 
 
@@ -63,11 +76,13 @@ class TestResourcePermissionService:
         resource_id = "agent-123"
         granted_by = uuid.uuid4()
 
-        mock_repo.grant_permission.return_value = {
+        mock_repo.create.return_value = {
             "id": uuid.uuid4(),
             "user_id": user_id,
+            "organization_id": None,
             "resource_type": "agent",
             "resource_id": resource_id,
+            "resource_name": resource_id,
             "permission_level": "read",
             "granted_by": granted_by,
         }
@@ -83,7 +98,7 @@ class TestResourcePermissionService:
         assert result is not None
         assert result["user_id"] == user_id
         assert result["resource_id"] == resource_id
-        mock_repo.grant_permission.assert_called_once()
+        mock_repo.create.assert_called_once()
 
     async def test_grant_organization_permission(self, service, mock_repo):
         """Test granting organization-level permission."""
@@ -91,11 +106,13 @@ class TestResourcePermissionService:
         resource_id = "collection-456"
         granted_by = uuid.uuid4()
 
-        mock_repo.grant_permission.return_value = {
+        mock_repo.create.return_value = {
             "id": uuid.uuid4(),
+            "user_id": None,
             "organization_id": org_id,
             "resource_type": "rag_collection",
             "resource_id": resource_id,
+            "resource_name": resource_id,
             "permission_level": "write",
             "granted_by": granted_by,
         }
@@ -110,17 +127,26 @@ class TestResourcePermissionService:
 
         assert result is not None
         assert result["organization_id"] == org_id
-        mock_repo.grant_permission.assert_called_once()
+        mock_repo.create.assert_called_once()
 
     async def test_revoke_permission(self, service, mock_repo):
         """Test revoking a permission."""
         permission_id = uuid.uuid4()
-        mock_repo.revoke_permission.return_value = True
+        mock_repo.get_by_id.return_value = {
+            "id": permission_id,
+            "user_id": uuid.uuid4(),
+            "organization_id": None,
+            "resource_type": "agent",
+            "resource_id": "agent-123",
+            "resource_name": "Agent 123",
+            "permission_level": "read",
+        }
+        mock_repo.delete.return_value = True
 
         result = await service.revoke_permission(permission_id)
 
         assert result is True
-        mock_repo.revoke_permission.assert_called_once_with(permission_id)
+        mock_repo.delete.assert_called_once_with(permission_id)
 
     async def test_check_permission_direct_user(self, service, mock_repo, mock_user_org_repo):
         """Test permission check with direct user permission (highest priority)."""
@@ -128,24 +154,20 @@ class TestResourcePermissionService:
         resource_id = "agent-123"
 
         # User has direct "write" permission
-        mock_repo.get_user_permissions.return_value = [
-            {
-                "permission_level": "write",
-                "resource_type": "agent",
-                "resource_id": resource_id,
-            }
-        ]
+        mock_repo.get_by_user_resource.return_value = {
+            "permission_level": "write",
+            "resource_type": "agent",
+            "resource_id": resource_id,
+        }
 
         # User is also in organization with "read" (should be ignored)
         org_id = uuid.uuid4()
         mock_user_org_repo.get_user_organizations.return_value = [{"organization_id": org_id}]
-        mock_repo.get_organization_permissions.return_value = [
-            {
-                "permission_level": "read",
-                "resource_type": "agent",
-                "resource_id": resource_id,
-            }
-        ]
+        mock_repo.get_by_org_resource.return_value = {
+            "permission_level": "read",
+            "resource_type": "agent",
+            "resource_id": resource_id,
+        }
 
         result = await service.check_permission(
             user_id=user_id,
@@ -165,18 +187,16 @@ class TestResourcePermissionService:
         org_id = uuid.uuid4()
 
         # No direct user permission
-        mock_repo.get_user_permissions.return_value = []
+        mock_repo.get_by_user_resource.return_value = None
 
         # User is in organization with permission
         mock_user_org_repo.get_user_organizations.return_value = [{"organization_id": org_id}]
-        mock_repo.get_organization_permissions.return_value = [
-            {
-                "permission_level": "read",
-                "resource_type": "rag_collection",
-                "resource_id": resource_id,
-                "organization_id": org_id,
-            }
-        ]
+        mock_repo.get_by_org_resource.return_value = {
+            "permission_level": "read",
+            "resource_type": "rag_collection",
+            "resource_id": resource_id,
+            "organization_id": org_id,
+        }
 
         result = await service.check_permission(
             user_id=user_id,
@@ -189,41 +209,26 @@ class TestResourcePermissionService:
         assert result["permission_level"] == "read"
         assert result["source"] == "organization"
 
-    async def test_check_permission_inherited(
+    async def test_check_permission_does_not_use_ancestor_permissions(
         self, service, mock_repo, mock_user_org_repo, mock_org_repo
     ):
-        """Test permission check via inherited organization permission."""
+        """Test permission check only uses direct organization permissions."""
         user_id = uuid.uuid4()
         resource_id = "agent-789"
         child_org_id = uuid.uuid4()
         parent_org_id = uuid.uuid4()
 
         # No direct user permission
-        mock_repo.get_user_permissions.return_value = []
+        mock_repo.get_by_user_resource.return_value = None
 
         # User is in child organization
         mock_user_org_repo.get_user_organizations.return_value = [{"organization_id": child_org_id}]
 
         # No permission on child organization
-        mock_repo.get_organization_permissions.return_value = []
+        mock_repo.get_by_org_resource.return_value = None
 
         # Parent organization has permission
         mock_org_repo.get_ancestors.return_value = [{"id": parent_org_id, "name": "Parent Org"}]
-
-        # Mock ancestor permission lookup
-        async def get_org_perms(org_ids, resource_type, resource_id):
-            if parent_org_id in org_ids:
-                return [
-                    {
-                        "permission_level": "execute",
-                        "resource_type": "agent",
-                        "resource_id": resource_id,
-                        "organization_id": parent_org_id,
-                    }
-                ]
-            return []
-
-        mock_repo.get_organization_permissions.side_effect = get_org_perms
 
         result = await service.check_permission(
             user_id=user_id,
@@ -232,9 +237,10 @@ class TestResourcePermissionService:
             required_permission="execute",
         )
 
-        assert result["allowed"] is True
-        assert result["permission_level"] == "execute"
-        assert result["source"] == "inherited"
+        assert result["allowed"] is False
+        assert result["permission_level"] is None
+        assert result["source"] is None
+        mock_org_repo.get_ancestors.assert_not_awaited()
 
     async def test_check_permission_insufficient_level(
         self, service, mock_repo, mock_user_org_repo
@@ -244,13 +250,11 @@ class TestResourcePermissionService:
         resource_id = "collection-999"
 
         # User has "read" but needs "write"
-        mock_repo.get_user_permissions.return_value = [
-            {
-                "permission_level": "read",
-                "resource_type": "rag_collection",
-                "resource_id": resource_id,
-            }
-        ]
+        mock_repo.get_by_user_resource.return_value = {
+            "permission_level": "read",
+            "resource_type": "rag_collection",
+            "resource_id": resource_id,
+        }
         mock_user_org_repo.get_user_organizations.return_value = []
 
         result = await service.check_permission(
@@ -261,14 +265,14 @@ class TestResourcePermissionService:
         )
 
         assert result["allowed"] is False
-        assert result["permission_level"] is None
+        assert result["permission_level"] == "read"
 
     async def test_check_permission_no_access(self, service, mock_repo, mock_user_org_repo):
         """Test permission denied when user has no access."""
         user_id = uuid.uuid4()
         resource_id = "connector-404"
 
-        mock_repo.get_user_permissions.return_value = []
+        mock_repo.get_by_user_resource.return_value = None
         mock_user_org_repo.get_user_organizations.return_value = []
 
         result = await service.check_permission(
@@ -302,21 +306,21 @@ class TestResourcePermissionService:
 
         # Direct permissions
         mock_repo.get_user_permissions.return_value = [
-            {"resource_id": "agent-1", "permission_level": "read"},
-            {"resource_id": "agent-2", "permission_level": "write"},
+            {"resource_type": "agent", "resource_id": "agent-1", "permission_level": "read"},
+            {"resource_type": "agent", "resource_id": "agent-2", "permission_level": "write"},
         ]
 
         # Organization permissions
         mock_user_org_repo.get_user_organizations.return_value = [{"organization_id": org_id}]
         mock_repo.get_organization_permissions.return_value = [
-            {"resource_id": "agent-3", "permission_level": "execute"},
+            {"resource_type": "agent", "resource_id": "agent-3", "permission_level": "execute"},
         ]
         mock_org_repo.get_ancestors.return_value = []
 
         result = await service.get_user_accessible_resources(user_id=user_id, resource_type="agent")
 
-        assert len(result["resources"]) == 3
-        resource_ids = [r["resource_id"] for r in result["resources"]]
+        assert len(result) == 3
+        resource_ids = [r["resource_id"] for r in result]
         assert "agent-1" in resource_ids
         assert "agent-2" in resource_ids
         assert "agent-3" in resource_ids
@@ -325,7 +329,7 @@ class TestResourcePermissionService:
         """Test listing all permissions for a resource."""
         resource_id = "agent-777"
 
-        mock_repo.list_by_resource.return_value = [
+        mock_repo.get_resource_permissions.return_value = [
             {
                 "id": uuid.uuid4(),
                 "user_id": uuid.uuid4(),
@@ -350,9 +354,10 @@ class TestResourcePermissionService:
         """Test bulk permission checking for multiple resources."""
         user_id = uuid.uuid4()
 
-        mock_repo.get_user_permissions.return_value = [
-            {"resource_id": "agent-1", "permission_level": "read"},
-            {"resource_id": "agent-2", "permission_level": "write"},
+        mock_repo.get_by_user_resource.side_effect = [
+            {"resource_type": "agent", "resource_id": "agent-1", "permission_level": "read"},
+            {"resource_type": "agent", "resource_id": "agent-2", "permission_level": "write"},
+            None,
         ]
         mock_user_org_repo.get_user_organizations.return_value = []
 

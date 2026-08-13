@@ -40,15 +40,17 @@ from .resource_permission_service import ResourcePermissionService, get_resource
 from .user_organization_service import UserOrganizationService, get_user_organization_service
 from .organization_layout_service import OrganizationLayoutService, get_organization_layout_service
 
-__all__.extend([
-    "OrganizationService",
-    "get_organization_service",
-    "PermissionAuditService",
-    "get_permission_audit_service",
-    "ResourcePermissionService",
-    "get_resource_permission_service",
-    "UserOrganizationService",
-    "get_user_organization_service",
-    "OrganizationLayoutService",
-    "get_organization_layout_service",
-])
+__all__.extend(
+    [
+        "OrganizationService",
+        "get_organization_service",
+        "PermissionAuditService",
+        "get_permission_audit_service",
+        "ResourcePermissionService",
+        "get_resource_permission_service",
+        "UserOrganizationService",
+        "get_user_organization_service",
+        "OrganizationLayoutService",
+        "get_organization_layout_service",
+    ]
+)

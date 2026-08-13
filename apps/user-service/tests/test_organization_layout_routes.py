@@ -83,9 +83,9 @@ def test_put_layout_accepts_empty_positions_as_a_successful_no_op(client: TestCl
     "payload",
     [
         {"positions": [{"organization_id": str(uuid.uuid4()), "x": "Infinity", "y": 0.0}]},
-        {"positions": [{"organization_id": str(uuid.uuid4()), "x": 1_000_000.1, "y": 0.0}]},
-        {"positions": [{"organization_id": str(uuid.uuid4()), "x": 0.0, "y": -1_000_000.1}]},
-        {"positions": [{"organization_id": str(uuid.uuid4()), "x": 0.0, "y": 0.0}] * 501},
+        {"positions": [{"organization_id": str(uuid.uuid4()), "x": 100_000_000.1, "y": 0.0}]},
+        {"positions": [{"organization_id": str(uuid.uuid4()), "x": 0.0, "y": -100_000_000.1}]},
+        {"positions": [{"organization_id": str(uuid.uuid4()), "x": 0.0, "y": 0.0}] * 100_001},
     ],
 )
 def test_put_layout_rejects_invalid_coordinate_batches(client: TestClient, payload: dict) -> None:

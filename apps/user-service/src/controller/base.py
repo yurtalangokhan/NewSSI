@@ -32,4 +32,3 @@ class BaseController:
 
     def _raise_internal_error(self, detail: str = "common.internal_error", **kwargs: Any):
         raise HTTPException(status_code=500, detail=t(detail, **kwargs))
-

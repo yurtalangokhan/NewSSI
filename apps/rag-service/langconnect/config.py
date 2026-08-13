@@ -67,6 +67,7 @@ def parse_valid_api_keys(raw_value: str | None = None) -> set[str]:
     value = VALID_API_KEYS if raw_value is None else raw_value
     return {key.strip() for key in value.split(",") if key.strip()}
 
+
 # Keycloak JWKS-based token validation
 KEYCLOAK_ENABLED = env("KEYCLOAK_ENABLED", cast=bool, default=False)
 KEYCLOAK_ISSUER_URL = env("KEYCLOAK_ISSUER_URL", cast=str, default="")

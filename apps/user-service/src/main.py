@@ -70,6 +70,7 @@ def _build_idempotency_config() -> IdempotencyConfig:
 
 _idempotency_config = _build_idempotency_config()
 
+
 def create_app() -> FastAPI:
     settings = get_settings()
 
@@ -101,7 +102,6 @@ def create_app() -> FastAPI:
             f"{API_PREFIX}/health/ready",
         },
     )
-
 
     from src.api.routes import (
         api_keys_router,

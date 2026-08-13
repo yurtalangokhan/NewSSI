@@ -91,7 +91,9 @@ async def documents_create(
     if not docs_to_index:
         error_detail = t("document.no_documents_processed")
         if failed_files:
-            error_detail += t("document.failed_files_list", files=", ".join(failed_files))
+            error_detail += t(
+                "document.failed_files_list", files=", ".join(failed_files)
+            )
         raise HTTPException(status_code=400, detail=error_detail)
 
     # If some files failed but others succeeded, proceed with adding successful ones

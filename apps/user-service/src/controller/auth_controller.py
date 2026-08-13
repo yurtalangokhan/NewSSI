@@ -163,8 +163,7 @@ class AuthController(BaseController):
         id_token_bytes = len(id_token.encode("utf-8"))
         if id_token_bytes > MAX_ID_TOKEN_COOKIE_VALUE_BYTES:
             logger.warning(
-                "Skipping id_token cookie because it exceeds browser-safe cookie size "
-                "(%s bytes)",
+                "Skipping id_token cookie because it exceeds browser-safe cookie size (%s bytes)",
                 id_token_bytes,
             )
             return False
@@ -201,9 +200,7 @@ class AuthController(BaseController):
     @staticmethod
     def _set_cookie_header_bytes(response: Response) -> int:
         return sum(
-            len(value)
-            for key, value in response.raw_headers
-            if key.lower() == b"set-cookie"
+            len(value) for key, value in response.raw_headers if key.lower() == b"set-cookie"
         )
 
     def _clear_cookies(self, response: Response):

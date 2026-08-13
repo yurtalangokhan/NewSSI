@@ -6,7 +6,9 @@ import pytest
 def test_api_versioning_defaults_to_v1_when_config_is_missing(tmp_path: Path) -> None:
     from langconnect.api_versioning import load_api_versioning_config
 
-    config = load_api_versioning_config("rag-service", config_path=tmp_path / "missing.toml")
+    config = load_api_versioning_config(
+        "rag-service", config_path=tmp_path / "missing.toml"
+    )
 
     assert config.base_path == "/api"
     assert config.default_version == "v1"

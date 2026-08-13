@@ -79,7 +79,9 @@ async def test_hybrid_search_prioritizes_graph_context_before_vector_context(
         fake_entity_context,
     )
 
-    result = await service.hybrid_search("Telekomünikasyon", include_vector_context=True)
+    result = await service.hybrid_search(
+        "Telekomünikasyon", include_vector_context=True
+    )
 
     assert result.context.startswith("== RRF-Ranked Entities ==")
     assert result.context.index("== Knowledge Graph Context ==") < result.context.index(
@@ -88,9 +90,7 @@ async def test_hybrid_search_prioritizes_graph_context_before_vector_context(
 
 
 def test_relationship_type_candidates_maps_turkish_general_manager_query() -> None:
-    assert relationship_type_candidates("genel müdürleri kimdir") == [
-        "GENERAL_MANAGER"
-    ]
+    assert relationship_type_candidates("genel müdürleri kimdir") == ["GENERAL_MANAGER"]
 
 
 @pytest.mark.asyncio

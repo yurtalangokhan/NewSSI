@@ -1,279 +1,324 @@
-"""
-Tests for OrganizationRepository.
-
-Tests hierarchical organization operations, materialized path management,
-and tree traversal operations.
-"""
+"""Tests for OrganizationRepository."""
 
 import uuid
-from datetime import datetime, timezone
+from contextlib import asynccontextmanager
+from datetime import UTC, datetime
+from types import SimpleNamespace
+from typing import Any
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.core.database.models import OrganizationModel
 from src.repository.organization_repository import OrganizationRepository
 
 
-@pytest.fixture
-async def org_repo(db_session: AsyncSession):
-    """Fixture providing organization repository with test database."""
-    return OrganizationRepository(db_session)
+def _organization(
+    *,
+    organization_id: uuid.UUID | None = None,
+    name: str = "Organization",
+    code: str = "ORG",
+    parent_id: uuid.UUID | None = None,
+    path: str = "/",
+    level: int = 0,
+    metadata: dict[str, Any] | None = None,
+) -> SimpleNamespace:
+    now = datetime.now(UTC)
+    return SimpleNamespace(
+        id=organization_id or uuid.uuid4(),
+        name=name,
+        code=code,
+        description=None,
+        parent_id=parent_id,
+        path=path,
+        level=level,
+        order_index=0,
+        is_active=True,
+        metadata_json=metadata or {},
+        created_at=now,
+        updated_at=now,
+        created_by=None,
+    )
+
+
+def _result(*organizations: SimpleNamespace) -> MagicMock:
+    result = MagicMock()
+    result.scalars.return_value.all.return_value = list(organizations)
+    return result
+
+
+def _count_result(value: int) -> MagicMock:
+    result = MagicMock()
+    result.scalar_one.return_value = value
+    return result
+
+
+def _row_result(rows: list[tuple[Any, Any]]) -> MagicMock:
+    result = MagicMock()
+    result.all.return_value = rows
+    return result
+
+
+def _repository_with_session(session: MagicMock) -> OrganizationRepository:
+    repository = OrganizationRepository()
+
+    @asynccontextmanager
+    async def session_context():
+        yield session
+
+    repository._session = session_context  # type: ignore[method-assign]
+    return repository
 
 
 @pytest.mark.asyncio
-class TestOrganizationRepository:
-    """Test suite for OrganizationRepository."""
+async def test_create_root_organization() -> None:
+    session = MagicMock()
+    session.add = MagicMock()
+    session.flush = AsyncMock()
+    session.refresh = AsyncMock()
+    repository = _repository_with_session(session)
 
-    async def test_create_root_organization(self, org_repo: OrganizationRepository):
-        """Test creating a root organization."""
-        org = await org_repo.create(
-            name="Root Org", parent_id=None, description="Test root organization"
-        )
+    org = await repository.create(
+        name="Root Org",
+        code="ROOT",
+        parent_id=None,
+        description="Test root organization",
+    )
 
-        assert org is not None
-        assert org.name == "Root Org"
-        assert org.parent_id is None
-        assert org.path == f"{org.id}/"
-        assert org.description == "Test root organization"
+    assert org["name"] == "Root Org"
+    assert org["code"] == "ROOT"
+    assert org["parent_id"] is None
+    assert org["path"] == "/"
+    assert org["description"] == "Test root organization"
 
-    async def test_create_child_organization(self, org_repo: OrganizationRepository):
-        """Test creating a child organization."""
-        # Create parent
-        parent = await org_repo.create(name="Parent Org", parent_id=None)
-        assert parent is not None
 
-        # Create child
-        child = await org_repo.create(name="Child Org", parent_id=parent.id)
+@pytest.mark.asyncio
+async def test_create_child_organization_uses_parent_path() -> None:
+    parent_id = uuid.uuid4()
+    parent = _organization(organization_id=parent_id, path="/", level=0)
+    session = MagicMock()
+    session.get = AsyncMock(return_value=parent)
+    session.add = MagicMock()
+    session.flush = AsyncMock()
+    session.refresh = AsyncMock()
+    repository = _repository_with_session(session)
 
-        assert child is not None
-        assert child.name == "Child Org"
-        assert child.parent_id == parent.id
-        assert child.path == f"{parent.id}/{child.id}/"
+    child = await repository.create(name="Child Org", code="CHILD", parent_id=parent_id)
 
-    async def test_create_deep_hierarchy(self, org_repo: OrganizationRepository):
-        """Test creating a deep organizational hierarchy."""
-        # Create: Root -> Department -> Team -> Squad
-        root = await org_repo.create(name="Company", parent_id=None)
-        dept = await org_repo.create(name="Engineering", parent_id=root.id)
-        team = await org_repo.create(name="Backend", parent_id=dept.id)
-        squad = await org_repo.create(name="API Squad", parent_id=team.id)
+    assert child["name"] == "Child Org"
+    assert child["parent_id"] == parent_id
+    assert child["path"] == f"/{parent_id}/"
+    assert child["level"] == 1
 
-        assert squad.path == f"{root.id}/{dept.id}/{team.id}/{squad.id}/"
 
-    async def test_get_by_id(self, org_repo: OrganizationRepository):
-        """Test retrieving organization by ID."""
-        org = await org_repo.create(name="Test Org", parent_id=None)
-        retrieved = await org_repo.get_by_id(org.id)
+@pytest.mark.asyncio
+async def test_create_child_organization_rejects_missing_parent() -> None:
+    session = MagicMock()
+    session.get = AsyncMock(return_value=None)
+    repository = _repository_with_session(session)
+    parent_id = uuid.uuid4()
 
-        assert retrieved is not None
-        assert retrieved.id == org.id
-        assert retrieved.name == "Test Org"
+    with pytest.raises(ValueError, match=f"Parent organization {parent_id} not found"):
+        await repository.create(name="Child Org", code="CHILD", parent_id=parent_id)
 
-    async def test_get_by_id_not_found(self, org_repo: OrganizationRepository):
-        """Test retrieving non-existent organization."""
-        fake_id = uuid.uuid4()
-        result = await org_repo.get_by_id(fake_id)
 
-        assert result is None
+@pytest.mark.asyncio
+async def test_get_by_id_returns_dict() -> None:
+    org_id = uuid.uuid4()
+    session = MagicMock()
+    session.get = AsyncMock(return_value=_organization(organization_id=org_id, name="Test Org"))
+    repository = _repository_with_session(session)
 
-    async def test_get_by_path(self, org_repo: OrganizationRepository):
-        """Test retrieving organization by materialized path."""
-        parent = await org_repo.create(name="Parent", parent_id=None)
-        child = await org_repo.create(name="Child", parent_id=parent.id)
+    org = await repository.get_by_id(org_id)
 
-        retrieved = await org_repo.get_by_path(child.path)
+    assert org is not None
+    assert org["id"] == org_id
+    assert org["name"] == "Test Org"
 
-        assert retrieved is not None
-        assert retrieved.id == child.id
-        assert retrieved.name == "Child"
 
-    async def test_update_organization(self, org_repo: OrganizationRepository):
-        """Test updating organization fields."""
-        org = await org_repo.create(name="Old Name", parent_id=None)
+@pytest.mark.asyncio
+async def test_get_by_id_not_found() -> None:
+    session = MagicMock()
+    session.get = AsyncMock(return_value=None)
+    repository = _repository_with_session(session)
 
-        updated = await org_repo.update(
-            org.id, name="New Name", description="Updated description"
-        )
+    result = await repository.get_by_id(uuid.uuid4())
 
-        assert updated is not None
-        assert updated.name == "New Name"
-        assert updated.description == "Updated description"
-        assert updated.path == org.path  # Path unchanged
+    assert result is None
 
-    async def test_delete_leaf_organization(self, org_repo: OrganizationRepository):
-        """Test deleting a leaf organization (no children)."""
-        org = await org_repo.create(name="Leaf Org", parent_id=None)
-        deleted = await org_repo.delete(org.id)
 
-        assert deleted is True
+@pytest.mark.asyncio
+async def test_update_organization_updates_allowed_fields() -> None:
+    org = _organization(name="Old Name")
+    session = MagicMock()
+    session.get = AsyncMock(return_value=org)
+    session.flush = AsyncMock()
+    session.refresh = AsyncMock()
+    repository = _repository_with_session(session)
 
-        retrieved = await org_repo.get_by_id(org.id)
-        assert retrieved is None
+    updated = await repository.update(
+        org.id,
+        name="New Name",
+        description="Updated description",
+    )
 
-    async def test_delete_organization_with_children_fails(
-        self, org_repo: OrganizationRepository
-    ):
-        """Test that deleting organization with children fails."""
-        parent = await org_repo.create(name="Parent", parent_id=None)
-        await org_repo.create(name="Child", parent_id=parent.id)
+    assert updated is not None
+    assert updated["name"] == "New Name"
+    assert updated["description"] == "Updated description"
+    assert updated["path"] == "/"
 
-        with pytest.raises(ValueError, match="has children"):
-            await org_repo.delete(parent.id)
 
-    async def test_list_all_organizations(self, org_repo: OrganizationRepository):
-        """Test listing all organizations."""
-        await org_repo.create(name="Org 1", parent_id=None)
-        await org_repo.create(name="Org 2", parent_id=None)
-        await org_repo.create(name="Org 3", parent_id=None)
+@pytest.mark.asyncio
+async def test_list_all_returns_items_and_total() -> None:
+    org1 = _organization(name="Org 1", code="ORG1")
+    org2 = _organization(name="Org 2", code="ORG2")
+    session = MagicMock()
+    session.execute = AsyncMock(side_effect=[_count_result(2), _result(org1, org2)])
+    repository = _repository_with_session(session)
 
-        orgs = await org_repo.list_all()
+    orgs, total = await repository.list_all()
 
-        assert len(orgs) >= 3
-        names = [org.name for org in orgs]
-        assert "Org 1" in names
-        assert "Org 2" in names
-        assert "Org 3" in names
+    assert total == 2
+    assert [org["name"] for org in orgs] == ["Org 1", "Org 2"]
 
-    async def test_get_children(self, org_repo: OrganizationRepository):
-        """Test retrieving direct children of an organization."""
-        parent = await org_repo.create(name="Parent", parent_id=None)
-        child1 = await org_repo.create(name="Child 1", parent_id=parent.id)
-        child2 = await org_repo.create(name="Child 2", parent_id=parent.id)
-        # Grandchild - should not be included
-        await org_repo.create(name="Grandchild", parent_id=child1.id)
 
-        children = await org_repo.get_children(parent.id)
+@pytest.mark.asyncio
+async def test_get_children_adds_child_counts() -> None:
+    parent_id = uuid.uuid4()
+    child1 = _organization(name="Child 1", code="CHILD1", parent_id=parent_id)
+    child2 = _organization(name="Child 2", code="CHILD2", parent_id=parent_id)
+    session = MagicMock()
+    session.execute = AsyncMock(
+        side_effect=[
+            _result(child1, child2),
+            _row_result([(child1.id, 1)]),
+        ]
+    )
+    repository = _repository_with_session(session)
 
-        assert len(children) == 2
-        names = [c.name for c in children]
-        assert "Child 1" in names
-        assert "Child 2" in names
-        assert "Grandchild" not in names
+    children = await repository.get_children(parent_id)
 
-    async def test_get_descendants(self, org_repo: OrganizationRepository):
-        """Test retrieving all descendants (recursive)."""
-        root = await org_repo.create(name="Root", parent_id=None)
-        dept = await org_repo.create(name="Department", parent_id=root.id)
-        team = await org_repo.create(name="Team", parent_id=dept.id)
-        squad = await org_repo.create(name="Squad", parent_id=team.id)
+    assert [child["name"] for child in children] == ["Child 1", "Child 2"]
+    assert children[0]["children_count"] == 1
+    assert children[0]["has_children"] is True
+    assert children[1]["children_count"] == 0
+    assert children[1]["has_children"] is False
 
-        descendants = await org_repo.get_descendants(root.id)
 
-        assert len(descendants) == 3
-        names = [d.name for d in descendants]
-        assert "Department" in names
-        assert "Team" in names
-        assert "Squad" in names
+@pytest.mark.asyncio
+async def test_get_descendants_uses_parent_path() -> None:
+    root_id = uuid.uuid4()
+    root = _organization(organization_id=root_id, path="/", level=0)
+    dept = _organization(name="Department", code="DEPT", parent_id=root_id, path=f"/{root_id}/")
+    team = _organization(name="Team", code="TEAM", parent_id=dept.id, path=f"/{root_id}/{dept.id}/")
+    session = MagicMock()
+    session.get = AsyncMock(return_value=root)
+    session.execute = AsyncMock(side_effect=[_result(dept, team), _row_result([])])
+    repository = _repository_with_session(session)
 
-    async def test_get_ancestors(self, org_repo: OrganizationRepository):
-        """Test retrieving all ancestors up the tree."""
-        root = await org_repo.create(name="Root", parent_id=None)
-        dept = await org_repo.create(name="Department", parent_id=root.id)
-        team = await org_repo.create(name="Team", parent_id=dept.id)
+    descendants = await repository.get_children(root_id, direct_only=False)
 
-        ancestors = await org_repo.get_ancestors(team.id)
+    assert [descendant["name"] for descendant in descendants] == ["Department", "Team"]
 
-        assert len(ancestors) == 2
-        names = [a.name for a in ancestors]
-        assert "Root" in names
-        assert "Department" in names
-        assert "Team" not in names  # Self not included
 
-    async def test_move_organization(self, org_repo: OrganizationRepository):
-        """Test moving an organization to a new parent."""
-        root1 = await org_repo.create(name="Root 1", parent_id=None)
-        root2 = await org_repo.create(name="Root 2", parent_id=None)
-        child = await org_repo.create(name="Child", parent_id=root1.id)
+@pytest.mark.asyncio
+async def test_get_ancestors_returns_path_entries() -> None:
+    root_id = uuid.uuid4()
+    dept_id = uuid.uuid4()
+    team_id = uuid.uuid4()
+    team = _organization(organization_id=team_id, path=f"/{root_id}/{dept_id}/", level=2)
+    root = _organization(organization_id=root_id, name="Root", code="ROOT")
+    dept = _organization(organization_id=dept_id, name="Department", code="DEPT")
+    session = MagicMock()
+    session.get = AsyncMock(return_value=team)
+    session.execute = AsyncMock(return_value=_result(root, dept))
+    repository = _repository_with_session(session)
 
-        old_path = child.path
-        moved = await org_repo.move(child.id, root2.id)
+    ancestors = await repository.get_ancestors(team_id)
 
-        assert moved is not None
-        assert moved.parent_id == root2.id
-        assert moved.path != old_path
-        assert moved.path.startswith(f"{root2.id}/")
+    assert [ancestor["name"] for ancestor in ancestors] == ["Root", "Department"]
 
-    async def test_move_subtree_updates_descendants(
-        self, org_repo: OrganizationRepository
-    ):
-        """Test that moving a subtree updates all descendant paths."""
-        root1 = await org_repo.create(name="Root 1", parent_id=None)
-        root2 = await org_repo.create(name="Root 2", parent_id=None)
-        parent = await org_repo.create(name="Parent", parent_id=root1.id)
-        child = await org_repo.create(name="Child", parent_id=parent.id)
-        grandchild = await org_repo.create(name="Grandchild", parent_id=child.id)
 
-        # Move parent subtree from root1 to root2
-        await org_repo.move(parent.id, root2.id)
+@pytest.mark.asyncio
+async def test_move_organization_updates_descendant_paths() -> None:
+    root1_id = uuid.uuid4()
+    root2_id = uuid.uuid4()
+    child_id = uuid.uuid4()
+    grandchild_id = uuid.uuid4()
+    root2 = _organization(organization_id=root2_id, path="/", level=0)
+    child = _organization(
+        organization_id=child_id,
+        parent_id=root1_id,
+        path=f"/{root1_id}/",
+        level=1,
+    )
+    grandchild = _organization(
+        organization_id=grandchild_id,
+        parent_id=child_id,
+        path=f"/{root1_id}/{child_id}/",
+        level=2,
+    )
+    session = MagicMock()
+    session.get = AsyncMock(side_effect=[child, root2])
+    session.execute = AsyncMock(return_value=_result(grandchild))
+    session.flush = AsyncMock()
+    session.refresh = AsyncMock()
+    repository = _repository_with_session(session)
 
-        # Check all paths updated
-        parent_updated = await org_repo.get_by_id(parent.id)
-        child_updated = await org_repo.get_by_id(child.id)
-        grandchild_updated = await org_repo.get_by_id(grandchild.id)
+    moved = await repository.move_organization(child_id, root2_id)
 
-        assert parent_updated.path.startswith(f"{root2.id}/")
-        assert child_updated.path.startswith(f"{root2.id}/{parent.id}/")
-        assert grandchild_updated.path.startswith(
-            f"{root2.id}/{parent.id}/{child.id}/"
-        )
+    assert moved is not None
+    assert moved["parent_id"] == root2_id
+    assert moved["path"] == f"/{root2_id}/"
+    assert grandchild.path == f"/{root2_id}/{child_id}/"
 
-    async def test_build_tree(self, org_repo: OrganizationRepository):
-        """Test building hierarchical tree structure."""
-        root = await org_repo.create(name="Root", parent_id=None)
-        child1 = await org_repo.create(name="Child 1", parent_id=root.id)
-        child2 = await org_repo.create(name="Child 2", parent_id=root.id)
-        grandchild = await org_repo.create(name="Grandchild", parent_id=child1.id)
 
-        tree = await org_repo.build_tree()
+@pytest.mark.asyncio
+async def test_get_tree_builds_hierarchy() -> None:
+    root = _organization(name="Root", code="ROOT")
+    child1 = _organization(name="Child 1", code="CHILD1", parent_id=root.id, path=f"/{root.id}/", level=1)
+    child2 = _organization(name="Child 2", code="CHILD2", parent_id=root.id, path=f"/{root.id}/", level=1)
+    grandchild = _organization(
+        name="Grandchild",
+        code="GRANDCHILD",
+        parent_id=child1.id,
+        path=f"/{root.id}/{child1.id}/",
+        level=2,
+    )
+    session = MagicMock()
+    session.execute = AsyncMock(
+        side_effect=[
+            _result(root, child1, child2, grandchild),
+            _row_result([(root.id, 2), (child1.id, 1)]),
+        ]
+    )
+    repository = _repository_with_session(session)
 
-        assert len(tree) == 1  # One root
-        assert tree[0]["name"] == "Root"
-        assert len(tree[0]["children"]) == 2
+    tree = await repository.get_tree()
 
-        child1_node = next(c for c in tree[0]["children"] if c["name"] == "Child 1")
-        assert len(child1_node["children"]) == 1
-        assert child1_node["children"][0]["name"] == "Grandchild"
+    roots = tree["roots"]
+    assert len(roots) == 1
+    assert roots[0]["name"] == "Root"
+    assert len(roots[0]["children"]) == 2
+    child1_node = next(child for child in roots[0]["children"] if child["name"] == "Child 1")
+    assert child1_node["children"][0]["name"] == "Grandchild"
 
-    async def test_get_depth(self, org_repo: OrganizationRepository):
-        """Test calculating organization depth in hierarchy."""
-        root = await org_repo.create(name="Root", parent_id=None)
-        dept = await org_repo.create(name="Department", parent_id=root.id)
-        team = await org_repo.create(name="Team", parent_id=dept.id)
 
-        assert await org_repo.get_depth(root.id) == 0
-        assert await org_repo.get_depth(dept.id) == 1
-        assert await org_repo.get_depth(team.id) == 2
+@pytest.mark.asyncio
+async def test_metadata_storage() -> None:
+    metadata = {"region": "US-West", "cost_center": "12345", "tags": ["prod"]}
+    session = MagicMock()
+    session.add = MagicMock()
+    session.flush = AsyncMock()
+    session.refresh = AsyncMock()
+    repository = _repository_with_session(session)
 
-    async def test_metadata_storage(self, org_repo: OrganizationRepository):
-        """Test storing and retrieving JSON metadata."""
-        org = await org_repo.create(
-            name="Org with Metadata",
-            parent_id=None,
-            metadata={"region": "US-West", "cost_center": "12345", "tags": ["prod"]},
-        )
+    org = await repository.create(
+        name="Org with Metadata",
+        code="METADATA",
+        parent_id=None,
+        metadata=metadata,
+    )
 
-        retrieved = await org_repo.get_by_id(org.id)
-
-        assert retrieved.metadata is not None
-        assert retrieved.metadata["region"] == "US-West"
-        assert retrieved.metadata["cost_center"] == "12345"
-        assert "prod" in retrieved.metadata["tags"]
-
-    async def test_concurrent_creates_dont_conflict(
-        self, org_repo: OrganizationRepository
-    ):
-        """Test that concurrent organization creates don't cause path conflicts."""
-        parent = await org_repo.create(name="Parent", parent_id=None)
-
-        # Create multiple children concurrently
-        child1 = await org_repo.create(name="Child 1", parent_id=parent.id)
-        child2 = await org_repo.create(name="Child 2", parent_id=parent.id)
-        child3 = await org_repo.create(name="Child 3", parent_id=parent.id)
-
-        # All should have unique paths under same parent
-        assert child1.path != child2.path
-        assert child2.path != child3.path
-        assert child1.path.startswith(f"{parent.id}/")
-        assert child2.path.startswith(f"{parent.id}/")
-        assert child3.path.startswith(f"{parent.id}/")
+    assert org["metadata"]["region"] == "US-West"
+    assert org["metadata"]["cost_center"] == "12345"
+    assert "prod" in org["metadata"]["tags"]

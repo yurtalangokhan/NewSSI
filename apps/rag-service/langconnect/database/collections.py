@@ -99,7 +99,9 @@ class CollectionsManager:
         if result is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=t("collection.not_found_or_not_owned", collection_id=collection_id),
+                detail=t(
+                    "collection.not_found_or_not_owned", collection_id=collection_id
+                ),
             )
         return result
 

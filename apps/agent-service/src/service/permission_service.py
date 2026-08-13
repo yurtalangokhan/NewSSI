@@ -9,7 +9,9 @@ import logging
 from typing import Any
 
 import httpx
-from config import get_settings
+
+from core.db.repositories.agent_group_repo import AgentGroupRepository
+from core.env import env
 
 logger = logging.getLogger(__name__)
 
@@ -18,9 +20,8 @@ class PermissionService:
     """Check resource permissions via user-service."""
 
     def __init__(self):
-        self.settings = get_settings()
-        self.user_service_url = self.settings.USER_SERVICE_URL or "http://localhost:8002"
-        self.internal_token = getattr(self.settings, "INTERNAL_SERVICE_TOKEN", None)
+        self.user_service_url = env.USER_SERVICE_URL or "http://localhost:8002"
+        self.internal_token = env.INTERNAL_SERVICE_TOKEN
         self._http_client: httpx.AsyncClient | None = None
 
     async def _get_client(self) -> httpx.AsyncClient:
@@ -99,8 +100,6 @@ class PermissionService:
         DEPRECATED: This is only used during migration period.
         """
         try:
-            from core.db.repositories.agent_group_repo import AgentGroupRepository
-
             groups = await AgentGroupRepository().list_all()
 
             for group in groups:
@@ -163,8 +162,6 @@ class PermissionService:
         DEPRECATED: This is only used during migration period.
         """
         try:
-            from core.db.repositories.agent_group_repo import AgentGroupRepository
-
             groups = await AgentGroupRepository().list_all()
             agent_ids: set[str] = set()
 

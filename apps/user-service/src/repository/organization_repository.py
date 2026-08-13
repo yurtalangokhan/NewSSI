@@ -313,7 +313,7 @@ class OrganizationRepository(BaseRepository):
 
             # Query direct child counts for all orgs in tree
             if org_dict:
-                org_uuids = [uuid.UUID(str(id_str)) for id_str in org_dict.keys()]
+                org_uuids = [uuid.UUID(str(id_str)) for id_str in org_dict]
                 counts_query = (
                     select(OrganizationModel.parent_id, func.count(OrganizationModel.id))
                     .where(OrganizationModel.parent_id.in_(org_uuids))
@@ -353,7 +353,7 @@ class OrganizationRepository(BaseRepository):
                 .group_by(OrganizationModel.level)
                 .order_by(OrganizationModel.level)
             )
-            organizations_by_depth = dict(depth_result.all())
+            organizations_by_depth: dict[int, int] = dict(depth_result.all())
 
             # Total users - count from user_organizations table
             from src.core.database.models import UserOrganizationModel

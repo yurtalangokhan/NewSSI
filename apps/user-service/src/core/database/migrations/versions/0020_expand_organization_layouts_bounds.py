@@ -14,8 +14,12 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.drop_constraint("ck_organization_layouts_position_x_bounds", "organization_layouts", type_="check")
-    op.drop_constraint("ck_organization_layouts_position_y_bounds", "organization_layouts", type_="check")
+    op.drop_constraint(
+        "ck_organization_layouts_position_x_bounds", "organization_layouts", type_="check"
+    )
+    op.drop_constraint(
+        "ck_organization_layouts_position_y_bounds", "organization_layouts", type_="check"
+    )
     op.create_check_constraint(
         "ck_organization_layouts_position_x_bounds",
         "organization_layouts",
@@ -29,8 +33,12 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_constraint("ck_organization_layouts_position_x_bounds", "organization_layouts", type_="check")
-    op.drop_constraint("ck_organization_layouts_position_y_bounds", "organization_layouts", type_="check")
+    op.drop_constraint(
+        "ck_organization_layouts_position_x_bounds", "organization_layouts", type_="check"
+    )
+    op.drop_constraint(
+        "ck_organization_layouts_position_y_bounds", "organization_layouts", type_="check"
+    )
     op.create_check_constraint(
         "ck_organization_layouts_position_x_bounds",
         "organization_layouts",

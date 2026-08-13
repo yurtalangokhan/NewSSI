@@ -25,12 +25,21 @@ PERMISSION_LEVELS = {
 class ResourcePermissionService:
     """Business logic for resource permission management."""
 
-    def __init__(self):
-        self.perm_repo = ResourcePermissionRepository()
-        self.audit_repo = PermissionAuditRepository()
-        self.org_repo = OrganizationRepository()
-        self.user_org_repo = UserOrganizationRepository()
-        self.user_organization_service = get_user_organization_service()
+    def __init__(
+        self,
+        permission_repo: ResourcePermissionRepository | None = None,
+        organization_repo: OrganizationRepository | None = None,
+        user_org_repo: UserOrganizationRepository | None = None,
+        audit_repo: PermissionAuditRepository | None = None,
+        user_organization_service: Any | None = None,
+    ):
+        self.perm_repo = permission_repo or ResourcePermissionRepository()
+        self.audit_repo = audit_repo or PermissionAuditRepository()
+        self.org_repo = organization_repo or OrganizationRepository()
+        self.user_org_repo = user_org_repo or UserOrganizationRepository()
+        self.user_organization_service = (
+            user_organization_service or get_user_organization_service()
+        )
 
     async def check_resource_access(
         self,
@@ -99,7 +108,7 @@ class ResourcePermissionService:
         self,
         resource_type: str,
         resource_id: str,
-        resource_name: str,
+        resource_name: str | None = None,
         organization_id: uuid.UUID | None = None,
         user_id: uuid.UUID | None = None,
         permission_level: str = "read",
@@ -107,6 +116,7 @@ class ResourcePermissionService:
         granted_by: uuid.UUID | None = None,
     ) -> dict[str, Any]:
         """Grant permission to organization or user."""
+        resource_name = resource_name or resource_id
         if not organization_id and not user_id:
             raise ValueError("Either organization_id or user_id must be provided")
         if organization_id and user_id:
@@ -221,6 +231,47 @@ class ResourcePermissionService:
         """Get all permissions for a resource (organizations + users)."""
         return await self.perm_repo.get_resource_permissions(resource_type, resource_id)
 
+    async def check_permission(
+        self,
+        user_id: uuid.UUID,
+        resource_type: str,
+        resource_id: str,
+        required_permission: str = "read",
+    ) -> dict[str, Any]:
+        """Backward-compatible alias for resource access checks."""
+        return await self.check_resource_access(
+            user_id=user_id,
+            resource_type=resource_type,
+            resource_id=resource_id,
+            required_permission=required_permission,
+        )
+
+    async def list_resource_permissions(
+        self,
+        resource_type: str,
+        resource_id: str,
+    ) -> list[dict[str, Any]]:
+        """Backward-compatible alias for resource permission listing."""
+        return await self.get_resource_permissions(resource_type, resource_id)
+
+    async def bulk_check_permissions(
+        self,
+        user_id: uuid.UUID,
+        resource_type: str,
+        resource_ids: list[str],
+        required_permission: str = "read",
+    ) -> dict[str, dict[str, Any]]:
+        """Check access for several resources."""
+        results = {}
+        for resource_id in resource_ids:
+            results[resource_id] = await self.check_resource_access(
+                user_id=user_id,
+                resource_type=resource_type,
+                resource_id=resource_id,
+                required_permission=required_permission,
+            )
+        return results
+
     async def get_scoped_direct_permissions(
         self,
         actor_id: uuid.UUID,
@@ -300,9 +351,12 @@ class ResourcePermissionService:
             organization_id,
         ):
             raise ForbiddenError("Actor cannot manage the selected organization")
-        if target_type == "user" and not await self.user_organization_service.check_user_organization_permission(
-            target_id,
-            organization_id,
+        if (
+            target_type == "user"
+            and not await self.user_organization_service.check_user_organization_permission(
+                target_id,
+                organization_id,
+            )
         ):
             raise ValueError("User target must be an active member of the selected organization")
 
@@ -389,6 +443,10 @@ class ResourcePermissionService:
         user_score = PERMISSION_LEVELS.get(user_level, 0)
         required_score = PERMISSION_LEVELS.get(required_level, 0)
         return user_score >= required_score
+
+    def _has_sufficient_permission(self, user_level: str, required_level: str) -> bool:
+        """Backward-compatible alias for permission level comparison."""
+        return self._check_level(user_level, required_level)
 
     async def _log_permission_change(
         self,

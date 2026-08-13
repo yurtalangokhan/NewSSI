@@ -397,9 +397,7 @@ class ResourcePermissionRepository(BaseRepository):
                 else None
             ),
             "user": (
-                self._user_to_dict(perm.user)
-                if include_relationships and perm.user
-                else None
+                self._user_to_dict(perm.user) if include_relationships and perm.user else None
             ),
         }
 

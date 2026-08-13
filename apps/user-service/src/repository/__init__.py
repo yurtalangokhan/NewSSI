@@ -28,10 +28,12 @@ from .resource_permission_repository import ResourcePermissionRepository
 from .user_organization_repository import UserOrganizationRepository
 from .organization_layout_repository import OrganizationLayoutRepository
 
-__all__.extend([
-    "OrganizationRepository",
-    "PermissionAuditRepository",
-    "ResourcePermissionRepository",
-    "UserOrganizationRepository",
-    "OrganizationLayoutRepository",
-])
+__all__.extend(
+    [
+        "OrganizationRepository",
+        "PermissionAuditRepository",
+        "ResourcePermissionRepository",
+        "UserOrganizationRepository",
+        "OrganizationLayoutRepository",
+    ]
+)

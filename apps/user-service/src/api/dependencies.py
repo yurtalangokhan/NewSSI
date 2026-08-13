@@ -214,4 +214,3 @@ async def require_auth_or_internal_service_token(
         return "internal-service"
 
     raise HTTPException(status_code=401, detail=t("auth.required"))
-

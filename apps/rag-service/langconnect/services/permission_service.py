@@ -1,12 +1,12 @@
-"""
-Permission checking service for rag-service (LangConnect).
+"""Permission checking service for rag-service (LangConnect).
 
 Delegates resource permission checks to user-service.
 """
 
-import httpx
 import logging
 from typing import Any
+
+import httpx
 
 from langconnect import config
 
@@ -16,7 +16,8 @@ logger = logging.getLogger(__name__)
 class PermissionService:
     """Check RAG collection permissions via user-service."""
 
-    def __init__(self):
+    def __init__(self) -> None:
+        """Initialize user-service permission client settings."""
         self.user_service_url = config.USER_SERVICE_URL.rstrip("/")
         self.internal_token = getattr(config, "INTERNAL_SERVICE_TOKEN", None)
         self._http_client: httpx.AsyncClient | None = None
@@ -39,8 +40,7 @@ class PermissionService:
         collection_id: str,
         required_permission: str = "read",
     ) -> dict[str, Any]:
-        """
-        Check if user can access a RAG collection.
+        """Check if user can access a RAG collection.
 
         Args:
             user_id: User UUID or Keycloak ID
@@ -83,8 +83,8 @@ class PermissionService:
                 "permission_level": None,
                 "source": None,
             }
-        except Exception as e:
-            logger.error(f"Unexpected error in permission check: {e}")
+        except Exception:
+            logger.exception("Unexpected error in permission check")
             return {
                 "allowed": False,
                 "permission_level": None,
@@ -97,8 +97,7 @@ class PermissionService:
         connector_id: str,
         required_permission: str = "read",
     ) -> dict[str, Any]:
-        """
-        Check if user can access a connector.
+        """Check if user can access a connector.
 
         Args:
             user_id: User UUID or Keycloak ID
@@ -140,8 +139,8 @@ class PermissionService:
                 "permission_level": None,
                 "source": None,
             }
-        except Exception as e:
-            logger.error(f"Unexpected error in permission check: {e}")
+        except Exception:
+            logger.exception("Unexpected error in permission check")
             return {
                 "allowed": False,
                 "permission_level": None,
@@ -149,8 +148,7 @@ class PermissionService:
             }
 
     async def get_user_accessible_collections(self, user_id: str) -> list[str]:
-        """
-        Get all collection IDs that user can access.
+        """Get all collection IDs that user can access.
 
         Returns:
             List of collection UUIDs (as strings)
@@ -172,15 +170,16 @@ class PermissionService:
             return [r["resource_id"] for r in resources]
 
         except httpx.HTTPError as e:
-            logger.warning(f"Failed to get accessible collections for user {user_id}: {e}")
+            logger.warning(
+                f"Failed to get accessible collections for user {user_id}: {e}"
+            )
             return []
-        except Exception as e:
-            logger.error(f"Unexpected error getting accessible collections: {e}")
+        except Exception:
+            logger.exception("Unexpected error getting accessible collections")
             return []
 
     async def get_user_accessible_connectors(self, user_id: str) -> list[str]:
-        """
-        Get all connector IDs that user can access.
+        """Get all connector IDs that user can access.
 
         Returns:
             List of connector UUIDs (as strings)
@@ -202,10 +201,12 @@ class PermissionService:
             return [r["resource_id"] for r in resources]
 
         except httpx.HTTPError as e:
-            logger.warning(f"Failed to get accessible connectors for user {user_id}: {e}")
+            logger.warning(
+                f"Failed to get accessible connectors for user {user_id}: {e}"
+            )
             return []
-        except Exception as e:
-            logger.error(f"Unexpected error getting accessible connectors: {e}")
+        except Exception:
+            logger.exception("Unexpected error getting accessible connectors")
             return []
 
 
