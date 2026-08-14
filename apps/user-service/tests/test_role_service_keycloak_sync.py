@@ -192,13 +192,15 @@ async def test_sync_to_keycloak_invalidates_user_sessions(monkeypatch):
                     )
                 ]
             ),
-        )
+        ),
     )
     monkeypatch.setattr("src.service.role_service.get_role_service", lambda: coarse_service)
 
     class FakeUserRepository:
         async def get_all(self):
-            return [SimpleNamespace(email="user@example.com", keycloak_id="kc-user", role="enduser")]
+            return [
+                SimpleNamespace(email="user@example.com", keycloak_id="kc-user", role="enduser")
+            ]
 
     monkeypatch.setattr(repository_module, "UserRepository", FakeUserRepository)
 

@@ -14,7 +14,7 @@ from src.repository import OrganizationRepository, UserOrganizationRepository, U
 async def seed_default_organization():
     """
     Create default root organization and assign all existing users to it.
-    
+
     Run this once after adding organization tables.
     """
     org_repo = OrganizationRepository()
@@ -27,7 +27,7 @@ async def seed_default_organization():
 
     # Check if root organization already exists
     root = await org_repo.get_by_code("ROOT")
-    
+
     if root:
         print(f"✓ Root organization already exists: {root['name']} (ID: {root['id']})")
     else:
@@ -48,17 +48,17 @@ async def seed_default_organization():
     # Assign each user to root organization (if not already assigned)
     assigned_count = 0
     skipped_count = 0
-    
+
     for user in users:
-        user_id = user.id if hasattr(user, 'id') else uuid.UUID(user['id'])
-        
+        user_id = user.id if hasattr(user, "id") else uuid.UUID(user["id"])
+
         # Check if user is already in root organization
         existing = await user_org_repo.get_by_user_and_org(user_id, root["id"])
-        
+
         if existing:
             skipped_count += 1
             continue
-        
+
         # Assign user to root organization
         await user_org_repo.create(
             user_id=user_id,
@@ -68,8 +68,8 @@ async def seed_default_organization():
             assigned_by=None,
         )
         assigned_count += 1
-        
-        user_email = user.email if hasattr(user, 'email') else user.get('email', 'Unknown')
+
+        user_email = user.email if hasattr(user, "email") else user.get("email", "Unknown")
         print(f"  ✓ Assigned: {user_email}")
 
     print("\n" + "=" * 70)
@@ -80,12 +80,12 @@ async def seed_default_organization():
     print(f"Already assigned:   {skipped_count}")
     print(f"Root organization:  {root['name']} (Code: {root['code']})")
     print("=" * 70)
-    
+
     if assigned_count > 0:
         print("\n✓ All users have been assigned to the root organization")
     else:
         print("\n✓ All users were already assigned")
-    
+
     print("\nNext steps:")
     print("1. Create sub-organizations using the API or admin UI")
     print("2. Assign users to specific departments/units")
@@ -101,5 +101,6 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\n❌ Error during seed: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)

@@ -30,6 +30,7 @@ def app(monkeypatch: pytest.MonkeyPatch) -> FastAPI:
             "writable_organization_ids": ["00000000-0000-0000-0000-000000000001"],
         }
     )
+
     async def save_layout(_actor_id: uuid.UUID, positions: list[dict]) -> dict:
         return {"positions": positions, "count": len(positions)}
 

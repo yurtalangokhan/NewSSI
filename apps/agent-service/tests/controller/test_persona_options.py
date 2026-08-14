@@ -22,6 +22,7 @@ async def test_get_persona_options_skips_full_persona_serialization(monkeypatch)
         AsyncMock(return_value=custom_personas),
     )
     controller._load_agent_group_visibility = AsyncMock(return_value=({13}, set()))
+    controller._can_manage_all_personas = AsyncMock(return_value=False)
     controller._serialize_custom_persona = AsyncMock(
         side_effect=AssertionError("full serialization must not run")
     )

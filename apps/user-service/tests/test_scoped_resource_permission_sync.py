@@ -144,9 +144,7 @@ async def test_sync_audits_grants_updates_and_revokes(
             "old_permission_level": "execute",
         },
     ]
-    service.perm_repo.sync_direct_permissions = AsyncMock(
-        return_value=(final_permissions, changes)
-    )
+    service.perm_repo.sync_direct_permissions = AsyncMock(return_value=(final_permissions, changes))
     service.audit_repo = MagicMock()
     service.audit_repo.create = AsyncMock(return_value={})
 

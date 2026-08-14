@@ -1,8 +1,8 @@
-"""canonicalize composite roles
+"""reconcile canonical composite roles
 
-Revision ID: 0024
-Revises: 0023
-Create Date: 2026-08-12
+Revision ID: 0029
+Revises: 0028
+Create Date: 2026-08-13
 
 """
 
@@ -11,8 +11,8 @@ from collections.abc import Sequence
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = "0024"
-down_revision: str | None = "0023"
+revision: str = "0029"
+down_revision: str | None = "0028"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

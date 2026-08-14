@@ -10,6 +10,21 @@ from .keycloak_service import get_keycloak_service
 
 logger = logging.getLogger(__name__)
 
+LEGACY_CLIENT_ROLE_BY_FEATURE_BUNDLE: dict[str, tuple[str, str]] = {
+    "access-admin": ("user-service", "user-admin"),
+    "access-manager": ("user-service", "user-manager"),
+    "account-self-service": ("user-service", "enduser"),
+    "agent-workspace-admin": ("agent-service", "agent-admin"),
+    "agent-workspace-manager": ("agent-service", "agent-manager"),
+    "agent-workspace-user": ("agent-service", "agent-enduser"),
+    "knowledge-admin": ("rag-service", "rag-admin"),
+    "knowledge-manager": ("rag-service", "rag-manager"),
+    "knowledge-search-user": ("rag-service", "rag-enduser"),
+    "tooling-admin": ("tools-service", "tool-admin"),
+    "tooling-user": ("tools-service", "tool-user"),
+}
+
+
 class CompositeRoleService:
     def __init__(self):
         self.role_repo = CompositeRoleRepository()
@@ -363,10 +378,7 @@ class CompositeRoleService:
         created by a previous sync and should not appear in the JWT."""
         all_roles = await self.keycloak.get_client_roles(client_id=svc_client)
         cr_svc = get_role_service()
-        db_role_names = {
-            role.name
-            for role in await cr_svc.repo.get_all(service_client=svc_client)
-        }
+        db_role_names = {role.name for role in await cr_svc.repo.get_all(service_client=svc_client)}
         cleaned = 0
         for role in all_roles:
             name = role.get("name", "") if isinstance(role, dict) else ""
@@ -405,7 +417,11 @@ class CompositeRoleService:
             return child_roles
 
         cr_svc = get_role_service()
-        coarse_roles = await cr_svc.repo.get_by_names(role.role_ids or [])
+        coarse_roles = (
+            await cr_svc.repo.get_by_names(role.role_ids or [])
+            if getattr(role, "name", None)
+            else []
+        )
         coarse_role_by_name = {coarse_role.name: coarse_role for coarse_role in coarse_roles}
         for name in role.role_ids or []:
             coarse_role = coarse_role_by_name.get(name)
@@ -415,6 +431,17 @@ class CompositeRoleService:
                         "name": name,
                         "clientRole": True,
                         "clientId": coarse_role.service_client,
+                    }
+                )
+                continue
+            legacy_role = LEGACY_CLIENT_ROLE_BY_FEATURE_BUNDLE.get(name)
+            if legacy_role:
+                svc_client, client_role_name = legacy_role
+                child_roles.append(
+                    {
+                        "name": client_role_name,
+                        "clientRole": True,
+                        "clientId": svc_client,
                     }
                 )
         return child_roles

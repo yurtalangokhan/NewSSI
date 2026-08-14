@@ -992,17 +992,20 @@ class PersonaController(BaseController):
             custom_personas = await PersonaDB.list_all(include_builtin=False)
             restricted_persona_ids: set[int] = set()
             accessible_persona_ids: set[int] = set()
+            can_manage_all_personas = False
             if user:
                 (
                     restricted_persona_ids,
                     accessible_persona_ids,
                 ) = await self._load_agent_group_visibility(user)
+                can_manage_all_personas = await self._can_manage_all_personas(user)
             for persona in custom_personas:
                 if user and not self._can_access_persona(
                     persona,
                     user,
                     restricted_persona_ids,
                     accessible_persona_ids,
+                    can_manage_all_personas,
                 ):
                     continue
                 agents.append(await self._serialize_custom_persona_summary(persona))
@@ -1049,6 +1052,7 @@ class PersonaController(BaseController):
         restricted_persona_ids, accessible_persona_ids = await self._load_agent_group_visibility(
             user
         )
+        can_manage_all_personas = await self._can_manage_all_personas(user)
         options.extend(
             {
                 "id": persona["id"],
@@ -1061,6 +1065,7 @@ class PersonaController(BaseController):
                 user,
                 restricted_persona_ids,
                 accessible_persona_ids,
+                can_manage_all_personas,
             )
         )
         return options

@@ -96,9 +96,6 @@ async def _require_any_permission(
         user = await repo.get_by_id(uuid.UUID(user_id))
         if not user:
             raise HTTPException(status_code=403, detail="System admin access required")
-        if user.is_superuser:
-            return user_id
-
         role = await CompositeRoleRepository().get_by_name(user.role)
         if role:
             direct_permissions = set(role.permissions or [])

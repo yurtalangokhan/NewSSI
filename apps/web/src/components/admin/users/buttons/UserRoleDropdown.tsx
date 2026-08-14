@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import useSWR from "swr";
 import useSWRMutation from "swr/mutation";
 import { errorHandlingFetcher } from "@/lib/fetcher";
-import { formatRoleName, getEffectiveUserRole } from "@/lib/auth/roles";
+import { formatRoleName } from "@/lib/auth/roles";
 
 import InputSelect from "@/refresh-components/inputs/InputSelect";
 import { useTranslation } from "react-i18next";

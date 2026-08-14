@@ -42,10 +42,19 @@ if config.config_file_name is not None and config.attributes.get("configure_logg
 # MetaData for 'autogenerate' support
 target_metadata = Base.metadata
 
+LANGGRAPH_RUNTIME_TABLES = {
+    "checkpoint_blobs",
+    "checkpoint_migrations",
+    "checkpoint_writes",
+    "checkpoints",
+    "store",
+    "store_migrations",
+}
+
 
 def exclude_embedding(obj, name, type_, reflected, compare_to):
-    """Exclude langchain_pg_embedding from autogenerate — PGVector manages it at runtime."""
-    if type_ == "table" and name == "langchain_pg_embedding":
+    """Exclude runtime-managed tables from Alembic autogenerate."""
+    if type_ == "table" and name in {"langchain_pg_embedding", *LANGGRAPH_RUNTIME_TABLES}:
         return False
     return True
 

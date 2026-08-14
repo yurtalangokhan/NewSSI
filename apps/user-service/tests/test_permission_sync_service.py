@@ -1,7 +1,6 @@
 import importlib
 
 from src.service import permission_sync_service
-from src.service import permission_sync_service
 from src.service.permission_sync_service import PermissionSyncService
 
 coarse_roles_migration = importlib.import_module(
@@ -35,8 +34,7 @@ def test_external_manifest_paths_tolerates_docker_image_layout(monkeypatch):
 
 def test_builtin_tooling_feature_bundles_include_llm_provider_permissions():
     roles = {
-        role["name"]: set(role["permissions"])
-        for role in coarse_roles_migration.COARSE_ROLES_SEED
+        role["name"]: set(role["permissions"]) for role in coarse_roles_migration.COARSE_ROLES_SEED
     }
 
     assert {

@@ -275,8 +275,12 @@ async def test_move_organization_updates_descendant_paths() -> None:
 @pytest.mark.asyncio
 async def test_get_tree_builds_hierarchy() -> None:
     root = _organization(name="Root", code="ROOT")
-    child1 = _organization(name="Child 1", code="CHILD1", parent_id=root.id, path=f"/{root.id}/", level=1)
-    child2 = _organization(name="Child 2", code="CHILD2", parent_id=root.id, path=f"/{root.id}/", level=1)
+    child1 = _organization(
+        name="Child 1", code="CHILD1", parent_id=root.id, path=f"/{root.id}/", level=1
+    )
+    child2 = _organization(
+        name="Child 2", code="CHILD2", parent_id=root.id, path=f"/{root.id}/", level=1
+    )
     grandchild = _organization(
         name="Grandchild",
         code="GRANDCHILD",

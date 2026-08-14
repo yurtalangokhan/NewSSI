@@ -89,6 +89,30 @@ async def test_validate_token_accepts_legacy_tokens_without_audience():
 
 
 @pytest.mark.asyncio
+async def test_validate_token_treats_missing_external_issuer_as_invalid_token():
+    auth_service = AuthService()
+    auth_service.keycloak = SimpleNamespace(
+        is_enabled=lambda: True,
+        is_external_keycloak=lambda: True,
+        validate_token_jwks=AsyncMock(return_value=None),
+        get_user_info=AsyncMock(return_value=None),
+        get_external_user_info=AsyncMock(
+            side_effect=ValueError(
+                "EXTERNAL_KEYCLOAK_ISSUER_URL or EXTERNAL_KEYCLOAK_BASE_URL "
+                "+ EXTERNAL_KEYCLOAK_REALM must be configured"
+            )
+        ),
+    )
+
+    payload = await auth_service.validate_token("not-a-local-or-internal-token")
+
+    assert payload is None
+    auth_service.keycloak.get_external_user_info.assert_awaited_once_with(
+        "not-a-local-or-internal-token"
+    )
+
+
+@pytest.mark.asyncio
 async def test_refresh_access_token_requires_keycloak_session_management():
     auth_service = AuthService()
     auth_service.keycloak = SimpleNamespace(is_enabled=lambda: False)

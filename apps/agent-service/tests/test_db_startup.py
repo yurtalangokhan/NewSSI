@@ -5,8 +5,7 @@ from pathlib import Path
 
 def test_sub_agent_ids_migration_uses_jsonb_for_gin_index():
     migration = (
-        Path(__file__).parents[1]
-        / "src/core/db/migrations/versions/0025_add_sub_agent_ids.py"
+        Path(__file__).parents[1] / "src/core/db/migrations/versions/0025_add_sub_agent_ids.py"
     )
 
     assert "postgresql.JSONB()" in migration.read_text()
@@ -23,6 +22,17 @@ def test_alembic_metadata_registers_all_service_owned_tables():
         "user_provider_configs",
         "user_memory",
     }.issubset(Base.metadata.tables)
+
+
+def test_alembic_autogenerate_ignores_langgraph_runtime_tables():
+    env_py = (Path(__file__).parents[1] / "src/core/db/migrations/env.py").read_text()
+
+    assert "LANGGRAPH_RUNTIME_TABLES" in env_py
+    assert "checkpoints" in env_py
+    assert "checkpoint_writes" in env_py
+    assert "checkpoint_blobs" in env_py
+    assert "store" in env_py
+    assert "return False" in env_py
 
 
 def test_run_startup_migrations_ensures_database_before_alembic(monkeypatch):

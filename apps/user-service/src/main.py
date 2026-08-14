@@ -1,7 +1,7 @@
 import logging
 from contextlib import asynccontextmanager
-from typing import Any
 from pathlib import Path
+from typing import Any
 
 import httpx
 from fastapi import FastAPI
@@ -195,7 +195,6 @@ def _build_idempotency_config() -> IdempotencyConfig:
 
 
 _idempotency_config = _build_idempotency_config()
-
 
 
 def create_app() -> FastAPI:

@@ -52,7 +52,8 @@ class UserService:
         if not role:
             return {"permissions": []}
 
-        if role.name == "system-admin" or role.permissions == ["*"]:
+        role_name = getattr(role, "name", user.role)
+        if role_name == "system-admin" or role.permissions == ["*"]:
             return {"permissions": ["*"]}
 
         # Aggregate: direct perms + coarse role perms

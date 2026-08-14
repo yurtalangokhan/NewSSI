@@ -63,7 +63,7 @@ interface CoarseRole {
 
 // ─── Feature taxonomy ───────────────────────────────────────────────
 
-const FEATURE_LABELS: Record<string, string> = {
+const FEATURE_LABEL_FALLBACKS: Record<string, string> = {
   access: "Users & Access",
   agents: "Agents & Assistants",
   chat: "Chat & Conversations",
@@ -83,8 +83,13 @@ const FEATURE_ORDER = [
   "system",
 ];
 
-function featureLabel(feature: string): string {
-  return FEATURE_LABELS[feature] ?? feature.replace(/_/g, " ");
+function featureLabel(
+  feature: string,
+  translate: (key: string, options?: Record<string, string>) => string
+): string {
+  return translate(`features.${feature}`, {
+    defaultValue: FEATURE_LABEL_FALLBACKS[feature] ?? feature.replace(/_/g, " "),
+  });
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────
@@ -419,7 +424,6 @@ function RolesManager() {
 
   const {
     data: rolePermsData,
-    mutate: mutateRolePerms,
     isLoading: rolePermsLoading,
   } = useSWR<{ name: string; permissions: string[] }>(
     selectedRole
@@ -466,7 +470,7 @@ function RolesManager() {
       {
         onSuccess: () => {
           mutateCoarseRolePerms();
-          toast.success("Permissions saved");
+          toast.success(t("permissionsSavedToast"));
         },
         onError: (err) => toast.error(err.message),
       }
@@ -583,7 +587,7 @@ function RolesManager() {
             p.label.toLowerCase().includes(q) ||
             p.action.toLowerCase().includes(q) ||
             entity.toLowerCase().includes(q) ||
-            featureLabel(feature).toLowerCase().includes(q)
+            featureLabel(feature, t).toLowerCase().includes(q)
         );
         if (filtered.length > 0) filteredEntities[entity] = filtered;
       }
@@ -591,7 +595,7 @@ function RolesManager() {
         result[feature] = filteredEntities;
     }
     return result;
-  }, [groupedPermissions, permSearch]);
+  }, [groupedPermissions, permSearch, t]);
 
   const catalogNames = useMemo(() => {
     return new Set((permsData?.permissions ?? []).map((perm) => perm.name));
@@ -604,10 +608,6 @@ function RolesManager() {
     }
     return new Set(permissions);
   }, [coarseRolePermsData, permsData]);
-
-  const effectivePermsSet = useMemo(() => {
-    return new Set(effectivePermissions);
-  }, [effectivePermissions]);
 
   const selectedRoleIds = useMemo(
     () => new Set(roleIdsData?.role_ids ?? []),
@@ -687,12 +687,12 @@ function RolesManager() {
           arg: { description },
         });
         mutateComp();
-        toast.success("Role updated");
+        toast.success(t("roleUpdatedToast"));
       } catch (err: any) {
         toast.error(err.message);
       }
     },
-    [selectedRole, mutateComp]
+    [selectedRole, mutateComp, t]
   );
 
   const handleDeleteRole = useCallback(async () => {
@@ -710,13 +710,13 @@ function RolesManager() {
         setSelectedRole(remaining[0]?.name ?? "");
       }
       setDeleteConfirmRole(null);
-      toast.success("Role deleted");
+      toast.success(t("roleDeletedToast"));
     } catch (err: any) {
       toast.error(err.message);
     } finally {
       setIsDeleting(false);
     }
-  }, [deleteConfirmRole, selectedRole, roles, mutateComp]);
+  }, [deleteConfirmRole, selectedRole, roles, mutateComp, t]);
 
   const allLoading =
     compLoading ||
@@ -747,13 +747,10 @@ function RolesManager() {
       <div className="flex items-center justify-between gap-2">
         <div>
           <Text headingH3 text01 className="block">
-            {t("serviceRolesTitle")}
-            Role management
+            {t("roleManagementTitle")}
           </Text>
           <Text secondaryBody text-03 className="mt-1 block">
-            {t("serviceRolesDescription")}
-            Compose user-facing roles from feature bundles, then grant
-            permissions inside each bundle.
+            {t("roleManagementDescription")}
           </Text>
         </div>
         <div className="flex items-center gap-2">
@@ -788,7 +785,7 @@ function RolesManager() {
           )}
           onClick={() => setActiveLayer("composite")}
         >
-          Composite roles
+          {t("compositeRolesTabLabel")}
         </button>
         <button
           type="button"
@@ -800,23 +797,21 @@ function RolesManager() {
           )}
           onClick={() => setActiveLayer("coarse")}
         >
-          Feature bundles
+          {t("featureBundlesTabLabel")}
         </button>
       </div>
 
       {!hasActiveItems ? (
         <EmptyState
-          title={t("noRolesFoundTitle")}
-          description={t("noRolesFoundDescription")}
           title={
             activeLayer === "composite"
-              ? "No roles found"
-              : "No feature bundles found"
+              ? t("noRolesFoundTitle")
+              : t("noFeatureBundlesFoundTitle")
           }
           description={
             activeLayer === "composite"
-              ? "Create a role before assigning feature bundles."
-              : "Create a feature bundle before assigning permissions."
+              ? t("noRolesFoundDescription")
+              : t("noFeatureBundlesFoundDescription")
           }
         />
       ) : (
@@ -831,8 +826,8 @@ function RolesManager() {
                 className="w-full pl-9 pr-3 py-2 rounded-06 border-01 bg-background-neutral-00 text-01 text-sm outline-none focus:border-action-link-05"
                 placeholder={
                   activeLayer === "composite"
-                    ? "Search roles..."
-                    : "Search feature bundles..."
+                    ? t("searchRolesPlaceholder")
+                    : t("searchFeatureBundlesPlaceholder")
                 }
                 value={
                   activeLayer === "composite" ? roleSearch : coarseRoleSearch
@@ -895,10 +890,14 @@ function RolesManager() {
                           )}
                         >
                           {isAll
-                            ? "All permissions"
-                            : `${role.permissions.length} permissions`}
+                            ? t("allPermissions")
+                            : t("permissionsCount", {
+                                count: role.permissions.length,
+                              })}
                           {role.role_ids.length > 0 &&
-                            ` · ${role.role_ids.length} included`}
+                            t("includedRolesSuffix", {
+                              count: role.role_ids.length,
+                            })}
                         </Text>
                       </span>
                       {selected && <SvgCheck size={14} />}
@@ -940,8 +939,10 @@ function RolesManager() {
                           )}
                         >
                           {role.permissions.includes("*")
-                            ? "All permissions"
-                            : `${role.permissions.length} permissions`}
+                            ? t("allPermissions")
+                            : t("permissionsCount", {
+                                count: role.permissions.length,
+                              })}
                         </Text>
                       </span>
                       {selected && <SvgCheck size={14} />}
@@ -1004,7 +1005,7 @@ function RolesManager() {
                     ) : (
                       <div className="mt-2 flex items-center gap-2">
                         <Text secondaryBody text-04 className="truncate italic">
-                          {selectedComp.description || "No description"}
+                          {selectedComp.description || t("noDescription")}
                         </Text>
                         {canMutate && (
                           <button
@@ -1025,16 +1026,11 @@ function RolesManager() {
                     )}
                     <Text secondaryBody text-04 className="mt-2 block">
                       {isWildcard
-                        ? "This role grants every permission."
-                        : `${selectedRoleIds.size} feature bundle${
-                            selectedRoleIds.size
-                              ? selectedRoleIds.size === 1
-                                ? ""
-                                : "s"
-                              : "s"
-                          } · ${
-                            effectivePermissions.length
-                          } effective permissions`}
+                        ? t("roleGrantsEveryPermission")
+                        : t("roleEffectivePermissionsSummary", {
+                            bundles: selectedRoleIds.size,
+                            permissions: effectivePermissions.length,
+                          })}
                     </Text>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
@@ -1091,7 +1087,7 @@ function RolesManager() {
                     />
                     <input
                       className="w-full rounded-06 border-01 bg-background-neutral-00 py-2 pl-9 pr-3 text-01 text-sm outline-none focus:border-action-link-05"
-                      placeholder="Search included roles..."
+                      placeholder={t("searchIncludedRolesPlaceholder")}
                       value={includedSearch}
                       onChange={(e) => setIncludedSearch(e.target.value)}
                     />
@@ -1164,12 +1160,14 @@ function RolesManager() {
                       {coarseRoleLabel(selectedCoarse.name)}
                     </Text>
                     <Text secondaryBody text-04 className="mt-2 block">
-                      {selectedCoarse.description || "No description"}
+                      {selectedCoarse.description || t("noDescription")}
                     </Text>
                     <Text secondaryBody text-04 className="mt-2 block">
                       {selectedCoarseIsWildcard
-                        ? "All permissions"
-                        : `${selectedPermsSet.size} permissions selected`}
+                        ? t("allPermissions")
+                        : t("permissionsSelectedCount", {
+                            count: selectedPermsSet.size,
+                          })}
                     </Text>
                   </div>
                   {!selectedCoarseIsWildcard && (
@@ -1178,7 +1176,7 @@ function RolesManager() {
                       disabled={isSaving || !canMutateCoarse}
                       onClick={handleSave}
                     >
-                      {isSaving ? "Saving..." : "Save"}
+                      {isSaving ? t("savingButton") : t("saveButton")}
                     </Button>
                   )}
                 </div>
@@ -1189,11 +1187,10 @@ function RolesManager() {
               <>
                 <div>
                   <Text headingH3 text01 className="mb-2 block">
-                    Included feature bundles
+                    {t("includedFeatureBundlesTitle")}
                   </Text>
                   <Text secondaryBody text-03 className="mb-3 block">
-                    Grant this user-facing role the permissions collected in
-                    feature bundles.
+                    {t("includedFeatureBundlesDescription")}
                   </Text>
                   <div className="relative mb-3">
                     <SvgSearch
@@ -1202,7 +1199,7 @@ function RolesManager() {
                     />
                     <input
                       className="w-full pl-9 pr-3 py-2 rounded-06 border-01 bg-background-neutral-01 text-01 text-sm outline-none focus:border-action-link-05"
-                      placeholder="Search feature bundles..."
+                      placeholder={t("searchFeatureBundlesPlaceholder")}
                       value={includedSearch}
                       onChange={(e) => setIncludedSearch(e.target.value)}
                     />
@@ -1211,7 +1208,7 @@ function RolesManager() {
                     <CardContent className="p-4">
                       {includedCoarseRoles.length === 0 ? (
                         <Text secondaryBody text-04 className="py-2">
-                          No feature bundles available.
+                          {t("noFeatureBundlesAvailable")}
                         </Text>
                       ) : (
                         <div className="grid grid-cols-1 gap-1 sm:grid-cols-2 lg:grid-cols-3">
@@ -1247,7 +1244,9 @@ function RolesManager() {
                                   text-04
                                   className="block text-xs"
                                 >
-                                  {role.permissions.length} permissions
+                                  {t("permissionsCount", {
+                                    count: role.permissions.length,
+                                  })}
                                 </Text>
                               </span>
                             </label>
@@ -1260,15 +1259,14 @@ function RolesManager() {
 
                 <div className="mt-6">
                   <Text headingH3 text01 className="mb-2 block">
-                    Effective permissions
+                    {t("effectivePermissionsTitle")}
                   </Text>
                   <Text secondaryBody text-03 className="mb-3 block">
-                    These permissions are resolved from the selected feature
-                    bundles and are shown read-only.
+                    {t("effectivePermissionsDescription")}
                   </Text>
                   {effectivePermissions.length === 0 ? (
                     <Text secondaryBody text-04>
-                      No effective permissions.
+                      {t("noEffectivePermissions")}
                     </Text>
                   ) : (
                     <div className="grid grid-cols-1 gap-1 sm:grid-cols-2 lg:grid-cols-3">
@@ -1297,12 +1295,11 @@ function RolesManager() {
                     <div className="flex items-center gap-2">
                       <SvgShield size={18} className="text-text-03" />
                       <Text headingH3 text01>
-                        All permissions granted
+                        {t("allPermissionsGrantedTitle")}
                       </Text>
                     </div>
                     <Text secondaryBody text-03 className="mt-2 block">
-                      This feature bundle grants every permission and is managed
-                      by the platform seed.
+                      {t("allPermissionsGrantedDescription")}
                     </Text>
                   </div>
                 )}
@@ -1315,7 +1312,7 @@ function RolesManager() {
                   <input
                     ref={permSearchRef}
                     className="w-full pl-9 pr-8 py-2 rounded-06 border-01 bg-background-neutral-01 text-01 text-sm outline-none focus:border-action-link-05"
-                    placeholder="Search permissions..."
+                    placeholder={t("searchPermissionsPlaceholder")}
                     value={permSearch}
                     onChange={(e) => setPermSearch(e.target.value)}
                   />
@@ -1350,7 +1347,7 @@ function RolesManager() {
                           />
                         )}
                         <Text headingH3 text01 className="capitalize">
-                          {featureLabel(feature)}
+                          {featureLabel(feature, t)}
                         </Text>
                         <span className="rounded-04 bg-background-neutral-02 px-2 py-0.5 text-xs text-text-03">
                           {featureSelected}/{featurePerms.length}
@@ -1394,9 +1391,6 @@ function RolesManager() {
                                   >
                                     {canMutateCoarse && (
                                       <Checkbox
-                                        checked={selectedPermsSet.has(
-                                          perm.name
-                                        )}
                                         checked={selectedPermsSet.has(
                                           perm.name
                                         )}

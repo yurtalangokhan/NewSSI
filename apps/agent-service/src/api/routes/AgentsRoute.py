@@ -695,7 +695,9 @@ async def message_generator(
                             # Anthropic extended thinking block
                             thinking_text = block.get("thinking", "")
                             if thinking_text:
-                                for doc_packet in document_progress.on_tool_call_text(thinking_text):
+                                for doc_packet in document_progress.on_tool_call_text(
+                                    thinking_text
+                                ):
                                     yield f"data: {json.dumps(doc_packet)}\n\n"
                                 if not saw_reasoning_for_current_answer:
                                     yield f"data: {json.dumps({'type': 'reasoning_start'})}\n\n"

@@ -443,9 +443,7 @@ def _rejected_credentials_broker_client(monkeypatch, post_status: int):
     monkeypatch.setattr(service, "_default_oidc_redirect_uri", lambda: callback_uri)
     monkeypatch.setattr(service, "get_external_keycloak_alias", lambda: "external-keycloak")
     monkeypatch.setattr(service, "_rewrite_keycloak_url_for_backend", lambda url: url)
-    monkeypatch.setattr(
-        service, "get_oidc_authorize_url", AsyncMock(return_value=authorize_url)
-    )
+    monkeypatch.setattr(service, "get_oidc_authorize_url", AsyncMock(return_value=authorize_url))
     monkeypatch.setattr(service, "ensure_login_client_redirect_uri", AsyncMock())
 
     class Client:
@@ -459,11 +457,11 @@ def _rejected_credentials_broker_client(monkeypatch, post_status: int):
             return None
 
         async def get(self, url: str, follow_redirects: bool = False) -> httpx.Response:
-            return httpx.Response(
-                200, text=_LOGIN_FORM_HTML, request=httpx.Request("GET", url)
-            )
+            return httpx.Response(200, text=_LOGIN_FORM_HTML, request=httpx.Request("GET", url))
 
-        async def post(self, url: str, data: dict, follow_redirects: bool = False) -> httpx.Response:
+        async def post(
+            self, url: str, data: dict, follow_redirects: bool = False
+        ) -> httpx.Response:
             return httpx.Response(post_status, text="", request=httpx.Request("POST", url))
 
     monkeypatch.setattr(keycloak_service.httpx, "AsyncClient", Client)

@@ -1,7 +1,7 @@
 """make composite role_ids not null
 
-Revision ID: 0018
-Revises: 0017
+Revision ID: 0022
+Revises: 0021
 Create Date: 2026-08-11
 """
 
@@ -13,8 +13,8 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects.postgresql import JSONB
 
-revision: str = "0018"
-down_revision: str | None = "0017"
+revision: str = "0022"
+down_revision: str | None = "0021"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

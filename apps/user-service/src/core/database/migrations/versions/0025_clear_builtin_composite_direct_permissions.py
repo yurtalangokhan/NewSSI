@@ -1,7 +1,7 @@
 """clear built-in composite direct permissions
 
-Revision ID: 0021
-Revises: 0020
+Revision ID: 0025
+Revises: 0024
 Create Date: 2026-08-12
 
 """
@@ -10,8 +10,8 @@ from collections.abc import Sequence
 
 from alembic import op
 
-revision: str = "0021"
-down_revision: str | None = "0020"
+revision: str = "0025"
+down_revision: str | None = "0024"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

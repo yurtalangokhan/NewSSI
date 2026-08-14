@@ -1,7 +1,7 @@
 """drop users is_superuser column and add missing permissions
 
-Revision ID: 0026
-Revises: 0025
+Revision ID: 0030
+Revises: 0029
 Create Date: 2026-08-13 00:00:00.000000
 """
 
@@ -10,8 +10,8 @@ import json
 import sqlalchemy as sa
 from alembic import op
 
-revision = "0026"
-down_revision = "0025"
+revision = "0030"
+down_revision = "0029"
 branch_labels = None
 depends_on = None
 
@@ -164,11 +164,10 @@ def upgrade() -> None:
             "mail_config:update",
         ),
     )
-    op.drop_column("users", "is_superuser")
+    op.execute("ALTER TABLE users DROP COLUMN IF EXISTS is_superuser")
 
 
 def downgrade() -> None:
-    op.add_column(
-        "users",
-        sa.Column("is_superuser", sa.Boolean(), nullable=False, server_default="false"),
+    op.execute(
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_superuser BOOLEAN DEFAULT false NOT NULL"
     )

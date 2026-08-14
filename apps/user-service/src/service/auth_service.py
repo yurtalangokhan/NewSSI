@@ -380,7 +380,10 @@ class AuthService:
 
         # 4. External Keycloak fallback — userinfo against external IdP
         if self._external_keycloak_enabled():
-            external_user_info = await self.keycloak.get_external_user_info(token)
+            try:
+                external_user_info = await self.keycloak.get_external_user_info(token)
+            except ValueError:
+                return None
             if external_user_info:
                 user = await self._upsert_external_user_from_claims(external_user_info)
                 return {

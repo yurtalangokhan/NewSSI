@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import importlib.util
+from pathlib import Path
+
 
 def test_alembic_metadata_does_not_register_deprecated_coarse_roles_table():
     from src.core.database.models import Base
@@ -51,3 +54,73 @@ def test_run_startup_migrations_ensures_database_before_alembic(monkeypatch):
         "User service database migrations completed: current=%s target=%s",
         ("0021", "0021"),
     ) in logs
+
+
+def test_organization_repair_migration_recreates_missing_tables_idempotently():
+    migration_path = (
+        Path(__file__).parents[1]
+        / "src"
+        / "core"
+        / "database"
+        / "migrations"
+        / "versions"
+        / "0032_repair_missing_organization_tables.py"
+    )
+    spec = importlib.util.spec_from_file_location("organization_repair_migration", migration_path)
+    assert spec and spec.loader
+    migration = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(migration)
+
+    executed: list[str] = []
+
+    class Operations:
+        @staticmethod
+        def execute(statement: str) -> None:
+            executed.append(statement)
+
+    migration.op = Operations
+
+    migration.upgrade()
+
+    ddl = "\n".join(executed)
+    assert "CREATE TABLE IF NOT EXISTS organizations" in ddl
+    assert "CREATE TABLE IF NOT EXISTS user_organizations" in ddl
+    assert "CREATE TABLE IF NOT EXISTS resource_permissions" in ddl
+    assert "CREATE TABLE IF NOT EXISTS permission_audit_logs" in ddl
+    assert "CREATE TABLE IF NOT EXISTS organization_layouts" in ddl
+
+
+def test_organization_code_index_repair_migration_matches_model_contract():
+    migration_path = (
+        Path(__file__).parents[1]
+        / "src"
+        / "core"
+        / "database"
+        / "migrations"
+        / "versions"
+        / "0033_repair_organization_code_unique_index.py"
+    )
+    spec = importlib.util.spec_from_file_location(
+        "organization_code_index_repair_migration", migration_path
+    )
+    assert spec and spec.loader
+    migration = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(migration)
+
+    executed: list[str] = []
+
+    class Operations:
+        @staticmethod
+        def execute(statement: str) -> None:
+            executed.append(statement)
+
+    migration.op = Operations
+
+    migration.upgrade()
+
+    ddl = "\n".join(executed)
+    assert migration.revision == "0033"
+    assert migration.down_revision == "0032"
+    assert "ALTER TABLE organizations DROP CONSTRAINT IF EXISTS organizations_code_key" in ddl
+    assert "DROP INDEX IF EXISTS ix_organizations_code" in ddl
+    assert "CREATE UNIQUE INDEX IF NOT EXISTS ix_organizations_code" in ddl

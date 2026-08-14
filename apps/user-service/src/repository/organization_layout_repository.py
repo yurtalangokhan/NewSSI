@@ -46,7 +46,7 @@ class OrganizationLayoutRepository(BaseRepository):
         """Derive all writable organizations with set-based database queries."""
         async with self._session() as session:
             actor_result = await session.execute(
-                select(UserModel.is_superuser, CompositeRoleModel.is_admin)
+                select(CompositeRoleModel.is_admin)
                 .outerjoin(CompositeRoleModel, CompositeRoleModel.name == UserModel.role)
                 .where(UserModel.id == actor_id)
             )
@@ -54,8 +54,8 @@ class OrganizationLayoutRepository(BaseRepository):
             if not actor:
                 return []
 
-            is_superuser, is_admin = actor
-            if is_superuser or is_admin:
+            (is_admin,) = actor
+            if is_admin:
                 result = await session.execute(
                     select(OrganizationModel.id).order_by(OrganizationModel.id)
                 )

@@ -97,4 +97,6 @@ def run_startup_migrations() -> None:
     logger.info("Agent service database migration check: current=%s target=%s", current, target)
     command.upgrade(alembic_cfg, "head")
     current, target = _migration_revision_state(alembic_cfg)
-    logger.info("Agent service database migrations completed: current=%s target=%s", current, target)
+    logger.info(
+        "Agent service database migrations completed: current=%s target=%s", current, target
+    )

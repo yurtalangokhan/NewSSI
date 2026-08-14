@@ -7,17 +7,12 @@ def _route(path: str, method: str, routes: list) -> APIRoute:
     return next(
         route
         for route in routes
-        if isinstance(route, APIRoute)
-        and route.path == path
-        and method in route.methods
+        if isinstance(route, APIRoute) and route.path == path and method in route.methods
     )
 
 
 def _dependency_names(route: APIRoute) -> list[str]:
-    return [
-        getattr(dependency.call, "__name__", "")
-        for dependency in route.dependant.dependencies
-    ]
+    return [getattr(dependency.call, "__name__", "") for dependency in route.dependant.dependencies]
 
 
 def test_mail_config_routes_require_permissions() -> None:
