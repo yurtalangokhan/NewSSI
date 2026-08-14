@@ -17,7 +17,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.routing import APIRoute
 from i18n import I18nMiddleware, init_service_i18n
-from idempotency import AsyncRedisPool, IdempotencyConfig, IdempotencyMiddleware
+from idempotency import AsyncRedisPool, IdempotencyMiddleware
 from langchain_core._api import LangChainBetaWarning
 from langfuse import Langfuse  # type: ignore[import-untyped]
 
@@ -27,6 +27,7 @@ from core import settings as core_settings
 from core.api_versioning import API_PREFIX
 from core.db import close_db_engine, get_db_engine
 from core.db.startup import run_startup_migrations
+from core.idempotency import build_idempotency_config, build_idempotency_exclude_paths
 from core.logger import configure_logging
 from memory import initialize_database, initialize_store
 from service.AirbyteSyncListenerService import get_sync_listener
@@ -35,15 +36,7 @@ from service.LangGraphStoreService import set_global_langgraph_store
 from service.MCPProviderService import MCPProviderService
 from service.SyncQueueService import get_sync_queue
 
-_idempotency_config = IdempotencyConfig(
-    redis_host=settings.REDIS_HOST,
-    redis_port=settings.REDIS_PORT,
-    redis_db=settings.REDIS_DB,
-    redis_password=settings.REDIS_PASSWORD,
-    idempotency_ttl=settings.IDEMPOTENCY_TTL,
-    idempotency_enabled=settings.IDEMPOTENCY_ENABLED,
-    service_name="agent-service",
-)
+_idempotency_config = build_idempotency_config(settings)
 
 warnings.filterwarnings("ignore", category=LangChainBetaWarning)
 configure_logging()
@@ -159,7 +152,7 @@ app.add_middleware(
 app.add_middleware(
     IdempotencyMiddleware,
     config=_idempotency_config,
-    exclude_paths={f"{API_PREFIX}/health"},
+    exclude_paths=build_idempotency_exclude_paths(API_PREFIX),
 )
 
 

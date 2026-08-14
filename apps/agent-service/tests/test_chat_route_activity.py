@@ -2,12 +2,39 @@
 
 import asyncio
 from collections.abc import AsyncIterator
+from typing import Any
 
 from fastapi.testclient import TestClient
+from idempotency import AsyncRedisPool
 
 from app import app
 from core import settings as core_settings
 from service import AuthService
+
+
+class _FakeRedis:
+    def __init__(self) -> None:
+        self.values: dict[str, str] = {}
+
+    async def get(self, key: str) -> str | None:
+        return self.values.get(key)
+
+    async def setex(self, key: str, ttl: int, value: str) -> None:
+        self.values[key] = value
+
+    async def set(self, key: str, value: str, *, nx: bool = False, ex: int | None = None) -> bool:
+        if nx and key in self.values:
+            return False
+        self.values[key] = value
+        return True
+
+    async def eval(self, script: str, numkeys: int, *keys_and_args: Any) -> int:
+        key = keys_and_args[0]
+        token = keys_and_args[1]
+        if self.values.get(key) == token:
+            self.values.pop(key, None)
+            return 1
+        return 0
 
 
 class _ThreadController:
@@ -35,7 +62,17 @@ class _UserController:
         return user_id
 
 
+def _patch_redis(monkeypatch) -> None:
+    redis = _FakeRedis()
+
+    async def connect(config) -> _FakeRedis:
+        return redis
+
+    monkeypatch.setattr(AsyncRedisPool, "connect", connect)
+
+
 def _configure_route(monkeypatch, thread_controller: _ThreadController, message_generator) -> None:
+    _patch_redis(monkeypatch)
     monkeypatch.setattr("api.routes.ChatRoute._get_thread_controller", lambda: thread_controller)
     monkeypatch.setattr("api.routes.ChatRoute.get_user_controller", _UserController)
     monkeypatch.setattr("api.routes.ChatRoute.message_generator", message_generator)
@@ -56,6 +93,7 @@ def test_send_message_marks_activity_before_provider_failure(monkeypatch) -> Non
 
     response = TestClient(app).post(
         "/api/v1/chat/send-chat-message",
+        headers={"Idempotency-Key": "activity-provider-failure"},
         json={"message": "Hello", "chat_session_id": "3a19f671-7d34-4cfd-9ea4-21e17491b3f5"},
     )
 
@@ -75,6 +113,7 @@ def test_send_message_keeps_activity_after_partial_stream(monkeypatch) -> None:
 
     response = TestClient(app).post(
         "/api/v1/chat/send-chat-message",
+        headers={"Idempotency-Key": "activity-partial-stream"},
         json={"message": "Hello", "chat_session_id": "3a19f671-7d34-4cfd-9ea4-21e17491b3f5"},
     )
 
@@ -95,6 +134,7 @@ def test_send_message_marks_activity_before_client_cancellation(monkeypatch) -> 
 
     response = TestClient(app).post(
         "/api/v1/chat/send-chat-message",
+        headers={"Idempotency-Key": "activity-client-cancellation"},
         json={"message": "Hello", "chat_session_id": "3a19f671-7d34-4cfd-9ea4-21e17491b3f5"},
     )
 

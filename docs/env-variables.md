@@ -72,6 +72,15 @@
 | `CORS_ORIGINS`                | Allowed CORS origins                    | `*`                                                           |
 | `HOST`                        | Server bind address                     | `0.0.0.0`                                                     |
 | `PORT`                        | Server port                             | `8090`                                                        |
+| `REDIS_HOST`                  | Redis host for idempotency cache        | `localhost`                                                   |
+| `REDIS_PORT`                  | Redis port for idempotency cache        | `6379`                                                        |
+| `REDIS_DB`                    | Redis DB for idempotency cache          | `0`                                                           |
+| `REDIS_PASSWORD`              | Redis password for idempotency cache    | —                                                             |
+| `IDEMPOTENCY_TTL`             | Cached response and key-owner TTL       | `86400`                                                       |
+| `IDEMPOTENCY_ENABLED`         | Enable shared idempotency middleware    | `true`                                                        |
+| `IDEMPOTENCY_ENFORCE_REQUIRED_KEYS` | Require keys for `required_replay` routes | `false`                                                  |
+| `IDEMPOTENCY_LOCK_TTL`        | Redis lock TTL for in-flight requests   | `10`                                                          |
+| `IDEMPOTENCY_WAIT_TIMEOUT`    | Wait time for an in-flight cached replay | `10.0`                                                       |
 
 ---
 
@@ -106,6 +115,15 @@
 | `AIRBYTE_API_PASSWORD`   | Airbyte API password                                                                     | —                                                             |
 | `DOCUMENT_TOOLS_ENABLED` | Always-on `create_document`/`create_spreadsheet` tools on every agent graph              | `true`                                                        |
 | `OPEN_URL_PLAYWRIGHT_FALLBACK_ENABLED` | Enable optional Chromium fallback for built-in web fetch failures          | `false`                                                       |
+| `REDIS_HOST`             | Redis host for idempotency cache                                                         | `localhost`                                                   |
+| `REDIS_PORT`             | Redis port for idempotency cache                                                         | `6379`                                                        |
+| `REDIS_DB`               | Redis DB for idempotency cache                                                           | `0`                                                           |
+| `REDIS_PASSWORD`         | Redis password for idempotency cache                                                     | —                                                             |
+| `IDEMPOTENCY_TTL`        | Cached response and key-owner TTL                                                        | `86400`                                                       |
+| `IDEMPOTENCY_ENABLED`    | Enable shared idempotency middleware                                                     | `true`                                                        |
+| `IDEMPOTENCY_ENFORCE_REQUIRED_KEYS` | Require keys for `required_replay` routes                                        | `false`                                                       |
+| `IDEMPOTENCY_LOCK_TTL`   | Redis lock TTL for in-flight requests                                                    | `10`                                                          |
+| `IDEMPOTENCY_WAIT_TIMEOUT` | Wait time for an in-flight cached replay                                               | `10.0`                                                        |
 
 ---
 
@@ -132,6 +150,15 @@
 | `LOG_LEVEL`              | Logging level                             | `INFO`                                                        |
 | `HOST`                   | Server bind address                       | `0.0.0.0`                                                     |
 | `PORT`                   | Server port                               | `8083`                                                        |
+| `REDIS_HOST`             | Redis host for idempotency cache          | `localhost`                                                   |
+| `REDIS_PORT`             | Redis port for idempotency cache          | `6379`                                                        |
+| `REDIS_DB`               | Redis DB for idempotency cache            | `0`                                                           |
+| `REDIS_PASSWORD`         | Redis password for idempotency cache      | —                                                             |
+| `IDEMPOTENCY_TTL`        | Cached response and key-owner TTL         | `86400`                                                       |
+| `IDEMPOTENCY_ENABLED`    | Enable shared idempotency middleware      | `true`                                                        |
+| `IDEMPOTENCY_ENFORCE_REQUIRED_KEYS` | Require keys for `required_replay` routes | `false`                                                  |
+| `IDEMPOTENCY_LOCK_TTL`   | Redis lock TTL for in-flight requests     | `10`                                                          |
+| `IDEMPOTENCY_WAIT_TIMEOUT` | Wait time for an in-flight cached replay | `10.0`                                                       |
 
 ---
 
@@ -151,6 +178,15 @@
 | `PYTHON_CMD`             | Python interpreter path            | `python3`                                                     |
 | `WORKING_DIR`            | MCP working directory              | `/tmp/mcp`                                                    |
 | `ALLOWED_ORIGINS`        | CORS origins                       | `*`                                                           |
+| `REDIS_HOST`             | Redis host for idempotency cache   | `localhost`                                                   |
+| `REDIS_PORT`             | Redis port for idempotency cache   | `6379`                                                        |
+| `REDIS_DB`               | Redis DB for idempotency cache     | `0`                                                           |
+| `REDIS_PASSWORD`         | Redis password for idempotency cache | —                                                           |
+| `IDEMPOTENCY_TTL`        | Cached response and key-owner TTL  | `86400`                                                       |
+| `IDEMPOTENCY_ENABLED`    | Enable shared idempotency middleware | `true`                                                      |
+| `IDEMPOTENCY_ENFORCE_REQUIRED_KEYS` | Require keys for `required_replay` routes | `false`                                             |
+| `IDEMPOTENCY_LOCK_TTL`   | Redis lock TTL for in-flight requests | `10`                                                       |
+| `IDEMPOTENCY_WAIT_TIMEOUT` | Wait time for an in-flight cached replay | `10.0`                                                 |
 
 ---
 

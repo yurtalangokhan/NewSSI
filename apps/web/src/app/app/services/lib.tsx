@@ -25,21 +25,28 @@ import { WEB_SEARCH_TOOL_ID } from "@/app/app/components/tools/constants";
 import { SEARCH_TOOL_ID } from "@/app/app/components/tools/constants";
 import { Packet } from "./streamingModels";
 import { authenticatedFetch } from "@/lib/fetcher";
+import {
+  createIdempotencyKey,
+  withIdempotencyKey,
+} from "@/lib/api/idempotency";
 
 export async function updateLlmOverrideForChatSession(
   chatSessionId: string,
   newAlternateModel: string
 ) {
-  const response = await authenticatedFetch("/api/chat/update-chat-session-model", {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      chat_session_id: chatSessionId,
-      new_alternate_model: newAlternateModel,
-    }),
-  });
+  const response = await authenticatedFetch(
+    "/api/chat/update-chat-session-model",
+    {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        chat_session_id: chatSessionId,
+        new_alternate_model: newAlternateModel,
+      }),
+    }
+  );
   return response;
 }
 
@@ -47,16 +54,19 @@ export async function updateTemperatureOverrideForChatSession(
   chatSessionId: string,
   newTemperature: number
 ) {
-  const response = await authenticatedFetch("/api/chat/update-chat-session-temperature", {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      chat_session_id: chatSessionId,
-      temperature_override: newTemperature,
-    }),
-  });
+  const response = await authenticatedFetch(
+    "/api/chat/update-chat-session-temperature",
+    {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        chat_session_id: chatSessionId,
+        temperature_override: newTemperature,
+      }),
+    }
+  );
   return response;
 }
 
@@ -154,6 +164,8 @@ export interface SendMessageParams {
   // response excludes the old response (and anything sent after it) from
   // its context, while the old branch stays reachable via history.
   editTargetMessageId?: number | null;
+  // Reuse this key when retrying the same user-visible chat operation.
+  idempotencyKey?: string;
 }
 
 export async function* sendMessage({
@@ -174,8 +186,6 @@ export async function* sendMessage({
   additionalContext,
   projectId,
   personaId,
-  isRegenerate,
-  editTargetMessageId,
 }: SendMessageParams): AsyncGenerator<PacketType, void, unknown> {
   // Build payload for new send-chat-message API
   const payload = {
@@ -209,9 +219,12 @@ export async function* sendMessage({
 
   const response = await authenticatedFetch(`/api/chat/send-chat-message`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: withIdempotencyKey(
+      {
+        "Content-Type": "application/json",
+      },
+      idempotencyKey ?? createIdempotencyKey()
+    ),
     body,
     signal,
   });
@@ -256,18 +269,21 @@ export async function handleChatFeedback(
   feedbackDetails: string,
   predefinedFeedback: string | undefined
 ) {
-  const response = await authenticatedFetch("/api/chat/create-chat-message-feedback", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      chat_message_id: messageId,
-      is_positive: feedback === "like",
-      feedback_text: feedbackDetails,
-      predefined_feedback: predefinedFeedback,
-    }),
-  });
+  const response = await authenticatedFetch(
+    "/api/chat/create-chat-message-feedback",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        chat_message_id: messageId,
+        is_positive: feedback === "like",
+        feedback_text: feedbackDetails,
+        predefined_feedback: predefinedFeedback,
+      }),
+    }
+  );
   return response;
 }
 
@@ -312,12 +328,15 @@ export async function deleteChatSession(chatSessionId: string) {
 }
 
 export async function deleteAllChatSessions() {
-  const response = await authenticatedFetch(`/api/chat/delete-all-chat-sessions`, {
-    method: "DELETE",
-    headers: {
-      "Content-Type": "application/json",
-    },
-  });
+  const response = await authenticatedFetch(
+    `/api/chat/delete-all-chat-sessions`,
+    {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    }
+  );
   return response;
 }
 
@@ -463,13 +482,17 @@ export function buildChatUrl(
       }
     });
     const finalSearchParamsString = finalSearchParams.toString();
-    const querySuffix = finalSearchParamsString ? `?${finalSearchParamsString}` : "";
+    const querySuffix = finalSearchParamsString
+      ? `?${finalSearchParamsString}`
+      : "";
 
     if (chatSessionId) {
       return `/app/chats/${encodeURIComponent(chatSessionId)}${querySuffix}`;
     }
     if (personaId !== null) {
-      return `/app/agents/${encodeURIComponent(String(personaId))}${querySuffix}`;
+      return `/app/agents/${encodeURIComponent(
+        String(personaId)
+      )}${querySuffix}`;
     }
     return `/app${querySuffix}`;
   }

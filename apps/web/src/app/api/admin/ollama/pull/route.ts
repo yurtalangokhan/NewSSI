@@ -14,6 +14,10 @@ export async function POST(request: NextRequest) {
     if (cookie) {
       headers["Cookie"] = cookie;
     }
+    const idempotencyKey = request.headers.get("idempotency-key");
+    if (idempotencyKey) {
+      headers["Idempotency-Key"] = idempotencyKey;
+    }
     const upstream = await fetch(
       buildServiceUrl(
         INTERNAL_URL,

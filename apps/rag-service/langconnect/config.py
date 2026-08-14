@@ -174,6 +174,13 @@ REDIS_DB = env("REDIS_DB", cast=int, default=0)
 REDIS_PASSWORD = env("REDIS_PASSWORD", cast=str, default="")
 IDEMPOTENCY_TTL = env("IDEMPOTENCY_TTL", cast=int, default=86400)
 IDEMPOTENCY_ENABLED = env("IDEMPOTENCY_ENABLED", cast=bool, default=True)
+IDEMPOTENCY_ENFORCE_REQUIRED_KEYS = env(
+    "IDEMPOTENCY_ENFORCE_REQUIRED_KEYS",
+    cast=bool,
+    default=False,
+)
+IDEMPOTENCY_LOCK_TTL = env("IDEMPOTENCY_LOCK_TTL", cast=int, default=10)
+IDEMPOTENCY_WAIT_TIMEOUT = env("IDEMPOTENCY_WAIT_TIMEOUT", cast=float, default=10.0)
 
 ALLOWED_ORIGINS = parse_allowed_origins(ALLOW_ORIGINS_JSON)
 if ALLOW_ORIGINS_JSON:

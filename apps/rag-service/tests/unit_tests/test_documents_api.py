@@ -18,6 +18,10 @@ NO_SUCH_USER_HEADERS = {
 }
 
 
+def idempotency_headers(base_headers: dict[str, str], key: str) -> dict[str, str]:
+    return {**base_headers, "Idempotency-Key": key}
+
+
 async def test_documents_create_and_list_and_delete_and_search() -> None:
     """Test creating, listing, deleting, and searching documents."""
     async with get_async_test_client() as client:
@@ -38,7 +42,7 @@ async def test_documents_create_and_list_and_delete_and_search() -> None:
         resp = await client.post(
             f"/api/v1/collections/{collection_id}/documents",
             files=files,
-            headers=USER_1_HEADERS,
+            headers=idempotency_headers(USER_1_HEADERS, "docs-create-list-delete"),
         )
         assert resp.status_code == 200
         data = resp.json()
@@ -122,7 +126,7 @@ async def test_documents_create_with_invalid_metadata_json() -> None:
             f"/api/v1/collections/{collection_id}/documents",
             files=files,
             data={"metadatas_json": "not-a-json"},
-            headers=USER_1_HEADERS,
+            headers=idempotency_headers(USER_1_HEADERS, "docs-invalid-metadata-json"),
         )
         assert resp.status_code == 400
 
@@ -168,7 +172,7 @@ async def test_documents_in_nonexistent_collection() -> None:
         upload_resp = await client.post(
             f"/api/v1/collections/{no_such_collection}/documents",
             files=files,
-            headers=USER_1_HEADERS,
+            headers=idempotency_headers(USER_1_HEADERS, "docs-missing-collection"),
         )
         assert upload_resp.status_code == 404
         assert "Collection not found" in upload_resp.json()["detail"]
@@ -217,7 +221,7 @@ async def test_documents_create_with_valid_text_file_and_metadata() -> None:
             f"/api/v1/collections/{collection_id}/documents",
             files=files,
             data={"metadatas_json": metadata_json},
-            headers=USER_1_HEADERS,
+            headers=idempotency_headers(USER_1_HEADERS, "docs-valid-metadata"),
         )
 
         assert response.status_code == 200
@@ -271,7 +275,7 @@ async def test_documents_create_with_valid_text_file_without_metadata() -> None:
         response = await client.post(
             f"/api/v1/collections/{collection_id}/documents",
             files=files,
-            headers=USER_1_HEADERS,
+            headers=idempotency_headers(USER_1_HEADERS, "docs-valid-no-metadata"),
         )
 
         assert response.status_code == 200
@@ -316,7 +320,7 @@ async def test_documents_create_with_empty_file() -> None:
         response = await client.post(
             f"/api/v1/collections/{collection_id}/documents",
             files=files,
-            headers=USER_1_HEADERS,
+            headers=idempotency_headers(USER_1_HEADERS, "docs-empty-file"),
         )
 
         # Empty files should be rejected with 400 Bad Request
@@ -351,7 +355,7 @@ async def test_documents_create_with_invalid_metadata_format() -> None:
             f"/api/v1/collections/{collection_id}/documents",
             files=files,
             data={"metadatas_json": invalid_metadata},
-            headers=USER_1_HEADERS,
+            headers=idempotency_headers(USER_1_HEADERS, "docs-invalid-metadata-format"),
         )
 
         assert response.status_code == 400
@@ -376,7 +380,7 @@ async def test_document_mutations_blocked_while_graph_building(
         upload_resp = await client.post(
             f"/api/v1/collections/{collection_id}/documents",
             files=files,
-            headers=USER_1_HEADERS,
+            headers=idempotency_headers(USER_1_HEADERS, "docs-before-lock"),
         )
         assert upload_resp.status_code == 200
 
@@ -398,7 +402,7 @@ async def test_document_mutations_blocked_while_graph_building(
         locked_upload = await client.post(
             f"/api/v1/collections/{collection_id}/documents",
             files=[("files", ("locked.txt", b"Locked", "text/plain"))],
-            headers=USER_1_HEADERS,
+            headers=idempotency_headers(USER_1_HEADERS, "docs-locked-upload"),
         )
         assert locked_upload.status_code == 409
 
@@ -414,7 +418,7 @@ async def test_document_mutations_blocked_while_graph_building(
             f"/api/v1/collections/{collection_id}/documents",
             files=files,
             data={"metadatas_json": invalid_metadata_not_list},
-            headers=USER_1_HEADERS,
+            headers=idempotency_headers(USER_1_HEADERS, "docs-locked-invalid-metadata"),
         )
 
         assert response.status_code == 409
@@ -432,7 +436,7 @@ async def test_documents_create_with_non_existent_collection() -> None:
         response = await client.post(
             f"/api/v1/collections/{uuid}/documents",
             files=files,
-            headers=USER_1_HEADERS,
+            headers=idempotency_headers(USER_1_HEADERS, "docs-create-non-existent"),
         )
 
         assert response.status_code == 404
@@ -464,7 +468,7 @@ async def test_documents_create_with_multiple_files():
         response = await client.post(
             f"/api/v1/collections/{collection_id}/documents",
             files=files,
-            headers=USER_1_HEADERS,
+            headers=idempotency_headers(USER_1_HEADERS, "docs-multiple-files"),
         )
 
         assert response.status_code == 200
@@ -517,7 +521,7 @@ async def test_documents_create_with_mismatched_metadata():
             f"/api/v1/collections/{collection_id}/documents",
             files=files,
             data={"metadatas_json": metadata_json},
-            headers=USER_1_HEADERS,
+            headers=idempotency_headers(USER_1_HEADERS, "docs-mismatched-metadata"),
         )
 
         assert response.status_code == 400
@@ -547,7 +551,7 @@ async def test_documents_create_ownership_validation():
         response = await client.post(
             f"/api/v1/collections/{collection_id}/documents",
             files=files,
-            headers=USER_2_HEADERS,
+            headers=idempotency_headers(USER_2_HEADERS, "docs-ownership-validation"),
         )
 
         # Should return 404 as USER_2 can't see USER_1's collection

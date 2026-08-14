@@ -1,11 +1,47 @@
 from collections.abc import AsyncIterator
+from typing import Any
 
 from fastapi.testclient import TestClient
+from idempotency import AsyncRedisPool
 
 from app import app
 from core import settings as core_settings
 from models.chat import StreamInput
 from service import AuthService
+
+
+class _FakeRedis:
+    def __init__(self) -> None:
+        self.values: dict[str, str] = {}
+
+    async def get(self, key: str) -> str | None:
+        return self.values.get(key)
+
+    async def setex(self, key: str, ttl: int, value: str) -> None:
+        self.values[key] = value
+
+    async def set(self, key: str, value: str, *, nx: bool = False, ex: int | None = None) -> bool:
+        if nx and key in self.values:
+            return False
+        self.values[key] = value
+        return True
+
+    async def eval(self, script: str, numkeys: int, *keys_and_args: Any) -> int:
+        key = keys_and_args[0]
+        token = keys_and_args[1]
+        if self.values.get(key) == token:
+            self.values.pop(key, None)
+            return 1
+        return 0
+
+
+def _patch_redis(monkeypatch) -> None:
+    redis = _FakeRedis()
+
+    async def connect(config) -> _FakeRedis:
+        return redis
+
+    monkeypatch.setattr(AsyncRedisPool, "connect", connect)
 
 
 class _ThreadController:
@@ -65,6 +101,7 @@ class _ThreadControllerWithProjectColumn:
 
 def test_send_chat_message_includes_project_files_in_agent_input(monkeypatch) -> None:
     captured: dict[str, StreamInput] = {}
+    _patch_redis(monkeypatch)
 
     async def fake_message_generator(
         stream_input: StreamInput,
@@ -91,6 +128,7 @@ def test_send_chat_message_includes_project_files_in_agent_input(monkeypatch) ->
 
     response = TestClient(app).post(
         "/api/v1/chat/send-chat-message",
+        headers={"Idempotency-Key": "chat-project-files"},
         json={
             "message": "Use the project file.",
             "chat_session_id": "3a19f671-7d34-4cfd-9ea4-21e17491b3f5",
@@ -120,6 +158,7 @@ def test_send_chat_message_resolves_project_files_from_thread_project_id(
     monkeypatch,
 ) -> None:
     captured: dict[str, StreamInput] = {}
+    _patch_redis(monkeypatch)
 
     async def fake_message_generator(
         stream_input: StreamInput,
@@ -149,6 +188,7 @@ def test_send_chat_message_resolves_project_files_from_thread_project_id(
 
     response = TestClient(app).post(
         "/api/v1/chat/send-chat-message",
+        headers={"Idempotency-Key": "chat-thread-project"},
         json={
             "message": "Use the project file.",
             "chat_session_id": "3a19f671-7d34-4cfd-9ea4-21e17491b3f5",
@@ -162,3 +202,53 @@ def test_send_chat_message_resolves_project_files_from_thread_project_id(
     assert stream_input.files_metadata == [
         {"id": "project-note", "type": "document", "name": "project-note.txt"}
     ]
+
+
+def test_send_chat_message_rejects_missing_idempotency_key(monkeypatch) -> None:
+    monkeypatch.setattr(core_settings, "VALID_API_KEYS", "")
+    monkeypatch.setattr(AuthService.settings, "VALID_API_KEYS", "")
+    monkeypatch.setattr(core_settings, "KEYCLOAK_ENABLED", False)
+    monkeypatch.setattr(AuthService.settings, "KEYCLOAK_ENABLED", False)
+
+    response = TestClient(app).post(
+        "/api/v1/chat/send-chat-message",
+        json={
+            "message": "Use the project file.",
+            "chat_session_id": "3a19f671-7d34-4cfd-9ea4-21e17491b3f5",
+            "project_id": None,
+            "file_descriptors": [],
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "idempotency_key_required"
+
+
+def test_mcp_execute_rejects_missing_idempotency_key(monkeypatch) -> None:
+    monkeypatch.setattr(core_settings, "VALID_API_KEYS", "")
+    monkeypatch.setattr(AuthService.settings, "VALID_API_KEYS", "")
+    monkeypatch.setattr(core_settings, "KEYCLOAK_ENABLED", False)
+    monkeypatch.setattr(AuthService.settings, "KEYCLOAK_ENABLED", False)
+
+    response = TestClient(app).post(
+        "/api/v1/proxy/mcp/execute",
+        json={"tool_name": "calculate", "arguments": {"expression": "1 + 1"}},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "idempotency_key_required"
+
+
+def test_ollama_pull_rejects_missing_idempotency_key(monkeypatch) -> None:
+    monkeypatch.setattr(core_settings, "VALID_API_KEYS", "")
+    monkeypatch.setattr(AuthService.settings, "VALID_API_KEYS", "")
+    monkeypatch.setattr(core_settings, "KEYCLOAK_ENABLED", False)
+    monkeypatch.setattr(AuthService.settings, "KEYCLOAK_ENABLED", False)
+
+    response = TestClient(app).post(
+        "/api/v1/admin/ollama/pull",
+        json={"model": "llama3.2", "provider_id": "ollama-local"},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "idempotency_key_required"

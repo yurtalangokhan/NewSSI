@@ -40,6 +40,15 @@ class Settings:
     postgres_db: str
     user_service_url: str
     rag_service_api_url: str
+    redis_host: str
+    redis_port: int
+    redis_db: int
+    redis_password: str
+    idempotency_ttl: int
+    idempotency_enabled: bool
+    idempotency_enforce_required_keys: bool
+    idempotency_lock_ttl: int
+    idempotency_wait_timeout: float
     internal_service_token: str
     keycloak_issuer_url: str
     keycloak_audience: str
@@ -75,6 +84,20 @@ class Settings:
             postgres_db=postgres_db,
             user_service_url=user_service_url,
             rag_service_api_url=optional_env("RAG_SERVICE_API_URL"),
+            redis_host=optional_env("REDIS_HOST", "localhost"),
+            redis_port=int(optional_env("REDIS_PORT", "6379")),
+            redis_db=int(optional_env("REDIS_DB", "0")),
+            redis_password=optional_env("REDIS_PASSWORD"),
+            idempotency_ttl=int(optional_env("IDEMPOTENCY_TTL", "86400")),
+            idempotency_enabled=optional_env("IDEMPOTENCY_ENABLED", "true").lower()
+            in {"1", "true", "yes", "on"},
+            idempotency_enforce_required_keys=optional_env(
+                "IDEMPOTENCY_ENFORCE_REQUIRED_KEYS",
+                "false",
+            ).lower()
+            in {"1", "true", "yes", "on"},
+            idempotency_lock_ttl=int(optional_env("IDEMPOTENCY_LOCK_TTL", "10")),
+            idempotency_wait_timeout=float(optional_env("IDEMPOTENCY_WAIT_TIMEOUT", "10.0")),
             internal_service_token=optional_env("INTERNAL_SERVICE_TOKEN").strip(),
             keycloak_issuer_url=optional_env("KEYCLOAK_ISSUER_URL").rstrip("/"),
             keycloak_audience=optional_env("KEYCLOAK_AUDIENCE"),

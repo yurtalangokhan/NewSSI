@@ -20,6 +20,10 @@ INTERNAL_HEADERS = {
 }
 
 
+def idempotency_headers(base_headers: dict[str, str], key: str) -> dict[str, str]:
+    return {**base_headers, "Idempotency-Key": key}
+
+
 async def test_health() -> None:
     """Test the health check endpoint."""
     async with get_async_test_client() as client:
@@ -267,7 +271,9 @@ async def test_force_delete_removes_connector_managed_collection() -> None:
 
         force_delete_resp = await client.delete(
             f"/api/v1/collections/{collection_id}/force",
-            headers=USER_1_HEADERS,
+            headers=idempotency_headers(
+                USER_1_HEADERS, "force-delete-orphan-collection"
+            ),
         )
         assert force_delete_resp.status_code == 204
 

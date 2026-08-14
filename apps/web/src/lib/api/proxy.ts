@@ -23,11 +23,20 @@ const EXCLUDED_PROXY_RESPONSE_HEADERS = new Set([
   "transfer-encoding",
   "upgrade",
 ]);
+const IDEMPOTENCY_KEY_HEADER = "Idempotency-Key";
+const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+const AUTH_IDEMPOTENCY_EXCLUDED_PREFIXES = [
+  "/api/auth/login",
+  "/api/auth/ldap/login",
+  "/api/auth/external/login",
+  "/api/auth/refresh",
+  "/api/auth/logout",
+  "/api/auth/oidc",
+];
 
 function getSetCookieHeaders(headers: Headers): string[] {
-  const getSetCookie = (
-    headers as Headers & { getSetCookie?: () => string[] }
-  ).getSetCookie;
+  const getSetCookie = (headers as Headers & { getSetCookie?: () => string[] })
+    .getSetCookie;
   if (typeof getSetCookie === "function") {
     return getSetCookie.call(headers);
   }
@@ -80,7 +89,9 @@ export function getCookieValue(
  * error/response text matches the UI, falling back to the browser's
  * Accept-Language when the app hasn't sent an explicit X-Language header.
  */
-export function getLanguageHeaders(request: NextRequest): Record<string, string> {
+export function getLanguageHeaders(
+  request: NextRequest
+): Record<string, string> {
   const xLanguage = request.headers.get("x-language");
   if (xLanguage) {
     return { "X-Language": xLanguage };
@@ -119,6 +130,18 @@ function inferBackendService(backendUrl: string): BackendService {
   }
 
   return "agent";
+}
+
+function shouldForwardIdempotencyKey(
+  method: string,
+  pathname: string
+): boolean {
+  if (!MUTATING_METHODS.has(method.toUpperCase())) {
+    return false;
+  }
+  return !AUTH_IDEMPOTENCY_EXCLUDED_PREFIXES.some((prefix) =>
+    pathname.startsWith(prefix)
+  );
 }
 
 /**
@@ -193,6 +216,11 @@ export async function proxyToBackend(
         if (cookie) {
           headers["Cookie"] = cookie;
         }
+      }
+
+      const idempotencyKey = request.headers.get("idempotency-key");
+      if (idempotencyKey && shouldForwardIdempotencyKey(method, pathname)) {
+        headers[IDEMPOTENCY_KEY_HEADER] = idempotencyKey;
       }
 
       return headers;

@@ -67,7 +67,7 @@ dev = [
 ]
 
 [tool.pytest.ini_options]
-pythonpath = ["langconnect", "../../packages/i18n-py/src"]
+pythonpath = [".", "../../packages/i18n-py/src", "../../packages/idempotency-py/src"]
 minversion = "8.0"
 # -ra: Report all extra test outcomes (passed, skipped, failed, etc.)
 # -q: Enable quiet mode for less cluttered output
@@ -237,4 +237,3 @@ disable_error_code = [
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
-

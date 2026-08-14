@@ -9,6 +9,7 @@ export async function POST(request: NextRequest) {
     const body = await request.text();
     const cookie = request.headers.get("cookie") || "";
     const authorization = request.headers.get("authorization");
+    const idempotencyKey = request.headers.get("idempotency-key");
 
     // Call the backend send-chat-message endpoint which handles:
     // 1. Session creation/updates
@@ -29,6 +30,7 @@ export async function POST(request: NextRequest) {
         Accept: "text/event-stream",
         ...(cookie ? { Cookie: cookie } : {}),
         ...(authorization ? { Authorization: authorization } : {}),
+        ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}),
       },
     });
 

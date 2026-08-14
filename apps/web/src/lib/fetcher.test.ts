@@ -232,6 +232,68 @@ describe("authenticatedFetch", () => {
       "[Auth] Unauthorized after token refresh"
     );
   });
+
+  it("attaches an Idempotency-Key to mutating requests", async () => {
+    fetchMock().mockResolvedValueOnce(response(200));
+
+    await authenticatedFetch("/api/chat/send", { method: "POST" });
+
+    const init = fetchMock().mock.calls[0]?.[1];
+    const headers = new Headers(init?.headers);
+    const key = headers.get("Idempotency-Key");
+    expect(key).toBeTruthy();
+    expect(key!.length).toBeGreaterThanOrEqual(8);
+  });
+
+  it("does not attach an Idempotency-Key to GET requests", async () => {
+    fetchMock().mockResolvedValueOnce(response(200));
+
+    await authenticatedFetch("/api/me");
+
+    const init = fetchMock().mock.calls[0]?.[1];
+    expect(new Headers(init?.headers).has("Idempotency-Key")).toBe(false);
+  });
+
+  it("preserves a caller-provided Idempotency-Key", async () => {
+    fetchMock().mockResolvedValueOnce(response(200));
+
+    await authenticatedFetch("/api/chat/send", {
+      method: "POST",
+      headers: { "Idempotency-Key": "client-key-123" },
+    });
+
+    const init = fetchMock().mock.calls[0]?.[1];
+    expect(new Headers(init?.headers).get("Idempotency-Key")).toBe(
+      "client-key-123"
+    );
+  });
+
+  it("does not attach an Idempotency-Key to auth endpoints", async () => {
+    fetchMock().mockResolvedValueOnce(response(200));
+
+    await authenticatedFetch("/api/auth/login", { method: "POST" });
+
+    const init = fetchMock().mock.calls[0]?.[1];
+    expect(new Headers(init?.headers).has("Idempotency-Key")).toBe(false);
+  });
+
+  it("reuses the same Idempotency-Key when retrying after token refresh", async () => {
+    fetchMock()
+      .mockResolvedValueOnce(response(401))
+      .mockResolvedValueOnce(response(200))
+      .mockResolvedValueOnce(response(200));
+
+    await authenticatedFetch("/api/chat/send", { method: "POST" });
+
+    const firstKey = new Headers(fetchMock().mock.calls[0]?.[1]?.headers).get(
+      "Idempotency-Key"
+    );
+    const retriedKey = new Headers(fetchMock().mock.calls[2]?.[1]?.headers).get(
+      "Idempotency-Key"
+    );
+    expect(firstKey).toBeTruthy();
+    expect(retriedKey).toBe(firstKey);
+  });
 });
 
 describe("errorHandlingFetcher", () => {

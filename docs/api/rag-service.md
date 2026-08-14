@@ -13,6 +13,25 @@ the canonical `/api/v1` paths documented here.
 
 ---
 
+## Idempotency
+
+Mutating rag-service endpoints use the shared idempotency model. Reusing a key
+with a different request fingerprint or principal returns
+`409 idempotency_key_reused`.
+
+`domain_required` routes reject missing `Idempotency-Key` with
+`400 idempotency_key_required`. This category includes graph build, graph
+pause/resume/stop, document upload, graph delete, and force collection delete.
+These routes can start background work, write vector or graph storage, or
+perform destructive cleanup.
+
+`required_replay` routes include collection create and collection update. They
+require keys when `IDEMPOTENCY_ENFORCE_REQUIRED_KEYS=true`. Search, read-only
+Cypher, normal collection delete, and other lower-risk mutations are
+`optional_replay`; a supplied key enables replay and conflict detection.
+
+---
+
 ## Health
 
 | Method | Path | Auth | Description |

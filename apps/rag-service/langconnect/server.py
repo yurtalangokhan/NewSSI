@@ -6,7 +6,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from i18n import I18nMiddleware, init_service_i18n
-from idempotency import AsyncRedisPool, IdempotencyConfig, IdempotencyMiddleware
+from idempotency import AsyncRedisPool, IdempotencyMiddleware
 
 from langconnect.api import (
     collections_router,
@@ -15,17 +15,13 @@ from langconnect.api import (
     graph_router,
 )
 from langconnect.api_versioning import API_PREFIX
-from langconnect.config import (
-    ALLOWED_ORIGINS,
-    IDEMPOTENCY_ENABLED,
-    IDEMPOTENCY_TTL,
-    REDIS_DB,
-    REDIS_HOST,
-    REDIS_PASSWORD,
-    REDIS_PORT,
-)
+from langconnect.config import ALLOWED_ORIGINS
 from langconnect.database.collections import CollectionsManager
 from langconnect.database.postgres.startup import run_startup_migrations
+from langconnect.idempotency import (
+    build_idempotency_config,
+    build_idempotency_exclude_paths,
+)
 
 # Configure logging
 logging.basicConfig(
@@ -39,15 +35,7 @@ logger = logging.getLogger(__name__)
 # Initialize FastAPI app
 
 
-_idempotency_config = IdempotencyConfig(
-    redis_host=REDIS_HOST,
-    redis_port=REDIS_PORT,
-    redis_db=REDIS_DB,
-    redis_password=REDIS_PASSWORD,
-    idempotency_ttl=IDEMPOTENCY_TTL,
-    idempotency_enabled=IDEMPOTENCY_ENABLED,
-    service_name="rag-service",
-)
+_idempotency_config = build_idempotency_config()
 
 
 @asynccontextmanager
@@ -117,7 +105,7 @@ APP.add_middleware(
 APP.add_middleware(
     IdempotencyMiddleware,
     config=_idempotency_config,
-    exclude_paths={f"{API_PREFIX}/health"},
+    exclude_paths=build_idempotency_exclude_paths(API_PREFIX),
 )
 
 # Include API routers

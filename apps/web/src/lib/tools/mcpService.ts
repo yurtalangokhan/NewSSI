@@ -14,6 +14,10 @@ import {
 } from "@/lib/tools/interfaces";
 import i18n from "@/i18n/config";
 import { authenticatedFetch } from "@/lib/fetcher";
+import {
+  createIdempotencyKey,
+  withIdempotencyKey,
+} from "@/lib/api/idempotency";
 export interface ToolStatusUpdateRequest {
   tool_ids: number[];
   enabled: boolean;
@@ -241,7 +245,7 @@ export async function getBuiltInTools(): Promise<BuiltInToolsResponse> {
       "Accept-Language": currentLang,
     },
   });
-  
+
   if (!response.ok) {
     const errorText = await response.text();
     return { tools: [], error: errorText || "Failed to fetch built-in tools" };
@@ -299,10 +303,13 @@ export async function executeBuiltInTool(
   const currentLang = i18n.language || "en";
   const response = await fetch("/api/proxy/mcp/execute", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Language": currentLang,
-    },
+    headers: withIdempotencyKey(
+      {
+        "Content-Type": "application/json",
+        "X-Language": currentLang,
+      },
+      createIdempotencyKey()
+    ),
     body: JSON.stringify({
       tool_name: toolName,
       arguments: arguments_,

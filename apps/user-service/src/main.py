@@ -13,6 +13,7 @@ from src.config import get_settings
 from src.core.api_versioning import API_PREFIX
 from src.core.database.engine import close_db_engine
 from src.core.database.startup import run_startup_migrations
+from src.core.idempotency import build_idempotency_config, build_idempotency_exclude_paths
 
 _here = Path(__file__).resolve().parent
 locales_dir = _here.parent / "locales"
@@ -182,16 +183,7 @@ async def lifespan(app: FastAPI):
 
 
 def _build_idempotency_config() -> IdempotencyConfig:
-    s = get_settings()
-    return IdempotencyConfig(
-        redis_host=s.REDIS_HOST,
-        redis_port=s.REDIS_PORT,
-        redis_db=s.REDIS_DB,
-        redis_password=s.REDIS_PASSWORD,
-        idempotency_ttl=s.IDEMPOTENCY_TTL,
-        idempotency_enabled=s.IDEMPOTENCY_ENABLED,
-        service_name="user-service",
-    )
+    return build_idempotency_config(get_settings())
 
 
 _idempotency_config = _build_idempotency_config()
@@ -222,11 +214,7 @@ def create_app() -> FastAPI:
     app.add_middleware(
         IdempotencyMiddleware,
         config=_idempotency_config,
-        exclude_paths={
-            f"{API_PREFIX}/health",
-            f"{API_PREFIX}/health/",
-            f"{API_PREFIX}/health/ready",
-        },
+        exclude_paths=build_idempotency_exclude_paths(API_PREFIX),
     )
 
     from src.api.routes import (

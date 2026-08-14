@@ -88,6 +88,104 @@ run_python_service_checks() {
   run "$service validate" make -C "apps/$service" validate
 }
 
+run_python_service_fixes() {
+  local service="$1"
+  local ruff_args=()
+  local file
+
+  while IFS= read -r file; do
+    [[ -z "$file" ]] && continue
+    ruff_args+=("${file#apps/$service/}")
+  done < <(grep -E "^apps/$service/(src|tests|alembic|migrations)/.*\.py$" <<<"$FILES" || true)
+
+  ((${#ruff_args[@]} > 0)) || return 0
+
+  if [[ "$service" == "agent-service" ]]; then
+    (
+      cd "apps/$service"
+      uv run ruff format --config ruff.toml "${ruff_args[@]}"
+      uv run ruff check --config ruff.toml --fix "${ruff_args[@]}"
+    )
+    return
+  fi
+
+  (
+    cd "apps/$service"
+    uv run ruff format "${ruff_args[@]}"
+    uv run ruff check --fix "${ruff_args[@]}"
+  )
+}
+
+run_web_fixes() {
+  local eslint_args=()
+  local prettier_args=()
+  local file
+
+  while IFS= read -r file; do
+    [[ -z "$file" ]] && continue
+    prettier_args+=("${file#apps/web/}")
+  done < <(grep -E '^apps/web/(src|tests)/.*\.(ts|tsx|js|jsx|json|css|md)$' <<<"$FILES" || true)
+
+  while IFS= read -r file; do
+    [[ -z "$file" ]] && continue
+    eslint_args+=("${file#apps/web/}")
+  done < <(grep -E '^apps/web/(src|tests)/.*\.(ts|tsx|js|jsx)$' <<<"$FILES" || true)
+
+  ((${#prettier_args[@]} > 0 || ${#eslint_args[@]} > 0)) || return 0
+
+  (
+    cd apps/web
+    if ((${#prettier_args[@]} > 0)); then
+      npm exec -- prettier --write "${prettier_args[@]}"
+    fi
+    if ((${#eslint_args[@]} > 0)); then
+      npm exec -- eslint --fix --quiet "${eslint_args[@]}"
+    fi
+  )
+}
+
+autofix_candidate_files() {
+  grep -E '^(apps/(agent-service|rag-service|user-service|tools-service)/(src|tests|alembic|migrations)/.*\.py|apps/web/(src|tests)/.*\.(ts|tsx|js|jsx|json|css|md))$' <<<"$FILES" || true
+}
+
+ensure_staged_files_can_be_refreshed() {
+  local partially_staged
+  local candidates
+
+  [[ "$MODE" == "staged" ]] || return 0
+
+  candidates="$(autofix_candidate_files)"
+  [[ -n "$candidates" ]] || return 0
+
+  partially_staged="$(
+    comm -12 \
+      <(printf '%s\n' "$candidates" | sort) \
+      <(git diff --name-only --diff-filter=ACMR | sort)
+  )"
+
+  if [[ -n "$partially_staged" ]]; then
+    printf '%s[FAIL]%s Cannot auto-format partially staged files without also staging unstaged hunks.%s\n' "$RED" "$RESET" "$RESET" >&2
+    printf '%sStage or stash the unstaged changes in these files, then retry:%s\n' "$YELLOW" "$RESET" >&2
+    printf '%s\n' "$partially_staged" | sed 's/^/ - /' >&2
+    exit 1
+  fi
+}
+
+refresh_staged_files() {
+  local file
+  local candidates
+
+  [[ "$MODE" == "staged" ]] || return 0
+
+  candidates="$(autofix_candidate_files)"
+  [[ -n "$candidates" ]] || return 0
+
+  while IFS= read -r file; do
+    [[ -z "$file" ]] && continue
+    [[ -e "$file" ]] && git add -- "$file"
+  done <<<"$candidates"
+}
+
 changed_docker_services() {
   local service
   local services=()
@@ -139,15 +237,29 @@ fi
 
 print_file_summary
 
-if [[ "$MODE" == "staged" ]]; then
-  run "staged whitespace check" git diff --cached --check
-fi
-
 run "shell syntax check" bash -n \
   scripts/git-hooks/pre-commit \
   scripts/git-hooks/pre-push \
   scripts/install-git-hooks.sh \
   scripts/quality/check.sh
+
+ensure_staged_files_can_be_refreshed
+
+for service in agent-service rag-service user-service tools-service; do
+  if has_changed_path "^apps/$service/(src|tests|alembic|migrations|pyproject.toml|uv.lock|Makefile)"; then
+    run "$service autofix" run_python_service_fixes "$service"
+  fi
+done
+
+if has_changed_path '^apps/web/(src|tests|package.json|package-lock.json|next.config|tsconfig|jest.config|playwright.config)'; then
+  run "web autofix" run_web_fixes
+fi
+
+refresh_staged_files
+
+if [[ "$MODE" == "staged" ]]; then
+  run "staged whitespace check" git diff --cached --check
+fi
 
 for service in agent-service rag-service user-service tools-service; do
   if has_changed_path "^apps/$service/(src|tests|alembic|migrations|pyproject.toml|uv.lock|Makefile)"; then

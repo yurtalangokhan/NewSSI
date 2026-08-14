@@ -6,8 +6,9 @@ function responseWithHeaders(headers: Record<string, string>) {
     status: 200,
     headers,
   });
-  (response.headers as Headers & { getSetCookie?: () => string[] }).getSetCookie =
-    () => [];
+  (
+    response.headers as Headers & { getSetCookie?: () => string[] }
+  ).getSetCookie = () => [];
   return response;
 }
 
@@ -34,13 +35,16 @@ describe("proxyToBackend", () => {
       })
     );
 
-    const request = new NextRequest("http://localhost/api/auth/external/login", {
-      method: "POST",
-      body: new URLSearchParams([["username", "external@example.com"]]),
-      headers: {
-        "content-type": "application/x-www-form-urlencoded",
-      },
-    });
+    const request = new NextRequest(
+      "http://localhost/api/auth/external/login",
+      {
+        method: "POST",
+        body: new URLSearchParams([["username", "external@example.com"]]),
+        headers: {
+          "content-type": "application/x-www-form-urlencoded",
+        },
+      }
+    );
 
     const response = await proxyToBackend(request, "/api/auth/external/login", {
       method: "POST",
@@ -61,18 +65,22 @@ describe("proxyToBackend", () => {
         status: 200,
         headers: {
           "content-type": "application/json",
-          "set-cookie": "access_token=sp-access-token; Path=/; HttpOnly; SameSite=lax",
+          "set-cookie":
+            "access_token=sp-access-token; Path=/; HttpOnly; SameSite=lax",
         },
       })
     );
 
-    const request = new NextRequest("http://localhost/api/auth/external/login", {
-      method: "POST",
-      body: new URLSearchParams([["username", "external@example.com"]]),
-      headers: {
-        "content-type": "application/x-www-form-urlencoded",
-      },
-    });
+    const request = new NextRequest(
+      "http://localhost/api/auth/external/login",
+      {
+        method: "POST",
+        body: new URLSearchParams([["username", "external@example.com"]]),
+        headers: {
+          "content-type": "application/x-www-form-urlencoded",
+        },
+      }
+    );
 
     const response = await proxyToBackend(request, "/api/auth/external/login", {
       method: "POST",
@@ -116,7 +124,9 @@ describe("proxyToBackend", () => {
   it("adds service scope when proxying through Kong", async () => {
     fetchSpy.mockResolvedValueOnce(responseWithHeaders({}));
 
-    const request = new NextRequest("http://localhost/api/chat/get-user-chat-sessions");
+    const request = new NextRequest(
+      "http://localhost/api/chat/get-user-chat-sessions"
+    );
 
     await proxyToBackend(request, "/api/chat/get-user-chat-sessions", {
       backendUrl: "http://kong:8000",
@@ -125,6 +135,88 @@ describe("proxyToBackend", () => {
     expect(fetchSpy).toHaveBeenCalledWith(
       "http://kong:8000/agent-service/api/v1/chat/get-user-chat-sessions",
       expect.any(Object)
+    );
+  });
+
+  it("forwards idempotency keys for mutating requests", async () => {
+    fetchSpy.mockResolvedValueOnce(responseWithHeaders({}));
+
+    const request = new NextRequest(
+      "http://localhost/api/chat/send-chat-message",
+      {
+        method: "POST",
+        body: JSON.stringify({ message: "retryable" }),
+        headers: {
+          "content-type": "application/json",
+          "idempotency-key": "idem-web-123",
+        },
+      }
+    );
+
+    await proxyToBackend(request, "/api/chat/send-chat-message", {
+      method: "POST",
+      backendUrl: "http://kong:8000",
+    });
+
+    expect(fetchSpy).toHaveBeenCalledWith(
+      "http://kong:8000/agent-service/api/v1/chat/send-chat-message",
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          "Idempotency-Key": "idem-web-123",
+        }),
+      })
+    );
+  });
+
+  it("does not forward idempotency keys for read-only requests", async () => {
+    fetchSpy.mockResolvedValueOnce(responseWithHeaders({}));
+
+    const request = new NextRequest(
+      "http://localhost/api/chat/get-user-chat-sessions",
+      {
+        headers: {
+          "idempotency-key": "idem-web-123",
+        },
+      }
+    );
+
+    await proxyToBackend(request, "/api/chat/get-user-chat-sessions", {
+      backendUrl: "http://kong:8000",
+    });
+
+    expect(fetchSpy.mock.calls[0][1].headers).toEqual(
+      expect.not.objectContaining({
+        "Idempotency-Key": expect.any(String),
+      })
+    );
+  });
+
+  it.each([
+    "/api/auth/login",
+    "/api/auth/refresh",
+    "/api/auth/oidc/callback",
+    "/api/auth/external/login",
+  ])("does not forward idempotency keys to auth route %s", async (pathname) => {
+    fetchSpy.mockResolvedValueOnce(responseWithHeaders({}));
+
+    const request = new NextRequest(`http://localhost${pathname}`, {
+      method: "POST",
+      body: new URLSearchParams([["username", "auth@example.com"]]),
+      headers: {
+        "content-type": "application/x-www-form-urlencoded",
+        "idempotency-key": "auth-key",
+      },
+    });
+
+    await proxyToBackend(request, pathname, {
+      method: "POST",
+      backendUrl: "http://user-service",
+    });
+
+    expect(fetchSpy.mock.calls[0][1].headers).toEqual(
+      expect.not.objectContaining({
+        "Idempotency-Key": expect.any(String),
+      })
     );
   });
 
@@ -253,14 +345,17 @@ describe("proxyToBackend", () => {
   it("forwards the incoming X-Language header to the backend", async () => {
     fetchSpy.mockResolvedValueOnce(responseWithHeaders({}));
 
-    const request = new NextRequest("http://localhost/api/auth/external/login", {
-      method: "POST",
-      body: new URLSearchParams([["username", "external@example.com"]]),
-      headers: {
-        "content-type": "application/x-www-form-urlencoded",
-        "x-language": "tr",
-      },
-    });
+    const request = new NextRequest(
+      "http://localhost/api/auth/external/login",
+      {
+        method: "POST",
+        body: new URLSearchParams([["username", "external@example.com"]]),
+        headers: {
+          "content-type": "application/x-www-form-urlencoded",
+          "x-language": "tr",
+        },
+      }
+    );
 
     await proxyToBackend(request, "/api/auth/external/login", {
       method: "POST",
@@ -278,14 +373,17 @@ describe("proxyToBackend", () => {
   it("falls back to the incoming Accept-Language header when X-Language is absent", async () => {
     fetchSpy.mockResolvedValueOnce(responseWithHeaders({}));
 
-    const request = new NextRequest("http://localhost/api/auth/external/login", {
-      method: "POST",
-      body: new URLSearchParams([["username", "external@example.com"]]),
-      headers: {
-        "content-type": "application/x-www-form-urlencoded",
-        "accept-language": "tr-TR,tr;q=0.9",
-      },
-    });
+    const request = new NextRequest(
+      "http://localhost/api/auth/external/login",
+      {
+        method: "POST",
+        body: new URLSearchParams([["username", "external@example.com"]]),
+        headers: {
+          "content-type": "application/x-www-form-urlencoded",
+          "accept-language": "tr-TR,tr;q=0.9",
+        },
+      }
+    );
 
     await proxyToBackend(request, "/api/auth/external/login", {
       method: "POST",

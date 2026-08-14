@@ -1,5 +1,7 @@
 import i18n from "@/i18n/config";
 
+import { createIdempotencyKey } from "@/lib/api/idempotency";
+
 export class FetchError extends Error {
   status: number;
   info: any;
@@ -50,6 +52,51 @@ let loginPathPromise: Promise<string> | null = null;
 let authRefreshFailed = false;
 const AUTH_REFRESH_FAILED_KEY = "auth_refresh_failed";
 export const AUTH_SESSION_REFRESHED_EVENT = "auth:session-refreshed";
+
+const IDEMPOTENT_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+const IDEMPOTENCY_EXCLUDED_PREFIXES = [
+  "/api/auth/login",
+  "/api/auth/ldap/login",
+  "/api/auth/external/login",
+  "/api/auth/refresh",
+  "/api/auth/logout",
+  "/api/auth/oidc",
+];
+
+function inputUrl(input: RequestInfo | URL): string {
+  if (typeof input === "string") {
+    return input;
+  }
+  if (input instanceof URL) {
+    return input.toString();
+  }
+  return input.url;
+}
+
+/**
+ * Attach an Idempotency-Key to mutating, non-auth requests when the caller has
+ * not already supplied one. The key is generated once per operation so a retry
+ * after a token refresh reuses the same key and can be deduplicated upstream.
+ */
+function attachIdempotencyKey(
+  input: RequestInfo | URL,
+  init: AuthenticatedFetchOptions
+): AuthenticatedFetchOptions {
+  const method = (init.method ?? "GET").toUpperCase();
+  if (!IDEMPOTENT_METHODS.has(method)) {
+    return init;
+  }
+  const url = inputUrl(input);
+  if (IDEMPOTENCY_EXCLUDED_PREFIXES.some((prefix) => url.startsWith(prefix))) {
+    return init;
+  }
+  const headers = new Headers(init.headers);
+  if (headers.has("idempotency-key")) {
+    return init;
+  }
+  headers.set("Idempotency-Key", createIdempotencyKey());
+  return { ...init, headers };
+}
 
 function hasAuthRefreshFailed(): boolean {
   if (typeof window === "undefined") {
@@ -206,7 +253,10 @@ export async function authenticatedFetch(
   input: RequestInfo | URL,
   init?: AuthenticatedFetchOptions
 ): Promise<Response> {
-  const { redirectOnAuthError = true, ...fetchInit } = init ?? {};
+  const { redirectOnAuthError = true, ...fetchInit } = attachIdempotencyKey(
+    input,
+    init ?? {}
+  );
   const execute = () =>
     fetch(input, {
       credentials: "include",

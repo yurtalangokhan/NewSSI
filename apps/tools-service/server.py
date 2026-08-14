@@ -4,6 +4,7 @@ Uses FastMCP for simple tool definitions with modular plugin architecture.
 Provides tools for web search, calculations, utilities, and more.
 """
 
+import contextlib
 import sys
 from pathlib import Path
 
@@ -22,10 +23,8 @@ if sys.platform == "win32":
     _orig_call_connection_lost = _pe._ProactorBasePipeTransport._call_connection_lost
 
     def _patched_call_connection_lost(self, exc):
-        try:
+        with contextlib.suppress(ConnectionResetError, OSError):
             _orig_call_connection_lost(self, exc)
-        except (ConnectionResetError, OSError):
-            pass
 
     _pe._ProactorBasePipeTransport._call_connection_lost = _patched_call_connection_lost
 
@@ -33,9 +32,11 @@ if sys.platform == "win32":
 sys.path.insert(0, str(Path(__file__).parent))
 
 from i18n import I18nMiddleware, init_service_i18n
+from idempotency import IdempotencyMiddleware
 
 from src.core.auth import KeycloakTokenVerifier
 from src.core.database import close_db_pool
+from src.core.idempotency import build_idempotency_config, build_idempotency_exclude_paths
 from src.core.registry import ToolRegistry
 from src.core.settings import get_settings
 
@@ -44,14 +45,13 @@ init_service_i18n(locales_dir)
 
 # Initialize FastMCP server
 mcp = FastMCP("open-agent-tools", auth=KeycloakTokenVerifier())
-mcp_middleware = [Middleware(I18nMiddleware)]
-
 
 
 @mcp.custom_route("/health", methods=["GET"], name="health", include_in_schema=True)
 async def health_check(request: Request) -> Response:
     """Public health check endpoint outside the MCP protocol transport."""
     return JSONResponse({"status": "ok"})
+
 
 # Initialize the tool registry with plugin discovery
 registry = ToolRegistry(mcp)
@@ -68,18 +68,44 @@ async def cleanup():
     await close_db_pool()
 
 
+def build_idempotency_middleware() -> list[Middleware]:
+    """Build service middleware for the FastMCP HTTP app."""
+    settings = get_settings()
+    return [
+        Middleware(I18nMiddleware),
+        Middleware(
+            IdempotencyMiddleware,
+            config=build_idempotency_config(settings),
+            exclude_paths=build_idempotency_exclude_paths(),
+        ),
+    ]
+
+
+def build_http_app():
+    """Build the FastMCP HTTP ASGI app with service middleware."""
+    return mcp.http_app(
+        transport="http",
+        middleware=build_idempotency_middleware(),
+    )
+
+
 # Run with HTTP transport for Open Agent Platform compatibility
 if __name__ == "__main__":
     settings = get_settings()
     port = settings.mcp_port
     host = settings.mcp_host
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("MCP Server - Modular Architecture")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     print(f"Starting FastMCP Server on http://{host}:{port}")
     print(f"MCP endpoint: http://{host}:{port}/mcp")
-    print(f"{'='*60}\n")
+    print(f"{'=' * 60}\n")
 
     # Use HTTP transport (serves at /mcp endpoint)
-    mcp.run(transport="http", host=host, port=port, middleware=mcp_middleware)
+    mcp.run(
+        transport="http",
+        host=host,
+        port=port,
+        middleware=build_idempotency_middleware(),
+    )

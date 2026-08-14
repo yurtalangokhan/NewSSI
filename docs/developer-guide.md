@@ -261,6 +261,34 @@ make validate         # all services + docker-verify
 3. Create the service method in `service/`
 4. If data access needed: add to repository or create a new one
 5. Define request/response models in `schema/`
+
+### Idempotency for mutating endpoints
+
+Every new `POST`, `PUT`, `PATCH`, or `DELETE` endpoint must be classified in
+the owning service's idempotency policy module before it is released. Keep the
+policy next to service configuration, and build paths from the service API
+prefix instead of gateway aliases, hosts, or ports.
+
+Use these categories:
+
+- `excluded`: auth browser flows and endpoints where replay is incorrect.
+- `optional_replay`: low-risk mutations where a supplied key enables replay.
+- `required_replay`: deterministic creates or updates where response replay is
+  enough.
+- `domain_required`: operations that can call external systems, stream results,
+  upload files, start jobs, send email, execute tools, or perform destructive
+  cleanup.
+
+`domain_required` routes reject missing `Idempotency-Key` even when global
+required-key enforcement is disabled. If the middleware cannot replay the
+response, it records the key as completed without replay and returns `409` on
+reuse so the side effect doesn't run twice. Add route-policy tests for every new
+classification and request-level tests for high-risk routes.
+
+Frontend callers must use `createIdempotencyKey()` for new retryable operations
+and reuse the same key for a user-visible retry. Next.js API routes that proxy
+mutating requests must forward the incoming `Idempotency-Key`, except for login,
+refresh, logout, and OIDC routes.
 6. Register the router in `app.py` (or `main.py`)
 
 ### Adding a new agent (agent-service)
@@ -306,6 +334,13 @@ make validate         # all services + docker-verify
 ---
 
 ## Validation gates
+
+The Git hook quality runner auto-formats and auto-fixes changed source files
+before it validates them. Python changes run targeted `ruff format` and
+`ruff check --fix` on changed Python files. Web changes run targeted Prettier
+and ESLint `--fix` on changed web source files. During pre-commit, the hook
+refreshes only those auto-fixed staged files before it runs whitespace,
+lint, typecheck, and test gates.
 
 Before committing:
 ```sh

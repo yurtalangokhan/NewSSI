@@ -11,6 +11,29 @@ the canonical `/api/v1` paths documented here.
 
 ---
 
+## Idempotency
+
+Mutating agent-service endpoints participate in the shared idempotency model.
+Clients must send `Idempotency-Key` for `domain_required` routes. Reusing a key
+with a different request fingerprint or principal returns
+`409 idempotency_key_reused`.
+
+`domain_required` routes include chat message send, run and agent streaming,
+agent invoke routes, MCP tool execution proxy, datasource sync, ingest batch,
+project file upload, mail test/send, provider model sync, Ollama pull/delete,
+web crawl, and persona image upload. These routes reject missing keys with
+`400 idempotency_key_required`.
+
+`required_replay` routes include deterministic create operations for chat
+sessions, threads, assistants, personas, agent definitions, agent groups,
+datasources, MCP providers, provider configs, and user projects. They require
+keys when `IDEMPOTENCY_ENFORCE_REQUIRED_KEYS=true`.
+
+`optional_replay` applies to lower-risk mutations such as chat session rename.
+Supplying a key enables replay and conflict detection.
+
+---
+
 ## Health
 
 | Method | Path                  | Auth   | Description                             |

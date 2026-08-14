@@ -11,6 +11,25 @@ the canonical `/api/v1` paths documented here.
 
 ---
 
+## Idempotency
+
+Mutating user-service endpoints use the shared idempotency model. Reusing a key
+with a different request fingerprint or principal returns
+`409 idempotency_key_reused`.
+
+`domain_required` routes reject missing `Idempotency-Key` with
+`400 idempotency_key_required`. This category includes user invite, password
+reset and set-password operations, permission sync, Keycloak role sync,
+external IdP sync, full auth user sync, and API key creation because those
+operations can create one-time secrets or call external identity systems.
+
+`required_replay` routes include register, user create, role create, coarse-role
+create, memory create, and prompt shortcut create. They require keys when
+`IDEMPOTENCY_ENFORCE_REQUIRED_KEYS=true`. Login, external login, logout, and
+refresh are excluded from idempotency.
+
+---
+
 ## Health
 
 | Method | Path                   | Auth   | Description                                                            |

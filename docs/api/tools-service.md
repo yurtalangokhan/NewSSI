@@ -23,6 +23,23 @@ FastMCP custom `/health` route.
 
 ---
 
+## Idempotency
+
+`POST /mcp` is `domain_required` because JSON-RPC tool execution can run shell,
+file, Git, Docker, email, web, and other side-effecting tools. However, MCP
+streamable-HTTP sessions issue many POSTs (`initialize`, `tools/list`,
+`tools/call`) that all share the client's connection headers, so a static
+`Idempotency-Key` cannot represent a single logical operation. The middleware
+therefore does not require a key on `/mcp` (`enforce_missing_key=false`); when
+a key is supplied it is still honored for replay and conflict detection.
+
+The FastMCP HTTP app is wrapped with the shared idempotency middleware. Reusing
+a key with a different request fingerprint or principal returns
+`409 idempotency_key_reused`. Non-replayable tool execution marks the key as
+completed without replay so a retry cannot execute the same tool call again.
+
+---
+
 ## Tool categories
 
 15 tool categories auto-discovered at startup via `ToolRegistry.discover_plugins()`.

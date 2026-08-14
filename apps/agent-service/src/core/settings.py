@@ -153,6 +153,9 @@ class Settings(BaseSettings):
     REDIS_PASSWORD: str = ""
     IDEMPOTENCY_TTL: int = 86_400
     IDEMPOTENCY_ENABLED: bool = True
+    IDEMPOTENCY_ENFORCE_REQUIRED_KEYS: bool = False
+    IDEMPOTENCY_LOCK_TTL: int = 10
+    IDEMPOTENCY_WAIT_TIMEOUT: float = 10.0
 
     # Document output tools (create_document / create_spreadsheet) — always
     # available to every agent and the default chatbot, not opt-in per agent.

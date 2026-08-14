@@ -1,9 +1,18 @@
 import { authenticatedFetch } from "@/lib/fetcher";
 import i18n from "@/i18n/config";
+import { createIdempotencyKey } from "@/lib/api/idempotency";
 import { executeBuiltInTool } from "./mcpService";
 
 jest.mock("@/lib/fetcher", () => ({
   authenticatedFetch: jest.fn(),
+}));
+
+jest.mock("@/lib/api/idempotency", () => ({
+  createIdempotencyKey: jest.fn(),
+  withIdempotencyKey: jest.fn((headers, key) => ({
+    ...headers,
+    "Idempotency-Key": key,
+  })),
 }));
 
 function authenticatedFetchMock() {
@@ -19,6 +28,7 @@ describe("executeBuiltInTool", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.mocked(createIdempotencyKey).mockReturnValue("tool-operation-key");
     jest.spyOn(global, "fetch").mockReset();
   });
 
@@ -43,9 +53,7 @@ describe("executeBuiltInTool", () => {
     await executeBuiltInTool("calculate", { expression: "1+2" });
 
     const [, init] = fetchMock().mock.calls[0]!;
-    expect((init?.headers as Record<string, string>)["X-Language"]).toBe(
-      "en"
-    );
+    expect((init?.headers as Record<string, string>)["X-Language"]).toBe("en");
   });
 
   it("routes send_email through the selected mail config endpoint", async () => {
@@ -86,5 +94,27 @@ describe("executeBuiltInTool", () => {
     expect(global.fetch).not.toHaveBeenCalled();
     expect(result.error).toBeUndefined();
     expect(result.result.success).toBe(true);
+  });
+
+  it("sends idempotency keys for built-in MCP tool execution", async () => {
+    jest
+      .spyOn(global, "fetch")
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ result: "ok" }), { status: 200 })
+      );
+
+    await executeBuiltInTool("read_file", { path: "/tmp/example.txt" });
+
+    expect(createIdempotencyKey).toHaveBeenCalledTimes(1);
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/proxy/mcp/execute",
+      expect.objectContaining({
+        method: "POST",
+        headers: expect.objectContaining({
+          "Content-Type": "application/json",
+          "Idempotency-Key": "tool-operation-key",
+        }),
+      })
+    );
   });
 });

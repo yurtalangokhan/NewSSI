@@ -31,3 +31,78 @@ describe("buildChatUrl", () => {
     );
   });
 });
+import { authenticatedFetch } from "@/lib/fetcher";
+import { createIdempotencyKey } from "@/lib/api/idempotency";
+import { sendMessage } from "@/app/app/services/lib";
+
+jest.mock("@/lib/fetcher", () => ({
+  authenticatedFetch: jest.fn(),
+}));
+
+jest.mock("@/lib/api/idempotency", () => ({
+  createIdempotencyKey: jest.fn(),
+  withIdempotencyKey: jest.fn((headers, key) => ({
+    ...headers,
+    "Idempotency-Key": key,
+  })),
+}));
+
+jest.mock("@/lib/search/streamingUtils", () => ({
+  handleSSEStream: jest.fn(async function* () {
+    return;
+  }),
+}));
+
+describe("sendMessage", () => {
+  beforeEach(() => {
+    jest.mocked(createIdempotencyKey).mockReturnValue("chat-operation-key");
+    jest
+      .mocked(authenticatedFetch)
+      .mockResolvedValue(new Response(null, { status: 200 }));
+  });
+
+  it("sends a fresh idempotency key with each chat operation", async () => {
+    for await (const _packet of sendMessage({
+      message: "hello",
+      parentMessageId: null,
+      chatSessionId: "chat-1",
+      filters: null,
+    })) {
+      // Consume the stream.
+    }
+
+    expect(createIdempotencyKey).toHaveBeenCalledTimes(1);
+    expect(authenticatedFetch).toHaveBeenCalledWith(
+      "/api/chat/send-chat-message",
+      expect.objectContaining({
+        method: "POST",
+        headers: expect.objectContaining({
+          "Content-Type": "application/json",
+          "Idempotency-Key": "chat-operation-key",
+        }),
+      })
+    );
+  });
+
+  it("reuses a caller-provided idempotency key for retry of the same chat operation", async () => {
+    for await (const _packet of sendMessage({
+      message: "hello again",
+      parentMessageId: null,
+      chatSessionId: "chat-1",
+      filters: null,
+      idempotencyKey: "stable-retry-key",
+    })) {
+      // Consume the stream.
+    }
+
+    expect(createIdempotencyKey).not.toHaveBeenCalled();
+    expect(authenticatedFetch).toHaveBeenCalledWith(
+      "/api/chat/send-chat-message",
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          "Idempotency-Key": "stable-retry-key",
+        }),
+      })
+    );
+  });
+});

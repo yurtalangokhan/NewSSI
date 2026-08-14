@@ -136,6 +136,68 @@ runtime redirect and logout behavior consistent across those boundaries.
 
 ---
 
+## Idempotency contract
+
+Mutating HTTP requests use the shared `idempotency-py` middleware in
+agent-service, user-service, rag-service, and tools-service. Clients that retry
+an operation must send an `Idempotency-Key` header. Reusing the same key for the
+same principal and the same request replays a cached response when replay is
+safe.
+
+The middleware stores a normalized request fingerprint that includes method,
+path, query string, content type, and request body hash. Reusing a key for a
+different fingerprint returns `409 idempotency_key_reused`. Reusing a key across
+different principals also returns `409`; the principal scope is derived from
+authenticated headers and is stored as a hash, not as the raw identity value.
+
+Idempotency-Key values are validated before any Redis interaction: keys must be
+1–255 characters from `[A-Za-z0-9._-]`. A malformed or overlong key returns
+`400 idempotency_key_invalid` without touching the store.
+
+Redis availability is handled per policy mode:
+
+- Optional modes fail open — if Redis is unreachable the request passes through
+  without idempotency handling so a store outage does not take down the service.
+- Required modes return `503 idempotency_store_unavailable` when Redis is down,
+  because the key is mandatory for safe side-effect handling.
+
+While a request is in flight, the owning lock is renewed periodically
+(`pexpire` every `lock_ttl / 3` seconds) so long-running requests are not
+evicted by an inflight timeout. Replays are byte-for-byte: cached bodies are
+stored base64-encoded (`metadata_version=2`) so binary payloads round-trip
+exactly, and responses larger than `max_cache_body_size` (default 1 MiB) are
+not cached at all. Responses replayed from cache strip `set-cookie`,
+`www-authenticate`, `server`, and `x-powered-by` headers so a replay cannot
+re-issue session cookies or challenge headers.
+
+Services classify mutating endpoints into these policy categories:
+
+- `excluded`: the middleware ignores the request.
+- `optional_replay`: a key is optional, but a supplied key enables replay and
+  conflict detection.
+- `required_replay`: a key is required when
+  `IDEMPOTENCY_ENFORCE_REQUIRED_KEYS=true`; successful deterministic responses
+  can be replayed.
+- `domain_required`: a key is always required because duplicate side effects are
+  risky.
+
+`domain_required` endpoints include streaming LLM calls, MCP tool execution,
+uploads, graph builds, model pulls, email sends, datasource sync, and destructive
+admin cleanup. If the middleware cannot replay the response, such as for SSE
+streams or other non-cacheable responses, it marks the key as completed without
+replay. A retry with that key returns `409` instead of starting the side effect
+again.
+
+The web frontend forwards incoming `Idempotency-Key` values through mutating
+Next.js API routes, excluding login, refresh, logout, and OIDC browser auth
+flows. `authenticatedFetch` also auto-generates a key for mutating, non-auth
+requests that did not supply one, generating it once per operation so a retry
+after token refresh reuses the same key. UI actions that start retryable
+operations create UUID keys. A visible retry of the same operation must reuse
+the same key, while a new operation must create a new key.
+
+---
+
 ## Request lifecycle: chat message
 
 ```
