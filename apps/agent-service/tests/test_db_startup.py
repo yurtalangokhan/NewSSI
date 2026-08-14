@@ -1,6 +1,40 @@
 from __future__ import annotations
 
+import importlib.util
+from collections import Counter
 from pathlib import Path
+
+
+def test_alembic_revision_graph_has_unique_revisions_and_single_head():
+    versions_dir = Path(__file__).parents[1] / "src/core/db/migrations/versions"
+    revisions: dict[str, str | tuple[str, ...] | None] = {}
+    revision_sources: list[tuple[str, str]] = []
+
+    for migration_path in sorted(versions_dir.glob("*.py")):
+        spec = importlib.util.spec_from_file_location(migration_path.stem, migration_path)
+        assert spec and spec.loader
+        migration = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(migration)
+        revision = migration.revision
+        revisions[revision] = migration.down_revision
+        revision_sources.append((revision, migration_path.name))
+
+    duplicates = {
+        revision: [source for candidate, source in revision_sources if candidate == revision]
+        for revision, count in Counter(revision for revision, _ in revision_sources).items()
+        if count > 1
+    }
+    assert duplicates == {}
+
+    referenced_revisions: set[str] = set()
+    for down_revision in revisions.values():
+        if isinstance(down_revision, tuple):
+            referenced_revisions.update(down_revision)
+        elif down_revision is not None:
+            referenced_revisions.add(down_revision)
+
+    heads = sorted(set(revisions) - referenced_revisions)
+    assert heads == ["0030"]
 
 
 def test_sub_agent_ids_migration_uses_jsonb_for_gin_index():
