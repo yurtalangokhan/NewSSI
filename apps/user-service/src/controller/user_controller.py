@@ -129,6 +129,79 @@ class UserController(BaseController):
         except ValueError as e:
             self._raise_bad_request(str(e))
 
+    async def list_user_roles(self, user_id: uuid.UUID) -> dict[str, Any]:
+        roles = await self.user_service.list_user_roles(user_id)
+        if not roles:
+            self._raise_not_found("user.not_found")
+        return roles
+
+    async def assign_roles(
+        self,
+        user_id: uuid.UUID,
+        role_ids: list[str],
+        primary_role_id: str | None = None,
+        actor_user_id: str | None = None,
+    ) -> dict[str, Any]:
+        from src.service import get_audit_service
+
+        try:
+            roles = await self.user_service.assign_roles(user_id, role_ids, primary_role_id)
+            if not roles:
+                self._raise_not_found("user.not_found")
+            await get_audit_service().log(
+                action="user:assign_roles",
+                resource=f"user:{user_id}",
+                user_id=_safe_uuid(actor_user_id),
+                details={"role_ids": role_ids, "primary_role_id": primary_role_id},
+            )
+            return roles
+        except ValueError as e:
+            self._raise_bad_request(str(e))
+
+    async def remove_role(
+        self,
+        user_id: uuid.UUID,
+        role_name: str,
+        actor_user_id: str | None = None,
+    ) -> dict[str, Any]:
+        from src.service import get_audit_service
+
+        try:
+            roles = await self.user_service.remove_role(user_id, role_name)
+            if not roles:
+                self._raise_not_found("user.not_found")
+            await get_audit_service().log(
+                action="user:remove_role",
+                resource=f"user:{user_id}",
+                user_id=_safe_uuid(actor_user_id),
+                details={"role": role_name},
+            )
+            return roles
+        except ValueError as e:
+            self._raise_bad_request(str(e))
+
+    async def set_primary_role(
+        self,
+        user_id: uuid.UUID,
+        role_name: str,
+        actor_user_id: str | None = None,
+    ) -> dict[str, Any]:
+        from src.service import get_audit_service
+
+        try:
+            roles = await self.user_service.set_primary_role(user_id, role_name)
+            if not roles:
+                self._raise_not_found("user.not_found")
+            await get_audit_service().log(
+                action="user:set_primary_role",
+                resource=f"user:{user_id}",
+                user_id=_safe_uuid(actor_user_id),
+                details={"role": role_name},
+            )
+            return roles
+        except ValueError as e:
+            self._raise_bad_request(str(e))
+
     async def set_user_active(self, user_id: uuid.UUID, active: bool) -> dict[str, Any]:
         user = await self.user_service.set_user_active(user_id, active)
         if not user:
@@ -199,3 +272,12 @@ def get_user_controller() -> UserController:
     if _user_controller is None:
         _user_controller = UserController()
     return _user_controller
+
+
+def _safe_uuid(val: str | None) -> uuid.UUID | None:
+    if not val:
+        return None
+    try:
+        return uuid.UUID(val)
+    except (ValueError, AttributeError):
+        return None

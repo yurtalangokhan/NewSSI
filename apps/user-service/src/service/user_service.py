@@ -9,11 +9,12 @@ from src.core.exceptions import ForbiddenError, NotFoundError
 from src.repository import (
     CompositeRoleRepository,
     UserRepository,
+    UserRoleRepository,
     UserSettingsRepository,
 )
 
-from .coarse_role_service import get_role_service
 from .keycloak_service import get_keycloak_service
+from .permission_resolver_service import get_permission_resolver_service
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +24,8 @@ class UserService:
         self.user_repo = UserRepository()
         self.settings_repo = UserSettingsRepository()
         self.role_repo = CompositeRoleRepository()
+        self.user_role_repo = UserRoleRepository()
+        self.permission_resolver = get_permission_resolver_service()
         self.keycloak = get_keycloak_service()
 
     async def _logout_keycloak_sessions(self, user) -> None:
@@ -47,26 +50,8 @@ class UserService:
         user = await self.user_repo.get_by_id(user_id)
         if not user:
             return None
-
-        role = await self.role_repo.get_by_name(user.role)
-        if not role:
-            return {"permissions": []}
-
-        role_name = getattr(role, "name", user.role)
-        if role_name == "system-admin" or role.permissions == ["*"]:
-            return {"permissions": ["*"]}
-
-        # Aggregate: direct perms + coarse role perms
-        perms = set(role.permissions or [])
-        coarse_names = getattr(role, "role_ids", None) or []
-        if coarse_names:
-            cr_svc = get_role_service()
-            coarse_perms = await cr_svc.get_aggregated_permissions(coarse_names)
-            if "*" in coarse_perms:
-                return {"permissions": ["*"]}
-            perms.update(coarse_perms)
-
-        return {"permissions": sorted(perms)}
+        permissions = await self.permission_resolver.resolve_effective_permissions(user_id)
+        return {"permissions": permissions}
 
     async def user_has_permission(self, user_id: uuid.UUID, permission: str) -> dict[str, Any]:
         permission_data = await self.get_user_permissions(user_id)
@@ -445,7 +430,88 @@ class UserService:
             # No Keycloak: update DB only
             user = await self.user_repo.update(user_id, role=role)
 
+        await self.user_role_repo.assign_roles(user_id, [role], primary_role=role)
+        await self.permission_resolver.invalidate_user(user_id)
         return self._user_to_dict(user)
+
+    async def list_user_roles(self, user_id: uuid.UUID) -> dict[str, Any] | None:
+        user = await self.user_repo.get_by_id(user_id)
+        if not user:
+            return None
+        roles = await self._roles_or_backfill_primary(user)
+        return {"roles": roles}
+
+    async def assign_roles(
+        self,
+        user_id: uuid.UUID,
+        role_names: list[str],
+        primary_role: str | None = None,
+    ) -> dict[str, Any] | None:
+        user = await self.user_repo.get_by_id(user_id)
+        if not user:
+            return None
+        await self._validate_role_names(role_names)
+        if primary_role is not None and primary_role not in role_names:
+            raise ValueError(t("user.primary_role_must_be_assigned"))
+
+        await self.user_role_repo.assign_roles(user_id, role_names, primary_role=primary_role)
+        if primary_role:
+            await self._mirror_primary_role(user, primary_role)
+        await self.permission_resolver.invalidate_user(user_id)
+        return await self.list_user_roles(user_id)
+
+    async def remove_role(self, user_id: uuid.UUID, role_name: str) -> dict[str, Any] | None:
+        user = await self.user_repo.get_by_id(user_id)
+        if not user:
+            return None
+        roles = await self._roles_or_backfill_primary(user)
+        if len(roles) <= 1:
+            raise ValueError(t("user.cannot_remove_last_role"))
+
+        removed_primary = any(role["name"] == role_name and role["is_primary"] for role in roles)
+        removed = await self.user_role_repo.remove_role(user_id, role_name)
+        if not removed:
+            raise ValueError(t("user.role_not_assigned", role=role_name))
+
+        remaining = await self.user_role_repo.list_user_roles(user_id)
+        if removed_primary and remaining:
+            new_primary = str(remaining[0]["name"])
+            await self.user_role_repo.set_primary_role(user_id, new_primary)
+            await self._mirror_primary_role(user, new_primary)
+        await self.permission_resolver.invalidate_user(user_id)
+        return await self.list_user_roles(user_id)
+
+    async def set_primary_role(self, user_id: uuid.UUID, role_name: str) -> dict[str, Any] | None:
+        user = await self.user_repo.get_by_id(user_id)
+        if not user:
+            return None
+        updated = await self.user_role_repo.set_primary_role(user_id, role_name)
+        if not updated:
+            raise ValueError(t("user.role_not_assigned", role=role_name))
+        await self._mirror_primary_role(user, role_name)
+        await self.permission_resolver.invalidate_user(user_id)
+        return await self.list_user_roles(user_id)
+
+    async def _validate_role_names(self, role_names: list[str]) -> None:
+        existing = await self.role_repo.get_by_names(role_names)
+        existing_names = {role.name for role in existing}
+        invalid = [role for role in role_names if role not in existing_names]
+        if invalid:
+            raise ValueError(t("role.invalid_role_ids", roles=invalid))
+
+    async def _roles_or_backfill_primary(self, user) -> list[dict[str, object]]:
+        roles = await self.user_role_repo.list_user_roles(user.id)
+        if roles:
+            return roles
+        await self.user_role_repo.assign_roles(user.id, [user.role], primary_role=user.role)
+        return await self.user_role_repo.list_user_roles(user.id)
+
+    async def _mirror_primary_role(self, user, role_name: str) -> None:
+        await self.user_repo.update(user.id, role=role_name)
+        if self.keycloak.is_enabled() and user.keycloak_id:
+            await self.keycloak.set_realm_role(user.keycloak_id, role_name)
+            if role_name != user.role:
+                await self._logout_keycloak_sessions(user)
 
     async def reset_password(self, user_id: uuid.UUID) -> tuple[str, dict[str, Any]]:
         raise ValueError(t("user.password_managed_by_keycloak"))

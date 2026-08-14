@@ -41,6 +41,14 @@ async def sync_permissions(
     return await ctrl.sync_permissions()
 
 
+@router.get("/coverage")
+async def get_permission_coverage(
+    _user_id: Annotated[str, Depends(require_permission("permission:read"))],
+):
+    ctrl = get_permission_controller()
+    return await ctrl.get_coverage()
+
+
 @router.get("/{permission_name}")
 async def get_permission(
     permission_name: str,

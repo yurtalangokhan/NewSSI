@@ -3,10 +3,11 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 
-from src.api.dependencies import require_auth, require_auth_or_internal_service_token
+from src.api import dependencies
+from src.api.dependencies import require_admin, require_auth, require_auth_or_internal_service_token
 from src.api.routes import user_route
 from src.service.user_service import UserService
 
@@ -41,8 +42,8 @@ async def test_get_user_permissions_returns_composite_role_permissions_without_b
     service.user_repo = SimpleNamespace(
         get_by_id=AsyncMock(return_value=SimpleNamespace(role="member"))
     )
-    service.role_repo = SimpleNamespace(
-        get_by_name=AsyncMock(return_value=SimpleNamespace(permissions=["user:list"]))
+    service.permission_resolver = SimpleNamespace(
+        resolve_effective_permissions=AsyncMock(return_value=["user:list"])
     )
 
     assert await service.get_user_permissions(user_id) == {"permissions": ["user:list"]}
@@ -55,13 +56,8 @@ async def test_get_user_permissions_returns_role_permissions():
     service.user_repo = SimpleNamespace(
         get_by_id=AsyncMock(return_value=SimpleNamespace(role="analyst"))
     )
-    service.role_repo = SimpleNamespace(
-        get_by_name=AsyncMock(
-            return_value=SimpleNamespace(
-                name="analyst",
-                permissions=["user:list"],
-            )
-        )
+    service.permission_resolver = SimpleNamespace(
+        resolve_effective_permissions=AsyncMock(return_value=["user:list"])
     )
 
     assert await service.get_user_permissions(user_id) == {"permissions": ["user:list"]}
@@ -74,13 +70,8 @@ async def test_user_has_permission_returns_allowed_decision():
     service.user_repo = SimpleNamespace(
         get_by_id=AsyncMock(return_value=SimpleNamespace(role="analyst"))
     )
-    service.role_repo = SimpleNamespace(
-        get_by_name=AsyncMock(
-            return_value=SimpleNamespace(
-                name="analyst",
-                permissions=["user:list"],
-            )
-        )
+    service.permission_resolver = SimpleNamespace(
+        resolve_effective_permissions=AsyncMock(return_value=["user:list"])
     )
 
     assert await service.user_has_permission(user_id, "user:list") == {
@@ -100,13 +91,8 @@ async def test_get_user_permissions_preserves_permission_wildcard():
     service.user_repo = SimpleNamespace(
         get_by_id=AsyncMock(return_value=SimpleNamespace(role="system-admin"))
     )
-    service.role_repo = SimpleNamespace(
-        get_by_name=AsyncMock(
-            return_value=SimpleNamespace(
-                name="system-admin",
-                permissions=["*"],
-            )
-        )
+    service.permission_resolver = SimpleNamespace(
+        resolve_effective_permissions=AsyncMock(return_value=["*"])
     )
 
     assert await service.get_user_permissions(user_id) == {"permissions": ["*"]}
@@ -128,6 +114,30 @@ def test_me_permissions_endpoint_returns_current_user_permissions(monkeypatch):
     assert response.status_code == 200
     assert response.json() == {"permissions": ["role:list"]}
     controller.get_user_permissions.assert_awaited_once_with(user_id)
+
+
+@pytest.mark.asyncio
+async def test_require_admin_denial_uses_admin_required_translation(monkeypatch):
+    user_id = uuid.uuid4()
+
+    class Repo:
+        async def get_by_id(self, requested_user_id):
+            assert requested_user_id == user_id
+            return SimpleNamespace(id=user_id)
+
+    resolver = SimpleNamespace(resolve_effective_permissions=AsyncMock(return_value=[]))
+    monkeypatch.setattr(dependencies, "UserRepository", Repo)
+    monkeypatch.setattr(
+        dependencies,
+        "get_permission_resolver_service",
+        lambda: resolver,
+    )
+
+    with pytest.raises(HTTPException) as exc:
+        await require_admin(SimpleNamespace(), str(user_id))
+
+    assert exc.value.status_code == 403
+    assert exc.value.detail == "Admin access required"
 
 
 def test_internal_permissions_endpoint_resolves_target_user(monkeypatch):
@@ -194,6 +204,8 @@ async def test_set_user_role_invalidates_active_keycloak_sessions():
         get_by_id=AsyncMock(return_value=_user(id=user_id, role="enduser")),
         update=AsyncMock(return_value=updated_user),
     )
+    service.user_role_repo = SimpleNamespace(assign_roles=AsyncMock())
+    service.permission_resolver = SimpleNamespace(invalidate_user=AsyncMock())
     service.keycloak = SimpleNamespace(
         is_enabled=lambda: True,
         set_realm_role=AsyncMock(return_value=True),

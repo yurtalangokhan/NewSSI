@@ -4,6 +4,10 @@ from .auth_service import AuthService, get_auth_service
 from .coarse_role_service import RoleService, get_role_service
 from .keycloak_service import KeycloakService, get_keycloak_service
 from .permission_service import PermissionService, get_permission_service
+from .permission_resolver_service import (
+    PermissionResolverService,
+    get_permission_resolver_service,
+)
 from .role_service import CompositeRoleService, get_composite_role_service
 from .system_settings_service import SystemSettingsService, get_system_settings_service
 from .user_memory_service import UserMemoryService, get_user_memory_service
@@ -23,6 +27,8 @@ __all__ = [
     "get_keycloak_service",
     "PermissionService",
     "get_permission_service",
+    "PermissionResolverService",
+    "get_permission_resolver_service",
     "CompositeRoleService",
     "get_composite_role_service",
     "SystemSettingsService",

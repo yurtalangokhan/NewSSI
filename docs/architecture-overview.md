@@ -73,6 +73,20 @@ flowchart TB
   agent_logic -->|"calls"| agent_repo
 ```
 
+## Authorization Model
+
+User-service owns runtime authorization. Services and the web app check named
+permissions, and user-service resolves the caller's effective permission set
+from local RBAC data.
+
+- Users can hold multiple composite roles through `user_roles`.
+- `users.role` is a derived primary-role mirror for legacy readers and
+  Keycloak realm-role sync.
+- Composite roles aggregate direct permissions and feature bundles stored in
+  `role_ids`.
+- The `system-admin` wildcard role resolves to `["*"]`.
+- `users.is_superuser` is not part of authorization.
+
 ## Python service layered architecture
 
 ```mermaid

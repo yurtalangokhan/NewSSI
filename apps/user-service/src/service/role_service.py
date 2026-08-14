@@ -3,7 +3,7 @@ from typing import Any
 
 from i18n import t
 
-from src.repository import CompositeRoleRepository, PermissionRepository
+from src.repository import CompositeRoleRepository, PermissionRepository, UserRoleRepository
 
 from .coarse_role_service import get_role_service
 from .keycloak_service import get_keycloak_service
@@ -29,12 +29,18 @@ class CompositeRoleService:
     def __init__(self):
         self.role_repo = CompositeRoleRepository()
         self.permission_repo = PermissionRepository()
+        self.user_role_repo = UserRoleRepository()
         self.keycloak = get_keycloak_service()
 
     async def _users_with_role(self, role_name: str):
         from src.repository import UserRepository
 
-        return await UserRepository().list_by_role(role_name)
+        users_by_primary = await UserRepository().list_by_role(role_name)
+        user_ids = await self.user_role_repo.list_user_ids_by_role(role_name)
+        users_by_assignment = await UserRepository().get_by_ids(user_ids) if user_ids else []
+        users_by_id = {user.id: user for user in users_by_primary}
+        users_by_id.update({user.id: user for user in users_by_assignment})
+        return list(users_by_id.values())
 
     async def _invalidate_sessions_for_role_users(self, role_name: str) -> int:
         if not self.keycloak.is_enabled():

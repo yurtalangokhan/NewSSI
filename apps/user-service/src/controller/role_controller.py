@@ -155,6 +155,20 @@ class CompositeRoleController(BaseController):
         )
         return result
 
+    async def get_effective_permissions(self, name: str) -> dict[str, Any]:
+        return await self.get_role_permissions(name)
+
+    async def get_inherited_roles(self, name: str) -> dict[str, Any]:
+        return await self.get_role_role_ids(name)
+
+    async def set_inherited_roles(
+        self,
+        name: str,
+        role_ids: list[str],
+        user_id: str | None = None,
+    ) -> dict[str, Any]:
+        return await self.set_role_role_ids(name, role_ids, user_id=user_id)
+
     async def sync_to_keycloak(self, user_id: str | None = None) -> dict[str, Any]:
         from src.service import get_audit_service
 

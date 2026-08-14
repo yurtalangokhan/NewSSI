@@ -22,6 +22,15 @@ class CompositeRoleRepository(BaseRepository):
             )
             return list(result.scalars().all())
 
+    async def get_by_names(self, names: list[str]) -> list[CompositeRoleModel]:
+        if not names:
+            return []
+        async with self._session() as session:
+            result = await session.execute(
+                select(CompositeRoleModel).where(CompositeRoleModel.name.in_(names))
+            )
+            return list(result.scalars().all())
+
     async def get_default_admin_role(self) -> CompositeRoleModel | None:
         async with self._session() as session:
             result = await session.execute(

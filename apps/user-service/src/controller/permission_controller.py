@@ -31,6 +31,9 @@ class PermissionController(BaseController):
     async def sync_permissions(self) -> dict[str, Any]:
         return await get_permission_sync_service().sync_permissions()
 
+    async def get_coverage(self) -> dict[str, Any]:
+        return await self.service.get_coverage()
+
 
 _permission_controller_instance: PermissionController | None = None
 

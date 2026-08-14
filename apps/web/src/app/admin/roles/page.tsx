@@ -2,7 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Button from "@/refresh-components/buttons/Button";
+import IconButton from "@/refresh-components/buttons/IconButton";
+import LineItem from "@/refresh-components/buttons/LineItem";
 import Checkbox from "@/refresh-components/inputs/Checkbox";
+import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
 import Modal from "@/refresh-components/Modal";
 import Text from "@/refresh-components/texts/Text";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,10 +20,8 @@ import {
   SvgEdit,
   SvgPlus,
   SvgRefreshCw,
-  SvgSearch,
   SvgShield,
   SvgTrash,
-  SvgX,
 } from "@opal/icons";
 import useSWR from "swr";
 import useSWRMutation from "swr/mutation";
@@ -343,8 +344,8 @@ function CreateCompositeRoleModal({
               <Text secondaryBody text-02 className="mb-1 block">
                 {t("compositeRoleNameLabel")}
               </Text>
-              <input
-                className="w-full rounded-06 border-01 bg-background-neutral-01 px-3 py-2 text-01 text-sm outline-none focus:border-action-link-05"
+              <InputTypeIn
+                showClearButton={false}
                 placeholder={t("compositeRoleNamePlaceholder")}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -354,8 +355,8 @@ function CreateCompositeRoleModal({
               <Text secondaryBody text-02 className="mb-1 block">
                 {t("descriptionLabel")}
               </Text>
-              <input
-                className="w-full rounded-06 border-01 bg-background-neutral-01 px-3 py-2 text-01 text-sm outline-none focus:border-action-link-05"
+              <InputTypeIn
+                showClearButton={false}
                 placeholder={t("optionalDescriptionPlaceholder")}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -775,30 +776,22 @@ function RolesManager() {
       </div>
 
       <div className="inline-flex rounded-08 border border-border-01 bg-background-neutral-01 p-1">
-        <button
-          type="button"
-          className={cn(
-            "rounded-06 px-3 py-1.5 text-sm font-medium",
-            activeLayer === "composite"
-              ? "bg-action-link-05 text-text-light-05"
-              : "text-text-03 hover:bg-background-neutral-02"
-          )}
+        <Button
+          action={activeLayer === "composite"}
+          secondary={activeLayer !== "composite"}
+          size="md"
           onClick={() => setActiveLayer("composite")}
         >
           {t("compositeRolesTabLabel")}
-        </button>
-        <button
-          type="button"
-          className={cn(
-            "rounded-06 px-3 py-1.5 text-sm font-medium",
-            activeLayer === "coarse"
-              ? "bg-action-link-05 text-text-light-05"
-              : "text-text-03 hover:bg-background-neutral-02"
-          )}
+        </Button>
+        <Button
+          action={activeLayer === "coarse"}
+          secondary={activeLayer !== "coarse"}
+          size="md"
           onClick={() => setActiveLayer("coarse")}
         >
           {t("featureBundlesTabLabel")}
-        </button>
+        </Button>
       </div>
 
       {!hasActiveItems ? (
@@ -818,12 +811,8 @@ function RolesManager() {
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-[20rem_minmax(0,1fr)]">
           <div className="rounded-08 border border-border-01 bg-background-neutral-01 p-3">
             <div className="relative mb-2">
-              <SvgSearch
-                size={16}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-03 pointer-events-none"
-              />
-              <input
-                className="w-full pl-9 pr-3 py-2 rounded-06 border-01 bg-background-neutral-00 text-01 text-sm outline-none focus:border-action-link-05"
+              <InputTypeIn
+                leftSearchIcon
                 placeholder={
                   activeLayer === "composite"
                     ? t("searchRolesPlaceholder")
@@ -845,49 +834,29 @@ function RolesManager() {
                   const selected = selectedRole === role.name;
                   const isAll = (role.permissions ?? []).includes("*");
                   return (
-                    <button
+                    <LineItem
                       key={role.name}
-                      type="button"
                       onClick={() => setSelectedRole(role.name)}
-                      className={cn(
-                        "flex w-full items-center justify-between gap-2 rounded-06 px-3 py-2 text-left transition-colors",
-                        selected
-                          ? "bg-action-link-05 text-text-light-05"
-                          : "bg-background-neutral-00 text-text-02 hover:bg-background-neutral-02"
-                      )}
+                      selected={selected}
+                      emphasized={selected}
+                      rightChildren={selected ? <SvgCheck size={14} /> : null}
                     >
                       <span className="min-w-0">
                         <span className="flex items-center gap-2">
-                          <Text
-                            secondaryBody
-                            as="span"
-                            className={cn(
-                              "block truncate",
-                              selected ? "text-text-light-05" : "text-text-02"
-                            )}
-                          >
+                          <Text secondaryBody as="span" className="block truncate">
                             {roleLabel(role.name)}
                           </Text>
                           {role.is_builtin && (
-                            <span
-                              className={cn(
-                                "shrink-0 rounded-04 px-1.5 py-0.5 text-[0.65rem]",
-                                selected
-                                  ? "bg-text-light-05/20 text-text-light-05"
-                                  : "bg-background-neutral-02 text-text-04"
-                              )}
-                            >
+                            <span className="shrink-0 rounded-04 bg-background-neutral-02 px-1.5 py-0.5 text-[0.65rem] text-text-04">
                               {t("builtInBadge")}
                             </span>
                           )}
                         </span>
                         <Text
                           secondaryBody
+                          text-04
                           as="span"
-                          className={cn(
-                            "block truncate text-xs",
-                            selected ? "text-text-light-03" : "text-text-04"
-                          )}
+                          className="block truncate text-xs"
                         >
                           {isAll
                             ? t("allPermissions")
@@ -900,43 +869,29 @@ function RolesManager() {
                             })}
                         </Text>
                       </span>
-                      {selected && <SvgCheck size={14} />}
-                    </button>
+                    </LineItem>
                   );
                 })}
               {activeLayer === "coarse" &&
                 filteredCoarseRoles.map((role) => {
                   const selected = selectedCoarseRole === role.name;
                   return (
-                    <button
+                    <LineItem
                       key={role.name}
-                      type="button"
                       onClick={() => setSelectedCoarseRole(role.name)}
-                      className={cn(
-                        "flex w-full items-center justify-between gap-2 rounded-06 px-3 py-2 text-left transition-colors",
-                        selected
-                          ? "bg-action-link-05 text-text-light-05"
-                          : "bg-background-neutral-00 text-text-02 hover:bg-background-neutral-02"
-                      )}
+                      selected={selected}
+                      emphasized={selected}
+                      rightChildren={selected ? <SvgCheck size={14} /> : null}
                     >
                       <span className="min-w-0">
-                        <Text
-                          secondaryBody
-                          as="span"
-                          className={cn(
-                            "block truncate capitalize",
-                            selected ? "text-text-light-05" : "text-text-02"
-                          )}
-                        >
+                        <Text secondaryBody as="span" className="block truncate capitalize">
                           {coarseRoleLabel(role.name)}
                         </Text>
                         <Text
                           secondaryBody
+                          text-04
                           as="span"
-                          className={cn(
-                            "block truncate text-xs",
-                            selected ? "text-text-light-03" : "text-text-04"
-                          )}
+                          className="block truncate text-xs"
                         >
                           {role.permissions.includes("*")
                             ? t("allPermissions")
@@ -945,8 +900,7 @@ function RolesManager() {
                               })}
                         </Text>
                       </span>
-                      {selected && <SvgCheck size={14} />}
-                    </button>
+                    </LineItem>
                   );
                 })}
               {((activeLayer === "composite" && filteredRoles.length === 0) ||
@@ -978,29 +932,30 @@ function RolesManager() {
                     </div>
                     {editingDescription ? (
                       <div className="mt-3 flex items-center gap-2">
-                        <input
-                          className="min-w-0 flex-1 rounded-04 border-01 bg-background-neutral-00 px-2 py-1 text-sm text-text-01"
+                        <InputTypeIn
+                          className="min-w-0 flex-1"
+                          showClearButton={false}
                           value={descriptionDraft}
                           onChange={(e) => setDescriptionDraft(e.target.value)}
                           autoFocus
                         />
-                        <button
-                          type="button"
-                          className="text-sm font-medium text-action-link-05 hover:underline"
+                        <Button
+                          secondary
+                          size="md"
                           onClick={() => {
                             handleUpdateDescription(descriptionDraft);
                             setEditingDescription(false);
                           }}
                         >
                           {t("saveButton")}
-                        </button>
-                        <button
-                          type="button"
-                          className="text-sm text-text-03 hover:underline"
+                        </Button>
+                        <Button
+                          secondary
+                          size="md"
                           onClick={() => setEditingDescription(false)}
                         >
                           {t("cancelButton")}
-                        </button>
+                        </Button>
                       </div>
                     ) : (
                       <div className="mt-2 flex items-center gap-2">
@@ -1008,19 +963,17 @@ function RolesManager() {
                           {selectedComp.description || t("noDescription")}
                         </Text>
                         {canMutate && (
-                          <button
-                            type="button"
+                          <IconButton
+                            icon={SvgEdit}
+                            internal
                             onClick={() => {
                               setDescriptionDraft(
                                 selectedComp.description ?? ""
                               );
                               setEditingDescription(true);
                             }}
-                            className="shrink-0 text-text-03 hover:text-text-01"
-                            aria-label={t("editRoleDescriptionAriaLabel")}
-                          >
-                            <SvgEdit size={14} />
-                          </button>
+                            tooltip={t("editRoleDescriptionAriaLabel")}
+                          />
                         )}
                       </div>
                     )}
@@ -1081,12 +1034,8 @@ function RolesManager() {
                 </CardHeader>
                 <CardContent>
                   <div className="relative mb-3">
-                    <SvgSearch
-                      size={16}
-                      className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-03"
-                    />
-                    <input
-                      className="w-full rounded-06 border-01 bg-background-neutral-00 py-2 pl-9 pr-3 text-01 text-sm outline-none focus:border-action-link-05"
+                    <InputTypeIn
+                      leftSearchIcon
                       placeholder={t("searchIncludedRolesPlaceholder")}
                       value={includedSearch}
                       onChange={(e) => setIncludedSearch(e.target.value)}
@@ -1193,12 +1142,8 @@ function RolesManager() {
                     {t("includedFeatureBundlesDescription")}
                   </Text>
                   <div className="relative mb-3">
-                    <SvgSearch
-                      size={16}
-                      className="absolute left-3 top-1/2 -translate-y-1/2 text-03 pointer-events-none"
-                    />
-                    <input
-                      className="w-full pl-9 pr-3 py-2 rounded-06 border-01 bg-background-neutral-01 text-01 text-sm outline-none focus:border-action-link-05"
+                    <InputTypeIn
+                      leftSearchIcon
                       placeholder={t("searchFeatureBundlesPlaceholder")}
                       value={includedSearch}
                       onChange={(e) => setIncludedSearch(e.target.value)}
@@ -1305,25 +1250,14 @@ function RolesManager() {
                 )}
 
                 <div className="relative mb-4">
-                  <SvgSearch
-                    size={16}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-03 pointer-events-none"
-                  />
-                  <input
+                  <InputTypeIn
                     ref={permSearchRef}
-                    className="w-full pl-9 pr-8 py-2 rounded-06 border-01 bg-background-neutral-01 text-01 text-sm outline-none focus:border-action-link-05"
+                    leftSearchIcon
                     placeholder={t("searchPermissionsPlaceholder")}
                     value={permSearch}
                     onChange={(e) => setPermSearch(e.target.value)}
+                    onClear={() => setPermSearch("")}
                   />
-                  {permSearch && (
-                    <button
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-03 hover:text-01"
-                      onClick={() => setPermSearch("")}
-                    >
-                      <SvgX size={14} />
-                    </button>
-                  )}
                 </div>
 
                 {orderedFeatures(filteredGrouped).map((feature) => {

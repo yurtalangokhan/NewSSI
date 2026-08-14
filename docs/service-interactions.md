@@ -75,8 +75,8 @@ Runtime authorization follows this chain:
 ```text
 endpoint require_permission("entity:action")
   -> service calls user-service
-  -> user-service resolves the user's composite role
-  -> composite role expands feature bundles
+  -> user-service resolves every assigned user_roles row
+  -> assigned composite roles expand feature bundles
   -> feature bundles expand permissions
   -> user-service returns allow or deny
 ```
@@ -89,11 +89,13 @@ code. The built-in user-facing composite role catalog is limited to
 `system-admin`, `enterprise-admin`, and `enduser`; the database assignment from
 those composite roles to feature bundles is the source of truth.
 
-User records keep one composite role assignment. New users receive the default
-`enduser` composite role when no local assignment exists. Login, refresh, OIDC
-callback, and external Keycloak sync flows preserve existing local composite
-roles; they don't downgrade users from token client roles or federated identity
-metadata.
+User records can hold multiple composite role assignments in `user_roles`.
+`users.role` remains as the derived primary-role mirror for existing readers
+and Keycloak realm-role sync. New users receive the default `enduser`
+composite role when no local assignment exists. Login, refresh, OIDC callback,
+and external Keycloak sync flows preserve existing local composite roles; they
+don't downgrade users from token client roles or federated identity metadata.
+The legacy `users.is_superuser` shortcut is not used for authorization.
 
 User-service owns default administrator bootstrap. During startup it runs
 migrations, syncs the DB role catalog to Keycloak, then ensures the configured
@@ -124,10 +126,10 @@ runtime redirect and logout behavior consistent across those boundaries.
 - Admin pages use server-side authentication first, then load fine-grained route
   permissions in `UserProvider`. Web admin menus and pages don't authorize by
   hardcoded role names. They use user-service's effective permissions, which
-  user-service resolves from the user's assigned role, direct role permissions,
-  and service coarse-role permissions. Permission fetch failures must not grant
-  admin access; completed permission checks that deny the route trigger the
-  `403` page.
+  user-service resolves from the user's assigned roles, direct role
+  permissions, and service coarse-role permissions. Permission fetch failures
+  must not grant admin access; completed permission checks that deny the route
+  trigger the `403` page.
 - Validate auth changes with `make -C apps/user-service validate`. When web
   logout or callback code changes, also run web lint, typecheck, and tests. If
   services are running, verify the browser flow through Kong.
