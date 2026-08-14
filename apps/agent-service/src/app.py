@@ -26,7 +26,7 @@ from core import settings
 from core import settings as core_settings
 from core.api_versioning import API_PREFIX
 from core.db import close_db_engine, get_db_engine
-from core.db.schema_bootstrap import ensure_schema
+from core.db.startup import run_startup_migrations
 from core.logger import configure_logging
 from memory import initialize_database, initialize_store
 from service.AirbyteSyncListenerService import get_sync_listener
@@ -73,9 +73,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """
     try:
         if settings.DATABASE_TYPE.value == "postgres":
+            run_startup_migrations()
             _sa_engine = get_db_engine()
             logger.info("SQLAlchemy async engine ready: %s", _sa_engine.url.database)
-            await ensure_schema()
 
         from service.StoreService import set_global_store
 

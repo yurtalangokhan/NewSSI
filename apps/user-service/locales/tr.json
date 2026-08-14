@@ -59,6 +59,9 @@
     "keycloak_id_required": "Keycloak kullanıcı kimliği gereklidir",
     "keycloak_password_set_failed": "Keycloak şifresi ayarlanamadı",
     "invalid_role": "Geçersiz rol: {role}",
+    "primary_role_must_be_assigned": "Birincil rol atanacak rollerin içinde olmalıdır",
+    "cannot_remove_last_role": "Kullanıcının son rolü kaldırılamaz",
+    "role_not_assigned": "Bu rol kullanıcıya atanmamış: {role}",
     "password_managed_by_keycloak": "Şifre yönetimi Keycloak tarafından yapılmaktadır"
   },
   "memory": {
@@ -79,8 +82,7 @@
   },
   "permission": {
     "not_found": "'{name}' izni bulunamadı",
-    "invalid_permissions": "Geçersiz izinler: {permissions}",
-    "wrong_service": "İzinler '{service_client}' servisine ait değil: {permissions}"
+    "invalid_permissions": "Geçersiz izinler: {permissions}"
   },
   "api_key": {
     "not_found": "API anahtarı bulunamadı",

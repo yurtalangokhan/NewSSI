@@ -13,9 +13,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from sqlalchemy import select
+
 from src.core.database.engine import get_session_factory
 from src.core.database.models import PermissionModel
-
 
 ORGANIZATION_PERMISSIONS = [
     {
@@ -87,7 +87,7 @@ ORGANIZATION_PERMISSIONS = [
 async def add_organization_permissions():
     """Add organization permissions to the database."""
     session_maker = get_session_factory()
-    
+
     async with session_maker() as session:
         # Check which permissions already exist
         result = await session.execute(
@@ -96,7 +96,7 @@ async def add_organization_permissions():
             )
         )
         existing_permissions = {row[0] for row in result.all()}
-        
+
         # Add missing permissions
         added = 0
         for perm_data in ORGANIZATION_PERMISSIONS:
@@ -107,7 +107,7 @@ async def add_organization_permissions():
                 print(f"✓ Added permission: {perm_data['name']}")
             else:
                 print(f"- Permission already exists: {perm_data['name']}")
-        
+
         if added > 0:
             await session.commit()
             print(f"\n✓ Successfully added {added} organization permissions")

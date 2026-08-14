@@ -36,7 +36,9 @@ function isDuplicateReasoningPacket(state: ProcessorState, packet: Packet): bool
     ((packet.obj as any).reasoning || (packet.obj as any).content || "").trim();
 
   if (incomingText) {
-    for (const [existingKey, existingPackets] of state.groupedPacketsMap.entries()) {
+    for (const [existingKey, existingPackets] of Array.from(
+      state.groupedPacketsMap.entries()
+    )) {
       if (existingKey !== groupKey && existingKey.endsWith("-reasoning")) {
         const existingText = getReasoningTextContent(existingPackets).trim();
         if (

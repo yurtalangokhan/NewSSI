@@ -48,7 +48,7 @@ export function ProviderContextProvider({
 }: {
   children: React.ReactNode;
 }) {
-  const { user, isAdmin } = useUser();
+  const { user, hasPermission } = useUser();
 
   // Use SWR hooks instead of raw fetch
   const {
@@ -65,7 +65,8 @@ export function ProviderContextProvider({
   // Test the default provider - only runs if test hasn't passed yet
   const testDefaultProvider = useCallback(async () => {
     const shouldCheck =
-      !checkDefaultLLMProviderTestComplete() && (!user || isAdmin);
+      !checkDefaultLLMProviderTestComplete() &&
+      (!user || hasPermission("provider:read"));
 
     if (shouldCheck) {
       const success = await testDefaultProviderSvc();
@@ -74,7 +75,7 @@ export function ProviderContextProvider({
         setDefaultLLMProviderTestComplete();
       }
     }
-  }, [user, isAdmin]);
+  }, [hasPermission, user]);
 
   // Test default provider on mount
   useEffect(() => {

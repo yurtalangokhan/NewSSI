@@ -43,6 +43,20 @@ Authentication supports three modes: OIDC (Keycloak browser redirect), Direct Ac
 
 **Token validation chain:** Local HS256 JWT → Keycloak JWKS → Keycloak userinfo → External Keycloak userinfo.
 
+External Keycloak login uses the identity-provider alias configured in the SP
+Keycloak realm. `EXTERNAL_KEYCLOAK=true` controls whether the external login
+page is selected. External issuer and client settings are not required for the
+login request itself; they are required only when user-service provisions or
+updates the external IdP configuration.
+
+User role assignment is many-to-many through `user_roles`. The legacy
+`users.role` column is kept as a derived primary-role mirror for existing
+readers and Keycloak realm-role sync. New users receive the default `enduser`
+composite role when no existing local assignment exists. Login, refresh, and
+external Keycloak sync flows preserve existing local role assignments instead
+of deriving them from token client roles. The legacy `is_superuser` flag is
+not part of the authorization model.
+
 ---
 
 ## Users
@@ -53,6 +67,7 @@ Authentication supports three modes: OIDC (Keycloak browser redirect), Direct Ac
 | ------ | ------------------------------------------ | ------------- | -------------------------------------------------------------------------------------------- |
 | GET    | `/api/v1/users/me`                         | JWT           | Get own profile with preferences and personalization                                         |
 | GET    | `/api/v1/users/me/permissions`             | JWT           | Get own resolved permissions                                                                 |
+| GET    | `/api/v1/users/me/roles`                   | JWT           | Get own assigned roles                                                                       |
 | PATCH  | `/api/v1/users/me`                         | JWT           | Update own profile                                                                           |
 | POST   | `/api/v1/users/me/password`                | JWT           | Change own password (raises ValueError — managed by Keycloak)                                |
 | GET    | `/api/v1/users/`                           | `user:list`   | List users with pagination and filters (skip, limit, query, role, roles, is_active, invited) |
@@ -60,13 +75,21 @@ Authentication supports three modes: OIDC (Keycloak browser redirect), Direct Ac
 | GET    | `/api/v1/users/invited`                    | `user:list`   | List pending invited users                                                                   |
 | GET    | `/api/v1/users/download/csv`               | `user:list`   | Download users as CSV                                                                        |
 | POST   | `/api/v1/users/invite`                     | `user:create` | Invite users by email (bulk)                                                                 |
-| POST   | `/api/v1/users/{target_id}/role`           | `user:update` | Set user role                                                                                |
+| POST   | `/api/v1/users/{target_id}/role`           | `user:update` | Set the user's primary role (legacy compatibility path)                                      |
+| GET    | `/api/v1/users/{target_id}/roles`          | `user:read`   | List roles assigned to the user                                                              |
+| POST   | `/api/v1/users/{target_id}/roles`          | `user:update` | Assign roles to the user (body: `role_ids`, optional `primary_role_id`)                      |
+| DELETE | `/api/v1/users/{target_id}/roles/{role_id}` | `user:update` | Remove one assigned role; removing the final role is rejected                                |
+| POST   | `/api/v1/users/{target_id}/roles/{role_id}/primary` | `user:update` | Mark an assigned role as the primary role                                             |
 | POST   | `/api/v1/users/{target_id}/reset-password` | `user:update` | Reset password (raises ValueError)                                                           |
 | PATCH  | `/api/v1/users/{target_id}/active`         | `user:update` | Activate/deactivate user                                                                     |
 | POST   | `/api/v1/users/{target_id}/password`       | `user:update` | Set user password (raises ValueError)                                                        |
 | GET    | `/api/v1/users/{target_id}`                | `user:read`   | Get user by ID                                                                               |
 | PATCH  | `/api/v1/users/{target_id}`                | `user:update` | Update user profile                                                                          |
 | DELETE | `/api/v1/users/{target_id}`                | `user:delete` | Delete user (local + Keycloak)                                                               |
+
+`user:impersonate` is a system permission for impersonation flows. It is
+resolved through the same composite role and feature-bundle chain as other
+permissions.
 
 **Response shape example (`GET /api/v1/users/`):**
 
@@ -107,6 +130,8 @@ The batch endpoint accepts 1 to 100 distinct UUID values in the
 | GET    | `/api/v1/internal/users/by-keycloak-id/{keycloak_id}` | JWT / Internal | Get user by Keycloak subject ID                                 |
 | PATCH  | `/api/v1/internal/users/{target_id}`                  | JWT / Internal | Update user profile                                             |
 | GET    | `/api/v1/internal/users/{target_id}/permissions`      | JWT / Internal | Get user's permissions                                          |
+| GET    | `/api/v1/internal/users/{target_id}/effective-permissions` | JWT / Internal | Get user's resolved effective permissions                  |
+| GET    | `/api/v1/internal/users/{target_id}/roles`            | JWT / Internal | Get user's assigned roles                                       |
 | POST   | `/api/v1/internal/users/authorize`                    | JWT / Internal | Check if user has a specific permission                         |
 
 ---
@@ -174,6 +199,9 @@ User memories store facts about the user for agent recall (long-term memory).
 **Prefix:** `/api/v1/users/me/api-keys`
 
 API keys are SHA-256 hashed and Fernet encrypted. The raw key is returned only once on creation.
+API key records do not carry user roles, feature bundles, or permission scopes.
+Creating, listing, and deleting keys are authorized by the caller's resolved
+permissions through `api_key:create`, `api_key:read`, and `api_key:delete`.
 
 | Method | Path                                 | Permission       | Description                                                   |
 | ------ | ------------------------------------ | ---------------- | ------------------------------------------------------------- |
@@ -187,19 +215,22 @@ API keys are SHA-256 hashed and Fernet encrypted. The raw key is returned only o
 
 **Prefix:** `/api/v1/coarse-roles`
 
-Coarse roles group permissions scoped to a service client.
+Coarse roles are feature bundles. They group fine-grained permissions under a
+compact Keycloak client role so JWTs carry a small role list instead of the
+full permission catalog. The UI presents these bundles by product feature, not
+by backend service name.
 
-| Method | Path                                           | Permission        | Description                                                          |
-| ------ | ---------------------------------------------- | ----------------- | -------------------------------------------------------------------- |
-| GET    | `/api/v1/coarse-roles/`                        | `permission:list` | List coarse roles (query: `service_client`)                          |
-| POST   | `/api/v1/coarse-roles/`                        | `role:manage`     | Create coarse role (query: `name`, `service_client`, `description?`) |
-| GET    | `/api/v1/coarse-roles/{role_name}`             | `permission:list` | Get coarse role by name                                              |
-| PATCH  | `/api/v1/coarse-roles/{role_name}`             | `role:manage`     | Update coarse role                                                   |
-| DELETE | `/api/v1/coarse-roles/{role_name}`             | `role:manage`     | Delete coarse role                                                   |
-| GET    | `/api/v1/coarse-roles/{role_name}/permissions` | `permission:list` | Get permissions on role                                              |
-| PUT    | `/api/v1/coarse-roles/{role_name}/permissions` | `role:manage`     | Set permissions on role                                              |
-| GET    | `/api/v1/coarse-roles/aggregated/`             | `permission:list` | Aggregate permissions from multiple role names (query: `names` CSV)  |
-| GET    | `/api/v1/coarse-roles/service-clients/list`    | `permission:list` | List all service clients                                             |
+| Method | Path | Permission | Description |
+|--------|------|------------|-------------|
+| GET | `/api/v1/coarse-roles/` | `permission:list` | List feature bundles (query: `service_client`) |
+| POST | `/api/v1/coarse-roles/` | `role:manage` | Create feature bundle (query: `name`, `service_client`, `description?`) |
+| GET | `/api/v1/coarse-roles/{role_name}` | `permission:list` | Get feature bundle by name |
+| PATCH | `/api/v1/coarse-roles/{role_name}` | `role:manage` | Update feature bundle |
+| DELETE | `/api/v1/coarse-roles/{role_name}` | `role:manage` | Delete feature bundle |
+| GET | `/api/v1/coarse-roles/{role_name}/permissions` | `permission:list` | Get permissions on feature bundle |
+| PUT | `/api/v1/coarse-roles/{role_name}/permissions` | `role:manage` | Set permissions on feature bundle |
+| GET | `/api/v1/coarse-roles/aggregated/` | `permission:list` | Aggregate permissions from multiple feature bundle names (query: `names` CSV) |
+| GET | `/api/v1/coarse-roles/service-clients/list` | `permission:list` | List all service clients |
 
 ---
 
@@ -207,20 +238,43 @@ Coarse roles group permissions scoped to a service client.
 
 **Prefix:** `/api/v1/roles`
 
-Composite roles aggregate coarse roles and permissions. Changes to composite roles invalidate user sessions.
+Composite roles are user-facing role records. They aggregate feature bundles
+through `role_ids`. Users can hold multiple composite roles; the role marked
+primary is mirrored to `users.role` and to the Keycloak realm role. Changes to
+composite roles or user role assignments invalidate affected user sessions and
+permission resolver cache entries.
 
-| Method | Path                                    | Permission    | Description                                                                       |
-| ------ | --------------------------------------- | ------------- | --------------------------------------------------------------------------------- |
-| GET    | `/api/v1/roles/`                        | `role:list`   | List all composite roles                                                          |
-| POST   | `/api/v1/roles/`                        | `role:manage` | Create composite role (body: `name`, `description?`, `permissions?`, `role_ids?`) |
-| GET    | `/api/v1/roles/{role_name}`             | `role:read`   | Get composite role by name                                                        |
-| PATCH  | `/api/v1/roles/{role_name}`             | `role:manage` | Update composite role                                                             |
-| DELETE | `/api/v1/roles/{role_name}`             | `role:manage` | Delete composite role (blocked if built-in or users assigned)                     |
-| GET    | `/api/v1/roles/{role_name}/permissions` | `role:read`   | Get effective permissions (direct + aggregated)                                   |
-| PUT    | `/api/v1/roles/{role_name}/permissions` | `role:manage` | Set permissions                                                                   |
-| GET    | `/api/v1/roles/{role_name}/role-ids`    | `role:read`   | Get coarse role references                                                        |
-| PUT    | `/api/v1/roles/{role_name}/role-ids`    | `role:manage` | Set coarse role references                                                        |
-| POST   | `/api/v1/roles/sync-keycloak`           | `role:manage` | Sync all roles to Keycloak                                                        |
+Composite roles must not rely on hardcoded role-name semantics. Runtime access
+comes from the effective permission set resolved from all assigned roles and
+their feature bundles. The `system-admin` wildcard role resolves to `["*"]`.
+
+The catalog contains exactly three built-in user-facing composite roles:
+`system-admin`, `enterprise-admin`, and `enduser`. The startup bootstrap
+selects the default administrator role by `is_admin=true`, syncs the role
+catalog to Keycloak, creates or updates the configured bootstrap admin user,
+and assigns that selected role in Keycloak and the local user record. The
+bootstrap does not use a role-name mapping environment variable.
+
+Use `PUT /api/v1/roles/{role_name}/role-ids` as the primary management path.
+The direct permissions endpoint remains for legacy compatibility and migration
+workflows; new admin flows must not assign direct permissions to composite
+roles.
+
+| Method | Path | Permission | Description |
+|--------|------|------------|-------------|
+| GET | `/api/v1/roles/` | `role:list` | List all composite roles |
+| POST | `/api/v1/roles/` | `role:manage` | Create composite role (body: `name`, `description?`, `role_ids?`) |
+| GET | `/api/v1/roles/{role_name}` | `role:read` | Get composite role by name |
+| PATCH | `/api/v1/roles/{role_name}` | `role:manage` | Update composite role |
+| DELETE | `/api/v1/roles/{role_name}` | `role:manage` | Delete composite role (blocked if built-in or users assigned) |
+| GET | `/api/v1/roles/{role_name}/permissions` | `role:read` | Get effective permissions (legacy direct permissions + feature bundles) |
+| PUT | `/api/v1/roles/{role_name}/permissions` | `role:manage` | Set legacy direct permissions |
+| GET | `/api/v1/roles/{role_name}/role-ids` | `role:read` | Get feature bundle references |
+| PUT | `/api/v1/roles/{role_name}/role-ids` | `role:manage` | Set feature bundle references |
+| GET | `/api/v1/roles/{role_name}/inherited-roles` | `role:read` | Get inherited feature-bundle references (alias of `role-ids`) |
+| PUT | `/api/v1/roles/{role_name}/inherited-roles` | `role:manage` | Set inherited feature-bundle references (alias of `role-ids`) |
+| GET | `/api/v1/roles/{role_name}/effective-permissions` | `role:read` | Get the role's resolved permission set |
+| POST | `/api/v1/roles/sync-keycloak` | `role:manage` | Sync all roles to Keycloak |
 
 ---
 
@@ -233,6 +287,7 @@ Permissions are synced from service manifests (user-service, agent-service, rag-
 | Method | Path                                    | Permission          | Description                                 |
 | ------ | --------------------------------------- | ------------------- | ------------------------------------------- |
 | GET    | `/api/v1/permissions/`                  | `permission:list`   | List permissions (query: `service` filter)  |
+| GET    | `/api/v1/permissions/coverage`          | `permission:read`   | Get feature → entity → action coverage      |
 | GET    | `/api/v1/permissions/entities`          | `permission:list`   | List all unique permission entities         |
 | GET    | `/api/v1/permissions/services`          | `permission:list`   | List services with permission counts        |
 | POST   | `/api/v1/permissions/sync`              | `permission:manage` | Sync permissions from all service manifests |
@@ -351,6 +406,12 @@ coordinate violations return `422`.
 
 **Prefix:** `/api/v1/system-settings`
 
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/v1/system-settings/keycloak` | `system.settings:read` | Get full Keycloak configuration |
+| PATCH | `/api/v1/system-settings/keycloak` | `system.settings:update` | Update Keycloak configuration (fields encrypted before storage) |
+| PATCH | `/api/v1/system-settings/keycloak/realm-session` | `system.settings:update` | Update Keycloak realm session token lifespans |
+| POST | `/api/v1/system-settings/keycloak/external-idp/sync` | `system.settings:update` | Sync external identity provider to Keycloak |
 | Method | Path                                                 | Auth         | Description                                                     |
 | ------ | ---------------------------------------------------- | ------------ | --------------------------------------------------------------- |
 | GET    | `/api/v1/system-settings/keycloak`                   | System Admin | Get full Keycloak configuration                                 |
@@ -368,12 +429,18 @@ require_auth_or_internal_service_token
       └─ returns "internal-service" for X-Internal-Service-Token
 
 require_auth                → get_current_user_id → raises 401 if None
-require_admin               → require_auth → checks superuser or admin role
-require_system_admin        → require_auth → checks superuser or system-admin role
-require_permission("perm")  → require_auth → checks DB role permissions + coarse role aggregation
+require_admin               → require_auth → checks admin-area permissions
+require_system_admin        → require_auth → checks system settings permissions
+require_permission("perm")  → require_auth → checks DB-resolved permissions
+                              through user_roles, composite roles, and
+                              feature bundles
 ```
 
-**Superuser detection:** A user with `["*"]` permissions bypasses all permission checks (wildcard).
+**Permission detection:** Endpoints authorize requests by checking the resolved
+permission set returned by user-service. The resolver reads all assigned roles
+from `user_roles`, falls back to the primary `users.role` mirror when no join
+rows exist yet, expands composite role `role_ids` into feature bundles, and
+returns the union of permissions. `is_superuser` is not consulted.
 
 ---
 
@@ -382,7 +449,7 @@ require_permission("perm")  → require_auth → checks DB role permissions + co
 Keycloak is the source of truth. The service mirrors user data, roles, and permissions to a local PostgreSQL database.
 
 - **User CRUD** → creates/updates/deletes in both Keycloak and local DB
-- **Role management** → Composite roles in DB, synced to Keycloak realm roles + client roles
+- **Role management** → Multi-role assignments in DB, primary role mirrored to Keycloak realm roles + compact feature-bundle client roles
 - **Password management** → Delegated entirely to Keycloak (service raises `ValueError`)
 - **Token validation** → 4-step fallback chain: local HS256 → JWKS → userinfo → external Keycloak
 - **Login** → Keycloak Direct Access Grant or OIDC redirect

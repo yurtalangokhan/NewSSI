@@ -58,8 +58,7 @@ async def test_require_user_falls_back_to_user_service_token_validation(monkeypa
         "id": "4bde69c3-aec6-42c7-a4e0-5d73bf033594",
         "email": "ada@example.com",
         "username": "ada",
-        "role": "admin",
-        "is_superuser": True,
+        "role": "member",
     }
 
     monkeypatch.setattr(
@@ -78,7 +77,7 @@ async def test_require_user_falls_back_to_user_service_token_validation(monkeypa
     assert user.user_id == user_service_user["id"]
     assert user.email == user_service_user["email"]
     assert user.username == user_service_user["username"]
-    assert "admin" in user.roles
+    assert user.roles == ["member"]
     assert user.access_token == "user-service-token"
 
 

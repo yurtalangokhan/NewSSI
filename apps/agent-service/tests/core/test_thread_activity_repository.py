@@ -324,3 +324,34 @@ def test_activity_migration_does_not_backfill_unsent_sessions_on_second_upgrade(
         {"updated_at": "new-unsent", "last_message_at": None},
     ]
     assert sum("UPDATE thread SET last_message_at" in sql for sql in executed_sql) == 1
+
+
+def test_activity_repair_migration_recreates_missing_timestamp_columns_and_index(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    migration_path = (
+        Path(__file__).parents[2]
+        / "src/core/db/migrations/versions/0030_repair_thread_activity_columns.py"
+    )
+    spec = importlib.util.spec_from_file_location(
+        "thread_activity_repair_migration", migration_path
+    )
+    assert spec and spec.loader
+    migration = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(migration)
+
+    executed_sql: list[str] = []
+    monkeypatch.setattr(migration.op, "execute", executed_sql.append)
+
+    migration.upgrade()
+    migration.downgrade()
+
+    sql = "\n".join(executed_sql)
+    assert migration.revision == "0030"
+    assert migration.down_revision == "0029"
+    assert "ALTER TABLE thread ADD COLUMN IF NOT EXISTS last_message_at" in sql
+    assert "ALTER TABLE thread ADD COLUMN IF NOT EXISTS last_accessed_at" in sql
+    assert "UPDATE thread SET last_message_at = updated_at" in sql
+    assert "CREATE INDEX IF NOT EXISTS idx_thread_activity_order" in sql
+    assert "COALESCE(last_message_at, created_at)" in sql
+    assert "Repair migrations are intentionally non-destructive" in migration.downgrade.__doc__

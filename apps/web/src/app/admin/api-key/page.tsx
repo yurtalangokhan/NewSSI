@@ -75,9 +75,6 @@ function Main() {
   const filteredApiKeys = apiKeys.filter(
     (key) => key.api_key_name !== DISCORD_SERVICE_API_KEY_NAME
   );
-  const uniqueApiKeyRoles = new Set(
-    filteredApiKeys.map((key) => key.api_key_role)
-  );
 
   const overviewSection = (
     <AdminOverviewPanel
@@ -91,8 +88,8 @@ function Main() {
           tone: filteredApiKeys.length > 0 ? "success" : "warning",
         },
         {
-          label: t("admin.apiKey.rolesInUseLabel"),
-          value: uniqueApiKeyRoles.size.toLocaleString(),
+          label: t("admin.apiKey.securityLabel"),
+          value: t("admin.apiKey.permissionControlled"),
         },
         {
           label: t("admin.apiKey.keyCreationLabel"),
@@ -195,7 +192,6 @@ function Main() {
               <TableRow>
                 <TableHead>{t("admin.apiKey.nameColumn")}</TableHead>
                 <TableHead>{t("admin.apiKey.apiKeyColumn")}</TableHead>
-                <TableHead>{t("admin.apiKey.roleColumn")}</TableHead>
                 <TableHead>{t("admin.apiKey.regenerateColumn")}</TableHead>
                 <TableHead>{t("admin.apiKey.deleteColumn")}</TableHead>
               </TableRow>
@@ -214,9 +210,6 @@ function Main() {
                   </TableCell>
                   <TableCell className="max-w-64">
                     {apiKey.api_key_display}
-                  </TableCell>
-                  <TableCell className="max-w-64">
-                    {apiKey.api_key_role.toUpperCase()}
                   </TableCell>
                   <TableCell>
                     <Button

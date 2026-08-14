@@ -77,7 +77,6 @@
     "session_not_found": "Oturum bulunamadı"
   },
   "auth": {
-    "admin_required": "Yönetici rolü gerekli",
     "not_authenticated": "Kimlik doğrulanmadı",
     "keycloak_not_configured": "KEYCLOAK_ISSUER_URL yapılandırılmamış",
     "signing_key_resolution_failed": "Token imzalama anahtarı çözümlenemedi: {error}",

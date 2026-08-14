@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid as _uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Index, String, Text, UniqueConstraint, text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, String, Text, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -21,7 +21,7 @@ class ProviderModel(Base):
         UUID(as_uuid=True), primary_key=True, default=_uuid.uuid4
     )
     name: Mapped[str] = mapped_column(Text, nullable=False)
-    provider_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    provider_type: Mapped[str] = mapped_column(Text, nullable=False)
     provider_kind: Mapped[str] = mapped_column(
         Text, nullable=False, default="url", server_default=text("'url'")
     )
@@ -55,7 +55,11 @@ class UserProviderConfigModel(Base):
         UUID(as_uuid=True), primary_key=True, default=_uuid.uuid4
     )
     user_id: Mapped[str] = mapped_column(Text, nullable=False)
-    provider_id: Mapped[_uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    provider_id: Mapped[_uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("providers.id", ondelete="CASCADE"),
+        nullable=False,
+    )
     api_key_encrypted: Mapped[str | None] = mapped_column(Text, nullable=True)
     api_key_fingerprint: Mapped[str | None] = mapped_column(String(16), nullable=True)
     api_base: Mapped[str | None] = mapped_column(Text, nullable=True)

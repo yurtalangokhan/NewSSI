@@ -12,9 +12,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from sqlalchemy import select
+
 from src.core.database.engine import get_session_factory
 from src.core.database.models import CompositeRoleModel
-
 
 ORG_PERMISSION_NAMES = {
     "org:create",
@@ -30,32 +30,27 @@ ORG_PERMISSION_NAMES = {
 async def restore_admin_permissions():
     """Remove organization permissions from admin role."""
     session_maker = get_session_factory()
-    
+
     async with session_maker() as session:
         # Find admin role
         result = await session.execute(
-            select(CompositeRoleModel).where(
-                CompositeRoleModel.name.in_(["admin", "system-admin"])
-            )
+            select(CompositeRoleModel).where(CompositeRoleModel.name.in_(["admin", "system-admin"]))
         )
         admin_role = result.scalar_one_or_none()
-        
+
         if not admin_role:
             print("✗ Admin role not found")
             sys.exit(1)
-        
+
         print(f"✓ Found role: {admin_role.name}")
         print(f"  Current permissions count: {len(admin_role.permissions)}")
-        
+
         # Remove organization permissions
         original_count = len(admin_role.permissions)
-        filtered_permissions = [
-            p for p in admin_role.permissions 
-            if p not in ORG_PERMISSION_NAMES
-        ]
-        
+        filtered_permissions = [p for p in admin_role.permissions if p not in ORG_PERMISSION_NAMES]
+
         removed_count = original_count - len(filtered_permissions)
-        
+
         if removed_count > 0:
             admin_role.permissions = filtered_permissions
             await session.commit()
@@ -74,6 +69,7 @@ async def main():
     except Exception as e:
         print(f"\n✗ Error: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)
 

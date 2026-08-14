@@ -59,6 +59,9 @@
     "keycloak_id_required": "Keycloak user id is required",
     "keycloak_password_set_failed": "Keycloak password could not be set",
     "invalid_role": "Invalid role: {role}",
+    "primary_role_must_be_assigned": "Primary role must be included in the assigned roles",
+    "cannot_remove_last_role": "Cannot remove the user's last role",
+    "role_not_assigned": "Role is not assigned to this user: {role}",
     "password_managed_by_keycloak": "Password management is handled by Keycloak"
   },
   "memory": {
@@ -79,8 +82,7 @@
   },
   "permission": {
     "not_found": "Permission '{name}' not found",
-    "invalid_permissions": "Invalid permissions: {permissions}",
-    "wrong_service": "Permissions do not belong to service '{service_client}': {permissions}"
+    "invalid_permissions": "Invalid permissions: {permissions}"
   },
   "api_key": {
     "not_found": "API key not found",

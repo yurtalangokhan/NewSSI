@@ -52,6 +52,11 @@ class UserRoleRequest(BaseModel):
     role: str
 
 
+class UserRolesAssignRequest(BaseModel):
+    role_ids: list[str] = Field(min_length=1)
+    primary_role_id: str | None = None
+
+
 class UserActiveRequest(BaseModel):
     is_active: bool
 
@@ -114,5 +119,6 @@ __all__ = [
     "UserInviteRequest",
     "UserPasswordRequest",
     "UserRoleRequest",
+    "UserRolesAssignRequest",
     "UserUpdateRequest",
 ]

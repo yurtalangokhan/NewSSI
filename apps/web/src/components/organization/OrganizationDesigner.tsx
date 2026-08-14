@@ -93,6 +93,7 @@ const nodeTypes = { organization: OrganizationFlowNode };
 const DRAFT_NODE_ID = "__new-organization__";
 const EMPTY_MEMBERS_BY_ORGANIZATION: OrganizationMembersByUnit = {};
 const COMPLETE_TREE_FETCH_ERROR = "complete-tree-fetch-failed";
+const COMPLETED_RESET_PROGRESS_VISIBLE_MS = 400;
 
 type CompleteResetValidationError = "incomplete-access" | "too-large";
 
@@ -775,7 +776,7 @@ function OrganizationDesignerCanvas({
         percent: 100,
         label: t("admin.organizations.designer.resetProgressComplete"),
       });
-      await wait(250);
+      await wait(COMPLETED_RESET_PROGRESS_VISIBLE_MS);
       toast.success(t("admin.organizations.designer.resetSuccess"));
     } catch (caughtError) {
       toast.error(

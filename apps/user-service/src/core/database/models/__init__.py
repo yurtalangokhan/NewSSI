@@ -7,6 +7,7 @@ from .role_model import RoleModel
 from .system_setting_model import SystemSettingModel
 from .user_memory_model import UserMemoryModel
 from .user_model import UserModel
+from .user_role_model import UserRoleModel
 from .user_settings_model import UserSettingsModel
 from .organization_model import OrganizationModel
 from .user_organization_model import UserOrganizationModel
@@ -24,6 +25,7 @@ __all__ = [
     "SystemSettingModel",
     "UserMemoryModel",
     "UserModel",
+    "UserRoleModel",
     "UserSettingsModel",
     "OrganizationModel",
     "UserOrganizationModel",

@@ -9,6 +9,7 @@ from typing import Any
 
 from src.core.env import get_env
 from src.core.permissions import list_service_permissions
+from src.core.permissions.features import feature_for
 from src.repository import PermissionRepository
 from src.schema.permissions import (
     PermissionDefinition,
@@ -73,6 +74,8 @@ class PermissionSyncService:
     ) -> None:
         for raw_permission in permissions:
             permission = PermissionDefinition.model_validate(raw_permission)
+            if not permission.feature:
+                permission.feature = feature_for(permission.service, permission.entity)
             existing = collected.get(permission.name)
             if existing and existing.service != permission.service:
                 raise ValueError(

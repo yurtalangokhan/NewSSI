@@ -1,5 +1,5 @@
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, call
 
 import httpx
 import pytest
@@ -443,9 +443,7 @@ def _rejected_credentials_broker_client(monkeypatch, post_status: int):
     monkeypatch.setattr(service, "_default_oidc_redirect_uri", lambda: callback_uri)
     monkeypatch.setattr(service, "get_external_keycloak_alias", lambda: "external-keycloak")
     monkeypatch.setattr(service, "_rewrite_keycloak_url_for_backend", lambda url: url)
-    monkeypatch.setattr(
-        service, "get_oidc_authorize_url", AsyncMock(return_value=authorize_url)
-    )
+    monkeypatch.setattr(service, "get_oidc_authorize_url", AsyncMock(return_value=authorize_url))
     monkeypatch.setattr(service, "ensure_login_client_redirect_uri", AsyncMock())
 
     class Client:
@@ -459,11 +457,11 @@ def _rejected_credentials_broker_client(monkeypatch, post_status: int):
             return None
 
         async def get(self, url: str, follow_redirects: bool = False) -> httpx.Response:
-            return httpx.Response(
-                200, text=_LOGIN_FORM_HTML, request=httpx.Request("GET", url)
-            )
+            return httpx.Response(200, text=_LOGIN_FORM_HTML, request=httpx.Request("GET", url))
 
-        async def post(self, url: str, data: dict, follow_redirects: bool = False) -> httpx.Response:
+        async def post(
+            self, url: str, data: dict, follow_redirects: bool = False
+        ) -> httpx.Response:
             return httpx.Response(post_status, text="", request=httpx.Request("POST", url))
 
     monkeypatch.setattr(keycloak_service.httpx, "AsyncClient", Client)
@@ -510,6 +508,83 @@ async def test_external_broker_password_login_translates_auth_failed_status(monk
         )
 
     assert str(exc.value) == "External sign-in failed"
+
+
+@pytest.mark.asyncio
+async def test_external_broker_password_login_uses_sp_broker_without_external_issuer_env(
+    monkeypatch,
+):
+    service = KeycloakService()
+    callback_uri = "http://localhost:3000/auth/oidc/callback"
+    authorize_url = "http://keycloak/realms/agenticai/protocol/openid-connect/auth"
+    callback_url = f"{callback_uri}?code=sp-code&state=expected-state"
+    calls: list[str] = []
+
+    monkeypatch.setenv("EXTERNAL_KEYCLOAK", "true")
+    for key in (
+        "EXTERNAL_KEYCLOAK_ISSUER_URL",
+        "EXTERNAL_KEYCLOAK_BACKEND_ISSUER_URL",
+        "EXTERNAL_KEYCLOAK_BASE_URL",
+        "EXTERNAL_KEYCLOAK_REALM",
+    ):
+        monkeypatch.delenv(key, raising=False)
+    monkeypatch.setattr(keycloak_service._settings, "EXTERNAL_KEYCLOAK_ISSUER_URL", None)
+    monkeypatch.setattr(
+        keycloak_service._settings,
+        "EXTERNAL_KEYCLOAK_BACKEND_ISSUER_URL",
+        None,
+    )
+    monkeypatch.setattr(keycloak_service._settings, "EXTERNAL_KEYCLOAK_BASE_URL", None)
+    monkeypatch.setattr(keycloak_service._settings, "EXTERNAL_KEYCLOAK_REALM", None)
+    monkeypatch.setattr(
+        "src.service.keycloak_broker.secrets.token_urlsafe",
+        lambda _: "expected-state",
+    )
+    monkeypatch.setattr(service, "get_external_keycloak_alias", lambda: "external-keycloak")
+    monkeypatch.setattr(
+        service,
+        "get_oidc_authorize_url",
+        AsyncMock(return_value=authorize_url),
+    )
+    monkeypatch.setattr(
+        service,
+        "handle_oidc_callback",
+        AsyncMock(return_value={"access_token": "sp-access-token"}),
+    )
+    monkeypatch.setattr(
+        service,
+        "ensure_login_client_redirect_uri",
+        AsyncMock(return_value={"status": "updated"}),
+    )
+
+    class Client:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            return None
+
+        async def get(self, url: str, follow_redirects: bool = False) -> httpx.Response:
+            calls.append(f"get:{url}")
+            return httpx.Response(
+                302,
+                headers={"location": callback_url},
+                request=httpx.Request("GET", url),
+            )
+
+    monkeypatch.setattr(keycloak_service.httpx, "AsyncClient", Client)
+
+    result = await service.external_broker_password_login(
+        "external@example.com",
+        "secret",
+        redirect_uri=callback_uri,
+    )
+
+    assert result == {"access_token": "sp-access-token"}
+    assert calls == [f"get:{authorize_url}"]
 
 
 @pytest.mark.asyncio
@@ -767,9 +842,7 @@ async def test_ensure_login_client_redirect_uri_adds_post_logout_uri(monkeypatch
             "clientId": "agenticai-web",
             "redirectUris": ["http://localhost:8126/auth/oidc/callback"],
             "webOrigins": ["http://localhost:8126"],
-            "attributes": {
-                "post.logout.redirect.uris": "http://localhost:3000/auth/login"
-            },
+            "attributes": {"post.logout.redirect.uris": "http://localhost:3000/auth/login"},
         },
     )
     put_response = SimpleNamespace(status_code=204, raise_for_status=lambda: None)
@@ -892,6 +965,58 @@ async def test_ensure_external_identity_provider_removes_legacy_mapper(monkeypat
 
 
 @pytest.mark.asyncio
+async def test_ensure_external_identity_provider_keeps_existing_idp_without_local_payload_config(
+    monkeypatch,
+):
+    service = KeycloakService()
+    KeycloakService.set_runtime_settings({})
+    monkeypatch.setenv("EXTERNAL_KEYCLOAK", "true")
+    monkeypatch.delenv("EXTERNAL_KEYCLOAK_CLIENT_ID", raising=False)
+    monkeypatch.delenv("EXTERNAL_KEYCLOAK_CLIENT_SECRET", raising=False)
+    monkeypatch.setattr(keycloak_service._settings, "EXTERNAL_KEYCLOAK_CLIENT_ID", None)
+    monkeypatch.setattr(keycloak_service._settings, "EXTERNAL_KEYCLOAK_CLIENT_SECRET", None)
+
+    get_response = SimpleNamespace(
+        status_code=200,
+        raise_for_status=lambda: None,
+        json=lambda: {"alias": "external-keycloak"},
+    )
+    request = AsyncMock(return_value=get_response)
+    monkeypatch.setattr(service, "_keycloak_request", request)
+    monkeypatch.setattr(
+        service,
+        "_ensure_enduser_default_realm_role",
+        AsyncMock(return_value={"status": "exists"}),
+    )
+    monkeypatch.setattr(
+        service,
+        "_remove_external_enduser_mapper",
+        AsyncMock(return_value={"status": "skipped"}),
+    )
+    monkeypatch.setattr(
+        service,
+        "_ensure_external_groups_mappers",
+        AsyncMock(return_value={"status": "skipped"}),
+    )
+    monkeypatch.setattr(
+        service,
+        "ensure_external_client_redirect_uri",
+        AsyncMock(return_value={"status": "skipped"}),
+    )
+
+    result = await service.ensure_external_identity_provider()
+
+    assert result["status"] == "exists"
+    assert result["sync"] == {
+        "status": "skipped",
+        "reason": "EXTERNAL_KEYCLOAK_CLIENT_ID must be configured",
+    }
+    assert request.await_args_list == [
+        call("GET", "/identity-provider/instances/external-keycloak")
+    ]
+
+
+@pytest.mark.asyncio
 async def test_remove_external_enduser_mapper_deletes_hardcoded_role_mapper(monkeypatch):
     service = KeycloakService()
     get_response = SimpleNamespace(
@@ -985,18 +1110,18 @@ async def test_set_client_role_replaces_existing_direct_client_role_mappings(mon
     monkeypatch.setattr(
         service,
         "get_user_client_roles",
-        AsyncMock(return_value=[{"name": "enduser"}, {"name": "enterprise-admin"}]),
+        AsyncMock(return_value=[{"name": "enduser"}, {"name": "access-admin"}]),
     )
     remove_client_role = AsyncMock(return_value=True)
     assign_client_role = AsyncMock(return_value=True)
     monkeypatch.setattr(service, "remove_client_role", remove_client_role)
     monkeypatch.setattr(service, "assign_client_role", assign_client_role)
 
-    assert await service.set_client_role("kc-user-id", "enterprise-admin") is True
+    assert await service.set_client_role("kc-user-id", "access-admin") is True
 
     remove_client_role.assert_awaited_once_with("kc-user-id", "enduser", client_id=None)
     assign_client_role.assert_awaited_once_with(
         "kc-user-id",
-        "enterprise-admin",
+        "access-admin",
         client_id=None,
     )

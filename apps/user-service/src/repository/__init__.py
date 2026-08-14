@@ -7,6 +7,7 @@ from .role_repository import CompositeRoleRepository
 from .system_setting_repository import SystemSettingRepository
 from .user_memory_repository import UserMemoryRepository
 from .user_repository import UserRepository
+from .user_role_repository import UserRoleRepository
 from .user_settings_repository import UserSettingsRepository
 
 __all__ = [
@@ -19,6 +20,7 @@ __all__ = [
     "SystemSettingRepository",
     "UserMemoryRepository",
     "UserRepository",
+    "UserRoleRepository",
     "UserSettingsRepository",
 ]
 

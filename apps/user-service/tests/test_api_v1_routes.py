@@ -23,12 +23,16 @@ def test_user_service_exposes_only_api_v1_routes_without_legacy_aliases() -> Non
         "/api/v1/auth/login",
         "/api/v1/auth/me",
         "/api/v1/users/me",
+        "/api/v1/users/me/roles",
         "/api/v1/users/me/settings/",
         "/api/v1/users/me/memories/",
         "/api/v1/users/me/api-keys/",
         "/api/v1/roles/",
+        "/api/v1/roles/{role_name}/effective-permissions",
+        "/api/v1/roles/{role_name}/inherited-roles",
         "/api/v1/coarse-roles/",
         "/api/v1/permissions/",
+        "/api/v1/permissions/coverage",
         "/api/v1/permissions/check",
         (
             "/api/v1/permissions/organizations/{org_id}/targets/{target_type}/{target_id}"
@@ -36,7 +40,12 @@ def test_user_service_exposes_only_api_v1_routes_without_legacy_aliases() -> Non
         ),
         "/api/v1/system-settings/keycloak",
         "/api/v1/internal/users/{target_id}/permissions",
+        "/api/v1/internal/users/{target_id}/effective-permissions",
+        "/api/v1/internal/users/{target_id}/roles",
         "/api/v1/internal/users/authorize",
+        "/api/v1/users/{target_id}/roles",
+        "/api/v1/users/{target_id}/roles/{role_id}",
+        "/api/v1/users/{target_id}/roles/{role_id}/primary",
     }
     legacy_paths = {
         "/health/",

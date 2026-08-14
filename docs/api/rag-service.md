@@ -141,10 +141,8 @@ The graph RAG subsystem builds knowledge graphs from vector collections using LL
 |---|---|
 | `collection:create`, `collection:delete`, `collection:list`, `collection:read`, `collection:update` | Collections |
 | `datasource:read` | Knowledge selector |
-| `document:create`, `document:delete`, `document:read`, `document:search`, `document:update` | Documents |
+| `document:create`, `document:delete`, `document:read`, `document:search` | Documents |
 | `graph:build`, `graph:delete`, `graph:read`, `graph:search` | Graph RAG |
-| `chunk:read`, `chunk:search` | Chunks |
-| `embedding:read` | Embeddings |
 
 ## Layer architecture
 

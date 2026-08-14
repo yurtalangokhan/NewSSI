@@ -26,9 +26,7 @@ def test_generate_dataset_builds_exact_deterministic_counts() -> None:
 
 
 def test_generated_hierarchy_has_valid_paths_and_respects_max_depth() -> None:
-    dataset = generate_dataset(
-        SeedConfig(organizations=80, users=0, max_depth=5, seed="hierarchy")
-    )
+    dataset = generate_dataset(SeedConfig(organizations=80, users=0, max_depth=5, seed="hierarchy"))
     organizations_by_id = {row["id"]: row for row in dataset.organizations}
 
     for organization in dataset.organizations:
@@ -44,20 +42,15 @@ def test_generated_hierarchy_has_valid_paths_and_respects_max_depth() -> None:
 
 
 def test_users_are_directly_and_evenly_assigned_with_managers() -> None:
-    dataset = generate_dataset(
-        SeedConfig(organizations=12, users=120, max_depth=3, seed="members")
-    )
+    dataset = generate_dataset(SeedConfig(organizations=12, users=120, max_depth=3, seed="members"))
     generated_user_ids = {row["id"] for row in dataset.users}
     generated_organization_ids = {row["id"] for row in dataset.organizations}
 
     assert {row["user_id"] for row in dataset.memberships} == generated_user_ids
-    assert all(
-        row["organization_id"] in generated_organization_ids for row in dataset.memberships
-    )
+    assert all(row["organization_id"] in generated_organization_ids for row in dataset.memberships)
     member_counts = {
         organization_id: sum(
-            membership["organization_id"] == organization_id
-            for membership in dataset.memberships
+            membership["organization_id"] == organization_id for membership in dataset.memberships
         )
         for organization_id in generated_organization_ids
     }
@@ -71,7 +64,9 @@ def test_generated_records_use_reserved_cleanup_markers() -> None:
 
     assert all(is_load_test_organization(row) for row in dataset.organizations)
     assert all(is_load_test_user_email(row["email"]) for row in dataset.users)
-    assert all(row["metadata_json"]["seed_marker"] == LOAD_TEST_MARKER for row in dataset.organizations)
+    assert all(
+        row["metadata_json"]["seed_marker"] == LOAD_TEST_MARKER for row in dataset.organizations
+    )
     assert all(row["email"].endswith(f"@{LOAD_TEST_EMAIL_DOMAIN}") for row in dataset.users)
     assert not is_load_test_organization(
         {

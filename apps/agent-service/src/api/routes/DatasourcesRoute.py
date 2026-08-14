@@ -76,6 +76,7 @@ _VALID_SYNC_COMBOS = {
 async def list_connectors(
     category: str | None = Query(None, description="Filter by category"),
     search: str | None = Query(None, description="Search by name"),
+    _user: AuthenticatedUser = Depends(require_permission("datasource:read")),
 ):
     """List all available Airbyte source connectors."""
     from service.AirbyteConnectorService import (
@@ -120,7 +121,10 @@ async def list_connectors(
 
 
 @router.get("/connectors/{connector_name}/spec", response_model=ConnectorSpecResponse)
-async def get_connector_specification(connector_name: str):
+async def get_connector_specification(
+    connector_name: str,
+    _user: AuthenticatedUser = Depends(require_permission("datasource:read")),
+):
     """Get the raw JSON Schema configuration specification for a connector.
 
     Returns the native connectionSpecification — NO flattening.
@@ -148,6 +152,7 @@ async def get_connector_specification(connector_name: str):
 async def validate_connector_configuration(
     connector_name: str,
     config: dict[str, Any],
+    _user: AuthenticatedUser = Depends(require_permission("datasource:create")),
 ):
     """Validate a connector configuration by testing the connection.
 
@@ -169,6 +174,7 @@ async def validate_connector_configuration(
 async def get_connector_streams(
     connector_name: str,
     config: dict[str, Any],
+    _user: AuthenticatedUser = Depends(require_permission("datasource:create")),
 ):
     """Get available streams for a configured connector."""
     from service.AirbyteConnectorService import get_available_streams
@@ -189,7 +195,9 @@ async def get_connector_streams(
 
 
 @router.get("", response_model=list[DataSourceResponse])
-async def list_datasources():
+async def list_datasources(
+    _user: AuthenticatedUser = Depends(require_permission("datasource:read")),
+):
     """List all configured data sources."""
     rows = await _get_controller().list_datasources()
 
@@ -367,7 +375,12 @@ async def create_datasource(
 
 
 @router.get("/{id}/details", response_model=DataSourceDetails)
-async def get_datasource_details(id: str, page: int = 1, page_size: int = 10):
+async def get_datasource_details(
+    id: str,
+    page: int = 1,
+    page_size: int = 10,
+    _user: AuthenticatedUser = Depends(require_permission("datasource:read")),
+):
     """Get detailed information about a data source with paginated documents."""
     ds_repo = DatasourceRepository()
 
@@ -792,7 +805,10 @@ async def sync_datasource(
 
 
 @router.get("/{id}/status")
-async def get_sync_status(id: str):
+async def get_sync_status(
+    id: str,
+    _user: AuthenticatedUser = Depends(require_permission("datasource:read")),
+):
     """Get current sync status for real-time progress tracking."""
     ds_repo = DatasourceRepository()
 
@@ -855,7 +871,11 @@ async def get_sync_status(id: str):
 
 
 @router.get("/{id}/sync-history")
-async def get_sync_history(id: str, limit: int = Query(20, ge=1, le=100)):
+async def get_sync_history(
+    id: str,
+    limit: int = Query(20, ge=1, le=100),
+    _user: AuthenticatedUser = Depends(require_permission("datasource:read")),
+):
     """Return recent sync job history for a data source from Airbyte."""
     from service.AirbyteApiClientService import get_airbyte_client
     from service.AirbyteMappingRepository import AirbyteMappingDB

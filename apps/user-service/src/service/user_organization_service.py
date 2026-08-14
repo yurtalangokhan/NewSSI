@@ -153,8 +153,6 @@ class UserOrganizationService:
         actor = await self.user_repo.get_by_id(actor_id)
         if not actor:
             return False
-        if getattr(actor, "is_superuser", False):
-            return True
         role_name = getattr(actor, "role", None)
         if role_name:
             role = await self.role_repo.get_by_name(role_name)

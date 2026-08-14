@@ -77,7 +77,6 @@
     "session_not_found": "Session not found"
   },
   "auth": {
-    "admin_required": "Admin role required",
     "not_authenticated": "Not authenticated",
     "keycloak_not_configured": "KEYCLOAK_ISSUER_URL is not configured",
     "signing_key_resolution_failed": "Unable to resolve token signing key: {error}",

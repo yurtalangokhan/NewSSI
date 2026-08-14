@@ -23,7 +23,9 @@ from sqlalchemy.engine import Connection
 from core.db.engine import _build_url  # noqa: E402
 
 # ── Import the shared metadata so Alembic can diff models vs DB ──
-from core.db.models import Base  # noqa: E402
+from core.db.models import Base, register_external_models  # noqa: E402
+
+register_external_models()
 
 # Alembic Config object — gives access to alembic.ini values.
 config = context.config
@@ -34,16 +36,25 @@ config = context.config
 VERSION_TABLE = "alembic_version_agent"
 
 # Interpret the config file for Python logging.
-if config.config_file_name is not None:
+if config.config_file_name is not None and config.attributes.get("configure_logger", True):
     fileConfig(config.config_file_name)
 
 # MetaData for 'autogenerate' support
 target_metadata = Base.metadata
 
+LANGGRAPH_RUNTIME_TABLES = {
+    "checkpoint_blobs",
+    "checkpoint_migrations",
+    "checkpoint_writes",
+    "checkpoints",
+    "store",
+    "store_migrations",
+}
+
 
 def exclude_embedding(obj, name, type_, reflected, compare_to):
-    """Exclude langchain_pg_embedding from autogenerate — PGVector manages it at runtime."""
-    if type_ == "table" and name == "langchain_pg_embedding":
+    """Exclude runtime-managed tables from Alembic autogenerate."""
+    if type_ == "table" and name in {"langchain_pg_embedding", *LANGGRAPH_RUNTIME_TABLES}:
         return False
     return True
 

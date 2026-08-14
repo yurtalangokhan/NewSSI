@@ -51,9 +51,9 @@ class MCPProviderModel(Base):
         default=False,
         server_default=text("FALSE"),
     )
-    description: Mapped[str] = mapped_column(
+    description: Mapped[str | None] = mapped_column(
         Text,
-        nullable=False,
+        nullable=True,
         default="",
         server_default=text("''"),
     )

@@ -32,7 +32,6 @@ def _permission(entity: str, action: str, label: str) -> PermissionDefinition:
 
 SERVICE_PERMISSIONS: list[PermissionDefinition] = [
     _permission("tool", "execute", "Execute Tools"),
-    _permission("tool", "read", "Read Tools"),
 ]
 
 

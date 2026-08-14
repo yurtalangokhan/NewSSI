@@ -92,7 +92,9 @@ class InMemoryLayoutRepository:
     async def get_all_positions(self) -> list[dict]:
         return [self.saved[organization_id] for organization_id in sorted(self.saved, key=str)]
 
-    async def get_existing_organization_ids(self, organization_ids: set[uuid.UUID]) -> set[uuid.UUID]:
+    async def get_existing_organization_ids(
+        self, organization_ids: set[uuid.UUID]
+    ) -> set[uuid.UUID]:
         return organization_ids & self.existing_ids
 
     async def get_writable_organization_ids(self, _actor_id: uuid.UUID) -> list[uuid.UUID]:
@@ -138,7 +140,15 @@ def test_layout_model_has_cascading_organization_key_and_bounded_coordinates() -
 
 def test_layout_migration_creates_the_same_cascading_bounded_table_contract() -> None:
     """The Alembic upgrade emits the layout table constraints declared by the model."""
-    migration_path = Path(__file__).parents[1] / "src" / "core" / "database" / "migrations" / "versions" / "0019_add_organization_layouts.py"
+    migration_path = (
+        Path(__file__).parents[1]
+        / "src"
+        / "core"
+        / "database"
+        / "migrations"
+        / "versions"
+        / "0019_add_organization_layouts.py"
+    )
     spec = importlib.util.spec_from_file_location("organization_layout_migration", migration_path)
     assert spec and spec.loader
     migration = importlib.util.module_from_spec(spec)

@@ -28,15 +28,6 @@ def service() -> UserOrganizationService:
     return instance
 
 
-async def test_superuser_can_manage_any_organization(service: UserOrganizationService) -> None:
-    """An enterprise superuser bypasses unit-manager scope checks."""
-    actor_id = uuid.uuid4()
-    org_id = uuid.uuid4()
-    service.user_repo.get_by_id = AsyncMock(return_value=SimpleNamespace(is_superuser=True))
-
-    assert await service.can_manage_organization(actor_id, org_id) is True
-
-
 async def test_admin_role_can_manage_any_organization(service: UserOrganizationService) -> None:
     """Database roles marked as admin bypass unit-manager scope checks."""
     actor_id = uuid.uuid4()
@@ -293,9 +284,7 @@ async def test_bulk_membership_route_returns_grouped_response(monkeypatch) -> No
         organizations_route, "get_organization_members_controller", lambda: controller
     )
 
-    response = await organizations_route.get_all_organization_members(
-        _user_id=str(uuid.uuid4())
-    )
+    response = await organizations_route.get_all_organization_members(_user_id=str(uuid.uuid4()))
 
     assert response.count == 1
     assert str(organization_id) in response.members_by_organization

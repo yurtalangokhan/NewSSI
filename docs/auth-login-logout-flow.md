@@ -26,11 +26,12 @@ The user-service response is controlled by:
 
 - `KEYCLOAK_ENABLED=true`
 - `EXTERNAL_KEYCLOAK=true`
-- external IdP settings such as `EXTERNAL_KEYCLOAK_ISSUER_URL`,
-  `EXTERNAL_KEYCLOAK_CLIENT_ID`, and `EXTERNAL_KEYCLOAK_CLIENT_SECRET`
 
 If `EXTERNAL_KEYCLOAK=false` is present in `apps/user-service/.env`, it
 overrides runtime settings and `/api/auth/type` reports `externalKeycloak:false`.
+The external issuer, realm, client ID, and client secret settings are not
+required for login page selection. They are only required when user-service
+provisions or updates the external IdP configuration in SP Keycloak.
 
 ## Standard OIDC Login
 
@@ -79,6 +80,13 @@ The form login flow is:
    Keycloak. `id_token` values are not written as cookies when they exceed the
    individual cookie size or total auth `Set-Cookie` header budget because large
    upstream identity claims can make the gateway reject the login response.
+
+The runtime login flow depends on the IdP alias configured in SP Keycloak. It
+doesn't require `EXTERNAL_KEYCLOAK_ISSUER_URL` or
+`EXTERNAL_KEYCLOAK_BASE_URL` plus `EXTERNAL_KEYCLOAK_REALM` to be present in
+user-service. When those settings are present, user-service can rewrite external
+IdP frontend URLs to backend URLs during server-side form login and can sync the
+IdP configuration through the system settings endpoint.
 
 Because this is a browser-submitted password form, the password appears in the
 browser's own Network request payload. That is expected for any password login

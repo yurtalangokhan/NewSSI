@@ -3,7 +3,7 @@
  */
 
 import { renderHook } from "@testing-library/react";
-import { PacketType } from "@/app/app/services/streamingModels";
+import { Packet, PacketType } from "@/app/app/services/streamingModels";
 import { useTimelineUIState, TimelineUIState } from "./useTimelineUIState";
 
 describe("useTimelineUIState", () => {
@@ -25,20 +25,25 @@ describe("useTimelineUIState", () => {
   };
 
   test("does NOT show Done step when thinking is still actively streaming", () => {
+    const packets: Packet[] = [
+      {
+        placement: { turn_index: 0, tab_index: 0 },
+        obj: { type: "reasoning_start" },
+      },
+      {
+        placement: { turn_index: 0, tab_index: 0 },
+        obj: {
+          type: "reasoning_delta",
+          reasoning: "Thinking in progress...",
+        },
+      },
+    ];
+
     const activeReasoningStep = {
       key: "0-0",
       turnIndex: 0,
       tabIndex: 0,
-      packets: [
-        {
-          placement: { turn_index: 0, tab_index: 0 },
-          obj: { type: PacketType.REASONING_START },
-        },
-        {
-          placement: { turn_index: 0, tab_index: 0 },
-          obj: { type: PacketType.REASONING_DELTA, reasoning: "Thinking in progress..." },
-        },
-      ],
+      packets,
     };
 
     const { result } = renderHook(() =>
@@ -54,24 +59,26 @@ describe("useTimelineUIState", () => {
   });
 
   test("shows Done step once thinking has finished (SECTION_END received)", () => {
+    const packets: Packet[] = [
+      {
+        placement: { turn_index: 0, tab_index: 0 },
+        obj: { type: "reasoning_start" },
+      },
+      {
+        placement: { turn_index: 0, tab_index: 0 },
+        obj: { type: "reasoning_delta", reasoning: "Thinking done." },
+      },
+      {
+        placement: { turn_index: 0, tab_index: 0 },
+        obj: { type: "section_end" },
+      },
+    ];
+
     const completedReasoningStep = {
       key: "0-0",
       turnIndex: 0,
       tabIndex: 0,
-      packets: [
-        {
-          placement: { turn_index: 0, tab_index: 0 },
-          obj: { type: PacketType.REASONING_START },
-        },
-        {
-          placement: { turn_index: 0, tab_index: 0 },
-          obj: { type: PacketType.REASONING_DELTA, reasoning: "Thinking done." },
-        },
-        {
-          placement: { turn_index: 0, tab_index: 0 },
-          obj: { type: PacketType.SECTION_END },
-        },
-      ],
+      packets,
     };
 
     const { result } = renderHook(() =>

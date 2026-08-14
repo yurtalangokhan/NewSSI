@@ -306,8 +306,6 @@ class AuthService:
         username = user_data.get("username")
         role = user_data.get("role")
         roles = [str(role).lower()] if role else []
-        if user_data.get("is_superuser") and "admin" not in roles:
-            roles.append("admin")
 
         claims = {
             "sub": user_id,
@@ -443,20 +441,9 @@ class AuthService:
         elif not full_name and given_name:
             full_name = f"{given_name} {family_name}".strip() if family_name else str(given_name)
 
-        role = "basic"
-        if any(r in {"admin", "super_admin", "superuser"} for r in user.roles):
-            role = "admin"
-        elif any(r in {"global_curator"} for r in user.roles):
-            role = "global_curator"
-        elif any(r in {"curator"} for r in user.roles):
-            role = "curator"
-        elif any(r in {"limited"} for r in user.roles):
-            role = "limited"
-
-        admin_email = (settings.KEYCLOAK_ADMIN_EMAIL or "").strip().lower()
-        email_lower = str(email).lower()
-        if role == "basic" and admin_email and email_lower == admin_email:
-            role = "admin"
+        role = "enduser"
+        if isinstance(user_service_user, dict) and user_service_user.get("role"):
+            role = str(user_service_user["role"])
 
         user_settings_dict: dict[str, Any] = {}
         try:
@@ -474,7 +461,6 @@ class AuthService:
             "email": str(email),
             "username": str(username) if username else None,
             "is_active": True,
-            "is_superuser": role == "admin",
             "is_verified": True,
             "role": role,
             "preferences": {
@@ -515,29 +501,7 @@ class AuthService:
     # ------------------------------------------------------------------
 
     async def get_keycloak_admin_token(self) -> str | None:
-        base_url = self.get_keycloak_base_url()
-        if not base_url:
-            return None
-
-        admin_realm = "master"
-        admin_user = "admin"
-        admin_password = "admin123"
-
-        token_url = f"{base_url}/realms/{admin_realm}/protocol/openid-connect/token"
-        payload = {
-            "grant_type": "password",
-            "client_id": "admin-cli",
-            "username": admin_user,
-            "password": admin_password,
-        }
-        try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                response = await client.post(token_url, data=payload)
-            if not response.is_success:
-                return None
-            return response.json().get("access_token")
-        except Exception:
-            return None
+        return None
 
     async def get_keycloak_user_profile(self, user_id: str) -> dict[str, Any] | None:
         issuer = self.get_keycloak_issuer()

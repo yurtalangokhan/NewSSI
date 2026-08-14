@@ -20,7 +20,6 @@ from pathlib import Path
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from src.config import get_settings
 from src.repository import (
     OrganizationRepository,
     ResourcePermissionRepository,
@@ -31,20 +30,20 @@ from src.repository import (
 async def fetch_legacy_agent_groups():
     """
     Fetch agent_groups from agent-service database.
-    
+
     Note: This requires access to agent-service database.
     You may need to adjust connection string.
     """
     # For now, return mock data structure
     # In production, you'd query the actual agent_groups table
-    
+
     # Example query:
     # SELECT id, name, description, user_ids, persona_ids, created_by
     # FROM agent_groups
     # ORDER BY id
-    
+
     print("⚠️  Using mock data. In production, connect to agent-service DB.")
-    
+
     # Mock data for testing
     return [
         {
@@ -69,14 +68,13 @@ async def fetch_legacy_agent_groups():
 async def migrate_agent_groups_to_organizations():
     """
     Main migration function.
-    
+
     Converts legacy agent_groups to:
     - Organizations (under root)
     - User-organization assignments
     - Resource permissions
     """
-    settings = get_settings()
-    
+
     org_repo = OrganizationRepository()
     user_org_repo = UserOrganizationRepository()
     perm_repo = ResourcePermissionRepository()
@@ -110,20 +108,20 @@ async def migrate_agent_groups_to_organizations():
 
     # Step 3: Migrate each group
     print("Step 3: Migrating groups...\n")
-    
+
     for group in legacy_groups:
         print(f"Processing: {group['name']} (ID: {group['id']})")
-        
+
         try:
             # Create organization code
             org_code = f"MIGRATED_AG_{group['id']}"
             org_name = f"{group['name']} (Migrated)"
-            
+
             # Check if already migrated
             existing_org = await org_repo.get_by_code(org_code)
-            
+
             if existing_org:
-                print(f"  ⚠️  Already migrated, skipping...")
+                print("  ⚠️  Already migrated, skipping...")
                 stats["organizations_skipped"] += 1
                 org = existing_org
             else:
@@ -145,16 +143,14 @@ async def migrate_agent_groups_to_organizations():
             # Assign users to organization
             user_ids = group.get("user_ids", [])
             print(f"  Assigning {len(user_ids)} users...")
-            
+
             for user_id_str in user_ids:
                 try:
                     user_uuid = uuid.UUID(user_id_str)
-                    
+
                     # Check if already assigned
-                    existing = await user_org_repo.get_by_user_and_org(
-                        user_uuid, org["id"]
-                    )
-                    
+                    existing = await user_org_repo.get_by_user_and_org(user_uuid, org["id"])
+
                     if not existing:
                         await user_org_repo.create(
                             user_id=user_uuid,
@@ -165,7 +161,7 @@ async def migrate_agent_groups_to_organizations():
                         )
                         stats["users_assigned"] += 1
                         print(f"    ✓ Assigned user: {user_id_str[:8]}...")
-                        
+
                 except ValueError as e:
                     error_msg = f"Invalid user_id {user_id_str}: {e}"
                     stats["errors"].append(error_msg)
@@ -174,14 +170,14 @@ async def migrate_agent_groups_to_organizations():
             # Create resource permissions for agents
             persona_ids = group.get("persona_ids", [])
             print(f"  Creating permissions for {len(persona_ids)} agents...")
-            
+
             for persona_id in persona_ids:
                 try:
                     # Check if permission already exists
                     existing_perm = await perm_repo.get_by_org_resource(
                         org["id"], "agent", str(persona_id)
                     )
-                    
+
                     if not existing_perm:
                         await perm_repo.create(
                             resource_type="agent",
@@ -195,7 +191,7 @@ async def migrate_agent_groups_to_organizations():
                         )
                         stats["permissions_created"] += 1
                         print(f"    ✓ Permission granted for agent: {persona_id}")
-                        
+
                 except Exception as e:
                     error_msg = f"Failed to create permission for persona {persona_id}: {e}"
                     stats["errors"].append(error_msg)
@@ -225,7 +221,7 @@ async def migrate_agent_groups_to_organizations():
         for error in stats["errors"][:10]:  # Show first 10
             print(f"  - {error}")
         if len(stats["errors"]) > 10:
-            print(f"  ... and {len(stats["errors"]) - 10} more")
+            print(f"  ... and {len(stats['errors']) - 10} more")
 
     print("\n✓ Migration completed!")
     print("\nNext steps:")
@@ -288,23 +284,24 @@ async def validate_migration():
 
 if __name__ == "__main__":
     print("\n🔄 Starting legacy agent_groups migration...\n")
-    
+
     try:
         asyncio.run(migrate_agent_groups_to_organizations())
-        
+
         # Ask user if they want to run validation
         print("\n" + "-" * 80)
         response = input("Run validation? (y/n): ").strip().lower()
         if response == "y":
             asyncio.run(validate_migration())
-        
+
         print("\n✅ Migration script completed!")
-        
+
     except KeyboardInterrupt:
         print("\n\n⚠️  Migration interrupted by user")
         sys.exit(1)
     except Exception as e:
         print(f"\n❌ Migration failed: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)

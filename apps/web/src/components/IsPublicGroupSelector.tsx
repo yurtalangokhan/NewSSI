@@ -45,11 +45,8 @@ export const IsPublicGroupSelector = <T extends IsPublicGroupSelectorFormType>({
 
   useEffect(() => {
     if (user && userGroups && isPaidEnterpriseFeaturesEnabled) {
-      if (!isAdmin && userGroups.length === 1) {
-        setShouldHideContent(true);
-        formikProps.setFieldValue("is_public", false);
-        formikProps.setFieldValue("groups", [userGroups[0]!.id]);
-      } else if (!isAdmin && userGroups.length === 0) {
+      const isUserAdmin = isAdmin;
+      if (!isUserAdmin && userGroups.length > 0) {
         formikProps.setFieldValue("is_public", false);
       }
       if (
@@ -66,7 +63,7 @@ export const IsPublicGroupSelector = <T extends IsPublicGroupSelectorFormType>({
         setShouldHideContent(false);
       }
     }
-  }, [user, userGroups, isPaidEnterpriseFeaturesEnabled, canManagePublicAccess]);
+  }, [user, userGroups, isPaidEnterpriseFeaturesEnabled]);
 
   if (userGroupsIsLoading) {
     return <div>{tCommon("common.loading")}</div>;

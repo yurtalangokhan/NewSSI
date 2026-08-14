@@ -751,13 +751,12 @@ class KeycloakService(KeycloakBrokerMixin):
             return {"status": "skipped", "reason": "EXTERNAL_KEYCLOAK is disabled"}
 
         alias = self.get_external_keycloak_alias()
-        payload = self._external_idp_payload()
-
         existing_resp = await self._keycloak_request(
             "GET",
             f"/identity-provider/instances/{quote(alias, safe='')}",
         )
         if existing_resp.status_code == 404:
+            payload = self._external_idp_payload()
             resp = await self._keycloak_request(
                 "POST",
                 "/identity-provider/instances",
@@ -766,16 +765,24 @@ class KeycloakService(KeycloakBrokerMixin):
             if resp.status_code not in (200, 201, 204, 409):
                 resp.raise_for_status()
             action = "created"
+            sync_result: dict[str, str] = {"status": action}
         else:
             existing_resp.raise_for_status()
-            resp = await self._keycloak_request(
-                "PUT",
-                f"/identity-provider/instances/{quote(alias, safe='')}",
-                json=payload,
-            )
-            if resp.status_code not in (200, 204):
-                resp.raise_for_status()
-            action = "updated"
+            try:
+                payload = self._external_idp_payload()
+            except ValueError as exc:
+                action = "exists"
+                sync_result = {"status": "skipped", "reason": str(exc)}
+            else:
+                resp = await self._keycloak_request(
+                    "PUT",
+                    f"/identity-provider/instances/{quote(alias, safe='')}",
+                    json=payload,
+                )
+                if resp.status_code not in (200, 204):
+                    resp.raise_for_status()
+                action = "updated"
+                sync_result = {"status": action}
 
         default_role_result = await self._ensure_enduser_default_realm_role()
         mapper_result = await self._remove_external_enduser_mapper(alias)
@@ -784,6 +791,7 @@ class KeycloakService(KeycloakBrokerMixin):
         return {
             "status": action,
             "alias": alias,
+            "sync": sync_result,
             "default_role": default_role_result,
             "external_client": external_client_result,
             "mapper": mapper_result,
@@ -1896,6 +1904,7 @@ class KeycloakService(KeycloakBrokerMixin):
         if last_name:
             payload["lastName"] = last_name
 
+        created_new_user = False
         if user and user.get("id"):
             await self.update_user(str(user["id"]), {**user, **payload})
             keycloak_id = str(user["id"])
@@ -1907,13 +1916,15 @@ class KeycloakService(KeycloakBrokerMixin):
             if not created_id:
                 raise ValueError(t("keycloak.sp_user_create_failed"))
             keycloak_id = created_id
+            created_new_user = True
 
         await self.add_federated_identity(
             keycloak_id,
             external_user_id=external_subject,
             external_username=username,
         )
-        await self.set_realm_role(keycloak_id, "enduser")
+        if created_new_user:
+            await self.set_realm_role(keycloak_id, "enduser")
         profile = await self.get_user_profile(keycloak_id)
         return profile or {"id": keycloak_id, **payload}
 

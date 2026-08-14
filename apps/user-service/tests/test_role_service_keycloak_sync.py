@@ -4,89 +4,210 @@ from unittest.mock import AsyncMock
 import pytest
 
 from src.service.role_service import (
-    ALL_COARSE_ROLE_NAMES,
-    COARSE_SERVICE_ROLES,
     CompositeRoleService,
-    _coarse_roles_for_db_role,
 )
 
 
-def test_coarse_service_roles_has_all_known_services():
-    assert "user-service" in COARSE_SERVICE_ROLES
-    assert "agent-service" in COARSE_SERVICE_ROLES
-    assert "rag-service" in COARSE_SERVICE_ROLES
-    assert "tools-service" in COARSE_SERVICE_ROLES
+async def test_build_coarse_composite_children_produces_correct_format(monkeypatch):
+    import src.service.role_service as role_service_module
 
-
-def test_coarse_service_roles_has_realm_roles():
-    for svc in COARSE_SERVICE_ROLES:
-        assert "system-admin" in COARSE_SERVICE_ROLES[svc]
-        assert "enterprise-admin" in COARSE_SERVICE_ROLES[svc]
-        assert "enduser" in COARSE_SERVICE_ROLES[svc]
-
-
-def test_system_admin_has_admin_level_roles():
-    mapping = _coarse_roles_for_db_role("system-admin")
-    assert "user-admin" in mapping["user-service"]
-    assert "agent-admin" in mapping["agent-service"]
-    assert "rag-admin" in mapping["rag-service"]
-    assert "tool-admin" in mapping["tools-service"]
-
-
-def test_enterprise_admin_has_manager_level_roles():
-    mapping = _coarse_roles_for_db_role("enterprise-admin")
-    assert "user-manager" in mapping["user-service"]
-    assert "agent-manager" in mapping["agent-service"]
-    assert "rag-manager" in mapping["rag-service"]
-    assert "tool-user" in mapping["tools-service"]
-
-
-def test_enduser_has_enduser_level_roles():
-    mapping = _coarse_roles_for_db_role("enduser")
-    assert "enduser" in mapping["user-service"]
-    assert "agent-enduser" in mapping["agent-service"]
-    assert "rag-enduser" in mapping["rag-service"]
-    assert "tool-user" in mapping["tools-service"]
-
-
-def test_unknown_role_gets_enduser_fallback():
-    mapping = _coarse_roles_for_db_role("nonexistent-role")
-    assert mapping == _coarse_roles_for_db_role("enduser")
-
-
-def test_all_coarse_role_names_contains_all():
-    assert "user-admin" in ALL_COARSE_ROLE_NAMES
-    assert "user-manager" in ALL_COARSE_ROLE_NAMES
-    assert "agent-admin" in ALL_COARSE_ROLE_NAMES
-    assert "agent-manager" in ALL_COARSE_ROLE_NAMES
-    assert "agent-enduser" in ALL_COARSE_ROLE_NAMES
-    assert "rag-admin" in ALL_COARSE_ROLE_NAMES
-    assert "rag-manager" in ALL_COARSE_ROLE_NAMES
-    assert "rag-enduser" in ALL_COARSE_ROLE_NAMES
-    assert "tool-admin" in ALL_COARSE_ROLE_NAMES
-    assert "tool-user" in ALL_COARSE_ROLE_NAMES
-    assert "enduser" in ALL_COARSE_ROLE_NAMES
-
-
-async def test_build_coarse_composite_children_produces_correct_format():
     role_service = CompositeRoleService()
+    role_service.role_repo = SimpleNamespace(
+        get_by_name=AsyncMock(
+            return_value=SimpleNamespace(name="member", role_ids=["account-self-service"])
+        )
+    )
+    coarse_service = SimpleNamespace(
+        repo=SimpleNamespace(
+            get_by_names=AsyncMock(
+                return_value=[
+                    SimpleNamespace(name="account-self-service", service_client="user-service")
+                ]
+            )
+        )
+    )
+    monkeypatch.setattr(role_service_module, "get_role_service", lambda: coarse_service)
 
-    child_roles = await role_service._build_coarse_composite_children("enduser")
+    child_roles = await role_service._build_coarse_composite_children("member")
 
     for child in child_roles:
         assert "name" in child
         assert child["clientRole"] is True
         assert "clientId" in child
-        assert child["clientId"] in COARSE_SERVICE_ROLES
 
 
-async def test_build_coarse_composite_children_contains_tool_user():
+async def test_build_coarse_composite_children_contains_tool_user(monkeypatch):
+    import src.service.role_service as role_service_module
+
     role_service = CompositeRoleService()
-    child_roles = await role_service._build_coarse_composite_children("enduser")
+    role_service.role_repo = SimpleNamespace(
+        get_by_name=AsyncMock(
+            return_value=SimpleNamespace(
+                name="member",
+                role_ids=["tooling-user", "agent-workspace-user", "knowledge-search-user"],
+            )
+        )
+    )
+    coarse_service = SimpleNamespace(
+        repo=SimpleNamespace(
+            get_by_names=AsyncMock(
+                return_value=[
+                    SimpleNamespace(name="tooling-user", service_client="tools-service"),
+                    SimpleNamespace(name="agent-workspace-user", service_client="agent-service"),
+                    SimpleNamespace(name="knowledge-search-user", service_client="rag-service"),
+                ]
+            )
+        )
+    )
+    monkeypatch.setattr(role_service_module, "get_role_service", lambda: coarse_service)
+
+    child_roles = await role_service._build_coarse_composite_children("member")
     names = [r["name"] for r in child_roles]
-    assert "tool-user" in names
-    assert "agent-enduser" in names
-    assert "rag-enduser" in names
+    assert "tooling-user" in names
+    assert "agent-workspace-user" in names
+    assert "knowledge-search-user" in names
+
+
+async def test_build_coarse_composite_children_has_no_role_name_fallback():
+    role_service = CompositeRoleService()
+    role_service.role_repo = SimpleNamespace(
+        get_by_name=AsyncMock(return_value=SimpleNamespace(name="legacy-admin", role_ids=[]))
+    )
+
+    assert await role_service._build_coarse_composite_children("legacy-admin") == []
+
+
+async def test_build_coarse_composite_children_uses_db_service_client(monkeypatch):
+    import src.service.role_service as role_service_module
+
+    role_service = CompositeRoleService()
+    role_service.role_repo = SimpleNamespace(
+        get_by_name=AsyncMock(
+            return_value=SimpleNamespace(name="analyst", role_ids=["custom-tool-bundle"])
+        )
+    )
+    coarse_service = SimpleNamespace(
+        repo=SimpleNamespace(
+            get_by_names=AsyncMock(
+                return_value=[
+                    SimpleNamespace(name="custom-tool-bundle", service_client="tools-service")
+                ]
+            )
+        )
+    )
+    monkeypatch.setattr(role_service_module, "get_role_service", lambda: coarse_service)
+
+    child_roles = await role_service._build_coarse_composite_children("analyst")
+
+    assert child_roles == [
+        {
+            "name": "custom-tool-bundle",
+            "clientRole": True,
+            "clientId": "tools-service",
+        }
+    ]
+
+
+async def test_cleanup_permission_roles_preserves_db_feature_bundles(monkeypatch):
+    import src.service.role_service as role_service_module
+
+    role_service = CompositeRoleService()
+    role_service.keycloak = SimpleNamespace(
+        get_client_roles=AsyncMock(
+            return_value=[
+                {"name": "custom-tool-bundle"},
+                {"name": "permission-level-role"},
+            ]
+        ),
+        delete_client_role=AsyncMock(),
+    )
+    coarse_service = SimpleNamespace(
+        repo=SimpleNamespace(
+            get_all=AsyncMock(
+                return_value=[
+                    SimpleNamespace(
+                        name="custom-tool-bundle",
+                        service_client="tools-service",
+                    )
+                ]
+            )
+        )
+    )
+    monkeypatch.setattr(role_service_module, "get_role_service", lambda: coarse_service)
+
+    cleaned = await role_service._cleanup_permission_roles("tools-service")
+
+    assert cleaned == 1
+    role_service.keycloak.delete_client_role.assert_awaited_once_with(
+        "permission-level-role",
+        client_id="tools-service",
+    )
+
+
+@pytest.mark.asyncio
+async def test_sync_to_keycloak_invalidates_user_sessions(monkeypatch):
+    import src.repository as repository_module
+
+    role_service = CompositeRoleService()
+    role_service.role_repo = SimpleNamespace(
+        get_all=AsyncMock(
+            return_value=[
+                SimpleNamespace(
+                    name="enduser",
+                    description="End user",
+                    role_ids=["account-self-service"],
+                )
+            ]
+        ),
+        get_by_name=AsyncMock(
+            return_value=SimpleNamespace(
+                name="enduser",
+                role_ids=["account-self-service"],
+            )
+        ),
+    )
+    role_service.keycloak = SimpleNamespace(
+        is_enabled=lambda: True,
+        ensure_client=AsyncMock(return_value=False),
+        get_client_roles=AsyncMock(return_value=[]),
+        get_client_role=AsyncMock(return_value={"name": "account-self-service"}),
+        create_client_role=AsyncMock(return_value=True),
+        get_realm_role=AsyncMock(return_value={"id": "realm-role-id", "name": "enduser"}),
+        create_realm_role=AsyncMock(return_value=True),
+        get_realm_role_composites=AsyncMock(return_value=[]),
+        set_realm_role_composites=AsyncMock(return_value=True),
+        remove_permissions_protocol_mappers=AsyncMock(return_value={}),
+        set_realm_role=AsyncMock(return_value=True),
+        logout_user_sessions=AsyncMock(return_value=True),
+    )
+    coarse_service = SimpleNamespace(
+        list_service_clients=AsyncMock(return_value=["user-service"]),
+        repo=SimpleNamespace(
+            get_all=AsyncMock(return_value=[]),
+            get_by_names=AsyncMock(
+                return_value=[
+                    SimpleNamespace(
+                        name="account-self-service",
+                        service_client="user-service",
+                    )
+                ]
+            ),
+        ),
+    )
+    monkeypatch.setattr("src.service.role_service.get_role_service", lambda: coarse_service)
+
+    class FakeUserRepository:
+        async def get_all(self):
+            return [
+                SimpleNamespace(email="user@example.com", keycloak_id="kc-user", role="enduser")
+            ]
+
+    monkeypatch.setattr(repository_module, "UserRepository", FakeUserRepository)
+
+    result = await role_service.sync_to_keycloak()
+
+    assert result["user_sessions_invalidated"] == 1
+    role_service.keycloak.logout_user_sessions.assert_awaited_once_with("kc-user")
 
 
 async def test_build_coarse_composite_children_falls_back_when_role_ids_are_legacy_names():

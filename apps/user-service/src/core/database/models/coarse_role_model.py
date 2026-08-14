@@ -1,1 +1,1 @@
-# Deprecated - use role_model.py (RoleModel) or composite_role_model.py (CompositeRoleModel) instead
+# Deprecated. Migration 0011 renamed the historical coarse_roles table to roles.

@@ -38,8 +38,16 @@ from core.db.models.mcp_provider import MCPProviderModel
 from core.db.models.mcp_tool import MCPToolModel
 from core.db.models.persona import PersonaModel
 from core.db.models.project import ProjectModel
+from core.db.models.provider import ProviderModel, UserProviderConfigModel
 from core.db.models.schedule import SyncScheduleModel
 from core.db.models.thread import ThreadModel
+from core.db.models.user_memory import UserMemoryModel
+
+
+def register_external_models() -> None:
+    """Import ORM models that live outside ``core.db.models`` for Alembic."""
+    import agents.storage.models  # noqa: F401
+
 
 __all__ = [
     "Base",
@@ -57,4 +65,8 @@ __all__ = [
     "AgentToolsModel",
     "AgentGroupModel",
     "DocumentModel",
+    "ProviderModel",
+    "UserProviderConfigModel",
+    "UserMemoryModel",
+    "register_external_models",
 ]

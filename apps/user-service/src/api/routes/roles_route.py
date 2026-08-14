@@ -75,6 +75,15 @@ async def get_role_permissions(
     return await ctrl.get_role_permissions(role_name)
 
 
+@router.get("/{role_name}/effective-permissions")
+async def get_role_effective_permissions(
+    role_name: str,
+    _user_id: Annotated[str, Depends(require_permission("role:read"))],
+):
+    ctrl = get_composite_role_controller()
+    return await ctrl.get_effective_permissions(role_name)
+
+
 @router.put("/{role_name}/permissions")
 async def set_role_permissions(
     role_name: str,
@@ -94,6 +103,15 @@ async def get_role_role_ids(
     return await ctrl.get_role_role_ids(role_name)
 
 
+@router.get("/{role_name}/inherited-roles")
+async def get_role_inherited_roles(
+    role_name: str,
+    _user_id: Annotated[str, Depends(require_permission("role:read"))],
+):
+    ctrl = get_composite_role_controller()
+    return await ctrl.get_inherited_roles(role_name)
+
+
 @router.put("/{role_name}/role-ids")
 async def set_role_role_ids(
     role_name: str,
@@ -102,6 +120,16 @@ async def set_role_role_ids(
 ):
     ctrl = get_composite_role_controller()
     return await ctrl.set_role_role_ids(role_name, role_ids, user_id=user_id)
+
+
+@router.put("/{role_name}/inherited-roles")
+async def set_role_inherited_roles(
+    role_name: str,
+    role_ids: Annotated[list[str], Body(embed=True)],
+    user_id: Annotated[str, Depends(require_permission("role:manage"))],
+):
+    ctrl = get_composite_role_controller()
+    return await ctrl.set_inherited_roles(role_name, role_ids, user_id=user_id)
 
 
 @router.post("/sync-keycloak")

@@ -20,6 +20,7 @@ from src.schema.users import (
     UserInviteRequest,
     UserPasswordRequest,
     UserRoleRequest,
+    UserRolesAssignRequest,
     UserUpdateRequest,
 )
 
@@ -35,6 +36,11 @@ async def get_me(user_id: Annotated[str, Depends(require_auth)]):
 @router.get("/me/permissions")
 async def get_me_permissions(user_id: Annotated[str, Depends(require_auth)]):
     return await get_user_controller().get_user_permissions(uuid.UUID(user_id))
+
+
+@router.get("/me/roles")
+async def get_me_roles(user_id: Annotated[str, Depends(require_auth)]):
+    return await get_user_controller().list_user_roles(uuid.UUID(user_id))
 
 
 @router.patch("/me")
@@ -195,6 +201,30 @@ async def get_user_permissions_internal(
     return await get_user_controller().get_user_permissions(resolved_user_id)
 
 
+@internal_router.get("/{target_id}/effective-permissions")
+async def get_user_effective_permissions_internal(
+    target_id: str,
+    authenticated_user_id: Annotated[str, Depends(require_auth_or_internal_service_token)],
+):
+    resolved_user_id = await get_user_controller().authorize_target_user_id(
+        target_id,
+        authenticated_user_id,
+    )
+    return await get_user_controller().get_user_permissions(resolved_user_id)
+
+
+@internal_router.get("/{target_id}/roles")
+async def get_user_roles_internal(
+    target_id: str,
+    authenticated_user_id: Annotated[str, Depends(require_auth_or_internal_service_token)],
+):
+    resolved_user_id = await get_user_controller().authorize_target_user_id(
+        target_id,
+        authenticated_user_id,
+    )
+    return await get_user_controller().list_user_roles(resolved_user_id)
+
+
 @internal_router.post("/authorize")
 async def authorize_user_permission_internal(
     payload: Annotated[InternalAuthorizeRequest, Body()],
@@ -225,6 +255,54 @@ async def set_user_role(
     user_id: Annotated[str, Depends(require_permission("user:update"))],  # noqa: ARG001
 ):
     return await get_user_controller().set_user_role(uuid.UUID(target_id), payload.role)
+
+
+@router.get("/{target_id}/roles")
+async def list_user_roles(
+    target_id: str,
+    user_id: Annotated[str, Depends(require_permission("user:read"))],  # noqa: ARG001
+):
+    return await get_user_controller().list_user_roles(uuid.UUID(target_id))
+
+
+@router.post("/{target_id}/roles")
+async def assign_user_roles(
+    target_id: str,
+    payload: Annotated[UserRolesAssignRequest, Body()],
+    user_id: Annotated[str, Depends(require_permission("user:update"))],  # noqa: ARG001
+):
+    return await get_user_controller().assign_roles(
+        uuid.UUID(target_id),
+        payload.role_ids,
+        payload.primary_role_id,
+        actor_user_id=user_id,
+    )
+
+
+@router.delete("/{target_id}/roles/{role_id}")
+async def remove_user_role(
+    target_id: str,
+    role_id: str,
+    user_id: Annotated[str, Depends(require_permission("user:update"))],  # noqa: ARG001
+):
+    return await get_user_controller().remove_role(
+        uuid.UUID(target_id),
+        role_id,
+        actor_user_id=user_id,
+    )
+
+
+@router.post("/{target_id}/roles/{role_id}/primary")
+async def set_primary_user_role(
+    target_id: str,
+    role_id: str,
+    user_id: Annotated[str, Depends(require_permission("user:update"))],  # noqa: ARG001
+):
+    return await get_user_controller().set_primary_role(
+        uuid.UUID(target_id),
+        role_id,
+        actor_user_id=user_id,
+    )
 
 
 @router.post("/{target_id}/reset-password")

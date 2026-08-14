@@ -14,7 +14,6 @@ from service.AuthService import AuthenticatedUser, get_auth_service, get_primary
 from service.PersonaRepository import PersonaDB
 
 DEFAULT_USER_ID = "dev-user"
-ADMIN_ROLE_NAMES = {"admin", "system-admin", "enterprise-admin", "super_admin", "superuser"}
 logger = logging.getLogger(__name__)
 
 
@@ -231,8 +230,23 @@ class PersonaController(BaseController):
         return await AgentDefinitionRepository().get_by_persona_id(persona_id)
 
     @staticmethod
-    def _is_admin_user(user: AuthenticatedUser) -> bool:
-        return bool({role.lower() for role in user.roles} & ADMIN_ROLE_NAMES)
+    def _permission_user_id(user: AuthenticatedUser) -> str:
+        user_service_user = user.claims.get("user_service_user")
+        if isinstance(user_service_user, dict) and user_service_user.get("id"):
+            return str(user_service_user["id"])
+        return user.user_id
+
+    async def _can_manage_all_personas(self, user: AuthenticatedUser) -> bool:
+        if user.user_id in ("dev-user", "internal-service"):
+            return True
+
+        from service.AuthorizationClient import get_authorization_client
+
+        return await get_authorization_client().has_permission(
+            self._permission_user_id(user),
+            "persona:update",
+            user.access_token,
+        )
 
     @staticmethod
     def _group_persona_ids(groups: list[dict[str, Any]]) -> set[int]:
@@ -268,8 +282,9 @@ class PersonaController(BaseController):
         user: AuthenticatedUser,
         restricted_persona_ids: set[int],
         accessible_persona_ids: set[int],
+        can_manage_all_personas: bool,
     ) -> bool:
-        if self._is_admin_user(user):
+        if can_manage_all_personas:
             return True
 
         persona_id = int(persona["id"])
@@ -892,11 +907,13 @@ class PersonaController(BaseController):
                 restricted_persona_ids,
                 accessible_persona_ids,
             ) = await self._load_agent_group_visibility(user)
+            can_manage_all_personas = await self._can_manage_all_personas(user)
             if not self._can_access_persona(
                 persona,
                 user,
                 restricted_persona_ids,
                 accessible_persona_ids,
+                can_manage_all_personas,
             ):
                 self._raise_not_found("persona.not_found")
 
@@ -924,11 +941,13 @@ class PersonaController(BaseController):
             custom_personas = await PersonaDB.list_all(include_builtin=False)
             restricted_persona_ids: set[int] = set()
             accessible_persona_ids: set[int] = set()
+            can_manage_all_personas = False
             if user:
                 (
                     restricted_persona_ids,
                     accessible_persona_ids,
                 ) = await self._load_agent_group_visibility(user)
+                can_manage_all_personas = await self._can_manage_all_personas(user)
             visible_personas = [
                 persona
                 for persona in custom_personas
@@ -938,6 +957,7 @@ class PersonaController(BaseController):
                     user,
                     restricted_persona_ids,
                     accessible_persona_ids,
+                    can_manage_all_personas,
                 )
             ]
             owner_emails = await self._load_owner_emails(visible_personas)
@@ -972,17 +992,20 @@ class PersonaController(BaseController):
             custom_personas = await PersonaDB.list_all(include_builtin=False)
             restricted_persona_ids: set[int] = set()
             accessible_persona_ids: set[int] = set()
+            can_manage_all_personas = False
             if user:
                 (
                     restricted_persona_ids,
                     accessible_persona_ids,
                 ) = await self._load_agent_group_visibility(user)
+                can_manage_all_personas = await self._can_manage_all_personas(user)
             for persona in custom_personas:
                 if user and not self._can_access_persona(
                     persona,
                     user,
                     restricted_persona_ids,
                     accessible_persona_ids,
+                    can_manage_all_personas,
                 ):
                     continue
                 agents.append(await self._serialize_custom_persona_summary(persona))
@@ -1029,6 +1052,7 @@ class PersonaController(BaseController):
         restricted_persona_ids, accessible_persona_ids = await self._load_agent_group_visibility(
             user
         )
+        can_manage_all_personas = await self._can_manage_all_personas(user)
         options.extend(
             {
                 "id": persona["id"],
@@ -1041,6 +1065,7 @@ class PersonaController(BaseController):
                 user,
                 restricted_persona_ids,
                 accessible_persona_ids,
+                can_manage_all_personas,
             )
         )
         return options

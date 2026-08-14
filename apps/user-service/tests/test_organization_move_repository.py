@@ -98,4 +98,3 @@ async def test_move_organization_rejects_moving_to_descendant() -> None:
 
     with pytest.raises(ValueError, match="Cannot move organization to its own descendant"):
         await repository.move_organization(organization_id, descendant_id)
-

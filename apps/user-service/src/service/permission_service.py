@@ -23,6 +23,23 @@ class PermissionService:
     async def list_services(self) -> dict[str, int]:
         return await self.repo.count_by_service()
 
+    async def get_coverage(self) -> dict[str, Any]:
+        permissions = await self.repo.get_all()
+        features: dict[str, Any] = {}
+        for permission in permissions:
+            feature = permission.feature or "system"
+            feature_entry = features.setdefault(feature, {"entities": {}})
+            entity_entry = feature_entry["entities"].setdefault(
+                permission.entity,
+                {"actions": {}},
+            )
+            entity_entry["actions"][permission.action] = {
+                "permission": permission.name,
+                "service": permission.service,
+                "is_system": permission.is_system,
+            }
+        return {"features": features}
+
     def _permission_to_dict(self, permission) -> dict[str, Any]:
         return {
             "name": permission.name,
@@ -31,6 +48,7 @@ class PermissionService:
             "entity": permission.entity,
             "service": permission.service,
             "action": permission.action,
+            "feature": permission.feature,
             "is_system": permission.is_system,
         }
 

@@ -21,12 +21,12 @@ const ImpersonateSchema = Yup.object().shape({
 export default function ImpersonatePage() {
   const { t } = useTranslation();
   const router = useRouter();
-  const { user, isCloudSuperuser } = useUser();
+  const { user, hasPermission } = useUser();
   if (!user) {
     redirect("/auth/login");
   }
 
-  if (!isCloudSuperuser) {
+  if (!hasPermission("user:impersonate")) {
     redirect("/app" as Route);
   }
 

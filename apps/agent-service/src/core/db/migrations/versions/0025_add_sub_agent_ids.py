@@ -8,13 +8,13 @@ This migration adds support for dynamic sub-agent references, enabling agents to
 reference other agents by ID instead of inlining their full configurations.
 
 Changes:
-- Add sub_agent_ids column (JSON array of UUIDs) to store references
+- Add sub_agent_ids column (JSONB array of UUIDs) to store references
 - Add sub_agent_config_version column (INT) for cache validation
 - Create index on sub_agent_ids for fast lookups (GIN for PostgreSQL)
 """
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
@@ -32,7 +32,7 @@ def upgrade() -> None:
             "agent_definitions",
             sa.Column(
                 "sub_agent_ids",
-                postgresql.JSON(),
+                postgresql.JSONB(),
                 nullable=False,
                 server_default="[]",
             ),

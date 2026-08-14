@@ -97,7 +97,6 @@ class AuthService:
                 "role": role,
                 "is_active": user.get("is_active"),
                 "is_verified": user.get("is_verified"),
-                "is_superuser": user.get("is_superuser"),
                 "groups": user.get("groups", []) or [],
             },
         }
@@ -125,7 +124,6 @@ class AuthService:
                 "role": role,
                 "is_active": user.is_active,
                 "is_verified": user.is_verified,
-                "is_superuser": user.is_superuser,
                 "groups": getattr(user, "groups", []) or [],
             },
         }
@@ -162,7 +160,6 @@ class AuthService:
                 "role": normalize_user_role(user.role),
                 "is_active": user.is_active,
                 "is_verified": user.is_verified,
-                "is_superuser": user.is_superuser,
                 "groups": getattr(user, "groups", []) or [],
             },
         }
@@ -190,11 +187,8 @@ class AuthService:
         ).strip()
         first_name = (claims.get("given_name") or "").strip() or None
         last_name = (claims.get("family_name") or "").strip() or None
-        role_claims = self._extract_roles_from_claims(claims)
-        role = self._resolve_role(role_claims)
         is_external_user = await self._is_external_keycloak_user(keycloak_id)
-        if is_external_user:
-            role = "enduser"
+        role_update = await self._default_role_update_for_new_user(keycloak_id)
 
         user = await self.user_repo.upsert_by_keycloak_id(
             keycloak_id,
@@ -202,18 +196,12 @@ class AuthService:
             username=user_username,
             first_name=first_name,
             last_name=last_name,
-            role=role,
             groups=self._extract_groups_from_claims(claims),
             is_active=True,
             is_verified=True,
             is_external_keycloak_user=is_external_user,
+            **role_update,
         )
-
-        bootstrap_admin_email = (
-            _settings.KEYCLOAK_BOOTSTRAP_ADMIN_EMAIL or _settings.KEYCLOAK_ADMIN_EMAIL
-        )
-        if bootstrap_admin_email and user_email == bootstrap_admin_email:
-            user = await self.user_repo.update(user.id, is_superuser=True, role="system-admin")
 
         return await self._build_oidc_login_response(user, token_data)
 
@@ -250,11 +238,11 @@ class AuthService:
             username=user_username,
             first_name=first_name,
             last_name=last_name,
-            role="enduser",
             groups=groups,
             is_active=True,
             is_verified=True,
             is_external_keycloak_user=True,
+            **await self._default_role_update_for_new_user(keycloak_id),
         )
 
     async def logout(
@@ -392,7 +380,10 @@ class AuthService:
 
         # 4. External Keycloak fallback — userinfo against external IdP
         if self._external_keycloak_enabled():
-            external_user_info = await self.keycloak.get_external_user_info(token)
+            try:
+                external_user_info = await self.keycloak.get_external_user_info(token)
+            except ValueError:
+                return None
             if external_user_info:
                 user = await self._upsert_external_user_from_claims(external_user_info)
                 return {
@@ -462,11 +453,8 @@ class AuthService:
             first_name = (claims.get("given_name") or "").strip() or None
             last_name = (claims.get("family_name") or "").strip() or None
 
-            role_claims = self._extract_roles_from_claims(claims)
-            role = self._resolve_role(role_claims)
             is_external_user = await self._is_external_keycloak_user(keycloak_id)
-            if is_external_user:
-                role = "enduser"
+            role_update = await self._default_role_update_for_new_user(keycloak_id)
 
             user = await self.user_repo.upsert_by_keycloak_id(
                 keycloak_id,
@@ -474,20 +462,12 @@ class AuthService:
                 username=username,
                 first_name=first_name,
                 last_name=last_name,
-                role=role,
                 groups=self._extract_groups_from_claims(claims),
                 is_active=True,
                 is_verified=True,
                 is_external_keycloak_user=is_external_user,
+                **role_update,
             )
-
-            bootstrap_admin_email = (
-                _settings.KEYCLOAK_BOOTSTRAP_ADMIN_EMAIL or _settings.KEYCLOAK_ADMIN_EMAIL
-            )
-            if bootstrap_admin_email and email == bootstrap_admin_email:
-                user = await self.user_repo.update(user.id, is_superuser=True, role="system-admin")
-            elif is_external_user:
-                await self.keycloak.set_realm_role(keycloak_id, "enduser")
 
             return await self._build_oidc_login_response(user, token_data)
 
@@ -516,16 +496,10 @@ class AuthService:
 
     @staticmethod
     def _resolve_role(roles: list[str]) -> str:
-        role_map = {
-            "admin": "system-admin",
-            "super_admin": "system-admin",
-            "superuser": "system-admin",
-            "realm-admin": "system-admin",
-        }
         for role in roles:
             normalized = role.strip().lower()
-            if normalized in role_map:
-                return role_map[normalized]
+            if normalized not in {"offline_access", "uma_authorization", "manage-account"}:
+                return normalized
         return "enduser"
 
     @staticmethod
@@ -540,6 +514,10 @@ class AuthService:
     def _external_keycloak_enabled(self) -> bool:
         is_external_keycloak = getattr(self.keycloak, "is_external_keycloak", None)
         return bool(is_external_keycloak()) if callable(is_external_keycloak) else False
+
+    async def _default_role_update_for_new_user(self, keycloak_id: str) -> dict[str, str]:
+        existing_user = await self.user_repo.get_by_keycloak_id(keycloak_id)
+        return {} if existing_user else {"role": "enduser"}
 
     async def _is_external_keycloak_user(self, keycloak_id: str) -> bool:
         if not self._external_keycloak_enabled():
