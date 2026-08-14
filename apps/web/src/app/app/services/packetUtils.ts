@@ -113,10 +113,14 @@ export function isFinalAnswerComplete(packets: Packet[]) {
       (packet) => packet.obj.type === PacketType.MESSAGE_DELTA
     );
     if (hasMessageDelta) {
-      console.log('[isFinalAnswerComplete] No MESSAGE_START but has MESSAGE_DELTA, returning true');
+      console.log(
+        "[isFinalAnswerComplete] No MESSAGE_START but has MESSAGE_DELTA, returning true"
+      );
       return true;
     }
-    console.log('[isFinalAnswerComplete] No MESSAGE_START found, returning false');
+    console.log(
+      "[isFinalAnswerComplete] No MESSAGE_START found, returning false"
+    );
     return false;
   }
 
@@ -129,9 +133,9 @@ export function isFinalAnswerComplete(packets: Packet[]) {
         packet.obj.type === PacketType.STOP) &&
       packet.placement.turn_index === messageStartPacket.placement.turn_index
   );
-  
+
   if (hasStop) {
-    console.log('[isFinalAnswerComplete] hasStop found, returning true');
+    console.log("[isFinalAnswerComplete] hasStop found, returning true");
     return true;
   }
 
@@ -142,13 +146,15 @@ export function isFinalAnswerComplete(packets: Packet[]) {
       packet.obj.type === PacketType.MESSAGE_DELTA &&
       packet.placement.turn_index === messageStartPacket.placement.turn_index
   );
-  
+
   if (hasMessageDelta) {
-    console.log('[isFinalAnswerComplete] has MESSAGE_DELTA, returning true');
+    console.log("[isFinalAnswerComplete] has MESSAGE_DELTA, returning true");
     return true;
   }
 
-  console.log('[isFinalAnswerComplete] No stop packet or delta found, returning false');
+  console.log(
+    "[isFinalAnswerComplete] No stop packet or delta found, returning false"
+  );
   return false;
 }
 
@@ -214,7 +220,9 @@ export function getReasoningTextContent(packets: Packet[]): string {
         return (packet.obj as any).reasoning || "";
       }
       if (packet.obj.type === PacketType.REASONING_START) {
-        return (packet.obj as any).reasoning || (packet.obj as any).content || "";
+        return (
+          (packet.obj as any).reasoning || (packet.obj as any).content || ""
+        );
       }
       return "";
     })

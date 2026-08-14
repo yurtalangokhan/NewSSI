@@ -115,7 +115,10 @@ class FileTools(BaseToolCategory):
 
     @property
     def description(self) -> str:
-        return t("categories.file_operations.description", default="File read, write, and directory listing")
+        return t(
+            "categories.file_operations.description",
+            default="File read, write, and directory listing",
+        )
 
     @property
     def label(self) -> str:

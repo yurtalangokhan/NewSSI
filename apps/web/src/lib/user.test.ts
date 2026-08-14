@@ -69,9 +69,7 @@ describe("login requests send the app's selected language", () => {
     await basicLogin("user", "pass");
 
     const [, init] = fetchMock().mock.calls[0]!;
-    expect((init?.headers as Record<string, string>)["X-Language"]).toBe(
-      "tr"
-    );
+    expect((init?.headers as Record<string, string>)["X-Language"]).toBe("tr");
   });
 
   it("externalKeycloakLogin sends X-Language matching the app's i18n language", async () => {
@@ -84,9 +82,7 @@ describe("login requests send the app's selected language", () => {
     await externalKeycloakLogin("user", "pass");
 
     const [, init] = fetchMock().mock.calls[0]!;
-    expect((init?.headers as Record<string, string>)["X-Language"]).toBe(
-      "tr"
-    );
+    expect((init?.headers as Record<string, string>)["X-Language"]).toBe("tr");
   });
 
   it("ldapLogin sends X-Language matching the app's i18n language", async () => {
@@ -99,8 +95,6 @@ describe("login requests send the app's selected language", () => {
     await ldapLogin("user", "pass");
 
     const [, init] = fetchMock().mock.calls[0]!;
-    expect((init?.headers as Record<string, string>)["X-Language"]).toBe(
-      "tr"
-    );
+    expect((init?.headers as Record<string, string>)["X-Language"]).toBe("tr");
   });
 });

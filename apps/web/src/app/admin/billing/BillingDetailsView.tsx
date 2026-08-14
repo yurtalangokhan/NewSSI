@@ -256,7 +256,9 @@ function SubscriptionCard({
               rightIcon={SvgArrowRight}
               disabled={isReconnecting}
             >
-              {isReconnecting ? t("connectingButton") : t("connectToStripeButton")}
+              {isReconnecting
+                ? t("connectingButton")
+                : t("connectToStripeButton")}
             </Button>
           ) : (
             <Button

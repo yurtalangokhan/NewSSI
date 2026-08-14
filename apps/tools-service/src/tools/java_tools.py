@@ -36,7 +36,10 @@ class JavaTools(BaseToolCategory):
 
     @property
     def description(self) -> str:
-        return t("categories.java.description", default="Run JAR files, compile and execute Java code, syntax checking")
+        return t(
+            "categories.java.description",
+            default="Run JAR files, compile and execute Java code, syntax checking",
+        )
 
     @property
     def label(self) -> str:

@@ -118,7 +118,13 @@ export default function ActionCard({
           className
         )}
         role="article"
-        aria-label={ariaLabel || t("actionCard.ariaLabel", { defaultValue: "{{title}} action card", title })}
+        aria-label={
+          ariaLabel ||
+          t("actionCard.ariaLabel", {
+            defaultValue: "{{title}} action card",
+            title,
+          })
+        }
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >

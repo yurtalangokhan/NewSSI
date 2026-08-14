@@ -153,9 +153,7 @@ export default function CheckoutView({ onAdjustPlan }: CheckoutViewProps) {
       }
     } catch (err) {
       console.error("Error creating checkout session:", err);
-      setError(
-        err instanceof Error ? err.message : t("checkoutSessionFailed")
-      );
+      setError(err instanceof Error ? err.message : t("checkoutSessionFailed"));
     } finally {
       setIsSubmitting(false);
     }

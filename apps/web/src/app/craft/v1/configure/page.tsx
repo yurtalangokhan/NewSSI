@@ -389,7 +389,9 @@ export default function BuildConfigPage() {
                 onClick={handleUpdate}
                 disabled={!hasChanges || isUpdating || isPreProvisioning}
               >
-                {isUpdating || isPreProvisioning ? t("craft.updating") : t("craft.update")}
+                {isUpdating || isPreProvisioning
+                  ? t("craft.updating")
+                  : t("craft.update")}
               </Button>
             </div>
           }
@@ -534,7 +536,9 @@ export default function BuildConfigPage() {
                           }`}
                         >
                           <div className="flex items-center gap-2">
-                            <SimpleTooltip tooltip={t("craft.demoDatasetContains")}>
+                            <SimpleTooltip
+                              tooltip={t("craft.demoDatasetContains")}
+                            >
                               <span className="inline-flex items-center cursor-help">
                                 <SvgInfoSmall
                                   size={16}
@@ -542,7 +546,9 @@ export default function BuildConfigPage() {
                                 />
                               </span>
                             </SimpleTooltip>
-                            <Text mainUiAction>{t("craft.useDemoDataset")}</Text>
+                            <Text mainUiAction>
+                              {t("craft.useDemoDataset")}
+                            </Text>
                           </div>
                           <Switch
                             checked={pendingDemoData ?? demoDataEnabled}

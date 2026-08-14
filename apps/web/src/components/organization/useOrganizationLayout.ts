@@ -91,9 +91,7 @@ export function createOrganizationLayoutPayload(
   writableOrganizationIds: ReadonlySet<string>
 ): OrganizationLayoutPosition[] {
   const payload = Object.entries(positions)
-    .filter(([organizationId]) =>
-      writableOrganizationIds.has(organizationId)
-    )
+    .filter(([organizationId]) => writableOrganizationIds.has(organizationId))
     .map(([organization_id, { x, y }]) => ({ organization_id, x, y }));
   if (payload.length > MAX_ORGANIZATION_LAYOUT_POSITIONS) {
     throw new Error(
@@ -154,9 +152,7 @@ export function useOrganizationLayout({
   );
   const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const savePromiseRef = useRef<Promise<boolean> | undefined>(undefined);
-  const replacementPromiseRef = useRef<Promise<boolean> | undefined>(
-    undefined
-  );
+  const replacementPromiseRef = useRef<Promise<boolean> | undefined>(undefined);
   const failedReplacementRef = useRef<PositionMap | undefined>(undefined);
   const mountedRef = useRef(true);
 

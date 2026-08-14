@@ -25,8 +25,8 @@ function ScoreBadge({ score }: { score: number }) {
     pct >= 80
       ? "bg-status-success-subtle border-status-success text-status-success"
       : pct >= 50
-      ? "bg-status-warning-subtle border-status-warning text-status-warning"
-      : "bg-background-neutral-01 border-border-01 text-text-03";
+        ? "bg-status-warning-subtle border-status-warning text-status-warning"
+        : "bg-background-neutral-01 border-border-01 text-text-03";
 
   return (
     <span
@@ -125,7 +125,9 @@ export default function SearchPanel({ collectionId }: SearchPanelProps) {
       setHasSearched(true);
     } catch (e) {
       toast.error(
-        e instanceof Error ? e.message : t("admin.documentProcessing.searchFailed")
+        e instanceof Error
+          ? e.message
+          : t("admin.documentProcessing.searchFailed")
       );
     } finally {
       setIsSearching(false);

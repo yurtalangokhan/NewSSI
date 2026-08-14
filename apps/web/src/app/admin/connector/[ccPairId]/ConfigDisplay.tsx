@@ -126,9 +126,7 @@ function ConfigItem({ label, value, onEdit }: ConfigItemProps) {
             leftIcon={isExpanded ? SvgChevronUp : SvgChevronDown}
             onClick={() => setIsExpanded(!isExpanded)}
           >
-            {isExpanded
-              ? t("showLess")
-              : t("showAll", { count: value.length })}
+            {isExpanded ? t("showLess") : t("showAll", { count: value.length })}
           </Button>
         )}
         {onEdit && (

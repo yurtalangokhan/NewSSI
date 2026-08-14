@@ -57,11 +57,26 @@ const isWordFormat = (fileType: string) =>
   );
 
 const isImageFormat = (fileType: string) => fileType.startsWith("image/");
+const isJsonFormat = (mimeType: string) =>
+  mimeType.startsWith("application/json");
 
 const isPptxFormat = (fileType: string) =>
   fileType.startsWith(
     "application/vnd.openxmlformats-officedocument.presentationml.presentation"
   );
+const isImageFormat = (mimeType: string) =>
+  ["image/png", "image/jpeg", "image/gif", "image/svg+xml"].some((f) =>
+    mimeType.startsWith(f)
+  );
+
+const isSupportedIframeFormat = (mimeType: string) =>
+  [
+    "application/pdf",
+    "image/png",
+    "image/jpeg",
+    "image/gif",
+    "image/svg+xml",
+  ].some((f) => mimeType.startsWith(f));
 
 export default function TextViewModal({
   presentingDocument,
@@ -168,12 +183,20 @@ export default function TextViewModal({
               contentType = "text/csv";
             } else if (lowerName.endsWith(".json")) {
               contentType = "application/json";
-            } else if (lowerName.endsWith(".docx") || lowerName.endsWith(".doc")) {
+            } else if (
+            lowerName.endsWith(".docx") ||
+            lowerName.endsWith(".doc")
+          ) {
               contentType =
-                "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-            } else if (lowerName.endsWith(".pptx") || lowerName.endsWith(".ppt")) {
+               
+              "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+            } else if (
+            lowerName.endsWith(".pptx") ||
+            lowerName.endsWith(".ppt")
+          ) {
               contentType =
-                "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+               
+              "application/vnd.openxmlformats-officedocument.presentationml.presentation";
             }
           }
           setFileType(contentType);
@@ -289,7 +312,10 @@ export default function TextViewModal({
                 style={{ transform: `scale(${zoom / 100})` }}
               >
                 {isWordFormat(fileType) && fileBlob ? (
-                  <ScrollIndicatorDiv className="flex-1 min-h-0" variant="shadow">
+                  <ScrollIndicatorDiv
+                    className="flex-1 min-h-0"
+                    variant="shadow"
+                  >
                     <DocxPreview blob={fileBlob} className="w-full" />
                   </ScrollIndicatorDiv>
                 ) : isImageFormat(fileType) ? (

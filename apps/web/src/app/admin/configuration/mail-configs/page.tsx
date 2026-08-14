@@ -323,7 +323,9 @@ export default function Page() {
                       setField("security", value as MailSecurity)
                     }
                   >
-                    <InputSelect.Trigger placeholder={t("securityPlaceholder")} />
+                    <InputSelect.Trigger
+                      placeholder={t("securityPlaceholder")}
+                    />
                     <InputSelect.Content>
                       <InputSelect.Item value="starttls">
                         STARTTLS
@@ -344,7 +346,9 @@ export default function Page() {
               </InputLayouts.Vertical>
 
               <InputLayouts.Vertical
-                title={isEditing ? t("passwordLabelOptional") : t("passwordLabel")}
+                title={
+                  isEditing ? t("passwordLabelOptional") : t("passwordLabel")
+                }
                 description={
                   isEditing ? t("passwordLeaveBlankHint") : undefined
                 }

@@ -239,7 +239,9 @@ export default function ProviderCreationModal({
                   {isProxy && (
                     <TextFormField
                       name="model_name"
-                      label={`${t("modelNameLabel")} ${isProxy ? t("modelNameForTestingSuffix") : ""}`}
+                      label={`${t("modelNameLabel")} ${
+                        isProxy ? t("modelNameForTestingSuffix") : ""
+                      }`}
                       placeholder={t("modelNameLabel")}
                       type="text"
                     />
@@ -273,9 +275,7 @@ export default function ProviderCreationModal({
                         onChange={(e) => handleFileUpload(e, setFieldValue)}
                         className="text-lg w-full p-1"
                       />
-                      {fileName && (
-                        <p>{t("uploadedFileText", { fileName })}</p>
-                      )}
+                      {fileName && <p>{t("uploadedFileText", { fileName })}</p>}
                     </>
                   ) : (
                     <TextFormField

@@ -17,7 +17,8 @@ describe("getAgentAvailabilityIssues", () => {
           {
             component: "mcp_tool",
             status: "error",
-            message: "MCP tool 'slack_search' is selected but is not available.",
+            message:
+              "MCP tool 'slack_search' is selected but is not available.",
           },
         ],
       })

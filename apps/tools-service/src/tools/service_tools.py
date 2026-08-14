@@ -20,7 +20,10 @@ class ServiceTools(BaseToolCategory):
 
     @property
     def description(self) -> str:
-        return t("categories.service_management.description", default="Docker and systemd service restart operations")
+        return t(
+            "categories.service_management.description",
+            default="Docker and systemd service restart operations",
+        )
 
     @property
     def label(self) -> str:

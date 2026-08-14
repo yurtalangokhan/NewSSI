@@ -145,9 +145,7 @@ describe("OpenAIOnboardingForm", () => {
     test("renders description", () => {
       render(<OpenAIOnboardingForm {...defaultProps} />);
 
-      expect(
-        screen.getByText(descriptionText)
-      ).toBeInTheDocument();
+      expect(screen.getByText(descriptionText)).toBeInTheDocument();
     });
 
     test("renders API key field", () => {

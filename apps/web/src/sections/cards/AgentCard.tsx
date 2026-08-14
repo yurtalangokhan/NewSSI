@@ -56,7 +56,10 @@ export default function AgentCard({ agent }: AgentCardProps) {
   const isDynamicAgent = !!agent.external_id || !!agent.is_dynamic;
   const routeAgentId = agent.external_id ?? agent.id;
   const pinned = useMemo(
-    () => pinnedAgents.some((pinnedAgent) => String(pinnedAgent.id) === String(agent.id)),
+    () =>
+      pinnedAgents.some(
+        (pinnedAgent) => String(pinnedAgent.id) === String(agent.id)
+      ),
     [agent.id, pinnedAgents]
   );
   const { user, isAdmin, isCurator } = useUser();
@@ -72,7 +75,8 @@ export default function AgentCard({ agent }: AgentCardProps) {
   const canEdit = isOwnedByUser || isAdmin;
   const shareAgentModal = useCreateModal();
   const agentViewerModal = useCreateModal();
-  const shouldLoadAgentDetail = shareAgentModal.isOpen || agentViewerModal.isOpen;
+  const shouldLoadAgentDetail =
+    shareAgentModal.isOpen || agentViewerModal.isOpen;
   const { agent: fullAgent, refresh: refreshAgent } = useAgent(
     shouldLoadAgentDetail ? agent.external_id ?? agent.id : null
   );
@@ -172,7 +176,9 @@ export default function AgentCard({ agent }: AgentCardProps) {
 
   const actionCount =
     agent.action_count ??
-    (agent.tools.length > 0 ? agent.tools.length : (agent.mcp_tools?.length ?? 0));
+    (agent.tools.length > 0
+      ? agent.tools.length
+      : agent.mcp_tools?.length ?? 0);
 
   return (
     <>
@@ -210,7 +216,7 @@ export default function AgentCard({ agent }: AgentCardProps) {
               </Button>
             }
           >
-            {t("agentsPage.deleteModalDescription")}
+            This agent will be permanently deleted. This action cannot be undone.
           </ConfirmationModalLayout>
         )}
       </deleteModal.Provider>
@@ -241,7 +247,6 @@ export default function AgentCard({ agent }: AgentCardProps) {
                         router.push(`/ee/agents/stats/${agent.id}` as Route)
                       )}
                       tooltip={t("agentsPage.viewAgentStatsTooltip")}
-                      aria-label={t("agentsPage.viewAgentStatsTooltip")}
                       className="hidden group-hover/AgentCard:flex"
                     />
                   )}
@@ -306,7 +311,11 @@ export default function AgentCard({ agent }: AgentCardProps) {
           <div className="bg-background-tint-01 p-1 flex flex-row items-end justify-between w-full">
             {/* Left side - creator and actions */}
             <div className="flex flex-col gap-1 py-1 px-2">
-              <AgentAvailabilityBadge agent={agent} showLabel className="w-fit" />
+              <AgentAvailabilityBadge
+                agent={agent}
+                showLabel
+                className="w-fit"
+              />
               <Content
                 icon={SvgUser}
                 title={ownerEmail}

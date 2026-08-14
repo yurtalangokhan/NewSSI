@@ -40,20 +40,13 @@ export const GENERATED_FILE_CATEGORY_ID = "generated-file";
 export const PACKET_CATEGORIES: ReadonlyArray<PacketCategory> = [
   {
     id: "memory",
-    types: new Set([
-      "long_term_memory_recall",
-      "long_term_memory_save",
-    ]),
+    types: new Set(["long_term_memory_recall", "long_term_memory_save"]),
     groupSuffix: "ltm",
     splitsFromOthers: true,
   },
   {
     id: "reasoning",
-    types: new Set([
-      "reasoning_start",
-      "reasoning_delta",
-      "reasoning_done",
-    ]),
+    types: new Set(["reasoning_start", "reasoning_delta", "reasoning_done"]),
     groupSuffix: "reasoning",
     splitsFromOthers: true,
   },

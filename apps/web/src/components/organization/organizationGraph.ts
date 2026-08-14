@@ -369,7 +369,8 @@ export function organizationTreeToFlowGraph(
         ? children.length
         : (organization as { children_count?: number }).children_count ?? 0;
     const hasChildren =
-      childCount > 0 || (organization as { has_children?: boolean }).has_children === true;
+      childCount > 0 ||
+      (organization as { has_children?: boolean }).has_children === true;
     const isSubtreeExpanded = isNodeSubtreeExpanded(
       organization.id,
       children.length,

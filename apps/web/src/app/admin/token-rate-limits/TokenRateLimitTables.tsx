@@ -93,10 +93,16 @@ export const TokenRateLimitTable = ({
         <TableHeader>
           <TableRow>
             <TableHead>{t("admin.tokenRateLimits.enabledHeader")}</TableHead>
-            {shouldRenderGroupName() && <TableHead>{t("admin.tokenRateLimits.groupNameHeader")}</TableHead>}
+            {shouldRenderGroupName() && (
+              <TableHead>
+                {t("admin.tokenRateLimits.groupNameHeader")}
+              </TableHead>
+            )}
             <TableHead>{t("admin.tokenRateLimits.timeWindowLabel")}</TableHead>
             <TableHead>{t("admin.tokenRateLimits.tokenBudgetLabel")}</TableHead>
-            {isAdmin && <TableHead>{t("admin.tokenRateLimits.deleteHeader")}</TableHead>}
+            {isAdmin && (
+              <TableHead>{t("admin.tokenRateLimits.deleteHeader")}</TableHead>
+            )}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -128,7 +134,9 @@ export const TokenRateLimitTable = ({
                           }
                         />
                         <p className="ml-2">
-                          {tokenRateLimit.enabled ? t("admin.tokenRateLimits.enabledStatus") : t("admin.tokenRateLimits.disabledStatus")}
+                          {tokenRateLimit.enabled
+                            ? t("admin.tokenRateLimits.enabledStatus")
+                            : t("admin.tokenRateLimits.disabledStatus")}
                         </p>
                       </div>
                     </div>
@@ -140,10 +148,14 @@ export const TokenRateLimitTable = ({
                   </TableCell>
                 )}
                 <TableCell>
-                  {t("admin.tokenRateLimits.periodHours", { count: tokenRateLimit.period_hours })}
+                  {t("admin.tokenRateLimits.periodHours", {
+                    count: tokenRateLimit.period_hours,
+                  })}
                 </TableCell>
                 <TableCell>
-                  {t("admin.tokenRateLimits.thousandTokens", { count: tokenRateLimit.token_budget })}
+                  {t("admin.tokenRateLimits.thousandTokens", {
+                    count: tokenRateLimit.token_budget,
+                  })}
                 </TableCell>
                 {isAdmin && (
                   <TableCell>

@@ -17,9 +17,12 @@ const en = {
       waitUpload: "Please wait for the content to upload",
       waitResponse: "Please wait for the response to complete",
       createSessionFailed: "Failed to create chat session",
-      resendFailed: "Failed to re-send message - please refresh the page and try again.",
-      filesStillUploading: "Files are still uploading. Please wait for upload to finish and try again.",
-      visionNotSupported: "The current model does not support image input. Please select a model with Vision support.",
+      resendFailed:
+        "Failed to re-send message - please refresh the page and try again.",
+      filesStillUploading:
+        "Files are still uploading. Please wait for upload to finish and try again.",
+      visionNotSupported:
+        "The current model does not support image input. Please select a model with Vision support.",
       loadSlackFailed: "Failed to load chat from Slack",
       feedbackSubmitFailed: "Failed to submit feedback - network error",
     },
@@ -51,8 +54,10 @@ const en = {
       selectButton: "Select",
       deleteAllButton: "Delete All",
       deleteAllChatsTitle: "Delete All Chats",
-      deleteAllChatsConfirmation_one: "Are you sure you want to delete all {{count}} chat session? This action cannot be undone.",
-      deleteAllChatsConfirmation_other: "Are you sure you want to delete all {{count}} chat sessions? This action cannot be undone.",
+      deleteAllChatsConfirmation_one:
+        "Are you sure you want to delete all {{count}} chat session? This action cannot be undone.",
+      deleteAllChatsConfirmation_other:
+        "Are you sure you want to delete all {{count}} chat sessions? This action cannot be undone.",
       deletingButton: "Deleting...",
       noSessionsYet: "No chat sessions yet",
       startNewConversationHint: "Start a new conversation to see it here",
@@ -70,7 +75,7 @@ const en = {
       recentSessions: "Recent Sessions",
       projects: "Projects",
       noMoreResults: "No more results",
-      createNewProjectWithName: "Create New Project \"{{name}}\"",
+      createNewProjectWithName: 'Create New Project "{{name}}"',
       sessionsFilter: "Sessions",
       projectsFilter: "Projects",
       selectAction: "Select",
@@ -137,12 +142,14 @@ const en = {
       projectFallback: "Project",
       deleteLabel: "Delete",
       deleteChatTitle: "Delete Chat",
-      deleteChatConfirm: "Are you sure you want to delete this chat? This action cannot be undone.",
+      deleteChatConfirm:
+        "Are you sure you want to delete this chat? This action cannot be undone.",
     },
     nrf: {
       openSettingsTooltip: "Open settings",
       turnOffTitle: "Turn off ATLAS new tab page?",
-      turnOffDescription: "You'll see your browser's default new tab page instead. You can turn it back on anytime in your ATLAS settings.",
+      turnOffDescription:
+        "You'll see your browser's default new tab page instead. You can turn it back on anytime in your ATLAS settings.",
       cancelButton: "Cancel",
       turnOffButton: "Turn off",
       welcomeTitle: "Welcome to ATLAS",
@@ -202,37 +209,45 @@ const en = {
         page1Title: "What is ATLAS Craft?",
         onyxCraftAlt: "ATLAS Craft",
         page1Body: "Beautiful dashboards, slides, and reports.",
-        page1BodyContinued: "Built by AI agents that know your world. Privately and securely.",
+        page1BodyContinued:
+          "Built by AI agents that know your world. Privately and securely.",
         page2Title: "Let's get started!",
         notSet: "Not set",
       },
       notAllowedModal: {
         title: "Custom Crafting Restricted",
-        description: "Unfortunately, connecting your own data to Craft requires admin permissions.",
-        createAccountHint: "Luckily, you can create a new ATLAS account to become an admin and craft with your own data!",
+        description:
+          "Unfortunately, connecting your own data to Craft requires admin permissions.",
+        createAccountHint:
+          "Luckily, you can create a new ATLAS account to become an admin and craft with your own data!",
         goBackButton: "Go Back",
         signingOutButton: "Signing out...",
         createAccountButton: "Create a new account",
       },
       noLlmProvidersModal: {
         title: "LLM Provider Required",
-        description: "ATLAS Craft requires an LLM provider to be configured, but only admins can set this up.",
-        adminHint: "Please ask your admin to configure an LLM provider, or create a new ATLAS account to become an admin yourself!",
+        description:
+          "ATLAS Craft requires an LLM provider to be configured, but only admins can set this up.",
+        adminHint:
+          "Please ask your admin to configure an LLM provider, or create a new ATLAS account to become an admin yourself!",
         goBackButton: "Go Back",
         signingOutButton: "Signing out...",
         createAccountButton: "Create a new account",
       },
       upgradePlanModal: {
         title: "You've reached your message limit",
-        weeklyLimitBody: "You've used all {{limit}} messages for this week. Your message limit will automatically reset at the start of each week, allowing you to continue crafting with ATLAS.",
-        totalLimitBody: "You've used all {{limit}} free messages available in your trial. You've reached the limit for your free account.",
+        weeklyLimitBody:
+          "You've used all {{limit}} messages for this week. Your message limit will automatically reset at the start of each week, allowing you to continue crafting with ATLAS.",
+        totalLimitBody:
+          "You've used all {{limit}} free messages available in your trial. You've reached the limit for your free account.",
         gotItButton: "Got it",
       },
       toggleWarningModal: {
         title: "Show all models?",
         recommendedModelPrefix: "We recommend using",
         recommendedModelSuffix: "for Crafting.",
-        capabilitiesWarning: "Other models may have reduced capabilities for code creation, data analysis, and artifact creation.",
+        capabilitiesWarning:
+          "Other models may have reduced capabilities for code creation, data analysis, and artifact creation.",
         showAllModelsButton: "Show All Models",
         keepRecommendedButton: "Keep Recommended",
       },
@@ -246,7 +261,8 @@ const en = {
       },
       comingSoonConnectors: {
         title: "Coming Soon",
-        description: "Don't see what you're looking for? Submit a connector request!",
+        description:
+          "Don't see what you're looking for? Submit a connector request!",
         submitRequestButton: "Submit a request",
       },
       outputPanel: {
@@ -289,7 +305,8 @@ const en = {
   auth: {
     welcomeHeading: "Welcome to {{appName}}",
     tagline: "Your AI platform for work",
-    emailVerifiedMessage: "Your email has been verified! Please sign in to continue.",
+    emailVerifiedMessage:
+      "Your email has been verified! Please sign in to continue.",
     orDivider: "or",
     noAccountPrompt: "Don't have an account?",
     createAccountLink: "Create an account",
@@ -375,14 +392,18 @@ const en = {
     },
     verifyEmail: {
       verifying: "Verifying your email...",
-      missingToken: "Missing verification token. Try requesting a new verification email.",
-      verificationFailed: "Failed to verify your email - {{error}}. Please try requesting a new verification email.",
-      failed: "Failed to verify your email - {{detail}}. Please try requesting a new verification email.",
+      missingToken:
+        "Missing verification token. Try requesting a new verification email.",
+      verificationFailed:
+        "Failed to verify your email - {{error}}. Please try requesting a new verification email.",
+      failed:
+        "Failed to verify your email - {{detail}}. Please try requesting a new verification email.",
       getNewEmailLink: "Get new verification email",
       getNewEmail: "Get new verification email",
     },
     waitingOnVerification: {
-      message: "Hey {{email}} - it looks like you haven't verified your email yet. Check your inbox for an email from us to get started! If you don't see anything, click here to request a new email.",
+      message:
+        "Hey {{email}} - it looks like you haven't verified your email yet. Check your inbox for an email from us to get started! If you don't see anything, click here to request a new email.",
       greeting: "Hey ",
       notVerifiedYet: " - it looks like you haven't verified your email yet.",
       checkInbox: "Check your inbox for an email from us to get started!",
@@ -390,7 +411,8 @@ const en = {
       here: "here",
       requestNewEmail: "to request a new email.",
       toastVerificationSent: "A new verification email has been sent!",
-      toastVerificationFailed: "Failed to send a new verification email - {{error}}",
+      toastVerificationFailed:
+        "Failed to send a new verification email - {{error}}",
     },
     oauthCallback: {
       processing: "Processing...",
@@ -398,13 +420,18 @@ const en = {
       errorTitle: "Something Went Wrong",
       backToChat: "Back to Chat",
       federatedProcessingDetails: "Please wait while we complete the setup.",
-      federatedSuccess: "Your {serviceName} authorization completed successfully. You can now use this connector for search.",
+      federatedSuccess:
+        "Your {serviceName} authorization completed successfully. You can now use this connector for search.",
       federatedRedirecting: "Redirecting to chat in 2 seconds...",
-      federatedErrorValidation: "Configuration error - please check your connector settings",
-      federatedErrorClientSecret: "Authentication credentials are missing or invalid",
+      federatedErrorValidation:
+        "Configuration error - please check your connector settings",
+      federatedErrorClientSecret:
+        "Authentication credentials are missing or invalid",
       federatedErrorOAuth: "OAuth authorization failed",
-      mcpProcessingDetails: "Please wait while we complete the MCP server setup.",
-      mcpSuccess: "Your {serviceName} authorization completed successfully. You can now use this server's tools in chat.",
+      mcpProcessingDetails:
+        "Please wait while we complete the MCP server setup.",
+      mcpSuccess:
+        "Your {serviceName} authorization completed successfully. You can now use this server's tools in chat.",
       mcpRedirecting: "Redirecting back in 2 seconds...",
       redirectingInSeconds_one: "Redirecting in {{count}} second...",
       redirectingInSeconds_other: "Redirecting in {{count}} seconds...",
@@ -413,9 +440,11 @@ const en = {
       mcpErrorOAuth: "OAuth authorization failed",
       mcpErrorValidation: "Could not validate connection to MCP server",
       oauthConfigProcessing: "Completing Authorization...",
-      oauthConfigProcessingDetails: "Please wait while we securely store your credentials.",
+      oauthConfigProcessingDetails:
+        "Please wait while we securely store your credentials.",
       oauthConfigSuccess: "Authorization Successful!",
-      oauthConfigSuccessDetail: "You have successfully authorized the tool to access your {serviceName} account.",
+      oauthConfigSuccessDetail:
+        "You have successfully authorized the tool to access your {serviceName} account.",
       oauthConfigError: "Authorization Failed",
       takeMoments: "This may take a few moments...",
     },
@@ -425,14 +454,17 @@ const en = {
     externalSsoPrompt: "Use external identity provider?",
   },
   header: {
-    reindexBanner: "Your index is out of date - we strongly recommend updating your search settings.",
+    reindexBanner:
+      "Your index is out of date - we strongly recommend updating your search settings.",
     reindexUpdateLink: "Update here",
-    trialEndingBanner: "Your trial is ending soon - submit your billing information to continue using ATLAS.",
+    trialEndingBanner:
+      "Your trial is ending soon - submit your billing information to continue using ATLAS.",
     trialUpdateLink: "Update here",
     dismissTooltip: "Dismiss",
   },
   sidebar: {
-    recentsEmptyState: "Try sending a message! Your chat history will appear here.",
+    recentsEmptyState:
+      "Try sending a message! Your chat history will appear here.",
     recentsEmpty: "Try sending a message! Your chat history will appear here.",
     agentsSectionTitle: "Agents",
     projectsSectionTitle: "Projects",
@@ -479,10 +511,12 @@ const en = {
     deleteProject: "Delete Project",
     deleteProjectModalTitle: "Delete Project",
     deleteProjectTitle: "Delete Project",
-    deleteProjectConfirmation: "Are you sure you want to delete this project? This action cannot be undone.",
+    deleteProjectConfirmation:
+      "Are you sure you want to delete this project? This action cannot be undone.",
     deleteChatTitle: "Delete Chat",
     deleteChatError: "Failed to delete chat. Please try again.",
-    deleteChatConfirmation: "Are you sure you want to delete this chat? This action cannot be undone.",
+    deleteChatConfirmation:
+      "Are you sure you want to delete this chat? This action cannot be undone.",
     deleteButton: "Delete",
     closeSidebar: "Close Sidebar",
     openSidebar: "Open Sidebar",
@@ -516,10 +550,12 @@ const en = {
   },
   appHealth: {
     loggedOutTitle: "You Have Been Logged Out",
-    sessionExpiredMessage: "Your session has expired. Please log in again to continue.",
+    sessionExpiredMessage:
+      "Your session has expired. Please log in again to continue.",
     logInButton: "Log In",
     backendUnavailableTitle: "The backend is currently unavailable",
-    backendUnavailableDescription: "If this is your initial setup or you just updated your ATLAS deployment, this is likely because the backend is still starting up. Give it a minute or two, and then refresh the page. If that does not work, make sure the backend is setup and/or contact an administrator.",
+    backendUnavailableDescription:
+      "If this is your initial setup or you just updated your ATLAS deployment, this is likely because the backend is still starting up. Give it a minute or two, and then refresh the page. If that does not work, make sure the backend is setup and/or contact an administrator.",
   },
   inputBar: {
     searchModePlaceholder: "Search connected sources",
@@ -550,7 +586,8 @@ const en = {
     connect: "Connect",
     addInstruction: {
       title: "Set Project Instructions",
-      description: "Specify the behaviors or tone for the chat sessions in this project.",
+      description:
+        "Specify the behaviors or tone for the chat sessions in this project.",
       placeholder: "My goal with is to... be sure to... in your responses.",
       saveButton: "Save Instructions",
     },
@@ -567,7 +604,8 @@ const en = {
     },
     federatedOAuth: {
       title: "Connect Your Apps",
-      description: "Improve answer quality by letting {{applicationName}} search all your connected data.",
+      description:
+        "Improve answer quality by letting {{applicationName}} search all your connected data.",
       connect: "Connect",
       skipForNow: "Skip for now",
     },
@@ -577,9 +615,12 @@ const en = {
       manageTitle: "Manage {{type}}",
       enterTitle: "Enter {{type}}",
       updateDescription: "Update your {{type}} for {{serverName}}.",
-      enterDescription: "Enter your {{type}} for {{serverName}} to enable authentication.",
-      validationNote: "Changes will be validated against the server before being saved.",
-      storageNote: "Your {{type}} will be validated against the server and stored securely.",
+      enterDescription:
+        "Enter your {{type}} for {{serverName}} to enable authentication.",
+      validationNote:
+        "Changes will be validated against the server before being saved.",
+      storageNote:
+        "Your {{type}} will be validated against the server and stored securely.",
       saveError: "Failed to save credentials",
       saveApiKeyError: "Failed to save API key",
       cancel: "Cancel",
@@ -590,7 +631,8 @@ const en = {
     },
     createProject: {
       title: "Create New Project",
-      description: "Use projects to organize your files and chats in one place, and add custom instructions for ongoing work.",
+      description:
+        "Use projects to organize your files and chats in one place, and add custom instructions for ongoing work.",
       nameLabel: "Project Name",
       namePlaceholder: "What are you working on?",
       createButton: "Create Project",
@@ -604,29 +646,36 @@ const en = {
     moveCustomAgentChat: {
       title: "Move Custom Agent Chat",
       confirmButton: "Confirm Move",
-      warning: "This chat uses a custom agent and moving it to a project will not override the agent's prompt or knowledge configurations. This should only be used for organization purposes.",
+      warning:
+        "This chat uses a custom agent and moving it to a project will not override the agent's prompt or knowledge configurations. This should only be used for organization purposes.",
       doNotShowAgain: "Do not show this again",
     },
     newTeam: {
       joinRequestSentTitle: "Join Request Sent",
       existingTeamFoundTitle: "We found an existing team for {{domain}}",
       loadingTeamInfo: "Loading team information...",
-      joinRequestSentBody: "Your join request has been sent. You can explore as your own team while waiting for an admin of {{domain}} to approve your request.",
+      joinRequestSentBody:
+        "Your join request has been sent. You can explore as your own team while waiting for an admin of {{domain}} to approve your request.",
       tryWhileWaiting: "Try the app while waiting",
-      joinRequestInfo: "Your join request can be approved by any admin of {{domain}}.",
+      joinRequestInfo:
+        "Your join request can be approved by any admin of {{domain}}.",
       continueWithNewTeam: "Continue with new team",
       sendingRequest: "Sending request...",
       requestToJoin: "Request to Join",
-      couldNotRetrieveTeam: "Could not retrieve team information. Please try again later.",
+      couldNotRetrieveTeam:
+        "Could not retrieve team information. Please try again later.",
       toastInviteSent: "Your invite request has been sent to the team admin.",
       toastInviteFailed: "Failed to request an invite",
     },
     noAgent: {
       title: "No Agent Available",
-      noAgentConfiguredMessage: "You currently have no agent configured. To use this feature, you need to take action.",
-      adminCreateAgentMessage: "As an administrator, you can create a new agent by visiting the admin panel.",
+      noAgentConfiguredMessage:
+        "You currently have no agent configured. To use this feature, you need to take action.",
+      adminCreateAgentMessage:
+        "As an administrator, you can create a new agent by visiting the admin panel.",
       goToAdminPanel: "Go to Admin Panel",
-      contactAdminMessage: "Please contact your administrator to configure an agent for you.",
+      contactAdminMessage:
+        "Please contact your administrator to configure an agent for you.",
     },
     userFiles: {
       searchPlaceholder: "Search files...",
@@ -650,7 +699,8 @@ const en = {
       selectButton: "Select",
       deleteAllButton: "Delete All",
       deleteAllChatsTitle: "Delete All Chats",
-      deleteAllChatsConfirmation: "Are you sure you want to delete all {{count}} chat sessions? This action cannot be undone.",
+      deleteAllChatsConfirmation:
+        "Are you sure you want to delete all {{count}} chat sessions? This action cannot be undone.",
       deletingButton: "Deleting...",
       noSessionsYet: "No chat sessions yet",
       startNewConversationHint: "Start a new conversation to see it here",
@@ -668,7 +718,7 @@ const en = {
       recentSessions: "Recent Sessions",
       projects: "Projects",
       noMoreResults: "No more results",
-      createNewProjectWithName: "Create New Project \"{{name}}\"",
+      createNewProjectWithName: 'Create New Project "{{name}}"',
       sessionsFilter: "Sessions",
       projectsFilter: "Projects",
       selectAction: "Select",
@@ -724,11 +774,13 @@ const en = {
     shareChat: {
       sharedTitle: "Chat shared",
       shareTitle: "Share this chat",
-      description: "All existing and future messages in this chat will be shared.",
+      description:
+        "All existing and future messages in this chat will be shared.",
       privateOptionTitle: "Private",
       privateOptionDescription: "Only you have access to this chat.",
       organizationOptionTitle: "Your Organization",
-      organizationOptionDescription: "Anyone in your organization can view this chat.",
+      organizationOptionDescription:
+        "Anyone in your organization can view this chat.",
       createShareLinkButton: "Create Share Link",
       makePrivateButton: "Make Private",
       copyLinkButton: "Copy Link",
@@ -745,13 +797,17 @@ const en = {
       addUsersPlaceholder: "Add users and groups",
       ownerLabel: "Owner",
       publishTitle: "Publish This Agent",
-      publishDescription: "Make this agent available to everyone in your organization.",
+      publishDescription:
+        "Make this agent available to everyone in your organization.",
       featureTitle: "Feature This Agent",
-      featureDescription: "Show this agent at the top of the explore agents list and automatically pin it to the sidebar for new users with access.",
+      featureDescription:
+        "Show this agent at the top of the explore agents list and automatically pin it to the sidebar for new users with access.",
       addLabelsPlaceholder: "Add labels...",
-      labelsHelperText: "Add labels and categories to help people better discover this agent.",
+      labelsHelperText:
+        "Add labels and categories to help people better discover this agent.",
       agentIsPublicMessage: "This agent is public to your organization.",
-      agentIsPublicDescription: "Everyone in your organization has access to this agent.",
+      agentIsPublicDescription:
+        "Everyone in your organization has access to this agent.",
       copyLinkButton: "Copy Link",
       youLabel: "You",
       cancel: "Cancel",
@@ -810,11 +866,14 @@ const en = {
     moreInfoTitle: "More Info",
     instructionsLabel: "Instructions",
     defaultModelLabel: "Default Model",
-    defaultModelDescription: "This model will be used by ATLAS by default in your chats.",
+    defaultModelDescription:
+      "This model will be used by ATLAS by default in your chats.",
     knowledgeCutoffLabel: "Knowledge Cutoff Date",
-    knowledgeCutoffDescription: "Documents with a last-updated date prior to this will be ignored.",
+    knowledgeCutoffDescription:
+      "Documents with a last-updated date prior to this will be ignored.",
     overwriteSystemPromptsLabel: "Overwrite System Prompts",
-    overwriteSystemPromptsDescription: "Remove the base system prompt which includes useful instructions (e.g. \"You can use Markdown tables\"). This may affect response quality.",
+    overwriteSystemPromptsDescription:
+      'Remove the base system prompt which includes useful instructions (e.g. "You can use Markdown tables"). This may affect response quality.',
     promptRemindersLabel: "Prompt Reminders",
     conversationStartersLabel: "Conversation Starters",
     availabilityIssuesTitle: "Availability Issues",
@@ -830,8 +889,10 @@ const en = {
     sourcesSelectedText: "{{count}} knowledge source(s) selected",
     viewEditButton: "View / Edit",
     searchCollectionsPlaceholder: "Search collections...",
-    noDataSourcesMessage: "No datasources found. Add a datasource in the Data Sources page.",
-    noKnowledgeGraphMessage: "No collections with a built knowledge graph. Build a knowledge graph from the Knowledge Graph page first.",
+    noDataSourcesMessage:
+      "No datasources found. Add a datasource in the Data Sources page.",
+    noKnowledgeGraphMessage:
+      "No collections with a built knowledge graph. Build a knowledge graph from the Knowledge Graph page first.",
   },
   documentSidebar: {
     citedSourcesHeader: "Cited Sources",
@@ -845,7 +906,8 @@ const en = {
     closeSidebarTooltip: "Close Sidebar",
   },
   memories: {
-    addMemoryDescription: "Add personal note or memory that ATLAS should remember.",
+    addMemoryDescription:
+      "Add personal note or memory that ATLAS should remember.",
     viewAddButton: "View/Add",
     allMemoriesLabel: "All Memories",
     placeholder: "Type or paste in a personal note or memory",
@@ -853,13 +915,14 @@ const en = {
     preferencesSaved: "Preferences saved",
     preferencesSaveFailed: "Failed to save preferences",
     modalTitle: "Memory",
-    modalDescription: "Let ATLAS reference these stored notes and memories in chats.",
+    modalDescription:
+      "Let ATLAS reference these stored notes and memories in chats.",
     searchPlaceholder: "Search...",
     maxMemoriesReached_one: "Maximum of {{count}} memory reached",
     maxMemoriesReached_other: "Maximum of {{count}} memories reached",
     addLine: "Add Line",
     noResults: "No memories match your search.",
-    noMemoriesYet: "No memories yet. Click \"Add Line\" to get started.",
+    noMemoriesYet: 'No memories yet. Click "Add Line" to get started.',
     line_one: "Line",
     line_other: "Lines",
     memorySaved: "Memory saved",
@@ -901,7 +964,8 @@ const en = {
   },
   agentsPage: {
     title: "Agents",
-    description: "Customize AI behavior and knowledge for you and your team's use cases.",
+    description:
+      "Customize AI behavior and knowledge for you and your team's use cases.",
     newAgentButton: "New Agent",
     searchAgentsPlaceholder: "Search agents...",
     allAgentsTab: "All Agents",
@@ -969,7 +1033,8 @@ const en = {
       deleteAllChatsButton: "Delete All Chats",
       deleteChatsModalTitle: "Delete All Chats",
       deleteChatsModalDescription: "Permanently delete all your chat sessions.",
-      deleteChatsConfirmation1: "All your chat sessions and history will be permanently deleted. Deletion cannot be undone.",
+      deleteChatsConfirmation1:
+        "All your chat sessions and history will be permanently deleted. Deletion cannot be undone.",
       deleteChatsConfirmation2: "Are you sure you want to delete all chats?",
       deletingButton: "Deleting...",
       deleteButton: "Delete",
@@ -981,29 +1046,40 @@ const en = {
     chatPreferences: {
       chatsTitle: "Chats",
       defaultModelLabel: "Default Model",
-      defaultModelDescription: "This model will be used by ATLAS by default in your chats.",
+      defaultModelDescription:
+        "This model will be used by ATLAS by default in your chats.",
       autoScrollLabel: "Chat Auto-scroll",
-      autoScrollDescription: "Automatically scroll to new content as chat generates response.",
+      autoScrollDescription:
+        "Automatically scroll to new content as chat generates response.",
       defaultAppModeLabel: "Default App Mode",
-      defaultAppModeDescription: "Choose whether new sessions start in Search or Chat mode.",
-      defaultAppModeDisabledTooltip: "Search UI is disabled and can only be enabled by an admin.",
+      defaultAppModeDescription:
+        "Choose whether new sessions start in Search or Chat mode.",
+      defaultAppModeDisabledTooltip:
+        "Search UI is disabled and can only be enabled by an admin.",
       chatModeOption: "Chat",
       searchModeOption: "Search",
       personalPreferencesTitle: "Personal Preferences",
-      personalPreferencesDescription: "Provide your custom preferences in natural language.",
-      personalPreferencesPlaceholder: "Describe how you want the system to behave and the tone it should use.",
+      personalPreferencesDescription:
+        "Provide your custom preferences in natural language.",
+      personalPreferencesPlaceholder:
+        "Describe how you want the system to behave and the tone it should use.",
       memoryTitle: "Memory",
       referenceMemoriesLabel: "Reference Stored Memories",
-      referenceMemoriesDescription: "Let ATLAS reference stored memories in chats.",
+      referenceMemoriesDescription:
+        "Let ATLAS reference stored memories in chats.",
       updateMemoriesLabel: "Update Memories",
-      updateMemoriesDescription: "Let ATLAS generate and update stored memories.",
+      updateMemoriesDescription:
+        "Let ATLAS generate and update stored memories.",
       longTermMemoryLabel: "Long-Term Memory",
-      longTermMemoryDescription: "Automatically extract and recall facts from your conversations.",
+      longTermMemoryDescription:
+        "Automatically extract and recall facts from your conversations.",
       promptShortcutsTitle: "Prompt Shortcuts",
       useShortcutsLabel: "Use Prompt Shortcuts",
-      useShortcutsDescription: "Enable shortcuts to quickly insert common prompts.",
+      useShortcutsDescription:
+        "Enable shortcuts to quickly insert common prompts.",
       shortcutPlaceholder: "Summarize",
-      expansionPlaceholder: "Provide a concise 1–2 sentence summary of the following:",
+      expansionPlaceholder:
+        "Provide a concise 1–2 sentence summary of the following:",
       removeShortcutAriaLabel: "Remove shortcut",
       cannotDeletePublicTooltip: "Cannot delete public prompt-shortcuts.",
       toastPreferencesSaved: "Preferences saved",
@@ -1016,6 +1092,90 @@ const en = {
       toastShortcutUpdated: "Shortcut updated",
       toastShortcutSaveFailed: "Failed to save shortcut",
     },
+    accounts: {
+      accountsTitle: "Accounts",
+      emailLabel: "Email",
+      emailDescription: "Your account email address.",
+      passwordSectionLabel: "Password",
+      passwordSectionDescription: "Update your account password.",
+      changePasswordButton: "Change Password",
+      accessTokensTitle: "Access Tokens",
+      loadingTokens: "Loading tokens...",
+      noAccessTokens: "No access tokens created.",
+      searchPlaceholder: "Search...",
+      newAccessTokenButton: "New Access Token",
+      neverExpires: "Never expires",
+      expiresInDays: "Expires in {{days}} day",
+      expiresInDaysPlural: "Expires in {{days}} days",
+      createdDaysAgo: "Created {{days}} day ago",
+      createdDaysAgoPlural: "Created {{days}} days ago",
+      paidSubscriptionRequired:
+        "Access tokens require an active paid subscription.",
+      upgradePlanButton: "Upgrade Plan",
+      changePasswordTitle: "Change Password",
+      currentPasswordLabel: "Current Password",
+      newPasswordLabel: "New Password",
+      confirmPasswordLabel: "Confirm New Password",
+      updatingButton: "Updating...",
+      updateButton: "Update",
+      currentPasswordRequired: "Current password is required",
+      newPasswordRequired: "New password is required",
+      passwordsMustMatch: "Passwords do not match",
+      confirmPasswordRequired: "Please confirm your new password",
+      revokeTokenTitle: "Revoke Access Token",
+      revokeButton: "Revoke",
+      revokeConfirmation: "Are you sure you want to revoke this token?",
+      revokeTokenWarning:
+        "ATLAS will no longer be able to access or search content from your {{sourceName}} account.",
+      tokenWillLoseAccess:
+        "Any application using the token will lose access to ATLAS. This action cannot be undone.",
+      toastPasswordUpdated: "Password updated successfully",
+      toastPasswordFailed: "Failed to change password",
+      toastPasswordError: "An error occurred while changing the password",
+      toastTokenLoadFailed: "Failed to load tokens",
+      toastTokenRequired: "Token name is required",
+      toastTokenCreated: "Token created successfully",
+      toastTokenCreateFailed: "Failed to create token",
+      toastTokenCreateError: "Network error creating token",
+      toastTokenDeleted: "Token deleted successfully",
+      toastTokenDeleteFailed: "Failed to delete token",
+      toastTokenDeleteError: "Network error deleting token",
+    },
+    pat: {
+      title: "Create Access Token",
+      description:
+        "All API requests using this token will inherit your access permissions and be attributed to you as an individual.",
+      doneButton: "Done",
+      tokenValueLabel: "Token Value",
+      tokenNameLabel: "Token Name",
+      tokenNamePlaceholder: "Name your token",
+      expiresInLabel: "Expires in",
+      tokenExpireAt: "This token will expire at: {{date}}",
+      selectExpirationPlaceholder: "Select expiration",
+      "7daysOption": "7 days",
+      "30daysOption": "30 days",
+      "365daysOption": "365 days",
+      noExpirationOption: "No expiration",
+      createButton: "Create Token",
+      creatingButton: "Creating Token...",
+    },
+    connectors: {
+      title: "Connectors",
+      noConnectorsMessage: "No connectors set up for your organization.",
+      connectedStatus: "Connected",
+      pausedStatus: "Paused",
+      notConnectedStatus: "Not connected",
+      connectButton: "Connect",
+      disconnectTitle: "Disconnect {{sourceName}}",
+      disconnectConfirm1:
+        "ATLAS will no longer be able to access or search content from your {{sourceName}} account.",
+      disconnectConfirm2:
+        "You can still continue existing sessions referencing {{sourceName}} content.",
+      disconnectingButton: "Disconnecting...",
+      disconnectButton: "Disconnect",
+      toastDisconnected: "Disconnected successfully",
+      toastDisconnectFailed: "Failed to disconnect",
+    },
   },
   projectContextPanel: {
     backToProject: "Back to project",
@@ -1023,7 +1183,8 @@ const en = {
     noChatsYet: "No chats yet.",
     lastMessage: "Last message {{time}}",
     instructionsLabel: "Instructions",
-    instructionsPlaceholder: "Add instructions to tailor the response in this project.",
+    instructionsPlaceholder:
+      "Add instructions to tailor the response in this project.",
     setInstructionsButton: "Set Instructions",
     filesLabel: "Files",
     filesDescription: "Chats in this project can access these files.",
@@ -1032,12 +1193,15 @@ const en = {
     viewAllButton: "View All",
     filesCount: "{{n}} files",
     dropFilesActive: "Drop files here to add to this project",
-    dropFilesDefault: "Add documents, texts, or images to use in the project. Drag & drop supported.",
+    dropFilesDefault:
+      "Add documents, texts, or images to use in the project. Drag & drop supported.",
     editProjectNameTooltip: "Edit project name",
-    contextLimitWarning: "This project exceeds the model's context limits. Sessions will automatically search for relevant files first before generating response.",
+    contextLimitWarning:
+      "This project exceeds the model's context limits. Sessions will automatically search for relevant files first before generating response.",
     loadingProject: "Loading project...",
     projectFilesTitle: "Project Files",
-    projectFilesDescription: "Sessions in this project can access the files here.",
+    projectFilesDescription:
+      "Sessions in this project can access the files here.",
   },
   filePreview: {
     document: "Document",
@@ -1059,11 +1223,13 @@ const en = {
     columnLabel_other: "columns",
     columnLabel_plural: "columns",
     errorLoadingCsv: "Error loading CSV",
-    csvNoLongerInMemory: "This file is no longer available in server memory. Please upload it again to view CSV content.",
+    csvNoLongerInMemory:
+      "This file is no longer available in server memory. Please upload it again to view CSV content.",
     csvLoadFailed: "Failed to load CSV content.",
     csvFileSizeExceeded: "File size exceeds the maximum limit of {{size}}MB",
     csvEmpty: "CSV file is empty",
-    csvMayBeTooLarge: "The CSV file may be too large or couldn't be loaded properly.",
+    csvMayBeTooLarge:
+      "The CSV file may be too large or couldn't be loaded properly.",
     noDataAvailable: "No data available",
     download: "Download",
     downloadFile: "Download file",
@@ -1164,14 +1330,17 @@ const en = {
     enterConversationStarter: "Enter a conversation starter...",
     agentNameRequired: "Agent name is required.",
     descriptionMaxChars_one: "Description must be {{count}} character or less",
-    descriptionMaxChars_other: "Description must be {{count}} characters or less",
-    starterMaxChars_one: "Conversation starter must be {{count}} character or less",
-    starterMaxChars_other: "Conversation starter must be {{count}} characters or less",
+    descriptionMaxChars_other:
+      "Description must be {{count}} characters or less",
+    starterMaxChars_one:
+      "Conversation starter must be {{count}} character or less",
+    starterMaxChars_other:
+      "Conversation starter must be {{count}} characters or less",
     agentDeletedSuccess: "Agent deleted successfully",
     failedToDynamicAgent: "Failed to {{action}} dynamic agent",
     failedToAgent: "Failed to {{action}} agent",
     failedToDeleteAgent: "Failed to delete agent",
-    agentSuccess: "Agent \"{{name}}\" {{action}} successfully",
+    agentSuccess: 'Agent "{{name}}" {{action}} successfully',
     noResponseReceived: "No response received",
     anErrorOccurred: "An error occurred",
     actionCreate: "create",
@@ -1200,11 +1369,13 @@ const en = {
     graphPreviewTitle: "{{schema}} graph",
     graphPreviewHeroEyebrow: "Agent architecture preview",
     graphPreviewButtonTitle: "Preview the agent graph",
-    graphPreviewButtonDescription: "Open the final graph card after choosing the schema, tools, memory, and flow.",
+    graphPreviewButtonDescription:
+      "Open the final graph card after choosing the schema, tools, memory, and flow.",
     graphPreviewShowButton: "Preview graph",
     graphPreviewHideButton: "Hide preview",
     graphPreviewModalTitle: "Agent graph preview",
-    graphPreviewModalDescription: "Review the final agent architecture before creating it.",
+    graphPreviewModalDescription:
+      "Review the final agent architecture before creating it.",
     graphPreviewCloseButton: "Close preview",
     graphPreviewExecutionPath: "Execution path",
     graphPreviewLoop: "loop",
@@ -1213,7 +1384,8 @@ const en = {
     graphPreviewSubAgents: "Sub-agents",
     graphPreviewStages: "Stages",
     graphPreviewConfiguredTeam: "Configured team",
-    graphPreviewNoSubAgents: "No sub-agents are configured yet. Add them from sub-agent management.",
+    graphPreviewNoSubAgents:
+      "No sub-agents are configured yet. Add them from sub-agent management.",
     graphPreviewInstructionPreview: "Instruction",
     graphPreviewSubAgentCount_one: "{{count}} configured",
     graphPreviewSubAgentCount_other: "{{count}} configured",
@@ -1230,17 +1402,26 @@ const en = {
     graphPreviewLongTermMemory: "Long-term",
     graphPreviewSchemaManaged: "By schema",
     graphPreviewToolsInfoTitle: "Tool access",
-    graphPreviewToolsInfoEmpty: "No tools are selected yet. This agent will rely on the graph and model response only.",
-    graphPreviewToolsInfoWithTools_zero: "{{tools}} will be available when this graph reaches a tool-capable step.",
-    graphPreviewToolsInfoWithTools_one: "{{tools}} + {{count}} more will be available when this graph reaches a tool-capable step.",
-    graphPreviewToolsInfoWithTools_other: "{{tools}} + {{count}} more will be available when this graph reaches a tool-capable step.",
+    graphPreviewToolsInfoEmpty:
+      "No tools are selected yet. This agent will rely on the graph and model response only.",
+    graphPreviewToolsInfoWithTools_zero:
+      "{{tools}} will be available when this graph reaches a tool-capable step.",
+    graphPreviewToolsInfoWithTools_one:
+      "{{tools}} + {{count}} more will be available when this graph reaches a tool-capable step.",
+    graphPreviewToolsInfoWithTools_other:
+      "{{tools}} + {{count}} more will be available when this graph reaches a tool-capable step.",
     graphPreviewMemoryInfoTitle: "Memory behavior",
-    graphPreviewMemoryInfoEnabled: "Memory can influence the answer when the selected graph reaches a context step.",
-    graphPreviewMemoryInfoDisabled: "Memory is not selected. The agent will answer from the current request and configured knowledge.",
+    graphPreviewMemoryInfoEnabled:
+      "Memory can influence the answer when the selected graph reaches a context step.",
+    graphPreviewMemoryInfoDisabled:
+      "Memory is not selected. The agent will answer from the current request and configured knowledge.",
     graphPreviewFlowInfoTitle: "Flow behavior",
-    graphPreviewFlowInfoDirect: "This schema answers directly after one model pass.",
-    graphPreviewFlowInfoMultiStep: "This schema decomposes the work into multiple passes before answering.",
-    graphPreviewFlowInfoSubAgents: "This schema can route work through specialist agents before the final answer.",
+    graphPreviewFlowInfoDirect:
+      "This schema answers directly after one model pass.",
+    graphPreviewFlowInfoMultiStep:
+      "This schema decomposes the work into multiple passes before answering.",
+    graphPreviewFlowInfoSubAgents:
+      "This schema can route work through specialist agents before the final answer.",
     validatingComposition: "Validating composition...",
     compositionValid: "Composition is valid",
     compositionDepth: "Composition depth {{depth}}",
@@ -1268,12 +1449,18 @@ const en = {
       answer: "Answer",
     },
     graphPreviewDetails: {
-      zeroShot: "A single model pass. Best for direct answers where tools and retries are not needed.",
-      react: "The agent reasons, calls tools when useful, observes the result, then continues.",
-      supervisor: "A supervisor routes work to specialist agents and reviews the combined result.",
-      pipeline: "A fixed sequence of stages transforms the request into a final response.",
-      planExecute: "The agent writes a plan first, executes the steps, then synthesizes the result.",
-      selfReflect: "The agent drafts an answer, critiques it, and revises before responding.",
+      zeroShot:
+        "A single model pass. Best for direct answers where tools and retries are not needed.",
+      react:
+        "The agent reasons, calls tools when useful, observes the result, then continues.",
+      supervisor:
+        "A supervisor routes work to specialist agents and reviews the combined result.",
+      pipeline:
+        "A fixed sequence of stages transforms the request into a final response.",
+      planExecute:
+        "The agent writes a plan first, executes the steps, then synthesizes the result.",
+      selfReflect:
+        "The agent drafts an answer, critiques it, and revises before responding.",
     },
     brainTypeLabel: "Brain Type",
     selectBrainTypePlaceholder: "Select brain type",
@@ -1281,20 +1468,26 @@ const en = {
     selectMemoryTypePlaceholder: "Select memory type",
     agentAvatarLabel: "Agent Avatar",
     instructionsLabel: "Instructions",
-    instructionsDescription: "Add instructions to tailor the response for this agent.",
-    instructionsPlaceholder: "Think step by step and show reasoning for complex problems...",
+    instructionsDescription:
+      "Add instructions to tailor the response for this agent.",
+    instructionsPlaceholder:
+      "Think step by step and show reasoning for complex problems...",
     conversationStartersLabel: "Conversation Starters",
-    conversationStartersDescription: "Example messages that help users understand what this agent can do and how to interact with it effectively.",
+    conversationStartersDescription:
+      "Example messages that help users understand what this agent can do and how to interact with it effectively.",
     actionsLabel: "Actions",
-    actionsDescription: "Tools and capabilities available for this agent to use.",
+    actionsDescription:
+      "Tools and capabilities available for this agent to use.",
     actionsChatbotDescription: "Chatbot agents are configured for direct conversation and do not support tool calling.",
     actionsChatbotWarningTitle: "Actions Are Not Available for Chatbot Agents",
     actionsChatbotWarningDescription: "Chatbot agents are designed for direct conversation without invoking external tools or MCP actions. To enable MCP tools and actions, change the base agent type to 'Configurable MCP Agent' or 'Dynamic Agent'.",
     actionsChatbotSwitchToMcpButton: "Switch to Configurable MCP Agent",
     imageGenerationLabel: "Image Generation",
-    imageGenerationDescription: "Generate and manipulate images using AI-powered tools.",
+    imageGenerationDescription:
+      "Generate and manipulate images using AI-powered tools.",
     webSearchLabel: "Web Search",
-    webSearchDescription: "Search the web for real-time information and up-to-date results.",
+    webSearchDescription:
+      "Search the web for real-time information and up-to-date results.",
     openURLLabel: "Open URL",
     openURLDescription: "Fetch and read content from web URLs.",
     codeInterpreterLabel: "Code Interpreter",
@@ -1304,29 +1497,41 @@ const en = {
     advancedOptionsLabel: "Advanced Options",
     advancedOptionsDescription: "Fine-tune agent prompts and knowledge.",
     shareThisAgentLabel: "Share This Agent",
-    shareThisAgentDescription: "with other users, groups, or everyone in your organization.",
+    shareThisAgentDescription:
+      "with other users, groups, or everyone in your organization.",
     featureThisAgentLabel: "Feature This Agent",
-    featureThisAgentDescription: "Show this agent at the top of the explore agents list and automatically pin it to the sidebar for new users with access.",
-    agentPrivateWarning: "This agent is private to you and will only be featured for yourself.",
+    featureThisAgentDescription:
+      "Show this agent at the top of the explore agents list and automatically pin it to the sidebar for new users with access.",
+    agentPrivateWarning:
+      "This agent is private to you and will only be featured for yourself.",
     defaultModelLabel: "Default Model",
     defaultModelOption: "Default Model",
-    defaultModelDescription: "Select the LLM model to use for this agent. If not set, the user's default model will be used.",
+    defaultModelDescription:
+      "Select the LLM model to use for this agent. If not set, the user's default model will be used.",
     knowledgeCutoffLabel: "Knowledge Cutoff Date",
-    knowledgeCutoffDescription: "Set the knowledge cutoff date for this agent. The agent will only use information up to this date.",
+    knowledgeCutoffDescription:
+      "Set the knowledge cutoff date for this agent. The agent will only use information up to this date.",
     overwritePromptLabel: "Overwrite System Prompt",
-    overwritePromptDescription: "Completely replace the base system prompt. This might affect response quality since it will also overwrite useful system instructions (e.g. \"You (the LLM) can provide markdown and it will be rendered\").",
+    overwritePromptDescription:
+      'Completely replace the base system prompt. This might affect response quality since it will also overwrite useful system instructions (e.g. "You (the LLM) can provide markdown and it will be rendered").',
     remindersLabel: "Reminders",
-    remindersPlaceholder: "Remember, I want you to always format your response as a numbered list.",
-    remindersHint: "Append a brief reminder to the prompt messages. Use this to remind the agent if you find that it tends to forget certain instructions as the chat progresses. This should be brief and not interfere with the user messages.",
+    remindersPlaceholder:
+      "Remember, I want you to always format your response as a numbered list.",
+    remindersHint:
+      "Append a brief reminder to the prompt messages. Use this to remind the agent if you find that it tends to forget certain instructions as the chat progresses. This should be brief and not interfere with the user messages.",
     deleteThisAgentLabel: "Delete This Agent",
-    deleteThisAgentDescription: "Anyone using this agent will no longer be able to access it.",
+    deleteThisAgentDescription:
+      "Anyone using this agent will no longer be able to access it.",
     deleteAgentTitle: "Delete Agent",
-    deleteAgentConfirmText: "Anyone using this agent will no longer be able to access it. Deletion cannot be undone.",
+    deleteAgentConfirmText:
+      "Anyone using this agent will no longer be able to access it. Deletion cannot be undone.",
     deleteAgentAreYouSure: "Are you sure you want to delete this agent?",
     agentNamePlaceholder: "Name your agent",
     agentDescriptionPlaceholder: "What does this agent do?",
-    webSearchWarning: "Web Search without the ability to open URLs can lead to significantly worse web based results.",
-    imageGenWarning: "Image generation requires a configured model. If you have access, set one up under Settings > Image Generation, or ask an admin.",
+    webSearchWarning:
+      "Web Search without the ability to open URLs can lead to significantly worse web based results.",
+    imageGenWarning:
+      "Image generation requires a configured model. If you have access, set one up under Settings > Image Generation, or ask an admin.",
     strategyZeroShot: "Zero Shot",
     strategyReAct: "ReAct",
     strategySupervisor: "Supervisor",
@@ -1343,7 +1548,8 @@ const en = {
     longTermMemoryDescription: "Enable persistent memory for this agent.",
     dynamic: {
       createTitle: "Create Dynamic Agent",
-      createSubtitle: "Build an agent definition backed by the new dynamic graph schema system.",
+      createSubtitle:
+        "Build an agent definition backed by the new dynamic graph schema system.",
       modelOverrideLabel: "Model Override",
       supervisorPromptLabel: "Supervisor Prompt",
       subAgentsJsonLabel: "Sub Agents JSON",
@@ -1367,7 +1573,8 @@ const en = {
     addSubAgent: "Add sub-agent...",
     manageSubAgents: "Manage sub-agents",
     subAgentModalTitle: "Manage sub-agents",
-    subAgentModalDescription: "Choose the agents in this graph, then define their role and operating instruction.",
+    subAgentModalDescription:
+      "Choose the agents in this graph, then define their role and operating instruction.",
     availableAgentsPanel: "Available agents",
     chooseSubAgent: "Choose an agent",
     availableSubAgents_one: "{{count}} available",
@@ -1375,7 +1582,8 @@ const en = {
     noAvailableAgents: "No agents available for this schema type",
     noSelectedSubAgents: "No sub-agents selected yet.",
     noSelectedSubAgentsShort: "None selected",
-    noSelectedSubAgentsHint: "Pick an agent from the left side to start building this graph.",
+    noSelectedSubAgentsHint:
+      "Pick an agent from the left side to start building this graph.",
     applySubAgentChanges: "Save sub-agent setup",
     errorLoadingAvailableAgents: "Error loading available agents",
     selectedSubAgents: "Selected Sub-Agents",
@@ -1397,13 +1605,17 @@ const en = {
     depthLabel: "Depth {{depth}}",
     mcpToolsSelectedCount_one: "{{count}} selected",
     mcpToolsSelectedCount_other: "{{count}} selected",
-    sendEmailMailConfigRequired: "You must select an SMTP configuration to send emails.",
-    mcpToolsCardDescription: "Select the MCP tools and permissions that the agent can use.",
+    sendEmailMailConfigRequired:
+      "You must select an SMTP configuration to send emails.",
+    mcpToolsCardDescription:
+      "Select the MCP tools and permissions that the agent can use.",
     sendEmailMailConfigLabel: "Email Configuration",
-    sendEmailMailConfigDescription: "SMTP account to be used for the send email action.",
+    sendEmailMailConfigDescription:
+      "SMTP account to be used for the send email action.",
     selectMailConfigPlaceholder: "Select email configuration...",
     noMailConfigsPlaceholder: "No email configuration found",
-    noMailConfigsAvailable: "No email configurations available. Please add an SMTP account via Admin panel first.",
+    noMailConfigsAvailable:
+      "No email configurations available. Please add an SMTP account via Admin panel first.",
     mcpToolsChecking: "Checking MCP tools...",
     selectToolsButton: "Select Tools",
     noMcpToolsTitle: "No MCP Tools Found",
@@ -1414,12 +1626,18 @@ const en = {
     applyToolsButton: "Apply",
   },
   newTenantModal: {
-    inviteTitle_one: "You have been invited to join {{count}} other teammate of {{domain}}.",
-    inviteTitle_other: "You have been invited to join {{count}} other teammates of {{domain}}.",
-    joinApprovedTitle_one: "Your request to join {{count}} other user of {{domain}} has been approved.",
-    joinApprovedTitle_other: "Your request to join {{count}} other users of {{domain}} has been approved.",
-    inviteDescription: "By accepting this invitation, you will join the existing {{domain}} team and lose access to your current team. Note: you will lose access to your current agents, prompts, chats, and connected sources.",
-    joinDescription: "To finish joining your team, please reauthenticate with {{email}}.",
+    inviteTitle_one:
+      "You have been invited to join {{count}} other teammate of {{domain}}.",
+    inviteTitle_other:
+      "You have been invited to join {{count}} other teammates of {{domain}}.",
+    joinApprovedTitle_one:
+      "Your request to join {{count}} other user of {{domain}} has been approved.",
+    joinApprovedTitle_other:
+      "Your request to join {{count}} other users of {{domain}} has been approved.",
+    inviteDescription:
+      "By accepting this invitation, you will join the existing {{domain}} team and lose access to your current team. Note: you will lose access to your current agents, prompts, chats, and connected sources.",
+    joinDescription:
+      "To finish joining your team, please reauthenticate with {{email}}.",
     declineButton: "Decline",
     acceptButton: "Accept Invitation",
     reauthenticateButton: "Reauthenticate",
@@ -1433,32 +1651,44 @@ const en = {
   },
   errors: {
     enterpriseGate: {
-      eeOnly: "This functionality is only available in the Enterprise Edition :(",
-      licenseRequired: "This functionality requires an active Enterprise license.",
+      eeOnly:
+        "This functionality is only available in the Enterprise Edition :(",
+      licenseRequired:
+        "This functionality requires an active Enterprise license.",
     },
     accessRestricted: {
       title: "Access Restricted",
       fetchStripeKeyFailed: "Failed to fetch Stripe publishable key",
       fetchResubFailed: "Failed to create resubscription session",
-      seatLimitMessage: "Your organization has exceeded its licensed seat count{{counts}}. Access is restricted until the number of users is reduced or your license is upgraded.",
+      seatLimitMessage:
+        "Your organization has exceeded its licensed seat count{{counts}}. Access is restricted until the number of users is reduced or your license is upgraded.",
       seatCountsSuffix: " ({{used}} users / {{total}} seats)",
-      suspendedCloud: "Your access to {{appName}} has been temporarily suspended due to a lapse in your subscription.",
-      suspendedLicense: "Your access to {{appName}} has been temporarily suspended due to a lapse in your license.",
-      licenseRequired: "An Enterprise license is required to use {{appName}}. Your data is protected and will be available once a license is activated.",
+      suspendedCloud:
+        "Your access to {{appName}} has been temporarily suspended due to a lapse in your subscription.",
+      suspendedLicense:
+        "Your access to {{appName}} has been temporarily suspended due to a lapse in your license.",
+      licenseRequired:
+        "An Enterprise license is required to use {{appName}}. Your data is protected and will be available once a license is activated.",
       stripeLoadFailed: "Stripe failed to load",
-      resubscribeError: "Error opening resubscription page. Please try again later.",
-      seatLimitAdminPrefix: "If you are an administrator, you can manage users on the",
+      resubscribeError:
+        "Error opening resubscription page. Please try again later.",
+      seatLimitAdminPrefix:
+        "If you are an administrator, you can manage users on the",
       userManagementLink: "User Management",
       seatLimitAdminMiddle: "page or upgrade your license on the",
       adminBillingLink: "Admin Billing",
       seatLimitAdminSuffix: "page.",
       logOutButton: "Log out",
-      reinstateCloudBody: "To reinstate your access and continue benefiting from {{appName}}'s powerful features, please update your payment information.",
-      manageSubscriptionBody: "If you're an admin, you can manage your subscription by clicking the button below. For other users, please reach out to your administrator to address this matter.",
+      reinstateCloudBody:
+        "To reinstate your access and continue benefiting from {{appName}}'s powerful features, please update your payment information.",
+      manageSubscriptionBody:
+        "If you're an admin, you can manage your subscription by clicking the button below. For other users, please reach out to your administrator to address this matter.",
       loadingButton: "Loading...",
       resubscribeButton: "Resubscribe",
-      reinstateLicenseBody: "To reinstate your access and continue using {{appName}}, please contact your system administrator to renew your license.",
-      getStartedBody: "To get started, please contact your system administrator to obtain an Enterprise license.",
+      reinstateLicenseBody:
+        "To reinstate your access and continue using {{appName}}, please contact your system administrator to renew your license.",
+      getStartedBody:
+        "To get started, please contact your system administrator to obtain an Enterprise license.",
       billingVisitPrefix: "If you are the administrator, please visit the",
       billingVisitMiddleRenew: "page to renew your license,",
       billingVisitMiddleActivate: "page to activate your license,",
@@ -1485,15 +1715,19 @@ const en = {
     generic: "Error",
     errorPages: {
       cloudErrorTitle: "Maintenance in Progress",
-      cloudErrorBody1: "{{appName}} is currently in a maintenance window. Please check back in a couple of minutes.",
-      cloudErrorBody2: "We apologize for any inconvenience this may cause and appreciate your patience.",
+      cloudErrorBody1:
+        "{{appName}} is currently in a maintenance window. Please check back in a couple of minutes.",
+      cloudErrorBody2:
+        "We apologize for any inconvenience this may cause and appreciate your patience.",
       signInButton: "Sign in",
       backToAppButton: "Back to app",
       homeButton: "Home",
       generalTitle: "We encountered an issue",
-      generalBody1: "It seems there was a problem loading your {{appName}} settings. This could be due to a configuration issue or incomplete setup.",
+      generalBody1:
+        "It seems there was a problem loading your {{appName}} settings. This could be due to a configuration issue or incomplete setup.",
       generalBody2Admin: "If you're an admin, please review our",
-      generalBody2User: "for proper configuration steps. If you're a user, please contact your admin for assistance.",
+      generalBody2User:
+        "for proper configuration steps. If you're a user, please contact your admin for assistance.",
       generalBody3Prefix: "Need help? Join our",
       generalBody3Suffix: "for support.",
       documentation: "documentation",
@@ -1501,23 +1735,28 @@ const en = {
       http: {
         "400": {
           title: "Bad request",
-          description: "The request could not be understood. Check the link and try again.",
+          description:
+            "The request could not be understood. Check the link and try again.",
         },
         "401": {
           title: "Unauthorized",
-          description: "You must sign in to access this page. Please sign in and try again.",
+          description:
+            "You must sign in to access this page. Please sign in and try again.",
         },
         "403": {
           title: "Forbidden",
-          description: "You don't have permission to access this resource. If you believe this is an error, please contact your administrator.",
+          description:
+            "You don't have permission to access this resource. If you believe this is an error, please contact your administrator.",
         },
         "404": {
           title: "Page not found",
-          description: "The page you're looking for doesn't exist or has been moved.",
+          description:
+            "The page you're looking for doesn't exist or has been moved.",
         },
         "500": {
           title: "Something went wrong",
-          description: "An internal server error occurred. Please try again later or contact support.",
+          description:
+            "An internal server error occurred. Please try again later or contact support.",
         },
       },
     },
@@ -1575,11 +1814,13 @@ const en = {
       apiKeyLabel: "API Key",
       apiKeyPlaceholder: "Enter API Key",
       submitButton: "Impersonate User",
-      adminNote: "Note: This feature is only available for @onyx.app administrators",
+      adminNote:
+        "Note: This feature is only available for @onyx.app administrators",
     },
     createAccount: {
       notFoundTitle: "Account Not Found",
-      description: "We couldn't find your account in our records. To access ATLAS, you need to either:",
+      description:
+        "We couldn't find your account in our records. To access ATLAS, you need to either:",
       inviteOption: "Be invited to an existing ATLAS team",
       createTeamOption: "Create a new ATLAS team",
       createOrgButton: "Create New Organization",
@@ -1594,8 +1835,10 @@ const en = {
       issue2: "Temporary authentication system disruption",
       issue3: "Account access restrictions or permissions",
       returnButton: "Return to Login Page",
-      tryAgainNote: "We recommend trying again. If you continue to experience problems, please reach out to your system administrator for assistance.",
-      cloudSupportNote: "If you continue to experience problems please reach out to the ATLAS team at",
+      tryAgainNote:
+        "We recommend trying again. If you continue to experience problems, please reach out to your system administrator for assistance.",
+      cloudSupportNote:
+        "If you continue to experience problems please reach out to the ATLAS team at",
     },
     errorDisplay: {
       anonymousAccess: "Your team does not have anonymous access enabled.",
@@ -1610,7 +1853,8 @@ const en = {
     },
     deletionError: {
       title: "Deletion Error",
-      tooltip: "This error occurred while attempting to delete the connector. You may re-attempt a deletion by clicking the \"Delete\" button.",
+      tooltip:
+        'This error occurred while attempting to delete the connector. You may re-attempt a deletion by clicking the "Delete" button.',
     },
     configDisplay: {
       showLess: "Show less",
@@ -1644,16 +1888,20 @@ const en = {
       completeReindexStarted: "Complete re-indexing started successfully",
       indexingUpdateStarted: "Indexing update started successfully",
       failedToStartIndexing: "Failed to start indexing",
-      unexpectedError: "An unexpected error occurred while trying to start indexing",
+      unexpectedError:
+        "An unexpected error occurred while trying to start indexing",
       startingCompleteReindex: "Starting complete re-indexing...",
       startingIndexingUpdate: "Starting indexing update...",
       failedToStartIndexingProcess: "Failed to start indexing process",
       title: "Run Indexing",
-      updateBody: "This will pull in and index all documents that have changed and/or have been added since the last successful indexing run.",
+      updateBody:
+        "This will pull in and index all documents that have changed and/or have been added since the last successful indexing run.",
       runUpdateButton: "Run Update",
-      completeReindexBody: "This will cause a complete re-indexing of all documents from the source.",
+      completeReindexBody:
+        "This will cause a complete re-indexing of all documents from the source.",
       noteLabel: "NOTE:",
-      noteBody: "depending on the number of documents stored in the source, this may take a long time.",
+      noteBody:
+        "depending on the number of documents stored in the source, this may take a long time.",
       runCompleteReindexButton: "Run Complete Re-Indexing",
     },
     licenseActivation: {
@@ -1666,11 +1914,13 @@ const en = {
       updateLicenseKeyTitle: "Update License Key",
       activateLicenseKeyTitle: "Activate License Key",
       cancelButton: "Cancel",
-      manuallyAddDescription: "Manually add and activate a license for this ATLAS instance.",
+      manuallyAddDescription:
+        "Manually add and activate a license for this ATLAS instance.",
       updatedSuccess: "License updated successfully!",
       activatedSuccess: "License activated successfully!",
       licenseKeyLabel: "License Key",
-      pasteHint: "Paste or attach your license key file you received from ATLAS.",
+      pasteHint:
+        "Paste or attach your license key file you received from ATLAS.",
       billingHelpLink: "Billing Help",
       activatingButton: "Activating...",
       updateLicenseButton: "Update License",
@@ -1678,15 +1928,21 @@ const en = {
     },
     billingDetails: {
       stripeErrorText: "Unable to connect to Stripe payment portal.",
-      stripeErrorDescription: "Check your internet connection or manually provide a license.",
+      stripeErrorDescription:
+        "Check your internet connection or manually provide a license.",
       airGappedText: "Air-gapped deployment",
-      airGappedDescription: "Online billing management is disabled. Contact support to update your subscription.",
-      subscriptionExpiredWithDeletion: "Your subscription has expired. Data will be deleted in {{days}} days.",
+      airGappedDescription:
+        "Online billing management is disabled. Contact support to update your subscription.",
+      subscriptionExpiredWithDeletion:
+        "Your subscription has expired. Data will be deleted in {{days}} days.",
       subscriptionExpired: "Your subscription has expired.",
       subscriptionExpiringIn: "Your subscription is expiring in {{days}} days.",
-      renewByDateToRestore: "Renew your subscription by {{date}} to restore access.",
-      renewToRestore: "Renew your subscription to restore access to paid features.",
-      renewByDateToAvoidDisruption: "Renew your subscription by {{date}} to avoid disruption.",
+      renewByDateToRestore:
+        "Renew your subscription by {{date}} to restore access.",
+      renewToRestore:
+        "Renew your subscription to restore access to paid features.",
+      renewByDateToAvoidDisruption:
+        "Renew your subscription by {{date}} to avoid disruption.",
       enterprisePlan: "Enterprise Plan",
       businessPlan: "Business Plan",
       expiredOn: "Expired on {{date}}",
@@ -1721,7 +1977,8 @@ const en = {
       confirmChangeButton: "Confirm Change",
       seatsCount_one: "{{count}} Seat",
       seatsCount_other: "{{count}} Seats",
-      seatsUsageSummary: "{{used}} in use • {{pending}} pending • {{remaining}} remaining",
+      seatsUsageSummary:
+        "{{used}} in use • {{pending}} pending • {{remaining}} remaining",
       viewUsersButton: "View Users",
       updateSeatsButton: "Update Seats",
       paymentTitle: "Payment",
@@ -1741,16 +1998,19 @@ const en = {
       untitledFallback: "Untitled",
       noCredentialsMessage: "No credentials exist for this connector!",
       confirmDeletionTitle: "Confirm Deletion",
-      confirmDeletionBody: "Are you sure you want to delete this credential? You cannot delete credentials that are linked to live connectors.",
+      confirmDeletionBody:
+        "Are you sure you want to delete this credential? You cannot delete credentials that are linked to live connectors.",
       confirmButton: "Confirm",
       cancelButton: "Cancel",
-      selectCredentialHint: "Select a credential as needed! Ensure that you have selected a credential with the proper permissions for this connector!",
+      selectCredentialHint:
+        "Select a credential as needed! Ensure that you have selected a credential with the proper permissions for this connector!",
       createButton: "Create",
       selectButton: "Select",
     },
     editCredential: {
       updateError: "Error updating credential",
-      permissionsHint: "Ensure that you update to a credential with the proper permissions!",
+      permissionsHint:
+        "Ensure that you update to a credential with the proper permissions!",
       nameOptionalLabel: "Name (optional):",
       resetChangesButton: "Reset Changes",
       updateButton: "Update",
@@ -1820,20 +2080,25 @@ const en = {
       updateErrorToast: "Error updating Standard Answer - {{error}}",
       createErrorToast: "Error creating Standard Answer - {{error}}",
       regexPatternLabel: "Regex pattern",
-      regexPatternTooltip: "Triggers if the question matches this regex pattern (using Python `re.search()`)",
+      regexPatternTooltip:
+        "Triggers if the question matches this regex pattern (using Python `re.search()`)",
       anyKeywordsLabel: "Any of these keywords, separated by spaces",
-      keywordsTooltip: "A question must match these keywords in order to trigger the answer.",
+      keywordsTooltip:
+        "A question must match these keywords in order to trigger the answer.",
       anyKeywordsPlaceholder: "ticket problem issue",
-      allKeywordsLabel: "All of these keywords, in any order, separated by spaces",
+      allKeywordsLabel:
+        "All of these keywords, in any order, separated by spaces",
       allKeywordsPlaceholder: "it ticket",
       matchRegexSubtext: "Match a regex pattern instead of an exact keyword",
       matchRegexLabel: "Match regex",
       strategyLabel: "Keyword detection strategy",
-      strategySubtext: "Choose whether to require the user's question to contain any or all of the keywords above to show this answer.",
+      strategySubtext:
+        "Choose whether to require the user's question to contain any or all of the keywords above to show this answer.",
       allKeywordsOption: "All keywords",
       anyKeywordsOption: "Any keywords",
       answerLabel: "Answer",
-      answerPlaceholder: "The answer in Markdown. Example: If you need any help from the IT team, please email internalsupport@company.com",
+      answerPlaceholder:
+        "The answer in Markdown. Example: If you need any help from the IT team, please email internalsupport@company.com",
       categoriesLabel: "Categories:",
       updateButton: "Update!",
       createButton: "Create!",
@@ -1860,14 +2125,16 @@ const en = {
       fetchOAuthUrlFailed: "Failed to fetch OAuth URL",
       unknownError: "An unknown error occurred",
       uploadFilesError: "Error uploading files",
-      federatedTooltip: "A federated search option is available for this connector. It will result in greater latency and reduced search quality.",
+      federatedTooltip:
+        "A federated search option is available for this connector. It will result in greater latency and reduced search quality.",
       useFederatedInstead: "Use federated version instead →",
       selectACredential: "Select a credential",
       createNewButton: "Create New",
       authorizingButton: "Authorizing...",
       authorizeWithButton: "Authorize with {{source}}",
       createCredentialTitle: "Create a {{source}} credential",
-      operationTimedOut: "Operation timed out after {{seconds}} seconds. Check your configuration for errors?",
+      operationTimedOut:
+        "Operation timed out after {{seconds}} seconds. Check your configuration for errors?",
     },
     mailConfigs: {
       description: "Manage SMTP accounts that agents can use with send_email.",
@@ -1884,7 +2151,8 @@ const en = {
       notTestedYet: "Not tested yet",
       editConfigTitle: "Edit config",
       addConfigTitle: "Add config",
-      passwordsEncryptedNote: "Passwords are encrypted by agent-service and are never sent to agent prompts.",
+      passwordsEncryptedNote:
+        "Passwords are encrypted by agent-service and are never sent to agent prompts.",
       nameLabel: "Name",
       namePlaceholder: "Support SMTP",
       smtpHostLabel: "SMTP host",
@@ -1933,7 +2201,8 @@ const en = {
       groupMemberSummary: "{{userCount}} users, {{agentCount}} agents",
       noGroupsMatchSearch: "No groups match this search.",
       selectGroupTitle: "Select a group",
-      selectGroupDescription: "Agent access groups let admins decide which users can use a set of agents.",
+      selectGroupDescription:
+        "Agent access groups let admins decide which users can use a set of agents.",
       adminOnlyNotice: "Only admins can change agent access groups.",
       groupNameLabel: "Group name",
       descriptionLabel: "Description",
@@ -1943,7 +2212,8 @@ const en = {
       filterUsersPlaceholder: "Filter users by email or role...",
       noUsersMatch: "No users match the current filters.",
       agentsTitle: "Agents",
-      filterAgentsPlaceholder: "Filter agents by name, owner, or description...",
+      filterAgentsPlaceholder:
+        "Filter agents by name, owner, or description...",
       systemOwner: "System",
       noAgentsMatch: "No agents match the current filters.",
       deleteButton: "Delete",
@@ -2132,7 +2402,8 @@ const en = {
     },
     agents: {
       workspaceTitle: "Agent workspace",
-      workspaceDescription: "Manage the assistant catalog, access groups, and the tools that shape chat behavior.",
+      workspaceDescription:
+        "Manage the assistant catalog, access groups, and the tools that shape chat behavior.",
       catalogMetricLabel: "Catalog",
       totalAgentsLabel: "Total agents",
       visibleAgentsLabel: "Visible agents",
@@ -2143,7 +2414,8 @@ const en = {
       accessModelLabel: "Access model",
       catalogTitle: "Agent Catalog",
       createButton: "Create Agent",
-      catalogDescription: "Browse and manage all agents available in your organization.",
+      catalogDescription:
+        "Browse and manage all agents available in your organization.",
       searchPlaceholder: "Search agents...",
       noSearchResults: "No agents found matching your search.",
       errorTitle: "Failed to load agents",
@@ -2163,10 +2435,14 @@ const en = {
       setFeaturedTitle: "Set Featured Agent",
       removeFeaturedButton: "Remove Feature",
       setFeaturedButton: "Set as Featured",
-      removeFeaturedBody: "Are you sure you want to remove the featured status of {{name}}?",
-      setFeaturedBody: "Are you sure you want to set the featured status of {{name}}?",
-      removeFeaturedDescription: "Removing \"{{name}}\" as a featured agent will not affect its visibility or accessibility.",
-      setFeaturedDescription: "Setting \"{{name}}\" as a featured agent will make it public and visible to all users. This action cannot be undone.",
+      removeFeaturedBody:
+        "Are you sure you want to remove the featured status of {{name}}?",
+      setFeaturedBody:
+        "Are you sure you want to set the featured status of {{name}}?",
+      removeFeaturedDescription:
+        'Removing "{{name}}" as a featured agent will not affect its visibility or accessibility.',
+      setFeaturedDescription:
+        'Setting "{{name}}" as a featured agent will make it public and visible to all users. This action cannot be undone.',
       tableName: "Name",
       tableDescription: "Description",
       tableType: "Type",
@@ -2182,7 +2458,8 @@ const en = {
     },
     search: {
       workspaceTitle: "Search quality workspace",
-      workspaceDescription: "Review embedding configuration, reindexing needs, and the retrieval settings that shape answer quality.",
+      workspaceDescription:
+        "Review embedding configuration, reindexing needs, and the retrieval settings that shape answer quality.",
       embeddingLabel: "Embedding model",
       configurable: "Configurable",
       indexHealthLabel: "Index health",
@@ -2190,7 +2467,8 @@ const en = {
       relatedContentLabel: "Related content",
       changedSuccessfully: "Search settings changed successfully",
       fetchEmbeddingModelError: "Failed to fetch embedding model",
-      reindexWarning: "Your search settings are currently out of date! We recommend updating your search settings and re-indexing.",
+      reindexWarning:
+        "Your search settings are currently out of date! We recommend updating your search settings and re-indexing.",
       embeddingModelTitle: "Embedding Model",
       chooseEmbeddingModel: "Choose your Embedding Model",
       postProcessingTitle: "Post-processing",
@@ -2202,16 +2480,20 @@ const en = {
     },
     llm: {
       workspaceTitle: "Model provider workspace",
-      workspaceDescription: "Manage built-in, local, and cloud model providers, then choose the default model users start from.",
+      workspaceDescription:
+        "Manage built-in, local, and cloud model providers, then choose the default model users start from.",
       defaultModelLabel: "Default Model",
-      defaultModelDescription: "This model will be used by ATLAS by default in your chats.",
+      defaultModelDescription:
+        "This model will be used by ATLAS by default in your chats.",
       selectDefaultModelPlaceholder: "Select a default model",
       providerDeletedSuccess: "Provider deleted successfully!",
       deleteProviderFailed: "Failed to delete provider: {{message}}",
       deleteProviderTitle: "Delete {{name}}",
       deleteProviderBodyPrefix: "All LLM models from provider",
-      deleteProviderBodySuffix: "will be removed and unavailable for future chats. Chat history will be preserved.",
-      connectAnotherProvider: "Connect another provider to continue using chats.",
+      deleteProviderBodySuffix:
+        "will be removed and unavailable for future chats. Chat history will be preserved.",
+      connectAnotherProvider:
+        "Connect another provider to continue using chats.",
       defaultTag: "Default",
       deleteProviderAria: "Delete provider",
       editProviderAria: "Edit provider",
@@ -2221,10 +2503,12 @@ const en = {
       setUpProviderToStart: "Set up an LLM provider to start chatting.",
       availableProviders: "Available Providers",
       addProvider: "Add Provider",
-      addProviderDescription: "ATLAS supports both popular providers and self-hosted models.",
-      noModalMapping: "No modal mapping for provider \"{{name}}\".",
+      addProviderDescription:
+        "ATLAS supports both popular providers and self-hosted models.",
+      noModalMapping: 'No modal mapping for provider "{{name}}".',
       modelConfigurations: "Model Configurations",
-      modelConfigurationsDescription: "List of model names and their optional max token limits.",
+      modelConfigurationsDescription:
+        "List of model names and their optional max token limits.",
       modelName: "Model Name",
       maxInputTokens: "Max Input Tokens",
       addNew: "Add New",
@@ -2232,15 +2516,18 @@ const en = {
       defaultPlaceholder: "Default",
       failedToDeleteProvider: "Failed to delete provider",
       builtInProvidersTitle: "Built-in Providers",
-      builtInProvidersDescription: "Configured via environment variables, read-only",
+      builtInProvidersDescription:
+        "Configured via environment variables, read-only",
       ollamaBuiltInTitle: "Ollama (Built-in)",
       configuredFromEnvironment: "Configured from environment",
       localProvidersTitle: "Local / Self-Hosted Providers",
-      localProvidersDescription: "Ollama, vLLM, and other self-hosted LLM servers",
+      localProvidersDescription:
+        "Ollama, vLLM, and other self-hosted LLM servers",
       addProviderCta: "+ Add Provider",
       noLocalProvidersYet: "No local providers configured yet.",
       cloudProvidersTitle: "Cloud Providers",
-      cloudProvidersDescription: "API-key-based providers (OpenAI, Anthropic, etc.)",
+      cloudProvidersDescription:
+        "API-key-based providers (OpenAI, Anthropic, etc.)",
       noCloudProvidersYet: "No cloud providers configured yet.",
       noDefault: "no default",
       baseUrlRequiredToTest: "Base URL is required to test connection",
@@ -2295,7 +2582,7 @@ const en = {
       modelNameRequired: "Model name is required",
       starting: "Starting...",
       pullRequestFailed: "Pull request failed",
-      modelDownloaded: "Model \"{{model}}\" downloaded",
+      modelDownloaded: 'Model "{{model}}" downloaded',
       pullFailed: "Pull failed",
       downloadOllamaModel: "Download Ollama Model",
       modelNameExample: "e.g. llama3.1:8b",
@@ -2317,7 +2604,8 @@ const en = {
       apiKeyWillBeDeleted: "API key will be deleted on save.",
       undoDeleteApiKey: "Undo",
       apiKeyStoredSecurely: "API key is stored securely",
-      apiKeyHiddenHint: "API key is encrypted and cannot be displayed. Delete it to enter a new one.",
+      apiKeyHiddenHint:
+        "API key is encrypted and cannot be displayed. Delete it to enter a new one.",
       clearApiKey: "Delete API key",
       enterNewApiKey: "Enter new API key",
       nameRequired: "Name is required",
@@ -2331,43 +2619,55 @@ const en = {
       authenticationMethod: "Authentication Method",
       selectMethod: "Select method",
       oauth: "OAuth",
-      oauthDescription: "Each user need to authenticate via OAuth with their own credentials.",
+      oauthDescription:
+        "Each user need to authenticate via OAuth with their own credentials.",
       oauthPassThrough: "OAuth Pass-through",
-      oauthPassThroughDescription: "Forward the user's OAuth access token used to authenticate ATLAS.",
+      oauthPassThroughDescription:
+        "Forward the user's OAuth access token used to authenticate ATLAS.",
       apiKey: "API Key",
-      apiKeyDescription: "Use per-user individual API key or organization-wide shared API key.",
+      apiKeyDescription:
+        "Use per-user individual API key or organization-wide shared API key.",
       none: "None",
       notRecommended: "Not Recommended",
       clientId: "Client ID",
       clientSecret: "Client Secret",
-      dcrInfo: "Client ID and secret are optional if the server connection supports Dynamic Client Registration (DCR).",
-      nonDcrInfo: "If your server does not support DCR, you need register your ATLAS instance with the server provider to obtain these credentials first. Make sure to grant ATLAS necessary scopes/permissions for your actions.",
+      dcrInfo:
+        "Client ID and secret are optional if the server connection supports Dynamic Client Registration (DCR).",
+      nonDcrInfo:
+        "If your server does not support DCR, you need register your ATLAS instance with the server provider to obtain these credentials first. Make sure to grant ATLAS necessary scopes/permissions for your actions.",
       use: "Use",
       redirectUri: "redirect URI",
       copyRedirectUri: "Copy redirect URI",
       individualKeyPerUser: "Individual Key (Per User)",
       sharedKeyAdmin: "Shared Key (Admin)",
       sharedApiKeyPlaceholder: "Shared API key for your organization",
-      sharedApiKeyHelp: "Do not use your personal API key. Make sure this key is appropriate to share with everyone in your organization.",
+      sharedApiKeyHelp:
+        "Do not use your personal API key. Make sure this key is appropriate to share with everyone in your organization.",
       noAuthenticationText: "No authentication for this MCP server",
-      noAuthenticationDescription: "No authentication will be used for this connection. Make sure you trust this server. You are responsible for actions taken with this connection.",
-      passThroughText: "Use pass-through for services with shared identity provider.",
-      passThroughDescription: "ATLAS will forward the user's OAuth access token directly to the server as an Authorization header. Make sure the server supports authentication with the same provider.",
+      noAuthenticationDescription:
+        "No authentication will be used for this connection. Make sure you trust this server. You are responsible for actions taken with this connection.",
+      passThroughText:
+        "Use pass-through for services with shared identity provider.",
+      passThroughDescription:
+        "ATLAS will forward the user's OAuth access token directly to the server as an Authorization header. Make sure the server supports authentication with the same provider.",
       connecting: "Connecting...",
       failedToSaveServerConfiguration: "Failed to save server configuration",
       failedToInitiateOauth: "Failed to initiate OAuth",
-      failedToSaveAuthenticationConfiguration: "Failed to save authentication configuration",
+      failedToSaveAuthenticationConfiguration:
+        "Failed to save authentication configuration",
     },
     imageUpload: {
       onlyOneFile: "Only one file can be uploaded at a time",
       acceptedFileUndefined: "acceptedFile cannot be undefined",
-      dragDropHint: "Drag and drop a .png or .jpg file, or click to select a file!",
+      dragDropHint:
+        "Drag and drop a .png or .jpg file, or click to select a file!",
       uploadedImageLabel: "Uploaded Image:",
       uploadedImageAlt: "Uploaded Image",
     },
     embeddings: {
       modelSelection: {
-        description: "Select from cloud, self-hosted models, or continue with your current embedding model.",
+        description:
+          "Select from cloud, self-hosted models, or continue with your current embedding model.",
         currentTab: "Current",
         cloudTab: "Cloud-based",
         selfHostedTab: "Self-hosted",
@@ -2375,19 +2675,24 @@ const en = {
       },
       openPage: {
         localModelsTitle: "Here are some locally-hosted models to choose from.",
-        localModelsDescription: "These models can be used without any API keys, and can leverage a GPU for faster inference.",
-        alternativelyPrefix: "Alternatively, (if you know what you're doing) you can specify a",
+        localModelsDescription:
+          "These models can be used without any API keys, and can leverage a GPU for faster inference.",
+        alternativelyPrefix:
+          "Alternatively, (if you know what you're doing) you can specify a",
         sentenceTransformersLink: "SentenceTransformers",
-        alternativelyMiddle: "-compatible model of your choice below. The rough list of supported models can be found",
+        alternativelyMiddle:
+          "-compatible model of your choice below. The rough list of supported models can be found",
         hereLink: "here",
-        modelListNote: "not all models listed will work with ATLAS, since some have unique interfaces or special requirements. If in doubt, reach out to the ATLAS team.",
+        modelListNote:
+          "not all models listed will work with ATLAS, since some have unique interfaces or special requirements. If in doubt, reach out to the ATLAS team.",
         noteLabel: "NOTE:",
         configureCustomModelButton: "Configure custom model",
       },
       imageUpload: {
         onlyOneFile: "Only one file can be uploaded at a time",
         acceptedFileUndefined: "acceptedFile cannot be undefined",
-        dragDropHint: "Drag and drop a .png or .jpg file, or click to select a file!",
+        dragDropHint:
+          "Drag and drop a .png or .jpg file, or click to select a file!",
         uploadedImageLabel: "Uploaded Image:",
         uploadedImageAlt: "Uploaded Image",
       },
@@ -2396,7 +2701,8 @@ const en = {
         mustBeValidUrl: "Must be a valid URL",
         urlMustStartWithHttp: "URL must start with http:// or https://",
         apiUrlRequiredLiteLLM: "API URL is required for LiteLLM reranking",
-        selectModelIntro: "Select from cloud, self-hosted models, or use no reranking model.",
+        selectModelIntro:
+          "Select from cloud, self-hosted models, or use no reranking model.",
         currentTab: "Current",
         cloudBasedTab: "Cloud-based",
         selfHostedTab: "Self-hosted",
@@ -2405,7 +2711,8 @@ const en = {
         selfHostedLabel: "Self-hosted",
         gpuNotEnabledTitle: "GPU Not Enabled",
         warningLabel: "Warning:",
-        gpuWarningBody: "Local reranking models require significant computational resources and may perform slowly without GPU acceleration. Consider switching to GPU-enabled infrastructure or using a cloud-based alternative for better performance.",
+        gpuWarningBody:
+          "Local reranking models require significant computational resources and may perform slowly without GPU acceleration. Consider switching to GPU-enabled infrastructure or using a cloud-based alternative for better performance.",
         understoodButton: "Understood",
         apiKeyConfigTitle: "API Key Configuration",
         liteLLMUrlSubtext: "Set the URL at which your LiteLLM Proxy is hosted",
@@ -2417,14 +2724,18 @@ const en = {
         updateButton: "Update",
         bedrockPlaceholder: "aws_ACCESSKEY_SECRETKEY_REGION",
         enterApiKeyPlaceholder: "Enter your API key",
-        bedrockCredentialsLabel: "AWS Credentials in format: aws_ACCESSKEY_SECRETKEY_REGION",
+        bedrockCredentialsLabel:
+          "AWS Credentials in format: aws_ACCESSKEY_SECRETKEY_REGION",
         cohereApiKeyLabel: "Cohere API Key",
       },
       advancedForm: {
-        llmRequiredForContextualRag: "LLM must be selected when Contextual RAG is enabled",
+        llmRequiredForContextualRag:
+          "LLM must be selected when Contextual RAG is enabled",
         reducedDimensionMinError: "Must be larger than or equal to 256",
-        reducedDimensionOpenAIOnlyError: "Reduced Dimensions is only supported for OpenAI embedding models",
-        multipassIndexingSubtext: "Enable multipass indexing for both mini and large chunks.",
+        reducedDimensionOpenAIOnlyError:
+          "Reduced Dimensions is only supported for OpenAI embedding models",
+        multipassIndexingSubtext:
+          "Enable multipass indexing for both mini and large chunks.",
         multipassIndexingLabel: "Multipass Indexing",
         contextualRagCloudDisabled: "Contextual RAG disabled in ATLAS Cloud",
         contextualRagSubtext: "Enable contextual RAG for all chunk sizes.",
@@ -2432,21 +2743,27 @@ const en = {
         contextualRagLlmLabel: "Contextual RAG LLM",
         errorLoadingModels: "Error loading LLM models. Please try again later.",
         loadingModels: "Loading available LLM models...",
-        selectLlmForContextualRag: "Select the LLM model to use for contextual RAG processing.",
-        enableContextualRagFirst: "Enable Contextual RAG above to select an LLM model.",
+        selectLlmForContextualRag:
+          "Select the LLM model to use for contextual RAG processing.",
+        enableContextualRagFirst:
+          "Enable Contextual RAG above to select an LLM model.",
         estimatedCostPrefix: "Estimated cost for processing",
         estimatedCostSuffix: "tokens:",
         costNotAvailable: "Cost information not available",
         loadingCostInfo: "Loading cost information...",
         embeddingPrecisionLabel: "Embedding Precision",
-        embeddingPrecisionSubtext: "Select the precision for embedding vectors. Lower precision uses less storage but may reduce accuracy.",
-        reducedDimensionDescription: "Number of dimensions to reduce the embedding to.\n              Will reduce memory usage but may reduce accuracy.\n              If not specified, will just use the selected model's default dimensionality without any reduction.\n              Currently only supported for OpenAI embedding models",
+        embeddingPrecisionSubtext:
+          "Select the precision for embedding vectors. Lower precision uses less storage but may reduce accuracy.",
+        reducedDimensionDescription:
+          "Number of dimensions to reduce the embedding to.\n              Will reduce memory usage but may reduce accuracy.\n              If not specified, will just use the selected model's default dimensionality without any reduction.\n              Currently only supported for OpenAI embedding models",
         reducedDimensionLabel: "Reduced Dimension",
       },
       failedReindex: {
-        deleteConfirmationDetails: "Deleting this connector schedules a deletion job that removes its indexed documents and deletes it for every user.",
+        deleteConfirmationDetails:
+          "Deleting this connector schedules a deletion job that removes its indexed documents and deletes it for every user.",
         title: "Failed Re-indexing Attempts",
-        description: "The table below shows only the failed re-indexing attempts for existing connectors. These failures require immediate attention. Once all connectors have been re-indexed successfully, the new model will be used for all search queries.",
+        description:
+          "The table below shows only the failed re-indexing attempts for existing connectors. These failures require immediate attention. Once all connectors have been re-indexed successfully, the new model will be used for all search queries.",
         connectorNameHeader: "Connector Name",
         statusHeader: "Status",
         errorMessageHeader: "Error Message",
@@ -2459,22 +2776,29 @@ const en = {
       },
       cloudPage: {
         introTitle: "Here are some cloud-based models to choose from.",
-        introDescription: "These models require API keys and run in the clouds of the respective providers.",
+        introDescription:
+          "These models require API keys and run in the clouds of the respective providers.",
         recommendedSuffix: "(recommended)",
         modifyApiKeyButton: "Modify API key",
         provideApiKeyButton: "Provide API key",
-        liteLLMIntro: "Alternatively, you can use a self-hosted model using the LiteLLM proxy. This allows you to leverage various LLM providers through a unified interface that you control.",
+        liteLLMIntro:
+          "Alternatively, you can use a self-hosted model using the LiteLLM proxy. This allows you to leverage various LLM providers through a unified interface that you control.",
         learnMoreLiteLLM: "Learn more about LiteLLM",
         setApiConfigButton: "Set API Configuration",
         modifyApiConfigButton: "Modify API Configuration",
         apiUrlRequiredTitle: "API URL Required",
-        apiUrlRequiredBody: "Before you can add models, you need to provide an API URL for your LiteLLM proxy. Click the \"Provide API URL\" button above to set up your LiteLLM configuration.",
-        apiUrlRequiredNote: "Once configured, you'll be able to add and manage your LiteLLM models here.",
-        azureIntro: "You can also use Azure OpenAI models for embeddings. Azure requires separate configuration for each model.",
+        apiUrlRequiredBody:
+          'Before you can add models, you need to provide an API URL for your LiteLLM proxy. Click the "Provide API URL" button above to set up your LiteLLM configuration.',
+        apiUrlRequiredNote:
+          "Once configured, you'll be able to add and manage your LiteLLM models here.",
+        azureIntro:
+          "You can also use Azure OpenAI models for embeddings. Azure requires separate configuration for each model.",
         configureAzureButton: "Configure Azure OpenAI",
         configureAzureTitle: "Configure Azure OpenAI for Embeddings",
-        configureAzureBody: "Click \"Configure Azure OpenAI\" to set up Azure OpenAI for embeddings.",
-        azureRequirementsNote: "You'll need: API version, base URL, API key, model name, and deployment name.",
+        configureAzureBody:
+          'Click "Configure Azure OpenAI" to set up Azure OpenAI for embeddings.',
+        azureRequirementsNote:
+          "You'll need: API version, base URL, API key, model name, and deployment name.",
         currentAzureConfigTitle: "Current Azure Configuration",
         apiVersionLabel: "API Version:",
         baseUrlLabel: "Base URL:",
@@ -2483,7 +2807,8 @@ const en = {
         noAzureProviderConfigured: "No Azure provider has been configured yet.",
         modelCannotBeDeleted: "Model cannot be deleted",
         modelDeletedSuccess: "Model deleted successfully",
-        modelDeleteFailed: "Failed to delete model. Ensure you are not attempting to delete a curently active model.",
+        modelDeleteFailed:
+          "Failed to delete model. Ensure you are not attempting to delete a curently active model.",
         selectedModelButton: "Selected Model",
         selectModelButton: "Select Model",
       },
@@ -2494,11 +2819,13 @@ const en = {
         apiUrlRequiredValidation: "API URL is required",
         deploymentNameRequiredValidation: "Deployment name is required",
         apiVersionRequiredValidation: "API Version is required",
-        jsonParseError: "Failed to parse JSON file. Please ensure it's a valid JSON.",
+        jsonParseError:
+          "Failed to parse JSON file. Please ensure it's a valid JSON.",
         updateFailedFallback: "Failed to update provider- check your API key",
         unknownError: "An unknown error occurred",
         configureTitle: "Configure {{provider}}",
-        credentialsInstructionsPrefix: "You are setting the credentials for this provider. To access this information, follow the instructions",
+        credentialsInstructionsPrefix:
+          "You are setting the credentials for this provider. To access this information, follow the instructions",
         credentialsInstructionsHereLink: "here",
         credentialsInstructionsMiddle: "and gather your",
         credentialsInstructionsSuffix: "",
@@ -2519,7 +2846,8 @@ const en = {
         createButton: "Create",
       },
       alreadyChosenTitle: "{{modelName}} is already selected",
-      alreadyChosenDescription: "This model is already your current embedding model.",
+      alreadyChosenDescription:
+        "This model is already your current embedding model.",
       closeButton: "Close",
       selectModelTitle: "Select {{modelName}}",
       selectModelBody1: "You are about to switch to",
@@ -2528,19 +2856,26 @@ const en = {
       cancelButton: "Cancel",
       updateModelTitle: "Update Embedding Model",
       updateModelSelected: "You have selected:",
-      updateModelConfirm: "Are you sure you want to update to this new embedding model?",
-      updateModelBody: "We will re-index all your documents in the background so you will be able to continue to use ATLAS as normal with the old model in the meantime. Depending on how many documents you have indexed, this may take a while.",
+      updateModelConfirm:
+        "Are you sure you want to update to this new embedding model?",
+      updateModelBody:
+        "We will re-index all your documents in the background so you will be able to continue to use ATLAS as normal with the old model in the meantime. Depending on how many documents you have indexed, this may take a while.",
       noteLabel: "NOTE:",
-      updateModelNote: "this re-indexing process will consume more resources than normal. If you are self-hosting, we recommend that you allocate at least 16GB of RAM to ATLAS during this process.",
+      updateModelNote:
+        "this re-indexing process will consume more resources than normal. If you are self-hosting, we recommend that you allocate at least 16GB of RAM to ATLAS during this process.",
       importantTitle: "IMPORTANT",
       afterLabel: "after",
-      customModelWarning1: "We've detected that this is a custom-specified embedding model. Since we have to download the model files before verifying the configuration's correctness, we won't be able to let you know if the configuration is valid until",
-      customModelWarning2: "we start re-indexing your documents. If there is an issue, it will show up on this page as an indexing error after clicking Confirm.",
+      customModelWarning1:
+        "We've detected that this is a custom-specified embedding model. Since we have to download the model files before verifying the configuration's correctness, we won't be able to let you know if the configuration is valid until",
+      customModelWarning2:
+        "we start re-indexing your documents. If there is an issue, it will show up on this page as an indexing error after clicking Confirm.",
       instantSwitchTitle: "Are you sure you want to do an instant switch?",
-      instantSwitchBody: "Instant switching will immediately change the embedding model without re-indexing. Searches will be over a partial set of documents (starting with 0 documents) until re-indexing is complete.",
+      instantSwitchBody:
+        "Instant switching will immediately change the embedding model without re-indexing. Searches will be over a partial set of documents (starting with 0 documents) until re-indexing is complete.",
       instantSwitchIrreversible: "This is not reversible.",
       deleteCredentialsTitle: "Delete {{provider}} Credentials?",
-      deleteCredentialsBody: "You're about to delete your {{provider}} credentials. Are you sure?",
+      deleteCredentialsBody:
+        "You're about to delete your {{provider}} credentials. Are you sure?",
       pointOfNoReturn: "Point of No Return",
       keepCredentials: "Keep Credentials",
       deleteCredentials: "Delete Credentials",
@@ -2548,11 +2883,14 @@ const en = {
       reindexButton: "Re-index",
       activeOnlyButton: "Active Only",
       instantSwitchButton: "Instant Switch",
-      reindexTooltip: "Re-runs all connectors in the background before switching over. Takes longer but ensures no degradation of search during the switch.",
+      reindexTooltip:
+        "Re-runs all connectors in the background before switching over. Takes longer but ensures no degradation of search during the switch.",
       recommendedReindex: "(Recommended) Re-index",
-      activeOnlyTooltip: "Re-runs only active (non-paused) connectors in the background before switching over. Paused connectors won't block the switchover.",
+      activeOnlyTooltip:
+        "Re-runs only active (non-paused) connectors in the background before switching over. Paused connectors won't block the switchover.",
       activeConnectorsOnly: "Active Connectors Only",
-      instantSwitchTooltip: "Immediately switches to new settings without re-indexing. Searches will be degraded until the re-indexing is complete.",
+      instantSwitchTooltip:
+        "Immediately switches to new settings without re-indexing. Searches will be degraded until the re-indexing is complete.",
       needsReindexingDueTo: "Needs re-indexing due to:",
       changedEmbeddingProvider: "Changed embedding provider",
       multipassIndexingModification: "Multipass indexing modification",
@@ -2561,23 +2899,28 @@ const en = {
       contextualRagModification: "Contextual RAG modification",
       validationErrors: "Validation Errors:",
       updateSearch: "Update Search",
-      failedToFetchEmbeddingModelStatus: "Failed to fetch embedding model status",
+      failedToFetchEmbeddingModelStatus:
+        "Failed to fetch embedding model status",
       failedToUpdateEmbeddingModel: "Failed to update embedding model",
       selectEmbeddingModelTitle: "Select an Embedding Model",
-      selectEmbeddingModelDescription: "Note that updating the backing model will require a complete re-indexing of all documents across every connected source. This is taken care of in the background so that the system can continue to be used, but depending on the size of the corpus, this could take hours or days. You can monitor the progress of the re-indexing on this page while the models are being switched.",
+      selectEmbeddingModelDescription:
+        "Note that updating the backing model will require a complete re-indexing of all documents across every connected source. This is taken care of in the background so that the system can continue to be used, but depending on the size of the corpus, this could take hours or days. You can monitor the progress of the re-indexing on this page while the models are being switched.",
       continue: "Continue",
       poorModelTitle: "Are you sure you want to select {{modelName}}?",
-      poorModelDescription: "{{modelName}} is a lower accuracy model. We recommend the following alternatives:",
+      poorModelDescription:
+        "{{modelName}} is a lower accuracy model. We recommend the following alternatives:",
       poorModelAltCloud: "Cohere embed-english-v3.0 for cloud-based",
       poorModelAltHosted: "Nomic nomic-embed-text-v1 for self-hosted",
       cancelUpdate: "Cancel update",
       continueWithModel: "Continue with {{modelName}}",
       selectRerankingModelTitle: "Select a Reranking Model",
-      selectRerankingModelDescription: "Updating the reranking model does not require re-indexing documents. The reranker helps improve search quality by reordering results after the initial embedding search. Changes will take effect immediately for all new searches.",
+      selectRerankingModelDescription:
+        "Updating the reranking model does not require re-indexing documents. The reranker helps improve search quality by reordering results after the initial embedding search. Changes will take effect immediately for all new searches.",
       previous: "Previous",
       advanced: "Advanced",
       advancedSearchConfigurationTitle: "Advanced Search Configuration",
-      advancedSearchConfigurationDescription: "Configure advanced embedding and search settings. Changes will require re-indexing documents.",
+      advancedSearchConfigurationDescription:
+        "Configure advanced embedding and search settings. Changes will require re-indexing documents.",
       modelDescriptionFallback: "Custom model—no description is available.",
       dimensions: "Dimensions:",
       provider: "Provider:",
@@ -2602,7 +2945,8 @@ const en = {
       docsReindexed: "Docs Re-Indexed",
       indexAttempts: {
         noAttemptsTitle: "No indexing attempts scheduled yet",
-        noAttemptsDescription: "Index attempts are scheduled in the background, and may take some time to appear. Try refreshing the page in ~30 seconds!",
+        noAttemptsDescription:
+          "Index attempts are scheduled in the background, and may take some time to appear. Try refreshing the page in ~30 seconds!",
         columns: {
           timeStarted: "Time Started",
           status: "Status",
@@ -2611,13 +2955,17 @@ const en = {
           errorMessage: "Error Message",
         },
         tooltips: {
-          totalDocs: "Total number of documents replaced in the index during this indexing attempt",
-          reindexActive: "This index attempt is a full re-index. All documents from the source are being synced into the system.",
-          reindexPast: "This index attempt was a full re-index. All documents from the source were synced into the system.",
+          totalDocs:
+            "Total number of documents replaced in the index during this indexing attempt",
+          reindexActive:
+            "This index attempt is a full re-index. All documents from the source are being synced into the system.",
+          reindexPast:
+            "This index attempt was a full re-index. All documents from the source were synced into the system.",
         },
         docsPerMinute: "{{count}} docs / min",
         noDocsProcessed: "No additional docs processed",
-        removedDocs: "(also removed {{count}} docs that were detected as deleted in the source)",
+        removedDocs:
+          "(also removed {{count}} docs that were detected as deleted in the source)",
         viewFullTrace: "View Full Trace",
       },
       customModelForm: {
@@ -2625,24 +2973,29 @@ const en = {
         nameSubtext: "The name of the model on Hugging Face",
         namePlaceholder: "E.g. 'nomic-ai/nomic-embed-text-v1'",
         dimLabel: "Model Dimension:",
-        dimSubtext: "The dimensionality of the embeddings generated by the model",
+        dimSubtext:
+          "The dimensionality of the embeddings generated by the model",
         dimPlaceholder: "E.g. '768'",
         descriptionLabel: "Description:",
         descriptionSubtext: "Description of your model",
         queryPrefixLabel: "[Optional] Query Prefix:",
-        queryPrefixSubtext: "The prefix specified by the model creators which should be prepended to queries before passing them to the model. Many models do not have this, in which case this should be left empty.",
+        queryPrefixSubtext:
+          "The prefix specified by the model creators which should be prepended to queries before passing them to the model. Many models do not have this, in which case this should be left empty.",
         queryPrefixPlaceholder: "E.g. 'query: '",
         passagePrefixLabel: "[Optional] Passage Prefix:",
-        passagePrefixSubtext: "The prefix specified by the model creators which should be prepended to passages before passing them to the model. Many models do not have this, in which case this should be left empty.",
+        passagePrefixSubtext:
+          "The prefix specified by the model creators which should be prepended to passages before passing them to the model. Many models do not have this, in which case this should be left empty.",
         passagePrefixPlaceholder: "E.g. 'passage: '",
         normalizeLabel: "Normalize Embeddings",
-        normalizeSubtext: "Whether or not to normalize the embeddings generated by the model. When in doubt, leave this checked.",
+        normalizeSubtext:
+          "Whether or not to normalize the embeddings generated by the model. When in doubt, leave this checked.",
         chooseButton: "Choose",
       },
     },
     users: {
       workspaceTitle: "User management workspace",
-      workspaceDescription: "Find users, export account data, invite teammates, and move into roles when access needs to change.",
+      workspaceDescription:
+        "Find users, export account data, invite teammates, and move into roles when access needs to change.",
       primaryTableLabel: "Primary table",
       accessModelLabel: "Access model",
       exportLabel: "Export",
@@ -2651,7 +3004,8 @@ const en = {
       rolesAvailableLabel: "Roles available",
       notAvailable: "Not available",
       addUserWorkspaceTitle: "Create user",
-      addUserWorkspaceDescription: "Add a user account, assign the initial access profile, and return to the user table when finished.",
+      addUserWorkspaceDescription:
+        "Add a user account, assign the initial access profile, and return to the user table when finished.",
       identityLabel: "Identity",
       required: "Required",
       initialRoleLabel: "Initial role",
@@ -2659,7 +3013,8 @@ const en = {
       searchPlaceholder: "Search",
       inviteUsersButton: "Invite Users",
       bulkAddTitle: "Bulk Add Users",
-      bulkAddDescription: "Add the email addresses to import, separated by whitespaces. Invited users will be able to login to this domain with their email address.",
+      bulkAddDescription:
+        "Add the email addresses to import, separated by whitespaces. Invited users will be able to login to this domain with their email address.",
       currentUsersTab: "Current Users",
       invitedUsersTab: "Invited Users",
       pendingUsersTab: "Pending Users",
@@ -2672,13 +3027,16 @@ const en = {
       downloadCsvButton: "Download CSV",
       downloadingButton: "Downloading...",
       errorLoadingDomains: "Error loading valid domains",
-      emailNotConfiguredWarning: "Users added, but no email notification was sent. There is no SMTP server set up for email sending.",
-      emailSendFailedWarning: "Users added, but email sending failed. Check your SMTP configuration and try again.",
+      emailNotConfiguredWarning:
+        "Users added, but no email notification was sent. There is no SMTP server set up for email sending.",
+      emailSendFailedWarning:
+        "Users added, but email sending failed. Check your SMTP configuration and try again.",
       usersInvitedSuccess: "Users invited!",
       addUserButton: "Add User",
       createSuccess: "User created and synced with Keycloak",
       createError: "Failed to create user - {{error}}",
-      createDescription: "Create a user directly in the platform. This action also creates and syncs the account in Keycloak.",
+      createDescription:
+        "Create a user directly in the platform. This action also creates and syncs the account in Keycloak.",
       addUserPageTitle: "Users - Add User",
       creatingButton: "Creating...",
       createPasswordLabel: "Password",
@@ -2689,7 +3047,8 @@ const en = {
       activatedSuccess: "User activated!",
       deletedSuccess: "User deleted successfully!",
       deleteError: "Unable to delete user - {{error}}",
-      deleteAdditionalDetails: "All data associated with this user will be deleted (including personas, tools and chat sessions).",
+      deleteAdditionalDetails:
+        "All data associated with this user will be deleted (including personas, tools and chat sessions).",
       singleInviteSuccess: "User invited successfully!",
       singleUninviteSuccess: "User uninvited successfully!",
       singleInviteError: "Unable to invite user - {{error}}",
@@ -2708,8 +3067,9 @@ const en = {
       actionsHeader: "Actions",
       roleHeader: "Role",
       statusHeader: "Status",
-      noUsersFoundMatching: "No users found matching \"{{query}}\"",
-      noPendingUsersFoundMatching: "No pending users found matching \"{{query}}\"",
+      noUsersFoundMatching: 'No users found matching "{{query}}"',
+      noPendingUsersFoundMatching:
+        'No pending users found matching "{{query}}"',
       noUsersMatchingFilters: "No users found matching your filters",
       roleUpdateSuccess: "User role updated successfully!",
       roleUpdateError: "Unable to update user role - {{error}}",
@@ -2726,9 +3086,11 @@ const en = {
       activateUserButton: "Activate User",
       resetPasswordButton: "Reset Password",
       resetPasswordTitle: "Reset Password",
-      resetPasswordConfirmation: "Are you sure you want to reset the password for {{email}}?",
+      resetPasswordConfirmation:
+        "Are you sure you want to reset the password for {{email}}?",
       newPasswordLabel: "New Password",
-      passwordCommunicateNote: "Please securely communicate this password to the user.",
+      passwordCommunicateNote:
+        "Please securely communicate this password to the user.",
       resettingLoading: "Resetting",
       passwordResetSuccess: "Password reset successfully",
       passwordResetFailed: "Failed to reset password",
@@ -2736,7 +3098,8 @@ const en = {
       joinRequestEntity: "Join Request",
       approveButton: "Approve",
       approveAction: "approve the join request of",
-      approveDetails: "{{user}} has requested to join the team. Approving will add them as a user in this team.",
+      approveDetails:
+        "{{user}} has requested to join the team. Approving will add them as a user in this team.",
       acceptJoinRequest: "Accept Join Request",
       approveFailedError: "Failed to approve user request",
       addButton: "Add",
@@ -2756,15 +3119,18 @@ const en = {
       leaveTeamDetails: "You will lose access to all team data and resources.",
       rolesHover: {
         enduser: "End users can't perform any admin actions",
-        "enterprise-admin": "Enterprise admins can perform operational admin tasks",
+        "enterprise-admin":
+          "Enterprise admins can perform operational admin tasks",
         "system-admin": "System admins can perform all admin actions",
       },
       changeCuratorRoleTitle: "Change Curator Role",
-      changeCuratorRoleWarning: "Warning: Switching roles from Curator to {{newRole}} will remove their status as individual curators from all groups.",
+      changeCuratorRoleWarning:
+        "Warning: Switching roles from Curator to {{newRole}} will remove their status as individual curators from all groups.",
       switchRoleToButton: "Switch Role to {{role}}",
       editUserModal: {
         title: "Edit User",
-        description: "Update name and set a new password. Username/email is immutable.",
+        description:
+          "Update name and set a new password. Username/email is immutable.",
         emailLabel: "Email (immutable)",
         firstNameLabel: "First Name",
         firstNamePlaceholder: "First name",
@@ -2785,7 +3151,8 @@ const en = {
     },
     roles: {
       workspaceTitle: "Access policy workspace",
-      workspaceDescription: "Manage the roles users hold, grant permissions grouped by capability, and sync roles to identity infrastructure.",
+      workspaceDescription:
+        "Manage the roles users hold, grant permissions grouped by capability, and sync roles to identity infrastructure.",
       featureLayerLabel: "Permission groups",
       features: "Features",
       roleProfilesLabel: "Role profiles",
@@ -2836,16 +3203,20 @@ const en = {
       roleAssignmentSavedToast_other: "Role assignment saved — {{count}} effective permissions",
       syncedToKeycloakToast: "Synced to Keycloak",
       serviceRolesTitle: "Service roles",
-      serviceRolesDescription: "Choose a role, select permissions, then save the assignment.",
+      serviceRolesDescription:
+        "Choose a role, select permissions, then save the assignment.",
       roleManagementTitle: "Role management",
-      roleManagementDescription: "Compose user-facing roles from feature bundles, then grant permissions inside each bundle.",
+      roleManagementDescription:
+        "Compose user-facing roles from feature bundles, then grant permissions inside each bundle.",
       newRoleButton: "New role",
       syncingButton: "Syncing...",
       syncButton: "Sync",
       noRolesFoundTitle: "No roles found",
-      noRolesFoundDescription: "Create a role before assigning feature bundles.",
+      noRolesFoundDescription:
+        "Create a role before assigning feature bundles.",
       noFeatureBundlesFoundTitle: "No feature bundles found",
-      noFeatureBundlesFoundDescription: "Create a feature bundle before assigning permissions.",
+      noFeatureBundlesFoundDescription:
+        "Create a feature bundle before assigning permissions.",
       searchRolesPlaceholder: "Search roles...",
       searchFeatureBundlesPlaceholder: "Search feature bundles...",
       searchIncludedRolesPlaceholder: "Search included roles...",
@@ -2863,7 +3234,8 @@ const en = {
       noPermissionsMatchSearch: "No permissions match your search",
       noPermissionsFound: "No permissions found",
       roleGrantsEveryPermission: "This role grants every permission.",
-      roleEffectivePermissionsSummary: "{{bundles}} feature bundles · {{permissions}} effective permissions",
+      roleEffectivePermissionsSummary:
+        "{{bundles}} feature bundles · {{permissions}} effective permissions",
       deleteRoleTitle: "Delete Role",
       confirmDeleteRole: "Are you sure you want to delete \"{{name}}\"?",
       deleteRoleWarning: "This action cannot be undone and will permanently remove this role.",
@@ -2873,10 +3245,12 @@ const en = {
       roleDeletedToast: "Role deleted",
       roleUpdatedToast: "Role updated",
       compositeRolesTitle: "Composite roles",
-      compositeRolesDescription: "Select a composite role and assign the service roles it should include.",
+      compositeRolesDescription:
+        "Select a composite role and assign the service roles it should include.",
       newCompositeRoleButton: "New composite role",
       noCompositeRolesFoundTitle: "No composite roles found",
-      noCompositeRolesFoundDescription: "Create a composite role before assigning service roles.",
+      noCompositeRolesFoundDescription:
+        "Create a composite role before assigning service roles.",
       assignedRolesCount_one: "{{count}} assigned role",
       assignedRolesCount_other: "{{count}} assigned roles",
       builtInBadge: "built-in",
@@ -2892,20 +3266,26 @@ const en = {
       compositeRolesTabLabel: "Composite Roles",
       featureBundlesTabLabel: "Feature bundles",
       includedServiceRolesTitle: "Included service roles",
-      includedServiceRolesDescription: "Inherited service roles contribute to this role's effective permissions.",
+      includedServiceRolesDescription:
+        "Inherited service roles contribute to this role's effective permissions.",
       includedServiceRolesSelectedCount_one: "{{count}} selected",
       includedServiceRolesSelectedCount_other: "{{count}} selected",
       noServiceRolesMatchSearch: "No service roles match",
-      serviceRolePermissionCount_one: "{{serviceClient}} · {{count}} permission",
-      serviceRolePermissionCount_other: "{{serviceClient}} · {{count}} permissions",
+      serviceRolePermissionCount_one:
+        "{{serviceClient}} · {{count}} permission",
+      serviceRolePermissionCount_other:
+        "{{serviceClient}} · {{count}} permissions",
       includedFeatureBundlesTitle: "Included feature bundles",
-      includedFeatureBundlesDescription: "Grant this user-facing role the permissions collected in feature bundles.",
+      includedFeatureBundlesDescription:
+        "Grant this user-facing role the permissions collected in feature bundles.",
       noFeatureBundlesAvailable: "No feature bundles available.",
       effectivePermissionsTitle: "Effective permissions",
-      effectivePermissionsDescription: "These permissions are resolved from the selected feature bundles and are shown read-only.",
+      effectivePermissionsDescription:
+        "These permissions are resolved from the selected feature bundles and are shown read-only.",
       noEffectivePermissions: "No effective permissions.",
       allPermissionsGrantedTitle: "All permissions granted",
-      allPermissionsGrantedDescription: "This feature bundle grants every permission and is managed by the platform seed.",
+      allPermissionsGrantedDescription:
+        "This feature bundle grants every permission and is managed by the platform seed.",
       features: {
         access: "Users & Access",
         agents: "Agents & Assistants",
@@ -2923,7 +3303,8 @@ const en = {
       serviceRolesAssignedCount: "Service Roles Assigned Count",
       roles: "Roles",
       workspaceTitle: "Access policy workspace",
-      workspaceDescription: "Review service roles, compose higher-level access profiles, and sync changes to identity infrastructure.",
+      workspaceDescription:
+        "Review service roles, compose higher-level access profiles, and sync changes to identity infrastructure.",
       roleLayerLabel: "Role layer",
       compositeLayerLabel: "Composite layer",
       permissionSourceLabel: "Permission source",
@@ -2933,26 +3314,34 @@ const en = {
     connectorForm: {
       documentAccess: {
         label: "Document Access",
-        description: "Control who has access to the documents indexed by this connector.",
+        description:
+          "Control who has access to the documents indexed by this connector.",
         privateOption: "Private",
-        privateDescription: "Only users who have explicitly been given access to this connector (through the User Groups page) can access the documents pulled in by this connector",
+        privateDescription:
+          "Only users who have explicitly been given access to this connector (through the User Groups page) can access the documents pulled in by this connector",
         publicOption: "Public",
-        publicDescription: "Everyone with an account on ATLAS can access the documents pulled in by this connector",
+        publicDescription:
+          "Everyone with an account on ATLAS can access the documents pulled in by this connector",
         syncOption: "Auto Sync Permissions",
-        syncDescription: "We will automatically sync permissions from the source. A document will be searchable in ATLAS if and only if the user performing the search has permission to access the document in the source.",
-        syncDisabledReason: "Current credential auth method doesn't support Auto Sync Permissions. Please change the credential auth method to a supported one.",
+        syncDescription:
+          "We will automatically sync permissions from the source. A document will be searchable in ATLAS if and only if the user performing the search has permission to access the document in the source.",
+        syncDisabledReason:
+          "Current credential auth method doesn't support Auto Sync Permissions. Please change the credential auth method to a supported one.",
       },
       groupSelector: {
         loading: "Loading...",
         assignGroupAccess: "Assign group access for this Connector",
-        visibleByGroups: "This Connector will be visible/accessible by the groups selected below",
-        curatorsSelectGroups: "Curators must select one or more groups to give access to this Connector",
+        visibleByGroups:
+          "This Connector will be visible/accessible by the groups selected below",
+        curatorsSelectGroups:
+          "Curators must select one or more groups to give access to this Connector",
         assignedToGroup: "This Connector will be assigned to group",
       },
     },
     apiKey: {
       workspaceTitle: "API access workspace",
-      workspaceDescription: "Create, rotate, and review API keys used by service clients and integrations.",
+      workspaceDescription:
+        "Create, rotate, and review API keys used by service clients and integrations.",
       securityLabel: "Security",
       rotateKeys: "Rotate keys",
       scopeLabel: "Scope",
@@ -2964,12 +3353,15 @@ const en = {
       available: "Available",
       requiresPlan: "Requires plan",
       description: "API Keys allow you to access ATLAS APIs programmatically.",
-      descriptionWithButton: "Click the button below to generate a new API Key.",
+      descriptionWithButton:
+        "Click the button below to generate a new API Key.",
       createButton: "Create API Key",
-      paidSubscriptionRequired: "This feature requires an active paid subscription.",
+      paidSubscriptionRequired:
+        "This feature requires an active paid subscription.",
       upgradePlanButton: "Upgrade Plan",
       newApiKeyTitle: "New API Key",
-      newApiKeyDescription: "Make sure you copy your new API key. You won't be able to see this key again.",
+      newApiKeyDescription:
+        "Make sure you copy your new API key. You won't be able to see this key again.",
       existingKeysTitle: "Existing API Keys",
       nameColumn: "Name",
       apiKeyColumn: "API Key",
@@ -2981,11 +3373,13 @@ const en = {
       deleteError: "Failed to delete API Key: {{error}}",
       updateTitle: "Update API Key",
       createTitle: "Create a new API Key",
-      nameHint: "Choose a memorable name for your API key. This is optional and can be added or changed later!",
+      nameHint:
+        "Choose a memorable name for your API key. This is optional and can be added or changed later!",
       nameLabel: "Name (optional):",
       roleLabel: "Role:",
       roleSelectPlaceholder: "Select a role",
-      roleDescription: "Select the role for this API key. Limited has access to simple public APIs. Basic has access to regular user APIs. Admin has access to admin level APIs.",
+      roleDescription:
+        "Select the role for this API key. Limited has access to simple public APIs. Basic has access to regular user APIs. Admin has access to admin level APIs.",
       updateSubmitButton: "Update",
       createSubmitButton: "Create",
       successUpdated: "Successfully updated API key!",
@@ -2995,7 +3389,8 @@ const en = {
     },
     tokenRateLimits: {
       workspaceTitle: "Token governance workspace",
-      workspaceDescription: "Control global, user, and group token budgets before high-volume usage affects the platform.",
+      workspaceDescription:
+        "Control global, user, and group token budgets before high-volume usage affects the platform.",
       globalScopeLabel: "Global",
       userScopeLabel: "Users",
       groupScopeLabel: "Groups",
@@ -3003,10 +3398,14 @@ const en = {
       globalLimitsLabel: "Global limits",
       userLimitsLabel: "User limits",
       groupLimitsLabel: "Group limits",
-      description: "Token rate limits enable you control how many tokens can be spent in a given time period. With token rate limits, you can:",
-      globalRateLimit: "Set a global rate limit to control your team's overall token spend.",
-      userRateLimit: "Set rate limits for users to ensure that no single user can spend too many tokens.",
-      groupRateLimit: "Set rate limits for user groups to control token spend for your teams.",
+      description:
+        "Token rate limits enable you control how many tokens can be spent in a given time period. With token rate limits, you can:",
+      globalRateLimit:
+        "Set a global rate limit to control your team's overall token spend.",
+      userRateLimit:
+        "Set rate limits for users to ensure that no single user can spend too many tokens.",
+      groupRateLimit:
+        "Set rate limits for user groups to control token spend for your teams.",
       enableDisable: "Enable and disable rate limits on the fly.",
       createButton: "Create a Token Rate Limit",
       globalTab: "Global",
@@ -3015,9 +3414,12 @@ const en = {
       globalTitle: "Global Token Rate Limits",
       userTitle: "User Token Rate Limits",
       groupTitle: "User Group Token Rate Limits",
-      globalDescription: "Global rate limits apply to all users, user groups, and API keys. When the global rate limit is reached, no more tokens can be spent.",
-      userDescription: "User rate limits apply to individual users. When a user reaches a limit, they will be temporarily blocked from spending tokens.",
-      groupDescription: "User group rate limits apply to all users in a group. When a group reaches a limit, all users in the group will be temporarily blocked from spending tokens, regardless of their individual limits. If a user is in multiple groups, the most lenient limit will apply.",
+      globalDescription:
+        "Global rate limits apply to all users, user groups, and API keys. When the global rate limit is reached, no more tokens can be spent.",
+      userDescription:
+        "User rate limits apply to individual users. When a user reaches a limit, they will be temporarily blocked from spending tokens.",
+      groupDescription:
+        "User group rate limits apply to all users in a group. When a group reaches a limit, all users in the group will be temporarily blocked from spending tokens, regardless of their individual limits. If a user is in multiple groups, the most lenient limit will apply.",
       createdSuccess: "Token rate limit created!",
       createModalTitle: "Create a Token Rate Limit",
       timeWindowRequired: "Time Window is a required field",
@@ -3049,7 +3451,8 @@ const en = {
     },
     indexingStatus: {
       workspaceTitle: "Connector control room",
-      workspaceDescription: "Monitor connected sources, expand by connector type, and jump straight into adding the next data source.",
+      workspaceDescription:
+        "Monitor connected sources, expand by connector type, and jump straight into adding the next data source.",
       connectedSourcesLabel: "Connected sources",
       connectorTypesLabel: "Connector types",
       viewModeLabel: "View mode",
@@ -3108,7 +3511,8 @@ const en = {
         triggerSyncFailed: "Failed to trigger sync",
         deleteFailed: "Delete failed",
       },
-      confirmDeleteDetails: "All indexed documents will be permanently removed.",
+      confirmDeleteDetails:
+        "All indexed documents will be permanently removed.",
       manage: {
         title: "Manage - {{name}}",
         tabs: {
@@ -3119,7 +3523,8 @@ const en = {
         streams: "Streams",
         discovering: "Discovering…",
         discoverStreams: "Discover Streams",
-        discoverStreamsHint: "Click the \"Discover Streams\" button to load available streams.",
+        discoverStreamsHint:
+          'Click the "Discover Streams" button to load available streams.',
         frequency: "Frequency",
         customModes: {
           expression: "Expression",
@@ -3136,7 +3541,8 @@ const en = {
         cronLabel: "Cron",
         timezone: "Timezone",
         updateGraphRag: "Update Graph RAG",
-        updateGraphRagHint: "Rebuild the knowledge graph after each successful sync",
+        updateGraphRagHint:
+          "Rebuild the knowledge graph after each successful sync",
         enabled: "Enabled",
         enabledHint: "Disable to pause syncs without removing the schedule",
         nextRun: "Next run",
@@ -3211,7 +3617,8 @@ const en = {
     },
     airbyteConnector: {
       catalogTitle: "Connector catalog",
-      catalogDescription: "Search the available connectors, press Enter to open the first match, or browse by category.",
+      catalogDescription:
+        "Search the available connectors, press Enter to open the first match, or browse by category.",
       categoriesLabel: "Categories",
       searchStateLabel: "Search state",
       filtered: "Filtered",
@@ -3225,7 +3632,8 @@ const en = {
         nameAndConfirm: "Name & Confirm",
       },
       configureConnector: "Configure Connector",
-      loadConfigFailed: "Failed to load connector configuration. Make sure agent-service is running.",
+      loadConfigFailed:
+        "Failed to load connector configuration. Make sure agent-service is running.",
       loadingConfig: "Loading configuration form…",
       testingConnection: "Testing connection…",
       testAndContinue: "Test & Continue",
@@ -3251,7 +3659,8 @@ const en = {
     },
     documentProcessing: {
       pipelineTitle: "Document pipeline",
-      pipelineDescription: "Organize collections, review source documents, and keep graph-building work visible before it affects search quality.",
+      pipelineDescription:
+        "Organize collections, review source documents, and keep graph-building work visible before it affects search quality.",
       selectedCollectionLabel: "Selected collection",
       selectRequired: "Choose below",
       contentScopeLabel: "Content scope",
@@ -3263,10 +3672,13 @@ const en = {
       buildProgressMetricLabel: "Build progress",
       noActiveBuild: "No active build",
       langConnectRag: "LangConnect RAG",
-      langConnectRagDescription: "Manage Milvus-backed vector collections, upload documents for indexing, and run semantic search powered by LangConnect.",
+      langConnectRagDescription:
+        "Manage Milvus-backed vector collections, upload documents for indexing, and run semantic search powered by LangConnect.",
       ragCollections: "RAG Collections",
-      ragCollectionsDescription: "Collections store your document chunks and vector embeddings in Milvus. Select an existing collection or create a new one to manage documents and run semantic search.",
-      selectOrCreateCollection: "Select or create a collection above to manage documents and search.",
+      ragCollectionsDescription:
+        "Collections store your document chunks and vector embeddings in Milvus. Select an existing collection or create a new one to manage documents and run semantic search.",
+      selectOrCreateCollection:
+        "Select or create a collection above to manage documents and search.",
       selectCollection: "Select Collection",
       newCollection: "New Collection",
       noCollections: "No collections yet - create one below",
@@ -3277,8 +3689,10 @@ const en = {
       create: "Create",
       readOnlyDatasourceCollection: "Read-only data source collection",
       uploadDocuments: "Upload Documents",
-      supportedFormats: "Supported formats: PDF, DOCX, PPTX, CSV, XLSX, TXT, MD, HTML, JSON, RTF. Maximum 200 MB per file.",
-      supportedFormatsCompact: "PDF, DOCX, PPTX, CSV, XLSX, TXT, MD, HTML, JSON, RTF · Max 200 MB each",
+      supportedFormats:
+        "Supported formats: PDF, DOCX, PPTX, CSV, XLSX, TXT, MD, HTML, JSON, RTF. Maximum 200 MB per file.",
+      supportedFormatsCompact:
+        "PDF, DOCX, PPTX, CSV, XLSX, TXT, MD, HTML, JSON, RTF · Max 200 MB each",
       uploadingAndProcessing: "Uploading and processing…",
       uploadingFile: "Processing {{current}}/{{total}} — {{file}}",
       uploadDuplicateFiles: "Already in this collection, skipped: {{files}}",
@@ -3298,7 +3712,8 @@ const en = {
         web: "Web",
       },
       textInput: {
-        description: "Add a document to the collection by entering text directly.",
+        description:
+          "Add a document to the collection by entering text directly.",
         titlePlaceholder: "Document title (optional)",
         contentPlaceholder: "Enter document content here...",
         add: "Add Document",
@@ -3307,7 +3722,8 @@ const en = {
       },
       webCrawl: {
         title: "Add Content from Web",
-        description: "Enter a URL, preview the page content, and add it to the collection.",
+        description:
+          "Enter a URL, preview the page content, and add it to the collection.",
         crawl: "Crawl",
         crawling: "Crawling…",
         previewTitle: "Preview",
@@ -3323,13 +3739,14 @@ const en = {
         addUrl: "Add URL",
         chars: "characters",
       },
-      selectCollectionToManageDocuments: "Select a collection above to manage documents.",
-      collectionCreated: "Collection \"{{name}}\" created.",
+      selectCollectionToManageDocuments:
+        "Select a collection above to manage documents.",
+      collectionCreated: 'Collection "{{name}}" created.',
       collectionCreateFailed: "Failed to create collection",
       renameCollection: "Rename Collection",
       rename: "Rename",
       renaming: "Renaming…",
-      collectionRenamed: "Collection renamed to \"{{name}}\".",
+      collectionRenamed: 'Collection renamed to "{{name}}".',
       collectionRenameFailed: "Failed to rename collection",
       collectionDeleted: "Collection deleted.",
       collectionDeleteFailed: "Failed to delete collection",
@@ -3338,19 +3755,21 @@ const en = {
       documentEntity: "Document",
       documentDeleted: "Document deleted.",
       deleteDocumentAria: "Delete document",
-      deleteDocumentConfirm: "Delete document \"{{name}}\"?",
+      deleteDocumentConfirm: 'Delete document "{{name}}"?',
       viewChunks: "View chunks",
       collapseChunks: "Collapse chunks",
       deleteDocumentFailed: "Failed to delete document",
       uploadFailed: "Upload failed",
       semanticSearchTitle: "Semantic Search",
-      semanticSearchDescription: "Search documents using vector similarity. Results are ranked by cosine similarity to your query.",
+      semanticSearchDescription:
+        "Search documents using vector similarity. Results are ranked by cosine similarity to your query.",
       searchQueryPlaceholder: "Enter search query...",
       topK: "Top K",
       search: "Search",
       searching: "Searching...",
       searchFailed: "Search failed",
-      selectCollectionToSearchDocuments: "Select a collection above to search documents.",
+      selectCollectionToSearchDocuments:
+        "Select a collection above to search documents.",
       searchPanel: {
         matchLabel: "{{percent}}% match",
       },
@@ -3362,10 +3781,14 @@ const en = {
         tokens: "Tokens",
       },
       title: "Document Processing",
-      datasourceReadOnlyActionsBlocked: "This action is not allowed on Airbyte data source collections.",
-      collectionMutationLocked: "This collection cannot be modified while a Graph RAG build is in progress.",
-      collectionMutationLockedDescription: "Document add/remove and collection editing will reopen once the build finishes.",
-      loadDatasourceChunksFailed: "Failed to load data source chunk information.",
+      datasourceReadOnlyActionsBlocked:
+        "This action is not allowed on Airbyte data source collections.",
+      collectionMutationLocked:
+        "This collection cannot be modified while a Graph RAG build is in progress.",
+      collectionMutationLockedDescription:
+        "Document add/remove and collection editing will reopen once the build finishes.",
+      loadDatasourceChunksFailed:
+        "Failed to load data source chunk information.",
       uploadSuccess_one: "{{count}} file uploaded successfully.",
       uploadSuccess_other: "{{count}} files uploaded successfully.",
       noChunks: "No chunks found to display for this data source.",
@@ -3374,8 +3797,10 @@ const en = {
       addServer: "Add MCP Server",
       adding: "Adding...",
       manageServer: "Manage MCP Server",
-      manageServerDescription: "Update your MCP server configuration and manage authentication.",
-      addServerDescription: "Connect an MCP (Model Context Protocol) server to add custom actions.",
+      manageServerDescription:
+        "Update your MCP server configuration and manage authentication.",
+      addServerDescription:
+        "Connect an MCP (Model Context Protocol) server to add custom actions.",
       connectServerHint: "Connect an MCP server to add custom actions.",
       searchServersPlaceholder: "Search servers...",
       searchTools: "Search tools...",
@@ -3389,7 +3814,8 @@ const en = {
       disconnectServer: "Disconnect Server",
       deleteServer: "Delete Server",
       deleteServerTitle: "Delete MCP server",
-      deleteServerWarning: "All tools connected with {{name}} will be removed. This action cannot be undone.",
+      deleteServerWarning:
+        "All tools connected with {{name}} will be removed. This action cannot be undone.",
       deleteServerConfirm: "Are you sure you want to delete this MCP server?",
       delete: "Delete",
       manageServerModal: "Manage MCP Server",
@@ -3400,7 +3826,8 @@ const en = {
       optional: "Optional",
       serverDescriptionPlaceholder: "More details about the MCP server",
       serverUrl: "MCP Server URL",
-      serverUrlHint: "Only connect to servers you trust. You are responsible for actions taken with this connection and keeping tools up to date.",
+      serverUrlHint:
+        "Only connect to servers you trust. You are responsible for actions taken with this connection and keeping tools up to date.",
       serverUrlPlaceholder: "https://your-mcp-server.com/mcp",
       authenticatedConnected: "Authenticated and Connected",
       oauthConnectedTo: "OAuth connected to: {{owner}}",
@@ -3412,13 +3839,15 @@ const en = {
       serverUpdated: "MCP server updated successfully",
       serverCreated: "MCP server created successfully",
       disconnectTitle: "Disconnect {{name}}",
-      disconnectWarning: "All tools connected with {{name}} will stop working. You can reconnect to this server later if needed.",
+      disconnectWarning:
+        "All tools connected with {{name}} will stop working. You can reconnect to this server later if needed.",
       disconnectConfirm: "Are you sure you want to proceed?",
       disconnectAndDelete: "Disconnect and Delete",
       disconnecting: "Disconnecting...",
       disconnect: "Disconnect",
       authenticateTitle: "Authenticate {{name}}",
-      authenticateDescription: "Verify your connection to start using the MCP server.",
+      authenticateDescription:
+        "Verify your connection to start using the MCP server.",
       serverFallback: "MCP Server",
       rename: "Rename",
       refreshTools: "Refresh tools",
@@ -3429,9 +3858,11 @@ const en = {
       testTool: "Test Tool",
     },
     kg: {
-      pageDescription: "Build, inspect, and search entity graphs across your indexed knowledge sources.",
+      pageDescription:
+        "Build, inspect, and search entity graphs across your indexed knowledge sources.",
       workspaceTitle: "Graph workspace",
-      workspaceDescription: "Choose a collection, build the graph, then move between visual exploration and semantic search without losing context.",
+      workspaceDescription:
+        "Choose a collection, build the graph, then move between visual exploration and semantic search without losing context.",
       primaryFlowLabel: "Primary flow",
       primaryFlowValue: "Build -> Explore -> Search",
       activeAreaLabel: "Current area",
@@ -3440,30 +3871,39 @@ const en = {
       graphReadyMetricLabel: "Graphs ready",
       needsGraphMetricLabel: "Need graph",
       dataSourcesMetricLabel: "Data sources",
-      description: "Build a knowledge graph from your RAG collections. Extract entities and relationships from documents, explore the graph visually, and run graph-assisted semantic searches.",
+      description:
+        "Build a knowledge graph from your RAG collections. Extract entities and relationships from documents, explore the graph visually, and run graph-assisted semantic searches.",
       collection: "Collection",
-      collectionDescription: "Select a collection with a built knowledge graph to explore and run graph searches.",
+      collectionDescription:
+        "Select a collection with a built knowledge graph to explore and run graph searches.",
       selectCollectionPlaceholder: "- Select collection -",
       collections: "Collections",
       dataSources: "Data Sources",
       noGraph: "No graph",
       noGraphHintPrefix: "",
-      noGraphHintSuffix: "marked items must have a graph built first. Select one and go to the",
+      noGraphHintSuffix:
+        "marked items must have a graph built first. Select one and go to the",
       buildTab: "Build",
       collectionDocuments: "Documents in Collection",
-      noDocumentsForBuild: "This collection has no documents. Add documents before building a graph.",
+      noDocumentsForBuild:
+        "This collection has no documents. Add documents before building a graph.",
       graphExplorerTab: "Graph Explorer",
       searchTab: "Search",
       selectCollectionForTab: "Please select a collection to use this tab.",
-      noBuiltGraph: "This collection has no built graph. Go to the Build tab first.",
-      selectCollectionToExplore: "Select a collection above to explore the knowledge graph.",
+      noBuiltGraph:
+        "This collection has no built graph. Go to the Build tab first.",
+      selectCollectionToExplore:
+        "Select a collection above to explore the knowledge graph.",
       buildGraph: "Build Graph",
       rebuildGraph: "Rebuild Graph",
       deleteGraph: "Delete Graph",
       building: "Building…",
-      deleteConfirm: "Delete the knowledge graph for this collection? This action cannot be undone.",
-      buildGraphDescription: "Build a knowledge graph by extracting entities and relationships from your documents using an LLM. This process analyzes each document chunk.",
-      selectCollectionToBuild: "Select a collection above to build or manage a knowledge graph.",
+      deleteConfirm:
+        "Delete the knowledge graph for this collection? This action cannot be undone.",
+      buildGraphDescription:
+        "Build a knowledge graph by extracting entities and relationships from your documents using an LLM. This process analyzes each document chunk.",
+      selectCollectionToBuild:
+        "Select a collection above to build or manage a knowledge graph.",
       graphBuildStarted: "Graph build started.",
       graphBuildStartFailed: "Failed to start graph build",
       graphBuildPauseFailed: "Failed to pause graph build",
@@ -3472,13 +3912,17 @@ const en = {
       pauseBuild: "Pause",
       resumeBuild: "Resume",
       stopBuild: "Stop",
-      pausedTrackingInfo: "Build status updates are paused. Click Resume to continue monitoring progress.",
-      stoppedTrackingInfo: "Build tracking is stopped for this session. Click Resume to re-attach to live status.",
-      graphBuildStopRequested: "Stop requested. The build will terminate after the current step completes.",
+      pausedTrackingInfo:
+        "Build status updates are paused. Click Resume to continue monitoring progress.",
+      stoppedTrackingInfo:
+        "Build tracking is stopped for this session. Click Resume to re-attach to live status.",
+      graphBuildStopRequested:
+        "Stop requested. The build will terminate after the current step completes.",
       graphDeleted: "Graph deleted.",
       graphDeleteFailed: "Failed to delete graph",
       buildWarningTitle: "This collection already has a knowledge graph.",
-      buildWarningDescription: "Building again will delete all existing nodes and relationships, then create a new graph from scratch.",
+      buildWarningDescription:
+        "Building again will delete all existing nodes and relationships, then create a new graph from scratch.",
       progress: "Progress",
       completion: "Completion",
       chunks: "Chunks",
@@ -3488,7 +3932,8 @@ const en = {
       error: "Error",
       graphSearchFailed: "Graph search failed",
       graphSearchTitle: "Graph Search",
-      graphSearchDescription: "Query the knowledge graph using entity similarity, Cypher graph traversal, or a hybrid approach combining both.",
+      graphSearchDescription:
+        "Query the knowledge graph using entity similarity, Cypher graph traversal, or a hybrid approach combining both.",
       searchType: "Search Type",
       searchTypes: {
         entity: {
@@ -3528,9 +3973,11 @@ const en = {
       noMatchingRelationshipTypes: "No matching relationship types",
       noRelationshipTypes: "No relationship types",
       graphExplorerTitle: "Graph Explorer",
-      noGraphDataAvailable: "No graph data available. Select a collection and build a knowledge graph to visualize entities and relationships.",
+      noGraphDataAvailable:
+        "No graph data available. Select a collection and build a knowledge graph to visualize entities and relationships.",
       graphExplorerSummary: "{{nodes}} nodes · {{edges}} edges",
-      graphExplorerSummaryWithTotal: "{{nodes}} nodes · {{edges}} edges (total: {{totalNodes}} · {{totalEdges}})",
+      graphExplorerSummaryWithTotal:
+        "{{nodes}} nodes · {{edges}} edges (total: {{totalNodes}} · {{totalEdges}})",
       perfMode: "perf mode",
       switchTo2d: "Switch to 2D",
       switchTo3d: "Switch to 3D",
@@ -3544,10 +3991,12 @@ const en = {
       clusterMatched_one: "{{count}} cluster matched - highlighted in red",
       clusterMatched_other: "{{count}} clusters matched - highlighted in red",
       settlingLayout: "Settling layout...",
-      overviewHint: "Click cluster to expand - Right click node for neighborhood",
+      overviewHint:
+        "Click cluster to expand - Right click node for neighborhood",
       expandHint: "Viewing cluster contents - Right click for neighborhood",
       neighborhoodHint: "Ego-graph view - Click nodes to explore",
-      largeGraphHint: "Large graph - zoom to see labels - Right click for neighborhood",
+      largeGraphHint:
+        "Large graph - zoom to see labels - Right click for neighborhood",
       nodeCount_one: "{{count}} node",
       nodeCount_other: "{{count}} nodes",
       top: "Top",
@@ -3561,7 +4010,8 @@ const en = {
     },
     imageGeneration: {
       workspaceTitle: "Image generation workspace",
-      workspaceDescription: "Connect image providers, review model availability, and keep visual generation ready for agent workflows.",
+      workspaceDescription:
+        "Connect image providers, review model availability, and keep visual generation ready for agent workflows.",
       providerLayerLabel: "Provider layer",
       agentCapabilityLabel: "Agent capability",
       relatedConfigLabel: "Related config",
@@ -3581,7 +4031,8 @@ const en = {
         apiKeyLabel: "API Key",
         apiKeyPlaceholder: "Enter your API key",
         apiKeyPlaceholderLoading: "Loading...",
-        apiKeyPlaceholderSelect: "Enter new API key or select existing provider",
+        apiKeyPlaceholderSelect:
+          "Enter new API key or select existing provider",
         apiKeyHint: "Enter a new API key or select an existing provider.",
         apiKeyRequired: "API Key is required",
         testingApiKey: "Testing API key with {{name}}...",
@@ -3595,10 +4046,13 @@ const en = {
         azure: {
           targetUriLabel: "Target URI",
           targetUriRequired: "Target URI is required",
-          targetUriInvalid: "Target URI must be a valid URL with api-version and deployment name",
+          targetUriInvalid:
+            "Target URI must be a valid URL with api-version and deployment name",
           targetUriPlaceholder: "https://...",
-          targetUriHint: "Paste your endpoint target URI from <link>Azure OpenAI</link> (including API endpoint base, deployment name, and API version).",
-          apiKeyHint: "Paste your <link>API key</link> from Azure OpenAI to access your models.",
+          targetUriHint:
+            "Paste your endpoint target URI from <link>Azure OpenAI</link> (including API endpoint base, deployment name, and API version).",
+          apiKeyHint:
+            "Paste your <link>API key</link> from Azure OpenAI to access your models.",
         },
         vertex: {
           credentialsFileLabel: "Credentials File",
@@ -3607,38 +4061,49 @@ const en = {
           testingCredentials: "Testing credentials with {{name}}...",
           credentialsValid: "Credentials valid. Configuration saved.",
           credentialsInvalid: "Invalid credentials",
-          credentialsHint: "Upload or paste your <link>service account credentials</link> from Google Cloud.",
+          credentialsHint:
+            "Upload or paste your <link>service account credentials</link> from Google Cloud.",
           locationLabel: "Location",
           locationRequired: "Location is required",
-          locationHint: "The Google Cloud region for your Vertex AI models. See <link>Google's documentation</link> for available regions.",
+          locationHint:
+            "The Google Cloud region for your Vertex AI models. See <link>Google's documentation</link> for available regions.",
         },
       },
       providers: {
         openai: {
-          gpt_image_1_5: "OpenAI's latest Image Generation model with the highest prompt fidelity.",
-          gpt_image_1: "A capable image generation model from OpenAI with strong prompt adherence.",
-          dalle_3: "OpenAI image generation model capable of generating rich and expressive images.",
+          gpt_image_1_5:
+            "OpenAI's latest Image Generation model with the highest prompt fidelity.",
+          gpt_image_1:
+            "A capable image generation model from OpenAI with strong prompt adherence.",
+          dalle_3:
+            "OpenAI image generation model capable of generating rich and expressive images.",
         },
         azure: {
-          gpt_image_1_5: "GPT Image 1.5 image generation model hosted on Microsoft Azure.",
-          gpt_image_1: "GPT Image 1 image generation model hosted on Microsoft Azure.",
+          gpt_image_1_5:
+            "GPT Image 1.5 image generation model hosted on Microsoft Azure.",
+          gpt_image_1:
+            "GPT Image 1 image generation model hosted on Microsoft Azure.",
           dalle_3: "DALL-E 3 image generation model hosted on Microsoft Azure.",
         },
         vertex_ai: {
-          gemini_2_5_flash: "Gemini 2.5 Flash Image (Nano Banana) model is designed for speed and efficiency.",
-          gemini_3_pro: "Gemini 3 Pro Image Preview (Nano Banana Pro) is designed for professional asset production.",
+          gemini_2_5_flash:
+            "Gemini 2.5 Flash Image (Nano Banana) model is designed for speed and efficiency.",
+          gemini_3_pro:
+            "Gemini 3 Pro Image Preview (Nano Banana Pro) is designed for professional asset production.",
         },
       },
     },
     codeInterpreter: {
       workspaceTitle: "Code execution workspace",
-      workspaceDescription: "Monitor interpreter health and control whether agents can execute code-backed analysis.",
+      workspaceDescription:
+        "Monitor interpreter health and control whether agents can execute code-backed analysis.",
       connectionLabel: "Connection",
       availabilityLabel: "Availability",
       agentUseLabel: "Agent use",
       title: "Code Interpreter",
       description: "Built-in Python runtime",
-      pageDescription: "Safe and sandboxed Python runtime available to your LLM. See docs for more details.",
+      pageDescription:
+        "Safe and sandboxed Python runtime available to your LLM. See docs for more details.",
       checking: "Checking...",
       connected: "Connected",
       connectionLost: "Connection Lost",
@@ -3648,18 +4113,21 @@ const en = {
       reconnect: "Reconnect",
       toastToggleFailed: "Failed to {{action}} Code Interpreter",
       disconnectTitle: "Disconnect Code Interpreter",
-      disconnectConfirmation: "All running sessions connected to <bold>Code Interpreter</bold> will stop working. Note that this will not remove any data from your runtime. You can reconnect to this runtime later if needed.",
+      disconnectConfirmation:
+        "All running sessions connected to <bold>Code Interpreter</bold> will stop working. Note that this will not remove any data from your runtime. You can reconnect to this runtime later if needed.",
     },
     webSearch: {
       workspaceTitle: "Web retrieval workspace",
-      workspaceDescription: "Configure how agents find web results, fetch page content, and test crawler quality before users rely on it.",
+      workspaceDescription:
+        "Configure how agents find web results, fetch page content, and test crawler quality before users rely on it.",
       searchProviderLabel: "Search provider",
       contentProviderLabel: "Content provider",
       active: "Active",
       notConfigured: "Not configured",
       validationLabel: "Validation",
       crawlerTestValue: "Crawler test",
-      pageDescription: "Search settings for external search across the internet.",
+      pageDescription:
+        "Search settings for external search across the internet.",
       checkingConnection: "Checking connection...",
       pasteApiKeyPrefix: "Paste your",
       apiKeyLinkText: "API key",
@@ -3678,9 +4146,12 @@ const en = {
       customIntegration: "Custom integration",
       validatingApiKey: "Validating API key...",
       saving: "Saving...",
-      exaApiKeyInstructions: "Paste your <link>API key</link> from Exa to enable crawling.",
-      firecrawlApiKeyInstructions: "Paste your <bold>API key</bold> from Firecrawl to access your search engine.",
-      genericApiKeyInstructions: "Paste your API key from {{providerName}} to enable crawling.",
+      exaApiKeyInstructions:
+        "Paste your <link>API key</link> from Exa to enable crawling.",
+      firecrawlApiKeyInstructions:
+        "Paste your <bold>API key</bold> from Firecrawl to access your search engine.",
+      genericApiKeyInstructions:
+        "Paste your API key from {{providerName}} to enable crawling.",
       testingConnection: "Testing connection...",
       setupTitle: "Set up {{providerLabel}}",
       apiKeyLabel: "API Key",
@@ -3697,13 +4168,16 @@ const en = {
       currentDefault: "Current Default",
       currentCrawler: "Current Crawler",
       setAsDefault: "Set as Default",
-      contentProvidersDescription: "Used to read the full contents of search result pages.",
+      contentProvidersDescription:
+        "Used to read the full contents of search result pages.",
       googlePseIdLabel: "Search Engine ID",
       googlePseIdPlaceholder: "Enter search engine ID",
-      googlePseIdInstructions: "Paste your <link>search engine ID</link> you want to use for web search.",
+      googlePseIdInstructions:
+        "Paste your <link>search engine ID</link> you want to use for web search.",
       searxngBaseUrlLabel: "SearXNG Base URL",
       searxngBaseUrlPlaceholder: "https://your-searxng-instance.com",
-      searxngBaseUrlInstructions: "Paste the base URL of your <link>private SearXNG instance</link>.",
+      searxngBaseUrlInstructions:
+        "Paste the base URL of your <link>private SearXNG instance</link>.",
       crawlFailed: "Crawl failed.",
       networkErrorWhileCrawling: "Network error while crawling.",
       urlPlaceholder: "https://example.com",
@@ -3711,8 +4185,10 @@ const en = {
       editTooltip: "Edit",
       collapseTooltip: "Collapse",
       testCrawlerTooltip: "Test crawler",
-      atlasCrawlerTestDescription: "Enter a URL to test the built-in crawler and preview the extracted content.",
-      onyxCrawlerTestDescription: "Enter a URL to test the built-in crawler and preview the extracted content.",
+      atlasCrawlerTestDescription:
+        "Enter a URL to test the built-in crawler and preview the extracted content.",
+      onyxCrawlerTestDescription:
+        "Enter a URL to test the built-in crawler and preview the extracted content.",
       crawling: "Crawling...",
       testCrawl: "Test",
       chars: "characters",
@@ -3750,18 +4226,22 @@ const en = {
       contentProviders: {
         atlas_web_crawler: {
           label: "ATLAS Web Crawler",
-          subtitle: "Built-in web crawler. Works for most pages but less performant in edge cases.",
-          description: "ATLAS's built-in crawler processes URLs returned by your search engine.",
+          subtitle:
+            "Built-in web crawler. Works for most pages but less performant in edge cases.",
+          description:
+            "ATLAS's built-in crawler processes URLs returned by your search engine.",
         },
         firecrawl: {
           label: "Firecrawl",
           subtitle: "Leading open-source crawler.",
-          description: "Connect Firecrawl to fetch and summarize page content from search results.",
+          description:
+            "Connect Firecrawl to fetch and summarize page content from search results.",
         },
         exa: {
           label: "Exa",
           subtitle: "Exa.ai",
-          description: "Use Exa to fetch and summarize page content from search results.",
+          description:
+            "Use Exa to fetch and summarize page content from search results.",
         },
       },
     },
@@ -3769,12 +4249,14 @@ const en = {
       seeConnectors: "See Connectors",
       searchPlaceholder: "Search connectors…",
       loadingConnectors: "Loading connectors…",
-      couldNotLoad: "Could not load connectors. Make sure agent-service is running.",
+      couldNotLoad:
+        "Could not load connectors. Make sure agent-service is running.",
       results: "Results",
-      noResultsFor: "No connectors found for \"{{searchTerm}}\"",
+      noResultsFor: 'No connectors found for "{{searchTerm}}"',
       noConnectors: "No connectors available.",
       catalogTitle: "Connector catalog",
-      catalogDescription: "Search the available connectors, press Enter to open the first match, or browse by category.",
+      catalogDescription:
+        "Search the available connectors, press Enter to open the first match, or browse by category.",
       categoriesLabel: "Categories",
       searchStateLabel: "Search state",
       filtered: "Filtered",
@@ -3784,20 +4266,23 @@ const en = {
     },
     debug: {
       workspaceTitle: "Diagnostics workspace",
-      workspaceDescription: "Review log categories and download diagnostics when platform behavior needs investigation.",
+      workspaceDescription:
+        "Review log categories and download diagnostics when platform behavior needs investigation.",
       logCategoriesLabel: "Log categories",
       availableBelow: "Available below",
       exportLabel: "Export",
       sensitiveLabel: "Sensitive",
       adminOnly: "Admin only",
       logsTitle: "Debug Logs",
-      description: "provide detailed information about system operations and events. You can download logs for each category to analyze system behavior or troubleshoot issues.",
+      description:
+        "provide detailed information about system operations and events. You can download logs for each category to analyze system behavior or troubleshoot issues.",
       categoryHeader: "Category",
       actionsHeader: "Actions",
       downloadLogs: "Download Logs",
     },
     indexMigration: {
-      pageDescription: "Monitor the migration from Vespa to OpenSearch and control the active retrieval source.",
+      pageDescription:
+        "Monitor the migration from Vespa to OpenSearch and control the active retrieval source.",
       migrationStatus: "Migration Status",
       loading: "Loading...",
       failedToLoadStatus: "Failed to load migration status.",
@@ -3810,7 +4295,8 @@ const en = {
       inProgress: "In progress",
       retrievalSource: "Retrieval Source",
       failedToLoadRetrieval: "Failed to load retrieval settings.",
-      retrievalDescription: "Controls which document index is used for retrieval.",
+      retrievalDescription:
+        "Controls which document index is used for retrieval.",
       selectRetrievalSource: "Select retrieval source",
       failedToUpdateRetrieval: "Failed to update retrieval setting",
       vespaOption: "Vespa",
@@ -3820,7 +4306,8 @@ const en = {
     },
     billing: {
       workspaceTitle: "Billing workspace",
-      workspaceDescription: "Review plan status, license activation, and billing details without leaving the admin console.",
+      workspaceDescription:
+        "Review plan status, license activation, and billing details without leaving the admin console.",
       currentViewLabel: "Current view",
       subscriptionLabel: "Subscription",
       active: "Active",
@@ -3848,8 +4335,10 @@ const en = {
         annualBadge: "Save 20%",
         perSeatMonth: "per seat/month",
         seatsTitle: "Seats",
-        seatsDescription_one: "Minimum {{count}} seat required for your current users and Slack accounts.",
-        seatsDescription_other: "Minimum {{count}} seats required for your current users and Slack accounts.",
+        seatsDescription_one:
+          "Minimum {{count}} seat required for your current users and Slack accounts.",
+        seatsDescription_other:
+          "Minimum {{count}} seats required for your current users and Slack accounts.",
         invalidCheckoutResponse: "Invalid response from checkout session",
         checkoutSessionFailed: "Failed to create checkout session",
         billedOnPrefix: "You will be billed on",
@@ -3863,32 +4352,45 @@ const en = {
     connector: {
       propertyValueMustBeNumber: "Property value must be a valid number",
       propertyValueMustBeInteger: "Property value must be an integer",
-      propertyValueMin1: "Property value must be greater than or equal to 1 minute",
+      propertyValueMin1:
+        "Property value must be greater than or equal to 1 minute",
       propertyValueRequired: "Property value is required",
-      propertyValueMin5m: "Property value must be greater than or equal to 0.083 hours (5 minutes)",
+      propertyValueMin5m:
+        "Property value must be greater than or equal to 0.083 hours (5 minutes)",
       reindexingStarted: "Complete re-indexing",
       indexingUpdateStarted: "Indexing update",
       startedSuccessfully: "started successfully",
       failedToStartIndexing: "Failed to start indexing",
       failedToFetchInfo: "Failed to fetch info on Connector with ID {{id}}",
-      unexpectedIndexingError: "An unexpected error occurred while trying to start indexing",
+      unexpectedIndexingError:
+        "An unexpected error occurred while trying to start indexing",
       connectorNameUpdated: "Connector name updated successfully",
       failedToUpdateName: "Failed to update connector name",
       invalidRefreshFrequency: "Invalid refresh frequency: must be an integer",
-      refreshFrequencyUpdated: "Connector refresh frequency updated successfully",
-      failedToUpdateRefreshFrequency: "Failed to update connector refresh frequency",
-      invalidPruningFrequency: "Invalid pruning frequency: must be a valid number",
-      pruningFrequencyUpdated: "Connector pruning frequency updated successfully",
-      failedToUpdatePruningFrequency: "Failed to update connector pruning frequency",
+      refreshFrequencyUpdated:
+        "Connector refresh frequency updated successfully",
+      failedToUpdateRefreshFrequency:
+        "Failed to update connector refresh frequency",
+      invalidPruningFrequency:
+        "Invalid pruning frequency: must be a valid number",
+      pruningFrequencyUpdated:
+        "Connector pruning frequency updated successfully",
+      failedToUpdatePruningFrequency:
+        "Failed to update connector pruning frequency",
       unknownError: "Unknown error",
-      deletionDetails: "Deleting this connector schedules a deletion job that removes its indexed documents and deletes it for every user.",
+      deletionDetails:
+        "Deleting this connector schedules a deletion job that removes its indexed documents and deletes it for every user.",
       refreshFrequencyTitle: "Refresh Frequency",
-      refreshFrequencyDetails: "How often the connector should refresh (in minutes)",
+      refreshFrequencyDetails:
+        "How often the connector should refresh (in minutes)",
       pruningFrequencyTitle: "Pruning Frequency",
-      pruningFrequencyDetails: "How often the connector should be pruned (in hours)",
-      cannotReindexWhileActive: "Cannot re-index while indexing is already in progress",
+      pruningFrequencyDetails:
+        "How often the connector should be pruned (in hours)",
+      cannotReindexWhileActive:
+        "Cannot re-index while indexing is already in progress",
       resumeBeforeReindex: "Resume the connector before re-indexing",
-      fixConfigBeforeReindex: "Fix the connector configuration before re-indexing",
+      fixConfigBeforeReindex:
+        "Fix the connector configuration before re-indexing",
       statusUpdateInProgress: "Status update in progress",
       resume: "Resume",
       pause: "Pause",
@@ -3904,14 +4406,17 @@ const en = {
       refreshFrequencyLabel: "Refresh Frequency",
       indexingStartLabel: "Indexing Start",
       noIndexingAttempts: "No indexing attempts scheduled yet",
-      docReplacedTooltip: "Total number of documents replaced in the index during this indexing attempt",
+      docReplacedTooltip:
+        "Total number of documents replaced in the index during this indexing attempt",
       manage: "Manage",
       reIndex: "Re-Index",
       delete: "Delete",
-      invalidConnectorStateBody: "This connector is in an invalid state. Please update your credentials or create a new connector before re-indexing.",
+      invalidConnectorStateBody:
+        "This connector is in an invalid state. Please update your credentials or create a new connector before re-indexing.",
       someDocumentsFailed: "Some documents failed to index",
       resolvingFailures: "Resolving failures",
-      issuesProcessingDocuments: "We ran into some issues while processing some documents.",
+      issuesProcessingDocuments:
+        "We ran into some issues while processing some documents.",
       viewDetails: "View details.",
       indexingTitle: "Indexing",
       statusLabel: "Status",
@@ -3925,9 +4430,12 @@ const en = {
       advancedConfiguration: "Advanced Configuration",
       indexingAttempts: "Indexing Attempts",
       indexingErrorsTitle: "Indexing Errors",
-      resolvingErrorsDescription: "Currently attempting to resolve all errors by performing a full re-index. This may take some time to complete.",
-      indexingErrorsDescription: "Below are the errors encountered during indexing. Each row represents a failed document or entity.",
-      kickoffReindexDescription: "Click the button below to kick off a full re-index to try and resolve these errors. This full re-index may take much longer than a normal update.",
+      resolvingErrorsDescription:
+        "Currently attempting to resolve all errors by performing a full re-index. This may take some time to complete.",
+      indexingErrorsDescription:
+        "Below are the errors encountered during indexing. Each row represents a failed document or entity.",
+      kickoffReindexDescription:
+        "Click the button below to kick off a full re-index to try and resolve these errors. This full re-index may take much longer than a normal update.",
       timeHeader: "Time",
       documentIdHeader: "Document ID",
       errorMessageHeader: "Error Message",
@@ -3992,7 +4500,8 @@ const en = {
     },
     systemSettings: {
       workspaceTitle: "Identity and system controls",
-      workspaceDescription: "Review Keycloak connectivity, external identity provider sync, and session policy from one operational surface.",
+      workspaceDescription:
+        "Review Keycloak connectivity, external identity provider sync, and session policy from one operational surface.",
       keycloakLabel: "Keycloak",
       externalIdpLabel: "External IdP",
       realmSessionLabel: "Realm session",
@@ -4011,7 +4520,8 @@ const en = {
       externalIdpApplied: "External identity provider applied",
       settingsSaved: "System settings saved",
       sessionSettingsSaved: "Session settings saved",
-      externalIdpEnvNote: "External IdP settings are read from user-service environment variables and applied to Keycloak.",
+      externalIdpEnvNote:
+        "External IdP settings are read from user-service environment variables and applied to Keycloak.",
       failedToLoad: "Failed to load system settings.",
       internalKeycloakTitle: "Internal Keycloak",
       externalKeycloakIdpTitle: "External Keycloak IdP",
@@ -4045,19 +4555,22 @@ const en = {
       saveSessionSettingsButton: "Save session settings",
       refreshStatusButton: "Refresh status",
       startupBehaviorTitle: "Startup behavior",
-      startupBehaviorDescription: "When KEYCLOAK_ENABLED and EXTERNAL_KEYCLOAK are true, user-service applies this IdP on startup.",
+      startupBehaviorDescription:
+        "When KEYCLOAK_ENABLED and EXTERNAL_KEYCLOAK are true, user-service applies this IdP on startup.",
       providerExistsLabel: "Provider exists",
       roleMapperLabel: "Role mapper",
     },
     documentSets: {
       workspaceTitle: "Document set workspace",
-      workspaceDescription: "Group documents into reusable collections for agents, retrieval workflows, and governed access.",
+      workspaceDescription:
+        "Group documents into reusable collections for agents, retrieval workflows, and governed access.",
       structureLabel: "Structure",
       sets: "Sets",
       sourceLabel: "Source",
       downstreamLabel: "Downstream",
       title: "Document Sets",
-      description: "allow you to group logically connected documents into a single bundle. These can then be used as a filter when performing searches to control the scope of information ATLAS searches over.",
+      description:
+        "allow you to group logically connected documents into a single bundle. These can then be used as a filter when performing searches to control the scope of information ATLAS searches over.",
       failedToFetchConnectors: "Failed to fetch Connectors",
       failedToFetchDocumentSets: "Failed to fetch document sets",
       documentSetNotFound: "Document set not found",
@@ -4065,14 +4578,16 @@ const en = {
       newDocumentSetTitle: "New Document Set",
       editDocumentSetTitle: "Edit Document Set",
       nameRequired: "Please enter a name for the set",
-      connectorRequired: "Please select at least one connector (regular or federated)",
+      connectorRequired:
+        "Please select at least one connector (regular or federated)",
       successUpdated: "Successfully updated document set!",
       successCreated: "Successfully created document set!",
       nameLabel: "Name:",
       descriptionLabel: "Description:",
       descriptionPlaceholder: "Describe what the document set represents",
       searchConnectorsPlaceholder: "Search for connectors...",
-      groupLimitedDescription: "Only connectors that are directly assigned to the group you are trying to add the document set to will be available.",
+      groupLimitedDescription:
+        "Only connectors that are directly assigned to the group you are trying to add the document set to will be available.",
       pickConnectorsLabel: "Pick your connectors",
       federatedConnectorsLabel: "Federated Connectors",
       searchFederatedPlaceholder: "Search for federated connectors...",
@@ -4080,7 +4595,8 @@ const en = {
       createButton: "Create Document Set",
       unnamedFallback: "Unnamed",
       federatedBadge: "Federated",
-      cannotUpdateWhileSyncing: "Cannot update while syncing! Wait for the sync to finish, then try again.",
+      cannotUpdateWhileSyncing:
+        "Cannot update while syncing! Wait for the sync to finish, then try again.",
       existingTitle: "Existing Document Sets",
       tableName: "Name",
       tableConnectors: "Connectors",
@@ -4092,17 +4608,20 @@ const en = {
       statusDeleting: "Deleting",
       publicLabel: "Public",
       privateLabel: "Private",
-      deleteScheduled: "Document set \"{{name}}\" scheduled for deletion",
-      deleteScheduleFailed: "Failed to schedule document set for deletion - {{error}}",
+      deleteScheduled: 'Document set "{{name}}" scheduled for deletion',
+      deleteScheduleFailed:
+        "Failed to schedule document set for deletion - {{error}}",
       errorPrefix: "Error",
       introTitle: "Document Sets",
-      introDescription: "allow you to group logically connected documents into a single bundle. These can then be used as a filter when performing searches to control the scope of information ATLAS searches over.",
+      introDescription:
+        "allow you to group logically connected documents into a single bundle. These can then be used as a filter when performing searches to control the scope of information ATLAS searches over.",
       newButton: "New Document Set",
       newDocumentSet: "New Document Set",
     },
     documentsFeedback: {
       workspaceTitle: "Document feedback workspace",
-      workspaceDescription: "Review highly liked and disliked documents so retrieval quality improvements have a clear starting point.",
+      workspaceDescription:
+        "Review highly liked and disliked documents so retrieval quality improvements have a clear starting point.",
       positiveSignalLabel: "Positive signal",
       negativeSignalLabel: "Negative signal",
       nextStepLabel: "Next step",
@@ -4121,17 +4640,22 @@ const en = {
     },
     bots: {
       workspaceTitle: "Slack bot workspace",
-      workspaceDescription: "Manage Slack bot connections, channel routing, and chat entry points for workspace users.",
+      workspaceDescription:
+        "Manage Slack bot connections, channel routing, and chat entry points for workspace users.",
       integrationLabel: "Integration",
       routingLabel: "Routing",
       channels: "Channels",
       agentLayerLabel: "Agent layer",
       errorLoadingApps: "Error loading apps",
       unknownError: "An unknown error occurred",
-      description: "Setup Slack bots that connect to ATLAS. Once setup, you will be able to ask questions to ATLAS directly from Slack. Additionally, you can:",
-      featureAutoAnswer: "Setup ATLASBot to automatically answer questions in certain channels.",
-      featureDocSets: "Choose which document sets ATLASBot should answer from, depending on the channel the question is being asked.",
-      featureDirectMessage: "Directly message ATLASBot to search just as you would in the web UI.",
+      description:
+        "Setup Slack bots that connect to ATLAS. Once setup, you will be able to ask questions to ATLAS directly from Slack. Additionally, you can:",
+      featureAutoAnswer:
+        "Setup ATLASBot to automatically answer questions in certain channels.",
+      featureDocSets:
+        "Choose which document sets ATLASBot should answer from, depending on the channel the question is being asked.",
+      featureDirectMessage:
+        "Directly message ATLASBot to search just as you would in the web UI.",
       guidePrefix: "Follow the",
       guideLink: "guide",
       guideSuffix: "found in the ATLAS documentation to get started!",
@@ -4151,7 +4675,8 @@ const en = {
       botTokenLabel: "Slack Bot Token",
       appTokenLabel: "Slack App Token",
       userTokenLabel: "Slack User Token (Optional)",
-      userTokenSubtext: "Optional: User OAuth token for enhanced private channel access",
+      userTokenSubtext:
+        "Optional: User OAuth token for enhanced private channel access",
       updateButton: "Update",
       createButton: "Create",
       successUpdated: "Successfully updated Slack Bot!",
@@ -4164,7 +4689,8 @@ const en = {
       updateTokensButton: "Update Tokens",
       deleteButton: "Delete",
       deleteTitle: "Delete Slack Bot",
-      deleteMessage: "Are you sure you want to delete this Slack bot? This action cannot be undone.",
+      deleteMessage:
+        "Are you sure you want to delete this Slack bot? This action cannot be undone.",
       deleteConfirm: "Delete",
       deleteSuccess: "Slack bot deleted successfully",
       deleteError: "Failed to delete Slack bot",
@@ -4178,24 +4704,28 @@ const en = {
     },
     discord: {
       workspaceTitle: "Discord bot workspace",
-      workspaceDescription: "Register Discord servers, manage bot tokens, and route channels to the right default agent.",
+      workspaceDescription:
+        "Register Discord servers, manage bot tokens, and route channels to the right default agent.",
       integrationLabel: "Integration",
       registrationLabel: "Registration",
       agentLayerLabel: "Agent layer",
       unknownError: "An unknown error occurred",
-      pageDescription: "Connect ATLAS to your Discord servers. Users can ask questions directly in Discord channels.",
+      pageDescription:
+        "Connect ATLAS to your Discord servers. Users can ask questions directly in Discord channels.",
       serverConfigCreated: "Server configuration created!",
       createServerFailed: "Failed to create server",
       loadServersErrorTitle: "Failed to load Discord servers",
       registrationKeyTitle: "Registration Key",
       registrationKeyDescription: "This key will only be shown once!",
-      registrationKeyInstructions: "Copy the command and send it from any text channel in your server!",
+      registrationKeyInstructions:
+        "Copy the command and send it from any text channel in your server!",
       serverConfigurations: "Server Configurations",
       creating: "Creating...",
       addServer: "Add Server",
       serverConfigDeleted: "Server configuration deleted",
       deleteServerConfigFailed: "Failed to delete server config",
-      enableBeforeRegistrationError: "Server must be registered before it can be enabled",
+      enableBeforeRegistrationError:
+        "Server must be registered before it can be enabled",
       serverEnabled: "Server enabled",
       serverDisabled: "Server disabled",
       updateServerFailed: "Failed to update server",
@@ -4203,7 +4733,8 @@ const en = {
       emptyDescription: "Create a server configuration to get started.",
       serverEntityType: "Discord server configuration",
       serverFallbackName: "Server #{{id}}",
-      deleteServerAdditionalDetails: "This will remove all settings for this Discord server.",
+      deleteServerAdditionalDetails:
+        "This will remove all settings for this Discord server.",
       tableServer: "Server",
       tableStatus: "Status",
       tableRegistered: "Registered",
@@ -4219,30 +4750,37 @@ const en = {
       botTokenDeleteFailed: "Failed to delete bot token",
       botTokenEntityType: "Discord bot token",
       botTokenEntityName: "Discord Bot Token",
-      botTokenDeleteDetails: "This will disconnect your Discord bot. You will need to re-enter the token to use the bot again.",
+      botTokenDeleteDetails:
+        "This will disconnect your Discord bot. You will need to re-enter the token to use the bot again.",
       botConfigured: "Configured",
       botNotConfigured: "Not Configured",
       deleteServerConfigsFirst: "Delete server configs first",
       deleteDiscordToken: "Delete Discord Token",
       botConfiguredMessage: "Your Discord bot token is configured.",
       botConfiguredAt: "Added {{date}}.",
-      changeTokenHint: "To change the token, delete the current one and add a new one.",
-      enterTokenDescription: "Enter your Discord bot token to enable the bot. You can get this from the Discord Developer Portal.",
+      changeTokenHint:
+        "To change the token, delete the current one and add a new one.",
+      enterTokenDescription:
+        "Enter your Discord bot token to enable the bot. You can get this from the Discord Developer Portal.",
       botTokenPlaceholder: "Enter bot token...",
       saving: "Saving...",
       saveToken: "Save Token",
       loadServerErrorTitle: "Failed to load server",
       serverNotFound: "Server not found",
       waitingForRegistration: "Waiting for Registration",
-      waitingForRegistrationBody: "Use the !register command in your Discord server with the registration key to complete setup.",
+      waitingForRegistrationBody:
+        "Use the !register command in your Discord server with the registration key to complete setup.",
       channelConfigurationTitle: "Channel Configuration",
-      channelConfigurationDescription: "Run !sync-channels in Discord to update the channel list.",
+      channelConfigurationDescription:
+        "Run !sync-channels in Discord to update the channel list.",
       enableAll: "Enable All",
       disableAll: "Disable All",
-      channelConfigurationUnavailable: "Channel configuration will be available after the server is registered.",
+      channelConfigurationUnavailable:
+        "Channel configuration will be available after the server is registered.",
       loadChannelsErrorTitle: "Failed to load channels",
       loadChannelsErrorBody: "Could not load channels",
-      bulkUpdatePartialFailure: "Updated {{succeeded}} channels, but {{failed}} failed",
+      bulkUpdatePartialFailure:
+        "Updated {{succeeded}} channels, but {{failed}} failed",
       bulkUpdateSuccess_one: "Updated {{count}} channel",
       bulkUpdateSuccess_other: "Updated {{count}} channels",
       updateChannelsFailed: "Failed to update channels",
@@ -4253,7 +4791,8 @@ const en = {
       pendingRegistration: "Pending registration",
       updateConfiguration: "Update Configuration",
       defaultAgentTitle: "Default Agent",
-      defaultAgentDescription: "The agent used by the bot in all channels unless overridden.",
+      defaultAgentDescription:
+        "The agent used by the bot in all channels unless overridden.",
       selectAgent: "Select agent",
       defaultAgentOption: "Default Agent",
       unsavedChangesTitle: "You have unsaved changes",
@@ -4268,10 +4807,13 @@ const en = {
       loadChannelsErrorMsg: "Could not load channels",
     },
     actions: {
-      mcpDescription: "Connect MCP (Model Context Protocol) servers to add custom actions and tools for your agents.",
-      openApiDescription: "Connect OpenAPI servers to add custom actions and tools for your agents.",
+      mcpDescription:
+        "Connect MCP (Model Context Protocol) servers to add custom actions and tools for your agents.",
+      openApiDescription:
+        "Connect OpenAPI servers to add custom actions and tools for your agents.",
       mcpWorkspaceTitle: "Action workspace",
-      mcpWorkspaceDescription: "Connect MCP servers, inspect available tools, and decide what agents can safely use.",
+      mcpWorkspaceDescription:
+        "Connect MCP servers, inspect available tools, and decide what agents can safely use.",
       serversLabel: "Servers",
       connectedServersLabel: "Connected servers",
       toolsLabel: "Tools",
@@ -4450,7 +4992,8 @@ const en = {
     },
     craftConfigureConnector: {
       createNewButton: "Create New",
-      noCredentialConfig: "No credential configuration available for {{displayName}}.",
+      noCredentialConfig:
+        "No credential configuration available for {{displayName}}.",
       cancelButton: "Cancel",
       backButton: "Back",
       viewSetupDocumentation: "View setup documentation",
@@ -4463,7 +5006,8 @@ const en = {
       boostLabel: "Boost:",
       hiddenLabel: "Hidden",
       workspaceTitle: "Document explorer workspace",
-      workspaceDescription: "Search indexed content, narrow by connector or document set, and inspect what agents can retrieve.",
+      workspaceDescription:
+        "Search indexed content, narrow by connector or document set, and inspect what agents can retrieve.",
       connectorsLabel: "Connectors",
       documentSetsLabel: "Document sets",
       searchModeLabel: "Search mode",
@@ -4483,51 +5027,67 @@ const en = {
       },
     },
     chatPreferencesPage: {
-      description: "Organization-wide chat settings and defaults. Users can override some of these in their personal settings.",
+      description:
+        "Organization-wide chat settings and defaults. Users can override some of these in their personal settings.",
       teamNameTitle: "Team Name",
-      teamNameDescription: "This is added to all chat sessions as additional context to provide a richer/customized experience.",
+      teamNameDescription:
+        "This is added to all chat sessions as additional context to provide a richer/customized experience.",
       teamNamePlaceholder: "Enter team name",
       teamContextTitle: "Team Context",
-      teamContextDescription: "Users can also provide additional individual context in their personal settings.",
+      teamContextDescription:
+        "Users can also provide additional individual context in their personal settings.",
       teamContextPlaceholder: "Describe your team and how ATLAS should behave.",
       systemPromptTitle: "System Prompt",
-      systemPromptDescription: "Base prompt for all chats, agents, and projects. Modify with caution: Significant changes may degrade response quality.",
+      systemPromptDescription:
+        "Base prompt for all chats, agents, and projects. Modify with caution: Significant changes may degrade response quality.",
       modifyPrompt: "Modify Prompt",
       featuresTitle: "Features",
       searchModeSetupTooltip: "Set up connectors to use Search Mode",
       searchModeTitle: "Search Mode",
-      searchModeDescription: "UI mode for quick document search across your organization.",
+      searchModeDescription:
+        "UI mode for quick document search across your organization.",
       deepResearchTitle: "Deep Research",
-      deepResearchDescription: "Agentic research system that works across the web and connected sources. Uses significantly more tokens per query.",
+      deepResearchDescription:
+        "Agentic research system that works across the web and connected sources. Uses significantly more tokens per query.",
       chatAutoScrollTitle: "Chat Auto-Scroll",
-      chatAutoScrollDescription: "Automatically scroll to new content as chat generates response. Users can override this in their personal settings.",
+      chatAutoScrollDescription:
+        "Automatically scroll to new content as chat generates response. Users can override this in their personal settings.",
       connectorsTitle: "Connectors",
       noConnectors: "No connectors set up",
       manageAll: "Manage All",
       actionsToolsTitle: "Actions & Tools",
-      actionsToolsDescription: "Tools and capabilities available for chat to use. This does not apply to agents.",
+      actionsToolsDescription:
+        "Tools and capabilities available for chat to use. This does not apply to agents.",
       internalSearchTitle: "Internal Search",
-      internalSearchDescription: "Search through your organization's connected knowledge base and documents.",
-      imageGenerationUnavailableTooltip: "Image generation requires a configured model. Set one up under Configuration > Image Generation, or ask an admin.",
+      internalSearchDescription:
+        "Search through your organization's connected knowledge base and documents.",
+      imageGenerationUnavailableTooltip:
+        "Image generation requires a configured model. Set one up under Configuration > Image Generation, or ask an admin.",
       imageGenerationTitle: "Image Generation",
-      imageGenerationDescription: "Generate and manipulate images using AI-powered tools.",
+      imageGenerationDescription:
+        "Generate and manipulate images using AI-powered tools.",
       webSearchTitle: "Web Search",
-      webSearchDescription: "Search the web for real-time information and up-to-date results.",
+      webSearchDescription:
+        "Search the web for real-time information and up-to-date results.",
       openUrlTitle: "Open URL",
       openUrlDescription: "Fetch and read content from web URLs.",
       codeInterpreterTitle: "Code Interpreter",
       codeInterpreterDescription: "Generate and run code.",
       advancedOptionsTitle: "Advanced Options",
       keepChatHistoryTitle: "Keep Chat History",
-      keepChatHistoryDescription: "Specify how long ATLAS should retain chats in your organization.",
+      keepChatHistoryDescription:
+        "Specify how long ATLAS should retain chats in your organization.",
       forever: "Forever",
       days_one: "{{count}} day",
       days_other: "{{count}} days",
       allowAnonymousUsersTitle: "Allow Anonymous Users",
-      allowAnonymousUsersDescription: "Allow anyone to start chats without logging in. They do not see any other chats and cannot create agents or update settings.",
+      allowAnonymousUsersDescription:
+        "Allow anyone to start chats without logging in. They do not see any other chats and cannot create agents or update settings.",
       alwaysStartWithAgentTitle: "Always Start with an Agent",
-      alwaysStartWithAgentDescription: "This removes the default chat. Users will always start in an agent, and new chats will be created in their last active agent. Set featured agents to help new users get started.",
-      systemPromptModalDescription: "This base prompt is prepended to all chats, agents, and projects.",
+      alwaysStartWithAgentDescription:
+        "This removes the default chat. Users will always start in an agent, and new chats will be created in their last active agent. Set featured agents to help new users get started.",
+      systemPromptModalDescription:
+        "This base prompt is prepended to all chats, agents, and projects.",
       systemPromptPlaceholder: "Enter your system prompt...",
       toastToolsUpdated: "Tools updated",
       toastToolsFailed: "Failed to update tools",
@@ -4545,7 +5105,8 @@ const en = {
       noticeConsentPromptRequired: "Notice Consent Prompt is required",
       failedToUploadLogo: "Failed to upload logo. {{error}}",
       appearanceSettingsSaved: "Appearance settings saved successfully!",
-      pageDescription: "Customize how the application appears to users across your organization.",
+      pageDescription:
+        "Customize how the application appears to users across your organization.",
       applying: "Applying...",
       applyChanges: "Apply Changes",
     },
@@ -4560,12 +5121,15 @@ const en = {
       searchPlaceholder: "Find standard answers by keyword/phrase...",
       allCategories: "All Categories",
       noMatches: "No matching standard answers found...",
-      ensureCategoryAssigned: "Ensure that you have added the category to the relevant",
+      ensureCategoryAssigned:
+        "Ensure that you have added the category to the relevant",
       slackBot: "Slack Bot",
       errorLoadingAnswers: "Error loading standard answers",
       errorLoadingCategories: "Error loading standard answer categories",
-      manageDescription1: "Manage the standard answers for pre-defined questions.",
-      manageDescription2: "Note: Currently, only questions asked from Slack can receive standard answers.",
+      manageDescription1:
+        "Manage the standard answers for pre-defined questions.",
+      manageDescription2:
+        "Note: Currently, only questions asked from Slack can receive standard answers.",
       addFirst: "Add your first standard answer below!",
       newButton: "New Standard Answer",
     },
@@ -4587,7 +5151,7 @@ const en = {
       moreUsers: "more",
       upToDate: "Up to date",
       syncing: "Syncing",
-      deleted: "User Group \"{{name}}\" deleted",
+      deleted: 'User Group "{{name}}" deleted',
       deleteFailed: "Failed to delete User Group - {{errorMsg}}",
       updateTitle: "Update a User Group",
       createTitle: "Create a new User Group",
@@ -4598,10 +5162,13 @@ const en = {
       createFailed: "Error creating user group - {{errorMsg}}",
       nameLabel: "Name:",
       namePlaceholder: "A name for the User Group",
-      selectConnectorsTitle: "Select which private connectors this group has access to:",
-      selectConnectorsDescription: "All documents indexed by the selected connectors will be visible to users in this group.",
+      selectConnectorsTitle:
+        "Select which private connectors this group has access to:",
+      selectConnectorsDescription:
+        "All documents indexed by the selected connectors will be visible to users in this group.",
       selectUsersTitle: "Select which Users should be a part of this Group.",
-      selectUsersDescription: "All selected users will be able to search through all documents indexed by the selected connectors.",
+      selectUsersDescription:
+        "All selected users will be able to search through all documents indexed by the selected connectors.",
       updateSubmit: "Update!",
       createSubmit: "Create!",
       addMemberTitle: "Add New User",
@@ -4614,7 +5181,8 @@ const en = {
       addConnectorsFailed: "Failed to add connectors to group - {{errorMsg}}",
       addConnectorsButton: "Add Connectors",
       removeSelfCuratorTitle: "Remove Yourself as a Curator for this Group?",
-      removeSelfCuratorMessage: "Are you sure you want to change your role to Basic? This will remove your ability to curate this group.",
+      removeSelfCuratorMessage:
+        "Are you sure you want to change your role to Basic? This will remove your ability to curate this group.",
       removeSelfCuratorConfirm: "Yes, set me to Basic",
       roleBasic: "Basic",
       roleCurator: "Curator",
@@ -4633,7 +5201,8 @@ const en = {
       connectorHeader: "Connector",
       removeConnectorHeader: "Remove Connector",
       removedConnectorSuccess: "Successfully removed connector from group",
-      removeConnectorFailed: "Error removing connector from group - {{errorMsg}}",
+      removeConnectorFailed:
+        "Error removing connector from group - {{errorMsg}}",
       noConnectors: "No connectors in this group...",
       documentSetsSection: "Document Sets",
       noDocumentSets: "No document sets in this group...",
@@ -4645,23 +5214,30 @@ const en = {
     performance: {
       customAnalytics: {
         disabledTitle: "Custom Analytics is not enabled.",
-        disabledDescription: "To set up custom analytics scripts, please work with the team who setup ATLAS in your team to set the",
-        pageDescription: "This allows you to bring your own analytics tool to ATLAS! Copy the Web snippet from your analytics provider into the box below, and we'll start sending usage events.",
+        disabledDescription:
+          "To set up custom analytics scripts, please work with the team who setup ATLAS in your team to set the",
+        pageDescription:
+          "This allows you to bring your own analytics tool to ATLAS! Copy the Web snippet from your analytics provider into the box below, and we'll start sending usage events.",
         fetchFailed: "Failed to fetch settings",
         updatedSuccess: "Custom analytics script updated successfully!",
-        updateFailed: "Failed to update custom analytics script: \"{{errorMsg}}\"",
+        updateFailed:
+          'Failed to update custom analytics script: "{{errorMsg}}"',
         scriptLabel: "Script",
-        scriptDescription: "Specify the Javascript that should run on page load in order to initialize your custom tracking/analytics.",
+        scriptDescription:
+          "Specify the Javascript that should run on page load in order to initialize your custom tracking/analytics.",
         scriptNotePrefix: "Do not include the",
-        scriptNoteSuffix: "tags. If you upload a script below but you are not recieving any events in your analytics platform, try removing all extra whitespace before each line of JavaScript.",
+        scriptNoteSuffix:
+          "tags. If you upload a script below but you are not recieving any events in your analytics platform, try removing all extra whitespace before each line of JavaScript.",
         secretKeyLabel: "Secret Key",
-        secretKeyDescription: "For security reasons, you must provide a secret key to update this script. This should be the value of the",
+        secretKeyDescription:
+          "For security reasons, you must provide a secret key to update this script. This should be the value of the",
         secretKeyDescriptionSuffix: "initially setting up ATLAS.",
         updateButton: "Update",
       },
       queryHistory: {
         downloadFailed: "Failed to download the query-history.",
-        generatingCsv: "Generating CSV report. Click the '{{buttonName}}' button to see all jobs.",
+        generatingCsv:
+          "Generating CSV report. Click the '{{buttonName}}' button to see all jobs.",
         cancel: "Cancel",
         kickoffExport: "Kickoff Export",
       },
@@ -4675,29 +5251,40 @@ const en = {
     },
     searchUpgrading: {
       cancelTitle: "Cancel Embedding Model Switch",
-      cancelBody: "Are you sure you want to cancel? Cancelling will revert to the previous model and all progress will be lost.",
+      cancelBody:
+        "Are you sure you want to cancel? Cancelling will revert to the previous model and all progress will be lost.",
       confirmButton: "Confirm",
       cancelButton: "Cancel",
       currentStatusTitle: "Current Upgrade Status",
       switchingTo: "Currently in the process of switching to: {{modelName}}",
       switchingModelsTitle: "Switching Embedding Models",
-      instantSwitchBody: "You're currently switching embedding models, and you've selected the instant switch option. The transition will complete shortly.",
+      instantSwitchBody:
+        "You're currently switching embedding models, and you've selected the instant switch option. The transition will complete shortly.",
       newModelActiveSoon: "The new model will be active soon.",
-      activeOnlyProgress: "The table below shows the re-indexing progress of active (non-paused) connectors. Once all active connectors have been re-indexed successfully, the new model will be used for all search queries. Paused connectors will continue to be indexed in the background but won't block the switchover. Until then, we will use the old model so that no downtime is necessary during this transition.",
-      activeOnlyProgressNote: "Note: User file re-indexing progress is not shown. You will see this page until all active connectors are re-indexed!",
-      allConnectorsProgress: "The table below shows the re-indexing progress of all existing connectors. Once all connectors have been re-indexed successfully, the new model will be used for all search queries. Until then, we will use the old model so that no downtime is necessary during this transition.",
-      allConnectorsProgressNote: "Note: User file re-indexing progress is not shown. You will see this page until all user files are re-indexed!",
-      allPausedText: "All connectors are currently paused, so none are blocking the switchover. Paused connectors will keep re-indexing in the background.",
+      activeOnlyProgress:
+        "The table below shows the re-indexing progress of active (non-paused) connectors. Once all active connectors have been re-indexed successfully, the new model will be used for all search queries. Paused connectors will continue to be indexed in the background but won't block the switchover. Until then, we will use the old model so that no downtime is necessary during this transition.",
+      activeOnlyProgressNote:
+        "Note: User file re-indexing progress is not shown. You will see this page until all active connectors are re-indexed!",
+      allConnectorsProgress:
+        "The table below shows the re-indexing progress of all existing connectors. Once all connectors have been re-indexed successfully, the new model will be used for all search queries. Until then, we will use the old model so that no downtime is necessary during this transition.",
+      allConnectorsProgressNote:
+        "Note: User file re-indexing progress is not shown. You will see this page until all user files are re-indexed!",
+      allPausedText:
+        "All connectors are currently paused, so none are blocking the switchover. Paused connectors will keep re-indexing in the background.",
       failedToFetchProgress: "Failed to fetch re-indexing progress",
-      noConnectorsBody: "You're currently switching embedding models, but there are no connectors to reindex. This means the transition will be quick and seamless!",
+      noConnectorsBody:
+        "You're currently switching embedding models, but there are no connectors to reindex. This means the transition will be quick and seamless!",
     },
     federated: {
       loadingConnectorConfiguration: "Loading connector configuration...",
       retrievingConnectorDetails: "Retrieving connector details...",
       error: "Error",
-      noCredentialSchema: "No credential schema available for this connector type.",
-      noSearchConfig: "No search configuration available for this connector type.",
-      channelPatternPlaceholder: "Type channel name or regex pattern and press Enter",
+      noCredentialSchema:
+        "No credential schema available for this connector type.",
+      noSearchConfig:
+        "No search configuration available for this connector type.",
+      channelPatternPlaceholder:
+        "Type channel name or regex pattern and press Enter",
       federatedBadge: "Federated",
     },
     queryHistoryDetail: {
@@ -4716,11 +5303,14 @@ const en = {
     advancedConnectorForm: {
       title: "Advanced Configuration",
       pruneFrequencyLabel: "Prune Frequency (hours)",
-      pruneFrequencyDescription: "\n          Checks all documents against the source to delete those that no longer exist.\n          Note: This process checks every document, so be cautious when increasing frequency.\n          Default is 720 hours (30 days). Decimal hours are supported (e.g., 0.1 hours = 6 minutes).\n          Enter 0 to disable pruning for this connector.\n        ",
+      pruneFrequencyDescription:
+        "\n          Checks all documents against the source to delete those that no longer exist.\n          Note: This process checks every document, so be cautious when increasing frequency.\n          Default is 720 hours (30 days). Decimal hours are supported (e.g., 0.1 hours = 6 minutes).\n          Enter 0 to disable pruning for this connector.\n        ",
       refreshFrequencyLabel: "Refresh Frequency (minutes)",
-      refreshFrequencyDescription: "This is how frequently we pull new documents from the source (in minutes). If you input 0, we will never pull new documents for this connector.",
+      refreshFrequencyDescription:
+        "This is how frequently we pull new documents from the source (in minutes). If you input 0, we will never pull new documents for this connector.",
       indexingStartDateLabel: "Indexing Start Date",
-      indexingStartDateSubtext: "Documents prior to this date will not be pulled in",
+      indexingStartDateSubtext:
+        "Documents prior to this date will not be pulled in",
       resetButton: "Reset",
     },
     dynamicConnectorForm: {
@@ -4737,7 +5327,8 @@ const en = {
     },
     federatedForm: {
       loadingCredentialSchema: "Loading credential schema...",
-      retrievingRequiredFields: "Retrieving required fields for this connector type",
+      retrievingRequiredFields:
+        "Retrieving required fields for this connector type",
       manage: "Manage",
       validate: "Validate",
       validating: "Validating...",
@@ -4754,7 +5345,8 @@ const en = {
     },
     clientLayout: {
       warning: "Warning:",
-      trialWarning: "Your trial ends in less than 5 days and no payment method has been added.",
+      trialWarning:
+        "Your trial ends in less than 5 days and no payment method has been added.",
       updateBilling: "Update Billing Information",
     },
     standardAnswer: {
@@ -4769,7 +5361,8 @@ const en = {
       scheduled: "Scheduled",
       canceled: "Canceled",
       invalid: "Invalid",
-      invalidTooltip: "Connector is in an invalid state. Please update the credentials or create a new connector.",
+      invalidTooltip:
+        "Connector is in an invalid state. Please update the credentials or create a new connector.",
       none: "None",
       notStarted: "Not Started",
       deleting: "Deleting",
@@ -4809,10 +5402,13 @@ const en = {
       failedToLoadGmailCredentials: "Failed to load Gmail credentials",
       failedToLoadGDriveCredentials: "Failed to load Google Drive credentials",
       failedToLoadConnectors: "Failed to load connectors",
-      errorLoadingGmailAppCredentials: "Error loading Gmail app credentials. Contact an administrator.",
-      errorLoadingGDriveAppCredentials: "Error loading Google Drive app credentials. Contact an administrator.",
+      errorLoadingGmailAppCredentials:
+        "Error loading Gmail app credentials. Contact an administrator.",
+      errorLoadingGDriveAppCredentials:
+        "Error loading Google Drive app credentials. Contact an administrator.",
       failedToLoadGmailConnectors: "Failed to load Gmail associated connectors",
-      failedToLoadGDriveConnectors: "Failed to load Google Drive associated connectors",
+      failedToLoadGDriveConnectors:
+        "Failed to load Google Drive associated connectors",
     },
     llmConfig: {
       systemDefault: "System Default",
@@ -4837,9 +5433,11 @@ const en = {
   },
   agentKnowledge: {
     title: "Knowledge",
-    description: "Add specific connectors and documents for this agent to use to inform its responses.",
+    description:
+      "Add specific connectors and documents for this agent to use to inform its responses.",
     useKnowledge: "Use Knowledge",
-    useKnowledgeDescription: "Let this agent reference these documents to inform its responses.",
+    useKnowledgeDescription:
+      "Let this agent reference these documents to inform its responses.",
     documentProcessing: "Document Processing",
     knowledgeGraph: "Knowledge Graph",
     vectorSimilaritySearch: "Vector similarity search",
@@ -4849,9 +5447,12 @@ const en = {
     searchCollections: "Search collections...",
     searchPlaceholder: "Search...",
     noItemsAvailable: "No items available.",
-    noDatasourcesFound: "No datasources found. Add a datasource in the Data Sources page.",
-    noKnowledgeGraphCollections: "No collections with a built knowledge graph. Build a knowledge graph from the Knowledge Graph page first.",
-    addKnowledgeDescription: "Add documents or connected sources to use for this agent.",
+    noDatasourcesFound:
+      "No datasources found. Add a datasource in the Data Sources page.",
+    noKnowledgeGraphCollections:
+      "No collections with a built knowledge graph. Build a knowledge graph from the Knowledge Graph page first.",
+    addKnowledgeDescription:
+      "Add documents or connected sources to use for this agent.",
     knowledgeSourcesSelected_one: "{{count}} knowledge source selected",
     knowledgeSourcesSelected_other: "{{count}} knowledge sources selected",
     knowledgeSourcesSelected_plural: "{{count}} knowledge sources selected",
@@ -4895,9 +5496,11 @@ const en = {
     deleteProviderError: "Failed to delete provider: {{error}}",
     unknownError: "Unknown error",
     autoUpdate: "Auto Update",
-    autoUpdateDescription: "Automatically update the available models when new models are released. Recommended for most teams.",
+    autoUpdateDescription:
+      "Automatically update the available models when new models are released. Recommended for most teams.",
     availableModels: "Available Models",
-    selectModelsSubtext: "Select which models to make available for this provider.",
+    selectModelsSubtext:
+      "Select which models to make available for this provider.",
     noModelsFound: "No models found",
     selectAllModels: "Select all models",
     clearAll_one: "Clear all ({{count}})",
@@ -4905,7 +5508,8 @@ const en = {
     default: "Default",
     setAsDefaultModel: "Set as default",
     displayNameLabel: "Display Name",
-    displayNameSubtext: "A name which you can use to identify this provider when selecting it in the UI.",
+    displayNameSubtext:
+      "A name which you can use to identify this provider when selecting it in the UI.",
     displayNamePlaceholder: "Display Name",
     fetchAvailableModels: "Fetch Available Models",
     unknownErrorOccurred: "Unknown error occurred",
@@ -4913,11 +5517,14 @@ const en = {
     llmProviderObjectName: "LLM Provider",
     agentWhitelistLabel: "Agent Whitelist",
     agentWhitelistSubtext: "Restrict this provider to specific agents.",
-    agentWhitelistDisabled: "This LLM Provider is public and available to all agents.",
+    agentWhitelistDisabled:
+      "This LLM Provider is public and available to all agents.",
     defaultModelLabel: "Default Model",
-    defaultModelSubtext: "The model to use by default for this provider unless otherwise specified.",
+    defaultModelSubtext:
+      "The model to use by default for this provider unless otherwise specified.",
     defaultModelPlaceholder: "E.g. gpt-4o",
-    fetchModelsFirst: "Fetch available models first, then you'll be able to select the models you want to make available.",
+    fetchModelsFirst:
+      "Fetch available models first, then you'll be able to select the models you want to make available.",
     awsRegionLabel: "AWS Region",
     awsRegionSubtext: "Region where your Amazon Bedrock models are hosted.",
     authMethod: "Authentication Method",
@@ -4925,13 +5532,14 @@ const en = {
     iamRole: "IAM Role",
     accessKey: "Access Key",
     longTermApiKey: "Long-term API Key",
-    iamRoleDescription: "Uses the IAM role attached to your AWS environment. Recommended for EC2, ECS, Lambda, or other AWS services.",
+    iamRoleDescription:
+      "Uses the IAM role attached to your AWS environment. Recommended for EC2, ECS, Lambda, or other AWS services.",
     awsAccessKeyId: "AWS Access Key ID",
     awsSecretAccessKey: "AWS Secret Access Key",
     awsLongTermApiKey: "AWS Bedrock Long-term API Key",
     awsLongTermApiKeyPlaceholder: "Your long-term API key",
     selectAwsRegion: "Select an AWS region.",
-    completeAuthMethod: "Complete the \"Authentication Method\" section.",
+    completeAuthMethod: 'Complete the "Authentication Method" section.',
     apiFetchRequirements: "API Base and API Key are required to fetch models",
     fetchModelsFailed: "Failed to fetch models",
     apiKeyRequired: "API Key is required",
@@ -4943,11 +5551,13 @@ const en = {
     ollamaApiKeyLabel: "API Key (Optional)",
     ollamaNoModels: "No models found. Please provide a valid API base URL.",
     targetUriRequired: "Target URI is required",
-    targetUriInvalid: "Target URI must be a valid URL with api-version query parameter and either a deployment name in the path or /openai/responses",
+    targetUriInvalid:
+      "Target URI must be a valid URL with api-version query parameter and either a deployment name in the path or /openai/responses",
     targetUriLabel: "Target URI",
     credentialsRequired: "Credentials file is required",
     credentialsLabel: "Credentials File",
-    credentialsSubtext: "Upload your Google Cloud service account JSON credentials file.",
+    credentialsSubtext:
+      "Upload your Google Cloud service account JSON credentials file.",
     locationLabel: "Location",
     providerNameRequired: "Provider Name is required",
     modelNameRequired: "Model name is required",
@@ -4958,23 +5568,28 @@ const en = {
     customConfigKey: "Key",
     customConfigValue: "Value",
     addNew: "Add New",
-    customDefaultModelSubtext: "The model to use by default for this provider. Must be one of the models listed above.",
+    customDefaultModelSubtext:
+      "The model to use by default for this provider. Must be one of the models listed above.",
     systemDefault: "System Default",
     userDefault: "User Default",
-    fillInAsNeeded: "Fill in the following as needed. Refer to the LiteLLM documentation for the provider specified above to determine which fields are required.",
+    fillInAsNeeded:
+      "Fill in the following as needed. Refer to the LiteLLM documentation for the provider specified above to determine which fields are required.",
     optionalApiKey: "[Optional] API Key",
     optionalApiBase: "[Optional] API Base",
     optionalApiVersion: "[Optional] API Version",
     optionalCustomConfigs: "[Optional] Custom Configs",
-    customConfigsDescription: "Additional configurations needed by the model provider. These are passed to LiteLLM via environment variables and as arguments into the completion call.",
-    customConfigsExample: "For example, when configuring the Cloudflare provider, you would need to set CLOUDFLARE_ACCOUNT_ID as the key and your Cloudflare account ID as the value.",
+    customConfigsDescription:
+      "Additional configurations needed by the model provider. These are passed to LiteLLM via environment variables and as arguments into the completion call.",
+    customConfigsExample:
+      "For example, when configuring the Cloudflare provider, you would need to set CLOUDFLARE_ACCOUNT_ID as the key and your Cloudflare account ID as the value.",
   },
   sharedInput: {
     placeholder: "How can ATLAS help you today",
     startNewSession: "Start New Session",
   },
   fileUpload: {
-    dragAndDropMultiple: "Drag and drop some files here, or click to select files",
+    dragAndDropMultiple:
+      "Drag and drop some files here, or click to select files",
     dragAndDropSingle: "Drag and drop a file here, or click to select a file",
     selectedFiles: "Selected Files",
     selectedFile: "Selected File",
@@ -5004,7 +5619,8 @@ const en = {
       expression: "Expression",
     },
     enterJsonFor: "Enter JSON for {{label}}",
-    unsupportedFieldType: "Unsupported field type. You can enter raw JSON here.",
+    unsupportedFieldType:
+      "Unsupported field type. You can enter raw JSON here.",
     executingTool: "Executing tool...",
     error: "Error",
     runToSeeResults: "Run the tool to see results",
@@ -5037,7 +5653,8 @@ const en = {
     headerValue: "Header Value",
     addHeader: "Add Header",
     onlyForYourAccount: "Only for your own account",
-    credentialsNotShared: "The following credentials will not be shared with your organization.",
+    credentialsNotShared:
+      "The following credentials will not be shared with your organization.",
   },
   openApiPage: {
     authSaved: "authentication {{action}} successfully.",
@@ -5061,16 +5678,21 @@ const en = {
     noSummary: "No summary provided",
     deleteTitle: "Delete OpenAPI action",
     deleteButton: "Delete",
-    deleteConfirmText: "This will permanently delete the OpenAPI action {{name}} and its configuration.",
-    deleteConfirmQuestion: "Are you sure you want to delete this OpenAPI action?",
+    deleteConfirmText:
+      "This will permanently delete the OpenAPI action {{name}} and its configuration.",
+    deleteConfirmQuestion:
+      "Are you sure you want to delete this OpenAPI action?",
   },
   openAPIAuth: {
-    oauthConfigLoadError: "Failed to load existing OAuth configuration. Re-enter the details to update it.",
+    oauthConfigLoadError:
+      "Failed to load existing OAuth configuration. Re-enter the details to update it.",
     loadingConfig: "Loading existing configuration...",
     authMethodLabel: "Authentication Method",
     selectMethod: "Select method",
-    oauthDescription: "Each user authenticates via OAuth with their own credentials.",
-    ptOauthDescription: "Forward the user's OAuth access token used to authenticate ATLAS.",
+    oauthDescription:
+      "Each user authenticates via OAuth with their own credentials.",
+    ptOauthDescription:
+      "Forward the user's OAuth access token used to authenticate ATLAS.",
     customHeaderDescription: "Send custom headers with every request.",
     authorizationUrlLabel: "Authorization URL",
     tokenUrlLabel: "Token URL",
@@ -5082,16 +5704,20 @@ const en = {
     optional: "Optional",
     scopesPlaceholder: "e.g. repo, user",
     scopesDescription: "Comma-separated list of OAuth scopes to request.",
-    oauthPassthroughNote: "OAuth passthrough is only available if you enable OIDC or OAuth authentication.",
+    oauthPassthroughNote:
+      "OAuth passthrough is only available if you enable OIDC or OAuth authentication.",
     useRedirectUri: "Use redirect URI:",
     copyRedirectUri: "Copy redirect URI",
     customHeadersTitle: "Authentication Headers",
-    customHeadersDescription: "Specify custom headers for all requests sent to this action's API endpoint.",
+    customHeadersDescription:
+      "Specify custom headers for all requests sent to this action's API endpoint.",
     headerKey: "Header",
     headerValue: "Value",
     addHeader: "Add Header",
-    passthroughText: "Use pass-through for services with shared identity provider.",
-    passthroughDescription: "ATLAS will forward the user's OAuth access token directly to the server as an Authorization header. Make sure the server supports authentication with the same provider.",
+    passthroughText:
+      "Use pass-through for services with shared identity provider.",
+    passthroughDescription:
+      "ATLAS will forward the user's OAuth access token directly to the server as an Authorization header. Make sure the server supports authentication with the same provider.",
     cancel: "Cancel",
     connecting: "Connecting...",
     connect: "Connect",
@@ -5113,7 +5739,8 @@ const en = {
     formatDefinition: "Format definition",
     schemaPlaceholder: "Enter your OpenAPI schema here",
     noSummary: "No summary provided",
-    urlFoundInSchema: "URL found in the schema. Only connect to servers you trust.",
+    urlFoundInSchema:
+      "URL found in the schema. Only connect to servers you trust.",
     noActionsFound: "No Actions Found",
     noActionsDescription: "Provide OpenAPI schema to preview actions here.",
     authenticatedAndEnabled: "Authenticated & Enabled",
@@ -5132,13 +5759,17 @@ const en = {
     you: "You",
     owner: "Owner",
     agentIsPublic: "This agent is public to your organization.",
-    agentIsPublicDescription: "Everyone in your organization has access to this agent.",
+    agentIsPublicDescription:
+      "Everyone in your organization has access to this agent.",
     publishTitle: "Publish This Agent",
-    publishDescription: "Make this agent available to everyone in your organization.",
+    publishDescription:
+      "Make this agent available to everyone in your organization.",
     featureTitle: "Feature This Agent",
-    featureDescription: "Show this agent at the top of the explore agents list and automatically pin it to the sidebar for new users with access.",
+    featureDescription:
+      "Show this agent at the top of the explore agents list and automatically pin it to the sidebar for new users with access.",
     addLabels: "Add labels...",
-    labelsDescription: "Add labels and categories to help people better discover this agent.",
+    labelsDescription:
+      "Add labels and categories to help people better discover this agent.",
     copyLink: "Copy Link",
     cancel: "Cancel",
     addUsersPlaceholder: "Add user or group...",
@@ -5146,7 +5777,8 @@ const en = {
     ownerLabel: "Owner",
     agentIsPublicMessage: "This agent is public to your organization.",
     addLabelsPlaceholder: "Add labels...",
-    labelsHelperText: "Add labels and categories to help people better discover this agent.",
+    labelsHelperText:
+      "Add labels and categories to help people better discover this agent.",
     copyLinkButton: "Copy Link",
     usersAndGroups: "Users And Groups",
     yourOrganization: "Your Organization",
@@ -5183,7 +5815,8 @@ const en = {
     closeMenuAriaLabel: "Close menu",
     commandMenuOptionsAriaLabel: "Command menu options",
     commandMenuTitle: "Command Menu",
-    supportMessage: "Need help? Join our community at https://discord.gg/4NA5SbzrWb for support!",
+    supportMessage:
+      "Need help? Join our community at https://discord.gg/4NA5SbzrWb for support!",
     close: "Close",
     key: "Key",
     value: "Value",
@@ -5240,8 +5873,10 @@ const en = {
     copied: "Copied!",
     failedToCopy: "Failed to copy",
     fetchError: "An error occurred while fetching the data.",
-    fetchAuthError: "An error occurred while fetching the data, related to the user's authentication status.",
-    upstreamServerInvalidResponse: "An invalid response was received from the upstream server.",
+    fetchAuthError:
+      "An error occurred while fetching the data, related to the user's authentication status.",
+    upstreamServerInvalidResponse:
+      "An invalid response was received from the upstream server.",
     validatingFile: "Validating file...",
     write: "Write",
     preview: "Preview",
@@ -5261,14 +5896,17 @@ const en = {
   },
   ee: {
     billing: {
-      updatedSuccess: "Congratulations! Your subscription has been updated successfully.",
+      updatedSuccess:
+        "Congratulations! Your subscription has been updated successfully.",
       loading: "Loading...",
-      errorLoading: "Error loading billing information. Please try again later.",
+      errorLoading:
+        "Error loading billing information. Please try again later.",
       noInformation: "No billing information available.",
       portalError: "Error creating customer portal session",
       subscriptionDetails: "Subscription Details",
       manageSubscription: "Manage Subscription",
-      manageDescription: "View your plan, update payment, or change subscription",
+      manageDescription:
+        "View your plan, update payment, or change subscription",
     },
   },
   queryHistoryTable: {
@@ -5297,7 +5935,8 @@ const en = {
   },
   usageReports: {
     generateTitle: "Generate Usage Reports",
-    generateDescription: "Generate usage statistics for users in the workspace.",
+    generateDescription:
+      "Generate usage statistics for users in the workspace.",
     pickDateRange: "Pick a date range",
     last7Days: "Last 7 days",
     last30Days: "Last 30 days",
@@ -5306,7 +5945,8 @@ const en = {
     generating: "Generating...",
     generateReport: "Generate Report",
     generatingWait: "A report is currently being generated. Please wait...",
-    backgroundGeneration: "Report generation runs in the background. Check the \"Previous Reports\" section below to download when ready.",
+    backgroundGeneration:
+      'Report generation runs in the background. Check the "Previous Reports" section below to download when ready.',
     reportGenerationInProgress: "Report Generation In Progress",
     previousReports: "Previous Reports",
     report: "Report",
@@ -5316,7 +5956,8 @@ const en = {
     allTimePeriod: "All time",
     autoGenerated: "Auto generated",
     somethingWentWrong: "Something went wrong.",
-    reportLongTime: "Report generation is taking longer than expected. The report will continue generating in the background. Please check back in a few minutes.",
+    reportLongTime:
+      "Report generation is taking longer than expected. The report will continue generating in the background. Please check back in a few minutes.",
     download: "Download",
   },
   performanceCharts: {
@@ -5328,7 +5969,8 @@ const en = {
     selectAgent: "Select an agent to display",
     searchAgents: "Search agents...",
     selectAgentToView: "Select an agent to view analytics",
-    noDataForAgent: "No data found for selected agent in the specified time range",
+    noDataForAgent:
+      "No data found for selected agent in the specified time range",
     failedFetchData: "Failed to fetch data...",
     slackChannelTitle: "Slack Channel",
     totalVsAutoResolved: "Total Queries vs Auto Resolved",
@@ -5342,16 +5984,19 @@ const en = {
   },
   appearanceTheme: {
     applicationDisplayName: "Application Display Name",
-    applicationDisplayNameDesc: "This name will show across the app and replace \"ATLAS\" in the UI.",
+    applicationDisplayNameDesc:
+      'This name will show across the app and replace "ATLAS" in the UI.',
     logoDisplayStyle: "Logo Display Style",
     logoAndName: "Logo & Name",
     logoOnly: "Logo Only",
     nameOnly: "Name Only",
-    logoDisplayStyleDesc: "Choose what to display at the top of the sidebar. Options become available once you add a logo or application name.",
+    logoDisplayStyleDesc:
+      "Choose what to display at the top of the sidebar. Options become available once you add a logo or application name.",
     logoOnly_tooltip: "Show only your application logo.",
     logoOnly_disabled_tooltip: "Upload a logo to enable this option.",
     nameOnly_tooltip: "Show only your application name.",
-    nameOnly_disabled_tooltip: "Enter an application name to enable this option.",
+    nameOnly_disabled_tooltip:
+      "Enter an application name to enable this option.",
     logoAndName_tooltip: "Show both your application logo and name.",
     applicationLogo: "Application Logo",
     update: "Update",
@@ -5359,14 +6004,17 @@ const en = {
     greetingMessageDesc: "Add a short message to the home page.",
     chatHeaderText: "Chat Header Text",
     chatFooterText: "Chat Footer Text",
-    chatFooterDesc: "Add markdown content for disclaimers or additional information.",
+    chatFooterDesc:
+      "Add markdown content for disclaimers or additional information.",
     addMarkdownContent: "Add markdown content",
     showFirstVisitNotice: "Show First Visit Notice",
-    showFirstVisitNoticeDesc: "Show a one-time pop-up for new users at their first visit.",
+    showFirstVisitNoticeDesc:
+      "Show a one-time pop-up for new users at their first visit.",
     noticeHeader: "Notice Header",
     noticeContent: "Notice Content",
     requireConsentToNotice: "Require Consent to Notice",
-    requireConsentDesc: "Require the user to read and agree to the notice before accessing the application.",
+    requireConsentDesc:
+      "Require the user to read and agree to the notice before accessing the application.",
     noticeConsentPrompt: "Notice Consent Prompt",
     chatFooterPlaceholder: "Chat Footer Content",
     chatHeaderPlaceholder: "Chat Header Content",
@@ -5380,23 +6028,30 @@ const en = {
     assistant: "Assistant",
     documentSets: "Document Sets",
     actions: "Actions",
-    noChannelConfigs: "No channel-specific configurations. Add a new configuration to customize behavior for specific channels.",
-    deleteSuccess: "Slack bot config \"{{id}}\" deleted",
+    noChannelConfigs:
+      "No channel-specific configurations. Add a new configuration to customize behavior for specific channels.",
+    deleteSuccess: 'Slack bot config "{{id}}" deleted',
     deleteError: "Failed to delete Slack bot config - {{error}}",
     defaultConfigBadge: "Default Configuration",
-    defaultConfigDesc: "This default configuration will apply to all channels and direct messages (DMs) in your Slack workspace.",
+    defaultConfigDesc:
+      "This default configuration will apply to all channels and direct messages (DMs) in your Slack workspace.",
     disableDefaultConfig: "Disable Default Configuration",
-    disableDefaultWarning: "Warning: Disabling the default configuration means ATLASBot won't respond in Slack channels unless they are explicitly configured. Additionally, ATLASBot will not respond to DMs.",
+    disableDefaultWarning:
+      "Warning: Disabling the default configuration means ATLASBot won't respond in Slack channels unless they are explicitly configured. Additionally, ATLASBot will not respond to DMs.",
     slackChannelName: "Slack Channel Name",
     slackChannelPlaceholder: "Enter channel name (e.g., general, support)",
-    slackChannelSubtext: "Enter the name of the Slack channel (without the # symbol)",
+    slackChannelSubtext:
+      "Enter the name of the Slack channel (without the # symbol)",
     knowledgeSource: "Knowledge Source",
     allPublicKnowledge: "All Public Knowledge",
-    allPublicKnowledgeDesc: "Let ATLASBot respond based on information from all public connectors",
+    allPublicKnowledgeDesc:
+      "Let ATLASBot respond based on information from all public connectors",
     specificDocumentSets: "Specific Document Sets",
-    specificDocumentSetsDesc: "Control which documents to use for answering questions",
+    specificDocumentSetsDesc:
+      "Control which documents to use for answering questions",
     searchAgent: "Search Agent",
-    searchAgentDesc: "Control both the documents and the prompt to use for answering questions",
+    searchAgentDesc:
+      "Control both the documents and the prompt to use for answering questions",
     nonSearchAgent: "Non-Search Agent",
     nonSearchAgentDesc: "Chat with an agent that does not use documents",
     searchConfig: "Search Configuration",
@@ -5405,17 +6060,22 @@ const en = {
     answerTypeStandard: "Standard",
     answerTypeDetailed: "Detailed",
     onlyRespondIfCitations: "Only respond if citations found",
-    onlyRespondIfCitationsTooltip: "If set, will only answer questions where the model successfully produces citations",
+    onlyRespondIfCitationsTooltip:
+      "If set, will only answer questions where the model successfully produces citations",
     generalConfig: "General Configuration",
     showContinueInWebUI: "Show Continue in Web UI button",
-    showContinueInWebUITooltip: "If set, will show a button at the bottom of the response that allows the user to continue the conversation in the ATLAS Web UI",
-    stillNeedHelp: "Give a \"Still need help?\" button",
+    showContinueInWebUITooltip:
+      "If set, will show a button at the bottom of the response that allows the user to continue the conversation in the ATLAS Web UI",
+    stillNeedHelp: 'Give a "Still need help?" button',
     onlyRespondToQuestions: "Only respond to questions",
-    onlyRespondToQuestionsTooltip: "If set, ATLASBot will only respond to messages that contain a question mark",
+    onlyRespondToQuestionsTooltip:
+      "If set, ATLASBot will only respond to messages that contain a question mark",
     respondTagOnly: "Respond to @ATLASBot Only",
-    respondTagOnlyTooltip: "If set, ATLASBot will only respond when directly tagged",
+    respondTagOnlyTooltip:
+      "If set, ATLASBot will only respond when directly tagged",
     respondToBots: "Respond to Bot messages",
-    respondToBotsTooltip: "If not set, ATLASBot will always ignore messages from Bots",
+    respondToBotsTooltip:
+      "If not set, ATLASBot will always ignore messages from Bots",
     respondEphemeral: "Respond to user in a private (ephemeral) message",
     privacyAlert: "Privacy Alert",
     relevantConnectors: "Relevant Connectors:",
@@ -5424,30 +6084,42 @@ const en = {
     viewAll: "View all ",
     documentSetsLabel: "document sets",
     agentsLabel: "agents",
-    selectDocSetsLabel: "Select the document sets ATLASBot will use while answering questions in Slack.",
-    selectSearchAgentLabel: "Select the search-enabled agent ATLASBot will use while answering questions in Slack.",
-    selectNonSearchAgentLabel: "Select the non-search agent ATLASBot will use while answering questions in Slack.",
-    syncConnectorsNote: "Note: Some of your agents have auto-synced connectors in their document sets. You cannot select these agents as they will not be able to answer questions in Slack.",
-    stillNeedHelpTooltip: "ATLASBot's response will include a button at the bottom of the response that asks the user if they still need help.",
+    selectDocSetsLabel:
+      "Select the document sets ATLASBot will use while answering questions in Slack.",
+    selectSearchAgentLabel:
+      "Select the search-enabled agent ATLASBot will use while answering questions in Slack.",
+    selectNonSearchAgentLabel:
+      "Select the non-search agent ATLASBot will use while answering questions in Slack.",
+    syncConnectorsNote:
+      "Note: Some of your agents have auto-synced connectors in their document sets. You cannot select these agents as they will not be able to answer questions in Slack.",
+    stillNeedHelpTooltip:
+      "ATLASBot's response will include a button at the bottom of the response that asks the user if they still need help.",
     configureStillNeedHelp: "Configure Still Need Help Button",
     optionalUsersGroupsTag: "(Optional) Users / Groups to Tag",
-    usersGroupsTagSubtext: "The Slack users / groups we should tag if the user clicks the \"Still need help?\" button. If no emails are provided, we will not tag anyone and will just react with a 🆘 emoji to the original message.",
+    usersGroupsTagSubtext:
+      'The Slack users / groups we should tag if the user clicks the "Still need help?" button. If no emails are provided, we will not tag anyone and will just react with a 🆘 emoji to the original message.',
     userEmailGroupPlaceholder: "User email or user group name...",
     optionalRespondCertainUsers: "(Optional) Respond to Certain Users / Groups",
-    respondCertainUsersSubtext: "If specified, ATLASBot responses will only be visible to the members or groups in this list.",
-    respondEphemeralTooltip: "If set, ATLASBot will respond only to the user in a private (ephemeral) message. If you also chose 'Search' Agent above, selecting this option will make documents that are private to the user available for their queries.",
-    privacyAlertDesc: "Please note that if the private (ephemeral) response is *not selected*, only public documents within the selected document sets will be accessible for user queries. If the private (ephemeral) response *is selected*, user quries can also leverage documents that the user has already been granted access to. Note that users will be able to share the response with others in the channel, so please ensure that this is aligned with your company sharing policies.",
+    respondCertainUsersSubtext:
+      "If specified, ATLASBot responses will only be visible to the members or groups in this list.",
+    respondEphemeralTooltip:
+      "If set, ATLASBot will respond only to the user in a private (ephemeral) message. If you also chose 'Search' Agent above, selecting this option will make documents that are private to the user available for their queries.",
+    privacyAlertDesc:
+      "Please note that if the private (ephemeral) response is *not selected*, only public documents within the selected document sets will be accessible for user queries. If the private (ephemeral) response *is selected*, user quries can also leverage documents that the user has already been granted access to. Note that users will be able to share the response with others in the channel, so please ensure that this is aligned with your company sharing policies.",
     update: "Update",
     create: "Create",
     cancel: "Cancel",
-    autoSyncDocs: "These document sets cannot be attached as they have auto-synced docs:",
-    deletedConfig: "Slack bot config \"{{id}}\" deleted",
+    autoSyncDocs:
+      "These document sets cannot be attached as they have auto-synced docs:",
+    deletedConfig: 'Slack bot config "{{id}}" deleted',
     failedDeleteConfig: "Failed to delete Slack bot config - {{errorMsg}}",
-    removedDocumentSets: "We removed one or more document sets from your selection because they are no longer valid. Please review and update your configuration.",
+    removedDocumentSets:
+      "We removed one or more document sets from your selection because they are no longer valid. Please review and update your configuration.",
     incompatibleDocSets: "Some incompatible document sets are {{visibility}}.",
     visible: "visible",
     hidden: "hidden",
-    disabledDocSetTooltip: "Unable to use this document set because it contains a connector with auto-sync permissions. ATLASBot's responses in this channel are visible to all Slack users, so mirroring the asker's permissions could inadvertently expose private information.",
+    disabledDocSetTooltip:
+      "Unable to use this document set because it contains a connector with auto-sync permissions. ATLASBot's responses in this channel are visible to all Slack users, so mirroring the asker's permissions could inadvertently expose private information.",
   },
   inlineFileManagement: {
     files: "Files",
@@ -5467,29 +6139,39 @@ const en = {
     confirmDesc: "When you save these changes, the following will happen:",
     filesWillBeRemoved_one: "{{count}} file will be removed",
     filesWillBeRemoved_other: "{{count}} files will be removed",
-    filesRemovedDesc: "Documents from these files will be pruned from the Document Index",
+    filesRemovedDesc:
+      "Documents from these files will be pruned from the Document Index",
     filesWillBeAdded_one: "{{count}} file will be added",
     filesWillBeAdded_other: "{{count}} files will be added",
-    filesAddedDesc: "New files will be uploaded, chunked, embedded, and indexed in the Document Index",
+    filesAddedDesc:
+      "New files will be uploaded, chunked, embedded, and indexed in the Document Index",
     confirmAndSave: "Confirm & Save",
     errorLoadingFiles: "Error loading files: {{message}}",
-    cannotRemoveAll: "Cannot remove all files from a connector. Delete the connector if this is desired.",
-    filesUpdated: "Files updated successfully! Document index is being updated in the background. New files are being indexed and removed files will be pruned from the search results.",
+    cannotRemoveAll:
+      "Cannot remove all files from a connector. Delete the connector if this is desired.",
+    filesUpdated:
+      "Files updated successfully! Document index is being updated in the background. New files are being indexed and removed files will be pruned from the search results.",
     failedToUpdate: "Failed to update files",
   },
   googleCredentials: {
     uploadAppCredentials: "Successfully uploaded app credentials",
-    failedUploadAppCredentials: "Failed to upload app credentials - {{errorMsg}}",
+    failedUploadAppCredentials:
+      "Failed to upload app credentials - {{errorMsg}}",
     uploadServiceAccountKey: "Successfully uploaded service account key",
-    failedUploadServiceAccountKey: "Failed to upload service account key - {{errorMsg}}",
+    failedUploadServiceAccountKey:
+      "Failed to upload service account key - {{errorMsg}}",
     pleaseUploadJson: "Please upload a JSON file",
     dropJsonHere: "Drop JSON file here",
     selectOrDragJson: "Select or drag JSON credentials file...",
     uploading: "Uploading {{fileName}}...",
-    curatorsCannotSetupGmail: "Curators are unable to set up the Gmail credentials. To add a Gmail connector, please contact an administrator.",
-    curatorsCannotSetupDrive: "Curators are unable to set up the Google Drive credentials. To add a Google Drive connector, please contact an administrator.",
-    connectGmailDesc: "To connect your Gmail, create credentials (either OAuth App or Service Account), download the JSON file, and upload it below.",
-    connectDriveDesc: "To connect your Google Drive, create credentials (either OAuth App or Service Account), download the JSON file, and upload it below.",
+    curatorsCannotSetupGmail:
+      "Curators are unable to set up the Gmail credentials. To add a Gmail connector, please contact an administrator.",
+    curatorsCannotSetupDrive:
+      "Curators are unable to set up the Google Drive credentials. To add a Google Drive connector, please contact an administrator.",
+    connectGmailDesc:
+      "To connect your Gmail, create credentials (either OAuth App or Service Account), download the JSON file, and upload it below.",
+    connectDriveDesc:
+      "To connect your Google Drive, create credentials (either OAuth App or Service Account), download the JSON file, and upload it below.",
     viewSetupInstructions: "View detailed setup instructions",
     deleteCredentials: "Delete Credentials",
     step1ProvideCredentials: "Step 1: Provide your Credentials",
@@ -5499,29 +6181,40 @@ const en = {
     serviceAccountKey: "service account key",
     appCredentials: "app credentials",
     authenticationComplete: "Authentication Complete",
-    gmailAuthenticatedDesc: "Your Gmail credentials have been successfully uploaded and authenticated.",
-    driveAuthenticatedDesc: "Your Google Drive credentials have been successfully uploaded and authenticated.",
+    gmailAuthenticatedDesc:
+      "Your Gmail credentials have been successfully uploaded and authenticated.",
+    driveAuthenticatedDesc:
+      "Your Google Drive credentials have been successfully uploaded and authenticated.",
     revokeAccess: "Revoke Access",
     gmailAuthentication: "Gmail Authentication",
     driveAuthentication: "Google Drive Authentication",
-    completeStep1Gmail: "Please complete Step 1 by uploading either OAuth credentials or a Service Account key before proceeding with authentication.",
-    completeStep1Drive: "Please complete Step 1 by uploading either OAuth credentials or a Service Account key before proceeding with authentication.",
+    completeStep1Gmail:
+      "Please complete Step 1 by uploading either OAuth credentials or a Service Account key before proceeding with authentication.",
+    completeStep1Drive:
+      "Please complete Step 1 by uploading either OAuth credentials or a Service Account key before proceeding with authentication.",
     primaryAdminEmail: "Primary Admin Email:",
-    primaryAdminEmailGmailDesc: "Enter the email of an admin/owner of the Google Organization that owns the Gmail account(s) you want to index.",
-    primaryAdminEmailDriveDesc: "Enter the email of an admin/owner of the Google Organization that owns the Google Drive(s) you want to index.",
+    primaryAdminEmailGmailDesc:
+      "Enter the email of an admin/owner of the Google Organization that owns the Gmail account(s) you want to index.",
+    primaryAdminEmailDriveDesc:
+      "Enter the email of an admin/owner of the Google Organization that owns the Google Drive(s) you want to index.",
     creating: "Creating...",
     createCredential: "Create Credential",
     createdServiceAccount: "Successfully created service account credential",
-    failedCreateServiceAccount: "Failed to create service account credential - {{errorMsg}}",
-    gmailOAuthDesc: "Next, you need to authenticate with Gmail via OAuth. This gives us read access to the emails you have access to in your Gmail account.",
-    driveOAuthDesc: "Next, you need to authenticate with Google Drive via OAuth. This gives us read access to the documents you have access to in your Google Drive account.",
+    failedCreateServiceAccount:
+      "Failed to create service account credential - {{errorMsg}}",
+    gmailOAuthDesc:
+      "Next, you need to authenticate with Gmail via OAuth. This gives us read access to the emails you have access to in your Gmail account.",
+    driveOAuthDesc:
+      "Next, you need to authenticate with Google Drive via OAuth. This gives us read access to the documents you have access to in your Google Drive account.",
     authenticating: "Authenticating...",
     authenticateWithGmail: "Authenticate with Gmail",
     authenticateWithDrive: "Authenticate with Google Drive",
     failedAuthGmail: "Failed to authenticate with Gmail - {{error}}",
     failedAuthDrive: "Failed to authenticate with Google Drive - {{error}}",
-    revokeGmailError: "Cannot revoke the Gmail credential while any connector is still associated with the credential. Please delete all associated connectors, then try again.",
-    revokeDriveError: "Cannot revoke the Google Drive credential while any connector is still associated with the credential. Please delete all associated connectors, then try again.",
+    revokeGmailError:
+      "Cannot revoke the Gmail credential while any connector is still associated with the credential. Please delete all associated connectors, then try again.",
+    revokeDriveError:
+      "Cannot revoke the Google Drive credential while any connector is still associated with the credential. Please delete all associated connectors, then try again.",
     revokedGmail: "Successfully revoked the Gmail credential!",
     revokedDrive: "Successfully revoked the Google Drive credential!",
     mustBeValidEmail: "Must be a valid email",
@@ -5585,18 +6278,22 @@ const en = {
   },
   onboardingUserInfo: {
     demoDataConfig: "Demo Data Configuration",
-    demoDataDesc: "While you wait for your data to sync, try out our simulated demo dataset! The simulated data will adapt to your role and level choices below.",
+    demoDataDesc:
+      "While you wait for your data to sync, try out our simulated demo dataset! The simulated data will adapt to your role and level choices below.",
     selectRole: "Select your role:",
     level: "Level",
-    youWillPlay: "You will play the role of {{position}} named {{name}} working at",
+    youWillPlay:
+      "You will play the role of {{position}} named {{name}} working at",
   },
   userLibraryModal: {
     yourFiles: "Your Files",
-    yourFilesDesc: "Upload files for your agent to read (Excel, Word, PowerPoint, etc.)",
+    yourFilesDesc:
+      "Upload files for your agent to read (Excel, Word, PowerPoint, etc.)",
     loadingFiles: "Loading files...",
     failedToLoad: "Failed to load files",
     noFilesYet: "No files uploaded yet",
-    noFilesDesc: "Upload Excel, Word, PowerPoint, or other files for your agent to work with",
+    noFilesDesc:
+      "Upload Excel, Word, PowerPoint, or other files for your agent to work with",
     done: "Done",
     newFolder: "New Folder",
     folderName: "Folder name",
@@ -5648,7 +6345,8 @@ const en = {
     iamRole: "IAM Role",
     accessKey: "Access Key",
     longTermApiKey: "Long-term API Key",
-    iamDesc: "The app will use the IAM role attached to the environment it's running in to authenticate.",
+    iamDesc:
+      "The app will use the IAM role attached to the environment it's running in to authenticate.",
     awsAccessKeyId: "AWS Access Key ID",
     awsSecretAccessKey: "AWS Secret Access Key",
     checkingCredentials: "Checking credentials...",
@@ -5665,31 +6363,40 @@ const en = {
     apiKeyRequiredError: "API Key is required",
     unknownError: "Unknown error",
     unknownProvider: "Unknown provider: {{providerName}}",
-    pasteApiKeyHint: "Paste your <link>API key</link> from {{provider}} to access your models.",
-    pasteCredentialsHint: "Paste your <link>service account credentials</link> from Google Cloud Vertex AI.",
+    pasteApiKeyHint:
+      "Paste your <link>API key</link> from {{provider}} to access your models.",
+    pasteCredentialsHint:
+      "Paste your <link>service account credentials</link> from Google Cloud Vertex AI.",
     custom: {
       title: "Set up Custom LLM Provider",
-      description: "Connect models from other providers or your self-hosted models.",
+      description:
+        "Connect models from other providers or your self-hosted models.",
       providerNameLabel: "Provider Name",
       providerNamePlaceholder: "E.g. openai, anthropic, etc.",
-      providersListHint: "See full list of supported LLM providers at <link>LiteLLM</link>.",
-      fieldsHint: "Fill in the following fields as needed. Refer to <link>LiteLLM documentation</link> for instructions of the model provider you are using.",
+      providersListHint:
+        "See full list of supported LLM providers at <link>LiteLLM</link>.",
+      fieldsHint:
+        "Fill in the following fields as needed. Refer to <link>LiteLLM documentation</link> for instructions of the model provider you are using.",
       apiBaseUrlLabel: "API Base URL",
       apiVersionLabel: "API Version",
       checkingApiConfig: "Checking API configuration...",
       apiKeyValidModelsUpdated: "API key valid. Your available models updated.",
       checkingApiKey: "Checking API key...",
       additionalConfigsLabel: "Additional Configs",
-      additionalConfigsDescPrefix: "Optional additional properties as needed by the model provider. This is passed to LiteLLM",
-      additionalConfigsDescSuffix: "call as arguments in the environment variable.",
+      additionalConfigsDescPrefix:
+        "Optional additional properties as needed by the model provider. This is passed to LiteLLM",
+      additionalConfigsDescSuffix:
+        "call as arguments in the environment variable.",
       keyLabel: "Key",
       valueLabel: "Value",
       modelConfigsLabel: "Model Configs",
-      modelConfigsDesc: "List LLM models you wish to use and their configurations for this provider.",
+      modelConfigsDesc:
+        "List LLM models you wish to use and their configurations for this provider.",
       modelNameColumnLabel: "Model Name",
       maxInputTokensColumnLabel: "Max Input Tokens",
       mustBeNumber: "Must be a number",
-      defaultModelHint: "This model will be used by {{appName}} by default for this provider. This must be one of the models listed above.",
+      defaultModelHint:
+        "This model will be used by {{appName}} by default for this provider. This must be one of the models listed above.",
       atLeastOneModelRequired: "At least one model configuration is required",
       visibilityRequired: "Visibility is required",
       providerRequired: "Provider is required",
@@ -5699,7 +6406,8 @@ const en = {
     apiBaseUrl: "API Base URL",
     selfHostedOllamaBaseUrl: "Your self-hosted Ollama API base URL.",
     connectLlmTitle: "Connect your LLM models",
-    connectLlmSubtitle: "ATLAS supports both self-hosted models and popular providers.",
+    connectLlmSubtitle:
+      "ATLAS supports both self-hosted models and popular providers.",
     viewInAdminPanel: "View in Admin Panel",
     customLLMProvider: "Custom LLM Provider",
     liteLLMCompatible: "LiteLLM Compatible APIs",
@@ -5708,7 +6416,8 @@ const en = {
     setupClaude: "Set up Claude",
     setupClaudeDesc: "Connect to Anthropic and set up your Claude models.",
     setupAzure: "Set up Azure OpenAI",
-    setupAzureDesc: "Connect to Microsoft Azure and set up your Azure OpenAI models.",
+    setupAzureDesc:
+      "Connect to Microsoft Azure and set up your Azure OpenAI models.",
     setupBedrock: "Set up Amazon Bedrock",
     setupBedrockDesc: "Connect to AWS and set up your Amazon Bedrock models.",
     setupOllama: "Set up Ollama",
@@ -5716,9 +6425,11 @@ const en = {
     setupOpenAI: "Set up GPT",
     setupOpenAIDesc: "Connect to OpenAI and set up your ChatGPT models.",
     setupOpenRouter: "Set up OpenRouter",
-    setupOpenRouterDesc: "Connect to OpenRouter and set up your OpenRouter models.",
+    setupOpenRouterDesc:
+      "Connect to OpenRouter and set up your OpenRouter models.",
     setupVertex: "Set up Gemini",
-    setupVertexDesc: "Connect to Google Cloud Vertex AI and set up your Gemini models.",
+    setupVertexDesc:
+      "Connect to Google Cloud Vertex AI and set up your Gemini models.",
   },
   nameStep: {
     whatShouldAppCallYou: "What should {{appName}} call you?",
@@ -5728,34 +6439,42 @@ const en = {
     editDisplayNameAriaLabel: "Edit display name",
   },
   connectorMultiSelect: {
-    allDocumentsDesc: "All documents indexed by the selected connectors will be part of this document set.",
+    allDocumentsDesc:
+      "All documents indexed by the selected connectors will be part of this document set.",
     allConnectorsSelected: "All connectors selected",
-    allConnectorsSelectedDesc: "All available connectors have been selected. Remove connectors below to add different ones.",
+    allConnectorsSelectedDesc:
+      "All available connectors have been selected. Remove connectors below to add different ones.",
     noMatchingConnectors: "No matching connectors found",
-    noPrivateConnectors: "No private connectors available. Create a private connector first.",
+    noPrivateConnectors:
+      "No private connectors available. Create a private connector first.",
     noMoreConnectors: "No more connectors available",
-    noConnectorsSelected: "No connectors selected. Search and select connectors above.",
+    noConnectorsSelected:
+      "No connectors selected. Search and select connectors above.",
     removeConnector: "Remove connector",
   },
   federatedConnectorSelector: {
-    federatedConnectorsDesc: "Documents from selected federated connectors will be searched in real-time during queries.",
+    federatedConnectorsDesc:
+      "Documents from selected federated connectors will be searched in real-time during queries.",
     allFederatedSelected: "All federated connectors selected",
     noMatchingFederated: "No matching federated connectors found",
     noMoreFederated: "No more federated connectors available",
-    noFederatedSelected: "No federated connectors selected. Search and select connectors above.",
+    noFederatedSelected:
+      "No federated connectors selected. Search and select connectors above.",
     entitiesConfigured: "Entities configured",
     removeConnector: "Remove connector",
   },
   documentSetForm: {
     nameRequired: "Please enter a name for the set",
-    atLeastOneConnector: "Please select at least one connector (regular or federated)",
+    atLeastOneConnector:
+      "Please select at least one connector (regular or federated)",
     nameLabel: "Name:",
     namePlaceholder: "A name for the document set",
     descriptionLabel: "Description:",
     descriptionPlaceholder: "Describe what the document set represents",
     connectorsFor: "Connectors available to {{label}}",
     connectorsNotFor: "Connectors not available to the {{label}}",
-    nonVisibleDesc: "Only connectors that are directly assigned to the group you are trying to add the document set to will be available.",
+    nonVisibleDesc:
+      "Only connectors that are directly assigned to the group you are trying to add the document set to will be available.",
     pickConnectors: "Pick your connectors",
     searchConnectors: "Search for connectors...",
     federatedLabel: "Federated Connectors",
@@ -5771,7 +6490,8 @@ const en = {
     modifyKeyTitle: "Modify your {{provider}} key",
     modifyConfigTitle: "Modify your {{provider}} Configuration",
     modifyDesc: "You can modify your configuration by providing a new API key.",
-    modifyDescWithUrl: "You can modify your configuration by providing a new API key or API URL.",
+    modifyDescWithUrl:
+      "You can modify your configuration by providing a new API key or API URL.",
     apiKey: "API Key",
     uploadJson: "Upload JSON File",
     uploadedFile: "Uploaded file: {{name}}",
@@ -5779,13 +6499,16 @@ const en = {
     apiUrl: "API URL",
     pasteApiUrl: "Paste your API URL here",
     testModel: "Test Model",
-    liteLlmNote: "Since you are using a liteLLM proxy, we'll need a model name to test the connection with.",
+    liteLlmNote:
+      "Since you are using a liteLLM proxy, we'll need a model name to test the connection with.",
     pasteModelName: "Paste your model name here",
     updateConfig: "Update Configuration",
     deleteConfig: "Delete Configuration",
     canDelete: "You can delete your configuration.",
-    deleteNote: "This is only possible if you have already switched to a different embedding type!",
-    failedParseJson: "Failed to parse JSON file. Please ensure it's a valid JSON.",
+    deleteNote:
+      "This is only possible if you have already switched to a different embedding type!",
+    failedParseJson:
+      "Failed to parse JSON file. Please ensure it's a valid JSON.",
     unknownError: "An unknown error occurred",
     unknownFileError: "An unknown error occurred while processing the file.",
     providerTypeInvalid: "Provider type is invalid or missing.",
@@ -5822,7 +6545,8 @@ const en = {
     apiKeyRequired: "API Key is required",
     modelNameRequired: "Model name is required",
     targetUriRequired: "Target URI is required",
-    targetUriValidation: "Target URI must be a valid URL with api-version query parameter and either a deployment name in the path (/openai/deployments/{name}/...) or /openai/responses for realtime",
+    targetUriValidation:
+      "Target URI must be a valid URL with api-version query parameter and either a deployment name in the path (/openai/deployments/{name}/...) or /openai/responses for realtime",
     credentialsRequired: "Credentials file is required",
     regionRequired: "AWS region is required",
   },
@@ -5834,7 +6558,8 @@ const en = {
   },
   craft: {
     configureTitle: "Advanced Configuration",
-    configureDescription: "Configure component parameters and integration settings.",
+    configureDescription:
+      "Configure component parameters and integration settings.",
     restoreChanges: "Restore Changes",
     updating: "Updating…",
     update: "Update",
@@ -5847,7 +6572,8 @@ const en = {
     selectLanguageModel: "Select a Language Model",
     connectors: "Connectors",
     connectYourOwnDataSources: "Connect your own data sources",
-    connectAndSyncToDisableDemo: "Connect and sync your data to disable demo mode.",
+    connectAndSyncToDisableDemo:
+      "Connect and sync your data to disable demo mode.",
     demoDatasetContains: "Demo dataset contains sample contents.",
     useDemoDataset: "Use Demo Dataset",
   },
@@ -5908,7 +6634,8 @@ const en = {
     enterTitle: "Enter MCP API Key",
     updateDescription: "Update your API key for this MCP integration.",
     enterDescription: "Enter a valid API key to use this MCP tool.",
-    validationNote: "Note: Your key is passed directly to the validation server.",
+    validationNote:
+      "Note: Your key is passed directly to the validation server.",
     storageNote: "This key is securely stored.",
     fieldPlaceholder: "Enter your API key here...",
     cancel: "Cancel",
@@ -5943,11 +6670,15 @@ const en = {
     usableByAllSuffix: "Otherwise, only",
     adminsLabel: "Admins",
     andLabel: "and",
-    accessDescriptionSuffix: "who have explicitly been given access to this {{objectName}} (e.g. via a User Group) will have access.",
+    accessDescriptionSuffix:
+      "who have explicitly been given access to this {{objectName}} (e.g. via a User Group) will have access.",
     assignGroupAccessLabel: "Assign group access for this {{objectName}}",
-    visibleByGroupsSubtext: "This {{objectName}} will be visible/accessible by the groups selected below",
-    curatorsMustSelectSubtext: "Curators must select one or more groups to give access to this {{objectName}}",
-    publicDisabledMessage: "This {{objectName}} is public and available to all users.",
+    visibleByGroupsSubtext:
+      "This {{objectName}} will be visible/accessible by the groups selected below",
+    curatorsMustSelectSubtext:
+      "Curators must select one or more groups to give access to this {{objectName}}",
+    publicDisabledMessage:
+      "This {{objectName}} is public and available to all users.",
   },
 } as const;
 

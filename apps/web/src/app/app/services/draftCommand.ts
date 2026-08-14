@@ -36,7 +36,11 @@ export function consumeAppDraftCommand({
     return null;
   }
 
-  if (command.agentId && agentId && String(command.agentId) !== String(agentId)) {
+  if (
+    command.agentId &&
+    agentId &&
+    String(command.agentId) !== String(agentId)
+  ) {
     return null;
   }
 

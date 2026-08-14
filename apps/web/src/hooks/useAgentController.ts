@@ -19,7 +19,9 @@ export default function useAgentController({
   const { pinnedAgents: pinnedAgents } = usePinnedAgents();
   const combinedSettings = useSettingsContext();
 
-  const defaultAgentId = appFocus.isAgent() ? appFocus.getId() ?? undefined : undefined;
+  const defaultAgentId = appFocus.isAgent()
+    ? appFocus.getId() ?? undefined
+    : undefined;
 
   const existingChatSessionAgentId = selectedChatSession?.persona_id;
   const resolveAgentById = useCallback(
@@ -27,7 +29,9 @@ export default function useAgentController({
       if (agentId === null || agentId === undefined) {
         return undefined;
       }
-      return availableAgents.find((assistant) => agentIdsMatch(assistant, agentId));
+      return availableAgents.find((assistant) =>
+        agentIdsMatch(assistant, agentId)
+      );
     },
     [availableAgents]
   );
@@ -104,9 +108,7 @@ export default function useAgentController({
       // even if the user has hidden an agent they can still go back to it
       // for old chats
       let newAssistant =
-        agentId !== null
-          ? resolveAgentById(agentId)
-          : undefined;
+        agentId !== null ? resolveAgentById(agentId) : undefined;
 
       // if no assistant was passed in / found, use the default agent
       if (!newAssistant && defaultAgentId !== undefined) {

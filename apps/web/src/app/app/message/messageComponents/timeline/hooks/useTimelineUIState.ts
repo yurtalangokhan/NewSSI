@@ -128,7 +128,10 @@ export function useTimelineUIState(
       uiState = TimelineUIState.EMPTY;
     } else if (hasDisplayContent && !hasPackets && !isGeneratingImage) {
       uiState = TimelineUIState.DISPLAY_CONTENT_ONLY;
-    } else if (!stopPacketSeen && (!hasDisplayContent || isGeneratingImage || !isLastStepComplete)) {
+    } else if (
+      !stopPacketSeen &&
+      (!hasDisplayContent || isGeneratingImage || !isLastStepComplete)
+    ) {
       // Actively executing tools / reasoning
       uiState = lastTurnGroup?.isParallel
         ? TimelineUIState.STREAMING_PARALLEL
@@ -150,7 +153,8 @@ export function useTimelineUIState(
       uiState === TimelineUIState.COMPLETED_EXPANDED ||
       uiState === TimelineUIState.STOPPED;
     const isActivelyExecuting =
-      !stopPacketSeen && (!hasDisplayContent || isGeneratingImage || !isLastStepComplete);
+      !stopPacketSeen &&
+      (!hasDisplayContent || isGeneratingImage || !isLastStepComplete);
 
     // Parallel tabs in header only when collapsed during streaming
     const showParallelTabs =
@@ -214,4 +218,3 @@ export function useTimelineUIState(
     };
   }, [input]);
 }
-

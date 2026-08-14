@@ -713,52 +713,57 @@ export function ProjectsProvider({ children }: ProjectsProviderProps) {
    * processed the placeholder is gone from state and the replacement is a
    * silent no-op — preventing stale files from leaking into the next message.
    */
-  const uploadChatFiles = useCallback(async (files: File[]): Promise<ProjectFile[]> => {
-    // 1. Build placeholder ProjectFile objects (status UPLOADING) with stable file_ids.
-    // IMPORTANT: no await before this block — placeholders must be added to state
-    // synchronously so hasUploadingFiles becomes true before the next render,
-    // disabling the send button and preventing the race condition where the user
-    // submits a message before the FileReader resolves.
-    const placeholders: ProjectFile[] = files.map((file) => {
-      const mime = file.type || "application/octet-stream";
-      const placeholderId = generateUUID();
-      return {
-        id: placeholderId,
-        file_id: placeholderId,
-        name: file.name,
-        project_id: null,
-        user_id: null,
-        created_at: new Date().toISOString(),
-        status: UserFileStatus.UPLOADING,
-        file_type: mime,
-        last_accessed_at: new Date().toISOString(),
-        chat_file_type: mimeTypeToChatFileType(mime),
-        token_count: null,
-        chunk_count: null,
-        temp_id: null,
-      } as ProjectFile;
-    });
+  const uploadChatFiles = useCallback(
+    async (files: File[]): Promise<ProjectFile[]> => {
+      // 1. Build placeholder ProjectFile objects (status UPLOADING) with stable file_ids.
+      // IMPORTANT: no await before this block — placeholders must be added to state
+      // synchronously so hasUploadingFiles becomes true before the next render,
+      // disabling the send button and preventing the race condition where the user
+      // submits a message before the FileReader resolves.
+      const placeholders: ProjectFile[] = files.map((file) => {
+        const mime = file.type || "application/octet-stream";
+        const placeholderId = generateUUID();
+        return {
+          id: placeholderId,
+          file_id: placeholderId,
+          name: file.name,
+          project_id: null,
+          user_id: null,
+          created_at: new Date().toISOString(),
+          status: UserFileStatus.UPLOADING,
+          file_type: mime,
+          last_accessed_at: new Date().toISOString(),
+          chat_file_type: mimeTypeToChatFileType(mime),
+          token_count: null,
+          chunk_count: null,
+          temp_id: null,
+        } as ProjectFile;
+      });
 
-    // 2. Add all placeholders at once — this blocks the send button immediately.
-    setCurrentMessageFiles((prev) => [...prev, ...placeholders]);
+      // 2. Add all placeholders at once — this blocks the send button immediately.
+      setCurrentMessageFiles((prev) => [...prev, ...placeholders]);
 
-    // 3. Process each file; replace its placeholder once ready.
-    const results = await Promise.all(
-      files.map(async (file, i) => {
-        const placeholder = placeholders[i]!;
-        const real = (await fileToProjectFile(file)) as unknown as ProjectFile;
-        setCurrentMessageFiles((prev) =>
-          // If the placeholder is no longer in state (input was reset), skip.
-          prev.some((f) => f.file_id === placeholder.file_id)
-            ? prev.map((f) => (f.file_id === placeholder.file_id ? real : f))
-            : prev
-        );
-        return real;
-      })
-    );
+      // 3. Process each file; replace its placeholder once ready.
+      const results = await Promise.all(
+        files.map(async (file, i) => {
+          const placeholder = placeholders[i]!;
+          const real = (await fileToProjectFile(
+            file
+          )) as unknown as ProjectFile;
+          setCurrentMessageFiles((prev) =>
+            // If the placeholder is no longer in state (input was reset), skip.
+            prev.some((f) => f.file_id === placeholder.file_id)
+              ? prev.map((f) => (f.file_id === placeholder.file_id ? real : f))
+              : prev
+          );
+          return real;
+        })
+      );
 
-    return results;
-  }, []);
+      return results;
+    },
+    []
+  );
 
   const value: ProjectsContextType = useMemo(
     () => ({

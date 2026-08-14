@@ -31,7 +31,9 @@ export const ConnectorMultiSelect = ({
   disabled = false,
   placeholder = "Search connectors...",
   showError = false,
-}: ConnectorMultiSelectProps) => {  const { t } = useTranslation();  const [open, setOpen] = useState(false);
+}: ConnectorMultiSelectProps) => {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const dropdownRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);

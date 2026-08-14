@@ -180,7 +180,8 @@ function OpenRouterFormFields(
                 messages={{
                   loading: t("llmOnboarding.fetchingModels"),
                   success: t("llmOnboarding.modelsFetched"),
-                  error: modelsErrorMessage || t("llmOnboarding.failedFetchModels"),
+                  error:
+                    modelsErrorMessage || t("llmOnboarding.failedFetchModels"),
                 }}
               />
             )}
@@ -210,8 +211,12 @@ export function OpenRouterOnboardingForm({
   );
 
   const validationSchema = Yup.object().shape({
-    [FIELD_API_KEY]: Yup.string().required(t("llmOnboardingForms.apiKeyRequired")),
-    [FIELD_DEFAULT_MODEL_NAME]: Yup.string().required(t("llmOnboardingForms.modelNameRequired")),
+    [FIELD_API_KEY]: Yup.string().required(
+      t("llmOnboardingForms.apiKeyRequired")
+    ),
+    [FIELD_DEFAULT_MODEL_NAME]: Yup.string().required(
+      t("llmOnboardingForms.modelNameRequired")
+    ),
   });
 
   const icon = () => (

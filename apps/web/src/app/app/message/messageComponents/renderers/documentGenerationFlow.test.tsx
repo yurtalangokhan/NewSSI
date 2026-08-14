@@ -64,7 +64,11 @@ function displayGroups(packets: Packet[]) {
 
 describe("document generation flow", () => {
   test("while writing, the generation is a visible display group of its own", async () => {
-    const packets = await collect([REASONING, GENERATION_START, GENERATION_PROGRESS]);
+    const packets = await collect([
+      REASONING,
+      GENERATION_START,
+      GENERATION_PROGRESS,
+    ]);
     const state = processPackets(createInitialState(1), packets);
 
     // Display content is hidden until the final answer is coming — the
@@ -78,7 +82,9 @@ describe("document generation flow", () => {
       PacketType.DOCUMENT_GENERATION_START,
       PacketType.DOCUMENT_GENERATION_PROGRESS,
     ]);
-    expect(findRenderer({ packets: group.packets })).toBe(GeneratedFileRenderer);
+    expect(findRenderer({ packets: group.packets })).toBe(
+      GeneratedFileRenderer
+    );
   });
 
   test("the finished file joins the group the skeleton was rendered in", async () => {
@@ -139,8 +145,12 @@ describe("document generation flow", () => {
     );
     expect(fileGroup).toBeDefined();
     expect(fileGroup).not.toBe(textGroups[0]);
-    expect(groups.indexOf(fileGroup!)).toBeGreaterThan(groups.indexOf(textGroups[0]!));
-    expect(findRenderer({ packets: fileGroup!.packets })).toBe(GeneratedFileRenderer);
+    expect(groups.indexOf(fileGroup!)).toBeGreaterThan(
+      groups.indexOf(textGroups[0]!)
+    );
+    expect(findRenderer({ packets: fileGroup!.packets })).toBe(
+      GeneratedFileRenderer
+    );
   });
 
   test("the answer text after the file is a separate display group", async () => {

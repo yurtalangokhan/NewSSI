@@ -44,7 +44,9 @@ export default function AirbyteConnectorPage({
   const [validationMsg, setValidationMsg] = useState<string | null>(null);
 
   const [streams, setStreams] = useState<StreamInfo[]>([]);
-  const [selectedStreams, setSelectedStreams] = useState<Set<string>>(new Set());
+  const [selectedStreams, setSelectedStreams] = useState<Set<string>>(
+    new Set()
+  );
   const [loadingStreams, setLoadingStreams] = useState(false);
 
   const [datasourceName, setDatasourceName] = useState("");
@@ -128,52 +130,54 @@ export default function AirbyteConnectorPage({
     <div className="flex justify-center w-full min-h-full">
       {/* Sidebar */}
       <div className="sticky top-0 self-start flex-shrink-0 h-screen">
-      <StepSidebar
-        buttonName={t("admin.airbyteConnector.addConnector")}
-        buttonIcon={SvgSettings}
-        buttonHref="/admin/add-connector"
-      >
-        <div className="relative mt-4">
-          <div className="absolute h-[85%] left-[6px] top-[8px] bottom-0 w-0.5 bg-background-tint-04" />
-          {[
-            t("admin.airbyteConnector.steps.configure"),
-            t("admin.airbyteConnector.steps.selectStreams"),
-            t("admin.airbyteConnector.steps.nameAndConfirm"),
-          ].map((label, index) => {
-            const allowed = index <= step;
-            return (
-              <div
-                key={index}
-                className={`flex items-center mb-6 relative ${
-                  !allowed ? "cursor-not-allowed opacity-50" : "cursor-pointer"
-                }`}
-                onClick={() => {
-                  if (allowed) setStep(index as Step);
-                }}
-              >
-                <div className="flex-shrink-0 mr-4 z-10">
-                  <div
-                    className={`h-3.5 w-3.5 rounded-full border-2 ${
-                      index === step
-                        ? "border-blue-500 bg-blue-500"
-                        : index < step
-                        ? "border-blue-500 bg-blue-500"
-                        : "border-border bg-background-tint-00"
-                    }`}
-                  />
-                </div>
-                <Text
-                  as="span"
-                  secondaryBody
-                  className={index === step ? "font-semibold" : ""}
+        <StepSidebar
+          buttonName={t("admin.airbyteConnector.addConnector")}
+          buttonIcon={SvgSettings}
+          buttonHref="/admin/add-connector"
+        >
+          <div className="relative mt-4">
+            <div className="absolute h-[85%] left-[6px] top-[8px] bottom-0 w-0.5 bg-background-tint-04" />
+            {[
+              t("admin.airbyteConnector.steps.configure"),
+              t("admin.airbyteConnector.steps.selectStreams"),
+              t("admin.airbyteConnector.steps.nameAndConfirm"),
+            ].map((label, index) => {
+              const allowed = index <= step;
+              return (
+                <div
+                  key={index}
+                  className={`flex items-center mb-6 relative ${
+                    !allowed
+                      ? "cursor-not-allowed opacity-50"
+                      : "cursor-pointer"
+                  }`}
+                  onClick={() => {
+                    if (allowed) setStep(index as Step);
+                  }}
                 >
-                  {label}
-                </Text>
-              </div>
-            );
-          })}
-        </div>
-      </StepSidebar>
+                  <div className="flex-shrink-0 mr-4 z-10">
+                    <div
+                      className={`h-3.5 w-3.5 rounded-full border-2 ${
+                        index === step
+                          ? "border-blue-500 bg-blue-500"
+                          : index < step
+                            ? "border-blue-500 bg-blue-500"
+                            : "border-border bg-background-tint-00"
+                      }`}
+                    />
+                  </div>
+                  <Text
+                    as="span"
+                    secondaryBody
+                    className={index === step ? "font-semibold" : ""}
+                  >
+                    {label}
+                  </Text>
+                </div>
+              );
+            })}
+          </div>
+        </StepSidebar>
       </div>
 
       {/* Main content */}
@@ -323,7 +327,9 @@ export default function AirbyteConnectorPage({
                   setDatasourceName(e.target.value);
                   if (nameError) setNameError(null);
                 }}
-                className={nameError ? "border-red-500 focus:border-red-500" : ""}
+                className={
+                  nameError ? "border-red-500 focus:border-red-500" : ""
+                }
               />
               {nameError && (
                 <Text as="p" secondaryBody className="text-red-500 text-sm">

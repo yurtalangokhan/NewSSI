@@ -15,7 +15,10 @@ import {
 
 export type HttpErrorCode = 400 | 401 | 403 | 404 | 500;
 
-const ERROR_ICONS: Record<HttpErrorCode, { Icon: React.ComponentType<{ className?: string }>; iconClassName: string }> = {
+const ERROR_ICONS: Record<
+  HttpErrorCode,
+  { Icon: React.ComponentType<{ className?: string }>; iconClassName: string }
+> = {
   400: { Icon: SvgAlertTriangle, iconClassName: "stroke-status-warning-05" },
   401: { Icon: SvgLock, iconClassName: "stroke-text-04" },
   403: { Icon: SvgShield, iconClassName: "stroke-status-danger-05" },
@@ -32,10 +35,10 @@ export default function HttpErrorPage({
 }) {
   const { t } = useTranslation();
   const resolvedCode: HttpErrorCode =
-    code ??
-    ((error as { status?: number })?.status as HttpErrorCode) ??
-    500;
-  const validCode = (resolvedCode in ERROR_ICONS ? resolvedCode : 500) as HttpErrorCode;
+    code ?? ((error as { status?: number })?.status as HttpErrorCode) ?? 500;
+  const validCode = (
+    resolvedCode in ERROR_ICONS ? resolvedCode : 500
+  ) as HttpErrorCode;
   const { Icon, iconClassName } = ERROR_ICONS[validCode];
   const isAuthError = validCode === 401;
 
@@ -65,7 +68,9 @@ export default function HttpErrorPage({
             href={isAuthError ? "/auth/login" : "/app"}
             leftIcon={isAuthError ? SvgLock : SvgArrowLeft}
           >
-            {isAuthError ? t("errors.errorPages.signInButton") : t("errors.errorPages.backToAppButton")}
+            {isAuthError
+              ? t("errors.errorPages.signInButton")
+              : t("errors.errorPages.backToAppButton")}
           </Button>
           <Button secondary href="/">
             {t("errors.errorPages.homeButton")}

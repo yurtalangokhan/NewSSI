@@ -39,9 +39,18 @@ function TurksatMark({
       style={{ width: size, height: size }}
       xmlns="http://www.w3.org/2000/svg"
     >
-      <path d="M19.1707 20.5314L28.3439 17.162L28.3439 39.0284L19.1707 42.3917V20.5314Z" fill="#009BDA" />
-      <path d="M19.1707 10.4399V20.5314L0 12.1218V2.03033L19.1707 10.4399Z" fill="#009BDA" />
-      <path d="M47.5146 15.4839V25.5754L28.3439 17.1657V7.07429L47.5146 15.4839Z" fill="#009BDA" />
+      <path
+        d="M19.1707 20.5314L28.3439 17.162L28.3439 39.0284L19.1707 42.3917V20.5314Z"
+        fill="#009BDA"
+      />
+      <path
+        d="M19.1707 10.4399V20.5314L0 12.1218V2.03033L19.1707 10.4399Z"
+        fill="#009BDA"
+      />
+      <path
+        d="M47.5146 15.4839V25.5754L28.3439 17.1657V7.07429L47.5146 15.4839Z"
+        fill="#009BDA"
+      />
     </svg>
   );
 }
@@ -154,9 +163,7 @@ export default function Logo({ folded, size, className }: LogoProps) {
   }
 
   // Handle "logo_and_name" or default behavior
-  return applicationName ? (
-    renderNameAndPoweredBy({ includeLogo: true, includeName: true })
-  ) : (
-    logo
-  );
+  return applicationName
+    ? renderNameAndPoweredBy({ includeLogo: true, includeName: true })
+    : logo;
 }

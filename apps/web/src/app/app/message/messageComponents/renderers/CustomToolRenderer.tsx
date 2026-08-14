@@ -157,18 +157,41 @@ export const CustomToolRenderer: MessageRenderer<CustomToolPacket, {}> = ({
 
   const icon = FiTool;
 
-  // Each call keeps its own query (args) shown right above its own result
-  // (data) — several calls in this group (e.g. parallel web_search queries)
-  // must never be collapsed into a single "last result wins" block.
-  const formattedCalls = useMemo(
-    () =>
-      calls.map((call) => ({
-        args: formatToolContent(call.args, undefined),
-        result: call.hasResult ? formatToolContent(undefined, call.data) : null,
-      })),
-    [calls]
-  );
-  const hasAnyContent = formattedCalls.some((c) => c.args || c.result);
+  const formattedData = useMemo(() => {
+    if (data !== undefined && data !== null) {
+      if (typeof data === "string") {
+        try {
+          const parsed = JSON.parse(data);
+          return JSON.stringify(parsed, null, 2);
+        } catch {
+          return data;
+        }
+      }
+      return JSON.stringify(data, null, 2);
+    }
+    if (args !== undefined && args !== null) {
+      let parsedArgs: any = args;
+      if (typeof args === "string") {
+        try {
+          parsedArgs = JSON.parse(args);
+        } catch {
+          return args;
+        }
+      }
+      if (typeof parsedArgs === "object" && parsedArgs !== null) {
+        const cleaned: Record<string, any> = { ...parsedArgs };
+        if (
+          typeof cleaned.content === "string" &&
+          cleaned.content.length > 150
+        ) {
+          cleaned.content = `[Doküman İçeriği: ${cleaned.content.length} karakter]`;
+        }
+        return JSON.stringify(cleaned, null, 2);
+      }
+      return String(parsedArgs);
+    }
+    return null;
+  }, [data, args]);
 
   if (renderType === RenderType.COMPACT) {
     return children([

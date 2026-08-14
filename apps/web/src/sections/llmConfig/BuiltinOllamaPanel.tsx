@@ -22,10 +22,7 @@ import {
   useBuiltinOllamaStatus,
   useDeleteBuiltinOllamaModel,
 } from "@/hooks/useProviders";
-import {
-  BuiltinOllamaStatus,
-  OllamaModelResponse,
-} from "@/interfaces/llm";
+import { BuiltinOllamaStatus, OllamaModelResponse } from "@/interfaces/llm";
 import { getProviderIcon } from "@/lib/llmConfig/providers";
 
 interface ViewProps {
@@ -191,7 +188,8 @@ export function BuiltinOllamaPanelView({
                   <span className="flex-1" />
                   {model.max_input_tokens != null && (
                     <span className="text-xs tabular-nums text-text-03 mr-2">
-                      {model.max_input_tokens.toLocaleString()} {t("contextSuffix")}
+                      {model.max_input_tokens.toLocaleString()}{" "}
+                      {t("contextSuffix")}
                     </span>
                   )}
                   {modelSize && (
@@ -202,7 +200,9 @@ export function BuiltinOllamaPanelView({
                   <Button
                     icon={SvgTrash}
                     prominence="tertiary"
-                    aria-label={t("deleteModelAriaLabel", { model: model.name })}
+                    aria-label={t("deleteModelAriaLabel", {
+                      model: model.name,
+                    })}
                     disabled={isDeleting}
                     onClick={() => onDeleteModel(model.name)}
                   />
@@ -251,7 +251,8 @@ export function BuiltinOllamaPanel({ onDownload }: Props) {
       setModelToDelete(null);
     } catch (error) {
       toast({
-        message: error instanceof Error ? error.message : t("deleteFailedToast"),
+        message:
+          error instanceof Error ? error.message : t("deleteFailedToast"),
         level: "error",
       });
     } finally {

@@ -71,7 +71,13 @@ export const WebProviderSetupModal = memo(
             <SvgArrowExchange className="size-3 text-text-04" />
           </div>
           <div className="flex items-center justify-center size-7 p-0.5 shrink-0 overflow-clip">
-            <Image src="/logo.single.svg" alt="ATLAS logo" width={24} height={24} className="shrink-0" />
+            <Image
+              src="/logo.single.svg"
+              alt="ATLAS logo"
+              width={24}
+              height={24}
+              className="shrink-0"
+            />
           </div>
         </div>
       );
@@ -125,7 +131,9 @@ export const WebProviderSetupModal = memo(
                 }
                 className="w-full"
               >
-                <FormField.Label>{t("admin.webSearch.apiKeyLabel")}</FormField.Label>
+                <FormField.Label>
+                  {t("admin.webSearch.apiKeyLabel")}
+                </FormField.Label>
                 <FormField.Control asChild>
                   <PasswordInputTypeIn
                     data-testid="web-provider-api-key-input"
@@ -257,7 +265,9 @@ export const WebProviderSetupModal = memo(
               disabled={!canConnect || isProcessing}
               onClick={onConnect}
             >
-              {isProcessing ? t("admin.webSearch.connecting") : t("admin.webSearch.connect")}
+              {isProcessing
+                ? t("admin.webSearch.connecting")
+                : t("admin.webSearch.connect")}
             </Button>
           </Modal.Footer>
         </Modal.Content>

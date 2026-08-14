@@ -312,7 +312,9 @@ const RerankingDetailsForm = forwardRef<
                           {card.description}
                         </p>
                         <div className="text-xs text-text-500">
-                          {card.cloud ? t("cloudBasedLabel") : t("selfHostedLabel")}
+                          {card.cloud
+                            ? t("cloudBasedLabel")
+                            : t("selfHostedLabel")}
                         </div>
                       </div>
                     );
@@ -331,7 +333,9 @@ const RerankingDetailsForm = forwardRef<
                         onClose={() => setShowGpuWarningModalModel(null)}
                       />
                       <Modal.Body>
-                        <p className="text-error font-semibold">{t("warningLabel")}</p>
+                        <p className="text-error font-semibold">
+                          {t("warningLabel")}
+                        </p>
                         <p>{t("gpuWarningBody")}</p>
                       </Modal.Body>
                       <Modal.Footer>

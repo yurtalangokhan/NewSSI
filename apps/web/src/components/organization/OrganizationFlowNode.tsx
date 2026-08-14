@@ -211,7 +211,8 @@ export function OrganizationFlowNode({
     );
   }
 
-  const totalChildCount = data.childCount || (data.childrenCount as number) || 0;
+  const totalChildCount =
+    data.childCount || (data.childrenCount as number) || 0;
   const hasSubItems = Boolean(data.hasChildren || totalChildCount > 0);
   const childLabel = t("admin.organizations.designer.childCount", {
     count: totalChildCount,

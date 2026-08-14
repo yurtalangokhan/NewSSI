@@ -521,7 +521,10 @@ const MemoizedAppSidebarInner = memo(
       const currentRouteAgentId = currentAgent?.external_id ?? currentAgent?.id;
       const href = (() => {
         if (
-          !(combinedSettings?.settings?.disable_default_assistant && currentAgent)
+          !(
+            combinedSettings?.settings?.disable_default_assistant &&
+            currentAgent
+          )
         ) {
           if (!currentProjectId) {
             return "/app";
@@ -612,7 +615,9 @@ const MemoizedAppSidebarInner = memo(
             transient={activeSidebarTab.isMoreAgents()}
             lowlight={!folded}
           >
-            {visibleAgents.length === 0 ? t("sidebar.exploreAgents") : t("sidebar.moreAgents")}
+            {visibleAgents.length === 0
+              ? t("sidebar.exploreAgents")
+              : t("sidebar.moreAgents")}
           </SidebarTab>
         </div>
       ),
@@ -630,7 +635,12 @@ const MemoizedAppSidebarInner = memo(
           {t("sidebar.newProject")}
         </SidebarTab>
       ),
-      [folded, createProjectModal.toggle, createProjectModal.isOpen, activeLanguage]
+      [
+        folded,
+        createProjectModal.toggle,
+        createProjectModal.isOpen,
+        activeLanguage,
+      ]
     );
     const handleShowBuildIntro = useCallback(() => {
       setShowIntroAnimation(true);
@@ -702,9 +712,7 @@ const MemoizedAppSidebarInner = memo(
                 try {
                   await performChatMove(target, chat);
                 } catch (error) {
-                  showErrorNotification(
-                    t("sidebar.moveChatFailed")
-                  );
+                  showErrorNotification(t("sidebar.moveChatFailed"));
                 }
               }
             }}

@@ -41,7 +41,7 @@ function extractMessageContent(content: any): string {
 // Map backend packets to frontend PacketType
 function mapBackendToFrontend(packet: BackendPacket): any {
   const defaultPlacement = { turn_index: 0, sub_turn_index: null };
-  
+
   switch (packet.type) {
     case "message":
       // Full message from providers that do not stream tokens.
@@ -52,7 +52,7 @@ function mapBackendToFrontend(packet: BackendPacket): any {
           content: extractMessageContent(packet.content),
         },
       };
-    
+
     case "token":
       // Token chunk - convert to message_delta
       // Extract token content from potentially nested structure
@@ -65,10 +65,11 @@ function mapBackendToFrontend(packet: BackendPacket): any {
         if (tokenData.text) {
           tokenContent = tokenData.text;
         } else if (tokenData.content) {
-          tokenContent = typeof tokenData.content === "string" ? tokenData.content : "";
+          tokenContent =
+            typeof tokenData.content === "string" ? tokenData.content : "";
         }
       }
-      
+
       return {
         placement: defaultPlacement,
         obj: {
@@ -76,14 +77,14 @@ function mapBackendToFrontend(packet: BackendPacket): any {
           content: tokenContent,
         },
       };
-    
+
     case "error":
       return {
         placement: defaultPlacement,
         error: packet.content || "Unknown error",
         stack_trace: "",
       };
-    
+
     case "stop":
       return {
         placement: defaultPlacement,
@@ -146,7 +147,7 @@ function mapBackendToFrontend(packet: BackendPacket): any {
           reasoning: (packet as any).reasoning ?? "",
         },
       };
-    
+
     default:
       // Unknown packet type - return as-is wrapped
       return {
@@ -201,21 +202,21 @@ export async function* handleSSEStream<T extends PacketType>(
       reader?.cancel();
     });
   }
-  
+
   if (!reader) {
     throw new Error("No reader available for stream");
   }
-  
+
   try {
     while (true) {
       const rawChunk = await reader.read();
       if (rawChunk.done) {
         break;
       }
-      
+
       const { value } = rawChunk;
       if (!value) continue;
-      
+
       buffer += decoder.decode(value, { stream: true });
       const lines = buffer.split("\n");
       buffer = lines.pop() || "";
@@ -224,12 +225,6 @@ export async function* handleSSEStream<T extends PacketType>(
         if (line.trim() === "") continue;
 
         const trimmedLine = line.trim();
-        // SSE comment (": keep-alive") — the backend sends these so proxies
-        // don't treat a long silent generation as an idle connection. They
-        // carry no packet, so drop them before the JSON parse below.
-        if (trimmedLine.startsWith(":")) {
-          continue;
-        }
         if (trimmedLine === "data: [DONE]" || trimmedLine === "[DONE]" || trimmedLine === "data:") {
           yield {
             placement: { turn_index: turnIndex, sub_turn_index: null },
@@ -268,10 +263,7 @@ export async function* handleSSEStream<T extends PacketType>(
             sawTokenForCurrentAnswer = true;
           }
 
-          if (
-            backendPacket.type === "message" &&
-            sawTokenForCurrentAnswer
-          ) {
+          if (backendPacket.type === "message" && sawTokenForCurrentAnswer) {
             // Token stream already provided this answer incrementally.
             // Skip duplicated full-message payload.
             continue;
@@ -287,15 +279,6 @@ export async function* handleSSEStream<T extends PacketType>(
           // "genfile" group suffix instead, so the card renders after the text.
           const isGeneratedFilePkt =
             getCategoryFor(backendPacket.type)?.id === GENERATED_FILE_CATEGORY_ID;
-          // Reasoning resuming after the answer has already started (Gemini and
-          // Claude can interleave "thinking" blocks between chunks of visible
-          // text) is likewise exempt. It still lands in its own group via the
-          // "reasoning" suffix, so treating it as a tool boundary here would
-          // only fragment the in-progress answer into a new turn/message_start,
-          // unmounting and re-typing the text that was already rendered.
-          const isMidAnswerReasoningPkt =
-            getCategoryFor(backendPacket.type)?.id === "reasoning" &&
-            hasMessageStartForCurrentAnswer;
           const isToolPkt =
             TOOL_PACKET_TYPES.has(backendPacket.type) &&
             !isGeneratedFilePkt &&
@@ -314,10 +297,7 @@ export async function* handleSSEStream<T extends PacketType>(
               turnIndex++; // display → tool: pre-tool text gets its own group
               sawTokenForCurrentAnswer = false;
               hasMessageStartForCurrentAnswer = false;
-            } else if (
-              (lastToolPacketType && shouldSplitCategories(lastToolPacketType, backendPacket.type)) ||
-              isNewCallStart
-            ) {
+            } else if (lastToolPacketType && shouldSplitCategories(lastToolPacketType, backendPacket.type)) {
               turnIndex++;
               sawTokenForCurrentAnswer = false;
               hasMessageStartForCurrentAnswer = false;
@@ -341,7 +321,8 @@ export async function* handleSSEStream<T extends PacketType>(
           }
 
           if (backendPacket.type === "message_start") {
-            const duration = (backendPacket as any).pre_answer_processing_seconds;
+            const duration = (backendPacket as any)
+              .pre_answer_processing_seconds;
             yield {
               placement: { turn_index: turnIndex, sub_turn_index: null },
               obj: {
@@ -355,7 +336,10 @@ export async function* handleSSEStream<T extends PacketType>(
             continue;
           }
 
-          if (backendPacket.type === "token" && !hasMessageStartForCurrentAnswer) {
+          if (
+            backendPacket.type === "token" &&
+            !hasMessageStartForCurrentAnswer
+          ) {
             yield {
               placement: { turn_index: turnIndex, sub_turn_index: null },
               obj: {
@@ -367,8 +351,12 @@ export async function* handleSSEStream<T extends PacketType>(
             hasMessageStartForCurrentAnswer = true;
           }
 
-          if (backendPacket.type === "message" && !hasMessageStartForCurrentAnswer) {
-            const duration = (backendPacket as any).content?.additional_kwargs?.processing_duration_seconds;
+          if (
+            backendPacket.type === "message" &&
+            !hasMessageStartForCurrentAnswer
+          ) {
+            const duration = (backendPacket as any).content?.additional_kwargs
+              ?.processing_duration_seconds;
             yield {
               placement: { turn_index: turnIndex, sub_turn_index: null },
               obj: {
@@ -410,7 +398,7 @@ export async function* handleSSEStream<T extends PacketType>(
       }
     }
   } catch (error) {
-    console.error('Stream error:', error);
+    console.error("Stream error:", error);
     throw error;
   }
 }

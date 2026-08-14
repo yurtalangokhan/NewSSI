@@ -27,14 +27,23 @@ import { getGroupSuffix } from "@/lib/search/packetCategories";
 // Re-export parseToolKey for consumers that import from this module
 export { parseToolKey };
 
-function isDuplicateReasoningPacket(state: ProcessorState, packet: Packet): boolean {
-  if (packet.obj.type !== PacketType.REASONING_START && packet.obj.type !== PacketType.REASONING_DELTA) {
+function isDuplicateReasoningPacket(
+  state: ProcessorState,
+  packet: Packet
+): boolean {
+  if (
+    packet.obj.type !== PacketType.REASONING_START &&
+    packet.obj.type !== PacketType.REASONING_DELTA
+  ) {
     return false;
   }
 
   const groupKey = getGroupKey(packet);
-  const incomingText =
-    ((packet.obj as any).reasoning || (packet.obj as any).content || "").trim();
+  const incomingText = (
+    (packet.obj as any).reasoning ||
+    (packet.obj as any).content ||
+    ""
+  ).trim();
 
   if (incomingText) {
     for (const [existingKey, existingPackets] of Array.from(
@@ -47,7 +56,8 @@ function isDuplicateReasoningPacket(state: ProcessorState, packet: Packet): bool
           (existingText === incomingText ||
             (incomingText.length > 50 &&
               existingText.length > 50 &&
-              (existingText.startsWith(incomingText) || incomingText.startsWith(existingText))))
+              (existingText.startsWith(incomingText) ||
+                incomingText.startsWith(existingText))))
         ) {
           return true;
         }
@@ -197,7 +207,9 @@ function getGroupKey(packet: Packet): string {
   const turnIndex = packet.placement.turn_index;
   const tabIndex = packet.placement.tab_index ?? 0;
   const suffix = getGroupSuffix(packet.obj.type as string);
-  return suffix ? `${turnIndex}-${tabIndex}-${suffix}` : `${turnIndex}-${tabIndex}`;
+  return suffix
+    ? `${turnIndex}-${tabIndex}-${suffix}`
+    : `${turnIndex}-${tabIndex}`;
 }
 
 function injectSectionEnd(state: ProcessorState, groupKey: string): void {
@@ -543,7 +555,10 @@ function processPacket(state: ProcessorState, packet: Packet): void {
     if (isDisplayPacket(packet)) {
       state.displayGroupKeys.add(groupKey);
     }
-  } else if (isActualToolCallPacket(packet) && state.displayGroupKeys.has(groupKey)) {
+  } else if (
+    isActualToolCallPacket(packet) &&
+    state.displayGroupKeys.has(groupKey)
+  ) {
     // A tool-call packet arrived in a group that was initially classified as display
     // (e.g. pre-tool reasoning text streamed before the model issued a tool call).
     // Reclassify: move from display → tool so the pre-tool text is shown as part of
@@ -658,7 +673,9 @@ function buildGroupsFromKeys(
       const { turn_index, tab_index } = parseToolKey(key);
       const packets = state.groupedPacketsMap.get(key);
       // Spread to create new array reference - ensures React detects changes for re-renders
-      return packets ? { turn_index, tab_index, key, packets: [...packets] } : null;
+      return packets
+        ? { turn_index, tab_index, key, packets: [...packets] }
+        : null;
     })
     .filter(
       (g): g is GroupedPacket => g !== null && hasContentPackets(g.packets)

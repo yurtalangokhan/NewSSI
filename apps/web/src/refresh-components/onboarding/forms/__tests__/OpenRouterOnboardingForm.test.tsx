@@ -107,9 +107,7 @@ describe("OpenRouterOnboardingForm", () => {
     test("renders description", () => {
       render(<OpenRouterOnboardingForm {...defaultProps} />);
 
-      expect(
-        screen.getByText(descriptionText)
-      ).toBeInTheDocument();
+      expect(screen.getByText(descriptionText)).toBeInTheDocument();
     });
 
     test("renders API key field", () => {

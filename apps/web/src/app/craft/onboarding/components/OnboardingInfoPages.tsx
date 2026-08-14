@@ -48,7 +48,9 @@ export default function OnboardingInfoPages({
   };
 
   // Get position text using shared helper (only if workArea is valid enum)
-  const positionText = workArea ? getPositionText(workArea, level) : t("notSet");
+  const positionText = workArea
+    ? getPositionText(workArea, level)
+    : t("notSet");
 
   // Determine article based on position text
   const article = getArticle(positionText);

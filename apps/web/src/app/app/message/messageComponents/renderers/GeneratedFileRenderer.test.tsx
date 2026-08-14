@@ -26,7 +26,10 @@ jest.mock("react-i18next", () => ({
 const textViewModalSpy = jest.fn();
 jest.mock("@/sections/modals/TextViewModal", () => ({
   __esModule: true,
-  default: (props: { presentingDocument: MinimalOnyxDocument; onClose: () => void }) => {
+  default: (props: {
+    presentingDocument: MinimalOnyxDocument;
+    onClose: () => void;
+  }) => {
     textViewModalSpy(props);
     return <div data-testid="text-view-modal">preview open</div>;
   },
@@ -34,7 +37,9 @@ jest.mock("@/sections/modals/TextViewModal", () => ({
 
 const PLACEMENT = { turn_index: 0, tab_index: 0 };
 
-function makePacket(overrides: Partial<GeneratedFile> = {}): GeneratedFilePacket {
+function makePacket(
+  overrides: Partial<GeneratedFile> = {}
+): GeneratedFilePacket {
   return {
     placement: PLACEMENT,
     obj: {

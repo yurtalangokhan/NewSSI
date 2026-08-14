@@ -20,7 +20,9 @@ class JsonTools(BaseToolCategory):
 
     @property
     def description(self) -> str:
-        return t("categories.json_data.description", default="JSON formatting, validation, and querying")
+        return t(
+            "categories.json_data.description", default="JSON formatting, validation, and querying"
+        )
 
     @property
     def label(self) -> str:

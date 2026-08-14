@@ -122,7 +122,10 @@ export const fetchBedrockModels = async (
   params: BedrockFetchParams
 ): Promise<{ models: ModelConfiguration[]; error?: string }> => {
   if (!params.aws_region_name) {
-    return { models: [], error: i18n.t("llmOnboarding.awsRegionRequiredError") };
+    return {
+      models: [],
+      error: i18n.t("llmOnboarding.awsRegionRequiredError"),
+    };
   }
 
   try {
@@ -164,7 +167,9 @@ export const fetchBedrockModels = async (
     return { models };
   } catch (error) {
     const errorMessage =
-      error instanceof Error ? error.message : i18n.t("llmOnboarding.unknownError");
+      error instanceof Error
+        ? error.message
+        : i18n.t("llmOnboarding.unknownError");
     return { models: [], error: errorMessage };
   }
 };
@@ -217,7 +222,9 @@ export const fetchOllamaModels = async (
     return { models };
   } catch (error) {
     const errorMessage =
-      error instanceof Error ? error.message : i18n.t("llmOnboarding.unknownError");
+      error instanceof Error
+        ? error.message
+        : i18n.t("llmOnboarding.unknownError");
     return { models: [], error: errorMessage };
   }
 };
@@ -275,7 +282,9 @@ export const fetchOpenRouterModels = async (
     return { models };
   } catch (error) {
     const errorMessage =
-      error instanceof Error ? error.message : i18n.t("llmOnboarding.unknownError");
+      error instanceof Error
+        ? error.message
+        : i18n.t("llmOnboarding.unknownError");
     return { models: [], error: errorMessage };
   }
 };

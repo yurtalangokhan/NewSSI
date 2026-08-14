@@ -160,4 +160,3 @@ export const stepIsComplete = (packets: Packet[]): boolean =>
       p.obj.type === PacketType.STOP ||
       (p.obj as any).type === PacketType.REASONING_DONE
   );
-

@@ -1,7 +1,11 @@
 "use client";
 
 import { JSONSchemaProperty } from "./types";
-import { detectDiscriminatorKey, getDiscriminatorValue, resolveSchema } from "./utils";
+import {
+  detectDiscriminatorKey,
+  getDiscriminatorValue,
+  resolveSchema,
+} from "./utils";
 import {
   Select,
   SelectContent,
@@ -50,7 +54,10 @@ export default function OneOfField({
     return idx >= 0 ? idx : 0;
   })();
 
-  const selectedVariant = resolveSchema(variants[selectedIndex] ?? {}, rootSchema);
+  const selectedVariant = resolveSchema(
+    variants[selectedIndex] ?? {},
+    rootSchema
+  );
 
   const handleVariantChange = (indexStr: string) => {
     const idx = parseInt(indexStr, 10);
@@ -74,10 +81,7 @@ export default function OneOfField({
 
   return (
     <div className="space-y-3">
-      <Select
-        value={String(selectedIndex)}
-        onValueChange={handleVariantChange}
-      >
+      <Select value={String(selectedIndex)} onValueChange={handleVariantChange}>
         <SelectTrigger>
           <SelectValue />
         </SelectTrigger>
@@ -100,7 +104,12 @@ export default function OneOfField({
                 <SchemaForm
                   key={key}
                   schema={propSchema}
-                  value={(value?.[key] ?? propSchema.default) as Record<string, unknown>}
+                  value={
+                    (value?.[key] ?? propSchema.default) as Record<
+                      string,
+                      unknown
+                    >
+                  }
                   onChange={(v) => onChange({ ...(value ?? {}), [key]: v })}
                   rootSchema={rootSchema}
                   fieldKey={key}

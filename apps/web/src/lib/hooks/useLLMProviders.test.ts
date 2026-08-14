@@ -14,7 +14,9 @@ jest.mock("@/lib/fetcher", () => ({
 }));
 
 const mockUseSWR = useSWR as jest.MockedFunction<typeof useSWR>;
-const mockUseSWRConfig = useSWRConfig as jest.MockedFunction<typeof useSWRConfig>;
+const mockUseSWRConfig = useSWRConfig as jest.MockedFunction<
+  typeof useSWRConfig
+>;
 
 describe("useLLMProviders", () => {
   beforeEach(() => {

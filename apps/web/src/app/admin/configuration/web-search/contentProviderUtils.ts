@@ -139,8 +139,9 @@ export function getCurrentContentProviderType(
   }>
 ): WebContentProviderType {
   return (
-    providers.find((p) => p.is_active && p.provider_type !== "atlas_web_crawler")
-      ?.provider_type ??
+    providers.find(
+      (p) => p.is_active && p.provider_type !== "atlas_web_crawler"
+    )?.provider_type ??
     providers.find((p) => p.is_active)?.provider_type ??
     "atlas_web_crawler"
   );

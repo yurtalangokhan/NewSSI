@@ -194,11 +194,7 @@ export function CCPairStatus({
     );
   } else if (ccPairStatus == ConnectorCredentialPairStatus.INVALID) {
     badge = (
-      <Badge
-        tooltip={t("status.invalidTooltip")}
-        circle
-        variant="invalid"
-      >
+      <Badge tooltip={t("status.invalidTooltip")} circle variant="invalid">
         {t("status.invalid")}
       </Badge>
     );

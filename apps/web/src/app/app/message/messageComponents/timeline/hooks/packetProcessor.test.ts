@@ -984,21 +984,29 @@ describe("packetProcessor", () => {
 
   describe("document generation", () => {
     const startPacket = (turn = 0) =>
-      createPacket(PacketType.DOCUMENT_GENERATION_START, { turn_index: turn }, {
-        tool_name: "create_document",
-        filename: null,
-        format: null,
-        phase: "writing",
-      });
+      createPacket(
+        PacketType.DOCUMENT_GENERATION_START,
+        { turn_index: turn },
+        {
+          tool_name: "create_document",
+          filename: null,
+          format: null,
+          phase: "writing",
+        }
+      );
 
     const endPacket = (turn = 0) =>
-      createPacket(PacketType.DOCUMENT_GENERATION_END, { turn_index: turn }, {
-        tool_name: "create_document",
-        filename: "rapor.pdf",
-        format: "pdf",
-        status: "success",
-        error: null,
-      });
+      createPacket(
+        PacketType.DOCUMENT_GENERATION_END,
+        { turn_index: turn },
+        {
+          tool_name: "create_document",
+          filename: "rapor.pdf",
+          format: "pdf",
+          status: "success",
+          error: null,
+        }
+      );
 
     test("DOCUMENT_GENERATION_START opens the display area so the skeleton is visible", () => {
       const result = processPackets(createInitialState(1), [startPacket()]);
@@ -1361,15 +1369,32 @@ describe("packetProcessor", () => {
 
     test("deduplicates reasoning packets with identical reasoning text across different turns", () => {
       const state = createInitialState(1);
-      const reasoningText = "The user asked for a DOCX document about the history of Bursa.";
+      const reasoningText =
+        "The user asked for a DOCX document about the history of Bursa.";
       const packets = [
         createPacket(PacketType.REASONING_START, { turn_index: 1 }),
-        createPacket(PacketType.REASONING_DELTA, { turn_index: 1 }, { reasoning: reasoningText }),
-        createPacket(PacketType.CUSTOM_TOOL_START, { turn_index: 2 }, { tool_name: "create_document" }),
+        createPacket(
+          PacketType.REASONING_DELTA,
+          { turn_index: 1 },
+          { reasoning: reasoningText }
+        ),
+        createPacket(
+          PacketType.CUSTOM_TOOL_START,
+          { turn_index: 2 },
+          { tool_name: "create_document" }
+        ),
         createPacket(PacketType.REASONING_START, { turn_index: 3 }),
-        createPacket(PacketType.REASONING_DELTA, { turn_index: 3 }, { reasoning: reasoningText }),
+        createPacket(
+          PacketType.REASONING_DELTA,
+          { turn_index: 3 },
+          { reasoning: reasoningText }
+        ),
         createPacket(PacketType.REASONING_START, { turn_index: 4 }),
-        createPacket(PacketType.REASONING_DELTA, { turn_index: 4 }, { reasoning: reasoningText }),
+        createPacket(
+          PacketType.REASONING_DELTA,
+          { turn_index: 4 },
+          { reasoning: reasoningText }
+        ),
       ];
 
       const result = processPackets(state, packets);

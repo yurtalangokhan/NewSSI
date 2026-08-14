@@ -44,8 +44,12 @@ export function CustomEmbeddingModelForm({
           }
         }
         validationSchema={Yup.object().shape({
-          model_name: Yup.string().required(t("customEmbedding.modelNameRequired")),
-          model_dim: Yup.number().required(t("customEmbedding.modelDimRequired")),
+          model_name: Yup.string().required(
+            t("customEmbedding.modelNameRequired")
+          ),
+          model_dim: Yup.number().required(
+            t("customEmbedding.modelDimRequired")
+          ),
           normalize: Yup.boolean().required(),
           query_prefix: Yup.string(),
           passage_prefix: Yup.string(),

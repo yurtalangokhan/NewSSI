@@ -20,7 +20,7 @@ describe("handleSSEStream", () => {
   it("emits a synthetic message_start before the first token packet", async () => {
     const response = createStreamingResponse([
       'data: {"type":"token","content":"Hello"}\n',
-      'data: [DONE]\n',
+      "data: [DONE]\n",
     ]);
 
     const packets = [];
@@ -54,7 +54,7 @@ describe("handleSSEStream", () => {
       'data: {"type":"token","content":"Hello"}\n',
       'data: {"type":"long_term_memory_recall","fact_count":1,"memories":["User likes tea"]}\n',
       'data: {"type":"token","content":" again"}\n',
-      'data: [DONE]\n',
+      "data: [DONE]\n",
     ]);
 
     const packets = [];
@@ -90,7 +90,7 @@ describe("handleSSEStream", () => {
       'data: {"type":"reasoning_start"}\n',
       'data: {"type":"reasoning_delta","reasoning":"plan"}\n',
       'data: {"type":"message","content":{"type":"ai","content":"final"}}\n',
-      'data: [DONE]\n',
+      "data: [DONE]\n",
     ]);
 
     const packets = [];
@@ -123,7 +123,7 @@ describe("handleSSEStream", () => {
   it("renders full message packets when token streaming is unavailable", async () => {
     const response = createStreamingResponse([
       'data: {"type":"message","content":{"type":"ai","content":"full answer"}}\n',
-      'data: [DONE]\n',
+      "data: [DONE]\n",
     ]);
 
     const packets = [];
@@ -146,7 +146,7 @@ describe("handleSSEStream", () => {
   it("surfaces backend error packets as streaming errors", async () => {
     const response = createStreamingResponse([
       'data: {"type":"error","content":"LLM failed"}\n',
-      'data: [DONE]\n',
+      "data: [DONE]\n",
     ]);
 
     const packets = [];
@@ -169,7 +169,7 @@ describe("handleSSEStream", () => {
       'data: {"type":"token","content":"biraz sürebilir"}\n',
       'data: {"type":"generated_file","file_id":"abc123","filename":"rapor.pdf","mime_type":"application/pdf","size_bytes":42,"download_url":"/api/chat/file/abc123?download=1"}\n',
       'data: {"type":"document_generation_end","tool_name":"create_document","filename":"rapor.pdf","format":"pdf","status":"success","error":null}\n',
-      'data: [DONE]\n',
+      "data: [DONE]\n",
     ]);
 
     const packets: any[] = [];
@@ -200,7 +200,7 @@ describe("handleSSEStream", () => {
   it("does not open a new turn for a file packet with no generation around it", async () => {
     const response = createStreamingResponse([
       'data: {"type":"generated_file","file_id":"abc123","filename":"rapor.pdf","mime_type":"application/pdf","size_bytes":42,"download_url":"/api/chat/file/abc123?download=1"}\n',
-      'data: [DONE]\n',
+      "data: [DONE]\n",
     ]);
 
     const packets = [];
@@ -222,7 +222,7 @@ describe("handleSSEStream", () => {
       'data: {"type":"document_generation_start","tool_name":"create_document","filename":"rapor","format":"pdf","phase":"writing"}\n',
       'data: {"type":"generated_file","file_id":"abc123","filename":"rapor.pdf","mime_type":"application/pdf","size_bytes":42,"download_url":"/api/chat/file/abc123?download=1"}\n',
       'data: {"type":"document_generation_end","tool_name":"create_document","filename":"rapor.pdf","format":"pdf","status":"success","error":null}\n',
-      'data: [DONE]\n',
+      "data: [DONE]\n",
     ]);
 
     const packets: any[] = [];
@@ -248,7 +248,7 @@ describe("handleSSEStream", () => {
       'data: {"type":"reasoning_delta","reasoning":"Still thinking..."}\n',
       'data: {"type":"generated_file","file_id":"abc123","filename":"report.pdf","mime_type":"application/pdf","size_bytes":42,"download_url":"/api/chat/file/abc123?download=1"}\n',
       'data: {"type":"document_generation_end","tool_name":"create_document","filename":"report.pdf","format":"pdf","status":"success","error":null}\n',
-      'data: [DONE]\n',
+      "data: [DONE]\n",
     ]);
 
     const packets: any[] = [];

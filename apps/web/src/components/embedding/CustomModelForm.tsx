@@ -52,7 +52,9 @@ export function CustomModelForm({
               name="model_name"
               label={t("admin.embeddings.customModelForm.nameLabel")}
               subtext={t("admin.embeddings.customModelForm.nameSubtext")}
-              placeholder={t("admin.embeddings.customModelForm.namePlaceholder")}
+              placeholder={t(
+                "admin.embeddings.customModelForm.namePlaceholder"
+              )}
             />
 
             <TextFormField
@@ -74,13 +76,19 @@ export function CustomModelForm({
               name="query_prefix"
               label={t("admin.embeddings.customModelForm.queryPrefixLabel")}
               subtext={t("admin.embeddings.customModelForm.queryPrefixSubtext")}
-              placeholder={t("admin.embeddings.customModelForm.queryPrefixPlaceholder")}
+              placeholder={t(
+                "admin.embeddings.customModelForm.queryPrefixPlaceholder"
+              )}
             />
             <TextFormField
               name="passage_prefix"
               label={t("admin.embeddings.customModelForm.passagePrefixLabel")}
-              subtext={t("admin.embeddings.customModelForm.passagePrefixSubtext")}
-              placeholder={t("admin.embeddings.customModelForm.passagePrefixPlaceholder")}
+              subtext={t(
+                "admin.embeddings.customModelForm.passagePrefixSubtext"
+              )}
+              placeholder={t(
+                "admin.embeddings.customModelForm.passagePrefixPlaceholder"
+              )}
             />
 
             <BooleanFormField

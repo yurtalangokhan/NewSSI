@@ -67,7 +67,9 @@ def test_error_response_translates_key_with_interpolation():
 def test_error_response_honors_current_locale():
     set_locale("tr")
     try:
-        result = json.loads(BaseToolCategory.error_response("pdf.file_not_found", file_path="a.pdf"))
+        result = json.loads(
+            BaseToolCategory.error_response("pdf.file_not_found", file_path="a.pdf")
+        )
     finally:
         set_locale("en")
     assert result == {"success": False, "error": "Dosya bulunamadı: a.pdf"}

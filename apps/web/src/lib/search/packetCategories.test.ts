@@ -15,8 +15,12 @@ describe("generated_file category", () => {
   });
 
   test("splits from the custom tool category in both directions", () => {
-    expect(shouldSplitCategories("custom_tool_delta", "generated_file")).toBe(true);
-    expect(shouldSplitCategories("generated_file", "custom_tool_delta")).toBe(true);
+    expect(shouldSplitCategories("custom_tool_delta", "generated_file")).toBe(
+      true
+    );
+    expect(shouldSplitCategories("generated_file", "custom_tool_delta")).toBe(
+      true
+    );
   });
 
   test("is included in TOOL_PACKET_TYPES for live-stream turn tracking", () => {
@@ -40,9 +44,9 @@ describe("document generation packets", () => {
   });
 
   test("split from tool and reasoning packets so they get their own group", () => {
-    expect(shouldSplitCategories("reasoning_delta", "document_generation_start")).toBe(
-      true
-    );
+    expect(
+      shouldSplitCategories("reasoning_delta", "document_generation_start")
+    ).toBe(true);
     expect(
       shouldSplitCategories("document_generation_progress", "custom_tool_start")
     ).toBe(true);

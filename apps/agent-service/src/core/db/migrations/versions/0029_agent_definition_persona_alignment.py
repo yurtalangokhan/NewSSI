@@ -52,7 +52,6 @@ def downgrade() -> None:
     """)
     op.execute("DROP INDEX IF EXISTS ix_agent_definitions_persona_id")
     op.execute(
-        "ALTER TABLE agent_definitions "
-        "DROP CONSTRAINT IF EXISTS agent_definitions_persona_id_key"
+        "ALTER TABLE agent_definitions DROP CONSTRAINT IF EXISTS agent_definitions_persona_id_key"
     )
     op.execute("ALTER TABLE agent_definitions DROP COLUMN IF EXISTS persona_id")

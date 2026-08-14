@@ -226,7 +226,9 @@ export default function CredentialSection({
                   transition-colors"
               >
                 <FiEdit2 className="h-4 w-4" />
-                <span className="sr-only">{t("updateCredentialsAriaLabel")}</span>
+                <span className="sr-only">
+                  {t("updateCredentialsAriaLabel")}
+                </span>
               </button>
             </div>
           </div>

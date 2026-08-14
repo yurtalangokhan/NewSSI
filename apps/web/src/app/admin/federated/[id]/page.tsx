@@ -45,7 +45,9 @@ export default function EditFederatedConnectorPage(props: {
       <div className="flex justify-center w-full h-full">
         <div className="mt-12 w-full max-w-4xl mx-auto">
           <div className="text-center">
-            <h1 className="text-2xl font-bold text-red-600 mb-4">{t("federated.error")}</h1>
+            <h1 className="text-2xl font-bold text-red-600 mb-4">
+              {t("federated.error")}
+            </h1>
             <p className="text-gray-600">{error}</p>
           </div>
         </div>

@@ -117,15 +117,25 @@ export const GmailMain = ({
   }
 
   if (credentialsError || !credentialsData) {
-    return <ErrorCallout errorTitle={t("admin.connectors.failedToLoadCredentials")} />;
+    return (
+      <ErrorCallout
+        errorTitle={t("admin.connectors.failedToLoadCredentials")}
+      />
+    );
   }
 
   if (gmailCredentialsError || !gmailCredentials) {
-    return <ErrorCallout errorTitle={t("admin.connectors.failedToLoadGmailCredentials")} />;
+    return (
+      <ErrorCallout
+        errorTitle={t("admin.connectors.failedToLoadGmailCredentials")}
+      />
+    );
   }
 
   if (connectorIndexingStatusesError || !connectorIndexingStatuses) {
-    return <ErrorCallout errorTitle={t("admin.connectors.failedToLoadConnectors")} />;
+    return (
+      <ErrorCallout errorTitle={t("admin.connectors.failedToLoadConnectors")} />
+    );
   }
 
   if (
@@ -133,13 +143,17 @@ export const GmailMain = ({
     !serviceAccountKeySuccessfullyFetched
   ) {
     return (
-      <ErrorCallout errorTitle={t("admin.connectors.errorLoadingGmailAppCredentials")} />
+      <ErrorCallout
+        errorTitle={t("admin.connectors.errorLoadingGmailAppCredentials")}
+      />
     );
   }
 
   if (gmailConnectorsError) {
     return (
-      <ErrorCallout errorTitle={t("admin.connectors.failedToLoadGmailConnectors")} />
+      <ErrorCallout
+        errorTitle={t("admin.connectors.failedToLoadGmailConnectors")}
+      />
     );
   }
 

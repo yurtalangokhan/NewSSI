@@ -34,7 +34,11 @@ export function useTimelineHeader(
 
     // If generating image with no tool packets, show image generation header
     if (isGeneratingImage && !hasPackets) {
-      return { headerText: t("timeline.generatingImage"), hasPackets, userStopped };
+      return {
+        headerText: t("timeline.generatingImage"),
+        hasPackets,
+        userStopped,
+      };
     }
 
     if (!hasPackets) {
@@ -99,11 +103,19 @@ export function useTimelineHeader(
     }
 
     if (packetType === PacketType.PYTHON_TOOL_START) {
-      return { headerText: t("timeline.executingCode"), hasPackets, userStopped };
+      return {
+        headerText: t("timeline.executingCode"),
+        hasPackets,
+        userStopped,
+      };
     }
 
     if (packetType === PacketType.IMAGE_GENERATION_TOOL_START) {
-      return { headerText: t("timeline.generatingImages"), hasPackets, userStopped };
+      return {
+        headerText: t("timeline.generatingImages"),
+        hasPackets,
+        userStopped,
+      };
     }
 
     if (packetType === PacketType.FILE_READER_START) {
@@ -133,15 +145,27 @@ export function useTimelineHeader(
       packetType === PacketType.MEMORY_TOOL_START ||
       packetType === PacketType.MEMORY_TOOL_NO_ACCESS
     ) {
-      return { headerText: t("timeline.updatingMemory"), hasPackets, userStopped };
+      return {
+        headerText: t("timeline.updatingMemory"),
+        hasPackets,
+        userStopped,
+      };
     }
 
     if (packetType === PacketType.REASONING_START) {
-      return { headerText: t("timeline.thinkingActive"), hasPackets, userStopped };
+      return {
+        headerText: t("timeline.thinkingActive"),
+        hasPackets,
+        userStopped,
+      };
     }
 
     if (packetType === PacketType.DEEP_RESEARCH_PLAN_START) {
-      return { headerText: t("timeline.generatingPlan"), hasPackets, userStopped };
+      return {
+        headerText: t("timeline.generatingPlan"),
+        hasPackets,
+        userStopped,
+      };
     }
 
     if (packetType === PacketType.RESEARCH_AGENT_START) {

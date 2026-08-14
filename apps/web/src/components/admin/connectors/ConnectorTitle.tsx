@@ -85,10 +85,16 @@ export const ConnectorTitle = ({
       );
     }
     if (typedConnector.connector_specific_config.channel_regex_enabled) {
-      additionalMetadata.set(t("connectorTitle.channelRegexEnabled"), t("connectorTitle.trueValue"));
+      additionalMetadata.set(
+        t("connectorTitle.channelRegexEnabled"),
+        t("connectorTitle.trueValue")
+      );
     }
     if (typedConnector.connector_specific_config.include_bot_messages) {
-      additionalMetadata.set(t("connectorTitle.includeBotMessages"), t("connectorTitle.trueValue"));
+      additionalMetadata.set(
+        t("connectorTitle.includeBotMessages"),
+        t("connectorTitle.trueValue")
+      );
     }
   } else if (connector.source === "zulip") {
     const typedConnector = connector as Connector<ZulipConfig>;

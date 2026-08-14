@@ -71,9 +71,7 @@ export default function ChangeCredentialsModal({
           jsonContent = JSON.parse(fileContent);
           setApiKey(JSON.stringify(jsonContent));
         } catch (parseError) {
-          throw new Error(
-            t("changeCredentials.failedParseJson")
-          );
+          throw new Error(t("changeCredentials.failedParseJson"));
         }
       } catch (error) {
         setTestError(
@@ -108,7 +106,9 @@ export default function ChangeCredentialsModal({
       onDeleted();
     } catch (error) {
       setDeletionError(
-        error instanceof Error ? error.message : t("changeCredentials.unknownError")
+        error instanceof Error
+          ? error.message
+          : t("changeCredentials.unknownError")
       );
     }
   };
@@ -155,7 +155,9 @@ export default function ChangeCredentialsModal({
         const errorData = await updateResponse.json();
         throw new Error(
           errorData.detail ||
-            t("changeCredentials.failedUpdate", { type: isProxy ? "API URL" : "API key" })
+            t("changeCredentials.failedUpdate", {
+              type: isProxy ? "API URL" : "API key",
+            })
         );
       }
 
@@ -165,7 +167,9 @@ export default function ChangeCredentialsModal({
       onConfirm();
     } catch (error) {
       setTestError(
-        error instanceof Error ? error.message : t("changeCredentials.unknownError")
+        error instanceof Error
+          ? error.message
+          : t("changeCredentials.unknownError")
       );
     }
   };
@@ -174,23 +178,33 @@ export default function ChangeCredentialsModal({
       <Modal.Content>
         <Modal.Header
           icon={SvgSettings}
-          title={isProxy
-            ? t("changeCredentials.modifyConfigTitle", { provider: getFormattedProviderName(provider.provider_type) })
-            : t("changeCredentials.modifyKeyTitle", { provider: getFormattedProviderName(provider.provider_type) })}
+          title={
+            isProxy
+              ? t("changeCredentials.modifyConfigTitle", {
+                  provider: getFormattedProviderName(provider.provider_type),
+                })
+              : t("changeCredentials.modifyKeyTitle", {
+                  provider: getFormattedProviderName(provider.provider_type),
+                })
+          }
           onClose={onCancel}
         />
         <Modal.Body>
           {!isAzure && (
             <>
               <Text as="p">
-                {isProxy ? t("changeCredentials.modifyDescWithUrl") : t("changeCredentials.modifyDesc")}
+                {isProxy
+                  ? t("changeCredentials.modifyDescWithUrl")
+                  : t("changeCredentials.modifyDesc")}
               </Text>
 
               <div className="flex flex-col gap-2">
                 <Label className="mt-2">{t("changeCredentials.apiKey")}</Label>
                 {useFileUpload ? (
                   <>
-                    <Label className="mt-2">{t("changeCredentials.uploadJson")}</Label>
+                    <Label className="mt-2">
+                      {t("changeCredentials.uploadJson")}
+                    </Label>
                     <input
                       ref={fileInputRef}
                       type="file"
@@ -198,7 +212,13 @@ export default function ChangeCredentialsModal({
                       onChange={handleFileUpload}
                       className="text-lg w-full p-1"
                     />
-                    {fileName && <p>{t("changeCredentials.uploadedFile", { name: fileName })}</p>}
+                    {fileName && (
+                      <p>
+                        {t("changeCredentials.uploadedFile", {
+                          name: fileName,
+                        })}
+                      </p>
+                    )}
                   </>
                 ) : (
                   <>
@@ -214,7 +234,9 @@ export default function ChangeCredentialsModal({
 
                 {isProxy && (
                   <>
-                    <Label className="mt-2">{t("changeCredentials.apiUrl")}</Label>
+                    <Label className="mt-2">
+                      {t("changeCredentials.apiUrl")}
+                    </Label>
 
                     <input
                       className={`
@@ -238,10 +260,10 @@ export default function ChangeCredentialsModal({
                     )}
 
                     <div>
-                      <Label className="mt-2">{t("changeCredentials.testModel")}</Label>
-                      <Text as="p">
-                        {t("changeCredentials.liteLlmNote")}
-                      </Text>
+                      <Label className="mt-2">
+                        {t("changeCredentials.testModel")}
+                      </Label>
+                      <Text as="p">{t("changeCredentials.liteLlmNote")}</Text>
                     </div>
                     <input
                       className={`
@@ -282,9 +304,7 @@ export default function ChangeCredentialsModal({
           <Text as="p" className="mt-4 font-bold">
             {t("changeCredentials.canDelete")}
           </Text>
-          <Text as="p">
-            {t("changeCredentials.deleteNote")}
-          </Text>
+          <Text as="p">{t("changeCredentials.deleteNote")}</Text>
 
           <Button className="mr-auto" onClick={handleDelete} danger>
             {t("changeCredentials.deleteConfig")}

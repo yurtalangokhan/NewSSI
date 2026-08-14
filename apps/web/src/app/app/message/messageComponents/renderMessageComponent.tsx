@@ -120,7 +120,6 @@ function isGeneratedFilePacket(packet: Packet) {
   );
 }
 
-
 function isReasoningPacket(packet: Packet): packet is ReasoningPacket {
   return (
     packet.obj.type === PacketType.REASONING_START ||

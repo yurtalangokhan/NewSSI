@@ -206,9 +206,7 @@ export default function EmbeddingModelSelection({
         />
       )}
 
-      <p className="mb-4">
-        {t("description")}
-      </p>
+      <p className="mb-4">{t("description")}</p>
       <div className="text-sm mr-auto mb-6 divide-x-2 flex">
         <button
           onClick={() => setModelTab(null)}

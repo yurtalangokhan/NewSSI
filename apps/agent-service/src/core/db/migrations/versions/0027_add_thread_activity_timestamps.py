@@ -9,8 +9,8 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 revision: str = "0027"
 down_revision: str | None = "0026"
@@ -23,11 +23,15 @@ def upgrade() -> None:
     thread_columns = {column["name"] for column in inspector.get_columns("thread")}
 
     if "last_message_at" not in thread_columns:
-        op.add_column("thread", sa.Column("last_message_at", sa.DateTime(timezone=True), nullable=True))
+        op.add_column(
+            "thread", sa.Column("last_message_at", sa.DateTime(timezone=True), nullable=True)
+        )
         op.execute("UPDATE thread SET last_message_at = updated_at WHERE last_message_at IS NULL")
 
     if "last_accessed_at" not in thread_columns:
-        op.add_column("thread", sa.Column("last_accessed_at", sa.DateTime(timezone=True), nullable=True))
+        op.add_column(
+            "thread", sa.Column("last_accessed_at", sa.DateTime(timezone=True), nullable=True)
+        )
 
     op.execute("""
         CREATE INDEX IF NOT EXISTS idx_thread_activity_order

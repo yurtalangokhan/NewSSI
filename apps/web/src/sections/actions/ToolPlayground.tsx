@@ -22,7 +22,10 @@ import Switch from "@/refresh-components/inputs/Switch";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Play, AlertCircle, CheckCircle } from "lucide-react";
 import { ToolWithCategory } from "@/lib/tools/builtInToolUtils";
-import { executeBuiltInTool, ToolExecuteResponse } from "@/lib/tools/mcpService";
+import {
+  executeBuiltInTool,
+  ToolExecuteResponse,
+} from "@/lib/tools/mcpService";
 import { MailConfig, useMailConfigs } from "@/lib/mailConfigs";
 import { toast } from "@/hooks/useToast";
 import _ from "lodash";
@@ -39,10 +42,13 @@ interface FormValues {
 }
 
 function getSendEmailPlaygroundSchema(mailConfigs: MailConfig[]) {
-  const enumLabels = mailConfigs.reduce<Record<string, string>>((labels, config) => {
-    labels[config.id] = `${config.name} (${config.from_email})`;
-    return labels;
-  }, {});
+  const enumLabels = mailConfigs.reduce<Record<string, string>>(
+    (labels, config) => {
+      labels[config.id] = `${config.name} (${config.from_email})`;
+      return labels;
+    },
+    {}
+  );
 
   return {
     type: "object",
@@ -58,7 +64,8 @@ function getSendEmailPlaygroundSchema(mailConfigs: MailConfig[]) {
       to: {
         type: "string",
         title: "To",
-        description: "Recipient email addresses. Separate multiple addresses with commas.",
+        description:
+          "Recipient email addresses. Separate multiple addresses with commas.",
       },
       subject: {
         type: "string",
@@ -110,40 +117,45 @@ function SchemaForm({
   };
 
   if (!schema || !schema.properties) {
-    return <div className="text-gray-500">{t("toolPlayground.noInputSchema")}</div>;
+    return (
+      <div className="text-gray-500">{t("toolPlayground.noInputSchema")}</div>
+    );
   }
 
   return (
     <div className="space-y-4">
-      {Object.entries(schema.properties).map(([name, property]: [string, any]) => {
-        const isRequired = schema.required?.includes(name);
-        const label = property.title || name;
-        const description = property.description;
+      {Object.entries(schema.properties).map(
+        ([name, property]: [string, any]) => {
+          const isRequired = schema.required?.includes(name);
+          const label = property.title || name;
+          const description = property.description;
 
-        return (
-          <div key={name} className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label
-                name={name}
-              >
-                {_.startCase(label)}
-              </Label>
-              {isRequired && (
-                <span className="text-xs text-gray-500">{t("toolPlayground.required")}</span>
+          return (
+            <div key={name} className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label name={name}>{_.startCase(label)}</Label>
+                {isRequired && (
+                  <span className="text-xs text-gray-500">
+                    {t("toolPlayground.required")}
+                  </span>
+                )}
+              </div>
+
+              {description && (
+                <p className="text-xs text-gray-500">{description}</p>
+              )}
+
+              {renderField(
+                name,
+                property,
+                formValues[name],
+                (value: any) => handleChange(name, value),
+                t
               )}
             </div>
-
-            {description && (
-              <p className="text-xs text-gray-500">{description}</p>
-            )}
-
-            {renderField(name, property, formValues[name], (value: any) =>
-              handleChange(name, value),
-              t
-            )}
-          </div>
-        );
-      })}
+          );
+        }
+      )}
     </div>
   );
 }
@@ -157,10 +169,7 @@ function renderField(
 ) {
   if (property.enum) {
     return (
-      <Select
-        value={value || ""}
-        onValueChange={onChange}
-      >
+      <Select value={value || ""} onValueChange={onChange}>
         <SelectTrigger id={name}>
           <SelectValue placeholder={t("toolPlayground.selectOption")} />
         </SelectTrigger>
@@ -224,12 +233,10 @@ function renderField(
     case "boolean":
       return (
         <div className="flex items-center space-x-2">
-          <Switch
-            id={name}
-            checked={!!value}
-            onCheckedChange={onChange}
-          />
-            <Label name={name}>{value ? t("toolPlayground.enabled") : t("toolPlayground.disabled")}</Label>
+          <Switch id={name} checked={!!value} onCheckedChange={onChange} />
+          <Label name={name}>
+            {value ? t("toolPlayground.enabled") : t("toolPlayground.disabled")}
+          </Label>
         </div>
       );
 
@@ -269,7 +276,9 @@ function ResponseViewer({
       <div className="flex items-start gap-2 p-4 bg-red-50 border border-red-200 rounded-lg">
         <AlertCircle className="size-5 text-red-600 shrink-0 mt-0.5" />
         <div>
-          <p className="font-medium text-red-800">{t("toolPlayground.error")}</p>
+          <p className="font-medium text-red-800">
+            {t("toolPlayground.error")}
+          </p>
           <p className="text-sm text-red-700 mt-1">{error}</p>
         </div>
       </div>
@@ -337,7 +346,8 @@ export default function ToolPlayground({
         toast.success(t("toolPlayground.executedSuccessfully"));
       }
     } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : "Tool execution failed";
+      const errorMsg =
+        err instanceof Error ? err.message : "Tool execution failed";
       setErrorMessage(errorMsg);
       toast.error(errorMsg);
     } finally {
@@ -359,7 +369,9 @@ export default function ToolPlayground({
           <DialogTitle className="flex items-center gap-2">
             <span>{tool.name}</span>
             {tool.category && (
-              <Badge variant="secondary">{tool.categoryLabel || tool.category}</Badge>
+              <Badge variant="secondary">
+                {tool.categoryLabel || tool.category}
+              </Badge>
             )}
           </DialogTitle>
         </DialogHeader>
@@ -370,7 +382,9 @@ export default function ToolPlayground({
           </p>
 
           <div className="border-t pt-4">
-            <h3 className="font-medium mb-4">{t("toolPlayground.inputHeader")}</h3>
+            <h3 className="font-medium mb-4">
+              {t("toolPlayground.inputHeader")}
+            </h3>
             <SchemaForm
               schema={inputSchema}
               values={inputValues}
@@ -404,7 +418,9 @@ export default function ToolPlayground({
           </Button>
 
           <div className="border-t pt-4">
-            <h3 className="font-medium mb-4">{t("toolPlayground.responseHeader")}</h3>
+            <h3 className="font-medium mb-4">
+              {t("toolPlayground.responseHeader")}
+            </h3>
             <ResponseViewer
               response={response}
               isLoading={isLoading}

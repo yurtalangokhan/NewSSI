@@ -416,9 +416,7 @@ export type MemoryToolObj =
   | MemoryToolNoAccess
   | SectionEnd
   | PacketError;
-export type LongTermMemoryObj =
-  | LongTermMemoryRecall
-  | LongTermMemorySave;
+export type LongTermMemoryObj = LongTermMemoryRecall | LongTermMemorySave;
 export type NewToolObj =
   | SearchToolObj
   | ImageGenerationToolObj

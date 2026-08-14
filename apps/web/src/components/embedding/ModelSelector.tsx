@@ -70,7 +70,7 @@ export function ModelPreview({
             {"embedding_precision" in model &&
               (model as any).embedding_precision && (
                 <div>
-                   <span className="font-semibold text-text-700">
+                  <span className="font-semibold text-text-700">
                     {t("embeddings.precision")}
                   </span>
                   <div className="text-text-600">
@@ -297,4 +297,3 @@ export function ModelSelector({
     </div>
   );
 }
-

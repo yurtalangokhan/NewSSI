@@ -53,7 +53,11 @@ import { saveAppDraftCommand } from "@/app/app/services/draftCommand";
  * Memory section rendered inside the Actions & Tools collapsible.
  * Shows the "Bellek" heading with a badge indicating memory type.
  */
-function MemorySection({ longTermMemoryEnabled }: { longTermMemoryEnabled: boolean }) {
+function MemorySection({
+  longTermMemoryEnabled,
+}: {
+  longTermMemoryEnabled: boolean;
+}) {
   const { t } = useTranslation();
   return (
     <div className="flex flex-row items-center gap-2 px-0.5 py-1">
@@ -102,7 +106,9 @@ function ViewerMCPServerCard({ server, tools }: ViewerMCPServerCardProps) {
                 rightIcon={folded ? SvgExpand : SvgFold}
                 onClick={() => setFolded((prev) => !prev)}
               >
-                {folded ? t("agentViewer.expandButton") : t("agentViewer.foldButton")}
+                {folded
+                  ? t("agentViewer.expandButton")
+                  : t("agentViewer.foldButton")}
               </Button>
             }
           />
@@ -223,9 +229,7 @@ export default function AgentViewerModal({ agent }: AgentViewerModalProps) {
         message,
         submitOnLoad: true,
       });
-      router.push(
-        buildAppPath({ type: "agent", id: routeAgentId }) as Route
-      );
+      router.push(buildAppPath({ type: "agent", id: routeAgentId }) as Route);
       agentViewerModal.toggle(false);
     },
     [agentViewerModal, routeAgentId, router]
@@ -263,9 +267,7 @@ export default function AgentViewerModal({ agent }: AgentViewerModalProps) {
 
   const builtInTools = useMemo(
     () =>
-      agent.tools.filter(
-        (t) => !!t.in_code_tool_id && t.mcp_server_id == null
-      ),
+      agent.tools.filter((t) => !!t.in_code_tool_id && t.mcp_server_id == null),
     [agent.tools]
   );
 
@@ -286,7 +288,9 @@ export default function AgentViewerModal({ agent }: AgentViewerModalProps) {
 
   const unknownMcpToolNames = useMemo(() => {
     const knownToolNames = new Set(
-      agent.tools.flatMap((tool) => [tool.name, tool.in_code_tool_id || ""]).filter(Boolean)
+      agent.tools
+        .flatMap((tool) => [tool.name, tool.in_code_tool_id || ""])
+        .filter(Boolean)
     );
     return (agent.mcp_tools || []).filter((name) => !knownToolNames.has(name));
   }, [agent.mcp_tools, agent.tools]);
@@ -316,7 +320,13 @@ export default function AgentViewerModal({ agent }: AgentViewerModalProps) {
           title={agent.name}
           tag={<AgentAvailabilityBadge agent={agent} showLabel />}
           onClose={() => agentViewerModal.toggle(false)}
-        />
+        >
+          <AgentAvailabilityBadge
+            agent={agent}
+            showLabel
+            className="ml-8 w-fit"
+          />
+        </Modal.Header>
 
         <Modal.Body>
           {/* Metadata */}
@@ -355,13 +365,20 @@ export default function AgentViewerModal({ agent }: AgentViewerModalProps) {
               <Section gap={0.5} alignItems="start">
                 <Content
                   icon={SvgAlertCircle}
-                  title={t("agentViewer.availabilityIssuesTitle", "Availability issues")}
+                  title={t(
+                    "agentViewer.availabilityIssuesTitle",
+                    "Availability issues"
+                  )}
                   sizePreset="main-ui"
                   variant="section"
                 />
                 <div className="flex flex-col gap-1">
                   {availabilityIssues.map((issue, index) => (
-                    <Text key={`${issue.component}-${index}`} secondaryBody text02>
+                    <Text
+                      key={`${issue.component}-${index}`}
+                      secondaryBody
+                      text02
+                    >
                       {issue.message}
                     </Text>
                   ))}
@@ -398,7 +415,10 @@ export default function AgentViewerModal({ agent }: AgentViewerModalProps) {
                   <Content
                     icon={SvgActions}
                     title={t("agentViewer.documentProcessingLabel")}
-                    description={t("agentViewer.documentProcessingDescription", { count: ragDocumentCollections })}
+                    description={t(
+                      "agentViewer.documentProcessingDescription",
+                      { count: ragDocumentCollections }
+                    )}
                     sizePreset="main-ui"
                     variant="section"
                   />
@@ -407,7 +427,9 @@ export default function AgentViewerModal({ agent }: AgentViewerModalProps) {
                   <Content
                     icon={SvgActions}
                     title={t("agentViewer.knowledgeGraphLabel")}
-                    description={t("agentViewer.knowledgeGraphDescription", { count: ragGraphCollections })}
+                    description={t("agentViewer.knowledgeGraphDescription", {
+                      count: ragGraphCollections,
+                    })}
                     sizePreset="main-ui"
                     variant="section"
                   />
@@ -420,7 +442,9 @@ export default function AgentViewerModal({ agent }: AgentViewerModalProps) {
 
           {/* Actions & Tools */}
           <SimpleCollapsible>
-            <SimpleCollapsible.Header title={t("agentViewer.actionsAndToolsTitle")} />
+            <SimpleCollapsible.Header
+              title={t("agentViewer.actionsAndToolsTitle")}
+            />
             <SimpleCollapsible.Content>
               {hasActions ? (
                 <Section gap={0.5} alignItems="start">
@@ -457,12 +481,16 @@ export default function AgentViewerModal({ agent }: AgentViewerModalProps) {
                   ))}
 
                   <Separator noPadding />
-                  <MemorySection longTermMemoryEnabled={longTermMemoryEnabled} />
+                  <MemorySection
+                    longTermMemoryEnabled={longTermMemoryEnabled}
+                  />
                 </Section>
               ) : (
                 <Section gap={0.5} alignItems="start">
                   <EmptyMessage title={t("agentViewer.noActionsMessage")} />
-                  <MemorySection longTermMemoryEnabled={longTermMemoryEnabled} />
+                  <MemorySection
+                    longTermMemoryEnabled={longTermMemoryEnabled}
+                  />
                 </Section>
               )}
             </SimpleCollapsible.Content>
@@ -506,7 +534,9 @@ export default function AgentViewerModal({ agent }: AgentViewerModalProps) {
                 )}
                 <Horizontal
                   title={t("agentViewer.overwriteSystemPromptsLabel")}
-                  description={t("agentViewer.overwriteSystemPromptsDescription")}
+                  description={t(
+                    "agentViewer.overwriteSystemPromptsDescription"
+                  )}
                   nonInteractive
                   sizePreset="main-ui"
                 >

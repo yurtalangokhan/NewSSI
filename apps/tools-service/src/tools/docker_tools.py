@@ -21,7 +21,9 @@ class DockerTools(BaseToolCategory):
 
     @property
     def description(self) -> str:
-        return t("categories.docker.description", default="Docker container build, run, and management")
+        return t(
+            "categories.docker.description", default="Docker container build, run, and management"
+        )
 
     @property
     def label(self) -> str:

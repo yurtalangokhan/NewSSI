@@ -106,9 +106,7 @@ describe("CustomOnboardingForm", () => {
     test("renders description", () => {
       render(<CustomOnboardingForm {...defaultProps} />);
 
-      expect(
-        screen.getByText(descriptionText)
-      ).toBeInTheDocument();
+      expect(screen.getByText(descriptionText)).toBeInTheDocument();
     });
 
     test("renders Provider Name field", () => {

@@ -42,7 +42,8 @@ export default function OAuthCallbackPage({ config }: OAuthCallbackPageProps) {
     config.processingMessage || t("auth.oauthCallback.processing")
   );
   const [statusDetails, setStatusDetails] = useState(
-    config.processingDetails || t("auth.oauthCallback.federatedProcessingDetails")
+    config.processingDetails ||
+      t("auth.oauthCallback.federatedProcessingDetails")
   );
   const [isError, setIsError] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -265,7 +266,8 @@ export default function OAuthCallbackPage({ config }: OAuthCallbackPageProps) {
                     }}
                     className="w-full"
                   >
-                    {config.backButtonText || t("auth.oauthCallback.backToChat")}
+                    {config.backButtonText ||
+                      t("auth.oauthCallback.backToChat")}
                   </Button>
                 </div>
               )}

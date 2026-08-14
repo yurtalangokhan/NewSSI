@@ -123,8 +123,12 @@ function sessionFormFromSettings(data: SystemKeycloakSettings) {
 async function postSyncExternalIdp(url: string) {
   const res = await authenticatedFetch(url, { method: "POST" });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: i18n.t("admin.systemSettings.syncFailedGeneric") }));
-    throw new Error(err.detail || i18n.t("admin.systemSettings.syncFailedGeneric"));
+    const err = await res.json().catch(() => ({
+      detail: i18n.t("admin.systemSettings.syncFailedGeneric"),
+    }));
+    throw new Error(
+      err.detail || i18n.t("admin.systemSettings.syncFailedGeneric")
+    );
   }
   return res.json();
 }
@@ -139,8 +143,12 @@ async function patchJson(
     body: JSON.stringify(arg),
   });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: i18n.t("admin.systemSettings.saveFailedGeneric") }));
-    throw new Error(err.detail || i18n.t("admin.systemSettings.saveFailedGeneric"));
+    const err = await res.json().catch(() => ({
+      detail: i18n.t("admin.systemSettings.saveFailedGeneric"),
+    }));
+    throw new Error(
+      err.detail || i18n.t("admin.systemSettings.saveFailedGeneric")
+    );
   }
   return res.json();
 }
@@ -310,7 +318,8 @@ export default function SystemSettingsPage() {
   const headline = useMemo(() => {
     if (isLoading) return t("admin.systemSettings.checkingConfig");
     if (error) return t("admin.systemSettings.settingsUnavailable");
-    if (!data?.keycloak.enabled) return t("admin.systemSettings.keycloakDisabled");
+    if (!data?.keycloak.enabled)
+      return t("admin.systemSettings.keycloakDisabled");
     if (!data.external_keycloak.enabled)
       return t("admin.systemSettings.externalKeycloakDisabled");
     if (idp?.exists && idp.mapper?.exists)
@@ -461,7 +470,10 @@ export default function SystemSettingsPage() {
           ) : null}
 
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_1fr_360px]">
-            <Panel icon={SvgServer} title={t("admin.systemSettings.internalKeycloakTitle")}>
+            <Panel
+              icon={SvgServer}
+              title={t("admin.systemSettings.internalKeycloakTitle")}
+            >
               <div className="flex flex-col gap-3 border-b border-border-01 py-4">
                 <ToggleRow
                   checked={configForm.keycloak_enabled}
@@ -568,17 +580,32 @@ export default function SystemSettingsPage() {
                   />
                 </Field>
               </div>
-              <SettingRow label={t("admin.systemSettings.enabled")} value={data?.keycloak.enabled} />
-              <SettingRow label={t("admin.systemSettings.sourceLabel")} value={data?.keycloak.source} />
-              <SettingRow label={t("admin.systemSettings.realmLabel")} value={data?.keycloak.realm} />
-              <SettingRow label={t("admin.systemSettings.baseUrlLabel")} value={data?.keycloak.base_url} />
+              <SettingRow
+                label={t("admin.systemSettings.enabled")}
+                value={data?.keycloak.enabled}
+              />
+              <SettingRow
+                label={t("admin.systemSettings.sourceLabel")}
+                value={data?.keycloak.source}
+              />
+              <SettingRow
+                label={t("admin.systemSettings.realmLabel")}
+                value={data?.keycloak.realm}
+              />
+              <SettingRow
+                label={t("admin.systemSettings.baseUrlLabel")}
+                value={data?.keycloak.base_url}
+              />
               <SettingRow
                 label={t("admin.systemSettings.adminApiAccessLabel")}
                 value={data?.keycloak.admin_access_configured}
               />
             </Panel>
 
-            <Panel icon={SvgKey} title={t("admin.systemSettings.externalKeycloakIdpTitle")}>
+            <Panel
+              icon={SvgKey}
+              title={t("admin.systemSettings.externalKeycloakIdpTitle")}
+            >
               <div className="flex flex-col gap-3 border-b border-border-01 py-4">
                 <ToggleRow
                   checked={configForm.external_keycloak}
@@ -710,7 +737,10 @@ export default function SystemSettingsPage() {
               />
             </Panel>
 
-            <Panel icon={SvgShield} title={t("admin.systemSettings.operationsTitle")}>
+            <Panel
+              icon={SvgShield}
+              title={t("admin.systemSettings.operationsTitle")}
+            >
               <div className="flex flex-col gap-3 py-4">
                 <Button
                   main
@@ -720,7 +750,9 @@ export default function SystemSettingsPage() {
                   onClick={onSaveConfig}
                   className="w-full"
                 >
-                  {isSavingConfig ? t("admin.systemSettings.savingButton") : t("admin.systemSettings.saveKeycloakSettingsButton")}
+                  {isSavingConfig
+                    ? t("admin.systemSettings.savingButton")
+                    : t("admin.systemSettings.saveKeycloakSettingsButton")}
                 </Button>
                 <Button
                   main
@@ -732,13 +764,17 @@ export default function SystemSettingsPage() {
                   onClick={syncExternalIdp}
                   className="w-full"
                 >
-                  {isMutating ? t("admin.systemSettings.applyingButton") : t("admin.systemSettings.applyExternalIdpButton")}
+                  {isMutating
+                    ? t("admin.systemSettings.applyingButton")
+                    : t("admin.systemSettings.applyExternalIdpButton")}
                 </Button>
                 <div className="flex flex-col gap-3 rounded-08 border border-border-01 bg-background-neutral-01 px-3 py-3">
                   <Text as="span" secondaryBody text03>
                     {t("admin.systemSettings.realmSessionDurations")}
                   </Text>
-                  <Field label={t("admin.systemSettings.accessTokenLifespanLabel")}>
+                  <Field
+                    label={t("admin.systemSettings.accessTokenLifespanLabel")}
+                  >
                     <InputTypeIn
                       type="number"
                       value={sessionForm.access_token_lifespan}
@@ -782,7 +818,9 @@ export default function SystemSettingsPage() {
                     onClick={onSaveSession}
                     className="w-full"
                   >
-                    {isSavingSession ? t("admin.systemSettings.savingButton") : t("admin.systemSettings.saveSessionSettingsButton")}
+                    {isSavingSession
+                      ? t("admin.systemSettings.savingButton")
+                      : t("admin.systemSettings.saveSessionSettingsButton")}
                   </Button>
                 </div>
                 <Button

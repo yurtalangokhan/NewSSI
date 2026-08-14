@@ -19,8 +19,7 @@ const descriptionText =
 const credentialsFileText =
   /^(Credentials File|llmOnboarding\.credentialsFile)$/i;
 const defaultModelText = /^(Default Model|llmOnboarding\.defaultModel)$/i;
-const modelPlaceholder =
-  /^(Select a model|llmOnboarding\.selectOrTypeModel)$/i;
+const modelPlaceholder = /^(Select a model|llmOnboarding\.selectOrTypeModel)$/i;
 
 // Mock fetch
 const mockFetch = jest.fn();

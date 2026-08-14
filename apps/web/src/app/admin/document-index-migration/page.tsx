@@ -83,7 +83,9 @@ function MigrationStatusSection() {
         variant="section"
         rightChildren={
           <Text mainUiBody>
-            {hasStarted ? formatTimestamp(data.created_at!) : t("admin.indexMigration.notStarted")}
+            {hasStarted
+              ? formatTimestamp(data.created_at!)
+              : t("admin.indexMigration.notStarted")}
           </Text>
         }
       />
@@ -196,10 +198,12 @@ function RetrievalSourceSection() {
         onValueChange={setSelectedSource}
         disabled={updating}
       >
-        <InputSelect.Trigger placeholder={t("admin.indexMigration.selectRetrievalSource")} />
+        <InputSelect.Trigger
+          placeholder={t("admin.indexMigration.selectRetrievalSource")}
+        />
         <InputSelect.Content>
           <InputSelect.Item value="vespa">Vespa</InputSelect.Item>
-            {t("admin.indexMigration.vespaOption")}
+          {t("admin.indexMigration.vespaOption")}
         </InputSelect.Content>
       </InputSelect>
 
@@ -209,7 +213,9 @@ function RetrievalSourceSection() {
           onClick={handleUpdate}
           disabled={updating}
         >
-          {updating ? t("admin.indexMigration.updating") : t("admin.indexMigration.updateSettings")}
+          {updating
+            ? t("admin.indexMigration.updating")
+            : t("admin.indexMigration.updateSettings")}
         </Button>
       )}
     </Card>

@@ -88,7 +88,9 @@ const LLMStepInner = ({
   actions: onboardingActions,
   llmDescriptors,
   disabled,
-}: LLMStepProps) => {  const { t } = useTranslation();  const isLoading = !llmDescriptors || llmDescriptors.length === 0;
+}: LLMStepProps) => {
+  const { t } = useTranslation();
+  const isLoading = !llmDescriptors || llmDescriptors.length === 0;
 
   const [selectedProvider, setSelectedProvider] =
     useState<SelectedProvider | null>(null);

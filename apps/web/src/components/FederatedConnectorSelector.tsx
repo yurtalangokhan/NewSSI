@@ -35,7 +35,9 @@ export const FederatedConnectorSelector = ({
   disabled = false,
   placeholder = "Search federated connectors...",
   showError = false,
-}: FederatedConnectorSelectorProps) => {  const { t } = useTranslation();  const [open, setOpen] = useState(false);
+}: FederatedConnectorSelectorProps) => {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const dropdownRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -231,7 +233,9 @@ export const FederatedConnectorSelector = ({
                     {hasEntitiesConfigured && (
                       <div
                         className="ml-1 w-2 h-2 bg-green-500 rounded-full flex-shrink-0"
-                        title={t("federatedConnectorSelector.entitiesConfigured")}
+                        title={t(
+                          "federatedConnectorSelector.entitiesConfigured"
+                        )}
                       />
                     )}
                   </div>
@@ -240,7 +244,9 @@ export const FederatedConnectorSelector = ({
                       prominence="tertiary"
                       size="sm"
                       type="button"
-                      aria-label={t("federatedConnectorSelector.removeConnector")}
+                      aria-label={t(
+                        "federatedConnectorSelector.removeConnector"
+                      )}
                       tooltip={t("federatedConnectorSelector.removeConnector")}
                       onClick={() => removeConnector(connector.id)}
                       icon={SvgX}

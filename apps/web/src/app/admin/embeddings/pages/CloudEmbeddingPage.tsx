@@ -336,7 +336,9 @@ export default function CloudEmbeddingPage({
                   <CardSection className="bg-white shadow-sm border border-background-200 rounded-lg">
                     <div className="p-4 space-y-3">
                       <div className="flex justify-between">
-                        <span className="font-medium">{t("apiVersionLabel")}</span>
+                        <span className="font-medium">
+                          {t("apiVersionLabel")}
+                        </span>
                         <span>{azureProviderDetails.api_version}</span>
                       </div>
                       <div className="flex justify-between">
@@ -344,7 +346,9 @@ export default function CloudEmbeddingPage({
                         <span>{azureProviderDetails.api_url}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="font-medium">{t("deploymentNameLabel")}</span>
+                        <span className="font-medium">
+                          {t("deploymentNameLabel")}
+                        </span>
                         <span>{azureProviderDetails.deployment_name}</span>
                       </div>
                     </div>

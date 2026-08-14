@@ -233,9 +233,7 @@ describe("organizationTreeToLayoutPositions", () => {
       );
       expect(first.root![depthAxis]).toBeLessThan(first.a![depthAxis]);
       expect(first.a![depthAxis]).toBeLessThan(first.a1![depthAxis]);
-      expect(first.b1![depthAxis]).toBeLessThan(
-        first["b1-deep"]![depthAxis]
-      );
+      expect(first.b1![depthAxis]).toBeLessThan(first["b1-deep"]![depthAxis]);
     }
   );
 });

@@ -17,7 +17,11 @@ describe("OnyxApiKeyForm", () => {
   test("does not expose legacy API key role selection", () => {
     render(<OnyxApiKeyForm onClose={jest.fn()} onCreateApiKey={jest.fn()} />);
 
-    expect(screen.queryByText("admin.apiKey.roleLabel")).not.toBeInTheDocument();
-    expect(screen.queryByText("admin.apiKey.roleDescription")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("admin.apiKey.roleLabel")
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("admin.apiKey.roleDescription")
+    ).not.toBeInTheDocument();
   });
 });

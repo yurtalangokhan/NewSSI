@@ -105,7 +105,9 @@ function CustomFormFields(props: OnboardingFormChildProps<CustomFormValues>) {
         name={FIELD_PROVIDER}
         render={(field, helper, meta, state) => (
           <FormField name={FIELD_PROVIDER} state={state} className="w-full">
-            <FormField.Label>{t("llmOnboarding.custom.providerNameLabel")}</FormField.Label>
+            <FormField.Label>
+              {t("llmOnboarding.custom.providerNameLabel")}
+            </FormField.Label>
             <FormField.Control>
               <InputTypeIn
                 {...field}
@@ -164,7 +166,9 @@ function CustomFormFields(props: OnboardingFormChildProps<CustomFormValues>) {
         name={FIELD_API_BASE}
         render={(field, helper, meta, state) => (
           <FormField name={FIELD_API_BASE} state={state} className="w-full">
-            <FormField.Label optional>{t("llmOnboarding.custom.apiBaseUrlLabel")}</FormField.Label>
+            <FormField.Label optional>
+              {t("llmOnboarding.custom.apiBaseUrlLabel")}
+            </FormField.Label>
             <FormField.Control>
               <InputTypeIn
                 {...field}
@@ -201,7 +205,9 @@ function CustomFormFields(props: OnboardingFormChildProps<CustomFormValues>) {
         name={FIELD_API_VERSION}
         render={(field, helper, meta, state) => (
           <FormField name={FIELD_API_VERSION} state={state} className="w-full">
-            <FormField.Label optional>{t("llmOnboarding.custom.apiVersionLabel")}</FormField.Label>
+            <FormField.Label optional>
+              {t("llmOnboarding.custom.apiVersionLabel")}
+            </FormField.Label>
             <FormField.Control>
               <InputTypeIn {...field} placeholder="" showClearButton={false} />
             </FormField.Control>
@@ -213,7 +219,9 @@ function CustomFormFields(props: OnboardingFormChildProps<CustomFormValues>) {
         name={FIELD_API_KEY}
         render={(field, helper, meta, state) => (
           <FormField name={FIELD_API_KEY} state={state} className="w-full">
-            <FormField.Label optional>{t("llmOnboarding.apiKey")}</FormField.Label>
+            <FormField.Label optional>
+              {t("llmOnboarding.apiKey")}
+            </FormField.Label>
             <FormField.Control>
               <PasswordInputTypeIn
                 {...field}
@@ -245,7 +253,9 @@ function CustomFormFields(props: OnboardingFormChildProps<CustomFormValues>) {
           state={formikProps.errors.custom_config ? "error" : "idle"}
           className="w-full"
         >
-          <FormField.Label optional>{t("llmOnboarding.custom.additionalConfigsLabel")}</FormField.Label>
+          <FormField.Label optional>
+            {t("llmOnboarding.custom.additionalConfigsLabel")}
+          </FormField.Label>
           <FormField.Description>
             {t("llmOnboarding.custom.additionalConfigsDescPrefix")}{" "}
             <span className="font-secondary-mono text-text-03 whitespace-nowrap inline-block">
@@ -278,7 +288,9 @@ function CustomFormFields(props: OnboardingFormChildProps<CustomFormValues>) {
           }
           className="w-full"
         >
-          <FormField.Label>{t("llmOnboarding.custom.modelConfigsLabel")}</FormField.Label>
+          <FormField.Label>
+            {t("llmOnboarding.custom.modelConfigsLabel")}
+          </FormField.Label>
           <FormField.Description>
             {t("llmOnboarding.custom.modelConfigsDesc")}
           </FormField.Description>
@@ -293,7 +305,10 @@ function CustomFormFields(props: OnboardingFormChildProps<CustomFormValues>) {
                 if (v === "") return { isValid: true };
                 return /^\d+$/.test(v)
                   ? { isValid: true }
-                  : { isValid: false, message: t("llmOnboarding.custom.mustBeNumber") };
+                  : {
+                      isValid: false,
+                      message: t("llmOnboarding.custom.mustBeNumber"),
+                    };
               }}
               onValidationError={setModelConfigError}
               mode="fixed-line"
@@ -324,7 +339,9 @@ function CustomFormFields(props: OnboardingFormChildProps<CustomFormValues>) {
             </FormField.Control>
             <FormField.Message
               messages={{
-                idle: t("llmOnboarding.custom.defaultModelHint", { appName: APP_NAME }),
+                idle: t("llmOnboarding.custom.defaultModelHint", {
+                  appName: APP_NAME,
+                }),
                 error: meta.error,
               }}
             />
@@ -358,15 +375,21 @@ export function CustomOnboardingForm({
   );
 
   const validationSchema = Yup.object().shape({
-    [FIELD_PROVIDER]: Yup.string().required(t("llmOnboarding.custom.providerRequired")),
+    [FIELD_PROVIDER]: Yup.string().required(
+      t("llmOnboarding.custom.providerRequired")
+    ),
     [FIELD_API_KEY]: Yup.string(),
     [FIELD_API_BASE]: Yup.string(),
     [FIELD_API_VERSION]: Yup.string(),
     [FIELD_MODEL_CONFIGURATIONS]: Yup.array()
       .of(
         Yup.object({
-          name: Yup.string().required(t("llmOnboardingForms.modelNameRequired")),
-          is_visible: Yup.boolean().required(t("llmOnboarding.custom.visibilityRequired")),
+          name: Yup.string().required(
+            t("llmOnboardingForms.modelNameRequired")
+          ),
+          is_visible: Yup.boolean().required(
+            t("llmOnboarding.custom.visibilityRequired")
+          ),
           max_input_tokens: Yup.number()
             .transform((value, originalValue) =>
               originalValue === "" ||

@@ -69,10 +69,14 @@ class ToolRegistry:
                 if orig_desc is None:
                     base_desc = desc_str
                     if "[category:" in base_desc:
-                        base_desc = base_desc.split("[category:")[0].split("[category_label:")[0].strip()
+                        base_desc = (
+                            base_desc.split("[category:")[0].split("[category_label:")[0].strip()
+                        )
                     orig_desc = base_desc
 
-                cat_label = _safe_t(f"categories.{cat_name}.label", cat_name or "") if cat_name else ""
+                cat_label = (
+                    _safe_t(f"categories.{cat_name}.label", cat_name or "") if cat_name else ""
+                )
 
                 trans_desc = None
                 if cat_name:
@@ -87,7 +91,9 @@ class ToolRegistry:
                 if cat_name:
                     trans_title = _safe_t(f"tools.{cat_name}.{orig_name}.name")
                 if trans_title is None:
-                    trans_title = _safe_t(f"tools.{orig_name}.name", orig_name.replace("_", " ").title())
+                    trans_title = _safe_t(
+                        f"tools.{orig_name}.name", orig_name.replace("_", " ").title()
+                    )
 
                 category_tag = f"[category:{cat_name}]" if cat_name else ""
                 label_tag = f"[category_label:{cat_label}]" if cat_label else ""

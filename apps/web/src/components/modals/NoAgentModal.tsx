@@ -16,22 +16,16 @@ export default function NoAgentModal() {
       <Modal.Content width="sm" height="sm">
         <Modal.Header icon={SvgUser} title={t("noAgent.title")} />
         <Modal.Body>
-          <Text as="p">
-            {t("noAgent.noAgentConfiguredMessage")}
-          </Text>
+          <Text as="p">{t("noAgent.noAgentConfiguredMessage")}</Text>
           {isAdmin ? (
             <>
-              <Text as="p">
-                {t("noAgent.adminCreateAgentMessage")}
-              </Text>
+              <Text as="p">{t("noAgent.adminCreateAgentMessage")}</Text>
               <Button className="w-full" href="/admin/agents">
                 {t("noAgent.goToAdminPanel")}
               </Button>
             </>
           ) : (
-            <Text as="p">
-              {t("noAgent.contactAdminMessage")}
-            </Text>
+            <Text as="p">{t("noAgent.contactAdminMessage")}</Text>
           )}
         </Modal.Body>
       </Modal.Content>

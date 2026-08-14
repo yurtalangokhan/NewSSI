@@ -24,7 +24,8 @@ import { cn } from "@/lib/utils";
 const DEFAULT_TREE_PANE_WIDTH = 480;
 const MIN_TREE_PANE_WIDTH = 320;
 const TREE_PANE_WIDTH_STORAGE_KEY = "admin-organizations-tree-pane-width";
-const ORGANIZATION_TREE_KEY = "/api/user-service/organizations/tree?max_depth=2";
+const ORGANIZATION_TREE_KEY =
+  "/api/user-service/organizations/tree?max_depth=2";
 const ORGANIZATION_LAYOUT_KEY = "/api/user-service/organizations/layout";
 const ORGANIZATION_MEMBERS_KEY = "/api/user-service/organizations/members";
 const SHOW_MEMBERS_STORAGE_KEY = "admin-organizations-show-members";
@@ -86,16 +87,15 @@ function mergeSubunits(
   });
 }
 
-function sortOrganizations(
-  first: OrganizationNode,
-  second: OrganizationNode
-) {
+function sortOrganizations(first: OrganizationNode, second: OrganizationNode) {
   const orderDifference =
     (first.order_index ?? Number.MAX_SAFE_INTEGER) -
     (second.order_index ?? Number.MAX_SAFE_INTEGER);
   if (orderDifference !== 0) return orderDifference;
   const nameDifference = first.name.localeCompare(second.name);
-  return nameDifference !== 0 ? nameDifference : first.id.localeCompare(second.id);
+  return nameDifference !== 0
+    ? nameDifference
+    : first.id.localeCompare(second.id);
 }
 
 function mergeOrganizationsById(...lists: OrganizationNode[][]) {
@@ -126,7 +126,9 @@ export default function OrganizationsPage() {
   const [searchError, setSearchError] = useState<string | null>(null);
   const [resultsLimited, setResultsLimited] = useState(false);
   const [revealLoading, setRevealLoading] = useState(false);
-  const [pendingReveal, setPendingReveal] = useState<PendingReveal | null>(null);
+  const [pendingReveal, setPendingReveal] = useState<PendingReveal | null>(
+    null
+  );
   const searchControllerRef = useRef<AbortController | null>(null);
   const searchRequestIdRef = useRef(0);
   const revealRequestIdRef = useRef(0);
@@ -196,7 +198,8 @@ export default function OrganizationsPage() {
   const [subunitsByParentId, setSubunitsByParentId] = useState<
     Record<string, OrganizationNode[]>
   >({});
-  const [unitMembersMap, setUnitMembersMap] = useState<OrganizationMembersByUnit>({});
+  const [unitMembersMap, setUnitMembersMap] =
+    useState<OrganizationMembersByUnit>({});
 
   const { data: treeData, isLoading } = useSWR<
     { roots: OrganizationNode[] } | OrganizationNode[]
@@ -233,7 +236,9 @@ export default function OrganizationsPage() {
       setSearchError(null);
       try {
         const response = await fetch(
-          `/api/user-service/organizations/search?q=${encodeURIComponent(trimmedQuery)}&max_results=100`,
+          `/api/user-service/organizations/search?q=${encodeURIComponent(
+            trimmedQuery
+          )}&max_results=100`,
           { signal: controller.signal }
         );
         if (!response.ok) throw new Error("organization-search-failed");
@@ -412,10 +417,9 @@ export default function OrganizationsPage() {
             );
             nestedChild = {
               ...ancestor,
-              children: mergeOrganizationsById(
-                ancestor.children ?? [],
-                [nestedChild]
-              ),
+              children: mergeOrganizationsById(ancestor.children ?? [], [
+                nestedChild,
+              ]),
               has_children: true,
             };
           });

@@ -461,7 +461,9 @@ export default function BuildChatPanel({
                         "transition-all duration-200",
                         "hover:bg-background-tint-inverted-01"
                       )}
-                      aria-label={t("app.craft.chatPanel.scrollToBottomTooltip")}
+                      aria-label={t(
+                        "app.craft.chatPanel.scrollToBottomTooltip"
+                      )}
                     >
                       <SvgChevronDown
                         size={20}

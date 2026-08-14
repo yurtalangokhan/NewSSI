@@ -22,17 +22,27 @@ export function agentIdsMatch(
   left: AgentId | MinimalPersonaSnapshot | null | undefined,
   right: AgentId | MinimalPersonaSnapshot | null | undefined
 ) {
-  if (left === null || left === undefined || right === null || right === undefined) {
+  if (
+    left === null ||
+    left === undefined ||
+    right === null ||
+    right === undefined
+  ) {
     return false;
   }
 
-  const leftValue = typeof left === "object" ? left.external_id ?? left.id : left;
-  const rightValue = typeof right === "object" ? right.external_id ?? right.id : right;
+  const leftValue =
+    typeof left === "object" ? left.external_id ?? left.id : left;
+  const rightValue =
+    typeof right === "object" ? right.external_id ?? right.id : right;
 
   return String(leftValue) === String(rightValue);
 }
 
-function sortAgents(left: MinimalPersonaSnapshot, right: MinimalPersonaSnapshot) {
+function sortAgents(
+  left: MinimalPersonaSnapshot,
+  right: MinimalPersonaSnapshot
+) {
   if (typeof left.id === "number" && typeof right.id === "number") {
     return right.id - left.id;
   }
@@ -109,7 +119,12 @@ export function useAgents() {
  */
 export function useAgent(agentId: AgentId | null) {
   const { i18n } = useTranslation();
-  const { data: personaData, error: personaError, isLoading: isPersonaLoading, mutate: mutatePersona } = useSWR<FullPersona>(
+  const {
+    data: personaData,
+    error: personaError,
+    isLoading: isPersonaLoading,
+    mutate: mutatePersona,
+  } = useSWR<FullPersona>(
     agentId && typeof agentId === "number"
       ? [buildAgentDetailApiPath(agentId), i18n.language]
       : null,

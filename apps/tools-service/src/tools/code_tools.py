@@ -42,7 +42,10 @@ class CodeTools(BaseToolCategory):
 
     @property
     def description(self) -> str:
-        return t("categories.code_execution.description", default="Run and test code in Python, Node.js, and other languages")
+        return t(
+            "categories.code_execution.description",
+            default="Run and test code in Python, Node.js, and other languages",
+        )
 
     @property
     def label(self) -> str:

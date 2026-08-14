@@ -139,7 +139,9 @@ export const PythonToolRenderer: MessageRenderer<PythonToolPacket, {}> = ({
       {/* Output */}
       {stdout && (
         <div className="rounded-md bg-background-neutral-02 p-3">
-          <div className="text-xs font-semibold mb-1 text-text-03">{t("timeline.outputLabel")}</div>
+          <div className="text-xs font-semibold mb-1 text-text-03">
+            {t("timeline.outputLabel")}
+          </div>
           <pre className="text-sm whitespace-pre-wrap font-mono text-text-01 overflow-x-auto">
             {stdout}
           </pre>

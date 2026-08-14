@@ -168,7 +168,9 @@ export default function ChatSearchCommandMenu({
   const handleNewSession = useCallback(() => {
     const currentRouteAgentId = currentAgent?.external_id ?? currentAgent?.id;
     const href = (() => {
-      if (!(combinedSettings?.settings?.disable_default_assistant && currentAgent)) {
+      if (
+        !(combinedSettings?.settings?.disable_default_assistant && currentAgent)
+      ) {
         if (!currentProjectId) {
           return "/app";
         }

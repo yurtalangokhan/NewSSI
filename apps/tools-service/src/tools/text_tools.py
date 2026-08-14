@@ -20,7 +20,10 @@ class TextTools(BaseToolCategory):
 
     @property
     def description(self) -> str:
-        return t("categories.text_processing.description", default="Text analysis and transformation utilities")
+        return t(
+            "categories.text_processing.description",
+            default="Text analysis and transformation utilities",
+        )
 
     @property
     def label(self) -> str:

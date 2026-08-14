@@ -22,7 +22,10 @@ class CommandTools(BaseToolCategory):
 
     @property
     def description(self) -> str:
-        return t("categories.command_execution.description", default="Shell command execution and system information")
+        return t(
+            "categories.command_execution.description",
+            default="Shell command execution and system information",
+        )
 
     @property
     def label(self) -> str:

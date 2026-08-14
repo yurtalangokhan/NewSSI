@@ -262,7 +262,9 @@ export function BuildLLMPopover({
       currentSelection?.provider === option.providerKey;
 
     // Build description with recommendation badge
-    const description = option.isRecommended ? t("recommendedBadge") : undefined;
+    const description = option.isRecommended
+      ? t("recommendedBadge")
+      : undefined;
 
     return (
       <div

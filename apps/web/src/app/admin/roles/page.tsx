@@ -92,7 +92,8 @@ function featureLabel(
   translate: (key: string, options?: Record<string, string>) => string
 ): string {
   return translate(`features.${feature}`, {
-    defaultValue: FEATURE_LABEL_FALLBACKS[feature] ?? feature.replace(/_/g, " "),
+    defaultValue:
+      FEATURE_LABEL_FALLBACKS[feature] ?? feature.replace(/_/g, " "),
   });
 }
 
@@ -982,7 +983,11 @@ function RolesManager() {
                     >
                       <span className="min-w-0">
                         <span className="flex items-center gap-2">
-                          <Text secondaryBody as="span" className="block truncate">
+                          <Text
+                            secondaryBody
+                            as="span"
+                            className="block truncate"
+                          >
                             {roleLabel(role.name)}
                           </Text>
                           {role.is_builtin && (
@@ -1023,7 +1028,11 @@ function RolesManager() {
                       rightChildren={selected ? <SvgCheck size={14} /> : null}
                     >
                       <span className="min-w-0">
-                        <Text secondaryBody as="span" className="block truncate capitalize">
+                        <Text
+                          secondaryBody
+                          as="span"
+                          className="block truncate capitalize"
+                        >
                           {coarseRoleLabel(role.name)}
                         </Text>
                         <Text

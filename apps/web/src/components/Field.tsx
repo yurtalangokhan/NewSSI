@@ -777,7 +777,13 @@ export const BooleanFormField = memo(function BooleanFormField({
                   >
                     <div className="flex items-center gap-x-2">
                       <Label small={small}>
-                        {`${label}${optional ? ` (${t("common.optional", { defaultValue: "Optional" })})` : ""}`}
+                        {`${label}${
+                          optional
+                            ? ` (${t("common.optional", {
+                                defaultValue: "Optional",
+                              })})`
+                            : ""
+                        }`}
                       </Label>
                       {tooltip && <ToolTipDetails>{tooltip}</ToolTipDetails>}
                     </div>
@@ -1020,7 +1026,9 @@ export function SelectorFormField({
               container={container}
             >
               {options.length === 0 ? (
-                <SelectItem value="default">{t("common.selectEllipsis")}</SelectItem>
+                <SelectItem value="default">
+                  {t("common.selectEllipsis")}
+                </SelectItem>
               ) : (
                 options.map((option) => (
                   <SelectItem

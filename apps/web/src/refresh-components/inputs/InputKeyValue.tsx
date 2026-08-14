@@ -274,7 +274,8 @@ const KeyValueInput = ({
   ...rest
 }: KeyValueInputProps) => {
   const { t } = useTranslation("common", { keyPrefix: "common" });
-  const resolvedAddButtonLabel = addButtonLabel ?? t("keyValueInput.addLineButton");
+  const resolvedAddButtonLabel =
+    addButtonLabel ?? t("keyValueInput.addLineButton");
   // Try to get field context if used within FormField (safe access)
   const fieldContext = useContext(FieldContext);
 
@@ -471,7 +472,10 @@ const KeyValueInput = ({
         <div
           className="flex flex-col gap-y-2"
           role="list"
-          aria-label={t("keyValueInput.pairsAriaLabel", { keyTitle, valueTitle })}
+          aria-label={t("keyValueInput.pairsAriaLabel", {
+            keyTitle,
+            valueTitle,
+          })}
         >
           {items.map((item, index) => (
             <div key={index} role="listitem">
@@ -503,7 +507,10 @@ const KeyValueInput = ({
           secondary
           disabled={disabled}
           leftIcon={SvgPlusCircle}
-          aria-label={t("keyValueInput.addPairAriaLabel", { keyTitle, valueTitle })}
+          aria-label={t("keyValueInput.addPairAriaLabel", {
+            keyTitle,
+            valueTitle,
+          })}
           type="button"
         >
           {resolvedAddButtonLabel}

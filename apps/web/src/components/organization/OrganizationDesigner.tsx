@@ -15,10 +15,7 @@ import {
   type OnInit,
 } from "@xyflow/react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import {
-  SvgArrowExchange,
-  SvgArrowUpDown,
-} from "@opal/icons";
+import { SvgArrowExchange, SvgArrowUpDown } from "@opal/icons";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "next-themes";
 import "@xyflow/react/dist/style.css";

@@ -21,7 +21,8 @@ export function formatErrorMessage(rawError: unknown): string {
       if (parsed.message) {
         let parsedMsg = parsed.message;
         if (
-          parsedMsg === "An invalid response was received from the upstream server" ||
+          parsedMsg ===
+            "An invalid response was received from the upstream server" ||
           parsedMsg.includes("upstream server")
         ) {
           parsedMsg = i18n.t("common.upstreamServerInvalidResponse", {

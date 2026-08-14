@@ -129,7 +129,8 @@ describe("Email/Password Login Workflow", () => {
       ok: false,
       status: 503,
       json: async () => ({ error: "Backend service unavailable" }),
-      text: async () => JSON.stringify({ error: "Backend service unavailable" }),
+      text: async () =>
+        JSON.stringify({ error: "Backend service unavailable" }),
     } as unknown as Response);
 
     render(<EmailPasswordForm isSignup={false} loginProvider="external" />);
@@ -143,7 +144,9 @@ describe("Email/Password Login Workflow", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText("Backend service unavailable")).toBeInTheDocument();
+      expect(
+        screen.getByText("Backend service unavailable")
+      ).toBeInTheDocument();
     });
   });
 

@@ -55,7 +55,11 @@ export function AccessTypeGroupSelector({
       }
 
       // Only set default access type if it's not already set, to avoid overriding user selections
-      if (!access_type.value && !canManagePublicAccess && !isAutoSyncSupported) {
+      if (
+        !access_type.value &&
+        !canManagePublicAccess &&
+        !isAutoSyncSupported
+      ) {
         access_type_helpers.setValue("private");
       }
 
@@ -124,7 +128,9 @@ export function AccessTypeGroupSelector({
                 <Text as="p" mainUiMuted text03>
                   {isAdmin
                     ? t("admin.connectorForm.groupSelector.visibleByGroups")
-                    : t("admin.connectorForm.groupSelector.curatorsSelectGroups")}
+                    : t(
+                        "admin.connectorForm.groupSelector.curatorsSelectGroups"
+                      )}
                 </Text>
               )}
             </div>

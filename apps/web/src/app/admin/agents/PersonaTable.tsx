@@ -43,7 +43,10 @@ function PersonaTypeDisplay({ persona }: { persona: Persona }) {
   }
 
   return (
-    <Text as="p">{t("admin.agents.typePersonal")} {persona.owner && <>({persona.owner.email})</>}</Text>
+    <Text as="p">
+      {t("admin.agents.typePersonal")}{" "}
+      {persona.owner && <>({persona.owner.email})</>}
+    </Text>
   );
 }
 
@@ -112,7 +115,9 @@ export function PersonasTable({
     });
 
     if (!response.ok) {
-      toast.error(t("admin.agents.errorUpdateOrder", { msg: await response.text() }));
+      toast.error(
+        t("admin.agents.errorUpdateOrder", { msg: await response.text() })
+      );
       setFinalPersonas(personas);
       await refreshPersonas();
       return;
@@ -139,7 +144,9 @@ export function PersonasTable({
         refreshPersonas();
         closeDeleteModal();
       } else {
-        toast.error(t("admin.agents.errorDeletePersona", { msg: await response.text() }));
+        toast.error(
+          t("admin.agents.errorDeletePersona", { msg: await response.text() })
+        );
       }
     }
   };
@@ -176,7 +183,11 @@ export function PersonasTable({
           icon={SvgAlertCircle}
           title={t("admin.agents.deleteModalTitle")}
           onClose={closeDeleteModal}
-          submit={<Button onClick={handleDeletePersona}>{t("admin.agents.deleteModalConfirm")}</Button>}
+          submit={
+            <Button onClick={handleDeletePersona}>
+              {t("admin.agents.deleteModalConfirm")}
+            </Button>
+          }
         >
           {t("admin.agents.deleteModalBody", { name: personaToDelete.name })}
         </ConfirmationModalLayout>
@@ -189,15 +200,23 @@ export function PersonasTable({
           const title = isDefault
             ? t("admin.agents.removeFeaturedTitle")
             : t("admin.agents.setFeaturedTitle");
-          const buttonText = isDefault 
+          const buttonText = isDefault
             ? t("admin.agents.removeFeaturedButton")
             : t("admin.agents.setFeaturedButton");
           const text = isDefault
-            ? t("admin.agents.removeFeaturedBody", { name: personaToToggleDefault.name })
-            : t("admin.agents.setFeaturedBody", { name: personaToToggleDefault.name });
+            ? t("admin.agents.removeFeaturedBody", {
+                name: personaToToggleDefault.name,
+              })
+            : t("admin.agents.setFeaturedBody", {
+                name: personaToToggleDefault.name,
+              });
           const additionalText = isDefault
-            ? t("admin.agents.removeFeaturedDescription", { name: personaToToggleDefault.name })
-            : t("admin.agents.setFeaturedDescription", { name: personaToToggleDefault.name });
+            ? t("admin.agents.removeFeaturedDescription", {
+                name: personaToToggleDefault.name,
+              })
+            : t("admin.agents.setFeaturedDescription", {
+                name: personaToToggleDefault.name,
+              });
 
           return (
             <ConfirmationModalLayout
@@ -239,7 +258,9 @@ export function PersonasTable({
                     className="mr-1 my-auto cursor-pointer"
                     onClick={() =>
                       router.push(
-                        `/app/agents/edit/${persona.id}?u=${Date.now()}` as Route
+                        `/app/agents/edit/${
+                          persona.id
+                        }?u=${Date.now()}` as Route
                       )
                     }
                   />
@@ -266,7 +287,9 @@ export function PersonasTable({
               >
                 <div className="my-auto flex-none w-22">
                   {!persona.featured ? (
-                    <div className="text-error">{t("admin.agents.notFeatured")}</div>
+                    <div className="text-error">
+                      {t("admin.agents.notFeatured")}
+                    </div>
                   ) : (
                     t("admin.agents.featured")
                   )}

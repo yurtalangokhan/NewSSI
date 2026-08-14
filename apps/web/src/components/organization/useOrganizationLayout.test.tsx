@@ -206,8 +206,9 @@ describe("useOrganizationLayout", () => {
       ])
     );
     // Serves the single atomic organization layout PUT request.
-    const fetchSpy = jest.spyOn(global, "fetch").mockImplementation(
-      async (_input, init) => {
+    const fetchSpy = jest
+      .spyOn(global, "fetch")
+      .mockImplementation(async (_input, init) => {
         const body = JSON.parse(String(init?.body)) as {
           positions: Array<{ organization_id: string; x: number; y: number }>;
         };
@@ -218,8 +219,7 @@ describe("useOrganizationLayout", () => {
           }),
           { status: 200 }
         );
-      }
-    );
+      });
     const { result } = renderHook(() =>
       useOrganizationLayout({ layout: completeLayout })
     );
@@ -284,9 +284,7 @@ describe("useOrganizationLayout", () => {
             (resolve) => {
               resolveOrdinarySave = () =>
                 resolve({
-                  positions: [
-                    { organization_id: "root", x: 100, y: 200 },
-                  ],
+                  positions: [{ organization_id: "root", x: 100, y: 200 }],
                   count: 1,
                 });
             }

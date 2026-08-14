@@ -121,13 +121,9 @@ const AdvancedEmbeddingFormPage = forwardRef<
                 t("reducedDimensionMinError"),
                 (value) => value === null || value === undefined || value >= 256
               )
-              .test(
-                "openai",
-                t("reducedDimensionOpenAIOnlyError"),
-                (value) => {
-                  return embeddingProviderType === "openai" || value === null;
-                }
-              ),
+              .test("openai", t("reducedDimensionOpenAIOnlyError"), (value) => {
+                return embeddingProviderType === "openai" || value === null;
+              }),
           })}
           onSubmit={async (_, { setSubmitting }) => {
             setSubmitting(false);

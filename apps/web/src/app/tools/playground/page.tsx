@@ -30,10 +30,13 @@ import { MailConfig, useMailConfigs } from "@/lib/mailConfigs";
 import _ from "lodash";
 
 function getSendEmailPlaygroundSchema(mailConfigs: MailConfig[]) {
-  const enumLabels = mailConfigs.reduce<Record<string, string>>((labels, config) => {
-    labels[config.id] = `${config.name} (${config.from_email})`;
-    return labels;
-  }, {});
+  const enumLabels = mailConfigs.reduce<Record<string, string>>(
+    (labels, config) => {
+      labels[config.id] = `${config.name} (${config.from_email})`;
+      return labels;
+    },
+    {}
+  );
 
   return {
     type: "object",
@@ -84,7 +87,10 @@ function getSendEmailPlaygroundSchema(mailConfigs: MailConfig[]) {
   };
 }
 
-function getPlaygroundSchema(tool: ToolWithCategory | null, mailConfigs: MailConfig[]) {
+function getPlaygroundSchema(
+  tool: ToolWithCategory | null,
+  mailConfigs: MailConfig[]
+) {
   if (tool?.name === "send_email") {
     return getSendEmailPlaygroundSchema(mailConfigs);
   }
@@ -188,7 +194,9 @@ function getLocalizedFieldLabel(
 ) {
   if (!t) return _.startCase(label);
   const labelKey = _.snakeCase(String(label || "")).toLowerCase();
-  return t(`toolPlayground.fieldLabels.${labelKey}`, { defaultValue: _.startCase(label) });
+  return t(`toolPlayground.fieldLabels.${labelKey}`, {
+    defaultValue: _.startCase(label),
+  });
 }
 
 function isFieldEmpty(value: any): boolean {
@@ -279,7 +287,9 @@ function SchemaForm({
                 </Text>
               )}
               <div
-                className={cn(errorMsg && "ring-1 ring-status-error-05 rounded-md")}
+                className={cn(
+                  errorMsg && "ring-1 ring-status-error-05 rounded-md"
+                )}
               >
                 {renderField(
                   [name],
@@ -321,7 +331,9 @@ function renderField(
         value={value || ""}
         onChange={(e) => onChange(e.target.value)}
       >
-        <option value="">{t ? t("toolPlayground.selectOption") : "Select an option"}</option>
+        <option value="">
+          {t ? t("toolPlayground.selectOption") : "Select an option"}
+        </option>
         {property.enum.map((option: string) => (
           <option key={option} value={option}>
             {property.enumLabels?.[option] || option}
@@ -366,7 +378,9 @@ function renderField(
           >
             <div className="mb-2 flex items-center justify-between gap-2">
               <Text as="p" text04 mainUiAction className="text-sm font-medium">
-                {t ? t("toolPlayground.itemIndex", { index: index + 1 }) : `Item ${index + 1}`}
+                {t
+                  ? t("toolPlayground.itemIndex", { index: index + 1 })
+                  : `Item ${index + 1}`}
               </Text>
               <Button
                 secondary
@@ -419,9 +433,12 @@ function renderField(
           id={fieldId}
           value={value || ""}
           onChange={(e) => onChange(e.target.value)}
-          placeholder={property.example || (t
-            ? t("toolPlayground.enterField", { label: localizedLabel })
-            : `Enter ${localizedLabel}`)}
+          placeholder={
+            property.example ||
+            (t
+              ? t("toolPlayground.enterField", { label: localizedLabel })
+              : `Enter ${localizedLabel}`)
+          }
           rows={5}
         />
       );
@@ -432,9 +449,12 @@ function renderField(
         id={fieldId}
         value={value || ""}
         onChange={(e) => onChange(e.target.value)}
-        placeholder={property.example || (t
-          ? t("toolPlayground.enterField", { label: localizedLabel })
-          : `Enter ${localizedLabel}`)}
+        placeholder={
+          property.example ||
+          (t
+            ? t("toolPlayground.enterField", { label: localizedLabel })
+            : `Enter ${localizedLabel}`)
+        }
         showClearButton={false}
       />
     );
@@ -452,9 +472,12 @@ function renderField(
             min={property.minimum}
             max={property.maximum}
             step={property.type === "integer" ? 1 : 0.1}
-            placeholder={property.example || (t
-              ? t("toolPlayground.enterField", { label: localizedLabel })
-              : `Enter ${localizedLabel}`)}
+            placeholder={
+              property.example ||
+              (t
+                ? t("toolPlayground.enterField", { label: localizedLabel })
+                : `Enter ${localizedLabel}`)
+            }
             showClearButton={false}
           />
           <div className="flex justify-between text-xs text-text-03">
@@ -475,9 +498,12 @@ function renderField(
         min={property.minimum}
         max={property.maximum}
         step={property.type === "integer" ? 1 : 0.1}
-        placeholder={property.example || (t
-          ? t("toolPlayground.enterField", { label: localizedLabel })
-          : `Enter ${localizedLabel}`)}
+        placeholder={
+          property.example ||
+          (t
+            ? t("toolPlayground.enterField", { label: localizedLabel })
+            : `Enter ${localizedLabel}`)
+        }
         showClearButton={false}
       />
     );
@@ -497,8 +523,8 @@ function renderField(
               ? t("toolPlayground.enabled")
               : "Enabled"
             : t
-            ? t("toolPlayground.disabled")
-            : "Disabled"}
+              ? t("toolPlayground.disabled")
+              : "Disabled"}
         </Text>
       </div>
     );
@@ -616,7 +642,9 @@ export default function ToolsPlaygroundPage() {
         }
       } catch (err) {
         const message =
-          err instanceof Error ? err.message : t("toolPlayground.failedToFetchTools");
+          err instanceof Error
+            ? err.message
+            : t("toolPlayground.failedToFetchTools");
         setError(message);
         toast.error(message);
       } finally {
@@ -719,7 +747,9 @@ export default function ToolsPlaygroundPage() {
       }
     } catch (err) {
       const message =
-          err instanceof Error ? err.message : t("toolPlayground.toolExecutionFailed");
+        err instanceof Error
+          ? err.message
+          : t("toolPlayground.toolExecutionFailed");
       setRunError(message);
     } finally {
       setIsRunning(false);
@@ -727,7 +757,9 @@ export default function ToolsPlaygroundPage() {
   }, [inputValues, selectedSchema, selectedTool, t]);
 
   const pageTitle = selectedTool
-    ? t("toolPlayground.toolPlaygroundTitle", { name: _.startCase(selectedTool.name) })
+    ? t("toolPlayground.toolPlaygroundTitle", {
+        name: _.startCase(selectedTool.name),
+      })
     : t("toolPlayground.toolsPlayground");
 
   return (
@@ -747,7 +779,9 @@ export default function ToolsPlaygroundPage() {
         </div>
         {selectedTool && (
           <Button primary onClick={handleRunTool} disabled={isRunning}>
-            {isRunning ? t("toolPlayground.running") : t("toolPlayground.runTool")}
+            {isRunning
+              ? t("toolPlayground.running")
+              : t("toolPlayground.runTool")}
           </Button>
         )}
       </div>
@@ -771,7 +805,9 @@ export default function ToolsPlaygroundPage() {
               }}
             >
               <div className="w-full sm:w-72">
-                <InputSelect.Trigger placeholder={t("toolPlayground.selectTool")} />
+                <InputSelect.Trigger
+                  placeholder={t("toolPlayground.selectTool")}
+                />
               </div>
               <InputSelect.Content>
                 {sortedCategories.map((category) => (
@@ -877,7 +913,9 @@ export default function ToolsPlaygroundPage() {
                         {categoryLabelMap[category] || _.startCase(category)}
                       </Text>
                       <Text as="p" text03 secondaryBody className="text-xs">
-                        {t("toolPlayground.toolsCount", { count: toolsInCategory.length })}
+                        {t("toolPlayground.toolsCount", {
+                          count: toolsInCategory.length,
+                        })}
                       </Text>
                     </div>
                     <span className="rounded-full border border-border-01 px-2 py-0.5 text-xs text-text-03">

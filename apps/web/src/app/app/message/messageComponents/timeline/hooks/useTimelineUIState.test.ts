@@ -107,7 +107,19 @@ describe("useTimelineUIState", () => {
       key: "0-0",
       turnIndex: 0,
       tabIndex: 0,
-      packets: [...packets],
+      packets: [
+        {
+          placement: { turn_index: 0, tab_index: 0 },
+          obj: { type: PacketType.REASONING_START },
+        },
+        {
+          placement: { turn_index: 0, tab_index: 0 },
+          obj: {
+            type: PacketType.REASONING_DELTA,
+            reasoning: "Thinking in progress...",
+          },
+        },
+      ],
     };
 
     const { result } = renderHook(() =>

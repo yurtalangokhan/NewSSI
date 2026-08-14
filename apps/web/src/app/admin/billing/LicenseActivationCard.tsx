@@ -69,9 +69,7 @@ export default function LicenseActivationCard({
       }, 1000);
     } catch (err) {
       console.error("Error activating license:", err);
-      setError(
-        err instanceof Error ? err.message : t("activateFailed")
-      );
+      setError(err instanceof Error ? err.message : t("activateFailed"));
     } finally {
       setIsActivating(false);
     }

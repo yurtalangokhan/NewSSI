@@ -87,9 +87,7 @@ describe("OrganizationTree", () => {
       <OrganizationTree organizations={mockOrganizations} {...mockHandlers} />
     );
 
-    expect(
-      screen.queryByText("Add Root Organization")
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Add Root Organization")).not.toBeInTheDocument();
   });
 
   it("calls onCreateOrg when creating the first root organization", async () => {
@@ -97,9 +95,7 @@ describe("OrganizationTree", () => {
     // Mock window.prompt
     global.prompt = jest.fn().mockReturnValue("New Organization");
 
-    render(
-      <OrganizationTree organizations={[]} {...mockHandlers} />
-    );
+    render(<OrganizationTree organizations={[]} {...mockHandlers} />);
 
     const addButton = screen.getByText("Create Organization");
     await user.click(addButton);
@@ -158,9 +154,7 @@ describe("OrganizationTree", () => {
     const user = setupUser();
     global.prompt = jest.fn().mockReturnValue(null);
 
-    render(
-      <OrganizationTree organizations={[]} {...mockHandlers} />
-    );
+    render(<OrganizationTree organizations={[]} {...mockHandlers} />);
 
     const addButton = screen.getByText("Create Organization");
     await user.click(addButton);
@@ -174,9 +168,7 @@ describe("OrganizationTree", () => {
     const user = setupUser();
     global.prompt = jest.fn().mockReturnValue("  Trimmed Name  ");
 
-    render(
-      <OrganizationTree organizations={[]} {...mockHandlers} />
-    );
+    render(<OrganizationTree organizations={[]} {...mockHandlers} />);
 
     const addButton = screen.getByText("Create Organization");
     await user.click(addButton);
@@ -246,7 +238,9 @@ describe("OrganizationTree", () => {
       },
     ];
 
-    render(<OrganizationTree organizations={deepHierarchy} {...mockHandlers} />);
+    render(
+      <OrganizationTree organizations={deepHierarchy} {...mockHandlers} />
+    );
 
     expect(screen.getByTestId("org-node-root")).toBeInTheDocument();
   });

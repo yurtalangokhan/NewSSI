@@ -436,9 +436,7 @@ const BuildOutputPanel = memo(({ onClose, isOpen }: BuildOutputPanelProps) => {
                   key={tab.value}
                   onClick={() => !isDisabled && handlePinnedTabClick(tab.value)}
                   disabled={isDisabled}
-                  title={
-                    isDisabled ? t("artifactsDisabledTooltip") : undefined
-                  }
+                  title={isDisabled ? t("artifactsDisabledTooltip") : undefined}
                   className={cn(
                     "relative inline-flex items-center justify-center gap-2 px-5",
                     "max-w-[15%] min-w-fit",

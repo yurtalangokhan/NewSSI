@@ -53,9 +53,7 @@ export default function LdapLoginForm() {
         <h1 className="text-xl font-semibold text-white">
           {t("ldapLogin.title")}
         </h1>
-        <p className="text-sm text-white/60 mt-1">
-          {t("ldapLogin.subtitle")}
-        </p>
+        <p className="text-sm text-white/60 mt-1">{t("ldapLogin.subtitle")}</p>
       </div>
 
       <Formik

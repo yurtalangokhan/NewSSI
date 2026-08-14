@@ -166,9 +166,7 @@ export const MemoizedLink = memo(
       typeof value === "string"
         ? value
         : Array.isArray(value)
-          ? value
-              .map((v) => (typeof v === "string" ? v : ""))
-              .join("")
+          ? value.map((v) => (typeof v === "string" ? v : "")).join("")
           : "";
 
     if (textValue.startsWith("*")) {

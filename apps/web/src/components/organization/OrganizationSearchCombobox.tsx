@@ -134,18 +134,18 @@ export function OrganizationSearchCombobox({
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={() => selectResult(result)}
               >
-                <span className={cn("flex min-w-0 flex-col items-start") }>
-                  <Text mainUiBody text04 className={cn("truncate") }>
+                <span className={cn("flex min-w-0 flex-col items-start")}>
+                  <Text mainUiBody text04 className={cn("truncate")}>
                     {result.name}
                   </Text>
-                  <Text secondaryBody text03 className={cn("truncate") }>
+                  <Text secondaryBody text03 className={cn("truncate")}>
                     {result.path}
                   </Text>
                 </span>
               </Button>
             ))}
           </div>
-          <div aria-live="polite" className={cn("px-2 py-1.5") }>
+          <div aria-live="polite" className={cn("px-2 py-1.5")}>
             <Text secondaryBody text03>
               {loading
                 ? t("admin.organizations.tree.searchLoading")

@@ -236,9 +236,11 @@ const handlers = {
 
 function mockCompleteTreeFetch(tree = organizations) {
   // Serves the unlimited organization tree GET used by diagram reset.
-  return jest.spyOn(global, "fetch").mockResolvedValue(
-    new Response(JSON.stringify({ roots: tree }), { status: 200 })
-  );
+  return jest
+    .spyOn(global, "fetch")
+    .mockResolvedValue(
+      new Response(JSON.stringify({ roots: tree }), { status: 200 })
+    );
 }
 
 describe("OrganizationDesigner", () => {
@@ -496,7 +498,9 @@ describe("OrganizationDesigner", () => {
       />
     );
 
-    const search = screen.getByRole("combobox", { name: "Search organizations" });
+    const search = screen.getByRole("combobox", {
+      name: "Search organizations",
+    });
     await user.type(search, "plat");
 
     expect(
@@ -758,9 +762,9 @@ describe("OrganizationDesigner", () => {
 
     const progress = await screen.findByRole("progressbar");
     expect(progress).toHaveAttribute("aria-valuenow", "100");
-    expect(progress.closest('[data-testid="reset-progress-content"]')).toHaveClass(
-      "w-full"
-    );
+    expect(
+      progress.closest('[data-testid="reset-progress-content"]')
+    ).toHaveClass("w-full");
     expect(screen.getByText("100%")).toBeVisible();
     expect(
       screen
@@ -922,10 +926,7 @@ describe("OrganizationDesigner", () => {
     expect(fitView).not.toHaveBeenCalled();
     expect(
       screen.getByRole("button", { name: /^Platform movable$/ })
-    ).toHaveAttribute(
-      "data-position-x",
-      "420"
-    );
+    ).toHaveAttribute("data-position-x", "420");
 
     fireEvent.click(
       screen.getByRole("button", { name: "Toggle subtree root" })

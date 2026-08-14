@@ -344,7 +344,9 @@ describe("OrganizationTree single-root action", () => {
       screen.getByRole("combobox", { name: "Search organizations" }),
       "or"
     );
-    expect(screen.getByText("Showing the first 100 results")).toBeInTheDocument();
+    expect(
+      screen.getByText("Showing the first 100 results")
+    ).toBeInTheDocument();
   });
 
   it("differentiates the selected organization with a light gray background", () => {

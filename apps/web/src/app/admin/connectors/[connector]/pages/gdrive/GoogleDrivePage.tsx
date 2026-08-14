@@ -105,12 +105,18 @@ const GDriveMain = () => {
 
   // Error states
   if (credentialsError || !credentialsData) {
-    return <ErrorCallout errorTitle={t("admin.connectors.failedToLoadCredentials")} />;
+    return (
+      <ErrorCallout
+        errorTitle={t("admin.connectors.failedToLoadCredentials")}
+      />
+    );
   }
 
   if (googleDriveCredentialsError || !googleDriveCredentials) {
     return (
-      <ErrorCallout errorTitle={t("admin.connectors.failedToLoadGDriveCredentials")} />
+      <ErrorCallout
+        errorTitle={t("admin.connectors.failedToLoadGDriveCredentials")}
+      />
     );
   }
 
@@ -119,13 +125,17 @@ const GDriveMain = () => {
     !serviceAccountKeySuccessfullyFetched
   ) {
     return (
-      <ErrorCallout errorTitle={t("admin.connectors.errorLoadingGDriveAppCredentials")} />
+      <ErrorCallout
+        errorTitle={t("admin.connectors.errorLoadingGDriveAppCredentials")}
+      />
     );
   }
 
   if (googleDriveConnectorsError) {
     return (
-      <ErrorCallout errorTitle={t("admin.connectors.failedToLoadGDriveConnectors")} />
+      <ErrorCallout
+        errorTitle={t("admin.connectors.failedToLoadGDriveConnectors")}
+      />
     );
   }
 

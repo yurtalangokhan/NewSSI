@@ -79,12 +79,10 @@ function readGenerationState(packets: GeneratedFilePacket[]): GenerationState {
   return state;
 }
 
-export const GeneratedFileRenderer: MessageRenderer<GeneratedFilePacket, {}> = ({
-  packets,
-  onComplete,
-  stopPacketSeen,
-  children,
-}) => {
+export const GeneratedFileRenderer: MessageRenderer<
+  GeneratedFilePacket,
+  {}
+> = ({ packets, onComplete, stopPacketSeen, children }) => {
   const { t } = useTranslation();
   const [previewOpen, setPreviewOpen] = useState(false);
   // The group also carries a synthetic SECTION_END packet once the turn

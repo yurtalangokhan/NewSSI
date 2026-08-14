@@ -43,7 +43,8 @@ function getIcon(
 function getDescription(file: ProjectFile): string {
   const s = String(file.status || "");
   const typeLabel = getFileExtension(file.name);
-  if (s === UserFileStatus.PROCESSING) return i18n.t("app.userFiles.processing");
+  if (s === UserFileStatus.PROCESSING)
+    return i18n.t("app.userFiles.processing");
   if (s === UserFileStatus.UPLOADING) return i18n.t("app.userFiles.uploading");
   if (s === UserFileStatus.DELETING) return i18n.t("app.userFiles.deleting");
   if (s === UserFileStatus.COMPLETED) return typeLabel;

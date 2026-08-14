@@ -218,7 +218,11 @@ function ShareAgentFormContent({ agentId }: ShareAgentFormContentProps) {
 
   return (
     <Modal.Content width="sm" height="lg">
-      <Modal.Header icon={SvgShare} title={t("shareAgent.title")} onClose={handleClose} />
+      <Modal.Header
+        icon={SvgShare}
+        title={t("shareAgent.title")}
+        onClose={handleClose}
+      />
 
       <Modal.Body padding={0.5}>
         <Card variant="borderless" padding={0.5}>
@@ -260,7 +264,9 @@ function ShareAgentFormContent({ agentId }: ShareAgentFormContentProps) {
                         <LineItem
                           key={`user-${user.id}`}
                           icon={SvgUser}
-                          description={isCurrentUser ? t("shareAgent.youLabel") : undefined}
+                          description={
+                            isCurrentUser ? t("shareAgent.youLabel") : undefined
+                          }
                           rightChildren={
                             isOwner || (isCurrentUser && !agentId) ? (
                               // Owner will always have the agent "shared" with it.
@@ -368,7 +374,7 @@ function ShareAgentFormContent({ agentId }: ShareAgentFormContentProps) {
           left={
             agentId ? (
               <Button secondary leftIcon={SvgLink} onClick={handleCopyLink}>
-                  {t("shareAgent.copyLinkButton")}
+                {t("shareAgent.copyLinkButton")}
               </Button>
             ) : undefined
           }

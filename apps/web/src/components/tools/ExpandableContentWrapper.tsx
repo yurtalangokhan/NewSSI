@@ -88,9 +88,7 @@ export default function ExpandableContentWrapper({
               size="sm"
               onClick={toggleExpand}
               icon={expanded ? SvgFold : SvgMaximize2}
-              tooltip={
-                expanded ? t("common.minimize") : t("common.fullScreen")
-              }
+              tooltip={expanded ? t("common.minimize") : t("common.fullScreen")}
             />
             <Button
               prominence="tertiary"

@@ -84,9 +84,7 @@ export default function BuiltInToolsSection({
         }
       } catch (err) {
         const errorMsg =
-          err instanceof Error
-            ? err.message
-            : t("admin.mcp.fetchingTools");
+          err instanceof Error ? err.message : t("admin.mcp.fetchingTools");
         setError(errorMsg);
         toast.error(errorMsg);
       } finally {
@@ -208,7 +206,6 @@ export default function BuiltInToolsSection({
           ))}
         </div>
       )}
-
     </div>
   );
 }

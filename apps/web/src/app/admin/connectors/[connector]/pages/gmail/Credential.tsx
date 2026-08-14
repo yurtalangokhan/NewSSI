@@ -89,7 +89,9 @@ const GmailCredentialUpload = ({ onSuccess }: { onSuccess?: () => void }) => {
           }
         } else {
           const errorMsg = await response.text();
-          toast.error(t("googleCredentials.failedUploadAppCredentials", { errorMsg }));
+          toast.error(
+            t("googleCredentials.failedUploadAppCredentials", { errorMsg })
+          );
         }
       }
 
@@ -112,7 +114,9 @@ const GmailCredentialUpload = ({ onSuccess }: { onSuccess?: () => void }) => {
           }
         } else {
           const errorMsg = await response.text();
-          toast.error(t("googleCredentials.failedUploadServiceAccountKey", { errorMsg }));
+          toast.error(
+            t("googleCredentials.failedUploadServiceAccountKey", { errorMsg })
+          );
         }
       }
       setIsUploading(false);
@@ -187,7 +191,9 @@ const GmailCredentialUpload = ({ onSuccess }: { onSuccess?: () => void }) => {
               )}
               <span className="text-sm text-text-500">
                 {isUploading
-                  ? t("googleCredentials.uploading", { fileName: truncateString(fileName || "file", 50) })
+                  ? t("googleCredentials.uploading", {
+                      fileName: truncateString(fileName || "file", 50),
+                    })
                   : isDragging
                     ? t("googleCredentials.dropJsonHere")
                     : truncateString(
@@ -262,7 +268,7 @@ export const GmailJsonUploadSection = ({
         <div className="flex items-start py-3 px-4 bg-yellow-50/30 dark:bg-yellow-900/5 rounded">
           <FiAlertTriangle className="text-yellow-500 h-5 w-5 mr-2 mt-0.5 flex-shrink-0" />
           <p className="text-sm">
-              {t("googleCredentials.curatorsCannotSetupGmail")}
+            {t("googleCredentials.curatorsCannotSetupGmail")}
           </p>
         </div>
       </div>
@@ -271,9 +277,7 @@ export const GmailJsonUploadSection = ({
 
   return (
     <div>
-      <p className="text-sm mb-3">
-        {t("googleCredentials.connectGmailDesc")}
-      </p>
+      <p className="text-sm mb-3">{t("googleCredentials.connectGmailDesc")}</p>
       <div className="mb-4">
         <a
           className="text-primary hover:text-primary/80 flex items-center gap-1 text-sm"
@@ -359,7 +363,11 @@ export const GmailJsonUploadSection = ({
                     handleSuccess();
                   } else {
                     const errorMsg = await response.text();
-                  toast.error(t("googleCredentials.failedDeleteCredentials", { errorMsg }));
+                    toast.error(
+                      t("googleCredentials.failedDeleteCredentials", {
+                        errorMsg,
+                      })
+                    );
                   }
                 }}
               >
@@ -464,7 +472,9 @@ export const GmailAuthSection = ({
           <div className="py-3 px-4 bg-blue-50/30 dark:bg-blue-900/5 rounded mb-4 flex items-start">
             <FiCheck className="text-blue-500 h-5 w-5 mr-2 mt-0.5 flex-shrink-0" />
             <div className="flex-1">
-              <span className="font-medium block">{t("googleCredentials.authenticationComplete")}</span>
+              <span className="font-medium block">
+                {t("googleCredentials.authenticationComplete")}
+              </span>
               <p className="text-sm mt-1 text-text-500 dark:text-text-400 break-words">
                 {t("googleCredentials.gmailAuthenticatedDesc")}
               </p>
@@ -505,7 +515,9 @@ export const GmailAuthSection = ({
   ) {
     return (
       <div>
-        <SectionHeader>{t("googleCredentials.gmailAuthentication")}</SectionHeader>
+        <SectionHeader>
+          {t("googleCredentials.gmailAuthentication")}
+        </SectionHeader>
         <div className="mt-4">
           <div className="flex items-start py-3 px-4 bg-yellow-50/30 dark:bg-yellow-900/5 rounded">
             <FiAlertTriangle className="text-yellow-500 h-5 w-5 mr-2 mt-0.5 flex-shrink-0" />
@@ -548,19 +560,21 @@ export const GmailAuthSection = ({
                 );
 
                 if (response.ok) {
-                  toast.success(
-                    t("googleCredentials.createdServiceAccount")
-                  );
+                  toast.success(t("googleCredentials.createdServiceAccount"));
                   refreshCredentials();
                 } else {
                   const errorMsg = await response.text();
                   toast.error(
-                    t("googleCredentials.failedCreateServiceAccount", { errorMsg })
+                    t("googleCredentials.failedCreateServiceAccount", {
+                      errorMsg,
+                    })
                   );
                 }
               } catch (error) {
                 toast.error(
-                  t("googleCredentials.failedCreateServiceAccount", { errorMsg: error })
+                  t("googleCredentials.failedCreateServiceAccount", {
+                    errorMsg: error,
+                  })
                 );
               } finally {
                 formikHelpers.setSubmitting(false);
@@ -576,7 +590,9 @@ export const GmailAuthSection = ({
                 />
                 <div className="flex">
                   <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting ? t("googleCredentials.creating") : t("googleCredentials.createCredential")}
+                    {isSubmitting
+                      ? t("googleCredentials.creating")
+                      : t("googleCredentials.createCredential")}
                   </Button>
                 </div>
               </Form>
@@ -591,9 +607,7 @@ export const GmailAuthSection = ({
     return (
       <div>
         <div className="bg-background-50/30 dark:bg-background-900/20 rounded mb-4">
-          <p className="text-sm">
-            {t("googleCredentials.gmailOAuthDesc")}
-          </p>
+          <p className="text-sm">{t("googleCredentials.gmailOAuthDesc")}</p>
         </div>
         <Button
           disabled={isAuthenticating}
@@ -625,7 +639,9 @@ export const GmailAuthSection = ({
             }
           }}
         >
-          {isAuthenticating ? t("googleCredentials.authenticating") : t("googleCredentials.authenticateWithGmail")}
+          {isAuthenticating
+            ? t("googleCredentials.authenticating")
+            : t("googleCredentials.authenticateWithGmail")}
         </Button>
       </div>
     );

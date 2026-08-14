@@ -144,12 +144,15 @@ interface UseChatControllerProps {
 }
 
 async function stopChatSession(chatSessionId: string): Promise<void> {
-  const response = await authenticatedFetch(`/api/chat/stop-chat-session/${chatSessionId}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-  });
+  const response = await authenticatedFetch(
+    `/api/chat/stop-chat-session/${chatSessionId}`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    }
+  );
 
   if (!response.ok) {
     throw new Error(`Failed to stop chat session: ${response.statusText}`);
@@ -422,7 +425,9 @@ export default function useChatController({
     }: OnSubmitProps) => {
       const projectId = params(SEARCH_PARAM_NAMES.PROJECT_ID);
       const parsedProjectIdFromUrl =
-        projectId !== null && projectId !== undefined ? parseInt(projectId) : null;
+        projectId !== null && projectId !== undefined
+          ? parseInt(projectId)
+          : null;
       const activeProjectId = Number.isFinite(parsedProjectIdFromUrl)
         ? parsedProjectIdFromUrl
         : currentProjectDetails?.project?.id ?? null;
@@ -622,7 +627,9 @@ export default function useChatController({
       const hasExplicitResendTarget =
         messageIdToResend !== undefined && messageIdToResend !== null;
       const messageToResend = hasExplicitResendTarget
-        ? currentHistory.find((message) => message.messageId === messageIdToResend)
+        ? currentHistory.find(
+            (message) => message.messageId === messageIdToResend
+          )
         : undefined;
       if (messageIdToResend && regenerationRequest) {
         updateRegenerationState(
@@ -673,11 +680,27 @@ export default function useChatController({
         ...(!regenerationRequest ? messageToResend?.files ?? [] : []),
       ];
       const effectiveFileDescriptors = Array.from(
-        new Map(rawEffectiveFileDescriptors.map((file) => [file.id, file])).values()
+        new Map(
+          rawEffectiveFileDescriptors.map((file) => [file.id, file])
+        ).values()
       );
 
-      console.log("[onSubmit] effectiveFileDescriptors:", effectiveFileDescriptors.map(f => ({ id: f.id, type: f.type, name: f.name })));
-      console.log("[onSubmit] currentMessageFiles passed in:", currentMessageFiles.map(f => ({ file_id: f.file_id, name: f.name, status: f.status })));
+      console.log(
+        "[onSubmit] effectiveFileDescriptors:",
+        effectiveFileDescriptors.map((f) => ({
+          id: f.id,
+          type: f.type,
+          name: f.name,
+        }))
+      );
+      console.log(
+        "[onSubmit] currentMessageFiles passed in:",
+        currentMessageFiles.map((f) => ({
+          file_id: f.file_id,
+          name: f.name,
+          status: f.status,
+        }))
+      );
 
       updateChatStateAction(frozenSessionId, "loading");
 
@@ -923,8 +946,12 @@ export default function useChatController({
               // Accumulate knowledge-base context files separately — do NOT touch userMessageFiles.
               const newContextFiles = userFiles.filter(
                 (newFile) =>
-                  !agentContextFiles.some((existingFile) => existingFile.id === newFile.id) &&
-                  !userMessageFiles.some((existingFile) => existingFile.id === newFile.id)
+                  !agentContextFiles.some(
+                    (existingFile) => existingFile.id === newFile.id
+                  ) &&
+                  !userMessageFiles.some(
+                    (existingFile) => existingFile.id === newFile.id
+                  )
               );
               agentContextFiles = agentContextFiles.concat(newContextFiles);
             }
@@ -932,11 +959,17 @@ export default function useChatController({
             if (Object.hasOwn(packet, "file_ids")) {
               // Merge instead of replace so multiple file_ids packets don't overwrite each other.
               const currentImages: FileDescriptor[] = aiMessageImages ?? [];
-              const incomingImages: FileDescriptor[] = (packet as FileChatDisplay).file_ids.map(
-                (fileId) => ({ id: fileId, type: ChatFileType.IMAGE })
-              );
+              const incomingImages: FileDescriptor[] = (
+                packet as FileChatDisplay
+              ).file_ids.map((fileId) => ({
+                id: fileId,
+                type: ChatFileType.IMAGE,
+              }));
               const newImages = incomingImages.filter(
-                (img) => !currentImages.some((existing: FileDescriptor) => existing.id === img.id)
+                (img) =>
+                  !currentImages.some(
+                    (existing: FileDescriptor) => existing.id === img.id
+                  )
               );
               aiMessageImages = currentImages.concat(newImages);
             } else if (
@@ -963,43 +996,51 @@ export default function useChatController({
                 updateCanContinue(true, frozenSessionId);
               }
             } else if (Object.hasOwn(packet, "obj")) {
-               packets.push(packet as Packet);
-               packetsVersion++;
-               
-               // Debug: log packet type
-               const packetObj = (packet as Packet).obj;
-               if (packetObj?.type === 'message_delta' || packetObj?.type === 'message_start') {
-                 console.log('[ChatController] Received packet:', packetObj.type, 'content:', String(packetObj?.content || '').substring(0, 50));
-               }
+              packets.push(packet as Packet);
+              packetsVersion++;
 
-                if (packetObj.type === "citation_info") {
-                  const citationInfo = packetObj as {
-                    type: "citation_info";
-                    citation_number: number;
-                    document_id: string;
-                  };
-                  citations = {
-                    ...(citations || {}),
-                    [citationInfo.citation_number]: citationInfo.document_id,
-                  };
-                 } else if (packetObj.type === "message_delta") {
-                   const content = (packetObj as any).content;
-                   if (typeof content === "string") {
-                     answer += content;
-                   }
-                 } else if (packetObj.type === "message_start") {
-                   const messageStart = packetObj as MessageStart;
-                   if (messageStart.final_documents) {
-                    documents = messageStart.final_documents;
-                    updateSelectedNodeForDocDisplay(
-                      frozenSessionId,
-                      initialAgentNode.nodeId
-                    );
-                  }
+              // Debug: log packet type
+              const packetObj = (packet as Packet).obj;
+              if (
+                packetObj?.type === "message_delta" ||
+                packetObj?.type === "message_start"
+              ) {
+                console.log(
+                  "[ChatController] Received packet:",
+                  packetObj.type,
+                  "content:",
+                  String(packetObj?.content || "").substring(0, 50)
+                );
+              }
+
+              if (packetObj.type === "citation_info") {
+                const citationInfo = packetObj as {
+                  type: "citation_info";
+                  citation_number: number;
+                  document_id: string;
+                };
+                citations = {
+                  ...(citations || {}),
+                  [citationInfo.citation_number]: citationInfo.document_id,
+                };
+              } else if (packetObj.type === "message_delta") {
+                const content = (packetObj as any).content;
+                if (typeof content === "string") {
+                  answer += content;
                 }
-              } else {
-               console.warn("Unknown packet:", JSON.stringify(packet));
-             }
+              } else if (packetObj.type === "message_start") {
+                const messageStart = packetObj as MessageStart;
+                if (messageStart.final_documents) {
+                  documents = messageStart.final_documents;
+                  updateSelectedNodeForDocDisplay(
+                    frozenSessionId,
+                    initialAgentNode.nodeId
+                  );
+                }
+              }
+            } else {
+              console.warn("Unknown packet:", JSON.stringify(packet));
+            }
 
             // on initial message send, we insert a dummy system message
             // set this as the parent here if no parent is set
@@ -1007,8 +1048,11 @@ export default function useChatController({
               parentMessage || currentMessageTreeLocal?.get(SYSTEM_NODE_ID)!;
 
             // Debug: log packets being passed to message tree
-            console.log('[ChatController] Updating message tree with packets:', packets.length);
-            
+            console.log(
+              "[ChatController] Updating message tree with packets:",
+              packets.length
+            );
+
             currentMessageTreeLocal = upsertToCompleteMessageTree({
               messages: [
                 {
@@ -1193,15 +1237,18 @@ export default function useChatController({
       }
 
       try {
-        const response = await authenticatedFetch("/api/chat/seed-chat-session-from-slack", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            chat_session_id: slackChatId,
-          }),
-        });
+        const response = await authenticatedFetch(
+          "/api/chat/seed-chat-session-from-slack",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              chat_session_id: slackChatId,
+            }),
+          }
+        );
 
         if (!response.ok) {
           throw new Error("Failed to seed chat from Slack");

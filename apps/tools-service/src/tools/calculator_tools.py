@@ -20,7 +20,9 @@ class CalculatorTools(BaseToolCategory):
 
     @property
     def description(self) -> str:
-        return t("categories.calculator.description", default="Safe mathematical expression evaluation")
+        return t(
+            "categories.calculator.description", default="Safe mathematical expression evaluation"
+        )
 
     @property
     def label(self) -> str:

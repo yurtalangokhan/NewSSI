@@ -268,7 +268,9 @@ class WebTools(BaseToolCategory):
 
     @property
     def description(self) -> str:
-        return t("categories.web_search.description", default="Web search and webpage content fetching")
+        return t(
+            "categories.web_search.description", default="Web search and webpage content fetching"
+        )
 
     @property
     def label(self) -> str:

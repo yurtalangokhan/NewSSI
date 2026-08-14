@@ -85,7 +85,10 @@ function GuildDetailContent({
   return (
     <>
       {!isRegistered && (
-        <Callout type="notice" title={t("admin.discord.waitingForRegistration")}>
+        <Callout
+          type="notice"
+          title={t("admin.discord.waitingForRegistration")}
+        >
           {t("admin.discord.waitingForRegistrationBody")}
         </Callout>
       )}
@@ -130,7 +133,10 @@ function GuildDetailContent({
         ) : channelsError ? (
           <ErrorCallout
             errorTitle={t("admin.discord.loadChannelsErrorTitle")}
-            errorMsg={channelsError?.info?.detail || t("admin.discord.loadChannelsErrorMsg")}
+            errorMsg={
+              channelsError?.info?.detail ||
+              t("admin.discord.loadChannelsErrorMsg")
+            }
           />
         ) : (
           <DiscordChannelsTable
@@ -284,13 +290,17 @@ export default function Page({ params }: Props) {
         // Refresh to get actual server state when some updates failed
         refreshChannels();
       } else {
-        toast.success(t("admin.discord.bulkUpdateSuccess", { count: succeeded }));
+        toast.success(
+          t("admin.discord.bulkUpdateSuccess", { count: succeeded })
+        );
         // Update original to match local (avoids flash from refresh)
         setOriginalChannels(localChannels);
       }
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : t("admin.discord.updateChannelsFailed")
+        err instanceof Error
+          ? err.message
+          : t("admin.discord.updateChannelsFailed")
       );
     } finally {
       setIsUpdating(false);
@@ -313,7 +323,9 @@ export default function Page({ params }: Props) {
       );
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : t("admin.discord.updateAgentFailed")
+        err instanceof Error
+          ? err.message
+          : t("admin.discord.updateAgentFailed")
       );
     } finally {
       setIsUpdating(false);
@@ -340,7 +352,8 @@ export default function Page({ params }: Props) {
       <SettingsLayouts.Header
         icon={SvgServer}
         title={
-          guild?.guild_name || t("admin.discord.serverFallbackName", { id: guildId })
+          guild?.guild_name ||
+          t("admin.discord.serverFallbackName", { id: guildId })
         }
         description={registeredText}
         backButton

@@ -102,8 +102,7 @@ describe("BedrockOnboardingForm", () => {
   const descriptionText =
     /^llmOnboarding\.setupBedrockDesc$|Connect to AWS and set up your Amazon Bedrock models/i;
   const awsRegionText = /^llmOnboarding\.awsRegion$|^AWS Region$/i;
-  const authMethodText =
-    /^llmOnboarding\.authMethod$|^Authentication Method$/i;
+  const authMethodText = /^llmOnboarding\.authMethod$|^Authentication Method$/i;
   const defaultModelText = /^llmOnboarding\.defaultModel$|^Default Model$/i;
   const awsAccessKeyIdText =
     /^llmOnboarding\.awsAccessKeyId$|^AWS Access Key ID$/i;
@@ -136,11 +135,7 @@ describe("BedrockOnboardingForm", () => {
     test("renders description", () => {
       render(<BedrockOnboardingForm {...defaultProps} />);
 
-      expect(
-        screen.getByText(
-          descriptionText
-        )
-      ).toBeInTheDocument();
+      expect(screen.getByText(descriptionText)).toBeInTheDocument();
     });
 
     test("renders AWS Region field", () => {
@@ -201,9 +196,7 @@ describe("BedrockOnboardingForm", () => {
 
       // Should show IAM info message
       await waitFor(() => {
-        expect(
-          screen.getByText(iamDescText)
-        ).toBeInTheDocument();
+        expect(screen.getByText(iamDescText)).toBeInTheDocument();
       });
     });
 
@@ -244,9 +237,7 @@ describe("BedrockOnboardingForm", () => {
       await user.click(longTermOption);
 
       await waitFor(() => {
-        expect(
-          screen.getByText(awsLongTermKeyText)
-        ).toBeInTheDocument();
+        expect(screen.getByText(awsLongTermKeyText)).toBeInTheDocument();
       });
     });
   });

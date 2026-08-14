@@ -63,7 +63,9 @@ function AvailabilityFlag({
         as="span"
         secondaryBody
         className={
-          available ? "leading-none text-status-success-05" : "leading-none text-status-error-05"
+          available
+            ? "leading-none text-status-success-05"
+            : "leading-none text-status-error-05"
         }
       >
         {label}
@@ -147,7 +149,9 @@ export function groupLlmOptions(
     const groupKey =
       isAggregator && option.vendor
         ? `${provider}/${option.vendor.toLowerCase()}`
-        : `${provider}/${option.providerId || option.providerDisplayName.toLowerCase()}`;
+        : `${provider}/${
+            option.providerId || option.providerDisplayName.toLowerCase()
+          }`;
 
     if (!groups.has(groupKey)) {
       let displayName: string;
@@ -475,13 +479,13 @@ export default function LLMPopover({
               folded
                 ? SvgRefreshCw
                 : hasAgentSelection && selectedAgent.id !== 0
-                  ? ((props: React.SVGProps<SVGSVGElement>) => (
+                  ? (props: React.SVGProps<SVGSVGElement>) => (
                       <AgentAvatar
                         agent={selectedAgent}
                         size={16}
                         {...(props as any)}
                       />
-                    ))
+                    )
                   : getProviderIcon(
                       llmManager.currentLlm.provider,
                       llmManager.currentLlm.modelName
@@ -522,7 +526,7 @@ export default function LLMPopover({
                 <Text secondaryBody text03 className="px-2 py-1">
                   {t("app.llmPopover.agentSectionTitle")}
                 </Text>
-                {filteredAgents.map((agent) => (
+                {filteredAgents.map((agent) =>
                   (() => {
                     const isAvailable = isAgentAvailableForSelection(agent);
                     return (
@@ -549,7 +553,7 @@ export default function LLMPopover({
                       </LineItem>
                     );
                   })()
-                ))}
+                )}
                 <div className="mx-2 my-1 border-t border-border-02" />
               </div>
             )}

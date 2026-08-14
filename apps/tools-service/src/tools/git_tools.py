@@ -31,7 +31,10 @@ class GitTools(BaseToolCategory):
 
     @property
     def description(self) -> str:
-        return t("categories.git.description", default="Git clone, pull, push, commit, and branch operations")
+        return t(
+            "categories.git.description",
+            default="Git clone, pull, push, commit, and branch operations",
+        )
 
     @property
     def label(self) -> str:

@@ -275,8 +275,10 @@ const DocumentsSidebar = memo(
               <SectionHeader
                 title={
                   hasCitedInternal
-                    ? t("moreSourcesHeader")
-                    : t("foundSourcesHeader")
+                   
+                  ? t("moreSourcesHeader")
+                   
+                  : t("foundSourcesHeader")
                 }
               />
               <ChatDocumentDisplayWrapper>

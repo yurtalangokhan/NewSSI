@@ -103,7 +103,9 @@ function VertexAIFormFields(
             state={state}
             className="w-full"
           >
-            <FormField.Label>{t("llmOnboarding.credentialsFile")}</FormField.Label>
+            <FormField.Label>
+              {t("llmOnboarding.credentialsFile")}
+            </FormField.Label>
             <FormField.Control>
               <InputFile
                 setValue={(value) => helper.setValue(value)}
@@ -190,7 +192,8 @@ function VertexAIFormFields(
                 messages={{
                   loading: t("llmOnboarding.fetchingModels"),
                   success: t("llmOnboarding.modelsFetched"),
-                  error: modelsErrorMessage || t("llmOnboarding.failedFetchModels"),
+                  error:
+                    modelsErrorMessage || t("llmOnboarding.failedFetchModels"),
                 }}
               />
             )}
@@ -223,9 +226,13 @@ export function VertexAIOnboardingForm({
   );
 
   const validationSchema = Yup.object().shape({
-    [FIELD_DEFAULT_MODEL_NAME]: Yup.string().required(t("llmOnboardingForms.modelNameRequired")),
+    [FIELD_DEFAULT_MODEL_NAME]: Yup.string().required(
+      t("llmOnboardingForms.modelNameRequired")
+    ),
     custom_config: Yup.object().shape({
-      vertex_credentials: Yup.string().required(t("llmOnboardingForms.credentialsRequired")),
+      vertex_credentials: Yup.string().required(
+        t("llmOnboardingForms.credentialsRequired")
+      ),
     }),
   });
 

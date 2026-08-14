@@ -131,21 +131,23 @@ jest.mock("@/components/organization/OrganizationTree", () => ({
       <button onClick={() => onSelectOrg(organizations[0])}>
         Select Platform
       </button>
-      <button onClick={() => onExpandOrg?.("org-1")}>
-        Expand org-1
-      </button>
+      <button onClick={() => onExpandOrg?.("org-1")}>Expand org-1</button>
       <button onClick={() => onSearch("runtime")}>Search runtime</button>
       <button onClick={() => onSearch("security")}>Search security</button>
       <span>Search loading: {String(searchLoading)}</span>
       <span>Search error: {searchError ?? "none"}</span>
       <span>Search limited: {String(resultsLimited)}</span>
       <span>
-        Search results: {searchResults?.map((result: any) => result.name).join(", ")}
+        Search results:{" "}
+        {searchResults?.map((result: any) => result.name).join(", ")}
       </span>
       <span>
         Loaded platform children:{" "}
         {organizations
-          .flatMap((organization: any) => [organization, ...(organization.children ?? [])])
+          .flatMap((organization: any) => [
+            organization,
+            ...(organization.children ?? []),
+          ])
           .find((organization: any) => organization.id === "platform")
           ?.children?.map((child: any) => child.name)
           .join(", ")}
@@ -192,15 +194,19 @@ jest.mock("@/components/organization/OrganizationDesigner", () => ({
       <button onClick={() => onShowMembersChange(!showMembers)}>
         Toggle designer users
       </button>
-      <button onClick={() => onSearch("runtime")}>Designer search runtime</button>
+      <button onClick={() => onSearch("runtime")}>
+        Designer search runtime
+      </button>
       <span>
-        Designer search results: {searchResults?.map((result: any) => result.name).join(", ")}
+        Designer search results:{" "}
+        {searchResults?.map((result: any) => result.name).join(", ")}
       </span>
       <button onClick={() => onRevealResult(searchResults[0])}>
         Designer reveal first result
       </button>
       <span>
-        Designer roots: {organizations.map((organization: any) => organization.name).join(", ")}
+        Designer roots:{" "}
+        {organizations.map((organization: any) => organization.name).join(", ")}
       </span>
       Children:{" "}
       {selectedOrg?.children?.map((child: any) => child.name).join(", ")}
@@ -275,7 +281,11 @@ describe("OrganizationsPage", () => {
       ) {
         organizationName = "Platform Core";
       }
-      if (typeof request === "string" && request.endsWith("/users") && (!options || options.method === "GET")) {
+      if (
+        typeof request === "string" &&
+        request.endsWith("/users") &&
+        (!options || options.method === "GET")
+      ) {
         return new Response(
           JSON.stringify({
             users: [
@@ -294,10 +304,10 @@ describe("OrganizationsPage", () => {
         );
       }
       if (typeof request === "string" && request.endsWith("/children")) {
-        return new Response(
-          JSON.stringify({ children: [], count: 0 }),
-          { status: 200, headers: { "Content-Type": "application/json" } }
-        );
+        return new Response(JSON.stringify({ children: [], count: 0 }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
       }
       return new Response(JSON.stringify({ role_in_org: "unit_manager" }), {
         status: 200,
@@ -719,17 +729,30 @@ describe("OrganizationsPage", () => {
     let resolveRuntime!: (response: Response) => void;
     let runtimeSignal: AbortSignal | undefined;
     jest.spyOn(global, "fetch").mockImplementation((request, options) => {
-      if (request === "/api/user-service/organizations/search?q=runtime&max_results=100") {
+      if (
+        request ===
+        "/api/user-service/organizations/search?q=runtime&max_results=100"
+      ) {
         runtimeSignal = options?.signal as AbortSignal;
         return new Promise<Response>((resolve) => {
           resolveRuntime = resolve;
         });
       }
-      if (request === "/api/user-service/organizations/search?q=security&max_results=100") {
+      if (
+        request ===
+        "/api/user-service/organizations/search?q=security&max_results=100"
+      ) {
         return Promise.resolve(
           new Response(
             JSON.stringify({
-              results: [{ id: "security", name: "Security", path: "/security", parent_id: null }],
+              results: [
+                {
+                  id: "security",
+                  name: "Security",
+                  path: "/security",
+                  parent_id: null,
+                },
+              ],
             }),
             { status: 200 }
           )
@@ -749,13 +772,22 @@ describe("OrganizationsPage", () => {
     resolveRuntime(
       new Response(
         JSON.stringify({
-          results: [{ id: "runtime", name: "Runtime", path: "/runtime", parent_id: null }],
+          results: [
+            {
+              id: "runtime",
+              name: "Runtime",
+              path: "/runtime",
+              parent_id: null,
+            },
+          ],
         }),
         { status: 200 }
       )
     );
     await Promise.resolve();
-    expect(screen.queryByText(/Search results: Runtime/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/Search results: Runtime/)
+    ).not.toBeInTheDocument();
   });
 
   it("reveals an unloaded result with one sorted hierarchy-state update", async () => {
@@ -772,16 +804,21 @@ describe("OrganizationsPage", () => {
       },
     ];
     jest.spyOn(global, "fetch").mockImplementation(async (request) => {
-      if (request === "/api/user-service/organizations/search?q=runtime&max_results=100") {
+      if (
+        request ===
+        "/api/user-service/organizations/search?q=runtime&max_results=100"
+      ) {
         return new Response(
           JSON.stringify({
-            results: [{
-              id: "runtime",
-              name: "Runtime",
-              path: "/org-1/platform/runtime",
-              parent_id: "platform",
-              order_index: 2,
-            }],
+            results: [
+              {
+                id: "runtime",
+                name: "Runtime",
+                path: "/org-1/platform/runtime",
+                parent_id: "platform",
+                order_index: 2,
+              },
+            ],
           }),
           { status: 200 }
         );
@@ -790,8 +827,20 @@ describe("OrganizationsPage", () => {
         return new Response(
           JSON.stringify({
             ancestors: [
-              { id: "org-1", name: "Platform", path: "/org-1", parent_id: null, order_index: 0 },
-              { id: "platform", name: "Engineering", path: "/org-1/platform", parent_id: "org-1", order_index: 1 },
+              {
+                id: "org-1",
+                name: "Platform",
+                path: "/org-1",
+                parent_id: null,
+                order_index: 0,
+              },
+              {
+                id: "platform",
+                name: "Engineering",
+                path: "/org-1/platform",
+                parent_id: "org-1",
+                order_index: 1,
+              },
             ],
           }),
           { status: 200 }
@@ -805,7 +854,9 @@ describe("OrganizationsPage", () => {
     await waitFor(() =>
       expect(screen.getByText(/Search results: Runtime/)).toBeInTheDocument()
     );
-    await user.click(screen.getByRole("button", { name: "Reveal first result" }));
+    await user.click(
+      screen.getByRole("button", { name: "Reveal first result" })
+    );
 
     await waitFor(() =>
       expect(global.fetch).toHaveBeenCalledWith(

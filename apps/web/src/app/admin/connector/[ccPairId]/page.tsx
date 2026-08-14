@@ -220,7 +220,9 @@ function Main({ ccPairId }: { ccPairId: number }) {
           } ${t("admin.connector.startedSuccessfully")}`
         );
       } else {
-        toast.error(result.message || t("admin.connector.failedToStartIndexing"));
+        toast.error(
+          result.message || t("admin.connector.failedToStartIndexing")
+        );
       }
     } catch (error) {
       console.error("Failed to trigger indexing:", error);
@@ -596,7 +598,9 @@ function Main({ ccPairId }: { ccPairId: number }) {
       <Card className="px-8 py-12">
         <div className="flex">
           <div className="w-[200px]">
-            <div className="text-sm font-medium mb-1">{t("admin.connector.statusLabel")}</div>
+            <div className="text-sm font-medium mb-1">
+              {t("admin.connector.statusLabel")}
+            </div>
             <CCPairStatus
               ccPairStatus={ccPair.status}
               inRepeatedErrorState={ccPair.in_repeated_error_state}
@@ -605,7 +609,9 @@ function Main({ ccPairId }: { ccPairId: number }) {
           </div>
 
           <div className="w-[200px]">
-            <div className="text-sm font-medium mb-1">{t("admin.connector.documentsIndexed")}</div>
+            <div className="text-sm font-medium mb-1">
+              {t("admin.connector.documentsIndexed")}
+            </div>
             <div className="text-sm text-text-default flex items-center gap-x-1">
               {ccPair.num_docs_indexed.toLocaleString()}
               {ccPair.status ===
@@ -622,7 +628,9 @@ function Main({ ccPairId }: { ccPairId: number }) {
           </div>
 
           <div className="w-[200px]">
-            <div className="text-sm font-medium mb-1">{t("admin.connector.lastIndexed")}</div>
+            <div className="text-sm font-medium mb-1">
+              {t("admin.connector.lastIndexed")}
+            </div>
             <div className="text-sm text-text-default">
               {timeAgo(
                 indexAttempts?.find((attempt) => attempt.status === "success")

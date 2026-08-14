@@ -21,12 +21,16 @@ function MessageDisplay({ message }: { message: MessageSnapshot }) {
   return (
     <div>
       <p className="text-xs font-bold mb-1">
-        {message.message_type === "user" ? t("queryHistoryDetail.user") : t("queryHistoryDetail.ai")}
+        {message.message_type === "user"
+          ? t("queryHistoryDetail.user")
+          : t("queryHistoryDetail.ai")}
       </p>
       <Text>{message.message}</Text>
       {message.documents.length > 0 && (
         <div className="flex flex-col gap-y-2 mt-2">
-          <p className="font-bold text-xs">{t("queryHistoryDetail.referenceDocuments")}</p>
+          <p className="font-bold text-xs">
+            {t("queryHistoryDetail.referenceDocuments")}
+          </p>
           {message.documents.slice(0, 5).map((document) => {
             return (
               <Text className="flex" key={document.document_id}>
@@ -54,7 +58,9 @@ function MessageDisplay({ message }: { message: MessageSnapshot }) {
       )}
       {message.feedback_type && (
         <div className="mt-2">
-          <p className="font-bold text-xs">{t("queryHistoryDetail.feedback")}</p>
+          <p className="font-bold text-xs">
+            {t("queryHistoryDetail.feedback")}
+          </p>
           {message.feedback_text && <Text>{message.feedback_text}</Text>}
           <div className="mt-1">
             <FeedbackBadge feedback={message.feedback_type} />

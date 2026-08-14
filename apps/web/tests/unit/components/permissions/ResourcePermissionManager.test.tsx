@@ -103,10 +103,7 @@ describe("ResourcePermissionManager", () => {
     );
 
     renderWithSWR(
-      <ResourcePermissionManager
-        resourceType="agent"
-        resourceId="agent-123"
-      />
+      <ResourcePermissionManager resourceType="agent" resourceId="agent-123" />
     );
 
     expect(screen.getByText("Loading permissions...")).toBeInTheDocument();
@@ -128,10 +125,7 @@ describe("ResourcePermissionManager", () => {
       } as Response);
 
     renderWithSWR(
-      <ResourcePermissionManager
-        resourceType="agent"
-        resourceId="agent-123"
-      />
+      <ResourcePermissionManager resourceType="agent" resourceId="agent-123" />
     );
 
     await waitFor(() => {
@@ -157,10 +151,7 @@ describe("ResourcePermissionManager", () => {
       } as Response);
 
     renderWithSWR(
-      <ResourcePermissionManager
-        resourceType="agent"
-        resourceId="agent-123"
-      />
+      <ResourcePermissionManager resourceType="agent" resourceId="agent-123" />
     );
 
     await waitFor(() => {
@@ -186,10 +177,7 @@ describe("ResourcePermissionManager", () => {
       } as Response);
 
     renderWithSWR(
-      <ResourcePermissionManager
-        resourceType="agent"
-        resourceId="agent-123"
-      />
+      <ResourcePermissionManager resourceType="agent" resourceId="agent-123" />
     );
 
     await waitFor(() => {
@@ -213,10 +201,7 @@ describe("ResourcePermissionManager", () => {
       } as Response);
 
     renderWithSWR(
-      <ResourcePermissionManager
-        resourceType="agent"
-        resourceId="agent-123"
-      />
+      <ResourcePermissionManager resourceType="agent" resourceId="agent-123" />
     );
 
     await waitFor(() => {
@@ -240,14 +225,13 @@ describe("ResourcePermissionManager", () => {
       } as Response);
 
     renderWithSWR(
-      <ResourcePermissionManager
-        resourceType="agent"
-        resourceId="agent-123"
-      />
+      <ResourcePermissionManager resourceType="agent" resourceId="agent-123" />
     );
 
     await waitFor(() => {
-      expect(screen.getByText("No user-specific permissions")).toBeInTheDocument();
+      expect(
+        screen.getByText("No user-specific permissions")
+      ).toBeInTheDocument();
     });
 
     expect(screen.getByText("No organization permissions")).toBeInTheDocument();
@@ -271,10 +255,7 @@ describe("ResourcePermissionManager", () => {
       } as Response);
 
     renderWithSWR(
-      <ResourcePermissionManager
-        resourceType="agent"
-        resourceId="agent-123"
-      />
+      <ResourcePermissionManager resourceType="agent" resourceId="agent-123" />
     );
 
     await waitFor(() => {
@@ -355,7 +336,9 @@ describe("ResourcePermissionManager", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText("RAG Collection: Test Collection")).toBeInTheDocument();
+      expect(
+        screen.getByText("RAG Collection: Test Collection")
+      ).toBeInTheDocument();
     });
   });
 
@@ -363,10 +346,7 @@ describe("ResourcePermissionManager", () => {
     mockFetch.mockRejectedValueOnce(new Error("Network error"));
 
     renderWithSWR(
-      <ResourcePermissionManager
-        resourceType="agent"
-        resourceId="agent-123"
-      />
+      <ResourcePermissionManager resourceType="agent" resourceId="agent-123" />
     );
 
     // Should show loading state or handle error
@@ -406,10 +386,7 @@ describe("ResourcePermissionManager", () => {
       } as Response);
 
     renderWithSWR(
-      <ResourcePermissionManager
-        resourceType="agent"
-        resourceId="agent-123"
-      />
+      <ResourcePermissionManager resourceType="agent" resourceId="agent-123" />
     );
 
     await waitFor(() => {
@@ -433,10 +410,7 @@ describe("ResourcePermissionManager", () => {
       } as Response);
 
     renderWithSWR(
-      <ResourcePermissionManager
-        resourceType="agent"
-        resourceId="agent-123"
-      />
+      <ResourcePermissionManager resourceType="agent" resourceId="agent-123" />
     );
 
     await waitFor(() => {

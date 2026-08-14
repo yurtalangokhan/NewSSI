@@ -100,7 +100,9 @@ jest.mock("@/refresh-components/Popover", () => {
 
 jest.mock("@/refresh-components/buttons/LineItem", () => ({
   __esModule: true,
-  default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  default: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
 }));
 
 jest.mock("@/sections/cards/FileCard", () => ({
@@ -280,23 +282,19 @@ describe("AppInputBar", () => {
   });
 
   it("shows actions from catalog capabilities without full tool snapshots", () => {
-    renderInputBar(
-      "input",
-      jest.fn(),
-      {
-        ...selectedAgent,
-        tools: [],
-        action_count: 2,
-        capabilities: {
-          has_actions: true,
-          has_conversation_starters: false,
-          has_retrieval: false,
-          has_web_search: false,
-          has_scoped_knowledge: false,
-          long_term_memory: false,
-        },
-      } as unknown as MinimalPersonaSnapshot
-    );
+    renderInputBar("input", jest.fn(), {
+      ...selectedAgent,
+      tools: [],
+      action_count: 2,
+      capabilities: {
+        has_actions: true,
+        has_conversation_starters: false,
+        has_retrieval: false,
+        has_web_search: false,
+        has_scoped_knowledge: false,
+        long_term_memory: false,
+      },
+    } as unknown as MinimalPersonaSnapshot);
 
     expect(screen.getByTestId("actions-popover")).toBeInTheDocument();
   });

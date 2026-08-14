@@ -794,7 +794,11 @@ export function FederatedConnectorForm({
                   tooltip={isDeleting ? "Deletion in progress" : undefined}
                 >
                   <Trash2Icon className="h-4 w-4" />
-                  <span>{isDeleting ? t("federatedForm.deleting") : t("federatedForm.delete")}</span>
+                  <span>
+                    {isDeleting
+                      ? t("federatedForm.deleting")
+                      : t("federatedForm.delete")}
+                  </span>
                 </DropdownMenuItemWithTooltip>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -847,7 +851,9 @@ export function FederatedConnectorForm({
                 disabled={isValidating || !formState.schema}
                 className="flex ml-auto"
               >
-                {isValidating ? t("federatedForm.validating") : t("federatedForm.validate")}
+                {isValidating
+                  ? t("federatedForm.validating")
+                  : t("federatedForm.validate")}
               </Button>
               <Button
                 type="submit"

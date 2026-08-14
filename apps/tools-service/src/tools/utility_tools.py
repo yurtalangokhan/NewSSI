@@ -22,7 +22,10 @@ class UtilityTools(BaseToolCategory):
 
     @property
     def description(self) -> str:
-        return t("categories.utilities.description", default="UUID generation, encoding, and hashing utilities")
+        return t(
+            "categories.utilities.description",
+            default="UUID generation, encoding, and hashing utilities",
+        )
 
     @property
     def label(self) -> str:

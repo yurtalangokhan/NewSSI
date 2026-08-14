@@ -129,7 +129,9 @@ export default function InlineFileManagement({
       onRefresh();
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : t("inlineFileManagement.failedToUpdate")
+        error instanceof Error
+          ? error.message
+          : t("inlineFileManagement.failedToUpdate")
       );
     } finally {
       setIsSaving(false);
@@ -153,7 +155,9 @@ export default function InlineFileManagement({
   if (error) {
     return (
       <Text as="p" className="text-error">
-        {t("inlineFileManagement.errorLoadingFiles", { message: error.message })}
+        {t("inlineFileManagement.errorLoadingFiles", {
+          message: error.message,
+        })}
       </Text>
     );
   }
@@ -168,7 +172,8 @@ export default function InlineFileManagement({
       {/* Header with Edit/Save buttons */}
       <div className="flex justify-between items-center mb-4">
         <Text as="p" mainUiBody>
-          {t("inlineFileManagement.files")} ({totalFiles} {t("inlineFileManagement.files").toLowerCase()})
+          {t("inlineFileManagement.files")} ({totalFiles}{" "}
+          {t("inlineFileManagement.files").toLowerCase()})
         </Text>
         <div className="flex gap-2">
           {!isEditing ? (
@@ -198,7 +203,9 @@ export default function InlineFileManagement({
                   (selectedFilesToRemove.size === 0 && filesToAdd.length === 0)
                 }
               >
-                {isSaving ? t("inlineFileManagement.saving") : t("inlineFileManagement.saveChanges")}
+                {isSaving
+                  ? t("inlineFileManagement.saving")
+                  : t("inlineFileManagement.saveChanges")}
               </Button>
             </>
           )}
@@ -359,7 +366,10 @@ export default function InlineFileManagement({
                   mainUiBody
                   className="font-semibold text-red-800 dark:text-red-200"
                 >
-                  🗑️ {t("inlineFileManagement.filesWillBeRemoved", { count: selectedFilesToRemove.size })}
+                  🗑️{" "}
+                  {t("inlineFileManagement.filesWillBeRemoved", {
+                    count: selectedFilesToRemove.size,
+                  })}
                 </Text>
                 <Text
                   as="p"
@@ -378,7 +388,9 @@ export default function InlineFileManagement({
                   mainUiBody
                   className="font-semibold text-green-800 dark:text-green-200"
                 >
-                  {t("inlineFileManagement.filesWillBeAdded", { count: filesToAdd.length })}
+                  {t("inlineFileManagement.filesWillBeAdded", {
+                    count: filesToAdd.length,
+                  })}
                 </Text>
                 <Text
                   as="p"
@@ -400,7 +412,9 @@ export default function InlineFileManagement({
               {t("inlineFileManagement.cancel")}
             </Button>
             <Button onClick={handleConfirmSave} disabled={isSaving}>
-              {isSaving ? t("inlineFileManagement.saving") : t("inlineFileManagement.confirmAndSave")}
+              {isSaving
+                ? t("inlineFileManagement.saving")
+                : t("inlineFileManagement.confirmAndSave")}
             </Button>
           </Modal.Footer>
         </Modal.Content>

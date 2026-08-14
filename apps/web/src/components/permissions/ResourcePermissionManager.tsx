@@ -1,8 +1,8 @@
 /**
  * ResourcePermissionManager Component
- * 
+ *
  * Comprehensive permission management UI for agents, agent groups, RAG collections, and connectors.
- * 
+ *
  * Features:
  * - Multi-resource type support
  * - Organization-level permissions
@@ -153,11 +153,14 @@ export function ResourcePermissionManager({
   }, [rawOrganizations]);
 
   // Fetch users for search
-  const { data: rawUsers } = useSWR<any>("/api/users", async (url: string) => {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error("Failed to fetch users");
-    return res.json();
-  });
+  const { data: rawUsers } = useSWR<any>(
+    "/api/users",
+    async (url: string) => {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("Failed to fetch users");
+      return res.json();
+    }
+  );
 
   const users = useMemo<UserInfo[] | undefined>(() => {
     if (!rawUsers) return undefined;
@@ -252,7 +255,9 @@ export function ResourcePermissionManager({
 
     return {
       user: permissions.filter((p) => p.user_id && !p.is_inherited),
-      organization: permissions.filter((p) => p.organization_id && !p.is_inherited),
+      organization: permissions.filter(
+        (p) => p.organization_id && !p.is_inherited
+      ),
       inherited: permissions.filter((p) => p.is_inherited),
     };
   }, [permissions]);
@@ -266,7 +271,12 @@ export function ResourcePermissionManager({
   }
 
   return (
-    <div className={cn("flex flex-col bg-background-neutral-01 rounded-lg", className)}>
+    <div
+      className={cn(
+        "flex flex-col bg-background-neutral-01 rounded-lg",
+        className
+      )}
+    >
       {/* Header */}
       <div className="flex items-center justify-between p-6 border-b border-border-02">
         <div className="flex items-center gap-3">
@@ -386,7 +396,7 @@ export function ResourcePermissionManager({
           <section>
             <div className="flex items-center gap-2 mb-4">
               <Users size={18} className="text-text-02" />
-              <Text className="font-medium text-text-05">Inherited Permissions</Text>
+              <Text className="font-medium text-text-01">Inherited Permissions</Text>
               <span className="px-2 py-1 rounded bg-background-neutral-02 text-xs text-text-03">
                 {groupedPermissions.inherited.length}
               </span>
@@ -416,7 +426,9 @@ export function ResourcePermissionManager({
             label: u.full_name || u.email,
             sublabel: u.email,
           }))}
-          onAdd={(userId) => handleAddUserPermission(userId, selectedPermissionLevel)}
+          onAdd={(userId) =>
+            handleAddUserPermission(userId, selectedPermissionLevel)
+          }
           onClose={() => setShowAddUser(false)}
           selectedLevel={selectedPermissionLevel}
           onLevelChange={setSelectedPermissionLevel}
@@ -432,7 +444,9 @@ export function ResourcePermissionManager({
             label: org.name,
             sublabel: org.path,
           }))}
-          onAdd={(orgId) => handleAddOrgPermission(orgId, selectedPermissionLevel)}
+          onAdd={(orgId) =>
+            handleAddOrgPermission(orgId, selectedPermissionLevel)
+          }
           onClose={() => setShowAddOrg(false)}
           selectedLevel={selectedPermissionLevel}
           onLevelChange={setSelectedPermissionLevel}
@@ -481,7 +495,7 @@ function PermissionRow({
       <div className="flex items-center gap-3 flex-1">
         {icon}
         <div className="flex-1">
-          <Text className="text-sm font-medium text-text-05">{displayName}</Text>
+          <Text className="text-sm font-medium text-text-01">{displayName}</Text>
           {permission.is_inherited && permission.source && (
             <Text className="text-xs text-text-03">
               Inherited from {permission.source}
@@ -593,7 +607,9 @@ function AddPermissionModal({
                     <div className={cn("font-medium text-sm", level.color)}>
                       {level.label}
                     </div>
-                    <div className="text-xs text-text-03">{level.description}</div>
+                    <div className="text-xs text-text-03">
+                      {level.description}
+                    </div>
                   </div>
                   {selectedLevel === level.value && (
                     <Check size={18} className="text-text-primary-01" />
@@ -605,7 +621,9 @@ function AddPermissionModal({
 
           {/* Item List */}
           <div>
-            <Text className="text-sm font-medium text-text-02 mb-2">Select</Text>
+            <Text className="text-sm font-medium text-text-02 mb-2">
+              Select
+            </Text>
             <div className="max-h-64 overflow-y-auto space-y-1 border border-border-02 rounded-md p-2">
               {filtered.map((item) => (
                 <label
@@ -631,7 +649,9 @@ function AddPermissionModal({
                       {item.label}
                     </div>
                     {item.sublabel && (
-                      <div className="text-xs text-text-03">{item.sublabel}</div>
+                      <div className="text-xs text-text-03">
+                        {item.sublabel}
+                      </div>
                     )}
                   </div>
                   {selectedId === item.id && (

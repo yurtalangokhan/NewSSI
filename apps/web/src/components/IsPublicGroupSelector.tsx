@@ -35,8 +35,7 @@ export const IsPublicGroupSelector = <T extends IsPublicGroupSelectorFormType>({
     keyPrefix: "isPublicGroupSelector",
   });
   const { t: tCommon } = useTranslation();
-  const isPaidEnterpriseFeaturesEnabled =
-    usePaidEnterpriseFeaturesEnabled();
+  const isPaidEnterpriseFeaturesEnabled = usePaidEnterpriseFeaturesEnabled();
   const { user, isAdmin, isCurator } = useUser();
   const { data: userGroups, isLoading: userGroupsIsLoading } = useUserGroups();
 
@@ -85,8 +84,7 @@ export const IsPublicGroupSelector = <T extends IsPublicGroupSelectorFormType>({
       <>
         {userGroups && (
           <div className="mb-1 font-medium text-base">
-            {t("assignedToGroup", { objectName })}{" "}
-            <b>{firstUserGroupName}</b>.
+            {t("assignedToGroup", { objectName })} <b>{firstUserGroupName}</b>.
           </div>
         )}
       </>
