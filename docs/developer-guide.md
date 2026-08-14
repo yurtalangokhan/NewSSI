@@ -261,6 +261,7 @@ make validate         # all services + docker-verify
 3. Create the service method in `service/`
 4. If data access needed: add to repository or create a new one
 5. Define request/response models in `schema/`
+6. Register the router in `app.py` (or `main.py`)
 
 ### Idempotency for mutating endpoints
 
@@ -280,16 +281,18 @@ Use these categories:
   cleanup.
 
 `domain_required` routes reject missing `Idempotency-Key` even when global
-required-key enforcement is disabled. If the middleware cannot replay the
-response, it records the key as completed without replay and returns `409` on
-reuse so the side effect doesn't run twice. Add route-policy tests for every new
-classification and request-level tests for high-risk routes.
+required-key enforcement is disabled. The approved exception is tools-service
+direct `/mcp`: FastMCP streamable-HTTP sessions use multiple protocol POSTs for
+one connection, so `/mcp` honors supplied keys but doesn't reject missing keys at
+transport level. If the middleware cannot replay the response, it records the
+key as completed without replay and returns `409` on reuse so the side effect
+doesn't run twice. Add route-policy tests for every new classification and
+request-level tests for high-risk routes.
 
 Frontend callers must use `createIdempotencyKey()` for new retryable operations
 and reuse the same key for a user-visible retry. Next.js API routes that proxy
 mutating requests must forward the incoming `Idempotency-Key`, except for login,
 refresh, logout, and OIDC routes.
-6. Register the router in `app.py` (or `main.py`)
 
 ### Adding a new agent (agent-service)
 

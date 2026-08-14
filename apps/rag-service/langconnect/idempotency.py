@@ -97,6 +97,7 @@ def build_idempotency_policy(api_prefix: str = API_PREFIX) -> IdempotencyPolicyC
         ],
         "DELETE": [
             "/collections/{collection_id}",
+            "/collections/{collection_id}/documents/{document_id}",
         ],
     }
 

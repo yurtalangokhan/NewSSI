@@ -1,6 +1,7 @@
 import { getInternalUrl } from "@/lib/env.server";
 import { buildServiceUrl } from "@/lib/api/gatewayRouting";
 import { getLanguageHeaders } from "@/lib/api/proxy";
+import { getIncomingIdempotencyHeaders } from "@/lib/api/idempotency";
 import { NextRequest, NextResponse } from "next/server";
 
 const INTERNAL_URL = getInternalUrl();
@@ -21,6 +22,7 @@ export async function POST(request: NextRequest) {
         body: formData,
         headers: {
           ...getLanguageHeaders(request),
+          ...getIncomingIdempotencyHeaders(request),
           ...(cookie ? { Cookie: cookie } : {}),
           ...(authorization ? { Authorization: authorization } : {}),
         },

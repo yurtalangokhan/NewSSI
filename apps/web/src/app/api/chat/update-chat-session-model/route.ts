@@ -1,5 +1,6 @@
 import { getInternalUrl } from "@/lib/env.server";
 import { buildServiceUrl } from "@/lib/api/gatewayRouting";
+import { getIncomingIdempotencyHeaders } from "@/lib/api/idempotency";
 import { NextResponse } from "next/server";
 
 const INTERNAL_URL = getInternalUrl();
@@ -19,6 +20,7 @@ export async function PUT(request: Request) {
         body,
         headers: {
           "Content-Type": "application/json",
+          ...getIncomingIdempotencyHeaders(request),
           ...(cookie ? { Cookie: cookie } : {}),
         },
       }

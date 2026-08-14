@@ -325,6 +325,21 @@ def test_route_policy_matches_path_parameters(fake_redis: FakeRedis) -> None:
     assert response.json()["error"]["code"] == "idempotency_key_required"
 
 
+def test_route_policy_matches_optional_trailing_slash(fake_redis: FakeRedis) -> None:
+    policy = IdempotencyPolicyConfig(
+        route_policies=[
+            IdempotencyPolicy(
+                method="POST",
+                path="/users/",
+                mode=IdempotencyMode.REQUIRED_REPLAY,
+            ),
+        ],
+    )
+
+    assert policy.resolve("POST", "/users").mode == IdempotencyMode.REQUIRED_REPLAY
+    assert policy.resolve("POST", "/users/").mode == IdempotencyMode.REQUIRED_REPLAY
+
+
 def test_required_route_rejects_missing_key(fake_redis: FakeRedis) -> None:
     client = make_client()
 

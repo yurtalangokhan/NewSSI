@@ -50,3 +50,10 @@ export function withIdempotencyKey(
     "Idempotency-Key": key,
   };
 }
+
+export function getIncomingIdempotencyHeaders(
+  request: Request
+): Record<string, string> {
+  const key = request.headers.get("idempotency-key");
+  return key ? { "Idempotency-Key": key } : {};
+}

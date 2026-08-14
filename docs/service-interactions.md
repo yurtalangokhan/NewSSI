@@ -183,10 +183,13 @@ Services classify mutating endpoints into these policy categories:
 
 `domain_required` endpoints include streaming LLM calls, MCP tool execution,
 uploads, graph builds, model pulls, email sends, datasource sync, and destructive
-admin cleanup. If the middleware cannot replay the response, such as for SSE
-streams or other non-cacheable responses, it marks the key as completed without
-replay. A retry with that key returns `409` instead of starting the side effect
-again.
+admin cleanup. Tools-service direct `/mcp` is the transport-level exception:
+FastMCP streamable-HTTP sessions send multiple protocol POSTs over one logical
+session, so `/mcp` honors supplied keys for replay and conflict detection but
+doesn't reject missing keys. If the middleware cannot replay the response, such
+as for SSE streams or other non-cacheable responses, it marks the key as
+completed without replay. A retry with that key returns `409` instead of
+starting the side effect again.
 
 The web frontend forwards incoming `Idempotency-Key` values through mutating
 Next.js API routes, excluding login, refresh, logout, and OIDC browser auth
@@ -195,6 +198,10 @@ requests that did not supply one, generating it once per operation so a retry
 after token refresh reuses the same key. UI actions that start retryable
 operations create UUID keys. A visible retry of the same operation must reuse
 the same key, while a new operation must create a new key.
+
+Local host-based services use `REDIS_HOST=localhost`; Compose-hosted services
+use `REDIS_HOST=redis`. Redis listens on port `6379` and persists data in the
+`redis-data` volume.
 
 ---
 

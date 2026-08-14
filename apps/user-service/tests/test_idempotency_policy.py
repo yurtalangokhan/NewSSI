@@ -65,3 +65,32 @@ def test_user_idempotency_policy_classifies_spec_named_domain_routes() -> None:
         resolved = policy.resolve("POST", path)
         assert resolved.mode == IdempotencyMode.DOMAIN_REQUIRED
         assert resolved.enforce_missing_key is True
+
+
+def test_user_idempotency_policy_covers_rebased_mutations() -> None:
+    from src.core.idempotency import build_idempotency_policy
+
+    policy = build_idempotency_policy(api_prefix="/api/v9")
+
+    for method, path, expected_mode in [
+        ("POST", "/api/v9/roles/", IdempotencyMode.REQUIRED_REPLAY),
+        ("POST", "/api/v9/coarse-roles/", IdempotencyMode.REQUIRED_REPLAY),
+        ("POST", "/api/v9/organizations", IdempotencyMode.REQUIRED_REPLAY),
+        (
+            "POST",
+            "/api/v9/organizations/org-1/users",
+            IdempotencyMode.REQUIRED_REPLAY,
+        ),
+        (
+            "POST",
+            "/api/v9/organizations/org-1/users/bulk",
+            IdempotencyMode.REQUIRED_REPLAY,
+        ),
+        (
+            "PUT",
+            "/api/v9/roles/admin/permissions",
+            IdempotencyMode.REQUIRED_REPLAY,
+        ),
+        ("POST", "/api/v9/permissions/sync", IdempotencyMode.DOMAIN_REQUIRED),
+    ]:
+        assert policy.resolve(method, path).mode == expected_mode

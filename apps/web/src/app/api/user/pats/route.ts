@@ -1,6 +1,7 @@
 import { USER_SERVICE_URL } from "@/lib/constants";
 import { buildServiceUrl } from "@/lib/api/gatewayRouting";
 import { getLanguageHeaders } from "@/lib/api/proxy";
+import { getIncomingIdempotencyHeaders } from "@/lib/api/idempotency";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
@@ -8,6 +9,7 @@ export async function GET(request: NextRequest) {
     "Content-Type": "application/json",
     Cookie: request.headers.get("cookie") || "",
     ...getLanguageHeaders(request),
+    ...getIncomingIdempotencyHeaders(request),
   };
   const auth = request.headers.get("authorization");
   if (auth) headers["Authorization"] = auth;

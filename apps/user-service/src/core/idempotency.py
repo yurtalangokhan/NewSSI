@@ -61,8 +61,16 @@ def build_idempotency_policy(api_prefix: str = API_PREFIX) -> IdempotencyPolicyC
             "/users/",
             "/roles/",
             "/coarse-roles/",
+            "/organizations",
+            "/organizations/{org_id}/users",
+            "/organizations/{org_id}/users/bulk",
             "/users/me/memories/",
             "/users/me/settings/prompt-shortcuts",
+        ],
+        "PUT": [
+            "/roles/{role_name}/permissions",
+            "/roles/{role_name}/role-ids",
+            "/roles/{role_name}/inherited-roles",
         ],
     }
     optional_replay = {

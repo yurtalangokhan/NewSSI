@@ -1,5 +1,6 @@
 import {
   createIdempotencyKey,
+  getIncomingIdempotencyHeaders,
   withIdempotencyKey,
 } from "@/lib/api/idempotency";
 
@@ -51,5 +52,15 @@ describe("idempotency helpers", () => {
 
     expect(new Headers(headers).get("authorization")).toBe("Bearer token");
     expect(new Headers(headers).get("idempotency-key")).toBe("idem-web-456");
+  });
+
+  it("reads the incoming key for manual backend proxies", () => {
+    expect(
+      getIncomingIdempotencyHeaders(
+        new Request("http://localhost", {
+          headers: { "Idempotency-Key": "incoming-key" },
+        })
+      )
+    ).toEqual({ "Idempotency-Key": "incoming-key" });
   });
 });

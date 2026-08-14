@@ -22,10 +22,12 @@ class IdempotencyPolicy(BaseModel):
     def matches(self, method: str, path: str) -> bool:
         if self.method.upper() != method.upper():
             return False
-        if self.path == path:
+        normalized_policy_path = self.path.rstrip("/") or "/"
+        normalized_path = path.rstrip("/") or "/"
+        if normalized_policy_path == normalized_path:
             return True
-        pattern = re.sub(r"\{[^/]+\}", r"[^/]+", self.path)
-        return re.fullmatch(pattern, path) is not None
+        pattern = re.sub(r"\{[^/]+\}", r"[^/]+", normalized_policy_path)
+        return re.fullmatch(pattern, normalized_path) is not None
 
 
 class IdempotencyPolicyConfig(BaseModel):

@@ -93,3 +93,45 @@ def test_agent_idempotency_policy_enforces_ready_domain_routes() -> None:
         resolved = policy.resolve(method, path)
         assert resolved.mode == IdempotencyMode.DOMAIN_REQUIRED
         assert resolved.enforce_missing_key is True
+
+
+def test_agent_idempotency_policy_covers_rebased_side_effects() -> None:
+    from core.idempotency import build_idempotency_policy
+
+    policy = build_idempotency_policy(api_prefix="/api/v9")
+
+    for method, path, expected_mode in [
+        (
+            "POST",
+            "/api/v9/api/chat/create-chat-message-feedback",
+            IdempotencyMode.DOMAIN_REQUIRED,
+        ),
+        (
+            "PUT",
+            "/api/v9/api/chat/update-chat-session-model",
+            IdempotencyMode.OPTIONAL_REPLAY,
+        ),
+        ("POST", "/api/v9/providers", IdempotencyMode.REQUIRED_REPLAY),
+        ("PUT", "/api/v9/providers/provider-1", IdempotencyMode.OPTIONAL_REPLAY),
+        (
+            "DELETE",
+            "/api/v9/providers/provider-1",
+            IdempotencyMode.OPTIONAL_REPLAY,
+        ),
+        (
+            "POST",
+            "/api/v9/datasources/source-1/schedule",
+            IdempotencyMode.REQUIRED_REPLAY,
+        ),
+        (
+            "PUT",
+            "/api/v9/datasources/source-1/schedule",
+            IdempotencyMode.REQUIRED_REPLAY,
+        ),
+        (
+            "DELETE",
+            "/api/v9/datasources/source-1/schedule",
+            IdempotencyMode.OPTIONAL_REPLAY,
+        ),
+    ]:
+        assert policy.resolve(method, path).mode == expected_mode
