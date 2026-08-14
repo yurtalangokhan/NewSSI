@@ -435,10 +435,13 @@ export function buildChatUrl(
   chatSessionId: string | null,
   personaId: string | number | null,
   search?: boolean,
-  _skipReload?: boolean
+  skipReload?: boolean
 ) {
   if (!search) {
     const finalSearchParams = new URLSearchParams();
+    if (skipReload) {
+      finalSearchParams.append(SEARCH_PARAM_NAMES.SKIP_RELOAD, "true");
+    }
     existingSearchParams?.forEach((value, key) => {
       if (!PARAMS_TO_SKIP.includes(key)) {
         finalSearchParams.append(key, value);

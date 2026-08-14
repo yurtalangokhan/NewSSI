@@ -50,6 +50,7 @@ describe("useTimelineUIState", () => {
       useTimelineUIState({
         ...baseInput,
         lastStep: activeReasoningStep,
+        hasDisplayContent: false,
       })
     );
 
@@ -84,6 +85,35 @@ describe("useTimelineUIState", () => {
       useTimelineUIState({
         ...baseInput,
         lastStep: completedReasoningStep,
+      })
+    );
+
+    expect(result.current.showDoneStep).toBe(true);
+    expect(result.current.uiState).toBe(TimelineUIState.COMPLETED_EXPANDED);
+  });
+  test("shows Done step for reasoning step once display content arrives", () => {
+    const activeReasoningStep = {
+      key: "0-0",
+      turnIndex: 0,
+      tabIndex: 0,
+      packets: [
+        {
+          placement: { turn_index: 0, tab_index: 0 },
+          obj: { type: PacketType.REASONING_START },
+        },
+        {
+          placement: { turn_index: 0, tab_index: 0 },
+          obj: { type: PacketType.REASONING_DELTA, reasoning: "Thinking in progress..." },
+        },
+      ],
+    };
+
+    const { result } = renderHook(() =>
+      useTimelineUIState({
+        ...baseInput,
+        lastStep: activeReasoningStep,
+        hasDisplayContent: true,
+        finalAnswerComing: true,
       })
     );
 

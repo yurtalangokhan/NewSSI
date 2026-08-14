@@ -272,7 +272,11 @@ export default function useChatController({
       pathname.startsWith("/app/projects/");
 
     if (isOnChatPage && !navigatingAway.current) {
-      router.push(newUrl as Route, { scroll: false });
+      if (typeof window !== "undefined") {
+        window.history.replaceState({}, "", newUrl);
+      } else {
+        router.push(newUrl as Route, { scroll: false });
+      }
     }
 
     // Refresh sidebar - the chat was already optimistically added via addPendingChatSession
@@ -812,6 +816,9 @@ export default function useChatController({
 
         await delay(50);
         while (!stack.isComplete || !stack.isEmpty()) {
+          if (stack.error && !controller.signal.aborted) {
+            throw new Error(stack.error);
+          }
           if (stack.isEmpty()) {
             await delay(0.5);
           }

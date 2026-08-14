@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { TurnGroup, TransformedStep } from "../transformers";
-import { stepIsComplete } from "../packetHelpers";
+import { stepIsComplete, isReasoningPackets } from "../packetHelpers";
 
 // =============================================================================
 // Timeline UI State Machine
@@ -112,8 +112,14 @@ export function useTimelineUIState(
       finalAnswerComing,
     } = input;
 
+    const isReasoningFinished =
+      !!lastStep &&
+      isReasoningPackets(lastStep.packets) &&
+      (hasDisplayContent || stopPacketSeen);
+
     const isLastStepComplete =
-      stopPacketSeen || (!!lastStep && stepIsComplete(lastStep.packets));
+      stopPacketSeen ||
+      (!!lastStep && (stepIsComplete(lastStep.packets) || isReasoningFinished));
 
     // Derive the primary UI state
     let uiState: TimelineUIState;
