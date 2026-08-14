@@ -12,6 +12,9 @@ describe("buildChatUrl", () => {
     }) as unknown as ReadonlyURLSearchParams;
 
     expect(buildChatUrl(existingSearchParams, "chat-1", 42, false, true)).toBe(
+      "/app/chats/chat-1?skip-reload=true&keep=this"
+    );
+    expect(buildChatUrl(existingSearchParams, "chat-1", 42, false, false)).toBe(
       "/app/chats/chat-1?keep=this"
     );
   });
