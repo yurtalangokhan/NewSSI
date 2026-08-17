@@ -528,7 +528,12 @@ function Root({ children, enableBackground }: AppRootProps) {
   const { hasBackground, appBackgroundUrl } = useAppBackground();
   const { resolvedTheme } = useTheme();
   const appFocus = useAppFocus();
-  const isLightMode = resolvedTheme === "light";
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  // `resolvedTheme` is undefined on the server (and briefly on the client
+  // before mount), so gate on `mounted` to keep the first client render
+  // identical to the SSR output and avoid a hydration mismatch.
+  const isLightMode = mounted && resolvedTheme === "light";
   const showBackground = hasBackground && enableBackground;
 
   return (

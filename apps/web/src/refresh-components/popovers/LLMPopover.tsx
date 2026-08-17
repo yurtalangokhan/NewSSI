@@ -48,15 +48,15 @@ function AvailabilityFlag({
       title={label}
       className={
         available
-          ? "inline-flex items-center gap-1 rounded-08 border border-status-success-04/30 bg-status-success-04/10 px-1.5 py-0.5 shrink-0"
-          : "inline-flex items-center gap-1 rounded-08 border border-status-error-04/30 bg-status-error-04/10 px-1.5 py-0.5 shrink-0"
+          ? "inline-flex items-center gap-1 rounded-08 border border-status-success-05/30 bg-status-success-05/10 px-1.5 py-0.5 shrink-0"
+          : "inline-flex items-center gap-1 rounded-08 border border-status-error-05/30 bg-status-error-05/10 px-1.5 py-0.5 shrink-0"
       }
     >
       <span
         className={
           available
-            ? "size-1.5 rounded-full bg-status-success-04 shrink-0"
-            : "size-1.5 rounded-full bg-status-error-04 shrink-0"
+            ? "size-1.5 rounded-full bg-status-success-05 shrink-0"
+            : "size-1.5 rounded-full bg-status-error-05 shrink-0"
         }
       />
       <Text

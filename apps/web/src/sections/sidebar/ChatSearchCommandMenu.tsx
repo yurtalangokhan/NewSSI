@@ -382,10 +382,9 @@ export default function ChatSearchCommandMenu({
                   icon={SvgFolderPlus}
                   onSelect={() => handleNewProject(searchValue.trim())}
                 >
-                  <>
-                    Create New Project "
-                    <span className="text-text-05">{searchValue.trim()}</span>"
-                  </>
+                  {t("app.chatSearch.createNewProjectWithName", {
+                    name: searchValue.trim(),
+                  })}
                 </CommandMenu.Action>
               )}
 
