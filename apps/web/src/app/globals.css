@@ -189,6 +189,21 @@
       radial-gradient(circle at 15% 15%, rgba(40, 168, 255, 0.22), transparent 40%),
       radial-gradient(circle at 85% 20%, rgba(0, 224, 201, 0.2), transparent 38%),
       radial-gradient(circle at 50% 85%, rgba(23, 97, 255, 0.2), transparent 50%);
+
+    /* This screen never follows the app-wide dark/light toggle, so pin the
+       design-system tokens it uses to their light-mode values regardless of
+       an ancestor .dark class (otherwise e.g. the loading spinner resolves
+       to a near-invisible color when the app theme is light). */
+    --text-05: var(--alpha-grey-100-90);
+    --text-04: var(--alpha-grey-100-75);
+    --text-03: var(--alpha-grey-100-55);
+    --text-02: var(--alpha-grey-100-45);
+    --text-01: var(--alpha-grey-100-20);
+    --background-neutral-00: var(--grey-00);
+    --background-tint-04: var(--tint-20);
+    --border-01: var(--grey-10);
+    --border-02: var(--grey-20);
+    --border-05: var(--grey-100);
   }
 
   .auth-login-bg-gradient {
@@ -254,42 +269,23 @@
     color: #ffffff;
   }
 
-  .auth-login-shell input,
-  .auth-login-shell textarea,
-  .auth-login-shell select {
-    background-color: #ffffff !important;
-    color: #000000 !important;
-    border: none !important;
-    border-radius: 0.75rem !important;
-    padding: 0.875rem 1.125rem !important;
-    font-size: 0.875rem !important;
-    transition: all 0.2s ease !important;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
-  }
-
-  .auth-login-shell input:focus,
-  .auth-login-shell textarea:focus,
-  .auth-login-shell select:focus {
-    background-color: #ffffff !important;
-    color: #000000 !important;
-    outline: none !important;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12), 0 0 0 2px rgba(255, 255, 255, 0.2) !important;
-    transform: translateY(-1px) !important;
-  }
-
-  .auth-login-shell input::placeholder,
-  .auth-login-shell textarea::placeholder {
-    color: #a0a0a0 !important;
-    font-weight: 500 !important;
+  /* Status message icons (e.g. the "signing in" spinner) sit directly on
+     the dark card background, not inside a white input, so the neutral
+     text-02/text-03 stroke tokens pinned above (dark, meant for text on the
+     white input fill) would render them invisible here. Force a light
+     stroke for this context specifically. */
+  .auth-login-shell .stroke-text-02,
+  .auth-login-shell .stroke-text-03 {
+    stroke: rgba(255, 255, 255, 0.6) !important;
   }
 
   .auth-login-shell input:-webkit-autofill,
   .auth-login-shell input:-webkit-autofill:hover,
   .auth-login-shell input:-webkit-autofill:focus {
-    -webkit-text-fill-color: #000000 !important;
-    -webkit-box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12), 0 0 0px 1000px #ffffff inset !important;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12), 0 0 0px 1000px #ffffff inset !important;
-    transition: all 0.2s ease !important;
+    -webkit-text-fill-color: var(--text-04) !important;
+    -webkit-box-shadow: 0 0 0px 1000px var(--background-neutral-00) inset !important;
+    box-shadow: 0 0 0px 1000px var(--background-neutral-00) inset !important;
+    transition: background-color 5000s ease-in-out 0s;
   }
 }
 

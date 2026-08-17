@@ -282,7 +282,7 @@ export default function EmailPasswordForm({
             <Form className="flex flex-col gap-5 w-full">
               <FormikField<string>
                 name="username"
-                render={(field, helper, _meta, state) => (
+                render={(field, helper, meta, state) => (
                   <FormField name="username" state={state} className="w-full">
                     <FormField.Label className="text-white font-medium text-sm mb-2 block">
                       {t("auth.usernameLabel")}
@@ -301,10 +301,15 @@ export default function EmailPasswordForm({
                         placeholder={t("auth.usernamePlaceholder")}
                         onClear={() => helper.setValue("")}
                         data-testid="username"
-                        variant={apiStatus === "error" ? "error" : undefined}
+                        variant={
+                          state === "error" || apiStatus === "error"
+                            ? "error"
+                            : undefined
+                        }
                         showClearButton={false}
                       />
                     </FormField.Control>
+                    <FormField.Message messages={{ error: meta.error }} />
                   </FormField>
                 )}
               />
@@ -408,10 +413,10 @@ export default function EmailPasswordForm({
 
               <FormikField<string>
                 name="password"
-                render={(field, helper, _meta, state) => (
+                render={(field, helper, meta, state) => (
                   <FormField name="password" state={state} className="w-full">
                     <FormField.Label className="text-white font-medium text-sm mb-2 block">
-                      Password
+                      {t("auth.passwordLabel")}
                     </FormField.Label>
                     <FormField.Control>
                       <PasswordInputTypeIn
@@ -427,16 +432,21 @@ export default function EmailPasswordForm({
                         placeholder="∗∗∗∗∗∗∗∗∗∗∗∗∗∗"
                         onClear={() => helper.setValue("")}
                         data-testid="password"
-                        error={apiStatus === "error"}
+                        error={state === "error" || apiStatus === "error"}
                         showClearButton={false}
+                        alwaysShowToggle
+                        showPasswordLabel={t("auth.showPassword")}
+                        hidePasswordLabel={t("auth.hidePassword")}
                         style={{ color: "var(--text-05)" }}
                       />
                     </FormField.Control>
-                    {showApiMessage && (
+                    {showApiMessage ? (
                       <FormField.APIMessage
                         state={apiStatus}
                         messages={apiMessages}
                       />
+                    ) : (
+                      <FormField.Message messages={{ error: meta.error }} />
                     )}
                   </FormField>
                 )}
@@ -444,8 +454,14 @@ export default function EmailPasswordForm({
 
               <Button
                 type="submit"
-                className="w-full mt-3 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-semibold rounded-lg transition-all duration-200 hover:shadow-lg"
-                disabled={isSubmitting || !isValid || !dirty}
+                className="w-full mt-3 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-semibold rounded-lg transition-all duration-200 hover:shadow-lg disabled:pointer-events-none disabled:opacity-50 disabled:grayscale disabled:hover:shadow-none disabled:cursor-not-allowed"
+                disabled={
+                  isSubmitting ||
+                  !isValid ||
+                  !dirty ||
+                  !values.username.trim() ||
+                  !values.password
+                }
                 rightIcon={SvgArrowRightCircle}
               >
                 {isJoin
