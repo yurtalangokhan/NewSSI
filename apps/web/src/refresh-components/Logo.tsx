@@ -9,7 +9,7 @@ import {
 import { cn } from "@/lib/utils";
 import Text from "@/refresh-components/texts/Text";
 import Truncated from "@/refresh-components/texts/Truncated";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "next-themes";
 
@@ -84,10 +84,16 @@ export default function Logo({ folded, size, className }: LogoProps) {
   const unfoldedSize = size ?? LOGO_UNFOLDED_SIZE_PX;
   const settings = useSettingsContext();
   const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   const logoDisplayStyle = settings.enterpriseSettings?.logo_display_style;
   const applicationName = settings.enterpriseSettings?.application_name;
 
-  const isDarkMode = resolvedTheme === "dark";
+  // `resolvedTheme` is `undefined` on the server and on the client's first
+  // render pass, then flips synchronously to the stored theme before
+  // hydration paints. Gate on `mounted` so both passes agree, avoiding a
+  // hydration mismatch on the logo's `src`.
+  const isDarkMode = mounted && resolvedTheme === "dark";
 
   const logo = useMemo(
     () =>

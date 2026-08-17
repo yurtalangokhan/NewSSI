@@ -208,6 +208,12 @@ function GeneralSettings() {
   const pathname = usePathname();
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+  // `theme` is `undefined` on the server and on the client's first render
+  // pass, then flips synchronously to the stored value before hydration
+  // paints. Gate on `mounted` so both passes agree, avoiding a hydration
+  // mismatch on the select's value/placeholder state.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   const {
     personalizationValues,
@@ -376,7 +382,7 @@ function GeneralSettings() {
               center
             >
               <InputSelect
-                value={theme}
+                value={mounted ? theme : undefined}
                 onValueChange={(value) => {
                   setTheme(value);
                   updateUserThemePreference(value as ThemePreference);
