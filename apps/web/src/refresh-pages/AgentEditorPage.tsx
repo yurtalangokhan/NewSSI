@@ -1126,7 +1126,7 @@ export default function AgentEditorPage({
                 </deleteAgentModal.Provider>
 
                 <Form className="h-full w-full">
-                  <SettingsLayouts.Root width="full">
+                  <SettingsLayouts.Root width="xl">
                     <SettingsLayouts.Header
                       icon={SvgOnyxOctagon}
                       title={
@@ -1153,13 +1153,12 @@ export default function AgentEditorPage({
                           </Button>
                         </div>
                       }
-                      backButton
                       separator
                     />
 
                     {/* Agent Form Content */}
                     <SettingsLayouts.Body>
-                      <div className="mx-auto flex w-full max-w-[92rem] flex-col gap-6 md:gap-8">
+                      <div className="flex w-full flex-col gap-6 md:gap-8">
                         <div
                           className={cn(
                             "grid w-full gap-6",

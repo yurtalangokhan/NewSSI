@@ -7,11 +7,15 @@ import { useSearchParams } from "next/navigation";
 
 import { NEXT_PUBLIC_CLOUD_ENABLED } from "@/lib/constants";
 import { APP_SUPPORT_EMAIL } from "@/lib/appInfo";
+import { formatErrorMessage } from "@/components/ErrorCallout";
 
 const Page = () => {
   const { t } = useTranslation();
   const searchParams = useSearchParams();
-  const errorMessage = searchParams.get("error");
+  const rawErrorMessage = searchParams.get("error");
+  const errorMessage = rawErrorMessage
+    ? formatErrorMessage(rawErrorMessage)
+    : rawErrorMessage;
 
   return (
     <AuthFlowContainer>

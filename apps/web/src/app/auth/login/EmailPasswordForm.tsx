@@ -19,6 +19,7 @@ import { APIFormFieldState } from "@/refresh-components/form/types";
 import { SvgArrowRightCircle } from "@opal/icons";
 import { useCaptcha } from "@/lib/hooks/useCaptcha";
 import { useTranslation } from "react-i18next";
+import { formatErrorMessage } from "@/components/ErrorCallout";
 
 interface EmailPasswordFormProps {
   isSignup?: boolean;
@@ -266,7 +267,7 @@ export default function EmailPasswordForm({
             } else if (errorDetail === "NO_WEB_LOGIN_AND_HAS_NO_PASSWORD") {
               errorMsg = t("auth.noPasswordSet");
             } else if (errorDetail) {
-              errorMsg = errorDetail;
+              errorMsg = formatErrorMessage(errorDetail);
             }
             if (loginResponse.status === 429) {
               errorMsg = t("auth.tooManyRequests");

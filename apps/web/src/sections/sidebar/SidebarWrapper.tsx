@@ -17,21 +17,25 @@ function LogoSection({ folded, onFoldClick }: LogoSectionProps) {
       <Button
         icon={SvgSidebar}
         prominence="tertiary"
-        tooltip={t("closeSidebar")}
+        tooltip={folded ? t("openSidebar") : t("closeSidebar")}
         onClick={onFoldClick}
       />
     ),
-    [onFoldClick, t]
+    [folded, onFoldClick, t]
   );
 
   return (
     <div
       className={cn(
-        "flex items-center px-2.5 py-2 h-[3.25rem] min-h-[3.25rem]",
+        "flex items-center px-2.5 py-2 h-[3.25rem] min-h-[3.25rem] overflow-hidden",
         folded ? "justify-center" : "justify-between"
       )}
     >
-      {!folded && <Logo />}
+      {!folded && (
+        <div className="overflow-hidden whitespace-nowrap">
+          <Logo />
+        </div>
+      )}
       {folded !== undefined && closeButton()}
     </div>
   );
@@ -49,18 +53,16 @@ export default function SidebarWrapper({
   children,
 }: SidebarWrapperProps) {
   return (
-    // This extra `div` wrapping needs to be present (for some reason).
-    // Without, the widths of the sidebars don't properly get set to the explicitly declared widths (i.e., `4rem` folded and `15rem` unfolded).
-    <div>
-      <div
-        className={cn(
-          "h-screen flex flex-col bg-background-tint-02 py-2 gap-4 group/SidebarWrapper transition-width duration-200 ease-in-out",
-          folded ? "w-[3.25rem]" : "w-[15rem]"
-        )}
-      >
-        <LogoSection folded={folded} onFoldClick={onFoldClick} />
+    <aside
+      className={cn(
+        "h-screen flex flex-col bg-background-tint-02 py-2 gap-4 group/SidebarWrapper shrink-0 overflow-hidden select-none transition-[width] duration-300 ease-in-out",
+        folded ? "w-[3.25rem]" : "w-[15rem]"
+      )}
+    >
+      <LogoSection folded={folded} onFoldClick={onFoldClick} />
+      <div className="flex-1 min-h-0 overflow-hidden w-full">
         {children}
       </div>
-    </div>
+    </aside>
   );
 }

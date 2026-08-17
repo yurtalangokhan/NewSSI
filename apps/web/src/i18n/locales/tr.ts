@@ -484,6 +484,7 @@ const tr = {
     deleteChatConfirmation: "Bu sohbeti silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.",
     deleteButton: "Sil",
     closeSidebar: "Kenar Çubuğunu Kapat",
+    openSidebar: "Kenar Çubuğunu Aç",
     embeddingModel: "Gömme Modeli",
     rerankingModel: "Yeniden Sıralama Modeli",
     advanced: "Gelişmiş",

@@ -123,6 +123,21 @@ function Header() {
 
   const effectiveMode: AppMode = appFocus.isNewSession() ? appMode : "chat";
 
+  const hasLeftContent =
+    isMobile ||
+    Boolean(
+      isPaidEnterpriseFeaturesEnabled &&
+        settings.isSearchModeAvailable &&
+        appFocus.isNewSession() &&
+        !classification
+    );
+  const hasCenterContent = Boolean(pageWithHeaderContent && customHeaderContent);
+  const hasRightContent = Boolean(appFocus.isChat() && currentChatSession);
+
+  if (!hasLeftContent && !hasCenterContent && !hasRightContent) {
+    return null;
+  }
+
   const availableProjects = useMemo(() => {
     if (!projects) return [];
     return projects.filter((project) => project.id !== currentProjectId);

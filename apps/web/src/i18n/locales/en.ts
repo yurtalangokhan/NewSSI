@@ -484,6 +484,7 @@ const en = {
     deleteChatConfirmation: "Are you sure you want to delete this chat? This action cannot be undone.",
     deleteButton: "Delete",
     closeSidebar: "Close Sidebar",
+    openSidebar: "Open Sidebar",
     embeddingModel: "Embedding Model",
     rerankingModel: "Reranking Model",
     advanced: "Advanced",

@@ -47,6 +47,7 @@ const widthClasses = {
   "sm-md": "w-[min(var(--container-sm-md),100%)]",
   md: "w-[min(var(--container-md),100%)]",
   lg: "w-[min(var(--container-lg),100%)]",
+  xl: "w-[min(var(--container-xl),100%)]",
   full: "w-[var(--container-full)]",
 };
 
@@ -61,7 +62,7 @@ const widthClasses = {
  * - Automatic overflow-y scrolling
  * - Contains the scroll container ID that Settings.Header uses for shadow detection
  * - Configurable width via CSS variables defined in sizes.css:
- *   "sm" (672px), "sm-md" (752px), "md" (872px, default), "lg" (992px), "full" (100%)
+ *   "sm" (672px), "sm-md" (752px), "md" (872px, default), "lg" (992px), "xl" (1472px), "full" (100%)
  *
  * @example
  * ```tsx

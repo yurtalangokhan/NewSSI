@@ -38,4 +38,28 @@ describe("LoginPage external Keycloak mode", () => {
       screen.getByRole("link", { name: /SP Keycloak SSO/i })
     ).toHaveAttribute("href", "/api/auth/oidc/authorize?prompt=login");
   });
+
+  it("translates a raw Kong upstream-server oidcError instead of showing it as-is", () => {
+    render(
+      <LoginPage
+        authUrl="/api/auth/oidc/authorize?kc_idp_hint=external-keycloak"
+        spAuthUrl="/api/auth/oidc/authorize?prompt=login"
+        authTypeMetadata={authTypeMetadata}
+        nextUrl={null}
+        externalKeycloakLogin
+        oidcError="An invalid response was received from the upstream server"
+      />
+    );
+
+    expect(
+      screen.queryByText(
+        "An invalid response was received from the upstream server"
+      )
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "An invalid response was received from the upstream server."
+      )
+    ).toBeInTheDocument();
+  });
 });
