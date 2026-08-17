@@ -7,6 +7,7 @@ import { MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
 import Text from "@/refresh-components/texts/Text";
 import Tag from "@/refresh-components/buttons/Tag";
 import { cn } from "@/lib/utils";
+import { useAppBackground } from "@/providers/AppBackgroundProvider";
 
 interface StageDefinition {
   key: string;
@@ -114,13 +115,21 @@ export default function GraphStageStrip({
     () => getStageProgress(packets, stageDefinitions),
     [packets, stageDefinitions]
   );
+  const { hasBackground } = useAppBackground();
 
   if (stageDefinitions.length === 0) {
     return null;
   }
 
   return (
-    <div className="flex flex-col gap-2 rounded-12 border border-border-01 bg-background-tint-00 px-3 py-2">
+    <div
+      className={cn(
+        "flex flex-col gap-2 rounded-12 border border-border-01 px-3 py-2",
+        hasBackground
+          ? "backdrop-blur-md bg-background-tint-00/60"
+          : "bg-background-tint-00"
+      )}
+    >
       <div className="flex items-center gap-2">
         <SvgWorkflow className="size-4 stroke-text-03" />
         <Text as="p" secondaryBody text03>

@@ -110,7 +110,11 @@ export function UserProvider({
 
   useEffect(() => {
     setUpToDateUser(mergeUserPreferences(user, updatedSettings));
-  }, [user, updatedSettings]);
+  }, [
+    user,
+    updatedSettings?.settings?.auto_scroll,
+    updatedSettings?.settings?.temperature_override_enabled,
+  ]);
 
   useEffect(() => {
     if (!posthog) return;

@@ -406,11 +406,18 @@ function GeneralSettings() {
                   return (
                     <button
                       key={bg.id}
-                      onClick={() =>
+                      onClick={() => {
                         updateUserChatBackground(
                           bg.id === CHAT_BACKGROUND_NONE ? null : bg.id
-                        )
-                      }
+                        );
+                        if (bg.id !== CHAT_BACKGROUND_NONE) {
+                          const matchingTheme = bg.isDarkBackground
+                            ? ThemePreference.DARK
+                            : ThemePreference.LIGHT;
+                          setTheme(matchingTheme);
+                          updateUserThemePreference(matchingTheme);
+                        }
+                      }}
                       className="relative overflow-hidden rounded-lg transition-all w-[90px] h-[68px] cursor-pointer border-none p-0 bg-transparent group"
                       title={bg.label}
                       aria-label={`${bg.label} background${

@@ -129,7 +129,7 @@ class UserService:
             except Exception:
                 pass
 
-        return self._user_to_dict(user)
+        return await self._user_to_app_dict(user)
 
     async def list_users(
         self,

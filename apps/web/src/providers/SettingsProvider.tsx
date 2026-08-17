@@ -51,10 +51,13 @@ export function SettingsProvider({
     [enableSearchRuntimeStatus, settings.settings.search_ui_enabled, ccPairs.length]
   );
 
+  const contextValue = useMemo(
+    () => ({ ...settings, isMobile, isSearchModeAvailable }),
+    [settings, isMobile, isSearchModeAvailable]
+  );
+
   return (
-    <SettingsContext.Provider
-      value={{ ...settings, isMobile, isSearchModeAvailable }}
-    >
+    <SettingsContext.Provider value={contextValue}>
       {children}
     </SettingsContext.Provider>
   );

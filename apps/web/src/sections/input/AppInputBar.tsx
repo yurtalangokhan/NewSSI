@@ -95,7 +95,7 @@ export function SourceChip({
       )}
       style={{
         color: appBackground?.isDarkBackground
-          ? "var(--text-inverted-03)"
+          ? "var(--text-light-03)"
           : "var(--text-04)",
         ...foregroundBorderStyle,
       }}
@@ -262,7 +262,8 @@ const AppInputBar = React.memo(
     );
 
     const combinedSettings = useContext(SettingsContext);
-    const { appBackground, foregroundTextStyle } = useAppBackground();
+    const { appBackground, foregroundTextStyle, hasBackground } =
+      useAppBackground();
     const canStopGenerating =
       chatState === "loading" || chatState === "streaming";
 
@@ -500,7 +501,10 @@ const AppInputBar = React.memo(
           ref={containerRef}
           id="onyx-chat-input"
           className={cn(
-            "w-full flex flex-col shadow-01 bg-background-neutral-00 rounded-16"
+            "w-full flex flex-col shadow-01 rounded-16",
+            hasBackground
+              ? "bg-background-neutral-00/70 backdrop-blur-md border border-border-02"
+              : "bg-background-neutral-00"
             // # Note (from @raunakab):
             //
             // `shadow-01` extends ~14px below the element (2px offset + 12px blur).
@@ -553,7 +557,7 @@ const AppInputBar = React.memo(
                     "bg-transparent",
                     "resize-none",
                     appBackground?.isDarkBackground
-                      ? "placeholder:text-text-inverted-03"
+                      ? "placeholder:text-text-light-03"
                       : "placeholder:text-text-03",
                     "whitespace-pre-wrap",
                     "break-word",
