@@ -157,10 +157,10 @@ function EmptyState({
 }) {
   return (
     <div className="rounded-08 border border-border-01 bg-background-neutral-01 p-6 text-center">
-      <Text headingH3 text01 className="block">
+      <Text headingH3 text05 className="block">
         {title}
       </Text>
-      <Text secondaryBody text-03 className="mt-2 block">
+      <Text secondaryBody text04 className="mt-2 block">
         {description}
       </Text>
     </div>
@@ -747,10 +747,10 @@ function RolesManager() {
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2">
         <div>
-          <Text headingH3 text01 className="block">
+          <Text headingH3 text05 className="block">
             {t("roleManagementTitle")}
           </Text>
-          <Text secondaryBody text-03 className="mt-1 block">
+          <Text secondaryBody text04 className="mt-1 block">
             {t("roleManagementDescription")}
           </Text>
         </div>
@@ -921,7 +921,7 @@ function RolesManager() {
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <Text headingH3 text01 className="truncate">
+                      <Text headingH3 text05 className="truncate">
                         {roleLabel(selectedComp.name)}
                       </Text>
                       {isBuiltin && (
@@ -1103,15 +1103,15 @@ function RolesManager() {
                   <div className="min-w-0 flex-1">
                     <Text
                       headingH3
-                      text01
+                      text05
                       className="block truncate capitalize"
                     >
                       {coarseRoleLabel(selectedCoarse.name)}
                     </Text>
-                    <Text secondaryBody text-04 className="mt-2 block">
+                    <Text secondaryBody text04 className="mt-2 block">
                       {selectedCoarse.description || t("noDescription")}
                     </Text>
-                    <Text secondaryBody text-04 className="mt-2 block">
+                    <Text secondaryBody text04 className="mt-2 block">
                       {selectedCoarseIsWildcard
                         ? t("allPermissions")
                         : t("permissionsSelectedCount", {
@@ -1135,10 +1135,10 @@ function RolesManager() {
             {activeLayer === "composite" ? (
               <>
                 <div>
-                  <Text headingH3 text01 className="mb-2 block">
+                  <Text headingH3 text05 className="mb-2 block">
                     {t("includedFeatureBundlesTitle")}
                   </Text>
-                  <Text secondaryBody text-03 className="mb-3 block">
+                  <Text secondaryBody text04 className="mb-3 block">
                     {t("includedFeatureBundlesDescription")}
                   </Text>
                   <div className="relative mb-3">
@@ -1152,7 +1152,7 @@ function RolesManager() {
                   <Card className="rounded-08">
                     <CardContent className="p-4">
                       {includedCoarseRoles.length === 0 ? (
-                        <Text secondaryBody text-04 className="py-2">
+                        <Text secondaryBody text04 className="py-2">
                           {t("noFeatureBundlesAvailable")}
                         </Text>
                       ) : (
@@ -1179,14 +1179,14 @@ function RolesManager() {
                               <span className="min-w-0">
                                 <Text
                                   secondaryBody
-                                  text-02
+                                  text05
                                   className="block truncate capitalize"
                                 >
                                   {coarseRoleLabel(role.name)}
                                 </Text>
                                 <Text
                                   secondaryBody
-                                  text-04
+                                  text04
                                   className="block text-xs"
                                 >
                                   {t("permissionsCount", {
@@ -1203,14 +1203,14 @@ function RolesManager() {
                 </div>
 
                 <div className="mt-6">
-                  <Text headingH3 text01 className="mb-2 block">
+                  <Text headingH3 text05 className="mb-2 block">
                     {t("effectivePermissionsTitle")}
                   </Text>
-                  <Text secondaryBody text-03 className="mb-3 block">
+                  <Text secondaryBody text04 className="mb-3 block">
                     {t("effectivePermissionsDescription")}
                   </Text>
                   {effectivePermissions.length === 0 ? (
-                    <Text secondaryBody text-04>
+                    <Text secondaryBody text04>
                       {t("noEffectivePermissions")}
                     </Text>
                   ) : (
@@ -1222,7 +1222,7 @@ function RolesManager() {
                         >
                           <Text
                             secondaryBody
-                            text-02
+                            text04
                             className="block truncate font-mono text-xs"
                           >
                             {permission}
@@ -1239,11 +1239,11 @@ function RolesManager() {
                   <div className="mb-4 rounded-08 border border-border-01 bg-background-neutral-01 p-6">
                     <div className="flex items-center gap-2">
                       <SvgShield size={18} className="text-text-03" />
-                      <Text headingH3 text01>
+                      <Text headingH3 text05>
                         {t("allPermissionsGrantedTitle")}
                       </Text>
                     </div>
-                    <Text secondaryBody text-03 className="mt-2 block">
+                    <Text secondaryBody text04 className="mt-2 block">
                       {t("allPermissionsGrantedDescription")}
                     </Text>
                   </div>
@@ -1280,7 +1280,7 @@ function RolesManager() {
                             }
                           />
                         )}
-                        <Text headingH3 text01 className="capitalize">
+                        <Text headingH3 text05 className="capitalize">
                           {featureLabel(feature, t)}
                         </Text>
                         <span className="rounded-04 bg-background-neutral-02 px-2 py-0.5 text-xs text-text-03">
@@ -1404,7 +1404,7 @@ function RolesManager() {
           <Modal.Body>
             <Text secondaryBody text-02 as="span">
               {t("confirmDeletePrefix")}{" "}
-              <span className="font-medium text-text-01">
+              <span className="font-medium text-text-05">
                 {deleteConfirmRole}
               </span>
               {t("confirmDeleteSuffix")}

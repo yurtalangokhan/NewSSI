@@ -430,7 +430,7 @@ const MemoizedBuildSidebarInner = memo(
             <SidebarSection title={sessionsTitle}>
               {sessionHistory.length === 0 ? (
                 <div className="pl-2 pr-1.5 py-1">
-                  <Text text01>
+                  <Text secondaryBody text03>
                     Start building! Session history will appear here.
                   </Text>
                 </div>

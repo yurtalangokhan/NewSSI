@@ -189,10 +189,10 @@ function SettingRow({
 
   return (
     <div className="grid grid-cols-1 gap-1 border-b border-border-01 py-3 last:border-b-0 md:grid-cols-[180px_1fr]">
-      <Text as="span" secondaryBody text03>
+      <Text as="span" secondaryBody text04>
         {label}
       </Text>
-      <Text as="span" mainUiBody text01 className="break-all">
+      <Text as="span" mainUiBody text05 className="break-all">
         {displayValue}
       </Text>
     </div>
@@ -202,7 +202,7 @@ function SettingRow({
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="flex flex-col gap-1">
-      <Text as="span" secondaryBody text03>
+      <Text as="span" secondaryBody text04>
         {label}
       </Text>
       {children}
@@ -226,7 +226,7 @@ function ToggleRow({
       onClick={() => onCheckedChange(!checked)}
     >
       <Checkbox checked={checked} onCheckedChange={onCheckedChange} />
-      <Text as="span" mainUiBody text01>
+      <Text as="span" mainUiBody text05>
         {label}
       </Text>
     </button>
@@ -245,8 +245,8 @@ function Panel({
   return (
     <section className="rounded-08 border border-border-01 bg-background-neutral-00">
       <div className="flex items-center gap-2 border-b border-border-01 px-4 py-3">
-        <Icon className="h-4 w-4 stroke-text-02" />
-        <Text as="span" headingH3 text01>
+        <Icon className="h-4 w-4 stroke-text-04" />
+        <Text as="span" headingH3 text05>
           {title}
         </Text>
       </div>
@@ -416,10 +416,10 @@ export default function SystemSettingsPage() {
           <section className="rounded-08 border border-border-01 bg-background-neutral-00 px-4 py-4">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex flex-col gap-1">
-                <Text as="span" headingH2 text01>
+                <Text as="span" headingH2 text05>
                   {headline}
                 </Text>
-                <Text as="span" secondaryBody text03>
+                <Text as="span" secondaryBody text04>
                   {t("admin.systemSettings.externalIdpEnvNote")}
                 </Text>
               </div>
@@ -788,10 +788,10 @@ export default function SystemSettingsPage() {
                   {t("admin.systemSettings.refreshStatusButton")}
                 </Button>
                 <div className="rounded-08 border border-border-01 bg-background-neutral-01 px-3 py-3">
-                  <Text as="span" secondaryBody text03 className="block">
+                  <Text as="span" secondaryBody text04 className="block">
                     {t("admin.systemSettings.startupBehaviorTitle")}
                   </Text>
-                  <Text as="span" mainUiBody text01 className="block pt-1">
+                  <Text as="span" mainUiBody text05 className="block pt-1">
                     {t("admin.systemSettings.startupBehaviorDescription")}
                   </Text>
                 </div>

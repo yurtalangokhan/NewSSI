@@ -154,6 +154,7 @@ module.exports = {
         // React component integration tests
         "**/src/app/**/*.test.tsx",
         "**/src/components/**/*.test.tsx",
+        "**/src/hooks/**/*.test.tsx",
         "**/src/lib/**/*.test.tsx",
         "**/src/refresh-components/**/*.test.tsx",
         "**/src/sections/input/**/*.test.tsx",

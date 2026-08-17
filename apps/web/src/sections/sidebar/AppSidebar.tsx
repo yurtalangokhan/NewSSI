@@ -162,7 +162,7 @@ function RecentsSection({
     >
       <SidebarSection title={t("sidebar.recentsSectionTitle")}>
         {chatSessions.length === 0 ? (
-          <Text as="p" text01 className="px-3">
+          <Text as="p" text03 secondaryBody className="px-3">
             {t("sidebar.recentsEmpty")}
           </Text>
         ) : (

@@ -39,6 +39,7 @@ import Popover, { PopoverMenu } from "@/refresh-components/Popover";
 import LineItem from "@/refresh-components/buttons/LineItem";
 import {
   SvgImage,
+  SvgInfo,
   SvgLock,
   SvgNetworkGraph,
   SvgOnyxOctagon,
@@ -462,6 +463,7 @@ export default function AgentEditorPage({
       });
       return {
         name: tool.name,
+        display_name: parsed.title || _.startCase(tool.name),
         description: parsed.description,
         input_schema: parsed.input_schema,
         category: parsed.category,
@@ -1066,7 +1068,7 @@ export default function AgentEditorPage({
                 .map((tool) => tool.name),
               ...allBuiltInTools
                 .filter((tool) => (values as any)[`builtin_tool_${tool.name}`])
-                .map((tool) => _.startCase(tool.name)),
+                .map((tool) => tool.display_name),
             ];
             const hasKnowledgeEnabled =
               values.enable_knowledge &&
@@ -1483,107 +1485,143 @@ export default function AgentEditorPage({
                           <SimpleCollapsible>
                             <SimpleCollapsible.Header
                               title={t("agentEditor.actionsLabel")}
-                              description={t("agentEditor.actionsDescription")}
+                              description={
+                                values.base_agent === "chatbot"
+                                  ? t("agentEditor.actionsChatbotDescription")
+                                  : t("agentEditor.actionsDescription")
+                              }
                             />
                             <SimpleCollapsible.Content>
                               <GeneralLayouts.Section gap={0.5}>
-                                {[
-                                  "configurable-mcp-agent",
-                                  "dynamic-agent",
-                                ].includes(values.base_agent) &&
-                                  schemaSupportsTools &&
-                                  toolSelectionGroups.length > 0 && (
-                                    <McpToolSelectionCard
-                                      title={t("agentEditor.actionsLabel")}
-                                      description={t(
-                                        "agentEditor.mcpToolsCardDescription",
-                                        "Choose MCP and tools-service tools this agent can call."
-                                      )}
-                                      groups={toolSelectionGroups}
-                                      selectedToolNames={
-                                        selectedMcpToolNamesForCard
-                                      }
-                                      onSelectedToolNamesChange={(
-                                        toolNames
-                                      ) => {
-                                        const next = new Set(toolNames);
-                                        if (!next.has("send_email")) {
-                                          setFieldValue(
-                                            "send_email_mail_config_id",
-                                            ""
-                                          );
-                                        }
-                                        allMcpTools.forEach((tool) => {
-                                          setFieldValue(
-                                            `mcp_tool_${tool.name}`,
-                                            next.has(tool.name)
-                                          );
-                                        });
-                                        allBuiltInTools.forEach((tool) => {
-                                          setFieldValue(
-                                            `builtin_tool_${tool.name}`,
-                                            next.has(tool.name)
-                                          );
-                                        });
-                                      }}
-                                      isLoading={
-                                        isToolsLoading ||
-                                        isBuiltInToolsLoading ||
-                                        isMcpLoading
-                                      }
-                                    />
-                                  )}
-
-                                {isSendEmailSelected && (
-                                  <InputLayouts.Vertical
-                                    name="send_email_mail_config_id"
-                                    title={t(
-                                      "agentEditor.sendEmailMailConfigLabel",
-                                      "Mail config"
-                                    )}
-                                    description={t(
-                                      "agentEditor.sendEmailMailConfigDescription",
-                                      "This agent will send email through the selected SMTP account."
-                                    )}
-                                  >
-                                    <InputSelectField
-                                      name="send_email_mail_config_id"
-                                      disabled={isMailConfigsLoading}
-                                    >
-                                      <InputSelect.Trigger
-                                        placeholder={t(
-                                          "agentEditor.selectMailConfigPlaceholder",
-                                          "Select mail config"
-                                        )}
-                                      />
-                                      <InputSelect.Content>
-                                        {mailConfigs
-                                          .filter((config) => config.is_active)
-                                          .map((config) => (
-                                            <InputSelect.Item
-                                              key={config.id}
-                                              value={config.id}
-                                              description={`${config.from_email} - ${config.host}:${config.port}`}
-                                            >
-                                              {config.name}
-                                            </InputSelect.Item>
-                                          ))}
-                                      </InputSelect.Content>
-                                    </InputSelectField>
-                                    {!isMailConfigsLoading &&
-                                      mailConfigs.filter(
-                                        (config) => config.is_active
-                                      ).length === 0 && (
-                                        <Text secondaryBody text03>
-                                          {t(
-                                            "agentEditor.noMailConfigsAvailable",
-                                            "Create a mail config in Configuration first."
+                                {values.base_agent === "chatbot" ? (
+                                  <Card className="border border-amber-300 dark:border-amber-700/60 bg-amber-50/70 dark:bg-amber-950/30 p-4 rounded-12">
+                                    <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
+                                      <div className="flex items-start gap-3">
+                                        <div className="p-2 rounded-08 bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5">
+                                          <SvgInfo className="w-5 h-5" />
+                                        </div>
+                                        <div className="flex flex-col gap-1">
+                                          <Text mainUiAction text03 className="font-semibold text-amber-800 dark:text-amber-200">
+                                            {t("agentEditor.actionsChatbotWarningTitle")}
+                                          </Text>
+                                          <Text mainUiMuted text03 className="text-amber-700/90 dark:text-amber-300/90 leading-relaxed">
+                                            {t("agentEditor.actionsChatbotWarningDescription")}
+                                          </Text>
+                                        </div>
+                                      </div>
+                                      <div className="shrink-0 w-full sm:w-auto">
+                                        <Button
+                                          type="button"
+                                          secondary
+                                          size="md"
+                                          onClick={() => setFieldValue("base_agent", "configurable-mcp-agent")}
+                                          className="w-full sm:w-auto"
+                                        >
+                                          {t("agentEditor.actionsChatbotSwitchToMcpButton")}
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  </Card>
+                                ) : (
+                                  <>
+                                    {[
+                                      "configurable-mcp-agent",
+                                      "dynamic-agent",
+                                    ].includes(values.base_agent) &&
+                                      schemaSupportsTools &&
+                                      toolSelectionGroups.length > 0 && (
+                                        <McpToolSelectionCard
+                                          title={t("agentEditor.actionsLabel")}
+                                          description={t(
+                                            "agentEditor.mcpToolsCardDescription",
+                                            "Choose MCP and tools-service tools this agent can call."
                                           )}
-                                        </Text>
+                                          groups={toolSelectionGroups}
+                                          selectedToolNames={
+                                            selectedMcpToolNamesForCard
+                                          }
+                                          onSelectedToolNamesChange={(
+                                            toolNames
+                                          ) => {
+                                            const next = new Set(toolNames);
+                                            if (!next.has("send_email")) {
+                                              setFieldValue(
+                                                "send_email_mail_config_id",
+                                                ""
+                                              );
+                                            }
+                                            allMcpTools.forEach((tool) => {
+                                              setFieldValue(
+                                                `mcp_tool_${tool.name}`,
+                                                next.has(tool.name)
+                                              );
+                                            });
+                                            allBuiltInTools.forEach((tool) => {
+                                              setFieldValue(
+                                                `builtin_tool_${tool.name}`,
+                                                next.has(tool.name)
+                                              );
+                                            });
+                                          }}
+                                          isLoading={
+                                            isToolsLoading ||
+                                            isBuiltInToolsLoading ||
+                                            isMcpLoading
+                                          }
+                                        />
                                       )}
-                                  </InputLayouts.Vertical>
-                                )}
 
+                                    {isSendEmailSelected && (
+                                      <InputLayouts.Vertical
+                                        name="send_email_mail_config_id"
+                                        title={t(
+                                          "agentEditor.sendEmailMailConfigLabel",
+                                          "Mail config"
+                                        )}
+                                        description={t(
+                                          "agentEditor.sendEmailMailConfigDescription",
+                                          "This agent will send email through the selected SMTP account."
+                                        )}
+                                      >
+                                        <InputSelectField
+                                          name="send_email_mail_config_id"
+                                          disabled={isMailConfigsLoading}
+                                        >
+                                          <InputSelect.Trigger
+                                            placeholder={t(
+                                              "agentEditor.selectMailConfigPlaceholder",
+                                              "Select mail config"
+                                            )}
+                                          />
+                                          <InputSelect.Content>
+                                            {mailConfigs
+                                              .filter((config) => config.is_active)
+                                              .map((config) => (
+                                                <InputSelect.Item
+                                                  key={config.id}
+                                                  value={config.id}
+                                                  description={`${config.from_email} - ${config.host}:${config.port}`}
+                                                >
+                                                  {config.name}
+                                                </InputSelect.Item>
+                                              ))}
+                                          </InputSelect.Content>
+                                        </InputSelectField>
+                                        {!isMailConfigsLoading &&
+                                          mailConfigs.filter(
+                                            (config) => config.is_active
+                                          ).length === 0 && (
+                                            <Text secondaryBody text03>
+                                              {t(
+                                                "agentEditor.noMailConfigsAvailable",
+                                                "Create a mail config in Configuration first."
+                                              )}
+                                            </Text>
+                                          )}
+                                      </InputLayouts.Vertical>
+                                    )}
+                                  </>
+                                )}
                               </GeneralLayouts.Section>
                             </SimpleCollapsible.Content>
                           </SimpleCollapsible>

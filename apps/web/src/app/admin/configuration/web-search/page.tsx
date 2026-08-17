@@ -1460,7 +1460,7 @@ export default function Page() {
                               <>
                                 <div className="flex items-center gap-2">
                                   {onyxTestResult.title && (
-                                    <Text as="p" mainUiBody className="font-semibold text-text-01">
+                                    <Text as="p" mainUiBody className="font-semibold text-text-05">
                                       {onyxTestResult.title}
                                     </Text>
                                   )}
@@ -1472,7 +1472,7 @@ export default function Page() {
                                 <Text
                                   as="p"
                                   mainUiBody
-                                  text03
+                                  text04
                                   className="whitespace-pre-wrap break-words max-h-64 overflow-y-auto"
                                 >
                                   {onyxTestResult.content

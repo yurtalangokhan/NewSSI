@@ -576,7 +576,7 @@ export function OrganizationTree({
       {/* Header */}
       <div className={cn("border-b border-border-02 p-4")}>
         <div className={cn("flex items-center justify-between gap-2")}>
-          <Text className={cn("text-lg font-semibold text-text-01")}>
+          <Text className={cn("text-lg font-semibold text-text-05")}>
             {t("admin.organizations.tree.title")}
           </Text>
           <div className={cn("flex items-center gap-1")}>

@@ -25,7 +25,7 @@ function getDefaultAuthErrorMsg(): string {
   });
 }
 
-function getDefaultErrorMsg(): string {
+export function getDefaultErrorMsg(): string {
   return i18n.t("common.fetchError", {
     defaultValue: "An error occurred while fetching the data.",
   });
