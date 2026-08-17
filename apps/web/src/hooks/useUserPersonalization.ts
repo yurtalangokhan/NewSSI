@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { User, UserPersonalization } from "@/lib/types";
 
 const DEFAULT_PERSONALIZATION: UserPersonalization = {
@@ -98,6 +98,19 @@ interface UseUserPersonalizationOptions {
  * - Memories are automatically trimmed and filtered (empty strings removed) on save
  * - The hook synchronizes with user prop changes to stay in sync with external updates
  */
+function hasPersonalizationChanged(
+  a: UserPersonalization,
+  b: UserPersonalization
+): boolean {
+  return (
+    a.name !== b.name ||
+    a.role !== b.role ||
+    a.long_term_memory_enabled !== b.long_term_memory_enabled ||
+    a.extract_memory !== b.extract_memory ||
+    a.user_preferences !== b.user_preferences
+  );
+}
+
 export default function useUserPersonalization(
   user: User | null,
   persistPersonalization: (
@@ -117,7 +130,11 @@ export default function useUserPersonalization(
     [user]
   );
 
+  const savedPersonalizationRef =
+    useRef<UserPersonalization>(basePersonalization);
+
   useEffect(() => {
+    savedPersonalizationRef.current = basePersonalization;
     setPersonalizationValues(basePersonalization);
   }, [basePersonalization]);
 
@@ -161,19 +178,29 @@ export default function useUserPersonalization(
 
   const handleSavePersonalization = useCallback(
     async (overrides?: Partial<UserPersonalization>, silent?: boolean) => {
-      setIsSavingPersonalization(true);
-
       const valuesToSave = { ...personalizationValues, ...overrides };
+
+      if (
+        !hasPersonalizationChanged(
+          valuesToSave,
+          savedPersonalizationRef.current
+        )
+      ) {
+        return valuesToSave;
+      }
+
+      setIsSavingPersonalization(true);
 
       try {
         await persistPersonalization(valuesToSave);
+        savedPersonalizationRef.current = valuesToSave;
         setPersonalizationValues(valuesToSave);
         if (!silent) {
           onSuccess?.(valuesToSave);
         }
         return valuesToSave;
       } catch (error) {
-        setPersonalizationValues(basePersonalization);
+        setPersonalizationValues(savedPersonalizationRef.current);
         if (!silent) {
           onError?.(error);
         }
@@ -183,7 +210,6 @@ export default function useUserPersonalization(
       }
     },
     [
-      basePersonalization,
       onError,
       onSuccess,
       persistPersonalization,

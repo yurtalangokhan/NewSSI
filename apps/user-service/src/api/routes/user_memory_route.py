@@ -17,7 +17,7 @@ internal_router = APIRouter(prefix="/internal/users", tags=["user-memory"])
 # ---------------------------------------------------------------------------
 
 
-@router.get("/")
+@router.get("")
 async def list_memories(
     user_id: Annotated[str, Depends(require_permission("memory:read"))],
     page: Annotated[int, Query(ge=1)] = 1,
@@ -28,7 +28,7 @@ async def list_memories(
     )
 
 
-@router.post("/", status_code=201)
+@router.post("", status_code=201)
 async def create_memory(
     body: Annotated[dict[str, Any], Body()],
     user_id: Annotated[str, Depends(require_permission("memory:create"))],
@@ -67,7 +67,7 @@ async def delete_memory(
     return await get_user_memory_controller().delete_memory(uuid.UUID(user_id), memory_id)
 
 
-@router.delete("/")
+@router.delete("")
 async def delete_all_memories(
     user_id: Annotated[str, Depends(require_permission("memory:delete"))],
 ):

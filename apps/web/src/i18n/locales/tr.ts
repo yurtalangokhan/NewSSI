@@ -850,6 +850,10 @@ const tr = {
     noMemoriesYet: "Henüz anı yok. Başlamak için \"Satır Ekle\"ye tıklayın.",
     line_one: "Satır",
     line_other: "Satır",
+    memorySaved: "Anı kaydedildi",
+    memorySaveFailed: "Anı kaydedilemedi",
+    memoryDeleted: "Anı silindi",
+    memoryDeleteFailed: "Anı silinemedi",
   },
   language: {
     switchTo: "{{language}} diline geç",
@@ -5193,6 +5197,7 @@ const tr = {
     document: "Belge",
     edit: "Düzenle",
     editItem: "{{name}} öğesini düzenle",
+    characterCount: "({{length}}/{{limit}} karakter)",
     poweredByOnyx: "ATLAS tarafından desteklenmektedir",
     turksatLogoAlt: "Turksat Logosu",
     turksatMarkAriaLabel: "Turksat İşareti",

@@ -652,6 +652,18 @@ function PromptShortcuts() {
         return;
       }
 
+      // If existing shortcut and no fields changed, do not save
+      if (!shortcut.isNew) {
+        const original = promptShortcuts.find((p) => p.id === shortcut.id);
+        if (
+          original &&
+          original.prompt === shortcut.prompt &&
+          original.content === shortcut.content
+        ) {
+          return;
+        }
+      }
+
       try {
         if (shortcut.isNew) {
           // Create new shortcut
@@ -696,7 +708,7 @@ function PromptShortcuts() {
         toast.error(t("settings.chatPreferences.toastShortcutSaveFailed"));
       }
     },
-    [shortcuts, refresh]
+    [shortcuts, promptShortcuts, refresh, t]
   );
 
   const handleBlurShortcut = useCallback(
@@ -1005,14 +1017,14 @@ function ChatPreferencesSettings() {
             />
           </InputLayouts.Horizontal>
           {(personalizationValues.long_term_memory_enabled ||
-            personalizationValues.extract_memory) &&
-            memories.length > 0 && (
-              <Memories
-                memories={memories}
-                onSaveMemories={handleSaveMemories}
-                onDeleteMemory={deleteMemory}
-              />
-            )}
+            personalizationValues.extract_memory ||
+            memories.length > 0) && (
+            <Memories
+              memories={memories}
+              onSaveMemories={handleSaveMemories}
+              onDeleteMemory={deleteMemory}
+            />
+          )}
         </Card>
       </Section>
 

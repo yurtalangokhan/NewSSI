@@ -850,6 +850,10 @@ const en = {
     noMemoriesYet: "No memories yet. Click \"Add Line\" to get started.",
     line_one: "Line",
     line_other: "Lines",
+    memorySaved: "Memory saved",
+    memorySaveFailed: "Failed to save memory",
+    memoryDeleted: "Memory deleted",
+    memoryDeleteFailed: "Failed to delete memory",
   },
   language: {
     switchTo: "Switch to {{language}}",
@@ -5191,6 +5195,7 @@ const en = {
     document: "Document",
     edit: "Edit",
     editItem: "Edit {{name}}",
+    characterCount: "({{length}}/{{limit}} characters)",
     poweredByOnyx: "Powered by ATLAS",
     turksatLogoAlt: "Turksat Logo",
     turksatMarkAriaLabel: "Turksat Mark",
