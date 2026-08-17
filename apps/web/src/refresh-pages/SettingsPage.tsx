@@ -211,6 +211,7 @@ function GeneralSettings() {
 
   const {
     personalizationValues,
+    basePersonalization,
     updatePersonalizationField,
     handleSavePersonalization,
   } = useUserPersonalization(user, updateUserPersonalization, {
@@ -220,15 +221,24 @@ function GeneralSettings() {
       toast.error(t("settings.general.toastPersonalizationFailed")),
   });
 
-  // Track initial values to detect changes
-  const initialNameRef = useRef(personalizationValues.name);
-  const initialRoleRef = useRef(personalizationValues.role);
+  // Which field (if any) currently has an in-flight save, so only that
+  // field is locked instead of both.
+  const [savingField, setSavingField] = useState<"name" | "role" | null>(
+    null
+  );
 
-  // Update refs when personalization values change from external source
+  // Track initial values to detect changes
+  const initialNameRef = useRef(basePersonalization.name);
+  const initialRoleRef = useRef(basePersonalization.role);
+
+  // Update refs only when the underlying server-sourced value changes,
+  // not on every local keystroke (personalizationValues changes as the
+  // user types, which would otherwise make the onBlur diff check below
+  // always see "no change" and never save).
   useEffect(() => {
-    initialNameRef.current = personalizationValues.name;
-    initialRoleRef.current = personalizationValues.role;
-  }, [personalizationValues.name, personalizationValues.role]);
+    initialNameRef.current = basePersonalization.name;
+    initialRoleRef.current = basePersonalization.role;
+  }, [basePersonalization.name, basePersonalization.role]);
 
   const handleDeleteAllChats = useCallback(async () => {
     setIsDeleting(true);
@@ -293,6 +303,11 @@ function GeneralSettings() {
               <InputTypeIn
                 placeholder={t("settings.general.fullNamePlaceholder")}
                 value={personalizationValues.name}
+                className={
+                  savingField === "name"
+                    ? "opacity-60 pointer-events-none"
+                    : undefined
+                }
                 onChange={(e) =>
                   updatePersonalizationField("name", e.target.value)
                 }
@@ -301,11 +316,13 @@ function GeneralSettings() {
                     e.currentTarget.blur();
                   }
                 }}
-                onBlur={() => {
+                onBlur={async () => {
                   // Only save if the value has changed
                   if (personalizationValues.name !== initialNameRef.current) {
-                    void handleSavePersonalization();
+                    setSavingField("name");
+                    await handleSavePersonalization();
                     initialNameRef.current = personalizationValues.name;
+                    setSavingField(null);
                   }
                 }}
               />
@@ -318,6 +335,11 @@ function GeneralSettings() {
               <InputTypeIn
                 placeholder={t("settings.general.workRolePlaceholder")}
                 value={personalizationValues.role}
+                className={
+                  savingField === "role"
+                    ? "opacity-60 pointer-events-none"
+                    : undefined
+                }
                 onChange={(e) =>
                   updatePersonalizationField("role", e.target.value)
                 }
@@ -326,11 +348,13 @@ function GeneralSettings() {
                     e.currentTarget.blur();
                   }
                 }}
-                onBlur={() => {
+                onBlur={async () => {
                   // Only save if the value has changed
                   if (personalizationValues.role !== initialRoleRef.current) {
-                    void handleSavePersonalization();
+                    setSavingField("role");
+                    await handleSavePersonalization();
                     initialRoleRef.current = personalizationValues.role;
+                    setSavingField(null);
                   }
                 }}
               />

@@ -193,6 +193,7 @@ export default function useUserPersonalization(
 
   return {
     personalizationValues,
+    basePersonalization,
     updatePersonalizationField,
     toggleUseMemories,
     toggleLongTermMemory,
