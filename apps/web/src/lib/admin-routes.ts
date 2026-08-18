@@ -21,6 +21,7 @@ import {
   SvgPaintBrush,
   SvgSearch,
   SvgServer,
+  SvgSettings,
   SvgShield,
   SvgSlack,
   SvgTerminal,
@@ -356,7 +357,7 @@ export const ADMIN_ROUTE_CONFIG: Record<string, AdminRouteConfig> = {
     sidebarLabelKey: "admin.navigation.routes.debug.sidebar",
   },
   [ADMIN_PATHS.SYSTEM_SETTINGS]: {
-    icon: SvgShield,
+    icon: SvgSettings,
     title: "System Settings",
     sidebarLabel: "System Settings",
     requiredPermissions: ["*"],
