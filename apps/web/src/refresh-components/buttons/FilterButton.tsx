@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import Text from "@/refresh-components/texts/Text";
 import { cn, noProp } from "@/lib/utils";
 import type { IconProps } from "@opal/types";
-import IconButton from "./IconButton";
 import { SvgChevronDownSmall, SvgX } from "@opal/icons";
+
 const buttonClasses = (transient?: boolean) =>
   ({
     active: [
@@ -90,12 +90,31 @@ export default function FilterButton({
       </Text>
       <div className="pl-0">
         {active ? (
-          <IconButton
-            icon={SvgX}
+          <span
+            role="button"
+            tabIndex={0}
+            aria-label="Clear filter"
             onClick={noProp(onClear)}
-            secondary
-            className="!p-0 !rounded-04"
-          />
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                e.stopPropagation();
+                onClear?.();
+              }
+            }}
+            className={cn(
+              "flex items-center justify-center p-0.5 rounded-04 cursor-pointer",
+              "hover:bg-background-tint-inverted-02 active:bg-background-tint-inverted-01",
+              "transition-colors"
+            )}
+          >
+            <SvgX
+              className={cn(
+                "w-[0.875rem] h-[0.875rem]",
+                "stroke-text-inverted-05"
+              )}
+            />
+          </span>
         ) : (
           <div className="w-[1rem] h-[1rem]">
             <SvgChevronDownSmall

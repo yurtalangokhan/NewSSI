@@ -39,6 +39,7 @@ interface UserContextType {
   authTypeMetadata: AuthTypeMetadata;
   updateUserAutoScroll: (autoScroll: boolean) => Promise<void>;
   updateUserShortcuts: (enabled: boolean) => Promise<void>;
+  updateUserPinnedAssistants: (pinnedIds: number[]) => Promise<boolean>;
   toggleAgentPinnedStatus: (
     currentPinnedAgentIDs: number[],
     agentId: number,
@@ -350,27 +351,18 @@ export function UserProvider({
     }
   };
 
-  const toggleAgentPinnedStatus = async (
-    currentPinnedAgentIDs: number[],
-    agentId: number,
-    isPinned: boolean
-  ) => {
+  const updateUserPinnedAssistants = async (pinnedIds: number[]) => {
     setUpToDateUser((prevUser) => {
       if (!prevUser) return prevUser;
       return {
         ...prevUser,
         preferences: {
           ...prevUser.preferences,
-          pinned_assistants: isPinned
-            ? [...currentPinnedAgentIDs, agentId]
-            : currentPinnedAgentIDs.filter((id) => id !== agentId),
+          pinned_assistants: pinnedIds,
         },
       };
     });
 
-    let updatedPinnedAgentsIds = isPinned
-      ? [...currentPinnedAgentIDs, agentId]
-      : currentPinnedAgentIDs.filter((id) => id !== agentId);
     try {
       const response = await fetch(`/api/user/pinned-assistants`, {
         method: "PATCH",
@@ -378,7 +370,7 @@ export function UserProvider({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          ordered_assistant_ids: updatedPinnedAgentsIds,
+          ordered_assistant_ids: pinnedIds,
         }),
       });
 
@@ -390,8 +382,20 @@ export function UserProvider({
       return true;
     } catch (error) {
       console.error("Error updating pinned assistants:", error);
+      await refreshUser();
       return false;
     }
+  };
+
+  const toggleAgentPinnedStatus = async (
+    currentPinnedAgentIDs: number[],
+    agentId: number,
+    isPinned: boolean
+  ) => {
+    const updatedPinnedAgentsIds = isPinned
+      ? [...currentPinnedAgentIDs, agentId]
+      : currentPinnedAgentIDs.filter((id) => id !== agentId);
+    return updateUserPinnedAssistants(updatedPinnedAgentsIds);
   };
 
   const updateUserThemePreference = async (
@@ -557,6 +561,7 @@ export function UserProvider({
         updateUserChatBackground,
         updateUserDefaultModel,
         updateUserDefaultAppMode,
+        updateUserPinnedAssistants,
         toggleAgentPinnedStatus,
         isAdmin: isAdminFromPermissions(permissions),
         isCurator: false,

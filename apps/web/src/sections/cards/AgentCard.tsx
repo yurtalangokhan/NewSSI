@@ -127,7 +127,7 @@ export default function AgentCard({ agent }: AgentCardProps) {
       );
 
       if (shareError) {
-        toast.error(`Failed to share agent: ${shareError}`);
+        toast.error(t("agentsPage.shareError", { error: shareError }));
         return;
       }
 
@@ -137,7 +137,7 @@ export default function AgentCard({ agent }: AgentCardProps) {
           isFeatured
         );
         if (featuredError) {
-          toast.error(`Failed to update featured status: ${featuredError}`);
+          toast.error(t("agentsPage.featuredError", { error: featuredError }));
           refreshAgent();
           return;
         }
@@ -151,6 +151,7 @@ export default function AgentCard({ agent }: AgentCardProps) {
       canUpdateFeaturedStatus,
       isPaidEnterpriseFeaturesEnabled,
       refreshAgent,
+      t,
     ]
   );
 
@@ -162,16 +163,16 @@ export default function AgentCard({ agent }: AgentCardProps) {
     try {
       const error = await deleteAgent(agent.external_id ?? agent.id);
       if (error) {
-        toast.error(`Failed to delete agent: ${error}`);
+        toast.error(t("agentsPage.deleteError", { error }));
       } else {
-        toast.success(`Agent "${agent.name}" deleted.`);
+        toast.success(t("agentsPage.deleteSuccess", { name: agent.name }));
         await refreshAgents();
       }
     } finally {
       setIsDeleting(false);
       deleteModal.toggle(false);
     }
-  }, [agent.id, agent.name, refreshAgents, deleteModal]);
+  }, [agent.id, agent.name, refreshAgents, deleteModal, t]);
 
   const actionCount =
     agent.action_count ??
@@ -199,7 +200,7 @@ export default function AgentCard({ agent }: AgentCardProps) {
         {deleteModal.isOpen && (
           <ConfirmationModalLayout
             icon={SvgTrash}
-            title={`Delete "${agent.name}"`}
+            title={t("agentsPage.deleteModalTitle", { name: agent.name })}
             onClose={() => deleteModal.toggle(false)}
             submit={
               <Button
@@ -207,11 +208,13 @@ export default function AgentCard({ agent }: AgentCardProps) {
                 onClick={handleDelete}
                 disabled={isDeleting}
               >
-                {isDeleting ? "Deleting…" : "Delete"}
+                {isDeleting
+                  ? t("agentsPage.deleteModalDeleting")
+                  : t("agentsPage.deleteModalButton")}
               </Button>
             }
           >
-            This agent will be permanently deleted. This action cannot be undone.
+            {t("agentsPage.deleteModalDescription")}
           </ConfirmationModalLayout>
         )}
       </deleteModal.Provider>
