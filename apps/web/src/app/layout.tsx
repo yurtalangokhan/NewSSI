@@ -46,7 +46,7 @@ const hankenGrotesk = Hanken_Grotesk({
 });
 
 export async function generateMetadata(): Promise<Metadata> {
-  const logoLocation = buildClientUrl("/logo.turksat.svg?v=20260505-2");
+  const logoLocation = buildClientUrl("/logo.single.svg");
   let enterpriseSettings: EnterpriseSettings | null = null;
   if (SERVER_SIDE_ONLY__PAID_ENTERPRISE_FEATURES_ENABLED) {
     enterpriseSettings = await (await fetchEnterpriseSettingsSS()).json();

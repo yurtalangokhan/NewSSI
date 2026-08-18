@@ -134,10 +134,6 @@ function Header() {
   const hasCenterContent = Boolean(pageWithHeaderContent && customHeaderContent);
   const hasRightContent = Boolean(appFocus.isChat() && currentChatSession);
 
-  if (!hasLeftContent && !hasCenterContent && !hasRightContent) {
-    return null;
-  }
-
   const availableProjects = useMemo(() => {
     if (!projects) return [];
     return projects.filter((project) => project.id !== currentProjectId);
@@ -273,6 +269,10 @@ function Header() {
     setDeleteConfirmationModalOpen,
     handleMoveClick,
   ]);
+
+  if (!hasLeftContent && !hasCenterContent && !hasRightContent) {
+    return null;
+  }
 
   return (
     <>
