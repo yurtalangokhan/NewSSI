@@ -8,6 +8,10 @@
   background-color: var(--background-tint-00);
   border-radius: var(--border-radius-12);
   gap: 0.5rem;
+  cursor: pointer;
+  user-select: none;
+  text-align: left;
+  outline: none;
 }
 
 .attachment-button:hover {
