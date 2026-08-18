@@ -32,6 +32,7 @@ import { fetchAppSidebarMetadata } from "@/lib/appSidebarSS";
 import StatsOverlayLoader from "@/components/dev/StatsOverlayLoader";
 import PerformanceMeasureGuard from "@/components/dev/PerformanceMeasureGuard";
 import { getAppName } from "@/lib/appInfo";
+import { resolveLocaleSS } from "@/lib/localeSS";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -68,11 +69,13 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [combinedSettings, user, authTypeMetadata] = await Promise.all([
-    fetchSettingsSS(),
-    getCurrentUserSS(),
-    getAuthTypeMetadataSS(),
-  ]);
+  const [combinedSettings, user, authTypeMetadata, locale] =
+    await Promise.all([
+      fetchSettingsSS(),
+      getCurrentUserSS(),
+      getAuthTypeMetadataSS(),
+      resolveLocaleSS(),
+    ]);
 
   const { folded } = await fetchAppSidebarMetadata(user);
 
@@ -81,7 +84,7 @@ export default async function RootLayout({
 
   const getPageContent = async (content: React.ReactNode) => (
     <html
-      lang="en"
+      lang={locale}
       className={`${inter.variable} ${hankenGrotesk.variable}`}
       suppressHydrationWarning
     >
@@ -164,6 +167,7 @@ export default async function RootLayout({
       user={user}
       settings={combinedSettings}
       folded={folded}
+      initialLocale={locale}
     >
       <Suspense fallback={null}>
         <PostHogPageView />

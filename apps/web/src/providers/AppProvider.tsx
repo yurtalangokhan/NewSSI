@@ -73,6 +73,7 @@ import I18nProvider from "@/providers/I18nProvider";
 import AppHealthBanner from "@/sections/AppHealthBanner";
 import { usePathname } from "next/navigation";
 import { shouldRenderAppShell } from "@/providers/appShellRouting";
+import { SupportedLanguage } from "@/i18n/config";
 
 interface AppProviderProps {
   children: React.ReactNode;
@@ -80,6 +81,7 @@ interface AppProviderProps {
   settings: CombinedSettings;
   authTypeMetadata: AuthTypeMetadata;
   folded?: boolean;
+  initialLocale: SupportedLanguage;
 }
 
 export default function AppProvider({
@@ -88,6 +90,7 @@ export default function AppProvider({
   settings,
   authTypeMetadata,
   folded,
+  initialLocale,
 }: AppProviderProps) {
   const pathname = usePathname();
   const renderAppShell = shouldRenderAppShell(pathname);
@@ -114,7 +117,7 @@ export default function AppProvider({
   );
 
   return (
-    <I18nProvider>
+    <I18nProvider initialLocale={initialLocale}>
       <SettingsProvider
         settings={settings}
         enableSearchRuntimeStatus={renderAppShell}
