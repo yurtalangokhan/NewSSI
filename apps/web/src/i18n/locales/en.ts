@@ -916,6 +916,7 @@ const en = {
     actionsCount_one: "{{count}} Action",
     actionsCount_other: "{{count}} Actions",
     noActions: "No Actions",
+    unknownOwner: "Deleted User",
     longTermMemoryEnabled: "Long-Term Memory: Enabled",
     longTermMemoryDisabled: "Long-Term Memory: Disabled",
     startChat: "Start Chat",

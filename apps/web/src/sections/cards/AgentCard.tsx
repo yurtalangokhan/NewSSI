@@ -18,6 +18,7 @@ import {
   updateAgentSharedStatus,
   updateAgentFeaturedStatus,
   deleteAgent,
+  resolveAgentOwnerEmail,
 } from "@/lib/agents";
 import { useUser } from "@/providers/UserProvider";
 import {
@@ -66,8 +67,8 @@ export default function AgentCard({ agent }: AgentCardProps) {
     if (agent.owner?.id && user?.id && agent.owner.id === user.id) {
       return user.email;
     }
-    return agent.owner?.email || "Onyx";
-  }, [agent.owner?.email, agent.owner?.id, user?.email, user?.id]);
+    return resolveAgentOwnerEmail(agent.owner?.email, t);
+  }, [agent.owner?.email, agent.owner?.id, user?.email, user?.id, t]);
   const canEdit = isOwnedByUser || isAdmin;
   const shareAgentModal = useCreateModal();
   const agentViewerModal = useCreateModal();

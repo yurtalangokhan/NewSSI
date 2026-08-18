@@ -241,15 +241,11 @@ async def test_availability_uses_rag_service_for_graph_collections(monkeypatch) 
     controller = PersonaController()
     graph_id = "8d5f9e92-0ff8-4bdf-8c53-e5625df314ef"
 
-    async def fake_local_collection_info(collection_ids: list[str], *, source_key: str):
+    async def fake_local_collection_info(collection_ids: list[str], *, source_key: str, cache=None):
         return set(), {}
 
-    async def fake_rag_collection_info(collection_ids: list[str], *, source_key: str):
-        if not collection_ids:
-            return set(), {}
-        assert source_key == "knowledge_graph"
-        assert collection_ids == [graph_id]
-        return {graph_id}, {graph_id: "Telekomünikasyon"}
+    async def fake_fetch_payload():
+        return {"knowledge_graph": [{"id": graph_id, "name": "Telekomünikasyon"}]}
 
     async def fake_model_names():
         return {"llama3.1:8b"}
@@ -264,8 +260,8 @@ async def test_availability_uses_rag_service_for_graph_collections(monkeypatch) 
     )
     monkeypatch.setattr(
         controller,
-        "_get_rag_service_collection_info",
-        fake_rag_collection_info,
+        "_fetch_rag_knowledge_selector_payload",
+        fake_fetch_payload,
     )
     monkeypatch.setattr(
         controller,
@@ -297,3 +293,69 @@ async def test_availability_uses_rag_service_for_graph_collections(monkeypatch) 
         "status": "ok",
         "message": "Graph RAG collection 'Telekomünikasyon' is available.",
     } in availability["checks"]
+
+
+@pytest.mark.asyncio
+async def test_catalog_fetches_rag_payload_once_for_all_agents(monkeypatch) -> None:
+    """The catalog list must not call the RAG service once per agent."""
+    controller = PersonaController()
+    graph_id = "8d5f9e92-0ff8-4bdf-8c53-e5625df314ef"
+
+    fetch_calls = 0
+
+    async def fake_fetch_payload():
+        nonlocal fetch_calls
+        fetch_calls += 1
+        return {"knowledge_graph": [{"id": graph_id, "name": "Shared KB"}]}
+
+    async def fake_local_collection_info(collection_ids, *, source_key, cache=None):
+        return set(), {}
+
+    async def fake_model_names():
+        return {"llama3.1:8b"}
+
+    async def fake_tool_names():
+        return set()
+
+    monkeypatch.setattr(controller, "_fetch_rag_knowledge_selector_payload", fake_fetch_payload)
+    monkeypatch.setattr(controller, "_get_local_collection_info", fake_local_collection_info)
+    monkeypatch.setattr(controller, "_get_available_model_names", fake_model_names)
+    monkeypatch.setattr(controller, "_get_available_mcp_tool_names", fake_tool_names)
+    monkeypatch.setattr(controller, "_is_memory_available", lambda: True)
+    monkeypatch.setattr(
+        "controller.persona_controller.settings.DEFAULT_MODEL",
+        "llama3.1:8b",
+    )
+
+    async def fake_list_all(include_builtin: bool = False):
+        return [
+            {
+                "id": idx,
+                "name": f"Agent {idx}",
+                "description": "",
+                "rag_config": {
+                    "document_processing": [],
+                    "knowledge_graph": [graph_id],
+                },
+                "mcp_tools": [],
+                "long_term_memory": False,
+                "user_id": None,
+            }
+            for idx in range(5)
+        ]
+
+    monkeypatch.setattr(
+        "controller.persona_controller.PersonaDB.list_all",
+        fake_list_all,
+    )
+    async def fake_load_owner_emails(personas):
+        return {}
+
+    monkeypatch.setattr(controller, "_load_owner_emails", fake_load_owner_emails)
+
+    agents = await controller.get_agent_catalog(user=None)
+
+    assert fetch_calls == 1
+    custom_agents = [agent for agent in agents if not agent.get("builtin_persona")]
+    assert len(custom_agents) == 5
+    assert all(agent["availability"]["status"] == "available" for agent in custom_agents)

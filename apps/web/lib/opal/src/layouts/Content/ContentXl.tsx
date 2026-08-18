@@ -5,7 +5,7 @@ import type { SizeVariant } from "@opal/shared";
 import SvgEdit from "@opal/icons/edit";
 import type { IconFunctionComponent } from "@opal/types";
 import { cn } from "@opal/utils";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -60,6 +60,9 @@ interface ContentXlProps {
 
   /** Optional tertiary icon rendered in the icon row. */
   moreIcon2?: IconFunctionComponent;
+
+  /** Optional content rendered beside the title. */
+  tag?: ReactNode;
 }
 
 // ---------------------------------------------------------------------------
@@ -106,6 +109,7 @@ function ContentXl({
   onTitleChange,
   moreIcon1: MoreIcon1,
   moreIcon2: MoreIcon2,
+  tag,
 }: ContentXlProps) {
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState(title);
@@ -223,6 +227,8 @@ function ContentXl({
               {title}
             </span>
           )}
+
+          {tag}
 
           {editable && !editing && (
             <div

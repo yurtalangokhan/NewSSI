@@ -164,10 +164,6 @@ def _has_web_search_tool(tool_names: list[str]) -> bool:
     return any("web_search" in tool_name or "web-search" in tool_name for tool_name in tool_names)
 
 
-def _build_catalog_summary_availability() -> dict[str, str]:
-    return {"status": "available"}
-
-
 class PersonaController(BaseController):
     """Owns persona CRUD and persona-related helper endpoints."""
 
@@ -528,7 +524,14 @@ class PersonaController(BaseController):
         collection_ids: list[str],
         *,
         source_key: str,
+        cache: dict[str, dict[str, Any] | None] | None = None,
     ) -> tuple[set[str], dict[str, str]]:
+        """Look up collections in the local datasource DB.
+
+        `cache` memoizes lookups by collection id across a single request
+        (e.g. the whole agent catalog), since multiple agents commonly
+        reference the same shared collection.
+        """
         if not collection_ids:
             return set(), {}
 
@@ -539,9 +542,14 @@ class PersonaController(BaseController):
 
             repo = DatasourceRepository()
             for collection_id in collection_ids:
-                collection = await repo.get_collection(collection_id)
-                if collection is None:
-                    collection = await repo.get_collection_by_name(collection_id)
+                if cache is not None and collection_id in cache:
+                    collection = cache[collection_id]
+                else:
+                    collection = await repo.get_collection(collection_id)
+                    if collection is None:
+                        collection = await repo.get_collection_by_name(collection_id)
+                    if cache is not None:
+                        cache[collection_id] = collection
                 if collection is not None:
                     existing.add(collection_id)
                     display_name = collection.get("name") or collection.get("uuid")
@@ -552,18 +560,17 @@ class PersonaController(BaseController):
 
         return existing, display_names
 
-    async def _get_rag_service_collection_info(
-        self,
-        collection_ids: list[str],
-        *,
-        source_key: str,
-    ) -> tuple[set[str], dict[str, str]]:
-        if not collection_ids:
-            return set(), {}
+    async def _fetch_rag_knowledge_selector_payload(self) -> dict[str, Any] | None:
+        """Fetch the RAG service's full knowledge-selector payload.
 
+        The endpoint always returns every available collection (it has no
+        filter-by-id support), so callers checking many collections/agents
+        should fetch this once per request and reuse it rather than calling
+        it once per collection lookup.
+        """
         base_url = (env.RAG_API_URL or env.RAG_SERVICE_API_URL or "").rstrip("/")
         if not base_url:
-            return set(), {}
+            return None
 
         headers: dict[str, str] = {}
         token = (env.INTERNAL_SERVICE_TOKEN or "").strip()
@@ -579,13 +586,25 @@ class PersonaController(BaseController):
                     headers=headers,
                 )
             if response.status_code != 200:
-                return set(), {}
+                return None
             payload = response.json()
         except Exception:
+            return None
+
+        return payload if isinstance(payload, dict) else None
+
+    def _filter_rag_service_collection_info(
+        self,
+        collection_ids: list[str],
+        *,
+        source_key: str,
+        payload: dict[str, Any] | None,
+    ) -> tuple[set[str], dict[str, str]]:
+        if not collection_ids or not payload:
             return set(), {}
 
         requested = set(collection_ids)
-        rows = payload.get(source_key) if isinstance(payload, dict) else []
+        rows = payload.get(source_key)
         if not isinstance(rows, list):
             return set(), {}
 
@@ -608,14 +627,22 @@ class PersonaController(BaseController):
         collection_ids: list[str],
         *,
         source_key: str,
+        rag_payload: dict[str, Any] | None = None,
+        local_cache: dict[str, dict[str, Any] | None] | None = None,
     ) -> tuple[set[str], dict[str, str]]:
-        rag_existing, rag_display_names = await self._get_rag_service_collection_info(
+        if not collection_ids:
+            return set(), {}
+        if rag_payload is None:
+            rag_payload = await self._fetch_rag_knowledge_selector_payload()
+        rag_existing, rag_display_names = self._filter_rag_service_collection_info(
             collection_ids,
             source_key=source_key,
+            payload=rag_payload,
         )
         local_existing, local_display_names = await self._get_local_collection_info(
             collection_ids,
             source_key=source_key,
+            cache=local_cache,
         )
         return (
             rag_existing | local_existing,
@@ -630,16 +657,43 @@ class PersonaController(BaseController):
         except Exception:
             return False
 
-    async def _get_agent_availability(self, agent: dict[str, Any]) -> dict[str, Any]:
+    async def _get_agent_availability(
+        self,
+        agent: dict[str, Any],
+        *,
+        available_models: set[str] | None = None,
+        available_mcp_tools: set[str] | None = None,
+        memory_available: bool | None = None,
+        rag_payload: dict[str, Any] | None = None,
+        local_collection_cache: dict[str, dict[str, Any] | None] | None = None,
+    ) -> dict[str, Any]:
+        """Compute an agent's real availability.
+
+        `available_models`/`available_mcp_tools`/`memory_available`/
+        `rag_payload` are environment-wide (not agent-specific), and
+        `local_collection_cache` memoizes local DB lookups by collection id.
+        Callers checking many agents at once (e.g. the catalog list) should
+        fetch/create these once and pass them in here to avoid redundant
+        lookups per agent.
+        """
         rag_config = agent.get("rag_config") or {}
         document_collections = [str(c) for c in rag_config.get("document_processing") or []]
         graph_collections = [str(c) for c in rag_config.get("knowledge_graph") or []]
 
-        available_models = await self._get_available_model_names()
-        available_mcp_tools = await self._get_available_mcp_tool_names()
+        if available_models is None:
+            available_models = await self._get_available_model_names()
+        if available_mcp_tools is None:
+            available_mcp_tools = await self._get_available_mcp_tool_names()
+        if memory_available is None:
+            memory_available = self._is_memory_available()
+        if rag_payload is None and (document_collections or graph_collections):
+            rag_payload = await self._fetch_rag_knowledge_selector_payload()
+
         available_rag_collections, rag_display_names = await self._get_existing_collection_info(
             document_collections,
             source_key="document_processing",
+            rag_payload=rag_payload,
+            local_cache=local_collection_cache,
         )
         (
             available_graph_rag_collections,
@@ -647,6 +701,8 @@ class PersonaController(BaseController):
         ) = await self._get_existing_collection_info(
             graph_collections,
             source_key="knowledge_graph",
+            rag_payload=rag_payload,
+            local_cache=local_collection_cache,
         )
         collection_display_names = {**rag_display_names, **graph_display_names}
 
@@ -658,7 +714,7 @@ class PersonaController(BaseController):
             available_rag_collections=available_rag_collections,
             available_graph_rag_collections=available_graph_rag_collections,
             collection_display_names=collection_display_names,
-            memory_available=self._is_memory_available(),
+            memory_available=memory_available,
         )
 
     async def _serialize_builtin_persona(
@@ -706,7 +762,17 @@ class PersonaController(BaseController):
         return serialized
 
     async def _serialize_builtin_persona_summary(
-        self, persona_id: int, name: str, description: str, base_agent: str
+        self,
+        persona_id: int,
+        name: str,
+        description: str,
+        base_agent: str,
+        *,
+        available_models: set[str] | None = None,
+        available_mcp_tools: set[str] | None = None,
+        memory_available: bool | None = None,
+        rag_payload: dict[str, Any] | None = None,
+        local_collection_cache: dict[str, dict[str, Any] | None] | None = None,
     ) -> dict[str, Any]:
         serialized = {
             "id": persona_id,
@@ -745,10 +811,27 @@ class PersonaController(BaseController):
                 "long_term_memory": False,
             },
         }
-        serialized["availability"] = _build_catalog_summary_availability()
+        serialized["availability"] = await self._get_agent_availability(
+            serialized,
+            available_models=available_models,
+            available_mcp_tools=available_mcp_tools,
+            memory_available=memory_available,
+            rag_payload=rag_payload,
+            local_collection_cache=local_collection_cache,
+        )
         return serialized
 
-    async def _serialize_custom_persona_summary(self, persona: dict[str, Any]) -> dict[str, Any]:
+    async def _serialize_custom_persona_summary(
+        self,
+        persona: dict[str, Any],
+        owner_emails: dict[str, str] | None = None,
+        *,
+        available_models: set[str] | None = None,
+        available_mcp_tools: set[str] | None = None,
+        memory_available: bool | None = None,
+        rag_payload: dict[str, Any] | None = None,
+        local_collection_cache: dict[str, dict[str, Any] | None] | None = None,
+    ) -> dict[str, Any]:
         label_ids = persona.get("labels") or []
         labels = [
             label if isinstance(label, dict) else {"id": label, "name": f"Label {label}"}
@@ -771,7 +854,7 @@ class PersonaController(BaseController):
         )
         has_retrieval = bool(has_scoped_knowledge or "search" in mcp_tools)
         long_term_memory = bool(persona.get("long_term_memory", False))
-        return {
+        serialized = {
             "id": persona["id"],
             "external_id": persona.get("external_id"),
             "name": persona["name"],
@@ -787,7 +870,7 @@ class PersonaController(BaseController):
             "labels": labels,
             "owner": {
                 "id": str(persona.get("user_id") or DEFAULT_USER_ID),
-                "email": self._resolve_owner_email(persona),
+                "email": self._resolve_owner_email(persona, owner_emails),
             },
             "base_agent": persona.get("base_agent"),
             "tools": self._build_tool_snapshots(persona["id"], mcp_tools, rag_config),
@@ -799,10 +882,10 @@ class PersonaController(BaseController):
             "llm_model_version_override": persona.get("llm_model_version_override"),
             "llm_model_provider_override": persona.get("llm_model_provider_override"),
             "mcp_tools": mcp_tools,
+            "rag_config": rag_config,
             "action_count": len(mcp_tools),
             "memory_type": "long_term" if long_term_memory else persona.get("memory_type"),
             "long_term_memory": long_term_memory,
-            "availability": _build_catalog_summary_availability(),
             "capabilities": {
                 "has_actions": len(mcp_tools) > 0,
                 "has_conversation_starters": bool(persona.get("starter_messages")),
@@ -812,6 +895,15 @@ class PersonaController(BaseController):
                 "long_term_memory": long_term_memory,
             },
         }
+        serialized["availability"] = await self._get_agent_availability(
+            serialized,
+            available_models=available_models,
+            available_mcp_tools=available_mcp_tools,
+            memory_available=memory_available,
+            rag_payload=rag_payload,
+            local_collection_cache=local_collection_cache,
+        )
+        return serialized
 
     async def _serialize_custom_persona(
         self,
@@ -974,6 +1066,13 @@ class PersonaController(BaseController):
     ) -> list[dict[str, Any]]:
         agents = []
 
+        # Environment-wide availability inputs are fetched once and reused
+        # across every agent in the catalog, instead of re-checking them
+        # per agent, so the list can show real availability cheaply.
+        available_models = await self._get_available_model_names()
+        available_mcp_tools = await self._get_available_mcp_tool_names()
+        memory_available = self._is_memory_available()
+
         builtin_display = {
             "chatbot": "Chatbot",
             "configurable-mcp-agent": "Configurable MCP Agent",
@@ -984,7 +1083,13 @@ class PersonaController(BaseController):
             description = all_agents[agent_key].description if agent_key in all_agents else ""
             agents.append(
                 await self._serialize_builtin_persona_summary(
-                    idx, display_name, description, agent_key
+                    idx,
+                    display_name,
+                    description,
+                    agent_key,
+                    available_models=available_models,
+                    available_mcp_tools=available_mcp_tools,
+                    memory_available=memory_available,
                 )
             )
 
@@ -999,16 +1104,49 @@ class PersonaController(BaseController):
                     accessible_persona_ids,
                 ) = await self._load_agent_group_visibility(user)
                 can_manage_all_personas = await self._can_manage_all_personas(user)
-            for persona in custom_personas:
-                if user and not self._can_access_persona(
+            visible_personas = [
+                persona
+                for persona in custom_personas
+                if not user
+                or self._can_access_persona(
                     persona,
                     user,
                     restricted_persona_ids,
                     accessible_persona_ids,
                     can_manage_all_personas,
-                ):
-                    continue
-                agents.append(await self._serialize_custom_persona_summary(persona))
+                )
+            ]
+            owner_emails = await self._load_owner_emails(visible_personas)
+
+            # RAG collection membership is agent-specific, but the RAG
+            # service always returns its *entire* catalog regardless of
+            # what's requested, so it's fetched once here (only if any
+            # agent actually references a collection) and reused for every
+            # agent's check instead of one HTTP round-trip per agent.
+            needs_rag_lookup = any(
+                (persona.get("rag_config") or {}).get("document_processing")
+                or (persona.get("rag_config") or {}).get("knowledge_graph")
+                for persona in visible_personas
+            )
+            rag_payload = (
+                await self._fetch_rag_knowledge_selector_payload()
+                if needs_rag_lookup
+                else None
+            )
+            local_collection_cache: dict[str, dict[str, Any] | None] = {}
+
+            for persona in visible_personas:
+                agents.append(
+                    await self._serialize_custom_persona_summary(
+                        persona,
+                        owner_emails,
+                        available_models=available_models,
+                        available_mcp_tools=available_mcp_tools,
+                        memory_available=memory_available,
+                        rag_payload=rag_payload,
+                        local_collection_cache=local_collection_cache,
+                    )
+                )
         except Exception:
             pass
 

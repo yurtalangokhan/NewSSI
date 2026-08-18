@@ -11,6 +11,7 @@ import Text from "@/refresh-components/texts/Text";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
 import * as SettingsLayouts from "@/layouts/settings-layouts";
 import TextSeparator from "@/refresh-components/TextSeparator";
+import SimpleLoader from "@/refresh-components/loaders/SimpleLoader";
 import Tabs from "@/refresh-components/Tabs";
 import FilterButton from "@/refresh-components/buttons/FilterButton";
 import Popover, { PopoverMenu } from "@/refresh-components/Popover";
@@ -70,7 +71,7 @@ function AgentsSection({ title, description, agents }: AgentsSectionProps) {
 }
 
 export default function AgentsNavigationPage() {
-  const { agents } = useAgents();
+  const { agents, isLoading: isLoadingAgents } = useAgents();
   const [creatorFilterOpen, setCreatorFilterOpen] = useState(false);
   const [actionsFilterOpen, setActionsFilterOpen] = useState(false);
   const { user, hasPermission } = useUser();
@@ -662,7 +663,11 @@ export default function AgentsNavigationPage() {
 
       {/* Agents List */}
       <SettingsLayouts.Body>
-        {agentCount === 0 ? (
+        {isLoadingAgents ? (
+          <div className="w-full h-full flex items-center justify-center py-12">
+            <SimpleLoader className="h-6 w-6" />
+          </div>
+        ) : agentCount === 0 ? (
           <Text
             as="p"
             className="w-full h-full flex flex-col items-center justify-center py-12"

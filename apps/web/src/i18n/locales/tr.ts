@@ -916,6 +916,7 @@ const tr = {
     actionsCount_one: "{{count}} Eylem",
     actionsCount_other: "{{count}} Eylem",
     noActions: "Eylem Yok",
+    unknownOwner: "Silinmiş Kullanıcı",
     longTermMemoryEnabled: "Uzun Süreli Bellek: Açık",
     longTermMemoryDisabled: "Uzun Süreli Bellek: Kapalı",
     startChat: "Sohbet Başlat",

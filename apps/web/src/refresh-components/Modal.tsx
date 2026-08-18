@@ -412,6 +412,8 @@ interface ModalHeaderProps extends WithoutStyles<SectionProps> {
   moreIcon2?: IconFunctionComponent;
   title: string;
   description?: string;
+  /** Optional content rendered beside the title, e.g. a status badge. */
+  tag?: React.ReactNode;
   onClose?: () => void;
 }
 const ModalHeader = React.forwardRef<HTMLDivElement, ModalHeaderProps>(
@@ -422,6 +424,7 @@ const ModalHeader = React.forwardRef<HTMLDivElement, ModalHeaderProps>(
       moreIcon2,
       title,
       description,
+      tag,
       onClose,
       children,
       ...props
@@ -473,6 +476,7 @@ const ModalHeader = React.forwardRef<HTMLDivElement, ModalHeaderProps>(
                   moreIcon2={moreIcon2}
                   title={title}
                   description={description}
+                  tag={tag}
                   sizePreset="section"
                   variant="heading"
                 />

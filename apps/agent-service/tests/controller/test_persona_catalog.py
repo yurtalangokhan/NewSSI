@@ -44,8 +44,8 @@ def _custom_persona() -> dict:
 async def test_agent_catalog_summary_omits_detail_fields(monkeypatch) -> None:
     controller = PersonaController()
 
-    async def fake_availability(_agent: dict) -> dict:
-        return {"status": "available", "checks": [{"detail": "expensive"}]}
+    async def fake_availability(_agent: dict, **_kwargs) -> dict:
+        return {"status": "available", "checks": [{"detail": "real check"}]}
 
     monkeypatch.setattr(controller, "_get_agent_availability", fake_availability)
 
@@ -54,7 +54,12 @@ async def test_agent_catalog_summary_omits_detail_fields(monkeypatch) -> None:
     assert summary["id"] == 42
     assert summary["name"] == "Research Agent"
     assert summary["owner"] == {"id": "owner-1", "email": "owner@example.com"}
-    assert summary["availability"] == {"status": "available"}
+    # The summary now surfaces the same real availability result as the
+    # detail endpoint, instead of a hardcoded "available" placeholder.
+    assert summary["availability"] == {
+        "status": "available",
+        "checks": [{"detail": "real check"}],
+    }
     assert summary["action_count"] == 2
     assert summary["capabilities"] == {
         "has_actions": True,
@@ -68,41 +73,57 @@ async def test_agent_catalog_summary_omits_detail_fields(monkeypatch) -> None:
     assert "system_prompt" not in summary
     assert "task_prompt" not in summary
     assert "mcp_tool_configs" not in summary
-    assert "rag_config" not in summary
     assert "user_file_ids" not in summary
     assert "users" not in summary
     assert "groups" not in summary
     assert "hierarchy_nodes" not in summary
     assert "attached_documents" not in summary
-    assert "checks" not in summary["availability"]
 
 
 @pytest.mark.asyncio
-async def test_agent_catalog_summary_does_not_resolve_expensive_availability(
-    monkeypatch,
-) -> None:
+async def test_agent_catalog_summary_resolves_real_availability(monkeypatch) -> None:
+    """The catalog summary must reflect real availability, not a hardcoded
+    placeholder — otherwise cards can show "available" for an agent that the
+    detail view (which does resolve real availability) reports as
+    unavailable."""
     controller = PersonaController()
 
-    async def fail_availability(_agent: dict) -> dict:
-        raise AssertionError("catalog summary must not resolve full availability")
+    async def fake_availability(_agent: dict, **_kwargs) -> dict:
+        return {
+            "status": "unavailable",
+            "checks": [
+                {
+                    "component": "model",
+                    "status": "error",
+                    "message": "Model 'llama3.1:8b' is selected but is not available.",
+                }
+            ],
+        }
 
-    monkeypatch.setattr(controller, "_get_agent_availability", fail_availability)
+    monkeypatch.setattr(controller, "_get_agent_availability", fake_availability)
 
     summary = await controller._serialize_custom_persona_summary(_custom_persona())
 
-    assert summary["availability"] == {"status": "available"}
+    assert summary["availability"]["status"] == "unavailable"
 
 
 @pytest.mark.asyncio
-async def test_builtin_catalog_summary_does_not_resolve_expensive_availability(
-    monkeypatch,
-) -> None:
+async def test_builtin_catalog_summary_resolves_real_availability(monkeypatch) -> None:
     controller = PersonaController()
 
-    async def fail_availability(_agent: dict) -> dict:
-        raise AssertionError("catalog summary must not resolve full availability")
+    async def fake_availability(_agent: dict, **_kwargs) -> dict:
+        return {
+            "status": "unavailable",
+            "checks": [
+                {
+                    "component": "model",
+                    "status": "error",
+                    "message": "No default model is configured.",
+                }
+            ],
+        }
 
-    monkeypatch.setattr(controller, "_get_agent_availability", fail_availability)
+    monkeypatch.setattr(controller, "_get_agent_availability", fake_availability)
 
     summary = await controller._serialize_builtin_persona_summary(
         0,
@@ -111,7 +132,7 @@ async def test_builtin_catalog_summary_does_not_resolve_expensive_availability(
         "chatbot",
     )
 
-    assert summary["availability"] == {"status": "available"}
+    assert summary["availability"]["status"] == "unavailable"
 
 
 @pytest.mark.asyncio
@@ -122,7 +143,7 @@ async def test_agent_catalog_summary_does_not_load_dynamic_definition(monkeypatc
     async def fail_dynamic_definition(_persona_id: int):
         raise AssertionError("catalog summary must not load dynamic definitions")
 
-    async def fake_availability(_agent: dict) -> dict:
+    async def fake_availability(_agent: dict, **_kwargs) -> dict:
         return {"status": "available", "checks": []}
 
     monkeypatch.setattr(controller, "_get_dynamic_definition", fail_dynamic_definition)
@@ -138,7 +159,7 @@ async def test_agent_catalog_summary_does_not_load_dynamic_definition(monkeypatc
 async def test_agent_catalog_summary_keeps_frontend_snapshot_fields(monkeypatch) -> None:
     controller = PersonaController()
 
-    async def fake_availability(_agent: dict) -> dict:
+    async def fake_availability(_agent: dict, **_kwargs) -> dict:
         return {"status": "available", "checks": []}
 
     monkeypatch.setattr(controller, "_get_agent_availability", fake_availability)

@@ -16,6 +16,7 @@ import {
   ContentMd,
   type ContentMdProps,
 } from "@opal/layouts/Content/ContentMd";
+import type { ReactNode } from "react";
 import type { TagProps } from "@opal/components/Tag/components";
 import type { IconFunctionComponent } from "@opal/types";
 import { widthVariants, type WidthVariant } from "@opal/shared";
@@ -74,6 +75,8 @@ type XlContentProps = ContentBaseProps & {
   moreIcon1?: IconFunctionComponent;
   /** Optional tertiary icon rendered in the icon row (ContentXl only). */
   moreIcon2?: IconFunctionComponent;
+  /** Optional content rendered beside the title (ContentXl only). */
+  tag?: ReactNode;
 };
 
 type LgContentProps = ContentBaseProps & {
