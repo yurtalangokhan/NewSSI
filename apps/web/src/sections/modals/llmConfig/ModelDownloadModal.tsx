@@ -1,12 +1,14 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useRef, useState } from "react";
 import { useSWRConfig } from "swr";
 import { toast } from "@/hooks/useToast";
 import Modal from "@/refresh-components/Modal";
+import Message from "@/refresh-components/messages/Message";
 import { Button } from "@opal/components";
 import Text from "@/refresh-components/texts/Text";
 import { useTranslation } from "react-i18next";
+import { cn, formatBytes } from "@/lib/utils";
 
 interface Props {
   open: boolean;
@@ -14,26 +16,149 @@ interface Props {
   providerId: string;
 }
 
-interface OllamaProgress {
+export interface OllamaProgress {
   status: string;
+  digest?: string;
   completed?: number;
   total?: number;
+  error?: string;
+}
+
+export interface ByteTotals {
+  completed: number;
+  total: number;
+}
+
+// Ollama streams one progress event per layer digest, each carrying only
+// that layer's own byte counts — a fresh digest resets completed/total back
+// to a small number, so showing the raw event's percentage makes the bar
+// visibly jump backward between layers. Recording every digest seen so far
+// and summing them gives one steadily-increasing overall percentage instead.
+export function recordLayerProgress(
+  layers: Map<string, ByteTotals>,
+  event: OllamaProgress
+): ByteTotals | null {
+  if (!event.digest || !event.total) return null;
+  layers.set(event.digest, {
+    completed: event.completed ?? 0,
+    total: event.total,
+  });
+  return sumLayers(layers);
+}
+
+// Ollama's /api/pull stream is newline-delimited SSE frames ("data: {...}").
+// A frame carrying an "error" field (e.g. an unknown model name) is not an
+// HTTP failure — the backend always appends a synthetic {"status":"done"}
+// after it regardless — so callers must check every parsed frame for that
+// field instead of trusting the stream reaching "done".
+export function parseSseLine(line: string): OllamaProgress | null {
+  const trimmed = line.trim();
+  if (!trimmed.startsWith("data:")) return null;
+  const jsonStr = trimmed.slice(5).trim();
+  try {
+    return JSON.parse(jsonStr) as OllamaProgress;
+  } catch {
+    return null;
+  }
+}
+
+export type PullErrorKind = "notFound" | "generic";
+
+// Ollama's own error text ("pull model manifest: file does not exist",
+// "model \"x\" not found, try pulling it first") isn't translated and isn't
+// meant for end users, so we recognize the common "no such model" shape and
+// swap in a localized message; anything else falls back to a translated
+// wrapper around the raw text rather than showing it untranslated.
+export function classifyPullError(rawError: string): PullErrorKind {
+  const lower = rawError.toLowerCase();
+  if (lower.includes("file does not exist") || lower.includes("not found")) {
+    return "notFound";
+  }
+  return "generic";
+}
+
+function sumLayers(layers: Map<string, ByteTotals>): ByteTotals {
+  let completed = 0;
+  let total = 0;
+  Array.from(layers.values()).forEach((layer) => {
+    completed += layer.completed;
+    total += layer.total;
+  });
+  return { completed, total };
+}
+
+function useAggregatePullProgress() {
+  const layerBytesRef = useRef<Map<string, ByteTotals>>(new Map());
+  const [aggregate, setAggregate] = useState<ByteTotals | null>(null);
+
+  function record(event: OllamaProgress) {
+    const next = recordLayerProgress(layerBytesRef.current, event);
+    if (next) setAggregate(next);
+  }
+
+  function reset() {
+    layerBytesRef.current.clear();
+    setAggregate(null);
+  }
+
+  return { aggregate, record, reset };
 }
 
 export function ModelDownloadModal({ open, onOpenChange, providerId }: Props) {
   const { t } = useTranslation();
   const { mutate } = useSWRConfig();
+
+  function friendlyStatus(status: string | undefined): string {
+    if (!status) return "";
+    if (status.includes("pulling manifest")) {
+      return t("admin.llm.pullPullingManifest", "Pulling manifest…");
+    }
+    if (status.includes("verifying")) {
+      return t("admin.llm.pullVerifying", "Verifying digest…");
+    }
+    if (status.includes("writing manifest")) {
+      return t("admin.llm.pullWritingManifest", "Writing manifest…");
+    }
+    if (status.includes("removing")) {
+      return t("admin.llm.pullCleaningUp", "Cleaning up…");
+    }
+    if (status === "success" || status === "done") {
+      return t("admin.llm.pullSuccess", "Download complete");
+    }
+    if (status.startsWith("pulling ")) {
+      return t("admin.llm.pullDownloadingLayer", "Downloading…");
+    }
+    return status;
+  }
+
+  function friendlyPullError(rawError: string): string {
+    if (classifyPullError(rawError) === "notFound") {
+      return t("admin.llm.pullModelNotFound", {
+        model: modelName,
+        defaultValue: 'Model "{{model}}" not found.',
+      });
+    }
+    return t("admin.llm.pullErrorGeneric", {
+      message: rawError,
+      defaultValue: "Download failed: {{message}}",
+    });
+  }
+
   const [modelName, setModelName] = useState("");
   const [pulling, setPulling] = useState(false);
   const [progress, setProgress] = useState<OllamaProgress | null>(null);
   const [done, setDone] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const readerRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null);
+  const { aggregate, record, reset: resetAggregate } = useAggregatePullProgress();
 
   const reset = () => {
     setModelName("");
     setPulling(false);
     setProgress(null);
     setDone(false);
+    setErrorMessage(null);
+    resetAggregate();
   };
 
   const handleClose = () => {
@@ -49,6 +174,8 @@ export function ModelDownloadModal({ open, onOpenChange, providerId }: Props) {
     }
     setPulling(true);
     setDone(false);
+    setErrorMessage(null);
+    resetAggregate();
     setProgress({ status: t("admin.llm.starting") });
 
     try {
@@ -66,6 +193,7 @@ export function ModelDownloadModal({ open, onOpenChange, providerId }: Props) {
       readerRef.current = reader;
       const decoder = new TextDecoder();
       let buffer = "";
+      let pullError: string | undefined;
 
       while (true) {
         const { done: streamDone, value } = await reader.read();
@@ -76,19 +204,24 @@ export function ModelDownloadModal({ open, onOpenChange, providerId }: Props) {
         buffer = lines.pop() ?? "";
 
         for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed.startsWith("data:")) continue;
-          const jsonStr = trimmed.slice(5).trim();
-          try {
-            const parsed: OllamaProgress = JSON.parse(jsonStr);
-            setProgress(parsed);
-            if (parsed.status === "done") {
-              setDone(true);
-            }
-          } catch {
-            // ignore malformed lines
+          const parsed = parseSseLine(line);
+          if (!parsed) continue;
+          if (parsed.error) {
+            pullError = parsed.error;
+            continue;
           }
+          setProgress(parsed);
+          record(parsed);
         }
+      }
+
+      if (pullError) {
+        setProgress(null);
+        resetAggregate();
+        const friendly = friendlyPullError(pullError);
+        setErrorMessage(friendly);
+        toast({ message: friendly, level: "error" });
+        return;
       }
 
       setDone(true);
@@ -97,19 +230,19 @@ export function ModelDownloadModal({ open, onOpenChange, providerId }: Props) {
       await mutate("/api/admin/ollama/models");
       await mutate("/api/admin/ollama/status");
     } catch (e: unknown) {
-      toast({
-        message: e instanceof Error ? e.message : t("admin.llm.pullFailed"),
-        level: "error",
-      });
+      setProgress(null);
+      resetAggregate();
+      const message = e instanceof Error ? e.message : t("admin.llm.pullFailed");
+      setErrorMessage(message);
+      toast({ message, level: "error" });
     } finally {
       setPulling(false);
     }
   };
 
-  const pct =
-    progress?.total && progress.completed
-      ? Math.round((progress.completed / progress.total) * 100)
-      : null;
+  const pct = aggregate?.total
+    ? Math.round((aggregate.completed / aggregate.total) * 100)
+    : null;
 
   return (
     <Modal open={open} onOpenChange={handleClose}>
@@ -124,24 +257,44 @@ export function ModelDownloadModal({ open, onOpenChange, providerId }: Props) {
                 className="w-full rounded border border-input bg-background px-3 py-2 text-sm"
                 placeholder={t("admin.llm.modelNameExample")}
                 value={modelName}
-                disabled={pulling}
-                onChange={(e) => setModelName(e.target.value)}
+                disabled={pulling || done}
+                onChange={(e) => {
+                  setModelName(e.target.value);
+                  setErrorMessage(null);
+                }}
               />
             </div>
 
+            {errorMessage && (
+              <Message error close={false} text={errorMessage} className="w-full" />
+            )}
+
             {progress && (
-              <div className="space-y-1">
-                <div className="flex justify-between items-center">
-                  <Text secondaryBody>{progress.status}</Text>
+              <div className="space-y-1.5">
+                <div className="flex justify-between items-center gap-2">
+                  <Text secondaryBody>{friendlyStatus(progress.status)}</Text>
+                  {pct !== null && (
+                    <Text secondaryBody text03>
+                      {t("admin.llm.pullPercentLabel", {
+                        percent: pct,
+                        defaultValue: "{{percent}}%",
+                      })}
+                      {aggregate &&
+                        ` · ${formatBytes(aggregate.completed)} / ${formatBytes(
+                          aggregate.total
+                        )}`}
+                    </Text>
+                  )}
                 </div>
-                {pct !== null && (
-                  <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-                    <div
-                      className="h-full rounded-full bg-primary transition-all"
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
-                )}
+                <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                  <div
+                    className={cn(
+                      "h-full rounded-full bg-primary",
+                      pct !== null ? "transition-all" : "w-full animate-pulse"
+                    )}
+                    style={pct !== null ? { width: `${pct}%` } : undefined}
+                  />
+                </div>
               </div>
             )}
           </div>

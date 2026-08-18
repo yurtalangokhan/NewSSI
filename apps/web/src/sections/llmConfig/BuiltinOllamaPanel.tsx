@@ -59,7 +59,7 @@ export function BuiltinOllamaPanelView({
   const statusLabel = online ? t("online") : t("offline");
 
   return (
-    <Card padding={0.75}>
+    <Card padding={0.75} className="w-full">
       <ContentAction
         icon={ProviderIcon}
         title={t("title")}
@@ -88,7 +88,7 @@ export function BuiltinOllamaPanelView({
         }
       />
 
-      <div className="mt-3 flex flex-col gap-3 border-t border-border pt-3">
+      <div className="w-full mt-3 flex flex-col gap-3 border-t border-border pt-3">
         <div className="flex flex-wrap items-center gap-2 text-sm">
           {online ? (
             <SvgCheckCircle className="h-4 w-4 text-success" />
@@ -118,29 +118,83 @@ export function BuiltinOllamaPanelView({
             <Text text03>{t("loadingModels")}</Text>
           </div>
         ) : models.length > 0 ? (
-          <div className="flex flex-col gap-1">
+          <div className="flex w-full flex-col gap-1">
             {models.map((model) => {
               const modelSize = formatModelSize(model.size);
               return (
                 <div
                   key={model.name}
-                  className="flex min-h-9 items-center gap-2 rounded-md px-2 py-1.5 hover:bg-background-neutral-03"
+                  className="flex w-full min-h-9 items-center gap-2 rounded-md px-2 py-1.5 hover:bg-background-neutral-03 transition-colors"
                 >
-                  <span className="min-w-0 flex-1 truncate font-mono text-sm text-text-04">
+                  <span className="font-mono text-sm text-text-04 truncate mr-1">
                     {model.display_name || model.name}
                   </span>
-                  {model.supports_reasoning && (
-                    <span className="rounded bg-background-neutral-03 px-1.5 py-0.5 text-xs text-text-03">
-                      {t("reasoningTag")}
-                    </span>
-                  )}
+                  <div className="flex items-center gap-1">
+                    {model.supports_image_input && (
+                      <span
+                        title={t("supportsImageInput")}
+                        className="rounded bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 text-[10px] font-medium"
+                      >
+                        {t("visionTag")}
+                      </span>
+                    )}
+                    {model.supports_reasoning && (
+                      <span
+                        title={t("supportsReasoning")}
+                        className="rounded bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 px-1.5 py-0.5 text-[10px] font-medium"
+                      >
+                        {t("reasoningTag")}
+                      </span>
+                    )}
+                    {model.supports_tools && (
+                      <span
+                        title={t("supportsTools")}
+                        className="rounded bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 text-[10px] font-medium"
+                      >
+                        {t("toolsTag")}
+                      </span>
+                    )}
+                    {model.supports_embedding && (
+                      <span
+                        title={t("supportsEmbedding")}
+                        className="rounded bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 px-1.5 py-0.5 text-[10px] font-medium"
+                      >
+                        {t("embeddingTag")}
+                      </span>
+                    )}
+                    {model.supports_code && (
+                      <span
+                        title={t("supportsCode")}
+                        className="rounded bg-cyan-100 dark:bg-cyan-900/40 text-cyan-700 dark:text-cyan-300 px-1.5 py-0.5 text-[10px] font-medium"
+                      >
+                        {t("codeTag")}
+                      </span>
+                    )}
+                    {model.supports_audio && (
+                      <span
+                        title={t("supportsAudio")}
+                        className="rounded bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300 px-1.5 py-0.5 text-[10px] font-medium"
+                      >
+                        {t("audioTag")}
+                      </span>
+                    )}
+                    {model.is_remote && (
+                      <span
+                        title={t("cloudTag")}
+                        className="rounded bg-background-neutral-03 text-text-03 px-1.5 py-0.5 text-[10px] font-medium"
+                      >
+                        {t("cloudTag")}
+                      </span>
+                    )}
+                  </div>
+                  <span className="flex-1" />
                   {model.max_input_tokens != null && (
-                    <span className="text-xs tabular-nums text-text-03">
+                    <span className="text-xs tabular-nums text-text-03 mr-2">
                       {model.max_input_tokens.toLocaleString()} {t("contextSuffix")}
                     </span>
                   )}
                   {modelSize && (
-                    <span className="w-14 text-right text-xs tabular-nums text-text-03">
+                    <span className="w-16 text-right text-xs tabular-nums text-text-03 mr-1">
                       {modelSize}
                     </span>
                   )}

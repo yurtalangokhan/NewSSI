@@ -27,6 +27,18 @@ class ModelInfo:
     supports_reasoning: bool = False
     """Whether the model supports reasoning/thinking."""
 
+    supports_tools: bool = False
+    """Whether the model supports function/tool calling."""
+
+    supports_embedding: bool = False
+    """Whether the model is an embedding model."""
+
+    supports_code: bool = False
+    """Whether the model is specialized for code/coding."""
+
+    supports_audio: bool = False
+    """Whether the model supports audio/speech input or output."""
+
     is_remote: bool = False
     """Whether this model is a cloud proxy model (requires internet access)."""
 

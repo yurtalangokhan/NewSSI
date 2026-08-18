@@ -23,6 +23,46 @@ describe("BuiltinOllamaPanelView", () => {
             supports_reasoning: true,
             is_remote: false,
           },
+          {
+            name: "qwen2.5vl:3b",
+            display_name: "qwen2.5vl:3b",
+            size: 3_200_000_000,
+            max_input_tokens: 128000,
+            supports_image_input: true,
+            supports_reasoning: false,
+            supports_tools: true,
+            is_remote: false,
+          },
+          {
+            name: "nomic-embed-text:latest",
+            display_name: "nomic-embed-text:latest",
+            size: 274_000_000,
+            max_input_tokens: 8192,
+            supports_image_input: false,
+            supports_reasoning: false,
+            supports_embedding: true,
+            is_remote: false,
+          },
+          {
+            name: "qwen2.5-coder:7b",
+            display_name: "qwen2.5-coder:7b",
+            size: 4_700_000_000,
+            max_input_tokens: 32768,
+            supports_image_input: false,
+            supports_reasoning: false,
+            supports_code: true,
+            is_remote: true,
+          },
+          {
+            name: "whisper:latest",
+            display_name: "whisper:latest",
+            size: 1_500_000_000,
+            max_input_tokens: 448,
+            supports_image_input: false,
+            supports_reasoning: false,
+            supports_audio: true,
+            is_remote: false,
+          },
         ]}
         isLoading={false}
         isDeleting={false}
@@ -37,6 +77,18 @@ describe("BuiltinOllamaPanelView", () => {
     expect(screen.getByText("http://ollama:11434")).toBeInTheDocument();
     expect(screen.getByText("llama3.1:8b")).toBeInTheDocument();
     expect(screen.getByText("131,072 ctx")).toBeInTheDocument();
+    expect(screen.getByText("reasoning")).toBeInTheDocument();
+    expect(screen.getByText("qwen2.5vl:3b")).toBeInTheDocument();
+    expect(screen.getByText("vision")).toBeInTheDocument();
+    expect(screen.getByText("tools")).toBeInTheDocument();
+    expect(screen.getByText("128,000 ctx")).toBeInTheDocument();
+    expect(screen.getByText("nomic-embed-text:latest")).toBeInTheDocument();
+    expect(screen.getByText("embedding")).toBeInTheDocument();
+    expect(screen.getByText("qwen2.5-coder:7b")).toBeInTheDocument();
+    expect(screen.getByText("code")).toBeInTheDocument();
+    expect(screen.getByText("cloud")).toBeInTheDocument();
+    expect(screen.getByText("whisper:latest")).toBeInTheDocument();
+    expect(screen.getByText("audio")).toBeInTheDocument();
   });
 
   test("deletes an installed model from the built-in service", async () => {
