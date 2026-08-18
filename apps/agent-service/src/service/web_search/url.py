@@ -29,6 +29,14 @@ class SSRFException(Exception):
     """Exception raised when an SSRF attempt is detected."""
 
 
+class SSRFBlockedException(SSRFException):
+    """Exception raised when a URL is permanently blocked due to SSRF policy (private IP, blocked host)."""
+
+
+class DNSResolutionError(SSRFException):
+    """Exception raised when DNS resolution fails (e.g. temporary DNS glitch or non-existent host)."""
+
+
 def _is_ip_private_or_reserved(ip_str: str) -> bool:
     """
     Check if an IP address is private, reserved, or otherwise not suitable
@@ -75,7 +83,7 @@ def _validate_and_resolve_url(url: str) -> tuple[str, str, int]:
 
     # Validate scheme
     if parsed.scheme not in ("http", "https"):
-        raise SSRFException(
+        raise SSRFBlockedException(
             f"Invalid URL scheme '{parsed.scheme}'. Only http and https are allowed."
         )
 
@@ -87,12 +95,12 @@ def _validate_and_resolve_url(url: str) -> tuple[str, str, int]:
     # Check for blocked hostnames
     hostname_lower = hostname.lower()
     if hostname_lower in BLOCKED_HOSTNAMES:
-        raise SSRFException(f"Access to hostname '{hostname}' is not allowed.")
+        raise SSRFBlockedException(f"Access to hostname '{hostname}' is not allowed.")
 
     # Check for common SSRF bypass attempts
     # Block URLs with credentials (user:pass@host)
     if parsed.username or parsed.password:
-        raise SSRFException("URLs with embedded credentials are not allowed.")
+        raise SSRFBlockedException("URLs with embedded credentials are not allowed.")
 
     port = parsed.port or (443 if parsed.scheme == "https" else 80)
 
@@ -100,7 +108,7 @@ def _validate_and_resolve_url(url: str) -> tuple[str, str, int]:
     try:
         ip = ipaddress.ip_address(hostname)
         if _is_ip_private_or_reserved(str(ip)):
-            raise SSRFException(
+            raise SSRFBlockedException(
                 f"Access to internal/private IP address '{hostname}' is not allowed."
             )
         return str(ip), hostname, port
@@ -113,17 +121,17 @@ def _validate_and_resolve_url(url: str) -> tuple[str, str, int]:
         addr_info = socket.getaddrinfo(hostname, port)
     except socket.gaierror as e:
         logger.warning("DNS resolution failed for hostname '%s': %s", hostname, e)
-        raise SSRFException(f"Could not resolve hostname '{hostname}': {e}")
+        raise DNSResolutionError(f"Could not resolve hostname '{hostname}': {e}")
 
     if not addr_info:
-        raise SSRFException(f"Could not resolve hostname '{hostname}'")
+        raise DNSResolutionError(f"Could not resolve hostname '{hostname}'")
 
     # Find the first valid (non-private) IP address
     validated_ip = None
     for info in addr_info:
         ip_str = info[4][0]
         if _is_ip_private_or_reserved(str(ip_str)):
-            raise SSRFException(
+            raise SSRFBlockedException(
                 f"Hostname '{hostname}' resolves to internal/private IP address "
                 f"'{ip_str}'. Access to internal networks is not allowed."
             )
@@ -131,7 +139,7 @@ def _validate_and_resolve_url(url: str) -> tuple[str, str, int]:
             validated_ip = ip_str
 
     if validated_ip is None:
-        raise SSRFException(f"Could not resolve hostname '{hostname}'")
+        raise SSRFBlockedException(f"Could not resolve hostname '{hostname}'")
 
     return validated_ip, hostname, port  # ty: ignore[invalid-return-type]
 
@@ -165,9 +173,9 @@ def validate_outbound_http_url(
 
     if https_only:
         if parsed.scheme != "https":
-            raise SSRFException(f"Invalid URL scheme '{parsed.scheme}'. Only https is allowed.")
+            raise SSRFBlockedException(f"Invalid URL scheme '{parsed.scheme}'. Only https is allowed.")
     elif parsed.scheme not in ("http", "https"):
-        raise SSRFException(
+        raise SSRFBlockedException(
             f"Invalid URL scheme '{parsed.scheme}'. Only http and https are allowed."
         )
 
@@ -175,11 +183,11 @@ def validate_outbound_http_url(
         raise ValueError("URL must contain a hostname")
 
     if parsed.username or parsed.password:
-        raise SSRFException("URLs with embedded credentials are not allowed.")
+        raise SSRFBlockedException("URLs with embedded credentials are not allowed.")
 
     hostname = parsed.hostname.lower()
     if hostname in BLOCKED_HOSTNAMES:
-        raise SSRFException(f"Access to hostname '{parsed.hostname}' is not allowed.")
+        raise SSRFBlockedException(f"Access to hostname '{parsed.hostname}' is not allowed.")
 
     if not allow_private_network:
         _validate_and_resolve_url(normalized_url)

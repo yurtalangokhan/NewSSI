@@ -1,8 +1,13 @@
 from __future__ import annotations
 
+import email.utils
 import logging
+import os
+import random
+import time
 from collections.abc import Sequence
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timezone
 
 import requests
 
@@ -13,7 +18,12 @@ from service.web_search.playwright_fetch import (
     fetch_rendered_html,
     looks_like_cloudflare_challenge,
 )
-from service.web_search.url import SSRFException, ssrf_safe_get
+from service.web_search.url import (
+    DNSResolutionError,
+    SSRFBlockedException,
+    SSRFException,
+    ssrf_safe_get,
+)
 from service.web_search.web_content import (
     decode_html_bytes,
     extract_pdf_text,
@@ -28,21 +38,33 @@ OPEN_URL_PLAYWRIGHT_FALLBACK_ENABLED = True
 
 DEFAULT_READ_TIMEOUT_SECONDS = 15
 DEFAULT_CONNECT_TIMEOUT_SECONDS = 5
-DEFAULT_USER_AGENT = "OnyxWebCrawler/1.0 (+https://www.onyx.app)"
+DEFAULT_USER_AGENT = "ATLASWebCrawler/1.0 (+https://atlas.ai)"
 DEFAULT_MAX_PDF_SIZE_BYTES = 50 * 1024 * 1024  # 50 MB
 DEFAULT_MAX_HTML_SIZE_BYTES = 20 * 1024 * 1024  # 20 MB
 DEFAULT_MAX_WORKERS = 5
 DEFAULT_MIN_DIRECT_TEXT_LENGTH = 180
+
+# Retry configuration defaults
+DEFAULT_MAX_RETRIES = int(os.getenv("CRAWLER_MAX_RETRIES", "3"))
+DEFAULT_RETRY_BACKOFF_FACTOR = float(os.getenv("CRAWLER_RETRY_BACKOFF_FACTOR", "0.5"))
+DEFAULT_RETRY_MAX_DELAY_SECONDS = 10.0
+DEFAULT_RETRY_STATUS_CODES = (408, 429, 500, 502, 503, 504)
+DEFAULT_PLAYWRIGHT_MAX_RETRIES = 1
 
 # Headers that, when present on a 4xx response, signal that the upstream
 # is a Cloudflare-style bot challenge (vs. a real auth/not-found error)
 # and that retrying via a headless browser is likely to succeed.
 _CLOUDFLARE_HEADER_NAMES = ("cf-ray", "cf-mitigated")
 
+# Retriable request exceptions for network-level issues
+_RETRIABLE_EXCEPTIONS = (
+    requests.exceptions.ConnectionError,
+    requests.exceptions.Timeout,
+    requests.exceptions.ChunkedEncodingError,
+    requests.exceptions.RequestException,
+)
 
-# Failure-reason strings surfaced to the LLM. Centralized so we don't drift
-# wording across call sites and so the LLM sees consistent text to reason
-# over (e.g. "don't bother retrying this URL").
+
 class FailureReason:
     CLOUDFLARE_CHALLENGE = (
         "blocked by a Cloudflare bot challenge that the built-in crawler "
@@ -86,7 +108,7 @@ def _has_cloudflare_signals(response: requests.Response) -> bool:
     reason (which tells admins to configure Firecrawl) vs. the generic 403
     failure reason (which points at auth / access). A bare 403 with no
     `cf-ray` / `cf-mitigated` / `Server: cloudflare` headers is treated
-    as "not Cloudflare" here.
+    as 'not Cloudflare' here.
     """
     headers = response.headers
     if any(name in headers for name in _CLOUDFLARE_HEADER_NAMES):
@@ -113,7 +135,7 @@ def _failure_reason_for_status(response: requests.Response, has_cf_signals: bool
     Only labels failures as Cloudflare when the response actually carries
     CF-specific headers — bare 403s without those headers are far more
     often auth walls or access-restricted resources, and labelling them
-    "Cloudflare" sends the LLM and the admin chasing the wrong fix.
+    'Cloudflare' sends the LLM and the admin chasing the wrong fix.
     """
     if has_cf_signals:
         return FailureReason.CLOUDFLARE_CHALLENGE
@@ -133,7 +155,7 @@ def _parse_html_to_web_content(url: str, html: str) -> WebContent:
         text_content = parsed.cleaned_text or ""
         title = parsed.title or ""
     except Exception as exc:
-        logger.warning("Onyx crawler failed to parse %s (%s)", url, exc.__class__.__name__)
+        logger.warning("ATLAS crawler failed to parse %s (%s)", url, exc.__class__.__name__)
         return _failed_result(url, FailureReason.EMPTY_OR_UNPARSEABLE)
 
     if not text_content.strip():
@@ -152,15 +174,69 @@ def _looks_like_low_information_content(text: str, min_length: int) -> bool:
     return len(text.strip()) < min_length
 
 
+def _parse_retry_after(
+    retry_after_str: str | None,
+    max_delay: float = DEFAULT_RETRY_MAX_DELAY_SECONDS,
+) -> float | None:
+    """Parse the Retry-After header value into seconds (supports integer or HTTP-date)."""
+    if not retry_after_str:
+        return None
+    retry_after_str = retry_after_str.strip()
+    # Try parsing as integer seconds
+    try:
+        seconds = float(retry_after_str)
+        if seconds >= 0:
+            return min(seconds, max_delay)
+    except ValueError:
+        pass
+    # Try parsing as HTTP-date
+    try:
+        date_tuple = email.utils.parsedate_to_datetime(retry_after_str)
+        if date_tuple:
+            now = datetime.now(timezone.utc)
+            if date_tuple.tzinfo is None:
+                date_tuple = date_tuple.replace(tzinfo=timezone.utc)
+            delta = (date_tuple - now).total_seconds()
+            if delta > 0:
+                return min(delta, max_delay)
+    except Exception:
+        pass
+    return None
+
+
+def _calculate_retry_delay(
+    attempt: int,
+    backoff_factor: float,
+    max_delay: float,
+    response: requests.Response | None = None,
+    jitter: bool = True,
+) -> float:
+    """Calculate the delay in seconds before the next retry attempt."""
+    if response is not None:
+        retry_after = response.headers.get("Retry-After")
+        parsed_delay = _parse_retry_after(retry_after, max_delay=max_delay)
+        if parsed_delay is not None:
+            return parsed_delay
+
+    delay = backoff_factor * (2 ** max(0, attempt - 1))
+    if jitter:
+        delay += random.uniform(0, min(0.25 * delay, 0.5))
+    return min(delay, max_delay)
+
+
 class OnyxWebCrawler(WebContentProvider):
     """
     Lightweight built-in crawler that fetches HTML directly and extracts readable text.
-    Acts as the default content provider when no external crawler (e.g. Firecrawl) is
-    configured.
+    Acts as the default content provider (ATLAS Web Crawler) when no external crawler
+    (e.g. Firecrawl) is configured.
+
+    Includes a robust, configurable retry mechanism with exponential backoff and jitter
+    for automatically recovering from connection drops, transient DNS glitches,
+    network timeouts, and transient HTTP status codes (408, 429, 500, 502, 503, 504).
 
     On a Cloudflare/bot-challenge response (canonical entry point: HTTP 403,
     or any response carrying a `cf-ray` / `cf-mitigated` header), falls back
-    to a one-shot headless-browser fetch via `playwright_fetch`. Controlled
+    to a headless-browser fetch via `playwright_fetch`. Controlled
     by the `OPEN_URL_PLAYWRIGHT_FALLBACK_ENABLED` flag.
     """
 
@@ -174,6 +250,12 @@ class OnyxWebCrawler(WebContentProvider):
         max_html_size_bytes: int | None = None,
         min_direct_text_length: int = DEFAULT_MIN_DIRECT_TEXT_LENGTH,
         playwright_fallback_enabled: bool = OPEN_URL_PLAYWRIGHT_FALLBACK_ENABLED,
+        max_retries: int = DEFAULT_MAX_RETRIES,
+        retry_backoff_factor: float = DEFAULT_RETRY_BACKOFF_FACTOR,
+        retry_max_delay_seconds: float = DEFAULT_RETRY_MAX_DELAY_SECONDS,
+        retry_status_codes: Sequence[int] = DEFAULT_RETRY_STATUS_CODES,
+        playwright_max_retries: int = DEFAULT_PLAYWRIGHT_MAX_RETRIES,
+        retry_jitter: bool = True,
     ) -> None:
         self._read_timeout_seconds = timeout_seconds
         self._connect_timeout_seconds = connect_timeout_seconds
@@ -181,10 +263,28 @@ class OnyxWebCrawler(WebContentProvider):
         self._max_html_size_bytes = max_html_size_bytes
         self._min_direct_text_length = min_direct_text_length
         self._playwright_fallback_enabled = playwright_fallback_enabled
+        self._max_retries = max(0, max_retries)
+        self._retry_backoff_factor = max(0.0, retry_backoff_factor)
+        self._retry_max_delay_seconds = max(0.0, retry_max_delay_seconds)
+        self._retry_status_codes = set(retry_status_codes)
+        self._playwright_max_retries = max(0, playwright_max_retries)
+        self._retry_jitter = retry_jitter
         self._headers = {
             "User-Agent": user_agent,
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         }
+
+    @property
+    def max_retries(self) -> int:
+        return self._max_retries
+
+    @property
+    def retry_backoff_factor(self) -> float:
+        return self._retry_backoff_factor
+
+    @property
+    def retry_status_codes(self) -> set[int]:
+        return self._retry_status_codes
 
     def contents(self, urls: Sequence[str]) -> list[WebContent]:
         if not urls:
@@ -200,118 +300,197 @@ class OnyxWebCrawler(WebContentProvider):
             return self._fetch_url(url)
         except Exception as exc:
             logger.warning(
-                "Onyx crawler unexpected error for %s (%s)",
+                "ATLAS crawler unexpected error for %s (%s)",
                 url,
                 exc.__class__.__name__,
             )
             return _failed_result(url, FailureReason.NETWORK_ERROR)
 
     def _fetch_url(self, url: str) -> WebContent:
-        try:
-            response = ssrf_safe_get(
-                url,
-                headers=self._headers,
-                timeout=(self._connect_timeout_seconds, self._read_timeout_seconds),
-            )
-        except SSRFException as exc:
-            logger.error(
-                "SSRF protection blocked request to %s (%s)",
-                url,
-                exc.__class__.__name__,
-            )
-            return _failed_result(url, FailureReason.SSRF_BLOCKED)
-        except Exception as exc:
-            logger.warning(
-                "Onyx crawler failed to fetch %s (%s)",
-                url,
-                exc.__class__.__name__,
-            )
-            return _failed_result(url, FailureReason.NETWORK_ERROR)
+        total_attempts = self._max_retries + 1
 
-        if response.status_code >= 400:
-            # Decide separately:
-            #   - whether to attempt the Playwright fallback (broad, any 403
-            #     is cheap insurance — some sites serve JS interstitials
-            #     without CF-specific headers)
-            #   - what failure reason to surface when nothing works (strict;
-            #     only claim "Cloudflare" when we have actual CF evidence,
-            #     either headers or a CF body returned by the render. A bare
-            #     403 from e.g. a private GitHub repo or expired presigned
-            #     S3 URL gets the generic-403 reason instead).
-            has_cf_signals = _has_cloudflare_signals(response)
-            try_fallback = self._playwright_fallback_enabled and _should_try_playwright_fallback(
-                response
-            )
+        for attempt in range(1, total_attempts + 1):
+            is_last_attempt = attempt >= total_attempts
+            try:
+                response = ssrf_safe_get(
+                    url,
+                    headers=self._headers,
+                    timeout=(self._connect_timeout_seconds, self._read_timeout_seconds),
+                )
+            except SSRFBlockedException as exc:
+                # Permanent SSRF violation (e.g. private IP or blocked host). Do not retry.
+                logger.error(
+                    "SSRF protection permanently blocked request to %s (%s)",
+                    url,
+                    exc.__class__.__name__,
+                )
+                return _failed_result(url, FailureReason.SSRF_BLOCKED)
+            except DNSResolutionError as exc:
+                # Transient DNS resolution error — retry if attempts remain.
+                if not is_last_attempt:
+                    delay = _calculate_retry_delay(
+                        attempt,
+                        self._retry_backoff_factor,
+                        self._retry_max_delay_seconds,
+                        jitter=self._retry_jitter,
+                    )
+                    logger.warning(
+                        "ATLAS crawler DNS resolution failed for %s (attempt %d/%d): %s. Retrying in %.2fs...",
+                        url,
+                        attempt,
+                        total_attempts,
+                        exc,
+                        delay,
+                    )
+                    time.sleep(delay)
+                    continue
 
-            if try_fallback:
-                logger.info(
-                    "Onyx crawler got %s for %s; retrying via Playwright (cf_signals=%s)",
+                logger.warning(
+                    "ATLAS crawler DNS resolution failed for %s after %d attempts (%s)",
+                    url,
+                    total_attempts,
+                    exc.__class__.__name__,
+                )
+                return _failed_result(url, FailureReason.NETWORK_ERROR)
+            except SSRFException as exc:
+                # Generic fallback for any other SSRF exception. Do not retry.
+                logger.error(
+                    "SSRF protection blocked request to %s (%s)",
+                    url,
+                    exc.__class__.__name__,
+                )
+                return _failed_result(url, FailureReason.SSRF_BLOCKED)
+            except _RETRIABLE_EXCEPTIONS as exc:
+                # Transient network, connection reset, or timeout error.
+                if not is_last_attempt:
+                    delay = _calculate_retry_delay(
+                        attempt,
+                        self._retry_backoff_factor,
+                        self._retry_max_delay_seconds,
+                        jitter=self._retry_jitter,
+                    )
+                    logger.warning(
+                        "ATLAS crawler connection error for %s (attempt %d/%d): %s (%s). Retrying in %.2fs...",
+                        url,
+                        attempt,
+                        total_attempts,
+                        exc.__class__.__name__,
+                        exc,
+                        delay,
+                    )
+                    time.sleep(delay)
+                    continue
+
+                logger.warning(
+                    "ATLAS crawler failed to fetch %s after %d attempts (%s)",
+                    url,
+                    total_attempts,
+                    exc.__class__.__name__,
+                )
+                return _failed_result(url, FailureReason.NETWORK_ERROR)
+            except Exception as exc:
+                # Non-retriable exception (e.g. ValueError).
+                logger.warning(
+                    "ATLAS crawler unexpected error fetching %s: %s",
+                    url,
+                    exc,
+                )
+                return _failed_result(url, FailureReason.NETWORK_ERROR)
+
+            # Check for retriable HTTP status codes (e.g. 408, 429, 500, 502, 503, 504)
+            if response.status_code in self._retry_status_codes and not is_last_attempt:
+                delay = _calculate_retry_delay(
+                    attempt,
+                    self._retry_backoff_factor,
+                    self._retry_max_delay_seconds,
+                    response=response,
+                    jitter=self._retry_jitter,
+                )
+                logger.warning(
+                    "ATLAS crawler received HTTP %d for %s (attempt %d/%d). Retrying in %.2fs...",
                     response.status_code,
                     url,
-                    has_cf_signals,
+                    attempt,
+                    total_attempts,
+                    delay,
+                )
+                time.sleep(delay)
+                continue
+
+            if response.status_code >= 400:
+                has_cf_signals = _has_cloudflare_signals(response)
+                try_fallback = self._playwright_fallback_enabled and _should_try_playwright_fallback(
+                    response
+                )
+
+                if try_fallback:
+                    logger.info(
+                        "ATLAS crawler got %s for %s; retrying via Playwright (cf_signals=%s)",
+                        response.status_code,
+                        url,
+                        has_cf_signals,
+                    )
+                    fallback = self._fetch_via_playwright(url)
+                    if fallback is not None:
+                        return fallback
+
+                logger.warning("ATLAS crawler received %s for %s", response.status_code, url)
+                return _failed_result(url, _failure_reason_for_status(response, has_cf_signals))
+
+            content_type = response.headers.get("Content-Type", "")
+            content = response.content
+
+            content_sniff = content[:1024] if content else None
+            if is_pdf_resource(url, content_type, content_sniff):
+                return self._handle_pdf_response(url, content)
+
+            if self._max_html_size_bytes is not None and len(content) > self._max_html_size_bytes:
+                logger.warning(
+                    "HTML content too large (%d bytes) for %s, max is %d",
+                    len(content),
+                    url,
+                    self._max_html_size_bytes,
+                )
+                return _failed_result(url, FailureReason.OVERSIZED_HTML)
+
+            try:
+                decoded_html = decode_html_bytes(
+                    content,
+                    content_type=content_type,
+                    fallback_encoding=response.apparent_encoding or response.encoding,
+                )
+            except Exception as exc:
+                logger.warning("ATLAS crawler failed to decode %s (%s)", url, exc.__class__.__name__)
+                return _failed_result(url, FailureReason.DECODE_ERROR)
+
+            direct_result = _parse_html_to_web_content(url, decoded_html)
+
+            if not self._playwright_fallback_enabled:
+                return direct_result
+
+            if not direct_result.scrape_successful:
+                logger.info(
+                    "Direct HTML parse failed for %s; retrying via Playwright",
+                    url,
                 )
                 fallback = self._fetch_via_playwright(url)
-                if fallback is not None:
-                    # Either a successful render OR a definitive CF-challenge
-                    # signal from the rendered body itself. Either way the
-                    # fallback's own result is the truth.
+                return fallback or direct_result
+
+            if _looks_like_low_information_content(
+                direct_result.full_content, self._min_direct_text_length
+            ):
+                logger.info(
+                    "Direct HTML parse returned low-information content for %s; "
+                    "retrying via Playwright",
+                    url,
+                )
+                fallback = self._fetch_via_playwright(url)
+                if fallback is not None and fallback.scrape_successful:
                     return fallback
 
-            logger.warning("Onyx crawler received %s for %s", response.status_code, url)
-            return _failed_result(url, _failure_reason_for_status(response, has_cf_signals))
-
-        content_type = response.headers.get("Content-Type", "")
-        content = response.content
-
-        content_sniff = content[:1024] if content else None
-        if is_pdf_resource(url, content_type, content_sniff):
-            return self._handle_pdf_response(url, content)
-
-        if self._max_html_size_bytes is not None and len(content) > self._max_html_size_bytes:
-            logger.warning(
-                "HTML content too large (%d bytes) for %s, max is %d",
-                len(content),
-                url,
-                self._max_html_size_bytes,
-            )
-            return _failed_result(url, FailureReason.OVERSIZED_HTML)
-
-        try:
-            decoded_html = decode_html_bytes(
-                content,
-                content_type=content_type,
-                fallback_encoding=response.apparent_encoding or response.encoding,
-            )
-        except Exception as exc:
-            logger.warning("Onyx crawler failed to decode %s (%s)", url, exc.__class__.__name__)
-            return _failed_result(url, FailureReason.DECODE_ERROR)
-
-        direct_result = _parse_html_to_web_content(url, decoded_html)
-
-        if not self._playwright_fallback_enabled:
             return direct_result
 
-        if not direct_result.scrape_successful:
-            logger.info(
-                "Direct HTML parse failed for %s; retrying via Playwright",
-                url,
-            )
-            fallback = self._fetch_via_playwright(url)
-            return fallback or direct_result
-
-        if _looks_like_low_information_content(
-            direct_result.full_content, self._min_direct_text_length
-        ):
-            logger.info(
-                "Direct HTML parse returned low-information content for %s; "
-                "retrying via Playwright",
-                url,
-            )
-            fallback = self._fetch_via_playwright(url)
-            if fallback is not None and fallback.scrape_successful:
-                return fallback
-
-        return direct_result
+        return _failed_result(url, FailureReason.NETWORK_ERROR)
 
     def _handle_pdf_response(self, url: str, content: bytes) -> WebContent:
         if self._max_pdf_size_bytes is not None and len(content) > self._max_pdf_size_bytes:
@@ -335,46 +514,45 @@ class OnyxWebCrawler(WebContentProvider):
         )
 
     def _fetch_via_playwright(self, url: str) -> WebContent | None:
-        """Try a one-shot headless render.
+        """Try headless render with retries for transient navigation errors."""
+        total_pw_attempts = self._playwright_max_retries + 1
+        for pw_attempt in range(1, total_pw_attempts + 1):
+            rendered: RenderedPage | None = fetch_rendered_html(url)
+            if rendered is None:
+                if pw_attempt < total_pw_attempts:
+                    time.sleep(0.5)
+                    continue
+                return None
 
-        Returns:
-            - Successful `WebContent` on success.
-            - Failed `WebContent` with `failure_reason=CLOUDFLARE_CHALLENGE`
-              when the render came back as the CF challenge interstitial
-              itself (a definitive signal we can pass up regardless of what
-              headers the original response carried).
-            - `None` when the fallback gave us no new information (Chromium
-              failed to launch, navigation hard-errored, content oversized,
-              or rendered HTML didn't parse to anything). Caller should fall
-              back to its own status-based failure reason.
-        """
-        rendered: RenderedPage | None = fetch_rendered_html(url)
-        if rendered is None:
-            return None
+            if self._max_html_size_bytes is not None and len(rendered.html) > self._max_html_size_bytes:
+                logger.warning(
+                    "Rendered HTML too large (%d chars) for %s, max is %d",
+                    len(rendered.html),
+                    url,
+                    self._max_html_size_bytes,
+                )
+                return None
 
-        if self._max_html_size_bytes is not None and len(rendered.html) > self._max_html_size_bytes:
-            logger.warning(
-                "Rendered HTML too large (%d chars) for %s, max is %d",
-                len(rendered.html),
-                url,
-                self._max_html_size_bytes,
-            )
-            return None
+            # If the render came back as a CF challenge interstitial, surface
+            # that as a definitive CF failure (parsing it would just leak
+            # "Just a moment..." text to the LLM). This is the one case where
+            # Playwright actually adds information vs. the original 4xx.
+            if looks_like_cloudflare_challenge(rendered.html):
+                logger.info(
+                    "Playwright fallback rendered the Cloudflare challenge page "
+                    "itself for %s; treating as Cloudflare failure",
+                    url,
+                )
+                return _failed_result(url, FailureReason.CLOUDFLARE_CHALLENGE)
 
-        # If the render came back as a CF challenge interstitial, surface
-        # that as a definitive CF failure (parsing it would just leak
-        # "Just a moment..." text to the LLM). This is the one case where
-        # Playwright actually adds information vs. the original 4xx.
-        if looks_like_cloudflare_challenge(rendered.html):
-            logger.info(
-                "Playwright fallback rendered the Cloudflare challenge page "
-                "itself for %s; treating as Cloudflare failure",
-                url,
-            )
-            return _failed_result(url, FailureReason.CLOUDFLARE_CHALLENGE)
+            result = _parse_html_to_web_content(url, rendered.html)
+            if not result.scrape_successful:
+                return None
+            logger.info("Playwright fallback succeeded for %s", url)
+            return result
 
-        result = _parse_html_to_web_content(url, rendered.html)
-        if not result.scrape_successful:
-            return None
-        logger.info("Playwright fallback succeeded for %s", url)
-        return result
+        return None
+
+
+# Alias for ATLAS Web Crawler
+AtlasWebCrawler = OnyxWebCrawler
