@@ -3479,6 +3479,7 @@ const en = {
       next: "next →",
       noMatchingLabels: "No matching labels",
       noLabels: "No labels",
+      onlyOneLabelInScope: "Only one entity label in this view, filtering isn't needed",
       noMatchingRelationshipTypes: "No matching relationship types",
       noRelationshipTypes: "No relationship types",
       graphExplorerTitle: "Graph Explorer",

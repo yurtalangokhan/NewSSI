@@ -117,6 +117,35 @@ interface GraphExplorerProps {
   selectedRelTypes?: Set<string>;
   /** True when this tab is the active/visible one — triggers canvas re-measurement */
   isActive?: boolean;
+  /**
+   * Reports the entity-label counts among nodes that survive the *relationship-type*
+   * filter alone (ignoring the label filter itself, so the label facet stays
+   * browsable/combinable rather than collapsing to just the already-selected labels).
+   */
+  onLabelFacetCountsChange?: (items: { name: string; count: number }[]) => void;
+  /**
+   * Reports the relationship-type counts among edges that survive the *label*
+   * filter alone (ignoring the relationship-type filter itself, so the facet
+   * stays browsable/combinable). Derived from the currently loaded graph view
+   * (real edges when present, or each cluster node's `_rel_type_counts`
+   * aggregate in overview/sub-cluster views where edges are never returned),
+   * never from a separately-scoped backend query — so it can't list types
+   * that belong to no edge actually visible in the current view.
+   */
+  onRelTypeFacetCountsChange?: (items: { name: string; count: number }[]) => void;
+  /** Reports the exact node/edge counts actually rendered (after all active filters). */
+  onVisibleCountsChange?: (counts: { nodeCount: number; edgeCount: number }) => void;
+}
+
+// Cluster/sub-cluster views never carry real edges (the backend summarizes
+// relationship info into each cluster node's `_rel_type_counts` instead of
+// returning edge records), so edge-derived filtering can't see them. Fall
+// back to that per-node aggregate for cluster nodes.
+function clusterNodeMatchesRelTypes(n: ScalableNode, relSet: Set<string>): boolean {
+  if (!isClusterNode(n)) return false;
+  const counts = n.properties?._rel_type_counts as Record<string, number> | undefined;
+  if (!counts) return false;
+  return Object.keys(counts).some((rt) => relSet.has(rt));
 }
 
 export default function GraphExplorer({
@@ -131,6 +160,9 @@ export default function GraphExplorer({
   selectedLabels,
   selectedRelTypes,
   isActive,
+  onLabelFacetCountsChange,
+  onRelTypeFacetCountsChange,
+  onVisibleCountsChange,
 }: GraphExplorerProps) {
   const { t } = useTranslation();
   const { resolvedTheme } = useTheme();
@@ -275,15 +307,22 @@ export default function GraphExplorer({
         return (src && labelSet.has(src.label)) || (tgt && labelSet.has(tgt.label));
       });
       const connectedIds = new Set(filteredEdges.flatMap((e) => [e.source, e.target]));
-      filteredNodes = rawNodes.filter((n) => connectedIds.has(n.id));
+      filteredNodes = rawNodes.filter(
+        (n) =>
+          connectedIds.has(n.id) ||
+          (labelSet.has(n.label) && clusterNodeMatchesRelTypes(n, relSet))
+      );
     } else if (hasRelFilter) {
+      const relSet = selectedRelTypes!;
       filteredEdges = rawEdges.filter((e) =>
         isClusterEdge(e)
-          ? e.relationship_types.some((rt) => selectedRelTypes!.has(rt))
-          : selectedRelTypes!.has(e.type)
+          ? e.relationship_types.some((rt) => relSet.has(rt))
+          : relSet.has(e.type)
       );
       const connectedIds = new Set(filteredEdges.flatMap((e) => [e.source, e.target]));
-      filteredNodes = rawNodes.filter((n) => connectedIds.has(n.id));
+      filteredNodes = rawNodes.filter(
+        (n) => connectedIds.has(n.id) || clusterNodeMatchesRelTypes(n, relSet)
+      );
     } else if (hasLabelFilter) {
       filteredNodes = rawNodes.filter((n) => selectedLabels!.has(n.label));
       const nodeIds = new Set(filteredNodes.map((n) => n.id));
@@ -339,6 +378,108 @@ export default function GraphExplorer({
     return { nodes, links };
   }, [scalableData, selectedLabels, selectedRelTypes, currentMode]);
 
+  // Entity-label facet counts: labels among nodes that survive the
+  // relationship-type filter only (not the label filter itself), so the
+  // label panel stays consistent with what's actually filterable/visible
+  // instead of listing every label loaded in the whole (unfiltered) view.
+  useEffect(() => {
+    if (!onLabelFacetCountsChange) return;
+    if (!scalableData) {
+      onLabelFacetCountsChange([]);
+      return;
+    }
+    const rawNodes = scalableData.nodes;
+    const rawEdges = scalableData.edges;
+    const hasRelFilter = (selectedRelTypes?.size ?? 0) > 0;
+
+    let facetNodes: ScalableNode[];
+    if (hasRelFilter) {
+      const relSet = selectedRelTypes!;
+      const edges = rawEdges.filter((e) =>
+        isClusterEdge(e)
+          ? e.relationship_types.some((rt) => relSet.has(rt))
+          : relSet.has(e.type)
+      );
+      const connectedIds = new Set(edges.flatMap((e) => [e.source, e.target]));
+      facetNodes = rawNodes.filter(
+        (n) => connectedIds.has(n.id) || clusterNodeMatchesRelTypes(n, relSet)
+      );
+    } else {
+      facetNodes = rawNodes;
+    }
+
+    const counts = new Map<string, number>();
+    for (const n of facetNodes) {
+      const count = isClusterNode(n) ? n.node_count : 1;
+      counts.set(n.label, (counts.get(n.label) ?? 0) + count);
+    }
+    onLabelFacetCountsChange(
+      Array.from(counts.entries())
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count)
+    );
+  }, [scalableData, selectedRelTypes, onLabelFacetCountsChange]);
+
+  // Relationship-type facet counts: types among edges that survive the label
+  // filter only (not the relationship-type filter itself). Overview/sub-cluster
+  // views never carry real edges, so fall back to summing each cluster node's
+  // `_rel_type_counts` aggregate instead.
+  useEffect(() => {
+    if (!onRelTypeFacetCountsChange) return;
+    if (!scalableData) {
+      onRelTypeFacetCountsChange([]);
+      return;
+    }
+    const rawNodes = scalableData.nodes;
+    const rawEdges = scalableData.edges;
+    const hasLabelFilter = (selectedLabels?.size ?? 0) > 0;
+    const counts = new Map<string, number>();
+
+    if (rawEdges.length > 0) {
+      const nodeMap = new Map(rawNodes.map((n) => [n.id, n]));
+      const edges = hasLabelFilter
+        ? rawEdges.filter((e) => {
+            const labelSet = selectedLabels!;
+            const src = nodeMap.get(e.source);
+            const tgt = nodeMap.get(e.target);
+            return (src && labelSet.has(src.label)) || (tgt && labelSet.has(tgt.label));
+          })
+        : rawEdges;
+      for (const e of edges) {
+        if (isClusterEdge(e)) {
+          for (const rt of e.relationship_types) counts.set(rt, (counts.get(rt) ?? 0) + 1);
+        } else {
+          counts.set(e.type, (counts.get(e.type) ?? 0) + 1);
+        }
+      }
+    } else {
+      const nodes = hasLabelFilter
+        ? rawNodes.filter((n) => selectedLabels!.has(n.label))
+        : rawNodes;
+      for (const n of nodes) {
+        if (!isClusterNode(n)) continue;
+        const relCounts = n.properties?._rel_type_counts as Record<string, number> | undefined;
+        if (!relCounts) continue;
+        for (const [rt, c] of Object.entries(relCounts)) {
+          counts.set(rt, (counts.get(rt) ?? 0) + c);
+        }
+      }
+    }
+
+    onRelTypeFacetCountsChange(
+      Array.from(counts.entries())
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count)
+    );
+  }, [scalableData, selectedLabels, onRelTypeFacetCountsChange]);
+
+  useEffect(() => {
+    onVisibleCountsChange?.({
+      nodeCount: forceData.nodes.length,
+      edgeCount: forceData.links.length,
+    });
+  }, [forceData, onVisibleCountsChange]);
+
   // Settling overlay trigger
   useEffect(() => {
     const fp = `${scalableData?.mode}-${forceData.nodes.length}-${scalableData?.scope_label}`;
@@ -354,7 +495,18 @@ export default function GraphExplorer({
   const handleEngineStop = useCallback(() => {
     clearTimeout(settleTimerRef.current);
     setSettling(false);
-  }, []);
+    // Unconnected nodes (overview/cluster mode has no inter-cluster edges)
+    // repel each other outward with nothing pulling them back, so the layout
+    // can settle far outside the initial viewport. Auto-fit the camera once
+    // physics settles so all loaded nodes are actually visible.
+    if (fgRef.current) {
+      if (is3D) {
+        fgRef.current.zoomToFit?.(400, 40);
+      } else {
+        fgRef.current.zoomToFit?.(400);
+      }
+    }
+  }, [is3D]);
 
   // Degree map
   const degreeMap = useMemo(() => {

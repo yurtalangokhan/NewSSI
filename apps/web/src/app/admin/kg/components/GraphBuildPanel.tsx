@@ -425,19 +425,20 @@ export default function GraphBuildPanel({
             </Button>
 
             {inProgress && !isPollingPaused && !isPollingStopped && (
-              <>
-                <Button secondary onClick={handlePausePolling}>
-                  {t("admin.kg.pauseBuild")}
-                </Button>
-                <Button danger onClick={handleStopPolling}>
-                  {t("admin.kg.stopBuild")}
-                </Button>
-              </>
+              <Button secondary onClick={handlePausePolling}>
+                {t("admin.kg.pauseBuild")}
+              </Button>
             )}
 
-            {inProgress && (isPollingPaused || isPollingStopped) && (
+            {inProgress && isPollingPaused && !isPollingStopped && (
               <Button secondary onClick={handleResumePolling}>
                 {t("admin.kg.resumeBuild")}
+              </Button>
+            )}
+
+            {inProgress && !isPollingStopped && (
+              <Button danger onClick={handleStopPolling}>
+                {t("admin.kg.stopBuild")}
               </Button>
             )}
 

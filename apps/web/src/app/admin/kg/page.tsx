@@ -188,6 +188,7 @@ function ExplorerTab({
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
   const [selectedLabels, setSelectedLabels] = useState<Set<string>>(new Set());
   const [selectedRelTypes, setSelectedRelTypes] = useState<Set<string>>(new Set());
+  const [visibleCounts, setVisibleCounts] = useState({ nodeCount: 0, edgeCount: 0 });
 
   const loadData = useCallback(async (id: string) => {
     setExplorerLoading(true);
@@ -253,6 +254,24 @@ function ExplorerTab({
     [loadScalable]
   );
 
+  // Entity-label filter options: reported by GraphExplorer from the nodes
+  // that actually survive the current relationship-type filter, so the list
+  // never offers a label with no visible nodes/clusters to show, and stays
+  // in sync with the relationship-type filter instead of listing every
+  // label loaded in the whole (unfiltered) view.
+  const [availableLabels, setAvailableLabels] = useState<
+    { name: string; count: number }[]
+  >([]);
+
+  // Relationship-type filter options: reported by GraphExplorer from the
+  // edges (or, in overview/sub-cluster views with no real edges, each
+  // cluster's `_rel_type_counts` aggregate) that actually survive the
+  // current label filter — instead of a separately-scoped backend query
+  // that could list types belonging to no edge visible in the current view.
+  const [availableRelTypes, setAvailableRelTypes] = useState<
+    { name: string; count: number }[]
+  >([]);
+
   const handleToggleLabel = useCallback((label: string) => {
     setSelectedLabels((prev) => {
       const next = new Set(prev);
@@ -281,8 +300,8 @@ function ExplorerTab({
     );
   }
 
-  const visibleNodes = scalableData?.nodes.length ?? 0;
-  const visibleEdges = scalableData?.edges.length ?? 0;
+  const visibleNodes = visibleCounts.nodeCount;
+  const visibleEdges = visibleCounts.edgeCount;
   const totalNodes = scalableData?.total_node_count ?? 0;
   const totalEdges = scalableData?.total_edge_count ?? 0;
 
@@ -303,16 +322,20 @@ function ExplorerTab({
             selectedLabels={selectedLabels}
             selectedRelTypes={selectedRelTypes}
             isActive={isActive}
+            onLabelFacetCountsChange={setAvailableLabels}
+            onRelTypeFacetCountsChange={setAvailableRelTypes}
+            onVisibleCountsChange={setVisibleCounts}
           />
         </div>
         <div className="lg:col-span-1">
           <GraphStatsCard
             collectionId={collectionId}
+            availableLabels={availableLabels}
+            availableRelTypes={availableRelTypes}
             selectedLabels={selectedLabels}
             selectedRelTypes={selectedRelTypes}
             onToggleLabel={handleToggleLabel}
             onToggleRelType={handleToggleRelType}
-            scopeLabel={scalableData?.scope_label ?? undefined}
             totalNodes={totalNodes}
             totalEdges={totalEdges}
             visibleNodes={visibleNodes}
@@ -362,7 +385,6 @@ function Main({
 }) {
   const { t } = useTranslation();
   const [collectionId, setCollectionId] = useState<string | null>(null);
-  const [selectedHasGraph, setSelectedHasGraph] = useState(false);
   const [selectorHighlight, setSelectorHighlight] = useState(false);
   const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(
     undefined
@@ -370,6 +392,14 @@ function Main({
   const { collections } = useCollections();
   const { datasources } = useAirbyteDatasources();
   const { graphCollections } = useGraphCollections();
+
+  // Derived from the shared SWR-backed `graphCollections` list (not local
+  // state captured at selection time) so it updates immediately once a
+  // build completes and revalidates that cache — no page refresh needed.
+  const selectedHasGraph = useMemo(
+    () => !!collectionId && graphCollections.includes(collectionId),
+    [collectionId, graphCollections]
+  );
 
   const datasourceIdSet = useMemo(
     () => new Set(datasources.map((ds) => ds.id)),
@@ -396,9 +426,8 @@ function Main({
   }, []);
 
   const handleCollectionSelect = useCallback(
-    (id: string | null, hasGraph: boolean) => {
+    (id: string | null, _hasGraph: boolean) => {
       setCollectionId(id);
-      setSelectedHasGraph(hasGraph);
       if (id) {
         setSelectorHighlight(false);
         clearTimeout(highlightTimerRef.current);

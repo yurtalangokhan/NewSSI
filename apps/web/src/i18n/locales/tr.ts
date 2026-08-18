@@ -3486,6 +3486,7 @@ const tr = {
       next: "sonraki →",
       noMatchingLabels: "Eşleşen etiket yok",
       noLabels: "Etiket yok",
+      onlyOneLabelInScope: "Bu görünümde tek bir varlık etiketi var, filtreleme gerekmiyor",
       noMatchingRelationshipTypes: "Eşleşen ilişki türü yok",
       noRelationshipTypes: "İlişki türü yok",
       graphExplorerTitle: "Grafik Gezgini",
