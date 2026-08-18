@@ -474,6 +474,9 @@ export function UserProvider({
             preferences: {
               ...prevUser.preferences,
               default_model: defaultModel,
+              ...(defaultProviderId !== undefined && {
+                default_provider_id: defaultProviderId,
+              }),
             },
           };
         }

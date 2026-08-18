@@ -44,6 +44,7 @@ import {
   WellKnownLangChainProvider,
 } from "@/interfaces/llm";
 import { LLM_PROVIDERS_ADMIN_URL } from "@/lib/llmConfig/constants";
+import { resolveDefaultModelSelection } from "@/lib/llmConfig/utils";
 import { getModalForExistingProvider } from "@/sections/modals/llmConfig/getModal";
 import { OpenAIModal } from "@/sections/modals/llmConfig/OpenAIModal";
 import { AnthropicModal } from "@/sections/modals/llmConfig/AnthropicModal";
@@ -459,41 +460,22 @@ export default function LLMConfigurationPage() {
     return <ThreeDotsLoader />;
   }
 
-  // Default model/provider comes from user settings.
-  // Preferred format is separate fields: default_model + default_provider_id.
-  // Older data may still be stored as "providerId:modelName" in default_model.
+  // Default model/provider comes from user settings. This value is shared
+  // with the user's own Settings > Chat Preferences page, which writes it
+  // via `structureValue` as "providerDisplayName__providerType__modelName"
+  // (see @/lib/llmConfig/utils) and never sets default_provider_id, so this
+  // page has to be able to recognize that format too, in addition to its
+  // own modern default_model + default_provider_id fields and the older
+  // "providerId:modelName" composite.
   const currentDefaultValue = user?.preferences?.default_model ?? undefined;
   const currentDefaultProviderId = user?.preferences?.default_provider_id;
 
-  let selectedDefaultProviderKey: string | number | undefined =
-    currentDefaultProviderId ?? undefined;
-  let selectedDefaultModelName: string | undefined = currentDefaultValue;
-
-  if (currentDefaultValue && !selectedDefaultProviderKey) {
-    const firstColonIndex = currentDefaultValue.indexOf(":");
-    if (firstColonIndex > 0) {
-      const possibleProviderKey = currentDefaultValue.slice(0, firstColonIndex);
-      const hasMatchingProviderKey = allDbProviderGroups.some(
-        (group) => String(group.providerKey) === possibleProviderKey
-      );
-
-      // Legacy composite value: "providerId:modelName"
-      if (hasMatchingProviderKey) {
-        selectedDefaultProviderKey = possibleProviderKey;
-        selectedDefaultModelName = currentDefaultValue.slice(firstColonIndex + 1);
-      }
-    }
-  }
-
-  // If provider is still unknown, infer from model name.
-  if (!selectedDefaultProviderKey && selectedDefaultModelName) {
-    const matchingProvider = allDbProviderGroups.find((group) =>
-      group.models.includes(selectedDefaultModelName as string)
+  const { providerKey: selectedDefaultProviderKey, modelName: selectedDefaultModelName } =
+    resolveDefaultModelSelection(
+      currentDefaultValue,
+      currentDefaultProviderId,
+      allDbProviderGroups
     );
-    if (matchingProvider) {
-      selectedDefaultProviderKey = matchingProvider.providerKey;
-    }
-  }
 
   // For display purposes
   const selectedDefaultProviderType = selectedDefaultProviderKey
