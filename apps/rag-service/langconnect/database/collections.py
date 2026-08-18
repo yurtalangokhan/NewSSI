@@ -133,6 +133,10 @@ class Collection:
             raise HTTPException(status_code=404, detail=t("collection.not_found"))
         return details
 
+    async def ensure_exists(self) -> None:
+        """Raise 404 if this collection does not exist / isn't owned by the user."""
+        await self._get_details_or_raise()
+
     def _get_store(self, table_id: str):
         """Return the Milvus vector store for the given table_id."""
         return get_vectorstore(collection_name=table_id)
@@ -142,10 +146,18 @@ class Collection:
     # ------------------------------------------------------------------
 
     async def upsert(self, documents: list[Document]) -> list[str]:
-        """Embed and store documents in Milvus."""
+        """Embed and store documents in Milvus.
+
+        Flushes the collection so a read issued right after this call (e.g.
+        the duplicate-filename check in the next upload job) is guaranteed
+        to see the rows just inserted here, rather than racing Milvus'
+        segment-sealing behavior.
+        """
         details = await self._get_details_or_raise()
         store = self._get_store(details["table_id"])
         ids = store.add_documents(documents)
+        if store.col is not None:
+            store.col.flush()
         return [str(i) for i in ids]
 
     async def delete(self, *, file_id: Optional[str] = None) -> bool:
@@ -207,6 +219,66 @@ class Collection:
         all_docs = list(seen.values())
         return all_docs[offset : offset + limit]
 
+    async def list_filenames(self) -> set[str]:
+        """Return the set of distinct filenames stored in this collection."""
+        details = await self._get_details_or_raise()
+        store = self._get_store(details["table_id"])
+
+        if store.col is None:
+            return set()
+
+        try:
+            rows = store.col.query(
+                expr=f"{store._primary_field} >= 0",
+                output_fields=[store._metadata_field],
+                limit=10_000,
+            )
+        except Exception as exc:
+            logger.warning(
+                "Milvus filename query failed for collection %r: %s",
+                self.collection_id,
+                exc,
+            )
+            return set()
+
+        filenames: set[str] = set()
+        for row in rows:
+            meta = _parse_milvus_meta(row.get(store._metadata_field))
+            filename = meta.get("filename")
+            if filename:
+                filenames.add(filename)
+        return filenames
+
+    async def list_content_hashes(self) -> set[str]:
+        """Return the set of distinct content hashes stored in this collection."""
+        details = await self._get_details_or_raise()
+        store = self._get_store(details["table_id"])
+
+        if store.col is None:
+            return set()
+
+        try:
+            rows = store.col.query(
+                expr=f"{store._primary_field} >= 0",
+                output_fields=[store._metadata_field],
+                limit=10_000,
+            )
+        except Exception as exc:
+            logger.warning(
+                "Milvus content-hash query failed for collection %r: %s",
+                self.collection_id,
+                exc,
+            )
+            return set()
+
+        hashes: set[str] = set()
+        for row in rows:
+            meta = _parse_milvus_meta(row.get(store._metadata_field))
+            content_hash = meta.get("content_hash")
+            if content_hash:
+                hashes.add(content_hash)
+        return hashes
+
     async def count(self) -> int:
         """Return the number of distinct documents (unique file_ids) in this collection."""
         details = await self._get_details_or_raise()
@@ -258,8 +330,10 @@ class Collection:
             "metadata": _parse_milvus_meta(row.get(store._metadata_field)),
         }
 
-    async def get_chunks(self, file_id: str) -> list[dict[str, Any]]:
-        """Return all chunks for a given file_id from Milvus."""
+    async def get_chunks(
+        self, file_id: str, *, limit: int = 10_000, offset: int = 0
+    ) -> list[dict[str, Any]]:
+        """Return a page of chunks for a given file_id from Milvus."""
         details = await self._get_details_or_raise()
         store = self._get_store(details["table_id"])
 
@@ -271,7 +345,8 @@ class Collection:
                     store._text_field,
                     store._metadata_field,
                 ],
-                limit=10_000,
+                limit=limit,
+                offset=offset,
             )
         except Exception as exc:
             logger.warning("Milvus chunk query failed for file %r: %s", file_id, exc)
@@ -285,6 +360,63 @@ class Collection:
             }
             for row in rows
         ]
+
+    async def get_chunk_stats(self, file_id: str) -> dict[str, int]:
+        """Return {total_chunks, avg_chars, avg_tokens} for a file_id.
+
+        Cheap path: chunk stats are precomputed and stored on every chunk's
+        metadata at upload time, so a single-row query is enough. Falls back
+        to a bounded full scan only for legacy chunks uploaded before those
+        fields existed.
+        """
+        details = await self._get_details_or_raise()
+        store = self._get_store(details["table_id"])
+
+        try:
+            rows = store.col.query(
+                expr=f'{store._metadata_field}["file_id"] == "{file_id}"',
+                output_fields=[store._text_field, store._metadata_field],
+                limit=1,
+            )
+        except Exception as exc:
+            logger.warning(
+                "Milvus chunk-stats query failed for file %r: %s", file_id, exc
+            )
+            return {"total_chunks": 0, "avg_chars": 0, "avg_tokens": 0}
+
+        if not rows:
+            return {"total_chunks": 0, "avg_chars": 0, "avg_tokens": 0}
+
+        meta = _parse_milvus_meta(rows[0].get(store._metadata_field))
+        total_chunks = meta.get("file_total_chunks", 0)
+        if total_chunks:
+            return {
+                "total_chunks": total_chunks,
+                "avg_chars": meta.get("file_avg_chars", 0),
+                "avg_tokens": meta.get("file_avg_tokens", 0),
+            }
+
+        # Legacy fallback: recompute from a full (bounded) scan.
+        all_rows = store.col.query(
+            expr=f'{store._metadata_field}["file_id"] == "{file_id}"',
+            output_fields=[store._text_field, store._metadata_field],
+            limit=10_000,
+        )
+        total = len(all_rows)
+        if total == 0:
+            return {"total_chunks": 0, "avg_chars": 0, "avg_tokens": 0}
+        total_chars = sum(len(r.get(store._text_field, "")) for r in all_rows)
+        total_tokens = sum(
+            _parse_milvus_meta(r.get(store._metadata_field)).get(
+                "token_count", len(r.get(store._text_field, "")) // 4
+            )
+            for r in all_rows
+        )
+        return {
+            "total_chunks": total,
+            "avg_chars": round(total_chars / total),
+            "avg_tokens": round(total_tokens / total),
+        }
 
     async def fetch_all_chunks(self) -> list[dict[str, Any]]:
         """Return every chunk in the collection from Milvus (used by graph build)."""

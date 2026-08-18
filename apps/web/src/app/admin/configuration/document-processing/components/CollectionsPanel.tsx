@@ -8,6 +8,7 @@ import InputSelect from "@/refresh-components/inputs/InputSelect";
 import Text from "@/refresh-components/texts/Text";
 import { ThreeDotsLoader } from "@/components/Loading";
 import { toast } from "@/hooks/useToast";
+import { ConfirmEntityModal } from "@/components/modals/ConfirmEntityModal";
 import {
   useCollections,
   createCollection,
@@ -59,6 +60,7 @@ export default function CollectionsPanel({
   const [newName, setNewName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
   const [renameName, setRenameName] = useState("");
   const [isRenameSubmitting, setIsRenameSubmitting] = useState(false);
@@ -88,7 +90,7 @@ export default function CollectionsPanel({
     }
   }
 
-  async function handleDelete() {
+  function handleDeleteClick() {
     if (!selectedCollectionId || !selectedCollection) return;
     if (selectedIsDatasource) {
       toast.warning(
@@ -107,11 +109,12 @@ export default function CollectionsPanel({
       );
       return;
     }
+    setShowDeleteModal(true);
+  }
 
-    const confirmed = window.confirm(
-      `Delete collection "${selectedCollection.name}"? This will remove all documents in it.`
-    );
-    if (!confirmed) return;
+  async function handleDeleteConfirm() {
+    if (!selectedCollectionId) return;
+    setShowDeleteModal(false);
     setIsDeleting(true);
     try {
       await deleteCollection(selectedCollectionId);
@@ -249,7 +252,7 @@ export default function CollectionsPanel({
               <Button
                 danger
                 leftIcon={SvgTrash}
-                onClick={handleDelete}
+                onClick={handleDeleteClick}
                 disabled={
                   isDeleting ||
                   isRenaming ||
@@ -336,6 +339,24 @@ export default function CollectionsPanel({
             </div>
           )}
         </div>
+      )}
+
+      {showDeleteModal && selectedCollection && (
+        <ConfirmEntityModal
+          danger
+          entityType={t("admin.documentProcessing.collectionEntity", {
+            defaultValue: "Collection",
+          })}
+          entityName={selectedCollection.name}
+          additionalDetails={t(
+            "admin.documentProcessing.deleteCollectionWarning",
+            {
+              defaultValue: "This will remove all documents in it.",
+            }
+          )}
+          onClose={() => setShowDeleteModal(false)}
+          onSubmit={handleDeleteConfirm}
+        />
       )}
     </CardSection>
   );

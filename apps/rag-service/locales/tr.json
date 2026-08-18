@@ -15,7 +15,9 @@
     "no_documents_processed": "Sağlanan dosyalardan hiçbir doküman işlenemedi.",
     "failed_files_list": " İşlenemeyen dosyalar: {files}.",
     "vectorstore_add_failed": "İşleme sonrası doküman(lar) vektör deposuna eklenemedi.",
-    "file_too_large": "'{filename}' dosyası {size_mb} MB olup {limit_mb} MB yükleme sınırını aşıyor."
+    "file_too_large": "'{filename}' dosyası {size_mb} MB olup {limit_mb} MB yükleme sınırını aşıyor.",
+    "upload_already_in_progress": "Bu koleksiyon için zaten devam eden bir yükleme işi var.",
+    "upload_started": "Yükleme işi başlatıldı. İlerleme için /collections/{collection_id}/documents/upload-jobs/status adresini sorgulayın."
   },
   "graph": {
     "build_no_documents": "Bilgi grafiği oluşturulamıyor: koleksiyon hiçbir doküman içermiyor.",
