@@ -334,14 +334,14 @@ function CreateCompositeRoleModal({
         <Modal.Body>
           {error && (
             <div className="mb-3 rounded-06 bg-background-danger-02 p-2">
-              <Text secondaryBody text-03>
+              <Text secondaryBody text03>
                 {error}
               </Text>
             </div>
           )}
           <div className="flex flex-col gap-3">
             <div>
-              <Text secondaryBody text-02 className="mb-1 block">
+              <Text secondaryBody text02 className="mb-1 block">
                 {t("compositeRoleNameLabel")}
               </Text>
               <InputTypeIn
@@ -352,7 +352,7 @@ function CreateCompositeRoleModal({
               />
             </div>
             <div>
-              <Text secondaryBody text-02 className="mb-1 block">
+              <Text secondaryBody text02 className="mb-1 block">
                 {t("descriptionLabel")}
               </Text>
               <InputTypeIn
@@ -854,7 +854,7 @@ function RolesManager() {
                         </span>
                         <Text
                           secondaryBody
-                          text-04
+                          text04
                           as="span"
                           className="block truncate text-xs"
                         >
@@ -889,7 +889,7 @@ function RolesManager() {
                         </Text>
                         <Text
                           secondaryBody
-                          text-04
+                          text04
                           as="span"
                           className="block truncate text-xs"
                         >
@@ -906,7 +906,7 @@ function RolesManager() {
               {((activeLayer === "composite" && filteredRoles.length === 0) ||
                 (activeLayer === "coarse" &&
                   filteredCoarseRoles.length === 0)) && (
-                <Text secondaryBody text-04 className="px-3 py-2">
+                <Text secondaryBody text04 className="px-3 py-2">
                   {t("noRolesMatchSearch", {
                     defaultValue: "No roles match",
                   })}
@@ -959,7 +959,7 @@ function RolesManager() {
                       </div>
                     ) : (
                       <div className="mt-2 flex items-center gap-2">
-                        <Text secondaryBody text-04 className="truncate italic">
+                        <Text secondaryBody text04 className="truncate italic">
                           {selectedComp.description || t("noDescription")}
                         </Text>
                         {canMutate && (
@@ -977,7 +977,7 @@ function RolesManager() {
                         )}
                       </div>
                     )}
-                    <Text secondaryBody text-04 className="mt-2 block">
+                    <Text secondaryBody text04 className="mt-2 block">
                       {isWildcard
                         ? t("roleGrantsEveryPermission")
                         : t("roleEffectivePermissionsSummary", {
@@ -1018,7 +1018,7 @@ function RolesManager() {
                         defaultValue: "Included service roles",
                       })}
                     </CardTitle>
-                    <Text secondaryBody text-04 className="mt-1 block">
+                    <Text secondaryBody text04 className="mt-1 block">
                       {t("includedServiceRolesDescription", {
                         defaultValue:
                           "Inherited service roles contribute to this role's effective permissions.",
@@ -1042,7 +1042,7 @@ function RolesManager() {
                     />
                   </div>
                   {includedCoarseRoles.length === 0 ? (
-                    <Text secondaryBody text-04>
+                    <Text secondaryBody text04>
                       {t("noServiceRolesMatchSearch", {
                         defaultValue: "No service roles match",
                       })}
@@ -1071,14 +1071,14 @@ function RolesManager() {
                           <span className="min-w-0">
                             <Text
                               secondaryBody
-                              text-02
+                              text02
                               className="block truncate"
                             >
                               {role.name}
                             </Text>
                             <Text
                               secondaryBody
-                              text-04
+                              text04
                               className="block truncate text-xs"
                             >
                               {t("serviceRolePermissionCount", {
@@ -1336,7 +1336,7 @@ function RolesManager() {
                                     <div className="flex min-w-0 flex-col">
                                       <Text
                                         secondaryBody
-                                        text-02
+                                        text02
                                         className="truncate"
                                       >
                                         {perm.label}
@@ -1344,7 +1344,7 @@ function RolesManager() {
                                       {perm.description && (
                                         <Text
                                           secondaryBody
-                                          text-04
+                                          text04
                                           className="truncate"
                                         >
                                           {perm.description}
@@ -1352,7 +1352,7 @@ function RolesManager() {
                                       )}
                                       <Text
                                         secondaryBody
-                                        text-04
+                                        text04
                                         className="truncate font-mono text-[0.7rem]"
                                       >
                                         {perm.action}
@@ -1371,7 +1371,7 @@ function RolesManager() {
 
                 {Object.keys(filteredGrouped).length === 0 && (
                   <div className="py-8 text-center">
-                    <Text secondaryBody text-03>
+                    <Text secondaryBody text03>
                       {permSearch
                         ? t("noPermissionsMatchSearch")
                         : t("noPermissionsFound")}
@@ -1402,7 +1402,7 @@ function RolesManager() {
             onClose={() => setDeleteConfirmRole(null)}
           />
           <Modal.Body>
-            <Text secondaryBody text-02 as="span">
+            <Text secondaryBody text02 as="span">
               {t("confirmDeletePrefix")}{" "}
               <span className="font-medium text-text-05">
                 {deleteConfirmRole}
