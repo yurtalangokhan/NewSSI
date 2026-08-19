@@ -7,6 +7,7 @@ import LineItem from "@/refresh-components/buttons/LineItem";
 import Checkbox from "@/refresh-components/inputs/Checkbox";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
 import Modal from "@/refresh-components/Modal";
+import Tabs from "@/refresh-components/Tabs";
 import Text from "@/refresh-components/texts/Text";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Spinner } from "@/components/Spinner";
@@ -775,24 +776,19 @@ function RolesManager() {
         </div>
       </div>
 
-      <div className="inline-flex rounded-08 border border-border-01 bg-background-neutral-01 p-1">
-        <Button
-          action={activeLayer === "composite"}
-          secondary={activeLayer !== "composite"}
-          size="md"
-          onClick={() => setActiveLayer("composite")}
-        >
-          {t("compositeRolesTabLabel")}
-        </Button>
-        <Button
-          action={activeLayer === "coarse"}
-          secondary={activeLayer !== "coarse"}
-          size="md"
-          onClick={() => setActiveLayer("coarse")}
-        >
-          {t("featureBundlesTabLabel")}
-        </Button>
-      </div>
+      <Tabs
+        value={activeLayer}
+        onValueChange={(val) => setActiveLayer(val as "composite" | "coarse")}
+      >
+        <Tabs.List variant="contained">
+          <Tabs.Trigger value="composite">
+            {t("compositeRolesTabLabel")}
+          </Tabs.Trigger>
+          <Tabs.Trigger value="coarse">
+            {t("featureBundlesTabLabel")}
+          </Tabs.Trigger>
+        </Tabs.List>
+      </Tabs>
 
       {!hasActiveItems ? (
         <EmptyState
