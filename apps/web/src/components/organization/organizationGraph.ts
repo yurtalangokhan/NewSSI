@@ -24,6 +24,7 @@ export interface OrganizationFlowNodeData extends Record<string, unknown> {
   isDraft?: boolean;
   searchMatch?: boolean;
   searchDimmed?: boolean;
+  closing?: boolean;
   parentId?: string | null;
   parentOptions?: Array<{ id: string; name: string }>;
   onRequestMove?: (parentId: string) => void;

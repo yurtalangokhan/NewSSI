@@ -20,6 +20,7 @@ import {
   SvgArrowUpDown,
 } from "@opal/icons";
 import { useTranslation } from "react-i18next";
+import { useTheme } from "next-themes";
 import "@xyflow/react/dist/style.css";
 
 import { OrganizationDesignerInspector } from "@/components/organization/OrganizationDesignerInspector";
@@ -94,6 +95,7 @@ const DRAFT_NODE_ID = "__new-organization__";
 const EMPTY_MEMBERS_BY_ORGANIZATION: OrganizationMembersByUnit = {};
 const COMPLETE_TREE_FETCH_ERROR = "complete-tree-fetch-failed";
 const COMPLETED_RESET_PROGRESS_VISIBLE_MS = 400;
+const NODE_CLOSE_ANIMATION_MS = 200;
 
 type CompleteResetValidationError = "incomplete-access" | "too-large";
 
@@ -180,6 +182,7 @@ function OrganizationDesignerCanvas({
   onRevealReady = onSelectOrg,
 }: OrganizationDesignerProps) {
   const { t, i18n } = useTranslation();
+  const { resolvedTheme } = useTheme();
   const {
     positions,
     writableOrganizationIds,
@@ -200,7 +203,6 @@ function OrganizationDesignerCanvas({
   const dialogRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
   const pointerDraggingNodeIdsRef = useRef(new Set<string>());
-  const visibleNodeIdsRef = useRef<Set<string> | null>(null);
   const resetInProgressRef = useRef(false);
   const resetFitStartedRef = useRef(false);
   const resetViewportResolverRef = useRef<(() => void) | null>(null);
@@ -238,6 +240,21 @@ function OrganizationDesignerCanvas({
   const [collapsedNodeIds, setCollapsedNodeIds] = useState<Set<string>>(
     () => new Set()
   );
+  // Subtree roots mid-collapse: their children stay mounted (fading out via
+  // CSS) until the timeout below actually removes them from the graph, so
+  // the collapse reads as a transition instead of an instant disappearance.
+  const [closingNodeIds, setClosingNodeIds] = useState<Set<string>>(
+    () => new Set()
+  );
+  const closeTimeoutsRef = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+
+  useEffect(
+    () => () => {
+      closeTimeoutsRef.current.forEach((timeout) => clearTimeout(timeout));
+      closeTimeoutsRef.current.clear();
+    },
+    []
+  );
 
   const handleToggleSubtree = useCallback(
     (nodeId: string, currentChildrenLength: number) => {
@@ -248,14 +265,36 @@ function OrganizationDesignerCanvas({
         collapsedNodeIds
       );
 
+      const pendingClose = closeTimeoutsRef.current.get(nodeId);
+      if (pendingClose) {
+        clearTimeout(pendingClose);
+        closeTimeoutsRef.current.delete(nodeId);
+      }
+
       if (currentlyExpanded) {
-        setCollapsedNodeIds((prev) => new Set(prev).add(nodeId));
-        setExpandedNodeIds((prev) => {
+        setClosingNodeIds((prev) => new Set(prev).add(nodeId));
+        const timeout = setTimeout(() => {
+          setCollapsedNodeIds((prev) => new Set(prev).add(nodeId));
+          setExpandedNodeIds((prev) => {
+            const next = new Set(prev);
+            next.delete(nodeId);
+            return next;
+          });
+          setClosingNodeIds((prev) => {
+            const next = new Set(prev);
+            next.delete(nodeId);
+            return next;
+          });
+          closeTimeoutsRef.current.delete(nodeId);
+        }, NODE_CLOSE_ANIMATION_MS);
+        closeTimeoutsRef.current.set(nodeId, timeout);
+      } else {
+        setClosingNodeIds((prev) => {
+          if (!prev.has(nodeId)) return prev;
           const next = new Set(prev);
           next.delete(nodeId);
           return next;
         });
-      } else {
         setExpandedNodeIds((prev) => new Set(prev).add(nodeId));
         setCollapsedNodeIds((prev) => {
           const next = new Set(prev);
@@ -277,6 +316,15 @@ function OrganizationDesignerCanvas({
     () => flattenOrganizations(organizations),
     [organizations]
   );
+  const closingDescendantIds = useMemo(() => {
+    const ids = new Set<string>();
+    closingNodeIds.forEach((nodeId) => {
+      const organization = organizationsById.get(nodeId);
+      if (!organization) return;
+      descendantIds(organization).forEach((id) => ids.add(id));
+    });
+    return ids;
+  }, [closingNodeIds, organizationsById]);
   const searchMatches = useMemo(
     () => getOrganizationMatches(organizations, searchQuery, i18n.language),
     [i18n.language, organizations, searchQuery]
@@ -349,6 +397,7 @@ function OrganizationDesignerCanvas({
           ),
         searchMatch: hasSearch && matchingOrganizationIds.has(node.id),
         searchDimmed: hasSearch && !matchingOrganizationIds.has(node.id),
+        closing: closingDescendantIds.has(node.id),
         isDropTarget: dropTargetId === node.id,
         members: showMembers ? membersByOrganizationId[node.id] ?? [] : [],
         parentOptions: allOrganizations
@@ -387,12 +436,14 @@ function OrganizationDesignerCanvas({
       ...edge,
       style: {
         ...edge.style,
-        opacity: hasSearch
-          ? matchingOrganizationIds.has(edge.source) ||
-            matchingOrganizationIds.has(edge.target)
-            ? 0.62
-            : 0.16
-          : 1,
+        opacity: closingDescendantIds.has(edge.target)
+          ? 0
+          : hasSearch
+            ? matchingOrganizationIds.has(edge.source) ||
+              matchingOrganizationIds.has(edge.target)
+              ? 0.62
+              : 0.16
+            : 1,
       },
     }));
 
@@ -447,6 +498,7 @@ function OrganizationDesignerCanvas({
     beginNodeDelete,
     cancelChildCreation,
     capabilityLoading,
+    closingDescendantIds,
     draftParentId,
     editable,
     allOrganizations,
@@ -524,32 +576,7 @@ function OrganizationDesignerCanvas({
     })();
   }, [nodes, nodesInitialized, pendingResetPositions, t]);
 
-  useEffect(() => {
-    const currentNodeIds = new Set(graph.nodes.map(({ id }) => id));
-    const visibleNodeIds = visibleNodeIdsRef.current;
-    if (!visibleNodeIds) {
-      visibleNodeIdsRef.current = currentNodeIds;
-      return;
-    }
-    const newlyVisibleNodes = graph.nodes.filter(
-      ({ id }) => !visibleNodeIds.has(id)
-    );
-    currentNodeIds.forEach((id) => visibleNodeIds.add(id));
-    if (newlyVisibleNodes.length === 0) return;
 
-    const focusIds = new Set(newlyVisibleNodes.map(({ id }) => id));
-    newlyVisibleNodes.forEach((node) => {
-      if (node.data.parentId) focusIds.add(node.data.parentId);
-    });
-    const revealedNodes = graph.nodes.filter(({ id }) => focusIds.has(id));
-    void flowInstanceRef.current?.fitView({
-      nodes: revealedNodes,
-      padding: 0.2,
-      minZoom: 0.2,
-      maxZoom: 1.2,
-      duration: 300,
-    });
-  }, [graph.nodes]);
 
   useEffect(() => {
     if (!revealRequest || completedRevealIdRef.current === revealRequest.id) {
@@ -989,6 +1016,7 @@ function OrganizationDesignerCanvas({
                 nodes={nodes}
                 edges={graph.edges}
                 nodeTypes={nodeTypes}
+                colorMode={resolvedTheme === "dark" ? "dark" : "light"}
                 nodesConnectable={false}
                 edgesFocusable={false}
                 deleteKeyCode={null}
@@ -1002,14 +1030,39 @@ function OrganizationDesignerCanvas({
                 onNodesChange={handleNodesChange}
                 onNodeDrag={handleNodeDrag}
                 onNodeDragStop={handleNodeDragStop}
+                className={cn(
+                  // Animate a node's own position change (e.g. siblings
+                  // reflowing when a subtree expands/collapses) so the
+                  // rearrangement reads as a slide instead of a jump. Skip
+                  // while the user is actively dragging so drag stays 1:1
+                  // with the pointer.
+                  "[&_.react-flow\_\_node]:transition-transform [&_.react-flow\_\_node]:duration-300 [&_.react-flow\_\_node]:ease-in-out motion-reduce:[&_.react-flow\_\_node]:transition-none",
+                  "[&_.react-flow\_\_node.dragging]:transition-none",
+                  "[&_.react-flow\_\_edge-path]:transition-[opacity,stroke] [&_.react-flow\_\_edge-path]:duration-200 motion-reduce:[&_.react-flow\_\_edge-path]:transition-none"
+                )}
               >
                 <Background color="var(--border-01)" gap={24} size={1} />
-                <Controls showInteractive={false} />
+                <Controls
+                  showInteractive={false}
+                  className={cn(
+                    "!border !border-border-02 !bg-background-neutral-00 !shadow-md !rounded-12 !overflow-hidden",
+                    "[&_.react-flow\_\_controls-button]:!bg-background-neutral-00",
+                    "[&_.react-flow\_\_controls-button]:!border-border-02",
+                    "[&_.react-flow\_\_controls-button]:!text-text-04",
+                    "[&_.react-flow\_\_controls-button:hover]:!bg-background-neutral-02",
+                    "[&_.react-flow\_\_controls-button:hover]:!text-text-05",
+                    "[&_.react-flow\_\_controls-button_svg]:!fill-current"
+                  )}
+                />
                 <MiniMap
                   pannable
                   zoomable
+                  className={cn(
+                    "!rounded-12 !border !border-border-02 !bg-background-neutral-00 !shadow-md !overflow-hidden"
+                  )}
                   nodeColor="var(--background-neutral-04)"
-                  maskColor="color-mix(in srgb, var(--background-neutral-01) 78%, transparent)"
+                  maskColor="color-mix(in srgb, var(--background-neutral-01) 75%, transparent)"
+                  maskStrokeColor="var(--border-02)"
                 />
               </ReactFlow>
               {canEditLayout && organizations.length > 0 && (

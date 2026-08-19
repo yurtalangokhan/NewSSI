@@ -50,6 +50,10 @@ module.exports = {
           from: { height: "var(--radix-collapsible-content-height)" },
           to: { height: "0" },
         },
+        "org-node-enter": {
+          "0%": { opacity: "0" },
+          "100%": { opacity: "1" },
+        },
       },
       animation: {
         shimmer: "shimmer 1.8s ease-out infinite",
@@ -60,6 +64,7 @@ module.exports = {
         "fade-out-scale": "fade-out-scale 0.2s ease-in forwards",
         "collapsible-down": "collapsible-down 0.2s ease-out",
         "collapsible-up": "collapsible-up 0.2s ease-out",
+        "org-node-enter": "org-node-enter 220ms ease-out",
       },
       gradientColorStops: {
         "neutral-10": "var(--neutral-10) 5%",
