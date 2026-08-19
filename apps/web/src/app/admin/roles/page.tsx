@@ -6,11 +6,13 @@ import IconButton from "@/refresh-components/buttons/IconButton";
 import LineItem from "@/refresh-components/buttons/LineItem";
 import Checkbox from "@/refresh-components/inputs/Checkbox";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
+import InputTextArea from "@/refresh-components/inputs/InputTextArea";
 import Modal from "@/refresh-components/Modal";
+import ConfirmationModalLayout from "@/refresh-components/layouts/ConfirmationModalLayout";
 import Tabs from "@/refresh-components/Tabs";
 import Text from "@/refresh-components/texts/Text";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Spinner } from "@/components/Spinner";
+import SimpleLoader from "@/refresh-components/loaders/SimpleLoader";
 import * as SettingsLayouts from "@/layouts/settings-layouts";
 import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
 import { errorHandlingFetcher } from "@/lib/fetcher";
@@ -273,6 +275,100 @@ async function deleteRole(url: string) {
   return res.json();
 }
 
+// ─── Skeletons ──────────────────────────────────────────────────────
+
+function RoleCardSkeleton() {
+  return (
+    <div className="rounded-08 border border-border-01 bg-background-neutral-01 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1 space-y-2.5">
+          <div className="h-5 w-40 rounded-06 bg-background-neutral-03 animate-pulse" />
+          <div className="h-4 w-72 rounded-06 bg-background-neutral-02 animate-pulse" />
+          <div className="h-3.5 w-48 rounded-06 bg-background-neutral-02 animate-pulse" />
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <div className="h-8 w-20 rounded-08 bg-background-neutral-02 animate-pulse" />
+          <div className="h-8 w-16 rounded-08 bg-background-neutral-02 animate-pulse" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RoleBundlesSkeleton() {
+  return (
+    <Card className="rounded-08">
+      <CardHeader className="space-y-2">
+        <div className="h-4 w-44 rounded-06 bg-background-neutral-03 animate-pulse" />
+        <div className="h-3 w-80 rounded-06 bg-background-neutral-02 animate-pulse" />
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="h-8 w-full rounded-06 bg-background-neutral-02 animate-pulse" />
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div
+              key={i}
+              className="flex items-center gap-2.5 rounded-06 border border-border-01/50 bg-background-neutral-01 p-3"
+            >
+              <div className="h-4 w-4 shrink-0 rounded-04 bg-background-neutral-03 animate-pulse" />
+              <div className="flex flex-1 flex-col gap-1 min-w-0">
+                <div className="h-3.5 w-2/3 rounded bg-background-neutral-03 animate-pulse" />
+                <div className="h-2.5 w-1/3 rounded bg-background-neutral-02 animate-pulse" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function RolesPageSkeleton() {
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="space-y-2">
+          <div className="h-6 w-48 rounded-06 bg-background-neutral-03 animate-pulse" />
+          <div className="h-4 w-96 rounded-06 bg-background-neutral-02 animate-pulse" />
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="h-8 w-24 rounded-08 bg-background-neutral-02 animate-pulse" />
+          <div className="h-8 w-20 rounded-08 bg-background-neutral-02 animate-pulse" />
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="h-9 w-64 rounded-08 bg-background-neutral-02 animate-pulse" />
+
+      {/* Main Grid */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[280px_1fr]">
+        {/* Left Sidebar Skeleton */}
+        <div className="rounded-08 border border-border-01 bg-background-neutral-01 p-3 space-y-3">
+          <div className="h-8 w-full rounded-06 bg-background-neutral-02 animate-pulse" />
+          <div className="space-y-1.5">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div
+                key={i}
+                className="flex h-10 w-full items-center justify-between rounded-08 bg-background-neutral-02/60 px-3"
+              >
+                <div className="h-3.5 w-24 rounded bg-background-neutral-03 animate-pulse" />
+                <div className="h-3 w-8 rounded bg-background-neutral-03 animate-pulse" />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Right Panel Skeleton */}
+        <div className="min-w-0 space-y-4">
+          <RoleCardSkeleton />
+          <RoleBundlesSkeleton />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function CreateCompositeRoleModal({
   open,
   onClose,
@@ -327,49 +423,90 @@ function CreateCompositeRoleModal({
 
   return (
     <Modal open={open} onOpenChange={handleClose}>
-      <Modal.Content>
+      <Modal.Content width="sm">
         <Modal.Header
+          icon={SvgShield}
           title={t("createCompositeRoleTitle")}
+          description={t("createCompositeRoleDescription", {
+            defaultValue:
+              "Create a composite role profile to bundle permissions and service roles.",
+          })}
           onClose={handleClose}
         />
-        <Modal.Body>
+        <Modal.Body twoTone>
           {error && (
-            <div className="mb-3 rounded-06 bg-background-danger-02 p-2">
-              <Text secondaryBody text03>
+            <div className="mb-4 rounded-06 border border-status-danger-02 bg-background-danger-02 p-3">
+              <Text secondaryBody text03 className="text-status-danger-05">
                 {error}
               </Text>
             </div>
           )}
-          <div className="flex flex-col gap-3">
-            <div>
-              <Text secondaryBody text02 className="mb-1 block">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void handleCreate();
+            }}
+            className="flex w-full flex-col gap-4"
+          >
+            <div className="flex w-full flex-col gap-1.5">
+              <Text headingH3 text05 className="text-sm font-medium">
                 {t("compositeRoleNameLabel")}
               </Text>
-              <InputTypeIn
-                showClearButton={false}
-                placeholder={t("compositeRoleNamePlaceholder")}
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
-            </div>
-            <div>
-              <Text secondaryBody text02 className="mb-1 block">
-                {t("descriptionLabel")}
+              <Text secondaryBody text04 className="text-xs">
+                {t("compositeRoleNameDescription", {
+                  defaultValue:
+                    "Unique identifier for this role (e.g. analyst, data-scientist).",
+                })}
               </Text>
               <InputTypeIn
-                showClearButton={false}
+                autoFocus
+                showClearButton
+                className="w-full"
+                placeholder={t("compositeRoleNamePlaceholder")}
+                value={name}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  if (error) setError(null);
+                }}
+              />
+            </div>
+
+            <div className="flex w-full flex-col gap-1.5">
+              <div className="flex items-center gap-1.5">
+                <Text headingH3 text05 className="text-sm font-medium">
+                  {t("descriptionLabel")}
+                </Text>
+                <Text secondaryBody text03 className="text-xs">
+                  {t("optionalParenthetical", {
+                    defaultValue: "(İsteğe bağlı)",
+                  })}
+                </Text>
+              </div>
+              <Text secondaryBody text04 className="text-xs">
+                {t("compositeRoleDescriptionHelper", {
+                  defaultValue:
+                    "Summary of the access and responsibilities granted by this role.",
+                })}
+              </Text>
+              <InputTextArea
+                rows={3}
+                className="w-full"
                 placeholder={t("optionalDescriptionPlaceholder")}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
               />
             </div>
-          </div>
+          </form>
         </Modal.Body>
         <Modal.Footer>
           <Button secondary onClick={handleClose} disabled={loading}>
             {t("cancelButton")}
           </Button>
-          <Button onClick={handleCreate} disabled={loading}>
+          <Button
+            action
+            onClick={handleCreate}
+            disabled={loading || !name.trim()}
+          >
             {loading ? t("creatingButton") : t("createCompositeRoleTitle")}
           </Button>
         </Modal.Footer>
@@ -412,7 +549,11 @@ function RolesManager() {
     dedupingInterval: 30000,
   });
 
-  const { data: coarseData, isLoading: coarseLoading } = useSWR<{
+  const {
+    data: coarseData,
+    isLoading: coarseLoading,
+    mutate: mutateCoarseData,
+  } = useSWR<{
     roles: CoarseRole[];
   }>("/api/user-service/coarse-roles/", errorHandlingFetcher, {
     dedupingInterval: 30000,
@@ -427,6 +568,7 @@ function RolesManager() {
   const {
     data: rolePermsData,
     isLoading: rolePermsLoading,
+    mutate: mutateRolePerms,
   } = useSWR<{ name: string; permissions: string[] }>(
     selectedRole
       ? `/api/user-service/roles/${rolePath(selectedRole)}/permissions`
@@ -472,6 +614,7 @@ function RolesManager() {
       {
         onSuccess: () => {
           mutateCoarseRolePerms();
+          mutateCoarseData();
           toast.success(t("permissionsSavedToast"));
         },
         onError: (err) => toast.error(err.message),
@@ -486,10 +629,12 @@ function RolesManager() {
     {
       onSuccess: (data) => {
         mutateRoleIds();
+        mutateRolePerms();
+        mutateComp();
         toast.success(
-          `Role assignment saved — ${
-            data.effective_permissions?.length ?? 0
-          } effective permissions`
+          t("roleAssignmentSavedToast", {
+            count: data.effective_permissions?.length ?? 0,
+          })
         );
       },
       onError: (err) => toast.error(err.message),
@@ -663,6 +808,8 @@ function RolesManager() {
     [canMutateCoarse, mutateCoarseRolePerms, selectedCoarseRole]
   );
 
+  const [isUpdatingDescription, setIsUpdatingDescription] = useState(false);
+
   const handleSave = useCallback(() => {
     saveCoarsePermissions({
       permissions: Array.from(selectedPermsSet).filter((permission) =>
@@ -684,14 +831,18 @@ function RolesManager() {
 
   const handleUpdateDescription = useCallback(
     async (description: string) => {
+      setIsUpdatingDescription(true);
       try {
         await patchRole(`/api/user-service/roles/${rolePath(selectedRole)}`, {
           arg: { description },
         });
         mutateComp();
         toast.success(t("roleUpdatedToast"));
+        setEditingDescription(false);
       } catch (err: any) {
         toast.error(err.message);
+      } finally {
+        setIsUpdatingDescription(false);
       }
     },
     [selectedRole, mutateComp, t]
@@ -720,24 +871,16 @@ function RolesManager() {
     }
   }, [deleteConfirmRole, selectedRole, roles, mutateComp, t]);
 
-  const allLoading =
-    compLoading ||
-    coarseLoading ||
-    permsLoading ||
-    (activeLayer === "composite" &&
-      Boolean(selectedRole) &&
-      (rolePermsLoading || roleIdsLoading)) ||
-    (activeLayer === "coarse" &&
-      Boolean(selectedCoarseRole) &&
-      coarseRolePermsLoading);
+  const isInitialLoading = compLoading || coarseLoading || permsLoading;
 
-  if (allLoading) {
-    return (
-      <div className="flex justify-center py-8">
-        <Spinner />
-      </div>
-    );
+  if (isInitialLoading) {
+    return <RolesPageSkeleton />;
   }
+
+  const isRightPanelLoading =
+    activeLayer === "composite"
+      ? Boolean(selectedRole) && (rolePermsLoading || roleIdsLoading)
+      : Boolean(selectedCoarseRole) && coarseRolePermsLoading;
 
   const hasRoles = roles.length > 0;
   const hasCoarseRoles = coarseRoles.length > 0;
@@ -912,7 +1055,14 @@ function RolesManager() {
           </div>
 
           <div className="min-w-0">
-            {activeLayer === "composite" && selectedComp && (
+            {isRightPanelLoading ? (
+              <div className="space-y-4">
+                <RoleCardSkeleton />
+                <RoleBundlesSkeleton />
+              </div>
+            ) : (
+              <>
+                {activeLayer === "composite" && selectedComp && (
               <div className="mb-4 rounded-08 border border-border-01 bg-background-neutral-01 p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
@@ -927,27 +1077,34 @@ function RolesManager() {
                       )}
                     </div>
                     {editingDescription ? (
-                      <div className="mt-3 flex items-center gap-2">
+                      <div className="mt-2 flex items-center gap-2">
                         <InputTypeIn
                           className="min-w-0 flex-1"
                           showClearButton={false}
                           value={descriptionDraft}
+                          variant={isUpdatingDescription ? "disabled" : "primary"}
                           onChange={(e) => setDescriptionDraft(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && !isUpdatingDescription) {
+                              void handleUpdateDescription(descriptionDraft);
+                            } else if (e.key === "Escape" && !isUpdatingDescription) {
+                              setEditingDescription(false);
+                            }
+                          }}
                           autoFocus
                         />
                         <Button
                           secondary
                           size="md"
-                          onClick={() => {
-                            handleUpdateDescription(descriptionDraft);
-                            setEditingDescription(false);
-                          }}
+                          disabled={isUpdatingDescription}
+                          onClick={() => void handleUpdateDescription(descriptionDraft)}
                         >
-                          {t("saveButton")}
+                          {isUpdatingDescription ? t("savingButton") : t("saveButton")}
                         </Button>
                         <Button
                           secondary
                           size="md"
+                          disabled={isUpdatingDescription}
                           onClick={() => setEditingDescription(false)}
                         >
                           {t("cancelButton")}
@@ -955,13 +1112,21 @@ function RolesManager() {
                       </div>
                     ) : (
                       <div className="mt-2 flex items-center gap-2">
-                        <Text secondaryBody text04 className="truncate italic">
+                        <Text
+                          secondaryBody
+                          text04
+                          className={cn(
+                            "min-w-0 truncate px-1 py-0.5",
+                            !selectedComp.description && "italic text-text-03"
+                          )}
+                        >
                           {selectedComp.description || t("noDescription")}
                         </Text>
                         {canMutate && (
                           <IconButton
                             icon={SvgEdit}
                             internal
+                            className="shrink-0"
                             onClick={() => {
                               setDescriptionDraft(
                                 selectedComp.description ?? ""
@@ -983,12 +1148,24 @@ function RolesManager() {
                     </Text>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
+                    {isSavingRoleIds && (
+                      <div className="flex items-center gap-1.5 text-xs text-text-03">
+                        <SimpleLoader className="h-3.5 w-3.5" />
+                        <span>{t("savingButton")}</span>
+                      </div>
+                    )}
                     <Button
-                      leftIcon={SvgCheck}
-                      disabled={isSaving || !canMutate}
-                      onClick={handleSave}
+                      leftIcon={isSavingRoleIds ? SimpleLoader : SvgCheck}
+                      disabled={isSavingRoleIds || !canMutate}
+                      onClick={() => {
+                        if (selectedRole && roleIdsData?.role_ids) {
+                          void saveRoleIds({
+                            role_ids: roleIdsData.role_ids,
+                          });
+                        }
+                      }}
                     >
-                      {isSaving ? t("savingButton") : t("saveButton")}
+                      {isSavingRoleIds ? t("savingButton") : t("saveButton")}
                     </Button>
                     {canMutate && (
                       <Button
@@ -1116,13 +1293,21 @@ function RolesManager() {
                     </Text>
                   </div>
                   {!selectedCoarseIsWildcard && (
-                    <Button
-                      leftIcon={SvgCheck}
-                      disabled={isSaving || !canMutateCoarse}
-                      onClick={handleSave}
-                    >
-                      {isSaving ? t("savingButton") : t("saveButton")}
-                    </Button>
+                    <div className="flex shrink-0 items-center gap-2">
+                      {isSaving && (
+                        <div className="flex items-center gap-1.5 text-xs text-text-03">
+                          <SimpleLoader className="h-3.5 w-3.5" />
+                          <span>{t("savingButton")}</span>
+                        </div>
+                      )}
+                      <Button
+                        leftIcon={isSaving ? SimpleLoader : SvgCheck}
+                        disabled={isSaving || !canMutateCoarse}
+                        onClick={handleSave}
+                      >
+                        {isSaving ? t("savingButton") : t("saveButton")}
+                      </Button>
+                    </div>
                   )}
                 </div>
               </div>
@@ -1376,8 +1561,10 @@ function RolesManager() {
                 )}
               </>
             )}
-          </div>
-        </div>
+          </>
+        )}
+      </div>
+      </div>
       )}
 
       <CreateCompositeRoleModal
@@ -1388,34 +1575,37 @@ function RolesManager() {
         }}
       />
 
-      <Modal
-        open={!!deleteConfirmRole}
-        onOpenChange={() => setDeleteConfirmRole(null)}
-      >
-        <Modal.Content>
-          <Modal.Header
-            title={t("deleteRoleTitle")}
-            onClose={() => setDeleteConfirmRole(null)}
-          />
-          <Modal.Body>
-            <Text secondaryBody text02 as="span">
-              {t("confirmDeletePrefix")}{" "}
-              <span className="font-medium text-text-05">
-                {deleteConfirmRole}
-              </span>
-              {t("confirmDeleteSuffix")}
+      {deleteConfirmRole && (
+        <ConfirmationModalLayout
+          icon={SvgTrash}
+          title={t("deleteRoleTitle")}
+          onClose={() => setDeleteConfirmRole(null)}
+          submit={
+            <Button
+              danger
+              onClick={handleDeleteRole}
+              disabled={isDeleting}
+            >
+              {isDeleting ? t("deletingButton") : t("deleteButton")}
+            </Button>
+          }
+        >
+          <div className="flex flex-col gap-2">
+            <Text as="p" text04>
+              {t("confirmDeleteRole", {
+                name: roleLabel(deleteConfirmRole),
+                defaultValue: `Are you sure you want to delete "${roleLabel(deleteConfirmRole)}"?`,
+              })}
             </Text>
-          </Modal.Body>
-          <Modal.Footer>
-            <Button secondary onClick={() => setDeleteConfirmRole(null)}>
-              {t("cancelButton")}
-            </Button>
-            <Button danger onClick={handleDeleteRole} disabled={isDeleting}>
-              {isDeleting ? t("deletingButton") : t("deleteRoleTitle")}
-            </Button>
-          </Modal.Footer>
-        </Modal.Content>
-      </Modal>
+            <Text as="p" secondaryBody text03>
+              {t("deleteRoleWarning", {
+                defaultValue:
+                  "This action cannot be undone and will permanently remove this role.",
+              })}
+            </Text>
+          </div>
+        </ConfirmationModalLayout>
+      )}
     </div>
   );
 }
