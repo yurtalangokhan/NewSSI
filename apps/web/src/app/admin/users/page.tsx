@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useState } from "react";
+import { useState } from "react";
 import SimpleTabs from "@/refresh-components/SimpleTabs";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import SignedUpUserTable from "@/components/admin/users/SignedUpUserTable";
@@ -10,12 +10,11 @@ import useSWR from "swr";
 import { InvitedUserSnapshot } from "@/lib/types";
 import { NEXT_PUBLIC_CLOUD_ENABLED } from "@/lib/constants";
 import PendingUsersTable from "@/components/admin/users/PendingUsersTable";
-import CreateButton from "@/refresh-components/buttons/CreateButton";
 import Button from "@/refresh-components/buttons/Button";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
 import Text from "@/refresh-components/texts/Text";
 import { Spinner } from "@/components/Spinner";
-import { SvgDownloadCloud } from "@opal/icons";
+import { SvgDownloadCloud, SvgPlus } from "@opal/icons";
 import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
 import { useTranslation } from "react-i18next";
 import { toast } from "@/hooks/useToast";
@@ -24,41 +23,18 @@ import AdminOverviewPanel from "@/components/admin/AdminOverviewPanel";
 
 const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.USERS]!;
 
-interface CountDisplayProps {
-  label: string;
-  value: number | null;
-  isLoading: boolean;
-}
-
-function CountDisplay({ label, value, isLoading }: CountDisplayProps) {
-  const displayValue = isLoading
-    ? "..."
-    : value === null
-      ? "-"
-      : value.toLocaleString();
-
-  return (
-    <div className="flex min-w-[132px] items-center justify-between gap-3 rounded-08 border border-border-01 bg-background-neutral-00 px-2 py-1">
-      <Text as="p" mainUiMuted text03>
-        {label}
-      </Text>
-      <Text as="p" headingH3 text05>
-        {displayValue}
-      </Text>
-    </div>
-  );
-}
-
 function UsersTables({
   q,
+  query,
+  setQuery,
   isDownloadingUsers,
   setIsDownloadingUsers,
-  renderSearchControl,
 }: {
   q: string;
+  query: string;
+  setQuery: (val: string) => void;
   isDownloadingUsers: boolean;
   setIsDownloadingUsers: (loading: boolean) => void;
-  renderSearchControl: () => ReactNode;
 }) {
   const { t } = useTranslation();
   const [currentUsersCount, setCurrentUsersCount] = useState<number | null>(
@@ -82,7 +58,6 @@ function UsersTables({
       anchor_tag.download = "users.csv";
       document.body.appendChild(anchor_tag);
       anchor_tag.click();
-      //Clean up URL after download to avoid memory leaks
       window.URL.revokeObjectURL(url);
       document.body.removeChild(anchor_tag);
     } catch (error) {
@@ -90,8 +65,6 @@ function UsersTables({
         t("admin.users.downloadFailedError", { error: String(error) })
       );
     } finally {
-      //Ensure spinner is visible for at least 1 second
-      //This is to avoid the spinner disappearing too quickly
       const endTime = Date.now();
       const duration = endTime - startTime;
       await new Promise((resolve) =>
@@ -120,77 +93,93 @@ function UsersTables({
     errorHandlingFetcher
   );
 
-  // Show loading animation only during the initial data fetch
+  const currentUsersContent = (
+    <Card className="w-full rounded-12 border-border-01 bg-background-neutral-00 shadow-none">
+      <CardHeader className="border-b border-border-01 bg-background-neutral-01 p-3">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <Text as="p" headingH3 text05>
+              {t("admin.users.currentUsersTitle")}
+            </Text>
+            {currentUsersCount !== null && (
+              <span className="rounded-04 bg-background-neutral-02 px-2 py-0.5 text-xs text-text-03 font-medium">
+                {currentUsersCount.toLocaleString()}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              secondary
+              leftIcon={SvgDownloadCloud}
+              disabled={isDownloadingUsers}
+              onClick={() => downloadAllUsers()}
+            >
+              {isDownloadingUsers
+                ? t("admin.users.downloadingButton")
+                : t("admin.users.downloadCsvButton")}
+            </Button>
+            <Button primary href="/admin/users/add" leftIcon={SvgPlus}>
+              {t("admin.users.addUserButton")}
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="p-0">
+        <SignedUpUserTable
+          q={q}
+          query={query}
+          onQueryChange={setQuery}
+          onTotalItemsChange={(count) => setCurrentUsersCount(count)}
+          onLoadingChange={(loading) => {
+            setCurrentUsersLoading(loading);
+            if (loading) {
+              setCurrentUsersCount(null);
+            }
+          }}
+        />
+      </CardContent>
+    </Card>
+  );
+
   const tabs = SimpleTabs.generateTabs({
     current: {
       name: t("admin.users.currentUsersTab"),
-      content: (
-        <Card className="w-full rounded-12 border-border-01 bg-background-neutral-00 shadow-none">
-          <CardHeader className="gap-3 border-b border-border-01 bg-background-neutral-01 p-3">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <div className="flex flex-wrap items-center gap-2">
-                <Text as="p" headingH3 text05>
-                  {t("admin.users.currentUsersTitle")}
-                </Text>
-                <CountDisplay
-                  label={t("admin.users.totalUsersLabel")}
-                  value={currentUsersCount}
-                  isLoading={currentUsersLoading}
-                />
-              </div>
-              <div className="flex w-full flex-col gap-2 md:flex-row lg:w-auto lg:items-center">
-                {renderSearchControl()}
-                <Button
-                  leftIcon={SvgDownloadCloud}
-                  disabled={isDownloadingUsers}
-                  onClick={() => downloadAllUsers()}
-                  className="w-full md:w-auto"
-                >
-                  {isDownloadingUsers
-                    ? t("admin.users.downloadingButton")
-                    : t("admin.users.downloadCsvButton")}
-                </Button>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="p-0">
-            <SignedUpUserTable
-              q={q}
-              onTotalItemsChange={(count) => setCurrentUsersCount(count)}
-              onLoadingChange={(loading) => {
-                setCurrentUsersLoading(loading);
-                if (loading) {
-                  setCurrentUsersCount(null);
-                }
-              }}
-            />
-          </CardContent>
-        </Card>
-      ),
+      content: currentUsersContent,
     },
     ...(NEXT_PUBLIC_CLOUD_ENABLED && {
       pending: {
         name: t("admin.users.pendingUsersTab"),
         content: (
           <Card className="rounded-12 border-border-01 bg-background-neutral-00 shadow-none">
-            <CardHeader className="gap-3 border-b border-border-01 bg-background-neutral-01 p-3">
-              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                <div className="flex flex-wrap items-center gap-2">
+            <CardHeader className="border-b border-border-01 bg-background-neutral-01 p-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
                   <Text as="p" headingH3 text05>
                     {t("admin.users.pendingUsersTitle")}
                   </Text>
-                  <CountDisplay
-                    label={t("admin.users.totalPendingLabel")}
-                    value={pendingUsersCount}
-                    isLoading={pendingUsersLoading}
-                  />
+                  {pendingUsersCount !== null && (
+                    <span className="rounded-04 bg-background-neutral-02 px-2 py-0.5 text-xs text-text-03 font-medium">
+                      {pendingUsersCount.toLocaleString()}
+                    </span>
+                  )}
                 </div>
-                <div className="flex w-full flex-col gap-2 md:flex-row lg:w-auto lg:items-center">
-                  {renderSearchControl()}
+                <div className="flex items-center gap-2">
+                  <Button primary href="/admin/users/add" leftIcon={SvgPlus}>
+                    {t("admin.users.addUserButton")}
+                  </Button>
                 </div>
               </div>
             </CardHeader>
             <CardContent className="p-0">
+              <div className="p-3 border-b border-border-01 bg-background-neutral-00">
+                <InputTypeIn
+                  leftSearchIcon
+                  placeholder={t("admin.users.searchPlaceholder")}
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  onClear={() => setQuery("")}
+                />
+              </div>
               <PendingUsersTable
                 users={pendingUsers || []}
                 mutate={pendingUsersMutate}
@@ -243,40 +232,24 @@ function UsersTables({
         ]}
         actions={[
           {
-            label: t("admin.users.addUserButton"),
-            href: "/admin/users/add",
-            primary: true,
-          },
-          {
             label: t("admin.navigation.routes.roles.sidebar"),
             href: ADMIN_PATHS.ROLES,
           },
         ]}
       />
-      <SimpleTabs tabs={tabs} defaultValue="current" />
+      {NEXT_PUBLIC_CLOUD_ENABLED ? (
+        <SimpleTabs tabs={tabs} defaultValue="current" />
+      ) : (
+        currentUsersContent
+      )}
     </>
   );
 }
 
 function SearchableTables() {
-  const { t } = useTranslation();
   const [query, setQuery] = useState("");
   const debouncedQuery = useDebouncedValue(query.trim(), 250);
   const [isDownloadingUsers, setIsDownloadingUsers] = useState(false);
-  const renderSearchControl = () => (
-    <>
-      <div className="w-full md:min-w-[320px] lg:min-w-[380px]">
-        <InputTypeIn
-          leftSearchIcon
-          placeholder={t("admin.users.searchPlaceholder")}
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          onClear={() => setQuery("")}
-        />
-      </div>
-      <AddUserButton />
-    </>
-  );
 
   return (
     <div>
@@ -284,22 +257,13 @@ function SearchableTables() {
       <div className="flex flex-col gap-y-3">
         <UsersTables
           q={debouncedQuery}
+          query={query}
+          setQuery={setQuery}
           isDownloadingUsers={isDownloadingUsers}
           setIsDownloadingUsers={setIsDownloadingUsers}
-          renderSearchControl={renderSearchControl}
         />
       </div>
     </div>
-  );
-}
-
-function AddUserButton() {
-  const { t } = useTranslation();
-
-  return (
-    <CreateButton primary href="/admin/users/add">
-      {t("admin.users.addUserButton")}
-    </CreateButton>
   );
 }
 
