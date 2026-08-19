@@ -101,13 +101,9 @@ export default function AgentCard({ agent }: AgentCardProps) {
     [fullAgent, agent]
   );
 
-  // Start chat and auto-pin unpinned agents to the sidebar
   const handleStartChat = useCallback(() => {
-    if (!pinned && !isDynamicAgent) {
-      togglePinnedAgent(agent, true);
-    }
     route({ agentId: routeAgentId });
-  }, [pinned, isDynamicAgent, togglePinnedAgent, agent, route, routeAgentId]);
+  }, [route, routeAgentId]);
 
   const handleShare = useCallback(
     async (
@@ -245,6 +241,7 @@ export default function AgentCard({ agent }: AgentCardProps) {
                         router.push(`/ee/agents/stats/${agent.id}` as Route)
                       )}
                       tooltip={t("agentsPage.viewAgentStatsTooltip")}
+                      aria-label={t("agentsPage.viewAgentStatsTooltip")}
                       className="hidden group-hover/AgentCard:flex"
                     />
                   )}
@@ -256,6 +253,7 @@ export default function AgentCard({ agent }: AgentCardProps) {
                         router.push(`/app/agents/edit/${routeAgentId}` as Route)
                       )}
                       tooltip={t("agentsPage.editAgentTooltip")}
+                      aria-label={t("agentsPage.editAgentTooltip")}
                       className="hidden group-hover/AgentCard:flex"
                     />
                   )}
@@ -265,6 +263,7 @@ export default function AgentCard({ agent }: AgentCardProps) {
                       tertiary
                       onClick={noProp(() => deleteModal.toggle(true))}
                       tooltip={t("agentsPage.deleteAgentTooltip")}
+                      aria-label={t("agentsPage.deleteAgentTooltip")}
                       className="hidden group-hover/AgentCard:flex"
                     />
                   )}
@@ -274,6 +273,7 @@ export default function AgentCard({ agent }: AgentCardProps) {
                       tertiary
                       onClick={noProp(() => shareAgentModal.toggle(true))}
                       tooltip={t("agentsPage.shareAgentTooltip")}
+                      aria-label={t("agentsPage.shareAgentTooltip")}
                       className="hidden group-hover/AgentCard:flex"
                     />
                   )}
@@ -283,6 +283,11 @@ export default function AgentCard({ agent }: AgentCardProps) {
                       tertiary
                       onClick={noProp(() => togglePinnedAgent(agent, !pinned))}
                       tooltip={
+                        pinned
+                          ? t("agentsPage.unpinFromSidebarTooltip")
+                          : t("agentsPage.pinToSidebarTooltip")
+                      }
+                      aria-label={
                         pinned
                           ? t("agentsPage.unpinFromSidebarTooltip")
                           : t("agentsPage.pinToSidebarTooltip")

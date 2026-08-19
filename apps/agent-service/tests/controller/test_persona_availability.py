@@ -314,13 +314,13 @@ async def test_catalog_fetches_rag_payload_once_for_all_agents(monkeypatch) -> N
     async def fake_model_names():
         return {"llama3.1:8b"}
 
-    async def fake_tool_names():
-        return set()
+    async def fake_tool_metadata():
+        return {}
 
     monkeypatch.setattr(controller, "_fetch_rag_knowledge_selector_payload", fake_fetch_payload)
     monkeypatch.setattr(controller, "_get_local_collection_info", fake_local_collection_info)
     monkeypatch.setattr(controller, "_get_available_model_names", fake_model_names)
-    monkeypatch.setattr(controller, "_get_available_mcp_tool_names", fake_tool_names)
+    monkeypatch.setattr(controller, "_get_mcp_tool_metadata", fake_tool_metadata)
     monkeypatch.setattr(controller, "_is_memory_available", lambda: True)
     monkeypatch.setattr(
         "controller.persona_controller.settings.DEFAULT_MODEL",
@@ -359,3 +359,72 @@ async def test_catalog_fetches_rag_payload_once_for_all_agents(monkeypatch) -> N
     custom_agents = [agent for agent in agents if not agent.get("builtin_persona")]
     assert len(custom_agents) == 5
     assert all(agent["availability"]["status"] == "available" for agent in custom_agents)
+
+
+@pytest.mark.asyncio
+async def test_catalog_fetches_mcp_tool_metadata_once_and_uses_real_descriptions(
+    monkeypatch,
+) -> None:
+    """The catalog list must not call the MCP tool catalog once per agent,
+    and the descriptions it fetches must reach each agent's tool snapshots
+    (used by the frontend's per-tool info icon)."""
+    controller = PersonaController()
+
+    metadata_calls = 0
+
+    async def fake_tool_metadata():
+        nonlocal metadata_calls
+        metadata_calls += 1
+        return {
+            "web_search": {
+                "description": "Searches the live web for current information.",
+                "display_name": "",
+            }
+        }
+
+    async def fake_model_names():
+        return {"llama3.1:8b"}
+
+    monkeypatch.setattr(controller, "_get_mcp_tool_metadata", fake_tool_metadata)
+    monkeypatch.setattr(controller, "_get_available_model_names", fake_model_names)
+    monkeypatch.setattr(controller, "_is_memory_available", lambda: True)
+    monkeypatch.setattr(
+        "controller.persona_controller.settings.DEFAULT_MODEL",
+        "llama3.1:8b",
+    )
+
+    async def fake_list_all(include_builtin: bool = False):
+        return [
+            {
+                "id": idx,
+                "name": f"Agent {idx}",
+                "description": "",
+                "rag_config": {"document_processing": [], "knowledge_graph": []},
+                "mcp_tools": ["web_search"],
+                "long_term_memory": False,
+                "user_id": None,
+            }
+            for idx in range(3)
+        ]
+
+    monkeypatch.setattr(
+        "controller.persona_controller.PersonaDB.list_all",
+        fake_list_all,
+    )
+
+    async def fake_load_owner_emails(personas):
+        return {}
+
+    monkeypatch.setattr(controller, "_load_owner_emails", fake_load_owner_emails)
+
+    agents = await controller.get_agent_catalog(user=None)
+
+    assert metadata_calls == 1
+    custom_agents = [agent for agent in agents if not agent.get("builtin_persona")]
+    assert len(custom_agents) == 3
+    for agent in custom_agents:
+        web_search_tool = next(t for t in agent["tools"] if t["name"] == "web_search")
+        assert (
+            web_search_tool["description"]
+            == "Searches the live web for current information."
+        )

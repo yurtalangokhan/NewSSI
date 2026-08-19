@@ -1,8 +1,9 @@
 "use client";
 
 import useSWR from "swr";
+import { useTranslation } from "react-i18next";
 import { ToolSnapshot } from "@/lib/tools/interfaces";
-import { errorHandlingFetcher } from "@/lib/fetcher";
+import { languageKeyedFetcher } from "@/lib/fetcher";
 
 /**
  * Hook to fetch all available tools from the backend.
@@ -23,9 +24,10 @@ import { errorHandlingFetcher } from "@/lib/fetcher";
  * ```
  */
 export function useAvailableTools() {
+  const { i18n } = useTranslation();
   const { data, error, mutate } = useSWR<ToolSnapshot[]>(
-    "/api/tool",
-    errorHandlingFetcher,
+    ["/api/tool", i18n.language],
+    languageKeyedFetcher,
     {
       revalidateOnFocus: true,
     }

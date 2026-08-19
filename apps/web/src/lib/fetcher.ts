@@ -244,7 +244,13 @@ export async function authenticatedFetch(
 }
 
 export const errorHandlingFetcher = async <T>(url: string): Promise<T> => {
-  const res = await authenticatedFetch(url);
+  // Send the app's currently selected language (not just the browser's
+  // Accept-Language, which reflects OS/browser settings and often doesn't
+  // match an explicit in-app language choice) so backend-translated content
+  // — e.g. a tool's localized name/description — matches the UI.
+  const res = await authenticatedFetch(url, {
+    headers: { "X-Language": i18n.language },
+  });
 
   let payload: any = null;
   try {
@@ -260,3 +266,19 @@ export const errorHandlingFetcher = async <T>(url: string): Promise<T> => {
 
   return payload as T;
 };
+
+/**
+ * SWR-key-aware variant of `errorHandlingFetcher` for hooks whose response
+ * is backend-translated (tool/agent names, descriptions, etc.).
+ *
+ * `errorHandlingFetcher` already sends the current `X-Language` on every
+ * call, but a plain string SWR key (`useSWR(url, errorHandlingFetcher)`)
+ * doesn't change when the app's language changes, so SWR has no reason to
+ * refetch — the UI keeps showing content in the previous language until
+ * something else happens to trigger a revalidation. Keying on
+ * `[url, language]` instead (this fetcher's expected key shape) makes a
+ * language switch look like a key change, which SWR does refetch on.
+ */
+export const languageKeyedFetcher = async <T>(
+  [url]: readonly [string, string]
+): Promise<T> => errorHandlingFetcher<T>(url);

@@ -530,6 +530,7 @@ const en = {
     readThisTabButton: "Read this tab",
     readingTabText: "Reading tab...",
     attachFilesTooltip: "Attach Files",
+    manageActionsTooltip: "Manage Actions",
     createNewPromptMenuItem: "Create New Prompt",
   },
   modals: {

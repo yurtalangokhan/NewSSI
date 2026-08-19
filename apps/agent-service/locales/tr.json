@@ -49,6 +49,16 @@
   "mcp": {
     "tool_not_found": "'{tool_name}' aracı bulunamadı"
   },
+  "rag_tool": {
+    "database_search": {
+      "name": "Veri Tabanı Arama",
+      "description": "Bu ajana bağlı belgelerde arama yapar."
+    },
+    "graph_search": {
+      "name": "Grafik Arama",
+      "description": "Bu ajana bağlı bilgi grafiğinde arama yapar."
+    }
+  },
   "datasource": {
     "duplicate_name": "'{name}' adında bir veri kaynağı zaten mevcut. Lütfen farklı bir ad seçin.",
     "unknown_connector": "Bilinmeyen bağlayıcı: {connector_type}",

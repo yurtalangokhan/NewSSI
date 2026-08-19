@@ -2,12 +2,13 @@
 
 import useSWR from "swr";
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import {
   AgentId,
   MinimalPersonaSnapshot,
   FullPersona,
 } from "@/app/admin/agents/interfaces";
-import { errorHandlingFetcher } from "@/lib/fetcher";
+import { languageKeyedFetcher } from "@/lib/fetcher";
 import { pinAgents } from "@/lib/agents";
 import {
   AGENT_CATALOG_API_PATH,
@@ -60,9 +61,10 @@ function sortAgents(left: MinimalPersonaSnapshot, right: MinimalPersonaSnapshot)
  * return <AgentList agents={agents} />;
  */
 export function useAgents() {
+  const { i18n } = useTranslation();
   const { data, error, mutate } = useSWR<MinimalPersonaSnapshot[]>(
-    AGENT_CATALOG_API_PATH,
-    errorHandlingFetcher,
+    [AGENT_CATALOG_API_PATH, i18n.language],
+    languageKeyedFetcher,
     {
       revalidateOnFocus: false,
       dedupingInterval: 60000,
@@ -106,11 +108,12 @@ export function useAgents() {
  * return <AgentEditor agent={agent} />;
  */
 export function useAgent(agentId: AgentId | null) {
+  const { i18n } = useTranslation();
   const { data: personaData, error: personaError, isLoading: isPersonaLoading, mutate: mutatePersona } = useSWR<FullPersona>(
     agentId && typeof agentId === "number"
-      ? buildAgentDetailApiPath(agentId)
+      ? [buildAgentDetailApiPath(agentId), i18n.language]
       : null,
-    errorHandlingFetcher,
+    languageKeyedFetcher,
     {
       revalidateOnFocus: false,
       dedupingInterval: 60000,

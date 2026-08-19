@@ -530,6 +530,7 @@ const tr = {
     readThisTabButton: "Bu sekmeyi oku",
     readingTabText: "Sekme okunuyor...",
     attachFilesTooltip: "Dosya Ekle",
+    manageActionsTooltip: "Eylemleri Yönet",
     createNewPromptMenuItem: "Yeni İstem Oluştur",
   },
   modals: {

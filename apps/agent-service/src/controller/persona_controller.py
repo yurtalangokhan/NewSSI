@@ -1,6 +1,7 @@
 """Controller for persona endpoints."""
 
 import logging
+import re
 import uuid
 from typing import Any
 
@@ -15,6 +16,38 @@ from service.PersonaRepository import PersonaDB
 
 DEFAULT_USER_ID = "dev-user"
 logger = logging.getLogger(__name__)
+
+# database_search/graph_search are synthesized from an agent's RAG config
+# rather than being real MCP tools, so there's no external catalog to pull a
+# name/description from — these come from this service's own locale files
+# (translated per-request via the same X-Language mechanism as everything
+# else, see i18n-py's middleware) instead of tools-service.
+RAG_TOOL_NAMES = ("database_search", "graph_search")
+
+
+def _rag_tool_metadata(tool_name: str) -> dict[str, str]:
+    return {
+        "display_name": t(f"rag_tool.{tool_name}.name"),
+        "description": t(f"rag_tool.{tool_name}.description"),
+    }
+
+
+# tools-service embeds category/category_label/title tags directly into a
+# tool's `description` string so a single field can carry all three pieces
+# of per-request-translated metadata (see
+# apps/tools-service/src/core/registry.py's `_setup_i18n_wrapper`). Callers
+# must strip these before showing the description to a user, and may pull
+# the localized display name out of the title tag.
+_MCP_TOOL_TAG_RE = re.compile(r"\[(?:category|category_label|title):[^\]]*\]")
+_MCP_TOOL_TITLE_TAG_RE = re.compile(r"\[title:([^\]]*)\]")
+
+
+def _parse_mcp_tool_description(raw_description: str) -> tuple[str, str | None]:
+    """Returns (clean_description, localized_title_or_None)."""
+    title_match = _MCP_TOOL_TITLE_TAG_RE.search(raw_description)
+    title = title_match.group(1).strip() if title_match else None
+    clean = _MCP_TOOL_TAG_RE.sub("", raw_description).strip()
+    return clean, title or None
 
 
 def _is_uuid_owner_id(owner_id: str) -> bool:
@@ -446,24 +479,37 @@ class PersonaController(BaseController):
         persona_id: int,
         mcp_tool_names: list[str] | None,
         rag_config: dict[str, Any] | None = None,
+        *,
+        tool_descriptions: dict[str, dict[str, str]] | None = None,
     ) -> list[dict[str, Any]]:
         tool_snapshots: list[dict[str, Any]] = []
         mcp_tool_names = mcp_tool_names or []
         rag_tool_names = self._extract_rag_tool_names(rag_config)
         seen_names: set[str] = set()
+        tool_descriptions = tool_descriptions or {}
 
         def add_tool_snapshot(tool_name: str, is_mcp_tool: bool) -> None:
             if tool_name in seen_names:
                 return
             seen_names.add(tool_name)
 
+            if tool_name in RAG_TOOL_NAMES:
+                meta = _rag_tool_metadata(tool_name)
+            else:
+                meta = tool_descriptions.get(tool_name) or {}
+
+            description = meta.get("description", "")
+            display_name = meta.get("display_name") or _format_tool_display_name(
+                tool_name
+            )
+
             index = len(tool_snapshots)
             tool_snapshots.append(
                 {
                     "id": (persona_id * 1000) + index + 1,
                     "name": tool_name,
-                    "display_name": _format_tool_display_name(tool_name),
-                    "description": "",
+                    "display_name": display_name,
+                    "description": description,
                     "definition": None,
                     "custom_headers": [],
                     "in_code_tool_id": tool_name,
@@ -496,13 +542,40 @@ class PersonaController(BaseController):
         except Exception:
             return set()
 
-    async def _get_available_mcp_tool_names(self) -> set[str]:
-        names: set[str] = set()
+    async def _get_mcp_tool_metadata(self) -> dict[str, dict[str, str]]:
+        """Name -> {"description", "display_name"} for every registered/
+        built-in MCP tool, translated to the current request's locale.
+
+        Both sources can embed tools-service's `[category:...]
+        [category_label:...][title:...]` tags in the raw description (see
+        `_parse_mcp_tool_description`); those are stripped here so callers
+        never see them, and the title tag (when present) supplies a
+        localized display name instead of the generic snake_case-to-title
+        fallback.
+
+        Callers that need to check *whether* a tool exists but not its
+        metadata can use `_get_available_mcp_tool_names`, which derives its
+        result from this so the two never disagree.
+        """
+        descriptions: dict[str, dict[str, str]] = {}
+
+        def _record(name: object, raw_description: object) -> None:
+            if not name:
+                return
+            clean_description, title = _parse_mcp_tool_description(
+                str(raw_description or "")
+            )
+            descriptions[str(name)] = {
+                "description": clean_description,
+                "display_name": title or "",
+            }
+
         try:
             from service.MCPToolService import MCPToolService
 
             tools = await MCPToolService.get_instance().list_tools(include_inactive=False)
-            names.update(str(tool.get("name")) for tool in tools if tool.get("name"))
+            for tool in tools:
+                _record(tool.get("name"), tool.get("description"))
         except Exception:
             pass
 
@@ -513,11 +586,15 @@ class PersonaController(BaseController):
                 getattr(settings, "TOOLS_SERVICE_URL", None) or settings.MCP_SERVER_URL
             )
             payload = await get_proxy_controller().get_builtin_mcp_tools(tools_service_url)
-            names.update(str(tool.get("name")) for tool in payload.get("tools", []))
+            for tool in payload.get("tools", []):
+                _record(tool.get("name"), tool.get("description"))
         except Exception:
             pass
 
-        return names
+        return descriptions
+
+    async def _get_available_mcp_tool_names(self) -> set[str]:
+        return set((await self._get_mcp_tool_metadata()).keys())
 
     async def _get_local_collection_info(
         self,
@@ -831,6 +908,7 @@ class PersonaController(BaseController):
         memory_available: bool | None = None,
         rag_payload: dict[str, Any] | None = None,
         local_collection_cache: dict[str, dict[str, Any] | None] | None = None,
+        tool_descriptions: dict[str, dict[str, str]] | None = None,
     ) -> dict[str, Any]:
         label_ids = persona.get("labels") or []
         labels = [
@@ -838,6 +916,8 @@ class PersonaController(BaseController):
             for label in label_ids
         ]
         mcp_tools = persona.get("mcp_tools") or []
+        if tool_descriptions is None and mcp_tools:
+            tool_descriptions = await self._get_mcp_tool_metadata()
         rag_config = persona.get("rag_config") or {
             "document_processing": [],
             "knowledge_graph": [],
@@ -873,7 +953,12 @@ class PersonaController(BaseController):
                 "email": self._resolve_owner_email(persona, owner_emails),
             },
             "base_agent": persona.get("base_agent"),
-            "tools": self._build_tool_snapshots(persona["id"], mcp_tools, rag_config),
+            "tools": self._build_tool_snapshots(
+                persona["id"],
+                mcp_tools,
+                rag_config,
+                tool_descriptions=tool_descriptions,
+            ),
             "starter_messages": persona.get("starter_messages"),
             "document_sets": [],
             "hierarchy_node_count": 0,
@@ -909,6 +994,8 @@ class PersonaController(BaseController):
         self,
         persona: dict[str, Any],
         owner_emails: dict[str, str] | None = None,
+        *,
+        tool_descriptions: dict[str, dict[str, str]] | None = None,
     ) -> dict[str, Any]:
         if owner_emails is None:
             owner_emails = await self._load_owner_emails([persona])
@@ -919,6 +1006,8 @@ class PersonaController(BaseController):
             for label in label_ids
         ]
         mcp_tools = persona.get("mcp_tools") or []
+        if tool_descriptions is None and mcp_tools:
+            tool_descriptions = await self._get_mcp_tool_metadata()
         mcp_tool_configs = persona.get("mcp_tool_configs") or {}
         rag_config = persona.get("rag_config") or {
             "document_processing": [],
@@ -929,7 +1018,12 @@ class PersonaController(BaseController):
             "id": persona["id"],
             "name": persona["name"],
             "description": persona["description"],
-            "tools": self._build_tool_snapshots(persona["id"], mcp_tools, rag_config),
+            "tools": self._build_tool_snapshots(
+                persona["id"],
+                mcp_tools,
+                rag_config,
+                tool_descriptions=tool_descriptions,
+            ),
             "starter_messages": persona.get("starter_messages"),
             "document_sets": [],
             "hierarchy_node_count": 0,
@@ -1068,9 +1162,13 @@ class PersonaController(BaseController):
 
         # Environment-wide availability inputs are fetched once and reused
         # across every agent in the catalog, instead of re-checking them
-        # per agent, so the list can show real availability cheaply.
+        # per agent, so the list can show real availability cheaply. The MCP
+        # tool metadata fetch also supplies each tool snapshot's description
+        # (shown behind the frontend's per-tool info icon), so the name set
+        # used for availability is derived from it rather than fetched again.
         available_models = await self._get_available_model_names()
-        available_mcp_tools = await self._get_available_mcp_tool_names()
+        mcp_tool_metadata = await self._get_mcp_tool_metadata()
+        available_mcp_tools = set(mcp_tool_metadata.keys())
         memory_available = self._is_memory_available()
 
         builtin_display = {
@@ -1145,6 +1243,7 @@ class PersonaController(BaseController):
                         memory_available=memory_available,
                         rag_payload=rag_payload,
                         local_collection_cache=local_collection_cache,
+                        tool_descriptions=mcp_tool_metadata,
                     )
                 )
         except Exception:

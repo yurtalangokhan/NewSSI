@@ -1,6 +1,7 @@
 import pytest
+from i18n import set_locale
 
-from controller.persona_controller import PersonaController
+from controller.persona_controller import PersonaController, _parse_mcp_tool_description
 
 
 def _custom_persona() -> dict:
@@ -40,6 +41,10 @@ def _custom_persona() -> dict:
     }
 
 
+async def _fake_tool_metadata() -> dict:
+    return {}
+
+
 @pytest.mark.asyncio
 async def test_agent_catalog_summary_omits_detail_fields(monkeypatch) -> None:
     controller = PersonaController()
@@ -48,6 +53,7 @@ async def test_agent_catalog_summary_omits_detail_fields(monkeypatch) -> None:
         return {"status": "available", "checks": [{"detail": "real check"}]}
 
     monkeypatch.setattr(controller, "_get_agent_availability", fake_availability)
+    monkeypatch.setattr(controller, "_get_mcp_tool_metadata", _fake_tool_metadata)
 
     summary = await controller._serialize_custom_persona_summary(_custom_persona())
 
@@ -101,6 +107,7 @@ async def test_agent_catalog_summary_resolves_real_availability(monkeypatch) -> 
         }
 
     monkeypatch.setattr(controller, "_get_agent_availability", fake_availability)
+    monkeypatch.setattr(controller, "_get_mcp_tool_metadata", _fake_tool_metadata)
 
     summary = await controller._serialize_custom_persona_summary(_custom_persona())
 
@@ -148,6 +155,7 @@ async def test_agent_catalog_summary_does_not_load_dynamic_definition(monkeypatc
 
     monkeypatch.setattr(controller, "_get_dynamic_definition", fail_dynamic_definition)
     monkeypatch.setattr(controller, "_get_agent_availability", fake_availability)
+    monkeypatch.setattr(controller, "_get_mcp_tool_metadata", _fake_tool_metadata)
 
     summary = await controller._serialize_custom_persona_summary(persona)
 
@@ -163,6 +171,7 @@ async def test_agent_catalog_summary_keeps_frontend_snapshot_fields(monkeypatch)
         return {"status": "available", "checks": []}
 
     monkeypatch.setattr(controller, "_get_agent_availability", fake_availability)
+    monkeypatch.setattr(controller, "_get_mcp_tool_metadata", _fake_tool_metadata)
 
     summary = await controller._serialize_custom_persona_summary(_custom_persona())
 
@@ -175,3 +184,146 @@ async def test_agent_catalog_summary_keeps_frontend_snapshot_fields(monkeypatch)
     assert summary["llm_model_version_override"] == "llama3.1:8b"
     assert summary["llm_model_provider_override"] == "ollama"
     assert summary["mcp_tools"] == ["web_search", "send_email"]
+
+
+def test_tool_snapshots_use_real_mcp_tool_descriptions_when_provided() -> None:
+    """Frontend shows the description behind an info icon — it must not be
+    the hardcoded empty string every synthetic tool used to get."""
+    controller = PersonaController()
+
+    snapshots = controller._build_tool_snapshots(
+        persona_id=1,
+        mcp_tool_names=["web_search", "send_email"],
+        rag_config=None,
+        tool_descriptions={
+            "web_search": {
+                "description": "Searches the live web for current information.",
+                "display_name": "",
+            }
+        },
+    )
+
+    by_name = {snap["name"]: snap for snap in snapshots}
+    assert by_name["web_search"]["description"] == "Searches the live web for current information."
+    # No description available for send_email: falls back to empty, not an error.
+    assert by_name["send_email"]["description"] == ""
+
+
+def test_tool_snapshots_default_rag_tool_descriptions() -> None:
+    """database_search/graph_search have no external source for a
+    description (they're synthesized from the agent's RAG config, not a
+    real MCP tool), so they need a sensible built-in description."""
+    controller = PersonaController()
+
+    snapshots = controller._build_tool_snapshots(
+        persona_id=1,
+        mcp_tool_names=[],
+        rag_config={
+            "document_processing": ["collection-1"],
+            "knowledge_graph": ["collection-2"],
+        },
+    )
+
+    by_name = {snap["name"]: snap for snap in snapshots}
+    assert by_name["database_search"]["description"]
+    assert by_name["graph_search"]["description"]
+    assert by_name["database_search"]["description"] != by_name["graph_search"]["description"]
+
+
+def test_tool_snapshots_use_locale_for_rag_tool_names_and_descriptions() -> None:
+    """The RAG-derived tools' name/description must follow the request's
+    language like everything else, not stay hardcoded English."""
+    controller = PersonaController()
+
+    set_locale("tr")
+    try:
+        snapshots = controller._build_tool_snapshots(
+            persona_id=1,
+            mcp_tool_names=[],
+            rag_config={"document_processing": ["collection-1"], "knowledge_graph": []},
+        )
+    finally:
+        set_locale("en")
+
+    database_search = next(s for s in snapshots if s["name"] == "database_search")
+    assert database_search["display_name"] == "Veri Tabanı Arama"
+    assert database_search["description"] == "Bu ajana bağlı belgelerde arama yapar."
+
+
+def test_parse_mcp_tool_description_strips_category_and_title_tags() -> None:
+    """tools-service embeds [category:...][category_label:...][title:...]
+    tags directly in the description string (see
+    apps/tools-service/src/core/registry.py). Users must never see the raw
+    tags — this is exactly what was reported: an agent's tool showed
+    "[category:web_search][category_label:Web][title:Web'de Ara] SearXNG
+    arama motorunu kullanarak web'de arama yapın." verbatim."""
+    raw = (
+        "[category:web_search][category_label:Web][title:Web'de Ara] "
+        "SearXNG arama motorunu kullanarak web'de arama yapın."
+    )
+
+    clean_description, title = _parse_mcp_tool_description(raw)
+
+    assert clean_description == "SearXNG arama motorunu kullanarak web'de arama yapın."
+    assert title == "Web'de Ara"
+    assert "[" not in clean_description
+
+
+def test_parse_mcp_tool_description_handles_plain_description() -> None:
+    """A description with no tags at all (e.g. a custom MCP provider that
+    doesn't go through tools-service's i18n wrapper) must pass through
+    unchanged, with no title."""
+    clean_description, title = _parse_mcp_tool_description("Sends an email.")
+
+    assert clean_description == "Sends an email."
+    assert title is None
+
+
+@pytest.mark.asyncio
+async def test_get_mcp_tool_metadata_uses_title_tag_as_display_name(monkeypatch) -> None:
+    """End-to-end: the raw tools-service payload (tags and all) must come
+    out of _get_mcp_tool_metadata as a clean description plus a localized
+    display name, ready for the frontend's info icon and tool label."""
+    controller = PersonaController()
+
+    class _FakeMCPToolService:
+        @classmethod
+        def get_instance(cls):
+            return cls()
+
+        async def list_tools(self, include_inactive: bool = False):
+            return []
+
+    async def fake_get_builtin_mcp_tools(_url):
+        return {
+            "tools": [
+                {
+                    "name": "web_search",
+                    "description": (
+                        "[category:web_search][category_label:Web][title:Web'de Ara] "
+                        "SearXNG arama motorunu kullanarak web'de arama yapın."
+                    ),
+                }
+            ]
+        }
+
+    monkeypatch.setattr(
+        "service.MCPToolService.MCPToolService", _FakeMCPToolService
+    )
+
+    class _FakeProxyController:
+        async def get_builtin_mcp_tools(self, url):
+            return await fake_get_builtin_mcp_tools(url)
+
+    monkeypatch.setattr(
+        "controller.proxy_controller.get_proxy_controller",
+        lambda: _FakeProxyController(),
+    )
+
+    metadata = await controller._get_mcp_tool_metadata()
+
+    assert metadata["web_search"]["display_name"] == "Web'de Ara"
+    assert (
+        metadata["web_search"]["description"]
+        == "SearXNG arama motorunu kullanarak web'de arama yapın."
+    )

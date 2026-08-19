@@ -33,8 +33,8 @@ export async function GET(request: NextRequest) {
     const tools = Array.isArray(data?.tools) ? data.tools : [];
 
     return NextResponse.json(
-      tools.map((tool: { name?: string; description?: string }) => ({
-        id: 0,
+      tools.map((tool: { name?: string; description?: string }, index: number) => ({
+        id: index + 1,
         name: tool.name || "",
         display_name: (tool.name || "").replace(/[_-]/g, " "),
         description: tool.description || "",
