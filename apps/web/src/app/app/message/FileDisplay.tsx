@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { ChatFileType, FileDescriptor } from "@/app/app/interfaces";
 import Attachment from "@/refresh-components/Attachment";
 import { InMessageImage } from "@/app/app/components/files/images/InMessageImage";
@@ -36,17 +36,28 @@ export default function FileDisplay({ files, alignBubble }: FileDisplayProps) {
   // for a file attached to the message that triggered this very request.
   // Historical messages (loaded from server) never carry `data`, so they
   // fall back to the existing backend-fetch path in TextViewModal.
-  const previewUrl =
-    previewingFile?.data && previewingFile?.mime_type
-      ? `data:${previewingFile.mime_type};base64,${previewingFile.data}`
-      : undefined;
+  const previewUrl = useMemo(
+    () =>
+      previewingFile?.data && previewingFile?.mime_type
+        ? `data:${previewingFile.mime_type};base64,${previewingFile.data}`
+        : undefined,
+    [previewingFile?.data, previewingFile?.mime_type]
+  );
 
-  const presentingDocument: MinimalOnyxDocument = {
-    document_id: previewingFile?.id ?? "",
-    semantic_identifier: previewingFile?.name ?? "",
-    preview_url: previewUrl,
-    preview_mime_type: previewingFile?.mime_type ?? undefined,
-  };
+  const presentingDocument: MinimalOnyxDocument = useMemo(
+    () => ({
+      document_id: previewingFile?.id ?? "",
+      semantic_identifier: previewingFile?.name ?? "",
+      preview_url: previewUrl,
+      preview_mime_type: previewingFile?.mime_type ?? undefined,
+    }),
+    [
+      previewingFile?.id,
+      previewingFile?.name,
+      previewUrl,
+      previewingFile?.mime_type,
+    ]
+  );
 
   return (
     <>
@@ -81,7 +92,11 @@ export default function FileDisplay({ files, alignBubble }: FileDisplayProps) {
         >
           <div className="flex flex-col items-end gap-2">
             {imageFiles.map((file) => (
-              <InMessageImage key={file.id} fileId={file.id} />
+              <InMessageImage
+                key={file.id}
+                fileId={file.id}
+                fileName={file.name}
+              />
             ))}
           </div>
         </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@opal/components";
 import { SvgMaximize2 } from "@opal/icons";
@@ -103,7 +103,17 @@ export const GeneratedFileRenderer: MessageRenderer<GeneratedFilePacket, {}> = (
     }
   }, [settled, onComplete]);
 
-  if (!file) {
+  // Reuse the same document-preview modal used for uploaded chat files —
+  // opening a generated file behaves identically, no separate download step.
+  const presentingDocument: MinimalOnyxDocument | null = useMemo(() => {
+    if (!file) return null;
+    return {
+      document_id: file.file_id,
+      semantic_identifier: file.filename,
+    };
+  }, [file?.file_id, file?.filename]);
+
+  if (!file || !presentingDocument) {
     // A generation that produced no file leaves nothing behind. The agent is
     // told what went wrong and either retries or explains it in its reply, so
     // a notice here would only interrupt that answer — often twice, since each
@@ -129,13 +139,6 @@ export const GeneratedFileRenderer: MessageRenderer<GeneratedFilePacket, {}> = (
 
     return children([{ icon: null, status: null, content: <></> }]);
   }
-
-  // Reuse the same document-preview modal used for uploaded chat files —
-  // opening a generated file behaves identically, no separate download step.
-  const presentingDocument: MinimalOnyxDocument = {
-    document_id: file.file_id,
-    semantic_identifier: file.filename,
-  };
 
   return children([
     {
