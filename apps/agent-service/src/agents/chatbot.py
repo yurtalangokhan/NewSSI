@@ -1,8 +1,12 @@
+from __future__ import annotations
+
+from pydantic import ValidationError
+
+from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage, SystemMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, MessagesState, StateGraph
 from langgraph.store.base import BaseStore
-from pydantic import ValidationError
 
 from agents.document_tools import (
     DOCUMENT_TOOL_PROMPT,
@@ -105,7 +109,34 @@ async def _run_with_document_tools(
     new_messages: list = []
 
     for _ in range(_MAX_DOCUMENT_TOOL_ITERATIONS):
-        ai_message = await bound_model.ainvoke(conversation)
+        try:
+            ai_message = await bound_model.ainvoke(conversation)
+        except Exception as exc:
+            exc_str = str(exc).lower()
+            if (
+                "does not support tools" in exc_str
+                or "tools are not supported" in exc_str
+                or "not support tool" in exc_str
+                or "tool_choice" in exc_str
+                or "tool" in exc_str
+            ):
+                logger.warning(
+                    "Model does not support tools at runtime (%s: %s); falling back to direct invocation without tools",
+                    type(exc).__name__,
+                    exc,
+                )
+                try:
+                    response = await model.ainvoke(messages)
+                    return [response]
+                except Exception as fallback_exc:
+                    logger.error(
+                        "Fallback plain invocation also failed: %s",
+                        fallback_exc,
+                        exc_info=True,
+                    )
+                    raise
+            raise
+
         conversation.append(ai_message)
         new_messages.append(ai_message)
 
