@@ -32,6 +32,7 @@ import { SEARCH_TOOL_ID } from "@/app/app/components/tools/constants";
 import Text from "@/refresh-components/texts/Text";
 import { Card } from "@/refresh-components/cards";
 import SimpleCollapsible from "@/refresh-components/SimpleCollapsible";
+import SimpleLoader from "@/refresh-components/loaders/SimpleLoader";
 import SwitchField from "@/refresh-components/form/SwitchField";
 import { useCreateModal } from "@/refresh-components/contexts/ModalContext";
 import { toast } from "@/hooks/useToast";
@@ -797,24 +798,30 @@ export default function AgentEditorPage({
 
       // Collect enabled MCP tool names (for backend - separate from tool_ids)
       const enabledMcpToolNames: string[] = [];
-      const dynamicLikeAgent = [
-        "configurable-mcp-agent",
-        "dynamic-agent",
-      ].includes(values.base_agent);
 
-      if (dynamicLikeAgent) {
-        allMcpTools.forEach((tool) => {
-          if ((values as any)[`mcp_tool_${tool.name}`] === true) {
-            enabledMcpToolNames.push(tool.name);
-          }
-        });
-      }
+      allMcpTools.forEach((tool) => {
+        if ((values as any)[`mcp_tool_${tool.name}`] === true) {
+          enabledMcpToolNames.push(tool.name);
+        }
+      });
 
       // Collect enabled built-in tools from tools-service
-      if (dynamicLikeAgent) {
-        allBuiltInTools.forEach((tool) => {
-          if ((values as any)[`builtin_tool_${tool.name}`] === true) {
-            enabledMcpToolNames.push(tool.name);
+      allBuiltInTools.forEach((tool) => {
+        if ((values as any)[`builtin_tool_${tool.name}`] === true) {
+          enabledMcpToolNames.push(tool.name);
+        }
+      });
+
+      // Safeguard: Preserve existing agent's tools if they were not displayed in the current form
+      // (e.g. if an MCP server or tools-service is temporarily unreachable during edit)
+      if (existingAgent?.mcp_tools) {
+        const knownFormToolNames = new Set([
+          ...allMcpTools.map((t) => t.name),
+          ...allBuiltInTools.map((t) => t.name),
+        ]);
+        existingAgent.mcp_tools.forEach((toolName) => {
+          if (!knownFormToolNames.has(toolName)) {
+            enabledMcpToolNames.push(toolName);
           }
         });
       }
@@ -862,9 +869,11 @@ export default function AgentEditorPage({
           })()
         : undefined;
 
-      // Auto-promote base_agent when knowledge is enabled
+      const hasTools = dedupedMcpToolNames.length > 0 || toolIds.length > 0;
+
+      // Auto-promote base_agent when knowledge or tools are enabled
       const effectiveBaseAgent =
-        hasKnowledge && values.base_agent === "chatbot"
+        (hasKnowledge || hasTools) && values.base_agent === "chatbot"
           ? "configurable-mcp-agent"
           : values.base_agent || "chatbot";
 
@@ -1000,10 +1009,19 @@ export default function AgentEditorPage({
 
   // Wait for async tool data before rendering the form. Formik captures
   // initialValues on mount — if tools haven't loaded yet, the initial values
-  // won't include MCP tool fields. Later, toggling those fields would make
-  // the form permanently dirty since they have no baseline to compare against.
-  if (isToolsLoading || isMcpLoading || isOpenApiLoading) {
-    return null;
+  // won't include MCP tool fields.
+  if (
+    isToolsLoading ||
+    isMcpLoading ||
+    isOpenApiLoading ||
+    isBuiltInToolsLoading ||
+    isMailConfigsLoading
+  ) {
+    return (
+      <div className="flex h-full w-full items-center justify-center min-h-[400px]">
+        <SimpleLoader className="h-8 w-8" />
+      </div>
+    );
   }
 
   return (
@@ -1014,6 +1032,7 @@ export default function AgentEditorPage({
         className="h-full w-full"
       >
         <Formik
+          enableReinitialize
           initialValues={initialValues}
           validationSchema={validationSchema}
           onSubmit={handleSubmit}
@@ -1585,13 +1604,27 @@ export default function AgentEditorPage({
                                       >
                                         <InputSelectField
                                           name="send_email_mail_config_id"
-                                          disabled={isMailConfigsLoading}
+                                          disabled={
+                                            isMailConfigsLoading ||
+                                            mailConfigs.filter(
+                                              (config) => config.is_active
+                                            ).length === 0
+                                          }
                                         >
                                           <InputSelect.Trigger
-                                            placeholder={t(
-                                              "agentEditor.selectMailConfigPlaceholder",
-                                              "Select mail config"
-                                            )}
+                                            placeholder={
+                                              mailConfigs.filter(
+                                                (config) => config.is_active
+                                              ).length === 0
+                                                ? t(
+                                                    "agentEditor.noMailConfigsPlaceholder",
+                                                    "E-posta yapılandırması bulunamadı"
+                                                  )
+                                                : t(
+                                                    "agentEditor.selectMailConfigPlaceholder",
+                                                    "Select mail config"
+                                                  )
+                                            }
                                           />
                                           <InputSelect.Content>
                                             {mailConfigs

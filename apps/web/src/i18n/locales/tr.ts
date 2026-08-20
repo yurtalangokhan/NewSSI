@@ -593,6 +593,7 @@ const tr = {
       nameLabel: "Proje Adı",
       namePlaceholder: "Ne üzerinde çalışıyorsunuz?",
       createButton: "Proje Oluştur",
+      creatingButton: "Oluşturuluyor...",
       toastError: "{{name}} projesi oluşturulamadı",
     },
     editProperty: {
@@ -1400,6 +1401,7 @@ const tr = {
     sendEmailMailConfigLabel: "E-posta Yapılandırması",
     sendEmailMailConfigDescription: "E-posta gönderme aksiyonu için kullanılacak SMTP hesabı.",
     selectMailConfigPlaceholder: "E-posta yapılandırması seçin...",
+    noMailConfigsPlaceholder: "E-posta yapılandırması bulunamadı",
     noMailConfigsAvailable: "Kullanılabilir e-posta yapılandırması bulunamadı. Lütfen önce Admin paneli üzerinden bir SMTP hesabı ekleyin.",
     mcpToolsChecking: "MCP araçları kontrol ediliyor...",
     selectToolsButton: "Araçları Seç",
@@ -1534,6 +1536,9 @@ const tr = {
     consentError: "Uygulamaya erişmek için koşulları kabul etmeniz gerekiyor.",
     startButton: "Başla",
   },
+  agentMessage: {
+    stillWorking: "Çalışmaya devam ediyor... ({{seconds}} sn)",
+  },
   customTool: {
     returnedImages: "{{toolName}} görseller döndürdü",
     returnedFile: "{{toolName}} bir dosya döndürdü",
@@ -1543,6 +1548,7 @@ const tr = {
     openButton: "Aç",
     downloadButton: "İndir",
     waitingForResponse: "Yanıt bekleniyor...",
+    queryLabel: "Sorgu",
   },
   generatedFile: {
     openAriaLabel: "{{filename}} dosyasını aç",
@@ -1790,6 +1796,9 @@ const tr = {
       supportsAudio: "Ses / konuşma desteğine sahiptir",
       contextSuffix: "bağlam",
       deleteModelAriaLabel: "{{model}} modelini sil",
+      deleteModelConfirmTitle: "Modeli Sil",
+      deleteModelConfirmBody: "\"{{model}}\" modelini silmek istediğinizden emin misiniz? İndirilen model dosyaları sistemden silinecektir ve bu işlem geri alınamaz.",
+      deletingModel: "Siliniyor...",
       noModelsInstalled: "Yüklü model yok",
       deletedToast: "{{model}} silindi",
       deleteFailedToast: "Model silinemedi",

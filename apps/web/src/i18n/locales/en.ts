@@ -593,6 +593,7 @@ const en = {
       nameLabel: "Project Name",
       namePlaceholder: "What are you working on?",
       createButton: "Create Project",
+      creatingButton: "Creating...",
       toastError: "Failed to create the project {{name}}",
     },
     editProperty: {
@@ -1394,6 +1395,7 @@ const en = {
     sendEmailMailConfigLabel: "Email Configuration",
     sendEmailMailConfigDescription: "SMTP account to be used for the send email action.",
     selectMailConfigPlaceholder: "Select email configuration...",
+    noMailConfigsPlaceholder: "No email configuration found",
     noMailConfigsAvailable: "No email configurations available. Please add an SMTP account via Admin panel first.",
     mcpToolsChecking: "Checking MCP tools...",
     selectToolsButton: "Select Tools",
@@ -1528,6 +1530,9 @@ const en = {
     consentError: "You need to agree to the terms to access the application.",
     startButton: "Start",
   },
+  agentMessage: {
+    stillWorking: "Still working... ({{seconds}}s)",
+  },
   customTool: {
     returnedImages: "{{toolName}} returned images",
     returnedFile: "{{toolName}} returned a file",
@@ -1537,6 +1542,7 @@ const en = {
     openButton: "Open",
     downloadButton: "Download",
     waitingForResponse: "Waiting for response...",
+    queryLabel: "Query",
   },
   generatedFile: {
     openAriaLabel: "Open {{filename}}",
@@ -1784,6 +1790,9 @@ const en = {
       supportsAudio: "Supports audio / speech",
       contextSuffix: "ctx",
       deleteModelAriaLabel: "Delete {{model}}",
+      deleteModelConfirmTitle: "Delete Model",
+      deleteModelConfirmBody: "Are you sure you want to delete the model \"{{model}}\"? This will delete the downloaded model files from the system and cannot be undone.",
+      deletingModel: "Deleting...",
       noModelsInstalled: "No models installed",
       deletedToast: "Deleted {{model}}",
       deleteFailedToast: "Failed to delete model",
