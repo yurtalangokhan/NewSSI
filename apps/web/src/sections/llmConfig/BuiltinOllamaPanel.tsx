@@ -14,6 +14,7 @@ import {
 } from "@opal/icons";
 import Card from "@/refresh-components/cards/Card";
 import Text from "@/refresh-components/texts/Text";
+import ConfirmationModalLayout from "@/refresh-components/layouts/ConfirmationModalLayout";
 import { Section } from "@/layouts/general-layouts";
 import { toast } from "@/hooks/useToast";
 import {
@@ -223,11 +224,13 @@ interface Props {
 
 export function BuiltinOllamaPanel({ onDownload }: Props) {
   const { t } = useTranslation("common", { keyPrefix: "admin.builtinOllama" });
+  const { t: tRoot } = useTranslation("common");
   const { mutate } = useSWRConfig();
   const status = useBuiltinOllamaStatus();
   const models = useBuiltinOllamaModels();
   const deleteModel = useDeleteBuiltinOllamaModel();
   const [deletingModel, setDeletingModel] = useState<string | null>(null);
+  const [modelToDelete, setModelToDelete] = useState<string | null>(null);
 
   const refresh = () => {
     status.mutate();
@@ -245,6 +248,7 @@ export function BuiltinOllamaPanel({ onDownload }: Props) {
         mutate("/api/admin/providers/available-models"),
       ]);
       toast({ message: t("deletedToast", { model: modelName }) });
+      setModelToDelete(null);
     } catch (error) {
       toast({
         message: error instanceof Error ? error.message : t("deleteFailedToast"),
@@ -256,14 +260,41 @@ export function BuiltinOllamaPanel({ onDownload }: Props) {
   };
 
   return (
-    <BuiltinOllamaPanelView
-      status={status.data}
-      models={models.data}
-      isLoading={status.isLoading || models.isLoading}
-      isDeleting={deletingModel !== null}
-      onRefresh={refresh}
-      onDownload={onDownload}
-      onDeleteModel={handleDeleteModel}
-    />
+    <>
+      {modelToDelete && (
+        <ConfirmationModalLayout
+          icon={SvgTrash}
+          title={t("deleteModelConfirmTitle")}
+          onClose={() => {
+            if (deletingModel === null) {
+              setModelToDelete(null);
+            }
+          }}
+          submit={
+            <Button
+              variant="danger"
+              disabled={deletingModel !== null}
+              onClick={() => handleDeleteModel(modelToDelete)}
+            >
+              {deletingModel ? t("deletingModel") : tRoot("sidebar.delete")}
+            </Button>
+          }
+        >
+          <Text text03>
+            {t("deleteModelConfirmBody", { model: modelToDelete })}
+          </Text>
+        </ConfirmationModalLayout>
+      )}
+
+      <BuiltinOllamaPanelView
+        status={status.data}
+        models={models.data}
+        isLoading={status.isLoading || models.isLoading}
+        isDeleting={deletingModel !== null}
+        onRefresh={refresh}
+        onDownload={onDownload}
+        onDeleteModel={(modelName) => setModelToDelete(modelName)}
+      />
+    </>
   );
 }

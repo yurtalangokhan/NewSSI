@@ -44,6 +44,57 @@ def test_custom_model_missing_makes_agent_unavailable() -> None:
     }
 
 
+
+
+def test_default_model_ollama_alias_resolves_to_available_model() -> None:
+    availability = build_agent_availability(
+        {
+            "llm_model_version_override": None,
+            "mcp_tools": [],
+            "rag_config": {"document_processing": [], "knowledge_graph": []},
+            "memory_type": "none",
+            "long_term_memory": False,
+        },
+        available_models={"llama3.1:8b"},
+        default_model="ollama",
+        available_mcp_tools=set(),
+        available_rag_collections=set(),
+        available_graph_rag_collections=set(),
+        memory_available=True,
+    )
+
+    assert availability["status"] == "available"
+    assert availability["checks"][0] == {
+        "component": "model",
+        "status": "ok",
+        "message": "Using default model 'llama3.1:8b'.",
+    }
+
+
+def test_agent_with_ollama_model_override_resolves_to_concrete_model() -> None:
+    availability = build_agent_availability(
+        {
+            "llm_model_version_override": "ollama",
+            "mcp_tools": [],
+            "rag_config": {"document_processing": [], "knowledge_graph": []},
+            "memory_type": "none",
+            "long_term_memory": False,
+        },
+        available_models={"llama3.1:8b"},
+        default_model="llama3.1:8b",
+        available_mcp_tools=set(),
+        available_rag_collections=set(),
+        available_graph_rag_collections=set(),
+        memory_available=True,
+    )
+
+    assert availability["status"] == "available"
+    assert availability["checks"][0] == {
+        "component": "model",
+        "status": "ok",
+        "message": "Model 'llama3.1:8b' is available.",
+    }
+
 def test_default_model_uses_default_model_availability() -> None:
     availability = build_agent_availability(
         {

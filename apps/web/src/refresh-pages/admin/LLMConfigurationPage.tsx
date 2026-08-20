@@ -148,9 +148,11 @@ function ExistingProviderCard({
   const { t } = useTranslation();
   const { mutate } = useSWRConfig();
   const [isOpen, setIsOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const deleteModal = useCreateModal();
 
   const handleDelete = async () => {
+    setIsDeleting(true);
     try {
       await deleteLlmProvider(provider.id);
       mutate(LLM_PROVIDERS_ADMIN_URL);
@@ -159,6 +161,8 @@ function ExistingProviderCard({
     } catch (e) {
       const message = e instanceof Error ? e.message : "Unknown error";
       toast.error(t("admin.llm.deleteProviderFailed", { message }));
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -168,10 +172,10 @@ function ExistingProviderCard({
         <ConfirmationModalLayout
           icon={SvgTrash}
           title={t("admin.llm.deleteProviderTitle", { name: provider.name })}
-          onClose={() => deleteModal.toggle(false)}
+          onClose={() => !isDeleting && deleteModal.toggle(false)}
           submit={
-            <Button variant="danger" onClick={handleDelete}>
-              {t("sidebar.delete")}
+            <Button variant="danger" disabled={isDeleting} onClick={handleDelete}>
+              {isDeleting ? t("admin.builtinOllama.deletingModel", { defaultValue: "Deleting..." }) : t("sidebar.delete")}
             </Button>
           }
         >
@@ -330,8 +334,10 @@ function ApiKeyProviderCard({ provider, onDeleted }: ApiKeyProviderCardProps) {
   const { t } = useTranslation();
   const deleteModal = useCreateModal();
   const [editOpen, setEditOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleDelete = async () => {
+    setIsDeleting(true);
     try {
       const res = await fetch(`/api/admin/user-providers/${provider.id}`, { method: "DELETE" });
       if (!res.ok) throw new Error(`Delete failed: ${res.status}`);
@@ -340,6 +346,8 @@ function ApiKeyProviderCard({ provider, onDeleted }: ApiKeyProviderCardProps) {
       onDeleted();
     } catch {
       toast({ message: t("admin.llm.failedToDeleteProvider"), level: "error" });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -349,10 +357,10 @@ function ApiKeyProviderCard({ provider, onDeleted }: ApiKeyProviderCardProps) {
         <ConfirmationModalLayout
           icon={SvgTrash}
           title={t("admin.llm.deleteProviderTitle", { name: provider.name })}
-          onClose={() => deleteModal.toggle(false)}
+          onClose={() => !isDeleting && deleteModal.toggle(false)}
           submit={
-            <Button variant="danger" onClick={handleDelete}>
-              {t("sidebar.delete")}
+            <Button variant="danger" disabled={isDeleting} onClick={handleDelete}>
+              {isDeleting ? t("admin.builtinOllama.deletingModel", { defaultValue: "Deleting..." }) : t("sidebar.delete")}
             </Button>
           }
         >

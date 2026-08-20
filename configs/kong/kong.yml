@@ -205,6 +205,13 @@ services:
 
   - name: agent-service
     url: __AGENT_SERVICE_UPSTREAM_URL__/api/v1
+    # Chat responses stream for as long as the agent works — a deep-research
+    # turn that ends in a generated document runs for minutes. Kong's 60s
+    # default would cut those off mid-stream (the client sees
+    # ERR_INCOMPLETE_CHUNKED_ENCODING). The service also sends SSE keep-alive
+    # comments so the connection is never actually idle; this is the backstop.
+    read_timeout: 600000
+    write_timeout: 600000
     routes:
       - name: agent-service-scoped
         paths:

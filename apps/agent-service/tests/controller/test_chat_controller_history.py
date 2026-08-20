@@ -161,6 +161,51 @@ async def test_get_chat_session_reconstructs_ltm_from_system_context_without_met
     assert result["packets"][0][0]["obj"]["fact_count"] == 2
 
 
+class _BoomMessage:
+    """A message shaped enough to reach the AI branch, then blow up on it.
+
+    Mimics an unexpected LangGraph message shape deep in a long tool-heavy
+    conversation (e.g. an unusual `tool_calls` payload).
+    """
+
+    type = "ai"
+    content = ""
+    additional_kwargs: dict = {}
+
+    @property
+    def tool_calls(self):
+        raise RuntimeError("boom")
+
+
+@pytest.mark.asyncio
+async def test_get_chat_session_keeps_turns_parsed_before_a_later_failure():
+    thread = {
+        "thread_id": "thread-boom",
+        "metadata": {"user_id": "user-1", "persona_id": 1, "name": "Chat"},
+    }
+    state = {
+        "values": {
+            "messages": [
+                HumanMessage(content="merhaba"),
+                AIMessage(content="selam"),
+                _BoomMessage(),
+            ]
+        }
+    }
+
+    controller = ChatController(
+        thread_controller=DummyThreadController(thread=thread, state=state),
+        user_id="user-1",
+    )
+
+    result = await controller.get_chat_session("thread-boom")
+
+    # The first turn parsed fine before the third message blew up — it must
+    # not be discarded just because a later message in the same thread failed.
+    assert [m["message_type"] for m in result["messages"]] == ["user", "assistant"]
+    assert [m["message"] for m in result["messages"]] == ["merhaba", "selam"]
+
+
 @pytest.mark.asyncio
 async def test_get_chat_session_keeps_multiple_tool_steps_in_separate_turns():
     thread = {
@@ -211,6 +256,59 @@ async def test_get_chat_session_keeps_multiple_tool_steps_in_separate_turns():
     assert tool_names == ["web_search", "web_search", "fetch_webpage", "fetch_webpage"]
     assert tool_turns == sorted(tool_turns)
     assert len(set(tool_turns)) >= 2
+
+
+@pytest.mark.asyncio
+async def test_get_chat_session_pairs_parallel_tool_calls_by_id_not_arrival_order():
+    """A deep-research turn fires several tool calls at once (all their
+    `custom_tool_start`s land in the state before any result comes back), and
+    the results can arrive out of order relative to their calls. Each result
+    must still land right after its own call's start, matched by
+    tool_call_id — not just appended wherever it happened to arrive."""
+    thread = {
+        "thread_id": "thread-6",
+        "metadata": {"user_id": "user-1", "persona_id": 1, "name": "Chat"},
+    }
+    state = {
+        "values": {
+            "messages": [
+                HumanMessage(content="karsilastir"),
+                {
+                    "type": "ai",
+                    "content": "",
+                    "tool_calls": [
+                        {"name": "web_search", "args": {"query": "a"}, "id": "call-a"},
+                        {"name": "web_search", "args": {"query": "b"}, "id": "call-b"},
+                        {"name": "fetch_webpage", "args": {"url": "c"}, "id": "call-c"},
+                    ],
+                },
+                # Results arrive out of order and interleaved with each other.
+                {"type": "tool", "name": "fetch_webpage", "content": "result c", "tool_call_id": "call-c"},
+                {"type": "tool", "name": "web_search", "content": "result b", "tool_call_id": "call-b"},
+                {"type": "tool", "name": "web_search", "content": "result a", "tool_call_id": "call-a"},
+            ]
+        }
+    }
+
+    controller = ChatController(
+        thread_controller=DummyThreadController(thread=thread, state=state),
+        user_id="user-1",
+    )
+
+    result = await controller.get_chat_session("thread-6")
+    packets = result["packets"][0]
+
+    tool_packets = [p for p in packets if p["obj"]["type"].startswith("custom_tool_")]
+    shape = [(p["obj"]["type"], p["obj"].get("data") or p["obj"].get("args")) for p in tool_packets]
+
+    assert shape == [
+        ("custom_tool_start", {"query": "a"}),
+        ("custom_tool_delta", "result a"),
+        ("custom_tool_start", {"query": "b"}),
+        ("custom_tool_delta", "result b"),
+        ("custom_tool_start", {"url": "c"}),
+        ("custom_tool_delta", "result c"),
+    ]
 
 
 @pytest.mark.asyncio
@@ -266,6 +364,15 @@ async def test_get_chat_session_preserves_trailing_tool_packets_without_final_ai
     assert len(packets) == 1
     assert packets[0][0]["obj"]["type"] == "custom_tool_start"
     assert packets[0][1]["obj"]["type"] == "custom_tool_delta"
+
+    # A `packets_2d` entry with no matching `messages` entry never renders —
+    # the human message must not be the only turn the client can show.
+    assert [m["message_type"] for m in result["messages"]] == ["user", "assistant"]
+
+    # Without a trailing message_start/stop pair, the client has no signal
+    # that this turn is finished and the timeline pacing never reveals
+    # anything past the first step.
+    assert [p["obj"]["type"] for p in packets[0][-2:]] == ["message_start", "stop"]
 
 
 @pytest.mark.asyncio
@@ -348,3 +455,46 @@ async def test_get_chat_session_skips_generated_file_packet_for_plain_tool_resul
     all_packets = [packet for turn in result["packets"] for packet in turn]
 
     assert not any(p["obj"]["type"] == "generated_file" for p in all_packets)
+
+@pytest.mark.asyncio
+async def test_get_chat_session_keeps_text_written_before_a_tool_call():
+    """A model often writes a sentence before calling its tools.
+
+    That text streams live as part of the answer, so dropping it on reload
+    made the conversation restart abruptly at the tool results.
+    """
+    thread = {
+        "thread_id": "thread-preamble",
+        "metadata": {"user_id": "user-1", "persona_id": 1, "name": "Chat"},
+    }
+    state = {
+        "values": {
+            "messages": [
+                HumanMessage(content="arastir"),
+                {
+                    "type": "ai",
+                    "content": "Simdi en onemli kaynaklari inceleyelim.",
+                    "tool_calls": [
+                        {"name": "web_search", "args": {"query": "a"}, "id": "c1"}
+                    ],
+                },
+                {"type": "tool", "name": "web_search", "content": "ok", "tool_call_id": "c1"},
+                AIMessage(content="Sonuclari derledim."),
+            ]
+        }
+    }
+
+    controller = ChatController(
+        thread_controller=DummyThreadController(thread=thread, state=state),
+        user_id="user-1",
+    )
+
+    result = await controller.get_chat_session("thread-preamble")
+    starts = [
+        p["obj"].get("content")
+        for p in result["packets"][0]
+        if p["obj"]["type"] == "message_start"
+    ]
+
+    assert "Simdi en onemli kaynaklari inceleyelim." in starts
+    assert "Sonuclari derledim." in starts

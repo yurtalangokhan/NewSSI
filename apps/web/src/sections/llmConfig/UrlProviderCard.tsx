@@ -229,14 +229,20 @@ export function UrlProviderCard({ provider, onDownload, readOnly = false }: Prop
     }
   };
 
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const handleDelete = async () => {
+    setIsDeleting(true);
     try {
-      await fetch(`/api/admin/providers/${provider.id}`, { method: "DELETE" });
+      const res = await fetch(`/api/admin/providers/${provider.id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error(`Delete failed: ${res.status}`);
       toast({ message: t("admin.llm.providerDeletedSuccess") });
       deleteModal.toggle(false);
-      mutate("/api/admin/providers");
+      await mutate("/api/admin/providers");
     } catch {
       toast({ message: t("admin.llm.failedToDeleteProvider"), level: "error" });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -253,10 +259,10 @@ export function UrlProviderCard({ provider, onDownload, readOnly = false }: Prop
         <ConfirmationModalLayout
           icon={SvgTrash}
           title={t("admin.llm.deleteProviderTitle", { name: provider.name })}
-          onClose={() => deleteModal.toggle(false)}
+          onClose={() => !isDeleting && deleteModal.toggle(false)}
           submit={
-            <Button variant="danger" onClick={handleDelete}>
-              {t("sidebar.delete")}
+            <Button variant="danger" disabled={isDeleting} onClick={handleDelete}>
+              {isDeleting ? t("admin.builtinOllama.deletingModel", { defaultValue: "Deleting..." }) : t("sidebar.delete")}
             </Button>
           }
         >

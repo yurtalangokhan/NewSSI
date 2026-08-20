@@ -5,12 +5,13 @@ Endpoints: /info, /invoke, /stream, /feedback, /history
 plus the ``message_generator`` streaming helper.
 """
 
+import asyncio
 import inspect
 import json
 import logging
 import re
 import time
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, AsyncIterator
 from typing import Any
 
 import httpx
@@ -19,6 +20,7 @@ from fastapi.responses import StreamingResponse
 from i18n import t
 from langchain_core.messages import AIMessage, AIMessageChunk, AnyMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
+from langgraph.errors import GraphRecursionError
 from langgraph.types import Interrupt
 
 from agents import DEFAULT_AGENT, AgentGraph, get_agent, get_all_agent_info
@@ -38,7 +40,7 @@ from models.chat import (
 from service.AgentHelpers import _handle_input
 from service.AssistantAgentService import AssistantAgentService
 from service.AuthService import extract_user_id_from_token
-from service.DocumentProgressTracker import DocumentProgressTracker
+from service.DocumentProgressTracker import DocumentProgressTracker, is_document_tool
 from service.GeneratedFilePacket import (
     build_generated_file_packet_obj,
     parse_generated_file_payload,
@@ -54,6 +56,56 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/agents", tags=["agents"], dependencies=[Depends(require_user)])
 
 
+class _Heartbeat:
+    """Yielded by `_with_idle_heartbeat` while the wrapped stream is quiet.
+
+    Carries how long the current silence has lasted so the client can show
+    the user that work is still happening rather than a frozen screen.
+    """
+
+    __slots__ = ("silent_seconds",)
+
+    def __init__(self, silent_seconds: float) -> None:
+        self.silent_seconds = silent_seconds
+
+
+async def _with_idle_heartbeat(
+    source: AsyncIterator[Any], interval: float
+) -> AsyncGenerator[Any, None]:
+    """Re-yield `source`, injecting `_HEARTBEAT` during silent stretches.
+
+    A model writing a document emits the whole body as tool-call arguments,
+    and providers that only hand over the *completed* call (Ollama via
+    langchain-ollama) send nothing at all while that happens — a long
+    document can take minutes. `DocumentProgressTracker` cannot fill that
+    gap for them because it has no argument chunks to count. Meanwhile any
+    proxy in front of the stream sees an idle connection: Kong defaults to a
+    60s read timeout and tears it down mid-generation, which surfaces in the
+    browser as ERR_INCOMPLETE_CHUNKED_ENCODING.
+    """
+    iterator = source.__aiter__()
+    pending: asyncio.Future | None = None
+    try:
+        while True:
+            pending = asyncio.ensure_future(iterator.__anext__())
+            quiet_since = time.monotonic()
+            while True:
+                done, _ = await asyncio.wait({pending}, timeout=interval)
+                if pending in done:
+                    break
+                yield _Heartbeat(time.monotonic() - quiet_since)
+            try:
+                item = pending.result()
+            except StopAsyncIteration:
+                return
+            finally:
+                pending = None
+            yield item
+    finally:
+        if pending is not None and not pending.done():
+            pending.cancel()
+
+
 def _stream_error_payload(exc: Exception) -> dict[str, Any]:
     if isinstance(exc, httpx.ConnectError | httpx.ConnectTimeout | httpx.ReadTimeout):
         return {
@@ -61,6 +113,16 @@ def _stream_error_payload(exc: Exception) -> dict[str, Any]:
             "error": "LLM provider is unreachable. Check the provider URL, network, or model server status.",
             "content": "LLM provider is unreachable. Check the provider URL, network, or model server status.",
             "error_code": "provider_unavailable",
+            "is_retryable": True,
+            "details": {"exception_type": type(exc).__name__},
+        }
+
+    if isinstance(exc, GraphRecursionError):
+        return {
+            "type": "error",
+            "error": "The agent took too many steps to finish this turn (too many searches/tool calls in a row) and was stopped.",
+            "content": "The agent took too many steps to finish this turn (too many searches/tool calls in a row) and was stopped.",
+            "error_code": "recursion_limit_exceeded",
             "is_retryable": True,
             "details": {"exception_type": type(exc).__name__},
         }
@@ -274,8 +336,10 @@ async def info(_user=Depends(require_permission("agent:list"))) -> ServiceMetada
     all_models.sort()
 
     # Determine default model
-    default_model = settings.DEFAULT_MODEL or None
-    if not default_model and all_models:
+    default_model = settings.DEFAULT_MODEL or env.DEFAULT_MODEL or None
+    if default_model and default_model.lower() in {"ollama", "default", "provider", "builtin"}:
+        default_model = env.OLLAMA_MODEL or settings.OLLAMA_MODEL or "llama3.1:8b"
+    if (not default_model or default_model not in all_models) and all_models:
         default_model = all_models[0]
 
     return ServiceMetadata(
@@ -423,13 +487,78 @@ async def message_generator(
     # Generated files already announced (a tool may emit its own live packet
     # before the node's ToolMessage reaches this loop).
     emitted_file_ids: set[str] = set()
-    emitted_tool_call_names: set[str] = set()
+    # Keyed by tool_call id, not name: a deep-research loop can call the same
+    # tool (e.g. web_search) many times in one turn, and each call needs its
+    # own custom_tool_start. This set only dedupes the *same* call appearing
+    # in both the `messages` stream (tool_call_chunks) and the `updates`
+    # stream (the full AI message, reported again once the node returns).
+    emitted_tool_call_ids: set[str] = set()
+    # Trailing character of the visible answer so far, plus whether a tool
+    # phase has interrupted it since. A model routinely breaks off mid-answer
+    # to call a tool and resumes afterwards; the two halves arrive as one
+    # uninterrupted token stream, so a call that stopped mid-word runs into
+    # the next one's first word (e.g. "AramalarıHarika").
+    last_visible_char = ""
+    answer_interrupted_by_tool = False
     start_time = time.time()
 
+    def _token_payload(text: str) -> str:
+        """Serialise one visible token, healing tool-call seams."""
+        nonlocal answer_interrupted_by_tool, last_visible_char
+        if answer_interrupted_by_tool:
+            answer_interrupted_by_tool = False
+            # Separate the halves only when they would actually run together.
+            # The model usually resumes an unfinished sentence after the tool
+            # call, and breaking there would split the sentence instead.
+            if (
+                last_visible_char
+                and not last_visible_char.isspace()
+                and not text[:1].isspace()
+            ):
+                text = "\n\n" + text
+        last_visible_char = text[-1:] or last_visible_char
+        return f"data: {json.dumps({'type': 'token', 'content': text})}\n\n"
+
+    def _flush_pending_answer_text() -> list[str]:
+        """Release any partial word the tag processor is still holding.
+
+        Its buffer holds back text up to the last whitespace so a split tag
+        is never mistaken for answer text, and that buffer spans LLM calls.
+        A call that stops mid-word therefore merges with the next call's
+        first word *inside* the buffer, before anything downstream can tell
+        the two apart. Draining it at the seam keeps them separate.
+        """
+        payloads: list[str] = []
+        for evt in thinking_processor.flush():
+            if evt.get("type") == "token" and evt.get("content"):
+                payloads.append(_token_payload(evt["content"]))
+            elif evt.get("type") != "tool_call_text":
+                payloads.append(f"data: {json.dumps(evt)}\n\n")
+        return payloads
+
     try:
-        async for stream_event in agent.astream(
-            **kwargs, stream_mode=["updates", "messages", "custom"], subgraphs=True
+        async for stream_event in _with_idle_heartbeat(
+            agent.astream(
+                **kwargs, stream_mode=["updates", "messages", "custom"], subgraphs=True
+            ),
+            settings.STREAM_HEARTBEAT_SECONDS,
         ):
+            if isinstance(stream_event, _Heartbeat):
+                # An SSE comment: no packet type, so clients ignore it, but it
+                # keeps proxies from seeing an idle connection while the model
+                # writes a long tool call (see `_with_idle_heartbeat`).
+                yield ": keep-alive\n\n"
+                # Ollama does not stream tool-call arguments, so a model
+                # writing a document goes quiet for minutes with nothing to
+                # report progress from. Tell the client how long the wait has
+                # run so it can show that work continues.
+                progress = {
+                    "type": "stream_progress",
+                    "elapsed_seconds": int(stream_event.silent_seconds),
+                }
+                yield f"data: {json.dumps(progress)}\n\n"
+                continue
+
             if not isinstance(stream_event, tuple):
                 continue
 
@@ -545,6 +674,11 @@ async def message_generator(
                     current_call_made_tool_calls = False
                     saw_visible_answer_tokens = False
                     saw_reasoning_for_current_answer = False
+                    # Close out this call's answer before the next one starts,
+                    # then mark the seam so the two halves stay apart.
+                    for payload in _flush_pending_answer_text():
+                        yield payload
+                    answer_interrupted_by_tool = True
                     for packet in document_progress.on_tool_calls(chat_message.tool_calls):
                         yield f"data: {json.dumps(packet)}\n\n"
                     for tc in chat_message.tool_calls:
@@ -556,19 +690,29 @@ async def message_generator(
                         tc_args = (
                             tc.get("args") if isinstance(tc, dict) else getattr(tc, "args", None)
                         )
-                        if tc_name not in emitted_tool_call_names:
-                            emitted_tool_call_names.add(tc_name)
-                            yield f"data: {json.dumps({'type': 'custom_tool_start', 'tool_name': tc_name, 'args': tc_args})}\n\n"
+                        tc_id = (
+                            tc.get("id") if isinstance(tc, dict) else getattr(tc, "id", None)
+                        ) or tc_name
+                        if tc_id not in emitted_tool_call_ids:
+                            emitted_tool_call_ids.add(tc_id)
+                            # Document tools already have their own lifecycle
+                            # packets (document_generation_*), which the frontend
+                            # keeps on the current answer's turn. The generic
+                            # custom_tool_start is exempt from that and would
+                            # reset the in-progress answer's streaming state.
+                            if not is_document_tool(tc_name):
+                                yield f"data: {json.dumps({'type': 'custom_tool_start', 'tool_name': tc_name, 'args': tc_args, 'call_id': tc_id})}\n\n"
                     continue
                 elif chat_message.type == "tool":
                     tool_name = getattr(message, "name", "") or ""
+                    tool_call_id = getattr(message, "tool_call_id", None)
                     # Keep subsequent assistant phase visible even when prior phase streamed tokens.
                     saw_visible_answer_tokens = False
                     saw_reasoning_for_current_answer = False
 
                     generated_file = parse_generated_file_payload(chat_message.content)
-                    if generated_file is None:
-                        yield f"data: {json.dumps({'type': 'custom_tool_delta', 'tool_name': tool_name, 'response_type': 'tool_result', 'data': chat_message.content})}\n\n"
+                    if generated_file is None and not is_document_tool(tool_name):
+                        yield f"data: {json.dumps({'type': 'custom_tool_delta', 'tool_name': tool_name, 'response_type': 'tool_result', 'data': chat_message.content, 'call_id': tool_call_id})}\n\n"
 
                     if generated_file is not None:
                         file_id = generated_file.get("file_id")
@@ -661,9 +805,25 @@ async def message_generator(
                             continue
                         first_llm_call_id = msg_id
                         current_call_made_tool_calls = False
+                        # Same seam as the tool-call branch above, but reached
+                        # when the whole loop runs inside one node, so the
+                        # `updates` event that would have flagged it has not
+                        # arrived yet. `_token_payload` decides whether the
+                        # halves actually need separating.
+                        for payload in _flush_pending_answer_text():
+                            yield payload
+                        answer_interrupted_by_tool = True
 
                 if getattr(msg, "tool_call_chunks", None):
                     current_call_made_tool_calls = True
+                    # The tag processor is still holding this call's last word
+                    # (it buffers up to the final whitespace). Release it now,
+                    # while it still belongs to the text above the tool steps —
+                    # the `updates` event that also flushes arrives only after
+                    # these `custom_tool_start` packets, which would strand the
+                    # word in a display group of its own below them.
+                    for payload in _flush_pending_answer_text():
+                        yield payload
                     for tc_chunk in msg.tool_call_chunks:
                         tc_name = (
                             tc_chunk.get("name")
@@ -675,9 +835,18 @@ async def message_generator(
                             if isinstance(tc_chunk, dict)
                             else getattr(tc_chunk, "args", None)
                         )
-                        if tc_name and tc_name not in emitted_tool_call_names:
-                            emitted_tool_call_names.add(tc_name)
-                            yield f"data: {json.dumps({'type': 'custom_tool_start', 'tool_name': tc_name, 'args': tc_args})}\n\n"
+                        tc_id = (
+                            tc_chunk.get("id")
+                            if isinstance(tc_chunk, dict)
+                            else getattr(tc_chunk, "id", None)
+                        ) or tc_name
+                        if tc_name and tc_id not in emitted_tool_call_ids:
+                            emitted_tool_call_ids.add(tc_id)
+                            # Same exemption as above: document tools are
+                            # represented by document_generation_* packets only,
+                            # so this must not reset the in-progress answer.
+                            if not is_document_tool(tc_name):
+                                yield f"data: {json.dumps({'type': 'custom_tool_start', 'tool_name': tc_name, 'args': tc_args, 'call_id': tc_id})}\n\n"
 
                 content = remove_tool_calls(msg.content)
                 reasoning_text = _extract_reasoning_text(msg)
@@ -719,7 +888,7 @@ async def message_generator(
                                 saw_visible_answer_tokens = True
                                 if msg_id:
                                     streamed_message_ids.add(msg_id)
-                                yield f"data: {json.dumps({'type': 'token', 'content': text})}\n\n"
+                                yield _token_payload(text)
                     if reasoning_text and not emitted_reasoning:
                         if not saw_reasoning_for_current_answer:
                             yield f"data: {json.dumps({'type': 'reasoning_start'})}\n\n"
@@ -727,6 +896,21 @@ async def message_generator(
                         yield f"data: {json.dumps({'type': 'reasoning_delta', 'reasoning': reasoning_text})}\n\n"
                 else:
                     # Tag tabanlı modeller (DeepSeek, Qwen vb.)
+                    # A native reasoning field (e.g. Ollama's reasoning_content)
+                    # can land on the same chunk as visible content. Emitting
+                    # reasoning only when content was empty (the old `elif`)
+                    # silently dropped it whenever both were present on one
+                    # chunk — the model looked like it abruptly left its
+                    # thinking phase, wrote a token or two, then "went back"
+                    # to thinking on a later chunk once content emptied out
+                    # again, with that dropped reasoning never having been
+                    # shown in between. Emit both, independently, in order.
+                    if reasoning_text:
+                        if not saw_reasoning_for_current_answer:
+                            yield f"data: {json.dumps({'type': 'reasoning_start'})}\n\n"
+                            saw_reasoning_for_current_answer = True
+                        yield f"data: {json.dumps({'type': 'reasoning_delta', 'reasoning': reasoning_text})}\n\n"
+
                     token_str = convert_message_content_to_string(content)
                     if token_str:
                         for evt in thinking_processor.feed(token_str):
@@ -744,12 +928,9 @@ async def message_generator(
                                 saw_visible_answer_tokens = True
                                 if msg_id:
                                     streamed_message_ids.add(msg_id)
+                                yield _token_payload(evt["content"])
+                                continue
                             yield f"data: {json.dumps(evt)}\n\n"
-                    elif reasoning_text:
-                        if not saw_reasoning_for_current_answer:
-                            yield f"data: {json.dumps({'type': 'reasoning_start'})}\n\n"
-                            saw_reasoning_for_current_answer = True
-                        yield f"data: {json.dumps({'type': 'reasoning_delta', 'reasoning': reasoning_text})}\n\n"
 
     except Exception as e:
         payload = _stream_error_payload(e)

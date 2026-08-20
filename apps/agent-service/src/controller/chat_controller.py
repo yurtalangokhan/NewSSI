@@ -771,6 +771,12 @@ class ChatController(BaseController):
             state = await self._thread_controller.get_thread_state(chat_session_id)
             langgraph_messages = state.get("values", {}).get("messages", [])
             pending_tool_packets: list[dict[str, Any]] = []
+            # tool_call_id -> index of that call's `custom_tool_start` in
+            # pending_tool_packets, so its `custom_tool_delta` can be inserted
+            # right after it instead of landing wherever the ToolMessage
+            # happened to arrive (a batch of parallel calls appends all of its
+            # starts before any of their results come back).
+            open_tool_call_positions: dict[str, int] = {}
             pending_ltm_recalled_from_system = 0
             pending_ltm_recalled_from_user = 0
             msg_idx = 0
@@ -786,23 +792,32 @@ class ChatController(BaseController):
                         or (raw_msg.get("name", "") if isinstance(raw_msg, dict) else "")
                         or "tool"
                     )
+                    tool_call_id = getattr(raw_msg, "tool_call_id", None) or (
+                        raw_msg.get("tool_call_id") if isinstance(raw_msg, dict) else None
+                    )
                     tool_content = _extract_content(raw_msg)
                     generated_file = parse_generated_file_payload(tool_content)
                     # Document tools are represented by their generated_file card
                     # alone — same as the live stream, which replaces their
                     # timeline step with the document_generation_* packets.
                     if generated_file is None:
-                        pending_tool_packets.append(
-                            {
-                                "placement": {"turn_index": 0, "sub_turn_index": None},
-                                "obj": {
-                                    "type": "custom_tool_delta",
-                                    "tool_name": tool_name,
-                                    "response_type": "tool_result",
-                                    "data": tool_content,
-                                },
-                            }
-                        )
+                        delta_packet = {
+                            "placement": {"turn_index": 0, "sub_turn_index": None},
+                            "obj": {
+                                "type": "custom_tool_delta",
+                                "tool_name": tool_name,
+                                "response_type": "tool_result",
+                                "data": tool_content,
+                            },
+                        }
+                        if tool_call_id and tool_call_id in open_tool_call_positions:
+                            insert_pos = open_tool_call_positions.pop(tool_call_id) + 1
+                            pending_tool_packets.insert(insert_pos, delta_packet)
+                            for call_id, pos in open_tool_call_positions.items():
+                                if pos >= insert_pos:
+                                    open_tool_call_positions[call_id] = pos + 1
+                        else:
+                            pending_tool_packets.append(delta_packet)
                     if generated_file is not None:
                         pending_tool_packets.append(
                             {
@@ -850,6 +865,22 @@ class ChatController(BaseController):
                                     "obj": {"type": "reasoning_delta", "reasoning": reasoning_text},
                                 }
                             )
+                        # A model often writes a sentence before calling its
+                        # tools ("let me look at these pages"). That text
+                        # streams live as part of the answer, so dropping it
+                        # here made a reloaded conversation start abruptly at
+                        # the tool results instead.
+                        if msg_content:
+                            pending_tool_packets.append(
+                                {
+                                    "placement": {"turn_index": 0, "sub_turn_index": None},
+                                    "obj": {
+                                        "type": "message_start",
+                                        "content": msg_content,
+                                        "final_documents": None,
+                                    },
+                                }
+                            )
                         for tool_call in tool_calls:
                             tool_name = (
                                 tool_call.get("name", "tool")
@@ -861,6 +892,11 @@ class ChatController(BaseController):
                                 if isinstance(tool_call, dict)
                                 else getattr(tool_call, "args", None)
                             )
+                            call_id = (
+                                tool_call.get("id")
+                                if isinstance(tool_call, dict)
+                                else getattr(tool_call, "id", None)
+                            )
                             pending_tool_packets.append(
                                 {
                                     "placement": {"turn_index": 0, "sub_turn_index": None},
@@ -871,6 +907,8 @@ class ChatController(BaseController):
                                     },
                                 }
                             )
+                            if call_id:
+                                open_tool_call_positions[call_id] = len(pending_tool_packets) - 1
                         continue
 
                     if not msg_content:
@@ -924,6 +962,7 @@ class ChatController(BaseController):
                         )
                         turn_packets.extend(reindexed_tools)
                         pending_tool_packets = []
+                        open_tool_call_positions = {}
                         turn_counter = next_turn
 
                     if reasoning_text:
@@ -1059,12 +1098,65 @@ class ChatController(BaseController):
                     }
                 )
 
-            # If stream/state ends without a visible AI message after tool calls,
-            # preserve those tool steps as their own history turn instead of dropping them.
+            # If stream/state ends without a visible AI message after tool calls
+            # (e.g. the model's final generation was interrupted and produced no
+            # content), preserve those tool steps as their own history turn
+            # instead of dropping them. A `packets_2d` entry with no matching
+            # `messages` entry never rendered — the chat bubble that would show
+            # it doesn't exist — so a `messages` entry is added here too.
             if pending_tool_packets:
-                reindexed_tools, _ = _reindex_tool_packets(pending_tool_packets, 0)
+                reindexed_tools, next_turn = _reindex_tool_packets(pending_tool_packets, 0)
+                # Without a message_start/stop pair, the client has no signal
+                # that this turn ever finished (no `stop` packet == "still
+                # streaming" as far as the timeline pacing/completion logic is
+                # concerned), so only the first step ever gets revealed.
+                reindexed_tools.append(
+                    {
+                        "placement": {"turn_index": next_turn, "sub_turn_index": None},
+                        "obj": {
+                            "type": "message_start",
+                            "content": "",
+                            "final_documents": None,
+                        },
+                    }
+                )
+                reindexed_tools.append(
+                    {
+                        "placement": {"turn_index": next_turn, "sub_turn_index": None},
+                        "obj": {"type": "stop", "stop_reason": "finished"},
+                    }
+                )
                 packets_2d.append(reindexed_tools)
                 pending_tool_packets = []
+
+                parent_msg_id = msg_idx if msg_idx > 0 else None
+                msg_idx += 1
+                messages.append(
+                    {
+                        "message_id": msg_idx,
+                        "message_type": "assistant",
+                        "research_type": None,
+                        "parent_message": parent_msg_id,
+                        "latest_child_message": None,
+                        "message": "",
+                        "rephrased_query": None,
+                        "context_docs": None,
+                        "time_sent": None,
+                        "overridden_model": None,
+                        "alternate_assistant_id": metadata.get("persona_id"),
+                        "chat_session_id": chat_session_id,
+                        "citations": None,
+                        "files": [],
+                        "tool_call": None,
+                        "current_feedback": None,
+                        "processing_duration_seconds": None,
+                        "sub_questions": [],
+                        "comments": None,
+                        "parentMessageId": parent_msg_id,
+                        "refined_answer_improvement": None,
+                        "is_agentic": None,
+                    }
+                )
 
             for index in range(len(messages) - 1):
                 messages[index]["latest_child_message"] = messages[index + 1]["message_id"]
@@ -1073,12 +1165,16 @@ class ChatController(BaseController):
             import traceback as _traceback
 
             _logging.getLogger(__name__).error(
-                "Failed to load chat history for session %s:\n%s",
+                "Failed to load chat history for session %s (returning the %d "
+                "turn(s) parsed before the failure):\n%s",
                 chat_session_id,
+                len(messages),
                 _traceback.format_exc(),
             )
-            messages = []
-            packets_2d = []
+            # `messages`/`packets_2d` already hold whatever was parsed before
+            # the failing turn — a long tool-heavy conversation has one bad
+            # message wipe the entire visible history otherwise, discarding
+            # turns that parsed fine.
 
         return {
             "chat_session_id": chat_session_id,

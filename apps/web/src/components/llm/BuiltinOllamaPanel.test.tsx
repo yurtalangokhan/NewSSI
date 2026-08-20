@@ -1,6 +1,14 @@
 import React from "react";
-import { render, screen, setupUser } from "@tests/setup/test-utils";
-import { BuiltinOllamaPanelView } from "@/sections/llmConfig/BuiltinOllamaPanel";
+import { render, screen, setupUser, waitFor } from "@tests/setup/test-utils";
+import { BuiltinOllamaPanel, BuiltinOllamaPanelView } from "@/sections/llmConfig/BuiltinOllamaPanel";
+import * as providerHooks from "@/hooks/useProviders";
+
+jest.mock("@/hooks/useProviders", () => ({
+  ...jest.requireActual("@/hooks/useProviders"),
+  useBuiltinOllamaStatus: jest.fn(),
+  useBuiltinOllamaModels: jest.fn(),
+  useDeleteBuiltinOllamaModel: jest.fn(),
+}));
 
 describe("BuiltinOllamaPanelView", () => {
   test("renders built-in Ollama status and installed models", () => {
@@ -91,7 +99,7 @@ describe("BuiltinOllamaPanelView", () => {
     expect(screen.getByText("audio")).toBeInTheDocument();
   });
 
-  test("deletes an installed model from the built-in service", async () => {
+  test("triggers onDeleteModel callback when trash icon is clicked", async () => {
     const user = setupUser();
     const onDeleteModel = jest.fn();
 
@@ -126,5 +134,77 @@ describe("BuiltinOllamaPanelView", () => {
     await user.click(screen.getByRole("button", { name: "Delete llama3.1:8b" }));
 
     expect(onDeleteModel).toHaveBeenCalledWith("llama3.1:8b");
+  });
+});
+
+describe("BuiltinOllamaPanel (Integration with Confirmation Modal)", () => {
+  const mockDeleteModel = jest.fn();
+  const mockStatusMutate = jest.fn();
+  const mockModelsMutate = jest.fn();
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (providerHooks.useBuiltinOllamaStatus as jest.Mock).mockReturnValue({
+      data: {
+        base_url: "http://ollama:11434",
+        online: true,
+        version: "0.6.8",
+        model_count: 1,
+        error: null,
+      },
+      isLoading: false,
+      mutate: mockStatusMutate,
+    });
+    (providerHooks.useBuiltinOllamaModels as jest.Mock).mockReturnValue({
+      data: [
+        {
+          name: "llama3.1:8b",
+          display_name: "llama3.1:8b",
+          size: 4_900_000_000,
+          max_input_tokens: 131072,
+        },
+      ],
+      isLoading: false,
+      mutate: mockModelsMutate,
+    });
+    mockDeleteModel.mockResolvedValue({ success: true });
+    (providerHooks.useDeleteBuiltinOllamaModel as jest.Mock).mockReturnValue(mockDeleteModel);
+  });
+
+  test("opens confirmation modal when delete icon is clicked and deletes on confirm", async () => {
+    const user = setupUser();
+
+    render(<BuiltinOllamaPanel onDownload={jest.fn()} />);
+
+    // Click trash button on the model item
+    await user.click(screen.getByRole("button", { name: "Delete llama3.1:8b" }));
+
+    // Confirmation modal should be visible
+    expect(screen.getByText("Delete Model")).toBeInTheDocument();
+    expect(screen.getByText(/Are you sure you want to delete the model "llama3.1:8b"/)).toBeInTheDocument();
+
+    // Confirm deletion
+    const deleteSubmitButton = screen.getByRole("button", { name: "Delete" });
+    await user.click(deleteSubmitButton);
+
+    await waitFor(() => {
+      expect(mockDeleteModel).toHaveBeenCalledWith("llama3.1:8b");
+    });
+  });
+
+  test("can cancel deletion without invoking delete API", async () => {
+    const user = setupUser();
+
+    render(<BuiltinOllamaPanel onDownload={jest.fn()} />);
+
+    await user.click(screen.getByRole("button", { name: "Delete llama3.1:8b" }));
+
+    expect(screen.getByText("Delete Model")).toBeInTheDocument();
+
+    // Click Cancel
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(screen.queryByText("Delete Model")).not.toBeInTheDocument();
+    expect(mockDeleteModel).not.toHaveBeenCalled();
   });
 });

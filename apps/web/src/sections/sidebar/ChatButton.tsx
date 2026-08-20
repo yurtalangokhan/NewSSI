@@ -143,6 +143,7 @@ const ChatButton = memo(
       useState(false);
     const [navigateAfterMoveProjectId, setNavigateAfterMoveProjectId] =
       useState<number | null>(null);
+    const [isMoving, setIsMoving] = useState(false);
 
     // Drag and drop setup for chat sessions
     const dragId = `${DRAG_TYPES.CHAT}-${chatSession.id}`;
@@ -323,6 +324,8 @@ const ChatButton = memo(
     }
 
     async function performMove(targetProjectId: number) {
+      if (isMoving) return;
+      setIsMoving(true);
       try {
         await handleMoveOperation({
           chatSession,
@@ -337,10 +340,13 @@ const ChatButton = memo(
       } catch (error) {
         // handleMoveOperation already handles error notification
         console.error("Failed to move chat:", error);
+      } finally {
+        setIsMoving(false);
       }
     }
 
     async function handleChatMove(targetProject: Project) {
+      if (isMoving) return;
       if (shouldShowMoveModal(chatSession)) {
         setPendingMoveProjectId(targetProject.id);
         setShowMoveCustomAgentModal(true);
@@ -350,6 +356,8 @@ const ChatButton = memo(
     }
 
     async function handleRemoveFromProject() {
+      if (isMoving) return;
+      setIsMoving(true);
       try {
         await removeChatSessionFromProject(chatSession.id);
         const projectRefreshPromise = currentProjectId
@@ -360,10 +368,14 @@ const ChatButton = memo(
         setSearchTerm("");
       } catch (error) {
         console.error("Failed to remove chat from project:", error);
+      } finally {
+        setIsMoving(false);
       }
     }
 
     async function handleCreateProjectAndMove(projectName: string) {
+      if (isMoving) return;
+      setIsMoving(true);
       try {
         // Create the new project using the service directly (without navigation)
         const newProject = await createProjectService(projectName);
@@ -393,6 +405,8 @@ const ChatButton = memo(
         console.error("Failed to create project and move chat:", error);
         showErrorNotification("Failed to create project. Please try again.");
         setNavigateAfterMoveProjectId(null);
+      } finally {
+        setIsMoving(false);
       }
     }
 

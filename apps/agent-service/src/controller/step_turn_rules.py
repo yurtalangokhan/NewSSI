@@ -36,6 +36,14 @@ STEP_TURN_RULES: dict[str, StepTurnRule] = {
         new_turn=False,
         groups_with=frozenset({"reasoning_start", "reasoning_delta"}),
     ),
+    # Each call gets its own turn/card, even when several calls to the same
+    # tool fire in one AI turn (e.g. four parallel web_search calls). This
+    # relies on the caller (chat_controller._reindex_tool_packets input)
+    # already having reordered packets so each call's own `custom_tool_delta`
+    # immediately follows its `custom_tool_start` — the reconstruction pairs
+    # them by tool_call_id before this rule ever runs. With that ordering
+    # guaranteed, new_turn=True here simply gives every call its own turn,
+    # and the delta rule below keeps each delta grouped with its own start.
     "custom_tool_start": StepTurnRule(new_turn=True),
     "custom_tool_delta": StepTurnRule(
         new_turn=False,

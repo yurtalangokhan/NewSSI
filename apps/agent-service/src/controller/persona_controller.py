@@ -58,6 +58,19 @@ def _is_uuid_owner_id(owner_id: str) -> bool:
     return True
 
 
+def _normalize_model_alias(model_name: str | None) -> str | None:
+    """Normalize provider aliases to concrete model names."""
+    if model_name is None:
+        return None
+    normalized = str(model_name).strip()
+    if not normalized:
+        return None
+    lower_name = normalized.lower()
+    if lower_name in {"ollama", "default", "provider", "builtin"}:
+        return env.OLLAMA_MODEL or settings.OLLAMA_MODEL or settings.DEFAULT_MODEL
+    return normalized
+
+
 def build_agent_availability(
     agent: dict[str, Any],
     *,
@@ -71,7 +84,16 @@ def build_agent_availability(
 ) -> dict[str, Any]:
     """Return component-level availability for an agent snapshot."""
     checks: list[dict[str, str]] = []
-    selected_model = agent.get("llm_model_version_override") or agent.get("model")
+    raw_selected = agent.get("llm_model_version_override") or agent.get("model")
+    selected_model = _normalize_model_alias(raw_selected) if raw_selected else None
+
+    raw_default = default_model or settings.DEFAULT_MODEL or env.DEFAULT_MODEL
+    effective_default_model = _normalize_model_alias(raw_default) if raw_default else None
+
+    if effective_default_model and effective_default_model not in available_models:
+        ollama_default = env.OLLAMA_MODEL or settings.OLLAMA_MODEL
+        if ollama_default and ollama_default in available_models:
+            effective_default_model = ollama_default
 
     if selected_model:
         if selected_model in available_models:
@@ -90,13 +112,13 @@ def build_agent_availability(
                     "message": f"Model '{selected_model}' is selected but is not available.",
                 }
             )
-    elif default_model:
-        if default_model in available_models:
+    elif effective_default_model:
+        if effective_default_model in available_models:
             checks.append(
                 {
                     "component": "model",
                     "status": "ok",
-                    "message": f"Using default model '{default_model}'.",
+                    "message": f"Using default model '{effective_default_model}'.",
                 }
             )
         else:
@@ -104,7 +126,7 @@ def build_agent_availability(
                 {
                     "component": "model",
                     "status": "error",
-                    "message": f"Default model '{default_model}' is not available.",
+                    "message": f"Default model '{effective_default_model}' is not available.",
                 }
             )
     else:
@@ -533,14 +555,32 @@ class PersonaController(BaseController):
 
         return tool_snapshots
 
-    async def _get_available_model_names(self) -> set[str]:
+    async def _get_available_model_names(self, user_id: str | None = None) -> set[str]:
+        model_names: set[str] = set()
         try:
             from core.providers.registry import provider_registry
 
             provider_registry.initialize()
-            return set(await provider_registry.get_model_names())
+            model_names.update(await provider_registry.get_model_names())
         except Exception:
-            return set()
+            pass
+
+        try:
+            from domain.providers.repository import ProviderRepository
+            from domain.providers.service import ProviderService
+
+            repo = ProviderRepository()
+            svc = ProviderService(repo)
+            providers = await svc.get_available_models_for_user(user_id or DEFAULT_USER_ID)
+            for p in providers:
+                for mc in p.get("model_configurations", []):
+                    name = mc.get("name")
+                    if name:
+                        model_names.add(name)
+        except Exception:
+            pass
+
+        return model_names
 
     async def _get_mcp_tool_metadata(self) -> dict[str, dict[str, str]]:
         """Name -> {"description", "display_name"} for every registered/

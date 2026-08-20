@@ -68,10 +68,22 @@ class TestShouldIncrementTurn:
             is True
         )
 
-    def test_tool_start_after_tool_delta(self):
+    def test_tool_start_after_tool_delta_same_tool_still_splits(self):
+        # Each call gets its own turn even when the tool name repeats — the
+        # reconstruction already reordered packets so this start's own delta
+        # immediately follows it, so splitting here doesn't separate a call
+        # from its result.
         assert (
             should_increment_turn(
                 "custom_tool_start", "custom_tool_delta", "search", "search", is_first=False
+            )
+            is True
+        )
+
+    def test_tool_start_after_tool_delta_different_tool_splits(self):
+        assert (
+            should_increment_turn(
+                "custom_tool_start", "custom_tool_delta", "search", "fetch", is_first=False
             )
             is True
         )

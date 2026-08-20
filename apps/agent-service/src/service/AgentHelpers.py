@@ -402,6 +402,7 @@ async def _handle_input(
         configurable=configurable,
         run_id=run_id,
         callbacks=callbacks,
+        recursion_limit=settings.AGENT_RECURSION_LIMIT,
     )
 
     # Check for interrupts that need to be resumed
