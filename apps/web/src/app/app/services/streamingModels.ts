@@ -14,6 +14,14 @@ export enum PacketType {
   SECTION_END = "section_end",
   TOP_LEVEL_BRANCHING = "top_level_branching",
   ERROR = "error",
+  /**
+   * Sent while the backend stream is silent. Ollama does not stream
+   * tool-call arguments, so a model writing a document goes quiet for
+   * minutes; this reports how long the wait has run so the UI can show that
+   * work continues instead of looking frozen. Purely transient — it is never
+   * added to a timeline group.
+   */
+  STREAM_PROGRESS = "stream_progress",
 
   // Specific tool packets
   SEARCH_TOOL_START = "search_tool_start",
@@ -180,11 +188,18 @@ export interface FetchToolDocuments extends BaseObj {
   documents: OnyxDocument[];
 }
 
+/** How long the backend stream has been silent. See PacketType.STREAM_PROGRESS. */
+export interface StreamProgress extends BaseObj {
+  type: "stream_progress";
+  elapsed_seconds: number;
+}
+
 // Custom Tool Packets
 export interface CustomToolStart extends BaseObj {
   type: "custom_tool_start";
   tool_name: string;
   args?: Record<string, any> | string | null;
+  call_id?: string | null;
 }
 
 export interface CustomToolDelta extends BaseObj {
@@ -193,6 +208,7 @@ export interface CustomToolDelta extends BaseObj {
   response_type: string;
   data?: any;
   file_ids?: string[] | null;
+  call_id?: string | null;
 }
 
 export interface GraphStageStart extends BaseObj {
@@ -464,6 +480,7 @@ export type ObjTypes =
   | ResearchAgentObj
   | PacketErrorObj
   | GeneratedFileObj
+  | StreamProgress
   | CitationObj;
 
 // Placement interface for packet positioning

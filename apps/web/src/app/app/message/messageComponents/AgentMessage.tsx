@@ -22,6 +22,7 @@ import { AgentTimeline } from "@/app/app/message/messageComponents/timeline/Agen
 import GraphStageStrip from "@/app/app/message/messageComponents/timeline/GraphStageStrip";
 import { cn } from "@/lib/utils";
 import { useAppBackground } from "@/providers/AppBackgroundProvider";
+import { useTranslation } from "react-i18next";
 
 // Type for the regeneration factory function passed from ChatUI
 export type RegenerationFactory = (regenerationRequest: {
@@ -99,6 +100,7 @@ const AgentMessage = React.memo(function AgentMessage({
   const markdownRef = useRef<HTMLDivElement>(null);
   const finalAnswerRef = useRef<HTMLDivElement>(null);
   const { foregroundTextClass, foregroundTextStyle } = useAppBackground();
+  const { t } = useTranslation();
 
   // If packets are empty but we have finalMessageText (historical message),
   // create synthetic packets for rendering
@@ -166,6 +168,7 @@ const AgentMessage = React.memo(function AgentMessage({
     isComplete,
     onRenderComplete,
     finalAnswerComing,
+    streamSilentSeconds,
     toolProcessingDuration,
   } = usePacketProcessor(effectivePackets, nodeId);
 
@@ -292,6 +295,23 @@ const AgentMessage = React.memo(function AgentMessage({
               </RendererComponent>
             ))}
           </div>
+        )}
+        {/* The backend stream can go quiet for minutes: Ollama withholds
+            tool-call arguments until the call is complete, so a model writing
+            a document reports nothing meanwhile. Show that work continues
+            rather than leaving the answer looking frozen. */}
+        {streamSilentSeconds !== null && !stopPacketSeen && (
+          // Same shimmer the timeline header uses while streaming, so a quiet
+          // stretch reads as the same "working" state rather than a new kind
+          // of message. No color class or inline color here: the gradient is
+          // painted through the glyphs, which needs the text transparent.
+          <Text
+            as="p"
+            secondaryBody
+            className="animate-shimmer mt-1 bg-[length:200%_100%] bg-[linear-gradient(90deg,var(--shimmer-base)_10%,var(--shimmer-highlight)_40%,var(--shimmer-base)_70%)] bg-clip-text text-transparent"
+          >
+            {t("agentMessage.stillWorking", { seconds: streamSilentSeconds })}
+          </Text>
         )}
         {/* Show stopped message when user cancelled and no display content */}
         {visibleDisplayGroups.length === 0 &&

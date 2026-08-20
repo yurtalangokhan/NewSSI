@@ -320,6 +320,30 @@ describe("usePacketProcessor", () => {
       // The tool should reset finalAnswerComing since it's an actual tool call
       expect(result.current.finalAnswerComing).toBe(false);
     });
+
+    test("keeps already-shown text visible while the new tool call is in progress", () => {
+      // A short preamble ("let me search for that") followed by a real tool
+      // call must not erase the preamble while the tool call plays out —
+      // that read as the text getting written then deleted on every call.
+      const initialPackets = [createMessageStartPacket({ turn_index: 0 })];
+
+      const { result, rerender } = renderHook(
+        ({ packets }) => usePacketProcessor(packets, 1),
+        { initialProps: { packets: initialPackets } }
+      );
+
+      expect(result.current.displayGroups.length).toBe(1);
+
+      const packetsWithToolAfter = [
+        ...initialPackets,
+        createSearchToolStartPacket({ turn_index: 1 }),
+      ];
+      rerender({ packets: packetsWithToolAfter });
+
+      expect(result.current.finalAnswerComing).toBe(false);
+      // The preamble stays visible instead of being hidden mid-tool-call.
+      expect(result.current.displayGroups.length).toBe(1);
+    });
   });
 
   describe("onRenderComplete callback", () => {

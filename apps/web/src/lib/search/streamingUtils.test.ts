@@ -265,5 +265,103 @@ describe("handleSSEStream", () => {
     // Reasoning should remain in a single turn index, not split by document generation packets
     expect(reasoningTurns.size).toBe(1);
   });
+
+  it("does not fragment the answer when reasoning resumes mid-answer", async () => {
+    // Gemini/Claude can interleave "thinking" blocks between chunks of
+    // visible text (think a bit -> write a bit -> think a bit -> write a
+    // bit). Treating that resumed reasoning as a tool boundary would bump
+    // turn_index, force a new message_start, and unmount/re-type the answer
+    // that already streamed in.
+    const response = createStreamingResponse([
+      'data: {"type":"reasoning_start"}\n',
+      'data: {"type":"reasoning_delta","reasoning":"planning"}\n',
+      'data: {"type":"token","content":"Here is "}\n',
+      'data: {"type":"reasoning_start"}\n',
+      'data: {"type":"reasoning_delta","reasoning":"more thinking"}\n',
+      'data: {"type":"token","content":"the rest."}\n',
+      'data: [DONE]\n',
+    ]);
+
+    const packets: any[] = [];
+    for await (const packet of handleSSEStream<any>(response)) {
+      packets.push(packet);
+    }
+
+    const answerTurns = packets
+      .filter((p) => p.obj?.type === "message_delta")
+      .map((p) => p.placement.turn_index);
+    // Both token chunks belong to the same answer turn.
+    expect(new Set(answerTurns).size).toBe(1);
+
+    // Only one message_start was ever synthesized for this answer — the
+    // resumed reasoning must not have forced a second one.
+    const messageStarts = packets.filter((p) => p.obj?.type === "message_start");
+    expect(messageStarts).toHaveLength(1);
+  });
+
+  it("gives each parallel tool call its own turn, keyed by call_id", async () => {
+    // A deep-research turn fires several web_search calls at once: all their
+    // custom_tool_start packets arrive before any result comes back. Without
+    // call_id-based splitting, every call lands in one turn and only the
+    // last call's result is attributed to it.
+    const response = createStreamingResponse([
+      'data: {"type":"custom_tool_start","tool_name":"web_search","args":{"query":"a"},"call_id":"call-a"}\n',
+      'data: {"type":"custom_tool_start","tool_name":"web_search","args":{"query":"b"},"call_id":"call-b"}\n',
+      'data: {"type":"custom_tool_delta","tool_name":"web_search","response_type":"tool_result","data":"result a","call_id":"call-a"}\n',
+      'data: {"type":"custom_tool_delta","tool_name":"web_search","response_type":"tool_result","data":"result b","call_id":"call-b"}\n',
+      'data: [DONE]\n',
+    ]);
+
+    const packets: any[] = [];
+    for await (const packet of handleSSEStream<any>(response)) {
+      packets.push(packet);
+    }
+
+    const starts = packets.filter((p) => p.obj?.type === "custom_tool_start");
+    const deltas = packets.filter((p) => p.obj?.type === "custom_tool_delta");
+    expect(starts).toHaveLength(2);
+    expect(deltas).toHaveLength(2);
+
+    const turnOf = (call_id: string, type: string) =>
+      packets.find((p) => p.obj?.type === type && p.obj?.call_id === call_id)
+        ?.placement.turn_index;
+
+    // Each call's start and its own delta share a turn, but the two calls
+    // don't share a turn with each other.
+    expect(turnOf("call-a", "custom_tool_start")).toBe(
+      turnOf("call-a", "custom_tool_delta")
+    );
+    expect(turnOf("call-b", "custom_tool_start")).toBe(
+      turnOf("call-b", "custom_tool_delta")
+    );
+    expect(turnOf("call-a", "custom_tool_start")).not.toBe(
+      turnOf("call-b", "custom_tool_start")
+    );
+  });
+  it("ignores SSE keep-alive comments", async () => {
+    // The backend sends ": keep-alive" comments during long silent
+    // generations so proxies don't drop the connection. They carry no
+    // packet and must not surface as parse errors or stray packets.
+    const errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+    const response = createStreamingResponse([
+      ': keep-alive\n',
+      'data: {"type":"token","content":"Hi"}\n',
+      ': keep-alive\n',
+      'data: [DONE]\n',
+    ]);
+
+    const packets: any[] = [];
+    for await (const packet of handleSSEStream<any>(response)) {
+      packets.push(packet);
+    }
+
+    expect(packets.map((p) => p.obj?.type)).toEqual([
+      "message_start",
+      "message_delta",
+      "stop",
+    ]);
+    expect(errorSpy).not.toHaveBeenCalled();
+    errorSpy.mockRestore();
+  });
 });
 

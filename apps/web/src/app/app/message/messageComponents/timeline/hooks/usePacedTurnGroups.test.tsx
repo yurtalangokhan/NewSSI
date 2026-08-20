@@ -416,7 +416,7 @@ describe("usePacedTurnGroups", () => {
   });
 
   describe("tool-after-message transition", () => {
-    test("resets toolPacingComplete when finalAnswerComing goes true → false with new tool step", () => {
+    test("resets toolPacingComplete when finalAnswerComing goes true → false with new tool step, without hiding already-shown text", () => {
       const displayGroup = createDisplayGroup(0);
 
       // Step 1: Render with finalAnswerComing=true, no tool steps
@@ -441,18 +441,20 @@ describe("usePacedTurnGroups", () => {
       expect(result.current.pacedDisplayGroups.length).toBe(1);
       expect(result.current.pacedFinalAnswerComing).toBe(true);
 
-      // Step 2: finalAnswerComing goes false + new tool step arrives
-      // This simulates the agent switching from message streaming back to tools
+      // Step 2: finalAnswerComing goes false + new tool step arrives.
+      // This simulates the agent writing a short preamble, then handing off
+      // to a real tool call (e.g. "let me search for that" -> web_search).
       const step1 = createStep(0, 0);
       rerender({
         turnGroups: [createTurnGroup([step1])],
         finalAnswerComing: false,
       });
 
-      // toolPacingComplete was reset, so display groups should be hidden
-      // (first tool step is revealed immediately, but pacing just re-started)
+      // toolPacingComplete was reset (re-pacing the new tool step), but the
+      // preamble that was already on screen must stay visible — hiding it
+      // here would read as the text getting written then deleted.
       expect(result.current.pacedTurnGroups.length).toBe(1);
-      expect(result.current.pacedDisplayGroups.length).toBe(0);
+      expect(result.current.pacedDisplayGroups.length).toBe(1);
 
       // Step 3: Add a second tool step so pacing is not yet complete
       const step2 = createStep(1, 0);
@@ -461,15 +463,15 @@ describe("usePacedTurnGroups", () => {
         finalAnswerComing: false,
       });
 
-      // Display groups still hidden (pacing incomplete)
-      expect(result.current.pacedDisplayGroups.length).toBe(0);
+      // Still showing the frozen preamble while pacing catches up.
+      expect(result.current.pacedDisplayGroups.length).toBe(1);
 
       // Step 4: Advance timer to complete pacing
       act(() => {
         jest.advanceTimersByTime(200);
       });
 
-      // Now pacing is complete → display groups shown again
+      // Now pacing is complete → display groups reflect the latest content.
       expect(result.current.pacedTurnGroups.length).toBe(2);
       expect(result.current.pacedDisplayGroups.length).toBe(1);
     });

@@ -155,6 +155,14 @@ export async function* handleSSEStream<T extends PacketType>(
   let turnIndex = 0;
   let sawToolPackets = false;
   let lastToolPacketType: string | null = null;
+  // A single AI turn can fire several calls to the same tool at once (e.g.
+  // parallel web_search calls): all their `custom_tool_start`s arrive before
+  // any result comes back, so by the time a call's own `custom_tool_delta`
+  // shows up, turnIndex has already moved on to later calls. Each call's
+  // turn is remembered here by call_id — like `documentTurnIndex` below —
+  // so its delta is placed back on its own turn instead of whatever turn
+  // happens to be current when it arrives.
+  const toolCallTurns = new Map<string, number>();
   // If tokens were already streamed for the current answer, skip the later
   // full "message" packet from backend to avoid duplicate text rendering.
   let sawTokenForCurrentAnswer = false;
@@ -192,6 +200,12 @@ export async function* handleSSEStream<T extends PacketType>(
         if (line.trim() === "") continue;
 
         const trimmedLine = line.trim();
+        // SSE comment (": keep-alive") — the backend sends these so proxies
+        // don't treat a long silent generation as an idle connection. They
+        // carry no packet, so drop them before the JSON parse below.
+        if (trimmedLine.startsWith(":")) {
+          continue;
+        }
         if (trimmedLine === "data: [DONE]" || trimmedLine === "[DONE]" || trimmedLine === "data:") {
           yield {
             placement: { turn_index: turnIndex, sub_turn_index: null },
@@ -231,23 +245,46 @@ export async function* handleSSEStream<T extends PacketType>(
           // "genfile" group suffix instead, so the card renders after the text.
           const isGeneratedFilePkt =
             getCategoryFor(backendPacket.type)?.id === GENERATED_FILE_CATEGORY_ID;
+          // Reasoning resuming after the answer has already started (Gemini and
+          // Claude can interleave "thinking" blocks between chunks of visible
+          // text) is likewise exempt. It still lands in its own group via the
+          // "reasoning" suffix, so treating it as a tool boundary here would
+          // only fragment the in-progress answer into a new turn/message_start,
+          // unmounting and re-typing the text that was already rendered.
+          const isMidAnswerReasoningPkt =
+            getCategoryFor(backendPacket.type)?.id === "reasoning" &&
+            hasMessageStartForCurrentAnswer;
           const isToolPkt =
-            TOOL_PACKET_TYPES.has(backendPacket.type) && !isGeneratedFilePkt;
-          if (isGeneratedFilePkt) {
+            TOOL_PACKET_TYPES.has(backendPacket.type) &&
+            !isGeneratedFilePkt &&
+            !isMidAnswerReasoningPkt;
+          if (isGeneratedFilePkt || isMidAnswerReasoningPkt) {
             // Document generation packets ride the current turn (or documentTurnIndex)
-            // without breaking tool or display pacing state.
+            // without breaking tool or display pacing state. Same for mid-answer
+            // reasoning packets — see comment above.
           } else if (isToolPkt) {
+            const callId = (backendPacket as any).call_id ?? null;
+            const isNewCallStart =
+              backendPacket.type === "custom_tool_start" &&
+              !!callId &&
+              !toolCallTurns.has(callId);
             if (!sawToolPackets) {
               turnIndex++; // display → tool: pre-tool text gets its own group
               sawTokenForCurrentAnswer = false;
               hasMessageStartForCurrentAnswer = false;
-            } else if (lastToolPacketType && shouldSplitCategories(lastToolPacketType, backendPacket.type)) {
+            } else if (
+              (lastToolPacketType && shouldSplitCategories(lastToolPacketType, backendPacket.type)) ||
+              isNewCallStart
+            ) {
               turnIndex++;
               sawTokenForCurrentAnswer = false;
               hasMessageStartForCurrentAnswer = false;
             }
             sawToolPackets = true;
             lastToolPacketType = backendPacket.type;
+            if (backendPacket.type === "custom_tool_start" && callId && !toolCallTurns.has(callId)) {
+              toolCallTurns.set(callId, turnIndex);
+            }
           } else if (sawToolPackets) {
             turnIndex++;
             sawToolPackets = false;
@@ -307,10 +344,13 @@ export async function* handleSSEStream<T extends PacketType>(
           if (backendPacket.type === "document_generation_start") {
             documentTurnIndex = turnIndex;
           }
+          const packetCallId = (backendPacket as any).call_id ?? null;
           mappedPacket.placement.turn_index =
             isGeneratedFilePkt && documentTurnIndex !== null
               ? documentTurnIndex
-              : turnIndex;
+              : packetCallId && toolCallTurns.has(packetCallId)
+                ? toolCallTurns.get(packetCallId)!
+                : turnIndex;
           if (
             backendPacket.type === "document_generation_end" &&
             (backendPacket as any).status === "success"
