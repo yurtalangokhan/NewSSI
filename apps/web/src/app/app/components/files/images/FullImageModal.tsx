@@ -1,47 +1,29 @@
 "use client";
 
-import { useEffect } from "react";
-import { useTranslation } from "react-i18next";
-import { buildImgUrl } from "@/app/app/components/files/images/utils";
-import { cn } from "@/lib/utils";
-import * as Dialog from "@radix-ui/react-dialog";
+import PreviewModal from "@/sections/modals/PreviewModal";
 
 interface FullImageModalProps {
   fileId: string;
+  fileName?: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
 export function FullImageModal({
   fileId,
+  fileName,
   open,
   onOpenChange,
 }: FullImageModalProps) {
-  const { t } = useTranslation("common", { keyPrefix: "common" });
-  // pre-fetch image
-  useEffect(() => {
-    const img = new Image();
-    img.src = buildImgUrl(fileId);
-  }, [fileId]);
+  if (!open) return null;
 
   return (
-    <Dialog.Root open={open} onOpenChange={onOpenChange}>
-      <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 bg-black bg-opacity-80 z-50 backdrop-blur-xl" />
-        <Dialog.Content
-          className={cn(
-            "fixed inset-0 flex items-center justify-center p-4 z-[100]",
-            "max-w-screen-lg h-fit top-1/2 left-1/2 -translate-y-2/4 -translate-x-2/4",
-            "focus:outline-none"
-          )}
-        >
-          <img
-            src={buildImgUrl(fileId)}
-            alt={t("uploadedImageAlt")}
-            className="max-w-full max-h-full"
-          />
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
+    <PreviewModal
+      presentingDocument={{
+        document_id: fileId,
+        semantic_identifier: fileName || null,
+      }}
+      onClose={() => onOpenChange(false)}
+    />
   );
 }
