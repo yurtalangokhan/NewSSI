@@ -13,6 +13,7 @@ from controller.base import BaseController
 from controller.thread_controller import ThreadController, get_thread_controller
 from core.llm import get_model
 from service.CheckpointerService import get_checkpointer
+from service.DocumentProgressTracker import is_document_tool
 from service.GeneratedFilePacket import (
     build_generated_file_packet_obj,
     parse_generated_file_payload,
@@ -897,6 +898,13 @@ class ChatController(BaseController):
                                 if isinstance(tool_call, dict)
                                 else getattr(tool_call, "id", None)
                             )
+                            # A document tool is shown by its generated_file
+                            # card alone, exactly as the live stream does it.
+                            # Adding a generic tool step here made a reloaded
+                            # conversation grow an extra timeline entry the
+                            # user never saw while it was streaming.
+                            if is_document_tool(tool_name):
+                                continue
                             pending_tool_packets.append(
                                 {
                                     "placement": {"turn_index": 0, "sub_turn_index": None},

@@ -115,7 +115,10 @@ export function usePacedTurnGroups(
   // reading as the text getting written then deleted before the model
   // "goes back" into visible thinking. Freeze on the last shown groups
   // instead, so already-revealed text stays put while new steps pace in.
-  const lastDisplayGroupsRef = useRef<GroupedPacket[]>([]);
+  // Keys rather than the group objects: the groups are rebuilt each pass, so
+  // holding them would pin a snapshot and any text arriving during the pacing
+  // window would never render.
+  const lastDisplayGroupKeysRef = useRef<Set<string>>(new Set());
 
   // Trigger re-render when content should update
   // Used in useMemo dependencies since state.revealedStepKeys is stored in a ref
@@ -132,7 +135,7 @@ export function usePacedTurnGroups(
     stateRef.current = createInitialPacingState();
     stateRef.current.nodeId = nodeIdStr;
     prevPacedRef.current = [];
-    lastDisplayGroupsRef.current = [];
+    lastDisplayGroupKeysRef.current = new Set();
   }
 
   const state = stateRef.current;
@@ -363,10 +366,13 @@ export function usePacedTurnGroups(
   // tool step, or text already on screen would flash away and back.
   const pacedDisplayGroups = useMemo(() => {
     if (shouldBypassPacing || state.toolPacingComplete) {
-      lastDisplayGroupsRef.current = displayGroups;
+      lastDisplayGroupKeysRef.current = new Set(displayGroups.map((g) => g.key));
       return displayGroups;
     }
-    return lastDisplayGroupsRef.current;
+    // Re-select from the live groups so their latest content shows, instead
+    // of replaying a copy captured before the pacing window opened.
+    const shownKeys = lastDisplayGroupKeysRef.current;
+    return displayGroups.filter((g) => shownKeys.has(g.key));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.toolPacingComplete, displayGroups, revealTrigger, shouldBypassPacing]);
 

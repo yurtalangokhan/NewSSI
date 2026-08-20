@@ -527,3 +527,67 @@ async def test_trailing_word_is_flushed_before_its_tool_steps(monkeypatch):
     assert last_token < first_tool, (
         "answer text arrived after the tool steps it introduces"
     )
+
+class _QuietWhileWritingDocumentAgent:
+    """Writes a sentence, then goes quiet while composing a document.
+
+    Ollama withholds tool-call arguments until the call is complete, so the
+    document phase reaches the stream as pure silence.
+    """
+
+    def __init__(self, *, quiet_seconds: float) -> None:
+        self._quiet_seconds = quiet_seconds
+
+    async def aget_state(self, *args, **kwargs):
+        class _State:
+            tasks = []
+            values = {}
+
+        return _State()
+
+    async def astream(self, *args, **kwargs):
+        import asyncio as _asyncio
+
+        yield _answer_chunk("sayfalara erisme ", message_id="call-1")
+        # No trailing space, so the tag processor holds this word back.
+        yield _answer_chunk("gerekiyor:", message_id="call-1")
+        await _asyncio.sleep(self._quiet_seconds)
+        yield _tool_args_chunk(
+            '{"filename": "r", "format": "pdf", "content": "x"}', name="create_document"
+        )
+
+
+@pytest.mark.asyncio
+async def test_buffered_word_is_released_while_the_stream_is_quiet(monkeypatch):
+    """The tail of a sentence must not wait out the whole document phase.
+
+    Held in the buffer it renders nowhere, leaving a frozen cursor for as
+    long as the document takes and appearing only once it is finished.
+    """
+    from api.routes import AgentsRoute
+
+    monkeypatch.setattr(AgentsRoute.settings, "STREAM_HEARTBEAT_SECONDS", 0.05)
+    monkeypatch.setattr(
+        AgentsRoute.AssistantAgentService,
+        "get_instance",
+        lambda: _FakeAssistantService(_QuietWhileWritingDocumentAgent(quiet_seconds=0.3)),
+    )
+    monkeypatch.setattr(AgentsRoute, "_handle_input", _fake_handle_input)
+
+    seen_word_at = None
+    seen_document_at = None
+    for index, chunk in enumerate(
+        [c async for c in AgentsRoute.message_generator(
+            StreamInput(message="arastir"), agent_id="chatbot", user_id="user-1"
+        )]
+    ):
+        if seen_word_at is None and "gerekiyor:" in chunk:
+            seen_word_at = index
+        if seen_document_at is None and "document_generation_start" in chunk:
+            seen_document_at = index
+
+    assert seen_word_at is not None, "the buffered word never reached the client"
+    assert seen_document_at is not None
+    assert seen_word_at < seen_document_at, (
+        "the word only appeared once the document was done"
+    )

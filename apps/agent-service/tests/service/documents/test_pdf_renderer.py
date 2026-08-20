@@ -170,3 +170,34 @@ def test_callout_renders_type_label_and_body():
     text = PdfReader(io.BytesIO(data)).pages[0].extract_text()
     assert "WARNING" in text
     assert "dikkatli olun" in text
+
+
+class TestInDocumentAnchors:
+    """Links a model writes into its own table of contents.
+
+    ReportLab treats an unresolvable `#target` as fatal, so these decide
+    whether the document renders at all.
+    """
+
+    _MARKDOWN = (
+        "# Rapor\n\n"
+        "## Icindekiler\n"
+        "- [Yonetici Ozeti]({link})\n\n"
+        "## Yonetici Ozeti\n"
+        "Metin.\n"
+    )
+
+    def test_anchor_matching_a_heading_renders(self):
+        pdf = render_pdf("T", self._MARKDOWN.format(link="#yonetici-ozeti"))
+        assert pdf.startswith(b"%PDF")
+
+    def test_anchor_matching_no_heading_does_not_fail_the_document(self):
+        # Models mangle their own slugs (here the Turkish dotted/dotless i),
+        # which used to abort the whole document with "undefined destination
+        # target". The link degrades to plain text instead.
+        pdf = render_pdf("T", self._MARKDOWN.format(link="#yönetıcı-özeti"))
+        assert pdf.startswith(b"%PDF")
+
+    def test_external_links_are_untouched(self):
+        pdf = render_pdf("T", "# R\n\n[site](https://example.com)\n")
+        assert pdf.startswith(b"%PDF")

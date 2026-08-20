@@ -419,8 +419,10 @@ async def test_get_chat_session_reconstructs_generated_file_packet_from_tool_mes
     assert generated_file_packets[0]["obj"]["filename"] == "rapor.pdf"
     assert generated_file_packets[0]["obj"]["download_url"] == "/api/chat/file/abc123?download=1"
 
-    # Document tools emit tool step packets so they register in the timeline.
-    assert any(
+    # The file card represents the document on its own — the live stream
+    # suppresses the generic tool step for document tools, so reconstruction
+    # must not add one either.
+    assert not any(
         p["obj"]["type"] == "custom_tool_start" and p["obj"].get("tool_name") == "create_document"
         for p in all_packets
     )
@@ -498,3 +500,63 @@ async def test_get_chat_session_keeps_text_written_before_a_tool_call():
 
     assert "Simdi en onemli kaynaklari inceleyelim." in starts
     assert "Sonuclari derledim." in starts
+
+@pytest.mark.asyncio
+async def test_get_chat_session_does_not_add_a_tool_step_for_document_tools():
+    """A document tool is represented by its file card alone.
+
+    The live stream suppresses the generic tool step for it, so emitting one
+    here made a reloaded conversation grow a timeline entry the user never
+    saw while it was streaming.
+    """
+    payload = json.dumps(
+        {
+            "__generated_file__": True,
+            "file_id": "abc123",
+            "filename": "rapor.pdf",
+            "mime_type": "application/pdf",
+            "size_bytes": 42,
+            "download_url": "/api/chat/file/abc123?download=1",
+        }
+    )
+    thread = {
+        "thread_id": "thread-doc-step",
+        "metadata": {"user_id": "user-1", "persona_id": 1, "name": "Chat"},
+    }
+    state = {
+        "values": {
+            "messages": [
+                HumanMessage(content="rapor hazirla"),
+                {
+                    "type": "ai",
+                    "content": "",
+                    "tool_calls": [
+                        {"name": "web_search", "args": {"query": "a"}, "id": "c1"},
+                        {"name": "create_document", "args": {"filename": "r"}, "id": "c2"},
+                    ],
+                },
+                {"type": "tool", "name": "web_search", "content": "ok", "tool_call_id": "c1"},
+                {
+                    "type": "tool",
+                    "name": "create_document",
+                    "content": payload,
+                    "tool_call_id": "c2",
+                },
+                AIMessage(content="Hazir."),
+            ]
+        }
+    }
+
+    controller = ChatController(
+        thread_controller=DummyThreadController(thread=thread, state=state),
+        user_id="user-1",
+    )
+
+    result = await controller.get_chat_session("thread-doc-step")
+    objs = [p["obj"] for grp in result["packets"] for p in grp]
+    tool_steps = [o.get("tool_name") for o in objs if o["type"] == "custom_tool_start"]
+
+    assert "create_document" not in tool_steps
+    assert "web_search" in tool_steps
+    # The document is still represented — by its file card.
+    assert any(o["type"] == "generated_file" for o in objs)

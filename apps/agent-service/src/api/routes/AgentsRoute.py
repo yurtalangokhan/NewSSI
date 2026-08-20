@@ -536,6 +536,22 @@ async def message_generator(
                 payloads.append(f"data: {json.dumps(evt)}\n\n")
         return payloads
 
+    def _flush_idle_answer_text() -> list[str]:
+        """Release buffered answer text once the stream has fallen quiet.
+
+        Waiting for the tool call to arrive is not good enough here: Ollama
+        withholds tool-call arguments until the call is complete, so a model
+        writing a document sends nothing for a minute or more. The tail of
+        the sentence it wrote just before would sit unrendered behind a
+        blinking cursor for that whole time, then appear only once the
+        document lands. Silence means no tag can still be arriving, so the
+        text is safe to release — unless a partial tag really is pending, in
+        which case emitting it would leak markup like "<thi" into the chat.
+        """
+        if "<" in thinking_processor.buffer:
+            return []
+        return _flush_pending_answer_text()
+
     try:
         async for stream_event in _with_idle_heartbeat(
             agent.astream(
@@ -548,6 +564,11 @@ async def message_generator(
                 # keeps proxies from seeing an idle connection while the model
                 # writes a long tool call (see `_with_idle_heartbeat`).
                 yield ": keep-alive\n\n"
+                # Nothing more is coming for now, so anything the tag
+                # processor is still holding back belongs on screen rather
+                # than stuck behind the cursor for the rest of the wait.
+                for payload in _flush_idle_answer_text():
+                    yield payload
                 # Ollama does not stream tool-call arguments, so a model
                 # writing a document goes quiet for minutes with nothing to
                 # report progress from. Tell the client how long the wait has
