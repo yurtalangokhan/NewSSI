@@ -649,7 +649,7 @@ async def send_chat_message(
     if file_descriptors:
         import base64 as _base64
 
-        from service.FileService import IMAGE_MIMES
+        from service.FileService import IMAGE_MIMES, normalize_image_for_llm
         from service.FileService import store_file as _store_file
         from service.Utils import _extract_file_blocks
 
@@ -747,10 +747,11 @@ async def send_chat_message(
                 )
 
             if m in IMAGE_MIMES:
+                norm_data, norm_mime = normalize_image_for_llm(fd_data, m)
                 file_content_blocks.append(
                     {
                         "type": "image_url",
-                        "image_url": {"url": f"data:{m};base64,{fd_data}"},
+                        "image_url": {"url": f"data:{norm_mime};base64,{norm_data}"},
                     }
                 )
             else:

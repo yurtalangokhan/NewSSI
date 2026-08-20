@@ -16,6 +16,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from PIL import Image, ImageOps
 from langchain_core.documents.base import Blob
 
 logger = logging.getLogger(__name__)
@@ -316,3 +317,100 @@ def to_csv_text(record: FileRecord) -> str:
     except Exception as e:
         logger.error("XLSX→CSV conversion failed for %s: %s", record.file_id, e)
         return ""
+
+
+MAX_IMAGE_DIMENSION = 2048
+
+
+def normalize_image_for_llm(data_b64: str, mime_type: str = "image/jpeg") -> tuple[str, str]:
+    """
+    Normalize image data to a format fully supported by LLM vision runtimes
+    (e.g., Ollama / llama.cpp / stb_image, which do not support WebP, AVIF, HEIC, TIFF, CMYK, etc.).
+
+    Key transformations:
+    - Extracts the primary frame from multi-frame / MPO (portrait mode) / animated images.
+    - Handles fake file extensions (e.g. WebP/AVIF file named as .jpg).
+    - Converts CMYK, palette, and unusual color modes to standard RGB.
+    - Handles transparency cleanly with white background or PNG encoding.
+    - Auto-orients image based on EXIF metadata.
+    - Downscales oversized dimensions (>2048px) to prevent context token and VRAM exhaustion.
+
+    Returns:
+        (normalized_base64_data, normalized_mime_type)
+    """
+    if not data_b64:
+        return data_b64, mime_type
+
+    clean_b64 = data_b64
+    if "," in clean_b64:
+        clean_b64 = clean_b64.split(",")[-1]
+
+    try:
+        raw_bytes = base64.b64decode(clean_b64)
+        with Image.open(io.BytesIO(raw_bytes)) as img:
+            # Handle multi-frame images (e.g., animated GIF, MPO portrait mode JPEG)
+            try:
+                img.seek(0)
+            except Exception:
+                pass
+
+            orig_format = (img.format or "").upper()
+            orig_mode = img.mode
+            has_exif = False
+            try:
+                exif = img.getexif()
+                if exif and len(exif) > 0:
+                    has_exif = True
+                    img = ImageOps.exif_transpose(img) or img
+            except Exception:
+                pass
+
+            w, h = img.size
+            needs_reencoding = has_exif or orig_mode not in ("RGB", "L")
+            if max(w, h) > MAX_IMAGE_DIMENSION:
+                scale = MAX_IMAGE_DIMENSION / max(w, h)
+                new_w, new_h = max(1, int(w * scale)), max(1, int(h * scale))
+                img = img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+                needs_reencoding = True
+
+            norm_mime = mime_type.lower().split(";")[0].strip() if mime_type else "image/jpeg"
+
+            # Direct passthrough for already-clean, standard RGB JPEG
+            if (
+                not needs_reencoding
+                and norm_mime in ("image/jpeg", "image/jpg")
+                and orig_format == "JPEG"
+                and orig_mode == "RGB"
+            ):
+                return clean_b64, "image/jpeg"
+
+            # Direct passthrough for already-clean standard PNG
+            if (
+                not needs_reencoding
+                and norm_mime == "image/png"
+                and orig_format == "PNG"
+                and orig_mode in ("RGB", "RGBA", "L")
+            ):
+                return clean_b64, "image/png"
+
+            out_buf = io.BytesIO()
+            if img.mode in ("RGBA", "LA") and ("A" in img.getbands()):
+                # Keep PNG for transparent images
+                img.save(out_buf, format="PNG")
+                target_mime = "image/png"
+            else:
+                if img.mode != "RGB":
+                    if img.mode in ("RGBA", "LA"):
+                        bg = Image.new("RGB", img.size, (255, 255, 255))
+                        bg.paste(img, mask=img.split()[-1])
+                        img = bg
+                    else:
+                        img = img.convert("RGB")
+                img.save(out_buf, format="JPEG", quality=90, optimize=True)
+                target_mime = "image/jpeg"
+
+            out_b64 = base64.b64encode(out_buf.getvalue()).decode("ascii")
+            return out_b64, target_mime
+    except Exception as e:
+        logger.warning("Failed to normalize image for LLM: %s", e)
+        return clean_b64, mime_type
