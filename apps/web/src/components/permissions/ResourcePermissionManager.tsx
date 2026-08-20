@@ -135,7 +135,7 @@ export function ResourcePermissionManager({
   );
 
   // Fetch organizations
-  const { data: organizations } = useSWR<Organization[]>(
+  const { data: rawOrganizations } = useSWR<any>(
     "/api/organizations",
     async (url: string) => {
       const res = await fetch(url);
@@ -144,12 +144,29 @@ export function ResourcePermissionManager({
     }
   );
 
+  const organizations = useMemo<Organization[] | undefined>(() => {
+    if (!rawOrganizations) return undefined;
+    if (Array.isArray(rawOrganizations)) return rawOrganizations;
+    if (Array.isArray(rawOrganizations.items)) return rawOrganizations.items;
+    if (Array.isArray(rawOrganizations.organizations)) return rawOrganizations.organizations;
+    return [];
+  }, [rawOrganizations]);
+
   // Fetch users for search
-  const { data: users } = useSWR<UserInfo[]>("/api/users", async (url: string) => {
+  const { data: rawUsers } = useSWR<any>("/api/users", async (url: string) => {
     const res = await fetch(url);
     if (!res.ok) throw new Error("Failed to fetch users");
     return res.json();
   });
+
+  const users = useMemo<UserInfo[] | undefined>(() => {
+    if (!rawUsers) return undefined;
+    if (Array.isArray(rawUsers)) return rawUsers;
+    if (Array.isArray(rawUsers.users)) return rawUsers.users;
+    if (Array.isArray(rawUsers.items)) return rawUsers.items;
+    if (Array.isArray(rawUsers.accepted)) return rawUsers.accepted;
+    return [];
+  }, [rawUsers]);
 
   const handleAddUserPermission = useCallback(
     async (userId: string, level: PermissionLevel) => {
