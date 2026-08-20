@@ -128,7 +128,7 @@ export default function Page() {
     <SettingsLayouts.Root>
       <SettingsLayouts.Header
         icon={route.icon}
-        title={route.title}
+        title={route.titleKey ? t(route.titleKey, { defaultValue: route.title }) : route.title}
         description={t("admin.discord.pageDescription")}
       />
       <SettingsLayouts.Body>

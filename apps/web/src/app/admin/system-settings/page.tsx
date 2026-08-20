@@ -369,7 +369,15 @@ export default function SystemSettingsPage() {
 
   return (
     <SettingsLayouts.Root width="full">
-      <SettingsLayouts.Header icon={route.icon} title={route.title} separator />
+      <SettingsLayouts.Header
+        icon={route.icon}
+        title={
+          route.titleKey
+            ? t(route.titleKey, { defaultValue: route.title })
+            : route.title
+        }
+        separator
+      />
       <SettingsLayouts.Body>
         <div className="flex flex-col gap-4">
           <AdminOverviewPanel

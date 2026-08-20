@@ -31,13 +31,6 @@ const connectors_items = (
   sidebarItem(ADMIN_PATHS.ADD_CONNECTOR, t),
 ];
 
-const document_management_items = (
-  t: (key: string, options?: { defaultValue?: string }) => string
-) => [
-  sidebarItem(ADMIN_PATHS.DOCUMENT_SETS, t),
-  sidebarItem(ADMIN_PATHS.DOCUMENT_EXPLORER, t),
-];
-
 const custom_agents_items = (
   t: (key: string, options?: { defaultValue?: string }) => string,
   isCurator: boolean,
@@ -197,9 +190,9 @@ export default function AdminSidebar({
       ...collection,
       items: isPermissionsLoading
         ? []
-        : collection.items.filter((item) =>
-            hasAllPermissions(item.requiredPermissions)
-          ),
+        : collection.items
+            .filter((item) => item.enabled !== false)
+            .filter((item) => hasAllPermissions(item.requiredPermissions)),
     }))
     .filter((collection) => collection.items.length > 0);
 

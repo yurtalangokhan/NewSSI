@@ -459,13 +459,7 @@ function Main({
   const isExplorer = activeTab === "explorer";
 
   return (
-    <div
-      className="flex flex-col gap-y-6 mx-auto w-full"
-      style={{
-        maxWidth: isExplorer ? "100%" : "54.5rem",
-        transition: "max-width 500ms ease-in-out",
-      }}
-    >
+    <div className="flex flex-col gap-y-6 mx-auto w-full">
       <AdminOverviewPanel
         icon={route.icon}
         title={t("admin.kg.workspaceTitle")}
@@ -495,10 +489,6 @@ function Main({
           {
             label: t("admin.navigation.routes.documentProcessing.sidebar"),
             href: ADMIN_PATHS.DOCUMENT_PROCESSING,
-          },
-          {
-            label: t("admin.navigation.routes.documentExplorer.sidebar"),
-            href: ADMIN_PATHS.DOCUMENT_EXPLORER,
             primary: true,
           },
         ]}
@@ -572,24 +562,33 @@ export default function Page() {
   const { t } = useTranslation();
   const { kgExposed, isLoading } = useIsKGExposed();
   const [activeTab, setActiveTab] = useState("build");
+  const isExplorer = activeTab === "explorer";
 
   if (isLoading) return <></>;
   if (!kgExposed) redirect("/");
 
   return (
     <SettingsLayouts.Root width="full">
-      <SettingsLayouts.Header
-        icon={route.icon}
-        title={t(route.titleKey || "", { defaultValue: route.title })}
-        description={t("admin.kg.pageDescription", {
-          defaultValue:
-            "Build, inspect, and search entity graphs across your indexed knowledge sources.",
-        })}
-        separator
-      />
-      <SettingsLayouts.Body>
-        <Main activeTab={activeTab} onTabChange={setActiveTab} />
-      </SettingsLayouts.Body>
+      <div
+        className="w-full mx-auto"
+        style={{
+          maxWidth: isExplorer ? "100%" : "54.5rem",
+          transition: "max-width 500ms ease-in-out",
+        }}
+      >
+        <SettingsLayouts.Header
+          icon={route.icon}
+          title={t(route.titleKey || "", { defaultValue: route.title })}
+          description={t("admin.kg.pageDescription", {
+            defaultValue:
+              "Build, inspect, and search entity graphs across your indexed knowledge sources.",
+          })}
+          separator
+        />
+        <SettingsLayouts.Body>
+          <Main activeTab={activeTab} onTabChange={setActiveTab} />
+        </SettingsLayouts.Body>
+      </div>
     </SettingsLayouts.Root>
   );
 }

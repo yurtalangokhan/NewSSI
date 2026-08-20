@@ -563,12 +563,6 @@ export default function LLMConfigurationPage() {
                 defaultValue: "Web Search",
               }),
               href: ADMIN_PATHS.WEB_SEARCH,
-            },
-            {
-              label: t("admin.navigation.routes.llmModels.sidebar", {
-                defaultValue: "LLM Models",
-              }),
-              href: ADMIN_PATHS.LLM_MODELS,
               primary: true,
             },
           ]}

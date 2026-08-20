@@ -222,7 +222,7 @@ export default function Page() {
   return (
     <SettingsLayouts.Root>
       <SettingsLayouts.Header
-        title={route.title}
+        title={route.titleKey ? t(route.titleKey, { defaultValue: route.title }) : route.title}
         icon={route.icon}
         separator
       />

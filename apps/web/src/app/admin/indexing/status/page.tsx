@@ -123,15 +123,11 @@ export default function Status() {
           ]}
           actions={[
             {
-              label: t("admin.indexingStatus.addConnector"),
-              href: ADMIN_PATHS.ADD_CONNECTOR,
-              primary: true,
-            },
-            {
               label: t("admin.documentProcessing.title", {
                 defaultValue: "Document Processing",
               }),
               href: ADMIN_PATHS.DOCUMENT_PROCESSING,
+              primary: true,
             },
           ]}
         />

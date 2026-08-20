@@ -22,18 +22,6 @@ export interface ClientLayoutProps {
   enableCloud: boolean;
 }
 
-export const DISABLED_ADMIN_PATHS = [
-  ADMIN_PATHS.DOCUMENTS,
-  ADMIN_PATHS.DOCUMENT_SETS,
-  ADMIN_PATHS.DOCUMENT_EXPLORER,
-  ADMIN_PATHS.DOCUMENT_FEEDBACK,
-  ADMIN_PATHS.CHAT_PREFERENCES,
-  ADMIN_PATHS.IMAGE_GENERATION,
-  ADMIN_PATHS.CODE_INTERPRETER,
-  ADMIN_PATHS.SEARCH_SETTINGS,
-  ADMIN_PATHS.API_KEYS,
-];
-
 // Pages using SettingsLayouts handle their own padding/centering.
 const SETTINGS_LAYOUT_PREFIXES = [
   ADMIN_PATHS.INDEXING_STATUS,
@@ -101,10 +89,7 @@ export function ClientLayout({
     pathname.startsWith(prefix)
   );
 
-  const isRouteDisabled = DISABLED_ADMIN_PATHS.some(
-    (disabledPath) =>
-      pathname === disabledPath || pathname.startsWith(`${disabledPath}/`)
-  );
+  const isRouteDisabled = routeConfig?.enabled === false;
 
   if (isRouteDisabled) {
     return <HttpErrorPage code={404} />;
