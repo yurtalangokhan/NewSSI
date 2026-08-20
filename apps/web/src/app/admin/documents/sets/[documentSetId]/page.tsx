@@ -9,7 +9,7 @@ import * as SettingsLayouts from "@/layouts/settings-layouts";
 import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
 import CardSection from "@/components/admin/CardSection";
 import { DocumentSetCreationForm } from "../DocumentSetCreationForm";
-import { useRouter } from "next/navigation";
+import {  useRouter , notFound } from "next/navigation";
 import { useTranslation } from "react-i18next";
 
 function Main({ documentSetId }: { documentSetId: number }) {
@@ -87,6 +87,8 @@ function Main({ documentSetId }: { documentSetId: number }) {
 export default function Page(props: {
   params: Promise<{ documentSetId: string }>;
 }) {
+  notFound();
+
   const { t } = useTranslation();
   const params = use(props.params);
   const documentSetId = parseInt(params.documentSetId);

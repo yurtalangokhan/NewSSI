@@ -559,14 +559,16 @@ export default function LLMConfigurationPage() {
           ]}
           actions={[
             {
-              label: t("admin.navigation.routes.chatPreferences.sidebar", {
-                defaultValue: "Chat Preferences",
+              label: t("admin.navigation.routes.webSearch.sidebar", {
+                defaultValue: "Web Search",
               }),
-              href: ADMIN_PATHS.CHAT_PREFERENCES,
+              href: ADMIN_PATHS.WEB_SEARCH,
             },
             {
-              label: t("admin.navigation.routes.imageGeneration.sidebar"),
-              href: ADMIN_PATHS.IMAGE_GENERATION,
+              label: t("admin.navigation.routes.llmModels.sidebar", {
+                defaultValue: "LLM Models",
+              }),
+              href: ADMIN_PATHS.LLM_MODELS,
               primary: true,
             },
           ]}

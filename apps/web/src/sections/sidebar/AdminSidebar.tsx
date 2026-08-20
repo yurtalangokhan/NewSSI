@@ -78,14 +78,6 @@ const collections = (
           },
         ]
       : []),
-    ...(vectorDbEnabled
-      ? [
-          {
-            name: t("admin.navigation.sections.documentManagement"),
-            items: document_management_items(t),
-          },
-        ]
-      : []),
     {
       name: t("admin.navigation.sections.customAgents"),
       items: custom_agents_items(t, isCurator, enableEnterprise),
@@ -103,20 +95,9 @@ const collections = (
           {
             name: t("admin.navigation.sections.configuration"),
             items: [
-              sidebarItem(ADMIN_PATHS.CHAT_PREFERENCES, t),
               sidebarItem(ADMIN_PATHS.LLM_MODELS, t),
               sidebarItem(ADMIN_PATHS.WEB_SEARCH, t),
-              sidebarItem(ADMIN_PATHS.IMAGE_GENERATION, t),
-              sidebarItem(ADMIN_PATHS.CODE_INTERPRETER, t),
               sidebarItem(ADMIN_PATHS.MAIL_CONFIGS, t),
-              ...(!enableCloud && vectorDbEnabled
-                ? [
-                    {
-                      ...sidebarItem(ADMIN_PATHS.SEARCH_SETTINGS, t),
-                      error: settings?.settings.needs_reindexing,
-                    },
-                  ]
-                : []),
               sidebarItem(ADMIN_PATHS.DOCUMENT_PROCESSING, t),
               ...(kgExposed
                 ? [sidebarItem(ADMIN_PATHS.KNOWLEDGE_GRAPH, t)]
@@ -128,7 +109,6 @@ const collections = (
             items: [
               sidebarItem(ADMIN_PATHS.USERS, t),
               ...(enableEnterprise ? [sidebarItem(ADMIN_PATHS.GROUPS, t)] : []),
-              sidebarItem(ADMIN_PATHS.API_KEYS, t),
               sidebarItem(ADMIN_PATHS.ROLES, t),
               sidebarItem(ADMIN_PATHS.ORGANIZATIONS, t),
             ],

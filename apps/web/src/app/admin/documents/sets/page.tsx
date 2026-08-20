@@ -30,7 +30,7 @@ import {
   FiUnlock,
 } from "react-icons/fi";
 import { DeleteButton } from "@/components/DeleteButton";
-import { useRouter } from "next/navigation";
+import {  useRouter , notFound } from "next/navigation";
 import { TableHeader } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -438,6 +438,8 @@ function Main() {
 }
 
 export default function Page() {
+  notFound();
+
   const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.DOCUMENT_SETS]!;
   const { t } = useTranslation();
 

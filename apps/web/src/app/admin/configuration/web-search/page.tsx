@@ -973,14 +973,16 @@ export default function Page() {
             ]}
             actions={[
               {
-                label: t("admin.navigation.routes.chatPreferences.sidebar", {
-                  defaultValue: "Chat Preferences",
+                label: t("admin.navigation.routes.llmModels.sidebar", {
+                  defaultValue: "LLM Models",
                 }),
-                href: ADMIN_PATHS.CHAT_PREFERENCES,
+                href: ADMIN_PATHS.LLM_MODELS,
               },
               {
-                label: t("admin.navigation.routes.searchSettings.sidebar"),
-                href: ADMIN_PATHS.SEARCH_SETTINGS,
+                label: t("admin.navigation.routes.documentProcessing.sidebar", {
+                  defaultValue: "Document Processing",
+                }),
+                href: ADMIN_PATHS.DOCUMENT_PROCESSING,
                 primary: true,
               },
             ]}

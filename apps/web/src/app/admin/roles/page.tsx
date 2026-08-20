@@ -1661,10 +1661,6 @@ export default function Page() {
                 defaultValue: "Users",
               }),
               href: ADMIN_PATHS.USERS,
-            },
-            {
-              label: t("admin.navigation.routes.apiKeys.sidebar"),
-              href: ADMIN_PATHS.API_KEYS,
               primary: true,
             },
           ]}

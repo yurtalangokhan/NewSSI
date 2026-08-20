@@ -265,16 +265,16 @@ export default function Page() {
           ]}
           actions={[
             {
+              label: t("admin.navigation.routes.roles.sidebar", {
+                defaultValue: "Roles",
+              }),
+              href: ADMIN_PATHS.ROLES,
+            },
+            {
               label: t("admin.navigation.routes.users.sidebar", {
                 defaultValue: "Users",
               }),
               href: ADMIN_PATHS.USERS,
-            },
-            {
-              label: t("admin.navigation.routes.apiKeys.sidebar", {
-                defaultValue: "API Keys",
-              }),
-              href: ADMIN_PATHS.API_KEYS,
               primary: true,
             },
           ]}

@@ -165,14 +165,16 @@ export default function Page() {
           ]}
           actions={[
             {
+              label: t("admin.navigation.routes.slackBots.sidebar", {
+                defaultValue: "Slack Bots",
+              }),
+              href: ADMIN_PATHS.SLACK_BOTS,
+            },
+            {
               label: t("admin.navigation.routes.agents.sidebar", {
                 defaultValue: "Agents",
               }),
               href: ADMIN_PATHS.AGENTS,
-            },
-            {
-              label: t("admin.navigation.routes.chatPreferences.sidebar"),
-              href: ADMIN_PATHS.CHAT_PREFERENCES,
               primary: true,
             },
           ]}

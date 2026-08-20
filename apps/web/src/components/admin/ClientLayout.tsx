@@ -1,5 +1,7 @@
 "use client";
 
+import HttpErrorPage from "@/components/errorPages/HttpErrorPage";
+
 import AdminSidebar from "@/sections/sidebar/AdminSidebar";
 import { usePathname, useRouter } from "next/navigation";
 import { useSettingsContext } from "@/providers/SettingsProvider";
@@ -19,6 +21,18 @@ export interface ClientLayoutProps {
   enableEnterprise: boolean;
   enableCloud: boolean;
 }
+
+export const DISABLED_ADMIN_PATHS = [
+  ADMIN_PATHS.DOCUMENTS,
+  ADMIN_PATHS.DOCUMENT_SETS,
+  ADMIN_PATHS.DOCUMENT_EXPLORER,
+  ADMIN_PATHS.DOCUMENT_FEEDBACK,
+  ADMIN_PATHS.CHAT_PREFERENCES,
+  ADMIN_PATHS.IMAGE_GENERATION,
+  ADMIN_PATHS.CODE_INTERPRETER,
+  ADMIN_PATHS.SEARCH_SETTINGS,
+  ADMIN_PATHS.API_KEYS,
+];
 
 // Pages using SettingsLayouts handle their own padding/centering.
 const SETTINGS_LAYOUT_PREFIXES = [
@@ -86,6 +100,15 @@ export function ClientLayout({
   const hasOwnLayout = SETTINGS_LAYOUT_PREFIXES.some((prefix) =>
     pathname.startsWith(prefix)
   );
+
+  const isRouteDisabled = DISABLED_ADMIN_PATHS.some(
+    (disabledPath) =>
+      pathname === disabledPath || pathname.startsWith(`${disabledPath}/`)
+  );
+
+  if (isRouteDisabled) {
+    return <HttpErrorPage code={404} />;
+  }
 
   if (!canViewRoute) {
     return null;
