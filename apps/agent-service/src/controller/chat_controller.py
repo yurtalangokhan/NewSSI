@@ -781,6 +781,25 @@ class ChatController(BaseController):
             pending_ltm_recalled_from_system = 0
             pending_ltm_recalled_from_user = 0
             msg_idx = 0
+            # Per-message persona_id/model (set on the human message that
+            # triggered a turn) take priority over thread-level metadata,
+            # which only ever reflects the most recently sent value and goes
+            # stale the moment a later turn switches agent/model (e.g. via
+            # retry). Seed from thread metadata so messages predating this
+            # tracking still resolve correctly.
+            current_persona_id = metadata.get("persona_id")
+            current_model: str | None = None
+            # A retry resends the user's message as a brand new HumanMessage
+            # (LangGraph just appends to the flat checkpoint — there is no
+            # true branching at that layer), stamped with is_regenerate=True.
+            # That duplicate must not surface as its own turn: the response
+            # that follows it becomes a sibling of the previous response
+            # under the ORIGINAL user message instead of a new sequential
+            # child. last_real_user_msg_id tracks that original parent;
+            # pending_parent_override carries it forward to the next
+            # response exactly once.
+            last_real_user_msg_id: int | None = None
+            pending_parent_override: int | None = None
 
             for raw_msg in langgraph_messages:
                 raw_type = getattr(raw_msg, "type", None)
@@ -922,7 +941,11 @@ class ChatController(BaseController):
                     if not msg_content:
                         continue
 
-                    parent_msg_id = msg_idx if msg_idx > 0 else None
+                    if pending_parent_override is not None:
+                        parent_msg_id = pending_parent_override
+                        pending_parent_override = None
+                    else:
+                        parent_msg_id = msg_idx if msg_idx > 0 else None
                     msg_idx += 1
 
                     turn_packets: list[dict[str, Any]] = []
@@ -1033,8 +1056,8 @@ class ChatController(BaseController):
                             "rephrased_query": None,
                             "context_docs": None,
                             "time_sent": None,
-                            "overridden_model": None,
-                            "alternate_assistant_id": metadata.get("persona_id"),
+                            "overridden_model": current_model,
+                            "alternate_assistant_id": current_persona_id,
                             "chat_session_id": chat_session_id,
                             "citations": None,
                             "files": [],
@@ -1053,10 +1076,6 @@ class ChatController(BaseController):
                 if raw_type not in ("human", "user"):
                     continue
 
-                msg_content = _strip_think_tags(_extract_content(raw_msg))
-                parent_msg_id = msg_idx if msg_idx > 0 else None
-                msg_idx += 1
-
                 # Restore file badges from additional_kwargs set at send time.
                 # raw_msg may be a LangChain object or a plain dict depending
                 # on checkpointer deserialization.
@@ -1064,6 +1083,32 @@ class ChatController(BaseController):
                     _extra = raw_msg.get("additional_kwargs", {}) or {}
                 else:
                     _extra = getattr(raw_msg, "additional_kwargs", {}) or {}
+
+                # A message carrying its own persona_id/model means this turn
+                # was sent with that agent/model — adopt it as the current
+                # value for this and subsequent messages until the next one
+                # overrides it. Messages predating this tracking have neither
+                # key, so current_persona_id/current_model keep whatever they
+                # were seeded/last set to (thread metadata, by default).
+                if "persona_id" in _extra:
+                    current_persona_id = _extra.get("persona_id")
+                if _extra.get("model"):
+                    current_model = _extra.get("model")
+
+                if _extra.get("is_regenerate"):
+                    # The user never sent this — it's a duplicate created so
+                    # the agent graph would replay with new input. Skip the
+                    # turn entirely; the response that follows becomes a
+                    # sibling of the previous response under the original
+                    # user message (last_real_user_msg_id), not a new turn.
+                    pending_parent_override = last_real_user_msg_id
+                    continue
+
+                msg_content = _strip_think_tags(_extract_content(raw_msg))
+                parent_msg_id = msg_idx if msg_idx > 0 else None
+                msg_idx += 1
+                last_real_user_msg_id = msg_idx
+
                 if not pending_ltm_recalled_from_user:
                     recalled_from_user = _extra.get("_ltm_recalled", 0)
                     if isinstance(recalled_from_user, int) and recalled_from_user > 0:
@@ -1090,8 +1135,8 @@ class ChatController(BaseController):
                         "rephrased_query": None,
                         "context_docs": None,
                         "time_sent": None,
-                        "overridden_model": None,
-                        "alternate_assistant_id": metadata.get("persona_id"),
+                        "overridden_model": current_model,
+                        "alternate_assistant_id": current_persona_id,
                         "chat_session_id": chat_session_id,
                         "citations": None,
                         "files": history_files,
@@ -1137,7 +1182,11 @@ class ChatController(BaseController):
                 packets_2d.append(reindexed_tools)
                 pending_tool_packets = []
 
-                parent_msg_id = msg_idx if msg_idx > 0 else None
+                if pending_parent_override is not None:
+                    parent_msg_id = pending_parent_override
+                    pending_parent_override = None
+                else:
+                    parent_msg_id = msg_idx if msg_idx > 0 else None
                 msg_idx += 1
                 messages.append(
                     {
@@ -1150,8 +1199,8 @@ class ChatController(BaseController):
                         "rephrased_query": None,
                         "context_docs": None,
                         "time_sent": None,
-                        "overridden_model": None,
-                        "alternate_assistant_id": metadata.get("persona_id"),
+                        "overridden_model": current_model,
+                        "alternate_assistant_id": current_persona_id,
                         "chat_session_id": chat_session_id,
                         "citations": None,
                         "files": [],
@@ -1166,8 +1215,20 @@ class ChatController(BaseController):
                     }
                 )
 
-            for index in range(len(messages) - 1):
-                messages[index]["latest_child_message"] = messages[index + 1]["message_id"]
+            # A parent can now have multiple children (retried alternates
+            # sharing the same original user message) instead of always
+            # exactly one — the "latest" child is whichever was appended
+            # last, matching how the live in-session switcher already
+            # treats the most recent retry as the active branch.
+            children_by_parent: dict[int, list[int]] = {}
+            for m in messages:
+                if m["parent_message"] is not None:
+                    children_by_parent.setdefault(m["parent_message"], []).append(
+                        m["message_id"]
+                    )
+            for m in messages:
+                children = children_by_parent.get(m["message_id"])
+                m["latest_child_message"] = children[-1] if children else None
         except Exception:
             import logging as _logging
             import traceback as _traceback

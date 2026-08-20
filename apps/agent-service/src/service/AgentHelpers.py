@@ -442,6 +442,16 @@ async def _handle_input(
             # Store lightweight file metadata in additional_kwargs so the LangGraph
             # checkpointer persists it and get_chat_session can reconstruct file badges.
             extra_kwargs: dict[str, Any] = {"files_metadata": files_meta} if files_meta else {}
+            # Stamp which agent/model produced this turn onto the message itself —
+            # thread-level metadata only ever holds the most recently sent value,
+            # so a retry (or an agent switch) makes it stale for earlier turns.
+            # get_chat_session reads this back per message instead of relying on
+            # the thread-level value alone.
+            extra_kwargs["persona_id"] = configurable.get("_persona_id", 0)
+            if configurable.get("model"):
+                extra_kwargs["model"] = configurable["model"]
+            if getattr(user_input, "is_regenerate", False):
+                extra_kwargs["is_regenerate"] = True
             if file_blocks:
                 new_content: list[dict[str, Any]] = (
                     [{"type": "text", "text": user_input.message}] if user_input.message else []
@@ -462,6 +472,11 @@ async def _handle_input(
             file_blocks = getattr(user_input, "file_content_blocks", [])
             files_meta = getattr(user_input, "files_metadata", [])
             extra_kwargs = {"files_metadata": files_meta} if files_meta else {}
+            extra_kwargs["persona_id"] = configurable.get("_persona_id", 0)
+            if configurable.get("model"):
+                extra_kwargs["model"] = configurable["model"]
+            if getattr(user_input, "is_regenerate", False):
+                extra_kwargs["is_regenerate"] = True
             if file_blocks:
                 fallback_content: list[dict[str, Any]] = (
                     [{"type": "text", "text": user_input.message}] if user_input.message else []

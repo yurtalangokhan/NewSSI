@@ -605,6 +605,15 @@ async def send_chat_message(
                 llm_override,
             )
 
+    # _resolve_custom_persona_agent only stamps _persona_id for custom
+    # personas. Builtin/default personas need it too — retry relies on it to
+    # report which agent produced a turn, per message, instead of falling
+    # back to thread-level metadata.persona_id (last-write-wins, goes stale
+    # the moment a later turn uses a different agent/model).
+    if not isinstance(llm_override, dict):
+        llm_override = dict(llm_override or {})
+    llm_override.setdefault("_persona_id", persona_id if persona_id is not None else 0)
+
     thread_metadata = thread.get("metadata") if thread else None
     resolved_project_id = _resolve_project_id_from_chat_context(
         body.get("project_id"),
@@ -766,6 +775,7 @@ async def send_chat_message(
         file_content_blocks=file_content_blocks,
         files_metadata=files_metadata,
         mail_attachments=mail_attachments,
+        is_regenerate=bool(body.get("is_regenerate")),
     )
 
     async def generate_stream():

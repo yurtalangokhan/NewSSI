@@ -953,6 +953,53 @@ async def message_generator(
                                 continue
                             yield f"data: {json.dumps(evt)}\n\n"
 
+        # The stream itself never carries a real, persisted message id for
+        # the turn it just produced (ids only exist as positions computed by
+        # ChatController.get_chat_session on read). Without this, anything
+        # that needs a real messageId right after sending — retrying this
+        # very message, switching between regenerated alternates — silently
+        # does nothing until the page is reloaded. Resolve it once, now that
+        # generation is done, by reading back the just-persisted checkpoint.
+        if user_input.thread_id:
+            try:
+                from controller import ChatController, get_thread_controller
+
+                id_controller = ChatController(
+                    thread_controller=get_thread_controller(),
+                    user_id=user_id or "",
+                )
+                session = await id_controller.get_chat_session(user_input.thread_id)
+                session_messages = session.get("messages") or []
+                if session_messages:
+                    last_message = session_messages[-1]
+                    # A turn that produced no visible content (e.g. an error
+                    # cut generation short before any assistant message was
+                    # appended) leaves the human message as the last entry —
+                    # only emit ids when reconstruction actually ends on the
+                    # assistant turn we just generated.
+                    if last_message.get("message_type") == "assistant":
+                        assistant_message_id = last_message.get("message_id")
+                        user_message_id = last_message.get("parent_message")
+                    else:
+                        assistant_message_id = None
+                        user_message_id = None
+                    if assistant_message_id is not None:
+                        yield (
+                            "data: "
+                            + json.dumps(
+                                {
+                                    "user_message_id": user_message_id,
+                                    "reserved_assistant_message_id": assistant_message_id,
+                                }
+                            )
+                            + "\n\n"
+                        )
+            except Exception:
+                logger.warning(
+                    "Failed to resolve real message ids after streaming",
+                    exc_info=True,
+                )
+
     except Exception as e:
         payload = _stream_error_payload(e)
         if payload["error_code"].startswith("provider_"):

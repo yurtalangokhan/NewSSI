@@ -785,6 +785,7 @@ const tr = {
     goodResponse: "İyi Yanıt",
     removeDislike: "Beğenmemeyi Kaldır",
     badResponse: "Kötü Yanıt",
+    retry: "Yeniden dene",
   },
   agentViewer: {
     featuredLabel: "Öne Çıkan",

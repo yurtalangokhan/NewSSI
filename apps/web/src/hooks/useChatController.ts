@@ -100,6 +100,34 @@ interface RegenerationRequest {
   messageId: number;
   parentMessage: Message;
   forceSearch?: boolean;
+  // Set when retrying a message that must go back to the specific agent
+  // that produced it, regardless of whichever agent is currently selected
+  // in the UI (liveAgent). 0 is a valid persona id (the default persona),
+  // so it must be distinguished from "no override" (undefined/null).
+  forcedPersonaId?: AgentId | null;
+}
+
+// The backend does not currently stream reserved_assistant_message_id /
+// user_message_id mid-response, so `streamedId` is always null in practice
+// and the final packet's id (`finalId`) is the only source that ever
+// arrives. Without this fallback, a freshly streamed message node keeps its
+// temporary negative nodeId forever, and anything that later needs its real
+// messageId (e.g. switching back to it as a sibling response) fails.
+export function resolveStreamedMessageId(
+  streamedId: number | null | undefined,
+  finalId: number | null | undefined
+): number | undefined {
+  return streamedId ?? finalId ?? undefined;
+}
+
+export function resolveActivePersonaId(
+  liveAgent: MinimalPersonaSnapshot | undefined,
+  forcedPersonaId: AgentId | null | undefined
+): AgentId | undefined {
+  if (forcedPersonaId !== undefined && forcedPersonaId !== null) {
+    return forcedPersonaId;
+  }
+  return liveAgent?.external_id ?? liveAgent?.id;
 }
 
 interface UseChatControllerProps {
@@ -668,6 +696,16 @@ export default function useChatController({
           ? Array.from(currentMessageTreeLocal.values())[0]
           : null);
 
+      // Resolved once so the freshly streamed message already carries the
+      // right agent id — otherwise it stays undefined until the next full
+      // reload (get_chat_session), and a retry clicked before that reload
+      // would misjudge this very message as "model chat" and show the
+      // model popover again instead of resending silently.
+      const activePersonaId = resolveActivePersonaId(
+        liveAgent,
+        regenerationRequest?.forcedPersonaId
+      );
+
       // Add user message immediately to the message tree so that the chat
       // immediately reflects the user message
       let initialUserNode: Message;
@@ -695,6 +733,7 @@ export default function useChatController({
         initialUserNode = result.initialUserNode;
         initialAgentNode = result.initialAgentNode;
       }
+      initialAgentNode.alternateAgentID = activePersonaId ?? null;
 
       // make messages appear + clear input bar
       const messagesToUpsert = regenerationRequest
@@ -765,7 +804,6 @@ export default function useChatController({
         const messageOrigin = isExtension ? "chrome_extension" : "webapp";
 
         const stack = new CurrentMessageFIFO();
-        const activePersonaId = liveAgent?.external_id ?? liveAgent?.id;
         updateCurrentMessageFIFO(stack, {
           signal: controller.signal,
           message: currMessage,
@@ -781,6 +819,7 @@ export default function useChatController({
           })(),
           chatSessionId: currChatSessionId,
           personaId: activePersonaId,
+          isRegenerate: Boolean(regenerationRequest),
           filters: buildFilters(
             filterManager.selectedSources,
             filterManager.selectedDocumentSets,
@@ -841,26 +880,35 @@ export default function useChatController({
               setStreamingStartTime(frozenSessionId, Date.now());
             }
 
-            if ((packet as MessageResponseIDInfo).user_message_id) {
-              newUserMessageId = (packet as MessageResponseIDInfo)
-                .user_message_id;
-
-              // Track extension queries in PostHog (reuses isExtension/extensionContext from above)
-              if (isExtension && posthog) {
-                posthog.capture("extension_chat_query", {
-                  extension_context: extensionContext,
-                  assistant_id: liveAgent?.id,
-                  has_files: effectiveFileDescriptors.length > 0,
-                  deep_research: deepResearch,
-                });
-              }
-            }
-
             if (
-              (packet as MessageResponseIDInfo).reserved_assistant_message_id
+              Object.hasOwn(packet, "user_message_id") ||
+              Object.hasOwn(packet, "reserved_assistant_message_id")
             ) {
-              newAgentMessageId = (packet as MessageResponseIDInfo)
-                .reserved_assistant_message_id;
+              if ((packet as MessageResponseIDInfo).user_message_id) {
+                newUserMessageId = (packet as MessageResponseIDInfo)
+                  .user_message_id;
+
+                // Track extension queries in PostHog (reuses isExtension/extensionContext from above)
+                if (isExtension && posthog) {
+                  posthog.capture("extension_chat_query", {
+                    extension_context: extensionContext,
+                    assistant_id: liveAgent?.id,
+                    has_files: effectiveFileDescriptors.length > 0,
+                    deep_research: deepResearch,
+                  });
+                }
+              }
+
+              if (
+                (packet as MessageResponseIDInfo).reserved_assistant_message_id
+              ) {
+                newAgentMessageId = (packet as MessageResponseIDInfo)
+                  .reserved_assistant_message_id;
+              }
+              // Pure metadata, not a display packet — it carries no
+              // content/obj for the timeline and must not fall through to
+              // the "Unknown packet" warning below.
+              continue;
             }
 
             if (Object.hasOwn(packet, "user_files")) {
@@ -958,12 +1006,18 @@ export default function useChatController({
               messages: [
                 {
                   ...initialUserNode,
-                  messageId: newUserMessageId ?? undefined,
+                  messageId: resolveStreamedMessageId(
+                    newUserMessageId,
+                    finalMessage?.parent_message ?? finalMessage?.parentMessageId
+                  ),
                   files: userMessageFiles,
                 },
                 {
                   ...initialAgentNode,
-                  messageId: newAgentMessageId ?? undefined,
+                  messageId: resolveStreamedMessageId(
+                    newAgentMessageId,
+                    finalMessage?.message_id
+                  ),
                   message: error || answer,
                   type: error ? "error" : "assistant",
                   retrievalType,

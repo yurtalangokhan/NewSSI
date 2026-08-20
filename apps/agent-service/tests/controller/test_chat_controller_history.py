@@ -502,6 +502,251 @@ async def test_get_chat_session_keeps_text_written_before_a_tool_call():
     assert "Sonuclari derledim." in starts
 
 @pytest.mark.asyncio
+async def test_get_chat_session_uses_per_message_persona_id_over_thread_metadata():
+    """Retry can leave the thread's current persona different from the one
+    that actually produced an earlier turn. Once a human message carries its
+    own persona_id/model in additional_kwargs, that value — not the
+    thread-level metadata.persona_id which only reflects the most recent
+    send — must be reported for both that turn's messages."""
+    thread = {
+        "thread_id": "thread-persona",
+        # Thread-level value has since moved on to persona 1 (e.g. user
+        # switched agents after this turn was generated).
+        "metadata": {"user_id": "user-1", "persona_id": 1, "name": "Chat"},
+    }
+    state = {
+        "values": {
+            "messages": [
+                HumanMessage(
+                    content="merhaba",
+                    additional_kwargs={"persona_id": 7, "model": "gpt-4o"},
+                ),
+                AIMessage(content="selam"),
+            ]
+        }
+    }
+
+    controller = ChatController(
+        thread_controller=DummyThreadController(thread=thread, state=state),
+        user_id="user-1",
+    )
+
+    result = await controller.get_chat_session("thread-persona")
+    human_msg, ai_msg = result["messages"]
+
+    assert human_msg["alternate_assistant_id"] == 7
+    assert human_msg["overridden_model"] == "gpt-4o"
+    assert ai_msg["alternate_assistant_id"] == 7
+    assert ai_msg["overridden_model"] == "gpt-4o"
+
+
+@pytest.mark.asyncio
+async def test_get_chat_session_falls_back_to_thread_metadata_persona_id_for_legacy_messages():
+    """Messages persisted before per-message persona_id tracking existed
+    have no persona_id in additional_kwargs — they must keep resolving from
+    thread-level metadata so old conversations don't regress."""
+    thread = {
+        "thread_id": "thread-legacy",
+        "metadata": {"user_id": "user-1", "persona_id": 3, "name": "Chat"},
+    }
+    state = {
+        "values": {
+            "messages": [
+                HumanMessage(content="merhaba"),
+                AIMessage(content="selam"),
+            ]
+        }
+    }
+
+    controller = ChatController(
+        thread_controller=DummyThreadController(thread=thread, state=state),
+        user_id="user-1",
+    )
+
+    result = await controller.get_chat_session("thread-legacy")
+    human_msg, ai_msg = result["messages"]
+
+    assert human_msg["alternate_assistant_id"] == 3
+    assert ai_msg["alternate_assistant_id"] == 3
+
+
+@pytest.mark.asyncio
+async def test_get_chat_session_tracks_persona_id_per_turn_across_retries():
+    """Each turn keeps reporting the persona/model that was active when it
+    was generated, even after a later turn in the same thread switches to a
+    different one (simulating a retry-with-different-model in model chat)."""
+    thread = {
+        "thread_id": "thread-multi-turn",
+        "metadata": {"user_id": "user-1", "persona_id": 0, "name": "Chat"},
+    }
+    state = {
+        "values": {
+            "messages": [
+                HumanMessage(
+                    content="ilk soru",
+                    additional_kwargs={"persona_id": 0, "model": "gpt-4o-mini"},
+                ),
+                AIMessage(content="ilk cevap"),
+                HumanMessage(
+                    content="ilk soru",  # retried with a different model
+                    additional_kwargs={"persona_id": 0, "model": "gpt-4o"},
+                ),
+                AIMessage(content="ikinci cevap"),
+            ]
+        }
+    }
+
+    controller = ChatController(
+        thread_controller=DummyThreadController(thread=thread, state=state),
+        user_id="user-1",
+    )
+
+    result = await controller.get_chat_session("thread-multi-turn")
+    msgs = result["messages"]
+
+    assert [m["overridden_model"] for m in msgs] == [
+        "gpt-4o-mini",
+        "gpt-4o-mini",
+        "gpt-4o",
+        "gpt-4o",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_get_chat_session_treats_regenerated_response_as_a_sibling_not_a_new_turn():
+    """A retry resends the user's message as a NEW HumanMessage in the flat
+    checkpoint (LangGraph just appends), stamped with is_regenerate=True.
+    On reload, that duplicate must not surface as its own chat bubble — the
+    new AI response must become a sibling of the original response under
+    the SAME original user message, exactly like the live in-session
+    switcher already shows, instead of the conversation growing a
+    duplicate user turn and losing the original response."""
+    thread = {
+        "thread_id": "thread-regen",
+        "metadata": {"user_id": "user-1", "persona_id": 0, "name": "Chat"},
+    }
+    state = {
+        "values": {
+            "messages": [
+                HumanMessage(
+                    content="soru",
+                    additional_kwargs={"persona_id": 0, "model": "gpt-4o-mini"},
+                ),
+                AIMessage(content="cevap 1"),
+                HumanMessage(
+                    content="soru",
+                    additional_kwargs={
+                        "persona_id": 0,
+                        "model": "gpt-4o",
+                        "is_regenerate": True,
+                    },
+                ),
+                AIMessage(content="cevap 2"),
+            ]
+        }
+    }
+
+    controller = ChatController(
+        thread_controller=DummyThreadController(thread=thread, state=state),
+        user_id="user-1",
+    )
+
+    result = await controller.get_chat_session("thread-regen")
+    msgs = result["messages"]
+
+    assert [m["message_type"] for m in msgs] == ["user", "assistant", "assistant"]
+    assert [m["message"] for m in msgs] == ["soru", "cevap 1", "cevap 2"]
+
+    user_msg, ai_msg_1, ai_msg_2 = msgs
+    assert ai_msg_1["parent_message"] == user_msg["message_id"]
+    assert ai_msg_2["parent_message"] == user_msg["message_id"]
+    # The most recently generated alternate is the one shown by default.
+    assert user_msg["latest_child_message"] == ai_msg_2["message_id"]
+    # Each alternate still reports the model that actually produced it.
+    assert ai_msg_1["overridden_model"] == "gpt-4o-mini"
+    assert ai_msg_2["overridden_model"] == "gpt-4o"
+
+
+@pytest.mark.asyncio
+async def test_get_chat_session_supports_three_way_branching_from_repeated_retries():
+    thread = {
+        "thread_id": "thread-regen-3",
+        "metadata": {"user_id": "user-1", "persona_id": 0, "name": "Chat"},
+    }
+    state = {
+        "values": {
+            "messages": [
+                HumanMessage(content="soru"),
+                AIMessage(content="cevap 1"),
+                HumanMessage(
+                    content="soru", additional_kwargs={"is_regenerate": True}
+                ),
+                AIMessage(content="cevap 2"),
+                HumanMessage(
+                    content="soru", additional_kwargs={"is_regenerate": True}
+                ),
+                AIMessage(content="cevap 3"),
+            ]
+        }
+    }
+
+    controller = ChatController(
+        thread_controller=DummyThreadController(thread=thread, state=state),
+        user_id="user-1",
+    )
+
+    result = await controller.get_chat_session("thread-regen-3")
+    msgs = result["messages"]
+
+    assert [m["message_type"] for m in msgs] == [
+        "user",
+        "assistant",
+        "assistant",
+        "assistant",
+    ]
+    user_msg, ai1, ai2, ai3 = msgs
+    assert ai1["parent_message"] == user_msg["message_id"]
+    assert ai2["parent_message"] == user_msg["message_id"]
+    assert ai3["parent_message"] == user_msg["message_id"]
+    assert user_msg["latest_child_message"] == ai3["message_id"]
+
+
+@pytest.mark.asyncio
+async def test_get_chat_session_still_builds_a_plain_chain_without_any_regenerate():
+    """No is_regenerate markers at all (the common case) must produce the
+    exact same strictly-linear chain as before — one child per message."""
+    thread = {
+        "thread_id": "thread-plain",
+        "metadata": {"user_id": "user-1", "persona_id": 1, "name": "Chat"},
+    }
+    state = {
+        "values": {
+            "messages": [
+                HumanMessage(content="merhaba"),
+                AIMessage(content="selam"),
+                HumanMessage(content="nasılsın"),
+                AIMessage(content="iyiyim"),
+            ]
+        }
+    }
+
+    controller = ChatController(
+        thread_controller=DummyThreadController(thread=thread, state=state),
+        user_id="user-1",
+    )
+
+    result = await controller.get_chat_session("thread-plain")
+    msgs = result["messages"]
+
+    ids = [m["message_id"] for m in msgs]
+    parents = [m["parent_message"] for m in msgs]
+    latest_children = [m["latest_child_message"] for m in msgs]
+
+    assert parents == [None, ids[0], ids[1], ids[2]]
+    assert latest_children == [ids[1], ids[2], ids[3], None]
+
+
+@pytest.mark.asyncio
 async def test_get_chat_session_does_not_add_a_tool_step_for_document_tools():
     """A document tool is represented by its file card alone.
 

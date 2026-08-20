@@ -51,6 +51,15 @@ class UserInput(BaseModel):
         default_factory=list,
         description="Current request file attachments available to the send_email tool.",
     )
+    is_regenerate: bool = Field(
+        default=False,
+        description=(
+            "Set when this send is retrying/regenerating a previous response. "
+            "The resulting duplicate HumanMessage is stamped so chat history "
+            "reconstruction can treat the new response as a sibling of the "
+            "original instead of a new turn."
+        ),
+    )
 
 
 class StreamInput(UserInput):

@@ -363,5 +363,34 @@ describe("handleSSEStream", () => {
     expect(errorSpy).not.toHaveBeenCalled();
     errorSpy.mockRestore();
   });
+
+  it("passes the real message-id packet through unwrapped, not nested under obj", async () => {
+    // This packet has no `type` field, so the generic default case would
+    // otherwise wrap it as `{ obj: packet }` — but the consumer
+    // (useChatController.ts) reads `packet.user_message_id` /
+    // `packet.reserved_assistant_message_id` directly on the top-level
+    // packet, matching the MessageResponseIDInfo shape. Wrapped, those
+    // fields are silently unreadable and the message never gets its real
+    // id — retry and the alternate-response switcher then stay broken
+    // until the page is reloaded.
+    const response = createStreamingResponse([
+      'data: {"type":"token","content":"Hi"}\n',
+      'data: {"user_message_id": 1, "reserved_assistant_message_id": 2}\n',
+      'data: [DONE]\n',
+    ]);
+
+    const packets: any[] = [];
+    for await (const packet of handleSSEStream<any>(response)) {
+      packets.push(packet);
+    }
+
+    const idPacket = packets.find(
+      (p) => p.reserved_assistant_message_id !== undefined
+    );
+    expect(idPacket).toEqual({
+      user_message_id: 1,
+      reserved_assistant_message_id: 2,
+    });
+  });
 });
 

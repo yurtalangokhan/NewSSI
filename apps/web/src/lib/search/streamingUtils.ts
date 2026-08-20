@@ -222,6 +222,24 @@ export async function* handleSSEStream<T extends PacketType>(
         try {
           const backendPacket = JSON.parse(jsonLine) as BackendPacket;
 
+          // The real, persisted ids for this turn — sent once, near the end
+          // of the stream, with no `type` field. It's pure metadata, not a
+          // display packet, so it must reach the consumer exactly as sent
+          // (matching MessageResponseIDInfo) instead of falling through to
+          // the generic default case below, which would wrap it as
+          // `{ obj: packet }` and leave `packet.user_message_id` /
+          // `packet.reserved_assistant_message_id` unreadable at the top
+          // level where useChatController.ts checks for them. It must also
+          // skip the turn/tool-tracking logic below — it carries no display
+          // content and would otherwise perturb turnIndex bookkeeping.
+          if (
+            "reserved_assistant_message_id" in backendPacket ||
+            "user_message_id" in backendPacket
+          ) {
+            yield backendPacket as unknown as T;
+            continue;
+          }
+
           if (backendPacket.type === "token") {
             sawTokenForCurrentAnswer = true;
           }

@@ -1,13 +1,14 @@
 "use client";
 
 import React, { useCallback, useMemo, useRef } from "react";
-import { Message } from "@/app/app/interfaces";
 import { OnyxDocument, MinimalOnyxDocument } from "@/lib/search/interfaces";
 import HumanMessage from "@/app/app/message/HumanMessage";
 import { ErrorBanner } from "@/app/app/message/Resubmit";
 import { MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
 import { LlmDescriptor, LlmManager } from "@/lib/hooks";
-import AgentMessage from "@/app/app/message/messageComponents/AgentMessage";
+import AgentMessage, {
+  RegenerationFactory,
+} from "@/app/app/message/messageComponents/AgentMessage";
 import DynamicBottomSpacer from "@/components/chat/DynamicBottomSpacer";
 import {
   useCurrentMessageHistory,
@@ -30,11 +31,7 @@ export interface ChatUIProps {
     currentMessageFiles: any[];
     deepResearch: boolean;
     modelOverride?: LlmDescriptor;
-    regenerationRequest?: {
-      messageId: number;
-      parentMessage: Message;
-      forceSearch?: boolean;
-    };
+    regenerationRequest?: Parameters<RegenerationFactory>[0];
     forceSearch?: boolean;
   }) => Promise<void>;
   deepResearchEnabled: boolean;
@@ -80,11 +77,7 @@ const ChatUI = React.memo(
     currentMessageFilesRef.current = currentMessageFiles;
 
     const createRegenerator = useCallback(
-      (regenerationRequest: {
-        messageId: number;
-        parentMessage: Message;
-        forceSearch?: boolean;
-      }) => {
+      (regenerationRequest: Parameters<RegenerationFactory>[0]) => {
         return async function (modelOverride: LlmDescriptor) {
           return await onSubmitRef.current({
             message: regenerationRequest.parentMessage.message,
@@ -169,7 +162,12 @@ const ChatUI = React.memo(
                 docs: message.documents ?? emptyDocs,
                 citations: message.citations,
                 setPresentingDocument,
-                overriddenModel: llmManager.currentLlm?.modelName,
+                // The model that actually produced this specific message,
+                // not whatever is currently selected in the input bar —
+                // otherwise retry's model popover preselects the live
+                // selection instead of the model this message used.
+                overriddenModel:
+                  message.overridden_model || llmManager.currentLlm?.modelName,
                 researchType: message.researchType,
               };
 
@@ -193,6 +191,7 @@ const ChatUI = React.memo(
                     onMessageSelection={onMessageSelection}
                     onRegenerate={createRegenerator}
                     parentMessage={previousMessage}
+                    originalPersonaId={message.alternateAgentID}
                     processingDurationSeconds={
                       message.processingDurationSeconds
                     }

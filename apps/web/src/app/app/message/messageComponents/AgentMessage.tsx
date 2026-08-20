@@ -16,6 +16,7 @@ import { withPinnedDocumentGroups } from "@/app/app/message/messageComponents/ti
 import { usePacedTurnGroups } from "@/app/app/message/messageComponents/timeline/hooks/usePacedTurnGroups";
 import MessageToolbar from "@/app/app/message/messageComponents/MessageToolbar";
 import { LlmDescriptor, LlmManager } from "@/lib/hooks";
+import { AgentId } from "@/app/admin/agents/interfaces";
 import { Message } from "@/app/app/interfaces";
 import Text from "@/refresh-components/texts/Text";
 import { AgentTimeline } from "@/app/app/message/messageComponents/timeline/AgentTimeline";
@@ -29,6 +30,7 @@ export type RegenerationFactory = (regenerationRequest: {
   messageId: number;
   parentMessage: Message;
   forceSearch?: boolean;
+  forcedPersonaId?: AgentId | null;
 }) => (modelOverride: LlmDescriptor) => Promise<void>;
 
 export interface AgentMessageProps {
@@ -45,6 +47,8 @@ export interface AgentMessageProps {
   onRegenerate?: RegenerationFactory;
   // Parent message needed to construct regeneration request
   parentMessage?: Message | null;
+  // persona_id that actually produced this message (for retry-to-same-agent)
+  originalPersonaId?: AgentId | null;
   // Duration in seconds for processing this message (agent messages only)
   processingDurationSeconds?: number;
   // Final message text - used as fallback when packets are empty (for historical messages)
@@ -74,6 +78,7 @@ function arePropsEqual(
     prev.otherMessagesCanSwitchTo === next.otherMessagesCanSwitchTo &&
     prev.onRegenerate === next.onRegenerate &&
     prev.parentMessage?.messageId === next.parentMessage?.messageId &&
+    prev.originalPersonaId === next.originalPersonaId &&
     prev.llmManager?.isLoadingProviders ===
       next.llmManager?.isLoadingProviders &&
     prev.processingDurationSeconds === next.processingDurationSeconds &&
@@ -94,6 +99,7 @@ const AgentMessage = React.memo(function AgentMessage({
   onMessageSelection,
   onRegenerate,
   parentMessage,
+  originalPersonaId,
   processingDurationSeconds,
   finalMessageText,
 }: AgentMessageProps) {
@@ -346,6 +352,7 @@ const AgentMessage = React.memo(function AgentMessage({
           parentMessage={parentMessage}
           llmManager={llmManager}
           currentModelName={chatState.overriddenModel}
+          originalPersonaId={originalPersonaId}
           citations={citations}
           documentMap={documentMap}
         />

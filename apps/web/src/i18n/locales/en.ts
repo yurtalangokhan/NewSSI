@@ -785,6 +785,7 @@ const en = {
     goodResponse: "Good Response",
     removeDislike: "Remove Dislike",
     badResponse: "Bad Response",
+    retry: "Retry",
   },
   agentViewer: {
     featuredLabel: "Featured",
