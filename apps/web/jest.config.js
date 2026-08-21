@@ -55,6 +55,7 @@ const sharedConfig = {
         "until-async",
         // Markdown & Syntax Highlighting
         "react-markdown",
+        "linguist-languages",
         "remark-.*", // All remark packages
         "rehype-.*", // All rehype packages
         "unified",
@@ -142,6 +143,7 @@ module.exports = {
         "**/src/app/**/services/*.test.ts",
         "**/src/app/**/utils/*.test.ts",
         "**/src/app/**/hooks/*.test.ts", // Pure packet processor tests
+        "**/src/app/**/renderers/**/*.test.ts", // Pure timeline renderer state helpers
         "**/src/refresh-components/**/*.test.ts",
         "**/src/sections/**/*.test.ts",
         // Add more patterns here as you add more unit tests

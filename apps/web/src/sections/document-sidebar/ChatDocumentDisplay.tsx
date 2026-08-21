@@ -11,6 +11,8 @@ import { ValidSources } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import Truncated from "@/refresh-components/texts/Truncated";
 import Text from "@/refresh-components/texts/Text";
+import { SvgAlertCircle } from "@opal/icons";
+import { useTranslation } from "react-i18next";
 
 interface DocumentMetadataBlockProps {
   modal?: boolean;
@@ -22,7 +24,9 @@ function DocumentMetadataBlock({
   document,
 }: DocumentMetadataBlockProps) {
   const MAX_METADATA_ITEMS = 3;
-  const metadataEntries = Object.entries(document.metadata);
+  const metadataEntries = Object.entries(document.metadata).filter(
+    ([k]) => k !== "error"
+  );
 
   return (
     <div className="flex items-center overflow-hidden">
@@ -65,6 +69,7 @@ export default function ChatDocumentDisplay({
   isSelected,
   setPresentingDocument,
 }: ChatDocumentDisplayProps) {
+  const { t } = useTranslation("common", { keyPrefix: "documentSidebar" });
   const isInternet = document.is_internet;
   const title = useMemo(
     () => document.semantic_identifier || document.document_id,
@@ -76,14 +81,26 @@ export default function ChatDocumentDisplay({
   }
 
   const hasMetadata =
-    document.updated_at || Object.keys(document.metadata).length > 0;
+    document.updated_at ||
+    Object.keys(document.metadata).filter((k) => k !== "error").length > 0;
+
+  const isError =
+    document.is_error ||
+    Boolean(document.error) ||
+    Boolean(document.metadata?.error) ||
+    (Boolean(document.blurb) && document.blurb.startsWith("Error fetching webpage"));
+  const errorMessage =
+    document.error ||
+    document.metadata?.error ||
+    (isError ? document.blurb : null);
 
   return (
     <div
       onClick={() => openDocument(document, setPresentingDocument)}
       className={cn(
         "flex w-full flex-col p-3 gap-2 rounded-12 hover:bg-background-tint-00 cursor-pointer",
-        isSelected && "bg-action-link-02"
+        isSelected && "bg-action-link-02",
+        isError && "border border-status-danger-02/50"
       )}
     >
       <div className="flex items-center gap-2">
@@ -95,15 +112,30 @@ export default function ChatDocumentDisplay({
         <Truncated className="line-clamp-2" side="left">
           {title}
         </Truncated>
+        {isError && (
+          <span className="ml-auto flex items-center gap-1 text-[11px] font-medium text-status-danger-05 bg-status-danger-00 border border-status-danger-02 rounded-04 px-1.5 py-0.5 shrink-0">
+            <SvgAlertCircle className="w-3 h-3 stroke-status-danger-05" />
+            {t("accessError")}
+          </span>
+        )}
       </div>
 
       {hasMetadata && (
         <DocumentMetadataBlock modal={modal} document={document} />
       )}
 
-      <Text as="p" className="line-clamp-2 text-left" secondaryBody text03>
-        {buildDocumentSummaryDisplay(document.match_highlights, document.blurb)}
-      </Text>
+      {isError && errorMessage ? (
+        <div className="flex items-start gap-1.5 rounded-08 bg-status-danger-00 border border-status-danger-02 p-2 text-xs text-status-danger-05">
+          <SvgAlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0 stroke-status-danger-05" />
+          <span className="break-words text-text-03 text-[11px] leading-4">
+            {errorMessage}
+          </span>
+        </div>
+      ) : (
+        <Text as="p" className="line-clamp-2 text-left" secondaryBody text03>
+          {buildDocumentSummaryDisplay(document.match_highlights, document.blurb)}
+        </Text>
+      )}
     </div>
   );
 }

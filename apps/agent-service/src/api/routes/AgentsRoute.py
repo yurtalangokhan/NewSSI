@@ -41,6 +41,7 @@ from service.AgentHelpers import _handle_input
 from service.AssistantAgentService import AssistantAgentService
 from service.AuthService import extract_user_id_from_token
 from service.DocumentProgressTracker import DocumentProgressTracker, is_document_tool
+from service.WebSearchProgressTracker import WebSearchProgressTracker, is_web_search_tool
 from service.GeneratedFilePacket import (
     build_generated_file_packet_obj,
     parse_generated_file_payload,
@@ -472,6 +473,7 @@ async def message_generator(
     # Document tools write their whole payload into tool-call arguments, which
     # produce no visible tokens — this turns that silence into progress packets.
     document_progress = DocumentProgressTracker()
+    web_search_progress = WebSearchProgressTracker()
     saw_reasoning_for_current_answer = False
     # Track the first LLM call's message ID so that subsequent LLM calls
     # (e.g. background memory extraction) don't emit tokens to the stream.
@@ -722,7 +724,16 @@ async def message_generator(
                             # custom_tool_start is exempt from that and would
                             # reset the in-progress answer's streaming state.
                             if not is_document_tool(tc_name):
-                                yield f"data: {json.dumps({'type': 'custom_tool_start', 'tool_name': tc_name, 'args': tc_args, 'call_id': tc_id})}\n\n"
+                                web_search_packets = (
+                                    web_search_progress.on_tool_call(tc_name, tc_args, tc_id)
+                                    if is_web_search_tool(tc_name)
+                                    else None
+                                )
+                                if web_search_packets is not None:
+                                    for packet in web_search_packets:
+                                        yield f"data: {json.dumps(packet)}\n\n"
+                                else:
+                                    yield f"data: {json.dumps({'type': 'custom_tool_start', 'tool_name': tc_name, 'args': tc_args, 'call_id': tc_id})}\n\n"
                     continue
                 elif chat_message.type == "tool":
                     tool_name = getattr(message, "name", "") or ""
@@ -732,8 +743,21 @@ async def message_generator(
                     saw_reasoning_for_current_answer = False
 
                     generated_file = parse_generated_file_payload(chat_message.content)
-                    if generated_file is None and not is_document_tool(tool_name):
+                    web_search_packets = (
+                        web_search_progress.on_tool_result(tool_name, chat_message.content, tool_call_id)
+                        if generated_file is None and is_web_search_tool(tool_name)
+                        else None
+                    )
+                    if (
+                        generated_file is None
+                        and web_search_packets is None
+                        and not is_document_tool(tool_name)
+                    ):
                         yield f"data: {json.dumps({'type': 'custom_tool_delta', 'tool_name': tool_name, 'response_type': 'tool_result', 'data': chat_message.content, 'call_id': tool_call_id})}\n\n"
+
+                    if web_search_packets is not None:
+                        for packet in web_search_packets:
+                            yield f"data: {json.dumps(packet)}\n\n"
 
                     if generated_file is not None:
                         file_id = generated_file.get("file_id")
@@ -862,6 +886,17 @@ async def message_generator(
                             else getattr(tc_chunk, "id", None)
                         ) or tc_name
                         if tc_name and tc_id not in emitted_tool_call_ids:
+                            # web_search/fetch_webpage need their full args
+                            # (the query/URL) to emit a meaningful
+                            # search_tool_*/open_url_* packet, but only the
+                            # first of these streamed chunks carries the name
+                            # — args arrive fragmented across the chunks that
+                            # follow. Defer entirely to the `updates` event
+                            # below, which reports the complete tool call
+                            # once the node returns (same pattern Ollama-style
+                            # non-streaming providers already rely on).
+                            if is_web_search_tool(tc_name):
+                                continue
                             emitted_tool_call_ids.add(tc_id)
                             # Same exemption as above: document tools are
                             # represented by document_generation_* packets only,

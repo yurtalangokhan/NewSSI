@@ -1,10 +1,13 @@
 import {
+  FetchToolDocuments,
   MessageDelta,
   MessageStart,
   PacketType,
+  SearchToolDocumentsDelta,
   StreamingCitation,
 } from "./streamingModels";
 import { Packet } from "@/app/app/services/streamingModels";
+import { OnyxDocument } from "@/lib/search/interfaces";
 
 export function isToolPacket(
   packet: Packet,
@@ -216,6 +219,33 @@ export function getReasoningTextContent(packets: Packet[]): string {
       return "";
     })
     .join("");
+}
+
+/** Collects every document carried by a message's search_tool_documents_delta
+ * / open_url_documents packets — the same live source MessageToolbar's Sources
+ * button already reads (via usePacketProcessor's documentMap) for whether to
+ * show at all. DocumentsSidebar needs this too: a message's persisted
+ * `documents` field (backend `context_docs`) is only ever populated for
+ * internal/connector search, never for web_search/fetch_webpage results, so
+ * reading packets directly is the only way those actually reach the sidebar. */
+export function getDocumentsFromPackets(packets: Packet[]): OnyxDocument[] {
+  const documentMap = new Map<string, OnyxDocument>();
+
+  packets.forEach((packet) => {
+    if (packet.obj.type === PacketType.SEARCH_TOOL_DOCUMENTS_DELTA) {
+      const docs = (packet.obj as SearchToolDocumentsDelta).documents || [];
+      docs.forEach((doc) => {
+        if (doc.document_id) documentMap.set(doc.document_id, doc);
+      });
+    } else if (packet.obj.type === PacketType.FETCH_TOOL_DOCUMENTS) {
+      const docs = (packet.obj as FetchToolDocuments).documents || [];
+      docs.forEach((doc) => {
+        if (doc.document_id) documentMap.set(doc.document_id, doc);
+      });
+    }
+  });
+
+  return Array.from(documentMap.values());
 }
 
 export function getCitations(packets: Packet[]): StreamingCitation[] {

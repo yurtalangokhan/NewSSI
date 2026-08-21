@@ -232,21 +232,21 @@ async def test_get_chat_session_keeps_multiple_tool_steps_in_separate_turns():
                 {
                     "type": "ai",
                     "content": "",
-                    "tool_calls": [{"name": "web_search"}],
+                    "tool_calls": [{"name": "generic_tool_a"}],
                 },
                 {
                     "type": "tool",
-                    "name": "web_search",
+                    "name": "generic_tool_a",
                     "content": "search results",
                 },
                 {
                     "type": "ai",
                     "content": "",
-                    "tool_calls": [{"name": "fetch_webpage"}],
+                    "tool_calls": [{"name": "generic_tool_b"}],
                 },
                 {
                     "type": "tool",
-                    "name": "fetch_webpage",
+                    "name": "generic_tool_b",
                     "content": "ssl error",
                 },
                 AIMessage(content="Sonuclari derledim."),
@@ -266,7 +266,7 @@ async def test_get_chat_session_keeps_multiple_tool_steps_in_separate_turns():
     tool_names = [p["obj"].get("tool_name") for p in tool_packets]
     tool_turns = [p["placement"]["turn_index"] for p in tool_packets]
 
-    assert tool_names == ["web_search", "web_search", "fetch_webpage", "fetch_webpage"]
+    assert tool_names == ["generic_tool_a", "generic_tool_a", "generic_tool_b", "generic_tool_b"]
     assert tool_turns == sorted(tool_turns)
     assert len(set(tool_turns)) >= 2
 
@@ -290,15 +290,15 @@ async def test_get_chat_session_pairs_parallel_tool_calls_by_id_not_arrival_orde
                     "type": "ai",
                     "content": "",
                     "tool_calls": [
-                        {"name": "web_search", "args": {"query": "a"}, "id": "call-a"},
-                        {"name": "web_search", "args": {"query": "b"}, "id": "call-b"},
-                        {"name": "fetch_webpage", "args": {"url": "c"}, "id": "call-c"},
+                        {"name": "generic_tool_a", "args": {"query": "a"}, "id": "call-a"},
+                        {"name": "generic_tool_a", "args": {"query": "b"}, "id": "call-b"},
+                        {"name": "generic_tool_b", "args": {"url": "c"}, "id": "call-c"},
                     ],
                 },
                 # Results arrive out of order and interleaved with each other.
-                {"type": "tool", "name": "fetch_webpage", "content": "result c", "tool_call_id": "call-c"},
-                {"type": "tool", "name": "web_search", "content": "result b", "tool_call_id": "call-b"},
-                {"type": "tool", "name": "web_search", "content": "result a", "tool_call_id": "call-a"},
+                {"type": "tool", "name": "generic_tool_b", "content": "result c", "tool_call_id": "call-c"},
+                {"type": "tool", "name": "generic_tool_a", "content": "result b", "tool_call_id": "call-b"},
+                {"type": "tool", "name": "generic_tool_a", "content": "result a", "tool_call_id": "call-a"},
             ]
         }
     }
@@ -359,8 +359,8 @@ async def test_get_chat_session_preserves_trailing_tool_packets_without_final_ai
         "values": {
             "messages": [
                 HumanMessage(content="arastir"),
-                {"type": "ai", "content": "", "tool_calls": [{"name": "web_search"}]},
-                {"type": "tool", "name": "web_search", "content": "ok"},
+                {"type": "ai", "content": "", "tool_calls": [{"name": "generic_tool_a"}]},
+                {"type": "tool", "name": "generic_tool_a", "content": "ok"},
                 # No final visible AI message in state snapshot.
             ]
         }
@@ -490,10 +490,10 @@ async def test_get_chat_session_keeps_text_written_before_a_tool_call():
                     "type": "ai",
                     "content": "Simdi en onemli kaynaklari inceleyelim.",
                     "tool_calls": [
-                        {"name": "web_search", "args": {"query": "a"}, "id": "c1"}
+                        {"name": "generic_tool_a", "args": {"query": "a"}, "id": "c1"}
                     ],
                 },
-                {"type": "tool", "name": "web_search", "content": "ok", "tool_call_id": "c1"},
+                {"type": "tool", "name": "generic_tool_a", "content": "ok", "tool_call_id": "c1"},
                 AIMessage(content="Sonuclari derledim."),
             ]
         }
@@ -789,11 +789,11 @@ async def test_get_chat_session_does_not_add_a_tool_step_for_document_tools():
                     "type": "ai",
                     "content": "",
                     "tool_calls": [
-                        {"name": "web_search", "args": {"query": "a"}, "id": "c1"},
+                        {"name": "generic_tool_a", "args": {"query": "a"}, "id": "c1"},
                         {"name": "create_document", "args": {"filename": "r"}, "id": "c2"},
                     ],
                 },
-                {"type": "tool", "name": "web_search", "content": "ok", "tool_call_id": "c1"},
+                {"type": "tool", "name": "generic_tool_a", "content": "ok", "tool_call_id": "c1"},
                 {
                     "type": "tool",
                     "name": "create_document",
@@ -815,7 +815,7 @@ async def test_get_chat_session_does_not_add_a_tool_step_for_document_tools():
     tool_steps = [o.get("tool_name") for o in objs if o["type"] == "custom_tool_start"]
 
     assert "create_document" not in tool_steps
-    assert "web_search" in tool_steps
+    assert "generic_tool_a" in tool_steps
     # The document is still represented — by its file card.
     assert any(o["type"] == "generated_file" for o in objs)
 

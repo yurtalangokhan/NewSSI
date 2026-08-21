@@ -99,6 +99,22 @@ function mapBackendToFrontend(packet: BackendPacket): any {
     case "search_tool_start":
     case "search_tool_queries_delta":
     case "search_tool_documents_delta":
+    case "open_url_start":
+    case "open_url_urls":
+    case "open_url_documents":
+    case "python_tool_start":
+    case "python_tool_delta":
+    case "file_reader_start":
+    case "file_reader_result":
+    case "memory_tool_start":
+    case "memory_tool_delta":
+    case "memory_tool_no_access":
+    case "deep_research_plan_start":
+    case "deep_research_plan_delta":
+    case "research_agent_start":
+    case "intermediate_report_start":
+    case "intermediate_report_delta":
+    case "intermediate_report_cited_docs":
       return {
         placement: defaultPlacement,
         obj: packet,
@@ -140,6 +156,15 @@ function mapBackendToFrontend(packet: BackendPacket): any {
   }
 }
 
+const CALL_START_TYPES = new Set<string>([
+  "custom_tool_start",
+  "open_url_start",
+  "python_tool_start",
+  "file_reader_start",
+  "memory_tool_start",
+  "deep_research_plan_start",
+  "research_agent_start",
+]);
 
 export async function* handleSSEStream<T extends PacketType>(
   streamingResponse: Response,
@@ -156,12 +181,11 @@ export async function* handleSSEStream<T extends PacketType>(
   let sawToolPackets = false;
   let lastToolPacketType: string | null = null;
   // A single AI turn can fire several calls to the same tool at once (e.g.
-  // parallel web_search calls): all their `custom_tool_start`s arrive before
-  // any result comes back, so by the time a call's own `custom_tool_delta`
-  // shows up, turnIndex has already moved on to later calls. Each call's
-  // turn is remembered here by call_id — like `documentTurnIndex` below —
-  // so its delta is placed back on its own turn instead of whatever turn
-  // happens to be current when it arrives.
+  // parallel web_search/fetch_webpage calls): all their start packets arrive before
+  // any result comes back, so by the time a call's own delta/documents show up,
+  // turnIndex has already moved on to later calls. Each call's turn is
+  // remembered here by call_id — like `documentTurnIndex` below — so its delta is
+  // placed back on its own turn instead of whatever turn happens to be current.
   const toolCallTurns = new Map<string, number>();
   // If tokens were already streamed for the current answer, skip the later
   // full "message" packet from backend to avoid duplicate text rendering.
@@ -282,10 +306,10 @@ export async function* handleSSEStream<T extends PacketType>(
             // reasoning packets — see comment above.
           } else if (isToolPkt) {
             const callId = (backendPacket as any).call_id ?? null;
+            const isCallStartType = CALL_START_TYPES.has(backendPacket.type);
             const isNewCallStart =
-              backendPacket.type === "custom_tool_start" &&
-              !!callId &&
-              !toolCallTurns.has(callId);
+              isCallStartType &&
+              ((callId && !toolCallTurns.has(callId)) || (!callId && lastToolPacketType !== null));
             if (!sawToolPackets) {
               turnIndex++; // display → tool: pre-tool text gets its own group
               sawTokenForCurrentAnswer = false;
@@ -300,7 +324,7 @@ export async function* handleSSEStream<T extends PacketType>(
             }
             sawToolPackets = true;
             lastToolPacketType = backendPacket.type;
-            if (backendPacket.type === "custom_tool_start" && callId && !toolCallTurns.has(callId)) {
+            if (callId && !toolCallTurns.has(callId)) {
               toolCallTurns.set(callId, turnIndex);
             }
           } else if (sawToolPackets) {

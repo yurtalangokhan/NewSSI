@@ -130,18 +130,18 @@ class _RepeatedSameNameToolCallAgent:
                             id="tool-call-1",
                             content="",
                             tool_calls=[
-                                {"name": "web_search", "args": {"query": "a"}, "id": "call-1"}
+                                {"name": "generic_tool", "args": {"query": "a"}, "id": "call-1"}
                             ],
                         ),
-                        ToolMessage(content="result a", tool_call_id="call-1", name="web_search"),
+                        ToolMessage(content="result a", tool_call_id="call-1", name="generic_tool"),
                         AIMessage(
                             id="tool-call-2",
                             content="",
                             tool_calls=[
-                                {"name": "web_search", "args": {"query": "b"}, "id": "call-2"}
+                                {"name": "generic_tool", "args": {"query": "b"}, "id": "call-2"}
                             ],
                         ),
-                        ToolMessage(content="result b", tool_call_id="call-2", name="web_search"),
+                        ToolMessage(content="result b", tool_call_id="call-2", name="generic_tool"),
                         AIMessage(id=ANSWER_MESSAGE_ID, content="Hazır."),
                     ]
                 }
@@ -201,7 +201,7 @@ async def test_answer_after_an_in_node_tool_call_streams_as_tokens(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_repeated_calls_to_the_same_named_tool_each_get_a_start_packet(monkeypatch):
-    """A deep-research loop calling e.g. web_search several times must surface
+    """A deep-research loop calling e.g. a generic tool several times must surface
     every call's custom_tool_start, not just the first — deduping by tool name
     instead of call id silently drops the timeline entry for every repeat call
     while its result still streams through."""
@@ -419,10 +419,10 @@ class _InterruptedSentenceAgent:
                             id="tool-call",
                             content="",
                             tool_calls=[
-                                {"name": "web_search", "args": {"q": "x"}, "id": "c1"}
+                                {"name": "generic_tool", "args": {"q": "x"}, "id": "c1"}
                             ],
                         ),
-                        ToolMessage(content="ok", tool_call_id="c1", name="web_search"),
+                        ToolMessage(content="ok", tool_call_id="c1", name="generic_tool"),
                     ]
                 }
             },
@@ -501,7 +501,7 @@ class _TrailingWordBeforeToolAgent:
                     id="call-1",
                     content="",
                     tool_call_chunks=[
-                        {"name": "fetch_webpage", "args": "{}", "id": "c1", "index": 0}
+                        {"name": "generic_tool", "args": "{}", "id": "c1", "index": 0}
                     ],
                 ),
                 {},

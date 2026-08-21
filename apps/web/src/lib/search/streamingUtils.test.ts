@@ -392,5 +392,73 @@ describe("handleSSEStream", () => {
       reserved_assistant_message_id: 2,
     });
   });
-});
+  it("gives each parallel open_url / fetch_webpage call its own turn", async () => {
+    const response = createStreamingResponse([
+      'data: {"type":"open_url_start","call_id":"fetch-1"}\n',
+      'data: {"type":"open_url_urls","urls":["https://site1.com"],"call_id":"fetch-1"}\n',
+      'data: {"type":"open_url_start","call_id":"fetch-2"}\n',
+      'data: {"type":"open_url_urls","urls":["https://site2.com"],"call_id":"fetch-2"}\n',
+      'data: {"type":"open_url_documents","documents":[{"document_id":"https://site1.com","semantic_identifier":"Site 1"}],"call_id":"fetch-1"}\n',
+      'data: {"type":"open_url_documents","documents":[{"document_id":"https://site2.com","semantic_identifier":"Site 2"}],"call_id":"fetch-2"}\n',
+      'data: [DONE]\n',
+    ]);
 
+    const packets: any[] = [];
+    for await (const packet of handleSSEStream<any>(response)) {
+      packets.push(packet);
+    }
+
+    const turnOf = (call_id: string, type: string) =>
+      packets.find((p) => p.obj?.type === type && p.obj?.call_id === call_id)
+        ?.placement.turn_index;
+
+    expect(turnOf("fetch-1", "open_url_start")).toBe(
+      turnOf("fetch-1", "open_url_documents")
+    );
+    expect(turnOf("fetch-2", "open_url_start")).toBe(
+      turnOf("fetch-2", "open_url_documents")
+    );
+    expect(turnOf("fetch-1", "open_url_start")).not.toBe(
+      turnOf("fetch-2", "open_url_start")
+    );
+  });
+  it("splits interleaved search and fetch calls into distinct timeline turns", async () => {
+    const response = createStreamingResponse([
+      'data: {"type":"search_tool_start","is_internet_search":true,"call_id":"search-1"}\n',
+      'data: {"type":"search_tool_queries_delta","queries":["query 1"],"call_id":"search-1"}\n',
+      'data: {"type":"open_url_start","call_id":"fetch-1"}\n',
+      'data: {"type":"open_url_urls","urls":["https://site1.com"],"call_id":"fetch-1"}\n',
+      'data: {"type":"search_tool_start","is_internet_search":true,"call_id":"search-2"}\n',
+      'data: {"type":"search_tool_queries_delta","queries":["query 2"],"call_id":"search-2"}\n',
+      'data: {"type":"open_url_documents","documents":[{"document_id":"https://site1.com","semantic_identifier":"Site 1"}],"call_id":"fetch-1"}\n',
+      'data: {"type":"search_tool_documents_delta","documents":[{"document_id":"https://res1.com","semantic_identifier":"Res 1"}],"call_id":"search-1"}\n',
+      'data: {"type":"search_tool_documents_delta","documents":[{"document_id":"https://res2.com","semantic_identifier":"Res 2"}],"call_id":"search-2"}\n',
+      'data: [DONE]\n',
+    ]);
+
+    const packets: any[] = [];
+    for await (const packet of handleSSEStream<any>(response)) {
+      packets.push(packet);
+    }
+
+    const turnOf = (call_id: string, type: string) =>
+      packets.find((p) => p.obj?.type === type && p.obj?.call_id === call_id)
+        ?.placement.turn_index;
+
+    const s1Turn = turnOf("search-1", "search_tool_start");
+    const f1Turn = turnOf("fetch-1", "open_url_start");
+    const s2Turn = turnOf("search-2", "search_tool_start");
+
+    expect(s1Turn).toBeDefined();
+    expect(f1Turn).toBeDefined();
+    expect(s2Turn).toBeDefined();
+
+    expect(s1Turn).not.toBe(f1Turn);
+    expect(f1Turn).not.toBe(s2Turn);
+    expect(s1Turn).not.toBe(s2Turn);
+
+    expect(turnOf("fetch-1", "open_url_documents")).toBe(f1Turn);
+    expect(turnOf("search-1", "search_tool_documents_delta")).toBe(s1Turn);
+    expect(turnOf("search-2", "search_tool_documents_delta")).toBe(s2Turn);
+  });
+});

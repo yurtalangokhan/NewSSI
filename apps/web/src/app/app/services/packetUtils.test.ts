@@ -4,6 +4,8 @@
  */
 
 import { Packet, PacketType, Placement } from "./streamingModels";
+import { OnyxDocument } from "@/lib/search/interfaces";
+import { ValidSources } from "@/lib/types";
 import {
   isToolPacket,
   isActualToolCallPacket,
@@ -11,6 +13,7 @@ import {
   isSearchToolPacket,
   isStreamingComplete,
   isFinalAnswerComing,
+  getDocumentsFromPackets,
 } from "./packetUtils";
 
 // Helper to create a mock packet with a specific type
@@ -257,6 +260,79 @@ describe("packetUtils", () => {
 
     test("returns false for empty array", () => {
       expect(isFinalAnswerComing([])).toBe(false);
+    });
+  });
+
+  describe("getDocumentsFromPackets", () => {
+    const doc = (id: string): OnyxDocument =>
+      ({
+        document_id: id,
+        semantic_identifier: id,
+        link: `https://example.com/${id}`,
+        source_type: ValidSources.Web,
+        blurb: "",
+        boost: 0,
+        hidden: false,
+        score: 1,
+        chunk_ind: 0,
+        match_highlights: [],
+        metadata: {},
+        updated_at: null,
+        is_internet: true,
+      }) as OnyxDocument;
+
+    test("collects documents from SEARCH_TOOL_DOCUMENTS_DELTA packets", () => {
+      const packets: Packet[] = [
+        {
+          placement: { turn_index: 0, tab_index: 0 },
+          obj: {
+            type: PacketType.SEARCH_TOOL_DOCUMENTS_DELTA,
+            documents: [doc("1"), doc("2")],
+          } as any,
+        },
+      ];
+
+      expect(getDocumentsFromPackets(packets).map((d) => d.document_id)).toEqual([
+        "1",
+        "2",
+      ]);
+    });
+
+    test("collects documents from FETCH_TOOL_DOCUMENTS packets", () => {
+      const packets: Packet[] = [
+        {
+          placement: { turn_index: 0, tab_index: 0 },
+          obj: {
+            type: PacketType.FETCH_TOOL_DOCUMENTS,
+            documents: [doc("3")],
+          } as any,
+        },
+      ];
+
+      expect(getDocumentsFromPackets(packets).map((d) => d.document_id)).toEqual(["3"]);
+    });
+
+    test("dedupes by document_id, keeping the later packet's version", () => {
+      const staleDoc = { ...doc("1"), blurb: "stale" };
+      const freshDoc = { ...doc("1"), blurb: "fresh" };
+      const packets: Packet[] = [
+        {
+          placement: { turn_index: 0, tab_index: 0 },
+          obj: { type: PacketType.SEARCH_TOOL_DOCUMENTS_DELTA, documents: [staleDoc] } as any,
+        },
+        {
+          placement: { turn_index: 0, tab_index: 0 },
+          obj: { type: PacketType.FETCH_TOOL_DOCUMENTS, documents: [freshDoc] } as any,
+        },
+      ];
+
+      const result = getDocumentsFromPackets(packets);
+      expect(result).toHaveLength(1);
+      expect(result[0].blurb).toBe("fresh");
+    });
+
+    test("returns an empty array when there are no document packets", () => {
+      expect(getDocumentsFromPackets([createPacket(PacketType.REASONING_START)])).toEqual([]);
     });
   });
 });

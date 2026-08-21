@@ -11,6 +11,89 @@ from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from service.ChatHistoryReconstruction import reconstruct_message_tree, reconstruct_messages
 
 
+def test_reconstruct_messages_translates_web_search_into_search_tool_packets():
+    web_search_result = (
+        "TITLE: Onyx: Open Source AI Platform\n"
+        "URL: https://onyx.app\n"
+        "SNIPPET: Onyx is the open source generative AI platform."
+    )
+
+    messages, packets_2d = reconstruct_messages(
+        [
+            HumanMessage(content="Onyx nedir"),
+            AIMessage(
+                content="",
+                tool_calls=[{"name": "web_search", "args": {"query": "Onyx"}, "id": "call-1"}],
+            ),
+            ToolMessage(content=web_search_result, tool_call_id="call-1", name="web_search"),
+            AIMessage(content="Onyx açık kaynaklı bir platform."),
+        ],
+        thread_metadata={"user_id": "user-1", "persona_id": 1},
+        chat_session_id="thread-web-search",
+    )
+
+    assert len(packets_2d) == 1
+    packet_types = [p["obj"]["type"] for p in packets_2d[0]]
+    assert "search_tool_start" in packet_types
+    assert "search_tool_queries_delta" in packet_types
+    assert "search_tool_documents_delta" in packet_types
+    assert "custom_tool_start" not in packet_types
+    assert "custom_tool_delta" not in packet_types
+
+    docs_packet = next(
+        p["obj"] for p in packets_2d[0] if p["obj"]["type"] == "search_tool_documents_delta"
+    )
+    assert docs_packet["documents"][0]["document_id"] == "https://onyx.app"
+
+
+def test_reconstruct_messages_handles_web_search_error_cleanly_without_custom_tool_delta():
+    messages, packets_2d = reconstruct_messages(
+        [
+            HumanMessage(content="Onyx nedir"),
+            AIMessage(
+                content="",
+                tool_calls=[{"name": "web_search", "args": {"query": "Onyx"}, "id": "call-1"}],
+            ),
+            ToolMessage(content="Web search error: timeout", tool_call_id="call-1", name="web_search"),
+            AIMessage(content="Aramada bir sorun oluştu."),
+        ],
+        thread_metadata={"user_id": "user-1", "persona_id": 1},
+        chat_session_id="thread-web-search-error",
+    )
+
+    packet_types = [p["obj"]["type"] for p in packets_2d[0]]
+    assert "search_tool_start" in packet_types
+    assert "search_tool_queries_delta" in packet_types
+    assert "search_tool_documents_delta" in packet_types
+    assert "custom_tool_delta" not in packet_types
+
+
+def test_reconstruct_messages_handles_fetch_webpage_404_error_cleanly():
+    messages, packets_2d = reconstruct_messages(
+        [
+            HumanMessage(content="Valkey oku"),
+            AIMessage(
+                content="",
+                tool_calls=[{"name": "fetch_webpage", "args": {"url": "https://example.com/404"}, "id": "call-1"}],
+            ),
+            ToolMessage(
+                content="Error fetching webpage: Client error '404 Not Found' for url 'https://example.com/404'",
+                tool_call_id="call-1",
+                name="fetch_webpage",
+            ),
+            AIMessage(content="Sayfaya ulaşılamadı."),
+        ],
+        thread_metadata={"user_id": "user-1", "persona_id": 1},
+        chat_session_id="thread-fetch-404-error",
+    )
+
+    packet_types = [p["obj"]["type"] for p in packets_2d[0]]
+    assert "open_url_start" in packet_types
+    assert "open_url_urls" in packet_types
+    assert "open_url_documents" in packet_types
+    assert "custom_tool_delta" not in packet_types
+
+
 def test_reconstruct_messages_builds_a_plain_chain():
     messages, packets_2d = reconstruct_messages(
         [HumanMessage(content="merhaba"), AIMessage(content="selam")],
@@ -360,3 +443,75 @@ def test_reconstruct_messages_does_not_merge_a_document_only_turn_into_the_next_
     ai2_packet_types = [p["obj"]["type"] for p in packets_2d[1]]
     assert "generated_file" in ai1_packet_types
     assert "generated_file" not in ai2_packet_types
+
+
+def test_reconstruct_messages_groups_web_search_and_fetch_webpage_turns_consistently_with_live_stream():
+    """Verify that multiple parallel web searches group into one turn,
+    reasoning steps get their own turns, and each fetch_webpage gets its own turn
+    with queries, URLs, and document deltas on the correct turns."""
+    web_result_1 = "TITLE: Valkey vs Redis\nURL: https://example.com/valkey\nSNIPPET: Valkey comparison"
+    web_result_2 = "TITLE: Benchmarks\nURL: https://example.com/bench\nSNIPPET: Benchmark results"
+    fetch_result_1 = "TITLE: What is Valkey?\nDESCRIPTION: A deep look at Valkey\n---\nContent of Valkey page"
+
+    raw_msgs = [
+        HumanMessage(content="Valkey vs Redis 8 karşılaştırması"),
+        # Step 1: Initial reasoning before tools
+        AIMessage(
+            content="",
+            additional_kwargs={"thinking": "The user is asking for a comparison..."},
+            tool_calls=[
+                {"name": "web_search", "args": {"query": "Valkey vs Redis 8"}, "id": "call-1"},
+                {"name": "web_search", "args": {"query": "Valkey Redis benchmark"}, "id": "call-2"},
+            ],
+        ),
+        ToolMessage(content=web_result_1, tool_call_id="call-1", name="web_search"),
+        ToolMessage(content=web_result_2, tool_call_id="call-2", name="web_search"),
+        # Step 2: Intermediate reasoning before fetch
+        AIMessage(
+            content="",
+            additional_kwargs={"thinking": "Good start! Now let me fetch the page..."},
+            tool_calls=[
+                {"name": "fetch_webpage", "args": {"url": "https://example.com/valkey"}, "id": "call-3"},
+            ],
+        ),
+        ToolMessage(content=fetch_result_1, tool_call_id="call-3", name="fetch_webpage"),
+        # Final answer
+        AIMessage(content="İşte Valkey ve Redis 8 karşılaştırma raporu: ..."),
+    ]
+
+    messages, packets_2d = reconstruct_messages(
+        raw_msgs,
+        thread_metadata={"user_id": "user-1", "persona_id": 1},
+        chat_session_id="thread-search-fetch-stream-parity",
+    )
+
+    assert len(packets_2d) == 1
+    packets = packets_2d[0]
+
+    # Map packets by turn_index
+    by_turn = {}
+    for p in packets:
+        turn = p["placement"]["turn_index"]
+        by_turn.setdefault(turn, []).append(p["obj"]["type"])
+
+    # Turn 0: reasoning
+    assert by_turn[0] == ["reasoning_start", "reasoning_delta"]
+
+    # Turn 1: both web searches grouped together with queries and documents
+    assert by_turn[1] == [
+        "search_tool_start",
+        "search_tool_queries_delta",
+        "search_tool_documents_delta",
+        "search_tool_start",
+        "search_tool_queries_delta",
+        "search_tool_documents_delta",
+    ]
+
+    # Turn 2: intermediate reasoning
+    assert by_turn[2] == ["reasoning_start", "reasoning_delta"]
+
+    # Turn 3: fetch_webpage (start + urls + documents together on turn 3)
+    assert by_turn[3] == ["open_url_start", "open_url_urls", "open_url_documents"]
+
+    # Turn 4: final answer message_start + stop
+    assert by_turn[4] == ["message_start", "stop"]

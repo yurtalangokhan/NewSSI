@@ -58,16 +58,74 @@ export const PACKET_CATEGORIES: ReadonlyArray<PacketCategory> = [
     splitsFromOthers: true,
   },
   {
-    id: "tool",
+    id: "search",
     types: new Set([
-      "custom_tool_start",
-      "custom_tool_delta",
-      "custom_step_start",
       "search_tool_start",
       "search_tool_queries_delta",
       "search_tool_documents_delta",
     ]),
-    splitsFromOthers: false,
+    splitsFromOthers: true,
+  },
+  {
+    id: "fetch",
+    types: new Set([
+      "open_url_start",
+      "open_url_urls",
+      "open_url_documents",
+    ]),
+    splitsFromOthers: true,
+  },
+  {
+    id: "custom_tool",
+    types: new Set([
+      "custom_tool_start",
+      "custom_tool_delta",
+      "custom_step_start",
+    ]),
+    splitsFromOthers: true,
+  },
+  {
+    id: "python_tool",
+    types: new Set([
+      "python_tool_start",
+      "python_tool_delta",
+    ]),
+    splitsFromOthers: true,
+  },
+  {
+    id: "file_reader",
+    types: new Set([
+      "file_reader_start",
+      "file_reader_result",
+    ]),
+    splitsFromOthers: true,
+  },
+  {
+    id: "memory_tool",
+    types: new Set([
+      "memory_tool_start",
+      "memory_tool_delta",
+      "memory_tool_no_access",
+    ]),
+    splitsFromOthers: true,
+  },
+  {
+    id: "deep_research_plan",
+    types: new Set([
+      "deep_research_plan_start",
+      "deep_research_plan_delta",
+    ]),
+    splitsFromOthers: true,
+  },
+  {
+    id: "research_agent",
+    types: new Set([
+      "research_agent_start",
+      "intermediate_report_start",
+      "intermediate_report_delta",
+      "intermediate_report_cited_docs",
+    ]),
+    splitsFromOthers: true,
   },
   {
     // The progress packets and the file they produce share one group so the

@@ -2,7 +2,6 @@
 
 import { MinimalOnyxDocument, OnyxDocument } from "@/lib/search/interfaces";
 import ChatDocumentDisplay from "@/sections/document-sidebar/ChatDocumentDisplay";
-import { removeDuplicateDocs } from "@/lib/documentUtils";
 import { Dispatch, SetStateAction, useMemo, memo } from "react";
 import { getCitations } from "@/app/app/services/packetUtils";
 import {
@@ -11,8 +10,13 @@ import {
 } from "@/app/app/stores/useChatSessionStore";
 import Text from "@/refresh-components/texts/Text";
 import { Button } from "@opal/components";
-import { SvgSearchMenu, SvgX } from "@opal/icons";
+import { SvgLink, SvgSearch, SvgSearchMenu, SvgX } from "@opal/icons";
 import Separator from "@/refresh-components/Separator";
+import {
+  groupSourcesByDomain,
+  splitMessageSources,
+} from "./webSourceGrouping";
+import DomainGroupedSources from "./DomainGroupedSources";
 
 import { useTranslation } from "react-i18next";
 
@@ -68,6 +72,22 @@ function Header({ children, onClose }: HeaderProps) {
   );
 }
 
+interface SectionHeaderProps {
+  title: string;
+  icon?: React.ReactNode;
+}
+
+function SectionHeader({ title, icon }: SectionHeaderProps) {
+  return (
+    <div className="flex items-center gap-2 px-1 pt-2 pb-1">
+      {icon}
+      <Text as="p" secondaryAction text03>
+        {title}
+      </Text>
+    </div>
+  );
+}
+
 interface ChatDocumentDisplayWrapperProps {
   children?: React.ReactNode;
 }
@@ -104,7 +124,7 @@ const DocumentsSidebar = memo(
       ? currentMessageTree?.get(idOfMessageToDisplay)
       : null;
 
-    // Get citations in order and build a set of cited document IDs
+    // Get citations in order and build a set of cited document IDs (Hooks called unconditionally at top)
     const { citedDocumentIds, citationOrder } = useMemo(() => {
       if (!selectedMessage) {
         return {
@@ -124,11 +144,46 @@ const DocumentsSidebar = memo(
         }
       });
       return { citedDocumentIds, citationOrder };
-    }, [idOfMessageToDisplay, selectedMessage?.packets.length]);
+    }, [idOfMessageToDisplay, selectedMessage?.packets]);
 
-    // if these are missing for some reason, then nothing we can do. Just
-    // don't render.
-    // TODO: improve this display
+    const { readDocuments, searchDocuments, internalDocuments } = useMemo(() => {
+      if (!selectedMessage) {
+        return {
+          readDocuments: [],
+          searchDocuments: [],
+          internalDocuments: [],
+        };
+      }
+      return splitMessageSources(
+        selectedMessage.packets || [],
+        selectedMessage.documents || []
+      );
+    }, [selectedMessage?.packets, selectedMessage?.documents]);
+
+    const citedInternalDocuments = useMemo(() => {
+      return internalDocuments
+        .filter(
+          (doc) =>
+            doc.document_id !== null &&
+            doc.document_id !== undefined &&
+            citedDocumentIds.has(doc.document_id)
+        )
+        .sort((a, b) => {
+          const orderA = citationOrder.get(a.document_id) ?? Infinity;
+          const orderB = citationOrder.get(b.document_id) ?? Infinity;
+          return orderA - orderB;
+        });
+    }, [internalDocuments, citedDocumentIds, citationOrder]);
+
+    const otherInternalDocuments = useMemo(() => {
+      return internalDocuments.filter(
+        (doc) =>
+          doc.document_id === null ||
+          doc.document_id === undefined ||
+          !citedDocumentIds.has(doc.document_id)
+      );
+    }, [internalDocuments, citedDocumentIds]);
+
     if (!selectedMessage || !currentMessageTree) return null;
 
     const humanMessage = selectedMessage.parentNodeId
@@ -139,41 +194,68 @@ const DocumentsSidebar = memo(
     );
     const selectedDocumentIds =
       selectedDocuments?.map((document) => document.document_id) || [];
-    const currentDocuments = selectedMessage.documents || null;
-    const dedupedDocuments = removeDuplicateDocs(currentDocuments || []);
-    const citedDocuments = dedupedDocuments
-      .filter(
-        (doc) =>
-          doc.document_id !== null &&
-          doc.document_id !== undefined &&
-          citedDocumentIds.has(doc.document_id)
-      )
-      .sort((a, b) => {
-        // Sort by citation order (order citations appeared in the answer)
-        const orderA = citationOrder.get(a.document_id) ?? Infinity;
-        const orderB = citationOrder.get(b.document_id) ?? Infinity;
-        return orderA - orderB;
-      });
-    const otherDocuments = dedupedDocuments.filter(
-      (doc) =>
-        doc.document_id === null ||
-        doc.document_id === undefined ||
-        !citedDocumentIds.has(doc.document_id)
+
+    const hasRead = readDocuments.length > 0;
+    const hasSearch = searchDocuments.length > 0;
+    const hasCitedInternal = citedInternalDocuments.length > 0;
+    const hasOtherInternal = otherInternalDocuments.length > 0;
+    const hasUserFiles = Boolean(
+      humanFileDescriptors && humanFileDescriptors.length > 0
     );
-    const hasCited = citedDocuments.length > 0;
-    const hasOther = otherDocuments.length > 0;
+
+    const totalSourcesCount =
+      readDocuments.length +
+      searchDocuments.length +
+      internalDocuments.length +
+      (humanFileDescriptors?.length || 0);
 
     return (
       <div
         id="onyx-chat-sidebar"
         className="bg-background-tint-01 overflow-y-scroll h-full w-full border-l"
       >
-        <div className="flex flex-col px-3 gap-6">
-          {hasCited && (
-            <div>
-              <Header onClose={closeSidebar}>{t("citedSourcesHeader")}</Header>
+        <Header onClose={closeSidebar}>
+          {t("allSourcesHeader", { count: totalSourcesCount })}
+        </Header>
+
+        <div className="flex flex-col px-3 py-4 gap-6">
+          {hasRead && (
+            <div className="flex flex-col gap-2">
+              <SectionHeader
+                title={t("readPagesHeader", { count: readDocuments.length })}
+                icon={<SvgLink className="w-4 h-4 stroke-text-03" />}
+              />
+              <DomainGroupedSources
+                groups={groupSourcesByDomain(readDocuments)}
+                modal={modal}
+                selectedDocumentIds={selectedDocumentIds}
+                setPresentingDocument={setPresentingDocument}
+              />
+            </div>
+          )}
+
+          {hasSearch && (
+            <div className="flex flex-col gap-2">
+              <SectionHeader
+                title={t("searchResultsHeader", { count: searchDocuments.length })}
+                icon={<SvgSearch className="w-4 h-4 stroke-text-03" />}
+              />
+              <DomainGroupedSources
+                groups={groupSourcesByDomain(searchDocuments)}
+                modal={modal}
+                selectedDocumentIds={selectedDocumentIds}
+                setPresentingDocument={setPresentingDocument}
+              />
+            </div>
+          )}
+
+          {hasCitedInternal && (
+            <div className="flex flex-col gap-2">
+              <SectionHeader
+                title={t("citedSourcesHeader")}
+              />
               <ChatDocumentDisplayWrapper>
-                {citedDocuments.map((document) => (
+                {citedInternalDocuments.map((document) => (
                   <ChatDocumentDisplay
                     key={document.document_id}
                     setPresentingDocument={setPresentingDocument}
@@ -188,13 +270,17 @@ const DocumentsSidebar = memo(
             </div>
           )}
 
-          {hasOther && (
-            <div>
-              <Header onClose={closeSidebar}>
-                {citedDocuments.length > 0 ? t("moreSourcesHeader") : t("foundSourcesHeader")}
-              </Header>
+          {hasOtherInternal && (
+            <div className="flex flex-col gap-2">
+              <SectionHeader
+                title={
+                  hasCitedInternal
+                    ? t("moreSourcesHeader")
+                    : t("foundSourcesHeader")
+                }
+              />
               <ChatDocumentDisplayWrapper>
-                {otherDocuments.map((document) => (
+                {otherInternalDocuments.map((document) => (
                   <ChatDocumentDisplay
                     key={document.document_id}
                     setPresentingDocument={setPresentingDocument}
@@ -209,9 +295,11 @@ const DocumentsSidebar = memo(
             </div>
           )}
 
-          {humanFileDescriptors && humanFileDescriptors.length > 0 && (
-            <div>
-              <Header onClose={closeSidebar}>{t("userFilesHeader")}</Header>
+          {hasUserFiles && humanFileDescriptors && (
+            <div className="flex flex-col gap-2">
+              <SectionHeader
+                title={t("userFilesHeader")}
+              />
               <ChatDocumentDisplayWrapper>
                 {humanFileDescriptors.map((file) => (
                   <ChatDocumentDisplay

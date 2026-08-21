@@ -25,6 +25,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from service.DocumentProgressTracker import is_document_tool
+from service.WebSearchProgressTracker import WebSearchProgressTracker, is_web_search_tool
 from service.GeneratedFilePacket import (
     build_generated_file_packet_obj,
     parse_generated_file_payload,
@@ -267,6 +268,7 @@ class ReconstructionState:
     # arrive (a batch of parallel calls appends all of its starts before
     # any of their results come back).
     open_tool_call_positions: dict[str, int] = field(default_factory=dict)
+    web_search_progress: WebSearchProgressTracker = field(default_factory=WebSearchProgressTracker)
     pending_ltm_recalled_from_system: int = 0
     pending_ltm_recalled_from_user: int = 0
     ids: _IdCounter = field(default_factory=_IdCounter)
@@ -301,6 +303,7 @@ class ReconstructionState:
         return ReconstructionState(
             pending_tool_packets=list(self.pending_tool_packets),
             open_tool_call_positions=dict(self.open_tool_call_positions),
+            web_search_progress=self.web_search_progress.clone(),
             pending_ltm_recalled_from_system=self.pending_ltm_recalled_from_system,
             pending_ltm_recalled_from_user=self.pending_ltm_recalled_from_user,
             ids=self.ids,  # shared reference, deliberately not copied — see _IdCounter
@@ -344,7 +347,12 @@ def _process_raw_message(
         # Document tools are represented by their generated_file card
         # alone — same as the live stream, which replaces their timeline
         # step with the document_generation_* packets.
-        if generated_file is None:
+        web_search_packets = (
+            state.web_search_progress.on_tool_result(tool_name, tool_content, tool_call_id)
+            if generated_file is None and is_web_search_tool(tool_name)
+            else None
+        )
+        if generated_file is None and web_search_packets is None:
             delta_packet = {
                 "placement": {"turn_index": 0, "sub_turn_index": None},
                 "obj": {
@@ -362,6 +370,20 @@ def _process_raw_message(
                         state.open_tool_call_positions[call_id] = pos + 1
             else:
                 state.pending_tool_packets.append(delta_packet)
+        if web_search_packets is not None:
+            delta_packets = [
+                {"placement": {"turn_index": 0, "sub_turn_index": None}, "obj": packet}
+                for packet in web_search_packets
+            ]
+            if tool_call_id and tool_call_id in state.open_tool_call_positions:
+                insert_pos = state.open_tool_call_positions.pop(tool_call_id) + 1
+                state.pending_tool_packets[insert_pos:insert_pos] = delta_packets
+                shift = len(delta_packets)
+                for call_id, pos in state.open_tool_call_positions.items():
+                    if pos >= insert_pos:
+                        state.open_tool_call_positions[call_id] = pos + shift
+            else:
+                state.pending_tool_packets.extend(delta_packets)
         if generated_file is not None:
             state.pending_tool_packets.append(
                 {
@@ -441,6 +463,27 @@ def _process_raw_message(
                 # an extra timeline entry the user never saw while it was
                 # streaming.
                 if is_document_tool(tool_name):
+                    continue
+                web_search_packets = (
+                    state.web_search_progress.on_tool_call(tool_name, tool_args, call_id)
+                    if is_web_search_tool(tool_name)
+                    else None
+                )
+                if web_search_packets is not None:
+                    for packet in web_search_packets:
+                        state.pending_tool_packets.append(
+                            {
+                                "placement": {"turn_index": 0, "sub_turn_index": None},
+                                "obj": packet,
+                            }
+                        )
+                    if call_id:
+                        # Point at the LAST of this call's packets, so a
+                        # later result is inserted right after both instead
+                        # of wedging between them.
+                        state.open_tool_call_positions[call_id] = (
+                            len(state.pending_tool_packets) - 1
+                        )
                     continue
                 state.pending_tool_packets.append(
                     {
