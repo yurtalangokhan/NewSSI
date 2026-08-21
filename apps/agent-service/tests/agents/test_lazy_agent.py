@@ -108,6 +108,48 @@ class TestLazyLoadingAgentBase:
         assert agent._loaded
         assert snapshots == ["snapshot-1"]
 
+    @pytest.mark.asyncio
+    async def test_aupdate_state_delegates_to_the_underlying_graph(self):
+        """AgentHelpers._handle_input calls agent.aupdate_state to replace an
+        edited message's content in place on a forked checkpoint — every
+        LazyLoadingAgent subclass must expose it via the same
+        delegate-to-self._graph pattern aget_state already uses, or editing
+        a message sent to a custom agent raises AttributeError."""
+
+        class DummyUpdateGraph:
+            def __init__(self):
+                self.seen_config = None
+                self.seen_values = None
+
+            async def aupdate_state(self, config, values, **kwargs):
+                self.seen_config = config
+                self.seen_values = values
+                return {"configurable": {"checkpoint_id": "new-id"}}
+
+        agent = TestLazyLoadingAgent()
+        agent._loaded = True
+        graph = DummyUpdateGraph()
+        agent._graph = graph
+
+        result = await agent.aupdate_state({"configurable": {}}, {"messages": ["x"]})
+
+        assert result == {"configurable": {"checkpoint_id": "new-id"}}
+        assert graph.seen_values == {"messages": ["x"]}
+
+    @pytest.mark.asyncio
+    async def test_aupdate_state_ensures_the_agent_is_loaded_first(self):
+        class DummyUpdateGraph:
+            async def aupdate_state(self, config, values, **kwargs):
+                return {"configurable": {}}
+
+        agent = TestLazyLoadingAgent()
+        agent._graph = DummyUpdateGraph()
+        assert not agent._loaded
+
+        await agent.aupdate_state({"configurable": {}}, {"messages": []})
+
+        assert agent._loaded
+
     def test_get_langgraph_store_uses_store_service(self):
         """Test that long-term memory resolves the global LangGraph store."""
         agent = TestLazyLoadingAgent()

@@ -820,6 +820,13 @@ export default function useChatController({
           chatSessionId: currChatSessionId,
           personaId: activePersonaId,
           isRegenerate: Boolean(regenerationRequest),
+          // Editing (as opposed to retrying) sends the message's own id so
+          // the backend forks the checkpoint at it and replaces its content,
+          // excluding the old response and anything sent after it.
+          editTargetMessageId:
+            hasExplicitResendTarget && !regenerationRequest
+              ? messageIdToResend
+              : undefined,
           filters: buildFilters(
             filterManager.selectedSources,
             filterManager.selectedDocumentSets,

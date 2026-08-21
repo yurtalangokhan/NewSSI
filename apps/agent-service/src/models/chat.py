@@ -70,6 +70,29 @@ class UserInput(BaseModel):
             "the previous (rejected) response in its context."
         ),
     )
+    is_edit: bool = Field(
+        default=False,
+        description=(
+            "Set when this send is editing the text of a previously-sent "
+            "user message. Like a retry, the agent invocation forks the "
+            "LangGraph checkpoint at that message instead of appending to "
+            "the thread's tip, but the forked message's content is replaced "
+            "with the edited text before generating a new response — so "
+            "everything after the edited message (its old response and any "
+            "later turns) is excluded from the new response's context, while "
+            "remaining permanently reachable via the old branch."
+        ),
+    )
+    edit_target_message_id: int | None = Field(
+        default=None,
+        description=(
+            "The user message id being edited. Required when is_edit is set. "
+            "Unlike retry_target_message_id (which points at the message "
+            "being retried, i.e. the same message the new response attaches "
+            "to), this points at the message whose own content is being "
+            "replaced."
+        ),
+    )
 
 
 class StreamInput(UserInput):

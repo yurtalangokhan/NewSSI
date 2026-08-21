@@ -27,6 +27,34 @@ class _AgentWithStateHistory(Protocol):
         ...
 
 
+async def find_fork_point_with_message(
+    agent: _AgentWithStateHistory,
+    thread_id: str,
+    target_message_id: int,
+    thread_metadata: dict[str, Any],
+) -> tuple[RunnableConfig | None, Any]:
+    """Like find_fork_point, but also returns the raw (langchain) message
+    object matching target_message_id — needed by an edit-message retry,
+    which must reuse that message's own id so aupdate_state REPLACES it
+    in place (via the add_messages reducer's same-id semantics) rather
+    than appending a duplicate.
+
+    Returns (None, None) if no such checkpoint is found.
+    """
+    history_config: RunnableConfig = {"configurable": {"thread_id": thread_id}}
+    async for snapshot in agent.aget_state_history(history_config):
+        raw_messages = snapshot.values.get("messages", [])
+        messages, _ = reconstruct_messages(
+            raw_messages, thread_metadata, thread_id
+        )
+        if not messages:
+            continue
+        last = messages[-1]
+        if last["message_id"] == target_message_id and last["message_type"] == "user":
+            return snapshot.config, raw_messages[-1]
+    return None, None
+
+
 async def find_fork_point(
     agent: _AgentWithStateHistory,
     thread_id: str,
@@ -39,15 +67,7 @@ async def find_fork_point(
     caller must fall back to normal (append-to-tip) behavior, never hard-fail
     a retry over this.
     """
-    history_config: RunnableConfig = {"configurable": {"thread_id": thread_id}}
-    async for snapshot in agent.aget_state_history(history_config):
-        raw_messages = snapshot.values.get("messages", [])
-        messages, _ = reconstruct_messages(
-            raw_messages, thread_metadata, thread_id
-        )
-        if not messages:
-            continue
-        last = messages[-1]
-        if last["message_id"] == target_message_id and last["message_type"] == "user":
-            return snapshot.config
-    return None
+    config, _ = await find_fork_point_with_message(
+        agent, thread_id=thread_id, target_message_id=target_message_id, thread_metadata=thread_metadata
+    )
+    return config

@@ -148,6 +148,12 @@ export interface SendMessageParams {
   // reconstruction can treat the new response as a sibling of the
   // original instead of a new conversation turn.
   isRegenerate?: boolean;
+  // Set when this send is editing the text of a previously-sent user
+  // message (the message's own id, not its parent). The backend forks the
+  // checkpoint at that message and replaces its content, so the new
+  // response excludes the old response (and anything sent after it) from
+  // its context, while the old branch stays reachable via history.
+  editTargetMessageId?: number | null;
 }
 
 export async function* sendMessage({
@@ -169,6 +175,7 @@ export async function* sendMessage({
   projectId,
   personaId,
   isRegenerate,
+  editTargetMessageId,
 }: SendMessageParams): AsyncGenerator<PacketType, void, unknown> {
   // Build payload for new send-chat-message API
   const payload = {
@@ -183,6 +190,7 @@ export async function* sendMessage({
     allowed_tool_ids: enabledToolIds,
     forced_tool_id: forcedToolId ?? null,
     is_regenerate: isRegenerate ?? false,
+    edit_target_message_id: editTargetMessageId ?? null,
     llm_override:
       temperature || modelVersion || modelProviderId || modelProviderType
         ? {

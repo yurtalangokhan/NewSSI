@@ -779,6 +779,8 @@ async def send_chat_message(
         retry_target_message_id=(
             body.get("parent_message_id") if body.get("is_regenerate") else None
         ),
+        is_edit=bool(body.get("edit_target_message_id")),
+        edit_target_message_id=body.get("edit_target_message_id"),
     )
 
     async def generate_stream():

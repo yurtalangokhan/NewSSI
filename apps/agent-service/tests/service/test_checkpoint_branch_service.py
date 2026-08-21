@@ -9,7 +9,7 @@ readable in its own branch. See
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage
 
-from service.CheckpointBranchService import find_fork_point
+from service.CheckpointBranchService import find_fork_point, find_fork_point_with_message
 
 
 class _FakeSnapshot:
@@ -49,6 +49,50 @@ async def test_find_fork_point_locates_the_checkpoint_right_after_the_target_hum
     )
 
     assert config == {"configurable": {"thread_id": "t1", "checkpoint_id": "1"}}
+
+
+@pytest.mark.asyncio
+async def test_find_fork_point_with_message_also_returns_the_raw_target_message():
+    """An edit-message retry needs the raw langchain message (its real .id)
+    so aupdate_state can replace it in place instead of appending a
+    duplicate — this is what distinguishes editing from a plain retry."""
+    target = HumanMessage(content="soru", id="h1")
+    snapshots = [
+        _FakeSnapshot(
+            [HumanMessage(content="soru", id="h1"), AIMessage(content="cevap")],
+            checkpoint_id="2",
+        ),
+        _FakeSnapshot([target], checkpoint_id="1"),
+    ]
+    agent = _FakeAgentWithHistory(snapshots)
+
+    config, raw_message = await find_fork_point_with_message(
+        agent,
+        thread_id="t1",
+        target_message_id=1,
+        thread_metadata={"user_id": "user-1", "persona_id": 0},
+    )
+
+    assert config == {"configurable": {"thread_id": "t1", "checkpoint_id": "1"}}
+    assert raw_message is target
+    assert raw_message.id == "h1"
+
+
+@pytest.mark.asyncio
+async def test_find_fork_point_with_message_returns_none_none_when_no_match():
+    agent = _FakeAgentWithHistory(
+        [_FakeSnapshot([HumanMessage(content="soru")], checkpoint_id="1")]
+    )
+
+    config, raw_message = await find_fork_point_with_message(
+        agent,
+        thread_id="t1",
+        target_message_id=99,
+        thread_metadata={"user_id": "user-1", "persona_id": 0},
+    )
+
+    assert config is None
+    assert raw_message is None
 
 
 @pytest.mark.asyncio
