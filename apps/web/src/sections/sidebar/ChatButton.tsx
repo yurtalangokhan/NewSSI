@@ -147,7 +147,7 @@ const ChatButton = memo(
 
     // Drag and drop setup for chat sessions
     const dragId = `${DRAG_TYPES.CHAT}-${chatSession.id}`;
-    const { attributes, listeners, setNodeRef, transform, isDragging } =
+    const { attributes, listeners, setNodeRef, isDragging } =
       useDraggable({
         id: dragId,
         data: {
@@ -532,10 +532,7 @@ const ChatButton = memo(
           <div
             ref={setNodeRef}
             style={{
-              transform: transform
-                ? `translate3d(0px, ${transform.y}px, 0)`
-                : undefined,
-              opacity: isDragging ? 0.5 : 1,
+              opacity: isDragging ? 0.35 : 1,
             }}
             {...(mounted ? attributes : {})}
             {...(mounted ? listeners : {})}

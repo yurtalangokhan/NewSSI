@@ -458,6 +458,7 @@ const tr = {
     curatorPanel: "Küratör Paneli",
     moveFailedToast: "Sohbet taşınamadı. Lütfen tekrar deneyin.",
     moveChatFailed: "Sohbet taşınamadı. Lütfen tekrar deneyin.",
+    dropChatToProject: "Sohbeti bu projeye taşımak için buraya bırakın",
     shareMenuItem: "Paylaş",
     share: "Paylaş",
     renameMenuItem: "Yeniden Adlandır",

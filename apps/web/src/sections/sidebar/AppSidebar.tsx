@@ -8,7 +8,6 @@ import { MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
 import Text from "@/refresh-components/texts/Text";
 import ChatButton from "@/sections/sidebar/ChatButton";
 import AgentButton from "@/sections/sidebar/AgentButton";
-import { DragEndEvent } from "@dnd-kit/core";
 import {
   DndContext,
   closestCenter,
@@ -17,6 +16,9 @@ import {
   useSensor,
   useSensors,
   pointerWithin,
+  DragStartEvent,
+  DragEndEvent,
+  DragOverlay,
 } from "@dnd-kit/core";
 import {
   arrayMove,
@@ -408,9 +410,27 @@ const MemoizedAppSidebarInner = memo(
       }
     }
 
+    const [activeChatSession, setActiveChatSession] =
+      useState<ChatSession | null>(null);
+
+    const handleChatProjectDragStart = useCallback(
+      (event: DragStartEvent) => {
+        const activeData = event.active.data.current;
+        if (activeData?.type === DRAG_TYPES.CHAT) {
+          setActiveChatSession(activeData.chatSession as ChatSession);
+        }
+      },
+      []
+    );
+
+    const handleChatProjectDragCancel = useCallback(() => {
+      setActiveChatSession(null);
+    }, []);
+
     // Handle chat to project drag and drop
     const handleChatProjectDragEnd = useCallback(
       async (event: DragEndEvent) => {
+        setActiveChatSession(null);
         const { active, over } = event;
         if (!over) return;
 
@@ -767,7 +787,9 @@ const MemoizedAppSidebarInner = memo(
                     restrictToFirstScrollableAncestor,
                     restrictToVerticalAxis,
                   ]}
+                  onDragStart={handleChatProjectDragStart}
                   onDragEnd={handleChatProjectDragEnd}
+                  onDragCancel={handleChatProjectDragCancel}
                 >
                   {/* Projects */}
                   <SidebarSection
@@ -795,6 +817,17 @@ const MemoizedAppSidebarInner = memo(
                     isLoadingMore={isLoadingMore}
                     onLoadMore={loadMore}
                   />
+
+                  <DragOverlay dropAnimation={null}>
+                    {activeChatSession ? (
+                      <div className="w-full opacity-90 shadow-lg cursor-grabbing pointer-events-none rounded-08 bg-background-tint-02">
+                        <ChatButton
+                          chatSession={activeChatSession}
+                          draggable={false}
+                        />
+                      </div>
+                    ) : null}
+                  </DragOverlay>
                 </DndContext>
               </>
             )}

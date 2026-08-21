@@ -458,6 +458,7 @@ const en = {
     curatorPanel: "Curator Panel",
     moveFailedToast: "Failed to move chat. Please try again.",
     moveChatFailed: "Failed to move chat. Please try again.",
+    dropChatToProject: "Drop here to move chat to project",
     shareMenuItem: "Share",
     share: "Share",
     renameMenuItem: "Rename",

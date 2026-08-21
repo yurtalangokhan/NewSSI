@@ -2,7 +2,7 @@
 
 import React, { useState, memo } from "react";
 import { Project, useProjectsContext } from "@/providers/ProjectsContext";
-import { useDroppable } from "@dnd-kit/core";
+import { useDroppable, useDndContext } from "@dnd-kit/core";
 import LineItem from "@/refresh-components/buttons/LineItem";
 import Popover, { PopoverMenu } from "@/refresh-components/Popover";
 import ConfirmationModalLayout from "@/refresh-components/layouts/ConfirmationModalLayout";
@@ -22,10 +22,12 @@ import {
   SvgFolder,
   SvgFolderOpen,
   SvgFolderPartialOpen,
+  SvgFolderIn,
   SvgMoreHorizontal,
   SvgTrash,
 } from "@opal/icons";
 import { useTranslation } from "react-i18next";
+import { motion, AnimatePresence } from "motion/react";
 
 export interface ProjectFolderButtonProps {
   project: Project;
@@ -54,6 +56,13 @@ const ProjectFolderButton = memo(({ project }: ProjectFolderButtonProps) => {
       project,
     },
   });
+
+  const dndContext = useDndContext?.() ?? {};
+  const active = dndContext.active;
+  const isDraggingChat = active?.data?.current?.type === DRAG_TYPES.CHAT;
+  const isChatAlreadyInThisProject =
+    active?.data?.current?.projectId === project.id;
+  const isDropTarget = isOver && isDraggingChat && !isChatAlreadyInThisProject;
 
   function getFolderIcon(): React.FunctionComponent<IconProps> {
     if (open) {
@@ -189,6 +198,33 @@ const ProjectFolderButton = memo(({ project }: ProjectFolderButtonProps) => {
           </SidebarTab>
         </Popover.Anchor>
       </Popover>
+
+      {/* Drop Target Indicator Box */}
+      <AnimatePresence>
+        {isDropTarget && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className="overflow-hidden"
+          >
+            <div
+              data-testid="project-drop-zone"
+              className={cn(
+                "my-1 flex items-center justify-center gap-2 rounded-08 px-3 py-2",
+                "border border-dashed border-action-link-05",
+                "bg-action-link-01/30 text-action-link-05 shadow-sm select-none"
+              )}
+            >
+              <SvgFolderIn className="h-4 w-4 shrink-0 animate-pulse" />
+              <span className="text-xs font-medium tracking-tight leading-tight">
+                {t("sidebar.dropChatToProject")}
+              </span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Project Chat-Sessions */}
       {open &&
