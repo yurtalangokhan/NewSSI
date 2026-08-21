@@ -218,6 +218,99 @@ async def test_handle_input_omits_is_regenerate_for_a_normal_send():
     assert "is_regenerate" not in human_message.additional_kwargs
 
 
+class DummyAgentWithHistory(DummyAgent):
+    """Adds aget_state_history for fork-point resolution tests."""
+
+    def __init__(self, snapshots):
+        self._snapshots = snapshots
+
+    async def aget_state_history(self, config):
+        for snapshot in self._snapshots:
+            yield snapshot
+
+
+class _FakeSnapshot:
+    def __init__(self, messages, checkpoint_id):
+        self.values = {"messages": messages}
+        self.config = {
+            "configurable": {"thread_id": "thread-1", "checkpoint_id": checkpoint_id}
+        }
+
+
+@pytest.mark.asyncio
+async def test_handle_input_forks_the_checkpoint_for_a_resolvable_retry():
+    """When the fork point resolves, the graph must be invoked from that
+    historical checkpoint with NO new human message — the forked state
+    already ends at the target human message, so appending a duplicate
+    would put it back in context, defeating the whole point of forking."""
+    from langchain_core.messages import AIMessage, HumanMessage
+
+    user_input = UserInput(
+        message="hello",
+        thread_id="thread-1",
+        agent_id="configurable-mcp-agent",
+        is_regenerate=True,
+        retry_target_message_id=1,
+    )
+
+    snapshots = [
+        _FakeSnapshot(
+            [HumanMessage(content="hello"), AIMessage(content="rejected answer")],
+            checkpoint_id="2",
+        ),
+        _FakeSnapshot([HumanMessage(content="hello")], checkpoint_id="1"),
+    ]
+
+    with (
+        patch("service.StoreService.get_thread_from_store", return_value={"metadata": {}}),
+        patch("service.StoreService.add_thread", new=AsyncMock()),
+        patch(
+            "service.UserServiceClient.get_user_settings",
+            return_value={"long_term_memory_enabled": False, "extract_memory": True},
+        ),
+        patch("service.PersonaRepository.PersonaDB.get", return_value={"is_builtin": True}),
+        patch("service.PersonaRepository.PersonaDB.get_by_builtin_key", return_value=None),
+    ):
+        kwargs, _ = await _handle_input(
+            user_input, DummyAgentWithHistory(snapshots), api_key_user_id="user-1"
+        )
+
+    assert kwargs["config"]["configurable"]["checkpoint_id"] == "1"
+    assert kwargs["input"] is None
+
+
+@pytest.mark.asyncio
+async def test_handle_input_falls_back_to_duplicate_message_when_fork_point_unresolvable():
+    """No matching checkpoint (e.g. legacy thread, or the target message
+    doesn't exist) must fall back to the original append-to-tip behavior —
+    a retry must never hard-fail."""
+    user_input = UserInput(
+        message="hello",
+        thread_id="thread-1",
+        agent_id="configurable-mcp-agent",
+        is_regenerate=True,
+        retry_target_message_id=99,
+    )
+
+    with (
+        patch("service.StoreService.get_thread_from_store", return_value={"metadata": {}}),
+        patch("service.StoreService.add_thread", new=AsyncMock()),
+        patch(
+            "service.UserServiceClient.get_user_settings",
+            return_value={"long_term_memory_enabled": False, "extract_memory": True},
+        ),
+        patch("service.PersonaRepository.PersonaDB.get", return_value={"is_builtin": True}),
+        patch("service.PersonaRepository.PersonaDB.get_by_builtin_key", return_value=None),
+    ):
+        kwargs, _ = await _handle_input(
+            user_input, DummyAgentWithHistory([]), api_key_user_id="user-1"
+        )
+
+    human_message = kwargs["input"]["messages"][0]
+    assert human_message.additional_kwargs["is_regenerate"] is True
+    assert kwargs["config"]["configurable"].get("checkpoint_id") is None
+
+
 @pytest.mark.asyncio
 async def test_get_graph_and_config_preserves_dynamic_persona_owner_id(monkeypatch):
     async def fake_get(persona_id: int):

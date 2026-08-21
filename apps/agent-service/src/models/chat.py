@@ -60,6 +60,16 @@ class UserInput(BaseModel):
             "original instead of a new turn."
         ),
     )
+    retry_target_message_id: int | None = Field(
+        default=None,
+        description=(
+            "The user message id being retried. When set alongside "
+            "is_regenerate, the agent invocation forks the LangGraph "
+            "checkpoint from right after this message instead of appending "
+            "to the thread's tip, so the new response is generated without "
+            "the previous (rejected) response in its context."
+        ),
+    )
 
 
 class StreamInput(UserInput):

@@ -776,6 +776,9 @@ async def send_chat_message(
         files_metadata=files_metadata,
         mail_attachments=mail_attachments,
         is_regenerate=bool(body.get("is_regenerate")),
+        retry_target_message_id=(
+            body.get("parent_message_id") if body.get("is_regenerate") else None
+        ),
     )
 
     async def generate_stream():

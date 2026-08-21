@@ -115,6 +115,50 @@ class ThreadController(BaseController):
     # Thread state (checkpointer)
     # =========================================================================
 
+    async def get_thread_state_history(self, thread_id: str) -> list[dict[str, Any]]:
+        """Returns every checkpoint for a thread, across every branch (not
+        just the ancestry of the current tip) — needed so a retried-away
+        response stays reachable via its own branch instead of only the
+        most-recently-written one. Each entry:
+          - "checkpoint_id": str
+          - "parent_checkpoint_id": str | None
+          - "messages": list[Any] — that checkpoint's own full accumulated
+            message list, serialized the same way `get_thread_state` does
+        """
+        saver = get_checkpointer()
+        if not saver:
+            return []
+
+        try:
+            config = {"configurable": {"thread_id": thread_id}}
+            history: list[dict[str, Any]] = []
+            async for checkpoint_tuple in saver.alist(config):
+                if not checkpoint_tuple or not checkpoint_tuple.checkpoint:
+                    continue
+                raw_values = checkpoint_tuple.checkpoint.get("channel_values", {})
+                values = self._sanitize_checkpoint_values(raw_values)
+                messages = (
+                    self._serialize_messages(values.get("messages", []))
+                    if "messages" in values
+                    else []
+                )
+                parent_config = checkpoint_tuple.parent_config
+                parent_checkpoint_id = (
+                    parent_config["configurable"].get("checkpoint_id")
+                    if parent_config
+                    else None
+                )
+                history.append(
+                    {
+                        "checkpoint_id": checkpoint_tuple.checkpoint.get("id"),
+                        "parent_checkpoint_id": parent_checkpoint_id,
+                        "messages": messages,
+                    }
+                )
+            return history
+        except Exception:
+            return []
+
     async def get_thread_state(
         self,
         thread_id: str,

@@ -71,6 +71,43 @@ class TestLazyLoadingAgentBase:
         with pytest.raises(RuntimeError, match="Agent graph not created"):
             agent.get_graph()
 
+    @pytest.mark.asyncio
+    async def test_aget_state_history_delegates_to_the_underlying_graph(self):
+        """CheckpointBranchService.find_fork_point (retry checkpoint
+        forking) calls agent.aget_state_history — every LazyLoadingAgent
+        subclass (ConfigurableMCPAgent, DynamicAgent, CommandAgent,
+        GitHubMCPAgent, and the supervisor agents) must expose it via the
+        same delegate-to-self._graph pattern aget_state already uses,
+        or retry silently falls back to append-to-tip for all of them."""
+
+        class DummyHistoryGraph:
+            async def aget_state_history(self, config=None, **kwargs):
+                yield "snapshot-1"
+                yield "snapshot-2"
+
+        agent = TestLazyLoadingAgent()
+        agent._loaded = True
+        agent._graph = DummyHistoryGraph()
+
+        snapshots = [s async for s in agent.aget_state_history(config={})]
+
+        assert snapshots == ["snapshot-1", "snapshot-2"]
+
+    @pytest.mark.asyncio
+    async def test_aget_state_history_ensures_the_agent_is_loaded_first(self):
+        class DummyHistoryGraph:
+            async def aget_state_history(self, config=None, **kwargs):
+                yield "snapshot-1"
+
+        agent = TestLazyLoadingAgent()
+        agent._graph = DummyHistoryGraph()
+        assert not agent._loaded
+
+        snapshots = [s async for s in agent.aget_state_history(config={})]
+
+        assert agent._loaded
+        assert snapshots == ["snapshot-1"]
+
     def test_get_langgraph_store_uses_store_service(self):
         """Test that long-term memory resolves the global LangGraph store."""
         agent = TestLazyLoadingAgent()

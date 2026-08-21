@@ -24,6 +24,19 @@ class DummyThreadController:
         return self._thread
 
 
+class DummyThreadControllerWithHistory(DummyThreadController):
+    """Adds get_thread_state_history so get_chat_session takes the
+    branch-tree reconstruction path instead of falling back to the
+    single-state one (which is all DummyThreadController supports)."""
+
+    def __init__(self, thread: dict, state: dict, checkpoints: list[dict]):
+        super().__init__(thread=thread, state=state)
+        self._checkpoints = checkpoints
+
+    async def get_thread_state_history(self, thread_id: str):
+        return self._checkpoints
+
+
 class DummyThreadListController:
     def __init__(self, threads: list[dict]):
         self._threads = threads
@@ -805,3 +818,97 @@ async def test_get_chat_session_does_not_add_a_tool_step_for_document_tools():
     assert "web_search" in tool_steps
     # The document is still represented — by its file card.
     assert any(o["type"] == "generated_file" for o in objs)
+
+
+@pytest.mark.asyncio
+async def test_get_chat_session_keeps_a_retried_away_from_response_reachable_via_real_branching():
+    """The whole point of true checkpoint branching (2026-08-21): a retry
+    forks a new checkpoint chain rather than appending to the tip, so
+    get_thread_state (single latest state) alone would only ever see the
+    NEW branch. get_chat_session must instead walk the full checkpoint
+    history and keep the original response reachable as a sibling."""
+    thread = {
+        "thread_id": "thread-real-fork",
+        "metadata": {"user_id": "user-1", "persona_id": 0, "name": "Chat"},
+    }
+    human = HumanMessage(content="soru")
+    checkpoints = [
+        {"checkpoint_id": "root", "parent_checkpoint_id": None, "messages": [human]},
+        {
+            "checkpoint_id": "original",
+            "parent_checkpoint_id": "root",
+            "messages": [human, AIMessage(content="ilk cevap")],
+        },
+        {
+            "checkpoint_id": "retry",
+            "parent_checkpoint_id": "root",
+            "messages": [human, AIMessage(content="retry cevabı")],
+        },
+    ]
+    # get_thread_state (the fallback) would only ever see this — the most
+    # recently written checkpoint — if the tree path weren't used.
+    latest_state_only = {"values": {"messages": [human, AIMessage(content="retry cevabı")]}}
+
+    controller = ChatController(
+        thread_controller=DummyThreadControllerWithHistory(
+            thread=thread, state=latest_state_only, checkpoints=checkpoints
+        ),
+        user_id="user-1",
+    )
+
+    result = await controller.get_chat_session("thread-real-fork")
+    msgs = result["messages"]
+
+    assert [m["message_type"] for m in msgs] == ["user", "assistant", "assistant"]
+    user_msg, ai_a, ai_b = msgs
+    assert {ai_a["message"], ai_b["message"]} == {"ilk cevap", "retry cevabı"}
+    assert ai_a["parent_message"] == user_msg["message_id"]
+    assert ai_b["parent_message"] == user_msg["message_id"]
+    assert user_msg["latest_child_message"] == ai_b["message_id"]
+
+
+@pytest.mark.asyncio
+async def test_get_chat_session_still_supports_legacy_flat_is_regenerate_data_via_history_path():
+    """Conversations retried under the OLD mechanism (a duplicate
+    is_regenerate=True HumanMessage inline in one flat checkpoint, shipped
+    2026-08-20) must keep reconstructing correctly even once
+    get_thread_state_history is available — the tree walk degrades to the
+    same single-checkpoint case reconstruct_messages already handled."""
+    thread = {
+        "thread_id": "thread-legacy-fork",
+        "metadata": {"user_id": "user-1", "persona_id": 0, "name": "Chat"},
+    }
+    raw_messages = [
+        HumanMessage(content="soru", additional_kwargs={"persona_id": 0}),
+        AIMessage(content="cevap 1"),
+        HumanMessage(
+            content="soru",
+            additional_kwargs={"persona_id": 0, "is_regenerate": True},
+        ),
+        AIMessage(content="cevap 2"),
+    ]
+    checkpoints = [
+        {
+            "checkpoint_id": "only",
+            "parent_checkpoint_id": None,
+            "messages": raw_messages,
+        }
+    ]
+
+    controller = ChatController(
+        thread_controller=DummyThreadControllerWithHistory(
+            thread=thread,
+            state={"values": {"messages": raw_messages}},
+            checkpoints=checkpoints,
+        ),
+        user_id="user-1",
+    )
+
+    result = await controller.get_chat_session("thread-legacy-fork")
+    msgs = result["messages"]
+
+    assert [m["message_type"] for m in msgs] == ["user", "assistant", "assistant"]
+    user_msg, ai1, ai2 = msgs
+    assert ai1["parent_message"] == user_msg["message_id"]
+    assert ai2["parent_message"] == user_msg["message_id"]
+    assert user_msg["latest_child_message"] == ai2["message_id"]

@@ -398,6 +398,37 @@ async def _handle_input(
 
     configurable["extract_memory"] = user_extract and agent_extract
 
+    # A retry must generate its response without the previous (rejected)
+    # response in context. Locate the checkpoint right after the retried
+    # human message — before its original response — and invoke the graph
+    # from there instead of the thread's tip, giving the retry a genuine
+    # branch. The rejected response stays untouched in its own branch,
+    # readable via get_chat_session. If no fork point resolves (legacy
+    # thread predating this, or the target message no longer exists), fall
+    # back to the original append-a-duplicate-message behavior further
+    # below — a retry must never hard-fail over this.
+    fork_configurable: dict[str, Any] | None = None
+    if user_input.is_regenerate and user_input.retry_target_message_id is not None:
+        try:
+            from service.CheckpointBranchService import find_fork_point
+            from service.StoreService import get_thread_from_store
+
+            fork_thread = await get_thread_from_store(thread_id) if thread_id else None
+            fork_thread_metadata = (fork_thread or {}).get("metadata", {}) or {}
+            fork_config = await find_fork_point(
+                agent,
+                thread_id=thread_id,
+                target_message_id=user_input.retry_target_message_id,
+                thread_metadata=fork_thread_metadata,
+            )
+            if fork_config is not None:
+                fork_configurable = fork_config["configurable"]
+        except Exception as e:
+            logger.warning(f"Failed to locate retry fork point, falling back: {e}")
+
+    if fork_configurable is not None:
+        configurable = {**configurable, **fork_configurable}
+
     config = RunnableConfig(
         configurable=configurable,
         run_id=run_id,
@@ -419,9 +450,14 @@ async def _handle_input(
 
     from service.Utils import convert_input_messages
 
-    input: Command | dict[str, Any]
+    input: Command | dict[str, Any] | None
     if interrupted_tasks:
         input = Command(resume=user_input.message or "")
+    elif fork_configurable is not None:
+        # State already ends at the target human message with no response
+        # yet — nothing new to add. Appending a duplicate here would put
+        # the very thing we forked away from right back in context.
+        input = None
     elif user_input.messages:
         # Use messages provided directly
         lc_messages = convert_input_messages(user_input.messages)
