@@ -459,6 +459,15 @@ def _process_raw_message(
             return
 
         if not msg_content:
+            # A turn that ends here with no visible text (e.g. the model's
+            # only action was calling a document tool, so the graph's
+            # closing AI message is empty) still completed real, visible
+            # work — any packets already buffered for it (e.g. a generated
+            # file card) must become their own turn now. Otherwise they sit
+            # in `pending_tool_packets` and silently get swept into
+            # whichever LATER message happens to flush them, merging two
+            # unrelated turns into one chat bubble.
+            _flush_trailing_tool_packets(state, messages, packets_2d, chat_session_id)
             return
 
         if state.pending_parent_override is not None:

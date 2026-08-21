@@ -306,3 +306,57 @@ def test_reconstruct_message_tree_flushes_trailing_tool_packets_only_at_leaves()
     assistant_messages = [m for m in messages if m["message_type"] == "assistant"]
     assert len(assistant_messages) == 1
     assert len(packets_2d) == 1
+
+
+def test_reconstruct_messages_does_not_merge_a_document_only_turn_into_the_next_turn():
+    """A turn whose only visible result is a generated file (the model calls
+    a document tool and the graph's closing AI message is empty, since
+    is_document_tool calls are deliberately not shown as their own tool
+    step) must still become its own assistant message. Regression test for
+    a real production bug: without this, the empty-content AI message was
+    silently dropped and its buffered generated_file packet leaked into
+    whatever the NEXT turn's assistant message happened to be, visually
+    merging two unrelated turns (and their file cards) into one chat
+    bubble."""
+    human1 = HumanMessage(content="bir docx oluştur")
+    ai_creates_doc = AIMessage(
+        content="",
+        tool_calls=[{"name": "create_document", "args": {}, "id": "call-1"}],
+    )
+    tool_result = ToolMessage(
+        content=(
+            '{"__generated_file__": true, "document_id": "doc-1", "version": 1, '
+            '"file_id": "file-1", "filename": "rapor.docx", '
+            '"mime_type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document", '
+            '"size_bytes": 123, "download_url": "/download/file-1"}'
+        ),
+        tool_call_id="call-1",
+        name="create_document",
+    )
+    ai_closing_empty = AIMessage(content="")
+    human2 = HumanMessage(content="teşekkürler, şimdi özetle")
+    ai_reply = AIMessage(content="İşte özet.")
+
+    messages, packets_2d = reconstruct_messages(
+        [human1, ai_creates_doc, tool_result, ai_closing_empty, human2, ai_reply],
+        thread_metadata={"persona_id": 0},
+        chat_session_id="thread-doc-only-turn",
+    )
+
+    assert [m["message_type"] for m in messages] == [
+        "user",
+        "assistant",
+        "user",
+        "assistant",
+    ]
+    user1, ai1, user2, ai2 = messages
+    assert ai1["parent_message"] == user1["message_id"]
+    assert ai1["message"] == ""
+    assert user2["parent_message"] == ai1["message_id"]
+    assert ai2["message"] == "İşte özet."
+
+    assert len(packets_2d) == 2
+    ai1_packet_types = [p["obj"]["type"] for p in packets_2d[0]]
+    ai2_packet_types = [p["obj"]["type"] for p in packets_2d[1]]
+    assert "generated_file" in ai1_packet_types
+    assert "generated_file" not in ai2_packet_types
