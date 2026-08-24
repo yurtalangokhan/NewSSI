@@ -105,6 +105,7 @@
 | `AIRBYTE_API_USERNAME`   | Airbyte API username                                                                     | `airbyte`                                                     |
 | `AIRBYTE_API_PASSWORD`   | Airbyte API password                                                                     | —                                                             |
 | `DOCUMENT_TOOLS_ENABLED` | Always-on `create_document`/`create_spreadsheet` tools on every agent graph              | `true`                                                        |
+| `OPEN_URL_PLAYWRIGHT_FALLBACK_ENABLED` | Enable optional Chromium fallback for built-in web fetch failures          | `false`                                                       |
 
 ---
 

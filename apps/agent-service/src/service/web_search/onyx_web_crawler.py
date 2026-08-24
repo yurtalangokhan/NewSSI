@@ -11,13 +11,9 @@ from datetime import UTC, datetime
 
 import requests
 
+from models.web_search import RenderedPage
 from service.web_search.html_utils import ParsedHTML, web_html_cleanup
 from service.web_search.models import WebContent, WebContentProvider
-from service.web_search.playwright_fetch import (
-    RenderedPage,
-    fetch_rendered_html,
-    looks_like_cloudflare_challenge,
-)
 from service.web_search.url import (
     DNSResolutionError,
     SSRFBlockedException,
@@ -34,7 +30,17 @@ from service.web_search.web_content import (
 
 logger = logging.getLogger(__name__)
 
-OPEN_URL_PLAYWRIGHT_FALLBACK_ENABLED = True
+
+def _env_flag_enabled(name: str, default: bool = False) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+OPEN_URL_PLAYWRIGHT_FALLBACK_ENABLED = _env_flag_enabled(
+    "OPEN_URL_PLAYWRIGHT_FALLBACK_ENABLED",
+)
 
 DEFAULT_READ_TIMEOUT_SECONDS = 15
 DEFAULT_CONNECT_TIMEOUT_SECONDS = 5
@@ -172,6 +178,28 @@ def _parse_html_to_web_content(url: str, html: str) -> WebContent:
 
 def _looks_like_low_information_content(text: str, min_length: int) -> bool:
     return len(text.strip()) < min_length
+
+
+def fetch_rendered_html(url: str) -> RenderedPage | None:
+    try:
+        from service.web_search.playwright_fetch import fetch_rendered_html as _fetch_rendered_html
+    except ImportError as exc:
+        logger.warning(
+            "Playwright fallback unavailable for %s: optional Playwright dependency missing (%s)",
+            url,
+            exc.__class__.__name__,
+        )
+        return None
+
+    return _fetch_rendered_html(url)
+
+
+def looks_like_cloudflare_challenge(html: str) -> bool:
+    from service.web_search.playwright_fetch import (
+        looks_like_cloudflare_challenge as _looks_like_cloudflare_challenge,
+    )
+
+    return _looks_like_cloudflare_challenge(html)
 
 
 def _parse_retry_after(

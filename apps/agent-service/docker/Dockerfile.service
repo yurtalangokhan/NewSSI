@@ -9,7 +9,7 @@ COPY apps/agent-service/pyproject.toml .
 COPY apps/agent-service/uv.lock* ./
 COPY packages/idempotency-py/ packages/idempotency-py/
 COPY packages/i18n-py/ packages/i18n-py/
-RUN pip install uv
+RUN pip install --no-cache-dir uv
 
 # DejaVu ships the Unicode glyphs (ğ ş ı İ …) that reportlab's base-14 fonts lack.
 # DocumentGenerationService registers it for PDF output; without it PDFs fall
@@ -23,8 +23,9 @@ RUN sed -i \
     -e 's|path = "../../packages/idempotency-py"|path = "packages/idempotency-py"|' \
     -e 's|path = "../../packages/i18n-py"|path = "packages/i18n-py"|' \
     pyproject.toml \
-    && uv lock && uv sync --frozen --no-install-project --no-dev
-RUN uv run playwright install --with-deps chromium
+    && uv lock \
+    && uv sync --frozen --no-install-project --no-dev \
+    && rm -rf /root/.cache/uv /root/.cache/pip
 
 COPY apps/agent-service/src/agents/ ./agents/
 COPY apps/agent-service/src/api/ ./api/

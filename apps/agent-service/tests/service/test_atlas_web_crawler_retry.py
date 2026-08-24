@@ -37,6 +37,18 @@ class TestAtlasWebCrawlerRetry:
         assert crawler.retry_backoff_factor == 1.0
         assert crawler.retry_status_codes == {500, 502, 503}
 
+    @patch("service.web_search.onyx_web_crawler.OnyxWebCrawler._fetch_via_playwright")
+    @patch("service.web_search.onyx_web_crawler.ssrf_safe_get")
+    def test_playwright_fallback_is_disabled_by_default(self, mock_get, mock_fetch_via_playwright):
+        mock_get.return_value = _mock_response(status_code=403)
+
+        crawler = AtlasWebCrawler(max_retries=0)
+        result = crawler.contents(["https://example.com/protected"])[0]
+
+        assert result.scrape_successful is False
+        assert result.failure_reason == FailureReason.HTTP_403_BLOCKED
+        mock_fetch_via_playwright.assert_not_called()
+
     @patch("service.web_search.onyx_web_crawler.time.sleep")
     @patch("service.web_search.onyx_web_crawler.ssrf_safe_get")
     def test_retry_on_connection_error_and_recover(self, mock_get, mock_sleep):

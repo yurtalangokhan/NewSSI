@@ -17,13 +17,15 @@ RUN sed -i \
     -e 's|path = "../../packages/i18n-py"|path = "packages/i18n-py"|' \
     pyproject.toml \
     && uv lock \
-    && uv sync --frozen --no-dev --no-install-project
+    && uv sync --frozen --no-dev --no-install-project \
+    && rm -rf /root/.cache/uv /root/.cache/pip
 
 COPY apps/user-service/src/ src/
 COPY apps/user-service/alembic.ini ./
 COPY apps/user-service/locales/ locales/
 
-RUN uv sync --frozen --no-dev
+RUN uv sync --frozen --no-dev \
+    && rm -rf /root/.cache/uv /root/.cache/pip
 
 ENV PATH="/app/.venv/bin:$PATH"
 ENV PYTHONPATH=/app

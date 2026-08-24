@@ -25,10 +25,11 @@ COPY apps/tools-service/locales/ locales/
 COPY packages/i18n-py/ packages/i18n-py/
 
 # Install Python dependencies using uv
-RUN uv pip install --system \
+RUN uv pip install --system --no-cache \
     fastmcp httpx asyncpg pymupdf ddgs \
     pytest flake8 pylint \
-    ./packages/i18n-py
+    ./packages/i18n-py \
+    && rm -rf /root/.cache/uv /root/.cache/pip
 
 # Create workspace directory with proper permissions
 RUN mkdir -p /workspace && chmod 777 /workspace

@@ -15,10 +15,11 @@ services:
   # ==========================================================================
 
   agent-service:
-    container_name: agent-service-rf
+    container_name: agentic-ai-platform-agent-service
     build:
       context: ..
       dockerfile: apps/agent-service/docker/Dockerfile.service
+    image: agentic-ai-platform/agent-service:${APP_IMAGE_TAG:-latest}
     restart: unless-stopped
     ports:
       - "8123:8123"
@@ -48,11 +49,11 @@ services:
   # ==========================================================================
 
   rag-service:
-    container_name: rag-service-rf
+    container_name: agentic-ai-platform-rag-service
     build:
       context: ..
       dockerfile: apps/rag-service/Dockerfile
-    image: rag-service:local
+    image: agentic-ai-platform/rag-service:${APP_IMAGE_TAG:-latest}
     restart: unless-stopped
     ports:
       - "8083:8083"
@@ -74,11 +75,11 @@ services:
   # ==========================================================================
 
   tools-service:
-    container_name: tools-service-rf
+    container_name: agentic-ai-platform-tools-service
     build:
       context: ..
       dockerfile: apps/tools-service/Dockerfile
-    image: tools-service:local
+    image: agentic-ai-platform/tools-service:${APP_IMAGE_TAG:-latest}
     restart: unless-stopped
     ports:
       - "8003:8003"
@@ -101,10 +102,11 @@ services:
   # ==========================================================================
 
   user-service:
-    container_name: user-service-rf
+    container_name: agentic-ai-platform-user-service
     build:
       context: ..
       dockerfile: apps/user-service/Dockerfile
+    image: agentic-ai-platform/user-service:${APP_IMAGE_TAG:-latest}
     restart: unless-stopped
     ports:
       - "8090:8090"
@@ -129,11 +131,11 @@ services:
   # ==========================================================================
 
   web:
-    container_name: web-rf
+    container_name: agentic-ai-platform-web
     build:
       context: ..
       dockerfile: apps/web/Dockerfile
-    image: web:local
+    image: agentic-ai-platform/web:${APP_IMAGE_TAG:-latest}
     restart: unless-stopped
     ports:
       - "8126:3000"

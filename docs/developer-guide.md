@@ -244,6 +244,7 @@ make env-init         # create missing .env files
 make env-check        # validate env files
 make docker-config    # validate compose files
 make docker-verify    # compose config + image builds
+make APP_IMAGE_TAG=0.1.0 docker-verify  # build app images with a version tag
 make quality-staged   # pre-commit checks
 make quality-push     # pre-push checks
 make validate         # all services + docker-verify

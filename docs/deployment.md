@@ -72,6 +72,16 @@ make docker-verify     # Validate + build images
 `make docker-verify` validates the compose files and builds all application
 images from `configs/docker-compose-dev.yml`, including the web image.
 
+Application images use the `agentic-ai-platform/<service>:<tag>` format.
+The default tag is `latest`. Set `APP_IMAGE_TAG` when you need a versioned
+build or deploy:
+
+```sh
+make APP_IMAGE_TAG=0.1.0 docker-verify
+make APP_IMAGE_TAG=0.1.0 prod-up
+make APP_IMAGE_TAG=$(git rev-parse --short HEAD) docker-verify
+```
+
 ### When to verify Docker
 
 Run Docker verification when changing:
@@ -105,6 +115,11 @@ updated when adding large generated directories or new service-local caches.
 
 **Key image requirements:**
 - Services with top-level imports like `models`, `schema`, `agents` must have those directories copied into the image (checked during `docker-verify`).
+- Python service images remove `uv` and pip caches in the same build layers
+  that install dependencies, so package caches don't ship in runtime images.
+- The default agent-service image doesn't install Playwright Chromium. Set
+  `OPEN_URL_PLAYWRIGHT_FALLBACK_ENABLED=true` only in an image/runtime that
+  also installs the optional `browser` dependency group and browser binary.
 
 ### Web frontend
 

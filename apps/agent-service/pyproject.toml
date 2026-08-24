@@ -73,7 +73,6 @@ dependencies = [
     "beautifulsoup4 >=4.12.0",
     "chardet >=5.0.0",
     "lxml >=5.0.0",
-    "playwright >=1.40.0",
     "trafilatura >=1.12.0",
     "requests >=2.31.0",
     "minio>=7.0",
@@ -106,6 +105,10 @@ client = [
     "pydantic ~=2.10.1",
     "python-dotenv ~=1.0.1",
     "streamlit~=1.52.0",
+]
+
+browser = [
+    "playwright >=1.40.0",
 ]
 
 [tool.ruff]

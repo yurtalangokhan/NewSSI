@@ -21,7 +21,8 @@ RUN sed -i \
     -e 's|path = "../../packages/i18n-py"|path = "packages/i18n-py"|' \
     pyproject.toml \
     && uv lock \
-    && uv sync --frozen --no-dev --no-install-project
+    && uv sync --frozen --no-dev --no-install-project \
+    && rm -rf /root/.cache/uv /root/.cache/pip
 
 COPY apps/rag-service/langconnect/ langconnect/
 COPY apps/rag-service/alembic.ini ./
@@ -30,7 +31,7 @@ COPY apps/rag-service/locales/ locales/
 RUN uv sync --frozen --no-dev && \
     apt-get purge -y --auto-remove gcc libpq-dev && \
     apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+    rm -rf /var/lib/apt/lists/* /root/.cache/uv /root/.cache/pip
 
 ENV PATH="/app/.venv/bin:$PATH"
 ENV PYTHONPATH=/app
