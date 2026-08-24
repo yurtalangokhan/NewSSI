@@ -27,6 +27,11 @@ function CollapsedDomainGroup({
   setPresentingDocument: Dispatch<SetStateAction<MinimalOnyxDocument | null>>;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const firstDocument = group.documents[0];
+
+  if (!firstDocument) {
+    return null;
+  }
 
   return (
     <div className="flex flex-col w-full">
@@ -35,9 +40,9 @@ function CollapsedDomainGroup({
         onClick={() => setExpanded((prev) => !prev)}
         className="flex w-full items-center gap-2 p-3 rounded-12 hover:bg-background-tint-00 cursor-pointer"
       >
-        <WebResultIcon url={group.documents[0].link} />
+        <WebResultIcon url={firstDocument.link} />
         <Text as="span" className="flex-1 text-left" secondaryBody text03>
-          {group.domain || group.documents[0].link}
+          {group.domain || firstDocument.link}
         </Text>
         <Text as="span" secondaryBody text03>
           {group.documents.length}
@@ -73,10 +78,15 @@ export default function DomainGroupedSources({
 }: DomainGroupedSourcesProps) {
   return (
     <div className="flex flex-col gap-1 items-center justify-center">
-      {groups.map((group) =>
-        group.documents.length > 1 ? (
+      {groups.map((group) => {
+        const firstDocument = group.documents[0];
+        if (!firstDocument) {
+          return null;
+        }
+
+        return group.documents.length > 1 ? (
           <CollapsedDomainGroup
-            key={group.domain || group.documents[0].document_id}
+            key={group.domain || firstDocument.document_id}
             group={group}
             modal={modal}
             selectedDocumentIds={selectedDocumentIds}
@@ -84,14 +94,14 @@ export default function DomainGroupedSources({
           />
         ) : (
           <ChatDocumentDisplay
-            key={group.documents[0].document_id}
+            key={firstDocument.document_id}
             setPresentingDocument={setPresentingDocument}
             modal={modal}
-            document={group.documents[0]}
-            isSelected={selectedDocumentIds.includes(group.documents[0].document_id)}
+            document={firstDocument}
+            isSelected={selectedDocumentIds.includes(firstDocument.document_id)}
           />
-        )
-      )}
+        );
+      })}
     </div>
   );
 }

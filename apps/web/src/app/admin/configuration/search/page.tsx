@@ -1,6 +1,6 @@
-import { notFound } from "next/navigation";
 "use client";
 
+import { notFound } from "next/navigation";
 import { ThreeDotsLoader } from "@/components/Loading";
 import { errorHandlingFetcher } from "@/lib/fetcher";
 import * as SettingsLayouts from "@/layouts/settings-layouts";
@@ -82,7 +82,9 @@ function Main() {
     !currentEmeddingModel ||
     futureEmeddingModelError
   ) {
-    return <ErrorCallout errorTitle={t("admin.search.fetchEmbeddingModelError")} />;
+    return (
+      <ErrorCallout errorTitle={t("admin.search.fetchEmbeddingModelError")} />
+    );
   }
 
   return (
@@ -90,19 +92,23 @@ function Main() {
       {!futureEmbeddingModel ? (
         <>
           {settings?.settings.needs_reindexing && (
-            <p className="max-w-3xl">
-              {t("admin.search.reindexWarning")}
-            </p>
+            <p className="max-w-3xl">{t("admin.search.reindexWarning")}</p>
           )}
-          <Title className="mb-6 mt-8 !text-2xl">{t("admin.search.embeddingModelTitle")}</Title>
+          <Title className="mb-6 mt-8 !text-2xl">
+            {t("admin.search.embeddingModelTitle")}
+          </Title>
 
           {currentEmeddingModel ? (
             <ModelPreview model={currentEmeddingModel} display showDetails />
           ) : (
-            <Title className="mt-8 mb-4">{t("admin.search.chooseEmbeddingModel")}</Title>
+            <Title className="mt-8 mb-4">
+              {t("admin.search.chooseEmbeddingModel")}
+            </Title>
           )}
 
-          <Title className="mb-2 mt-8 !text-2xl">{t("admin.search.postProcessingTitle")}</Title>
+          <Title className="mb-2 mt-8 !text-2xl">
+            {t("admin.search.postProcessingTitle")}
+          </Title>
 
           <CardSection className="!mr-auto mt-8 !w-96 shadow-lg bg-background-tint-00 rounded-16">
             {searchSettings && (
@@ -110,7 +116,9 @@ function Main() {
                 <div className="px-1 w-full rounded-lg">
                   <div className="space-y-4">
                     <div>
-                      <Text className="font-semibold">{t("admin.search.multipassIndexing")}</Text>
+                      <Text className="font-semibold">
+                        {t("admin.search.multipassIndexing")}
+                      </Text>
                       <Text className="text-text-700">
                         {searchSettings.multipass_indexing
                           ? t("admin.search.enabled")
@@ -119,7 +127,9 @@ function Main() {
                     </div>
 
                     <div>
-                      <Text className="font-semibold">{t("admin.search.contextualRag")}</Text>
+                      <Text className="font-semibold">
+                        {t("admin.search.contextualRag")}
+                      </Text>
                       <Text className="text-text-700">
                         {searchSettings.enable_contextual_rag
                           ? t("admin.search.enabled")

@@ -233,6 +233,8 @@ npm run format        # prettier
 npm test              # jest (unit + integration)
 npm run test:e2e      # playwright (tests/e2e/)
 npm run test:ci       # jest --ci --maxWorkers=2 --silent --bail
+make validate         # lint + typecheck + test:ci
+make docker-verify    # compose config + web image build
 ```
 
 ### Root level
@@ -320,11 +322,12 @@ make -C apps/agent-service validate
 make -C apps/rag-service validate
 make -C apps/user-service validate
 make -C apps/tools-service validate
+make -C apps/web validate
 ```
 
-Web:
+Web Docker check:
 ```sh
-npm --prefix apps/web run lint && npm --prefix apps/web run types:check && npm --prefix apps/web test
+make -C apps/web docker-verify
 ```
 
 ---

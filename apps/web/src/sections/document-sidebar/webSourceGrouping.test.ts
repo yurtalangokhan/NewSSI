@@ -1,4 +1,8 @@
-import { isAllWebSources, groupSourcesByDomain, splitMessageSources } from "./webSourceGrouping";
+import {
+  isAllWebSources,
+  groupSourcesByDomain,
+  splitMessageSources,
+} from "./webSourceGrouping";
 import { OnyxDocument } from "@/lib/search/interfaces";
 import { ValidSources } from "@/lib/types";
 import { Packet, PacketType } from "@/app/app/services/streamingModels";
@@ -49,11 +53,18 @@ describe("isAllWebSources", () => {
   });
 
   test("true when every document is a web result", () => {
-    expect(isAllWebSources([webDoc("1", "https://onyx.app"), webDoc("2", "https://docs.onyx.app")])).toBe(true);
+    expect(
+      isAllWebSources([
+        webDoc("1", "https://onyx.app"),
+        webDoc("2", "https://docs.onyx.app"),
+      ])
+    ).toBe(true);
   });
 
   test("false when any document is an internal source", () => {
-    expect(isAllWebSources([webDoc("1", "https://onyx.app"), internalDoc("2")])).toBe(false);
+    expect(
+      isAllWebSources([webDoc("1", "https://onyx.app"), internalDoc("2")])
+    ).toBe(false);
   });
 });
 
@@ -68,20 +79,25 @@ describe("groupSourcesByDomain", () => {
     const groups = groupSourcesByDomain(docs);
 
     expect(groups.map((g) => g.domain)).toEqual(["onyx.app", "docs.onyx.app"]);
-    expect(groups[0].documents.map((d) => d.document_id)).toEqual(["1", "3"]);
-    expect(groups[1].documents.map((d) => d.document_id)).toEqual(["2"]);
+    expect(groups[0]?.documents.map((d) => d.document_id)).toEqual(["1", "3"]);
+    expect(groups[1]?.documents.map((d) => d.document_id)).toEqual(["2"]);
   });
 
   test("a single document still gets its own one-element group", () => {
     const groups = groupSourcesByDomain([webDoc("1", "https://onyx.app")]);
 
-    expect(groups).toEqual([{ domain: "onyx.app", documents: [expect.objectContaining({ document_id: "1" })] }]);
+    expect(groups).toEqual([
+      {
+        domain: "onyx.app",
+        documents: [expect.objectContaining({ document_id: "1" })],
+      },
+    ]);
   });
 
   test("an unparseable link falls back to an empty-string domain group", () => {
     const groups = groupSourcesByDomain([webDoc("1", "not-a-url")]);
 
-    expect(groups[0].domain).toBe("");
+    expect(groups[0]?.domain).toBe("");
   });
 
   test("empty input returns an empty list", () => {
@@ -93,7 +109,10 @@ describe("splitMessageSources", () => {
   test("separates read documents from search documents and deduplicates", () => {
     const doc1 = webDoc("https://valkey.io", "https://valkey.io");
     const doc2 = webDoc("https://redis.io", "https://redis.io");
-    const doc3 = webDoc("https://github.com/valkey-io/valkey", "https://github.com/valkey-io/valkey");
+    const doc3 = webDoc(
+      "https://github.com/valkey-io/valkey",
+      "https://github.com/valkey-io/valkey"
+    );
 
     const packets: Packet[] = [
       createPacket(PacketType.SEARCH_TOOL_DOCUMENTS_DELTA, {
@@ -107,7 +126,7 @@ describe("splitMessageSources", () => {
     const result = splitMessageSources(packets);
 
     expect(result.readDocuments).toHaveLength(1);
-    expect(result.readDocuments[0].document_id).toBe("https://valkey.io");
+    expect(result.readDocuments[0]?.document_id).toBe("https://valkey.io");
 
     // doc1 was read, so it must not duplicate in searchDocuments
     expect(result.searchDocuments).toHaveLength(2);

@@ -107,13 +107,7 @@ changed_docker_services() {
 }
 
 run_web_checks() {
-  log "web validate"
-  (
-    cd apps/web
-    npm run lint
-    npm run types:check
-    npm run test:ci
-  )
+  make -C apps/web validate
 }
 
 print_file_summary() {
@@ -166,7 +160,7 @@ if has_changed_path '^(apps/(agent-service|rag-service|user-service|tools-servic
 fi
 
 
-if has_changed_path '^apps/web/(src|tests|package.json|package-lock.json|next.config|tsconfig|jest.config|playwright.config)'; then
+if has_changed_path '^apps/web/(src|tests|package.json|package-lock.json|Makefile|next.config|tsconfig|jest.config|playwright.config)'; then
   run "web validate" run_web_checks
 fi
 

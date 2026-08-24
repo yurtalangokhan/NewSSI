@@ -27,7 +27,9 @@ export default function FileDisplay({ files, alignBubble }: FileDisplayProps) {
       file.type === ChatFileType.PLAIN_TEXT ||
       file.type === ChatFileType.DOCUMENT
   );
-  const imageFiles = uniqueFiles.filter((file) => file.type === ChatFileType.IMAGE);
+  const imageFiles = uniqueFiles.filter(
+    (file) => file.type === ChatFileType.IMAGE
+  );
   const csvFiles = uniqueFiles.filter((file) => file.type === ChatFileType.CSV);
 
   // A just-sent message's FileDescriptor still carries the inline base64
@@ -95,7 +97,7 @@ export default function FileDisplay({ files, alignBubble }: FileDisplayProps) {
               <InMessageImage
                 key={file.id}
                 fileId={file.id}
-                fileName={file.name}
+                fileName={file.name ?? undefined}
               />
             ))}
           </div>

@@ -292,10 +292,9 @@ describe("packetUtils", () => {
         },
       ];
 
-      expect(getDocumentsFromPackets(packets).map((d) => d.document_id)).toEqual([
-        "1",
-        "2",
-      ]);
+      expect(
+        getDocumentsFromPackets(packets).map((d) => d.document_id)
+      ).toEqual(["1", "2"]);
     });
 
     test("collects documents from FETCH_TOOL_DOCUMENTS packets", () => {
@@ -309,7 +308,9 @@ describe("packetUtils", () => {
         },
       ];
 
-      expect(getDocumentsFromPackets(packets).map((d) => d.document_id)).toEqual(["3"]);
+      expect(
+        getDocumentsFromPackets(packets).map((d) => d.document_id)
+      ).toEqual(["3"]);
     });
 
     test("dedupes by document_id, keeping the later packet's version", () => {
@@ -318,21 +319,29 @@ describe("packetUtils", () => {
       const packets: Packet[] = [
         {
           placement: { turn_index: 0, tab_index: 0 },
-          obj: { type: PacketType.SEARCH_TOOL_DOCUMENTS_DELTA, documents: [staleDoc] } as any,
+          obj: {
+            type: PacketType.SEARCH_TOOL_DOCUMENTS_DELTA,
+            documents: [staleDoc],
+          } as any,
         },
         {
           placement: { turn_index: 0, tab_index: 0 },
-          obj: { type: PacketType.FETCH_TOOL_DOCUMENTS, documents: [freshDoc] } as any,
+          obj: {
+            type: PacketType.FETCH_TOOL_DOCUMENTS,
+            documents: [freshDoc],
+          } as any,
         },
       ];
 
       const result = getDocumentsFromPackets(packets);
       expect(result).toHaveLength(1);
-      expect(result[0].blurb).toBe("fresh");
+      expect(result[0]?.blurb).toBe("fresh");
     });
 
     test("returns an empty array when there are no document packets", () => {
-      expect(getDocumentsFromPackets([createPacket(PacketType.REASONING_START)])).toEqual([]);
+      expect(
+        getDocumentsFromPackets([createPacket(PacketType.REASONING_START)])
+      ).toEqual([]);
     });
   });
 });

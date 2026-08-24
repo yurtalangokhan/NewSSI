@@ -30,7 +30,7 @@ import {
   FiUnlock,
 } from "react-icons/fi";
 import { DeleteButton } from "@/components/DeleteButton";
-import {  useRouter , notFound } from "next/navigation";
+import { useRouter, notFound } from "next/navigation";
 import { TableHeader } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -411,7 +411,8 @@ function Main() {
   return (
     <div className="mb-8">
       <Text className="mb-3">
-        <b>{t("admin.documentSets.title")}</b> {t("admin.documentSets.description")}
+        <b>{t("admin.documentSets.title")}</b>{" "}
+        {t("admin.documentSets.description")}
       </Text>
 
       <div className="mb-3"></div>
@@ -442,18 +443,11 @@ export default function Page() {
 
   const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.DOCUMENT_SETS]!;
   const { t } = useTranslation();
+  const title = t(route.titleKey || "", { defaultValue: route.title });
 
   return (
     <SettingsLayouts.Root>
-      <SettingsLayouts.Header
-        icon={route.icon}
-        title={
-          route.titleKey
-            ? t(route.titleKey, { defaultValue: route.title })
-            : route.title
-        }
-        separator
-      />
+      <SettingsLayouts.Header icon={route.icon} title={title} separator />
       <SettingsLayouts.Body>
         <AdminOverviewPanel
           icon={route.icon}

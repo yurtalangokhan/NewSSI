@@ -1,3 +1,5 @@
+"use client";
+
 import { useTranslation } from "react-i18next";
 import { buildCCPairInfoUrl } from "@/app/admin/connector/[ccPairId]/lib";
 import { PageSelector } from "@/components/PageSelector";
@@ -80,10 +82,18 @@ export function FailedReIndexAttempts({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-1/8 sm:w-1/6">{t("connectorNameHeader")}</TableHead>
-              <TableHead className="w-1/8 sm:w-1/6">{t("statusHeader")}</TableHead>
-              <TableHead className="w-4/8 sm:w-2/6">{t("errorMessageHeader")}</TableHead>
-              <TableHead className="w-1/8 sm:w-1/6">{t("visitConnectorHeader")}</TableHead>
+              <TableHead className="w-1/8 sm:w-1/6">
+                {t("connectorNameHeader")}
+              </TableHead>
+              <TableHead className="w-1/8 sm:w-1/6">
+                {t("statusHeader")}
+              </TableHead>
+              <TableHead className="w-4/8 sm:w-2/6">
+                {t("errorMessageHeader")}
+              </TableHead>
+              <TableHead className="w-1/8 sm:w-1/6">
+                {t("visitConnectorHeader")}
+              </TableHead>
               {anyDeletable && (
                 <TableHead className="w-1/8 sm:w-2/6">
                   {t("deleteConnectorHeader")}
@@ -135,7 +145,9 @@ export function FailedReIndexAttempts({
                               connectorId: reindexingProgress.connector_id,
                               credentialId: reindexingProgress.credential_id,
                               ccPairId: reindexingProgress.cc_pair_id,
-                              name: reindexingProgress.name ?? t("thisConnectorFallback"),
+                              name:
+                                reindexingProgress.name ??
+                                t("thisConnectorFallback"),
                             });
                             return;
                           }

@@ -1,6 +1,6 @@
-import { notFound } from "next/navigation";
 "use client";
 
+import { notFound } from "next/navigation";
 import * as SettingsLayouts from "@/layouts/settings-layouts";
 import ImageGenerationContent from "./ImageGenerationContent";
 import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";

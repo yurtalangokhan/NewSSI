@@ -3,7 +3,7 @@
  */
 
 import { renderHook } from "@testing-library/react";
-import { Packet, PacketType } from "@/app/app/services/streamingModels";
+import { Packet } from "@/app/app/services/streamingModels";
 import { useTimelineUIState, TimelineUIState } from "./useTimelineUIState";
 
 describe("useTimelineUIState", () => {
@@ -92,20 +92,22 @@ describe("useTimelineUIState", () => {
     expect(result.current.uiState).toBe(TimelineUIState.COMPLETED_EXPANDED);
   });
   test("shows Done step for reasoning step once display content arrives", () => {
+    const packets: Packet[] = [
+      {
+        placement: { turn_index: 0, tab_index: 0 },
+        obj: { type: "reasoning_start" },
+      },
+      {
+        placement: { turn_index: 0, tab_index: 0 },
+        obj: { type: "reasoning_delta", reasoning: "Thinking in progress..." },
+      },
+    ];
+
     const activeReasoningStep = {
       key: "0-0",
       turnIndex: 0,
       tabIndex: 0,
-      packets: [
-        {
-          placement: { turn_index: 0, tab_index: 0 },
-          obj: { type: PacketType.REASONING_START },
-        },
-        {
-          placement: { turn_index: 0, tab_index: 0 },
-          obj: { type: PacketType.REASONING_DELTA, reasoning: "Thinking in progress..." },
-        },
-      ],
+      packets: [...packets],
     };
 
     const { result } = renderHook(() =>

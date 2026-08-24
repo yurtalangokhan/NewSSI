@@ -9,6 +9,7 @@ describe("useUserPersonalization", () => {
     is_active: true,
     is_verified: true,
     role: "user",
+    team_name: null,
     preferences: {} as any,
     personalization: {
       name: "John Doe",

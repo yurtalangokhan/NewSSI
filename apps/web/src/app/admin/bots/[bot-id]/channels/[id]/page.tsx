@@ -7,23 +7,24 @@ import * as SettingsLayouts from "@/layouts/settings-layouts";
 import { SvgSlack } from "@opal/icons";
 import { FetchAgentsResponse, fetchAgentsSS } from "@/lib/agentsSS";
 import { getStandardAnswerCategoriesIfEE } from "@/components/standardAnswers/getStandardAnswerCategoriesIfEE";
-import i18n from "@/i18n/config";
+import { tServer } from "@/i18n/server";
+import { resolveLocaleSS } from "@/lib/localeSS";
 
 async function EditslackChannelConfigPage(props: {
   params: Promise<{ id: number }>;
 }) {
   const params = await props.params;
-  const tasks = [
-    fetchSS("/manage/admin/slack-app/channel"),
-    fetchSS("/manage/document-set"),
-    fetchAgentsSS(),
-  ];
-
   const [
     slackChannelsResponse,
     documentSetsResponse,
     [assistants, agentsFetchError],
-  ] = (await Promise.all(tasks)) as [Response, Response, FetchAgentsResponse];
+    locale,
+  ] = await Promise.all([
+    fetchSS("/manage/admin/slack-app/channel") as Promise<Response>,
+    fetchSS("/manage/document-set") as Promise<Response>,
+    fetchAgentsSS() as Promise<FetchAgentsResponse>,
+    resolveLocaleSS(),
+  ]);
 
   const eeStandardAnswerCategoryResponse =
     await getStandardAnswerCategoriesIfEE();
@@ -31,8 +32,10 @@ async function EditslackChannelConfigPage(props: {
   if (!slackChannelsResponse.ok) {
     return (
       <ErrorCallout
-        errorTitle={i18n.t("admin.bots.somethingWentWrong")}
-        errorMsg={`${i18n.t("admin.bots.failedToFetchSlackChannels")} - ${await slackChannelsResponse.text()}`}
+        errorTitle={tServer("admin.bots.somethingWentWrong", { lng: locale })}
+        errorMsg={`${tServer("admin.bots.failedToFetchSlackChannels", {
+          lng: locale,
+        })} - ${await slackChannelsResponse.text()}`}
       />
     );
   }
@@ -46,8 +49,10 @@ async function EditslackChannelConfigPage(props: {
   if (!slackChannelConfig) {
     return (
       <ErrorCallout
-        errorTitle={i18n.t("admin.bots.somethingWentWrong")}
-        errorMsg={`${i18n.t("admin.bots.slackChannelConfigNotFound")} ID: ${params.id}`}
+        errorTitle={tServer("admin.bots.somethingWentWrong", { lng: locale })}
+        errorMsg={`${tServer("admin.bots.slackChannelConfigNotFound", {
+          lng: locale,
+        })} ID: ${params.id}`}
       />
     );
   }
@@ -55,8 +60,10 @@ async function EditslackChannelConfigPage(props: {
   if (!documentSetsResponse.ok) {
     return (
       <ErrorCallout
-        errorTitle={i18n.t("admin.bots.somethingWentWrong")}
-        errorMsg={`${i18n.t("admin.bots.failedToFetchDocumentSets")} - ${await documentSetsResponse.text()}`}
+        errorTitle={tServer("admin.bots.somethingWentWrong", { lng: locale })}
+        errorMsg={`${tServer("admin.bots.failedToFetchDocumentSets", {
+          lng: locale,
+        })} - ${await documentSetsResponse.text()}`}
       />
     );
   }
@@ -66,8 +73,10 @@ async function EditslackChannelConfigPage(props: {
   if (agentsFetchError) {
     return (
       <ErrorCallout
-        errorTitle={i18n.t("admin.bots.somethingWentWrong")}
-        errorMsg={`${i18n.t("admin.bots.failedToFetchPersonas")} - ${agentsFetchError}`}
+        errorTitle={tServer("admin.bots.somethingWentWrong", { lng: locale })}
+        errorMsg={`${tServer("admin.bots.failedToFetchPersonas", {
+          lng: locale,
+        })} - ${agentsFetchError}`}
       />
     );
   }

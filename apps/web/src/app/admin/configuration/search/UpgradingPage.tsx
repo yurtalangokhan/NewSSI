@@ -1,3 +1,5 @@
+"use client";
+
 import { ThreeDotsLoader } from "@/components/Loading";
 import Modal from "@/refresh-components/Modal";
 import { errorHandlingFetcher } from "@/lib/fetcher";
@@ -150,10 +152,14 @@ export default function UpgradingPage({
 
       {futureEmbeddingModel && (
         <div>
-          <Title className="mt-8">{t("admin.searchUpgrading.currentStatusTitle")}</Title>
+          <Title className="mt-8">
+            {t("admin.searchUpgrading.currentStatusTitle")}
+          </Title>
           <div className="mt-4">
             <div className="italic text-lg mb-2">
-              {t("admin.searchUpgrading.switchingTo", { modelName: futureEmbeddingModel.model_name })}
+              {t("admin.searchUpgrading.switchingTo", {
+                modelName: futureEmbeddingModel.model_name,
+              })}
             </div>
 
             <Button
@@ -216,7 +222,11 @@ export default function UpgradingPage({
                       )}
                     </>
                   ) : (
-                    <ErrorCallout errorTitle={t("admin.searchUpgrading.failedToFetchProgress")} />
+                    <ErrorCallout
+                      errorTitle={t(
+                        "admin.searchUpgrading.failedToFetchProgress"
+                      )}
+                    />
                   )}
                 </>
               )

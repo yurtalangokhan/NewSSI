@@ -1,6 +1,6 @@
-import { notFound } from "next/navigation";
 "use client";
 
+import { notFound } from "next/navigation";
 import { LoadingAnimation } from "@/components/Loading";
 import { useMostReactedToDocuments } from "@/lib/hooks";
 import { DocumentFeedbackTable } from "./DocumentFeedbackTable";
@@ -76,11 +76,7 @@ export default function Page() {
 
   return (
     <SettingsLayouts.Root>
-      <SettingsLayouts.Header
-        icon={route.icon}
-        title={route.title}
-        separator
-      />
+      <SettingsLayouts.Header icon={route.icon} title={route.title} separator />
       <SettingsLayouts.Body>
         <AdminOverviewPanel
           icon={route.icon}

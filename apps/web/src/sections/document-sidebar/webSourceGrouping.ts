@@ -50,7 +50,7 @@ export function groupSourcesByDomain(documents: OnyxDocument[]): DomainGroup[] {
       indexByDomain.set(domain, groups.length);
       groups.push({ domain, documents: [doc] });
     } else {
-      groups[existingIndex].documents.push(doc);
+      groups[existingIndex]?.documents.push(doc);
     }
   }
 
@@ -74,11 +74,7 @@ export function splitMessageSources(
 
   for (const packet of packets) {
     const type = packet.obj.type;
-    if (
-      type === PacketType.FETCH_TOOL_DOCUMENTS ||
-      type === "open_url_documents" ||
-      type === "FETCH_TOOL_DOCUMENTS"
-    ) {
+    if (type === PacketType.FETCH_TOOL_DOCUMENTS) {
       const docs = (packet.obj as FetchToolDocuments).documents || [];
       for (const doc of docs) {
         if (doc.document_id) {
@@ -89,11 +85,7 @@ export function splitMessageSources(
           readLinks.add(doc.link);
         }
       }
-    } else if (
-      type === PacketType.SEARCH_TOOL_DOCUMENTS_DELTA ||
-      type === "search_tool_documents_delta" ||
-      type === "SEARCH_TOOL_DOCUMENTS_DELTA"
-    ) {
+    } else if (type === PacketType.SEARCH_TOOL_DOCUMENTS_DELTA) {
       const docs = (packet.obj as SearchToolDocumentsDelta).documents || [];
       for (const doc of docs) {
         if (doc.document_id) {

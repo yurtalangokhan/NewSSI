@@ -1,3 +1,5 @@
+"use client";
+
 import { PageSelector } from "@/components/PageSelector";
 import { IndexAttemptStatus } from "@/components/Status";
 import { ConnectorIndexingStatusLite } from "@/lib/types";
@@ -84,4 +86,3 @@ export function ReindexingProgressTable({
     </div>
   );
 }
-

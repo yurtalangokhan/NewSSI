@@ -1,6 +1,6 @@
-import { notFound } from "next/navigation";
 "use client";
 
+import { notFound } from "next/navigation";
 import { ThreeDotsLoader } from "@/components/Loading";
 import { errorHandlingFetcher } from "@/lib/fetcher";
 import * as SettingsLayouts from "@/layouts/settings-layouts";
@@ -129,7 +129,9 @@ function Main() {
           <Text as="p" text04>
             {t("admin.apiKey.paidSubscriptionRequired")}
           </Text>
-          <Button href="/admin/billing">{t("admin.apiKey.upgradePlanButton")}</Button>
+          <Button href="/admin/billing">
+            {t("admin.apiKey.upgradePlanButton")}
+          </Button>
         </div>
       )}
     </div>
@@ -222,7 +224,11 @@ function Main() {
                         setKeyIsGenerating(false);
                         if (!response.ok) {
                           const errorMsg = await response.text();
-                          toast.error(t("admin.apiKey.regenerateError", { error: errorMsg }));
+                          toast.error(
+                            t("admin.apiKey.regenerateError", {
+                              error: errorMsg,
+                            })
+                          );
                           return;
                         }
                         const newKey = (await response.json()) as APIKey;
@@ -239,7 +245,9 @@ function Main() {
                         const response = await deleteApiKey(apiKey.api_key_id);
                         if (!response.ok) {
                           const errorMsg = await response.text();
-                          toast.error(t("admin.apiKey.deleteError", { error: errorMsg }));
+                          toast.error(
+                            t("admin.apiKey.deleteError", { error: errorMsg })
+                          );
                           return;
                         }
                         mutate("/api/admin/api-key");
