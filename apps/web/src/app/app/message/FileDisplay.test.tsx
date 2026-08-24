@@ -13,6 +13,7 @@ jest.mock("react-i18next", () => ({
       fallback ??
       key,
   }),
+  initReactI18next: { type: "3rdParty", init: jest.fn() },
 }));
 
 const textViewModalSpy = jest.fn();

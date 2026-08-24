@@ -7,6 +7,8 @@ that doesn't support tool binding must keep working exactly as before.
 
 from __future__ import annotations
 
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 

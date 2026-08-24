@@ -41,7 +41,6 @@ from service.AgentHelpers import _handle_input
 from service.AssistantAgentService import AssistantAgentService
 from service.AuthService import extract_user_id_from_token
 from service.DocumentProgressTracker import DocumentProgressTracker, is_document_tool
-from service.WebSearchProgressTracker import WebSearchProgressTracker, is_web_search_tool
 from service.GeneratedFilePacket import (
     build_generated_file_packet_obj,
     parse_generated_file_payload,
@@ -51,6 +50,7 @@ from service.Utils import (
     langchain_to_chat_message,
     remove_tool_calls,
 )
+from service.WebSearchProgressTracker import WebSearchProgressTracker, is_web_search_tool
 
 logger = logging.getLogger(__name__)
 
@@ -337,9 +337,9 @@ async def info(_user=Depends(require_permission("agent:list"))) -> ServiceMetada
     all_models.sort()
 
     # Determine default model
-    default_model = settings.DEFAULT_MODEL or env.DEFAULT_MODEL or None
+    default_model = settings.DEFAULT_MODEL or None
     if default_model and default_model.lower() in {"ollama", "default", "provider", "builtin"}:
-        default_model = env.OLLAMA_MODEL or settings.OLLAMA_MODEL or "llama3.1:8b"
+        default_model = settings.OLLAMA_MODEL or "llama3.1:8b"
     if (not default_model or default_model not in all_models) and all_models:
         default_model = all_models[0]
 

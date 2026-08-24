@@ -1,6 +1,5 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
-import pytest
 import requests
 
 from models.web_search import RenderedPage
@@ -11,7 +10,7 @@ from service.web_search.url import DNSResolutionError, SSRFBlockedException
 
 def _sample_html() -> bytes:
     body = "<p>" + "This is a detailed test article content that contains enough text to satisfy the minimum direct text length requirements for standard crawler extraction without triggering low information fallback. " * 3 + "</p>"
-    return f"<html><head><title>Test Page</title></head><body><h1>Hello World</h1>{body}</body></html>".encode("utf-8")
+    return f"<html><head><title>Test Page</title></head><body><h1>Hello World</h1>{body}</body></html>".encode()
 
 
 def _mock_response(

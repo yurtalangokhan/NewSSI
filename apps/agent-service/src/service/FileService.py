@@ -16,8 +16,8 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from PIL import Image, ImageOps
 from langchain_core.documents.base import Blob
+from PIL import Image, ImageOps
 
 logger = logging.getLogger(__name__)
 

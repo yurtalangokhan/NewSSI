@@ -25,11 +25,11 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from service.DocumentProgressTracker import is_document_tool
-from service.WebSearchProgressTracker import WebSearchProgressTracker, is_web_search_tool
 from service.GeneratedFilePacket import (
     build_generated_file_packet_obj,
     parse_generated_file_payload,
 )
+from service.WebSearchProgressTracker import WebSearchProgressTracker, is_web_search_tool
 
 logger = logging.getLogger(__name__)
 

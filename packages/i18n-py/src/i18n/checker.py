@@ -159,6 +159,7 @@ def scan_python_code_for_keys(src_dir: Path) -> Set[str]:
             pass
 
     found_keys.update(scan_tools_service_metadata_keys(src_dir))
+    found_keys.update(scan_agent_service_rag_tool_keys(src_dir))
     return found_keys
 
 
@@ -199,6 +200,35 @@ def scan_tools_service_metadata_keys(service_dir: Path) -> Set[str]:
             tool_name = tool_match.group(1)
             found_keys.add(f"tools.{category}.{tool_name}.name")
             found_keys.add(f"tools.{category}.{tool_name}.description")
+
+    return found_keys
+
+
+def scan_agent_service_rag_tool_keys(service_dir: Path) -> Set[str]:
+    """Find rag_tool name/description keys resolved dynamically by agent-service.
+
+    ``_rag_tool_metadata`` in persona_controller.py builds keys as
+    ``rag_tool.{tool_name}.name`` / ``rag_tool.{tool_name}.description`` for
+    tool names appended by ``_extract_rag_tool_names``. Those keys are
+    intentionally dynamic, so the generic literal-call scanner cannot see them.
+    """
+    if service_dir.name != "agent-service":
+        return set()
+
+    controller_file = service_dir / "src" / "controller" / "persona_controller.py"
+    if not controller_file.exists():
+        return set()
+
+    try:
+        content = controller_file.read_text(encoding="utf-8")
+    except Exception:
+        return set()
+
+    tool_name_pattern = re.compile(r"tool_names\.append\(\s*[\"']([a-zA-Z0-9_]+)[\"']\s*\)")
+    found_keys: Set[str] = set()
+    for tool_name in tool_name_pattern.findall(content):
+        found_keys.add(f"rag_tool.{tool_name}.name")
+        found_keys.add(f"rag_tool.{tool_name}.description")
 
     return found_keys
 

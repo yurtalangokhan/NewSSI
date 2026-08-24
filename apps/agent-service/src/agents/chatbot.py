@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-from pydantic import ValidationError
-
-from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage, SystemMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, MessagesState, StateGraph
 from langgraph.store.base import BaseStore
+from pydantic import ValidationError
 
 from agents.document_tools import (
     DOCUMENT_TOOL_PROMPT,

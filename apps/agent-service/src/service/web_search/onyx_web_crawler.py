@@ -7,7 +7,7 @@ import random
 import time
 from collections.abc import Sequence
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import requests
 
@@ -193,9 +193,9 @@ def _parse_retry_after(
     try:
         date_tuple = email.utils.parsedate_to_datetime(retry_after_str)
         if date_tuple:
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             if date_tuple.tzinfo is None:
-                date_tuple = date_tuple.replace(tzinfo=timezone.utc)
+                date_tuple = date_tuple.replace(tzinfo=UTC)
             delta = (date_tuple - now).total_seconds()
             if delta > 0:
                 return min(delta, max_delay)

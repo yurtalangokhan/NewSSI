@@ -1,5 +1,6 @@
 import base64
 import io
+
 from PIL import Image
 
 from service.FileService import normalize_image_for_llm

@@ -168,7 +168,7 @@ class WebSearchProgressTracker:
 
         return None
 
-    def clone(self) -> "WebSearchProgressTracker":
+    def clone(self) -> WebSearchProgressTracker:
         cloned = WebSearchProgressTracker()
         cloned._fetch_urls_by_call_id = dict(self._fetch_urls_by_call_id)
         return cloned
