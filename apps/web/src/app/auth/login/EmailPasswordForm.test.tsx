@@ -147,6 +147,43 @@ describe("Email/Password Login Workflow", () => {
     });
   });
 
+  test("translates the Kong upstream-server error instead of showing it raw", async () => {
+    const user = setupUser();
+
+    // Mock POST /api/auth/login (Kong 502 when Keycloak is unreachable)
+    fetchSpy.mockResolvedValueOnce({
+      ok: false,
+      status: 502,
+      json: async () => ({
+        message: "An invalid response was received from the upstream server",
+      }),
+    } as Response);
+
+    render(<EmailPasswordForm isSignup={false} loginProvider="external" />);
+
+    await user.type(screen.getByTestId("username"), "external@example.com");
+    await user.type(screen.getByPlaceholderText(/∗/), "password123");
+    await user.click(
+      screen.getByRole("button", {
+        name: signInButtonText,
+      })
+    );
+
+    // The raw Kong string should never reach the user...
+    await waitFor(() => {
+      expect(
+        screen.queryByText(
+          "An invalid response was received from the upstream server"
+        )
+      ).not.toBeInTheDocument();
+    });
+
+    // ...it should be run through the same translation used by ErrorCallout.
+    expect(
+      screen.getByText("An invalid response was received from the upstream server.")
+    ).toBeInTheDocument();
+  });
+
   test("shows error message when login fails", async () => {
     const user = setupUser();
 

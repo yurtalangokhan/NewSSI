@@ -95,6 +95,81 @@ export const parseLlmDescriptor = (value: string): LlmDescriptor => {
   };
 };
 
+export interface DefaultModelProviderGroup {
+  providerKey: string | number;
+  providerType: string;
+  models: string[];
+}
+
+export interface ResolvedDefaultModelSelection {
+  providerKey: string | number | undefined;
+  modelName: string | undefined;
+}
+
+/**
+ * Resolves a user's saved default-model preference into a provider key +
+ * model name, understanding every format it may have been written in:
+ *
+ * - Modern: separate `default_model` / `default_provider_id` fields.
+ * - Legacy composite: "providerId:modelName".
+ * - Chat Preferences composite (via `structureValue`):
+ *   "providerDisplayName__providerType__modelName".
+ * - Bare model name with no provider info, resolved by scanning groups.
+ */
+export function resolveDefaultModelSelection(
+  defaultModel: string | null | undefined,
+  defaultProviderId: string | null | undefined,
+  providerGroups: DefaultModelProviderGroup[]
+): ResolvedDefaultModelSelection {
+  if (!defaultModel) {
+    return { providerKey: undefined, modelName: undefined };
+  }
+
+  let providerKey: string | number | undefined = defaultProviderId ?? undefined;
+  let modelName: string | undefined = defaultModel;
+
+  if (!providerKey) {
+    const firstColonIndex = defaultModel.indexOf(":");
+    if (firstColonIndex > 0) {
+      const possibleProviderKey = defaultModel.slice(0, firstColonIndex);
+      const hasMatchingProviderKey = providerGroups.some(
+        (group) => String(group.providerKey) === possibleProviderKey
+      );
+      if (hasMatchingProviderKey) {
+        providerKey = possibleProviderKey;
+        modelName = defaultModel.slice(firstColonIndex + 1);
+      }
+    }
+  }
+
+  if (!providerKey) {
+    const { provider: providerType, modelName: parsedModelName } =
+      parseLlmDescriptor(defaultModel);
+    if (providerType && parsedModelName) {
+      const matchingProvider = providerGroups.find(
+        (group) =>
+          group.providerType === providerType &&
+          group.models.includes(parsedModelName)
+      );
+      if (matchingProvider) {
+        providerKey = matchingProvider.providerKey;
+        modelName = parsedModelName;
+      }
+    }
+  }
+
+  if (!providerKey) {
+    const matchingProvider = providerGroups.find((group) =>
+      group.models.includes(modelName as string)
+    );
+    if (matchingProvider) {
+      providerKey = matchingProvider.providerKey;
+    }
+  }
+
+  return { providerKey, modelName };
+}
+
 export const findModelInModelConfigurations = (
   modelConfigurations: ModelConfiguration[],
   modelName: string

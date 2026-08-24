@@ -1,5 +1,5 @@
 import { SlackChannelConfigCreationForm } from "../SlackChannelConfigCreationForm";
-import i18n from "@/i18n/config";
+import { tServer } from "@/i18n/server";
 import { fetchSS } from "@/lib/utilsSS";
 import { ErrorCallout } from "@/components/ErrorCallout";
 import { DocumentSetSummary } from "@/lib/types";
@@ -8,6 +8,7 @@ import { getStandardAnswerCategoriesIfEE } from "@/components/standardAnswers/ge
 import { redirect } from "next/navigation";
 import * as SettingsLayouts from "@/layouts/settings-layouts";
 import { SvgSlack } from "@opal/icons";
+import { resolveLocaleSS } from "@/lib/localeSS";
 
 async function NewChannelConfigPage(props: {
   params: Promise<{ "bot-id": string }>;
@@ -22,17 +23,24 @@ async function NewChannelConfigPage(props: {
     return null;
   }
 
-  const [documentSetsResponse, agentsResponse, standardAnswerCategoryResponse] =
-    await Promise.all([
-      fetchSS("/manage/document-set") as Promise<Response>,
-      fetchAgentsSS(),
-      getStandardAnswerCategoriesIfEE(),
-    ]);
+  const [
+    documentSetsResponse,
+    agentsResponse,
+    standardAnswerCategoryResponse,
+    locale,
+  ] = await Promise.all([
+    fetchSS("/manage/document-set") as Promise<Response>,
+    fetchAgentsSS(),
+    getStandardAnswerCategoriesIfEE(),
+    resolveLocaleSS(),
+  ]);
 
   if (!documentSetsResponse.ok) {
     return (
       <ErrorCallout
-        errorTitle={i18n.t("admin.standardAnswerCategories.fetchError")}
+        errorTitle={tServer("admin.standardAnswerCategories.fetchError", {
+          lng: locale,
+        })}
         errorMsg={`Failed to fetch document sets - ${await documentSetsResponse.text()}`}
       />
     );
@@ -43,7 +51,9 @@ async function NewChannelConfigPage(props: {
   if (agentsResponse[1]) {
     return (
       <ErrorCallout
-        errorTitle={i18n.t("admin.standardAnswerCategories.fetchError")}
+        errorTitle={tServer("admin.standardAnswerCategories.fetchError", {
+          lng: locale,
+        })}
         errorMsg={`Failed to fetch agents - ${agentsResponse[1]}`}
       />
     );
@@ -53,7 +63,7 @@ async function NewChannelConfigPage(props: {
     <SettingsLayouts.Root>
       <SettingsLayouts.Header
         icon={SvgSlack}
-        title={i18n.t("admin.newChannelConfigPage.title")}
+        title={tServer("admin.newChannelConfigPage.title", { lng: locale })}
         separator
         backButton
       />

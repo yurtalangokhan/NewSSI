@@ -31,9 +31,19 @@ function metricToneClass(tone: AdminOverviewMetric["tone"]) {
     return "border-status-success-02 bg-status-success-00";
   }
   if (tone === "warning") {
-    return "border-status-warning-03 bg-status-warning-01";
+    return "border-status-warning-02 bg-status-warning-00";
   }
-  return "border-border-01 bg-background-neutral-00";
+  return "border-border-01 bg-background-neutral-01";
+}
+
+function metricValueToneClass(tone: AdminOverviewMetric["tone"]) {
+  if (tone === "success") {
+    return "text-status-success-05";
+  }
+  if (tone === "warning") {
+    return "text-status-warning-05";
+  }
+  return "text-text-05";
 }
 
 export default function AdminOverviewPanel({
@@ -57,10 +67,10 @@ export default function AdminOverviewPanel({
             <Icon className="h-5 w-5 stroke-text-04" />
           </div>
           <div className="flex min-w-0 flex-col gap-1">
-            <Text as="p" headingH3 text01>
+            <Text as="p" headingH3 text05>
               {title}
             </Text>
-            <Text as="p" secondaryBody text03 className="max-w-3xl">
+            <Text as="p" secondaryBody text04 className="max-w-3xl">
               {description}
             </Text>
           </div>
@@ -92,10 +102,15 @@ export default function AdminOverviewPanel({
                 metricToneClass(metric.tone)
               )}
             >
-              <Text as="p" figureSmallLabel text03>
+              <Text as="p" figureSmallLabel text04>
                 {metric.label}
               </Text>
-              <Text as="p" headingH3 text01>
+              <Text
+                as="p"
+                headingH3
+                text05
+                className={cn("mt-0.5", metricValueToneClass(metric.tone))}
+              >
                 {metric.value}
               </Text>
             </div>

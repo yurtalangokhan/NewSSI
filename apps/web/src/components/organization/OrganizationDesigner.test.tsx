@@ -43,6 +43,7 @@ jest.mock("@xyflow/react", () => {
       onNodeClick,
       onNodeDragStop,
       onNodesChange,
+      colorMode,
       proOptions,
       children,
     }: any) => {
@@ -54,6 +55,7 @@ jest.mock("@xyflow/react", () => {
         <div
           data-testid="react-flow"
           data-edge-count={edges.length}
+          data-color-mode={colorMode}
           data-hide-attribution={String(proOptions?.hideAttribution)}
         >
           {nodes.map((node: any) => (
@@ -276,6 +278,10 @@ describe("OrganizationDesigner", () => {
     expect(screen.getByTestId("react-flow")).toHaveAttribute(
       "data-hide-attribution",
       "true"
+    );
+    expect(screen.getByTestId("react-flow")).toHaveAttribute(
+      "data-color-mode",
+      "light"
     );
     expect(layoutActions.refresh).not.toHaveBeenCalled();
 
@@ -866,7 +872,7 @@ describe("OrganizationDesigner", () => {
     );
   });
 
-  it("focuses a newly loaded subtree once and uses saved full-tree positions", async () => {
+  it("preserves viewport without forcing zoom-to-fit when loading and toggling subtree", async () => {
     const onExpandOrg = jest.fn().mockResolvedValue(undefined);
     const unloadedTree = [
       {
@@ -913,18 +919,7 @@ describe("OrganizationDesigner", () => {
       />
     );
 
-    await waitFor(() =>
-      expect(fitView).toHaveBeenCalledWith({
-        nodes: expect.arrayContaining([
-          expect.objectContaining({ id: "root" }),
-          expect.objectContaining({ id: "child" }),
-        ]),
-        padding: 0.2,
-        minZoom: 0.2,
-        maxZoom: 1.2,
-        duration: 300,
-      })
-    );
+    expect(fitView).not.toHaveBeenCalled();
     expect(
       screen.getByRole("button", { name: /^Platform movable$/ })
     ).toHaveAttribute(
@@ -932,14 +927,10 @@ describe("OrganizationDesigner", () => {
       "420"
     );
 
-    const focusCallCount = fitView.mock.calls.length;
     fireEvent.click(
       screen.getByRole("button", { name: "Toggle subtree root" })
     );
-    fireEvent.click(
-      screen.getByRole("button", { name: "Toggle subtree root" })
-    );
-    expect(fitView).toHaveBeenCalledTimes(focusCallCount);
+    expect(fitView).not.toHaveBeenCalled();
   });
 
   it("cancels diagram reset without saving positions", async () => {

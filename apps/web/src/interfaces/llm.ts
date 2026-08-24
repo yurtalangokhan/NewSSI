@@ -16,6 +16,10 @@ export interface ModelConfiguration {
   max_input_tokens: number | null;
   supports_image_input: boolean;
   supports_reasoning: boolean;
+  supports_tools?: boolean;
+  supports_embedding?: boolean;
+  supports_code?: boolean;
+  supports_audio?: boolean;
   display_name?: string;
   provider_display_name?: string;
   vendor?: string;
@@ -70,6 +74,10 @@ export interface OllamaModelResponse {
   max_input_tokens: number | null;
   supports_image_input: boolean;
   supports_reasoning?: boolean;
+  supports_tools?: boolean;
+  supports_embedding?: boolean;
+  supports_code?: boolean;
+  supports_audio?: boolean;
   is_remote?: boolean;
 }
 
@@ -173,6 +181,10 @@ export interface ProviderModelConfig {
   max_input_tokens: number | null;
   supports_image_input: boolean;
   supports_reasoning: boolean;
+  supports_tools?: boolean;
+  supports_embedding?: boolean;
+  supports_code?: boolean;
+  supports_audio?: boolean;
 }
 
 export interface UrlBasedProvider {

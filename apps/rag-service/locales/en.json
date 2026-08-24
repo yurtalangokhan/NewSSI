@@ -15,7 +15,9 @@
     "no_documents_processed": "Failed to process any documents from the provided files.",
     "failed_files_list": " Files that failed processing: {files}.",
     "vectorstore_add_failed": "Failed to add document(s) to vector store after processing.",
-    "file_too_large": "File '{filename}' is {size_mb} MB which exceeds the {limit_mb} MB upload limit."
+    "file_too_large": "File '{filename}' is {size_mb} MB which exceeds the {limit_mb} MB upload limit.",
+    "upload_already_in_progress": "An upload job is already in progress for this collection.",
+    "upload_started": "Upload job started. Poll /collections/{collection_id}/documents/upload-jobs/status for progress."
   },
   "graph": {
     "build_no_documents": "Cannot build a knowledge graph: the collection contains no documents.",

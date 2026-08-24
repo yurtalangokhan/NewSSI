@@ -5,9 +5,6 @@ import * as AppLayouts from "@/layouts/app-layouts";
 import * as SettingsLayouts from "@/layouts/settings-layouts";
 import SidebarTab from "@/refresh-components/buttons/SidebarTab";
 import { SvgSliders } from "@opal/icons";
-import { useUser } from "@/providers/UserProvider";
-import { useAuthType } from "@/lib/hooks";
-import { AuthType } from "@/lib/constants";
 import { useTranslation } from "react-i18next";
 
 interface LayoutProps {
@@ -16,12 +13,6 @@ interface LayoutProps {
 
 export default function Layout({ children }: LayoutProps) {
   const pathname = usePathname();
-  const { user } = useUser();
-  const authType = useAuthType();
-
-  const showPasswordSection = Boolean(user?.password_configured);
-  const showTokensSection = authType !== null;
-  const showAccountsAccessTab = showPasswordSection || showTokensSection;
   const { t } = useTranslation();
 
   return (
@@ -44,20 +35,6 @@ export default function Layout({ children }: LayoutProps) {
                 transient={pathname === "/app/settings/chat-preferences"}
               >
                 {t("settingsLayout.chatPreferencesTab")}
-              </SidebarTab>
-              {showAccountsAccessTab && (
-                <SidebarTab
-                  href="/app/settings/accounts-access"
-                  transient={pathname === "/app/settings/accounts-access"}
-                >
-                  {t("settingsLayout.accountsAccessTab")}
-                </SidebarTab>
-              )}
-              <SidebarTab
-                href="/app/settings/connectors"
-                transient={pathname === "/app/settings/connectors"}
-              >
-                {t("settingsLayout.connectorsTab")}
               </SidebarTab>
             </div>
 

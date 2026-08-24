@@ -36,12 +36,121 @@ STEP_TURN_RULES: dict[str, StepTurnRule] = {
         new_turn=False,
         groups_with=frozenset({"reasoning_start", "reasoning_delta"}),
     ),
+    "reasoning_done": StepTurnRule(
+        new_turn=False,
+        groups_with=frozenset({"reasoning_start", "reasoning_delta", "reasoning_done"}),
+    ),
+    # Each custom tool call gets its own turn/card.
     "custom_tool_start": StepTurnRule(new_turn=True),
     "custom_tool_delta": StepTurnRule(
         new_turn=False,
         groups_with=frozenset({"custom_tool_start", "custom_tool_delta"}),
         check_tool_change=True,
     ),
+    # Search tool packets: queries and document deltas stay grouped with search_tool_start.
+    # Consecutive search_tool_starts in the same tool phase group together to match the live stream.
+    "search_tool_start": StepTurnRule(
+        new_turn=False,
+        groups_with=frozenset(
+            {"search_tool_start", "search_tool_queries_delta", "search_tool_documents_delta"}
+        ),
+    ),
+    "search_tool_queries_delta": StepTurnRule(
+        new_turn=False,
+        groups_with=frozenset(
+            {"search_tool_start", "search_tool_queries_delta", "search_tool_documents_delta"}
+        ),
+    ),
+    "search_tool_documents_delta": StepTurnRule(
+        new_turn=False,
+        groups_with=frozenset(
+            {"search_tool_start", "search_tool_queries_delta", "search_tool_documents_delta"}
+        ),
+    ),
+    # URL fetch / open tool: each open_url_start starts a new turn card; its URLs and docs group with it.
+    "open_url_start": StepTurnRule(new_turn=True),
+    "open_url_urls": StepTurnRule(
+        new_turn=False,
+        groups_with=frozenset({"open_url_start", "open_url_urls"}),
+    ),
+    "open_url_documents": StepTurnRule(
+        new_turn=False,
+        groups_with=frozenset({"open_url_start", "open_url_urls", "open_url_documents"}),
+    ),
+    # Document generation and file cards stay grouped on their own turn.
+    "document_generation_start": StepTurnRule(new_turn=True),
+    "document_generation_progress": StepTurnRule(
+        new_turn=False,
+        groups_with=frozenset({"document_generation_start", "document_generation_progress"}),
+    ),
+    "document_generation_end": StepTurnRule(
+        new_turn=False,
+        groups_with=frozenset(
+            {"document_generation_start", "document_generation_progress", "document_generation_end"}
+        ),
+    ),
+    "generated_file": StepTurnRule(
+        new_turn=False,
+        groups_with=frozenset(
+            {
+                "document_generation_start",
+                "document_generation_progress",
+                "document_generation_end",
+                "generated_file",
+            }
+        ),
+    ),
+    # Python tool
+    "python_tool_start": StepTurnRule(new_turn=True),
+    "python_tool_delta": StepTurnRule(
+        new_turn=False,
+        groups_with=frozenset({"python_tool_start", "python_tool_delta"}),
+    ),
+    # File reader tool
+    "file_reader_start": StepTurnRule(new_turn=True),
+    "file_reader_result": StepTurnRule(
+        new_turn=False,
+        groups_with=frozenset({"file_reader_start", "file_reader_result"}),
+    ),
+    # Memory tool
+    "memory_tool_start": StepTurnRule(new_turn=True),
+    "memory_tool_delta": StepTurnRule(
+        new_turn=False,
+        groups_with=frozenset({"memory_tool_start", "memory_tool_delta"}),
+    ),
+    # Deep research plan
+    "deep_research_plan_start": StepTurnRule(new_turn=True),
+    "deep_research_plan_delta": StepTurnRule(
+        new_turn=False,
+        groups_with=frozenset({"deep_research_plan_start", "deep_research_plan_delta"}),
+    ),
+    # Research agent
+    "research_agent_start": StepTurnRule(new_turn=True),
+    "intermediate_report_start": StepTurnRule(
+        new_turn=False,
+        groups_with=frozenset({"research_agent_start", "intermediate_report_start"}),
+    ),
+    "intermediate_report_delta": StepTurnRule(
+        new_turn=False,
+        groups_with=frozenset(
+            {"research_agent_start", "intermediate_report_start", "intermediate_report_delta"}
+        ),
+    ),
+    "intermediate_report_cited_docs": StepTurnRule(
+        new_turn=False,
+        groups_with=frozenset(
+            {
+                "research_agent_start",
+                "intermediate_report_start",
+                "intermediate_report_delta",
+                "intermediate_report_cited_docs",
+            }
+        ),
+    ),
+    # Long term memory
+    "long_term_memory_recall": StepTurnRule(new_turn=True),
+    "long_term_memory_save": StepTurnRule(new_turn=True),
+    "custom_step_start": StepTurnRule(new_turn=True),
 }
 
 

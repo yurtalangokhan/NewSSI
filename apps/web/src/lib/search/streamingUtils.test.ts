@@ -265,5 +265,200 @@ describe("handleSSEStream", () => {
     // Reasoning should remain in a single turn index, not split by document generation packets
     expect(reasoningTurns.size).toBe(1);
   });
-});
 
+  it("does not fragment the answer when reasoning resumes mid-answer", async () => {
+    // Gemini/Claude can interleave "thinking" blocks between chunks of
+    // visible text (think a bit -> write a bit -> think a bit -> write a
+    // bit). Treating that resumed reasoning as a tool boundary would bump
+    // turn_index, force a new message_start, and unmount/re-type the answer
+    // that already streamed in.
+    const response = createStreamingResponse([
+      'data: {"type":"reasoning_start"}\n',
+      'data: {"type":"reasoning_delta","reasoning":"planning"}\n',
+      'data: {"type":"token","content":"Here is "}\n',
+      'data: {"type":"reasoning_start"}\n',
+      'data: {"type":"reasoning_delta","reasoning":"more thinking"}\n',
+      'data: {"type":"token","content":"the rest."}\n',
+      'data: [DONE]\n',
+    ]);
+
+    const packets: any[] = [];
+    for await (const packet of handleSSEStream<any>(response)) {
+      packets.push(packet);
+    }
+
+    const answerTurns = packets
+      .filter((p) => p.obj?.type === "message_delta")
+      .map((p) => p.placement.turn_index);
+    // Both token chunks belong to the same answer turn.
+    expect(new Set(answerTurns).size).toBe(1);
+
+    // Only one message_start was ever synthesized for this answer — the
+    // resumed reasoning must not have forced a second one.
+    const messageStarts = packets.filter((p) => p.obj?.type === "message_start");
+    expect(messageStarts).toHaveLength(1);
+  });
+
+  it("gives each parallel tool call its own turn, keyed by call_id", async () => {
+    // A deep-research turn fires several web_search calls at once: all their
+    // custom_tool_start packets arrive before any result comes back. Without
+    // call_id-based splitting, every call lands in one turn and only the
+    // last call's result is attributed to it.
+    const response = createStreamingResponse([
+      'data: {"type":"custom_tool_start","tool_name":"web_search","args":{"query":"a"},"call_id":"call-a"}\n',
+      'data: {"type":"custom_tool_start","tool_name":"web_search","args":{"query":"b"},"call_id":"call-b"}\n',
+      'data: {"type":"custom_tool_delta","tool_name":"web_search","response_type":"tool_result","data":"result a","call_id":"call-a"}\n',
+      'data: {"type":"custom_tool_delta","tool_name":"web_search","response_type":"tool_result","data":"result b","call_id":"call-b"}\n',
+      'data: [DONE]\n',
+    ]);
+
+    const packets: any[] = [];
+    for await (const packet of handleSSEStream<any>(response)) {
+      packets.push(packet);
+    }
+
+    const starts = packets.filter((p) => p.obj?.type === "custom_tool_start");
+    const deltas = packets.filter((p) => p.obj?.type === "custom_tool_delta");
+    expect(starts).toHaveLength(2);
+    expect(deltas).toHaveLength(2);
+
+    const turnOf = (call_id: string, type: string) =>
+      packets.find((p) => p.obj?.type === type && p.obj?.call_id === call_id)
+        ?.placement.turn_index;
+
+    // Each call's start and its own delta share a turn, but the two calls
+    // don't share a turn with each other.
+    expect(turnOf("call-a", "custom_tool_start")).toBe(
+      turnOf("call-a", "custom_tool_delta")
+    );
+    expect(turnOf("call-b", "custom_tool_start")).toBe(
+      turnOf("call-b", "custom_tool_delta")
+    );
+    expect(turnOf("call-a", "custom_tool_start")).not.toBe(
+      turnOf("call-b", "custom_tool_start")
+    );
+  });
+  it("ignores SSE keep-alive comments", async () => {
+    // The backend sends ": keep-alive" comments during long silent
+    // generations so proxies don't drop the connection. They carry no
+    // packet and must not surface as parse errors or stray packets.
+    const errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+    const response = createStreamingResponse([
+      ': keep-alive\n',
+      'data: {"type":"token","content":"Hi"}\n',
+      ': keep-alive\n',
+      'data: [DONE]\n',
+    ]);
+
+    const packets: any[] = [];
+    for await (const packet of handleSSEStream<any>(response)) {
+      packets.push(packet);
+    }
+
+    expect(packets.map((p) => p.obj?.type)).toEqual([
+      "message_start",
+      "message_delta",
+      "stop",
+    ]);
+    expect(errorSpy).not.toHaveBeenCalled();
+    errorSpy.mockRestore();
+  });
+
+  it("passes the real message-id packet through unwrapped, not nested under obj", async () => {
+    // This packet has no `type` field, so the generic default case would
+    // otherwise wrap it as `{ obj: packet }` — but the consumer
+    // (useChatController.ts) reads `packet.user_message_id` /
+    // `packet.reserved_assistant_message_id` directly on the top-level
+    // packet, matching the MessageResponseIDInfo shape. Wrapped, those
+    // fields are silently unreadable and the message never gets its real
+    // id — retry and the alternate-response switcher then stay broken
+    // until the page is reloaded.
+    const response = createStreamingResponse([
+      'data: {"type":"token","content":"Hi"}\n',
+      'data: {"user_message_id": 1, "reserved_assistant_message_id": 2}\n',
+      'data: [DONE]\n',
+    ]);
+
+    const packets: any[] = [];
+    for await (const packet of handleSSEStream<any>(response)) {
+      packets.push(packet);
+    }
+
+    const idPacket = packets.find(
+      (p) => p.reserved_assistant_message_id !== undefined
+    );
+    expect(idPacket).toEqual({
+      user_message_id: 1,
+      reserved_assistant_message_id: 2,
+    });
+  });
+  it("gives each parallel open_url / fetch_webpage call its own turn", async () => {
+    const response = createStreamingResponse([
+      'data: {"type":"open_url_start","call_id":"fetch-1"}\n',
+      'data: {"type":"open_url_urls","urls":["https://site1.com"],"call_id":"fetch-1"}\n',
+      'data: {"type":"open_url_start","call_id":"fetch-2"}\n',
+      'data: {"type":"open_url_urls","urls":["https://site2.com"],"call_id":"fetch-2"}\n',
+      'data: {"type":"open_url_documents","documents":[{"document_id":"https://site1.com","semantic_identifier":"Site 1"}],"call_id":"fetch-1"}\n',
+      'data: {"type":"open_url_documents","documents":[{"document_id":"https://site2.com","semantic_identifier":"Site 2"}],"call_id":"fetch-2"}\n',
+      'data: [DONE]\n',
+    ]);
+
+    const packets: any[] = [];
+    for await (const packet of handleSSEStream<any>(response)) {
+      packets.push(packet);
+    }
+
+    const turnOf = (call_id: string, type: string) =>
+      packets.find((p) => p.obj?.type === type && p.obj?.call_id === call_id)
+        ?.placement.turn_index;
+
+    expect(turnOf("fetch-1", "open_url_start")).toBe(
+      turnOf("fetch-1", "open_url_documents")
+    );
+    expect(turnOf("fetch-2", "open_url_start")).toBe(
+      turnOf("fetch-2", "open_url_documents")
+    );
+    expect(turnOf("fetch-1", "open_url_start")).not.toBe(
+      turnOf("fetch-2", "open_url_start")
+    );
+  });
+  it("splits interleaved search and fetch calls into distinct timeline turns", async () => {
+    const response = createStreamingResponse([
+      'data: {"type":"search_tool_start","is_internet_search":true,"call_id":"search-1"}\n',
+      'data: {"type":"search_tool_queries_delta","queries":["query 1"],"call_id":"search-1"}\n',
+      'data: {"type":"open_url_start","call_id":"fetch-1"}\n',
+      'data: {"type":"open_url_urls","urls":["https://site1.com"],"call_id":"fetch-1"}\n',
+      'data: {"type":"search_tool_start","is_internet_search":true,"call_id":"search-2"}\n',
+      'data: {"type":"search_tool_queries_delta","queries":["query 2"],"call_id":"search-2"}\n',
+      'data: {"type":"open_url_documents","documents":[{"document_id":"https://site1.com","semantic_identifier":"Site 1"}],"call_id":"fetch-1"}\n',
+      'data: {"type":"search_tool_documents_delta","documents":[{"document_id":"https://res1.com","semantic_identifier":"Res 1"}],"call_id":"search-1"}\n',
+      'data: {"type":"search_tool_documents_delta","documents":[{"document_id":"https://res2.com","semantic_identifier":"Res 2"}],"call_id":"search-2"}\n',
+      'data: [DONE]\n',
+    ]);
+
+    const packets: any[] = [];
+    for await (const packet of handleSSEStream<any>(response)) {
+      packets.push(packet);
+    }
+
+    const turnOf = (call_id: string, type: string) =>
+      packets.find((p) => p.obj?.type === type && p.obj?.call_id === call_id)
+        ?.placement.turn_index;
+
+    const s1Turn = turnOf("search-1", "search_tool_start");
+    const f1Turn = turnOf("fetch-1", "open_url_start");
+    const s2Turn = turnOf("search-2", "search_tool_start");
+
+    expect(s1Turn).toBeDefined();
+    expect(f1Turn).toBeDefined();
+    expect(s2Turn).toBeDefined();
+
+    expect(s1Turn).not.toBe(f1Turn);
+    expect(f1Turn).not.toBe(s2Turn);
+    expect(s1Turn).not.toBe(s2Turn);
+
+    expect(turnOf("fetch-1", "open_url_documents")).toBe(f1Turn);
+    expect(turnOf("search-1", "search_tool_documents_delta")).toBe(s1Turn);
+    expect(turnOf("search-2", "search_tool_documents_delta")).toBe(s2Turn);
+  });
+});

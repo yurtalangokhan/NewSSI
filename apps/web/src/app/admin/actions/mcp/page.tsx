@@ -61,12 +61,7 @@ export default function Main() {
                 defaultValue: "Agents",
               }),
               href: ADMIN_PATHS.AGENTS,
-            },
-            {
-              label: t("admin.actions.openApiActions", {
-                defaultValue: "OpenAPI Actions",
-              }),
-              href: ADMIN_PATHS.OPENAPI_ACTIONS,
+              primary: true,
             },
           ]}
         />

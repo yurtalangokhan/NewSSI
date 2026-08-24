@@ -25,7 +25,7 @@ def test_user_service_exposes_only_api_v1_routes_without_legacy_aliases() -> Non
         "/api/v1/users/me",
         "/api/v1/users/me/roles",
         "/api/v1/users/me/settings/",
-        "/api/v1/users/me/memories/",
+        "/api/v1/users/me/memories",
         "/api/v1/users/me/api-keys/",
         "/api/v1/roles/",
         "/api/v1/roles/{role_name}/effective-permissions",

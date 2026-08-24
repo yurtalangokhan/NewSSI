@@ -1,6 +1,7 @@
 """Controller for persona endpoints."""
 
 import logging
+import re
 import uuid
 from typing import Any
 
@@ -16,6 +17,38 @@ from service.PersonaRepository import PersonaDB
 DEFAULT_USER_ID = "dev-user"
 logger = logging.getLogger(__name__)
 
+# database_search/graph_search are synthesized from an agent's RAG config
+# rather than being real MCP tools, so there's no external catalog to pull a
+# name/description from — these come from this service's own locale files
+# (translated per-request via the same X-Language mechanism as everything
+# else, see i18n-py's middleware) instead of tools-service.
+RAG_TOOL_NAMES = ("database_search", "graph_search")
+
+
+def _rag_tool_metadata(tool_name: str) -> dict[str, str]:
+    return {
+        "display_name": t(f"rag_tool.{tool_name}.name"),
+        "description": t(f"rag_tool.{tool_name}.description"),
+    }
+
+
+# tools-service embeds category/category_label/title tags directly into a
+# tool's `description` string so a single field can carry all three pieces
+# of per-request-translated metadata (see
+# apps/tools-service/src/core/registry.py's `_setup_i18n_wrapper`). Callers
+# must strip these before showing the description to a user, and may pull
+# the localized display name out of the title tag.
+_MCP_TOOL_TAG_RE = re.compile(r"\[(?:category|category_label|title):[^\]]*\]")
+_MCP_TOOL_TITLE_TAG_RE = re.compile(r"\[title:([^\]]*)\]")
+
+
+def _parse_mcp_tool_description(raw_description: str) -> tuple[str, str | None]:
+    """Returns (clean_description, localized_title_or_None)."""
+    title_match = _MCP_TOOL_TITLE_TAG_RE.search(raw_description)
+    title = title_match.group(1).strip() if title_match else None
+    clean = _MCP_TOOL_TAG_RE.sub("", raw_description).strip()
+    return clean, title or None
+
 
 def _is_uuid_owner_id(owner_id: str) -> bool:
     try:
@@ -23,6 +56,19 @@ def _is_uuid_owner_id(owner_id: str) -> bool:
     except ValueError:
         return False
     return True
+
+
+def _normalize_model_alias(model_name: str | None) -> str | None:
+    """Normalize provider aliases to concrete model names."""
+    if model_name is None:
+        return None
+    normalized = str(model_name).strip()
+    if not normalized:
+        return None
+    lower_name = normalized.lower()
+    if lower_name in {"ollama", "default", "provider", "builtin"}:
+        return env.OLLAMA_MODEL or settings.OLLAMA_MODEL or settings.DEFAULT_MODEL
+    return normalized
 
 
 def build_agent_availability(
@@ -38,7 +84,16 @@ def build_agent_availability(
 ) -> dict[str, Any]:
     """Return component-level availability for an agent snapshot."""
     checks: list[dict[str, str]] = []
-    selected_model = agent.get("llm_model_version_override") or agent.get("model")
+    raw_selected = agent.get("llm_model_version_override") or agent.get("model")
+    selected_model = _normalize_model_alias(raw_selected) if raw_selected else None
+
+    raw_default = default_model or settings.DEFAULT_MODEL or env.DEFAULT_MODEL
+    effective_default_model = _normalize_model_alias(raw_default) if raw_default else None
+
+    if effective_default_model and effective_default_model not in available_models:
+        ollama_default = env.OLLAMA_MODEL or settings.OLLAMA_MODEL
+        if ollama_default and ollama_default in available_models:
+            effective_default_model = ollama_default
 
     if selected_model:
         if selected_model in available_models:
@@ -57,13 +112,13 @@ def build_agent_availability(
                     "message": f"Model '{selected_model}' is selected but is not available.",
                 }
             )
-    elif default_model:
-        if default_model in available_models:
+    elif effective_default_model:
+        if effective_default_model in available_models:
             checks.append(
                 {
                     "component": "model",
                     "status": "ok",
-                    "message": f"Using default model '{default_model}'.",
+                    "message": f"Using default model '{effective_default_model}'.",
                 }
             )
         else:
@@ -71,7 +126,7 @@ def build_agent_availability(
                 {
                     "component": "model",
                     "status": "error",
-                    "message": f"Default model '{default_model}' is not available.",
+                    "message": f"Default model '{effective_default_model}' is not available.",
                 }
             )
     else:
@@ -162,10 +217,6 @@ def _format_tool_display_name(tool_name: str) -> str:
 
 def _has_web_search_tool(tool_names: list[str]) -> bool:
     return any("web_search" in tool_name or "web-search" in tool_name for tool_name in tool_names)
-
-
-def _build_catalog_summary_availability() -> dict[str, str]:
-    return {"status": "available"}
 
 
 class PersonaController(BaseController):
@@ -450,24 +501,37 @@ class PersonaController(BaseController):
         persona_id: int,
         mcp_tool_names: list[str] | None,
         rag_config: dict[str, Any] | None = None,
+        *,
+        tool_descriptions: dict[str, dict[str, str]] | None = None,
     ) -> list[dict[str, Any]]:
         tool_snapshots: list[dict[str, Any]] = []
         mcp_tool_names = mcp_tool_names or []
         rag_tool_names = self._extract_rag_tool_names(rag_config)
         seen_names: set[str] = set()
+        tool_descriptions = tool_descriptions or {}
 
         def add_tool_snapshot(tool_name: str, is_mcp_tool: bool) -> None:
             if tool_name in seen_names:
                 return
             seen_names.add(tool_name)
 
+            if tool_name in RAG_TOOL_NAMES:
+                meta = _rag_tool_metadata(tool_name)
+            else:
+                meta = tool_descriptions.get(tool_name) or {}
+
+            description = meta.get("description", "")
+            display_name = meta.get("display_name") or _format_tool_display_name(
+                tool_name
+            )
+
             index = len(tool_snapshots)
             tool_snapshots.append(
                 {
                     "id": (persona_id * 1000) + index + 1,
                     "name": tool_name,
-                    "display_name": _format_tool_display_name(tool_name),
-                    "description": "",
+                    "display_name": display_name,
+                    "description": description,
                     "definition": None,
                     "custom_headers": [],
                     "in_code_tool_id": tool_name,
@@ -491,22 +555,67 @@ class PersonaController(BaseController):
 
         return tool_snapshots
 
-    async def _get_available_model_names(self) -> set[str]:
+    async def _get_available_model_names(self, user_id: str | None = None) -> set[str]:
+        model_names: set[str] = set()
         try:
             from core.providers.registry import provider_registry
 
             provider_registry.initialize()
-            return set(await provider_registry.get_model_names())
+            model_names.update(await provider_registry.get_model_names())
         except Exception:
-            return set()
+            pass
 
-    async def _get_available_mcp_tool_names(self) -> set[str]:
-        names: set[str] = set()
+        try:
+            from domain.providers.repository import ProviderRepository
+            from domain.providers.service import ProviderService
+
+            repo = ProviderRepository()
+            svc = ProviderService(repo)
+            providers = await svc.get_available_models_for_user(user_id or DEFAULT_USER_ID)
+            for p in providers:
+                for mc in p.get("model_configurations", []):
+                    name = mc.get("name")
+                    if name:
+                        model_names.add(name)
+        except Exception:
+            pass
+
+        return model_names
+
+    async def _get_mcp_tool_metadata(self) -> dict[str, dict[str, str]]:
+        """Name -> {"description", "display_name"} for every registered/
+        built-in MCP tool, translated to the current request's locale.
+
+        Both sources can embed tools-service's `[category:...]
+        [category_label:...][title:...]` tags in the raw description (see
+        `_parse_mcp_tool_description`); those are stripped here so callers
+        never see them, and the title tag (when present) supplies a
+        localized display name instead of the generic snake_case-to-title
+        fallback.
+
+        Callers that need to check *whether* a tool exists but not its
+        metadata can use `_get_available_mcp_tool_names`, which derives its
+        result from this so the two never disagree.
+        """
+        descriptions: dict[str, dict[str, str]] = {}
+
+        def _record(name: object, raw_description: object) -> None:
+            if not name:
+                return
+            clean_description, title = _parse_mcp_tool_description(
+                str(raw_description or "")
+            )
+            descriptions[str(name)] = {
+                "description": clean_description,
+                "display_name": title or "",
+            }
+
         try:
             from service.MCPToolService import MCPToolService
 
             tools = await MCPToolService.get_instance().list_tools(include_inactive=False)
-            names.update(str(tool.get("name")) for tool in tools if tool.get("name"))
+            for tool in tools:
+                _record(tool.get("name"), tool.get("description"))
         except Exception:
             pass
 
@@ -517,18 +626,29 @@ class PersonaController(BaseController):
                 getattr(settings, "TOOLS_SERVICE_URL", None) or settings.MCP_SERVER_URL
             )
             payload = await get_proxy_controller().get_builtin_mcp_tools(tools_service_url)
-            names.update(str(tool.get("name")) for tool in payload.get("tools", []))
+            for tool in payload.get("tools", []):
+                _record(tool.get("name"), tool.get("description"))
         except Exception:
             pass
 
-        return names
+        return descriptions
+
+    async def _get_available_mcp_tool_names(self) -> set[str]:
+        return set((await self._get_mcp_tool_metadata()).keys())
 
     async def _get_local_collection_info(
         self,
         collection_ids: list[str],
         *,
         source_key: str,
+        cache: dict[str, dict[str, Any] | None] | None = None,
     ) -> tuple[set[str], dict[str, str]]:
+        """Look up collections in the local datasource DB.
+
+        `cache` memoizes lookups by collection id across a single request
+        (e.g. the whole agent catalog), since multiple agents commonly
+        reference the same shared collection.
+        """
         if not collection_ids:
             return set(), {}
 
@@ -539,9 +659,14 @@ class PersonaController(BaseController):
 
             repo = DatasourceRepository()
             for collection_id in collection_ids:
-                collection = await repo.get_collection(collection_id)
-                if collection is None:
-                    collection = await repo.get_collection_by_name(collection_id)
+                if cache is not None and collection_id in cache:
+                    collection = cache[collection_id]
+                else:
+                    collection = await repo.get_collection(collection_id)
+                    if collection is None:
+                        collection = await repo.get_collection_by_name(collection_id)
+                    if cache is not None:
+                        cache[collection_id] = collection
                 if collection is not None:
                     existing.add(collection_id)
                     display_name = collection.get("name") or collection.get("uuid")
@@ -552,18 +677,17 @@ class PersonaController(BaseController):
 
         return existing, display_names
 
-    async def _get_rag_service_collection_info(
-        self,
-        collection_ids: list[str],
-        *,
-        source_key: str,
-    ) -> tuple[set[str], dict[str, str]]:
-        if not collection_ids:
-            return set(), {}
+    async def _fetch_rag_knowledge_selector_payload(self) -> dict[str, Any] | None:
+        """Fetch the RAG service's full knowledge-selector payload.
 
+        The endpoint always returns every available collection (it has no
+        filter-by-id support), so callers checking many collections/agents
+        should fetch this once per request and reuse it rather than calling
+        it once per collection lookup.
+        """
         base_url = (env.RAG_API_URL or env.RAG_SERVICE_API_URL or "").rstrip("/")
         if not base_url:
-            return set(), {}
+            return None
 
         headers: dict[str, str] = {}
         token = (env.INTERNAL_SERVICE_TOKEN or "").strip()
@@ -579,13 +703,25 @@ class PersonaController(BaseController):
                     headers=headers,
                 )
             if response.status_code != 200:
-                return set(), {}
+                return None
             payload = response.json()
         except Exception:
+            return None
+
+        return payload if isinstance(payload, dict) else None
+
+    def _filter_rag_service_collection_info(
+        self,
+        collection_ids: list[str],
+        *,
+        source_key: str,
+        payload: dict[str, Any] | None,
+    ) -> tuple[set[str], dict[str, str]]:
+        if not collection_ids or not payload:
             return set(), {}
 
         requested = set(collection_ids)
-        rows = payload.get(source_key) if isinstance(payload, dict) else []
+        rows = payload.get(source_key)
         if not isinstance(rows, list):
             return set(), {}
 
@@ -608,14 +744,22 @@ class PersonaController(BaseController):
         collection_ids: list[str],
         *,
         source_key: str,
+        rag_payload: dict[str, Any] | None = None,
+        local_cache: dict[str, dict[str, Any] | None] | None = None,
     ) -> tuple[set[str], dict[str, str]]:
-        rag_existing, rag_display_names = await self._get_rag_service_collection_info(
+        if not collection_ids:
+            return set(), {}
+        if rag_payload is None:
+            rag_payload = await self._fetch_rag_knowledge_selector_payload()
+        rag_existing, rag_display_names = self._filter_rag_service_collection_info(
             collection_ids,
             source_key=source_key,
+            payload=rag_payload,
         )
         local_existing, local_display_names = await self._get_local_collection_info(
             collection_ids,
             source_key=source_key,
+            cache=local_cache,
         )
         return (
             rag_existing | local_existing,
@@ -630,16 +774,43 @@ class PersonaController(BaseController):
         except Exception:
             return False
 
-    async def _get_agent_availability(self, agent: dict[str, Any]) -> dict[str, Any]:
+    async def _get_agent_availability(
+        self,
+        agent: dict[str, Any],
+        *,
+        available_models: set[str] | None = None,
+        available_mcp_tools: set[str] | None = None,
+        memory_available: bool | None = None,
+        rag_payload: dict[str, Any] | None = None,
+        local_collection_cache: dict[str, dict[str, Any] | None] | None = None,
+    ) -> dict[str, Any]:
+        """Compute an agent's real availability.
+
+        `available_models`/`available_mcp_tools`/`memory_available`/
+        `rag_payload` are environment-wide (not agent-specific), and
+        `local_collection_cache` memoizes local DB lookups by collection id.
+        Callers checking many agents at once (e.g. the catalog list) should
+        fetch/create these once and pass them in here to avoid redundant
+        lookups per agent.
+        """
         rag_config = agent.get("rag_config") or {}
         document_collections = [str(c) for c in rag_config.get("document_processing") or []]
         graph_collections = [str(c) for c in rag_config.get("knowledge_graph") or []]
 
-        available_models = await self._get_available_model_names()
-        available_mcp_tools = await self._get_available_mcp_tool_names()
+        if available_models is None:
+            available_models = await self._get_available_model_names()
+        if available_mcp_tools is None:
+            available_mcp_tools = await self._get_available_mcp_tool_names()
+        if memory_available is None:
+            memory_available = self._is_memory_available()
+        if rag_payload is None and (document_collections or graph_collections):
+            rag_payload = await self._fetch_rag_knowledge_selector_payload()
+
         available_rag_collections, rag_display_names = await self._get_existing_collection_info(
             document_collections,
             source_key="document_processing",
+            rag_payload=rag_payload,
+            local_cache=local_collection_cache,
         )
         (
             available_graph_rag_collections,
@@ -647,6 +818,8 @@ class PersonaController(BaseController):
         ) = await self._get_existing_collection_info(
             graph_collections,
             source_key="knowledge_graph",
+            rag_payload=rag_payload,
+            local_cache=local_collection_cache,
         )
         collection_display_names = {**rag_display_names, **graph_display_names}
 
@@ -658,7 +831,7 @@ class PersonaController(BaseController):
             available_rag_collections=available_rag_collections,
             available_graph_rag_collections=available_graph_rag_collections,
             collection_display_names=collection_display_names,
-            memory_available=self._is_memory_available(),
+            memory_available=memory_available,
         )
 
     async def _serialize_builtin_persona(
@@ -706,7 +879,17 @@ class PersonaController(BaseController):
         return serialized
 
     async def _serialize_builtin_persona_summary(
-        self, persona_id: int, name: str, description: str, base_agent: str
+        self,
+        persona_id: int,
+        name: str,
+        description: str,
+        base_agent: str,
+        *,
+        available_models: set[str] | None = None,
+        available_mcp_tools: set[str] | None = None,
+        memory_available: bool | None = None,
+        rag_payload: dict[str, Any] | None = None,
+        local_collection_cache: dict[str, dict[str, Any] | None] | None = None,
     ) -> dict[str, Any]:
         serialized = {
             "id": persona_id,
@@ -745,16 +928,36 @@ class PersonaController(BaseController):
                 "long_term_memory": False,
             },
         }
-        serialized["availability"] = _build_catalog_summary_availability()
+        serialized["availability"] = await self._get_agent_availability(
+            serialized,
+            available_models=available_models,
+            available_mcp_tools=available_mcp_tools,
+            memory_available=memory_available,
+            rag_payload=rag_payload,
+            local_collection_cache=local_collection_cache,
+        )
         return serialized
 
-    async def _serialize_custom_persona_summary(self, persona: dict[str, Any]) -> dict[str, Any]:
+    async def _serialize_custom_persona_summary(
+        self,
+        persona: dict[str, Any],
+        owner_emails: dict[str, str] | None = None,
+        *,
+        available_models: set[str] | None = None,
+        available_mcp_tools: set[str] | None = None,
+        memory_available: bool | None = None,
+        rag_payload: dict[str, Any] | None = None,
+        local_collection_cache: dict[str, dict[str, Any] | None] | None = None,
+        tool_descriptions: dict[str, dict[str, str]] | None = None,
+    ) -> dict[str, Any]:
         label_ids = persona.get("labels") or []
         labels = [
             label if isinstance(label, dict) else {"id": label, "name": f"Label {label}"}
             for label in label_ids
         ]
         mcp_tools = persona.get("mcp_tools") or []
+        if tool_descriptions is None and mcp_tools:
+            tool_descriptions = await self._get_mcp_tool_metadata()
         rag_config = persona.get("rag_config") or {
             "document_processing": [],
             "knowledge_graph": [],
@@ -771,7 +974,7 @@ class PersonaController(BaseController):
         )
         has_retrieval = bool(has_scoped_knowledge or "search" in mcp_tools)
         long_term_memory = bool(persona.get("long_term_memory", False))
-        return {
+        serialized = {
             "id": persona["id"],
             "external_id": persona.get("external_id"),
             "name": persona["name"],
@@ -787,10 +990,15 @@ class PersonaController(BaseController):
             "labels": labels,
             "owner": {
                 "id": str(persona.get("user_id") or DEFAULT_USER_ID),
-                "email": self._resolve_owner_email(persona),
+                "email": self._resolve_owner_email(persona, owner_emails),
             },
             "base_agent": persona.get("base_agent"),
-            "tools": self._build_tool_snapshots(persona["id"], mcp_tools, rag_config),
+            "tools": self._build_tool_snapshots(
+                persona["id"],
+                mcp_tools,
+                rag_config,
+                tool_descriptions=tool_descriptions,
+            ),
             "starter_messages": persona.get("starter_messages"),
             "document_sets": [],
             "hierarchy_node_count": 0,
@@ -799,10 +1007,10 @@ class PersonaController(BaseController):
             "llm_model_version_override": persona.get("llm_model_version_override"),
             "llm_model_provider_override": persona.get("llm_model_provider_override"),
             "mcp_tools": mcp_tools,
+            "rag_config": rag_config,
             "action_count": len(mcp_tools),
             "memory_type": "long_term" if long_term_memory else persona.get("memory_type"),
             "long_term_memory": long_term_memory,
-            "availability": _build_catalog_summary_availability(),
             "capabilities": {
                 "has_actions": len(mcp_tools) > 0,
                 "has_conversation_starters": bool(persona.get("starter_messages")),
@@ -812,11 +1020,22 @@ class PersonaController(BaseController):
                 "long_term_memory": long_term_memory,
             },
         }
+        serialized["availability"] = await self._get_agent_availability(
+            serialized,
+            available_models=available_models,
+            available_mcp_tools=available_mcp_tools,
+            memory_available=memory_available,
+            rag_payload=rag_payload,
+            local_collection_cache=local_collection_cache,
+        )
+        return serialized
 
     async def _serialize_custom_persona(
         self,
         persona: dict[str, Any],
         owner_emails: dict[str, str] | None = None,
+        *,
+        tool_descriptions: dict[str, dict[str, str]] | None = None,
     ) -> dict[str, Any]:
         if owner_emails is None:
             owner_emails = await self._load_owner_emails([persona])
@@ -827,6 +1046,8 @@ class PersonaController(BaseController):
             for label in label_ids
         ]
         mcp_tools = persona.get("mcp_tools") or []
+        if tool_descriptions is None and mcp_tools:
+            tool_descriptions = await self._get_mcp_tool_metadata()
         mcp_tool_configs = persona.get("mcp_tool_configs") or {}
         rag_config = persona.get("rag_config") or {
             "document_processing": [],
@@ -837,7 +1058,12 @@ class PersonaController(BaseController):
             "id": persona["id"],
             "name": persona["name"],
             "description": persona["description"],
-            "tools": self._build_tool_snapshots(persona["id"], mcp_tools, rag_config),
+            "tools": self._build_tool_snapshots(
+                persona["id"],
+                mcp_tools,
+                rag_config,
+                tool_descriptions=tool_descriptions,
+            ),
             "starter_messages": persona.get("starter_messages"),
             "document_sets": [],
             "hierarchy_node_count": 0,
@@ -974,6 +1200,17 @@ class PersonaController(BaseController):
     ) -> list[dict[str, Any]]:
         agents = []
 
+        # Environment-wide availability inputs are fetched once and reused
+        # across every agent in the catalog, instead of re-checking them
+        # per agent, so the list can show real availability cheaply. The MCP
+        # tool metadata fetch also supplies each tool snapshot's description
+        # (shown behind the frontend's per-tool info icon), so the name set
+        # used for availability is derived from it rather than fetched again.
+        available_models = await self._get_available_model_names()
+        mcp_tool_metadata = await self._get_mcp_tool_metadata()
+        available_mcp_tools = set(mcp_tool_metadata.keys())
+        memory_available = self._is_memory_available()
+
         builtin_display = {
             "chatbot": "Chatbot",
             "configurable-mcp-agent": "Configurable MCP Agent",
@@ -984,7 +1221,13 @@ class PersonaController(BaseController):
             description = all_agents[agent_key].description if agent_key in all_agents else ""
             agents.append(
                 await self._serialize_builtin_persona_summary(
-                    idx, display_name, description, agent_key
+                    idx,
+                    display_name,
+                    description,
+                    agent_key,
+                    available_models=available_models,
+                    available_mcp_tools=available_mcp_tools,
+                    memory_available=memory_available,
                 )
             )
 
@@ -999,16 +1242,50 @@ class PersonaController(BaseController):
                     accessible_persona_ids,
                 ) = await self._load_agent_group_visibility(user)
                 can_manage_all_personas = await self._can_manage_all_personas(user)
-            for persona in custom_personas:
-                if user and not self._can_access_persona(
+            visible_personas = [
+                persona
+                for persona in custom_personas
+                if not user
+                or self._can_access_persona(
                     persona,
                     user,
                     restricted_persona_ids,
                     accessible_persona_ids,
                     can_manage_all_personas,
-                ):
-                    continue
-                agents.append(await self._serialize_custom_persona_summary(persona))
+                )
+            ]
+            owner_emails = await self._load_owner_emails(visible_personas)
+
+            # RAG collection membership is agent-specific, but the RAG
+            # service always returns its *entire* catalog regardless of
+            # what's requested, so it's fetched once here (only if any
+            # agent actually references a collection) and reused for every
+            # agent's check instead of one HTTP round-trip per agent.
+            needs_rag_lookup = any(
+                (persona.get("rag_config") or {}).get("document_processing")
+                or (persona.get("rag_config") or {}).get("knowledge_graph")
+                for persona in visible_personas
+            )
+            rag_payload = (
+                await self._fetch_rag_knowledge_selector_payload()
+                if needs_rag_lookup
+                else None
+            )
+            local_collection_cache: dict[str, dict[str, Any] | None] = {}
+
+            for persona in visible_personas:
+                agents.append(
+                    await self._serialize_custom_persona_summary(
+                        persona,
+                        owner_emails,
+                        available_models=available_models,
+                        available_mcp_tools=available_mcp_tools,
+                        memory_available=memory_available,
+                        rag_payload=rag_payload,
+                        local_collection_cache=local_collection_cache,
+                        tool_descriptions=mcp_tool_metadata,
+                    )
+                )
         except Exception:
             pass
 

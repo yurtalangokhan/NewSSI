@@ -31,6 +31,13 @@ class UserSettingsRepository(BaseRepository):
             )
             return result.scalar_one_or_none()
 
+    NULLABLE_KEYS = {
+        "theme_preference",
+        "chat_background",
+        "default_model",
+        "default_provider_id",
+    }
+
     async def upsert(self, user_id: uuid.UUID, **updates: Any) -> UserSettingsModel:
         async with self._session() as session:
             result = await session.execute(
@@ -56,7 +63,11 @@ class UserSettingsRepository(BaseRepository):
                 "prompt_shortcuts",
                 "pinned_assistants",
             }
-            filtered = {k: v for k, v in updates.items() if k in allowed_keys and v is not None}
+            filtered = {
+                k: v
+                for k, v in updates.items()
+                if k in allowed_keys and (v is not None or k in self.NULLABLE_KEYS)
+            }
             if "user_preferences" in filtered:
                 filtered["user_preferences"] = str(filtered["user_preferences"] or "")
             if "work_role" in filtered:

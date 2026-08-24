@@ -18,6 +18,7 @@ import {
   updateAgentSharedStatus,
   updateAgentFeaturedStatus,
   deleteAgent,
+  resolveAgentOwnerEmail,
 } from "@/lib/agents";
 import { useUser } from "@/providers/UserProvider";
 import {
@@ -66,8 +67,8 @@ export default function AgentCard({ agent }: AgentCardProps) {
     if (agent.owner?.id && user?.id && agent.owner.id === user.id) {
       return user.email;
     }
-    return agent.owner?.email || "Onyx";
-  }, [agent.owner?.email, agent.owner?.id, user?.email, user?.id]);
+    return resolveAgentOwnerEmail(agent.owner?.email, t);
+  }, [agent.owner?.email, agent.owner?.id, user?.email, user?.id, t]);
   const canEdit = isOwnedByUser || isAdmin;
   const shareAgentModal = useCreateModal();
   const agentViewerModal = useCreateModal();
@@ -100,13 +101,9 @@ export default function AgentCard({ agent }: AgentCardProps) {
     [fullAgent, agent]
   );
 
-  // Start chat and auto-pin unpinned agents to the sidebar
   const handleStartChat = useCallback(() => {
-    if (!pinned && !isDynamicAgent) {
-      togglePinnedAgent(agent, true);
-    }
     route({ agentId: routeAgentId });
-  }, [pinned, isDynamicAgent, togglePinnedAgent, agent, route, routeAgentId]);
+  }, [route, routeAgentId]);
 
   const handleShare = useCallback(
     async (
@@ -126,7 +123,7 @@ export default function AgentCard({ agent }: AgentCardProps) {
       );
 
       if (shareError) {
-        toast.error(`Failed to share agent: ${shareError}`);
+        toast.error(t("agentsPage.shareError", { error: shareError }));
         return;
       }
 
@@ -136,7 +133,7 @@ export default function AgentCard({ agent }: AgentCardProps) {
           isFeatured
         );
         if (featuredError) {
-          toast.error(`Failed to update featured status: ${featuredError}`);
+          toast.error(t("agentsPage.featuredError", { error: featuredError }));
           refreshAgent();
           return;
         }
@@ -150,6 +147,7 @@ export default function AgentCard({ agent }: AgentCardProps) {
       canUpdateFeaturedStatus,
       isPaidEnterpriseFeaturesEnabled,
       refreshAgent,
+      t,
     ]
   );
 
@@ -161,16 +159,16 @@ export default function AgentCard({ agent }: AgentCardProps) {
     try {
       const error = await deleteAgent(agent.external_id ?? agent.id);
       if (error) {
-        toast.error(`Failed to delete agent: ${error}`);
+        toast.error(t("agentsPage.deleteError", { error }));
       } else {
-        toast.success(`Agent "${agent.name}" deleted.`);
+        toast.success(t("agentsPage.deleteSuccess", { name: agent.name }));
         await refreshAgents();
       }
     } finally {
       setIsDeleting(false);
       deleteModal.toggle(false);
     }
-  }, [agent.id, agent.name, refreshAgents, deleteModal]);
+  }, [agent.id, agent.name, refreshAgents, deleteModal, t]);
 
   const actionCount =
     agent.action_count ??
@@ -198,7 +196,7 @@ export default function AgentCard({ agent }: AgentCardProps) {
         {deleteModal.isOpen && (
           <ConfirmationModalLayout
             icon={SvgTrash}
-            title={`Delete "${agent.name}"`}
+            title={t("agentsPage.deleteModalTitle", { name: agent.name })}
             onClose={() => deleteModal.toggle(false)}
             submit={
               <Button
@@ -206,11 +204,13 @@ export default function AgentCard({ agent }: AgentCardProps) {
                 onClick={handleDelete}
                 disabled={isDeleting}
               >
-                {isDeleting ? "Deleting…" : "Delete"}
+                {isDeleting
+                  ? t("agentsPage.deleteModalDeleting")
+                  : t("agentsPage.deleteModalButton")}
               </Button>
             }
           >
-            This agent will be permanently deleted. This action cannot be undone.
+            {t("agentsPage.deleteModalDescription")}
           </ConfirmationModalLayout>
         )}
       </deleteModal.Provider>
@@ -241,6 +241,7 @@ export default function AgentCard({ agent }: AgentCardProps) {
                         router.push(`/ee/agents/stats/${agent.id}` as Route)
                       )}
                       tooltip={t("agentsPage.viewAgentStatsTooltip")}
+                      aria-label={t("agentsPage.viewAgentStatsTooltip")}
                       className="hidden group-hover/AgentCard:flex"
                     />
                   )}
@@ -252,6 +253,7 @@ export default function AgentCard({ agent }: AgentCardProps) {
                         router.push(`/app/agents/edit/${routeAgentId}` as Route)
                       )}
                       tooltip={t("agentsPage.editAgentTooltip")}
+                      aria-label={t("agentsPage.editAgentTooltip")}
                       className="hidden group-hover/AgentCard:flex"
                     />
                   )}
@@ -261,6 +263,7 @@ export default function AgentCard({ agent }: AgentCardProps) {
                       tertiary
                       onClick={noProp(() => deleteModal.toggle(true))}
                       tooltip={t("agentsPage.deleteAgentTooltip")}
+                      aria-label={t("agentsPage.deleteAgentTooltip")}
                       className="hidden group-hover/AgentCard:flex"
                     />
                   )}
@@ -270,6 +273,7 @@ export default function AgentCard({ agent }: AgentCardProps) {
                       tertiary
                       onClick={noProp(() => shareAgentModal.toggle(true))}
                       tooltip={t("agentsPage.shareAgentTooltip")}
+                      aria-label={t("agentsPage.shareAgentTooltip")}
                       className="hidden group-hover/AgentCard:flex"
                     />
                   )}
@@ -279,6 +283,11 @@ export default function AgentCard({ agent }: AgentCardProps) {
                       tertiary
                       onClick={noProp(() => togglePinnedAgent(agent, !pinned))}
                       tooltip={
+                        pinned
+                          ? t("agentsPage.unpinFromSidebarTooltip")
+                          : t("agentsPage.pinToSidebarTooltip")
+                      }
+                      aria-label={
                         pinned
                           ? t("agentsPage.unpinFromSidebarTooltip")
                           : t("agentsPage.pinToSidebarTooltip")

@@ -331,10 +331,16 @@ async def test_document_generation_is_closed_when_the_stream_fails(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_document_tool_call_emits_a_tool_step(monkeypatch):
+async def test_document_tool_call_does_not_emit_a_generic_tool_step(monkeypatch):
+    """A document tool call must be represented only by document_generation_*
+    packets. A generic custom_tool_start for the same call would fall outside
+    the frontend's document-generation exemption and reset its in-progress
+    answer streaming state, breaking mid-answer document generation."""
     packets = await _run(monkeypatch, _StreamingDocumentToolAgent())
 
-    assert any(
-        p["type"] == "custom_tool_start" and p.get("tool_name") == "create_document"
+    assert not any(
+        p["type"] in ("custom_tool_start", "custom_tool_delta")
+        and p.get("tool_name") == "create_document"
         for p in packets
     )
+    assert any(p["type"] == "document_generation_start" for p in packets)

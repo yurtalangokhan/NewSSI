@@ -605,6 +605,15 @@ async def send_chat_message(
                 llm_override,
             )
 
+    # _resolve_custom_persona_agent only stamps _persona_id for custom
+    # personas. Builtin/default personas need it too — retry relies on it to
+    # report which agent produced a turn, per message, instead of falling
+    # back to thread-level metadata.persona_id (last-write-wins, goes stale
+    # the moment a later turn uses a different agent/model).
+    if not isinstance(llm_override, dict):
+        llm_override = dict(llm_override or {})
+    llm_override.setdefault("_persona_id", persona_id if persona_id is not None else 0)
+
     thread_metadata = thread.get("metadata") if thread else None
     resolved_project_id = _resolve_project_id_from_chat_context(
         body.get("project_id"),
@@ -649,7 +658,7 @@ async def send_chat_message(
     if file_descriptors:
         import base64 as _base64
 
-        from service.FileService import IMAGE_MIMES
+        from service.FileService import IMAGE_MIMES, normalize_image_for_llm
         from service.FileService import store_file as _store_file
         from service.Utils import _extract_file_blocks
 
@@ -747,10 +756,11 @@ async def send_chat_message(
                 )
 
             if m in IMAGE_MIMES:
+                norm_data, norm_mime = normalize_image_for_llm(fd_data, m)
                 file_content_blocks.append(
                     {
                         "type": "image_url",
-                        "image_url": {"url": f"data:{m};base64,{fd_data}"},
+                        "image_url": {"url": f"data:{norm_mime};base64,{norm_data}"},
                     }
                 )
             else:
@@ -765,6 +775,12 @@ async def send_chat_message(
         file_content_blocks=file_content_blocks,
         files_metadata=files_metadata,
         mail_attachments=mail_attachments,
+        is_regenerate=bool(body.get("is_regenerate")),
+        retry_target_message_id=(
+            body.get("parent_message_id") if body.get("is_regenerate") else None
+        ),
+        is_edit=bool(body.get("edit_target_message_id")),
+        edit_target_message_id=body.get("edit_target_message_id"),
     )
 
     async def generate_stream():

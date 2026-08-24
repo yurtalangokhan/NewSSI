@@ -409,6 +409,56 @@ describe("packetProcessor", () => {
       expect(result.groupKeysWithSectionEnd.has("0-0")).toBe(true);
       expect(result.groupKeysWithSectionEnd.has("0-1")).toBe(true);
     });
+
+    test("does not close a custom tool call's turn before its own result arrives", () => {
+      // Several calls to the same tool (e.g. parallel web_search) each get
+      // their own turn_index. The next call's custom_tool_start starting a
+      // new turn must not mark the previous, still-running call complete.
+      const state = createInitialState(1);
+      const packets = [
+        createPacket(PacketType.CUSTOM_TOOL_START, { turn_index: 0 }, {
+          tool_name: "web_search",
+          args: { query: "a" },
+          call_id: "call-a",
+        }),
+        // Next call's start opens turn 1 before call-a's own result exists.
+        createPacket(PacketType.CUSTOM_TOOL_START, { turn_index: 1 }, {
+          tool_name: "web_search",
+          args: { query: "b" },
+          call_id: "call-b",
+        }),
+      ];
+      const result = processPackets(state, packets);
+
+      expect(result.groupKeysWithSectionEnd.has("0-0")).toBe(false);
+    });
+
+    test("closes a custom tool call's own turn the moment its result arrives", () => {
+      const state = createInitialState(1);
+      const packets = [
+        createPacket(PacketType.CUSTOM_TOOL_START, { turn_index: 0 }, {
+          tool_name: "web_search",
+          args: { query: "a" },
+          call_id: "call-a",
+        }),
+        createPacket(PacketType.CUSTOM_TOOL_START, { turn_index: 1 }, {
+          tool_name: "web_search",
+          args: { query: "b" },
+          call_id: "call-b",
+        }),
+        // call-a's result is routed back to turn 0 by streamingUtils.ts.
+        createPacket(PacketType.CUSTOM_TOOL_DELTA, { turn_index: 0 }, {
+          tool_name: "web_search",
+          response_type: "tool_result",
+          data: "result a",
+          call_id: "call-a",
+        }),
+      ];
+      const result = processPackets(state, packets);
+
+      expect(result.groupKeysWithSectionEnd.has("0-0")).toBe(true);
+      expect(result.groupKeysWithSectionEnd.has("0-1")).toBe(false);
+    });
   });
 
   describe("Search Tool flow", () => {
@@ -1328,6 +1378,46 @@ describe("packetProcessor", () => {
       expect(steps.some((s) => s.key === "1-0")).toBe(true);
       expect(steps.some((s) => s.key === "3-0")).toBe(false);
       expect(steps.some((s) => s.key === "4-0")).toBe(false);
+    });
+  });
+  describe("stream progress (silence reporting)", () => {
+    test("tracks how long the stream has been silent", () => {
+      const state = createInitialState(1);
+      const result = processPackets(state, [
+        createPacket(PacketType.STREAM_PROGRESS, { turn_index: 0 }, {
+          elapsed_seconds: 45,
+        }),
+      ]);
+
+      expect(result.streamSilentSeconds).toBe(45);
+    });
+
+    test("never adds the status to a timeline group", () => {
+      // It only covers for content that has not arrived yet — grouping it
+      // would leave a stale "still working" step behind once that content
+      // finally lands.
+      const state = createInitialState(1);
+      const result = processPackets(state, [
+        createPacket(PacketType.STREAM_PROGRESS, { turn_index: 0 }, {
+          elapsed_seconds: 15,
+        }),
+      ]);
+
+      expect(result.groupedPacketsMap.size).toBe(0);
+      expect(result.toolGroups).toEqual([]);
+      expect(result.potentialDisplayGroups).toEqual([]);
+    });
+
+    test("clears as soon as the stream produces again", () => {
+      const state = createInitialState(1);
+      const result = processPackets(state, [
+        createPacket(PacketType.STREAM_PROGRESS, { turn_index: 0 }, {
+          elapsed_seconds: 30,
+        }),
+        createMessageStartPacket({ turn_index: 0 }),
+      ]);
+
+      expect(result.streamSilentSeconds).toBeNull();
     });
   });
 });

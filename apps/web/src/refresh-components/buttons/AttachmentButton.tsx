@@ -75,12 +75,15 @@ import { SvgExternalLink } from "@opal/icons";
 import { WithoutStyles } from "@/types";
 
 export interface AttachmentProps
-  extends WithoutStyles<React.ButtonHTMLAttributes<HTMLButtonElement>> {
+  extends Omit<
+    WithoutStyles<React.HTMLAttributes<HTMLDivElement>>,
+    "children"
+  > {
   selected?: boolean;
   processing?: boolean;
 
   icon: React.FunctionComponent<IconProps>;
-  children: string;
+  children: React.ReactNode;
   description?: string;
   rightText?: string;
   onView?: () => void;
@@ -90,6 +93,7 @@ export interface AttachmentProps
   // Both `actionIcon` and `onAction` must be provided for the button to appear.
   actionIcon?: React.FunctionComponent<IconProps>;
   onAction?: () => void;
+  disabled?: boolean;
 }
 
 export default function AttachmentButton({
@@ -102,15 +106,52 @@ export default function AttachmentButton({
   onView,
   actionIcon,
   onAction,
+  onClick,
+  onKeyDown,
+  onKeyUp,
+  disabled,
+  tabIndex = 0,
   ...props
 }: AttachmentProps) {
   const state = selected ? "selected" : processing ? "processing" : "default";
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (disabled) return;
+    if (e.target !== e.currentTarget) {
+      onKeyDown?.(e);
+      return;
+    }
+    if (e.key === "Enter") {
+      e.preventDefault();
+      onClick?.(e as unknown as React.MouseEvent<HTMLDivElement>);
+    } else if (e.key === " ") {
+      e.preventDefault();
+    }
+    onKeyDown?.(e);
+  };
+
+  const handleKeyUp = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (disabled) return;
+    if (e.target !== e.currentTarget) {
+      onKeyUp?.(e);
+      return;
+    }
+    if (e.key === " ") {
+      e.preventDefault();
+      onClick?.(e as unknown as React.MouseEvent<HTMLDivElement>);
+    }
+    onKeyUp?.(e);
+  };
+
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={disabled ? -1 : tabIndex}
       className="attachment-button"
       data-state={state}
+      onClick={disabled ? undefined : onClick}
+      onKeyDown={handleKeyDown}
+      onKeyUp={handleKeyUp}
       {...props}
     >
       <div className="attachment-button__content">
@@ -162,6 +203,6 @@ export default function AttachmentButton({
           </div>
         )}
       </div>
-    </button>
+    </div>
   );
 }

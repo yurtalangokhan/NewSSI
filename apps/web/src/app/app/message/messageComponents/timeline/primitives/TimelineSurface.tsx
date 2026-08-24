@@ -1,5 +1,6 @@
 import React from "react";
 import { cn } from "@/lib/utils";
+import { useAppBackground } from "@/providers/AppBackgroundProvider";
 
 export type TimelineSurfaceBackground = "tint" | "transparent";
 
@@ -24,13 +25,24 @@ export function TimelineSurface({
   roundedBottom = false,
   background = "tint",
 }: TimelineSurfaceProps) {
+  const { hasBackground } = useAppBackground();
+
   if (React.Children.count(children) === 0) {
     return null;
   }
 
-  const baseBackground = background === "tint" ? "bg-background-tint-00" : "";
+  const baseBackground =
+    background === "tint"
+      ? hasBackground
+        ? "backdrop-blur-md bg-background-tint-00/60"
+        : "bg-background-tint-00"
+      : "";
   const hoverBackground =
-    background === "tint" && isHover ? "bg-background-tint-02" : "";
+    background === "tint" && isHover
+      ? hasBackground
+        ? "backdrop-blur-md bg-background-tint-02/60"
+        : "bg-background-tint-02"
+      : "";
 
   return (
     <div

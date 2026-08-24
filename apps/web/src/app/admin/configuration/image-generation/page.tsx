@@ -1,3 +1,4 @@
+import { notFound } from "next/navigation";
 "use client";
 
 import * as SettingsLayouts from "@/layouts/settings-layouts";
@@ -9,6 +10,8 @@ import AdminOverviewPanel from "@/components/admin/AdminOverviewPanel";
 const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.IMAGE_GENERATION]!;
 
 export default function Page() {
+  notFound();
+
   const { t } = useTranslation();
   return (
     <SettingsLayouts.Root>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Button from "@/refresh-components/buttons/Button";
 import {
   Table,
@@ -29,49 +29,38 @@ import { Section } from "@/layouts/general-layouts";
 import DocxPreview from "@/app/app/components/files/DocxPreview";
 import { useTranslation } from "react-i18next";
 
-export interface TextViewProps {
+interface TextViewProps {
   presentingDocument: MinimalOnyxDocument;
   onClose: () => void;
 }
 
-const WORD_MIMES = [
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  "application/msword",
-];
+const isMarkdownFormat = (fileType: string) => {
+  return (
+    fileType.startsWith("text/markdown") ||
+    fileType.startsWith("text/plain") ||
+    fileType.startsWith("text/csv") ||
+    fileType.startsWith("application/json")
+  );
+};
 
-const PPTX_MIMES = [
-  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-  "application/vnd.ms-powerpoint",
-];
+const isJsonFormat = (fileType: string) => {
+  return fileType.startsWith("application/json");
+};
 
-const isWordFormat = (mimeType: string) =>
-  WORD_MIMES.some((m) => mimeType.startsWith(m));
+const isSupportedIframeFormat = (fileType: string) => {
+  return fileType.startsWith("application/pdf");
+};
 
-const isPptxFormat = (mimeType: string) =>
-  PPTX_MIMES.some((m) => mimeType.startsWith(m));
-
-const isMarkdownFormat = (mimeType: string) =>
-  [
-    "text/markdown",
-    "text/x-markdown",
-    "text/plain",
-    "text/csv",
-    "text/x-rst",
-    "text/x-org",
-    "txt",
-    "application/json",
-  ].some((f) => mimeType.startsWith(f));
-
-const isJsonFormat = (mimeType: string) => mimeType.startsWith("application/json");
-
-const isImageFormat = (mimeType: string) =>
-  ["image/png", "image/jpeg", "image/gif", "image/svg+xml"].some((f) =>
-    mimeType.startsWith(f)
+const isWordFormat = (fileType: string) =>
+  fileType.startsWith(
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
   );
 
-const isSupportedIframeFormat = (mimeType: string) =>
-  ["application/pdf", "image/png", "image/jpeg", "image/gif", "image/svg+xml"].some(
-    (f) => mimeType.startsWith(f)
+const isImageFormat = (fileType: string) => fileType.startsWith("image/");
+
+const isPptxFormat = (fileType: string) =>
+  fileType.startsWith(
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation"
   );
 
 export default function TextViewModal({
@@ -87,6 +76,11 @@ export default function TextViewModal({
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [fileType, setFileType] = useState("application/octet-stream");
+
+  const docId = presentingDocument.document_id;
+  const docName = presentingDocument.semantic_identifier;
+  const docPreviewUrl = presentingDocument.preview_url;
+  const docPreviewMimeType = presentingDocument.preview_mime_type;
 
   const csvData = useMemo(() => {
     if (!fileType.startsWith("text/csv")) return null;
@@ -105,8 +99,11 @@ export default function TextViewModal({
     }
   }, [fileContent, fileType]);
 
-  const fetchFile = useCallback(
-    async (signal?: AbortSignal) => {
+  useEffect(() => {
+    let isCancelled = false;
+    const controller = new AbortController();
+
+    const runFetch = async () => {
       setIsLoading(true);
       setLoadError(null);
       setFileContent("");
@@ -114,99 +111,108 @@ export default function TextViewModal({
 
       // For files not persisted yet (e.g. image chosen in input, not sent yet),
       // render directly from inline data URL and skip backend fetch.
-      if (presentingDocument.preview_url) {
-        setFileUrl((prev) => {
-          if (prev) window.URL.revokeObjectURL(prev);
-          return presentingDocument.preview_url!;
-        });
-        setFileName(
-          presentingDocument.semantic_identifier || t("filePreview.document")
-        );
-        setFileType(
-          presentingDocument.preview_mime_type || "application/octet-stream"
-        );
-        setIsLoading(false);
+      if (
+        docPreviewUrl &&
+        (docPreviewUrl.startsWith("data:") || docPreviewUrl.startsWith("blob:"))
+      ) {
+        if (!isCancelled) {
+          setFileUrl((prev) => {
+            if (prev && prev.startsWith("blob:")) window.URL.revokeObjectURL(prev);
+            return docPreviewUrl;
+          });
+          setFileName(docName || t("filePreview.document"));
+          setFileType(docPreviewMimeType || "application/octet-stream");
+          setIsLoading(false);
+        }
         return;
       }
 
-      const fileIdLocal =
-        presentingDocument.document_id.split("__")[1] ||
-        presentingDocument.document_id;
+      const fileIdLocal = docId.split("__")[1] || docId;
 
       try {
         const response = await fetch(
           `/api/chat/file/${encodeURIComponent(fileIdLocal)}`,
-          { method: "GET", signal, cache: "force-cache" }
+          { method: "GET", signal: controller.signal }
         );
 
         if (!response.ok) {
-          setLoadError(t("filePreview.failedToLoadDocument"));
+          if (!isCancelled) {
+            setLoadError(t("filePreview.failedToLoadDocument"));
+          }
           return;
         }
 
         const blob = await response.blob();
+        if (isCancelled) return;
+
         const url = window.URL.createObjectURL(blob);
-        setFileUrl((prev) => {
-          if (prev) window.URL.revokeObjectURL(prev);
-          return url;
-        });
+        if (!isCancelled) {
+          setFileUrl((prev) => {
+            if (prev && prev.startsWith("blob:")) window.URL.revokeObjectURL(prev);
+            return url;
+          });
 
-        const originalFileName =
-          presentingDocument.semantic_identifier || t("filePreview.document");
-        setFileName(originalFileName);
+          const originalFileName = docName || t("filePreview.document");
+          setFileName(originalFileName);
 
-        let contentType =
-          response.headers.get("Content-Type") || "application/octet-stream";
+          let contentType =
+            response.headers.get("Content-Type") || "application/octet-stream";
 
-        if (contentType === "application/octet-stream") {
-          const lowerName = originalFileName.toLowerCase();
-          if (lowerName.endsWith(".md") || lowerName.endsWith(".markdown")) {
-            contentType = "text/markdown";
-          } else if (lowerName.endsWith(".txt")) {
-            contentType = "text/plain";
-          } else if (lowerName.endsWith(".csv")) {
-            contentType = "text/csv";
-          } else if (lowerName.endsWith(".json")) {
-            contentType = "application/json";
-          } else if (lowerName.endsWith(".docx") || lowerName.endsWith(".doc")) {
-            contentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-          } else if (lowerName.endsWith(".pptx") || lowerName.endsWith(".ppt")) {
-            contentType = "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+          if (contentType === "application/octet-stream") {
+            const lowerName = originalFileName.toLowerCase();
+            if (lowerName.endsWith(".md") || lowerName.endsWith(".markdown")) {
+              contentType = "text/markdown";
+            } else if (lowerName.endsWith(".txt")) {
+              contentType = "text/plain";
+            } else if (lowerName.endsWith(".csv")) {
+              contentType = "text/csv";
+            } else if (lowerName.endsWith(".json")) {
+              contentType = "application/json";
+            } else if (lowerName.endsWith(".docx") || lowerName.endsWith(".doc")) {
+              contentType =
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+            } else if (lowerName.endsWith(".pptx") || lowerName.endsWith(".ppt")) {
+              contentType =
+                "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+            }
           }
-        }
-        setFileType(contentType);
+          setFileType(contentType);
 
-        if (isMarkdownFormat(contentType)) {
-          setFileContent(await blob.text());
-        } else if (isWordFormat(contentType)) {
-          // Pass blob directly to DocxPreview for visual rendering
-          setFileBlob(blob);
-        } else if (isPptxFormat(contentType)) {
-          // Extract text slide-by-slide from backend
-          const textResponse = await fetch(
-            `/api/chat/file/${encodeURIComponent(fileIdLocal)}/text`,
-            { method: "GET", signal, cache: "force-cache" }
-          );
-          if (textResponse.ok) {
-            setFileContent(await textResponse.text());
-            setFileType("text/plain");
+          if (isMarkdownFormat(contentType)) {
+            setFileContent(await blob.text());
+          } else if (isWordFormat(contentType)) {
+            // Pass blob directly to DocxPreview for visual rendering
+            setFileBlob(blob);
+          } else if (isPptxFormat(contentType)) {
+            // Extract text slide-by-slide from backend
+            const textResponse = await fetch(
+              `/api/chat/file/${encodeURIComponent(fileIdLocal)}/text`,
+              { method: "GET", signal: controller.signal }
+            );
+            if (textResponse.ok && !isCancelled) {
+              setFileContent(await textResponse.text());
+              setFileType("text/plain");
+            }
           }
         }
       } catch (error) {
-        if (signal?.aborted) return;
-        setLoadError(t("filePreview.failedToLoadDocument"));
+        if (!isCancelled) {
+          setLoadError(t("filePreview.failedToLoadDocument"));
+        }
       } finally {
-        if (!signal?.aborted) setIsLoading(false);
+        if (!isCancelled) {
+          setIsLoading(false);
+        }
       }
-    },
-    [presentingDocument]
-  );
+    };
 
-  useEffect(() => {
-    const controller = new AbortController();
-    fetchFile(controller.signal);
-    return () => controller.abort();
-  }, [fetchFile]);
+    runFetch();
+
+    return () => {
+      isCancelled = true;
+      controller.abort();
+    };
+  }, [docId, docName, docPreviewUrl, docPreviewMimeType, t]);
 
   useEffect(() => {
     return () => {

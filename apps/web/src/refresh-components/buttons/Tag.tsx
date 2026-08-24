@@ -8,7 +8,7 @@ import type { IconProps } from "@opal/types";
 
 const variantStyles = {
   display: {
-    container: "flex items-center p-1",
+    container: "flex items-center gap-1 p-1",
     icon: "size-4 stroke-text-03",
     text: { secondaryBody: true, text03: true },
   },

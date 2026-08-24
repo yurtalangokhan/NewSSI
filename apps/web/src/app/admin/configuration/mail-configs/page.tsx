@@ -60,6 +60,7 @@ function formFromConfig(config: MailConfig): MailConfigFormState {
 
 export default function Page() {
   const { t } = useTranslation("common", { keyPrefix: "admin.mailConfigs" });
+  const { t: tNav } = useTranslation();
   const { mailConfigs, isLoading, refreshMailConfigs } = useMailConfigs();
   const [form, setForm] = useState<MailConfigFormState>(EMPTY_FORM);
   const [isSaving, setIsSaving] = useState(false);
@@ -185,7 +186,11 @@ export default function Page() {
     <SettingsLayouts.Root>
       <SettingsLayouts.Header
         icon={route.icon}
-        title={route.title}
+        title={
+          route.titleKey
+            ? tNav(route.titleKey, { defaultValue: route.title })
+            : route.title
+        }
         description={t("description")}
         separator
       />

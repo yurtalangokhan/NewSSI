@@ -66,6 +66,32 @@ class LazyLoadingAgent(ABC):
         await self.ensure_loaded()
         return await self._graph.aget_state(config=config, **kwargs)
 
+    async def aupdate_state(self, config, values, **kwargs):
+        """Delegate aupdate_state to the underlying compiled graph.
+
+        Used by AgentHelpers._handle_input to replace an edited message's
+        content in place on a forked checkpoint before regenerating a
+        response — without this, every subclass (ConfigurableMCPAgent,
+        DynamicAgent, CommandAgent, GitHubMCPAgent, the supervisor agents)
+        would raise AttributeError when a user edits a message sent to a
+        custom agent.
+        """
+        await self.ensure_loaded()
+        return await self._graph.aupdate_state(config, values, **kwargs)
+
+    async def aget_state_history(self, config=None, **kwargs):
+        """Delegate aget_state_history to the underlying compiled graph.
+
+        Used by CheckpointBranchService.find_fork_point to locate where a
+        retry should fork its checkpoint from — without this, every
+        subclass (ConfigurableMCPAgent, DynamicAgent, CommandAgent,
+        GitHubMCPAgent, the supervisor agents) would silently fall back to
+        appending the retry to the thread's tip instead of forking.
+        """
+        await self.ensure_loaded()
+        async for snapshot in self._graph.aget_state_history(config=config, **kwargs):
+            yield snapshot
+
     def _get_langgraph_store(self):
         """Get the global LangGraph store for long-term memory."""
         try:

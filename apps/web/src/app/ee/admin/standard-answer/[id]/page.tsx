@@ -1,25 +1,28 @@
 import { StandardAnswerCreationForm } from "@/app/ee/admin/standard-answer/StandardAnswerCreationForm";
-import i18n from "@/i18n/config";
+import { tServer } from "@/i18n/server";
 import { fetchSS } from "@/lib/utilsSS";
 import { ErrorCallout } from "@/components/ErrorCallout";
 import * as SettingsLayouts from "@/layouts/settings-layouts";
 import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
 import { StandardAnswer, StandardAnswerCategory } from "@/lib/types";
+import { resolveLocaleSS } from "@/lib/localeSS";
 
 const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.STANDARD_ANSWERS]!;
 
 async function Main({ id }: { id: string }) {
-  const tasks = [
-    fetchSS("/manage/admin/standard-answer"),
-    fetchSS(`/manage/admin/standard-answer/category`),
-  ];
-  const [standardAnswersResponse, standardAnswerCategoriesResponse] =
-    await Promise.all(tasks);
+  const [standardAnswersResponse, standardAnswerCategoriesResponse, locale] =
+    await Promise.all([
+      fetchSS("/manage/admin/standard-answer"),
+      fetchSS(`/manage/admin/standard-answer/category`),
+      resolveLocaleSS(),
+    ]);
 
   if (standardAnswersResponse === undefined) {
     return (
       <ErrorCallout
-        errorTitle={i18n.t("admin.standardAnswerCategories.fetchError")}
+        errorTitle={tServer("admin.standardAnswerCategories.fetchError", {
+          lng: locale,
+        })}
         errorMsg={`Failed to fetch standard answers.`}
       />
     );
@@ -28,7 +31,9 @@ async function Main({ id }: { id: string }) {
   if (!standardAnswersResponse.ok) {
     return (
       <ErrorCallout
-        errorTitle={i18n.t("admin.standardAnswerCategories.fetchError")}
+        errorTitle={tServer("admin.standardAnswerCategories.fetchError", {
+          lng: locale,
+        })}
         errorMsg={`Failed to fetch standard answers - ${await standardAnswersResponse.text()}`}
       />
     );
@@ -42,7 +47,9 @@ async function Main({ id }: { id: string }) {
   if (!standardAnswer) {
     return (
       <ErrorCallout
-        errorTitle={i18n.t("admin.standardAnswerCategories.fetchError")}
+        errorTitle={tServer("admin.standardAnswerCategories.fetchError", {
+          lng: locale,
+        })}
         errorMsg={`Did not find standard answer with ID: ${id}`}
       />
     );
@@ -51,7 +58,9 @@ async function Main({ id }: { id: string }) {
   if (standardAnswerCategoriesResponse === undefined) {
     return (
       <ErrorCallout
-        errorTitle={i18n.t("admin.standardAnswerCategories.fetchError")}
+        errorTitle={tServer("admin.standardAnswerCategories.fetchError", {
+          lng: locale,
+        })}
         errorMsg={`Failed to fetch standard answer categories.`}
       />
     );
@@ -60,7 +69,9 @@ async function Main({ id }: { id: string }) {
   if (!standardAnswerCategoriesResponse.ok) {
     return (
       <ErrorCallout
-        errorTitle={i18n.t("admin.standardAnswerCategories.fetchError")}
+        errorTitle={tServer("admin.standardAnswerCategories.fetchError", {
+          lng: locale,
+        })}
         errorMsg={`Failed to fetch standard answer categories - ${await standardAnswerCategoriesResponse.text()}`}
       />
     );
@@ -78,13 +89,16 @@ async function Main({ id }: { id: string }) {
 }
 
 export default async function Page(props: { params: Promise<{ id: string }> }) {
-  const params = await props.params;
+  const [params, locale] = await Promise.all([
+    props.params,
+    resolveLocaleSS(),
+  ]);
 
   return (
     <SettingsLayouts.Root>
       <SettingsLayouts.Header
         icon={route.icon}
-        title={i18n.t("admin.standardAnswerPages.editTitle")}
+        title={tServer("admin.standardAnswerPages.editTitle", { lng: locale })}
         backButton
         separator
       />

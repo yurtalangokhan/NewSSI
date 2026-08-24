@@ -39,6 +39,8 @@ export interface UsePacketProcessorResult {
   finalAnswerComing: boolean;
   // Whether a document/spreadsheet is currently being written or rendered
   documentGenerationInFlight: boolean;
+  // Seconds the backend stream has been silent, or null while it produces.
+  streamSilentSeconds: number | null;
   // Tool processing duration from backend (via MESSAGE_START packet)
   toolProcessingDuration: number | undefined;
 
@@ -74,11 +76,25 @@ export function usePacketProcessor(
   // Optional override to force showing answer
   const [forceShowAnswer, setForceShowAnswer] = useState(false);
 
+  // Last non-empty displayGroups shown while finalAnswerComing was true. A
+  // real tool call after some answer text (e.g. a short preamble before
+  // "let me search for that") resets finalAnswerComing — without this, the
+  // text that was already written gets hidden until the new tool step
+  // finishes, then shown again, reading as the text getting written then
+  // deleted every time a tool call happens mid-answer.
+  // Stored as keys, not as the group objects: the groups are rebuilt on every
+  // pass, so holding the objects would pin a snapshot. Tokens that arrive in
+  // the same batch as the tool call would then never render — the snapshot
+  // predates them and the live groups are not consulted again until the tool
+  // phase ends.
+  const lastDisplayGroupKeysRef = useRef<Set<string>>(new Set());
+
   // Reset on nodeId change
   if (stateRef.current.nodeId !== nodeId) {
     stateRef.current = createInitialState(nodeId);
     setRenderComplete(false);
     setForceShowAnswer(false);
+    lastDisplayGroupKeysRef.current = new Set();
   }
 
   // Track for transition detection
@@ -90,6 +106,7 @@ export function usePacketProcessor(
     stateRef.current = createInitialState(nodeId);
     setRenderComplete(false);
     setForceShowAnswer(false);
+    lastDisplayGroupKeysRef.current = new Set();
   }
 
   // Process packets synchronously (incremental) - only if new packets arrived
@@ -109,12 +126,26 @@ export function usePacketProcessor(
   const effectiveFinalAnswerComing = state.finalAnswerComing || forceShowAnswer;
   const displayGroups = useMemo(() => {
     if (effectiveFinalAnswerComing || state.toolGroups.length === 0) {
+      lastDisplayGroupKeysRef.current = new Set(
+        state.potentialDisplayGroups.map((g) => g.key)
+      );
       return state.potentialDisplayGroups;
     }
-    // Display content is hidden while the agent is working on tools — but a
-    // generated file is a finished artifact, not answer-in-progress text, so
-    // its card (or the skeleton producing it) stays put.
-    return state.potentialDisplayGroups.filter(isDocumentGroup);
+    // Tools resumed after some answer text had already streamed in (e.g. a
+    // short preamble before a real tool call) — keep showing that text
+    // instead of hiding it while the new tool step plays out, or it flashes
+    // away and back on every tool call. A generated file is a finished
+    // artifact either way, not answer-in-progress text, so its card (or the
+    // skeleton producing it) always stays put regardless.
+    const shownKeys = lastDisplayGroupKeysRef.current;
+    if (shownKeys.size === 0) {
+      return state.potentialDisplayGroups.filter(isDocumentGroup);
+    }
+    // Re-select from the live groups so text that landed alongside the tool
+    // call still appears, rather than serving a stale copy of them.
+    return state.potentialDisplayGroups.filter(
+      (g) => shownKeys.has(g.key) || isDocumentGroup(g)
+    );
   }, [
     effectiveFinalAnswerComing,
     state.toolGroups.length,
@@ -156,6 +187,7 @@ export function usePacketProcessor(
     generatedImageCount: state.generatedImageCount,
     finalAnswerComing: state.finalAnswerComing,
     documentGenerationInFlight: state.documentGenerationInFlight,
+    streamSilentSeconds: state.streamSilentSeconds,
     toolProcessingDuration: state.toolProcessingDuration,
 
     // Completion: stopPacketSeen && renderComplete

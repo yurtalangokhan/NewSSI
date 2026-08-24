@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import Dropzone from "react-dropzone";
 import CardSection from "@/components/admin/CardSection";
@@ -8,12 +8,16 @@ import Button from "@/refresh-components/buttons/Button";
 import Text from "@/refresh-components/texts/Text";
 import { ThreeDotsLoader } from "@/components/Loading";
 import { toast } from "@/hooks/useToast";
+import { ConfirmEntityModal } from "@/components/modals/ConfirmEntityModal";
 import {
   useDocuments,
   useDocumentChunks,
-  uploadDocuments,
+  useUploadStatus,
+  startUploadJob,
+  fetchUploadStatus,
   deleteDocument,
   type RagDocument,
+  type UploadProgress,
 } from "@/lib/langconnect";
 import { getDatasourceDetails, type ChunkInfo } from "@/lib/airbyte";
 import {
@@ -35,8 +39,9 @@ const ACCEPTED_TYPES = {
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [
     ".docx",
   ],
-  "application/vnd.openxmlformats-officedocument.presentationml.presentation":
-    [".pptx"],
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation": [
+    ".pptx",
+  ],
   "text/csv": [".csv"],
   "text/tab-separated-values": [".tsv"],
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [
@@ -64,10 +69,31 @@ function ChunkViewer({
   documentId: string;
 }) {
   const { t } = useTranslation();
-  const { chunks, stats, isLoading } = useDocumentChunks(
-    collectionId,
-    documentId
-  );
+  const { chunks, stats, isLoading, isLoadingMore, hasMore, loadMore } =
+    useDocumentChunks(collectionId, documentId);
+
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const loadMoreRef = useRef(loadMore);
+  loadMoreRef.current = loadMore;
+
+  useEffect(() => {
+    if (!hasMore || isLoadingMore) return;
+    const sentinel = sentinelRef.current;
+    const root = scrollContainerRef.current;
+    if (!sentinel || !root) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          loadMoreRef.current();
+        }
+      },
+      { root, threshold: 0 }
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMore, isLoadingMore]);
 
   if (isLoading) {
     return (
@@ -95,30 +121,50 @@ function ChunkViewer({
           />
         </div>
       )}
-      <div className="flex flex-col gap-2 max-h-80 overflow-y-auto pr-1">
+      <div
+        ref={scrollContainerRef}
+        className="flex flex-col gap-2 max-h-80 overflow-y-auto pr-1"
+      >
         {chunks.map((chunk, idx) => (
           <div
             key={chunk.id}
             className="rounded-08 border border-border-01 bg-background-neutral-01 p-3"
           >
             <div className="flex items-center gap-3 mb-1">
-              <Text as="p" mainContentMuted text03 className="font-mono text-[10px]">
+              <Text
+                as="p"
+                mainContentMuted
+                text03
+                className="font-mono text-[10px]"
+              >
                 {t("admin.documentProcessing.chunk", {
                   index: idx + 1,
                   defaultValue: "Chunk {{index}}",
                 })}
               </Text>
-              <Text as="p" mainContentMuted text03 className="font-mono text-[10px] opacity-60" title={chunk.id}>
+              <Text
+                as="p"
+                mainContentMuted
+                text03
+                className="font-mono text-[10px] opacity-60"
+                title={chunk.id}
+              >
                 {t("admin.documentProcessing.chunkId", {
                   defaultValue: "ID",
                 })}
                 : {chunk.id}
               </Text>
               {chunk.metadata?.char_count != null && (
-                <StatBadge label={t("admin.documentProcessing.chunkStats.chars")} value={chunk.metadata.char_count as number} />
+                <StatBadge
+                  label={t("admin.documentProcessing.chunkStats.chars")}
+                  value={chunk.metadata.char_count as number}
+                />
               )}
               {chunk.metadata?.token_count != null && (
-                <StatBadge label={t("admin.documentProcessing.chunkStats.tokens")} value={chunk.metadata.token_count as number} />
+                <StatBadge
+                  label={t("admin.documentProcessing.chunkStats.tokens")}
+                  value={chunk.metadata.token_count as number}
+                />
               )}
             </div>
             <Text
@@ -131,6 +177,11 @@ function ChunkViewer({
             </Text>
           </div>
         ))}
+        {hasMore && (
+          <div ref={sentinelRef} className="flex justify-center py-2">
+            {isLoadingMore && <ThreeDotsLoader />}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -169,6 +220,7 @@ function DocumentRow({
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const fileName =
     (doc.metadata?.filename as string) ||
@@ -176,7 +228,7 @@ function DocumentRow({
     (doc.metadata?.source as string) ||
     doc.id;
 
-  async function handleDelete() {
+  function handleDeleteClick() {
     if (readOnly) {
       toast.warning(
         t("admin.documentProcessing.datasourceReadOnlyActionsBlocked", {
@@ -195,14 +247,11 @@ function DocumentRow({
       );
       return;
     }
+    setShowDeleteModal(true);
+  }
 
-    const confirmed = window.confirm(
-      t("admin.documentProcessing.deleteDocumentConfirm", {
-        name: fileName,
-        defaultValue: 'Delete document "{{name}}"?',
-      })
-    );
-    if (!confirmed) return;
+  async function handleDeleteConfirm() {
+    setShowDeleteModal(false);
     setIsDeleting(true);
     try {
       await deleteDocument(collectionId, doc.id);
@@ -224,12 +273,7 @@ function DocumentRow({
       <div className="flex items-center gap-3 px-3 py-2.5">
         <SvgFileText className="h-4 w-4 shrink-0 stroke-text-03" aria-hidden />
         <div className="flex-1 min-w-0">
-          <Text
-            as="p"
-            mainUiAction
-            text04
-            className="truncate text-sm"
-          >
+          <Text as="p" mainUiAction text04 className="truncate text-sm">
             {fileName}
           </Text>
           {doc.created_at && (
@@ -259,7 +303,7 @@ function DocumentRow({
           <Button
             danger
             size="md"
-            onClick={handleDelete}
+            onClick={handleDeleteClick}
             disabled={isDeleting || isCollectionMutationLocked || readOnly}
             aria-label={t("admin.documentProcessing.deleteDocumentAria", {
               defaultValue: "Delete document",
@@ -275,6 +319,18 @@ function DocumentRow({
         <div className="border-t border-border-01 bg-background-neutral-01 px-3 py-3">
           <ChunkViewer collectionId={collectionId} documentId={doc.id} />
         </div>
+      )}
+
+      {showDeleteModal && (
+        <ConfirmEntityModal
+          danger
+          entityType={t("admin.documentProcessing.documentEntity", {
+            defaultValue: "Document",
+          })}
+          entityName={fileName}
+          onClose={() => setShowDeleteModal(false)}
+          onSubmit={handleDeleteConfirm}
+        />
       )}
     </div>
   );
@@ -297,11 +353,117 @@ export default function DocumentsPanel({
 }: DocumentsPanelProps) {
   const { t } = useTranslation();
   // readOnly = Airbyte connector koleksiyonu; chunks agent-service'ten gelir, rag-service'e istek atma
-  const { documents, isLoading, mutate } = useDocuments(readOnly ? null : collectionId);
+  const { documents, isLoading, mutate } = useDocuments(
+    readOnly ? null : collectionId
+  );
   const [datasourceChunks, setDatasourceChunks] = useState<ChunkInfo[]>([]);
-  const [isDatasourceChunksLoading, setIsDatasourceChunksLoading] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
+  const [isDatasourceChunksLoading, setIsDatasourceChunksLoading] =
+    useState(false);
   const [isDragActive, setIsDragActive] = useState(false);
+  const [isStartingUpload, setIsStartingUpload] = useState(false);
+  const [pollActive, setPollActive] = useState(false);
+  const [lastKnownSnapshot, setLastKnownSnapshot] = useState<{
+    collectionId: string;
+    progress: UploadProgress;
+  } | null>(null);
+
+  const { progress: uploadStatus } = useUploadStatus(
+    readOnly ? null : collectionId,
+    pollActive
+  );
+
+  useEffect(() => {
+    if (uploadStatus && collectionId) {
+      setLastKnownSnapshot({ collectionId, progress: uploadStatus });
+    }
+  }, [uploadStatus, collectionId]);
+
+  const effectiveUploadProgress =
+    uploadStatus ??
+    (lastKnownSnapshot?.collectionId === collectionId
+      ? lastKnownSnapshot.progress
+      : null);
+
+  const uploadInProgress =
+    isStartingUpload ||
+    effectiveUploadProgress?.status === "pending" ||
+    effectiveUploadProgress?.status === "processing";
+
+  // Auto-resume polling when collection is selected (e.g. after page navigation)
+  useEffect(() => {
+    if (!collectionId || readOnly) {
+      setPollActive(false);
+      setLastKnownSnapshot(null);
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const data = await fetchUploadStatus(collectionId);
+        if (cancelled || !data) return;
+        if (data.status === "pending" || data.status === "processing") {
+          setLastKnownSnapshot({ collectionId, progress: data });
+          setPollActive(true);
+        }
+      } catch {
+        // No upload job to resume — ignore.
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [collectionId, readOnly]);
+
+  // Stop polling and surface results once the upload job finishes.
+  useEffect(() => {
+    if (!uploadStatus) return;
+    if (
+      uploadStatus.status === "completed" ||
+      uploadStatus.status === "failed"
+    ) {
+      setPollActive(false);
+      setIsStartingUpload(false);
+      mutate();
+
+      if (uploadStatus.status === "failed") {
+        toast.error(
+          uploadStatus.error ?? t("admin.documentProcessing.uploadFailed")
+        );
+        return;
+      }
+
+      if (uploadStatus.added_chunk_ids.length > 0) {
+        toast.success(
+          t("admin.documentProcessing.uploadSuccess", {
+            count: uploadStatus.processed_files,
+            defaultValue: `${uploadStatus.processed_files} dosya başarıyla yüklendi.`,
+          })
+        );
+      }
+      if (uploadStatus.duplicate_files.length > 0) {
+        toast.warning(
+          t("admin.documentProcessing.uploadDuplicateFiles", {
+            files: uploadStatus.duplicate_files.join(", "),
+            defaultValue: `Bu dosyalar zaten koleksiyonda mevcut, atlandı: ${uploadStatus.duplicate_files.join(
+              ", "
+            )}`,
+          })
+        );
+      }
+      if (uploadStatus.failed_files.length > 0) {
+        toast.warning(
+          t("admin.documentProcessing.uploadFailedFiles", {
+            files: uploadStatus.failed_files.join(", "),
+            defaultValue: `Bu dosyalar işlenemedi: ${uploadStatus.failed_files.join(
+              ", "
+            )}`,
+          })
+        );
+      }
+    }
+  }, [uploadStatus, mutate, t]);
 
   useEffect(() => {
     let cancelled = false;
@@ -352,29 +514,22 @@ export default function DocumentsPanel({
         return;
       }
 
-      setIsUploading(true);
+      setIsStartingUpload(true);
+      setLastKnownSnapshot(null);
       try {
         const metadatas = acceptedFiles.map((f) => ({ filename: f.name }));
-        const result = await uploadDocuments(collectionId, acceptedFiles, metadatas);
-        await mutate();
-        toast.success(
-          t("admin.documentProcessing.uploadSuccess", {
-            count: acceptedFiles.length,
-            defaultValue: `${acceptedFiles.length} dosya başarıyla yüklendi.`,
-          })
-        );
-        if (result.warnings) {
-          toast.warning(result.warnings);
-        }
+        await startUploadJob(collectionId, acceptedFiles, metadatas);
+        setPollActive(true);
       } catch (e) {
+        setIsStartingUpload(false);
         toast.error(
-          e instanceof Error ? e.message : t("admin.documentProcessing.uploadFailed")
+          e instanceof Error
+            ? e.message
+            : t("admin.documentProcessing.uploadFailed")
         );
-      } finally {
-        setIsUploading(false);
       }
     },
-    [collectionId, isCollectionMutationLocked, mutate, t]
+    [collectionId, isCollectionMutationLocked, t]
   );
 
   if (!collectionId) {
@@ -408,7 +563,12 @@ export default function DocumentsPanel({
               className="rounded-08 border border-border-01 bg-background-neutral-01 p-3"
             >
               <div className="mb-1 flex items-center gap-3">
-                <Text as="p" mainContentMuted text03 className="font-mono text-[10px]">
+                <Text
+                  as="p"
+                  mainContentMuted
+                  text03
+                  className="font-mono text-[10px]"
+                >
                   {t("admin.documentProcessing.chunk", {
                     index: idx + 1,
                     defaultValue: "Chunk {{index}}",
@@ -422,7 +582,10 @@ export default function DocumentsPanel({
                   label={t("admin.documentProcessing.chunkStats.tokens")}
                   value={
                     chunk.token_count ??
-                    Math.max(chunk.content.split(/\s+/).length, Math.floor(chunk.content.length / 4))
+                    Math.max(
+                      chunk.content.split(/\s+/).length,
+                      Math.floor(chunk.content.length / 4)
+                    )
                   }
                 />
               </div>
@@ -470,7 +633,7 @@ export default function DocumentsPanel({
                     accept={ACCEPTED_TYPES}
                     maxSize={MAX_SIZE_BYTES}
                     multiple
-                    disabled={isUploading}
+                    disabled={uploadInProgress}
                     onDropRejected={(rejections) => {
                       const reason =
                         rejections[0]?.errors[0]?.message ?? "File rejected";
@@ -487,19 +650,45 @@ export default function DocumentsPanel({
                           isDragActive
                             ? "border-action-primary bg-background-neutral-02"
                             : "border-border-01 bg-background-neutral-01 hover:border-action-primary hover:bg-background-neutral-02",
-                          isUploading && "opacity-60 cursor-not-allowed"
+                          uploadInProgress && "opacity-60 cursor-not-allowed"
                         )}
                       >
                         <input {...getInputProps()} />
-                        {isUploading ? (
-                          <>
-                            <ThreeDotsLoader />
+                        {uploadInProgress ? (
+                          <div className="flex w-full max-w-xs flex-col items-center gap-3">
                             <Text as="p" mainContentMuted text03>
-                              {t(
-                                "admin.documentProcessing.uploadingAndProcessing"
-                              )}
+                              {effectiveUploadProgress?.current_file
+                                ? t("admin.documentProcessing.uploadingFile", {
+                                    current:
+                                      effectiveUploadProgress.processed_files +
+                                      1,
+                                    total: effectiveUploadProgress.total_files,
+                                    file: effectiveUploadProgress.current_file,
+                                    defaultValue: `İşleniyor: ${
+                                      effectiveUploadProgress.processed_files +
+                                      1
+                                    }/${
+                                      effectiveUploadProgress.total_files
+                                    } — ${
+                                      effectiveUploadProgress.current_file
+                                    }`,
+                                  })
+                                : t(
+                                    "admin.documentProcessing.uploadingAndProcessing"
+                                  )}
                             </Text>
-                          </>
+                            <div className="w-full bg-background-neutral-02 rounded-full h-2 border border-border-01 overflow-hidden">
+                              <div
+                                className="bg-theme-primary-04 h-2 rounded-full transition-all duration-500"
+                                style={{
+                                  width: `${
+                                    effectiveUploadProgress?.progress_percent ??
+                                    0
+                                  }%`,
+                                }}
+                              />
+                            </div>
+                          </div>
                         ) : (
                           <>
                             <SvgUploadCloud
@@ -514,9 +703,7 @@ export default function DocumentsPanel({
                             <div className="text-center">
                               <Text as="p" mainUiAction text04>
                                 {isDragActive
-                                  ? t(
-                                      "admin.documentProcessing.dropFilesHere"
-                                    )
+                                  ? t("admin.documentProcessing.dropFilesHere")
                                   : t(
                                       "admin.documentProcessing.dragDropOrClick"
                                     )}
@@ -587,22 +774,31 @@ export default function DocumentsPanel({
       )}
       {/* Document list */}
       <CardSection className="flex flex-col gap-3">
-        <Text as="p" headingH3 text05 className="border-b border-border-01 pb-2">
+        <Text
+          as="p"
+          headingH3
+          text05
+          className="border-b border-border-01 pb-2"
+        >
           {readOnly
             ? t("admin.documentProcessing.chunks", { defaultValue: "Chunks" })
             : t("admin.documentProcessing.documents")}{" "}
-          {readOnly ? (
-            !isDatasourceChunksLoading && (
-              <span className="font-normal text-text-03">({datasourceChunks.length})</span>
-            )
-          ) : (
-            !isLoading && (
-              <span className="font-normal text-text-03">({documents.length})</span>
-            )
-          )}
+          {readOnly
+            ? !isDatasourceChunksLoading && (
+                <span className="font-normal text-text-03">
+                  ({datasourceChunks.length})
+                </span>
+              )
+            : !isLoading && (
+                <span className="font-normal text-text-03">
+                  ({documents.length})
+                </span>
+              )}
         </Text>
 
-        {readOnly ? renderDatasourceChunks() : isLoading ? (
+        {readOnly ? (
+          renderDatasourceChunks()
+        ) : isLoading ? (
           <ThreeDotsLoader />
         ) : documents.length === 0 ? (
           <Text as="p" mainContentMuted text03 className="text-center py-6">

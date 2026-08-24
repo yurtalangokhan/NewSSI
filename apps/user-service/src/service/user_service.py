@@ -129,7 +129,7 @@ class UserService:
             except Exception:
                 pass
 
-        return self._user_to_dict(user)
+        return await self._user_to_app_dict(user)
 
     async def list_users(
         self,
@@ -556,6 +556,7 @@ class UserService:
             "chosen_assistants": None,
             "visible_assistants": [],
             "hidden_assistants": [],
+            "pinned_assistants": settings.pinned_assistants,
             "default_model": settings.default_model,
             "default_provider_id": settings.default_provider_id,
             "recent_assistants": [],

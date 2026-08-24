@@ -23,7 +23,9 @@ import { SvgUser } from "@opal/icons";
 import { Section } from "@/layouts/general-layouts";
 import Text from "@/refresh-components/texts/Text";
 import useShareableUsers from "@/hooks/useShareableUsers";
-import useShareableGroups from "@/hooks/useShareableGroups";
+import useShareableGroups, {
+  MinimalUserGroupSnapshot,
+} from "@/hooks/useShareableGroups";
 import { useModal } from "@/refresh-components/contexts/ModalContext";
 import { useUser } from "@/providers/UserProvider";
 import { Formik, useFormikContext } from "formik";
@@ -32,6 +34,7 @@ import { buildAppPath } from "@/hooks/appNavigation";
 import { Button as OpalButton } from "@opal/components";
 import { useLabels } from "@/lib/hooks";
 import { PersonaLabel } from "@/app/admin/agents/interfaces";
+import { MinimalUserSnapshot } from "@/lib/types";
 
 import { useTranslation } from "react-i18next";
 // Constants moved to inside the component so they can be translated
@@ -70,8 +73,23 @@ function ShareAgentFormContent({ agentId }: ShareAgentFormContentProps) {
   const { labels: allLabels, createLabel } = useLabels();
   const [labelInputValue, setLabelInputValue] = useState("");
 
-  const acceptedUsers = usersData ?? [];
-  const groups = groupsData ?? [];
+  const acceptedUsers = useMemo<MinimalUserSnapshot[]>(() => {
+    if (!usersData) return [];
+    if (Array.isArray(usersData)) return usersData;
+    if (Array.isArray((usersData as any).users)) return (usersData as any).users;
+    if (Array.isArray((usersData as any).items)) return (usersData as any).items;
+    if (Array.isArray((usersData as any).accepted)) return (usersData as any).accepted;
+    return [];
+  }, [usersData]);
+
+  const groups = useMemo<MinimalUserGroupSnapshot[]>(() => {
+    if (!groupsData) return [];
+    if (Array.isArray(groupsData)) return groupsData;
+    if (Array.isArray((groupsData as any).groups)) return (groupsData as any).groups;
+    if (Array.isArray((groupsData as any).items)) return (groupsData as any).items;
+    return [];
+  }, [groupsData]);
+
   const canUpdateFeaturedStatus = isAdmin || isCurator;
 
   // Create options for InputComboBox from all accepted users and groups

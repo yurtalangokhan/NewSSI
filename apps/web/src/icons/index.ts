@@ -1,4 +1,5 @@
 export {
+  SvgCheck,
   SvgExpand,
   SvgEdit,
   SvgFolderPlus,

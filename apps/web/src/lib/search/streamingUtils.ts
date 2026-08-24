@@ -99,6 +99,22 @@ function mapBackendToFrontend(packet: BackendPacket): any {
     case "search_tool_start":
     case "search_tool_queries_delta":
     case "search_tool_documents_delta":
+    case "open_url_start":
+    case "open_url_urls":
+    case "open_url_documents":
+    case "python_tool_start":
+    case "python_tool_delta":
+    case "file_reader_start":
+    case "file_reader_result":
+    case "memory_tool_start":
+    case "memory_tool_delta":
+    case "memory_tool_no_access":
+    case "deep_research_plan_start":
+    case "deep_research_plan_delta":
+    case "research_agent_start":
+    case "intermediate_report_start":
+    case "intermediate_report_delta":
+    case "intermediate_report_cited_docs":
       return {
         placement: defaultPlacement,
         obj: packet,
@@ -140,6 +156,15 @@ function mapBackendToFrontend(packet: BackendPacket): any {
   }
 }
 
+const CALL_START_TYPES = new Set<string>([
+  "custom_tool_start",
+  "open_url_start",
+  "python_tool_start",
+  "file_reader_start",
+  "memory_tool_start",
+  "deep_research_plan_start",
+  "research_agent_start",
+]);
 
 export async function* handleSSEStream<T extends PacketType>(
   streamingResponse: Response,
@@ -155,6 +180,13 @@ export async function* handleSSEStream<T extends PacketType>(
   let turnIndex = 0;
   let sawToolPackets = false;
   let lastToolPacketType: string | null = null;
+  // A single AI turn can fire several calls to the same tool at once (e.g.
+  // parallel web_search/fetch_webpage calls): all their start packets arrive before
+  // any result comes back, so by the time a call's own delta/documents show up,
+  // turnIndex has already moved on to later calls. Each call's turn is
+  // remembered here by call_id — like `documentTurnIndex` below — so its delta is
+  // placed back on its own turn instead of whatever turn happens to be current.
+  const toolCallTurns = new Map<string, number>();
   // If tokens were already streamed for the current answer, skip the later
   // full "message" packet from backend to avoid duplicate text rendering.
   let sawTokenForCurrentAnswer = false;
@@ -192,6 +224,12 @@ export async function* handleSSEStream<T extends PacketType>(
         if (line.trim() === "") continue;
 
         const trimmedLine = line.trim();
+        // SSE comment (": keep-alive") — the backend sends these so proxies
+        // don't treat a long silent generation as an idle connection. They
+        // carry no packet, so drop them before the JSON parse below.
+        if (trimmedLine.startsWith(":")) {
+          continue;
+        }
         if (trimmedLine === "data: [DONE]" || trimmedLine === "[DONE]" || trimmedLine === "data:") {
           yield {
             placement: { turn_index: turnIndex, sub_turn_index: null },
@@ -207,6 +245,24 @@ export async function* handleSSEStream<T extends PacketType>(
 
         try {
           const backendPacket = JSON.parse(jsonLine) as BackendPacket;
+
+          // The real, persisted ids for this turn — sent once, near the end
+          // of the stream, with no `type` field. It's pure metadata, not a
+          // display packet, so it must reach the consumer exactly as sent
+          // (matching MessageResponseIDInfo) instead of falling through to
+          // the generic default case below, which would wrap it as
+          // `{ obj: packet }` and leave `packet.user_message_id` /
+          // `packet.reserved_assistant_message_id` unreadable at the top
+          // level where useChatController.ts checks for them. It must also
+          // skip the turn/tool-tracking logic below — it carries no display
+          // content and would otherwise perturb turnIndex bookkeeping.
+          if (
+            "reserved_assistant_message_id" in backendPacket ||
+            "user_message_id" in backendPacket
+          ) {
+            yield backendPacket as unknown as T;
+            continue;
+          }
 
           if (backendPacket.type === "token") {
             sawTokenForCurrentAnswer = true;
@@ -231,23 +287,46 @@ export async function* handleSSEStream<T extends PacketType>(
           // "genfile" group suffix instead, so the card renders after the text.
           const isGeneratedFilePkt =
             getCategoryFor(backendPacket.type)?.id === GENERATED_FILE_CATEGORY_ID;
+          // Reasoning resuming after the answer has already started (Gemini and
+          // Claude can interleave "thinking" blocks between chunks of visible
+          // text) is likewise exempt. It still lands in its own group via the
+          // "reasoning" suffix, so treating it as a tool boundary here would
+          // only fragment the in-progress answer into a new turn/message_start,
+          // unmounting and re-typing the text that was already rendered.
+          const isMidAnswerReasoningPkt =
+            getCategoryFor(backendPacket.type)?.id === "reasoning" &&
+            hasMessageStartForCurrentAnswer;
           const isToolPkt =
-            TOOL_PACKET_TYPES.has(backendPacket.type) && !isGeneratedFilePkt;
-          if (isGeneratedFilePkt) {
+            TOOL_PACKET_TYPES.has(backendPacket.type) &&
+            !isGeneratedFilePkt &&
+            !isMidAnswerReasoningPkt;
+          if (isGeneratedFilePkt || isMidAnswerReasoningPkt) {
             // Document generation packets ride the current turn (or documentTurnIndex)
-            // without breaking tool or display pacing state.
+            // without breaking tool or display pacing state. Same for mid-answer
+            // reasoning packets — see comment above.
           } else if (isToolPkt) {
+            const callId = (backendPacket as any).call_id ?? null;
+            const isCallStartType = CALL_START_TYPES.has(backendPacket.type);
+            const isNewCallStart =
+              isCallStartType &&
+              ((callId && !toolCallTurns.has(callId)) || (!callId && lastToolPacketType !== null));
             if (!sawToolPackets) {
               turnIndex++; // display → tool: pre-tool text gets its own group
               sawTokenForCurrentAnswer = false;
               hasMessageStartForCurrentAnswer = false;
-            } else if (lastToolPacketType && shouldSplitCategories(lastToolPacketType, backendPacket.type)) {
+            } else if (
+              (lastToolPacketType && shouldSplitCategories(lastToolPacketType, backendPacket.type)) ||
+              isNewCallStart
+            ) {
               turnIndex++;
               sawTokenForCurrentAnswer = false;
               hasMessageStartForCurrentAnswer = false;
             }
             sawToolPackets = true;
             lastToolPacketType = backendPacket.type;
+            if (callId && !toolCallTurns.has(callId)) {
+              toolCallTurns.set(callId, turnIndex);
+            }
           } else if (sawToolPackets) {
             turnIndex++;
             sawToolPackets = false;
@@ -307,10 +386,13 @@ export async function* handleSSEStream<T extends PacketType>(
           if (backendPacket.type === "document_generation_start") {
             documentTurnIndex = turnIndex;
           }
+          const packetCallId = (backendPacket as any).call_id ?? null;
           mappedPacket.placement.turn_index =
             isGeneratedFilePkt && documentTurnIndex !== null
               ? documentTurnIndex
-              : turnIndex;
+              : packetCallId && toolCallTurns.has(packetCallId)
+                ? toolCallTurns.get(packetCallId)!
+                : turnIndex;
           if (
             backendPacket.type === "document_generation_end" &&
             (backendPacket as any).status === "success"

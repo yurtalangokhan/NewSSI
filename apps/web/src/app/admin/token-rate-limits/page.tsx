@@ -222,7 +222,7 @@ export default function Page() {
   return (
     <SettingsLayouts.Root>
       <SettingsLayouts.Header
-        title={route.title}
+        title={route.titleKey ? t(route.titleKey, { defaultValue: route.title }) : route.title}
         icon={route.icon}
         separator
       />
@@ -265,16 +265,16 @@ export default function Page() {
           ]}
           actions={[
             {
+              label: t("admin.navigation.routes.roles.sidebar", {
+                defaultValue: "Roles",
+              }),
+              href: ADMIN_PATHS.ROLES,
+            },
+            {
               label: t("admin.navigation.routes.users.sidebar", {
                 defaultValue: "Users",
               }),
               href: ADMIN_PATHS.USERS,
-            },
-            {
-              label: t("admin.navigation.routes.apiKeys.sidebar", {
-                defaultValue: "API Keys",
-              }),
-              href: ADMIN_PATHS.API_KEYS,
               primary: true,
             },
           ]}

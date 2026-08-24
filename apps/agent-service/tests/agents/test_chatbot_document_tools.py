@@ -7,6 +7,8 @@ that doesn't support tool binding must keep working exactly as before.
 
 from __future__ import annotations
 
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
@@ -351,3 +353,42 @@ async def test_body_passed_under_the_wrong_key_is_recovered(monkeypatch):
     tool_message = result["messages"][1]
     assert "__generated_file__" in tool_message.content
     assert result["messages"][-1].content == "İşte dosyanız."
+
+
+class _NoToolsSupportModel:
+    """Simulates a model like qwen2.5vl:3b that accepts bind_tools in memory but rejects tools at runtime."""
+
+    def __init__(self) -> None:
+        self.plain_calls: list = []
+
+    def bind_tools(self, tools):
+        bound = MagicMock()
+        bound.ainvoke = AsyncMock(
+            side_effect=Exception(
+                "registry.ollama.ai/library/qwen2.5vl:3b does not support tools (status code: 400)"
+            )
+        )
+        return bound
+
+    async def ainvoke(self, messages):
+        self.plain_calls.append(messages)
+        return AIMessage(content="Merhaba, size nasıl yardımcı olabilirim?")
+
+
+@pytest.mark.asyncio
+async def test_model_without_runtime_tool_support_falls_back_to_plain_chat(monkeypatch):
+    """When a model like qwen2.5vl:3b raises does not support tools, fall back to plain chat gracefully."""
+    model = _NoToolsSupportModel()
+    monkeypatch.setattr(
+        chatbot_module, "get_model_from_config", lambda configurable, default_model: model
+    )
+
+    result = await chatbot_module.call_model(
+        {"messages": [HumanMessage(content="Fotoğrafı analiz et")]},
+        {"configurable": {"thread_id": "thread-1", "user_id": "user-1"}},
+        store=None,
+    )
+
+    assert len(result["messages"]) == 1
+    assert result["messages"][0].content == "Merhaba, size nasıl yardımcı olabilirim?"
+    assert len(model.plain_calls) == 1

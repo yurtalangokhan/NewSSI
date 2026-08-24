@@ -43,31 +43,35 @@ export function AppBackgroundProvider({
       !!appBackground && appBackground.src !== CHAT_BACKGROUND_NONE;
     const appBackgroundUrl = hasBackground ? appBackground.src : null;
     const isDarkBackground = appBackground?.isDarkBackground === true;
+    // These use the theme-independent "light"/"dark" tokens (always literal
+    // white/black) rather than the "inverted" tokens, which flip meaning
+    // depending on the *current theme* rather than the background image.
+    // Contrast against a background photo must not depend on light/dark mode.
     const foregroundTextClass = isDarkBackground
-      ? "text-text-inverted-05"
-      : "text-text-05";
+      ? "text-text-light-05"
+      : "text-text-dark-05";
     const foregroundMutedTextClass = isDarkBackground
-      ? "text-text-inverted-03"
-      : "text-text-03";
+      ? "text-text-light-03"
+      : "text-text-dark-03";
     const foregroundIconClass = isDarkBackground
-      ? "stroke-text-inverted-05"
-      : "stroke-text-05";
+      ? "stroke-text-light-05"
+      : "stroke-text-dark-05";
     const foregroundBorderClass = isDarkBackground
-      ? "border-text-inverted-03"
-      : "border-border-01";
+      ? "border-text-light-03"
+      : "border-text-dark-03";
     const foregroundTextStyle = {
-      color: isDarkBackground ? "var(--text-inverted-05)" : "var(--text-05)",
+      color: isDarkBackground ? "var(--text-light-05)" : "var(--text-dark-05)",
     };
     const foregroundMutedTextStyle = {
-      color: isDarkBackground ? "var(--text-inverted-03)" : "var(--text-03)",
+      color: isDarkBackground ? "var(--text-light-03)" : "var(--text-dark-03)",
     };
     const foregroundIconStyle = {
-      stroke: isDarkBackground ? "var(--text-inverted-05)" : "var(--text-05)",
+      stroke: isDarkBackground ? "var(--text-light-05)" : "var(--text-dark-05)",
     };
     const foregroundBorderStyle = {
       borderColor: isDarkBackground
-        ? "var(--text-inverted-03)"
-        : "var(--border-01)",
+        ? "var(--text-light-03)"
+        : "var(--text-dark-03)",
     };
 
     return {

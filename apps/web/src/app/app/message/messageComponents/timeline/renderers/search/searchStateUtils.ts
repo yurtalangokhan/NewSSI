@@ -95,3 +95,11 @@ export const constructCurrentSearchState = (
     isInternetSearch,
   };
 };
+
+/** "Searched for: X" label text (just the query part) for the collapsed
+ * timeline header, or null while no query is known yet. Shared by
+ * useTimelineHeader and WebSearchToolRenderer so both show identical text. */
+export const getSearchedForQuery = (queries: string[]): string | null => {
+  if (queries.length === 0) return null;
+  return queries.join(", ");
+};

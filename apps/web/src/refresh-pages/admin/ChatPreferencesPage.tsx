@@ -589,7 +589,7 @@ function ChatPreferencesForm() {
                     <Section gap={0.5}>
                       {mcpServersWithTools.map(({ server, tools }) => (
                         <MCPServerCard
-                          key={server.id}
+                          key={`mcp-server-${server.id}`}
                           server={server}
                           tools={tools}
                           isToolEnabled={isToolEnabled}
@@ -597,8 +597,11 @@ function ChatPreferencesForm() {
                           onToggleTools={toggleTools}
                         />
                       ))}
-                      {openApiTools.map((tool) => (
-                        <ExpandableCard.Root key={tool.id} defaultFolded>
+                      {openApiTools.map((tool, index) => (
+                        <ExpandableCard.Root
+                          key={`openapi-tool-${tool.id ?? tool.name ?? index}`}
+                          defaultFolded
+                        >
                           <ActionsLayouts.Header
                             title={tool.display_name || tool.name}
                             description={tool.description}

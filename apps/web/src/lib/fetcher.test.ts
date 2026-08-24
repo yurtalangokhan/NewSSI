@@ -4,11 +4,13 @@
 
 import {
   authenticatedFetch,
+  errorHandlingFetcher,
   getSessionExpiredRedirectUrl,
   clearAuthRefreshFailed,
   getLoginRedirectUrl,
   RedirectError,
 } from "@/lib/fetcher";
+import i18n from "@/i18n/config";
 
 function response(status: number) {
   return new Response(status === 204 ? null : "{}", {
@@ -228,6 +230,52 @@ describe("authenticatedFetch", () => {
 
     expect(consoleErrorSpy).toHaveBeenCalledWith(
       "[Auth] Unauthorized after token refresh"
+    );
+  });
+});
+
+describe("errorHandlingFetcher", () => {
+  const originalLanguage = i18n.language;
+
+  beforeEach(() => {
+    global.fetch = jest.fn().mockResolvedValue(jsonResponse({ ok: true }));
+  });
+
+  afterEach(async () => {
+    jest.restoreAllMocks();
+    await i18n.changeLanguage(originalLanguage);
+  });
+
+  it("sends the app's currently selected language, not just the browser's", async () => {
+    await i18n.changeLanguage("tr");
+
+    await errorHandlingFetcher("/api/agents/catalog");
+
+    expect(fetchMock()).toHaveBeenCalledWith(
+      "/api/agents/catalog",
+      expect.objectContaining({
+        headers: expect.objectContaining({ "X-Language": "tr" }),
+      })
+    );
+  });
+
+  it("updates the header when the selected language changes", async () => {
+    await i18n.changeLanguage("en");
+    await errorHandlingFetcher("/api/agents/catalog");
+    expect(fetchMock()).toHaveBeenLastCalledWith(
+      "/api/agents/catalog",
+      expect.objectContaining({
+        headers: expect.objectContaining({ "X-Language": "en" }),
+      })
+    );
+
+    await i18n.changeLanguage("tr");
+    await errorHandlingFetcher("/api/agents/catalog");
+    expect(fetchMock()).toHaveBeenLastCalledWith(
+      "/api/agents/catalog",
+      expect.objectContaining({
+        headers: expect.objectContaining({ "X-Language": "tr" }),
+      })
     );
   });
 });

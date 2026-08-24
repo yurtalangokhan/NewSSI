@@ -1,3 +1,5 @@
+"use client";
+
 import { Callout } from "@/components/ui/callout";
 import { FiAlertTriangle } from "react-icons/fi";
 import i18n from "@/i18n/config";

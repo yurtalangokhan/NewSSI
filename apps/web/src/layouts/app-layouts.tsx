@@ -123,6 +123,17 @@ function Header() {
 
   const effectiveMode: AppMode = appFocus.isNewSession() ? appMode : "chat";
 
+  const hasLeftContent =
+    isMobile ||
+    Boolean(
+      isPaidEnterpriseFeaturesEnabled &&
+        settings.isSearchModeAvailable &&
+        appFocus.isNewSession() &&
+        !classification
+    );
+  const hasCenterContent = Boolean(pageWithHeaderContent && customHeaderContent);
+  const hasRightContent = Boolean(appFocus.isChat() && currentChatSession);
+
   const availableProjects = useMemo(() => {
     if (!projects) return [];
     return projects.filter((project) => project.id !== currentProjectId);
@@ -258,6 +269,10 @@ function Header() {
     setDeleteConfirmationModalOpen,
     handleMoveClick,
   ]);
+
+  if (!hasLeftContent && !hasCenterContent && !hasRightContent) {
+    return null;
+  }
 
   return (
     <>
@@ -528,7 +543,12 @@ function Root({ children, enableBackground }: AppRootProps) {
   const { hasBackground, appBackgroundUrl } = useAppBackground();
   const { resolvedTheme } = useTheme();
   const appFocus = useAppFocus();
-  const isLightMode = resolvedTheme === "light";
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  // `resolvedTheme` is undefined on the server (and briefly on the client
+  // before mount), so gate on `mounted` to keep the first client render
+  // identical to the SSR output and avoid a hydration mismatch.
+  const isLightMode = mounted && resolvedTheme === "light";
   const showBackground = hasBackground && enableBackground;
 
   return (

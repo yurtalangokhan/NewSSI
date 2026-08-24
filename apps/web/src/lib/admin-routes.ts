@@ -21,6 +21,7 @@ import {
   SvgPaintBrush,
   SvgSearch,
   SvgServer,
+  SvgSettings,
   SvgShield,
   SvgSlack,
   SvgTerminal,
@@ -84,6 +85,9 @@ interface AdminRouteConfig {
   requiredPermissions?: string[];
   titleKey?: string;
   sidebarLabelKey?: string;
+  // Defaults to true. Set to false to 404 the page and hide it from the
+  // sidebar, e.g. for MVP-scoped-out features that will return later.
+  enabled?: boolean;
 }
 
 /**
@@ -114,6 +118,7 @@ export const ADMIN_ROUTE_CONFIG: Record<string, AdminRouteConfig> = {
     requiredPermissions: ["collection:list"],
     titleKey: "admin.navigation.routes.documentSets.title",
     sidebarLabelKey: "admin.navigation.routes.documentSets.sidebar",
+    enabled: false, // MVP: scoped out, pending rework
   },
   [ADMIN_PATHS.DOCUMENT_EXPLORER]: {
     icon: SvgZoomIn,
@@ -122,6 +127,7 @@ export const ADMIN_ROUTE_CONFIG: Record<string, AdminRouteConfig> = {
     requiredPermissions: ["document:search"],
     titleKey: "admin.navigation.routes.documentExplorer.title",
     sidebarLabelKey: "admin.navigation.routes.documentExplorer.sidebar",
+    enabled: false, // MVP: scoped out, pending rework
   },
   [ADMIN_PATHS.DOCUMENT_FEEDBACK]: {
     icon: SvgThumbsUp,
@@ -130,6 +136,7 @@ export const ADMIN_ROUTE_CONFIG: Record<string, AdminRouteConfig> = {
     requiredPermissions: ["document:read"],
     titleKey: "admin.navigation.routes.documentFeedback.title",
     sidebarLabelKey: "admin.navigation.routes.documentFeedback.sidebar",
+    enabled: false, // MVP: scoped out, pending rework
   },
   [ADMIN_PATHS.AGENTS]: {
     icon: SvgOnyxOctagon,
@@ -170,6 +177,7 @@ export const ADMIN_ROUTE_CONFIG: Record<string, AdminRouteConfig> = {
     requiredPermissions: ["mcp_tool:read"],
     titleKey: "admin.navigation.routes.openapiActions.title",
     sidebarLabelKey: "admin.navigation.routes.openapiActions.sidebar",
+    enabled: false, // MVP: scoped out, pending rework
   },
   [ADMIN_PATHS.STANDARD_ANSWERS]: {
     icon: SvgClipboard,
@@ -194,6 +202,7 @@ export const ADMIN_ROUTE_CONFIG: Record<string, AdminRouteConfig> = {
     requiredPermissions: ["settings:read"],
     titleKey: "admin.navigation.routes.chatPreferences.title",
     sidebarLabelKey: "admin.navigation.routes.chatPreferences.sidebar",
+    enabled: false, // MVP: scoped out, pending rework
   },
   [ADMIN_PATHS.LLM_MODELS]: {
     icon: SvgCpu,
@@ -218,6 +227,7 @@ export const ADMIN_ROUTE_CONFIG: Record<string, AdminRouteConfig> = {
     requiredPermissions: ["provider:read"],
     titleKey: "admin.navigation.routes.imageGeneration.title",
     sidebarLabelKey: "admin.navigation.routes.imageGeneration.sidebar",
+    enabled: false, // MVP: scoped out, pending rework
   },
   [ADMIN_PATHS.CODE_INTERPRETER]: {
     icon: SvgTerminal,
@@ -226,6 +236,7 @@ export const ADMIN_ROUTE_CONFIG: Record<string, AdminRouteConfig> = {
     requiredPermissions: ["settings:read"],
     titleKey: "admin.navigation.routes.codeInterpreter.title",
     sidebarLabelKey: "admin.navigation.routes.codeInterpreter.sidebar",
+    enabled: false, // MVP: scoped out, pending rework
   },
   [ADMIN_PATHS.MAIL_CONFIGS]: {
     icon: SvgServer,
@@ -242,6 +253,7 @@ export const ADMIN_ROUTE_CONFIG: Record<string, AdminRouteConfig> = {
     requiredPermissions: ["settings:read"],
     titleKey: "admin.navigation.routes.searchSettings.title",
     sidebarLabelKey: "admin.navigation.routes.searchSettings.sidebar",
+    enabled: false, // MVP: scoped out, pending rework
   },
   [ADMIN_PATHS.DOCUMENT_PROCESSING]: {
     icon: SvgFileText,
@@ -282,6 +294,7 @@ export const ADMIN_ROUTE_CONFIG: Record<string, AdminRouteConfig> = {
     requiredPermissions: ["api_key:read"],
     titleKey: "admin.navigation.routes.apiKeys.title",
     sidebarLabelKey: "admin.navigation.routes.apiKeys.sidebar",
+    enabled: false, // MVP: scoped out, pending rework
   },
   [ADMIN_PATHS.ROLES]: {
     icon: SvgShield,
@@ -356,7 +369,7 @@ export const ADMIN_ROUTE_CONFIG: Record<string, AdminRouteConfig> = {
     sidebarLabelKey: "admin.navigation.routes.debug.sidebar",
   },
   [ADMIN_PATHS.SYSTEM_SETTINGS]: {
-    icon: SvgShield,
+    icon: SvgSettings,
     title: "System Settings",
     sidebarLabel: "System Settings",
     requiredPermissions: ["*"],
@@ -390,6 +403,7 @@ export function sidebarItem(
     icon: config.icon,
     link: path,
     requiredPermissions: config.requiredPermissions ?? [],
+    enabled: config.enabled ?? true,
   };
 }
 

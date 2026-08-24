@@ -10,6 +10,7 @@ import {
   Stop,
   ImageGenerationToolDelta,
   MessageStart,
+  StreamProgress,
 } from "@/app/app/services/streamingModels";
 import { CitationMap } from "@/app/app/interfaces";
 import { OnyxDocument } from "@/lib/search/interfaces";
@@ -95,6 +96,10 @@ export interface ProcessorState {
   // A document/spreadsheet is being written or rendered right now
   documentGenerationInFlight: boolean;
 
+  // Seconds the backend stream has currently been silent, or null when it is
+  // producing. Transient: cleared by the next real packet, never grouped.
+  streamSilentSeconds: number | null;
+
   // Tool processing duration from backend (captured when MESSAGE_START arrives)
   toolProcessingDuration: number | undefined;
 
@@ -139,6 +144,7 @@ export function createInitialState(nodeId: number): ProcessorState {
     stopPacketSeen: false,
     stopReason: undefined,
     documentGenerationInFlight: false,
+    streamSilentSeconds: null,
     toolProcessingDuration: undefined,
     toolGroups: [],
     potentialDisplayGroups: [],
@@ -292,11 +298,34 @@ function handleTurnTransition(state: ProcessorState, packet: Packet): void {
   // If we see a new turn_index (not just tab_index), inject SECTION_END for previous groups
   if (isNewTurnIndex && state.seenGroupKeys.size > 0) {
     state.seenGroupKeys.forEach((prevGroupKey) => {
-      if (!state.groupKeysWithSectionEnd.has(prevGroupKey)) {
-        injectSectionEnd(state, prevGroupKey);
+      if (state.groupKeysWithSectionEnd.has(prevGroupKey)) {
+        return;
       }
+      // Several calls to the same tool now each get their own turn (see
+      // streamingUtils.ts), so the next call's `custom_tool_start` can
+      // arrive as a "new turn" before the previous call's own result has
+      // come back. Don't mark that previous call complete here — its own
+      // `custom_tool_delta` closes it (see processPacket), or the final
+      // `stop` packet does, once it's actually done.
+      if (isPendingToolCallGroup(state, prevGroupKey)) {
+        return;
+      }
+      injectSectionEnd(state, prevGroupKey);
     });
   }
+}
+
+/** True for a tool-call group that has a start but no result yet. */
+function isPendingToolCallGroup(state: ProcessorState, groupKey: string): boolean {
+  const packets = state.groupedPacketsMap.get(groupKey);
+  if (!packets) return false;
+  const hasStart = packets.some(
+    (p) => p.obj.type === PacketType.CUSTOM_TOOL_START
+  );
+  const hasResult = packets.some(
+    (p) => p.obj.type === PacketType.CUSTOM_TOOL_DELTA
+  );
+  return hasStart && !hasResult;
 }
 
 function handleCitationPacket(state: ProcessorState, packet: Packet): void {
@@ -437,6 +466,17 @@ function addPacketToGroup(
 function processPacket(state: ProcessorState, packet: Packet): void {
   if (!packet) return;
 
+  // Silence report: pure status, so it updates the counter and stops there.
+  // Grouping it would leave a stale "still working" step in the timeline
+  // once the real content it was covering for finally arrives.
+  if (packet.obj.type === PacketType.STREAM_PROGRESS) {
+    state.streamSilentSeconds =
+      (packet.obj as StreamProgress).elapsed_seconds ?? null;
+    return;
+  }
+  // Anything else means the stream is producing again.
+  state.streamSilentSeconds = null;
+
   if (
     packet.obj.type === "graph_stage_start" ||
     packet.obj.type === "graph_stage_end"
@@ -479,6 +519,21 @@ function processPacket(state: ProcessorState, packet: Packet): void {
 
   // Add packet to group
   addPacketToGroup(state, packet, groupKey);
+
+  // A custom tool call now gets its own turn even when several calls to the
+  // same tool fire in parallel (see streamingUtils.ts call_id-based turns),
+  // so `handleTurnTransition` above closes the *previous* call's turn the
+  // moment the *next* call's `custom_tool_start` arrives — before that
+  // previous call's own result has come back. The backend emits exactly one
+  // `custom_tool_delta` per call, so as soon as it lands its call is truly
+  // done; close its own group right here instead of waiting for (or
+  // wrongly relying on) an unrelated later turn transition.
+  if (
+    packet.obj.type === PacketType.CUSTOM_TOOL_DELTA &&
+    !state.groupKeysWithSectionEnd.has(groupKey)
+  ) {
+    injectSectionEnd(state, groupKey);
+  }
 
   // Categorize on first packet of each group
   if (isFirstPacket) {

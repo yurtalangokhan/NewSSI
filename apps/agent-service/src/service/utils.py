@@ -144,10 +144,13 @@ def convert_input_messages(messages: list[dict[str, Any]]) -> list[BaseMessage]:
                     _maybe_store(metadata, data_b64, mime, filename)
                 else:
                     # Actual image — convert to image_url block
+                    from service.FileService import normalize_image_for_llm
+
+                    norm_data, norm_mime = normalize_image_for_llm(data_b64, mime or "image/jpeg")
                     new_content.append(
                         {
                             "type": "image_url",
-                            "image_url": {"url": f"data:{mime};base64,{data_b64}"},
+                            "image_url": {"url": f"data:{norm_mime};base64,{norm_data}"},
                         }
                     )
                     _maybe_store(metadata, data_b64, mime, filename)
@@ -219,7 +222,10 @@ def _extract_file_blocks(data_b64: str, mime: str, filename: str) -> list[dict]:
 
         if text is None:
             # Image that slipped through — convert to image_url
-            return [{"type": "image_url", "image_url": {"url": f"data:{m};base64,{data_b64}"}}]
+            from service.FileService import normalize_image_for_llm
+
+            norm_data, norm_mime = normalize_image_for_llm(data_b64, m or "image/jpeg")
+            return [{"type": "image_url", "image_url": {"url": f"data:{norm_mime};base64,{norm_data}"}}]
 
         return [
             {

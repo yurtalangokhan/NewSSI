@@ -37,14 +37,7 @@ function ToolCard({
 }) {
   return (
     <div className="border border-border-01 rounded-lg p-4 hover:bg-background-tint-00 transition-colors">
-      <div className="flex items-center justify-between gap-2 mb-2">
-        <h3 className="font-medium truncate">{tool.title || _.startCase(tool.name)}</h3>
-        {tool.category && (
-          <Badge variant="secondary" className="shrink-0 text-xs">
-            {tool.categoryLabel || tool.category}
-          </Badge>
-        )}
-      </div>
+      <h3 className="font-medium truncate mb-2">{tool.title || _.startCase(tool.name)}</h3>
       <p className="text-sm text-text-03 line-clamp-2 mb-3">
         {tool.description || t("toolPlayground.noDescription")}
       </p>
@@ -61,10 +54,7 @@ function ToolCard({
 function ToolCardSkeleton() {
   return (
     <div className="border border-border-01 rounded-lg p-4 animate-pulse">
-      <div className="flex items-center justify-between gap-2 mb-2">
-        <div className="h-5 w-32 bg-background-neutral-02 rounded" />
-        <div className="h-5 w-16 bg-background-neutral-02 rounded" />
-      </div>
+      <div className="h-5 w-32 bg-background-neutral-02 rounded mb-2" />
       <div className="h-4 w-full bg-background-neutral-02 rounded mb-2" />
       <div className="h-4 w-3/4 bg-background-neutral-02 rounded" />
     </div>

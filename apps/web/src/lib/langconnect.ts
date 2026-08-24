@@ -6,10 +6,13 @@
  *
  * Pattern mirrors lib/airbyte.ts from the Onyx codebase.
  */
+import { useMemo } from "react";
 import useSWR from "swr";
+import useSWRInfinite from "swr/infinite";
 import { errorHandlingFetcher } from "@/lib/fetcher";
 
 const RAG = "/api/rag";
+const CHUNKS_PAGE_SIZE = 20;
 
 // ============================================================================
 // Types — Collections
@@ -54,6 +57,8 @@ export interface RagChunkStats {
 export interface RagDocumentChunksResponse {
   stats: RagChunkStats;
   chunks: RagChunk[];
+  total_chunks: number;
+  has_more: boolean;
 }
 
 export interface UploadDocumentsResponse {
@@ -61,6 +66,29 @@ export interface UploadDocumentsResponse {
   message: string;
   added_chunk_ids: string[];
   warnings?: string;
+}
+
+export type UploadJobStatus = "pending" | "processing" | "completed" | "failed";
+
+export interface UploadJobStartResponse {
+  collection_id: string;
+  status: UploadJobStatus;
+  message: string;
+}
+
+export interface UploadProgress {
+  collection_id: string;
+  status: UploadJobStatus;
+  total_files: number;
+  processed_files: number;
+  current_file: string | null;
+  total_chunks: number;
+  processed_chunks: number;
+  duplicate_files: string[];
+  failed_files: string[];
+  added_chunk_ids: string[];
+  error?: string | null;
+  progress_percent: number;
 }
 
 // ============================================================================
@@ -288,20 +316,56 @@ export function useDocuments(
   return { documents: data ?? [], isLoading, error, mutate };
 }
 
+/**
+ * Build the SWRInfinite key for one page of a document's chunks, or null to
+ * stop paginating (no collection/document selected, or the previous page
+ * already reported has_more: false).
+ */
+export function getDocumentChunksPageKey(
+  pageIndex: number,
+  previousPageData: RagDocumentChunksResponse | null,
+  collectionId: string | null,
+  documentId: string | null
+): string | null {
+  if (!collectionId || !documentId) return null;
+  if (previousPageData && !previousPageData.has_more) return null;
+  const offset = pageIndex * CHUNKS_PAGE_SIZE;
+  return `${RAG}/collections/${collectionId}/documents/${documentId}/chunks?limit=${CHUNKS_PAGE_SIZE}&offset=${offset}`;
+}
+
 export function useDocumentChunks(
   collectionId: string | null,
   documentId: string | null
 ) {
-  const { data, error, isLoading, mutate } = useSWR<RagDocumentChunksResponse>(
-    collectionId && documentId
-      ? `${RAG}/collections/${collectionId}/documents/${documentId}/chunks`
-      : null,
-    errorHandlingFetcher
+  const { data, error, isLoading, size, setSize, mutate } =
+    useSWRInfinite<RagDocumentChunksResponse>(
+      (pageIndex, previousPageData) =>
+        getDocumentChunksPageKey(
+          pageIndex,
+          previousPageData,
+          collectionId,
+          documentId
+        ),
+      errorHandlingFetcher
+    );
+
+  const chunks = useMemo(
+    () => data?.flatMap((page) => page.chunks) ?? [],
+    [data]
   );
+  const stats = data?.[0]?.stats ?? null;
+  const hasMore = data ? data[data.length - 1]?.has_more ?? false : false;
+  const isLoadingMore =
+    isLoading ||
+    (size > 0 && data !== undefined && data[size - 1] === undefined);
+
   return {
-    chunks: data?.chunks ?? [],
-    stats: data?.stats ?? null,
+    chunks,
+    stats,
     isLoading,
+    isLoadingMore,
+    hasMore,
+    loadMore: () => setSize(size + 1),
     error,
     mutate,
   };
@@ -317,6 +381,17 @@ export function useGraphBuildStatus(
     { refreshInterval: 2_000 }
   );
   return { status: data ?? null, isLoading, error, mutate };
+}
+
+export function useUploadStatus(collectionId: string | null, active: boolean) {
+  const { data, error, isLoading, mutate } = useSWR<UploadProgress>(
+    active && collectionId
+      ? `${RAG}/collections/${collectionId}/documents/upload-jobs/status`
+      : null,
+    errorHandlingFetcher,
+    { refreshInterval: 2_000 }
+  );
+  return { progress: data ?? null, isLoading, error, mutate };
 }
 
 export function useGraphStats(collectionId: string | null) {
@@ -403,6 +478,45 @@ export async function uploadDocuments(
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err?.detail || "Failed to upload documents");
+  }
+  return res.json();
+}
+
+/**
+ * Start an async upload/embedding job for a collection and return immediately.
+ * Progress is tracked server-side (keyed by collection_id) — poll it with
+ * useUploadStatus, which survives navigating away from and back to the page.
+ */
+export async function startUploadJob(
+  collectionId: string,
+  files: File[],
+  metadatas?: Record<string, unknown>[]
+): Promise<UploadJobStartResponse> {
+  const formData = new FormData();
+  files.forEach((file) => formData.append("files", file));
+  if (metadatas && metadatas.length > 0) {
+    formData.append("metadatas_json", JSON.stringify(metadatas));
+  }
+  const res = await fetch(
+    `${RAG}/collections/${collectionId}/documents/upload-jobs`,
+    { method: "POST", body: formData }
+  );
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.detail || "Failed to start upload job");
+  }
+  return res.json();
+}
+
+export async function fetchUploadStatus(
+  collectionId: string
+): Promise<UploadProgress | null> {
+  const res = await fetch(
+    `${RAG}/collections/${collectionId}/documents/upload-jobs/status`
+  );
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.detail || "Failed to fetch upload status");
   }
   return res.json();
 }

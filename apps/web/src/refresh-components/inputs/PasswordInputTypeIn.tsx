@@ -143,6 +143,22 @@ export interface PasswordInputTypeInProps
    * The input remains editable so users can type a new value.
    */
   isNonRevealable?: boolean;
+  /**
+   * When true, the reveal toggle is always shown, even when the field is
+   * empty and unfocused. Defaults to false (toggle only shows once the
+   * field has a value or is focused).
+   */
+  alwaysShowToggle?: boolean;
+  /**
+   * Tooltip/aria-label shown when the password is hidden (toggle reveals it).
+   * Defaults to "Show password".
+   */
+  showPasswordLabel?: string;
+  /**
+   * Tooltip/aria-label shown when the password is revealed (toggle hides it).
+   * Defaults to "Hide password".
+   */
+  hidePasswordLabel?: string;
 }
 
 /**
@@ -161,6 +177,9 @@ export interface PasswordInputTypeInProps
 export default function PasswordInputTypeIn({
   ref,
   isNonRevealable = false,
+  alwaysShowToggle = false,
+  showPasswordLabel = "Show password",
+  hidePasswordLabel = "Hide password",
   value,
   onChange,
   onFocus,
@@ -263,13 +282,13 @@ export default function PasswordInputTypeIn({
     [isHidden, realValue, onChange]
   );
 
-  const showToggleButton = hasValue || isFocused;
+  const showToggleButton = alwaysShowToggle || hasValue || isFocused;
   const isRevealed = isPasswordVisible && !effectiveNonRevealable;
   const toggleLabel = effectiveNonRevealable
     ? "Value cannot be revealed"
     : isPasswordVisible
-      ? "Hide password"
-      : "Show password";
+      ? hidePasswordLabel
+      : showPasswordLabel;
 
   return (
     <InputTypeIn

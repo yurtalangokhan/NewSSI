@@ -1,8 +1,18 @@
+import io
 import logging
 from typing import Annotated, Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Query,
+    UploadFile,
+)
 from i18n import t
 from langchain_core.documents import Document
 from pydantic import TypeAdapter, ValidationError
@@ -10,7 +20,8 @@ from pydantic import TypeAdapter, ValidationError
 from langconnect.auth import AuthenticatedUser, require_permission
 from langconnect.database.collections import Collection
 from langconnect.models import SearchQuery, SearchResult
-from langconnect.services import process_document
+from langconnect.models.documents import UploadJobStartResponse, UploadProgress
+from langconnect.services import document_upload_service, process_document
 from langconnect.services.build_lock import (
     ensure_collection_mutable,
     ensure_not_connector_managed_collection,
@@ -142,6 +153,112 @@ async def documents_create(
         )
 
 
+@router.post(
+    "/collections/{collection_id}/documents/upload-jobs",
+    response_model=UploadJobStartResponse,
+    status_code=202,
+)
+async def documents_upload_job_start(
+    user: Annotated[AuthenticatedUser, Depends(require_permission("document:create"))],
+    collection_id: UUID,
+    background_tasks: BackgroundTasks,
+    files: list[UploadFile] = File(...),
+    metadatas_json: str | None = Form(None),
+):
+    """Start an async upload/embedding job and return immediately.
+
+    Poll /collections/{collection_id}/documents/upload-jobs/status to track
+    progress. Progress survives page navigation on the frontend since it is
+    tracked server-side, keyed by collection_id.
+    """
+    await ensure_not_connector_managed_collection(str(collection_id))
+    ensure_collection_mutable(str(collection_id))
+
+    # Validate the collection exists (and is owned by this user) up front,
+    # matching the synchronous endpoint's 404 behavior.
+    collection = Collection(collection_id=str(collection_id), user_id=user.identity)
+    await collection.ensure_exists()
+
+    if not metadatas_json:
+        metadatas: list[dict] | list[None] = [None] * len(files)
+    else:
+        try:
+            metadatas = _metadata_adapter.validate_json(metadatas_json)
+        except ValidationError as e:
+            raise HTTPException(status_code=400, detail=e.errors())
+        if len(metadatas) != len(files):
+            raise HTTPException(
+                status_code=400,
+                detail=t(
+                    "document.metadata_count_mismatch",
+                    metadata_count=len(metadatas),
+                    file_count=len(files),
+                ),
+            )
+
+    existing = document_upload_service.get_upload_progress(str(collection_id))
+    if (
+        existing is not None
+        and existing.status in document_upload_service.ACTIVE_UPLOAD_STATUSES
+    ):
+        return UploadJobStartResponse(
+            collection_id=str(collection_id),
+            status=existing.status,
+            message=t("document.upload_already_in_progress"),
+        )
+
+    # Read file contents up front and rewrap them as fresh in-memory
+    # UploadFile objects. Starlette closes the original UploadFile handles
+    # once this request finishes, which happens before a BackgroundTasks
+    # callback gets a chance to read from them.
+    detached_files: list[UploadFile] = []
+    for f in files:
+        contents = await f.read()
+        detached_files.append(
+            UploadFile(
+                file=io.BytesIO(contents), filename=f.filename, headers=f.headers
+            )
+        )
+
+    document_upload_service.initialize_upload_progress(
+        str(collection_id), total_files=len(files)
+    )
+    background_tasks.add_task(
+        document_upload_service.run_upload_job,
+        str(collection_id),
+        user.identity,
+        detached_files,
+        metadatas,
+    )
+
+    return UploadJobStartResponse(
+        collection_id=str(collection_id),
+        status="pending",
+        message=t("document.upload_started"),
+    )
+
+
+@router.get(
+    "/collections/{collection_id}/documents/upload-jobs/status",
+    response_model=UploadProgress | None,
+)
+async def documents_upload_job_status(
+    user: Annotated[AuthenticatedUser, Depends(require_permission("document:read"))],
+    collection_id: UUID,
+):
+    """Get the current upload job progress for a collection.
+
+    Returns ``null`` when no upload job has ever been started for this
+    collection.
+    """
+    # Ensure the collection exists and is owned by this user before exposing
+    # any progress for it.
+    collection = Collection(collection_id=str(collection_id), user_id=user.identity)
+    await collection.ensure_exists()
+
+    return document_upload_service.get_upload_progress(str(collection_id))
+
+
 @router.get(
     "/collections/{collection_id}/documents", response_model=list[dict[str, Any]]
 )
@@ -177,35 +294,31 @@ async def documents_list_chunks(
     user: Annotated[AuthenticatedUser, Depends(require_permission("document:read"))],
     collection_id: UUID,
     document_id: str,
+    limit: int = Query(20, ge=1, le=200),
+    offset: int = Query(0, ge=0),
 ):
-    """Lists all chunks and file stats for a specific document (file_id) in a collection."""
+    """Lists a page of chunks (plus file-level stats) for a document (file_id).
+
+    Chunks are paginated — large files can have thousands of chunks, and
+    fetching them all in one response is heavy on both Milvus and the
+    browser. Use `stats.total_chunks` / `has_more` to drive incremental
+    loading on the client.
+    """
     collection = Collection(
         collection_id=str(collection_id),
         user_id=user.identity,
     )
-    chunks = await collection.get_chunks(file_id=document_id)
+    stats = await collection.get_chunk_stats(file_id=document_id)
+    chunks = await collection.get_chunks(
+        file_id=document_id, limit=limit, offset=offset
+    )
 
-    # Fallbacks in case stats weren't saved in metadata for older chunks
-    total_chunks = len(chunks)
-    first_meta = chunks[0].get("metadata", {}) if chunks else {}
-
-    stats = {
-        "total_chunks": first_meta.get("file_total_chunks", total_chunks),
-        "avg_chars": first_meta.get("file_avg_chars", 0),
-        "avg_tokens": first_meta.get("file_avg_tokens", 0),
+    return {
+        "stats": stats,
+        "chunks": chunks,
+        "total_chunks": stats["total_chunks"],
+        "has_more": offset + len(chunks) < stats["total_chunks"],
     }
-
-    # Re-calculate averages if not present in metadata (older docs)
-    if total_chunks > 0 and stats["avg_chars"] == 0:
-        total_chars = sum(len(c.get("content", "")) for c in chunks)
-        total_tokens = sum(
-            c.get("metadata", {}).get("token_count", len(c.get("content", "")) // 4)
-            for c in chunks
-        )
-        stats["avg_chars"] = round(total_chars / total_chunks)
-        stats["avg_tokens"] = round(total_tokens / total_chunks)
-
-    return {"stats": stats, "chunks": chunks}
 
 
 @router.delete(

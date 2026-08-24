@@ -16,18 +16,21 @@ import { withPinnedDocumentGroups } from "@/app/app/message/messageComponents/ti
 import { usePacedTurnGroups } from "@/app/app/message/messageComponents/timeline/hooks/usePacedTurnGroups";
 import MessageToolbar from "@/app/app/message/messageComponents/MessageToolbar";
 import { LlmDescriptor, LlmManager } from "@/lib/hooks";
+import { AgentId } from "@/app/admin/agents/interfaces";
 import { Message } from "@/app/app/interfaces";
 import Text from "@/refresh-components/texts/Text";
 import { AgentTimeline } from "@/app/app/message/messageComponents/timeline/AgentTimeline";
 import GraphStageStrip from "@/app/app/message/messageComponents/timeline/GraphStageStrip";
 import { cn } from "@/lib/utils";
 import { useAppBackground } from "@/providers/AppBackgroundProvider";
+import { useTranslation } from "react-i18next";
 
 // Type for the regeneration factory function passed from ChatUI
 export type RegenerationFactory = (regenerationRequest: {
   messageId: number;
   parentMessage: Message;
   forceSearch?: boolean;
+  forcedPersonaId?: AgentId | null;
 }) => (modelOverride: LlmDescriptor) => Promise<void>;
 
 export interface AgentMessageProps {
@@ -44,6 +47,8 @@ export interface AgentMessageProps {
   onRegenerate?: RegenerationFactory;
   // Parent message needed to construct regeneration request
   parentMessage?: Message | null;
+  // persona_id that actually produced this message (for retry-to-same-agent)
+  originalPersonaId?: AgentId | null;
   // Duration in seconds for processing this message (agent messages only)
   processingDurationSeconds?: number;
   // Final message text - used as fallback when packets are empty (for historical messages)
@@ -73,6 +78,7 @@ function arePropsEqual(
     prev.otherMessagesCanSwitchTo === next.otherMessagesCanSwitchTo &&
     prev.onRegenerate === next.onRegenerate &&
     prev.parentMessage?.messageId === next.parentMessage?.messageId &&
+    prev.originalPersonaId === next.originalPersonaId &&
     prev.llmManager?.isLoadingProviders ===
       next.llmManager?.isLoadingProviders &&
     prev.processingDurationSeconds === next.processingDurationSeconds &&
@@ -93,12 +99,14 @@ const AgentMessage = React.memo(function AgentMessage({
   onMessageSelection,
   onRegenerate,
   parentMessage,
+  originalPersonaId,
   processingDurationSeconds,
   finalMessageText,
 }: AgentMessageProps) {
   const markdownRef = useRef<HTMLDivElement>(null);
   const finalAnswerRef = useRef<HTMLDivElement>(null);
   const { foregroundTextClass, foregroundTextStyle } = useAppBackground();
+  const { t } = useTranslation();
 
   // If packets are empty but we have finalMessageText (historical message),
   // create synthetic packets for rendering
@@ -166,6 +174,7 @@ const AgentMessage = React.memo(function AgentMessage({
     isComplete,
     onRenderComplete,
     finalAnswerComing,
+    streamSilentSeconds,
     toolProcessingDuration,
   } = usePacketProcessor(effectivePackets, nodeId);
 
@@ -293,6 +302,23 @@ const AgentMessage = React.memo(function AgentMessage({
             ))}
           </div>
         )}
+        {/* The backend stream can go quiet for minutes: Ollama withholds
+            tool-call arguments until the call is complete, so a model writing
+            a document reports nothing meanwhile. Show that work continues
+            rather than leaving the answer looking frozen. */}
+        {streamSilentSeconds !== null && !stopPacketSeen && (
+          // Same shimmer the timeline header uses while streaming, so a quiet
+          // stretch reads as the same "working" state rather than a new kind
+          // of message. No color class or inline color here: the gradient is
+          // painted through the glyphs, which needs the text transparent.
+          <Text
+            as="p"
+            secondaryBody
+            className="animate-shimmer mt-1 bg-[length:200%_100%] bg-[linear-gradient(90deg,var(--shimmer-base)_10%,var(--shimmer-highlight)_40%,var(--shimmer-base)_70%)] bg-clip-text text-transparent"
+          >
+            {t("agentMessage.stillWorking", { seconds: streamSilentSeconds })}
+          </Text>
+        )}
         {/* Show stopped message when user cancelled and no display content */}
         {visibleDisplayGroups.length === 0 &&
           stopReason === StopReason.USER_CANCELLED && (
@@ -326,6 +352,7 @@ const AgentMessage = React.memo(function AgentMessage({
           parentMessage={parentMessage}
           llmManager={llmManager}
           currentModelName={chatState.overriddenModel}
+          originalPersonaId={originalPersonaId}
           citations={citations}
           documentMap={documentMap}
         />

@@ -49,6 +49,16 @@
   "mcp": {
     "tool_not_found": "Tool '{tool_name}' not found"
   },
+  "rag_tool": {
+    "database_search": {
+      "name": "Database Search",
+      "description": "Searches the documents connected to this agent."
+    },
+    "graph_search": {
+      "name": "Graph Search",
+      "description": "Searches the knowledge graph connected to this agent."
+    }
+  },
   "datasource": {
     "duplicate_name": "A data source named '{name}' already exists. Please choose a different name.",
     "unknown_connector": "Unknown connector: {connector_type}",

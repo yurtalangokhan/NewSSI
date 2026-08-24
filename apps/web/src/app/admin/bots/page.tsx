@@ -75,7 +75,7 @@ export default function Page() {
 
   return (
     <SettingsLayouts.Root>
-      <SettingsLayouts.Header icon={route.icon} title={route.title} separator />
+      <SettingsLayouts.Header icon={route.icon} title={route.titleKey ? t(route.titleKey, { defaultValue: route.title }) : route.title} separator />
       <SettingsLayouts.Body>
         <AdminOverviewPanel
           icon={route.icon}

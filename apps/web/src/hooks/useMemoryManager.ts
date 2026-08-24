@@ -1,4 +1,5 @@
 import { useRef, useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { MemoryItem } from "@/lib/types";
 
 export interface LocalMemory {
@@ -24,6 +25,7 @@ export function useMemoryManager({
   onDeleteMemory,
   onNotify,
 }: UseMemoryManagerArgs) {
+  const { t } = useTranslation();
   const [localMemories, setLocalMemories] = useState<LocalMemory[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const initialMemoriesRef = useRef<MemoryItem[]>([]);
@@ -116,8 +118,8 @@ export function useMemoryManager({
       if (memoriesChanged) {
         void queueSave(
           newMemories,
-          "Memory saved",
-          "Failed to save memory"
+          t("memories.memorySaved"),
+          t("memories.memorySaveFailed")
         );
       }
     }
@@ -128,7 +130,7 @@ export function useMemoryManager({
       ...prev,
     ]);
     return newId;
-  }, [localMemories, queueSave]);
+  }, [localMemories, queueSave, t]);
 
   const handleUpdateMemory = useCallback((index: number, value: string) => {
     setLocalMemories((prev) =>
@@ -153,9 +155,9 @@ export function useMemoryManager({
         const success = await onDeleteMemory(memory.dbId);
         if (success) {
           setLocalMemories((prev) => prev.filter((_, i) => i !== index));
-          onNotify("Memory deleted", "success");
+          onNotify(t("memories.memoryDeleted"), "success");
         } else {
-          onNotify("Failed to delete memory", "error");
+          onNotify(t("memories.memoryDeleteFailed"), "error");
         }
         return;
       }
@@ -174,14 +176,14 @@ export function useMemoryManager({
 
       const success = await queueSave(
         newMemories,
-        "Memory deleted",
-        "Failed to delete memory"
+        t("memories.memoryDeleted"),
+        t("memories.memoryDeleteFailed")
       );
       if (success) {
         setLocalMemories((prev) => prev.filter((_, i) => i !== index));
       }
     },
-    [localMemories, onDeleteMemory, onNotify, queueSave]
+    [localMemories, onDeleteMemory, onNotify, queueSave, t]
   );
 
   const handleBlurMemory = useCallback(
@@ -206,9 +208,13 @@ export function useMemoryManager({
 
       if (!memoriesChanged) return;
 
-      await queueSave(newMemories, "Memory saved", "Failed to save memory");
+      await queueSave(
+        newMemories,
+        t("memories.memorySaved"),
+        t("memories.memorySaveFailed")
+      );
     },
-    [localMemories, queueSave]
+    [localMemories, queueSave, t]
   );
 
   const filteredMemories = localMemories

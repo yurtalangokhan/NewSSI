@@ -280,7 +280,7 @@ def build_specs() -> dict[str, EnvFileSpec]:
                 var("OLLAMA_BASE_URL", "Ollama base URL.", f"http://{common_host}:11434"),
                 var("OLLAMA_MODEL", "Default Ollama chat model.", "llama3.1:8b"),
                 var("OLLAMA_EMBED_MODEL", "Default Ollama embedding model.", "nomic-embed-text"),
-                var("DEFAULT_MODEL", "Default model provider/name.", "ollama"),
+                var("DEFAULT_MODEL", "Default model provider/name.", "llama3.1:8b"),
                 var("EMBEDDING_PROVIDER", "Embedding provider.", "ollama"),
                 var("AIRBYTE_API_URL", "Airbyte API URL.", f"http://{common_host}:8001/api/v1"),
                 var("AIRBYTE_SYNC_POLL_INTERVAL_SECONDS", "Airbyte sync polling interval.", "30"),

@@ -71,6 +71,85 @@ class TestLazyLoadingAgentBase:
         with pytest.raises(RuntimeError, match="Agent graph not created"):
             agent.get_graph()
 
+    @pytest.mark.asyncio
+    async def test_aget_state_history_delegates_to_the_underlying_graph(self):
+        """CheckpointBranchService.find_fork_point (retry checkpoint
+        forking) calls agent.aget_state_history — every LazyLoadingAgent
+        subclass (ConfigurableMCPAgent, DynamicAgent, CommandAgent,
+        GitHubMCPAgent, and the supervisor agents) must expose it via the
+        same delegate-to-self._graph pattern aget_state already uses,
+        or retry silently falls back to append-to-tip for all of them."""
+
+        class DummyHistoryGraph:
+            async def aget_state_history(self, config=None, **kwargs):
+                yield "snapshot-1"
+                yield "snapshot-2"
+
+        agent = TestLazyLoadingAgent()
+        agent._loaded = True
+        agent._graph = DummyHistoryGraph()
+
+        snapshots = [s async for s in agent.aget_state_history(config={})]
+
+        assert snapshots == ["snapshot-1", "snapshot-2"]
+
+    @pytest.mark.asyncio
+    async def test_aget_state_history_ensures_the_agent_is_loaded_first(self):
+        class DummyHistoryGraph:
+            async def aget_state_history(self, config=None, **kwargs):
+                yield "snapshot-1"
+
+        agent = TestLazyLoadingAgent()
+        agent._graph = DummyHistoryGraph()
+        assert not agent._loaded
+
+        snapshots = [s async for s in agent.aget_state_history(config={})]
+
+        assert agent._loaded
+        assert snapshots == ["snapshot-1"]
+
+    @pytest.mark.asyncio
+    async def test_aupdate_state_delegates_to_the_underlying_graph(self):
+        """AgentHelpers._handle_input calls agent.aupdate_state to replace an
+        edited message's content in place on a forked checkpoint — every
+        LazyLoadingAgent subclass must expose it via the same
+        delegate-to-self._graph pattern aget_state already uses, or editing
+        a message sent to a custom agent raises AttributeError."""
+
+        class DummyUpdateGraph:
+            def __init__(self):
+                self.seen_config = None
+                self.seen_values = None
+
+            async def aupdate_state(self, config, values, **kwargs):
+                self.seen_config = config
+                self.seen_values = values
+                return {"configurable": {"checkpoint_id": "new-id"}}
+
+        agent = TestLazyLoadingAgent()
+        agent._loaded = True
+        graph = DummyUpdateGraph()
+        agent._graph = graph
+
+        result = await agent.aupdate_state({"configurable": {}}, {"messages": ["x"]})
+
+        assert result == {"configurable": {"checkpoint_id": "new-id"}}
+        assert graph.seen_values == {"messages": ["x"]}
+
+    @pytest.mark.asyncio
+    async def test_aupdate_state_ensures_the_agent_is_loaded_first(self):
+        class DummyUpdateGraph:
+            async def aupdate_state(self, config, values, **kwargs):
+                return {"configurable": {}}
+
+        agent = TestLazyLoadingAgent()
+        agent._graph = DummyUpdateGraph()
+        assert not agent._loaded
+
+        await agent.aupdate_state({"configurable": {}}, {"messages": []})
+
+        assert agent._loaded
+
     def test_get_langgraph_store_uses_store_service(self):
         """Test that long-term memory resolves the global LangGraph store."""
         agent = TestLazyLoadingAgent()

@@ -1,5 +1,7 @@
 "use client";
 
+import HttpErrorPage from "@/components/errorPages/HttpErrorPage";
+
 import AdminSidebar from "@/sections/sidebar/AdminSidebar";
 import { usePathname, useRouter } from "next/navigation";
 import { useSettingsContext } from "@/providers/SettingsProvider";
@@ -86,6 +88,12 @@ export function ClientLayout({
   const hasOwnLayout = SETTINGS_LAYOUT_PREFIXES.some((prefix) =>
     pathname.startsWith(prefix)
   );
+
+  const isRouteDisabled = routeConfig?.enabled === false;
+
+  if (isRouteDisabled) {
+    return <HttpErrorPage code={404} />;
+  }
 
   if (!canViewRoute) {
     return null;

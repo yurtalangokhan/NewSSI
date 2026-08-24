@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback } from "react";
 import { usePathname } from "next/navigation";
 import { useSettingsContext } from "@/providers/SettingsProvider";
 import { CgArrowsExpandUpLeft } from "react-icons/cg";
@@ -18,23 +19,16 @@ import { usePaidEnterpriseFeaturesEnabled } from "@/components/settings/usePaidE
 import { CombinedSettings } from "@/interfaces/settings";
 import SidebarTab from "@/refresh-components/buttons/SidebarTab";
 import SidebarBody from "@/sections/sidebar/SidebarBody";
-import { SvgArrowUpCircle } from "@opal/icons";
 import { ADMIN_PATHS, sidebarItem } from "@/lib/admin-routes";
 import UserAvatarPopover from "@/sections/sidebar/UserAvatarPopover";
 import { useTranslation } from "react-i18next";
+import { useAppSidebarContext } from "@/providers/AppSidebarProvider";
 
 const connectors_items = (
   t: (key: string, options?: { defaultValue?: string }) => string
 ) => [
   sidebarItem(ADMIN_PATHS.INDEXING_STATUS, t),
   sidebarItem(ADMIN_PATHS.ADD_CONNECTOR, t),
-];
-
-const document_management_items = (
-  t: (key: string, options?: { defaultValue?: string }) => string
-) => [
-  sidebarItem(ADMIN_PATHS.DOCUMENT_SETS, t),
-  sidebarItem(ADMIN_PATHS.DOCUMENT_EXPLORER, t),
 ];
 
 const custom_agents_items = (
@@ -77,14 +71,6 @@ const collections = (
           },
         ]
       : []),
-    ...(vectorDbEnabled
-      ? [
-          {
-            name: t("admin.navigation.sections.documentManagement"),
-            items: document_management_items(t),
-          },
-        ]
-      : []),
     {
       name: t("admin.navigation.sections.customAgents"),
       items: custom_agents_items(t, isCurator, enableEnterprise),
@@ -102,20 +88,9 @@ const collections = (
           {
             name: t("admin.navigation.sections.configuration"),
             items: [
-              sidebarItem(ADMIN_PATHS.CHAT_PREFERENCES, t),
               sidebarItem(ADMIN_PATHS.LLM_MODELS, t),
               sidebarItem(ADMIN_PATHS.WEB_SEARCH, t),
-              sidebarItem(ADMIN_PATHS.IMAGE_GENERATION, t),
-              sidebarItem(ADMIN_PATHS.CODE_INTERPRETER, t),
               sidebarItem(ADMIN_PATHS.MAIL_CONFIGS, t),
-              ...(!enableCloud && vectorDbEnabled
-                ? [
-                    {
-                      ...sidebarItem(ADMIN_PATHS.SEARCH_SETTINGS, t),
-                      error: settings?.settings.needs_reindexing,
-                    },
-                  ]
-                : []),
               sidebarItem(ADMIN_PATHS.DOCUMENT_PROCESSING, t),
               ...(kgExposed
                 ? [sidebarItem(ADMIN_PATHS.KNOWLEDGE_GRAPH, t)]
@@ -127,7 +102,6 @@ const collections = (
             items: [
               sidebarItem(ADMIN_PATHS.USERS, t),
               ...(enableEnterprise ? [sidebarItem(ADMIN_PATHS.GROUPS, t)] : []),
-              sidebarItem(ADMIN_PATHS.API_KEYS, t),
               sidebarItem(ADMIN_PATHS.ROLES, t),
               sidebarItem(ADMIN_PATHS.ORGANIZATIONS, t),
             ],
@@ -182,6 +156,11 @@ export default function AdminSidebar({
   const settings = useSettingsContext();
   const { data: billingData } = useBillingInformation();
   const { data: licenseData } = useLicense();
+  const { folded, setFolded } = useAppSidebarContext();
+
+  const handleFoldClick = useCallback(() => {
+    setFolded((prev) => !prev);
+  }, [setFolded]);
 
   // Use runtime license check for enterprise features
   // This checks settings.ee_features_enabled (set by backend based on license status)
@@ -211,14 +190,14 @@ export default function AdminSidebar({
       ...collection,
       items: isPermissionsLoading
         ? []
-        : collection.items.filter((item) =>
-            hasAllPermissions(item.requiredPermissions)
-          ),
+        : collection.items
+            .filter((item) => item.enabled !== false)
+            .filter((item) => hasAllPermissions(item.requiredPermissions)),
     }))
     .filter((collection) => collection.items.length > 0);
 
   return (
-    <SidebarWrapper>
+    <SidebarWrapper folded={folded} onFoldClick={handleFoldClick}>
       <SidebarBody
         scrollKey="admin-sidebar"
         actionButtons={
@@ -227,40 +206,63 @@ export default function AdminSidebar({
               <CgArrowsExpandUpLeft className={className} size={16} />
             )}
             href="/app"
+            folded={folded}
           >
             {t("admin.navigation.exitAdmin")}
           </SidebarTab>
         }
         footer={
           <div className="flex flex-col gap-2">
-            {settings.webVersion && (
+            {settings.webVersion && !folded && (
               <Text as="p" text02 secondaryBody className="px-2">
                 {t("admin.navigation.version", {
                   version: settings.webVersion,
                 })}
               </Text>
             )}
-            <UserAvatarPopover />
+            <UserAvatarPopover folded={folded} />
           </div>
         }
       >
         {items.map((collection, index) => (
-          <SidebarSection key={index} title={collection.name}>
-            <div className="flex flex-col w-full">
-              {collection.items.map(({ link, icon: Icon, name }, index) => (
-                <SidebarTab
-                  key={index}
-                  href={link}
-                  transient={pathname.startsWith(link)}
-                  leftIcon={({ className }) => (
-                    <Icon className={className} size={16} />
-                  )}
-                >
-                  {name}
-                </SidebarTab>
-              ))}
-            </div>
-          </SidebarSection>
+          <div key={index} className="flex flex-col">
+            {!folded && (
+              <SidebarSection title={collection.name}>
+                <div className="flex flex-col w-full">
+                  {collection.items.map(({ link, icon: Icon, name }, itemIndex) => (
+                    <SidebarTab
+                      key={itemIndex}
+                      href={link}
+                      transient={pathname.startsWith(link)}
+                      leftIcon={({ className }) => (
+                        <Icon className={className} size={16} />
+                      )}
+                      folded={folded}
+                    >
+                      {name}
+                    </SidebarTab>
+                  ))}
+                </div>
+              </SidebarSection>
+            )}
+            {folded && (
+              <div className="flex flex-col w-full gap-0.5 mb-2">
+                {collection.items.map(({ link, icon: Icon, name }, itemIndex) => (
+                  <SidebarTab
+                    key={itemIndex}
+                    href={link}
+                    transient={pathname.startsWith(link)}
+                    leftIcon={({ className }) => (
+                      <Icon className={className} size={16} />
+                    )}
+                    folded={folded}
+                  >
+                    {name}
+                  </SidebarTab>
+                ))}
+              </div>
+            )}
+          </div>
         ))}
       </SidebarBody>
     </SidebarWrapper>

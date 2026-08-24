@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import io
 import logging
+import re
 from typing import Any
 
 from service.documents import header_footer
@@ -56,6 +57,10 @@ _IMAGE_TARGET_WIDTH_PT = 420
 _LIST_INDENT_STEP_PT = 14
 _LIST_BASE_INDENT_PT = 14
 _COVER_LOGO_WIDTH_PT = 115
+
+
+_SLUG_STRIP_RE = re.compile(r"[^\w\s-]")
+_SLUG_SPACE_RE = re.compile(r"[\s]+")
 
 
 def _escape_pdf_xml(text: str) -> str:
@@ -145,9 +150,25 @@ def _pdf_styles(
 # ---------------------------------------------------------------------------
 
 
+def _heading_anchor(text: str) -> str:
+    """Slug a heading the way markdown tooling links to it."""
+    slug = _SLUG_STRIP_RE.sub("", text).strip().lower()
+    return _SLUG_SPACE_RE.sub("-", slug)
+
+
+def _heading_anchors(blocks: list[Block]) -> set[str]:
+    """Every in-document target a `[...](#slug)` link could point at."""
+    anchors: set[str] = set()
+    for block in blocks:
+        if isinstance(block, HeadingBlock):
+            anchors.add(_heading_anchor("".join(span.text for span in block.spans)))
+    return anchors
+
+
 def _spans_to_markup(spans: list[InlineSpan], styles: dict[str, Any] | None = None) -> str:
     mono_font = (styles or {}).get("mono_font", "Courier")
     link_color = (styles or {}).get("link_color", "#0563C1")
+    known_anchors: set[str] = (styles or {}).get("heading_anchors") or set()
 
     parts: list[str] = []
     for span in spans:
@@ -162,6 +183,14 @@ def _spans_to_markup(spans: list[InlineSpan], styles: dict[str, Any] | None = No
         if span.italic:
             text = f"<i>{text}</i>"
         if span.link:
+            # An unresolvable internal anchor is fatal in ReportLab ("undefined
+            # destination target"), and models routinely write their own table
+            # of contents whose slugs do not match any heading. Such a link
+            # degrades to plain text; the document still has a real TOC and
+            # PDF bookmarks to navigate by.
+            if span.link.startswith("#") and span.link[1:] not in known_anchors:
+                parts.append(text)
+                continue
             text = f'<link href="{_escape_pdf_xml(span.link)}" color="{link_color}">{text}</link>'
         parts.append(text)
     return "".join(parts)
@@ -246,7 +275,11 @@ def _pdf_flowables_for_block(block: Block, styles: dict[str, Any]) -> list[Any]:
 
     if isinstance(block, HeadingBlock):
         style = styles["headings"].get(block.level, styles["headings"][6])
-        return [Paragraph(_spans_to_markup(block.spans, styles), style), Spacer(1, 6)]
+        # Name the heading so `[...](#slug)` links resolve, matching what the
+        # DOCX renderer does with bookmarks.
+        anchor = _heading_anchor("".join(span.text for span in block.spans))
+        markup = f'<a name="{_escape_pdf_xml(anchor)}"/>{_spans_to_markup(block.spans, styles)}'
+        return [Paragraph(markup, style), Spacer(1, 6)]
     if isinstance(block, ParagraphBlock):
         return [Paragraph(_spans_to_markup(block.spans, styles), styles["body"]), Spacer(1, 6)]
     if isinstance(block, BulletListBlock):
@@ -631,6 +664,7 @@ def render_pdf(title: str | None, markdown: str, options: DocumentOptions | None
     style = resolve_effective_style(options)
     blocks = prepare_blocks(markdown, options)
     styles = _pdf_styles(style, options.tables)
+    styles["heading_anchors"] = _heading_anchors(blocks)
     page_size = _resolve_page_size(options.page)
     margins = options.page.margins
     substitutions = {

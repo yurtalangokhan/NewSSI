@@ -1,27 +1,23 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import CardSection from "@/components/admin/CardSection";
 import Text from "@/refresh-components/texts/Text";
-import {
-  fetchGraphLabelsPaginated,
-  fetchGraphRelTypesPaginated,
-  type PaginatedCounts,
-} from "@/lib/langconnect";
+import { type PaginatedCounts, type PaginatedCountItem } from "@/lib/langconnect";
 import { cn } from "@/lib/utils";
-import { ThreeDotsLoader } from "@/components/Loading";
-import { snakeToHumanReadable, useDebounce } from "@/app/admin/kg/utils";
+import { snakeToHumanReadable } from "@/app/admin/kg/utils";
 import { useTranslation } from "react-i18next";
 
 const PAGE_SIZE = 10;
 
 interface GraphStatsCardProps {
   collectionId: string | null;
+  availableLabels: PaginatedCountItem[];
+  availableRelTypes: PaginatedCountItem[];
   selectedLabels: Set<string>;
   selectedRelTypes: Set<string>;
   onToggleLabel: (label: string) => void;
   onToggleRelType: (relType: string) => void;
-  scopeLabel?: string;
   totalNodes: number;
   totalEdges: number;
   visibleNodes: number;
@@ -33,20 +29,25 @@ function FilterBadge({
   count,
   selected,
   onToggle,
+  disabled,
 }: {
   name: string;
   count: number;
   selected: boolean;
   onToggle: () => void;
+  disabled?: boolean;
 }) {
   return (
     <button
       onClick={onToggle}
+      disabled={disabled}
       className={cn(
         "flex w-full items-center justify-between gap-2 rounded-08 border px-2.5 py-1.5 text-left text-xs transition-colors",
-        selected
-          ? "border-theme-primary-04 bg-theme-primary-01 text-theme-primary-07"
-          : "border-border-01 bg-background-tint-00 hover:bg-background-neutral-01 text-text-04"
+        disabled
+          ? "border-border-01 bg-background-tint-00 text-text-03 opacity-50 cursor-not-allowed"
+          : selected
+            ? "border-theme-primary-04 bg-theme-primary-01 text-theme-primary-07"
+            : "border-border-01 bg-background-tint-00 hover:bg-background-neutral-01 text-text-04"
       )}
     >
       <span className="truncate capitalize">{snakeToHumanReadable(name)}</span>
@@ -66,121 +67,96 @@ function FilterBadge({
 
 export default function GraphStatsCard({
   collectionId,
+  availableLabels,
+  availableRelTypes,
   selectedLabels,
   selectedRelTypes,
   onToggleLabel,
   onToggleRelType,
-  scopeLabel,
   totalNodes,
   totalEdges,
   visibleNodes,
   visibleEdges,
 }: GraphStatsCardProps) {
   const { t } = useTranslation();
-  const [labelData, setLabelData] = useState<PaginatedCounts | null>(null);
-  const [relData, setRelData] = useState<PaginatedCounts | null>(null);
-  const [labelsLoading, setLabelsLoading] = useState(false);
-  const [relLoading, setRelLoading] = useState(false);
   const [labelPage, setLabelPage] = useState(1);
   const [relPage, setRelPage] = useState(1);
   const [labelsSearch, setLabelsSearch] = useState("");
   const [relSearch, setRelSearch] = useState("");
 
-  const relTypeFilter = Array.from(selectedRelTypes);
-  const labelFilter = Array.from(selectedLabels);
-  const relTypeFilterKey = relTypeFilter.join(",");
-  const labelFilterKey = labelFilter.join(",");
+  // Labels are filtered/paginated client-side from `availableLabels` (the
+  // labels actually present in the currently loaded graph view), not fetched
+  // from the collection-wide backend endpoint — that endpoint counts every
+  // entity in the collection, which can list labels that never appear on
+  // screen (e.g. absorbed as minority members of other clusters) and
+  // selecting one would filter the graph down to nothing.
+  const filteredLabelItems = useMemo(() => {
+    const q = labelsSearch.trim().toLowerCase();
+    if (!q) return availableLabels;
+    return availableLabels.filter((item) => item.name.toLowerCase().includes(q));
+  }, [availableLabels, labelsSearch]);
 
-  const loadLabels = useCallback(
-    async (page: number, search: string) => {
-      if (!collectionId) return;
-      setLabelsLoading(true);
-      try {
-        const data = await fetchGraphLabelsPaginated(collectionId, {
-          page,
-          pageSize: PAGE_SIZE,
-          search: search || undefined,
-          scopeLabel,
-          relTypeFilter: relTypeFilter.length ? relTypeFilter : undefined,
-        });
-        setLabelData(data);
-      } catch {
-        // ignore
-      } finally {
-        setLabelsLoading(false);
-      }
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [collectionId, scopeLabel, relTypeFilterKey]
-  );
+  const labelData: PaginatedCounts = useMemo(() => {
+    const total = filteredLabelItems.length;
+    const start = (labelPage - 1) * PAGE_SIZE;
+    return {
+      items: filteredLabelItems.slice(start, start + PAGE_SIZE),
+      total,
+      page: labelPage,
+      page_size: PAGE_SIZE,
+      has_next: start + PAGE_SIZE < total,
+    };
+  }, [filteredLabelItems, labelPage]);
 
-  const loadRelTypes = useCallback(
-    async (page: number, search: string) => {
-      if (!collectionId) return;
-      setRelLoading(true);
-      try {
-        const data = await fetchGraphRelTypesPaginated(collectionId, {
-          page,
-          pageSize: PAGE_SIZE,
-          search: search || undefined,
-          scopeLabel,
-          labelFilter: labelFilter.length ? labelFilter : undefined,
-        });
-        setRelData(data);
-      } catch {
-        // ignore
-      } finally {
-        setRelLoading(false);
-      }
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [collectionId, scopeLabel, labelFilterKey]
-  );
+  // With only one (or zero) entity label available in the current scope —
+  // e.g. inside a single label's sub-clusters — there's nothing meaningful
+  // to filter or search for, so disable the controls instead of offering a
+  // filter that can only ever select everything or nothing.
+  const labelsDisabled = availableLabels.length <= 1;
 
-  // Reset pages and reload when collection/scope/filters change
   useEffect(() => {
     setLabelPage(1);
     setLabelsSearch("");
-    loadLabels(1, "");
-  }, [loadLabels]);
+  }, [availableLabels]);
+
+  const handleLabelsSearchChange = useCallback((value: string) => {
+    setLabelsSearch(value);
+    setLabelPage(1);
+  }, []);
+
+  // Relationship types are filtered/paginated client-side from
+  // `availableRelTypes` (the types actually present among edges in the
+  // currently loaded graph view), not a separately-scoped backend query —
+  // that endpoint could list types that don't belong to any edge actually
+  // on screen (e.g. from the overview scope) after drilling into a
+  // sub-cluster or neighborhood view.
+  const filteredRelItems = useMemo(() => {
+    const q = relSearch.trim().toLowerCase();
+    if (!q) return availableRelTypes;
+    return availableRelTypes.filter((item) => item.name.toLowerCase().includes(q));
+  }, [availableRelTypes, relSearch]);
+
+  const relData: PaginatedCounts = useMemo(() => {
+    const total = filteredRelItems.length;
+    const start = (relPage - 1) * PAGE_SIZE;
+    return {
+      items: filteredRelItems.slice(start, start + PAGE_SIZE),
+      total,
+      page: relPage,
+      page_size: PAGE_SIZE,
+      has_next: start + PAGE_SIZE < total,
+    };
+  }, [filteredRelItems, relPage]);
 
   useEffect(() => {
     setRelPage(1);
     setRelSearch("");
-    loadRelTypes(1, "");
-  }, [loadRelTypes]);
+  }, [availableRelTypes]);
 
-  const debouncedLoadLabels = useDebounce(
-    useCallback((value: string) => {
-      setLabelPage(1);
-      loadLabels(1, value);
-    }, [loadLabels]),
-    300
-  );
-
-  const handleLabelsSearchChange = useCallback(
-    (value: string) => {
-      setLabelsSearch(value);
-      debouncedLoadLabels(value);
-    },
-    [debouncedLoadLabels]
-  );
-
-  const debouncedLoadRelTypes = useDebounce(
-    useCallback((value: string) => {
-      setRelPage(1);
-      loadRelTypes(1, value);
-    }, [loadRelTypes]),
-    300
-  );
-
-  const handleRelSearchChange = useCallback(
-    (value: string) => {
-      setRelSearch(value);
-      debouncedLoadRelTypes(value);
-    },
-    [debouncedLoadRelTypes]
-  );
+  const handleRelSearchChange = useCallback((value: string) => {
+    setRelSearch(value);
+    setRelPage(1);
+  }, []);
 
   if (!collectionId) return null;
 
@@ -248,12 +224,16 @@ export default function GraphStatsCard({
             placeholder={t("admin.kg.searchLabelsPlaceholder")}
             value={labelsSearch}
             onChange={(e) => handleLabelsSearchChange(e.target.value)}
-            className="h-7 w-full rounded-06 border border-border-01 bg-background-tint-00 pl-7 pr-2 text-xs text-text-04 placeholder:text-text-03 focus:outline-none focus:ring-1 focus:ring-theme-primary-04"
+            disabled={labelsDisabled}
+            className="h-7 w-full rounded-06 border border-border-01 bg-background-tint-00 pl-7 pr-2 text-xs text-text-04 placeholder:text-text-03 focus:outline-none focus:ring-1 focus:ring-theme-primary-04 disabled:opacity-50 disabled:cursor-not-allowed"
           />
         </div>
-        {labelsLoading ? (
-          <ThreeDotsLoader />
-        ) : labelData && labelData.items.length > 0 ? (
+        {labelsDisabled && labelData.items.length > 0 && (
+          <Text as="p" mainContentMuted text03 className="text-[10px]">
+            {t("admin.kg.onlyOneLabelInScope")}
+          </Text>
+        )}
+        {labelData.items.length > 0 ? (
           <>
             <div className="flex flex-col gap-1">
               {labelData.items.map((item) => (
@@ -263,6 +243,7 @@ export default function GraphStatsCard({
                   count={item.count}
                   selected={selectedLabels.has(item.name)}
                   onToggle={() => onToggleLabel(item.name)}
+                  disabled={labelsDisabled}
                 />
               ))}
             </div>
@@ -271,11 +252,7 @@ export default function GraphStatsCard({
               <div className="flex items-center justify-between pt-1">
                 <button
                   disabled={labelPage <= 1}
-                  onClick={() => {
-                    const p = labelPage - 1;
-                    setLabelPage(p);
-                    loadLabels(p, labelsSearch);
-                  }}
+                  onClick={() => setLabelPage((p) => p - 1)}
                   className="text-[10px] text-theme-primary-05 hover:underline disabled:opacity-40 disabled:pointer-events-none"
                 >
                   {t("admin.kg.prev")}
@@ -285,11 +262,7 @@ export default function GraphStatsCard({
                 </Text>
                 <button
                   disabled={!labelData.has_next}
-                  onClick={() => {
-                    const p = labelPage + 1;
-                    setLabelPage(p);
-                    loadLabels(p, labelsSearch);
-                  }}
+                  onClick={() => setLabelPage((p) => p + 1)}
                   className="text-[10px] text-theme-primary-05 hover:underline disabled:opacity-40 disabled:pointer-events-none"
                 >
                   {t("admin.kg.next")}
@@ -344,9 +317,7 @@ export default function GraphStatsCard({
             className="h-7 w-full rounded-06 border border-border-01 bg-background-tint-00 pl-7 pr-2 text-xs text-text-04 placeholder:text-text-03 focus:outline-none focus:ring-1 focus:ring-theme-primary-04"
           />
         </div>
-        {relLoading ? (
-          <ThreeDotsLoader />
-        ) : relData && relData.items.length > 0 ? (
+        {relData.items.length > 0 ? (
           <>
             <div className="flex flex-col gap-1">
               {relData.items.map((item) => (
@@ -363,11 +334,7 @@ export default function GraphStatsCard({
               <div className="flex items-center justify-between pt-1">
                 <button
                   disabled={relPage <= 1}
-                  onClick={() => {
-                    const p = relPage - 1;
-                    setRelPage(p);
-                    loadRelTypes(p, relSearch);
-                  }}
+                  onClick={() => setRelPage((p) => p - 1)}
                   className="text-[10px] text-theme-primary-05 hover:underline disabled:opacity-40 disabled:pointer-events-none"
                 >
                   {t("admin.kg.prev")}
@@ -377,11 +344,7 @@ export default function GraphStatsCard({
                 </Text>
                 <button
                   disabled={!relData.has_next}
-                  onClick={() => {
-                    const p = relPage + 1;
-                    setRelPage(p);
-                    loadRelTypes(p, relSearch);
-                  }}
+                  onClick={() => setRelPage((p) => p + 1)}
                   className="text-[10px] text-theme-primary-05 hover:underline disabled:opacity-40 disabled:pointer-events-none"
                 >
                   {t("admin.kg.next")}

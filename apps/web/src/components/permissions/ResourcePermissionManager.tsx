@@ -135,7 +135,7 @@ export function ResourcePermissionManager({
   );
 
   // Fetch organizations
-  const { data: organizations } = useSWR<Organization[]>(
+  const { data: rawOrganizations } = useSWR<any>(
     "/api/organizations",
     async (url: string) => {
       const res = await fetch(url);
@@ -144,12 +144,29 @@ export function ResourcePermissionManager({
     }
   );
 
+  const organizations = useMemo<Organization[] | undefined>(() => {
+    if (!rawOrganizations) return undefined;
+    if (Array.isArray(rawOrganizations)) return rawOrganizations;
+    if (Array.isArray(rawOrganizations.items)) return rawOrganizations.items;
+    if (Array.isArray(rawOrganizations.organizations)) return rawOrganizations.organizations;
+    return [];
+  }, [rawOrganizations]);
+
   // Fetch users for search
-  const { data: users } = useSWR<UserInfo[]>("/api/users", async (url: string) => {
+  const { data: rawUsers } = useSWR<any>("/api/users", async (url: string) => {
     const res = await fetch(url);
     if (!res.ok) throw new Error("Failed to fetch users");
     return res.json();
   });
+
+  const users = useMemo<UserInfo[] | undefined>(() => {
+    if (!rawUsers) return undefined;
+    if (Array.isArray(rawUsers)) return rawUsers;
+    if (Array.isArray(rawUsers.users)) return rawUsers.users;
+    if (Array.isArray(rawUsers.items)) return rawUsers.items;
+    if (Array.isArray(rawUsers.accepted)) return rawUsers.accepted;
+    return [];
+  }, [rawUsers]);
 
   const handleAddUserPermission = useCallback(
     async (userId: string, level: PermissionLevel) => {
@@ -255,7 +272,7 @@ export function ResourcePermissionManager({
         <div className="flex items-center gap-3">
           <Shield size={24} className="text-text-02" />
           <div>
-            <Text className="text-lg font-semibold text-text-01">
+            <Text className="text-lg font-semibold text-text-05">
               Manage Permissions
             </Text>
             <Text className="text-sm text-text-03">
@@ -267,7 +284,7 @@ export function ResourcePermissionManager({
         {onClose && (
           <button
             onClick={onClose}
-            className="p-2 rounded-md hover:bg-background-neutral-02 text-text-03 hover:text-text-01"
+            className="p-2 rounded-md hover:bg-background-neutral-02 text-text-03 hover:text-text-05"
           >
             <X size={20} />
           </button>
@@ -281,7 +298,7 @@ export function ResourcePermissionManager({
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <User size={18} className="text-text-02" />
-              <Text className="font-medium text-text-01">User Permissions</Text>
+              <Text className="font-medium text-text-05">User Permissions</Text>
               <span className="px-2 py-1 rounded bg-background-neutral-02 text-xs text-text-03">
                 {groupedPermissions.user.length}
               </span>
@@ -324,7 +341,7 @@ export function ResourcePermissionManager({
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <Buildings size={18} className="text-text-02" />
-              <Text className="font-medium text-text-01">
+              <Text className="font-medium text-text-05">
                 Organization Permissions
               </Text>
               <span className="px-2 py-1 rounded bg-background-neutral-02 text-xs text-text-03">
@@ -369,7 +386,7 @@ export function ResourcePermissionManager({
           <section>
             <div className="flex items-center gap-2 mb-4">
               <Users size={18} className="text-text-02" />
-              <Text className="font-medium text-text-01">Inherited Permissions</Text>
+              <Text className="font-medium text-text-05">Inherited Permissions</Text>
               <span className="px-2 py-1 rounded bg-background-neutral-02 text-xs text-text-03">
                 {groupedPermissions.inherited.length}
               </span>
@@ -464,7 +481,7 @@ function PermissionRow({
       <div className="flex items-center gap-3 flex-1">
         {icon}
         <div className="flex-1">
-          <Text className="text-sm font-medium text-text-01">{displayName}</Text>
+          <Text className="text-sm font-medium text-text-05">{displayName}</Text>
           {permission.is_inherited && permission.source && (
             <Text className="text-xs text-text-03">
               Inherited from {permission.source}
@@ -523,7 +540,7 @@ function AddPermissionModal({
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-background-neutral-01 rounded-lg shadow-xl w-full max-w-md">
         <div className="flex items-center justify-between p-6 border-b border-border-02">
-          <Text className="text-lg font-semibold text-text-01">{title}</Text>
+          <Text className="text-lg font-semibold text-text-05">{title}</Text>
           <button
             onClick={onClose}
             className="p-2 rounded-md hover:bg-background-neutral-02 text-text-03"
@@ -542,7 +559,7 @@ function AddPermissionModal({
             className={cn(
               "w-full px-3 py-2 rounded-md border",
               "bg-background-neutral-01 border-border-02",
-              "text-text-01 placeholder:text-text-04",
+              "text-text-05 placeholder:text-text-03",
               "focus:outline-none focus:ring-2 focus:ring-border-primary"
             )}
           />
@@ -610,7 +627,7 @@ function AddPermissionModal({
                     className="sr-only"
                   />
                   <div className="flex-1">
-                    <div className="text-sm font-medium text-text-01">
+                    <div className="text-sm font-medium text-text-05">
                       {item.label}
                     </div>
                     {item.sublabel && (

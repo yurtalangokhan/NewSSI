@@ -14,7 +14,9 @@ class _FakeOllamaRepository:
     async def list_models(self) -> list[dict]:
         return [
             {"name": "llama3.1:8b", "size": 4_900_000_000},
+            {"name": "qwen2.5vl:3b", "size": 3_200_000_000},
             {"name": "nomic-embed-text:latest", "size": 274_000_000},
+            {"name": "whisper:latest", "size": 1_500_000_000},
         ]
 
     async def show_model(self, model_name: str) -> dict:
@@ -22,6 +24,16 @@ class _FakeOllamaRepository:
             return {
                 "capabilities": ["completion", "tools", "thinking"],
                 "model_info": {"llama.context_length": 131072},
+            }
+        if model_name == "qwen2.5vl:3b":
+            return {
+                "capabilities": ["completion", "vision"],
+                "model_info": {"qwen2vl.context_length": 128000},
+            }
+        if model_name == "whisper:latest":
+            return {
+                "capabilities": ["audio"],
+                "model_info": {"whisper.context_length": 448},
             }
         return {"capabilities": ["embedding"], "model_info": {"bert.context_length": 8192}}
 
@@ -48,7 +60,7 @@ async def test_status_reports_online_builtin_ollama_with_model_count():
         "base_url": "http://ollama:11434",
         "online": True,
         "version": "0.6.8",
-        "model_count": 2,
+        "model_count": 4,
         "error": None,
     }
 
@@ -80,6 +92,23 @@ async def test_list_models_enriches_capabilities_from_show_payloads():
             "max_input_tokens": 131072,
             "supports_image_input": False,
             "supports_reasoning": True,
+            "supports_tools": True,
+            "supports_embedding": False,
+            "supports_code": False,
+            "supports_audio": False,
+            "is_remote": False,
+        },
+        {
+            "name": "qwen2.5vl:3b",
+            "display_name": "qwen2.5vl:3b",
+            "size": 3_200_000_000,
+            "max_input_tokens": 128000,
+            "supports_image_input": True,
+            "supports_reasoning": False,
+            "supports_tools": True,
+            "supports_embedding": False,
+            "supports_code": False,
+            "supports_audio": False,
             "is_remote": False,
         },
         {
@@ -89,6 +118,23 @@ async def test_list_models_enriches_capabilities_from_show_payloads():
             "max_input_tokens": 8192,
             "supports_image_input": False,
             "supports_reasoning": False,
+            "supports_tools": False,
+            "supports_embedding": True,
+            "supports_code": False,
+            "supports_audio": False,
+            "is_remote": False,
+        },
+        {
+            "name": "whisper:latest",
+            "display_name": "whisper:latest",
+            "size": 1_500_000_000,
+            "max_input_tokens": 448,
+            "supports_image_input": False,
+            "supports_reasoning": False,
+            "supports_tools": False,
+            "supports_embedding": False,
+            "supports_code": False,
+            "supports_audio": True,
             "is_remote": False,
         },
     ]

@@ -105,6 +105,53 @@ describe("OrganizationTree single-root action", () => {
     expect(screen.queryByText("Add Root Organization")).not.toBeInTheDocument();
   });
 
+  it("does not render expand toggle icon for leaf organizations with no children", () => {
+    render(
+      <OrganizationTree
+        organizations={[
+          {
+            id: "root",
+            name: "Enterprise",
+            path: "/enterprise",
+            parent_id: null,
+            children: [],
+          },
+        ]}
+        {...handlers}
+      />
+    );
+
+    expect(screen.queryByText("+")).not.toBeInTheDocument();
+    expect(screen.queryByText("−")).not.toBeInTheDocument();
+  });
+
+  it("renders expand toggle icon for organizations with children", () => {
+    render(
+      <OrganizationTree
+        organizations={[
+          {
+            id: "root",
+            name: "Enterprise",
+            path: "/enterprise",
+            parent_id: null,
+            children: [
+              {
+                id: "child",
+                name: "Child",
+                path: "/enterprise/child",
+                parent_id: "root",
+                children: [],
+              },
+            ],
+          },
+        ]}
+        {...handlers}
+      />
+    );
+
+    expect(screen.getByText("+")).toBeInTheDocument();
+  });
+
   it("renders organization names with the highest-contrast text token", () => {
     render(
       <OrganizationTree
@@ -542,6 +589,83 @@ describe("OrganizationTree single-root action", () => {
     jest.spyOn(window, "confirm").mockReturnValue(true);
     await user.click(screen.getByRole("button", { name: "Delete Enterprise" }));
     expect(handlers.onDeleteOrg).toHaveBeenCalledWith("root");
+  });
+
+  it("renames an organization inline when submitting the edit input", async () => {
+    const user = setupUser();
+    render(
+      <OrganizationTree
+        organizations={[
+          {
+            id: "root",
+            name: "Enterprise",
+            path: "/enterprise",
+            parent_id: null,
+            children: [],
+          },
+        ]}
+        selectedOrgId="root"
+        {...handlers}
+      />
+    );
+
+    await user.click(screen.getByRole("button", { name: "Rename Enterprise" }));
+    const input = screen.getByDisplayValue("Enterprise");
+    expect(input).toBeInTheDocument();
+    await user.clear(input);
+    await user.type(input, "Acme Corp");
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+
+    expect(handlers.onUpdateOrg).toHaveBeenCalledWith("root", { name: "Acme Corp" });
+  });
+
+  it("cancels inline rename with Escape or Cancel button", async () => {
+    const user = setupUser();
+    render(
+      <OrganizationTree
+        organizations={[
+          {
+            id: "root",
+            name: "Enterprise",
+            path: "/enterprise",
+            parent_id: null,
+            children: [],
+          },
+        ]}
+        selectedOrgId="root"
+        {...handlers}
+      />
+    );
+
+    await user.click(screen.getByRole("button", { name: "Rename Enterprise" }));
+    expect(screen.getByDisplayValue("Enterprise")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(handlers.onUpdateOrg).not.toHaveBeenCalled();
+    expect(screen.queryByDisplayValue("Enterprise")).not.toBeInTheDocument();
+    expect(screen.getByText("Enterprise")).toBeInTheDocument();
+  });
+
+  it("renders organization name with title attribute for long name tooltip", () => {
+    const longName = "Bilisim Sistemleri ve Bilgi Guvenligi Direktorlugu";
+    render(
+      <OrganizationTree
+        organizations={[
+          {
+            id: "long-org",
+            name: longName,
+            path: "/long-org",
+            parent_id: null,
+            children: [],
+          },
+        ]}
+        {...handlers}
+      />
+    );
+
+    const nameElement = screen.getByText(longName);
+    expect(nameElement).toHaveAttribute("title", longName);
+    expect(nameElement).toHaveClass("truncate");
   });
 
   it("hides row actions when the organization is not selected", () => {

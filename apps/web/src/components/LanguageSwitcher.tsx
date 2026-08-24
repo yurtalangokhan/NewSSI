@@ -1,8 +1,10 @@
 "use client";
 
 import { useTranslation } from "react-i18next";
-import { I18N_LANGUAGE_STORAGE_KEY, SUPPORTED_LANGUAGES } from "@/i18n/config";
+import { I18N_LANGUAGE_COOKIE_NAME, SUPPORTED_LANGUAGES } from "@/i18n/config";
 import { SvgGlobe } from "@opal/icons";
+
+const LANGUAGE_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365;
 
 interface LanguageSwitcherProps {
   variant?: "button" | "menu";
@@ -13,7 +15,9 @@ export function LanguageSwitcher({ variant = "menu" }: LanguageSwitcherProps) {
 
   const toggleLanguage = () => {
     const nextLang = i18n.language === "tr" ? "en" : "tr";
-    window.localStorage.setItem(I18N_LANGUAGE_STORAGE_KEY, nextLang);
+    // Cookie makes the choice visible to the server on the next request, so
+    // the page can render in the right language from the very first paint.
+    document.cookie = `${I18N_LANGUAGE_COOKIE_NAME}=${nextLang}; path=/; max-age=${LANGUAGE_COOKIE_MAX_AGE_SECONDS}; SameSite=Lax`;
     i18n.changeLanguage(nextLang);
   };
 

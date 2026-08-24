@@ -228,12 +228,13 @@ export function OrganizationFlowNode({
       }
       data-testid={`organization-flow-node-${id}`}
       className={cn(
-        "relative w-64 rounded-12 border bg-background-neutral-00 p-4 shadow-none transition-[opacity,background-color,border-color,box-shadow] duration-200 motion-reduce:transition-none",
+        "relative w-64 rounded-12 border bg-background-neutral-00 p-4 shadow-none transition-[opacity,background-color,border-color,box-shadow] duration-200 motion-reduce:transition-none motion-reduce:animate-none animate-org-node-enter",
         data.searchMatch &&
           "border-action-link-05 bg-background-neutral-03 ring-2 ring-action-link-05 shadow-md",
         data.searchDimmed && "opacity-30",
         data.isDropTarget &&
           "border-status-success-03 bg-background-neutral-03 ring-2 ring-status-success-03",
+        data.closing && "pointer-events-none opacity-0",
         selected
           ? "border-action-link-05 ring-1 ring-action-link-05"
           : "border-border-02"

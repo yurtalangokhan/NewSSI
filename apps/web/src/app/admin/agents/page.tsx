@@ -48,11 +48,8 @@ function AgentCatalog({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-3">
+      <div>
         <Title>{t("admin.agents.catalogTitle")}</Title>
-        <CreateButton href="/app/agents/create">
-          {t("admin.agents.createButton")}
-        </CreateButton>
       </div>
 
       <Text>{t("admin.agents.catalogDescription")}</Text>
@@ -133,6 +130,11 @@ export default function Page() {
       <SettingsLayouts.Header
         icon={route.icon}
         title={t(route.titleKey || "", { defaultValue: route.title })}
+        rightChildren={
+          <CreateButton href="/app/agents/create">
+            {t("admin.agents.createButton")}
+          </CreateButton>
+        }
         separator
       />
 
@@ -195,13 +197,9 @@ export default function Page() {
               ]}
               actions={[
                 {
-                  label: t("admin.agents.createButton"),
-                  href: "/app/agents/create",
-                  primary: true,
-                },
-                {
                   label: t("admin.navigation.routes.mcpActions.sidebar"),
                   href: ADMIN_PATHS.MCP_ACTIONS,
+                  primary: true,
                 },
               ]}
             />

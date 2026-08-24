@@ -70,10 +70,10 @@ export default function AgentAvailabilityBadge({
           unknown
             ? "bg-background-neutral-05"
             : available
-              ? "bg-status-success-04"
+              ? "bg-status-success-05"
               : degraded
                 ? "bg-status-warning-05"
-                : "bg-status-error-04"
+                : "bg-status-error-05"
         )}
       />
       {showLabel && (

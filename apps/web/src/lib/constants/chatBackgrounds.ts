@@ -38,14 +38,14 @@ export const CHAT_BACKGROUND_OPTIONS: ChatBackgroundOption[] = [
     src: "/chat-backgrounds/plant.jpg",
     thumbnail: "/chat-backgrounds/thumbnails/plant.jpg",
     label: "Plants",
-    isDarkBackground: false,
+    isDarkBackground: true,
   },
   {
     id: "mountains",
     src: "/chat-backgrounds/mountains.jpg",
     thumbnail: "/chat-backgrounds/thumbnails/mountains.jpg",
     label: "Mountains",
-    isDarkBackground: false,
+    isDarkBackground: true,
   },
   {
     id: "night",

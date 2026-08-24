@@ -1,18 +1,24 @@
 import { SERVER_SIDE_ONLY__PAID_ENTERPRISE_FEATURES_ENABLED } from "@/lib/constants";
 import { fetchStandardSettingsSS } from "@/components/settings/lib";
-import i18n from "@/i18n/config";
+import { tServer } from "@/i18n/server";
+import { resolveLocaleSS } from "@/lib/localeSS";
 
 export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // `lng` is passed per-call rather than via `i18n.changeLanguage()`: this
+  // runs on the server, and mutating the shared instance's language here
+  // would race with concurrent requests from users with other locales.
+  const locale = await resolveLocaleSS();
+
   // First check build-time constant (fast path)
   if (!SERVER_SIDE_ONLY__PAID_ENTERPRISE_FEATURES_ENABLED) {
     return (
       <div className="flex h-screen">
         <div className="mx-auto my-auto text-lg font-bold text-red-500">
-          {i18n.t("errors.enterpriseGate.eeOnly")}
+          {tServer("errors.enterpriseGate.eeOnly", { lng: locale })}
         </div>
       </div>
     );
@@ -35,7 +41,9 @@ export default async function AdminLayout({
         return (
           <div className="flex h-screen">
             <div className="mx-auto my-auto text-lg font-bold text-red-500">
-              {i18n.t("errors.enterpriseGate.licenseRequired")}
+              {tServer("errors.enterpriseGate.licenseRequired", {
+                lng: locale,
+              })}
             </div>
           </div>
         );

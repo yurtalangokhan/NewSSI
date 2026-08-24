@@ -141,37 +141,39 @@ export default function AddUserPage() {
         />
         <form
           onSubmit={onSubmit}
-          className="max-w-xl rounded-lg border border-border-subtle bg-background-100 p-6"
+          className="w-full rounded-lg border border-border-subtle bg-background-100 p-6"
         >
-          <div className="flex flex-col gap-4">
+          <div className="flex w-full flex-col gap-4">
             <Text as="p" mainUiMuted>
               {t("admin.users.createDescription")}
             </Text>
 
-            <div className="flex flex-col gap-1">
-              <Text as="p" mainUiBody>
-                {t("auth.usernameLabel", { defaultValue: "Username" })}
-              </Text>
-              <InputTypeIn
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="newuser"
-                autoComplete="username"
-                required
-              />
-            </div>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="flex flex-col gap-1">
+                <Text as="p" mainUiBody>
+                  {t("auth.usernameLabel", { defaultValue: "Username" })}
+                </Text>
+                <InputTypeIn
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="newuser"
+                  autoComplete="username"
+                  required
+                />
+              </div>
 
-            <div className="flex flex-col gap-1">
-              <Text as="p" mainUiBody>
-                {t("auth.emailLabel", { defaultValue: "Email" })}
-              </Text>
-              <InputTypeIn
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="user@example.com"
-                required
-              />
+              <div className="flex flex-col gap-1">
+                <Text as="p" mainUiBody>
+                  {t("auth.emailLabel", { defaultValue: "Email" })}
+                </Text>
+                <InputTypeIn
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="user@example.com"
+                  required
+                />
+              </div>
             </div>
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">

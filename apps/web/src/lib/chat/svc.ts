@@ -11,7 +11,6 @@ export async function fetchChatFile(fileId: string): Promise<Response> {
     `${CHAT_FILE_PREFIX}/${encodeURIComponent(fileId)}`,
     {
       method: "GET",
-      cache: "force-cache",
     }
   );
 

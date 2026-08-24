@@ -4,22 +4,11 @@ import { useTranslation } from "react-i18next";
 import { useRef, useCallback, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import * as InputLayouts from "@/layouts/input-layouts";
-import { Section, AttachmentItemLayout } from "@/layouts/general-layouts";
-import { Content, ContentAction } from "@opal/layouts";
-import { Formik, Form } from "formik";
-import * as Yup from "yup";
-import {
-  SvgArrowExchange,
-  SvgKey,
-  SvgLock,
-  SvgMinusCircle,
-  SvgTrash,
-  SvgUnplug,
-} from "@opal/icons";
-import { getSourceMetadata } from "@/lib/sources";
+import { Section } from "@/layouts/general-layouts";
+import { Content } from "@opal/layouts";
+import { SvgMinusCircle, SvgTrash } from "@opal/icons";
 import Card from "@/refresh-components/cards/Card";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
-import PasswordInputTypeIn from "@/refresh-components/inputs/PasswordInputTypeIn";
 import InputSelect from "@/refresh-components/inputs/InputSelect";
 import InputTextArea from "@/refresh-components/inputs/InputTextArea";
 import Button from "@/refresh-components/buttons/Button";
@@ -31,167 +20,27 @@ import useUserPersonalization from "@/hooks/useUserPersonalization";
 import { toast } from "@/hooks/useToast";
 import LLMPopover from "@/refresh-components/popovers/LLMPopover";
 import { deleteAllChatSessions } from "@/app/app/services/lib";
-import { useAuthType, useLlmManager } from "@/lib/hooks";
+import { useLlmManager } from "@/lib/hooks";
 import useChatSessions from "@/hooks/useChatSessions";
-import useSWR from "swr";
-import { errorHandlingFetcher } from "@/lib/fetcher";
-import useFilter from "@/hooks/useFilter";
-import CreateButton from "@/refresh-components/buttons/CreateButton";
 import { Button as OpalButton } from "@opal/components";
-import useFederatedOAuthStatus from "@/hooks/useFederatedOAuthStatus";
-import useCCPairs from "@/hooks/useCCPairs";
-import { ValidSources } from "@/lib/types";
-import { ConnectorCredentialPairStatus } from "@/app/admin/connector/[ccPairId]/types";
 import Separator from "@/refresh-components/Separator";
 import Text from "@/refresh-components/texts/Text";
 import ConfirmationModalLayout from "@/refresh-components/layouts/ConfirmationModalLayout";
-import Code from "@/refresh-components/Code";
 import CharacterCount from "@/refresh-components/CharacterCount";
 import { InputPrompt } from "@/app/app/interfaces";
 import usePromptShortcuts from "@/hooks/usePromptShortcuts";
 import ColorSwatch from "@/refresh-components/ColorSwatch";
-import EmptyMessage from "@/refresh-components/EmptyMessage";
 import Memories from "@/sections/settings/Memories";
 import useUserMemories from "@/hooks/useUserMemories";
-import { FederatedConnectorOAuthStatus } from "@/components/chat/FederatedOAuthModal";
 import {
   CHAT_BACKGROUND_OPTIONS,
   CHAT_BACKGROUND_NONE,
 } from "@/lib/constants/chatBackgrounds";
 import { SvgCheck } from "@opal/icons";
 import { cn } from "@/lib/utils";
-import { Interactive } from "@opal/core";
 import { usePaidEnterpriseFeaturesEnabled } from "@/components/settings/usePaidEnterpriseFeaturesEnabled";
 import { useSettingsContext } from "@/providers/SettingsProvider";
 import SimpleTooltip from "@/refresh-components/SimpleTooltip";
-import { useCloudSubscription } from "@/hooks/useCloudSubscription";
-
-interface PAT {
-  id: number;
-  name: string;
-  token_display: string;
-  created_at: string;
-  expires_at: string | null;
-  last_used_at: string | null;
-}
-
-interface CreatedTokenState {
-  id: number;
-  token: string;
-  name: string;
-}
-
-interface PATModalProps {
-  isCreating: boolean;
-  newTokenName: string;
-  setNewTokenName: (name: string) => void;
-  expirationDays: string;
-  setExpirationDays: (days: string) => void;
-  onClose: () => void;
-  onCreate: () => void;
-  createdToken: CreatedTokenState | null;
-}
-
-function PATModal({
-  isCreating,
-  newTokenName,
-  setNewTokenName,
-  expirationDays,
-  setExpirationDays,
-  onClose,
-  onCreate,
-  createdToken,
-}: PATModalProps) {
-  const { t } = useTranslation();
-  return (
-    <ConfirmationModalLayout
-      icon={SvgKey}
-      title={t("settings.pat.title")}
-      description={t("settings.pat.description")}
-      onClose={onClose}
-      submit={
-        !!createdToken?.token ? (
-          <Button onClick={onClose}>{t("settings.pat.doneButton")}</Button>
-        ) : (
-          <Button
-            onClick={onCreate}
-            disabled={isCreating || !newTokenName.trim()}
-          >
-            {isCreating
-              ? t("settings.pat.creatingButton")
-              : t("settings.pat.createButton")}
-          </Button>
-        )
-      }
-      hideCancel={!!createdToken}
-    >
-      <Section gap={1}>
-        {/* Token Creation*/}
-        {!!createdToken?.token ? (
-          <InputLayouts.Vertical title={t("settings.pat.tokenValueLabel")}>
-            <Code>{createdToken.token}</Code>
-          </InputLayouts.Vertical>
-        ) : (
-          <>
-            <InputLayouts.Vertical title={t("settings.pat.tokenNameLabel")}>
-              <InputTypeIn
-                placeholder={t("settings.pat.tokenNamePlaceholder")}
-                value={newTokenName}
-                onChange={(e) => setNewTokenName(e.target.value)}
-                variant={isCreating ? "disabled" : undefined}
-                autoComplete="new-password"
-              />
-            </InputLayouts.Vertical>
-            <InputLayouts.Vertical
-              title={t("settings.pat.expiresInLabel")}
-              subDescription={
-                expirationDays === "null"
-                  ? undefined
-                  : (() => {
-                      const expiryDate = new Date();
-                      expiryDate.setUTCDate(
-                        expiryDate.getUTCDate() + parseInt(expirationDays)
-                      );
-                      expiryDate.setUTCHours(23, 59, 59, 999);
-                      return t("settings.pat.tokenExpireAt", {
-                        date: expiryDate
-                          .toISOString()
-                          .replace("T", " ")
-                          .replace(".999Z", " UTC"),
-                      });
-                    })()
-              }
-            >
-              <InputSelect
-                value={expirationDays}
-                onValueChange={setExpirationDays}
-                disabled={isCreating}
-              >
-                <InputSelect.Trigger
-                  placeholder={t("settings.pat.selectExpirationPlaceholder")}
-                />
-                <InputSelect.Content>
-                  <InputSelect.Item value="7">
-                    {t("settings.pat.7daysOption")}
-                  </InputSelect.Item>
-                  <InputSelect.Item value="30">
-                    {t("settings.pat.30daysOption")}
-                  </InputSelect.Item>
-                  <InputSelect.Item value="365">
-                    {t("settings.pat.365daysOption")}
-                  </InputSelect.Item>
-                  <InputSelect.Item value="null">
-                    {t("settings.pat.noExpirationOption")}
-                  </InputSelect.Item>
-                </InputSelect.Content>
-              </InputSelect>
-            </InputLayouts.Vertical>
-          </>
-        )}
-      </Section>
-    </ConfirmationModalLayout>
-  );
-}
 
 function GeneralSettings() {
   const { t } = useTranslation();
@@ -208,9 +57,16 @@ function GeneralSettings() {
   const pathname = usePathname();
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+  // `theme` is `undefined` on the server and on the client's first render
+  // pass, then flips synchronously to the stored value before hydration
+  // paints. Gate on `mounted` so both passes agree, avoiding a hydration
+  // mismatch on the select's value/placeholder state.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   const {
     personalizationValues,
+    basePersonalization,
     updatePersonalizationField,
     handleSavePersonalization,
   } = useUserPersonalization(user, updateUserPersonalization, {
@@ -220,15 +76,24 @@ function GeneralSettings() {
       toast.error(t("settings.general.toastPersonalizationFailed")),
   });
 
-  // Track initial values to detect changes
-  const initialNameRef = useRef(personalizationValues.name);
-  const initialRoleRef = useRef(personalizationValues.role);
+  // Which field (if any) currently has an in-flight save, so only that
+  // field is locked instead of both.
+  const [savingField, setSavingField] = useState<"name" | "role" | null>(
+    null
+  );
 
-  // Update refs when personalization values change from external source
+  // Track initial values to detect changes
+  const initialNameRef = useRef(basePersonalization.name);
+  const initialRoleRef = useRef(basePersonalization.role);
+
+  // Update refs only when the underlying server-sourced value changes,
+  // not on every local keystroke (personalizationValues changes as the
+  // user types, which would otherwise make the onBlur diff check below
+  // always see "no change" and never save).
   useEffect(() => {
-    initialNameRef.current = personalizationValues.name;
-    initialRoleRef.current = personalizationValues.role;
-  }, [personalizationValues.name, personalizationValues.role]);
+    initialNameRef.current = basePersonalization.name;
+    initialRoleRef.current = basePersonalization.role;
+  }, [basePersonalization.name, basePersonalization.role]);
 
   const handleDeleteAllChats = useCallback(async () => {
     setIsDeleting(true);
@@ -293,6 +158,11 @@ function GeneralSettings() {
               <InputTypeIn
                 placeholder={t("settings.general.fullNamePlaceholder")}
                 value={personalizationValues.name}
+                className={
+                  savingField === "name"
+                    ? "opacity-60 pointer-events-none"
+                    : undefined
+                }
                 onChange={(e) =>
                   updatePersonalizationField("name", e.target.value)
                 }
@@ -301,11 +171,13 @@ function GeneralSettings() {
                     e.currentTarget.blur();
                   }
                 }}
-                onBlur={() => {
+                onBlur={async () => {
                   // Only save if the value has changed
                   if (personalizationValues.name !== initialNameRef.current) {
-                    void handleSavePersonalization();
+                    setSavingField("name");
+                    await handleSavePersonalization();
                     initialNameRef.current = personalizationValues.name;
+                    setSavingField(null);
                   }
                 }}
               />
@@ -318,6 +190,11 @@ function GeneralSettings() {
               <InputTypeIn
                 placeholder={t("settings.general.workRolePlaceholder")}
                 value={personalizationValues.role}
+                className={
+                  savingField === "role"
+                    ? "opacity-60 pointer-events-none"
+                    : undefined
+                }
                 onChange={(e) =>
                   updatePersonalizationField("role", e.target.value)
                 }
@@ -326,11 +203,13 @@ function GeneralSettings() {
                     e.currentTarget.blur();
                   }
                 }}
-                onBlur={() => {
+                onBlur={async () => {
                   // Only save if the value has changed
                   if (personalizationValues.role !== initialRoleRef.current) {
-                    void handleSavePersonalization();
+                    setSavingField("role");
+                    await handleSavePersonalization();
                     initialRoleRef.current = personalizationValues.role;
+                    setSavingField(null);
                   }
                 }}
               />
@@ -352,7 +231,7 @@ function GeneralSettings() {
               center
             >
               <InputSelect
-                value={theme}
+                value={mounted ? theme : undefined}
                 onValueChange={(value) => {
                   setTheme(value);
                   updateUserThemePreference(value as ThemePreference);
@@ -406,11 +285,18 @@ function GeneralSettings() {
                   return (
                     <button
                       key={bg.id}
-                      onClick={() =>
+                      onClick={() => {
                         updateUserChatBackground(
                           bg.id === CHAT_BACKGROUND_NONE ? null : bg.id
-                        )
-                      }
+                        );
+                        if (bg.id !== CHAT_BACKGROUND_NONE) {
+                          const matchingTheme = bg.isDarkBackground
+                            ? ThemePreference.DARK
+                            : ThemePreference.LIGHT;
+                          setTheme(matchingTheme);
+                          updateUserThemePreference(matchingTheme);
+                        }
+                      }}
                       className="relative overflow-hidden rounded-lg transition-all w-[90px] h-[68px] cursor-pointer border-none p-0 bg-transparent group"
                       title={bg.label}
                       aria-label={`${bg.label} background${
@@ -615,6 +501,18 @@ function PromptShortcuts() {
         return;
       }
 
+      // If existing shortcut and no fields changed, do not save
+      if (!shortcut.isNew) {
+        const original = promptShortcuts.find((p) => p.id === shortcut.id);
+        if (
+          original &&
+          original.prompt === shortcut.prompt &&
+          original.content === shortcut.content
+        ) {
+          return;
+        }
+      }
+
       try {
         if (shortcut.isNew) {
           // Create new shortcut
@@ -659,7 +557,7 @@ function PromptShortcuts() {
         toast.error(t("settings.chatPreferences.toastShortcutSaveFailed"));
       }
     },
-    [shortcuts, refresh]
+    [shortcuts, promptShortcuts, refresh, t]
   );
 
   const handleBlurShortcut = useCallback(
@@ -968,14 +866,14 @@ function ChatPreferencesSettings() {
             />
           </InputLayouts.Horizontal>
           {(personalizationValues.long_term_memory_enabled ||
-            personalizationValues.extract_memory) &&
-            memories.length > 0 && (
-              <Memories
-                memories={memories}
-                onSaveMemories={handleSaveMemories}
-                onDeleteMemory={deleteMemory}
-              />
-            )}
+            personalizationValues.extract_memory ||
+            memories.length > 0) && (
+            <Memories
+              memories={memories}
+              onSaveMemories={handleSaveMemories}
+              onDeleteMemory={deleteMemory}
+            />
+          )}
         </Card>
       </Section>
 
@@ -1006,690 +904,4 @@ function ChatPreferencesSettings() {
   );
 }
 
-function AccountsAccessSettings() {
-  const { t } = useTranslation();
-  const { user } = useUser();
-  const authType = useAuthType();
-  const [showPasswordModal, setShowPasswordModal] = useState(false);
-
-  const passwordValidationSchema = Yup.object().shape({
-    currentPassword: Yup.string().required(
-      t("settings.accounts.currentPasswordRequired")
-    ),
-    newPassword: Yup.string().required(
-      t("settings.accounts.newPasswordRequired")
-    ),
-    confirmPassword: Yup.string()
-      .oneOf(
-        [Yup.ref("newPassword")],
-        t("settings.accounts.passwordsMustMatch")
-      )
-      .required(t("settings.accounts.confirmPasswordRequired")),
-  });
-
-  // PAT state
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [isCreating, setIsCreating] = useState(false);
-  const [newTokenName, setNewTokenName] = useState("");
-  const [expirationDays, setExpirationDays] = useState<string>("30");
-  const [newlyCreatedToken, setNewlyCreatedToken] =
-    useState<CreatedTokenState | null>(null);
-  const [tokenToDelete, setTokenToDelete] = useState<PAT | null>(null);
-
-  const canCreateTokens = useCloudSubscription();
-
-  const showPasswordSection = Boolean(user?.password_configured);
-  const showTokensSection = authType !== null;
-
-  // Fetch PATs with SWR
-  const {
-    data: pats = [],
-    mutate,
-    error,
-    isLoading,
-  } = useSWR<PAT[]>(
-    showTokensSection ? "/api/user/pats" : null,
-    errorHandlingFetcher,
-    {
-      revalidateOnFocus: true,
-      dedupingInterval: 2000,
-      fallbackData: [],
-    }
-  );
-
-  // Use filter hook for searching tokens
-  const {
-    query,
-    setQuery,
-    filtered: filteredPats,
-  } = useFilter(pats, (pat) => `${pat.name} ${pat.token_display}`);
-
-  // Show error popup if SWR fetch fails
-  useEffect(() => {
-    if (error) {
-      toast.error(t("settings.accounts.toastTokenLoadFailed"));
-    }
-  }, [error]);
-
-  const createPAT = useCallback(async () => {
-    if (!newTokenName.trim()) {
-      toast.error(t("settings.accounts.toastTokenRequired"));
-      return;
-    }
-
-    setIsCreating(true);
-    try {
-      const response = await fetch("/api/user/pats", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: newTokenName,
-          expiration_days:
-            expirationDays === "null" ? null : parseInt(expirationDays),
-        }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        // Store the newly created token - modal will switch to display view
-        setNewlyCreatedToken({
-          id: data.id,
-          token: data.token,
-          name: newTokenName,
-        });
-        toast.success(t("settings.accounts.toastTokenCreated"));
-        // Revalidate the token list
-        await mutate();
-      } else {
-        const errorData = await response.json();
-        toast.error(
-          errorData.detail || t("settings.accounts.toastTokenCreateFailed")
-        );
-      }
-    } catch (error) {
-      toast.error(t("settings.accounts.toastTokenCreateError"));
-    } finally {
-      setIsCreating(false);
-    }
-  }, [newTokenName, expirationDays, mutate]);
-
-  const deletePAT = useCallback(
-    async (patId: number) => {
-      try {
-        const response = await fetch(`/api/user/pats/${patId}`, {
-          method: "DELETE",
-        });
-
-        if (response.ok) {
-          // Clear the newly created token if it's the one being deleted
-          if (newlyCreatedToken?.id === patId) {
-            setNewlyCreatedToken(null);
-          }
-          await mutate();
-          toast.success(t("settings.accounts.toastTokenDeleted"));
-          setTokenToDelete(null);
-        } else {
-          toast.error(t("settings.accounts.toastTokenDeleteFailed"));
-        }
-      } catch (error) {
-        toast.error(t("settings.accounts.toastTokenDeleteError"));
-      }
-    },
-    [newlyCreatedToken, mutate]
-  );
-
-  const handleChangePassword = useCallback(
-    async (values: {
-      currentPassword: string;
-      newPassword: string;
-      confirmPassword: string;
-    }) => {
-      try {
-        const response = await fetch("/api/user-service/users/me/password", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            old_password: values.currentPassword,
-            new_password: values.newPassword,
-          }),
-        });
-
-        if (response.ok) {
-          toast.success(t("settings.accounts.toastPasswordUpdated"));
-          setShowPasswordModal(false);
-        } else {
-          const errorData = await response.json();
-          toast.error(
-            errorData.detail || t("settings.accounts.toastPasswordFailed")
-          );
-        }
-      } catch (error) {
-        toast.error(t("settings.accounts.toastPasswordError"));
-      }
-    },
-    []
-  );
-
-  return (
-    <>
-      {showCreateModal && (
-        <PATModal
-          isCreating={isCreating}
-          newTokenName={newTokenName}
-          setNewTokenName={setNewTokenName}
-          expirationDays={expirationDays}
-          setExpirationDays={setExpirationDays}
-          onClose={() => {
-            setShowCreateModal(false);
-            setNewTokenName("");
-            setExpirationDays("30");
-            setNewlyCreatedToken(null);
-          }}
-          onCreate={createPAT}
-          createdToken={newlyCreatedToken}
-        />
-      )}
-
-      {tokenToDelete && (
-        <ConfirmationModalLayout
-          icon={SvgTrash}
-          title={t("settings.accounts.revokeTokenTitle")}
-          onClose={() => setTokenToDelete(null)}
-          submit={
-            <Button danger onClick={() => deletePAT(tokenToDelete.id)}>
-              {t("settings.accounts.revokeButton")}
-            </Button>
-          }
-        >
-          <Section gap={0.5} alignItems="start">
-            <Text>{t("settings.accounts.tokenWillLoseAccess")}</Text>
-            <Text>{t("settings.accounts.revokeConfirmation")}</Text>
-          </Section>
-        </ConfirmationModalLayout>
-      )}
-
-      {showPasswordModal && (
-        <Formik
-          initialValues={{
-            currentPassword: "",
-            newPassword: "",
-            confirmPassword: "",
-          }}
-          validationSchema={passwordValidationSchema}
-          validateOnChange={true}
-          validateOnBlur={true}
-          onSubmit={() => undefined}
-        >
-          {({
-            values,
-            handleChange,
-            handleBlur,
-            isSubmitting,
-            dirty,
-            isValid,
-            errors,
-            touched,
-            setSubmitting,
-          }) => (
-            <Form>
-              <ConfirmationModalLayout
-                icon={SvgLock}
-                title={t("settings.accounts.changePasswordTitle")}
-                submit={
-                  <Button
-                    disabled={isSubmitting || !dirty || !isValid}
-                    onClick={async () => {
-                      setSubmitting(true);
-                      try {
-                        await handleChangePassword(values);
-                      } finally {
-                        setSubmitting(false);
-                      }
-                    }}
-                  >
-                    {isSubmitting
-                      ? t("settings.accounts.updatingButton")
-                      : t("settings.accounts.updateButton")}
-                  </Button>
-                }
-                onClose={() => {
-                  setShowPasswordModal(false);
-                }}
-              >
-                <Section gap={1}>
-                  <Section gap={0.25} alignItems="start">
-                    <InputLayouts.Vertical
-                      name="currentPassword"
-                      title={t("settings.accounts.currentPasswordLabel")}
-                    >
-                      <PasswordInputTypeIn
-                        name="currentPassword"
-                        value={values.currentPassword}
-                        onChange={handleChange}
-                        onBlur={handleBlur}
-                        error={
-                          touched.currentPassword && !!errors.currentPassword
-                        }
-                      />
-                    </InputLayouts.Vertical>
-                  </Section>
-                  <Section gap={0.25} alignItems="start">
-                    <InputLayouts.Vertical
-                      name="newPassword"
-                      title={t("settings.accounts.newPasswordLabel")}
-                    >
-                      <PasswordInputTypeIn
-                        name="newPassword"
-                        value={values.newPassword}
-                        onChange={handleChange}
-                        onBlur={handleBlur}
-                        error={touched.newPassword && !!errors.newPassword}
-                      />
-                    </InputLayouts.Vertical>
-                  </Section>
-                  <Section gap={0.25} alignItems="start">
-                    <InputLayouts.Vertical
-                      name="confirmPassword"
-                      title={t("settings.accounts.confirmPasswordLabel")}
-                    >
-                      <PasswordInputTypeIn
-                        name="confirmPassword"
-                        value={values.confirmPassword}
-                        onChange={handleChange}
-                        onBlur={handleBlur}
-                        error={
-                          touched.confirmPassword && !!errors.confirmPassword
-                        }
-                      />
-                    </InputLayouts.Vertical>
-                  </Section>
-                </Section>
-              </ConfirmationModalLayout>
-            </Form>
-          )}
-        </Formik>
-      )}
-
-      <Section gap={2}>
-        <Section gap={0.75}>
-          <Content
-            title={t("settings.accounts.accountsTitle")}
-            sizePreset="main-content"
-            variant="section"
-            widthVariant="full"
-          />
-          <Card>
-            <InputLayouts.Horizontal
-              title={t("settings.accounts.emailLabel")}
-              description={t("settings.accounts.emailDescription")}
-              center
-              nonInteractive
-            >
-              <Text>{user?.email ?? "anonymous"}</Text>
-            </InputLayouts.Horizontal>
-
-            {showPasswordSection && (
-              <InputLayouts.Horizontal
-                title={t("settings.accounts.passwordSectionLabel")}
-                description={t("settings.accounts.passwordSectionDescription")}
-                center
-              >
-                <Button
-                  secondary
-                  leftIcon={SvgLock}
-                  onClick={() => setShowPasswordModal(true)}
-                  transient={showPasswordModal}
-                >
-                  {t("settings.accounts.changePasswordButton")}
-                </Button>
-              </InputLayouts.Horizontal>
-            )}
-          </Card>
-        </Section>
-
-        {showTokensSection && (
-          <Section gap={0.75}>
-            <Content
-              title={t("settings.accounts.accessTokensTitle")}
-              sizePreset="main-content"
-              variant="section"
-              widthVariant="full"
-            />
-            {canCreateTokens ? (
-              <Card padding={0.25}>
-                <Section gap={0}>
-                  <Section flexDirection="row" padding={0.25} gap={0.5}>
-                    {pats.length === 0 ? (
-                      <Section padding={0.5} alignItems="start">
-                        <Text text03 secondaryBody>
-                          {isLoading
-                            ? t("settings.accounts.loadingTokens")
-                            : t("settings.accounts.noAccessTokens")}
-                        </Text>
-                      </Section>
-                    ) : (
-                      <InputTypeIn
-                        placeholder={t("settings.accounts.searchPlaceholder")}
-                        value={query}
-                        onChange={(e) => setQuery(e.target.value)}
-                        leftSearchIcon
-                        variant="internal"
-                      />
-                    )}
-                    <CreateButton
-                      onClick={() => setShowCreateModal(true)}
-                      secondary={false}
-                      internal
-                      transient={showCreateModal}
-                      rightIcon
-                    >
-                      {t("settings.accounts.newAccessTokenButton")}
-                    </CreateButton>
-                  </Section>
-
-                  <Section gap={0.25}>
-                    {filteredPats.map((pat) => {
-                      const now = new Date();
-                      const createdDate = new Date(pat.created_at);
-                      const daysSinceCreation = Math.floor(
-                        (now.getTime() - createdDate.getTime()) /
-                          (1000 * 60 * 60 * 24)
-                      );
-
-                      let expiryText = t("settings.accounts.neverExpires");
-                      if (pat.expires_at) {
-                        const expiresDate = new Date(pat.expires_at);
-                        const daysUntilExpiry = Math.ceil(
-                          (expiresDate.getTime() - now.getTime()) /
-                            (1000 * 60 * 60 * 24)
-                        );
-                        expiryText =
-                          daysUntilExpiry === 1
-                            ? t("settings.accounts.expiresInDays", {
-                                days: daysUntilExpiry,
-                              })
-                            : t("settings.accounts.expiresInDaysPlural", {
-                                days: daysUntilExpiry,
-                              });
-                      }
-
-                      const middleText = `${
-                        daysSinceCreation === 1
-                          ? t("settings.accounts.createdDaysAgo", {
-                              days: daysSinceCreation,
-                            })
-                          : t("settings.accounts.createdDaysAgoPlural", {
-                              days: daysSinceCreation,
-                            })
-                      } - ${expiryText}`;
-
-                      return (
-                        <Interactive.Container
-                          key={pat.id}
-                          heightVariant="fit"
-                          widthVariant="full"
-                        >
-                          <div className="w-full bg-background-tint-01">
-                            <AttachmentItemLayout
-                              icon={SvgKey}
-                              title={pat.name}
-                              description={pat.token_display}
-                              middleText={middleText}
-                              rightChildren={
-                                <OpalButton
-                                  icon={SvgTrash}
-                                  onClick={() => setTokenToDelete(pat)}
-                                  prominence="tertiary"
-                                  size="sm"
-                                  aria-label={`Delete token ${pat.name}`}
-                                />
-                              }
-                            />
-                          </div>
-                        </Interactive.Container>
-                      );
-                    })}
-                  </Section>
-                </Section>
-              </Card>
-            ) : (
-              <Card>
-                <Section flexDirection="row" justifyContent="between">
-                  <Text text03 secondaryBody>
-                    {t("settings.accounts.paidSubscriptionRequired")}
-                  </Text>
-                  <Button secondary href="/admin/billing">
-                    {t("settings.accounts.upgradePlanButton")}
-                  </Button>
-                </Section>
-              </Card>
-            )}
-          </Section>
-        )}
-      </Section>
-    </>
-  );
-}
-
-interface IndexedConnectorCardProps {
-  source: ValidSources;
-  isActive: boolean;
-}
-
-function IndexedConnectorCard({ source, isActive }: IndexedConnectorCardProps) {
-  const { t } = useTranslation();
-  const sourceMetadata = getSourceMetadata(source);
-
-  return (
-    <Card>
-      <Content
-        icon={sourceMetadata.icon}
-        title={sourceMetadata.displayName}
-        description={
-          isActive
-            ? t("settings.connectors.connectedStatus")
-            : t("settings.connectors.pausedStatus")
-        }
-        sizePreset="main-content"
-        variant="section"
-      />
-    </Card>
-  );
-}
-
-interface FederatedConnectorCardProps {
-  connector: FederatedConnectorOAuthStatus;
-  onDisconnectSuccess: () => void;
-}
-
-function FederatedConnectorCard({
-  connector,
-  onDisconnectSuccess,
-}: FederatedConnectorCardProps) {
-  const [isDisconnecting, setIsDisconnecting] = useState(false);
-  const [showDisconnectConfirmation, setShowDisconnectConfirmation] =
-    useState(false);
-  const { t } = useTranslation();
-  const sourceMetadata = getSourceMetadata(connector.source as ValidSources);
-
-  const handleDisconnect = useCallback(async () => {
-    setIsDisconnecting(true);
-    try {
-      const response = await fetch(
-        `/api/federated/${connector.federated_connector_id}/oauth`,
-        { method: "DELETE" }
-      );
-
-      if (response.ok) {
-        toast.success(t("settings.connectors.toastDisconnected"));
-        setShowDisconnectConfirmation(false);
-        onDisconnectSuccess();
-      } else {
-        throw new Error("Failed to disconnect");
-      }
-    } catch (error) {
-      toast.error(t("settings.connectors.toastDisconnectFailed"));
-    } finally {
-      setIsDisconnecting(false);
-    }
-  }, [connector.federated_connector_id, onDisconnectSuccess]);
-
-  return (
-    <>
-      {showDisconnectConfirmation && (
-        <ConfirmationModalLayout
-          icon={SvgUnplug}
-          title={t("settings.connectors.disconnectTitle", {
-            sourceName: sourceMetadata.displayName,
-          })}
-          onClose={() => setShowDisconnectConfirmation(false)}
-          submit={
-            <Button
-              danger
-              onClick={() => void handleDisconnect()}
-              disabled={isDisconnecting}
-            >
-              {isDisconnecting
-                ? t("settings.connectors.disconnectingButton")
-                : t("settings.connectors.disconnectButton")}
-            </Button>
-          }
-        >
-          <Section gap={0.5} alignItems="start">
-            <Text>
-              {t("settings.connectors.disconnectConfirm1", {
-                sourceName: sourceMetadata.displayName,
-              })}
-            </Text>
-            <Text>
-              {t("settings.connectors.disconnectConfirm2", {
-                sourceName: sourceMetadata.displayName,
-              })}
-            </Text>
-          </Section>
-        </ConfirmationModalLayout>
-      )}
-
-      <Card padding={0.5}>
-        <ContentAction
-          icon={sourceMetadata.icon}
-          title={sourceMetadata.displayName}
-          description={
-            connector.has_oauth_token
-              ? t("settings.connectors.connectedStatus")
-              : t("settings.connectors.notConnectedStatus")
-          }
-          sizePreset="main-content"
-          variant="section"
-          paddingVariant="sm"
-          rightChildren={
-            connector.has_oauth_token ? (
-              <OpalButton
-                icon={SvgUnplug}
-                prominence="tertiary"
-                size="sm"
-                onClick={() => setShowDisconnectConfirmation(true)}
-                disabled={isDisconnecting}
-              />
-            ) : connector.authorize_url ? (
-              <Button
-                href={connector.authorize_url}
-                target="_blank"
-                internal
-                rightIcon={SvgArrowExchange}
-              >
-                {t("settings.connectors.connectButton")}
-              </Button>
-            ) : undefined
-          }
-        />
-      </Card>
-    </>
-  );
-}
-
-function ConnectorsSettings() {
-  const { t } = useTranslation();
-  const {
-    connectors: federatedConnectors,
-    refetch: refetchFederatedConnectors,
-  } = useFederatedOAuthStatus();
-  const { ccPairs } = useCCPairs();
-
-  const ACTIVE_STATUSES: ConnectorCredentialPairStatus[] = [
-    ConnectorCredentialPairStatus.ACTIVE,
-    ConnectorCredentialPairStatus.SCHEDULED,
-    ConnectorCredentialPairStatus.INITIAL_INDEXING,
-  ];
-
-  // Group indexed connectors by source
-  const groupedConnectors = ccPairs.reduce(
-    (acc, ccPair) => {
-      if (!acc[ccPair.source]) {
-        acc[ccPair.source] = {
-          source: ccPair.source,
-          hasActiveConnector: false,
-        };
-      }
-      if (ACTIVE_STATUSES.includes(ccPair.status)) {
-        acc[ccPair.source]!.hasActiveConnector = true;
-      }
-      return acc;
-    },
-    {} as Record<
-      string,
-      {
-        source: ValidSources;
-        hasActiveConnector: boolean;
-      }
-    >
-  );
-
-  const hasConnectors =
-    Object.keys(groupedConnectors).length > 0 || federatedConnectors.length > 0;
-
-  return (
-    <Section gap={2}>
-      <Section gap={0.75} justifyContent="start">
-        <Content
-          title={t("settings.connectors.title")}
-          sizePreset="main-content"
-          variant="section"
-          widthVariant="full"
-        />
-        {hasConnectors ? (
-          <>
-            {/* Indexed Connectors */}
-            {Object.values(groupedConnectors).map((connector) => (
-              <IndexedConnectorCard
-                key={connector.source}
-                source={connector.source}
-                isActive={connector.hasActiveConnector}
-              />
-            ))}
-
-            {/* Federated Connectors */}
-            {federatedConnectors.map((connector) => (
-              <FederatedConnectorCard
-                key={connector.federated_connector_id}
-                connector={connector}
-                onDisconnectSuccess={() => refetchFederatedConnectors?.()}
-              />
-            ))}
-          </>
-        ) : (
-          <EmptyMessage title={t("settings.connectors.noConnectorsMessage")} />
-        )}
-      </Section>
-    </Section>
-  );
-}
-
-export {
-  GeneralSettings,
-  ChatPreferencesSettings,
-  AccountsAccessSettings,
-  ConnectorsSettings,
-};
+export { GeneralSettings, ChatPreferencesSettings };

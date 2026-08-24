@@ -20,13 +20,14 @@ import DeactivateUserButton from "@/components/admin/users/buttons/DeactivateUse
 import usePaginatedFetch from "@/hooks/usePaginatedFetch";
 import { ThreeDotsLoader } from "@/components/Loading";
 import { ErrorCallout } from "@/components/ErrorCallout";
-import InputSelect from "@/refresh-components/inputs/InputSelect";
 import {
   Select,
   SelectContent,
+  SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
 import Button from "@/refresh-components/buttons/Button";
 import LineItem from "@/refresh-components/buttons/LineItem";
 import Text from "@/refresh-components/texts/Text";
@@ -39,6 +40,7 @@ import EditUserModal from "@/components/admin/users/EditUserModal";
 import Popover from "@/refresh-components/Popover";
 import {
   SvgCheck,
+  SvgChevronDownSmall,
   SvgFilter,
   SvgKey,
   SvgLogOut,
@@ -62,12 +64,16 @@ interface ActionMenuProps {
 
 export interface SignedUpUserTableProps {
   q: string;
+  query?: string;
+  onQueryChange?: (val: string) => void;
   onTotalItemsChange?: (count: number) => void;
   onLoadingChange?: (isLoading: boolean) => void;
 }
 
 export default function SignedUpUserTable({
   q = "",
+  query = "",
+  onQueryChange,
   onTotalItemsChange,
   onLoadingChange,
 }: SignedUpUserTableProps) {
@@ -80,6 +86,11 @@ export default function SignedUpUserTable({
 
   const [resetPasswordUser, setResetPasswordUser] = useState<User | null>(null);
   const [editUser, setEditUser] = useState<User | null>(null);
+
+  const { data: rolesData } = useSWR<{ roles: { name: string }[] }>(
+    "/api/user-service/roles",
+    errorHandlingFetcher
+  );
 
   const {
     currentPageData: pageOfUsers,
@@ -174,9 +185,14 @@ export default function SignedUpUserTable({
         ? currentRoles.filter((r) => r !== roleName)
         : [...currentRoles, roleName];
 
+      if (!newRoles.length) {
+        const { roles, ...rest } = prev;
+        return rest;
+      }
+
       return {
         ...prev,
-        roles: newRoles.length ? newRoles : undefined,
+        roles: newRoles,
       };
     });
   }, []);
@@ -184,9 +200,13 @@ export default function SignedUpUserTable({
   const removeRole = useCallback((roleName: string) => {
     setFilters((prev) => {
       const nextRoles = (prev.roles || []).filter((role) => role !== roleName);
+      if (!nextRoles.length) {
+        const { roles, ...rest } = prev;
+        return rest;
+      }
       return {
         ...prev,
-        roles: nextRoles.length ? nextRoles : undefined,
+        roles: nextRoles,
       };
     });
   }, []);
@@ -201,45 +221,77 @@ export default function SignedUpUserTable({
 
   const renderFilters = () => (
     <>
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border-01 bg-background-neutral-00 px-3 py-2">
-        <div className="flex w-full flex-wrap items-center gap-2 lg:w-auto">
-          <InputSelect
+      <div className="flex flex-wrap items-center gap-2 border-b border-border-01 bg-background-neutral-00 px-3 py-2">
+        <div className="min-w-[200px] flex-1">
+          <InputTypeIn
+            leftSearchIcon
+            placeholder={t("admin.users.searchPlaceholder")}
+            value={query}
+            onChange={(event) => onQueryChange?.(event.target.value)}
+            onClear={() => onQueryChange?.("")}
+          />
+        </div>
+
+        <div className="w-[160px] sm:w-[180px]">
+          <Select
             value={filters.is_active?.toString() || "all"}
             onValueChange={setActiveFilter}
           >
-            <InputSelect.Trigger />
-
-            <InputSelect.Content>
-              <InputSelect.Item value="all">
-                {t("admin.users.allStatus")}
-              </InputSelect.Item>
-              <InputSelect.Item value="true">
-                {t("admin.users.activeStatus")}
-              </InputSelect.Item>
-              <InputSelect.Item value="false">
-                {t("admin.users.inactiveStatus")}
-              </InputSelect.Item>
-            </InputSelect.Content>
-          </InputSelect>
-
-          <Select value="roles">
-            <SelectTrigger className="h-[34px] w-[260px] border-border-01 bg-background-neutral-00">
-              <SvgFilter className="mr-2 h-4 w-4 stroke-text-02" />
-              <SelectValue>
-                {selectedRoles.length
-                  ? t("admin.users.rolesSelected", {
-                      count: selectedRoles.length,
-                    })
-                  : t("admin.users.allRoles")}
-              </SelectValue>
+            <SelectTrigger className="h-[34px] w-full rounded-08 border-border-01 bg-background-neutral-00 text-sm">
+              <SelectValue />
             </SelectTrigger>
             <SelectContent className="bg-background-tint-00">
-              <DynamicRoleFilterCheckboxes
-                selectedRoles={selectedRoles}
-                toggleRole={toggleRole}
-              />
+              <SelectItem value="all">{t("admin.users.allStatus")}</SelectItem>
+              <SelectItem value="true">{t("admin.users.activeStatus")}</SelectItem>
+              <SelectItem value="false">{t("admin.users.inactiveStatus")}</SelectItem>
             </SelectContent>
           </Select>
+        </div>
+
+        <div className="w-[180px] sm:w-[200px]">
+          <Popover>
+            <Popover.Trigger asChild>
+              <button
+                type="button"
+                className="flex h-[34px] w-full items-center justify-between rounded-08 border border-border-01 bg-background-neutral-00 px-3 text-sm text-text-04 transition-colors hover:bg-background-neutral-01 hover:text-text-05 focus:outline-none"
+              >
+                <div className="flex min-w-0 items-center gap-1.5">
+                  <SvgFilter className="h-4 w-4 shrink-0 stroke-text-02" />
+                  <span className="truncate">
+                    {selectedRoles.length
+                      ? t("admin.users.rolesSelected", {
+                          count: selectedRoles.length,
+                        })
+                      : t("admin.users.allRoles")}
+                  </span>
+                </div>
+                <SvgChevronDownSmall className="h-4 w-4 shrink-0 stroke-text-03" />
+              </button>
+            </Popover.Trigger>
+            <Popover.Content align="start" width="md">
+              <Popover.Menu>
+                {(rolesData?.roles || []).map((role) => (
+                  <LineItem
+                    key={role.name}
+                    selected={selectedRoles.includes(role.name)}
+                    emphasized
+                    onClick={() => toggleRole(role.name)}
+                    rightChildren={
+                      selectedRoles.includes(role.name) ? (
+                        <SvgCheck className="h-3 w-3 stroke-text-05" />
+                      ) : (
+                        <div className="h-2 w-2 rounded-full border border-border-02" />
+                      )
+                    }
+                  >
+                    {t(`admin.users.roles.${role.name}`, {
+                      defaultValue: formatRoleName(role.name),
+                    })}
+                  </LineItem>
+                ))}
+              </Popover.Menu>
+            </Popover.Content>
+          </Popover>
         </div>
       </div>
       {selectedRoles.length > 0 && (
@@ -509,40 +561,4 @@ function StatusBadge({ active, label }: { active: boolean; label: string }) {
   );
 }
 
-function DynamicRoleFilterCheckboxes({
-  selectedRoles,
-  toggleRole,
-}: {
-  selectedRoles: string[];
-  toggleRole: (role: string) => void;
-}) {
-  const { t } = useTranslation();
-  const { data: roles } = useSWR<{ roles: { name: string }[] }>(
-    "/api/user-service/roles",
-    errorHandlingFetcher
-  );
 
-  return (
-    <>
-      {roles?.roles?.map((role) => (
-        <LineItem
-          key={role.name}
-          selected={selectedRoles.includes(role.name)}
-          emphasized
-          onClick={() => toggleRole(role.name)}
-          rightChildren={
-            selectedRoles.includes(role.name) ? (
-              <SvgCheck className="h-3 w-3 stroke-text-05" />
-            ) : (
-              <div className="h-2 w-2 rounded-full border border-border-02" />
-            )
-          }
-        >
-          {t(`admin.users.roles.${role.name}`, {
-            defaultValue: formatRoleName(role.name),
-          })}
-        </LineItem>
-      ))}
-    </>
-  );
-}

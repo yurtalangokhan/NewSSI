@@ -973,14 +973,16 @@ export default function Page() {
             ]}
             actions={[
               {
-                label: t("admin.navigation.routes.chatPreferences.sidebar", {
-                  defaultValue: "Chat Preferences",
+                label: t("admin.navigation.routes.llmModels.sidebar", {
+                  defaultValue: "LLM Models",
                 }),
-                href: ADMIN_PATHS.CHAT_PREFERENCES,
+                href: ADMIN_PATHS.LLM_MODELS,
               },
               {
-                label: t("admin.navigation.routes.searchSettings.sidebar"),
-                href: ADMIN_PATHS.SEARCH_SETTINGS,
+                label: t("admin.navigation.routes.documentProcessing.sidebar", {
+                  defaultValue: "Document Processing",
+                }),
+                href: ADMIN_PATHS.DOCUMENT_PROCESSING,
                 primary: true,
               },
             ]}
@@ -1460,7 +1462,7 @@ export default function Page() {
                               <>
                                 <div className="flex items-center gap-2">
                                   {onyxTestResult.title && (
-                                    <Text as="p" mainUiBody className="font-semibold text-text-01">
+                                    <Text as="p" mainUiBody className="font-semibold text-text-05">
                                       {onyxTestResult.title}
                                     </Text>
                                   )}
@@ -1472,7 +1474,7 @@ export default function Page() {
                                 <Text
                                   as="p"
                                   mainUiBody
-                                  text03
+                                  text04
                                   className="whitespace-pre-wrap break-words max-h-64 overflow-y-auto"
                                 >
                                   {onyxTestResult.content

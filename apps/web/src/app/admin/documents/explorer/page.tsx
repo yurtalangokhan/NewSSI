@@ -1,9 +1,12 @@
+import { notFound } from "next/navigation";
 import { fetchValidFilterInfo } from "@/lib/search/utilsSS";
 import DocumentExplorerPage from "./DocumentExplorerPage";
 
 export default async function Page(props: {
   searchParams: Promise<{ [key: string]: string }>;
 }) {
+  notFound();
+
   const searchParams = await props.searchParams;
   const { connectors, documentSets } = await fetchValidFilterInfo();
 

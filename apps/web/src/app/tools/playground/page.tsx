@@ -279,7 +279,7 @@ function SchemaForm({
                 </Text>
               )}
               <div
-                className={cn(errorMsg && "ring-1 ring-status-error-04 rounded-md")}
+                className={cn(errorMsg && "ring-1 ring-status-error-05 rounded-md")}
               >
                 {renderField(
                   [name],

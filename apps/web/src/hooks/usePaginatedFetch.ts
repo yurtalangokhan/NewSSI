@@ -97,8 +97,15 @@ function usePaginatedFetch<T extends PaginatedType>({
 
         if (filter) {
           for (const [key, value] of Object.entries(filter)) {
+            if (value === undefined || value === null) {
+              continue;
+            }
             if (Array.isArray(value)) {
-              value.forEach((str) => params.append(key, str));
+              value.forEach((str) => {
+                if (str !== undefined && str !== null) {
+                  params.append(key, str.toString());
+                }
+              });
             } else {
               params.set(key, value.toString());
             }

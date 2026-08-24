@@ -691,8 +691,13 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
     setTimeout(() => updateCurrentDocumentSidebarVisible(false), 300);
   }, [updateCurrentDocumentSidebarVisible]);
 
-  const desktopDocumentSidebar =
-    retrievalEnabled && !settings.isMobile ? (
+  // Not gated on `retrievalEnabled` — that only reflects Onyx's native
+  // in-code search/web-search tools, not MCP-backed tools like our
+  // web_search/fetch_webpage, which produce sources just as validly. The
+  // Sources button in MessageToolbar already only renders when a message
+  // actually has citations/documents, so mounting this unconditionally
+  // costs nothing when there is nothing to show.
+  const desktopDocumentSidebar = !settings.isMobile ? (
       <div
         className={cn(
           "flex-shrink-0 overflow-hidden transition-all duration-300 ease-in-out",
@@ -802,7 +807,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
     <>
       <AppPopup />
 
-      {retrievalEnabled && documentSidebarVisible && settings.isMobile && (
+      {documentSidebarVisible && settings.isMobile && (
         <div className="md:hidden">
           <Modal
             open

@@ -14,6 +14,7 @@ import type { Route } from "next";
 import { useTranslation } from "react-i18next";
 import { useEffect } from "react";
 import { clearAuthRefreshFailed } from "@/lib/fetcher";
+import { formatErrorMessage } from "@/components/ErrorCallout";
 
 interface LoginPageProps {
   authUrl: string | null;
@@ -66,7 +67,12 @@ export default function LoginPage({
         />
       )}
       {oidcError && (
-        <Message error close={false} text={oidcError} className="w-full mb-3" />
+        <Message
+          error
+          close={false}
+          text={formatErrorMessage(oidcError)}
+          className="w-full mb-3"
+        />
       )}
       {authUrl &&
         authTypeMetadata &&

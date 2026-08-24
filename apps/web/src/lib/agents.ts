@@ -8,6 +8,27 @@ import { User } from "./types";
 import { personaComparator } from "@/app/admin/agents/lib";
 
 /**
+ * Sentinel email returned by the backend when an agent's owner account
+ * could not be resolved (e.g. the owning user was deleted). Must match
+ * `_resolve_owner_email`'s fallback in `persona_controller.py`.
+ */
+export const UNKNOWN_AGENT_OWNER_EMAIL = "Unknown user";
+
+/**
+ * Resolves an agent owner's email for display, translating the backend's
+ * "owner not found" sentinel into a localized label.
+ */
+export function resolveAgentOwnerEmail(
+  email: string | null | undefined,
+  t: (key: string) => string,
+  fallback = "Onyx"
+): string {
+  if (!email) return fallback;
+  if (email === UNKNOWN_AGENT_OWNER_EMAIL) return t("agentsPage.unknownOwner");
+  return email;
+}
+
+/**
  * Checks if the given user owns the specified assistant.
  *
  * @param user - The user to check ownership for, or null if no user is logged in

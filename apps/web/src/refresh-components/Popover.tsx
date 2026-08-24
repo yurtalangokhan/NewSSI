@@ -199,7 +199,7 @@ function SeparatorHelper() {
  * ```
  */
 export interface PopoverMenuProps {
-  children?: React.ReactNode[];
+  children?: React.ReactNode | React.ReactNode[];
   footer?: React.ReactNode;
 
   // Ref for the scrollable container (useful for programmatic scrolling)
@@ -212,7 +212,8 @@ export function PopoverMenu({
 }: PopoverMenuProps) {
   if (!children) return null;
 
-  const definedChildren = children.filter(
+  const childrenArray = Array.isArray(children) ? children : [children];
+  const definedChildren = childrenArray.filter(
     (child) => child !== undefined && child !== false
   );
   const filteredChildren = definedChildren.filter((child, index) => {

@@ -11,6 +11,7 @@ import { ValidSources } from "@/lib/types";
 import { SearchChipList, SourceInfo } from "./SearchChipList";
 import {
   constructCurrentSearchState,
+  getSearchedForQuery,
   INITIAL_QUERIES_TO_SHOW,
   QUERIES_PER_EXPANSION,
 } from "./searchStateUtils";
@@ -49,7 +50,10 @@ export const WebSearchToolRenderer: MessageRenderer<SearchToolPacket, {}> = ({
   const isHighlight = renderType === RenderType.HIGHLIGHT;
   const isInline = renderType === RenderType.INLINE;
 
-  const queriesHeader = t("timeline.searchingWeb");
+  const searchedForQuery = getSearchedForQuery(queries);
+  const queriesHeader = searchedForQuery
+    ? t("timeline.searchedFor", { query: searchedForQuery })
+    : t("timeline.searchingWeb");
 
   if (queries.length === 0) {
     return children([

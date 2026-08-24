@@ -68,10 +68,22 @@ class TestShouldIncrementTurn:
             is True
         )
 
-    def test_tool_start_after_tool_delta(self):
+    def test_tool_start_after_tool_delta_same_tool_still_splits(self):
+        # Each call gets its own turn even when the tool name repeats — the
+        # reconstruction already reordered packets so this start's own delta
+        # immediately follows it, so splitting here doesn't separate a call
+        # from its result.
         assert (
             should_increment_turn(
                 "custom_tool_start", "custom_tool_delta", "search", "search", is_first=False
+            )
+            is True
+        )
+
+    def test_tool_start_after_tool_delta_different_tool_splits(self):
+        assert (
+            should_increment_turn(
+                "custom_tool_start", "custom_tool_delta", "search", "fetch", is_first=False
             )
             is True
         )
@@ -147,6 +159,40 @@ class TestShouldIncrementTurn:
             should_increment_turn("my_custom_delta", "my_custom_delta", None, None, is_first=False)
             is True
         )
+
+
+
+    # ------------------------------------------------------------------ #
+    # search_tool packets group together                                  #
+    # ------------------------------------------------------------------ #
+
+    def test_search_tool_start_after_reasoning_starts_new_turn(self):
+        assert should_increment_turn("search_tool_start", "reasoning_delta", None, None, is_first=False) is True
+
+    def test_search_tool_queries_delta_groups_with_search_tool_start(self):
+        assert should_increment_turn("search_tool_queries_delta", "search_tool_start", None, None, is_first=False) is False
+
+    def test_search_tool_documents_delta_groups_with_queries_delta(self):
+        assert should_increment_turn("search_tool_documents_delta", "search_tool_queries_delta", None, None, is_first=False) is False
+
+    def test_consecutive_search_tool_starts_group_together(self):
+        assert should_increment_turn("search_tool_start", "search_tool_documents_delta", None, None, is_first=False) is False
+
+    # ------------------------------------------------------------------ #
+    # open_url packets: start begins new turn, urls/docs group with start #
+    # ------------------------------------------------------------------ #
+
+    def test_open_url_start_after_reasoning_starts_new_turn(self):
+        assert should_increment_turn("open_url_start", "reasoning_delta", None, None, is_first=False) is True
+
+    def test_open_url_urls_groups_with_open_url_start(self):
+        assert should_increment_turn("open_url_urls", "open_url_start", None, None, is_first=False) is False
+
+    def test_open_url_documents_groups_with_open_url_urls(self):
+        assert should_increment_turn("open_url_documents", "open_url_urls", None, None, is_first=False) is False
+
+    def test_consecutive_open_url_starts_split_into_separate_turns(self):
+        assert should_increment_turn("open_url_start", "open_url_documents", None, None, is_first=False) is True
 
 
 class TestStepTurnRulesRegistry:

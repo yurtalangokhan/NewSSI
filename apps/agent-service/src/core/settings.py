@@ -48,6 +48,17 @@ class Settings(BaseSettings):
     HOST: str = "0.0.0.0"
     PORT: int = 8080
     GRACEFUL_SHUTDOWN_TIMEOUT: int = 30
+    # LangGraph's own default (25) counts every model call + tool call as a
+    # graph "step" — a deep-research agent doing several rounds of parallel
+    # web_search/fetch_webpage calls burns through that in a handful of
+    # rounds and gets killed by GraphRecursionError mid-turn.
+    AGENT_RECURSION_LIMIT: int = 150
+    # How long an SSE stream may stay silent before a keep-alive comment is
+    # sent. Must stay well under the read timeout of anything proxying the
+    # stream (Kong defaults to 60s), because a model writing a long document
+    # emits nothing for minutes on providers that only deliver completed
+    # tool calls.
+    STREAM_HEARTBEAT_SECONDS: int = 15
     LOG_LEVEL: LogLevel = LogLevel.WARNING
     AUTH_SECRET: str | None = None
 

@@ -320,6 +320,58 @@ describe("usePacketProcessor", () => {
       // The tool should reset finalAnswerComing since it's an actual tool call
       expect(result.current.finalAnswerComing).toBe(false);
     });
+
+    test("shows text that arrived in the same batch as the tool call", () => {
+      // Packets stream in batches, so the last words of a sentence and the
+      // tool call that follows land in one pass. Holding a snapshot of the
+      // groups taken before that pass would strand those words unrendered
+      // until the tool phase ended.
+      const initialPackets = [createMessageStartPacket({ turn_index: 0 })];
+
+      const { result, rerender } = renderHook(
+        ({ packets }) => usePacketProcessor(packets, 1),
+        { initialProps: { packets: initialPackets } }
+      );
+
+      const batched = [
+        ...initialPackets,
+        createPacket(PacketType.MESSAGE_DELTA, { turn_index: 0 }, {
+          content: "son kelime",
+        }),
+        createSearchToolStartPacket({ turn_index: 1 }),
+      ];
+      rerender({ packets: batched });
+
+      expect(result.current.finalAnswerComing).toBe(false);
+      const shown = result.current.displayGroups.flatMap((g) => g.packets);
+      expect(
+        shown.some((p) => (p.obj as { content?: string }).content === "son kelime")
+      ).toBe(true);
+    });
+
+    test("keeps already-shown text visible while the new tool call is in progress", () => {
+      // A short preamble ("let me search for that") followed by a real tool
+      // call must not erase the preamble while the tool call plays out —
+      // that read as the text getting written then deleted on every call.
+      const initialPackets = [createMessageStartPacket({ turn_index: 0 })];
+
+      const { result, rerender } = renderHook(
+        ({ packets }) => usePacketProcessor(packets, 1),
+        { initialProps: { packets: initialPackets } }
+      );
+
+      expect(result.current.displayGroups.length).toBe(1);
+
+      const packetsWithToolAfter = [
+        ...initialPackets,
+        createSearchToolStartPacket({ turn_index: 1 }),
+      ];
+      rerender({ packets: packetsWithToolAfter });
+
+      expect(result.current.finalAnswerComing).toBe(false);
+      // The preamble stays visible instead of being hidden mid-tool-call.
+      expect(result.current.displayGroups.length).toBe(1);
+    });
   });
 
   describe("onRenderComplete callback", () => {

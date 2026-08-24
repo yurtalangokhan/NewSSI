@@ -21,8 +21,9 @@ import CopyIconButton from "@/refresh-components/buttons/CopyIconButton";
 import LLMPopover from "@/refresh-components/popovers/LLMPopover";
 import { parseLlmDescriptor } from "@/lib/llmConfig/utils";
 import { LlmManager } from "@/lib/hooks";
+import { AgentId } from "@/app/admin/agents/interfaces";
 import { Message } from "@/app/app/interfaces";
-import { SvgThumbsDown, SvgThumbsUp } from "@opal/icons";
+import { SvgThumbsDown, SvgThumbsUp, SvgRefreshCw } from "@opal/icons";
 import { RegenerationFactory } from "./AgentMessage";
 import useFeedbackController from "@/hooks/useFeedbackController";
 import { useCreateModal } from "@/refresh-components/contexts/ModalContext";
@@ -30,6 +31,7 @@ import FeedbackModal, {
   FeedbackModalProps,
 } from "@/sections/modals/FeedbackModal";
 import { Button } from "@opal/components";
+import { DEFAULT_PERSONA_ID } from "@/sections/sidebar/constants";
 
 // Wrapper component for SourceTag in toolbar to handle memoization
 const SourcesTagWrapper = React.memo(function SourcesTagWrapper({
@@ -112,10 +114,27 @@ export interface MessageToolbarProps {
   parentMessage?: Message | null;
   llmManager: LlmManager | null;
   currentModelName?: string;
+  // persona_id that actually produced this message. Present (and non-default)
+  // only for a custom agent — model chat (the default persona) has no fixed
+  // agent identity to preserve, so retry there still offers the model list.
+  originalPersonaId?: AgentId | null;
 
   // Citations
   citations: StreamingCitation[];
   documentMap: Map<string, OnyxDocument>;
+}
+
+// A message produced by a custom agent must retry silently to that same
+// agent. The default persona (model chat, id 0) has no fixed agent identity
+// to preserve, so it keeps offering the model list on retry instead.
+export function isRetryToSameAgent(
+  originalPersonaId: AgentId | null | undefined
+): boolean {
+  return (
+    originalPersonaId !== null &&
+    originalPersonaId !== undefined &&
+    originalPersonaId !== DEFAULT_PERSONA_ID
+  );
 }
 
 export default function MessageToolbar({
@@ -134,6 +153,7 @@ export default function MessageToolbar({
   parentMessage,
   llmManager,
   currentModelName,
+  originalPersonaId,
   citations,
   documentMap,
 }: MessageToolbarProps) {
@@ -276,7 +296,25 @@ export default function MessageToolbar({
             {onRegenerate &&
               messageId !== undefined &&
               parentMessage &&
-              llmManager && (
+              llmManager &&
+              (isRetryToSameAgent(originalPersonaId) ? (
+                <div data-testid="AgentMessage/regenerate">
+                  <Button
+                    icon={SvgRefreshCw}
+                    variant="select"
+                    tooltip={t("messageToolbar.retry")}
+                    onClick={() => {
+                      const regenerator = onRegenerate({
+                        messageId,
+                        parentMessage,
+                        forcedPersonaId: originalPersonaId,
+                      });
+                      regenerator(llmManager.currentLlm);
+                    }}
+                    data-testid="AgentMessage/retry-button"
+                  />
+                </div>
+              ) : (
                 <div data-testid="AgentMessage/regenerate">
                   <LLMPopover
                     llmManager={llmManager}
@@ -292,7 +330,7 @@ export default function MessageToolbar({
                     folded
                   />
                 </div>
-              )}
+              ))}
 
             {nodeId && (citations.length > 0 || documentMap.size > 0) && (
               <SourcesTagWrapper

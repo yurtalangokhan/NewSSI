@@ -221,10 +221,6 @@ export default function Page() {
           ]}
           actions={[
             {
-              label: t("admin.addConnector.seeConnectors"),
-              href: ADMIN_PATHS.INDEXING_STATUS,
-            },
-            {
               label: t("admin.navigation.routes.documentProcessing.sidebar"),
               href: ADMIN_PATHS.DOCUMENT_PROCESSING,
               primary: true,

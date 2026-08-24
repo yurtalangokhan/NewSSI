@@ -1,3 +1,4 @@
+import { notFound } from "next/navigation";
 "use client";
 
 import { LoadingAnimation } from "@/components/Loading";
@@ -68,6 +69,8 @@ function Main() {
 }
 
 export default function Page() {
+  notFound();
+
   const { t } = useTranslation();
   const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.DOCUMENT_FEEDBACK]!;
 

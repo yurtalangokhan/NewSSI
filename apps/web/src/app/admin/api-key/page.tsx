@@ -1,3 +1,4 @@
+import { notFound } from "next/navigation";
 "use client";
 
 import { ThreeDotsLoader } from "@/components/Loading";
@@ -270,6 +271,8 @@ function Main() {
 }
 
 export default function Page() {
+  notFound();
+
   const { t } = useTranslation();
 
   return (

@@ -16,7 +16,8 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import { Tree, NodeRendererProps, type TreeApi } from "react-arborist";
+import { Tree, NodeRendererProps,
+  RowRendererProps, type TreeApi } from "react-arborist";
 import { useTranslation } from "react-i18next";
 import { OrganizationSearchCombobox } from "@/components/organization/OrganizationSearchCombobox";
 import type {
@@ -36,6 +37,7 @@ import {
   organizationMatchesSearch,
 } from "@/components/organization/organizationSearch";
 import {
+  SvgCheck,
   SvgEdit,
   SvgFolderPlus,
   SvgMaximize2,
@@ -46,7 +48,6 @@ import {
 import Button from "@/refresh-components/buttons/Button";
 import IconButton from "@/refresh-components/buttons/IconButton";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
-import InputSelect from "@/refresh-components/inputs/InputSelect";
 import Text from "@/refresh-components/texts/Text";
 import { cn } from "@/lib/utils";
 
@@ -68,6 +69,32 @@ interface OrganizationTreeProps extends Partial<OrganizationSearchProps> {
   membersLoading?: boolean;
   onExpandOrg?: (orgId: string) => void;
   className?: string;
+}
+
+function OrganizationTreeRow<T>({
+  node,
+  attrs,
+  innerRef,
+  children,
+}: RowRendererProps<T>) {
+  return (
+    <div
+      {...attrs}
+      ref={innerRef}
+      onFocus={(e) => e.stopPropagation()}
+      onClick={node.handleClick}
+      style={{
+        ...attrs.style,
+        minWidth: "100%",
+        maxWidth: "100%",
+        width: "100%",
+        boxSizing: "border-box",
+      }}
+      className={cn("w-full max-w-full overflow-hidden box-border", attrs.className)}
+    >
+      {children}
+    </div>
+  );
 }
 
 interface OrganizationNodeRendererProps
@@ -188,20 +215,15 @@ function Node({
     language
   );
   const hasSearch = Boolean(searchQuery.trim());
-  const descendants = new Set(
-    flattenOrganizations(node.data.children ?? []).map((item) => item.id)
-  );
-  const parentOptions = organizations.filter(
-    (item) => item.id !== node.data.id && !descendants.has(item.id)
-  );
   const directMembers = membersByOrganizationId[node.data.id] ?? [];
 
   const handleSave = useCallback(() => {
-    if (editName.trim() && editName !== node.data.name) {
-      void onUpdateOrg(node.data.id, { name: editName.trim() });
+    const trimmed = editName.trim();
+    if (trimmed && trimmed !== node.data.name) {
+      void onUpdateOrg(node.data.id, { name: trimmed });
     }
     setIsEditing(false);
-  }, [editName, node, onUpdateOrg]);
+  }, [editName, node.data.id, node.data.name, onUpdateOrg]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -215,33 +237,34 @@ function Node({
     [handleSave, node.data.name]
   );
 
+  const isExpandable =
+    (node.children !== null && node.children !== undefined && node.children.length > 0) ||
+    (node.data.children !== undefined && node.data.children.length > 0) ||
+    node.data.has_children === true ||
+    (node.data.children_count !== undefined && node.data.children_count > 0);
+
   const handleToggleNode = useCallback(() => {
-    const isExpandable =
-      node.isInternal ||
-      (node.data.children !== undefined && node.data.children.length > 0) ||
-      node.data.has_children === true;
-    if (isExpandable || node.isInternal) {
+    if (isExpandable) {
       const willOpen = !node.isOpen;
       node.toggle();
       if (willOpen && onExpandOrg) {
         onExpandOrg(node.data.id);
       }
     }
-  }, [node, onExpandOrg]);
-
-  const isExpandable =
-    node.isInternal ||
-    (node.data.children !== undefined && node.data.children.length > 0) ||
-    node.data.has_children === true;
+  }, [isExpandable, node, onExpandOrg]);
 
   return (
-    <div style={style} ref={dragHandle}>
+    <div
+      style={{ ...style, boxSizing: "border-box" }}
+      ref={dragHandle}
+      className="box-border w-full max-w-full min-w-0 overflow-hidden pr-1"
+    >
       <div
         data-search-state={
           isSearchMatch ? "match" : hasSearch ? "dimmed" : "idle"
         }
         className={cn(
-          "group flex min-w-0 items-center gap-2 rounded-md px-3 py-2 cursor-pointer transition-[background-color,border-color,box-shadow] duration-200 motion-reduce:transition-none",
+          "group flex w-full min-w-0 max-w-full items-center gap-2 rounded-md px-2 py-1.5 cursor-pointer transition-[background-color,border-color,box-shadow] duration-200 motion-reduce:transition-none overflow-hidden",
           "hover:bg-background-neutral-02",
           isSearchMatch &&
             "bg-background-neutral-03 ring-1 ring-action-link-05",
@@ -258,58 +281,62 @@ function Node({
         {/* Expand/Collapse Icon */}
         {isExpandable ? (
           <div
-            className={cn("flex h-4 w-4 items-center justify-center")}
+            className={cn("flex h-4 w-4 shrink-0 items-center justify-center")}
             aria-hidden="true"
           >
             {node.isOpen ? "−" : "+"}
           </div>
         ) : (
-          <div className={cn("w-4")} />
+          <div className={cn("w-4 shrink-0")} />
         )}
 
         {/* Name (editable) */}
         {isEditing ? (
           <div
-            className={cn("flex min-w-0 flex-1 items-center gap-2")}
+            className={cn("flex min-w-0 flex-1 items-center gap-1")}
             onClick={(event) => event.stopPropagation()}
           >
-            <InputTypeIn
+            <input
               ref={inputRef}
+              type="text"
               value={editName}
               onChange={(e) => setEditName(e.target.value)}
               onKeyDown={handleKeyDown}
-              className={cn("flex-1")}
+              className={cn(
+                "min-w-0 flex-1 h-7 rounded-md border border-action-link-05 bg-background-neutral-00 px-2 py-0.5 text-sm text-text-05 focus:outline-none focus:ring-1 focus:ring-action-link-05"
+              )}
               autoFocus
             />
-            <InputSelect
-              value={node.data.parent_id ?? ""}
-              disabled={node.data.parent_id === null}
-              onValueChange={(parentId) => {
-                const parent = organizations.find(
-                  (item) => item.id === parentId
-                );
-                if (parent && parentId !== node.data.parent_id)
-                  onRequestMove(node.data, parent);
+            <IconButton
+              icon={SvgCheck}
+              small
+              action
+              tooltip={t("admin.organizations.actions.saveChanges")}
+              aria-label={t("admin.organizations.actions.saveChanges")}
+              disabled={!editName.trim() || editName.trim() === node.data.name}
+              onClick={(event) => {
+                event.stopPropagation();
+                handleSave();
               }}
-            >
-              <InputSelect.Trigger
-                aria-label={t("admin.organizations.inspector.moveTo")}
-              />
-              <InputSelect.Content>
-                {parentOptions.map((parent) => (
-                  <InputSelect.Item key={parent.id} value={parent.id}>
-                    {parent.name}
-                  </InputSelect.Item>
-                ))}
-              </InputSelect.Content>
-            </InputSelect>
-            <Button secondary size="md" onClick={handleSave}>
-              {t("admin.organizations.actions.saveChanges")}
-            </Button>
+            />
+            <IconButton
+              icon={SvgX}
+              small
+              tertiary
+              tooltip={t("admin.organizations.actions.cancel")}
+              aria-label={t("admin.organizations.actions.cancel")}
+              onClick={(event) => {
+                event.stopPropagation();
+                setEditName(node.data.name);
+                setIsEditing(false);
+              }}
+            />
           </div>
         ) : (
           <Text
+            as="p"
             text05
+            title={node.data.name}
             className={cn("min-w-0 flex-1 truncate text-sm font-medium")}
           >
             {node.data.name}
@@ -325,7 +352,7 @@ function Node({
           {node.data.user_count !== undefined && node.data.user_count > 0 && (
             <div
               className={cn(
-                "flex items-center gap-1 px-2 py-1 rounded bg-background-neutral-02"
+                "flex shrink-0 items-center gap-1 px-1.5 py-0.5 rounded bg-background-neutral-02"
               )}
             >
               <Text className={cn("text-xs text-text-03")}>
@@ -335,7 +362,10 @@ function Node({
           )}
 
           {node.isSelected && (
-            <>
+            <div
+              className={cn("flex shrink-0 items-center gap-0.5")}
+              onClick={(event) => event.stopPropagation()}
+            >
               <IconButton
                 icon={SvgEdit}
                 tooltip={t("admin.organizations.actions.rename")}
@@ -378,7 +408,7 @@ function Node({
                   }
                 }}
               />
-            </>
+            </div>
           )}
         </div>
       </div>
@@ -576,7 +606,7 @@ export function OrganizationTree({
       {/* Header */}
       <div className={cn("border-b border-border-02 p-4")}>
         <div className={cn("flex items-center justify-between gap-2")}>
-          <Text className={cn("text-lg font-semibold text-text-01")}>
+          <Text className={cn("text-lg font-semibold text-text-05")}>
             {t("admin.organizations.tree.title")}
           </Text>
           <div className={cn("flex items-center gap-1")}>
@@ -663,13 +693,14 @@ export function OrganizationTree({
           <Tree
             ref={treeRef}
             data={organizations}
+            renderRow={OrganizationTreeRow}
             openByDefault={false}
             initialOpenState={Object.fromEntries(
               organizations.map((organization) => [organization.id, true])
             )}
             width="100%"
             height={treeHeight}
-            indent={24}
+            indent={20}
             rowHeight={(node) =>
               showMembers &&
               (membersByOrganizationId[node.data.id]?.length ?? 0) > 0

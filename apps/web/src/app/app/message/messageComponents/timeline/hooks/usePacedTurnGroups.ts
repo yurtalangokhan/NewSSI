@@ -107,6 +107,19 @@ export function usePacedTurnGroups(
   // for completed turn groups that haven't changed
   const prevPacedRef = useRef<TurnGroup[]>([]);
 
+  // Last displayGroups shown while tool pacing was complete. A message can
+  // write a short preamble, then hand off to a real tool call (e.g. "let me
+  // search for that" -> web_search) — that resets `finalAnswerComing` and
+  // re-arms tool pacing below. Blanking pacedDisplayGroups to `[]` during
+  // that pacing window would erase the preamble that was already on screen,
+  // reading as the text getting written then deleted before the model
+  // "goes back" into visible thinking. Freeze on the last shown groups
+  // instead, so already-revealed text stays put while new steps pace in.
+  // Keys rather than the group objects: the groups are rebuilt each pass, so
+  // holding them would pin a snapshot and any text arriving during the pacing
+  // window would never render.
+  const lastDisplayGroupKeysRef = useRef<Set<string>>(new Set());
+
   // Trigger re-render when content should update
   // Used in useMemo dependencies since state.revealedStepKeys is stored in a ref
   const [revealTrigger, setRevealTrigger] = useState(0);
@@ -122,6 +135,7 @@ export function usePacedTurnGroups(
     stateRef.current = createInitialPacingState();
     stateRef.current.nodeId = nodeIdStr;
     prevPacedRef.current = [];
+    lastDisplayGroupKeysRef.current = new Set();
   }
 
   const state = stateRef.current;
@@ -347,12 +361,20 @@ export function usePacedTurnGroups(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [toolTurnGroups, revealTrigger, shouldBypassPacing]);
 
-  // Only return display groups when tool pacing is complete (or bypassing)
-  const pacedDisplayGroups = useMemo(
-    () => (shouldBypassPacing || state.toolPacingComplete ? displayGroups : []),
+  // Only advance display groups to their latest content when tool pacing is
+  // complete (or bypassing) — but never regress to blank while pacing a new
+  // tool step, or text already on screen would flash away and back.
+  const pacedDisplayGroups = useMemo(() => {
+    if (shouldBypassPacing || state.toolPacingComplete) {
+      lastDisplayGroupKeysRef.current = new Set(displayGroups.map((g) => g.key));
+      return displayGroups;
+    }
+    // Re-select from the live groups so their latest content shows, instead
+    // of replaying a copy captured before the pacing window opened.
+    const shownKeys = lastDisplayGroupKeysRef.current;
+    return displayGroups.filter((g) => shownKeys.has(g.key));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [state.toolPacingComplete, displayGroups, revealTrigger, shouldBypassPacing]
-  );
+  }, [state.toolPacingComplete, displayGroups, revealTrigger, shouldBypassPacing]);
 
   // Paced signals for header state consistency
   // Only signal finalAnswerComing when tool pacing is complete (or bypassing)

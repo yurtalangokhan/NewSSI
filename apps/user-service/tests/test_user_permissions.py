@@ -231,6 +231,7 @@ async def test_get_current_user_preserves_db_role_when_keycloak_has_no_valid_rol
     )
     service.keycloak = SimpleNamespace(is_enabled=lambda: True)
     service._resolve_role_from_keycloak = AsyncMock(return_value=None)
+    service.settings_repo = SimpleNamespace(ensure_defaults=AsyncMock())
 
     result = await service.get_current_user(str(user_id))
 

@@ -1,3 +1,5 @@
+"use client";
+
 import React from "react";
 import { useTranslation } from "react-i18next";
 
@@ -12,7 +14,13 @@ export default function ErrorPageLayout({ children }: ErrorPageLayoutProps) {
       <img
         src="/logo.turksat.svg"
         alt={t("turksatLogoAlt")}
-        className="h-auto w-[120px]"
+        className="h-auto w-[120px] dark:hidden"
+        draggable={false}
+      />
+      <img
+        src="/logo.turksat.white.svg"
+        alt={t("turksatLogoAlt")}
+        className="h-auto w-[120px] hidden dark:block"
         draggable={false}
       />
       <div className="max-w-[40rem] w-full border bg-background-neutral-00 shadow-02 rounded-16 p-6 flex flex-col gap-4">

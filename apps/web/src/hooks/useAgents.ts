@@ -2,12 +2,13 @@
 
 import useSWR from "swr";
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import {
   AgentId,
   MinimalPersonaSnapshot,
   FullPersona,
 } from "@/app/admin/agents/interfaces";
-import { errorHandlingFetcher } from "@/lib/fetcher";
+import { languageKeyedFetcher } from "@/lib/fetcher";
 import { pinAgents } from "@/lib/agents";
 import {
   AGENT_CATALOG_API_PATH,
@@ -60,9 +61,10 @@ function sortAgents(left: MinimalPersonaSnapshot, right: MinimalPersonaSnapshot)
  * return <AgentList agents={agents} />;
  */
 export function useAgents() {
+  const { i18n } = useTranslation();
   const { data, error, mutate } = useSWR<MinimalPersonaSnapshot[]>(
-    AGENT_CATALOG_API_PATH,
-    errorHandlingFetcher,
+    [AGENT_CATALOG_API_PATH, i18n.language],
+    languageKeyedFetcher,
     {
       revalidateOnFocus: false,
       dedupingInterval: 60000,
@@ -106,11 +108,12 @@ export function useAgents() {
  * return <AgentEditor agent={agent} />;
  */
 export function useAgent(agentId: AgentId | null) {
+  const { i18n } = useTranslation();
   const { data: personaData, error: personaError, isLoading: isPersonaLoading, mutate: mutatePersona } = useSWR<FullPersona>(
     agentId && typeof agentId === "number"
-      ? buildAgentDetailApiPath(agentId)
+      ? [buildAgentDetailApiPath(agentId), i18n.language]
       : null,
-    errorHandlingFetcher,
+    languageKeyedFetcher,
     {
       revalidateOnFocus: false,
       dedupingInterval: 60000,
@@ -138,16 +141,11 @@ export function useAgent(agentId: AgentId | null) {
  * with local state for optimistic drag-and-drop updates.
  */
 export function usePinnedAgents() {
-  const { user, refreshUser } = useUser();
+  const { user, updateUserPinnedAssistants } = useUser();
   const { agents, isLoading: isLoadingAgents } = useAgents();
 
-  // Local state for optimistic updates during drag-and-drop
-  const [localPinnedAgents, setLocalPinnedAgents] = useState<
-    MinimalPersonaSnapshot[]
-  >([]);
-
-  // Derive pinned agents from server data
-  const serverPinnedAgents = useMemo(() => {
+  // Derive pinned agents from user preferences and available agents
+  const pinnedAgents = useMemo(() => {
     if (agents.length === 0) return [];
 
     // If pinned_assistants is null/undefined (never set), show featured personas
@@ -162,48 +160,37 @@ export function usePinnedAgents() {
       .filter((agent): agent is MinimalPersonaSnapshot => !!agent);
   }, [agents, user?.preferences?.pinned_assistants]);
 
-  // Sync server data → local state when server data changes
-  // Only sync when agents have loaded (to avoid syncing empty during initial load)
-  useEffect(() => {
-    if (agents.length > 0) {
-      setLocalPinnedAgents(serverPinnedAgents);
-    }
-  }, [serverPinnedAgents, agents.length]);
-
-  // Toggle pin status - updates local state AND persists to server
+  // Toggle pin status - updates UserProvider context optimistically AND persists to server
   const togglePinnedAgent = useCallback(
     async (agent: MinimalPersonaSnapshot, shouldPin: boolean) => {
-      const newPinned = shouldPin
-        ? [...localPinnedAgents, agent]
-        : localPinnedAgents.filter((a) => a.id !== agent.id);
+      const currentPinnedIds =
+        user?.preferences?.pinned_assistants ??
+        agents.filter((a) => a.featured && a.id !== 0).map((a) => a.id);
 
-      // Optimistic update
-      setLocalPinnedAgents(newPinned);
+      const newPinnedIds = shouldPin
+        ? currentPinnedIds.some((id) => String(id) === String(agent.id))
+          ? currentPinnedIds
+          : [...currentPinnedIds, agent.id]
+        : currentPinnedIds.filter((id) => String(id) !== String(agent.id));
 
-      // Persist to server
-      await pinAgents(newPinned.map((a) => a.id));
-      refreshUser(); // Refresh user to sync pinned_assistants
+      await updateUserPinnedAssistants(newPinnedIds);
     },
-    [localPinnedAgents, refreshUser]
+    [user?.preferences?.pinned_assistants, agents, updateUserPinnedAssistants]
   );
 
   // Update pinned agents order (for drag-and-drop) - updates AND persists
   const updatePinnedAgents = useCallback(
     async (newPinnedAgents: MinimalPersonaSnapshot[]) => {
-      // Optimistic update
-      setLocalPinnedAgents(newPinnedAgents);
-
-      // Persist to server
-      await pinAgents(newPinnedAgents.map((a) => a.id));
-      refreshUser();
+      const newPinnedIds = newPinnedAgents.map((a) => a.id);
+      await updateUserPinnedAssistants(newPinnedIds);
     },
-    [refreshUser]
+    [updateUserPinnedAssistants]
   );
 
   return {
-    pinnedAgents: localPinnedAgents,
+    pinnedAgents,
     togglePinnedAgent,
-    updatePinnedAgents, // Use this instead of setPinnedAgents for drag-and-drop
+    updatePinnedAgents,
     isLoading: isLoadingAgents,
   };
 }

@@ -32,6 +32,7 @@ import { fetchAppSidebarMetadata } from "@/lib/appSidebarSS";
 import StatsOverlayLoader from "@/components/dev/StatsOverlayLoader";
 import PerformanceMeasureGuard from "@/components/dev/PerformanceMeasureGuard";
 import { getAppName } from "@/lib/appInfo";
+import { resolveLocaleSS } from "@/lib/localeSS";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -46,7 +47,7 @@ const hankenGrotesk = Hanken_Grotesk({
 });
 
 export async function generateMetadata(): Promise<Metadata> {
-  const logoLocation = buildClientUrl("/logo.turksat.svg?v=20260505-2");
+  const logoLocation = buildClientUrl("/logo.single.svg");
   let enterpriseSettings: EnterpriseSettings | null = null;
   if (SERVER_SIDE_ONLY__PAID_ENTERPRISE_FEATURES_ENABLED) {
     enterpriseSettings = await (await fetchEnterpriseSettingsSS()).json();
@@ -68,11 +69,13 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [combinedSettings, user, authTypeMetadata] = await Promise.all([
-    fetchSettingsSS(),
-    getCurrentUserSS(),
-    getAuthTypeMetadataSS(),
-  ]);
+  const [combinedSettings, user, authTypeMetadata, locale] =
+    await Promise.all([
+      fetchSettingsSS(),
+      getCurrentUserSS(),
+      getAuthTypeMetadataSS(),
+      resolveLocaleSS(),
+    ]);
 
   const { folded } = await fetchAppSidebarMetadata(user);
 
@@ -81,7 +84,7 @@ export default async function RootLayout({
 
   const getPageContent = async (content: React.ReactNode) => (
     <html
-      lang="en"
+      lang={locale}
       className={`${inter.variable} ${hankenGrotesk.variable}`}
       suppressHydrationWarning
     >
@@ -164,6 +167,7 @@ export default async function RootLayout({
       user={user}
       settings={combinedSettings}
       folded={folded}
+      initialLocale={locale}
     >
       <Suspense fallback={null}>
         <PostHogPageView />

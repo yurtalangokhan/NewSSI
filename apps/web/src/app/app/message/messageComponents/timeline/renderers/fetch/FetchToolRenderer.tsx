@@ -15,7 +15,7 @@ import {
   URLS_PER_EXPANSION,
 } from "./fetchStateUtils";
 import Text from "@/refresh-components/texts/Text";
-import { SvgCircle } from "@opal/icons";
+import { SvgAlertCircle, SvgCircle } from "@opal/icons";
 
 const urlToSourceInfo = (url: string, index: number): SourceInfo => ({
   id: `url-${index}`,
@@ -75,6 +75,13 @@ export const FetchToolRenderer: MessageRenderer<FetchToolPacket, {}> = ({
 
   const displayDocuments = documents.length > 0;
   const displayUrls = !displayDocuments && isComplete && urls.length > 0;
+  const errorDocuments = documents.filter(
+    (doc) =>
+      doc.is_error ||
+      Boolean(doc.error) ||
+      Boolean(doc.metadata?.error) ||
+      (Boolean(doc.blurb) && doc.blurb.startsWith("Error fetching webpage"))
+  );
 
   // HIGHLIGHT mode: header embedded in content, no StepContainer
   if (isHighlight) {
@@ -113,6 +120,30 @@ export const FetchToolRenderer: MessageRenderer<FetchToolPacket, {}> = ({
               />
             ) : (
               !stopPacketSeen && <BlinkingBar />
+            )}
+            {errorDocuments.length > 0 && (
+              <div className="flex flex-col gap-1 mt-1.5">
+                {errorDocuments.map((doc) => {
+                  const errorMsg =
+                    doc.error || doc.metadata?.error || doc.blurb;
+                  return (
+                    <div
+                      key={`error-${doc.document_id}`}
+                      className="flex items-start gap-1.5 rounded-08 border border-status-danger-02 bg-status-danger-00 px-2.5 py-1.5 text-xs text-status-danger-05"
+                    >
+                      <SvgAlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0 stroke-status-danger-05" />
+                      <div className="flex flex-col min-w-0">
+                        <span className="font-medium truncate">
+                          {doc.link || doc.document_id}
+                        </span>
+                        <span className="text-text-03 break-words text-[11px] leading-4">
+                          {errorMsg}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </div>
         ),
@@ -153,6 +184,30 @@ export const FetchToolRenderer: MessageRenderer<FetchToolPacket, {}> = ({
           ) : (
             <div className="flex flex-wrap gap-x-2 gap-y-2 ml-1">
               {!stopPacketSeen && <BlinkingBar />}
+            </div>
+          )}
+          {errorDocuments.length > 0 && (
+            <div className="flex flex-col gap-1 mt-2">
+              {errorDocuments.map((doc) => {
+                const errorMsg =
+                  doc.error || doc.metadata?.error || doc.blurb;
+                return (
+                  <div
+                    key={`error-${doc.document_id}`}
+                    className="flex items-start gap-1.5 rounded-08 border border-status-danger-02 bg-status-danger-00 px-2.5 py-1.5 text-xs text-status-danger-05"
+                  >
+                    <SvgAlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0 stroke-status-danger-05" />
+                    <div className="flex flex-col min-w-0">
+                      <span className="font-medium truncate">
+                        {doc.link || doc.document_id}
+                      </span>
+                      <span className="text-text-03 break-words text-[11px] leading-4">
+                        {errorMsg}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>

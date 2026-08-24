@@ -1,16 +1,20 @@
 "use client";
 
-import { useMemo, useState, useRef, useEffect } from "react";
+import { useMemo, useState, useRef } from "react";
 import AgentCard from "@/sections/cards/AgentCard";
 import { useUser } from "@/providers/UserProvider";
 import { getAgentPageAccess } from "@/lib/agentPageAccess";
-import { checkUserOwnsAgent as checkUserOwnsAgent } from "@/lib/agents";
+import {
+  checkUserOwnsAgent as checkUserOwnsAgent,
+  UNKNOWN_AGENT_OWNER_EMAIL,
+} from "@/lib/agents";
 import { useAgents } from "@/hooks/useAgents";
 import { MinimalPersonaSnapshot } from "@/app/admin/agents/interfaces";
 import Text from "@/refresh-components/texts/Text";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
 import * as SettingsLayouts from "@/layouts/settings-layouts";
 import TextSeparator from "@/refresh-components/TextSeparator";
+import SimpleLoader from "@/refresh-components/loaders/SimpleLoader";
 import Tabs from "@/refresh-components/Tabs";
 import FilterButton from "@/refresh-components/buttons/FilterButton";
 import Popover, { PopoverMenu } from "@/refresh-components/Popover";
@@ -33,6 +37,19 @@ import {
 } from "@opal/icons";
 import useOnMount from "@/hooks/useOnMount";
 import { useTranslation } from "react-i18next";
+
+// Synthetic id used to collapse every agent whose owner account no longer
+// resolves (backend returns UNKNOWN_AGENT_OWNER_EMAIL) into a single
+// "Deleted user" entry in the creator filter, instead of one entry per
+// distinct orphaned owner id.
+const UNKNOWN_OWNER_FILTER_ID = "__unknown_owner__";
+
+function creatorFilterId(owner: { id: string; email: string } | null | undefined) {
+  if (!owner) return undefined;
+  return owner.email === UNKNOWN_AGENT_OWNER_EMAIL
+    ? UNKNOWN_OWNER_FILTER_ID
+    : owner.id;
+}
 
 interface AgentsSectionProps {
   title: string;
@@ -70,7 +87,7 @@ function AgentsSection({ title, description, agents }: AgentsSectionProps) {
 }
 
 export default function AgentsNavigationPage() {
-  const { agents } = useAgents();
+  const { agents, isLoading: isLoadingAgents } = useAgents();
   const [creatorFilterOpen, setCreatorFilterOpen] = useState(false);
   const [actionsFilterOpen, setActionsFilterOpen] = useState(false);
   const { user, hasPermission } = useUser();
@@ -84,17 +101,15 @@ export default function AgentsNavigationPage() {
   const [selectedCreatorIds, setSelectedCreatorIds] = useState<Set<string>>(
     new Set()
   );
-  const [selectedActionIds, setSelectedActionIds] = useState<Set<number>>(
-    new Set()
-  );
-  const [selectedMcpServerIds, setSelectedMcpServerIds] = useState<Set<number>>(
+  // Actions are matched by tool name rather than id: the backend assigns
+  // synthetic per-agent ids to each tool snapshot, so the same tool (e.g.
+  // "database_search") gets a different id on every agent. Name is the
+  // only identity that's stable across agents.
+  const [selectedActionIds, setSelectedActionIds] = useState<Set<string>>(
     new Set()
   );
   const [creatorSearchQuery, setCreatorSearchQuery] = useState("");
   const [actionsSearchQuery, setActionsSearchQuery] = useState("");
-  const [mcpServersMap, setMcpServersMap] = useState<
-    Map<number, { id: number; name: string }>
-  >(new Map());
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   useOnMount(() => {
@@ -102,52 +117,16 @@ export default function AgentsNavigationPage() {
     searchInputRef.current?.focus();
   });
 
-  // Fetch all MCP servers used by agents
-  useEffect(() => {
-    const fetchMCPServers = async () => {
-      const serverIds = new Set<number>();
-      agents.forEach((agent) => {
-        agent.tools.forEach((tool) => {
-          if (tool.mcp_server_id !== null && tool.mcp_server_id !== undefined) {
-            serverIds.add(tool.mcp_server_id);
-          }
-        });
-      });
-
-      if (serverIds.size === 0) {
-        setMcpServersMap(new Map());
-        return;
-      }
-
-      try {
-        const response = await fetch(`/api/mcp/servers`);
-        if (!response.ok) {
-          return;
-        }
-
-        const data = await response.json();
-        const serversMap = new Map<number, { id: number; name: string }>();
-
-        for (const server of data.mcp_servers ?? []) {
-          if (serverIds.has(server.id)) {
-            serversMap.set(server.id, { id: server.id, name: server.name });
-          }
-        }
-
-        setMcpServersMap(serversMap);
-      } catch (error) {
-        console.error("Error fetching MCP servers:", error);
-      }
-    };
-
-    fetchMCPServers();
-  }, [agents]);
-
   const uniqueCreators = useMemo(() => {
     const creatorsMap = new Map<string, { id: string; email: string }>();
     agents.forEach((agent) => {
-      if (agent.owner) {
-        creatorsMap.set(agent.owner.id, agent.owner);
+      if (!agent.owner) return;
+      const id = creatorFilterId(agent.owner);
+      if (!id) return;
+      if (id === UNKNOWN_OWNER_FILTER_ID) {
+        creatorsMap.set(id, { id, email: t("agentsPage.unknownOwner") });
+      } else {
+        creatorsMap.set(id, agent.owner);
       }
     });
 
@@ -172,7 +151,7 @@ export default function AgentsNavigationPage() {
     }
 
     return creators;
-  }, [agents, user]);
+  }, [agents, user, t]);
 
   const filteredCreators = useMemo(() => {
     if (!creatorSearchQuery) return uniqueCreators;
@@ -183,14 +162,14 @@ export default function AgentsNavigationPage() {
   }, [uniqueCreators, creatorSearchQuery]);
 
   const uniqueActions = useMemo(() => {
+    // Keyed by name, not id: the backend assigns each agent's tool
+    // snapshots a synthetic id scoped to that agent, so the same tool
+    // (e.g. "database_search") shows up with a different id per agent.
+    // Deduping by id previously caused the same tool to appear once per
+    // agent that has it instead of once overall.
     const actionsMap = new Map<
-      number,
-      {
-        id: number;
-        name: string;
-        display_name: string;
-        mcp_server_id?: number | null;
-      }
+      string,
+      { name: string; display_name: string }
     >();
     agents.forEach((agent) => {
       agent.tools.forEach((tool) => {
@@ -201,12 +180,12 @@ export default function AgentsNavigationPage() {
         ) {
           return;
         }
-        actionsMap.set(tool.id, {
-          id: tool.id,
-          name: tool.name,
-          display_name: tool.display_name,
-          mcp_server_id: tool.mcp_server_id,
-        });
+        if (!actionsMap.has(tool.name)) {
+          actionsMap.set(tool.name, {
+            name: tool.name,
+            display_name: tool.display_name,
+          });
+        }
       });
     });
 
@@ -228,95 +207,17 @@ export default function AgentsNavigationPage() {
     systemTools.sort((a, b) => a.display_name.localeCompare(b.display_name));
     otherTools.sort((a, b) => a.display_name.localeCompare(b.display_name));
 
-    // Group ALL tools by mcp_server_id (both system and other)
-    const mcpGroupsMap = new Map<number, typeof allActions>();
-    const nonMcpSystemTools: typeof systemTools = [];
-    const nonMcpOtherTools: typeof otherTools = [];
-
-    // Group system tools by MCP server
-    systemTools.forEach((tool) => {
-      if (tool.mcp_server_id !== null && tool.mcp_server_id !== undefined) {
-        const group = mcpGroupsMap.get(tool.mcp_server_id) || [];
-        group.push(tool);
-        mcpGroupsMap.set(tool.mcp_server_id, group);
-      } else {
-        nonMcpSystemTools.push(tool);
-      }
-    });
-
-    // Group other tools by MCP server
-    otherTools.forEach((tool) => {
-      if (tool.mcp_server_id !== null && tool.mcp_server_id !== undefined) {
-        const group = mcpGroupsMap.get(tool.mcp_server_id) || [];
-        group.push(tool);
-        mcpGroupsMap.set(tool.mcp_server_id, group);
-      } else {
-        nonMcpOtherTools.push(tool);
-      }
-    });
-
-    // Create grouped action items
-    type ActionItem =
-      | {
-          type: "tool";
-          id: number;
-          name: string;
-          display_name: string;
-          mcp_server_id?: number | null;
-        }
-      | {
-          type: "mcp_group";
-          mcp_server_id: number;
-          server_name: string;
-          tools: Array<{ id: number; name: string; display_name: string }>;
-        };
-
-    const mcpGroupItems: ActionItem[] = Array.from(mcpGroupsMap.entries()).map(
-      ([serverId, tools]) => {
-        const serverInfo = mcpServersMap.get(serverId);
-        return {
-          type: "mcp_group" as const,
-          mcp_server_id: serverId,
-          server_name: serverInfo?.name || `MCP Server ${serverId}`,
-          tools: tools.map((t) => ({
-            id: t.id,
-            name: t.name,
-            display_name: t.display_name,
-          })),
-        };
-      }
-    );
-
-    const nonMcpSystemToolItems: ActionItem[] = nonMcpSystemTools.map(
-      (tool) => ({ type: "tool" as const, ...tool })
-    );
-    const nonMcpOtherToolItems: ActionItem[] = nonMcpOtherTools.map((tool) => ({
-      type: "tool" as const,
-      ...tool,
-    }));
-
-    // Return non-MCP system tools first, then MCP groups, then non-MCP other tools
-    return [
-      ...nonMcpSystemToolItems,
-      ...mcpGroupItems,
-      ...nonMcpOtherToolItems,
-    ];
-  }, [agents, mcpServersMap]);
+    // System tools first, then everything else alphabetically
+    return [...systemTools, ...otherTools];
+  }, [agents]);
 
   const filteredActions = useMemo(() => {
     if (!actionsSearchQuery) return uniqueActions;
 
     const query = actionsSearchQuery.toLowerCase();
-    return uniqueActions.filter((action) => {
-      if (action.type === "tool") {
-        return action.display_name.toLowerCase().includes(query);
-      } else {
-        // For MCP groups, search through all tool names in the group
-        return action.tools.some((tool) =>
-          tool.display_name.toLowerCase().includes(query)
-        );
-      }
-    });
+    return uniqueActions.filter((action) =>
+      action.display_name.toLowerCase().includes(query)
+    );
   }, [uniqueActions, actionsSearchQuery]);
 
   const memoizedCurrentlyVisibleAgents = useMemo(() => {
@@ -332,19 +233,14 @@ export default function AgentsNavigationPage() {
         activeTab === "your" ? checkUserOwnsAgent(user, agent) : true;
       const isNotUnifiedAgent = agent.id !== 0;
 
+      const agentCreatorId = creatorFilterId(agent.owner);
       const creatorFilter =
         selectedCreatorIds.size === 0 ||
-        (agent.owner && selectedCreatorIds.has(agent.owner.id));
+        (!!agentCreatorId && selectedCreatorIds.has(agentCreatorId));
 
       const actionsFilter =
-        (selectedActionIds.size === 0 && selectedMcpServerIds.size === 0) ||
-        agent.tools.some(
-          (tool) =>
-            selectedActionIds.has(tool.id) ||
-            (tool.mcp_server_id !== null &&
-              tool.mcp_server_id !== undefined &&
-              selectedMcpServerIds.has(tool.mcp_server_id))
-        );
+        selectedActionIds.size === 0 ||
+        agent.tools.some((tool) => selectedActionIds.has(tool.name));
 
       return (
         (nameMatches || labelMatches) &&
@@ -361,7 +257,6 @@ export default function AgentsNavigationPage() {
     user,
     selectedCreatorIds,
     selectedActionIds,
-    selectedMcpServerIds,
   ]);
 
   const featuredAgents = [
@@ -390,39 +285,18 @@ export default function AgentsNavigationPage() {
   }, [selectedCreatorIds, uniqueCreators, t]);
 
   const actionsFilterButtonText = useMemo(() => {
-    const totalSelected = selectedActionIds.size + selectedMcpServerIds.size;
-
-    if (totalSelected === 0) {
+    if (selectedActionIds.size === 0) {
       return t("agentsPage.actionsFilterAll");
-    } else if (totalSelected === 1) {
-      // Check if it's a single tool
-      if (selectedActionIds.size === 1) {
-        const selectedId = Array.from(selectedActionIds)[0];
-        for (const action of uniqueActions) {
-          if (action.type === "tool" && action.id === selectedId) {
-            return action.display_name;
-          }
-        }
-      }
-
-      // Check if it's a single MCP server
-      if (selectedMcpServerIds.size === 1) {
-        const selectedServerId = Array.from(selectedMcpServerIds)[0];
-        for (const action of uniqueActions) {
-          if (
-            action.type === "mcp_group" &&
-            action.mcp_server_id === selectedServerId
-          ) {
-            return action.server_name;
-          }
-        }
-      }
-
-      return t("agentsPage.actionsFilterAll");
+    } else if (selectedActionIds.size === 1) {
+      const selectedName = Array.from(selectedActionIds)[0];
+      const action = uniqueActions.find((a) => a.name === selectedName);
+      return action ? action.display_name : t("agentsPage.actionsFilterAll");
     } else {
-      return t("agentsPage.actionsFilterSelected", { count: totalSelected });
+      return t("agentsPage.actionsFilterSelected", {
+        count: selectedActionIds.size,
+      });
     }
-  }, [selectedActionIds, selectedMcpServerIds, uniqueActions, t]);
+  }, [selectedActionIds, uniqueActions, t]);
 
   return (
     <SettingsLayouts.Root
@@ -557,13 +431,8 @@ export default function AgentsNavigationPage() {
                 <FilterButton
                   leftIcon={SvgActions}
                   transient={actionsFilterOpen}
-                  active={
-                    selectedActionIds.size > 0 || selectedMcpServerIds.size > 0
-                  }
-                  onClear={() => {
-                    setSelectedActionIds(new Set());
-                    setSelectedMcpServerIds(new Set());
-                  }}
+                  active={selectedActionIds.size > 0}
+                  onClear={() => setSelectedActionIds(new Set())}
                 >
                   {actionsFilterButtonText}
                 </FilterButton>
@@ -580,77 +449,44 @@ export default function AgentsNavigationPage() {
                       onChange={(e) => setActionsSearchQuery(e.target.value)}
                     />,
                     ...filteredActions.flatMap((action, index) => {
-                      if (action.type === "tool") {
-                        const isSelected = selectedActionIds.has(action.id);
-                        const systemIcon = SYSTEM_TOOL_ICONS[action.name];
-                        const isSystemTool = !!systemIcon;
+                      const isSelected = selectedActionIds.has(action.name);
+                      const systemIcon = SYSTEM_TOOL_ICONS[action.name];
+                      const isSystemTool = !!systemIcon;
 
-                        // Check if we need to add a separator after this item
-                        const nextAction = filteredActions[index + 1];
-                        const nextIsSystemTool =
-                          nextAction && nextAction.type === "tool"
-                            ? !!SYSTEM_TOOL_ICONS[nextAction.name]
-                            : false;
-                        const needsSeparator =
-                          isSystemTool && nextAction && !nextIsSystemTool;
+                      // Check if we need to add a separator after this item
+                      const nextAction = filteredActions[index + 1];
+                      const nextIsSystemTool = nextAction
+                        ? !!SYSTEM_TOOL_ICONS[nextAction.name]
+                        : false;
+                      const needsSeparator =
+                        isSystemTool && nextAction && !nextIsSystemTool;
 
-                        // Determine icon: system icon if available, otherwise Actions icon
-                        const icon = systemIcon ? systemIcon : SvgActions;
+                      // Determine icon: system icon if available, otherwise Actions icon
+                      const icon = systemIcon ? systemIcon : SvgActions;
 
-                        const lineItem = (
-                          <LineItem
-                            key={action.id}
-                            icon={icon}
-                            selected={isSelected}
-                            emphasized
-                            onClick={() => {
-                              setSelectedActionIds((prev) => {
-                                const newSet = new Set(prev);
-                                if (newSet.has(action.id)) {
-                                  newSet.delete(action.id);
-                                } else {
-                                  newSet.add(action.id);
-                                }
-                                return newSet;
-                              });
-                            }}
-                          >
-                            {action.display_name}
-                          </LineItem>
-                        );
+                      const lineItem = (
+                        <LineItem
+                          key={action.name}
+                          icon={icon}
+                          selected={isSelected}
+                          emphasized
+                          onClick={() => {
+                            setSelectedActionIds((prev) => {
+                              const newSet = new Set(prev);
+                              if (newSet.has(action.name)) {
+                                newSet.delete(action.name);
+                              } else {
+                                newSet.add(action.name);
+                              }
+                              return newSet;
+                            });
+                          }}
+                        >
+                          {action.display_name}
+                        </LineItem>
+                      );
 
-                        return needsSeparator ? [lineItem, null] : [lineItem];
-                      } else {
-                        // MCP Group - render only the server name, not individual tools
-                        const groupKey = `mcp-group-${action.mcp_server_id}`;
-                        const isSelected = selectedMcpServerIds.has(
-                          action.mcp_server_id
-                        );
-
-                        const lineItem = (
-                          <LineItem
-                            key={groupKey}
-                            icon={SvgActions}
-                            selected={isSelected}
-                            emphasized
-                            onClick={() => {
-                              setSelectedMcpServerIds((prev) => {
-                                const newSet = new Set(prev);
-                                if (newSet.has(action.mcp_server_id)) {
-                                  newSet.delete(action.mcp_server_id);
-                                } else {
-                                  newSet.add(action.mcp_server_id);
-                                }
-                                return newSet;
-                              });
-                            }}
-                          >
-                            {action.server_name}
-                          </LineItem>
-                        );
-
-                        return [lineItem];
-                      }
+                      return needsSeparator ? [lineItem, null] : [lineItem];
                     }),
                   ]}
                 </PopoverMenu>
@@ -662,7 +498,11 @@ export default function AgentsNavigationPage() {
 
       {/* Agents List */}
       <SettingsLayouts.Body>
-        {agentCount === 0 ? (
+        {isLoadingAgents ? (
+          <div className="w-full h-full flex items-center justify-center py-12">
+            <SimpleLoader className="h-6 w-6" />
+          </div>
+        ) : agentCount === 0 ? (
           <Text
             as="p"
             className="w-full h-full flex flex-col items-center justify-center py-12"

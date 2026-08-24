@@ -36,6 +36,7 @@ import Switch from "@/refresh-components/inputs/Switch";
 import Button from "@/refresh-components/buttons/Button";
 import AppInputBar from "@/sections/input/AppInputBar";
 import { useFilters, useLlmManager } from "@/lib/hooks";
+import { resolveAgentOwnerEmail } from "@/lib/agents";
 import { formatMmDdYyyy } from "@/lib/dateUtils";
 import { useProjectsContext } from "@/providers/ProjectsContext";
 import { FileCard } from "@/sections/cards/FileCard";
@@ -313,10 +314,9 @@ export default function AgentViewerModal({ agent }: AgentViewerModalProps) {
         <Modal.Header
           icon={(props) => <AgentAvatar agent={agent} {...props} size={24} />}
           title={agent.name}
+          tag={<AgentAvailabilityBadge agent={agent} showLabel />}
           onClose={() => agentViewerModal.toggle(false)}
-        >
-          <AgentAvailabilityBadge agent={agent} showLabel className="ml-8 w-fit" />
-        </Modal.Header>
+        />
 
         <Modal.Body>
           {/* Metadata */}
@@ -331,7 +331,7 @@ export default function AgentViewerModal({ agent }: AgentViewerModalProps) {
             )}
             <Content
               icon={SvgUser}
-              title={agent.owner?.email ?? "Onyx"}
+              title={resolveAgentOwnerEmail(agent.owner?.email, t)}
               sizePreset="main-ui"
               variant="body"
               prominence="muted"

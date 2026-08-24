@@ -398,10 +398,82 @@ async def _handle_input(
 
     configurable["extract_memory"] = user_extract and agent_extract
 
+    # A retry must generate its response without the previous (rejected)
+    # response in context. Locate the checkpoint right after the retried
+    # human message — before its original response — and invoke the graph
+    # from there instead of the thread's tip, giving the retry a genuine
+    # branch. The rejected response stays untouched in its own branch,
+    # readable via get_chat_session. If no fork point resolves (legacy
+    # thread predating this, or the target message no longer exists), fall
+    # back to the original append-a-duplicate-message behavior further
+    # below — a retry must never hard-fail over this.
+    fork_configurable: dict[str, Any] | None = None
+    if user_input.is_regenerate and user_input.retry_target_message_id is not None:
+        try:
+            from service.CheckpointBranchService import find_fork_point
+            from service.StoreService import get_thread_from_store
+
+            fork_thread = await get_thread_from_store(thread_id) if thread_id else None
+            fork_thread_metadata = (fork_thread or {}).get("metadata", {}) or {}
+            fork_config = await find_fork_point(
+                agent,
+                thread_id=thread_id,
+                target_message_id=user_input.retry_target_message_id,
+                thread_metadata=fork_thread_metadata,
+            )
+            if fork_config is not None:
+                fork_configurable = fork_config["configurable"]
+        except Exception as e:
+            logger.warning(f"Failed to locate retry fork point, falling back: {e}")
+
+    # Editing a previous message must fork the same way a retry does — the
+    # edited message's own id is both the fork target (same as a retry) and
+    # the message whose content gets replaced. aupdate_state applies the
+    # add_messages reducer's same-id-replaces semantics on top of the forked
+    # checkpoint, producing a new checkpoint with the edit applied and no
+    # response yet; the caller then treats it exactly like a retry fork
+    # (input=None) so the model regenerates without the old response — or
+    # anything sent after it — in context. The old branch stays untouched.
+    if user_input.is_edit and user_input.edit_target_message_id is not None and user_input.message is not None:
+        try:
+            from service.CheckpointBranchService import find_fork_point_with_message
+            from service.StoreService import get_thread_from_store
+
+            edit_thread = await get_thread_from_store(thread_id) if thread_id else None
+            edit_thread_metadata = (edit_thread or {}).get("metadata", {}) or {}
+            edit_fork_config, raw_target_message = await find_fork_point_with_message(
+                agent,
+                thread_id=thread_id,
+                target_message_id=user_input.edit_target_message_id,
+                thread_metadata=edit_thread_metadata,
+            )
+            if edit_fork_config is not None and raw_target_message is not None:
+                edited_kwargs: dict[str, Any] = dict(
+                    getattr(raw_target_message, "additional_kwargs", {}) or {}
+                )
+                edited_kwargs["persona_id"] = configurable.get("_persona_id", 0)
+                if configurable.get("model"):
+                    edited_kwargs["model"] = configurable["model"]
+                edited_message = HumanMessage(
+                    content=user_input.message,
+                    id=getattr(raw_target_message, "id", None),
+                    additional_kwargs=edited_kwargs,
+                )
+                updated_config = await agent.aupdate_state(
+                    edit_fork_config, {"messages": [edited_message]}
+                )
+                fork_configurable = updated_config["configurable"]
+        except Exception as e:
+            logger.warning(f"Failed to locate edit fork point, falling back: {e}")
+
+    if fork_configurable is not None:
+        configurable = {**configurable, **fork_configurable}
+
     config = RunnableConfig(
         configurable=configurable,
         run_id=run_id,
         callbacks=callbacks,
+        recursion_limit=settings.AGENT_RECURSION_LIMIT,
     )
 
     # Check for interrupts that need to be resumed
@@ -418,9 +490,16 @@ async def _handle_input(
 
     from service.Utils import convert_input_messages
 
-    input: Command | dict[str, Any]
+    input: Command | dict[str, Any] | None
     if interrupted_tasks:
         input = Command(resume=user_input.message or "")
+    elif fork_configurable is not None:
+        # State already ends at the target human message (for a retry) or at
+        # its just-replaced content (for an edit, via aupdate_state above),
+        # with no response yet — nothing new to add. Appending a duplicate
+        # here would put the very thing we forked away from right back in
+        # context.
+        input = None
     elif user_input.messages:
         # Use messages provided directly
         lc_messages = convert_input_messages(user_input.messages)
@@ -441,6 +520,16 @@ async def _handle_input(
             # Store lightweight file metadata in additional_kwargs so the LangGraph
             # checkpointer persists it and get_chat_session can reconstruct file badges.
             extra_kwargs: dict[str, Any] = {"files_metadata": files_meta} if files_meta else {}
+            # Stamp which agent/model produced this turn onto the message itself —
+            # thread-level metadata only ever holds the most recently sent value,
+            # so a retry (or an agent switch) makes it stale for earlier turns.
+            # get_chat_session reads this back per message instead of relying on
+            # the thread-level value alone.
+            extra_kwargs["persona_id"] = configurable.get("_persona_id", 0)
+            if configurable.get("model"):
+                extra_kwargs["model"] = configurable["model"]
+            if getattr(user_input, "is_regenerate", False):
+                extra_kwargs["is_regenerate"] = True
             if file_blocks:
                 new_content: list[dict[str, Any]] = (
                     [{"type": "text", "text": user_input.message}] if user_input.message else []
@@ -461,6 +550,11 @@ async def _handle_input(
             file_blocks = getattr(user_input, "file_content_blocks", [])
             files_meta = getattr(user_input, "files_metadata", [])
             extra_kwargs = {"files_metadata": files_meta} if files_meta else {}
+            extra_kwargs["persona_id"] = configurable.get("_persona_id", 0)
+            if configurable.get("model"):
+                extra_kwargs["model"] = configurable["model"]
+            if getattr(user_input, "is_regenerate", False):
+                extra_kwargs["is_regenerate"] = True
             if file_blocks:
                 fallback_content: list[dict[str, Any]] = (
                     [{"type": "text", "text": user_input.message}] if user_input.message else []

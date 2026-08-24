@@ -12,10 +12,10 @@ const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.SYSTEM_INFO]!;
 function VersionRow({ label, value }: { label: string; value: string | null }) {
   return (
     <div className="grid grid-cols-1 gap-1 border-b border-border-01 py-4 last:border-b-0 md:grid-cols-[180px_1fr]">
-      <Text as="span" secondaryBody text03>
+      <Text as="span" secondaryBody text04>
         {label}
       </Text>
-      <Text as="span" mainUiBody text01 className="break-all">
+      <Text as="span" mainUiBody text05 className="break-all">
         {value || "-"}
       </Text>
     </div>

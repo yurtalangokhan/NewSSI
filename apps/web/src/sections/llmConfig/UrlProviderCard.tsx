@@ -26,6 +26,11 @@ interface LiveModel {
   max_input_tokens?: number | null;
   supports_image_input?: boolean;
   supports_reasoning?: boolean;
+  supports_tools?: boolean;
+  supports_embedding?: boolean;
+  supports_code?: boolean;
+  supports_audio?: boolean;
+  is_remote?: boolean;
 }
 
 interface Props {
@@ -48,33 +53,67 @@ function ModelLoadingSpinner({ loadingLabel }: { loadingLabel: string }) {
 
 function CapabilityBadges({
   model,
-  visionLabel,
-  reasoningLabel,
-  visionTitle,
-  reasoningTitle,
+  t,
 }: {
   model: LiveModel | ProviderModelConfig;
-  visionLabel: string;
-  reasoningLabel: string;
-  visionTitle: string;
-  reasoningTitle: string;
+  t: (key: string, options?: Record<string, unknown>) => string;
 }) {
   return (
     <span className="flex gap-1">
       {model.supports_image_input && (
         <span
-          title={visionTitle}
+          title={t("admin.builtinOllama.supportsImageInput")}
           className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 font-medium"
         >
-          {visionLabel}
+          {t("admin.builtinOllama.visionTag")}
         </span>
       )}
       {model.supports_reasoning && (
         <span
-          title={reasoningTitle}
+          title={t("admin.builtinOllama.supportsReasoning")}
           className="text-[10px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 font-medium"
         >
-          {reasoningLabel}
+          {t("admin.builtinOllama.reasoningTag")}
+        </span>
+      )}
+      {model.supports_tools && (
+        <span
+          title={t("admin.builtinOllama.supportsTools")}
+          className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 font-medium"
+        >
+          {t("admin.builtinOllama.toolsTag")}
+        </span>
+      )}
+      {model.supports_embedding && (
+        <span
+          title={t("admin.builtinOllama.supportsEmbedding")}
+          className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 font-medium"
+        >
+          {t("admin.builtinOllama.embeddingTag")}
+        </span>
+      )}
+      {model.supports_code && (
+        <span
+          title={t("admin.builtinOllama.supportsCode")}
+          className="text-[10px] px-1.5 py-0.5 rounded bg-cyan-100 text-cyan-700 dark:bg-cyan-900/40 dark:text-cyan-300 font-medium"
+        >
+          {t("admin.builtinOllama.codeTag")}
+        </span>
+      )}
+      {model.supports_audio && (
+        <span
+          title={t("admin.builtinOllama.supportsAudio")}
+          className="text-[10px] px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300 font-medium"
+        >
+          {t("admin.builtinOllama.audioTag")}
+        </span>
+      )}
+      {model.is_remote && (
+        <span
+          title={t("admin.builtinOllama.cloudTag")}
+          className="text-[10px] px-1.5 py-0.5 rounded bg-background-neutral-03 text-text-03 font-medium"
+        >
+          {t("admin.builtinOllama.cloudTag")}
         </span>
       )}
     </span>
@@ -172,6 +211,11 @@ export function UrlProviderCard({ provider, onDownload, readOnly = false }: Prop
           max_input_tokens: m.max_input_tokens,
           supports_image_input: m.supports_image_input,
           supports_reasoning: m.supports_reasoning,
+          supports_tools: m.supports_tools,
+          supports_embedding: m.supports_embedding,
+          supports_code: m.supports_code,
+          supports_audio: m.supports_audio,
+          is_remote: m.is_remote,
           size: sizeMap.get(m.name),
         })
       );
@@ -185,14 +229,20 @@ export function UrlProviderCard({ provider, onDownload, readOnly = false }: Prop
     }
   };
 
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const handleDelete = async () => {
+    setIsDeleting(true);
     try {
-      await fetch(`/api/admin/providers/${provider.id}`, { method: "DELETE" });
+      const res = await fetch(`/api/admin/providers/${provider.id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error(`Delete failed: ${res.status}`);
       toast({ message: t("admin.llm.providerDeletedSuccess") });
       deleteModal.toggle(false);
-      mutate("/api/admin/providers");
+      await mutate("/api/admin/providers");
     } catch {
       toast({ message: t("admin.llm.failedToDeleteProvider"), level: "error" });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -209,10 +259,10 @@ export function UrlProviderCard({ provider, onDownload, readOnly = false }: Prop
         <ConfirmationModalLayout
           icon={SvgTrash}
           title={t("admin.llm.deleteProviderTitle", { name: provider.name })}
-          onClose={() => deleteModal.toggle(false)}
+          onClose={() => !isDeleting && deleteModal.toggle(false)}
           submit={
-            <Button variant="danger" onClick={handleDelete}>
-              {t("sidebar.delete")}
+            <Button variant="danger" disabled={isDeleting} onClick={handleDelete}>
+              {isDeleting ? t("admin.builtinOllama.deletingModel", { defaultValue: "Deleting..." }) : t("sidebar.delete")}
             </Button>
           }
         >
@@ -333,10 +383,7 @@ export function UrlProviderCard({ provider, onDownload, readOnly = false }: Prop
                     </span>
                     <CapabilityBadges
                       model={m}
-                      visionLabel={t("app.llmPopover.capabilityVision")}
-                      reasoningLabel={t("app.llmPopover.capabilityReasoning")}
-                      visionTitle={t("admin.llm.supportsImageInput")}
-                      reasoningTitle={t("admin.llm.supportsReasoning")}
+                      t={t}
                     />
                     <span className="flex-1" />
                     {m.max_input_tokens != null && (
